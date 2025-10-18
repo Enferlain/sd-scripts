@@ -132,6 +132,7 @@ def _load_target_model(
         logger.info("additional VAE loaded")
 
     if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+        logger.info(f"Loading VAE with padding mode: {args.vae_conv2d_padding_mode}")
         train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
     return load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info

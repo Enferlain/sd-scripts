@@ -135,6 +135,7 @@ if __name__ == "__main__":
     )
 
     if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+        logger.info(f"Applying VAE padding mode: {args.vae_conv2d_padding_mode} for standalone generation")
         train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
     # Text Encoder 1はSDXL本体でもHuggingFaceのものを使っている

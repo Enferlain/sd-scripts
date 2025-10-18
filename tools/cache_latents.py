@@ -148,6 +148,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     vae.eval()
 
     if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+        logger.info(f"Saving latents with VAE padding mode: {args.vae_conv2d_padding_mode}")
         train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
     # cache latents with dataset

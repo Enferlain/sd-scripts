@@ -1600,6 +1600,7 @@ def main(args):
             logger.info("additional VAE loaded")
     
         if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+            logger.info(f"Generating images VAE padding mode: {args.vae_conv2d_padding_mode}")
             train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
     # xformers、Hypernetwork対応

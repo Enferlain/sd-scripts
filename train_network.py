@@ -1200,6 +1200,7 @@ class NetworkTrainer:
             train_util.set_padding_mode_for_conv2d_modules(network, args.conv2d_padding_mode)
 
         if args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+            logger.info(f"Training VAE in padding mode: {args.vae_conv2d_padding_mode}")
             train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
         unet_weight_dtype = te_weight_dtype = weight_dtype

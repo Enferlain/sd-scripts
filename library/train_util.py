@@ -7539,10 +7539,12 @@ def set_padding_mode_for_conv2d_modules(model: torch.nn.Module, padding_mode: st
 
 def set_padding_mode_for_vae_conv2d_modules(vae: torch.nn.Module, padding_mode: str = 'zeros'):
     """Apply padding mode only to Conv2d modules with non-zero padding (for EQ VAE)"""
-    for module in vae.modules():
+    logger.info(f"VAE padding mode set to: {padding_mode}")
+    for name, module in vae.named_modules():
         if isinstance(module, torch.nn.Conv2d):
             pad = module.padding if isinstance(module.padding, tuple) else (module.padding, module.padding)
             if pad[0] > 0 or pad[1] > 0:
+                # print(f"Applying padding mode '{padding_mode}' to {name} ({module.__class__.__name__})")
                 module.padding_mode = padding_mode
 
 # endregion
