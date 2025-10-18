@@ -3194,6 +3194,13 @@ def setup_parser() -> argparse.ArgumentParser:
         help="unsharp mask parameters for Gradual Latent: ksize, sigma, strength, target-x (1 means True). `3,0.5,0.5,1` or `3,1.0,1.0,0` is recommended /"
         + " Gradual Latentのunsharp maskのパラメータ: ksize, sigma, strength, target-x. `3,0.5,0.5,1` または `3,1.0,1.0,0` が推奨",
     )
+    parser.add_argument(
+        "--vae_conv2d_padding_mode",
+        type=str,
+        default='zeros',
+        choices=["zeros", "reflect", "replicate", "circular"],
+        help="Adjusts the padding for Conv2d modules in the VAE. Use 'reflect' for EQ VAE to avoid edge artifacts."
+    )
 
     # # parser.add_argument(
     #     "--control_net_image_path", type=str, default=None, nargs="*", help="image for ControlNet guidance / ControlNetでガイドに使う画像"

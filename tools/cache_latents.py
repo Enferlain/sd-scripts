@@ -147,6 +147,9 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     vae.requires_grad_(False)
     vae.eval()
 
+    if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+        train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
+
     # cache latents with dataset
     # TODO use DataLoader to speed up
     train_dataset_group.new_cache_latents(vae, accelerator)

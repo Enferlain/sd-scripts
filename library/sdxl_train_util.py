@@ -40,6 +40,7 @@ def load_target_model(args, accelerator, model_version: str, weight_dtype):
                 logit_scale,
                 ckpt_info,
             ) = _load_target_model(
+                args,
                 args.pretrained_model_name_or_path,
                 args.vae,
                 model_version,
@@ -63,7 +64,7 @@ def load_target_model(args, accelerator, model_version: str, weight_dtype):
 
 
 def _load_target_model(
-    name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype, device="cpu", model_dtype=None, disable_mmap=False
+    args: argparse.Namespace, name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype, device="cpu", model_dtype=None, disable_mmap=False
 ):
     # model_dtype only work with full fp16/bf16
     name_or_path = os.readlink(name_or_path) if os.path.islink(name_or_path) else name_or_path
@@ -129,6 +130,9 @@ def _load_target_model(
     if vae_path is not None:
         vae = model_util.load_vae(vae_path, weight_dtype)
         logger.info("additional VAE loaded")
+
+    if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+        train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
     return load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info
 

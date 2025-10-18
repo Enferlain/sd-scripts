@@ -5717,6 +5717,9 @@ def _load_target_model(args: argparse.Namespace, weight_dtype, device="cpu", une
         vae = model_util.load_vae(args.vae, weight_dtype)
         logger.info("additional VAE loaded")
 
+    if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+        set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
+
     return text_encoder, vae, unet, load_stable_diffusion_format
 
 
@@ -7533,6 +7536,14 @@ def set_padding_mode_for_conv2d_modules(model: torch.nn.Module, padding_mode: st
     for module in model.modules():
         if isinstance(module, torch.nn.Conv2d):
             module.padding_mode = padding_mode
+
+def set_padding_mode_for_vae_conv2d_modules(vae: torch.nn.Module, padding_mode: str = 'zeros'):
+    """Apply padding mode only to Conv2d modules with non-zero padding (for EQ VAE)"""
+    for module in vae.modules():
+        if isinstance(module, torch.nn.Conv2d):
+            pad = module.padding if isinstance(module.padding, tuple) else (module.padding, module.padding)
+            if pad[0] > 0 or pad[1] > 0:
+                module.padding_mode = padding_mode
 
 # endregion
 

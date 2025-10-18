@@ -1598,6 +1598,9 @@ def main(args):
         if args.vae is not None:
             vae = model_util.load_vae(args.vae, dtype)
             logger.info("additional VAE loaded")
+    
+        if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+            train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
     # xformers、Hypernetwork対応
     if not args.diffusers_xformers:
@@ -3401,6 +3404,13 @@ def setup_parser() -> argparse.ArgumentParser:
         default=None,
         help="unsharp mask parameters for Gradual Latent: ksize, sigma, strength, target-x (1 means True). `3,0.5,0.5,1` or `3,1.0,1.0,0` is recommended /"
         + " Gradual Latentのunsharp maskのパラメータ: ksize, sigma, strength, target-x. `3,0.5,0.5,1` または `3,1.0,1.0,0` が推奨",
+    )
+    parser.add_argument(
+        "--vae_conv2d_padding_mode",
+        type=str,
+        default='zeros',
+        choices=["zeros", "reflect", "replicate", "circular"],
+        help="Adjusts the padding for Conv2d modules in the VAE. Use 'reflect' for EQ VAE to avoid edge artifacts."
     )
 
     # # parser.add_argument(

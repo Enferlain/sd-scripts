@@ -22,7 +22,7 @@ from PIL import Image
 # import open_clip
 from safetensors.torch import load_file
 
-from library import model_util, sdxl_model_util
+from library import model_util, sdxl_model_util, train_util
 import networks.lora as lora
 from library.utils import setup_logging
 
@@ -109,6 +109,13 @@ if __name__ == "__main__":
         help="LoRA weights, only supports networks.lora, each argument is a `path;multiplier` (semi-colon separated)",
     )
     parser.add_argument("--interactive", action="store_true")
+    parser.add_argument(
+        "--vae_conv2d_padding_mode",
+        type=str,
+        default='zeros',
+        choices=["zeros", "reflect", "replicate", "circular"],
+        help="Adjusts the padding for Conv2d modules in the VAE. Use 'reflect' for EQ VAE to avoid edge artifacts."
+    )
     args = parser.parse_args()
 
     if args.prompt2 is None:
@@ -126,6 +133,9 @@ if __name__ == "__main__":
     text_model1, text_model2, vae, unet, _, _ = sdxl_model_util.load_models_from_sdxl_checkpoint(
         sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, args.ckpt_path, "cpu"
     )
+
+    if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+        train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
     # Text Encoder 1はSDXL本体でもHuggingFaceのものを使っている
     # In SDXL, Text Encoder 1 is also using HuggingFace's
