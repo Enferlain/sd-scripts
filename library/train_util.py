@@ -4253,7 +4253,7 @@ def add_training_arguments(parser: argparse.ArgumentParser, support_dreambooth: 
 
     parser.add_argument(
         "--timestep_sampling",
-        choices=["uniform", "sigma", "sigmoid", "shift", "flux_shift"],
+        choices=["uniform", "sigma", "sigmoid", "shift", "flux_shift", "mix_adaptive"],
         default="uniform",
         help="Method to sample timesteps: uniform random, sigmoid of random normal, shift of sigmoid and FLUX.1 shifting."
         " / タイムステップをサンプリングする方法：random uniform、random normalのsigmoid、sigmoidのシフト、FLUX.1のシフト。",
@@ -4269,6 +4269,16 @@ def add_training_arguments(parser: argparse.ArgumentParser, support_dreambooth: 
         type=float,
         default=1.0,
         help="Discrete flow shift for the Euler Discrete Scheduler, default is 1.0. / Euler Discrete Schedulerの離散フローシフト、デフォルトは1.0。",
+    )
+
+    # mix_adaptive sampler
+    parser.add_argument("--mix_adaptive_bins", type=int, default=32, help="number of bins for mix_adaptive sampler")
+    parser.add_argument("--mix_adaptive_ema_beta", type=float, default=0.9, help="EMA beta for mix_adaptive sampler")
+    parser.add_argument(
+        "--mix_adaptive_small_t_frac", type=float, default=0.15, help="fraction of small timesteps for mix_adaptive sampler"
+    )
+    parser.add_argument(
+        "--mix_adaptive_small_t_cap", type=float, default=0.6, help="cap for small timesteps for mix_adaptive sampler"
     )
 
 
@@ -6440,10 +6450,34 @@ def get_noise_noisy_latents_and_timesteps(
             num_samples=b_size,
             replacement=False
         ).to(dtype=torch.long, device=latents.device)
+    elif train and args.timestep_sampling == "mix_adaptive":
+        if not hasattr(args, "la_sampler"):
+            from .loss_aware_sampler import LossAwareTimestepSampler
+
+            args.la_sampler = LossAwareTimestepSampler(
+                num_train_timesteps=(max_timestep - min_timestep),
+                num_bins=getattr(args, "mix_adaptive_bins", 32),
+                ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.9),
+                small_t_frac=getattr(args, "mix_adaptive_small_t_frac", 0.15),
+                small_t_cap=getattr(args, "mix_adaptive_small_t_cap", 0.6),
+            )
+
+        # Sample discrete indices in [0,T)
+        t_local = args.la_sampler.sample(
+            b_size,
+            latents.device,
+            getattr(args, "global_step", 0),
+            getattr(args, "max_train_steps", 1000),
+            sigmoid_scale=getattr(args, "sigmoid_scale", 1.0),
+            discrete_flow_shift=getattr(args, "discrete_flow_shift", 0.9),
+        )
+
+        # Map local [0,T) to absolute [min_timestep, max_timestep)
+        timesteps = (t_local + min_timestep).clamp(min_timestep, max_timestep - 1).to(dtype=torch.long, device=latents.device)
     elif train and args.timestep_sampling != "uniform":
         shift = args.discrete_flow_shift
         logits_norm = torch.randn(b_size,  device="cpu")
-        logits_norm = logits_norm * args.sigmoid_scale 
+        logits_norm = logits_norm * args.sigmoid_scale
         timesteps = logits_norm.sigmoid()
         if args.timestep_sampling == "flux_shift":
             mu = get_lin_function(y1=0.5, y2=1.15)((h // 2) * (w // 2))
