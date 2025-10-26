@@ -7358,6 +7358,7 @@ def sample_images_common(
     vae.to(org_vae_device)
 
     clean_memory_on_device(accelerator.device)
+    torch.cuda.synchronize() # <--- maybe helps between sample and train resumne
 
 
 def sample_image_inference(
