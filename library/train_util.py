@@ -4272,6 +4272,10 @@ def add_training_arguments(parser: argparse.ArgumentParser, support_dreambooth: 
     )
 
     # mix_adaptive sampler
+    parser.add_argument("--mix_adaptive_start_p", type=float, default=0.85)
+    parser.add_argument("--mix_adaptive_end_p",   type=float, default=0.35)
+    parser.add_argument("--mix_adaptive_fixed_p", type=float, default=None)
+    parser.add_argument("--mix_adaptive_anneal",  choices=["cosine","linear","none"], default="cosine")
     parser.add_argument("--mix_adaptive_bins", type=int, default=32, help="number of bins for mix_adaptive sampler")
     parser.add_argument("--mix_adaptive_ema_beta", type=float, default=0.9, help="EMA beta for mix_adaptive sampler")
     parser.add_argument(
@@ -6460,6 +6464,10 @@ def get_noise_noisy_latents_and_timesteps(
                 ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.9),
                 small_t_frac=getattr(args, "mix_adaptive_small_t_frac", 0.15),
                 small_t_cap=getattr(args, "mix_adaptive_small_t_cap", 0.6),
+                start_p=getattr(args, "mix_adaptive_start_p", 0.85),
+                end_p=getattr(args, "mix_adaptive_end_p", 0.35),
+                anneal=getattr(args, "mix_adaptive_anneal", "cosine"),
+                fixed_p=getattr(args, "mix_adaptive_fixed_p", None),
             )
 
         # Sample discrete indices in [0,T)

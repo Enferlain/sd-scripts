@@ -2018,6 +2018,7 @@ class NetworkTrainer:
 
                 for step, batch in enumerate(skipped_dataloader or train_dataloader):
                     current_step.value = global_step
+                    args.global_step = global_step
                     current_batch_size = len(batch['network_multipliers'])
                     effective_batch_size += current_batch_size
                     
@@ -2221,20 +2222,31 @@ class NetworkTrainer:
                                 loss.mul_(float(args.loss_multipler or args.loss_multiplier) if args.loss_multipler is not None or args.loss_multiplier is not None else 1.0)
 
                             # For logging
-                            pre_scaling_loss = loss.mean()
+                            per_sample_loss = loss.detach()
+                            pre_scaling_loss = per_sample_loss.mean()
 
+                            # Optional EDM2 loss weighting MLP
                             if args.edm2_loss_weighting:
                                 loss, loss_scaled = lossweightMLP(loss, timesteps)
                                 loss_scaled = loss_scaled.mean()
                                 loss_scaled = loss_scaled * grad_accum_loss_scaling
+                                sampler_loss_for_ema = per_sample_loss
+                            else:
+                                sampler_loss_for_ema = per_sample_loss
 
-                            loss = loss.mean()  # Mean over batch
+                            # Mean over batch for backward
+                            loss = loss.mean()
 
                             # Divide loss by iter_size to average over accumulated steps
                             loss = loss * grad_accum_loss_scaling
 
                         # Backward pass
                         accelerator.backward(loss)
+
+                        # Update EMA sampler with per-sample loss and exact timesteps
+                        if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler"):
+                            with torch.no_grad():
+                                args.la_sampler.update(timesteps, sampler_loss_for_ema)
 
                         # Replace loss with pre_scaling_loss, scaled by grad_accum_loss_scaling
                         loss = pre_scaling_loss * grad_accum_loss_scaling
@@ -2465,6 +2477,22 @@ class NetworkTrainer:
                                 gns, variance = network.gradient_noise_scale()
                                 if gns is not None and variance is not None:
                                     logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance, "gns/critical_batch_size": gns / effective_batch_size}
+                            if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler"):
+                                logs["sampler/mix_p"] = args.la_sampler.last_mix_p
+                                logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
+                                
+                                # Add mean and std of ema_loss
+                                logs["sampler/ema_loss_mean"] = args.la_sampler.ema_loss.mean().item()
+                                logs["sampler/ema_loss_std"] = args.la_sampler.ema_loss.std().item()
+
+                                # EMA loss per bin (in a separate category)
+                                for i, loss_val in enumerate(args.la_sampler.ema_loss):
+                                    logs[f"ema_loss_bins/bin_{i}"] = loss_val.item()
+                                    
+                                # Timestep histogram (in a separate category)
+                                hist = torch.histogram(timesteps.float().cpu(), bins=args.la_sampler.num_bins, range=(0, args.la_sampler.T))
+                                for i, count in enumerate(hist.hist):
+                                    logs[f"timestep_hist/bin_{i}"] = count.item()
                             accelerator.log(logs, step=global_step)
                             current_global_step_loss = 0.0
                             if args.edm2_loss_weighting:
@@ -2739,7 +2767,7 @@ class NetworkTrainer:
 
                             # Optional EDM2 loss weighting MLP
                             if args.edm2_loss_weighting:
-                                loss, loss_scaled = lossweightMLP(per_sample_loss, timesteps)  # returns per-sample again
+                                loss, loss_scaled = lossweightMLP(loss, timesteps)
                                 loss_scaled = loss_scaled.mean()
                                 # Use the pre-MLP mean for sampler to track the actual objective difficulty
                                 sampler_loss_for_ema = per_sample_loss
@@ -2747,7 +2775,7 @@ class NetworkTrainer:
                                 sampler_loss_for_ema = per_sample_loss
 
                             # Mean over batch for backward
-                            loss = (loss if args.edm2_loss_weighting else per_sample_loss).mean()
+                            loss = loss.mean()
                             accelerator.backward(loss)
 
                             # Update EMA sampler with per-sample loss and exact timesteps
@@ -2997,20 +3025,22 @@ class NetworkTrainer:
                                 gns, variance = network.gradient_noise_scale()
                                 if gns is not None and variance is not None:
                                     logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance, "gns/critical_batch_size": gns / effective_batch_size}
-                            
                             if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler"):
-                                # 1. Timestep histogram
+                                logs["sampler/mix_p"] = args.la_sampler.last_mix_p
+                                logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
+
+                                # Add mean and std of ema_loss
+                                logs["sampler/ema_loss_mean"] = args.la_sampler.ema_loss.mean().item()
+                                logs["sampler/ema_loss_std"] = args.la_sampler.ema_loss.std().item()
+
+                                # EMA loss per bin (in a separate category)
+                                for i, loss_val in enumerate(args.la_sampler.ema_loss):
+                                    logs[f"ema_loss_bins/bin_{i}"] = loss_val.item()
+                                    
+                                # Timestep histogram (in a separate category)
                                 hist = torch.histogram(timesteps.float().cpu(), bins=args.la_sampler.num_bins, range=(0, args.la_sampler.T))
                                 for i, count in enumerate(hist.hist):
-                                    logs[f"sampler/timestep_bin_{i}"] = count.item()
-
-                                # 2. EMA loss per bin
-                                for i, loss_val in enumerate(args.la_sampler.ema_loss):
-                                    logs[f"sampler/ema_loss_bin_{i}"] = loss_val.item()
-
-                                # 3. mix_p
-                                mix_p = args.la_sampler._cosine_anneal(global_step, args.max_train_steps)
-                                logs["sampler/mix_p"] = mix_p
+                                    logs[f"timestep_hist/bin_{i}"] = count.item()
 
                             accelerator.log(logs, step=global_step)
                             current_global_step_loss = 0.0
