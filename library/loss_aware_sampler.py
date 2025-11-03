@@ -28,13 +28,18 @@ class LossAwareTimestepSampler:
         # expects 1D tensors on same device
         bins = torch.bucketize(timesteps.float(), self.bin_edges.to(timesteps.device)) - 1
         bins = bins.clamp(0, self.num_bins - 1)
-        bin_loss = torch.zeros(self.num_bins, device=timesteps.device)
-        bin_cnt  = torch.zeros(self.num_bins, device=timesteps.device)
-        bin_loss.index_add_(0, bins, per_sample_losses.detach().to(dtype=bin_loss.dtype))
-        bin_cnt.index_add_(0, bins, torch.ones_like(per_sample_losses, dtype=bin_cnt.dtype))
+
+        # EMA update in float32
+        update_dtype = torch.float32
+        bin_loss = torch.zeros(self.num_bins, device=timesteps.device, dtype=update_dtype)
+        bin_cnt = torch.zeros(self.num_bins, device=timesteps.device, dtype=update_dtype)
+        bin_loss.index_add_(0, bins, per_sample_losses.detach().to(dtype=update_dtype))
+        bin_cnt.index_add_(0, bins, torch.ones_like(per_sample_losses, dtype=update_dtype))
+
         mask = bin_cnt > 0
-        new_vals = torch.where(mask, bin_loss / (bin_cnt + self.eps), self.ema_loss.to(timesteps.device))
-        self.ema_loss = self.ema_beta * self.ema_loss.to(timesteps.device) + (1 - self.ema_beta) * new_vals
+        ema_loss_device = self.ema_loss.to(device=timesteps.device, dtype=update_dtype)
+        new_vals = torch.where(mask, bin_loss / (bin_cnt + self.eps), ema_loss_device)
+        self.ema_loss = self.ema_beta * ema_loss_device + (1 - self.ema_beta) * new_vals
 
     def _sched(self, step, total):
         if self.fixed_p is not None:
@@ -70,7 +75,7 @@ class LossAwareTimestepSampler:
         t_idx = (t_mix.clamp(0, 1) * (self.T - 1)).round().long()
 
         # Loss-aware reweighting across bins
-        ema = self.ema_loss.to(device)
+        ema = self.ema_loss.to(device=device, dtype=torch.float32)
         probs = (ema / (ema.sum() + self.eps)).clamp(min=1e-6)
         cat = torch.distributions.Categorical(probs=probs)
         # Sample bins, then uniform within each chosen bin
