@@ -80,7 +80,7 @@ from diffusers import (
     KDPM2AncestralDiscreteScheduler,
     AutoencoderKL,
 )
-from library import custom_train_functions, sd3_utils
+from library import custom_train_functions
 from library.original_unet import UNet2DConditionModel
 from huggingface_hub import hf_hub_download
 import numpy as np
@@ -155,7 +155,6 @@ IMAGE_TRANSFORMS = transforms.v2.Compose(
 )
 
 TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX = "_te_outputs.npz"
-TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX_SD3 = "_sd3_te.npz"
 
 def split_train_val(paths, is_train, validation_split, validation_seed):
     if validation_seed is not None:
@@ -1362,21 +1361,6 @@ class BaseDataset(torch.utils.data.Dataset):
         )
 
     # same as above, but for SD3
-    def cache_text_encoder_outputs_sd3(
-        self, tokenizer, text_encoders, devices, output_dtype, te_dtypes, cache_to_disk=False, is_main_process=True, batch_size=None
-    ):
-        return self.cache_text_encoder_outputs_common(
-            [tokenizer],
-            text_encoders,
-            devices,
-            output_dtype,
-            te_dtypes,
-            cache_to_disk,
-            is_main_process,
-            TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX_SD3,
-            batch_size,
-        )
-
     def cache_text_encoder_outputs_common(
         self,
         tokenizers,
@@ -1427,17 +1411,12 @@ class BaseDataset(torch.utils.data.Dataset):
                 text_encoder.to(dtype=te_dtype)
 
         # create batch
-        is_sd3 = len(tokenizers) == 1
         batch = []
         batches = []
         for info in image_infos_to_cache:
-            if not is_sd3:
-                input_ids1 = self.get_input_ids(info.caption, tokenizers[0])
-                input_ids2 = self.get_input_ids(info.caption, tokenizers[1])
-                batch.append((info, input_ids1, input_ids2))
-            else:
-                l_tokens, g_tokens, t5_tokens = tokenize_strategy.tokenize(info.caption)
-                batch.append((info, l_tokens, g_tokens, t5_tokens))
+            input_ids1 = self.get_input_ids(info.caption, tokenizers[0])
+            input_ids2 = self.get_input_ids(info.caption, tokenizers[1])
+            batch.append((info, input_ids1, input_ids2))
 
             if len(batch) >= batch_size:
                 batches.append(batch)
@@ -1448,32 +1427,13 @@ class BaseDataset(torch.utils.data.Dataset):
 
         # iterate batches: call text encoder and cache outputs for memory or disk
         logger.info("caching text encoder outputs...")
-        if not is_sd3:
-            for batch in tqdm(batches):
-                infos, input_ids1, input_ids2 = zip(*batch)
-                input_ids1 = torch.stack(input_ids1, dim=0)
-                input_ids2 = torch.stack(input_ids2, dim=0)
-                cache_batch_text_encoder_outputs(
-                    infos, tokenizers, text_encoders, self.max_token_length, cache_to_disk, input_ids1, input_ids2, output_dtype
-                )
-        else:
-            for batch in tqdm(batches):
-                infos, l_tokens, g_tokens, t5_tokens = zip(*batch)
-
-                # stack tokens
-                # l_tokens = [tokens[0] for tokens in l_tokens]
-                # g_tokens = [tokens[0] for tokens in g_tokens]
-                # t5_tokens = [tokens[0] for tokens in t5_tokens]
-
-                cache_batch_text_encoder_outputs_sd3(
-                    infos,
-                    tokenizers[0],
-                    text_encoders,
-                    self.max_token_length,
-                    cache_to_disk,
-                    (l_tokens, g_tokens, t5_tokens),
-                    output_dtype,
-                )
+        for batch in tqdm(batches):
+            infos, input_ids1, input_ids2 = zip(*batch)
+            input_ids1 = torch.stack(input_ids1, dim=0)
+            input_ids2 = torch.stack(input_ids2, dim=0)
+            cache_batch_text_encoder_outputs(
+                infos, tokenizers, text_encoders, self.max_token_length, cache_to_disk, input_ids1, input_ids2, output_dtype
+            )
 
     def get_image_size(self, image_path):
         # return imagesize.get(image_path)
@@ -2622,14 +2582,6 @@ class DatasetGroup(torch.utils.data.ConcatDataset):
             logger.info(f"[Dataset {i}]")
             dataset.cache_text_encoder_outputs(tokenizers, text_encoders, device, weight_dtype, cache_to_disk, is_main_process)
 
-    def cache_text_encoder_outputs_sd3(
-        self, tokenizer, text_encoders, device, output_dtype, te_dtypes, cache_to_disk=False, is_main_process=True, batch_size=None
-    ):
-        for i, dataset in enumerate(self.datasets):
-            logger.info(f"[Dataset {i}]")
-            dataset.cache_text_encoder_outputs_sd3(
-                tokenizer, text_encoders, device, output_dtype, te_dtypes, cache_to_disk, is_main_process, batch_size
-            )
 
     def new_cache_text_encoder_outputs(self, models: List[Any], accelerator: Accelerator):
         for i, dataset in enumerate(self.datasets):
@@ -3141,34 +3093,6 @@ def cache_batch_text_encoder_outputs(
             info.text_encoder_pool2 = pool2
 
 
-def cache_batch_text_encoder_outputs_sd3(
-    image_infos, tokenizer, text_encoders, max_token_length, cache_to_disk, input_ids, output_dtype
-):
-    # make input_ids for each text encoder
-    l_tokens, g_tokens, t5_tokens = input_ids
-
-    clip_l, clip_g, t5xxl = text_encoders
-    with torch.no_grad():
-        b_lg_out, b_t5_out, b_pool = sd3_utils.get_cond_from_tokens(
-            l_tokens, g_tokens, t5_tokens, clip_l, clip_g, t5xxl, "cpu", output_dtype
-        )
-        b_lg_out = b_lg_out.detach()
-        b_t5_out = b_t5_out.detach()
-        b_pool = b_pool.detach()
-
-    for info, lg_out, t5_out, pool in zip(image_infos, b_lg_out, b_t5_out, b_pool):
-        # debug: NaN check
-        if torch.isnan(lg_out).any() or torch.isnan(t5_out).any() or torch.isnan(pool).any():
-            raise RuntimeError(f"NaN detected in text encoder outputs: {info.absolute_path}")
-
-        if cache_to_disk:
-            save_text_encoder_outputs_to_disk(info.text_encoder_outputs_npz, lg_out, t5_out, pool)
-        else:
-            info.text_encoder_outputs1 = lg_out
-            info.text_encoder_outputs2 = t5_out
-            info.text_encoder_pool2 = pool
-
-
 def save_text_encoder_outputs_to_disk(npz_path, hidden_state1, hidden_state2, pool2):
     np.savez(
         npz_path,
@@ -3491,8 +3415,6 @@ def get_sai_model_spec(
     lora: bool,
     textual_inversion: bool,
     is_stable_diffusion_ckpt: Optional[bool] = None,  # None for TI and LoRA
-    sd3: str = None,
-    flux: str = None,
 ):
     timestamp = time.time()
 
@@ -3526,8 +3448,6 @@ def get_sai_model_spec(
         tags=args.metadata_tags,
         timesteps=timesteps,
         clip_skip=args.clip_skip,  # None or int
-        sd3=sd3,
-        flux=flux,
     )
     return metadata
 
@@ -3718,8 +3638,8 @@ def add_optimizer_arguments(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--fused_backward_pass",
         action="store_true",
-        help="Combines backward pass and optimizer step to reduce VRAM usage. Only available in SDXL, SD3 and FLUX"
-        " / バックワードパスとオプティマイザステップを組み合わせてVRAMの使用量を削減します。SDXL、SD3、FLUXでのみ利用可能",
+        help="Combines backward pass and optimizer step to reduce VRAM usage. Only available in SDXL and FLUX"
+        " / バックワードパスとオプティマイザステップを組み合わせてVRAMの使用量を削減します。SDXL、FLUXでのみ利用可能",
     )
     parser.add_argument(
         "--lr_scheduler_timescale",
@@ -4253,10 +4173,10 @@ def add_training_arguments(parser: argparse.ArgumentParser, support_dreambooth: 
 
     parser.add_argument(
         "--timestep_sampling",
-        choices=["uniform", "sigma", "sigmoid", "shift", "flux_shift", "mix_adaptive", "log_snr_uniform", "tempered_adaptive"],
+        choices=["uniform", "sigma", "sigmoid", "shift", "mix_adaptive", "log_snr_uniform", "tempered_adaptive"],
         default="uniform",
-        help="Method to sample timesteps: uniform random, sigmoid of random normal, shift of sigmoid and FLUX.1 shifting."
-        " / タイムステップをサンプリングする方法：random uniform、random normalのsigmoid、sigmoidのシフト、FLUX.1のシフト。",
+        help="Method to sample timesteps: uniform random, sigmoid of random normal, and shift of sigmoid."
+        " / タイムステップをサンプリングする方法：random uniform、random normalのsigmoid、sigmoidのシフト。",
     )
     parser.add_argument(
         "--sigmoid_scale",
@@ -6364,14 +6284,6 @@ def save_sd_model_on_train_end_common(
         if args.huggingface_repo_id is not None:
             huggingface_util.upload(args, out_dir, "/" + model_name, force_sync_upload=True)
 
-def time_shift(mu: float, sigma: float, t: torch.Tensor):
-    return math.exp(mu) / (math.exp(mu) + (1 / t - 1) ** sigma)
-
-def get_lin_function(x1: float = 256, y1: float = 0.5, x2: float = 4096, y2: float = 1.15) -> Callable[[float], float]:
-    m = (y2 - y1) / (x2 - x1)
-    b = y1 - m * x1
-    return lambda x: m * x + b
-
 def get_timesteps(min_timestep, max_timestep, b_size, device) -> torch.Tensor:
     timesteps = torch.randint(min_timestep, max_timestep, (b_size,), device="cpu")
     timesteps = timesteps.to(dtype=torch.long, device=device)
@@ -6501,11 +6413,7 @@ def get_noise_noisy_latents_and_timesteps(
         logits_norm = torch.randn(b_size,  device="cpu")
         logits_norm = logits_norm * args.sigmoid_scale
         timesteps = logits_norm.sigmoid()
-        if args.timestep_sampling == "flux_shift":
-            mu = get_lin_function(y1=0.5, y2=1.15)((h // 2) * (w // 2))
-            timesteps = time_shift(mu, 1.0, timesteps)
-        else:
-            timesteps = (timesteps * shift) / (1 + (shift - 1) * timesteps)
+        timesteps = (timesteps * shift) / (1 + (shift - 1) * timesteps)
         timesteps = min_timestep + (timesteps * (max_timestep - min_timestep)).to(dtype=torch.long, device=latents.device)
     else:
         # Fallback to default (random) sampling
@@ -7067,7 +6975,6 @@ def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):
         names.append("unet")
     names.append("text_encoder1")
     names.append("text_encoder2")
-    names.append("text_encoder3")  # SD3
 
     append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
 
