@@ -4253,7 +4253,7 @@ def add_training_arguments(parser: argparse.ArgumentParser, support_dreambooth: 
 
     parser.add_argument(
         "--timestep_sampling",
-        choices=["uniform", "sigma", "sigmoid", "shift", "flux_shift", "mix_adaptive"],
+        choices=["uniform", "sigma", "sigmoid", "shift", "flux_shift", "mix_adaptive", "log_snr_uniform", "tempered_adaptive"],
         default="uniform",
         help="Method to sample timesteps: uniform random, sigmoid of random normal, shift of sigmoid and FLUX.1 shifting."
         " / タイムステップをサンプリングする方法：random uniform、random normalのsigmoid、sigmoidのシフト、FLUX.1のシフト。",
@@ -4283,6 +4283,20 @@ def add_training_arguments(parser: argparse.ArgumentParser, support_dreambooth: 
     )
     parser.add_argument(
         "--mix_adaptive_small_t_cap", type=float, default=0.6, help="cap for small timesteps for mix_adaptive sampler"
+    )
+
+    # tempered adaptive sampler
+    parser.add_argument(
+        "--mix_adaptive_temperature", type=float, default=0.5, help="temperature for tempered adaptive sampler"
+    )
+    parser.add_argument(
+        "--mix_adaptive_prior_weight", type=float, default=0.2, help="prior weight for tempered adaptive sampler"
+    )
+    parser.add_argument(
+        "--mix_adaptive_min_prob", type=float, default=1e-4, help="minimum probability for tempered adaptive sampler"
+    )
+    parser.add_argument(
+        "--mix_adaptive_warmup_steps", type=int, default=2000, help="warmup steps for tempered adaptive sampler"
     )
 
 

@@ -58,6 +58,9 @@ import logging
 import itertools
 
 import tools.stochastic_accumulator as stochastic_accumulator
+from tools.log_snr_sampler import LogSNRUniformSampler
+from tools.tempered_adaptive_sampler import TemperedAdaptiveSampler
+
 
 logger = logging.getLogger(__name__)
 
@@ -1676,6 +1679,23 @@ class NetworkTrainer:
 
         noise_scheduler = self.get_noise_scheduler(args, accelerator.device)
 
+        # Inject sampler when user selects log-SNR mode
+        if getattr(args, "timestep_sampling", "") == "log_snr_uniform":
+            args.la_sampler = LogSNRUniformSampler(noise_scheduler, noise_scheduler.config.num_train_timesteps)
+            # Route through la_sampler branch
+            args.timestep_sampling = "mix_adaptive"
+        elif getattr(args, "timestep_sampling", "") == "tempered_adaptive":
+            args.la_sampler = TemperedAdaptiveSampler(
+                noise_scheduler,
+                num_bins=getattr(args, "mix_adaptive_bins", 64),
+                ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.95),
+                temperature=getattr(args, "mix_adaptive_temperature", 0.5),
+                prior_weight=getattr(args, "mix_adaptive_prior_weight", 0.2),
+                min_prob=getattr(args, "mix_adaptive_min_prob", 1e-4),
+                warmup_steps=getattr(args, "mix_adaptive_warmup_steps", 2000),
+            )
+            args.timestep_sampling = "mix_adaptive"
+
         if args.edm2_loss_weighting:
             values = args.edm2_loss_weighting_optimizer.split(".")
             optimizer_module = importlib.import_module(".".join(values[:-1]))
@@ -2478,8 +2498,10 @@ class NetworkTrainer:
                                 if gns is not None and variance is not None:
                                     logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance, "gns/critical_batch_size": gns / effective_batch_size}
                             if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler"):
-                                logs["sampler/mix_p"] = args.la_sampler.last_mix_p
-                                logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
+                                if hasattr(args.la_sampler, "last_mix_p"):
+                                    logs["sampler/mix_p"] = args.la_sampler.last_mix_p
+                                if hasattr(args.la_sampler, "last_small_t_frac"):
+                                    logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
                                 
                                 # Add mean and std of ema_loss
                                 logs["sampler/ema_loss_mean"] = args.la_sampler.ema_loss.mean().item()
@@ -3026,8 +3048,10 @@ class NetworkTrainer:
                                 if gns is not None and variance is not None:
                                     logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance, "gns/critical_batch_size": gns / effective_batch_size}
                             if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler"):
-                                logs["sampler/mix_p"] = args.la_sampler.last_mix_p
-                                logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
+                                if hasattr(args.la_sampler, "last_mix_p"):
+                                    logs["sampler/mix_p"] = args.la_sampler.last_mix_p
+                                if hasattr(args.la_sampler, "last_small_t_frac"):
+                                    logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
 
                                 # Add mean and std of ema_loss
                                 logs["sampler/ema_loss_mean"] = args.la_sampler.ema_loss.mean().item()
