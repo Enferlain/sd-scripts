@@ -61,8 +61,8 @@ import tools.stochastic_accumulator as stochastic_accumulator
 from tools.log_snr_sampler import LogSNRUniformSampler
 from tools.tempered_adaptive_sampler import TemperedAdaptiveSampler
 
-
 logger = logging.getLogger(__name__)
+
 
 def get_sampling_frequency(global_step, max_steps, initial_freq=3, final_freq=6):
     """
@@ -74,24 +74,25 @@ def get_sampling_frequency(global_step, max_steps, initial_freq=3, final_freq=6)
 
     output = max(1, int(current_freq))
 
-    logger.info("current_freq="+str(output))
+    logger.info("current_freq=" + str(output))
 
     return output
+
 
 @torch.no_grad()
 def analyze_gradient_norms(parameters):
     """
     Comprehensive analysis of gradient norms from model parameters.
-    
+
     Args:
         parameters: An iterable of parameters with gradients (e.g., model.parameters())
-        
+
     Returns:
         dict: Dictionary containing various gradient statistics
     """
     # Extract gradient norms and zero gradients count
     grad_norms = []
-    
+
     for param in parameters:
         if param.grad is not None:
             grad = param.grad
@@ -100,25 +101,25 @@ def analyze_gradient_norms(parameters):
 
     if not grad_norms:
         return {
-                'train/grad_norm/mean': 0.0,
-                'train/grad_norm/median': 0.0,
-                'train/grad_norm/std': 0.0,
-                'train/grad_norm/max': 0.0,
-                'train/grad_norm/p10': 0.0,
-                'train/grad_norm/p25': 0.0,
-                'train/grad_norm/p50': 0.0,
-                'train/grad_norm/p75': 0.0,
-                'train/grad_norm/p90': 0.0,
-                'train/grad_norm/p95': 0.0,
-                'train/grad_norm/p98': 0.0,
-                'train/grad_norm/p99': 0.0,
-                'train/grad_norm/p995': 0.0,
-                'train/grad_norm/p998': 0.0,
-                'train/grad_norm/p999': 0.0,
-            }
-    
+            'train/grad_norm/mean': 0.0,
+            'train/grad_norm/median': 0.0,
+            'train/grad_norm/std': 0.0,
+            'train/grad_norm/max': 0.0,
+            'train/grad_norm/p10': 0.0,
+            'train/grad_norm/p25': 0.0,
+            'train/grad_norm/p50': 0.0,
+            'train/grad_norm/p75': 0.0,
+            'train/grad_norm/p90': 0.0,
+            'train/grad_norm/p95': 0.0,
+            'train/grad_norm/p98': 0.0,
+            'train/grad_norm/p99': 0.0,
+            'train/grad_norm/p995': 0.0,
+            'train/grad_norm/p998': 0.0,
+            'train/grad_norm/p999': 0.0,
+        }
+
     grad_norms = torch.stack(grad_norms)
-    
+
     # Basic statistics
     stats = {
         'train/grad_norm/mean': torch.mean(grad_norms),
@@ -137,30 +138,31 @@ def analyze_gradient_norms(parameters):
         'train/grad_norm/p998': torch.quantile(grad_norms, 0.998),
         'train/grad_norm/p999': torch.quantile(grad_norms, 0.999),
     }
-    
+
     return stats
+
 
 @torch.no_grad()
 def analyze_model_norms(unscaled_norms):
     if unscaled_norms is None or not isinstance(unscaled_norms, torch.Tensor) or unscaled_norms.numel() == 0:
         return {
-                'model/module_norm/unscaled/mean': 0.0,
-                'model/module_norm/unscaled/median': 0.0,
-                'model/module_norm/unscaled/std': 0.0,
-                'model/module_norm/unscaled/max': 0.0,
-                'model/module_norm/unscaled/p10': 0.0,
-                'model/module_norm/unscaled/p25': 0.0,
-                'model/module_norm/unscaled/p50': 0.0,
-                'model/module_norm/unscaled/p75': 0.0,
-                'model/module_norm/unscaled/p90': 0.0,
-                'model/module_norm/unscaled/p95': 0.0,
-                'model/module_norm/unscaled/p98': 0.0,
-                'model/module_norm/unscaled/p99': 0.0,
-                'model/module_norm/unscaled/p995': 0.0,
-                'model/module_norm/unscaled/p998': 0.0,
-                'model/module_norm/unscaled/p999': 0.0,
-            }
-    
+            'model/module_norm/unscaled/mean': 0.0,
+            'model/module_norm/unscaled/median': 0.0,
+            'model/module_norm/unscaled/std': 0.0,
+            'model/module_norm/unscaled/max': 0.0,
+            'model/module_norm/unscaled/p10': 0.0,
+            'model/module_norm/unscaled/p25': 0.0,
+            'model/module_norm/unscaled/p50': 0.0,
+            'model/module_norm/unscaled/p75': 0.0,
+            'model/module_norm/unscaled/p90': 0.0,
+            'model/module_norm/unscaled/p95': 0.0,
+            'model/module_norm/unscaled/p98': 0.0,
+            'model/module_norm/unscaled/p99': 0.0,
+            'model/module_norm/unscaled/p995': 0.0,
+            'model/module_norm/unscaled/p998': 0.0,
+            'model/module_norm/unscaled/p999': 0.0,
+        }
+
     # Basic statistics
     stats = {
         'model/module_norm/unscaled/mean': torch.mean(unscaled_norms),
@@ -179,8 +181,9 @@ def analyze_model_norms(unscaled_norms):
         'model/module_norm/unscaled/p998': torch.quantile(unscaled_norms, 0.998),
         'model/module_norm/unscaled/p999': torch.quantile(unscaled_norms, 0.999),
     }
-    
+
     return stats
+
 
 class NetworkTrainer:
     def __init__(self):
@@ -189,33 +192,33 @@ class NetworkTrainer:
 
     # TODO 他のスクリプトと共通化する
     def generate_step_logs(
-        self,
-        args: argparse.Namespace,
-        current_loss,
-        avr_loss,
-        lr_scheduler,
-        lr_descriptions,
-        optimizer=None,
-        keys_scaled=None,
-        mean_norm=None,
-        maximum_norm=None,
-        grad_norm=None,
-        grad_norm_clipped=None,
-        current_val_loss=None,
-        average_val_loss=None,
-        current_loss_scaled=None,
-        average_loss_scaled=None,
-        current_loss_wav=None,
-        average_loss_wav=None,
-        edm2_grad_norm=None,
-        edm2_grad_norm_clipped=None,
-        edm2_lr_scheduler=None,
-        gradient_stats=None,
-        network_norm_stats=None,
-        mean_grad_norm=None,
-        mean_combined_norm=None,
-        timestep_distribution=None,
-        sampler_loss=None,
+            self,
+            args: argparse.Namespace,
+            current_loss,
+            avr_loss,
+            lr_scheduler,
+            lr_descriptions,
+            optimizer=None,
+            keys_scaled=None,
+            mean_norm=None,
+            maximum_norm=None,
+            grad_norm=None,
+            grad_norm_clipped=None,
+            current_val_loss=None,
+            average_val_loss=None,
+            current_loss_scaled=None,
+            average_loss_scaled=None,
+            current_loss_wav=None,
+            average_loss_wav=None,
+            edm2_grad_norm=None,
+            edm2_grad_norm_clipped=None,
+            edm2_lr_scheduler=None,
+            gradient_stats=None,
+            network_norm_stats=None,
+            mean_grad_norm=None,
+            mean_combined_norm=None,
+            timestep_distribution=None,
+            sampler_loss=None,
     ):
         logs = {"loss/current": current_loss, "loss/average": avr_loss}
 
@@ -239,7 +242,7 @@ class NetworkTrainer:
             logs["norm/avg_combined_norm"] = mean_combined_norm
 
         if current_val_loss is not None:
-            logs["loss/current_val_loss"] = current_val_loss                      
+            logs["loss/current_val_loss"] = current_val_loss
             logs["loss/average_val_loss"] = average_val_loss
 
         if edm2_grad_norm is not None:
@@ -272,16 +275,20 @@ class NetworkTrainer:
 
             logs[f"lr/{lr_desc}"] = lr
 
-            if args.optimizer_type.lower().startswith("DAdapt".lower()) or args.optimizer_type.lower() == "Prodigy".lower():
+            if args.optimizer_type.lower().startswith(
+                    "DAdapt".lower()) or args.optimizer_type.lower() == "Prodigy".lower():
                 # tracking d*lr value
                 logs[f"lr/d*lr/{lr_desc}"] = (
-                    lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
+                        lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i][
+                    "lr"]
                 )
             if (
-                (args.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) or args.optimizer_type.lower().endswith("ProdigyPlusExMachinaScheduleFree".lower())) and optimizer is not None
+                    (args.optimizer_type.lower().endswith(
+                        "ProdigyPlusScheduleFree".lower()) or args.optimizer_type.lower().endswith(
+                        "ProdigyPlusExMachinaScheduleFree".lower())) and optimizer is not None
             ):  # tracking d*lr value of unet.
                 logs["lr/d*lr"] = (
-                    optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
+                        optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
                 )
         else:
             idx = 0
@@ -291,20 +298,23 @@ class NetworkTrainer:
 
             for i in range(idx, len(lrs)):
                 logs[f"lr/group{i}"] = float(lrs[i])
-                if args.optimizer_type.lower().startswith("DAdapt".lower()) or args.optimizer_type.lower() == "Prodigy".lower():
+                if args.optimizer_type.lower().startswith(
+                        "DAdapt".lower()) or args.optimizer_type.lower() == "Prodigy".lower():
                     logs[f"lr/d*lr/group{i}"] = (
-                        lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
+                            lr_scheduler.optimizers[-1].param_groups[i]["d"] *
+                            lr_scheduler.optimizers[-1].param_groups[i]["lr"]
                     )
                 if (
-                    (args.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) or args.optimizer_type.lower().endswith("ProdigyPlusExMachinaScheduleFree".lower())) and optimizer is not None
-                ):  
+                        (args.optimizer_type.lower().endswith(
+                            "ProdigyPlusScheduleFree".lower()) or args.optimizer_type.lower().endswith(
+                            "ProdigyPlusExMachinaScheduleFree".lower())) and optimizer is not None
+                ):
                     logs[f"lr/d*lr/group{i}"] = (
-                        optimizer.param_groups[i]["d"] * optimizer.param_groups[i]["lr"]
+                            optimizer.param_groups[i]["d"] * optimizer.param_groups[i]["lr"]
                     )
 
         if edm2_lr_scheduler is not None:
             logs[f"lr/edm2"] = edm2_lr_scheduler.get_last_lr()[0]
-
 
         return logs
 
@@ -358,7 +368,8 @@ class NetworkTrainer:
             t_enc.to(device=accelerator.device, dtype=weight_dtype)
 
     def call_unet(self, args, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype, **kwargs):
-        noise_pred = unet(to_stochastic(noisy_latents, dtype=weight_dtype), timesteps, to_stochastic(text_conds[0], dtype=weight_dtype)).sample
+        noise_pred = unet(to_stochastic(noisy_latents, dtype=weight_dtype), timesteps,
+                          to_stochastic(text_conds[0], dtype=weight_dtype)).sample
         return noise_pred
 
     def all_reduce_network(self, accelerator, network):
@@ -373,9 +384,11 @@ class NetworkTrainer:
 
     def post_process_network(self, args, accelerator, network, text_encoders, unet):
         pass
+
     def get_noise_scheduler(self, args: argparse.Namespace, device: torch.device) -> Any:
         noise_scheduler = DDPMScheduler(
-            beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
+            beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000,
+            clip_sample=False
         )
 
         if args.zero_terminal_snr:
@@ -396,23 +409,23 @@ class NetworkTrainer:
 
     def shift_scale_latents(self, args, latents):
         return latents * self.vae_scale_factor
-    
+
     def get_noise_pred_and_target(
-        self,
-        args,
-        accelerator,
-        noise_scheduler,
-        latents,
-        batch,
-        text_encoder_conds,
-        unet,
-        network,
-        weight_dtype,
-        train_unet,
-        fixed_timesteps=None,
-        train=True,
-        min_timestep_override=None,
-        max_timestep_override=None,
+            self,
+            args,
+            accelerator,
+            noise_scheduler,
+            latents,
+            batch,
+            text_encoder_conds,
+            unet,
+            network,
+            weight_dtype,
+            train_unet,
+            fixed_timesteps=None,
+            train=True,
+            min_timestep_override=None,
+            max_timestep_override=None,
     ):
         if args.loss_related_use_float64:
             # Convert to float64, noise and noisy latents will be float64 due to using like on latents
@@ -420,7 +433,11 @@ class NetworkTrainer:
 
         # Sample noise, sample a random timestep for each image, and add noise to the latents,
         # with noise offset and/or multires noise if specified
-        noise, noisy_latents, timesteps = train_util.get_noise_noisy_latents_and_timesteps(args, noise_scheduler, latents, fixed_timesteps, train, batch, min_timestep_override, max_timestep_override)
+        noise, noisy_latents, timesteps = train_util.get_noise_noisy_latents_and_timesteps(args, noise_scheduler,
+                                                                                           latents, fixed_timesteps,
+                                                                                           train, batch,
+                                                                                           min_timestep_override,
+                                                                                           max_timestep_override)
 
         # ensure the hidden state will require grad
         if train and args.gradient_checkpointing:
@@ -478,8 +495,8 @@ class NetworkTrainer:
                 target[diff_output_pr_indices] = noise_pred_prior.to(target.dtype)
 
             return noise_pred, target, timesteps, None, noisy_latents
-    
-    def determine_grad_sync_context(self, accelerator, sync_gradients, training_model, lossweightMLP = None):
+
+    def determine_grad_sync_context(self, accelerator, sync_gradients, training_model, lossweightMLP=None):
         if not sync_gradients and accelerator.num_processes > 1:
             if lossweightMLP is not None:
                 return accelerator.no_sync(training_model, lossweightMLP)
@@ -487,7 +504,7 @@ class NetworkTrainer:
                 return accelerator.no_sync(training_model)
         else:
             return contextlib.nullcontext()
-        
+
     def post_process_loss(self, loss, args, timesteps, noise_scheduler, train=True):
         if args.min_snr_gamma and train and not args.sangoi_loss_modifier:
             loss = apply_snr_weight(loss, timesteps, noise_scheduler, args.min_snr_gamma, args.v_parameterization)
@@ -516,7 +533,7 @@ class NetworkTrainer:
         text_encoder.text_model.embeddings.to(dtype=weight_dtype)
 
     def prepare_unet_with_accelerator(
-        self, args: argparse.Namespace, accelerator: Accelerator, unet: torch.nn.Module
+            self, args: argparse.Namespace, accelerator: Accelerator, unet: torch.nn.Module
     ) -> torch.nn.Module:
         return accelerator.prepare(unet)
 
@@ -526,14 +543,16 @@ class NetworkTrainer:
     # endregion
 
     def plot_dynamic_loss_weighting_check(self, args, global_step):
-        return args.edm2_loss_weighting and args.edm2_loss_weighting_generate_graph and (global_step % (int(args.edm2_loss_weighting_generate_graph_every_x_steps) if args.edm2_loss_weighting_generate_graph_every_x_steps else 20) == 0 or global_step >= args.max_train_steps)
+        return args.edm2_loss_weighting and args.edm2_loss_weighting_generate_graph and (global_step % (
+            int(args.edm2_loss_weighting_generate_graph_every_x_steps) if args.edm2_loss_weighting_generate_graph_every_x_steps else 20) == 0 or global_step >= args.max_train_steps)
 
-    def process_val_batch(self, network, batch, tokenizers, tokenize_strategy, text_encoders, 
-                          text_encoding_strategy, unet, vae, noise_scheduler, vae_dtype, weight_dtype, 
-                          accelerator, args, timesteps_list: list = [10, 350, 500, 650, 990], train_text_encoder: bool = True):
+    def process_val_batch(self, network, batch, tokenizers, tokenize_strategy, text_encoders,
+                          text_encoding_strategy, unet, vae, noise_scheduler, vae_dtype, weight_dtype,
+                          accelerator, args, timesteps_list: list = [10, 350, 500, 650, 990],
+                          train_text_encoder: bool = True):
         dtype_to_use = torch.float64 if args.loss_related_use_float64 else torch.float32
-        total_loss = 0.0 
-        with (torch.autograd.grad_mode.inference_mode(mode=True), 
+        total_loss = 0.0
+        with (torch.autograd.grad_mode.inference_mode(mode=True),
               torch.autocast(dtype=dtype_to_use, device_type=str(accelerator.device))):
             if "latents" in batch and batch["latents"] is not None:
                 latents = batch["latents"].to(device=accelerator.device)
@@ -545,7 +564,8 @@ class NetworkTrainer:
                     vae.eval()
 
                 # latentに変換
-                latents = self.encode_images_to_latents(args, accelerator, vae, batch["images"].to(device=vae.device, dtype=vae_dtype))
+                latents = self.encode_images_to_latents(args, accelerator, vae,
+                                                        batch["images"].to(device=vae.device, dtype=vae_dtype))
                 latents = latents.to(dtype=dtype_to_use)
 
                 # NaNが含まれていれば警告を表示し0に置き換える
@@ -642,9 +662,9 @@ class NetworkTrainer:
                 # Compute loss
                 loss = train_util.conditional_loss(noise_pred, target, "l2", "none", None)
 
-                #if weighting is not None:
+                # if weighting is not None:
                 #    loss = loss * weighting
-                #if args.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+                # if args.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                 #    loss = apply_masked_loss(loss, batch)
                 loss = loss.mean(dim=[1, 2, 3])
 
@@ -657,37 +677,38 @@ class NetworkTrainer:
                 loss = loss.mean()  # 平均なのでbatch_sizeで割る必要なし
                 total_loss += loss
 
-        average_loss = total_loss / len(timesteps_list)    
+        average_loss = total_loss / len(timesteps_list)
         return average_loss
 
-    def calculate_val_loss(self, 
+    def calculate_val_loss(self,
                            global_step,
                            epoch_step,
                            train_dataloader,
                            val_loss_recorder,
                            val_dataloader,
                            cyclic_val_dataloader,
-                           network, 
-                           tokenizers, 
-                           tokenize_strategy, 
-                           text_encoders, 
-                           text_encoding_strategy, 
-                           unet, 
-                           vae, 
-                           noise_scheduler, 
-                           vae_dtype, 
-                           weight_dtype, 
-                           accelerator, 
-                           args, 
+                           network,
+                           tokenizers,
+                           tokenize_strategy,
+                           text_encoders,
+                           text_encoding_strategy,
+                           unet,
+                           vae,
+                           noise_scheduler,
+                           vae_dtype,
+                           weight_dtype,
+                           accelerator,
+                           args,
                            train_text_encoder=True):
-        if not train_util.calculate_val_loss_check(args,global_step,epoch_step,val_dataloader,train_dataloader):
+        if not train_util.calculate_val_loss_check(args, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
-   
+
         # Get current seeds from all random number generators
         python_state = random.getstate()
         numpy_state = np.random.get_state()
         torch_state = torch.get_rng_state()
-        torch_cuda_state = [torch.cuda.get_rng_state(i) for i in range(torch.cuda.device_count())] if torch.cuda.is_available() else None
+        torch_cuda_state = [torch.cuda.get_rng_state(i) for i in
+                            range(torch.cuda.device_count())] if torch.cuda.is_available() else None
 
         val_Seed = int(args.validation_seed) if args.validation_seed else 23
 
@@ -698,12 +719,14 @@ class NetworkTrainer:
             torch.cuda.manual_seed_all(val_Seed)
 
         timesteps_list = ast.literal_eval(args.validation_timesteps)
-              
-        accelerator.print("") 
+
+        accelerator.print("")
         accelerator.print("Validating バリデーション処理...")
         total_loss = 0.0
         with torch.no_grad():
-            validation_steps = min(int(args.max_validation_steps), len(val_dataloader)) if args.max_validation_steps is not None else len(val_dataloader)
+            validation_steps = min(int(args.max_validation_steps),
+                                   len(val_dataloader)) if args.max_validation_steps is not None else len(
+                val_dataloader)
             val_dataloader_seed = random.randint(global_step, 0x7FFFFFFF)
             val_dataloader_state = random.Random(val_dataloader_seed).getstate()
             for val_step in tqdm(range(validation_steps), desc='Validation Steps'):
@@ -712,14 +735,14 @@ class NetworkTrainer:
                 batch = next(cyclic_val_dataloader)
                 val_dataloader_state = random.getstate()
                 random.setstate(val_original_state)
-                loss = self.process_val_batch(network, batch, tokenizers, tokenize_strategy, text_encoders, 
-                                              text_encoding_strategy, unet, vae, noise_scheduler, vae_dtype, 
-                                              weight_dtype, accelerator, args, timesteps_list=timesteps_list, 
+                loss = self.process_val_batch(network, batch, tokenizers, tokenize_strategy, text_encoders,
+                                              text_encoding_strategy, unet, vae, noise_scheduler, vae_dtype,
+                                              weight_dtype, accelerator, args, timesteps_list=timesteps_list,
                                               train_text_encoder=train_text_encoder)
                 total_loss += loss.detach().item()
             current_val_loss = total_loss / validation_steps
-            val_loss_recorder.add(epoch=0, step=global_step, loss=current_val_loss)   
-                     
+            val_loss_recorder.add(epoch=0, step=global_step, loss=current_val_loss)
+
         average_val_loss: float = val_loss_recorder.moving_average
         logs = {"loss/current_val_loss": current_val_loss, "loss/average_val_loss": average_val_loss}
 
@@ -733,7 +756,7 @@ class NetworkTrainer:
         return current_val_loss, average_val_loss, logs
 
     def train(self, args):
-        session_id = random.randint(0, 2**32)
+        session_id = random.randint(0, 2 ** 32)
         training_started_at = time.time()
         train_util.verify_training_args(args)
         train_util.prepare_dataset_args(args, True)
@@ -742,32 +765,33 @@ class NetworkTrainer:
 
         if args.disable_cuda_reduced_precision_operations:
             torch.set_float32_matmul_precision("highest")
-            torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction=False
-            torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction=False
-            torch.backends.cuda.matmul.allow_tf32=False
-            torch.backends.cudnn.allow_tf32=False
+            torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
+            torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
+            torch.backends.cuda.matmul.allow_tf32 = False
+            torch.backends.cudnn.allow_tf32 = False
             torch.backends.cuda.allow_fp16_bf16_reduction_math_sdp(False)
         elif args.enable_cuda_reduced_precision_operations:
             torch.set_float32_matmul_precision("high")
-            torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction=True
-            torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction=True
-            torch.backends.cuda.matmul.allow_tf32=True
-            torch.backends.cudnn.allow_tf32=True
+            torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = True
+            torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = True
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
             torch.backends.cuda.allow_fp16_bf16_reduction_math_sdp(True)
 
         if args.edm2_loss_weighting and args.edm2_loss_weighting_importance_weighting and not args.edm2_loss_weighting_importance_weighting_safety_override:
             if args.debiased_estimation_loss:
                 args.debiased_estimation_loss = False
-                logger.warning("Debiased estimation loss AND EDM2 loss weighting with importance weighting are enabled. " \
-                "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, " \
-                "as such, Debiased estimation loss has been DISABLED. " \
-                "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True.")
+                logger.warning(
+                    "Debiased estimation loss AND EDM2 loss weighting with importance weighting are enabled. " \
+                    "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, " \
+                    "as such, Debiased estimation loss has been DISABLED. " \
+                    "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True.")
 
             if args.min_snr_gamma:
                 logger.warning("Min snr gamma AND EDM2 loss weighting with importance weighting are enabled. " \
-                "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, " \
-                "as such, min snr gamma has been DISABLED. " \
-                "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True.")
+                               "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, " \
+                               "as such, min snr gamma has been DISABLED. " \
+                               "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True.")
                 args.min_snr_gamma = None
 
         cache_latents = args.cache_latents
@@ -775,7 +799,7 @@ class NetworkTrainer:
         use_user_config = args.dataset_config is not None
 
         if args.seed is None or args.seed == -1:
-            args.seed = random.randint(0, 2**32)
+            args.seed = random.randint(0, 2 ** 32)
             logger.info(f"As seed provided is -1, randomly selected {args.seed} as the seed for this training run.")
         set_seed(int(args.seed))
 
@@ -828,12 +852,13 @@ class NetworkTrainer:
                     }
 
             blueprint = blueprint_generator.generate(user_config, args)
-            train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
+            train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(
+                blueprint.dataset_group)
         else:
             # use arbitrary dataset class
             train_dataset_group = train_util.load_arbitrary_dataset(args)
-            val_dataset_group = None # placeholder until validation dataset supported for arbitrary
-            
+            val_dataset_group = None  # placeholder until validation dataset supported for arbitrary
+
         current_epoch = Value("i", 0)
         current_step = Value("i", 0)
         ds_for_collator = train_dataset_group if args.max_data_loader_n_workers == 0 else None
@@ -856,7 +881,7 @@ class NetworkTrainer:
             assert (
                 train_dataset_group.is_latent_cacheable()
             ), "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
-              
+
         self.assert_extra_args(args, train_dataset_group)
         if val_dataset_group is not None:
             self.assert_extra_args(args, val_dataset_group)
@@ -871,10 +896,11 @@ class NetworkTrainer:
         is_main_process = accelerator.is_main_process
 
         if args.no_half_vae and weight_dtype in {torch.float32, torch.bfloat16}:
-            logger.warning("No half vae enabled with float or bf16. This provides no value, as float and bf16 do not face NaNs, only fp16 does. Using no half vae will use more vram, a small amount of compute overhead, and not have any tangible benefit.")
+            logger.warning(
+                "No half vae enabled with float or bf16. This provides no value, as float and bf16 do not face NaNs, only fp16 does. Using no half vae will use more vram, a small amount of compute overhead, and not have any tangible benefit.")
 
         vae_dtype = torch.float32 if args.no_half_vae else weight_dtype
-        
+
         # support dynamic timestep schedule if used
         current_min_timestep = args.min_timestep
         current_max_timestep = args.max_timestep
@@ -884,20 +910,21 @@ class NetworkTrainer:
             try:
                 schedule = ast.literal_eval(args.dynamic_timestep_schedule)
                 schedule.sort(key=lambda x: x[0])  # Sort by step trigger
-                dynamic_timestep_schedule = schedule # Assign the sorted schedule
+                dynamic_timestep_schedule = schedule  # Assign the sorted schedule
                 accelerator.print(f"Using dynamic timestep schedule: {dynamic_timestep_schedule}")
 
                 # If the first step in the schedule is not 0, it means we use the args' values until that step.
                 # So we can prepend a "stage 0" to the schedule for clean handling.
                 if dynamic_timestep_schedule[0][0] != 0:
                     dynamic_timestep_schedule.insert(0, (0, args.min_timestep, args.max_timestep))
-                
+
                 # Immediately apply the first stage's values
                 step_trigger, new_min, new_max = dynamic_timestep_schedule.pop(0)
                 current_min_timestep = new_min
                 current_max_timestep = new_max
-                accelerator.print(f"Step 0: Initial timestep range set to [{current_min_timestep}, {current_max_timestep})")
-                
+                accelerator.print(
+                    f"Step 0: Initial timestep range set to [{current_min_timestep}, {current_max_timestep})")
+
             except (ValueError, SyntaxError) as e:
                 logger.error(f"Could not parse --dynamic_timestep_schedule. Please check the format. Error: {e}")
                 return
@@ -926,7 +953,8 @@ class NetworkTrainer:
                 module, weights_sd = network_module.create_network_from_weights(
                     multiplier, weight_path, vae, text_encoder, unet, for_inference=True
                 )
-                module.merge_to(text_encoder, unet, weights_sd, weight_dtype, accelerator.device if args.lowram else "cpu")
+                module.merge_to(text_encoder, unet, weights_sd, weight_dtype,
+                                accelerator.device if args.lowram else "cpu")
 
             accelerator.print(f"all weights merged: {', '.join(args.base_weights)}")
 
@@ -957,10 +985,12 @@ class NetworkTrainer:
         text_encoder_outputs_caching_strategy = self.get_text_encoder_outputs_caching_strategy(args)
         if text_encoder_outputs_caching_strategy is not None:
             strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_outputs_caching_strategy)
-        self.cache_text_encoder_outputs_if_needed(args, accelerator, unet, vae, text_encoders, train_dataset_group, weight_dtype)
+        self.cache_text_encoder_outputs_if_needed(args, accelerator, unet, vae, text_encoders, train_dataset_group,
+                                                  weight_dtype)
 
         if val_dataset_group is not None:
-            self.cache_text_encoder_outputs_if_needed(args, accelerator, unet, vae, text_encoders, val_dataset_group, weight_dtype)
+            self.cache_text_encoder_outputs_if_needed(args, accelerator, unet, vae, text_encoders, val_dataset_group,
+                                                      weight_dtype)
 
         # prepare network
         net_kwargs = {}
@@ -971,7 +1001,8 @@ class NetworkTrainer:
 
         # if a new network is added in future, add if ~ then blocks for each network (;'∀')
         if args.dim_from_weights:
-            network, _ = network_module.create_network_from_weights(1, args.network_weights, vae, text_encoder, unet, **net_kwargs)
+            network, _ = network_module.create_network_from_weights(1, args.network_weights, vae, text_encoder, unet,
+                                                                    **net_kwargs)
         else:
             if "dropout" not in net_kwargs:
                 # workaround for LyCORIS (;^ω^)
@@ -1041,7 +1072,7 @@ class NetworkTrainer:
                 "a2.weight",
                 "b1.weight",
                 "b2.weight",
-                "c1.weight", 
+                "c1.weight",
             ]
 
         optimizer_kwargs = {}
@@ -1075,15 +1106,18 @@ class NetworkTrainer:
                 optimizer_class = getattr(base_optimizer_module, case_sensitive_base_optimizer_type)
             else:
                 optimizer_class = getattr(optimizer_module, case_sensitive_optimizer_type)
-            
+
             sig = inspect.signature(optimizer_class.__init__)
 
             optimizer_init_sig_parameters = sig.parameters
         except Exception as e:
-            logger.warning(f"Encountered an error while trying to determine default orthograd from optimizer init signature. {e}")
+            logger.warning(
+                f"Encountered an error while trying to determine default orthograd from optimizer init signature. {e}")
             optimizer_init_sig_parameters = {}
 
-        apply_orthograd = any(optimizer_kwargs.get(key, getattr(optimizer_init_sig_parameters.get(key, types.SimpleNamespace()), "default", False)) == True for key in ['use_orthograd', 'orthograd'])
+        apply_orthograd = any(optimizer_kwargs.get(key, getattr(
+            optimizer_init_sig_parameters.get(key, types.SimpleNamespace()), "default", False)) == True for key in
+                              ['use_orthograd', 'orthograd'])
 
         # make backward compatibility for text_encoder_lr
         support_multiple_lrs = hasattr(network, "prepare_optimizer_params_with_multiple_te_lrs")
@@ -1091,22 +1125,23 @@ class NetworkTrainer:
             text_encoder_lr = args.text_encoder_lr
         else:
             # toml backward compatibility
-            if args.text_encoder_lr is None or isinstance(args.text_encoder_lr, float) or isinstance(args.text_encoder_lr, int):
+            if args.text_encoder_lr is None or isinstance(args.text_encoder_lr, float) or isinstance(
+                    args.text_encoder_lr, int):
                 text_encoder_lr = args.text_encoder_lr
             else:
                 text_encoder_lr = None if len(args.text_encoder_lr) == 0 else args.text_encoder_lr[0]
-        
+
         try:
             if support_multiple_lrs:
                 # only flux and sd3 atm via Kohya's
-                results = network.prepare_optimizer_params_with_multiple_te_lrs(text_encoder_lr=text_encoder_lr, 
-                                                                                unet_lr=args.unet_lr, 
+                results = network.prepare_optimizer_params_with_multiple_te_lrs(text_encoder_lr=text_encoder_lr,
+                                                                                unet_lr=args.unet_lr,
                                                                                 learning_rate=args.learning_rate,
                                                                                 apply_orthograd=apply_orthograd,
                                                                                 orthograd_targets=orthograd_targets)
             else:
-                results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr, 
-                                                           unet_lr=args.unet_lr, 
+                results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
+                                                           unet_lr=args.unet_lr,
                                                            learning_rate=args.learning_rate,
                                                            apply_orthograd=apply_orthograd,
                                                            orthograd_targets=orthograd_targets)
@@ -1117,11 +1152,11 @@ class NetworkTrainer:
                 trainable_params = results
                 lr_descriptions = None
         except TypeError as e:
-            results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr, 
-                                                                unet_lr=args.unet_lr, 
-                                                                learning_rate=args.learning_rate,
-                                                                apply_orthograd=apply_orthograd,
-                                                                orthograd_targets=orthograd_targets)
+            results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
+                                                       unet_lr=args.unet_lr,
+                                                       learning_rate=args.learning_rate,
+                                                       apply_orthograd=apply_orthograd,
+                                                       orthograd_targets=orthograd_targets)
             if type(results) is tuple:
                 trainable_params = results[0]
                 lr_descriptions = results[1]
@@ -1153,7 +1188,7 @@ class NetworkTrainer:
             persistent_workers=args.persistent_data_loader_workers,
             prefetch_factor=4,
         )
-        
+
         if val_dataset_group is not None:
             val_dataloader = torch.utils.data.DataLoader(
                 val_dataset_group,
@@ -1184,13 +1219,13 @@ class NetworkTrainer:
         # 実験的機能：勾配も含めたfp16/bf16学習を行う　モデル全体をfp16/bf16にする
         if args.full_fp16:
             assert (
-                args.mixed_precision == "fp16"
+                    args.mixed_precision == "fp16"
             ), "full_fp16 requires mixed precision='fp16' / full_fp16を使う場合はmixed_precision='fp16'を指定してください。"
             accelerator.print("enable full fp16 training.")
             network.to(dtype=weight_dtype)
         elif args.full_bf16:
             assert (
-                args.mixed_precision == "bf16"
+                    args.mixed_precision == "bf16"
             ), "full_bf16 requires mixed precision='bf16' / full_bf16を使う場合はmixed_precision='bf16'を指定してください。"
             accelerator.print("enable full bf16 training.")
             network.to(dtype=weight_dtype)
@@ -1211,7 +1246,7 @@ class NetworkTrainer:
         if args.fp8_base or args.fp8_base_unet:
             assert torch.__version__ >= "2.1.0", "fp8_base requires torch>=2.1.0 / fp8を使う場合はtorch>=2.1.0が必要です。"
             assert (
-                args.mixed_precision != "no"
+                    args.mixed_precision != "no"
             ), "fp8_base requires mixed precision='fp16' or 'bf16' / fp8を使う場合はmixed_precision='fp16'または'bf16'が必要です。"
             accelerator.print("enable fp8 training for U-Net.")
             unet_weight_dtype = torch.float8_e4m3fn
@@ -1260,7 +1295,8 @@ class NetworkTrainer:
                 # default implementation is:  unet = accelerator.prepare(unet)
                 unet = self.prepare_unet_with_accelerator(args, accelerator, unet)  # accelerator does some magic here
             else:
-                unet.to(device=accelerator.device, dtype=unet_weight_dtype)  # move to device because unet is not prepared by accelerator
+                unet.to(device=accelerator.device,
+                        dtype=unet_weight_dtype)  # move to device because unet is not prepared by accelerator
             if train_text_encoder:
                 text_encoders = [
                     (accelerator.prepare(t_enc) if flag else t_enc)
@@ -1287,7 +1323,8 @@ class NetworkTrainer:
         if args.gradient_checkpointing:
             # according to TI example in Diffusers, train is required
             unet.train()
-            for i, (t_enc, flag) in enumerate(zip(text_encoders, self.get_text_encoders_train_flags(args, text_encoders))):
+            for i, (t_enc, flag) in enumerate(
+                    zip(text_encoders, self.get_text_encoders_train_flags(args, text_encoders))):
                 t_enc.train()
 
                 # set top parameter requires_grad = True for gradient checkpointing works
@@ -1329,7 +1366,8 @@ class NetworkTrainer:
             # save current ecpoch and step
             train_state_file = os.path.join(output_dir, "train_state.json")
             # +1 is needed because the state is saved before current_step is set from global_step
-            logger.info(f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value+1}")
+            logger.info(
+                f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
             with open(train_state_file, "w", encoding="utf-8") as f:
                 json.dump({"current_epoch": current_epoch.value, "current_step": current_step.value + 1}, f)
 
@@ -1371,7 +1409,8 @@ class NetworkTrainer:
         total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
 
         accelerator.print("running training / 学習開始")
-        accelerator.print(f"  num train images * repeats / 学習画像の数×繰り返し回数: {train_dataset_group.num_train_images}")
+        accelerator.print(
+            f"  num train images * repeats / 学習画像の数×繰り返し回数: {train_dataset_group.num_train_images}")
         accelerator.print(f"  num reg images / 正則化画像の数: {train_dataset_group.num_reg_images}")
         accelerator.print(f"  num batches per epoch / 1epochのバッチ数: {len(train_dataloader)}")
         accelerator.print(f"  num epochs / epoch数: {num_train_epochs}")
@@ -1379,7 +1418,8 @@ class NetworkTrainer:
             f"  batch size per device / バッチサイズ: {', '.join([str(d.batch_size) for d in train_dataset_group.datasets])}"
         )
         # accelerator.print(f"  total train batch size (with parallel & distributed & accumulation) / 総バッチサイズ（並列学習、勾配合計含む）: {total_batch_size}")
-        accelerator.print(f"  gradient accumulation steps / 勾配を合計するステップ数 = {args.gradient_accumulation_steps}")
+        accelerator.print(
+            f"  gradient accumulation steps / 勾配を合計するステップ数 = {args.gradient_accumulation_steps}")
         accelerator.print(f"  total optimization steps / 学習ステップ数: {args.max_train_steps}")
 
         # TODO refactor metadata creation and move to util
@@ -1400,7 +1440,8 @@ class NetworkTrainer:
             "ss_lr_warmup_steps": args.lr_warmup_steps,
             "ss_lr_scheduler": args.lr_scheduler,
             "ss_network_module": args.network_module,
-            "ss_network_dim": args.network_dim,  # None means default because another network than LoRA may have another default dim
+            "ss_network_dim": args.network_dim,
+            # None means default because another network than LoRA may have another default dim
             "ss_network_alpha": args.network_alpha,  # some networks may not have alpha
             "ss_network_dropout": args.network_dropout,  # some networks may not have dropout
             "ss_mixed_precision": args.mixed_precision,
@@ -1446,12 +1487,15 @@ class NetworkTrainer:
             "ss_wavelet_loss_transform": args.wavelet_loss_transform,
             "ss_wavelet_loss_wavelet": args.wavelet_loss_wavelet,
             "ss_wavelet_loss_level": args.wavelet_loss_level,
-            "ss_wavelet_loss_band_weights": json.dumps(args.wavelet_loss_band_weights) if args.wavelet_loss_band_weights is not None else None,
-            "ss_wavelet_loss_band_level_weights": json.dumps(args.wavelet_loss_band_level_weights) if args.wavelet_loss_band_weights is not None else None,
-            "ss_wavelet_loss_quaternion_component_weights": json.dumps(args.wavelet_loss_quaternion_component_weights) if args.wavelet_loss_quaternion_component_weights is not None else None,
+            "ss_wavelet_loss_band_weights": json.dumps(
+                args.wavelet_loss_band_weights) if args.wavelet_loss_band_weights is not None else None,
+            "ss_wavelet_loss_band_level_weights": json.dumps(
+                args.wavelet_loss_band_level_weights) if args.wavelet_loss_band_weights is not None else None,
+            "ss_wavelet_loss_quaternion_component_weights": json.dumps(
+                args.wavelet_loss_quaternion_component_weights) if args.wavelet_loss_quaternion_component_weights is not None else None,
             "ss_wavelet_loss_ll_level_threshold": args.wavelet_loss_ll_level_threshold,
         }
-            #"ss_wavelet_loss_rectified_flow": args.wavelet_loss_rectified_flow,
+        # "ss_wavelet_loss_rectified_flow": args.wavelet_loss_rectified_flow,
 
         self.update_metadata(metadata, args)  # architecture specific metadata
 
@@ -1550,7 +1594,7 @@ class NetworkTrainer:
         else:
             # conserving backward compatibility when using train_dataset_dir and reg_dataset_dir
             assert (
-                len(train_dataset_group.datasets) == 1
+                    len(train_dataset_group.datasets) == 1
             ), f"There should be a single dataset but {len(train_dataset_group.datasets)} found. This seems to be a bug. / データセットは1個だけ存在するはずですが、実際には{len(train_dataset_group.datasets)}個でした。プログラムのバグかもしれません。"
 
             dataset = train_dataset_group.datasets[0]
@@ -1566,7 +1610,8 @@ class NetworkTrainer:
                         info = val_dataset_dirs_info
                     else:
                         info = dataset_dirs_info
-                    info[os.path.basename(subset.image_dir)] = {"n_repeats": subset.num_repeats, "img_count": subset.img_count}
+                    info[os.path.basename(subset.image_dir)] = {"n_repeats": subset.num_repeats,
+                                                                "img_count": subset.img_count}
             else:
                 for subset in dataset.subsets:
                     dataset_dirs_info[os.path.basename(subset.metadata_file)] = {
@@ -1650,11 +1695,12 @@ class NetworkTrainer:
 
         if initial_step > 0:
             assert (
-                args.max_train_steps > initial_step
+                    args.max_train_steps > initial_step
             ), f"max_train_steps should be greater than initial step / max_train_stepsは初期ステップより大きい必要があります: {args.max_train_steps} vs {initial_step}"
 
         progress_bar = tqdm(
-            range(args.max_train_steps - initial_step), smoothing=0, disable=not accelerator.is_local_main_process, desc="steps"
+            range(args.max_train_steps - initial_step), smoothing=0, disable=not accelerator.is_local_main_process,
+            desc="steps"
         )
 
         epoch_to_start = 0
@@ -1704,43 +1750,52 @@ class NetworkTrainer:
             opti_lr = float(args.edm2_loss_weighting_optimizer_lr) if args.edm2_loss_weighting_optimizer_lr else 2e-2
 
             lossweightMLP, MLP_optim = edm2_loss.create_weight_MLP(noise_scheduler,
-                                                                      logvar_channels=int(args.edm2_loss_weighting_num_channels) if args.edm2_loss_weighting_num_channels else 128,
-                                                                      optimizer=getattr(optimizer_module, case_sensitive_optimizer_type),
-                                                                      lr=opti_lr,
-                                                                      optimizer_args=opti_args,
-                                                                      device=accelerator.device,
-                                                                      dtype=torch.float64 if args.edm2_loss_weighting_use_float64 or args.loss_related_use_float64 else torch.float32,
-                                                                      use_importance_weights=args.edm2_loss_weighting_importance_weighting,
-                                                                      importance_weights_max_weight=float(args.edm2_loss_weighting_importance_weighting_max) if args.edm2_loss_weighting_importance_weighting_max is not None else 10.0,
-                                                                      importance_weights_min_snr_gamma=float(args.edm2_loss_weighting_importance_min_snr_gamma) if args.edm2_loss_weighting_importance_min_snr_gamma is not None else 1.0)
+                                                                   logvar_channels=int(
+                                                                       args.edm2_loss_weighting_num_channels) if args.edm2_loss_weighting_num_channels else 128,
+                                                                   optimizer=getattr(optimizer_module,
+                                                                                     case_sensitive_optimizer_type),
+                                                                   lr=opti_lr,
+                                                                   optimizer_args=opti_args,
+                                                                   device=accelerator.device,
+                                                                   dtype=torch.float64 if args.edm2_loss_weighting_use_float64 or args.loss_related_use_float64 else torch.float32,
+                                                                   use_importance_weights=args.edm2_loss_weighting_importance_weighting,
+                                                                   importance_weights_max_weight=float(
+                                                                       args.edm2_loss_weighting_importance_weighting_max) if args.edm2_loss_weighting_importance_weighting_max is not None else 10.0,
+                                                                   importance_weights_min_snr_gamma=float(
+                                                                       args.edm2_loss_weighting_importance_min_snr_gamma) if args.edm2_loss_weighting_importance_min_snr_gamma is not None else 1.0)
             if args.edm2_loss_weighting_initial_weights:
                 lossweightMLP.load_weights(args.edm2_loss_weighting_initial_weights)
 
             if args.edm2_loss_weighting_lr_scheduler:
                 def InverseSqrt(
-                    wrap_optimizer: torch.optim.Optimizer,
-                    warmup_steps: int = 0,
-                    constant_steps: int = 0,
-                    decay_scaling: float = 1.0,
+                        wrap_optimizer: torch.optim.Optimizer,
+                        warmup_steps: int = 0,
+                        constant_steps: int = 0,
+                        decay_scaling: float = 1.0,
                 ):
                     def lr_lambda(current_step: int):
                         if current_step <= warmup_steps:
                             return current_step / max(1, warmup_steps)
                         else:
-                            return 1 / math.sqrt(max(current_step / max(constant_steps + warmup_steps, 1), 1)**decay_scaling)
+                            return 1 / math.sqrt(
+                                max(current_step / max(constant_steps + warmup_steps, 1), 1) ** decay_scaling)
+
                     return torch.optim.lr_scheduler.LambdaLR(optimizer=wrap_optimizer, lr_lambda=lr_lambda)
-                
+
                 mlp_lr_scheduler = InverseSqrt(
                     MLP_optim,
-                    warmup_steps=args.max_train_steps * float(args.edm2_loss_weighting_lr_scheduler_warmup_percent) if args.edm2_loss_weighting_lr_scheduler_warmup_percent is not None else 0.05,
-                    constant_steps=args.max_train_steps * float(args.edm2_loss_weighting_lr_scheduler_constant_percent) if args.edm2_loss_weighting_lr_scheduler_constant_percent is not None else 0.15,
-                    decay_scaling=float(args.edm2_loss_weighting_lr_scheduler_decay_scaling) if args.edm2_loss_weighting_lr_scheduler_decay_scaling is not None else 1.0,
+                    warmup_steps=args.max_train_steps * float(
+                        args.edm2_loss_weighting_lr_scheduler_warmup_percent) if args.edm2_loss_weighting_lr_scheduler_warmup_percent is not None else 0.05,
+                    constant_steps=args.max_train_steps * float(
+                        args.edm2_loss_weighting_lr_scheduler_constant_percent) if args.edm2_loss_weighting_lr_scheduler_constant_percent is not None else 0.15,
+                    decay_scaling=float(
+                        args.edm2_loss_weighting_lr_scheduler_decay_scaling) if args.edm2_loss_weighting_lr_scheduler_decay_scaling is not None else 1.0,
                 )
             else:
                 mlp_lr_scheduler = train_util.get_dummy_scheduler(MLP_optim)
 
             mlp_lr_scheduler = accelerator.prepare(mlp_lr_scheduler)
-                
+
             lossweightMLP, MLP_optim = accelerator.prepare(lossweightMLP, MLP_optim)
 
             if args.edm2_loss_weighting_generate_graph:
@@ -1762,17 +1817,18 @@ class NetworkTrainer:
                 args.wavelet_loss_band_weights = ast.literal_eval(args.wavelet_loss_band_weights)
 
             if args.wavelet_loss_quaternion_component_weights:
-                args.wavelet_loss_quaternion_component_weights = ast.literal_eval(args.wavelet_loss_quaternion_component_weights)
-
+                args.wavelet_loss_quaternion_component_weights = ast.literal_eval(
+                    args.wavelet_loss_quaternion_component_weights)
 
             self.wavelet_loss = WaveletLoss(
                 transform_type=args.wavelet_loss_transform,
-                wavelet=args.wavelet_loss_wavelet, 
-                level=int(args.wavelet_loss_level), 
-                band_weights=args.wavelet_loss_band_weights, 
-                band_level_weights=args.wavelet_loss_band_level_weights, 
+                wavelet=args.wavelet_loss_wavelet,
+                level=int(args.wavelet_loss_level),
+                band_weights=args.wavelet_loss_band_weights,
+                band_level_weights=args.wavelet_loss_band_level_weights,
                 quaternion_component_weights=args.wavelet_loss_quaternion_component_weights,
-                ll_level_threshold=int(args.wavelet_loss_ll_level_threshold) if args.wavelet_loss_ll_level_threshold is not None else None, 
+                ll_level_threshold=int(
+                    args.wavelet_loss_ll_level_threshold) if args.wavelet_loss_ll_level_threshold is not None else None,
                 device=accelerator.device,
                 dtype=torch.float64 if args.loss_related_use_float64 else torch.float32
             )
@@ -1810,10 +1866,10 @@ class NetworkTrainer:
 
         loss_recorder = train_util.LossRecorder()
         val_loss_recorder = train_util.LossRecorder()
-        
+
         if args.edm2_loss_weighting:
             loss_scaled_recorder = train_util.LossRecorder()
-        
+
         del train_dataset_group
 
         if val_dataset_group is not None:
@@ -1878,82 +1934,86 @@ class NetworkTrainer:
 
         if not args.disable_norm_metrics and not (args.full_bf16 or args.full_fp16):
             gradient_stats = {
-                    'train/grad_norm/mean': 0.0,
-                    'train/grad_norm/median': 0.0,
-                    'train/grad_norm/std': 0.0,
-                    'train/grad_norm/max': 0.0,
-                    'train/grad_norm/p10': 0.0,
-                    'train/grad_norm/p25': 0.0,
-                    'train/grad_norm/p50': 0.0,
-                    'train/grad_norm/p75': 0.0,
-                    'train/grad_norm/p90': 0.0,
-                    'train/grad_norm/p95': 0.0,
-                    'train/grad_norm/p98': 0.0,
-                    'train/grad_norm/p99': 0.0,
-                    'train/grad_norm/p995': 0.0,
-                    'train/grad_norm/p998': 0.0,
-                    'train/grad_norm/p999': 0.0,
-                }
+                'train/grad_norm/mean': 0.0,
+                'train/grad_norm/median': 0.0,
+                'train/grad_norm/std': 0.0,
+                'train/grad_norm/max': 0.0,
+                'train/grad_norm/p10': 0.0,
+                'train/grad_norm/p25': 0.0,
+                'train/grad_norm/p50': 0.0,
+                'train/grad_norm/p75': 0.0,
+                'train/grad_norm/p90': 0.0,
+                'train/grad_norm/p95': 0.0,
+                'train/grad_norm/p98': 0.0,
+                'train/grad_norm/p99': 0.0,
+                'train/grad_norm/p995': 0.0,
+                'train/grad_norm/p998': 0.0,
+                'train/grad_norm/p999': 0.0,
+            }
             network_norm_stats = {
-                    'model/module_norm/unscaled/mean': 0.0,
-                    'model/module_norm/unscaled/median': 0.0,
-                    'model/module_norm/unscaled/std': 0.0,
-                    'model/module_norm/unscaled/max': 0.0,
-                    'model/module_norm/unscaled/p10': 0.0,
-                    'model/module_norm/unscaled/p25': 0.0,
-                    'model/module_norm/unscaled/p50': 0.0,
-                    'model/module_norm/unscaled/p75': 0.0,
-                    'model/module_norm/unscaled/p90': 0.0,
-                    'model/module_norm/unscaled/p95': 0.0,
-                    'model/module_norm/unscaled/p98': 0.0,
-                    'model/module_norm/unscaled/p99': 0.0,
-                    'model/module_norm/unscaled/p995': 0.0,
-                    'model/module_norm/unscaled/p998': 0.0,
-                    'model/module_norm/unscaled/p999': 0.0,
+                'model/module_norm/unscaled/mean': 0.0,
+                'model/module_norm/unscaled/median': 0.0,
+                'model/module_norm/unscaled/std': 0.0,
+                'model/module_norm/unscaled/max': 0.0,
+                'model/module_norm/unscaled/p10': 0.0,
+                'model/module_norm/unscaled/p25': 0.0,
+                'model/module_norm/unscaled/p50': 0.0,
+                'model/module_norm/unscaled/p75': 0.0,
+                'model/module_norm/unscaled/p90': 0.0,
+                'model/module_norm/unscaled/p95': 0.0,
+                'model/module_norm/unscaled/p98': 0.0,
+                'model/module_norm/unscaled/p99': 0.0,
+                'model/module_norm/unscaled/p995': 0.0,
+                'model/module_norm/unscaled/p998': 0.0,
+                'model/module_norm/unscaled/p999': 0.0,
             }
         else:
             gradient_stats = None
             network_norm_stats = None
 
         # For --sample_at_first
-        if train_util.sample_images_check(args, 0, global_step) or train_util.calculate_val_loss_check(args, global_step, 0, val_dataloader, train_dataloader):
-            #Switch network to eval mode
+        if train_util.sample_images_check(args, 0, global_step) or train_util.calculate_val_loss_check(args,
+                                                                                                       global_step, 0,
+                                                                                                       val_dataloader,
+                                                                                                       train_dataloader):
+            # Switch network to eval mode
             network.eval()
             optimizer_eval_fn()
-            self.sample_images(accelerator, args, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
+            self.sample_images(accelerator, args, 0, global_step, accelerator.device, vae, tokenizers, text_encoder,
+                               unet)
             if train_util.calculate_val_loss_check(args, global_step, 0, val_dataloader, train_dataloader):
                 current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(
-                    global_step, 0, train_dataloader, val_loss_recorder, val_dataloader, 
-                    cyclic_val_dataloader, network, tokenizers, tokenize_strategy, 
-                    text_encoders, text_encoding_strategy, unet, vae, noise_scheduler, 
+                    global_step, 0, train_dataloader, val_loss_recorder, val_dataloader,
+                    cyclic_val_dataloader, network, tokenizers, tokenize_strategy,
+                    text_encoders, text_encoding_strategy, unet, vae, noise_scheduler,
                     vae_dtype, weight_dtype, accelerator, args, train_text_encoder)
-            #Switch network to train mode
+            # Switch network to train mode
             optimizer_train_fn()
             network.train()
 
         if len(accelerator.trackers) > 0:
             logs = self.generate_step_logs(
-                args=args, 
-                current_loss=current_global_step_loss, 
-                avr_loss=avr_loss, 
-                lr_scheduler=lr_scheduler, 
-                lr_descriptions=lr_descriptions, 
-                optimizer=optimizer, 
-                keys_scaled=keys_scaled, 
-                mean_norm=mean_norm, 
-                maximum_norm=maximum_norm, 
-                grad_norm=grad_norm, 
-                grad_norm_clipped=grad_norm_clipped, 
-                current_val_loss=current_val_loss, 
-                average_val_loss=average_val_loss, 
-                current_loss_scaled=current_global_step_loss_scaled, 
-                average_loss_scaled=average_loss_scaled, 
+                args=args,
+                current_loss=current_global_step_loss,
+                avr_loss=avr_loss,
+                lr_scheduler=lr_scheduler,
+                lr_descriptions=lr_descriptions,
+                optimizer=optimizer,
+                keys_scaled=keys_scaled,
+                mean_norm=mean_norm,
+                maximum_norm=maximum_norm,
+                grad_norm=grad_norm,
+                grad_norm_clipped=grad_norm_clipped,
+                current_val_loss=current_val_loss,
+                average_val_loss=average_val_loss,
+                current_loss_scaled=current_global_step_loss_scaled,
+                average_loss_scaled=average_loss_scaled,
                 current_loss_wav=current_global_step_loss_wav,
-                average_loss_wav = average_loss_wav,
-                edm2_grad_norm=edm2_grad_norm, 
-                edm2_grad_norm_clipped=edm2_grad_norm_clipped, 
-                edm2_lr_scheduler=mlp_lr_scheduler, 
-                gradient_stats=gradient_stats, 
+                average_loss_wav=average_loss_wav,
+                edm2_grad_norm=edm2_grad_norm,
+                edm2_grad_norm_clipped=edm2_grad_norm_clipped,
+                edm2_lr_scheduler=mlp_lr_scheduler,
+                gradient_stats=gradient_stats,
                 network_norm_stats=network_norm_stats,
                 mean_grad_norm=mean_grad_norm,
                 mean_combined_norm=mean_combined_norm
@@ -1961,10 +2021,11 @@ class NetworkTrainer:
             if args.gradient_noise_scale and hasattr(network, "gradient_noise_scale"):
                 gns, variance = network.gradient_noise_scale()
                 if gns is not None and variance is not None:
-                    logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance, "gns/critical_batch_size": gns / effective_batch_size}
-            accelerator.log(logs, step=0)            
-        
-        # training loop
+                    logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance,
+                            "gns/critical_batch_size": gns / effective_batch_size}
+            accelerator.log(logs, step=0)
+
+            # training loop
         if initial_step > 0:  # only if skip_until_initial_step is specified
             global_step = initial_step
             logger.info(f"skipping epoch {epoch_to_start} because initial_step (multiplied) is {initial_step}")
@@ -1978,7 +2039,7 @@ class NetworkTrainer:
             params_itr.__next__()  # skip the second parameter. because CLIP first two parameters are embeddings
             param_3rd = params_itr.__next__()
             logger.info(f"text_encoder [{i}] dtype: {param_3rd.dtype}, device: {t_enc.device}")
-            
+
         clean_memory_on_device(accelerator.device)
 
         # Define the number of steps to accumulate gradients
@@ -1988,19 +2049,22 @@ class NetworkTrainer:
 
         if args.grokfast_type:
             if args.grokfast_type.lower() == "ema":
-                grad_filter = Gradfilter_ema(accelerator.unwrap_model(network), 
-                                             alpha=float(args.grokfast_ema_alpha) if args.grokfast_ema_alpha is not None else 0.98, 
-                                             lamb=float(args.grokfast_lamb) if args.grokfast_lamb is not None else 2.0, 
-                                             warmup_steps=int(args.grokfast_warmup_steps) if args.grokfast_warmup_steps is not None else 0, 
+                grad_filter = Gradfilter_ema(accelerator.unwrap_model(network),
+                                             alpha=float(
+                                                 args.grokfast_ema_alpha) if args.grokfast_ema_alpha is not None else 0.98,
+                                             lamb=float(args.grokfast_lamb) if args.grokfast_lamb is not None else 2.0,
+                                             warmup_steps=int(
+                                                 args.grokfast_warmup_steps) if args.grokfast_warmup_steps is not None else 0,
                                              dtype=weight_dtype)
             elif args.grokfast_type.lower() == "ma":
                 gf_window_size = int(args.grokfast_ma_window_size) if args.grokfast_ma_window_size is not None else 25
 
-                grad_filter = Gradfilter_ma(accelerator.unwrap_model(network), 
+                grad_filter = Gradfilter_ma(accelerator.unwrap_model(network),
                                             window_size=gf_window_size,
-                                            lamb=float(args.grokfast_lamb) if args.grokfast_lamb is not None else 5.0, 
-                                            filter_type=args.grokfast_ma_filter_type, 
-                                            warmup_steps=int(args.grokfast_warmup_steps) if args.grokfast_warmup_steps is not None else gf_window_size, 
+                                            lamb=float(args.grokfast_lamb) if args.grokfast_lamb is not None else 5.0,
+                                            filter_type=args.grokfast_ma_filter_type,
+                                            warmup_steps=int(
+                                                args.grokfast_warmup_steps) if args.grokfast_warmup_steps is not None else gf_window_size,
                                             dtype=weight_dtype)
             accelerator.register_for_checkpointing(grad_filter)
 
@@ -2008,7 +2072,8 @@ class NetworkTrainer:
             if args.zero_terminal_snr:
                 logger.warning("As zero terminal SNR is set, setting min snr for sangoi loss modifier to zero.")
             if args.min_snr_gamma:
-                logger.warning("Min snr gamma and sangoi loss modification both limit the max snr, ignoring min snr gamma in favor of sangoi.")
+                logger.warning(
+                    "Min snr gamma and sangoi loss modification both limit the max snr, ignoring min snr gamma in favor of sangoi.")
 
         if args.loss_type.lower() in ['frequency_distribution', 'focal_frequency']:
             print("Warning: Spatial weighting is not applied for frequency loss.")
@@ -2017,14 +2082,15 @@ class NetworkTrainer:
         dtype_to_use = torch.float64 if args.loss_related_use_float64 else torch.float32
 
         if not args.disable_norm_metrics and (args.full_bf16 or args.full_fp16):
-            logger.warning("Unable to log gradients and model norms if full_bf16 or full_fp16, as requires float for quintiles.")
+            logger.warning(
+                "Unable to log gradients and model norms if full_bf16 or full_fp16, as requires float for quintiles.")
 
         if args.full_bf16:
             # apply stochastic grad accumulator hooks
             stochastic_accumulator.StochasticAccumulator.assign_hooks(network)
 
             for epoch in range(epoch_to_start, num_train_epochs):
-                accelerator.print(f"\nepoch {epoch+1}/{num_train_epochs}")
+                accelerator.print(f"\nepoch {epoch + 1}/{num_train_epochs}")
                 current_epoch.value = epoch + 1
 
                 metadata["ss_epoch"] = str(epoch + 1)
@@ -2041,9 +2107,10 @@ class NetworkTrainer:
                     args.global_step = global_step
                     current_batch_size = len(batch['network_multipliers'])
                     effective_batch_size += current_batch_size
-                    
+
                     # dynamic_timestep_schedule support
-                    if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= dynamic_timestep_schedule[0][0]:
+                    if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= \
+                            dynamic_timestep_schedule[0][0]:
                         # Get the next schedule stage and remove it from the list
                         step_trigger, new_min, new_max = dynamic_timestep_schedule.pop(0)
                         current_min_timestep = new_min
@@ -2051,9 +2118,10 @@ class NetworkTrainer:
                         accelerator.print(
                             f"\nStep {global_step}: Timestep range dynamically changed to [{current_min_timestep}, {current_max_timestep})"
                         )
-                        
+
                     # Determine whether we should synchronize gradients
-                    sync_gradients = (accumulation_counter + 1) % iter_size == 0 or (step + 1 == len(skipped_dataloader or train_dataloader))
+                    sync_gradients = (accumulation_counter + 1) % iter_size == 0 or (
+                            step + 1 == len(skipped_dataloader or train_dataloader))
 
                     effective_batch_size = accumulation_counter + 1 if sync_gradients else iter_size
                     grad_accum_loss_scaling = 1.0 / effective_batch_size
@@ -2069,14 +2137,15 @@ class NetworkTrainer:
                         # Temporary, for batch processing
                         self.on_step_start(args, accelerator, network, text_encoders, unet, batch, weight_dtype)
 
-
                         # Prepare latents
                         if "latents" in batch and batch["latents"] is not None:
                             latents = batch["latents"].to(device=accelerator.device)
                         else:
                             with torch.no_grad():
                                 # Convert images to latents
-                                latents = self.encode_images_to_latents(args, accelerator, vae, batch["images"].to(device=vae.device, dtype=vae_dtype))
+                                latents = self.encode_images_to_latents(args, accelerator, vae,
+                                                                        batch["images"].to(device=vae.device,
+                                                                                           dtype=vae_dtype))
                                 # Replace NaNs if any
                                 if torch.any(torch.isnan(latents)):
                                     accelerator.print("NaN found in latents, replacing with zeros")
@@ -2105,7 +2174,8 @@ class NetworkTrainer:
                                 with torch.set_grad_enabled(train_text_encoder):
                                     # Get the text embeddings
                                     if args.weighted_captions:
-                                        input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
+                                        input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(
+                                            batch["captions"])
                                         encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
                                             tokenize_strategy,
                                             self.get_models_for_text_encoding(args, accelerator, text_encoders),
@@ -2115,16 +2185,18 @@ class NetworkTrainer:
                                             device=str(accelerator.device)
                                         )
                                     else:
-                                        input_ids = [ids.to(device=accelerator.device) for ids in batch["input_ids_list"]]
+                                        input_ids = [ids.to(device=accelerator.device) for ids in
+                                                     batch["input_ids_list"]]
                                         encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
                                             tokenize_strategy,
                                             self.get_models_for_text_encoding(args, accelerator, text_encoders),
                                             input_ids,
-                                            dtype=dtype_to_use, 
+                                            dtype=dtype_to_use,
                                             device=str(accelerator.device)
                                         )
                                     if args.full_fp16:
-                                        encoded_text_encoder_conds = [c.to(dtype=dtype_to_use) for c in encoded_text_encoder_conds]
+                                        encoded_text_encoder_conds = [c.to(dtype=dtype_to_use) for c in
+                                                                      encoded_text_encoder_conds]
 
                                 # if text_encoder_conds is not cached, use encoded_text_encoder_conds
                                 if len(text_encoder_conds) == 0:
@@ -2158,7 +2230,8 @@ class NetworkTrainer:
 
                             huber_c = train_util.get_huber_threshold_if_needed(args, timesteps, noise_scheduler)
                             # Compute loss
-                            loss = train_util.conditional_loss(noise_pred, target, args.loss_type, "none", huber_c, scale=float(args.loss_scale))
+                            loss = train_util.conditional_loss(noise_pred, target, args.loss_type, "none", huber_c,
+                                                               scale=float(args.loss_scale))
 
                             wav_loss = None
                             if args.wavelet_loss:
@@ -2191,13 +2264,14 @@ class NetworkTrainer:
                                             if target.dtype not in {torch.float32, torch.float64}:
                                                 target = target.float()
 
-                                            huber_c = train_util.get_huber_threshold_if_needed_manual(loss_type, 
-                                                                                                    determined_huber_c, 
-                                                                                                    args.huber_scale, 
-                                                                                                    determined_huber_schedule,
-                                                                                                    timesteps, 
-                                                                                                    noise_scheduler)
-                                            return train_util.conditional_loss(noise_pred, target, loss_type, "none", huber_c, scale=scale)
+                                            huber_c = train_util.get_huber_threshold_if_needed_manual(loss_type,
+                                                                                                      determined_huber_c,
+                                                                                                      args.huber_scale,
+                                                                                                      determined_huber_schedule,
+                                                                                                      timesteps,
+                                                                                                      noise_scheduler)
+                                            return train_util.conditional_loss(noise_pred, target, loss_type, "none",
+                                                                               huber_c, scale=scale)
 
                                     return loss_fn
 
@@ -2205,12 +2279,12 @@ class NetworkTrainer:
 
                                 wav_loss = self.wavelet_loss(noise_pred, target)
                                 # Weight the losses as needed
-                                #loss = loss + args.wavelet_loss_alpha * wav_loss
+                                # loss = loss + args.wavelet_loss_alpha * wav_loss
 
-                                if args.loss_type.lower()in ['frequency_distribution', 'focal_frequency']:
+                                if args.loss_type.lower() in ['frequency_distribution', 'focal_frequency']:
                                     wav_loss = wav_loss.mean(dim=[1, 2])
                                 loss = (1.0 - args.wavelet_loss_alpha) * loss + args.wavelet_loss_alpha * wav_loss
-                            
+
                             if not (args.loss_type.lower() in ['frequency_distribution', 'focal_frequency']):
                                 if weighting is not None:
                                     loss = loss * weighting
@@ -2228,18 +2302,19 @@ class NetworkTrainer:
                                 else:
                                     min_snr = float(args.sangoi_loss_modifier_min_snr)
 
-                                loss = loss * train_util.sangoi_loss_modifier(timesteps, 
-                                                                        noise_pred, 
-                                                                        target, 
-                                                                        noise_scheduler,
-                                                                        min_snr,
-                                                                        float(args.sangoi_loss_modifier_max_snr))
+                                loss = loss * train_util.sangoi_loss_modifier(timesteps,
+                                                                              noise_pred,
+                                                                              target,
+                                                                              noise_scheduler,
+                                                                              min_snr,
+                                                                              float(args.sangoi_loss_modifier_max_snr))
 
                             # min snr gamma, scale v pred loss like noise pred, v pred like loss, debiased estimation etc.
                             loss = self.post_process_loss(loss, args, timesteps, noise_scheduler)
 
                             if args.loss_multipler or args.loss_multiplier:
-                                loss.mul_(float(args.loss_multipler or args.loss_multiplier) if args.loss_multipler is not None or args.loss_multiplier is not None else 1.0)
+                                loss.mul_(float(
+                                    args.loss_multipler or args.loss_multiplier) if args.loss_multipler is not None or args.loss_multiplier is not None else 1.0)
 
                             # For logging
                             per_sample_loss = loss.detach()
@@ -2300,22 +2375,23 @@ class NetworkTrainer:
                         if args.max_grad_norm != 0.0:
                             grad_norm = accelerator.clip_grad_norm_(params_to_clip, args.max_grad_norm).item()
                             grad_norm_clipped = min(grad_norm, args.max_grad_norm)
-                        else: 
+                        else:
                             grad_norm = accelerator.clip_grad_norm_(params_to_clip, float('inf')).item()
                             grad_norm_clipped = grad_norm
 
-
-
-                        if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network, "update_grad_norms"):
+                        if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network,
+                                                                                      "update_grad_norms"):
                             """Track step count for caching"""
                             if not hasattr(unwrapped_network, '_current_step'):
                                 unwrapped_network._current_step = 0
                             else:
                                 unwrapped_network._current_step += 1
 
-                        if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network, "update_grad_norms"):
+                        if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network,
+                                                                                      "update_grad_norms"):
                             unwrapped_network.update_grad_norms()
-                        if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network, "update_norms"):
+                        if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network,
+                                                                                      "update_norms"):
                             unwrapped_network.update_norms()
                         if args.gradient_noise_scale and hasattr(network, "accumulate_grad"):
                             network.accumulate_grad()
@@ -2345,20 +2421,21 @@ class NetworkTrainer:
                             mlp_lr_scheduler.step()
 
                         if args.scale_weight_norms:
-                            keys_scaled, mean_norm, maximum_norm = accelerator.unwrap_model(network).apply_max_norm_regularization(
+                            keys_scaled, mean_norm, maximum_norm = accelerator.unwrap_model(
+                                network).apply_max_norm_regularization(
                                 args.scale_weight_norms, accelerator.device
                             )
 
                             if isinstance(keys_scaled, torch.Tensor):
-                                #Unpack
+                                # Unpack
                                 keys_scaled = keys_scaled.item()
 
                             if isinstance(mean_norm, torch.Tensor):
-                                #Unpack
+                                # Unpack
                                 mean_norm = mean_norm.item()
 
                             if isinstance(maximum_norm, torch.Tensor):
-                                #Unpack
+                                # Unpack
                                 maximum_norm = maximum_norm.item()
 
                             mean_grad_norm = None
@@ -2379,7 +2456,8 @@ class NetworkTrainer:
                             mean_combined_norm = None
                             max_mean_logs = {}
 
-                        if not args.disable_norm_metrics and hasattr(network, "get_norms") and not (args.full_bf16 or args.full_fp16):
+                        if not args.disable_norm_metrics and hasattr(network, "get_norms") and not (
+                                args.full_bf16 or args.full_fp16):
                             unscaled_norms = accelerator.unwrap_model(network).get_norms(accelerator.device)
                             network_norm_stats = analyze_model_norms(unscaled_norms)
 
@@ -2387,23 +2465,44 @@ class NetworkTrainer:
                         global_step += 1
 
                         if self.plot_dynamic_loss_weighting_check(args, global_step):
-                            train_util.plot_dynamic_loss_weighting(args, global_step, lossweightMLP, 1000, accelerator.device)
+                            train_util.plot_dynamic_loss_weighting(args, global_step, lossweightMLP, 1000,
+                                                                   accelerator.device)
 
                         if args.edm2_loss_weighting and args.edm2_loss_weighting_laplace:
                             train_util.calculate_edm2_laplace(lossweightMLP, noise_scheduler, accelerator.device)
 
-                        if (train_util.sample_images_check(args, None, global_step) or 
-                            train_util.calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader) or 
-                            args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0):
-                            #Switch network to train mode
+                        if (train_util.sample_images_check(args, None, global_step) or
+                                train_util.calculate_val_loss_check(args, global_step, step, val_dataloader,
+                                                                    train_dataloader) or
+                                args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0):
+                            # Switch network to train mode
                             network.eval()
-                            optimizer_eval_fn()                        
+                            optimizer_eval_fn()
                             self.sample_images(
-                                accelerator, args, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
+                                accelerator, args, None, global_step, accelerator.device, vae, tokenizers, text_encoder,
+                                unet
                             )
 
-                            if train_util.calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader):
-                                current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(global_step, step, skipped_dataloader or train_dataloader, val_loss_recorder, val_dataloader, cyclic_val_dataloader, network, tokenizers, tokenize_strategy, text_encoders, text_encoding_strategy, unet, vae, noise_scheduler, vae_dtype, weight_dtype, accelerator, args, train_text_encoder)
+                            if train_util.calculate_val_loss_check(args, global_step, step, val_dataloader,
+                                                                   train_dataloader):
+                                current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(global_step,
+                                                                                                       step,
+                                                                                                       skipped_dataloader or train_dataloader,
+                                                                                                       val_loss_recorder,
+                                                                                                       val_dataloader,
+                                                                                                       cyclic_val_dataloader,
+                                                                                                       network,
+                                                                                                       tokenizers,
+                                                                                                       tokenize_strategy,
+                                                                                                       text_encoders,
+                                                                                                       text_encoding_strategy,
+                                                                                                       unet, vae,
+                                                                                                       noise_scheduler,
+                                                                                                       vae_dtype,
+                                                                                                       weight_dtype,
+                                                                                                       accelerator,
+                                                                                                       args,
+                                                                                                       train_text_encoder)
                             else:
                                 current_val_loss, average_val_loss, val_logs = None, None, None
 
@@ -2411,37 +2510,46 @@ class NetworkTrainer:
                             if args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0:
                                 accelerator.wait_for_everyone()
                                 if accelerator.is_main_process:
-                                    ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, global_step)
+                                    ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as,
+                                                                              global_step)
                                     save_model(ckpt_name, accelerator.unwrap_model(network), global_step, epoch)
 
                                     if args.edm2_loss_weighting:
-                                        loss_weights_ckpt_name = train_util.get_step_loss_weights_ckpt_name(args, "." + args.save_model_as, global_step)
-                                        save_model(loss_weights_ckpt_name, accelerator.unwrap_model(lossweightMLP), global_step, epoch, dtype_override=torch.float64)
+                                        loss_weights_ckpt_name = train_util.get_step_loss_weights_ckpt_name(args,
+                                                                                                            "." + args.save_model_as,
+                                                                                                            global_step)
+                                        save_model(loss_weights_ckpt_name, accelerator.unwrap_model(lossweightMLP),
+                                                   global_step, epoch, dtype_override=torch.float64)
 
                                     if args.save_state:
                                         train_util.save_and_remove_state_stepwise(args, accelerator, global_step)
 
                                     remove_step_no = train_util.get_remove_step_no(args, global_step)
                                     if remove_step_no is not None:
-                                        remove_ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no)
+                                        remove_ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as,
+                                                                                         remove_step_no)
                                         remove_model(remove_ckpt_name)
 
                                         if args.edm2_loss_weighting:
-                                            remove_loss_weights_ckpt_name = train_util.get_step_loss_weights_ckpt_name(args, "." + args.save_model_as, remove_step_no)
+                                            remove_loss_weights_ckpt_name = train_util.get_step_loss_weights_ckpt_name(
+                                                args, "." + args.save_model_as, remove_step_no)
                                             remove_model(remove_loss_weights_ckpt_name)
-                                            
-                            #Switch network to train mode
+
+                            # Switch network to train mode
                             optimizer_train_fn()
                             network.train()
                         else:
                             current_val_loss, average_val_loss, val_logs = None, None, None
 
-                        loss_recorder.add(epoch=epoch, step=global_step, loss=current_global_step_loss / accumulation_counter)
+                        loss_recorder.add(epoch=epoch, step=global_step,
+                                          loss=current_global_step_loss / accumulation_counter)
                         if args.edm2_loss_weighting:
-                            loss_scaled_recorder.add(epoch=epoch, step=global_step, loss=current_global_step_loss_scaled / accumulation_counter)
+                            loss_scaled_recorder.add(epoch=epoch, step=global_step,
+                                                     loss=current_global_step_loss_scaled / accumulation_counter)
 
                         if args.wavelet_loss:
-                            loss_wav_recorder.add(epoch=epoch, step=global_step, loss=current_global_step_loss_wav / accumulation_counter)
+                            loss_wav_recorder.add(epoch=epoch, step=global_step,
+                                                  loss=current_global_step_loss_wav / accumulation_counter)
 
                         avr_loss: float = loss_recorder.moving_average if global_step > 0 else 0.0
                         logs = {"avg_loss": avr_loss}
@@ -2454,7 +2562,8 @@ class NetworkTrainer:
                         if len(accelerator.trackers) > 0:
                             current_global_step_loss = (current_global_step_loss / accumulation_counter)
                             if args.edm2_loss_weighting:
-                                current_global_step_loss_scaled = (current_global_step_loss_scaled / accumulation_counter)
+                                current_global_step_loss_scaled = (
+                                        current_global_step_loss_scaled / accumulation_counter)
                                 average_loss_scaled: float = loss_scaled_recorder.moving_average
                             else:
                                 current_global_step_loss_scaled = None
@@ -2468,27 +2577,27 @@ class NetworkTrainer:
                                 average_loss_wav = None
 
                             logs = self.generate_step_logs(
-                                args=args, 
-                                current_loss=current_global_step_loss, 
-                                avr_loss=avr_loss, 
-                                lr_scheduler=lr_scheduler, 
-                                lr_descriptions=lr_descriptions, 
-                                optimizer=optimizer, 
-                                keys_scaled=keys_scaled, 
-                                mean_norm=mean_norm, 
-                                maximum_norm=maximum_norm, 
-                                grad_norm=grad_norm, 
-                                grad_norm_clipped=grad_norm_clipped, 
-                                current_val_loss=current_val_loss, 
-                                average_val_loss=average_val_loss, 
-                                current_loss_scaled=current_global_step_loss_scaled, 
-                                average_loss_scaled=average_loss_scaled, 
+                                args=args,
+                                current_loss=current_global_step_loss,
+                                avr_loss=avr_loss,
+                                lr_scheduler=lr_scheduler,
+                                lr_descriptions=lr_descriptions,
+                                optimizer=optimizer,
+                                keys_scaled=keys_scaled,
+                                mean_norm=mean_norm,
+                                maximum_norm=maximum_norm,
+                                grad_norm=grad_norm,
+                                grad_norm_clipped=grad_norm_clipped,
+                                current_val_loss=current_val_loss,
+                                average_val_loss=average_val_loss,
+                                current_loss_scaled=current_global_step_loss_scaled,
+                                average_loss_scaled=average_loss_scaled,
                                 current_loss_wav=current_global_step_loss_wav,
                                 average_loss_wav=average_loss_wav,
-                                edm2_grad_norm=edm2_grad_norm, 
-                                edm2_grad_norm_clipped=edm2_grad_norm_clipped, 
-                                edm2_lr_scheduler=mlp_lr_scheduler, 
-                                gradient_stats=gradient_stats, 
+                                edm2_grad_norm=edm2_grad_norm,
+                                edm2_grad_norm_clipped=edm2_grad_norm_clipped,
+                                edm2_lr_scheduler=mlp_lr_scheduler,
+                                gradient_stats=gradient_stats,
                                 network_norm_stats=network_norm_stats,
                                 mean_grad_norm=mean_grad_norm,
                                 mean_combined_norm=mean_combined_norm
@@ -2496,13 +2605,14 @@ class NetworkTrainer:
                             if args.gradient_noise_scale and hasattr(network, "gradient_noise_scale"):
                                 gns, variance = network.gradient_noise_scale()
                                 if gns is not None and variance is not None:
-                                    logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance, "gns/critical_batch_size": gns / effective_batch_size}
+                                    logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance,
+                                            "gns/critical_batch_size": gns / effective_batch_size}
                             if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler"):
                                 if hasattr(args.la_sampler, "last_mix_p"):
                                     logs["sampler/mix_p"] = args.la_sampler.last_mix_p
                                 if hasattr(args.la_sampler, "last_small_t_frac"):
                                     logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
-                                
+
                                 # Add mean and std of ema_loss
                                 logs["sampler/ema_loss_mean"] = args.la_sampler.ema_loss.mean().item()
                                 logs["sampler/ema_loss_std"] = args.la_sampler.ema_loss.std().item()
@@ -2510,9 +2620,10 @@ class NetworkTrainer:
                                 # EMA loss per bin (in a separate category)
                                 for i, loss_val in enumerate(args.la_sampler.ema_loss):
                                     logs[f"ema_loss_bins/bin_{i}"] = loss_val.item()
-                                    
+
                                 # Timestep histogram (in a separate category)
-                                hist = torch.histogram(timesteps.float().cpu(), bins=args.la_sampler.num_bins, range=(0, args.la_sampler.T))
+                                hist = torch.histogram(timesteps.float().cpu(), bins=args.la_sampler.num_bins,
+                                                       range=(0, args.la_sampler.T))
                                 for i, count in enumerate(hist.hist):
                                     logs[f"timestep_hist/bin_{i}"] = count.item()
                             accelerator.log(logs, step=global_step)
@@ -2533,13 +2644,13 @@ class NetworkTrainer:
                 if len(accelerator.trackers) > 0:
                     logs = {"loss/epoch": loss_recorder.moving_average}
                     accelerator.log(logs, step=global_step)
-                            
+
                 accelerator.wait_for_everyone()
 
-                if (train_util.sample_images_check(args, epoch + 1, global_step) or 
-                    args.save_every_n_epochs is not None):
+                if (train_util.sample_images_check(args, epoch + 1, global_step) or
+                        args.save_every_n_epochs is not None):
                     # 指定エポックごとにモデルを保存
-                    #Switch network to eval mode
+                    # Switch network to eval mode
                     network.eval()
                     optimizer_eval_fn()
                     if args.save_every_n_epochs is not None:
@@ -2549,32 +2660,39 @@ class NetworkTrainer:
                             save_model(ckpt_name, accelerator.unwrap_model(network), global_step, epoch + 1)
 
                             if args.edm2_loss_weighting:
-                                loss_weights_ckpt_name = train_util.get_epoch_loss_weights_ckpt_name(args, "." + args.save_model_as, epoch + 1)
-                                save_model(loss_weights_ckpt_name, accelerator.unwrap_model(lossweightMLP), global_step, epoch + 1, dtype_override=torch.float64)
+                                loss_weights_ckpt_name = train_util.get_epoch_loss_weights_ckpt_name(args,
+                                                                                                     "." + args.save_model_as,
+                                                                                                     epoch + 1)
+                                save_model(loss_weights_ckpt_name, accelerator.unwrap_model(lossweightMLP), global_step,
+                                           epoch + 1, dtype_override=torch.float64)
 
                             remove_epoch_no = train_util.get_remove_epoch_no(args, epoch + 1)
                             if remove_epoch_no is not None:
-                                remove_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, remove_epoch_no)
+                                remove_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as,
+                                                                                  remove_epoch_no)
                                 remove_model(remove_ckpt_name)
 
                                 if args.edm2_loss_weighting:
-                                    remove_loss_weights_ckpt_name = train_util.get_epoch_loss_weights_ckpt_name(args, "." + args.save_model_as, remove_epoch_no)
+                                    remove_loss_weights_ckpt_name = train_util.get_epoch_loss_weights_ckpt_name(args,
+                                                                                                                "." + args.save_model_as,
+                                                                                                                remove_epoch_no)
                                     remove_model(remove_loss_weights_ckpt_name)
 
                             if args.save_state:
                                 train_util.save_and_remove_state_on_epoch_end(args, accelerator, epoch + 1)
-                    
-                    self.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
-                    #Switch network to train mode
+
+                    self.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizers,
+                                       text_encoder, unet)
+                    # Switch network to train mode
                     optimizer_train_fn()
                     network.train()
 
                 # end of epoch
 
         else:
-            #Normal training loop
+            # Normal training loop
             for epoch in range(epoch_to_start, num_train_epochs):
-                accelerator.print(f"\nepoch {epoch+1}/{num_train_epochs}")
+                accelerator.print(f"\nepoch {epoch + 1}/{num_train_epochs}")
                 current_epoch.value = epoch + 1
 
                 metadata["ss_epoch"] = str(epoch + 1)
@@ -2591,9 +2709,10 @@ class NetworkTrainer:
                     args.global_step = global_step
                     current_batch_size = len(batch['network_multipliers'])
                     effective_batch_size += current_batch_size
-                    
+
                     # dynamic_timestep_schedule support
-                    if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= dynamic_timestep_schedule[0][0]:
+                    if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= \
+                            dynamic_timestep_schedule[0][0]:
                         # Get the next schedule stage and remove it from the list
                         step_trigger, new_min, new_max = dynamic_timestep_schedule.pop(0)
                         current_min_timestep = new_min
@@ -2601,7 +2720,9 @@ class NetworkTrainer:
                         accelerator.print(
                             f"\nStep {global_step}: Timestep range dynamically changed to [{current_min_timestep}, {current_max_timestep})"
                         )
-                    with accelerator.accumulate(training_model, lossweightMLP) if args.edm2_loss_weighting else accelerator.accumulate(training_model):
+                    with accelerator.accumulate(training_model,
+                                                lossweightMLP) if args.edm2_loss_weighting else accelerator.accumulate(
+                        training_model):
                         on_step_start_for_network(text_encoder, unet)
 
                         accumulation_counter += 1
@@ -2614,7 +2735,9 @@ class NetworkTrainer:
                         else:
                             with torch.no_grad():
                                 # latentに変換
-                                latents = self.encode_images_to_latents(args, accelerator, vae, batch["images"].to(device=vae.device, dtype=vae_dtype))
+                                latents = self.encode_images_to_latents(args, accelerator, vae,
+                                                                        batch["images"].to(device=vae.device,
+                                                                                           dtype=vae_dtype))
 
                                 # NaNが含まれていれば警告を表示し0に置き換える
                                 if torch.any(torch.isnan(latents)):
@@ -2647,7 +2770,8 @@ class NetworkTrainer:
                                 with torch.set_grad_enabled(train_text_encoder):
                                     # Get the text embedding for conditioning
                                     if args.weighted_captions:
-                                        input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
+                                        input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(
+                                            batch["captions"])
                                         encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
                                             tokenize_strategy,
                                             self.get_models_for_text_encoding(args, accelerator, text_encoders),
@@ -2657,16 +2781,18 @@ class NetworkTrainer:
                                             device=str(accelerator.device)
                                         )
                                     else:
-                                        input_ids = [ids.to(device=accelerator.device) for ids in batch["input_ids_list"]]
+                                        input_ids = [ids.to(device=accelerator.device) for ids in
+                                                     batch["input_ids_list"]]
                                         encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
                                             tokenize_strategy,
                                             self.get_models_for_text_encoding(args, accelerator, text_encoders),
                                             input_ids,
-                                            dtype=dtype_to_use, 
+                                            dtype=dtype_to_use,
                                             device=str(accelerator.device)
                                         )
                                     if args.full_fp16:
-                                        encoded_text_encoder_conds = [c.to(dtype=dtype_to_use) for c in encoded_text_encoder_conds]
+                                        encoded_text_encoder_conds = [c.to(dtype=dtype_to_use) for c in
+                                                                      encoded_text_encoder_conds]
 
                                 # if text_encoder_conds is not cached, use encoded_text_encoder_conds
                                 if len(text_encoder_conds) == 0:
@@ -2700,7 +2826,8 @@ class NetworkTrainer:
 
                             huber_c = train_util.get_huber_threshold_if_needed(args, timesteps, noise_scheduler)
                             # Compute loss
-                            loss = train_util.conditional_loss(noise_pred, target, args.loss_type, "none", huber_c, scale=float(args.loss_scale))
+                            loss = train_util.conditional_loss(noise_pred, target, args.loss_type, "none", huber_c,
+                                                               scale=float(args.loss_scale))
 
                             wav_loss = None
                             if args.wavelet_loss:
@@ -2733,13 +2860,14 @@ class NetworkTrainer:
                                             if target.dtype not in {torch.float32, torch.float64}:
                                                 target = target.float()
 
-                                            huber_c = train_util.get_huber_threshold_if_needed_manual(loss_type, 
-                                                                                                    determined_huber_c, 
-                                                                                                    args.huber_scale, 
-                                                                                                    determined_huber_schedule,
-                                                                                                    timesteps, 
-                                                                                                    noise_scheduler)
-                                            return train_util.conditional_loss(noise_pred, target, loss_type, "none", huber_c, scale=scale)
+                                            huber_c = train_util.get_huber_threshold_if_needed_manual(loss_type,
+                                                                                                      determined_huber_c,
+                                                                                                      args.huber_scale,
+                                                                                                      determined_huber_schedule,
+                                                                                                      timesteps,
+                                                                                                      noise_scheduler)
+                                            return train_util.conditional_loss(noise_pred, target, loss_type, "none",
+                                                                               huber_c, scale=scale)
 
                                     return loss_fn
 
@@ -2747,12 +2875,12 @@ class NetworkTrainer:
 
                                 wav_loss = self.wavelet_loss(noise_pred, target)
                                 # Weight the losses as needed
-                                #loss = loss + args.wavelet_loss_alpha * wav_loss
+                                # loss = loss + args.wavelet_loss_alpha * wav_loss
 
                                 if args.loss_type.lower() in ['frequency_distribution', 'focal_frequency']:
                                     wav_loss = wav_loss.mean(dim=[1, 2])
                                 loss = (1.0 - args.wavelet_loss_alpha) * loss + args.wavelet_loss_alpha * wav_loss
-                            
+
                             if not (args.loss_type.lower() in ['frequency_distribution', 'focal_frequency']):
                                 if weighting is not None:
                                     loss = loss * weighting
@@ -2770,18 +2898,19 @@ class NetworkTrainer:
                                 else:
                                     min_snr = float(args.sangoi_loss_modifier_min_snr)
 
-                                loss = loss * train_util.sangoi_loss_modifier(timesteps, 
-                                                                        noise_pred, 
-                                                                        target, 
-                                                                        noise_scheduler,
-                                                                        min_snr,
-                                                                        float(args.sangoi_loss_modifier_max_snr))
+                                loss = loss * train_util.sangoi_loss_modifier(timesteps,
+                                                                              noise_pred,
+                                                                              target,
+                                                                              noise_scheduler,
+                                                                              min_snr,
+                                                                              float(args.sangoi_loss_modifier_max_snr))
 
                             # min snr gamma, scale v pred loss like noise pred, v pred like loss, debiased estimation etc.
                             loss = self.post_process_loss(loss, args, timesteps, noise_scheduler)
 
                             if args.loss_multipler or args.loss_multiplier:
-                                loss.mul_(float(args.loss_multipler or args.loss_multiplier) if args.loss_multipler is not None or args.loss_multiplier is not None else 1.0)
+                                loss.mul_(float(
+                                    args.loss_multipler or args.loss_multiplier) if args.loss_multipler is not None or args.loss_multiplier is not None else 1.0)
 
                             # For logging
                             per_sample_loss = loss.detach()
@@ -2804,11 +2933,11 @@ class NetworkTrainer:
                             if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler"):
                                 with torch.no_grad():
                                     args.la_sampler.update(timesteps, sampler_loss_for_ema)
-                            
+
                             loss = pre_scaling_loss
 
                         if accelerator.sync_gradients:
-                            #self.all_reduce_network(accelerator, network)  # sync DDP grad manually
+                            # self.all_reduce_network(accelerator, network)  # sync DDP grad manually
 
                             if not args.disable_norm_metrics and not (args.full_bf16 or args.full_fp16):
                                 params_to_analyze = accelerator.unwrap_model(network).get_trainable_params()
@@ -2819,22 +2948,25 @@ class NetworkTrainer:
                             if args.max_grad_norm != 0.0:
                                 grad_norm = accelerator.clip_grad_norm_(params_to_clip, args.max_grad_norm).item()
                                 grad_norm_clipped = min(grad_norm, args.max_grad_norm)
-                            else: 
+                            else:
                                 grad_norm = accelerator.clip_grad_norm_(params_to_clip, float('inf')).item()
                                 grad_norm_clipped = grad_norm
 
                             unwrapped_network = accelerator.unwrap_model(network)
 
-                            if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network, "update_grad_norms"):
+                            if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network,
+                                                                                          "update_grad_norms"):
                                 """Track step count for caching"""
                                 if not hasattr(unwrapped_network, '_current_step'):
                                     unwrapped_network._current_step = 0
                                 else:
                                     unwrapped_network._current_step += 1
 
-                            if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network, "update_grad_norms"):
+                            if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network,
+                                                                                          "update_grad_norms"):
                                 unwrapped_network.update_grad_norms()
-                            if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network, "update_norms"):
+                            if getattr(unwrapped_network, "ggpo_sigma", None) and hasattr(unwrapped_network,
+                                                                                          "update_norms"):
                                 unwrapped_network.update_norms()
                             if args.gradient_noise_scale and hasattr(network, "accumulate_grad"):
                                 network.accumulate_grad()
@@ -2860,26 +2992,28 @@ class NetworkTrainer:
                     # Should only scale weight norms AFTER an actual optimizer step, not unaccumulated steps
                     # thus should check if accelerator.sync_gradients is true
                     if args.scale_weight_norms and accelerator.sync_gradients:
-                        keys_scaled, mean_norm, maximum_norm = accelerator.unwrap_model(network).apply_max_norm_regularization(
+                        keys_scaled, mean_norm, maximum_norm = accelerator.unwrap_model(
+                            network).apply_max_norm_regularization(
                             args.scale_weight_norms, accelerator.device
                         )
 
                         if isinstance(keys_scaled, torch.Tensor):
-                            #Unpack
+                            # Unpack
                             keys_scaled = keys_scaled.item()
 
                         if isinstance(mean_norm, torch.Tensor):
-                            #Unpack
+                            # Unpack
                             mean_norm = mean_norm.item()
 
                         if isinstance(maximum_norm, torch.Tensor):
-                            #Unpack
+                            # Unpack
                             maximum_norm = maximum_norm.item()
 
                         mean_grad_norm = None
                         mean_combined_norm = None
                         max_mean_logs = {"Keys Scaled": keys_scaled, "Avg key norm": mean_norm}
-                    elif getattr(network, "ggpo_sigma", None) and hasattr(network, "grad_norms") and accelerator.sync_gradients:
+                    elif getattr(network, "ggpo_sigma", None) and hasattr(network,
+                                                                          "grad_norms") and accelerator.sync_gradients:
                         unwrapped_network = accelerator.unwrap_model(network)
                         weight_norms = unwrapped_network.weight_norms()
                         mean_norm = weight_norms.mean().item()
@@ -2894,7 +3028,9 @@ class NetworkTrainer:
                         mean_combined_norm = None
                         max_mean_logs = {}
 
-                    if accelerator.sync_gradients and not args.disable_norm_metrics and hasattr(network, "get_norms") and not (args.full_bf16 or args.full_fp16):
+                    if accelerator.sync_gradients and not args.disable_norm_metrics and hasattr(network,
+                                                                                                "get_norms") and not (
+                            args.full_bf16 or args.full_fp16):
                         unscaled_norms = accelerator.unwrap_model(network).get_norms(accelerator.device)
                         network_norm_stats = analyze_model_norms(unscaled_norms)
                     else:
@@ -2906,39 +3042,45 @@ class NetworkTrainer:
                         global_step += 1
 
                         if self.plot_dynamic_loss_weighting_check(args, global_step):
-                            train_util.plot_dynamic_loss_weighting(args, global_step, lossweightMLP, 1000, accelerator.device)
+                            train_util.plot_dynamic_loss_weighting(args, global_step, lossweightMLP, 1000,
+                                                                   accelerator.device)
 
                         if args.edm2_loss_weighting and args.edm2_loss_weighting_laplace:
                             train_util.calculate_edm2_laplace(lossweightMLP, noise_scheduler, accelerator.device)
 
-                        if (train_util.sample_images_check(args, None, global_step) or 
-                            train_util.calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader) or 
-                            args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0):
-                            #Switch network to eval mode
+                        if (train_util.sample_images_check(args, None, global_step) or
+                                train_util.calculate_val_loss_check(args, global_step, step, val_dataloader,
+                                                                    train_dataloader) or
+                                args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0):
+                            # Switch network to eval mode
                             network.eval()
                             optimizer_eval_fn()
 
                             self.sample_images(
-                                accelerator, args, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
+                                accelerator, args, None, global_step, accelerator.device, vae, tokenizers, text_encoder,
+                                unet
                             )
 
-                            if train_util.calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader):
-                                current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(global_step, step, 
-                                                                                                       skipped_dataloader or train_dataloader, 
-                                                                                                       val_loss_recorder, 
-                                                                                                       val_dataloader, 
-                                                                                                       cyclic_val_dataloader, 
-                                                                                                       network, tokenizers, 
-                                                                                                       tokenize_strategy, 
-                                                                                                       text_encoders, 
-                                                                                                       text_encoding_strategy, 
-                                                                                                       unet, 
-                                                                                                       vae, 
-                                                                                                       noise_scheduler, 
-                                                                                                       vae_dtype, 
-                                                                                                       weight_dtype, 
-                                                                                                       accelerator, 
-                                                                                                       args, 
+                            if train_util.calculate_val_loss_check(args, global_step, step, val_dataloader,
+                                                                   train_dataloader):
+                                current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(global_step,
+                                                                                                       step,
+                                                                                                       skipped_dataloader or train_dataloader,
+                                                                                                       val_loss_recorder,
+                                                                                                       val_dataloader,
+                                                                                                       cyclic_val_dataloader,
+                                                                                                       network,
+                                                                                                       tokenizers,
+                                                                                                       tokenize_strategy,
+                                                                                                       text_encoders,
+                                                                                                       text_encoding_strategy,
+                                                                                                       unet,
+                                                                                                       vae,
+                                                                                                       noise_scheduler,
+                                                                                                       vae_dtype,
+                                                                                                       weight_dtype,
+                                                                                                       accelerator,
+                                                                                                       args,
                                                                                                        train_text_encoder)
                             else:
                                 current_val_loss, average_val_loss, val_logs = None, None, None
@@ -2947,32 +3089,37 @@ class NetworkTrainer:
                             if args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0:
                                 accelerator.wait_for_everyone()
                                 if accelerator.is_main_process:
-                                    ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, global_step)
+                                    ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as,
+                                                                              global_step)
                                     save_model(ckpt_name, accelerator.unwrap_model(network), global_step, epoch)
 
                                     if args.edm2_loss_weighting:
-                                        loss_weights_ckpt_name = train_util.get_step_loss_weights_ckpt_name(args, "." + args.save_model_as, global_step)
-                                        save_model(loss_weights_ckpt_name, accelerator.unwrap_model(lossweightMLP), global_step, epoch, dtype_override=torch.float64)
+                                        loss_weights_ckpt_name = train_util.get_step_loss_weights_ckpt_name(args,
+                                                                                                            "." + args.save_model_as,
+                                                                                                            global_step)
+                                        save_model(loss_weights_ckpt_name, accelerator.unwrap_model(lossweightMLP),
+                                                   global_step, epoch, dtype_override=torch.float64)
 
                                     if args.save_state:
                                         train_util.save_and_remove_state_stepwise(args, accelerator, global_step)
 
                                     remove_step_no = train_util.get_remove_step_no(args, global_step)
                                     if remove_step_no is not None:
-                                        remove_ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no)
+                                        remove_ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as,
+                                                                                         remove_step_no)
                                         remove_model(remove_ckpt_name)
 
                                         if args.edm2_loss_weighting:
-                                            remove_loss_weights_ckpt_name = train_util.get_step_loss_weights_ckpt_name(args, "." + args.save_model_as, remove_step_no)
+                                            remove_loss_weights_ckpt_name = train_util.get_step_loss_weights_ckpt_name(
+                                                args, "." + args.save_model_as, remove_step_no)
                                             remove_model(remove_loss_weights_ckpt_name)
 
-                            #Switch network to train mode
+                            # Switch network to train mode
                             optimizer_train_fn()
                             network.train()
                         else:
                             current_val_loss, average_val_loss, val_logs = None, None, None
 
-                    
                     current_global_step_loss += loss.detach().item()
                     if args.edm2_loss_weighting:
                         current_global_step_loss_scaled += loss_scaled.detach().item()
@@ -2985,12 +3132,15 @@ class NetworkTrainer:
                         current_global_step_loss_wav = None
 
                     if accelerator.sync_gradients:
-                        loss_recorder.add(epoch=epoch, step=global_step, loss=current_global_step_loss / accumulation_counter)
+                        loss_recorder.add(epoch=epoch, step=global_step,
+                                          loss=current_global_step_loss / accumulation_counter)
                         if args.edm2_loss_weighting:
-                            loss_scaled_recorder.add(epoch=epoch, step=global_step, loss=current_global_step_loss_scaled / accumulation_counter)
+                            loss_scaled_recorder.add(epoch=epoch, step=global_step,
+                                                     loss=current_global_step_loss_scaled / accumulation_counter)
 
                         if args.wavelet_loss:
-                            loss_wav_recorder.add(epoch=epoch, step=global_step, loss=current_global_step_loss_wav / accumulation_counter)
+                            loss_wav_recorder.add(epoch=epoch, step=global_step,
+                                                  loss=current_global_step_loss_wav / accumulation_counter)
 
                         avr_loss: float = loss_recorder.moving_average if global_step > 0 else 0.0
                         logs = {"avg_loss": avr_loss}
@@ -3003,7 +3153,8 @@ class NetworkTrainer:
                         if len(accelerator.trackers) > 0:
                             current_global_step_loss = (current_global_step_loss / accumulation_counter)
                             if args.edm2_loss_weighting:
-                                current_global_step_loss_scaled = (current_global_step_loss_scaled / accumulation_counter)
+                                current_global_step_loss_scaled = (
+                                        current_global_step_loss_scaled / accumulation_counter)
                                 average_loss_scaled: float = loss_scaled_recorder.moving_average
                             else:
                                 current_global_step_loss_scaled = None
@@ -3016,29 +3167,28 @@ class NetworkTrainer:
                                 current_global_step_loss_wav = None
                                 average_loss_wav = None
 
-
                             logs = self.generate_step_logs(
-                                args=args, 
-                                current_loss=current_global_step_loss, 
-                                avr_loss=avr_loss, 
-                                lr_scheduler=lr_scheduler, 
-                                lr_descriptions=lr_descriptions, 
-                                optimizer=optimizer, 
-                                keys_scaled=keys_scaled, 
-                                mean_norm=mean_norm, 
-                                maximum_norm=maximum_norm, 
-                                grad_norm=grad_norm, 
-                                grad_norm_clipped=grad_norm_clipped, 
-                                current_val_loss=current_val_loss, 
-                                average_val_loss=average_val_loss, 
-                                current_loss_scaled=current_global_step_loss_scaled, 
-                                average_loss_scaled=average_loss_scaled, 
+                                args=args,
+                                current_loss=current_global_step_loss,
+                                avr_loss=avr_loss,
+                                lr_scheduler=lr_scheduler,
+                                lr_descriptions=lr_descriptions,
+                                optimizer=optimizer,
+                                keys_scaled=keys_scaled,
+                                mean_norm=mean_norm,
+                                maximum_norm=maximum_norm,
+                                grad_norm=grad_norm,
+                                grad_norm_clipped=grad_norm_clipped,
+                                current_val_loss=current_val_loss,
+                                average_val_loss=average_val_loss,
+                                current_loss_scaled=current_global_step_loss_scaled,
+                                average_loss_scaled=average_loss_scaled,
                                 current_loss_wav=current_global_step_loss_wav,
                                 average_loss_wav=average_loss_wav,
-                                edm2_grad_norm=edm2_grad_norm, 
-                                edm2_grad_norm_clipped=edm2_grad_norm_clipped, 
-                                edm2_lr_scheduler=mlp_lr_scheduler, 
-                                gradient_stats=gradient_stats, 
+                                edm2_grad_norm=edm2_grad_norm,
+                                edm2_grad_norm_clipped=edm2_grad_norm_clipped,
+                                edm2_lr_scheduler=mlp_lr_scheduler,
+                                gradient_stats=gradient_stats,
                                 network_norm_stats=network_norm_stats,
                                 mean_grad_norm=mean_grad_norm,
                                 mean_combined_norm=mean_combined_norm
@@ -3046,7 +3196,8 @@ class NetworkTrainer:
                             if args.gradient_noise_scale and hasattr(network, "gradient_noise_scale"):
                                 gns, variance = network.gradient_noise_scale()
                                 if gns is not None and variance is not None:
-                                    logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance, "gns/critical_batch_size": gns / effective_batch_size}
+                                    logs = {**logs, "gns/gradient_noise_scale": gns, "gns/noise_variance": variance,
+                                            "gns/critical_batch_size": gns / effective_batch_size}
                             if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler"):
                                 if hasattr(args.la_sampler, "last_mix_p"):
                                     logs["sampler/mix_p"] = args.la_sampler.last_mix_p
@@ -3060,9 +3211,10 @@ class NetworkTrainer:
                                 # EMA loss per bin (in a separate category)
                                 for i, loss_val in enumerate(args.la_sampler.ema_loss):
                                     logs[f"ema_loss_bins/bin_{i}"] = loss_val.item()
-                                    
+
                                 # Timestep histogram (in a separate category)
-                                hist = torch.histogram(timesteps.float().cpu(), bins=args.la_sampler.num_bins, range=(0, args.la_sampler.T))
+                                hist = torch.histogram(timesteps.float().cpu(), bins=args.la_sampler.num_bins,
+                                                       range=(0, args.la_sampler.T))
                                 for i, count in enumerate(hist.hist):
                                     logs[f"timestep_hist/bin_{i}"] = count.item()
 
@@ -3076,20 +3228,20 @@ class NetworkTrainer:
 
                             accumulation_counter = 0
                             effective_batch_size = 0
-                                            
+
                     if global_step >= args.max_train_steps:
                         break
 
                 if len(accelerator.trackers) > 0:
                     logs = {"loss/epoch": loss_recorder.moving_average}
                     accelerator.log(logs, step=global_step)
-                                
+
                 accelerator.wait_for_everyone()
 
-                if (train_util.sample_images_check(args, epoch + 1, global_step) or 
-                    args.save_every_n_epochs is not None):
+                if (train_util.sample_images_check(args, epoch + 1, global_step) or
+                        args.save_every_n_epochs is not None):
                     # 指定エポックごとにモデルを保存
-                    #Switch network to eval mode
+                    # Switch network to eval mode
                     network.eval()
                     optimizer_eval_fn()
 
@@ -3100,23 +3252,30 @@ class NetworkTrainer:
                             save_model(ckpt_name, accelerator.unwrap_model(network), global_step, epoch + 1)
 
                             if args.edm2_loss_weighting:
-                                loss_weights_ckpt_name = train_util.get_epoch_loss_weights_ckpt_name(args, "." + args.save_model_as, epoch + 1)
-                                save_model(loss_weights_ckpt_name, accelerator.unwrap_model(lossweightMLP), global_step, epoch + 1, dtype_override=torch.float64)
+                                loss_weights_ckpt_name = train_util.get_epoch_loss_weights_ckpt_name(args,
+                                                                                                     "." + args.save_model_as,
+                                                                                                     epoch + 1)
+                                save_model(loss_weights_ckpt_name, accelerator.unwrap_model(lossweightMLP), global_step,
+                                           epoch + 1, dtype_override=torch.float64)
 
                             remove_epoch_no = train_util.get_remove_epoch_no(args, epoch + 1)
                             if remove_epoch_no is not None:
-                                remove_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, remove_epoch_no)
+                                remove_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as,
+                                                                                  remove_epoch_no)
                                 remove_model(remove_ckpt_name)
 
                                 if args.edm2_loss_weighting:
-                                    remove_loss_weights_ckpt_name = train_util.get_epoch_loss_weights_ckpt_name(args, "." + args.save_model_as, remove_epoch_no)
+                                    remove_loss_weights_ckpt_name = train_util.get_epoch_loss_weights_ckpt_name(args,
+                                                                                                                "." + args.save_model_as,
+                                                                                                                remove_epoch_no)
                                     remove_model(remove_loss_weights_ckpt_name)
 
                             if args.save_state:
                                 train_util.save_and_remove_state_on_epoch_end(args, accelerator, epoch + 1)
-                    
-                    self.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
-                    #Switch network to train mode
+
+                    self.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizers,
+                                       text_encoder, unet)
+                    # Switch network to train mode
                     optimizer_train_fn()
                     network.train()
 
@@ -3129,7 +3288,7 @@ class NetworkTrainer:
             network = accelerator.unwrap_model(network)
 
         accelerator.end_training()
-        #Switch network to eval mode
+        # Switch network to eval mode
         network.eval()
         optimizer_eval_fn()
 
@@ -3142,7 +3301,8 @@ class NetworkTrainer:
 
             if args.edm2_loss_weighting:
                 loss_weights_ckpt_name = train_util.get_last_loss_weights_ckpt_name(args, "." + args.save_model_as)
-                save_model(loss_weights_ckpt_name, lossweightMLP, global_step, num_train_epochs, force_sync_upload=True, dtype_override=torch.float64)
+                save_model(loss_weights_ckpt_name, lossweightMLP, global_step, num_train_epochs, force_sync_upload=True,
+                           dtype_override=torch.float64)
 
             logger.info("model saved.")
 
@@ -3164,7 +3324,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--cpu_offload_checkpointing",
         action="store_true",
         help="[EXPERIMENTAL] enable offloading of tensors to CPU during checkpointing for U-Net or DiT, if supported"
-        " / 勾配チェックポイント時にテンソルをCPUにオフロードする（U-NetまたはDiTのみ、サポートされている場合）",
+             " / 勾配チェックポイント時にテンソルをCPUにオフロードする（U-NetまたはDiTのみ、サポートされている場合）",
     )
     parser.add_argument(
         "--no_metadata", action="store_true", help="do not save metadata in output model / メタデータを出力先モデルに保存しない"
@@ -3189,7 +3349,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--fp8_base_unet",
         action="store_true",
         help="use fp8 for U-Net (or DiT), Text Encoder is fp16 or bf16"
-        " / U-Net（またはDiT）にfp8を使用する。Text Encoderはfp16またはbf16",
+             " / U-Net（またはDiT）にfp8を使用する。Text Encoderはfp16またはbf16",
     )
 
     parser.add_argument(
@@ -3278,20 +3438,20 @@ def setup_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.0,
         help="Split for validation images out of the training dataset"
-    )    
+    )
     parser.add_argument(
         "--validation_every_n_step",
         type=int,
         default=None,
         help="Number of train steps for counting validation loss. By default, validation per train epoch is performed"
-    )    
+    )
 
     parser.add_argument(
         "--validation_timesteps",
         type=str,
         default=r"[10, 350, 500, 650, 990]",
         help="A list of timesteps to use for each validation step."
-    )  
+    )
 
     parser.add_argument(
         "--max_validation_steps",
@@ -3317,14 +3477,14 @@ def setup_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help="initial epoch number, 1 means first epoch (same as not specifying). NOTE: initial_epoch/step doesn't affect to lr scheduler. Which means lr scheduler will start from 0 without `--resume`."
-        + " / 初期エポック数、1で最初のエポック（未指定時と同じ）。注意：initial_epoch/stepはlr schedulerに影響しないため、`--resume`しない場合はlr schedulerは0から始まる",
+             + " / 初期エポック数、1で最初のエポック（未指定時と同じ）。注意：initial_epoch/stepはlr schedulerに影響しないため、`--resume`しない場合はlr schedulerは0から始まる",
     )
     parser.add_argument(
         "--initial_step",
         type=int,
         default=None,
         help="initial step number including all epochs, 0 means first step (same as not specifying). overwrites initial_epoch."
-        + " / 初期ステップ数、全エポックを含むステップ数、0で最初のステップ（未指定時と同じ）。initial_epochを上書きする",
+             + " / 初期ステップ数、全エポックを含むステップ数、0で最初のステップ（未指定時と同じ）。initial_epochを上書きする",
     )
     parser.add_argument(
         "--grokfast_type",
@@ -3521,9 +3681,9 @@ def setup_parser() -> argparse.ArgumentParser:
         "--edm2_loss_weighting_importance_weighting",
         action="store_true",
         help="If edm2 loss scaling weights are weighted by importance, which is based using a specific min snr gamma value and SNR for the given timestep. " \
-        "Default behavior when edm2_loss_weighting_importance_weighting is enabled is to disable normal min snr gamma and debiased loss if enabled." \
-        "It is not advised to stack with either, as there is a possiblity of loss curving to 0 as SNR approaches 0." \
-        "If you still wish to, set edm2_loss_weighting_importance_weighting_safety_override=True at your own risk."
+             "Default behavior when edm2_loss_weighting_importance_weighting is enabled is to disable normal min snr gamma and debiased loss if enabled." \
+             "It is not advised to stack with either, as there is a possiblity of loss curving to 0 as SNR approaches 0." \
+             "If you still wish to, set edm2_loss_weighting_importance_weighting_safety_override=True at your own risk."
     )
 
     parser.add_argument(
@@ -3538,7 +3698,7 @@ def setup_parser() -> argparse.ArgumentParser:
         type=float,
         default=1.0,
         help="The min snr gamma used for edm2 importance weighting as a heuristic, has no effect if not using importance weighting. " \
-        "Not related to the typical application of min snr gamma.",
+             "Not related to the typical application of min snr gamma.",
     )
 
     parser.add_argument(
@@ -3548,38 +3708,38 @@ def setup_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-            "--immiscible_noise",
-            type=int,
-            default=None,
-            help="Batch size to match noise to latent images. Use Immiscible Noise algorithm to project training images only to nearby noise (from arxiv.org/abs/2406.12303) "
-            + "/ ノイズを潜在画像に一致させるためのバッチ サイズ。Immiscible Noise ノイズアルゴリズを使用して、トレーニング画像を近くのノイズにのみ投影します（arxiv.org/abs/2406.12303 より）",
-        )
-    
+        "--immiscible_noise",
+        type=int,
+        default=None,
+        help="Batch size to match noise to latent images. Use Immiscible Noise algorithm to project training images only to nearby noise (from arxiv.org/abs/2406.12303) "
+             + "/ ノイズを潜在画像に一致させるためのバッチ サイズ。Immiscible Noise ノイズアルゴリズを使用して、トレーニング画像を近くのノイズにのみ投影します（arxiv.org/abs/2406.12303 より）",
+    )
+
     parser.add_argument(
-            "--immiscible_diffusion",
-            action="store_true",
-            help="Use immiscible diffusion to generate noised latents instead of standard noise scheduler. Mutually exclusive with ip noise gamma.",
-        )
-    
+        "--immiscible_diffusion",
+        action="store_true",
+        help="Use immiscible diffusion to generate noised latents instead of standard noise scheduler. Mutually exclusive with ip noise gamma.",
+    )
+
     parser.add_argument(
-            "--sangoi_loss_modifier",
-            action="store_true",
-            help="Apply sangoi loss modifier to loss.",
-        )
-    
+        "--sangoi_loss_modifier",
+        action="store_true",
+        help="Apply sangoi loss modifier to loss.",
+    )
+
     parser.add_argument(
-            "--sangoi_loss_modifier_min_snr",
-            type=float,
-            default=1e-4,
-            help="Min SNR limit for sangoi loss modifier.",
-        )
-    
+        "--sangoi_loss_modifier_min_snr",
+        type=float,
+        default=1e-4,
+        help="Min SNR limit for sangoi loss modifier.",
+    )
+
     parser.add_argument(
-            "--sangoi_loss_modifier_max_snr",
-            type=float,
-            default=100,
-            help="Max SNR limit for sangoi loss modifier.",
-        )
+        "--sangoi_loss_modifier_max_snr",
+        type=float,
+        default=100,
+        help="Max SNR limit for sangoi loss modifier.",
+    )
 
     parser.add_argument(
         "--laplace_timestep_sampling_mu",
@@ -3598,7 +3758,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--conv2d_padding_mode",
         type=str,
         default='zeros',
-        choices=["zeros", "reflect", "replicate","circular"],
+        choices=["zeros", "reflect", "replicate", "circular"],
         help="Adjusts the padding for edges of Conv2d modules, default is zeros, circular might have benefit, as it pads with the opposite side, tbd."
     )
 
@@ -3634,13 +3794,13 @@ def setup_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disables calculation and collection of gradient and weight norm metrics that are for reporting via tensorboard or wandb."
     )
-    
+
     parser.add_argument(
         "--use_ramtorch",
         action="store_true",
         help="Use RamTorch to reduce GPU memory usage by keeping model weights on CPU.",
     )
-    
+
     # parser.add_argument("--loraplus_lr_ratio", default=None, type=float, help="LoRA+ learning rate ratio")
     # parser.add_argument("--loraplus_unet_lr_ratio", default=None, type=float, help="LoRA+ UNet learning rate ratio")
     # parser.add_argument("--loraplus_text_encoder_lr_ratio", default=None, type=float, help="LoRA+ text encoder learning rate ratio")

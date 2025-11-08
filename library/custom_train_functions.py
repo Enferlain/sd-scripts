@@ -45,7 +45,7 @@ def prepare_scheduler_for_custom_training(noise_scheduler, device, mu=None, b=No
 
         logger.info(f"Using Laplace-weighted timesteps with mu={mu}, b={b}")
 
-        log_snr = all_snr.log()            # log of snr
+        log_snr = all_snr.log()  # log of snr
         # laplace_weights formula (paper style)
         laplace_weights = ((log_snr - mu).abs() / (-b)).exp() / (2 * b)
         laplace_weights /= laplace_weights.mean()
@@ -73,7 +73,7 @@ def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler):
         alphas_bar_sqrt *= alphas_bar_sqrt_0 / (alphas_bar_sqrt_0 - alphas_bar_sqrt_T)
 
         # Convert alphas_bar_sqrt to betas
-        alphas_bar = alphas_bar_sqrt**2
+        alphas_bar = alphas_bar_sqrt ** 2
         alphas = alphas_bar[1:] / alphas_bar[:-1]
         alphas = torch.cat([alphas_bar[0:1], alphas])
         betas = 1 - alphas
@@ -125,8 +125,9 @@ def add_v_prediction_like_loss(loss, timesteps, noise_scheduler, v_pred_like_los
     return loss
 
 
-def apply_debiased_estimation(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler, v_prediction=False, image_size=None):
-   # Check if we have SNR values available
+def apply_debiased_estimation(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler,
+                              v_prediction=False, image_size=None):
+    # Check if we have SNR values available
     if not (hasattr(noise_scheduler, "all_snr") or hasattr(noise_scheduler, "get_snr_for_timestep")):
         return loss
 
@@ -178,6 +179,7 @@ def parse_wavelet_weights(weights_str):
 
     return result
 
+
 def add_custom_train_arguments(parser: argparse.ArgumentParser, support_weighted_captions: bool = True):
     parser.add_argument(
         "--min_snr_gamma",
@@ -211,25 +213,33 @@ def add_custom_train_arguments(parser: argparse.ArgumentParser, support_weighted
 
     parser.add_argument("--wavelet_loss", action="store_true", help="Activate wavelet loss. Default: False")
     parser.add_argument("--wavelet_loss_alpha", type=float, default=0.98, help="Wavelet loss alpha. Default: 0.98")
-    parser.add_argument("--wavelet_loss_type", help="Wavelet loss type l1, l2, huber, smooth_l1. Default to --loss_type value.")
-    parser.add_argument("--wavelet_loss_delta", help="For loss types that are adjustable via beta/delta/scale/huber_c etc. Defaults to huber_c.")
-    parser.add_argument("--wavelet_loss_schedule", 
+    parser.add_argument("--wavelet_loss_type",
+                        help="Wavelet loss type l1, l2, huber, smooth_l1. Default to --loss_type value.")
+    parser.add_argument("--wavelet_loss_delta",
+                        help="For loss types that are adjustable via beta/delta/scale/huber_c etc. Defaults to huber_c.")
+    parser.add_argument("--wavelet_loss_schedule",
                         choices=["constant", "exponential", "snr"],
                         help="For loss types that are schedulable.")
-    parser.add_argument("--wavelet_loss_transform", default="swt", help="Wavelet transform type of DWT, SWT, QWT. Default: swt")
+    parser.add_argument("--wavelet_loss_transform", default="swt",
+                        help="Wavelet transform type of DWT, SWT, QWT. Default: swt")
     parser.add_argument("--wavelet_loss_wavelet", default="sym7", help="Wavelet. Default: sym7")
-    parser.add_argument("--wavelet_loss_level", type=int, default=2, help="Wavelet loss level 1 (main), 2 (details), or 3. Higher levels are available for DWT for higher resolution training. Default: 2")
-    #parser.add_argument("--wavelet_loss_rectified_flow", default=True, help="Use rectified flow to estimate clean latents before wavelet loss")
-    parser.add_argument("--wavelet_loss_band_level_weights", type=str, default=None, help="Wavelet loss band level weights, uses band weights if not defined for a given level. Input example: {'ll1': 0.1, 'lh1': 0.01, 'hl1': 0.01, 'hh1': 0.05, 'll2': 0.1, 'lh2': 0.01, 'hl2': 0.01, 'hh2': 0.05} E.x. Default: none.")
-    parser.add_argument("--wavelet_loss_band_weights", type=str, default=r"{ 'll': 0.1, 'lh': 0.01, 'hl': 0.01, 'hh': 0.05}", help="Wavelet loss band weights.")
-    parser.add_argument("--wavelet_loss_ll_level_threshold", default=None, help="Wavelet loss which level to calculate the loss for the low frequency (ll). -1 means last n level. Default: None")
+    parser.add_argument("--wavelet_loss_level", type=int, default=2,
+                        help="Wavelet loss level 1 (main), 2 (details), or 3. Higher levels are available for DWT for higher resolution training. Default: 2")
+    # parser.add_argument("--wavelet_loss_rectified_flow", default=True, help="Use rectified flow to estimate clean latents before wavelet loss")
+    parser.add_argument("--wavelet_loss_band_level_weights", type=str, default=None,
+                        help="Wavelet loss band level weights, uses band weights if not defined for a given level. Input example: {'ll1': 0.1, 'lh1': 0.01, 'hl1': 0.01, 'hh1': 0.05, 'll2': 0.1, 'lh2': 0.01, 'hl2': 0.01, 'hh2': 0.05} E.x. Default: none.")
+    parser.add_argument("--wavelet_loss_band_weights", type=str,
+                        default=r"{ 'll': 0.1, 'lh': 0.01, 'hl': 0.01, 'hh': 0.05}", help="Wavelet loss band weights.")
+    parser.add_argument("--wavelet_loss_ll_level_threshold", default=None,
+                        help="Wavelet loss which level to calculate the loss for the low frequency (ll). -1 means last n level. Default: None")
     parser.add_argument(
         "--wavelet_loss_quaternion_component_weights",
         type=str,
         default=r"{ 'r' : 0.25, 'i' : 0.5, 'j' : 0.5, 'k' : 0.5 }",
         help="Quaternion Wavelet loss component weights.",
     )
-         
+
+
 re_attention = re.compile(
     r"""
 \\\(|
@@ -388,7 +398,7 @@ def pad_tokens_and_weights(tokens, weights, max_length, bos, eos, no_boseos_midd
             else:
                 for j in range(max_embeddings_multiples):
                     w.append(1.0)  # weight for starting token in this chunk
-                    w += weights[i][j * (chunk_length - 2) : min(len(weights[i]), (j + 1) * (chunk_length - 2))]
+                    w += weights[i][j * (chunk_length - 2): min(len(weights[i]), (j + 1) * (chunk_length - 2))]
                     w.append(1.0)  # weight for ending token in this chunk
                 w += [1.0] * (weights_length - len(w))
             weights[i] = w[:]
@@ -397,14 +407,14 @@ def pad_tokens_and_weights(tokens, weights, max_length, bos, eos, no_boseos_midd
 
 
 def get_unweighted_text_embeddings(
-    tokenizer,
-    text_encoder,
-    text_input: torch.Tensor,
-    chunk_length: int,
-    clip_skip: int,
-    eos: int,
-    pad: int,
-    no_boseos_middle: Optional[bool] = True,
+        tokenizer,
+        text_encoder,
+        text_input: torch.Tensor,
+        chunk_length: int,
+        clip_skip: int,
+        eos: int,
+        pad: int,
+        no_boseos_middle: Optional[bool] = True,
 ):
     """
     When the length of tokens is a multiple of the capacity of the text encoder,
@@ -415,7 +425,7 @@ def get_unweighted_text_embeddings(
         text_embeddings = []
         for i in range(max_embeddings_multiples):
             # extract the i-th chunk
-            text_input_chunk = text_input[:, i * (chunk_length - 2) : (i + 1) * (chunk_length - 2) + 2].clone()
+            text_input_chunk = text_input[:, i * (chunk_length - 2): (i + 1) * (chunk_length - 2) + 2].clone()
 
             # cover the head and the tail by the starting and the ending tokens
             text_input_chunk[:, 0] = text_input[0, 0]
@@ -459,13 +469,13 @@ def get_unweighted_text_embeddings(
 
 
 def get_weighted_text_embeddings(
-    tokenizer,
-    text_encoder,
-    prompt: Union[str, List[str]],
-    device,
-    max_embeddings_multiples: Optional[int] = 3,
-    no_boseos_middle: Optional[bool] = False,
-    clip_skip=None,
+        tokenizer,
+        text_encoder,
+        prompt: Union[str, List[str]],
+        device,
+        max_embeddings_multiples: Optional[int] = 3,
+        no_boseos_middle: Optional[bool] = False,
+        clip_skip=None,
 ):
     r"""
     Prompts can be assigned with local weights using brackets. For example,
@@ -550,8 +560,8 @@ def pyramid_noise_like(noise, device, iterations=6, discount=0.4, scaling_factor
     u = torch.nn.Upsample(size=(w, h), mode="bilinear").to(device)
     for i in range(iterations):
         r = random.random() * 2 + 2  # Rather than always going 2x,
-        wn, hn = max(1, int(w / (r**i))), max(1, int(h / (r**i)))
-        noise += (u(torch.randn(b, c, wn, hn).to(device)) * (discount * scaling_factor_reshaped)**i) 
+        wn, hn = max(1, int(w / (r ** i))), max(1, int(h / (r ** i)))
+        noise += (u(torch.randn(b, c, wn, hn).to(device)) * (discount * scaling_factor_reshaped) ** i)
         if wn == 1 or hn == 1:
             break  # Lowest resolution is 1x1
     return noise / noise.std()  # Scaled back to roughly unit variance
@@ -582,7 +592,7 @@ def apply_masked_loss(loss, batch):
         # print(f"conditioning_image: {mask_image.shape}")
     elif "alpha_masks" in batch and batch["alpha_masks"] is not None:
         # alpha mask is 0 to 1
-        mask_image = batch["alpha_masks"].to(dtype=loss.dtype).unsqueeze(1) # add channel dimension
+        mask_image = batch["alpha_masks"].to(dtype=loss.dtype).unsqueeze(1)  # add channel dimension
         # print(f"mask_image: {mask_image.shape}, {mask_image.mean()}")
     else:
         return loss
@@ -592,25 +602,29 @@ def apply_masked_loss(loss, batch):
     loss = loss * mask_image
     return loss
 
+
 class LossCallableMSE(Protocol):
     def __call__(
-        self,
-        input: Tensor,
-        target: Tensor,
-        size_average: Optional[bool] = None,
-        reduce: Optional[bool] = None,
-        reduction: str = "mean"
+            self,
+            input: Tensor,
+            target: Tensor,
+            size_average: Optional[bool] = None,
+            reduce: Optional[bool] = None,
+            reduction: str = "mean"
     ) -> Tensor: ...
+
 
 class LossCallableReduction(Protocol):
     def __call__(
-        self,
-        input: Tensor,
-        target: Tensor,
-        reduction: str = "mean"
+            self,
+            input: Tensor,
+            target: Tensor,
+            reduction: str = "mean"
     ) -> Tensor: ...
 
+
 LossCallable = LossCallableReduction | LossCallableMSE
+
 
 class WaveletTransform:
     """Base class for wavelet transforms."""
@@ -647,8 +661,8 @@ class DiscreteWaveletTransform(WaveletTransform):
         """
         bands: dict[str, list[Tensor]] = {
             'll': [],
-            'lh': [], 
-            'hl': [], 
+            'lh': [],
+            'hl': [],
             'hh': [],
         }
 
@@ -668,7 +682,7 @@ class DiscreteWaveletTransform(WaveletTransform):
     def _dwt_single_level(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
         """Perform single-level DWT decomposition."""
         batch, channels, height, width = x.shape
-        x_view = x.view(batch * channels, 1, height, width) # Renamed to avoid conflict if x is on different device
+        x_view = x.view(batch * channels, 1, height, width)  # Renamed to avoid conflict if x is on different device
 
         # Calculate proper padding for the filter size
         filter_size = self.dec_lo.size(0)
@@ -685,7 +699,7 @@ class DiscreteWaveletTransform(WaveletTransform):
         # Ensure filters are on the same device as x_pad
         dec_lo_filt_row = self.dec_lo.view(1, 1, -1, 1).to(device=x_pad.device, dtype=x_pad.dtype)
         dec_hi_filt_row = self.dec_hi.view(1, 1, -1, 1).to(device=x_pad.device, dtype=x_pad.dtype)
-        
+
         lo = F.conv2d(x_pad, dec_lo_filt_row, stride=(2, 1))
         hi = F.conv2d(x_pad, dec_hi_filt_row, stride=(2, 1))
 
@@ -735,14 +749,14 @@ class StationaryWaveletTransform(WaveletTransform):
             dec_lo, dec_hi = self._get_filters_for_level(j)
 
             # Decompose current approximation
-            ll_new, lh, hl, hh = self._swt_single_level(ll, dec_lo, dec_hi) # ll is approximation
+            ll_new, lh, hl, hh = self._swt_single_level(ll, dec_lo, dec_hi)  # ll is approximation
 
             # Store results in bands
             bands["ll"].append(ll_new)
             bands["lh"].append(lh)
             bands["hl"].append(hl)
             bands["hh"].append(hh)
-            ll = ll_new # Next level's input is current approximation
+            ll = ll_new  # Next level's input is current approximation
         return bands
 
     def _get_filters_for_level(self, level: int) -> tuple[Tensor, Tensor]:
@@ -751,11 +765,13 @@ class StationaryWaveletTransform(WaveletTransform):
             return self.orig_dec_lo, self.orig_dec_hi
 
         # Calculate number of zeros to insert
-        zeros = 2**level - 1
+        zeros = 2 ** level - 1
 
         # Create upsampled filters
-        upsampled_dec_lo = torch.zeros(len(self.orig_dec_lo) + (len(self.orig_dec_lo) - 1) * zeros, device=self.orig_dec_lo.device, dtype=self.orig_dec_lo.dtype)
-        upsampled_dec_hi = torch.zeros(len(self.orig_dec_hi) + (len(self.orig_dec_hi) - 1) * zeros, device=self.orig_dec_hi.device, dtype=self.orig_dec_hi.dtype)
+        upsampled_dec_lo = torch.zeros(len(self.orig_dec_lo) + (len(self.orig_dec_lo) - 1) * zeros,
+                                       device=self.orig_dec_lo.device, dtype=self.orig_dec_lo.dtype)
+        upsampled_dec_hi = torch.zeros(len(self.orig_dec_hi) + (len(self.orig_dec_hi) - 1) * zeros,
+                                       device=self.orig_dec_hi.device, dtype=self.orig_dec_hi.dtype)
 
         # Insert original coefficients with zeros in between
         upsampled_dec_lo[:: zeros + 1] = self.orig_dec_lo
@@ -770,7 +786,7 @@ class StationaryWaveletTransform(WaveletTransform):
         dec_lo = dec_lo.to(x.device)
         dec_hi = dec_hi.to(x.device)
 
-        ll = torch.zeros_like(x) # SWT keeps dimensions
+        ll = torch.zeros_like(x)  # SWT keeps dimensions
         lh = torch.zeros_like(x)
         hl = torch.zeros_like(x)
         hh = torch.zeros_like(x)
@@ -826,7 +842,7 @@ class QuaternionWaveletTransform(WaveletTransform):
 
     def __init__(self, wavelet="db4", device=torch.device("cpu"), dtype=torch.float32):
         """Initialize wavelet filters and Hilbert transforms."""
-        super().__init__(wavelet, device, dtype) # self.dec_lo, self.dec_hi, self.device, self.dtype set here
+        super().__init__(wavelet, device, dtype)  # self.dec_lo, self.dec_hi, self.device, self.dtype set here
 
         # Register Hilbert transform filters. These will be moved to self.device and self.dtype
         # by _create_hilbert_filter using self.device and self.dtype from super().__init__
@@ -859,9 +875,9 @@ class QuaternionWaveletTransform(WaveletTransform):
             ]
         else:
             raise ValueError(f"Unknown Hilbert direction: {direction}")
-        
+
         filt = torch.tensor(filt_vals, device=self.device, dtype=self.dtype)
-        return filt.unsqueeze(0).unsqueeze(0) # Shape: [1, 1, H_filt, W_filt]
+        return filt.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, H_filt, W_filt]
 
     def _apply_hilbert(self, x: Tensor, direction: str) -> Tensor:
         """Apply Hilbert transform in specified direction with correct padding."""
@@ -876,7 +892,7 @@ class QuaternionWaveletTransform(WaveletTransform):
             h_filter = self.hilbert_y
         else:  # 'xy'
             h_filter = self.hilbert_xy
-        
+
         # Ensure filter is on the same device as input
         h_filter = h_filter.to(device=x_flat.device, dtype=x_flat.dtype)
 
@@ -889,7 +905,7 @@ class QuaternionWaveletTransform(WaveletTransform):
 
         if filter_h % 2 == 0: pad_h_right += 1
         if filter_w % 2 == 0: pad_w_right += 1
-        
+
         x_pad = F.pad(x_flat, (pad_w_left, pad_w_right, pad_h_left, pad_h_right), mode="reflect")
         x_hilbert = F.conv2d(x_pad, h_filter)
 
@@ -903,9 +919,9 @@ class QuaternionWaveletTransform(WaveletTransform):
             crop_h_top = (out_h - height) // 2
         if out_w > width:
             crop_w_left = (out_w - width) // 2
-        
-        x_hilbert_cropped = x_hilbert[:, :, crop_h_top : crop_h_top + height, crop_w_left : crop_w_left + width]
-        
+
+        x_hilbert_cropped = x_hilbert[:, :, crop_h_top: crop_h_top + height, crop_w_left: crop_w_left + width]
+
         return x_hilbert_cropped.reshape(batch, channels, height, width)
 
     def _dwt_single_level(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
@@ -927,7 +943,7 @@ class QuaternionWaveletTransform(WaveletTransform):
         # to self.device and self.dtype. If x is on a different device, filters need to move.
         current_device = x_pad.device
         current_dtype = x_pad.dtype
-        
+
         dec_lo_r = self.dec_lo.view(1, 1, -1, 1).to(device=current_device, dtype=current_dtype)
         dec_hi_r = self.dec_hi.view(1, 1, -1, 1).to(device=current_device, dtype=current_dtype)
         dec_lo_c = self.dec_lo.view(1, 1, 1, -1).to(device=current_device, dtype=current_dtype)
@@ -967,7 +983,7 @@ class QuaternionWaveletTransform(WaveletTransform):
             bands['hl'].append(hl)
             bands['hh'].append(hh)
             current_ll = ll_next  # Update for the next decomposition level
-        
+
         return bands
 
     def decompose(self, x: Tensor, level: int = 1) -> dict[str, dict[str, list[Tensor]]]:
@@ -992,7 +1008,7 @@ class QuaternionWaveletTransform(WaveletTransform):
         # i-component (x-Hilbert transform of x)
         x_hilbert_x = self._apply_hilbert(x, "x")
         qwt_coeffs["i"] = self._decompose_single_component(x_hilbert_x, level)
-        del x_hilbert_x # Attempt to free memory sooner
+        del x_hilbert_x  # Attempt to free memory sooner
 
         # j-component (y-Hilbert transform of x)
         x_hilbert_y = self._apply_hilbert(x, "y")
@@ -1003,23 +1019,25 @@ class QuaternionWaveletTransform(WaveletTransform):
         x_hilbert_xy = self._apply_hilbert(x, "xy")
         qwt_coeffs["k"] = self._decompose_single_component(x_hilbert_xy, level)
         del x_hilbert_xy
-        
+
         return qwt_coeffs
+
+
 class WaveletLoss(nn.Module):
     """Wavelet-based loss calculation module."""
 
     def __init__(
-        self,
-        wavelet="db4",
-        level=3,
-        transform_type="dwt",
-        loss_fn: LossCallable = F.mse_loss,
-        device=torch.device("cpu"),
-        band_level_weights: Optional[dict[str, float]] = None,
-        band_weights: Optional[dict[str, float]] = None,
-        quaternion_component_weights: dict[str, float] | None = None,
-        ll_level_threshold: Optional[int] = -1,
-        dtype=torch.float32,
+            self,
+            wavelet="db4",
+            level=3,
+            transform_type="dwt",
+            loss_fn: LossCallable = F.mse_loss,
+            device=torch.device("cpu"),
+            band_level_weights: Optional[dict[str, float]] = None,
+            band_weights: Optional[dict[str, float]] = None,
+            quaternion_component_weights: dict[str, float] | None = None,
+            ll_level_threshold: Optional[int] = -1,
+            dtype=torch.float32,
     ):
         """
         Args:
@@ -1039,7 +1057,7 @@ class WaveletLoss(nn.Module):
         self.transform_type = transform_type
         self.loss_fn = loss_fn
         self.device = device
-        self.ll_level_threshold = ll_level_threshold if ll_level_threshold is not None else None # -1 means last level
+        self.ll_level_threshold = ll_level_threshold if ll_level_threshold is not None else None  # -1 means last level
         self.dtype = dtype
 
         # Initialize transform based on type
@@ -1057,7 +1075,7 @@ class WaveletLoss(nn.Module):
             self.register_buffer("hilbert_x", self.transform.hilbert_x.clone().detach())
             self.register_buffer("hilbert_y", self.transform.hilbert_y.clone().detach())
             self.register_buffer("hilbert_xy", self.transform.hilbert_xy.clone().detach())
-            
+
             # Default weights
             self.component_weights = quaternion_component_weights or {
                 "r": 1.0,  # Real part (standard wavelet)
@@ -1076,27 +1094,26 @@ class WaveletLoss(nn.Module):
         # Default weights from paper:
         # "Training Generative Image Super-Resolution Models by Wavelet-Domain Losses"
         self.band_level_weights = band_level_weights or {}
-       
+
         self.band_weights = band_weights or {"ll": 0.1, "lh": 0.01, "hl": 0.01, "hh": 0.05}
 
-
-    def forward(self, pred: Tensor, target: Tensor) -> Tensor: # Return type was tuple, now just Tensor loss
+    def forward(self, pred: Tensor, target: Tensor) -> Tensor:  # Return type was tuple, now just Tensor loss
         """Calculate wavelet loss between prediction and target."""
         # Ensure inputs are on the module's device and dtype
         pred = pred.to(device=self.device, dtype=self.dtype)
         target = target.to(device=self.device, dtype=self.dtype)
 
         if isinstance(self.transform, QuaternionWaveletTransform):
-            return self.quaternion_forward(pred, target) # quaternion_forward now returns Tensor
+            return self.quaternion_forward(pred, target)  # quaternion_forward now returns Tensor
 
         pred_coeffs = self.transform.decompose(pred, self.level)
         target_coeffs = self.transform.decompose(target, self.level)
 
         total_loss = torch.tensor(0.0, device=pred.device, dtype=self.dtype)
-        
+
         # Loop from level 1 to self.level (inclusive)
-        for i in range(self.level): # pred_coeffs lists are 0-indexed by level
-            level_num = i + 1 # For weight keys (1-indexed)
+        for i in range(self.level):  # pred_coeffs lists are 0-indexed by level
+            level_num = i + 1  # For weight keys (1-indexed)
 
             # LL band consideration based on ll_level_threshold
             if self.ll_level_threshold is not None:
@@ -1105,31 +1122,31 @@ class WaveletLoss(nn.Module):
                 #                     if 0, no LL bands are included.
                 actual_ll_threshold_level = self.ll_level_threshold
                 if self.ll_level_threshold < 0:
-                    actual_ll_threshold_level = self.level + self.ll_level_threshold + 1 # Convert to 1-based index
+                    actual_ll_threshold_level = self.level + self.ll_level_threshold + 1  # Convert to 1-based index
 
-                if level_num >= actual_ll_threshold_level and actual_ll_threshold_level > 0: # Include LL if current level is at or past threshold
+                if level_num >= actual_ll_threshold_level and actual_ll_threshold_level > 0:  # Include LL if current level is at or past threshold
                     band = "ll"
                     weight_key = f"{band}{level_num}"
                     # Get coefficients for the current level i (0-indexed)
                     pred_c = pred_coeffs[band][i]
                     target_c = target_coeffs[band][i]
-                    
+
                     # Padding is not needed here as DWT levels will have different sizes
                     # The loss_fn should handle tensors of same shape. DWT ensures corresponding bands have same shape.
                     weight = self.band_level_weights.get(weight_key, self.band_weights[band])
                     band_loss = weight * self.loss_fn(pred_c, target_c)
-                    total_loss += band_loss.mean() # Ensure scalar
+                    total_loss += band_loss.mean()  # Ensure scalar
 
             # High frequency bands (LH, HL, HH)
             for band in ["lh", "hl", "hh"]:
                 weight_key = f"{band}{level_num}"
-                if band in pred_coeffs and i < len(pred_coeffs[band]): # Check if band and level exist
+                if band in pred_coeffs and i < len(pred_coeffs[band]):  # Check if band and level exist
                     pred_c = pred_coeffs[band][i]
                     target_c = target_coeffs[band][i]
-                    
+
                     weight = self.band_level_weights.get(weight_key, self.band_weights[band])
                     band_loss = weight * self.loss_fn(pred_c, target_c)
-                    total_loss += band_loss.mean() # Ensure scalar
+                    total_loss += band_loss.mean()  # Ensure scalar
         return total_loss
 
     def quaternion_forward(self, pred: Tensor, target: Tensor) -> Tensor:
@@ -1185,6 +1202,7 @@ class WaveletLoss(nn.Module):
         Set loss function to use. Wavelet loss wants l1 or huber loss.
         """
         self.loss_fn = loss_fn
+
 
 """
 ##########################################

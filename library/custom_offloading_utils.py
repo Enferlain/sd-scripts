@@ -32,7 +32,8 @@ def swap_weight_devices_cuda(device: torch.device, layer_to_cpu: nn.Module, laye
         if hasattr(module_to_cuda, "weight") and module_to_cuda.weight is not None:
             module_to_cpu = modules_to_cpu.get(module_to_cuda_name, None)
             if module_to_cpu is not None and module_to_cpu.weight.shape == module_to_cuda.weight.shape:
-                weight_swap_jobs.append((module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
+                weight_swap_jobs.append(
+                    (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
             else:
                 if module_to_cuda.weight.data.device.type != device.type:
                     # print(
@@ -69,7 +70,8 @@ def swap_weight_devices_no_cuda(device: torch.device, layer_to_cpu: nn.Module, l
     weight_swap_jobs = []
     for module_to_cpu, module_to_cuda in zip(layer_to_cpu.modules(), layer_to_cuda.modules()):
         if hasattr(module_to_cpu, "weight") and module_to_cpu.weight is not None:
-            weight_swap_jobs.append((module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
+            weight_swap_jobs.append(
+                (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
 
     # device to cpu
     for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
@@ -116,12 +118,13 @@ class Offloader:
         def move_blocks(bidx_to_cpu, block_to_cpu, bidx_to_cuda, block_to_cuda):
             if self.debug:
                 start_time = time.perf_counter()
-                print(f"Move block {bidx_to_cpu} to CPU and block {bidx_to_cuda} to {'CUDA' if self.cuda_available else 'device'}")
+                print(
+                    f"Move block {bidx_to_cpu} to CPU and block {bidx_to_cuda} to {'CUDA' if self.cuda_available else 'device'}")
 
             self.swap_weight_devices(block_to_cpu, block_to_cuda)
 
             if self.debug:
-                print(f"Moved blocks {bidx_to_cpu} and {bidx_to_cuda} in {time.perf_counter()-start_time:.2f}s")
+                print(f"Moved blocks {bidx_to_cpu} and {bidx_to_cuda} in {time.perf_counter() - start_time:.2f}s")
             return bidx_to_cpu, bidx_to_cuda  # , event
 
         block_to_cpu = blocks[block_idx_to_cpu]
@@ -145,7 +148,7 @@ class Offloader:
         assert block_idx == bidx_to_cuda, f"Block index mismatch: {block_idx} != {bidx_to_cuda}"
 
         if self.debug:
-            print(f"Waited for block {block_idx}: {time.perf_counter()-start_time:.2f}s")
+            print(f"Waited for block {block_idx}: {time.perf_counter() - start_time:.2f}s")
 
 
 class ModelOffloader(Offloader):
@@ -153,7 +156,8 @@ class ModelOffloader(Offloader):
     supports forward offloading
     """
 
-    def __init__(self, blocks: list[nn.Module], num_blocks: int, blocks_to_swap: int, device: torch.device, debug: bool = False):
+    def __init__(self, blocks: list[nn.Module], num_blocks: int, blocks_to_swap: int, device: torch.device,
+                 debug: bool = False):
         super().__init__(num_blocks, blocks_to_swap, device, debug)
 
         # register backward hooks
@@ -201,11 +205,11 @@ class ModelOffloader(Offloader):
         if self.debug:
             print("Prepare block devices before forward")
 
-        for b in blocks[0 : self.num_blocks - self.blocks_to_swap]:
+        for b in blocks[0: self.num_blocks - self.blocks_to_swap]:
             b.to(self.device)
             weighs_to_device(b, self.device)  # make sure weights are on device
 
-        for b in blocks[self.num_blocks - self.blocks_to_swap :]:
+        for b in blocks[self.num_blocks - self.blocks_to_swap:]:
             b.to(self.device)  # move block to device first
             weighs_to_device(b, "cpu")  # make sure weights are on cpu
 

@@ -12,12 +12,16 @@ from transformers import CLIPTextModel
 
 import torch
 from library.device_utils import init_ipex, get_preferred_device
+
 init_ipex()
 
 from library.utils import setup_logging
+
 setup_logging()
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def make_unet_conversion_map() -> Dict[str, str]:
     unet_conversion_map_layer = []
@@ -27,36 +31,36 @@ def make_unet_conversion_map() -> Dict[str, str]:
         for j in range(2):
             # loop over resnets/attentions for downblocks
             hf_down_res_prefix = f"down_blocks.{i}.resnets.{j}."
-            sd_down_res_prefix = f"input_blocks.{3*i + j + 1}.0."
+            sd_down_res_prefix = f"input_blocks.{3 * i + j + 1}.0."
             unet_conversion_map_layer.append((sd_down_res_prefix, hf_down_res_prefix))
 
             if i < 3:
                 # no attention layers in down_blocks.3
                 hf_down_atn_prefix = f"down_blocks.{i}.attentions.{j}."
-                sd_down_atn_prefix = f"input_blocks.{3*i + j + 1}.1."
+                sd_down_atn_prefix = f"input_blocks.{3 * i + j + 1}.1."
                 unet_conversion_map_layer.append((sd_down_atn_prefix, hf_down_atn_prefix))
 
         for j in range(3):
             # loop over resnets/attentions for upblocks
             hf_up_res_prefix = f"up_blocks.{i}.resnets.{j}."
-            sd_up_res_prefix = f"output_blocks.{3*i + j}.0."
+            sd_up_res_prefix = f"output_blocks.{3 * i + j}.0."
             unet_conversion_map_layer.append((sd_up_res_prefix, hf_up_res_prefix))
 
             # if i > 0: commentout for sdxl
             # no attention layers in up_blocks.0
             hf_up_atn_prefix = f"up_blocks.{i}.attentions.{j}."
-            sd_up_atn_prefix = f"output_blocks.{3*i + j}.1."
+            sd_up_atn_prefix = f"output_blocks.{3 * i + j}.1."
             unet_conversion_map_layer.append((sd_up_atn_prefix, hf_up_atn_prefix))
 
         if i < 3:
             # no downsample in down_blocks.3
             hf_downsample_prefix = f"down_blocks.{i}.downsamplers.0.conv."
-            sd_downsample_prefix = f"input_blocks.{3*(i+1)}.0.op."
+            sd_downsample_prefix = f"input_blocks.{3 * (i + 1)}.0.op."
             unet_conversion_map_layer.append((sd_downsample_prefix, hf_downsample_prefix))
 
             # no upsample in up_blocks.3
             hf_upsample_prefix = f"up_blocks.{i}.upsamplers.0."
-            sd_upsample_prefix = f"output_blocks.{3*i + 2}.{2}."  # change for sdxl
+            sd_upsample_prefix = f"output_blocks.{3 * i + 2}.{2}."  # change for sdxl
             unet_conversion_map_layer.append((sd_upsample_prefix, hf_upsample_prefix))
 
     hf_mid_atn_prefix = "mid_block.attentions.0."
@@ -65,7 +69,7 @@ def make_unet_conversion_map() -> Dict[str, str]:
 
     for j in range(2):
         hf_mid_res_prefix = f"mid_block.resnets.{j}."
-        sd_mid_res_prefix = f"middle_block.{2*j}."
+        sd_mid_res_prefix = f"middle_block.{2 * j}."
         unet_conversion_map_layer.append((sd_mid_res_prefix, hf_mid_res_prefix))
 
     unet_conversion_map_resnet = [
@@ -87,13 +91,13 @@ def make_unet_conversion_map() -> Dict[str, str]:
             unet_conversion_map.append((sd, hf))
 
     for j in range(2):
-        hf_time_embed_prefix = f"time_embedding.linear_{j+1}."
-        sd_time_embed_prefix = f"time_embed.{j*2}."
+        hf_time_embed_prefix = f"time_embedding.linear_{j + 1}."
+        sd_time_embed_prefix = f"time_embed.{j * 2}."
         unet_conversion_map.append((sd_time_embed_prefix, hf_time_embed_prefix))
 
     for j in range(2):
-        hf_label_embed_prefix = f"add_embedding.linear_{j+1}."
-        sd_label_embed_prefix = f"label_emb.0.{j*2}."
+        hf_label_embed_prefix = f"add_embedding.linear_{j + 1}."
+        sd_label_embed_prefix = f"label_emb.0.{j * 2}."
         unet_conversion_map.append((sd_label_embed_prefix, hf_label_embed_prefix))
 
     unet_conversion_map.append(("input_blocks.0.0.", "conv_in."))
@@ -113,12 +117,12 @@ class LoRAModule(torch.nn.Module):
     """
 
     def __init__(
-        self,
-        lora_name,
-        org_module: torch.nn.Module,
-        multiplier=1.0,
-        lora_dim=4,
-        alpha=1,
+            self,
+            lora_name,
+            org_module: torch.nn.Module,
+            multiplier=1.0,
+            lora_dim=4,
+            alpha=1,
     ):
         """if alpha == 0 or None, alpha is rank (no scaling)."""
         super().__init__()
@@ -226,9 +230,9 @@ class LoRAModule(torch.nn.Module):
         elif down_weight.size()[2:4] == (1, 1):
             # conv2d 1x1
             weight = (
-                self.multiplier
-                * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(2).unsqueeze(3)
-                * self.scale
+                    self.multiplier
+                    * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(2).unsqueeze(3)
+                    * self.scale
             )
         else:
             # conv2d 3x3
@@ -240,7 +244,8 @@ class LoRAModule(torch.nn.Module):
 
 # Create network from weights for inference, weights are not loaded here
 def create_network_from_weights(
-    text_encoder: Union[CLIPTextModel, List[CLIPTextModel]], unet: UNet2DConditionModel, weights_sd: Dict, multiplier: float = 1.0
+        text_encoder: Union[CLIPTextModel, List[CLIPTextModel]], unet: UNet2DConditionModel, weights_sd: Dict,
+        multiplier: float = 1.0
 ):
     # get dim/alpha mapping
     modules_dim = {}
@@ -287,13 +292,13 @@ class LoRANetwork(torch.nn.Module):
     LORA_PREFIX_TEXT_ENCODER2 = "lora_te2"
 
     def __init__(
-        self,
-        text_encoder: Union[List[CLIPTextModel], CLIPTextModel],
-        unet: UNet2DConditionModel,
-        multiplier: float = 1.0,
-        modules_dim: Optional[Dict[str, int]] = None,
-        modules_alpha: Optional[Dict[str, int]] = None,
-        varbose: Optional[bool] = False,
+            self,
+            text_encoder: Union[List[CLIPTextModel], CLIPTextModel],
+            unet: UNet2DConditionModel,
+            multiplier: float = 1.0,
+            modules_dim: Optional[Dict[str, int]] = None,
+            modules_alpha: Optional[Dict[str, int]] = None,
+            varbose: Optional[bool] = False,
     ) -> None:
         super().__init__()
         self.multiplier = multiplier
@@ -307,10 +312,10 @@ class LoRANetwork(torch.nn.Module):
 
         # create module instances
         def create_modules(
-            is_unet: bool,
-            text_encoder_idx: Optional[int],  # None, 1, 2
-            root_module: torch.nn.Module,
-            target_replace_modules: List[torch.nn.Module],
+                is_unet: bool,
+                text_encoder_idx: Optional[int],  # None, 1, 2
+                root_module: torch.nn.Module,
+                target_replace_modules: List[torch.nn.Module],
         ) -> List[LoRAModule]:
             prefix = (
                 self.LORA_PREFIX_UNET
@@ -327,10 +332,10 @@ class LoRANetwork(torch.nn.Module):
                 if module.__class__.__name__ in target_replace_modules:
                     for child_name, child_module in module.named_modules():
                         is_linear = (
-                            child_module.__class__.__name__ == "Linear" or child_module.__class__.__name__ == "LoRACompatibleLinear"
+                                child_module.__class__.__name__ == "Linear" or child_module.__class__.__name__ == "LoRACompatibleLinear"
                         )
                         is_conv2d = (
-                            child_module.__class__.__name__ == "Conv2d" or child_module.__class__.__name__ == "LoRACompatibleConv"
+                                child_module.__class__.__name__ == "Conv2d" or child_module.__class__.__name__ == "LoRACompatibleConv"
                         )
 
                         if is_linear or is_conv2d:
@@ -366,7 +371,8 @@ class LoRANetwork(torch.nn.Module):
             else:
                 index = None
 
-            text_encoder_loras, skipped = create_modules(False, index, text_encoder, LoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE)
+            text_encoder_loras, skipped = create_modules(False, index, text_encoder,
+                                                         LoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE)
             self.text_encoder_loras.extend(text_encoder_loras)
             skipped_te += skipped
         logger.info(f"create LoRA for Text Encoder: {len(self.text_encoder_loras)} modules.")
@@ -416,7 +422,7 @@ class LoRANetwork(torch.nn.Module):
                 else:
                     not_converted_count += 1
         assert (
-            converted_count == 0 or not_converted_count == 0
+                converted_count == 0 or not_converted_count == 0
         ), f"some modules are not converted: {converted_count} converted, {not_converted_count} not converted"
         return converted_count
 
@@ -527,12 +533,14 @@ if __name__ == "__main__":
 
     lora_network.to(device, dtype=pipe.unet.dtype)  # required to apply_to. merge_to works without this
 
+
     # 必要があれば、元のモデルの重みをバックアップしておく
     # back-up unet/text encoder weights if necessary
     def detach_and_move_to_cpu(state_dict):
         for k, v in state_dict.items():
             state_dict[k] = v.detach().cpu()
         return state_dict
+
 
     org_unet_sd = pipe.unet.state_dict()
     detach_and_move_to_cpu(org_unet_sd)
@@ -544,11 +552,13 @@ if __name__ == "__main__":
         org_text_encoder_2_sd = pipe.text_encoder_2.state_dict()
         detach_and_move_to_cpu(org_text_encoder_2_sd)
 
+
     def seed_everything(seed):
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
         np.random.seed(seed)
         random.seed(seed)
+
 
     # create image with original weights
     logger.info(f"create image with original weights")

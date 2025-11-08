@@ -2,6 +2,7 @@
 import torch
 import math
 
+
 class LogSNRUniformSampler:
     def __init__(self, noise_scheduler, num_train_timesteps: int):
         print(f"LogSNRUniformSampler initialized with: num_train_timesteps={num_train_timesteps}")

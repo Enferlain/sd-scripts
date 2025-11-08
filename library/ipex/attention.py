@@ -1,6 +1,6 @@
 import os
 import torch
-import intel_extension_for_pytorch as ipex # pylint: disable=import-error, unused-import
+import intel_extension_for_pytorch as ipex  # pylint: disable=import-error, unused-import
 from functools import cache
 
 # pylint: disable=protected-access, missing-function-docstring, line-too-long
@@ -9,6 +9,7 @@ from functools import cache
 
 sdpa_slice_trigger_rate = float(os.environ.get('IPEX_SDPA_SLICE_TRIGGER_RATE', 4))
 attention_slice_rate = float(os.environ.get('IPEX_ATTENTION_SLICE_RATE', 4))
+
 
 # Find something divisible with the input_tokens
 @cache
@@ -19,6 +20,7 @@ def find_slice_size(slice_size, slice_block_size):
             slice_size = 1
             break
     return slice_size
+
 
 # Find slice sizes for SDPA
 @cache
@@ -54,6 +56,7 @@ def find_sdpa_slice_sizes(query_shape, query_element_size):
 
     return do_split, do_split_2, do_split_3, split_slice_size, split_2_slice_size, split_3_slice_size
 
+
 # Find slice sizes for BMM
 @cache
 def find_bmm_slice_sizes(input_shape, input_element_size, mat2_shape):
@@ -85,27 +88,32 @@ def find_bmm_slice_sizes(input_shape, input_element_size, mat2_shape):
 
 
 original_torch_bmm = torch.bmm
+
+
 def torch_bmm_32_bit(input, mat2, *, out=None):
     if input.device.type != "xpu":
         return original_torch_bmm(input, mat2, out=out)
-    do_split, do_split_2, do_split_3, split_slice_size, split_2_slice_size, split_3_slice_size = find_bmm_slice_sizes(input.shape, input.element_size(), mat2.shape)
+    do_split, do_split_2, do_split_3, split_slice_size, split_2_slice_size, split_3_slice_size = find_bmm_slice_sizes(
+        input.shape, input.element_size(), mat2.shape)
 
     # Slice BMM
     if do_split:
         batch_size_attention, input_tokens, mat2_atten_shape = input.shape[0], input.shape[1], mat2.shape[2]
-        hidden_states = torch.zeros(input.shape[0], input.shape[1], mat2.shape[2], device=input.device, dtype=input.dtype)
+        hidden_states = torch.zeros(input.shape[0], input.shape[1], mat2.shape[2], device=input.device,
+                                    dtype=input.dtype)
         for i in range(batch_size_attention // split_slice_size):
             start_idx = i * split_slice_size
             end_idx = (i + 1) * split_slice_size
             if do_split_2:
-                for i2 in range(input_tokens // split_2_slice_size): # pylint: disable=invalid-name
+                for i2 in range(input_tokens // split_2_slice_size):  # pylint: disable=invalid-name
                     start_idx_2 = i2 * split_2_slice_size
                     end_idx_2 = (i2 + 1) * split_2_slice_size
                     if do_split_3:
-                        for i3 in range(mat2_atten_shape // split_3_slice_size): # pylint: disable=invalid-name
+                        for i3 in range(mat2_atten_shape // split_3_slice_size):  # pylint: disable=invalid-name
                             start_idx_3 = i3 * split_3_slice_size
                             end_idx_3 = (i3 + 1) * split_3_slice_size
-                            hidden_states[start_idx:end_idx, start_idx_2:end_idx_2, start_idx_3:end_idx_3] = original_torch_bmm(
+                            hidden_states[start_idx:end_idx, start_idx_2:end_idx_2,
+                            start_idx_3:end_idx_3] = original_torch_bmm(
                                 input[start_idx:end_idx, start_idx_2:end_idx_2, start_idx_3:end_idx_3],
                                 mat2[start_idx:end_idx, start_idx_2:end_idx_2, start_idx_3:end_idx_3],
                                 out=out
@@ -127,11 +135,16 @@ def torch_bmm_32_bit(input, mat2, *, out=None):
         return original_torch_bmm(input, mat2, out=out)
     return hidden_states
 
+
 original_scaled_dot_product_attention = torch.nn.functional.scaled_dot_product_attention
+
+
 def scaled_dot_product_attention_32_bit(query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False, **kwargs):
     if query.device.type != "xpu":
-        return original_scaled_dot_product_attention(query, key, value, attn_mask=attn_mask, dropout_p=dropout_p, is_causal=is_causal, **kwargs)
-    do_split, do_split_2, do_split_3, split_slice_size, split_2_slice_size, split_3_slice_size = find_sdpa_slice_sizes(query.shape, query.element_size())
+        return original_scaled_dot_product_attention(query, key, value, attn_mask=attn_mask, dropout_p=dropout_p,
+                                                     is_causal=is_causal, **kwargs)
+    do_split, do_split_2, do_split_3, split_slice_size, split_2_slice_size, split_3_slice_size = find_sdpa_slice_sizes(
+        query.shape, query.element_size())
 
     # Slice SDPA
     if do_split:
@@ -141,18 +154,20 @@ def scaled_dot_product_attention_32_bit(query, key, value, attn_mask=None, dropo
             start_idx = i * split_slice_size
             end_idx = (i + 1) * split_slice_size
             if do_split_2:
-                for i2 in range(query_tokens // split_2_slice_size): # pylint: disable=invalid-name
+                for i2 in range(query_tokens // split_2_slice_size):  # pylint: disable=invalid-name
                     start_idx_2 = i2 * split_2_slice_size
                     end_idx_2 = (i2 + 1) * split_2_slice_size
                     if do_split_3:
-                        for i3 in range(shape_three // split_3_slice_size): # pylint: disable=invalid-name
+                        for i3 in range(shape_three // split_3_slice_size):  # pylint: disable=invalid-name
                             start_idx_3 = i3 * split_3_slice_size
                             end_idx_3 = (i3 + 1) * split_3_slice_size
-                            hidden_states[start_idx:end_idx, start_idx_2:end_idx_2, start_idx_3:end_idx_3] = original_scaled_dot_product_attention(
+                            hidden_states[start_idx:end_idx, start_idx_2:end_idx_2,
+                            start_idx_3:end_idx_3] = original_scaled_dot_product_attention(
                                 query[start_idx:end_idx, start_idx_2:end_idx_2, start_idx_3:end_idx_3],
                                 key[start_idx:end_idx, start_idx_2:end_idx_2, start_idx_3:end_idx_3],
                                 value[start_idx:end_idx, start_idx_2:end_idx_2, start_idx_3:end_idx_3],
-                                attn_mask=attn_mask[start_idx:end_idx, start_idx_2:end_idx_2, start_idx_3:end_idx_3] if attn_mask is not None else attn_mask,
+                                attn_mask=attn_mask[start_idx:end_idx, start_idx_2:end_idx_2,
+                                          start_idx_3:end_idx_3] if attn_mask is not None else attn_mask,
                                 dropout_p=dropout_p, is_causal=is_causal, **kwargs
                             )
                     else:
@@ -160,7 +175,8 @@ def scaled_dot_product_attention_32_bit(query, key, value, attn_mask=None, dropo
                             query[start_idx:end_idx, start_idx_2:end_idx_2],
                             key[start_idx:end_idx, start_idx_2:end_idx_2],
                             value[start_idx:end_idx, start_idx_2:end_idx_2],
-                            attn_mask=attn_mask[start_idx:end_idx, start_idx_2:end_idx_2] if attn_mask is not None else attn_mask,
+                            attn_mask=attn_mask[start_idx:end_idx,
+                                      start_idx_2:end_idx_2] if attn_mask is not None else attn_mask,
                             dropout_p=dropout_p, is_causal=is_causal, **kwargs
                         )
             else:
@@ -173,5 +189,6 @@ def scaled_dot_product_attention_32_bit(query, key, value, attn_mask=None, dropo
                 )
         torch.xpu.synchronize(query.device)
     else:
-        return original_scaled_dot_product_attention(query, key, value, attn_mask=attn_mask, dropout_p=dropout_p, is_causal=is_causal, **kwargs)
+        return original_scaled_dot_product_attention(query, key, value, attn_mask=attn_mask, dropout_p=dropout_p,
+                                                     is_causal=is_causal, **kwargs)
     return hidden_states

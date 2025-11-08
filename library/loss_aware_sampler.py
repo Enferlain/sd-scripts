@@ -1,16 +1,18 @@
 # loss_aware_sampler.py (or inline where you keep sampling code)
 import math, torch
 
+
 class LossAwareTimestepSampler:
     def __init__(self, num_train_timesteps: int, num_bins: int = 32,
                  ema_beta: float = 0.9, small_t_frac: float = 0.15, small_t_cap: float = 0.6,
                  start_p=0.85, end_p=0.35, anneal="cosine", fixed_p=None):
-        print(f"LossAwareTimestepSampler initialized with: num_train_timesteps={num_train_timesteps}, num_bins={num_bins}, ema_beta={ema_beta}, small_t_frac={small_t_frac}, small_t_cap={small_t_cap}, start_p={start_p}, end_p={end_p}, anneal={anneal}, fixed_p={fixed_p}")
+        print(
+            f"LossAwareTimestepSampler initialized with: num_train_timesteps={num_train_timesteps}, num_bins={num_bins}, ema_beta={ema_beta}, small_t_frac={small_t_frac}, small_t_cap={small_t_cap}, start_p={start_p}, end_p={end_p}, anneal={anneal}, fixed_p={fixed_p}")
         self.T = int(num_train_timesteps)
         self.num_bins = int(num_bins)
         self.ema_beta = float(ema_beta)
-        self.small_t_frac = float(small_t_frac)    # define "small t" region as lowest X% of steps
-        self.small_t_cap = float(small_t_cap)      # max batch fraction from small t
+        self.small_t_frac = float(small_t_frac)  # define "small t" region as lowest X% of steps
+        self.small_t_cap = float(small_t_cap)  # max batch fraction from small t
         self.eps = 1e-8
 
         self.start_p = float(start_p)
@@ -19,7 +21,7 @@ class LossAwareTimestepSampler:
         self.fixed_p = None if fixed_p is None else float(fixed_p)
 
         self.bin_edges = torch.linspace(0, self.T, self.num_bins + 1)  # CPU by default
-        self.ema_loss = torch.ones(self.num_bins)                      # start uniform
+        self.ema_loss = torch.ones(self.num_bins)  # start uniform
 
         self.last_mix_p = 0.0
         self.last_small_t_frac = 0.0

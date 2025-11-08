@@ -29,7 +29,7 @@ DEVICE = get_preferred_device()
 
 IMAGE_TRANSFORMS = transforms.v2.Compose(
     [
-        transforms.v2.ToImage(), 
+        transforms.v2.ToImage(),
         transforms.v2.ToDtype(torch.float32, scale=True),
         transforms.v2.Normalize([0.5], [0.5]),
     ]
@@ -63,7 +63,8 @@ def get_npz_filename(data_dir, image_key, is_full_path, recursive):
 def main(args):
     # assert args.bucket_reso_steps % 8 == 0, f"bucket_reso_steps must be divisible by 8 / bucket_reso_stepは8で割り切れる必要があります"
     if args.bucket_reso_steps % 8 > 0:
-        logger.warning(f"resolution of buckets in training time is a multiple of 8 / 学習時の各bucketの解像度は8単位になります")
+        logger.warning(
+            f"resolution of buckets in training time is a multiple of 8 / 学習時の各bucketの解像度は8単位になります")
     if args.bucket_reso_steps % 32 > 0:
         logger.warning(
             f"WARNING: bucket_reso_steps is not divisible by 32. It is not working with SDXL / bucket_reso_stepsが32で割り切れません。SDXLでは動作しません"
@@ -94,7 +95,7 @@ def main(args):
     # bucketのサイズを計算する
     max_reso = tuple([int(t) for t in args.max_resolution.split(",")])
     assert (
-        len(max_reso) == 2
+            len(max_reso) == 2
     ), f"illegal resolution (not 'width,height') / 画像サイズに誤りがあります。'幅,高さ'で指定してください: {args.max_resolution}"
 
     bucket_manager = train_util.BucketManager(
@@ -113,7 +114,8 @@ def main(args):
     def process_batch(is_last):
         for bucket in bucket_manager.buckets:
             if (is_last and len(bucket) > 0) or len(bucket) >= args.batch_size:
-                train_util.cache_batch_latents(vae, True, bucket, args.flip_aug, args.alpha_mask, random_crop=False, random_crop_padding_percent=0.05)
+                train_util.cache_batch_latents(vae, True, bucket, args.flip_aug, args.alpha_mask, random_crop=False,
+                                               random_crop_padding_percent=0.05)
                 bucket.clear()
 
     # 読み込みの高速化のためにDataLoaderを使うオプション
@@ -164,14 +166,14 @@ def main(args):
         if not args.bucket_no_upscale:
             # upscaleを行わないときには、resize後のサイズは、bucketのサイズと、縦横どちらかが同じであることを確認する
             assert (
-                resized_size[0] == reso[0] or resized_size[1] == reso[1]
+                    resized_size[0] == reso[0] or resized_size[1] == reso[1]
             ), f"internal error, resized size not match: {reso}, {resized_size}, {image.width}, {image.height}"
             assert (
-                resized_size[0] >= reso[0] and resized_size[1] >= reso[1]
+                    resized_size[0] >= reso[0] and resized_size[1] >= reso[1]
             ), f"internal error, resized size too small: {reso}, {resized_size}, {image.width}, {image.height}"
 
         assert (
-            resized_size[0] >= reso[0] and resized_size[1] >= reso[1]
+                resized_size[0] >= reso[0] and resized_size[1] >= reso[1]
         ), f"internal error resized size is small: {resized_size}, {reso}"
 
         # 既に存在するファイルがあればshape等を確認して同じならskipする
@@ -214,7 +216,8 @@ def setup_parser() -> argparse.ArgumentParser:
     parser.add_argument("train_data_dir", type=str, help="directory for train images / 学習画像データのディレクトリ")
     parser.add_argument("in_json", type=str, help="metadata file to input / 読み込むメタデータファイル")
     parser.add_argument("out_json", type=str, help="metadata file to output / メタデータファイル書き出し先")
-    parser.add_argument("model_name_or_path", type=str, help="model name or path to encode latents / latentを取得するためのモデル")
+    parser.add_argument("model_name_or_path", type=str,
+                        help="model name or path to encode latents / latentを取得するためのモデル")
     parser.add_argument(
         "--v2", action="store_true", help="not used (for backward compatibility) / 使用されません（互換性のため残してあります）"
     )
@@ -236,8 +239,10 @@ def setup_parser() -> argparse.ArgumentParser:
         default="512,512",
         help="max resolution in fine tuning (width,height) / fine tuning時の最大画像サイズ 「幅,高さ」（使用メモリ量に関係します）",
     )
-    parser.add_argument("--min_bucket_reso", type=int, default=256, help="minimum resolution for buckets / bucketの最小解像度")
-    parser.add_argument("--max_bucket_reso", type=int, default=1024, help="maximum resolution for buckets / bucketの最大解像度")
+    parser.add_argument("--min_bucket_reso", type=int, default=256,
+                        help="minimum resolution for buckets / bucketの最小解像度")
+    parser.add_argument("--max_bucket_reso", type=int, default=1024,
+                        help="maximum resolution for buckets / bucketの最大解像度")
     parser.add_argument(
         "--bucket_reso_steps",
         type=int,

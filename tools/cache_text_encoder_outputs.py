@@ -53,10 +53,10 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     is_flux = args.flux
 
     assert (
-        is_sdxl or is_flux
+            is_sdxl or is_flux
     ), "Cache text encoder outputs to disk is only supported for SDXL and FLUX models / テキストエンコーダ出力のディスクキャッシュはSDXLまたはFLUXでのみ有効です"
     assert (
-        is_sdxl or args.weighted_captions is None
+            is_sdxl or args.weighted_captions is None
     ), "Weighted captions are only supported for SDXL models / 重み付きキャプションはSDXLモデルでのみ有効です"
 
     set_tokenize_strategy(is_sd, is_sdxl, is_flux, args)
@@ -131,7 +131,8 @@ def cache_to_disk(args: argparse.Namespace) -> None:
             args.clip_l, weight_dtype, accelerator.device, disable_mmap=args.disable_mmap_load_safetensors
         )
 
-        t5xxl = flux_utils.load_t5xxl(args.t5xxl, None, accelerator.device, disable_mmap=args.disable_mmap_load_safetensors)
+        t5xxl = flux_utils.load_t5xxl(args.t5xxl, None, accelerator.device,
+                                      disable_mmap=args.disable_mmap_load_safetensors)
 
         if t5xxl.dtype == torch.float8_e4m3fnuz or t5xxl.dtype == torch.float8_e5m2 or t5xxl.dtype == torch.float8_e5m2fnuz:
             raise ValueError(f"Unsupported fp8 model dtype: {t5xxl.dtype}")
@@ -206,7 +207,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--skip_existing",
         action="store_true",
         help="[Deprecated] This option does not work. Existing .npz files are always checked. Use `--skip_cache_check` to skip the check."
-        " / [非推奨] このオプションは機能しません。既存の .npz は常に検証されます。`--skip_cache_check` で検証をスキップできます。",
+             " / [非推奨] このオプションは機能しません。既存の .npz は常に検証されます。`--skip_cache_check` で検証をスキップできます。",
     )
     parser.add_argument(
         "--weighted_captions",

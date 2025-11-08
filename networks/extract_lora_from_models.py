@@ -12,9 +12,12 @@ from tqdm import tqdm
 from library import sai_model_spec, model_util, sdxl_model_util
 import lora
 from library.utils import setup_logging
+
 setup_logging()
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 # CLAMP_QUANTILE = 0.99
 # MIN_DIFF = 1e-1
@@ -33,22 +36,22 @@ def save_to_file(file_name, model, state_dict, dtype):
 
 
 def svd(
-    model_org=None,
-    model_tuned=None,
-    save_to=None,
-    dim=4,
-    v2=None,
-    sdxl=None,
-    conv_dim=None,
-    v_parameterization=None,
-    device=None,
-    save_precision=None,
-    clamp_quantile=0.99,
-    min_diff=0.01,
-    no_metadata=False,
-    load_precision=None,
-    load_original_model_to=None,
-    load_tuned_model_to=None,
+        model_org=None,
+        model_tuned=None,
+        save_to=None,
+        dim=4,
+        v2=None,
+        sdxl=None,
+        conv_dim=None,
+        v_parameterization=None,
+        device=None,
+        save_precision=None,
+        clamp_quantile=0.99,
+        min_diff=0.01,
+        no_metadata=False,
+        load_precision=None,
+        load_original_model_to=None,
+        load_tuned_model_to=None,
 ):
     def str_to_dtype(p):
         if p == "float":
@@ -229,7 +232,8 @@ def svd(
         lora_sd[lora_name + ".alpha"] = torch.tensor(down_weight.size()[0])
 
     # load state dict to LoRA and save it
-    lora_network_save, lora_sd = lora.create_network_from_weights(1.0, None, None, text_encoders_o, unet_o, weights_sd=lora_sd)
+    lora_network_save, lora_sd = lora.create_network_from_weights(1.0, None, None, text_encoders_o, unet_o,
+                                                                  weights_sd=lora_sd)
     lora_network_save.apply_to(text_encoders_o, unet_o)  # create internal module references for state_dict
 
     info = lora_network_save.load_state_dict(lora_sd)
@@ -256,7 +260,8 @@ def svd(
 
     if not no_metadata:
         title = os.path.splitext(os.path.basename(save_to))[0]
-        sai_metadata = sai_model_spec.build_metadata(None, v2, v_parameterization, sdxl, True, False, time.time(), title=title)
+        sai_metadata = sai_model_spec.build_metadata(None, v2, v_parameterization, sdxl, True, False, time.time(),
+                                                     title=title)
         metadata.update(sai_metadata)
 
     lora_network_save.save_weights(save_to, save_dtype, metadata)
@@ -265,7 +270,8 @@ def svd(
 
 def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--v2", action="store_true", help="load Stable Diffusion v2.x model / Stable Diffusion 2.xのモデルを読み込む")
+    parser.add_argument("--v2", action="store_true",
+                        help="load Stable Diffusion v2.x model / Stable Diffusion 2.xのモデルを読み込む")
     parser.add_argument(
         "--v_parameterization",
         action="store_true",
@@ -273,7 +279,8 @@ def setup_parser() -> argparse.ArgumentParser:
         help="make LoRA metadata for v-parameterization (default is same to v2) / 作成するLoRAのメタデータにv-parameterization用と設定する（省略時はv2と同じ）",
     )
     parser.add_argument(
-        "--sdxl", action="store_true", help="load Stable Diffusion SDXL base model / Stable Diffusion SDXL baseのモデルを読み込む"
+        "--sdxl", action="store_true",
+        help="load Stable Diffusion SDXL base model / Stable Diffusion SDXL baseのモデルを読み込む"
     )
     parser.add_argument(
         "--load_precision",
@@ -310,14 +317,16 @@ def setup_parser() -> argparse.ArgumentParser:
         required=True,
         help="destination file name: ckpt or safetensors file / 保存先のファイル名、ckptまたはsafetensors",
     )
-    parser.add_argument("--dim", type=int, default=4, help="dimension (rank) of LoRA (default 4) / LoRAの次元数（rank）（デフォルト4）")
+    parser.add_argument("--dim", type=int, default=4,
+                        help="dimension (rank) of LoRA (default 4) / LoRAの次元数（rank）（デフォルト4）")
     parser.add_argument(
         "--conv_dim",
         type=int,
         default=None,
         help="dimension (rank) of LoRA for Conv2d-3x3 (default None, disabled) / LoRAのConv2d-3x3の次元数（rank）（デフォルトNone、適用なし）",
     )
-    parser.add_argument("--device", type=str, default=None, help="device to use, cuda for GPU / 計算を行うデバイス、cuda でGPUを使う")
+    parser.add_argument("--device", type=str, default=None,
+                        help="device to use, cuda for GPU / 計算を行うデバイス、cuda でGPUを使う")
     parser.add_argument(
         "--clamp_quantile",
         type=float,
@@ -329,13 +338,13 @@ def setup_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.01,
         help="Minimum difference between finetuned model and base to consider them different enough to extract, float, (0-1). Default = 0.01 /"
-        + "LoRAを抽出するために元モデルと派生モデルの差分の最小値、float、(0-1)。デフォルトは0.01",
+             + "LoRAを抽出するために元モデルと派生モデルの差分の最小値、float、(0-1)。デフォルトは0.01",
     )
     parser.add_argument(
         "--no_metadata",
         action="store_true",
         help="do not save sai modelspec metadata (minimum ss_metadata for LoRA is saved) / "
-        + "sai modelspecのメタデータを保存しない（LoRAの最低限のss_metadataは保存される）",
+             + "sai modelspecのメタデータを保存しない（LoRAの最低限のss_metadataは保存される）",
     )
     parser.add_argument(
         "--load_original_model_to",

@@ -26,12 +26,12 @@ class OFTModule(torch.nn.Module):
     """
 
     def __init__(
-        self,
-        oft_name,
-        org_module: torch.nn.Module,
-        multiplier=1.0,
-        dim=4,
-        alpha=1,
+            self,
+            oft_name,
+            org_module: torch.nn.Module,
+            multiplier=1.0,
+            dim=4,
+            alpha=1,
     ):
         """
         dim -> num blocks
@@ -49,11 +49,11 @@ class OFTModule(torch.nn.Module):
 
         if type(alpha) == torch.Tensor:
             alpha = alpha.detach().numpy()
-        
+
         # constraint in original paper is alpha * out_dim * out_dim, but we use alpha * out_dim for backward compatibility
         # original alpha is 1e-5, so we use 1e-2 or 1e-4 for alpha
-        self.constraint = alpha * out_dim 
-        
+        self.constraint = alpha * out_dim
+
         self.register_buffer("alpha", torch.tensor(alpha))
 
         self.block_size = out_dim // self.num_blocks
@@ -100,7 +100,8 @@ class OFTModule(torch.nn.Module):
             RW = torch.einsum("k n m, k n ... -> k m ...", R, W_reshaped)
             RW = einops.rearrange(RW, "k m ... -> (k m) ...")
             result = F.conv2d(
-                x, RW.to(org_dtype), org_module.bias, org_module.stride, org_module.padding, org_module.dilation, org_module.groups
+                x, RW.to(org_dtype), org_module.bias, org_module.stride, org_module.padding, org_module.dilation,
+                org_module.groups
             )
         else:  # Linear
             W_reshaped = einops.rearrange(W, "(k n) m -> k n m", k=self.num_blocks, n=self.block_size)
@@ -112,13 +113,13 @@ class OFTModule(torch.nn.Module):
 
 class OFTInfModule(OFTModule):
     def __init__(
-        self,
-        oft_name,
-        org_module: torch.nn.Module,
-        multiplier=1.0,
-        dim=4,
-        alpha=1,
-        **kwargs,
+            self,
+            oft_name,
+            org_module: torch.nn.Module,
+            multiplier=1.0,
+            dim=4,
+            alpha=1,
+            **kwargs,
     ):
         # no dropout for inference
         super().__init__(oft_name, org_module, multiplier, dim, alpha)
@@ -153,14 +154,14 @@ class OFTInfModule(OFTModule):
 
 
 def create_network(
-    multiplier: float,
-    network_dim: Optional[int],
-    network_alpha: Optional[float],
-    vae: AutoencoderKL,
-    text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
-    unet,
-    neuron_dropout: Optional[float] = None,
-    **kwargs,
+        multiplier: float,
+        network_dim: Optional[int],
+        network_alpha: Optional[float],
+        vae: AutoencoderKL,
+        text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
+        unet,
+        neuron_dropout: Optional[float] = None,
+        **kwargs,
 ):
     if network_dim is None:
         network_dim = 4  # default
@@ -196,7 +197,8 @@ def create_network(
 
 
 # Create network from weights for inference, weights are not loaded here (because can be merged)
-def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
+def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False,
+                                **kwargs):
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import load_file, safe_open
@@ -249,16 +251,16 @@ class OFTNetwork(torch.nn.Module):
     OFT_PREFIX_UNET = "oft_unet"  # これ変えないほうがいいかな
 
     def __init__(
-        self,
-        text_encoder: Union[List[CLIPTextModel], CLIPTextModel],
-        unet,
-        multiplier: float = 1.0,
-        dim: int = 4,
-        alpha: float = 1,
-        enable_all_linear: Optional[bool] = False,
-        enable_conv: Optional[bool] = False,
-        module_class: Type[object] = OFTModule,
-        varbose: Optional[bool] = False,
+            self,
+            text_encoder: Union[List[CLIPTextModel], CLIPTextModel],
+            unet,
+            multiplier: float = 1.0,
+            dim: int = 4,
+            alpha: float = 1,
+            enable_all_linear: Optional[bool] = False,
+            enable_conv: Optional[bool] = False,
+            module_class: Type[object] = OFTModule,
+            varbose: Optional[bool] = False,
     ) -> None:
         super().__init__()
         self.multiplier = multiplier
@@ -272,8 +274,8 @@ class OFTNetwork(torch.nn.Module):
 
         # create module instances
         def create_modules(
-            root_module: torch.nn.Module,
-            target_replace_modules: List[torch.nn.Module],
+                root_module: torch.nn.Module,
+                target_replace_modules: List[torch.nn.Module],
         ) -> List[OFTModule]:
             prefix = self.OFT_PREFIX_UNET
             ofts = []
@@ -351,18 +353,18 @@ class OFTNetwork(torch.nn.Module):
             sd_for_lora = {}
             for key in weights_sd.keys():
                 if key.startswith(oft.oft_name):
-                    sd_for_lora[key[len(oft.oft_name) + 1 :]] = weights_sd[key]
+                    sd_for_lora[key[len(oft.oft_name) + 1:]] = weights_sd[key]
             oft.load_state_dict(sd_for_lora, False)
             oft.merge_to()
 
         logger.info(f"weights are merged")
 
     # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
-    def prepare_optimizer_params(self, 
-                                 text_encoder_lr: float, 
-                                 unet_lr: float, 
-                                 learning_rate: float, 
-                                 apply_orthograd: bool, 
+    def prepare_optimizer_params(self,
+                                 text_encoder_lr: float,
+                                 unet_lr: float,
+                                 learning_rate: float,
+                                 apply_orthograd: bool,
                                  orthograd_targets: list[str]):
         self.requires_grad_(True)
         all_params = []

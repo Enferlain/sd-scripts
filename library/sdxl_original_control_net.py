@@ -100,13 +100,13 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         return state_dict
 
     def forward(
-        self,
-        x: torch.Tensor,
-        timesteps: Optional[torch.Tensor] = None,
-        context: Optional[torch.Tensor] = None,
-        y: Optional[torch.Tensor] = None,
-        cond_image: Optional[torch.Tensor] = None,
-        **kwargs,
+            self,
+            x: torch.Tensor,
+            timesteps: Optional[torch.Tensor] = None,
+            context: Optional[torch.Tensor] = None,
+            y: Optional[torch.Tensor] = None,
+            cond_image: Optional[torch.Tensor] = None,
+            **kwargs,
     ) -> torch.Tensor:
         # broadcast timesteps to batch dimension
         timesteps = timesteps.expand(x.shape[0])

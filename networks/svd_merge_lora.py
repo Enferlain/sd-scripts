@@ -186,7 +186,7 @@ def get_lbw_block_index(lora_name: str, is_sdxl: bool = False) -> int:
     else:
         # SDXL: some numbers are skipped
         if lora_name.startswith("lora_unet_"):
-            name = lora_name[len("lora_unet_") :]
+            name = lora_name[len("lora_unet_"):]
             if name.startswith("time_embed_") or name.startswith("label_emb_"):  # 1, No LoRA in sd-scripts
                 block_idx = 1
             elif name.startswith("input_blocks_"):  # 1-8 to 2-9
@@ -300,7 +300,8 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
 
             # make original weight if not exist
             if lora_module_name not in merged_sd:
-                weight = torch.zeros((out_dim, in_dim, *kernel_size) if conv2d else (out_dim, in_dim), dtype=merge_dtype)
+                weight = torch.zeros((out_dim, in_dim, *kernel_size) if conv2d else (out_dim, in_dim),
+                                     dtype=merge_dtype)
             else:
                 weight = merged_sd[lora_module_name]
             if device:
@@ -327,10 +328,11 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
                 weight = weight + ratio * (up_weight @ down_weight) * scale
             elif kernel_size == (1, 1):
                 weight = (
-                    weight
-                    + ratio
-                    * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(2).unsqueeze(3)
-                    * scale
+                        weight
+                        + ratio
+                        * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(2).unsqueeze(
+                    3)
+                        * scale
                 )
             else:
                 conved = torch.nn.functional.conv2d(down_weight.permute(1, 0, 2, 3), up_weight).permute(1, 0, 2, 3)
@@ -488,7 +490,8 @@ def setup_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--ratios", type=float, nargs="*", help="ratios for each model / それぞれのLoRAモデルの比率")
     parser.add_argument("--lbws", type=str, nargs="*", help="lbw for each model / それぞれのLoRAモデルの層別適用率")
-    parser.add_argument("--new_rank", type=int, default=4, help="Specify rank of output LoRA / 出力するLoRAのrank (dim)")
+    parser.add_argument("--new_rank", type=int, default=4,
+                        help="Specify rank of output LoRA / 出力するLoRAのrank (dim)")
     parser.add_argument(
         "--new_conv_rank",
         type=int,
@@ -502,7 +505,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--no_metadata",
         action="store_true",
         help="do not save sai modelspec metadata (minimum ss_metadata for LoRA is saved) / "
-        + "sai modelspecのメタデータを保存しない（LoRAの最低限のss_metadataは保存される）",
+             + "sai modelspecのメタデータを保存しない（LoRAの最低限のss_metadataは保存される）",
     )
 
     return parser

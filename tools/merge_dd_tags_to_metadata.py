@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def main(args):
     assert not args.recursive or (
-        args.recursive and args.full_path
+            args.recursive and args.full_path
     ), "recursive requires full_path / recursiveはfull_pathと同時に指定してください"
 
     train_data_dir_path = Path(args.train_data_dir)

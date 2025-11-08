@@ -4,6 +4,7 @@ from library.utils import setup_logging
 
 try:
     from ramtorch.modules.linear import Linear as RamTorchLinear
+
     RAMTORCH_AVAILABLE = True
 except ImportError:
     RAMTORCH_AVAILABLE = False
@@ -12,6 +13,7 @@ setup_logging()
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 def replace_linear_with_ramtorch_linear(module: nn.Module, device="cuda", recursive: bool = True):
     """
@@ -40,7 +42,7 @@ def replace_linear_with_ramtorch_linear(module: nn.Module, device="cuda", recurs
             ramtorch_linear.weight.data.copy_(child_module.weight.data.to("cpu"))
             if child_module.bias is not None:
                 ramtorch_linear.bias.data.copy_(child_module.bias.data.to("cpu"))
-            
+
             # Replace the original layer
             setattr(module, name, ramtorch_linear)
             logger.info(f"Replaced {name} with RamTorch Linear layer.")

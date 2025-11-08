@@ -10,16 +10,17 @@ from tools.stochastic_copy import copy_stochastic_
 
 FILTER_TYPE = Literal['mean', 'sum']
 
+
 class Gradfilter_ma:
 
     def __init__(
-        self,
-        model: nn.Module,
-        window_size: int = 25,
-        lamb: float = 5.0,
-        filter_type: FILTER_TYPE = 'mean',
-        warmup_steps: int = 25,
-        dtype: torch.dtype = torch.float32,
+            self,
+            model: nn.Module,
+            window_size: int = 25,
+            lamb: float = 5.0,
+            filter_type: FILTER_TYPE = 'mean',
+            warmup_steps: int = 25,
+            dtype: torch.dtype = torch.float32,
     ):
         self.model = model
         self.window_size = window_size if window_size is not None else 25
@@ -32,7 +33,7 @@ class Gradfilter_ma:
 
     def __str__(self) -> str:
         return 'Gradfilter_ma'
-    
+
     def load_state_dict(self, state_dict):
         self.__dict__.update(state_dict)
 
@@ -40,10 +41,10 @@ class Gradfilter_ma:
         return {
             key: value for key, value in self.__dict__.items() if key != "model"
         }
-    
+
     @torch.no_grad()
     def filter(
-        self
+            self
     ):
         r"""Grokfast-MA.
 
@@ -96,15 +97,16 @@ class Gradfilter_ma:
 
                     p.grad.add_(avg, alpha=self.lamb)
 
+
 class Gradfilter_ema:
 
     def __init__(
-        self,
-        model: nn.Module,
-        alpha: float = 0.98,
-        lamb: float = 2.0,
-        warmup_steps: int = 0,
-        dtype: torch.dtype = torch.float32,
+            self,
+            model: nn.Module,
+            alpha: float = 0.98,
+            lamb: float = 2.0,
+            warmup_steps: int = 0,
+            dtype: torch.dtype = torch.float32,
     ):
         self.model = model
         self.alpha = alpha if alpha is not None else 0.98
@@ -116,7 +118,7 @@ class Gradfilter_ema:
 
     def __str__(self) -> str:
         return 'Gradfilter_ema'
-    
+
     def load_state_dict(self, state_dict):
         self.__dict__.update(state_dict)
 
@@ -127,7 +129,7 @@ class Gradfilter_ema:
 
     @torch.no_grad()
     def filter(
-        self,
+            self,
     ):
         r"""Grokfast.
 

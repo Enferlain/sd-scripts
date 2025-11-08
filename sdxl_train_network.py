@@ -34,7 +34,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             ), "when caching Text Encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used / Text Encoderの出力をキャッシュするときはcaption_dropout_rate, shuffle_caption, token_warmup_step, caption_tag_dropout_rateは使えません"
 
         assert (
-            args.network_train_unet_only or not args.cache_text_encoder_outputs
+                args.network_train_unet_only or not args.cache_text_encoder_outputs
         ), "network for Text Encoder cannot be trained with caching Text Encoder outputs / Text Encoderの出力をキャッシュしながらText Encoderのネットワークを学習することはできません"
 
         train_dataset_group.verify_bucket_reso_steps(32)
@@ -48,7 +48,8 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             unet,
             logit_scale,
             ckpt_info,
-        ) = sdxl_train_util.load_target_model(args, accelerator, sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
+        ) = sdxl_train_util.load_target_model(args, accelerator, sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0,
+                                              weight_dtype)
 
         self.load_stable_diffusion_format = load_stable_diffusion_format
         self.logit_scale = logit_scale
@@ -86,7 +87,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
 
     def get_text_encoding_strategy(self, args):
         return strategy_sdxl.SdxlTextEncodingStrategy()
-    
+
     def is_text_encoder_not_needed_for_training(self, args):
         return args.cache_text_encoder_outputs and not self.is_train_text_encoder(args)
 
@@ -102,7 +103,8 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             return None
 
     def cache_text_encoder_outputs_if_needed(
-        self, args, accelerator: Accelerator, unet, vae, text_encoders, dataset: train_util.DatasetGroup, weight_dtype
+            self, args, accelerator: Accelerator, unet, vae, text_encoders, dataset: train_util.DatasetGroup,
+            weight_dtype
     ):
         if args.cache_text_encoder_outputs:
             if not args.lowram:
@@ -117,8 +119,10 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             # When TE is not be trained, it will not be prepared so we need to use explicit autocast
             text_encoders[0].to(accelerator.device, dtype=weight_dtype)
             text_encoders[1].to(accelerator.device, dtype=weight_dtype)
-            with torch.autocast(dtype=torch.float64 if args.loss_related_use_float64 else torch.float32, device_type=str(accelerator.device)):
-                dataset.new_cache_text_encoder_outputs(text_encoders + [accelerator.unwrap_model(text_encoders[-1])], accelerator)
+            with torch.autocast(dtype=torch.float64 if args.loss_related_use_float64 else torch.float32,
+                                device_type=str(accelerator.device)):
+                dataset.new_cache_text_encoder_outputs(text_encoders + [accelerator.unwrap_model(text_encoders[-1])],
+                                                       accelerator)
             accelerator.wait_for_everyone()
 
             text_encoders[0].to("cpu", dtype=torch.float32)  # Text Encoder doesn't work with fp16 on CPU
@@ -156,23 +160,25 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
                     device=accelerator.device,
                 )
         else:
-            encoder_hidden_states1 = batch["text_encoder_outputs1_list"].to(device=accelerator.device, dtype=dtype_to_use)
-            encoder_hidden_states2 = batch["text_encoder_outputs2_list"].to(device=accelerator.device, dtype=dtype_to_use)
+            encoder_hidden_states1 = batch["text_encoder_outputs1_list"].to(device=accelerator.device,
+                                                                            dtype=dtype_to_use)
+            encoder_hidden_states2 = batch["text_encoder_outputs2_list"].to(device=accelerator.device,
+                                                                            dtype=dtype_to_use)
             pool2 = batch["text_encoder_pool2_list"].to(device=accelerator.device, dtype=dtype_to_use)
 
         return encoder_hidden_states1, encoder_hidden_states2, pool2
 
     def call_unet(
-        self,
-        args,
-        accelerator,
-        unet,
-        noisy_latents,
-        timesteps,
-        text_conds,
-        batch,
-        weight_dtype,
-        indices: Optional[List[int]] = None,
+            self,
+            args,
+            accelerator,
+            unet,
+            noisy_latents,
+            timesteps,
+            text_conds,
+            batch,
+            weight_dtype,
+            indices: Optional[List[int]] = None,
     ):
         dtype_to_use = torch.float64 if args.loss_related_use_float64 else torch.float32
         with torch.autocast(dtype=dtype_to_use, device_type=str(accelerator.device)):
@@ -180,7 +186,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             orig_size = batch["original_sizes_hw"]
             crop_size = batch["crop_top_lefts"]
             target_size = batch["target_sizes_hw"]
-            embs = sdxl_train_util.get_size_embeddings(orig_size, crop_size, target_size, accelerator.device, 
+            embs = sdxl_train_util.get_size_embeddings(orig_size, crop_size, target_size, accelerator.device,
                                                        dtype=dtype_to_use)
 
             # concat embeddings
@@ -194,9 +200,9 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
                 text_embedding = text_embedding[indices]
                 vector_embedding = vector_embedding[indices]
 
-            noise_pred = unet(to_stochastic(noisy_latents, dtype=weight_dtype), 
-                              timesteps, 
-                              to_stochastic(text_embedding, dtype=weight_dtype), 
+            noise_pred = unet(to_stochastic(noisy_latents, dtype=weight_dtype),
+                              timesteps,
+                              to_stochastic(text_embedding, dtype=weight_dtype),
                               to_stochastic(vector_embedding, dtype=weight_dtype))
             return noise_pred
 

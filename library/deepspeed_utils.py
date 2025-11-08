@@ -45,7 +45,7 @@ def add_deepspeed_arguments(parser: argparse.ArgumentParser):
         "--zero3_init_flag",
         action="store_true",
         help="Flag to indicate whether to enable `deepspeed.zero.Init` for constructing massive models."
-        "Only applicable with ZeRO Stage-3.",
+             "Only applicable with ZeRO Stage-3.",
     )
     parser.add_argument(
         "--zero3_save_16bit_model",
@@ -79,7 +79,9 @@ def prepare_deepspeed_plugin(args: argparse.Namespace):
         )
         exit(1)
 
-    if (args.full_bf16 and getattr(args, "stochastic_accumulation", None) is None or getattr(args, "stochastic_accumulation", None)):
+    if (args.full_bf16 and getattr(args, "stochastic_accumulation", None) is None or getattr(args,
+                                                                                             "stochastic_accumulation",
+                                                                                             None)):
         # Don't set gradient_accumulation_steps, as handled manually in training loop for full bf16 with stochastic accumulation
         deepspeed_plugin = DeepSpeedPlugin(
             zero_stage=args.zero_stage,
@@ -105,14 +107,16 @@ def prepare_deepspeed_plugin(args: argparse.Namespace):
         )
 
     deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = args.train_batch_size
-    if (args.full_bf16 and getattr(args, "stochastic_accumulation", None) is None or getattr(args, "stochastic_accumulation", None)):
+    if (args.full_bf16 and getattr(args, "stochastic_accumulation", None) is None or getattr(args,
+                                                                                             "stochastic_accumulation",
+                                                                                             None)):
         # Don't set gradient_accumulation_steps, as handled manually in training loop for full bf16 with stochastic accumulation
         deepspeed_plugin.deepspeed_config["train_batch_size"] = (
-            args.train_batch_size * int(os.environ["WORLD_SIZE"])
+                args.train_batch_size * int(os.environ["WORLD_SIZE"])
         )
     else:
         deepspeed_plugin.deepspeed_config["train_batch_size"] = (
-            args.train_batch_size * args.gradient_accumulation_steps * int(os.environ["WORLD_SIZE"])
+                args.train_batch_size * args.gradient_accumulation_steps * int(os.environ["WORLD_SIZE"])
         )
 
     deepspeed_plugin.set_mixed_precision(args.mixed_precision)
@@ -158,4 +162,3 @@ def prepare_deepspeed_model(args: argparse.Namespace, **models):
 
     ds_model = DeepSpeedWrapper(**models)
     return ds_model
-

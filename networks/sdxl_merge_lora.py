@@ -80,13 +80,13 @@ def merge_to_sd_model(text_encoder1, text_encoder2, unet, models, ratios, lbws, 
             else:
                 prefix = lora.LoRANetwork.LORA_PREFIX_UNET
                 target_replace_modules = (
-                    lora.LoRANetwork.UNET_TARGET_REPLACE_MODULE + lora.LoRANetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+                        lora.LoRANetwork.UNET_TARGET_REPLACE_MODULE + lora.LoRANetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
                 )
         elif method == "OFT":
             prefix = oft.OFTNetwork.OFT_PREFIX_UNET
             # ALL_LINEAR includes ATTN_ONLY, so we don't need to specify ATTN_ONLY
             target_replace_modules = (
-                oft.OFTNetwork.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR + oft.OFTNetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+                    oft.OFTNetwork.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR + oft.OFTNetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
             )
 
         for name, module in root_module.named_modules():
@@ -145,14 +145,16 @@ def merge_to_sd_model(text_encoder1, text_encoder2, unet, models, ratios, lbws, 
                     elif down_weight.size()[2:4] == (1, 1):
                         # conv2d 1x1
                         weight = (
-                            weight
-                            + ratio
-                            * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(2).unsqueeze(3)
-                            * scale
+                                weight
+                                + ratio
+                                * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(
+                            2).unsqueeze(3)
+                                * scale
                         )
                     else:
                         # conv2d 3x3
-                        conved = torch.nn.functional.conv2d(down_weight.permute(1, 0, 2, 3), up_weight).permute(1, 0, 2, 3)
+                        conved = torch.nn.functional.conv2d(down_weight.permute(1, 0, 2, 3), up_weight).permute(1, 0, 2,
+                                                                                                                3)
                         # logger.info(conved.size(), weight.size(), module.stride, module.padding)
                         weight = weight + ratio * conved * scale
 
@@ -324,7 +326,7 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
 
             if key in merged_sd:
                 assert (
-                    merged_sd[key].size() == lora_sd[key].size() or concat_dim is not None
+                        merged_sd[key].size() == lora_sd[key].size() or concat_dim is not None
                 ), f"weights shape mismatch merging v1 and v2, different dims? / 重みのサイズが合いません。v1とv2、または次元数の異なるモデルはマージできません"
                 if concat_dim is not None:
                     merged_sd[key] = torch.cat([merged_sd[key], lora_sd[key] * scale], dim=concat_dim)
@@ -405,7 +407,8 @@ def merge(args):
             unet,
             logit_scale,
             ckpt_info,
-        ) = sdxl_model_util.load_models_from_sdxl_checkpoint(sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, args.sd_model, "cpu")
+        ) = sdxl_model_util.load_models_from_sdxl_checkpoint(sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0,
+                                                             args.sd_model, "cpu")
 
         merge_to_sd_model(text_model1, text_model2, unet, args.models, args.ratios, args.lbws, merge_dtype)
 
@@ -423,7 +426,8 @@ def merge(args):
             args.save_to, text_model1, text_model2, unet, 0, 0, ckpt_info, vae, logit_scale, sai_metadata, save_dtype
         )
     else:
-        state_dict, metadata = merge_lora_models(args.models, args.ratios, args.lbws, merge_dtype, args.concat, args.shuffle)
+        state_dict, metadata = merge_lora_models(args.models, args.ratios, args.lbws, merge_dtype, args.concat,
+                                                 args.shuffle)
 
         # cast to save_dtype before calculating hashes
         for key in list(state_dict.keys()):
@@ -489,13 +493,13 @@ def setup_parser() -> argparse.ArgumentParser:
         "--no_metadata",
         action="store_true",
         help="do not save sai modelspec metadata (minimum ss_metadata for LoRA is saved) / "
-        + "sai modelspecのメタデータを保存しない（LoRAの最低限のss_metadataは保存される）",
+             + "sai modelspecのメタデータを保存しない（LoRAの最低限のss_metadataは保存される）",
     )
     parser.add_argument(
         "--concat",
         action="store_true",
         help="concat lora instead of merge (The dim(rank) of the output LoRA is the sum of the input dims) / "
-        + "マージの代わりに結合する（LoRAのdim(rank)は入力dimの合計になる）",
+             + "マージの代わりに結合する（LoRAのdim(rank)は入力dimの合計になる）",
     )
     parser.add_argument(
         "--shuffle",

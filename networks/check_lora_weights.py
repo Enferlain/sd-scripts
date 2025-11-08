@@ -3,9 +3,12 @@ import os
 import torch
 from safetensors.torch import load_file
 from library.utils import setup_logging
+
 setup_logging()
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def main(file):
     logger.info(f"loading: {file}")
@@ -29,7 +32,8 @@ def main(file):
 
     for key, value in values:
         value = value.to(torch.float32)
-        print(f"{key},{str(tuple(value.size())).replace(', ', '-')},{torch.mean(torch.abs(value))},{torch.min(torch.abs(value))}")
+        print(
+            f"{key},{str(tuple(value.size())).replace(', ', '-')},{torch.mean(torch.abs(value))},{torch.min(torch.abs(value))}")
 
 
 def setup_parser() -> argparse.ArgumentParser:

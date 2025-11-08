@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 
+
 class FDLossLatent(nn.Module):
     """
     Frequency Distribution Loss (FDL) for Latents (e.g., 4-channel SDXL):
@@ -18,6 +19,7 @@ class FDLossLatent(nn.Module):
 
     This module works on arbitrary BxCxHxW inputs.
     """
+
     def __init__(self,
                  lambda_phase: float = 0.1,
                  num_projections: int = 256,
@@ -52,18 +54,18 @@ class FDLossLatent(nn.Module):
         data2_flat = data2.permute(0, 2, 3, 1).reshape(B, N, C)
 
         thetas = torch.randn(self.num_projections, C, device=data1.device, dtype=data1.dtype)
-        thetas = thetas / (thetas.norm(dim=1, keepdim=True) + 1e-8) # Shape: (P, C)
+        thetas = thetas / (thetas.norm(dim=1, keepdim=True) + 1e-8)  # Shape: (P, C)
 
-        proj1 = data1_flat @ thetas.t() # Shape: (B, N, P)
-        proj2 = data2_flat @ thetas.t() # Shape: (B, N, P)
+        proj1 = data1_flat @ thetas.t()  # Shape: (B, N, P)
+        proj2 = data2_flat @ thetas.t()  # Shape: (B, N, P)
 
         proj1_sorted, _ = torch.sort(proj1, dim=1)
         proj2_sorted, _ = torch.sort(proj2, dim=1)
 
         # L1 distance averaged over N and P, but kept per-sample (B)
-        loss_per_sample = torch.mean(torch.abs(proj1_sorted - proj2_sorted), dim=(1, 2)) # Shape: (B,)
+        loss_per_sample = torch.mean(torch.abs(proj1_sorted - proj2_sorted), dim=(1, 2))  # Shape: (B,)
 
-        return loss_per_sample # Return per-sample loss
+        return loss_per_sample  # Return per-sample loss
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         if x.shape != y.shape:
@@ -81,19 +83,21 @@ class FDLossLatent(nn.Module):
         phase_y = torch.angle(fft_y)
 
         # Get per-sample SWD
-        swd_amplitude = self._compute_swd_per_sample(amp_x, amp_y) # Shape: (B,)
-        swd_phase = self._compute_swd_per_sample(phase_x, phase_y) # Shape: (B,)
+        swd_amplitude = self._compute_swd_per_sample(amp_x, amp_y)  # Shape: (B,)
+        swd_phase = self._compute_swd_per_sample(phase_x, phase_y)  # Shape: (B,)
 
         # Combine losses per sample
-        loss = swd_amplitude + self.lambda_phase * swd_phase # Shape: (B,)
+        loss = swd_amplitude + self.lambda_phase * swd_phase  # Shape: (B,)
 
-        return loss # Return per-sample loss tensor
-    
+        return loss  # Return per-sample loss tensor
+
+
 class ChannelMixerExtractor(nn.Module):
     """
     Learns a linear combination of input channels using 1x1 Convolutions.
     Outputs the same number of channels as the input (4).
     """
+
     def __init__(self, in_channels=4, mid_channels=16, dtype=torch.float32, device="cpu"):
         super().__init__()
         self.mixer = nn.Sequential(
@@ -110,18 +114,21 @@ class ChannelMixerExtractor(nn.Module):
         """
         return self.mixer(x)
 
+
 class ShallowConvExtractor(nn.Module):
     """
     Applies a few convolutional layers to extract local spatial features.
     Maintains spatial dimensions.
     """
+
     def __init__(self, in_channels=4, num_features=16, num_layers=2, dtype=torch.float32, device="cpu"):
         super().__init__()
         layers = []
         current_channels = in_channels
         for i in range(num_layers):
             layers.append(
-                nn.Conv2d(current_channels, num_features, kernel_size=3, stride=1, padding=1, dtype=dtype, device=device)
+                nn.Conv2d(current_channels, num_features, kernel_size=3, stride=1, padding=1, dtype=dtype,
+                          device=device)
             )
             layers.append(nn.ReLU(inplace=True))
             current_channels = num_features
@@ -130,7 +137,7 @@ class ShallowConvExtractor(nn.Module):
         # layers.append(nn.Conv2d(num_features, in_channels, kernel_size=1))
 
         self.extractor = nn.Sequential(*layers)
-        self.output_channels = current_channels # Or in_channels if projecting back
+        self.output_channels = current_channels  # Or in_channels if projecting back
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -138,17 +145,22 @@ class ShallowConvExtractor(nn.Module):
         Output: (B, num_features, H, W) or (B, 4, H, W) if projected back
         """
         return self.extractor(x)
-    
+
+
 class MultiScaleConvExtractor(nn.Module):
     """
     Uses parallel convolutions with different kernel sizes to capture multi-scale features.
     Concatenates the outputs. Maintains spatial dimensions.
     """
+
     def __init__(self, in_channels=4, features_per_scale=8, dtype=torch.float32, device="cpu"):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, features_per_scale, kernel_size=1, stride=1, padding=0, dtype=dtype, device=device)
-        self.conv3 = nn.Conv2d(in_channels, features_per_scale, kernel_size=3, stride=1, padding=1, dtype=dtype, device=device)
-        self.conv5 = nn.Conv2d(in_channels, features_per_scale, kernel_size=5, stride=1, padding=2, dtype=dtype, device=device)
+        self.conv1 = nn.Conv2d(in_channels, features_per_scale, kernel_size=1, stride=1, padding=0, dtype=dtype,
+                               device=device)
+        self.conv3 = nn.Conv2d(in_channels, features_per_scale, kernel_size=3, stride=1, padding=1, dtype=dtype,
+                               device=device)
+        self.conv5 = nn.Conv2d(in_channels, features_per_scale, kernel_size=5, stride=1, padding=2, dtype=dtype,
+                               device=device)
         self.relu = nn.ReLU(inplace=True)
         self.output_channels = features_per_scale * 3
 

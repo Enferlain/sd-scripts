@@ -2,12 +2,13 @@ import os
 import sys
 import contextlib
 import torch
-import intel_extension_for_pytorch as ipex # pylint: disable=import-error, unused-import
+import intel_extension_for_pytorch as ipex  # pylint: disable=import-error, unused-import
 from .hijacks import ipex_hijacks
+
 
 # pylint: disable=protected-access, missing-function-docstring, line-too-long
 
-def ipex_init(): # pylint: disable=too-many-statements
+def ipex_init():  # pylint: disable=too-many-statements
     try:
         if hasattr(torch, "cuda") and hasattr(torch.cuda, "is_xpu_hijacked") and torch.cuda.is_xpu_hijacked:
             return True, "Skipping IPEX hijack"
@@ -138,12 +139,12 @@ def ipex_init(): # pylint: disable=too-many-statements
 
             try:
                 torch.cuda.amp.GradScaler = torch.xpu.amp.GradScaler
-            except Exception: # pylint: disable=broad-exception-caught
+            except Exception:  # pylint: disable=broad-exception-caught
                 try:
-                    from .gradscaler import gradscaler_init # pylint: disable=import-outside-toplevel, import-error
+                    from .gradscaler import gradscaler_init  # pylint: disable=import-outside-toplevel, import-error
                     gradscaler_init()
                     torch.cuda.amp.GradScaler = torch.xpu.amp.GradScaler
-                except Exception: # pylint: disable=broad-exception-caught
+                except Exception:  # pylint: disable=broad-exception-caught
                     torch.cuda.amp.GradScaler = ipex.cpu.autocast._grad_scaler.GradScaler
 
             # C
@@ -153,7 +154,9 @@ def ipex_init(): # pylint: disable=too-many-statements
             ipex._C._DeviceProperties.minor = 0
 
             # Fix functions with ipex:
-            torch.cuda.mem_get_info = lambda device=None: [(torch.xpu.get_device_properties(device).total_memory - torch.xpu.memory_reserved(device)), torch.xpu.get_device_properties(device).total_memory]
+            torch.cuda.mem_get_info = lambda device=None: [
+                (torch.xpu.get_device_properties(device).total_memory - torch.xpu.memory_reserved(device)),
+                torch.xpu.get_device_properties(device).total_memory]
             torch._utils._get_available_device_type = lambda: "xpu"
             torch.has_cuda = True
             torch.cuda.has_half = True
@@ -161,7 +164,7 @@ def ipex_init(): # pylint: disable=too-many-statements
             torch.cuda.is_fp16_supported = lambda *args, **kwargs: True
             torch.backends.cuda.is_built = lambda *args, **kwargs: True
             torch.version.cuda = "12.1"
-            torch.cuda.get_device_capability = lambda *args, **kwargs: [12,1]
+            torch.cuda.get_device_capability = lambda *args, **kwargs: [12, 1]
             torch.cuda.get_device_properties.major = 12
             torch.cuda.get_device_properties.minor = 1
             torch.cuda.ipc_collect = lambda *args, **kwargs: None
@@ -172,7 +175,7 @@ def ipex_init(): # pylint: disable=too-many-statements
                 try:
                     from .diffusers import ipex_diffusers
                     ipex_diffusers()
-                except Exception: # pylint: disable=broad-exception-caught
+                except Exception:  # pylint: disable=broad-exception-caught
                     pass
             torch.cuda.is_xpu_hijacked = True
     except Exception as e:

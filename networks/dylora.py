@@ -58,8 +58,10 @@ class DyLoRAModule(torch.nn.Module):
             kernel_size = org_module.kernel_size
             self.stride = org_module.stride
             self.padding = org_module.padding
-            self.lora_A = nn.ParameterList([org_module.weight.new_zeros((1, in_dim, *kernel_size)) for _ in range(self.lora_dim)])
-            self.lora_B = nn.ParameterList([org_module.weight.new_zeros((out_dim, 1, 1, 1)) for _ in range(self.lora_dim)])
+            self.lora_A = nn.ParameterList(
+                [org_module.weight.new_zeros((1, in_dim, *kernel_size)) for _ in range(self.lora_dim)])
+            self.lora_B = nn.ParameterList(
+                [org_module.weight.new_zeros((out_dim, 1, 1, 1)) for _ in range(self.lora_dim)])
         else:
             self.lora_A = nn.ParameterList([org_module.weight.new_zeros((1, in_dim)) for _ in range(self.lora_dim)])
             self.lora_B = nn.ParameterList([org_module.weight.new_zeros((out_dim, 1)) for _ in range(self.lora_dim)])
@@ -148,7 +150,8 @@ class DyLoRAModule(torch.nn.Module):
             i += 1
         return sd
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys,
+                              error_msgs):
         # 通常のLoRAと同じstate dictを読み込めるようにする：この方法はchatGPTに聞いた
         lora_A_weight = state_dict.pop(self.lora_name + ".lora_down.weight", None)
         lora_B_weight = state_dict.pop(self.lora_name + ".lora_up.weight", None)
@@ -164,23 +167,26 @@ class DyLoRAModule(torch.nn.Module):
             lora_B_weight = lora_B_weight.squeeze(-1).squeeze(-1)
 
         state_dict.update(
-            {f"{self.lora_name}.lora_A.{i}": nn.Parameter(lora_A_weight[i].unsqueeze(0)) for i in range(lora_A_weight.size(0))}
+            {f"{self.lora_name}.lora_A.{i}": nn.Parameter(lora_A_weight[i].unsqueeze(0)) for i in
+             range(lora_A_weight.size(0))}
         )
         state_dict.update(
-            {f"{self.lora_name}.lora_B.{i}": nn.Parameter(lora_B_weight[:, i].unsqueeze(1)) for i in range(lora_B_weight.size(1))}
+            {f"{self.lora_name}.lora_B.{i}": nn.Parameter(lora_B_weight[:, i].unsqueeze(1)) for i in
+             range(lora_B_weight.size(1))}
         )
 
-        super()._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+        super()._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys,
+                                      error_msgs)
 
 
 def create_network(
-    multiplier: float,
-    network_dim: Optional[int],
-    network_alpha: Optional[float],
-    vae: AutoencoderKL,
-    text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
-    unet,
-    **kwargs,
+        multiplier: float,
+        network_dim: Optional[int],
+        network_alpha: Optional[float],
+        vae: AutoencoderKL,
+        text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
+        unet,
+        **kwargs,
 ):
     if network_dim is None:
         network_dim = 4  # default
@@ -220,7 +226,8 @@ def create_network(
     loraplus_text_encoder_lr_ratio = kwargs.get("loraplus_text_encoder_lr_ratio", None)
     loraplus_lr_ratio = float(loraplus_lr_ratio) if loraplus_lr_ratio is not None else None
     loraplus_unet_lr_ratio = float(loraplus_unet_lr_ratio) if loraplus_unet_lr_ratio is not None else None
-    loraplus_text_encoder_lr_ratio = float(loraplus_text_encoder_lr_ratio) if loraplus_text_encoder_lr_ratio is not None else None
+    loraplus_text_encoder_lr_ratio = float(
+        loraplus_text_encoder_lr_ratio) if loraplus_text_encoder_lr_ratio is not None else None
     if loraplus_lr_ratio is not None or loraplus_unet_lr_ratio is not None or loraplus_text_encoder_lr_ratio is not None:
         network.set_loraplus_lr_ratio(loraplus_lr_ratio, loraplus_unet_lr_ratio, loraplus_text_encoder_lr_ratio)
 
@@ -228,7 +235,8 @@ def create_network(
 
 
 # Create network from weights for inference, weights are not loaded here (because can be merged)
-def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
+def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False,
+                                **kwargs):
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import load_file, safe_open
@@ -260,7 +268,8 @@ def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weigh
     module_class = DyLoRAModule
 
     network = DyLoRANetwork(
-        text_encoder, unet, multiplier=multiplier, modules_dim=modules_dim, modules_alpha=modules_alpha, module_class=module_class
+        text_encoder, unet, multiplier=multiplier, modules_dim=modules_dim, modules_alpha=modules_alpha,
+        module_class=module_class
     )
     return network, weights_sd
 
@@ -273,18 +282,18 @@ class DyLoRANetwork(torch.nn.Module):
     LORA_PREFIX_TEXT_ENCODER = "lora_te"
 
     def __init__(
-        self,
-        text_encoder,
-        unet,
-        multiplier=1.0,
-        lora_dim=4,
-        alpha=1,
-        apply_to_conv=False,
-        modules_dim=None,
-        modules_alpha=None,
-        unit=1,
-        module_class=DyLoRAModule,
-        varbose=False,
+            self,
+            text_encoder,
+            unet,
+            multiplier=1.0,
+            lora_dim=4,
+            alpha=1,
+            apply_to_conv=False,
+            modules_dim=None,
+            modules_alpha=None,
+            unit=1,
+            module_class=DyLoRAModule,
+            varbose=False,
     ) -> None:
         super().__init__()
         self.multiplier = multiplier
@@ -432,11 +441,11 @@ class DyLoRANetwork(torch.nn.Module):
     """
 
     # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
-    def prepare_optimizer_params(self, 
-                                 text_encoder_lr: float, 
-                                 unet_lr: float, 
-                                 learning_rate: float, 
-                                 apply_orthograd: bool, 
+    def prepare_optimizer_params(self,
+                                 text_encoder_lr: float,
+                                 unet_lr: float,
+                                 learning_rate: float,
+                                 apply_orthograd: bool,
                                  orthograd_targets: list[str]):
         self.requires_grad_(True)
         all_params = []
@@ -480,7 +489,7 @@ class DyLoRANetwork(torch.nn.Module):
 
         if self.unet_loras:
             params = assemble_params(
-                self.unet_loras, learning_rate if unet_lr is None else unet_lr, 
+                self.unet_loras, learning_rate if unet_lr is None else unet_lr,
                 self.loraplus_unet_lr_ratio or self.loraplus_lr_ratio
             )
             all_params.extend(params)

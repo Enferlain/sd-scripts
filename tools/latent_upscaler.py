@@ -12,15 +12,19 @@ import numpy as np
 
 import torch
 from library.device_utils import init_ipex, get_preferred_device
+
 init_ipex()
 
 from torch import nn
 from tqdm import tqdm
 from PIL import Image
 from library.utils import setup_logging
+
 setup_logging()
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels=None, kernel_size=3, stride=1, padding=1):
@@ -194,15 +198,15 @@ class Upscaler(nn.Module):
         return False
 
     def upscale(
-        self,
-        vae: AutoencoderKL,
-        lowreso_images: List[Image.Image],
-        lowreso_latents: torch.Tensor,
-        dtype: torch.dtype,
-        width: int,
-        height: int,
-        batch_size: int = 1,
-        vae_batch_size: int = 1,
+            self,
+            vae: AutoencoderKL,
+            lowreso_images: List[Image.Image],
+            lowreso_latents: torch.Tensor,
+            dtype: torch.dtype,
+            width: int,
+            height: int,
+            batch_size: int = 1,
+            vae_batch_size: int = 1,
     ):
         # assertion
         assert lowreso_images is not None, "Upscaler requires lowreso image"
@@ -214,7 +218,8 @@ class Upscaler(nn.Module):
             upsampled_images.append(upsampled_image)
 
         # convert to tensor: this tensor is too large to be converted to cuda
-        upsampled_images = [torch.from_numpy(upsampled_image).permute(2, 0, 1).float() for upsampled_image in upsampled_images]
+        upsampled_images = [torch.from_numpy(upsampled_image).permute(2, 0, 1).float() for upsampled_image in
+                            upsampled_images]
         upsampled_images = torch.stack(upsampled_images, dim=0)
         upsampled_images = upsampled_images.to(dtype)
 
@@ -225,7 +230,7 @@ class Upscaler(nn.Module):
         # logger.info("Encoding upsampled (LANCZOS4) images...")
         upsampled_latents = []
         for i in tqdm(range(0, upsampled_images.shape[0], vae_batch_size)):
-            batch = upsampled_images[i : i + vae_batch_size].to(vae.device)
+            batch = upsampled_images[i: i + vae_batch_size].to(vae.device)
             with torch.no_grad():
                 batch = vae.encode(batch).latent_dist.sample()
             upsampled_latents.append(batch)
@@ -237,7 +242,7 @@ class Upscaler(nn.Module):
         upscaled_latents = []
         for i in range(0, upsampled_latents.shape[0], batch_size):
             with torch.no_grad():
-                upscaled_latents.append(self.forward(upsampled_latents[i : i + batch_size]))
+                upscaled_latents.append(self.forward(upsampled_latents[i: i + batch_size]))
         upscaled_latents = torch.cat(upscaled_latents, dim=0)
 
         return upscaled_latents * 0.18215
@@ -311,7 +316,8 @@ def upscale_images(args: argparse.Namespace):
     # upscale
     logger.info("Upscaling...")
     upscaled_latents = upscaler.upscale(
-        vae, images, None, us_dtype, width * 2, height * 2, batch_size=args.batch_size, vae_batch_size=args.vae_batch_size
+        vae, images, None, us_dtype, width * 2, height * 2, batch_size=args.batch_size,
+        vae_batch_size=args.vae_batch_size
     )
     upscaled_latents /= 0.18215
 
@@ -320,7 +326,7 @@ def upscale_images(args: argparse.Namespace):
     upscaled_images = []
     for i in tqdm(range(0, upscaled_latents.shape[0], args.vae_batch_size)):
         with torch.no_grad():
-            batch = vae.decode(upscaled_latents[i : i + args.vae_batch_size]).sample
+            batch = vae.decode(upscaled_latents[i: i + args.vae_batch_size]).sample
         batch = batch.to("cpu")
         upscaled_images.append(batch)
     upscaled_images = torch.cat(upscaled_images, dim=0)

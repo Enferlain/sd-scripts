@@ -2,8 +2,10 @@ import json
 import argparse
 from safetensors import safe_open
 from library.utils import setup_logging
+
 setup_logging()
 import logging
+
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser()
@@ -19,5 +21,3 @@ else:
     # metadata is json dict, but not pretty printed
     # sort by key and pretty print
     print(json.dumps(metadata, indent=4, sort_keys=True))
-
-    

@@ -33,7 +33,8 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
             unet,
             logit_scale,
             ckpt_info,
-        ) = sdxl_train_util.load_target_model(args, accelerator, sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
+        ) = sdxl_train_util.load_target_model(args, accelerator, sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0,
+                                              weight_dtype)
 
         self.load_stable_diffusion_format = load_stable_diffusion_format
         self.logit_scale = logit_scale
@@ -63,7 +64,8 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
         orig_size = batch["original_sizes_hw"]
         crop_size = batch["crop_top_lefts"]
         target_size = batch["target_sizes_hw"]
-        embs = sdxl_train_util.get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
+        embs = sdxl_train_util.get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(
+            weight_dtype)
 
         # concat embeddings
         encoder_hidden_states1, encoder_hidden_states2, pool2 = text_conds
@@ -74,7 +76,8 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
         return noise_pred
 
     def sample_images(
-        self, accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
+            self, accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoders, unet,
+            prompt_replacement
     ):
         sdxl_train_util.sample_images(
             accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
@@ -108,7 +111,7 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
         emb_g = data.get("clip_g", None)  # BiG-G text encoder 2
 
         assert (
-            emb_l is not None or emb_g is not None
+                emb_l is not None or emb_g is not None
         ), f"weight file does not contains weights for text encoder 1 or 2 / 重みファイルにテキストエンコーダー1または2の重みが含まれていません: {file}"
 
         return [emb_l, emb_g]

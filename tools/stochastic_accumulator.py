@@ -3,6 +3,7 @@
 
 import torch
 
+
 class StochasticAccumulator:
     """
     # init your model
@@ -42,7 +43,6 @@ class StochasticAccumulator:
             else:
                 p.acc_grad = p.grad.clone()
                 del p.grad
-            
 
     @staticmethod
     def reassign_grad_buffer(model):
@@ -55,12 +55,13 @@ class StochasticAccumulator:
     def assign_hooks(model):
         hooks = []
         for p in model.parameters():
-            #if p.requires_grad or p.grad is not None:
+            # if p.requires_grad or p.grad is not None:
             hook = p.register_post_accumulate_grad_hook(
                 StochasticAccumulator.stochastic_grad_accum
             )
             hooks.append(hook)
         return hooks
+
 
 # @torch.compile
 def copy_stochastic_(target: torch.Tensor, source: torch.Tensor):

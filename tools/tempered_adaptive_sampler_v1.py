@@ -1,12 +1,14 @@
 import torch
 import math
 
+
 class TemperedAdaptiveSampler:
     def __init__(self, noise_scheduler, num_bins: int = 64,
                  ema_beta: float = 0.95, temperature: float = 0.5,
                  prior_weight: float = 0.2, min_prob: float = 1e-4,
                  warmup_steps: int = 2000):
-        print(f"TemperedAdaptiveSampler initialized with: num_bins={num_bins}, ema_beta={ema_beta}, temperature={temperature}, prior_weight={prior_weight}, min_prob={min_prob}, warmup_steps={warmup_steps}")
+        print(
+            f"TemperedAdaptiveSampler initialized with: num_bins={num_bins}, ema_beta={ema_beta}, temperature={temperature}, prior_weight={prior_weight}, min_prob={min_prob}, warmup_steps={warmup_steps}")
         a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1. - 1e-12)
         snr = a2 / (1. - a2)
         log_snr = torch.log(snr.clamp(min=1e-20))  # [T], typically descending in t
@@ -30,8 +32,8 @@ class TemperedAdaptiveSampler:
         self.warmup_steps = int(warmup_steps)
 
         self.ema_loss = torch.ones(self.num_bins, dtype=torch.float32)
-        self.ema_sq   = torch.ones(self.num_bins, dtype=torch.float32)
-        self.counts   = torch.zeros(self.num_bins, dtype=torch.float32)
+        self.ema_sq = torch.ones(self.num_bins, dtype=torch.float32)
+        self.counts = torch.zeros(self.num_bins, dtype=torch.float32)
 
         self.prior_probs = torch.full((self.num_bins,), 1.0 / self.num_bins, dtype=torch.float32)
 
@@ -46,21 +48,21 @@ class TemperedAdaptiveSampler:
         # Aggregate batch stats
         vals = per_sample_losses.detach().to(torch.float32)
         bin_loss = torch.zeros(self.num_bins, device=device, dtype=torch.float32)
-        bin_sq   = torch.zeros(self.num_bins, device=device, dtype=torch.float32)
-        bin_cnt  = torch.zeros(self.num_bins, device=device, dtype=torch.float32)
+        bin_sq = torch.zeros(self.num_bins, device=device, dtype=torch.float32)
+        bin_cnt = torch.zeros(self.num_bins, device=device, dtype=torch.float32)
         bin_loss.index_add_(0, bins, vals)
         bin_sq.index_add_(0, bins, vals * vals)
         bin_cnt.index_add_(0, bins, torch.ones_like(vals, dtype=torch.float32))
 
         # EMA updates
         mask = bin_cnt > 0
-        ema  = self.ema_loss.to(device)
+        ema = self.ema_loss.to(device)
         ema2 = self.ema_sq.to(device)
         new_mean = torch.where(mask, bin_loss / (bin_cnt + 1e-8), ema)
-        new_sq   = torch.where(mask, bin_sq   / (bin_cnt + 1e-8), ema2)
-        self.ema_loss = self.ema_beta * ema  + (1 - self.ema_beta) * new_mean
-        self.ema_sq   = self.ema_beta * ema2 + (1 - self.ema_beta) * new_sq
-        self.counts   = self.counts.to(device) + bin_cnt
+        new_sq = torch.where(mask, bin_sq / (bin_cnt + 1e-8), ema2)
+        self.ema_loss = self.ema_beta * ema + (1 - self.ema_beta) * new_mean
+        self.ema_sq = self.ema_beta * ema2 + (1 - self.ema_beta) * new_sq
+        self.counts = self.counts.to(device) + bin_cnt
 
     @torch.no_grad()
     def sample(self, bsz: int, device, global_step: int, max_steps: int,
@@ -86,7 +88,7 @@ class TemperedAdaptiveSampler:
         bin_ids = torch.multinomial(mixed, bsz, replacement=True)
 
         # Uniform in log-SNR within bin, then invert log-SNR -> t via searchsorted
-        left  = self.bin_edges[:-1].to(device)[bin_ids]
+        left = self.bin_edges[:-1].to(device)[bin_ids]
         right = self.bin_edges[1:].to(device)[bin_ids]
         target_lsnr = left + torch.rand(bsz, device=device) * (right - left)
 

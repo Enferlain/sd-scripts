@@ -1,7 +1,7 @@
 from collections import defaultdict
 import torch
-import intel_extension_for_pytorch as ipex # pylint: disable=import-error, unused-import
-import intel_extension_for_pytorch._C as core # pylint: disable=import-error, unused-import
+import intel_extension_for_pytorch as ipex  # pylint: disable=import-error, unused-import
+import intel_extension_for_pytorch._C as core  # pylint: disable=import-error, unused-import
 
 # pylint: disable=protected-access, missing-function-docstring, line-too-long
 
@@ -10,7 +10,8 @@ OptState = ipex.cpu.autocast._grad_scaler.OptState
 _MultiDeviceReplicator = ipex.cpu.autocast._grad_scaler._MultiDeviceReplicator
 _refresh_per_optimizer_state = ipex.cpu.autocast._grad_scaler._refresh_per_optimizer_state
 
-def _unscale_grads_(self, optimizer, inv_scale, found_inf, allow_fp16): # pylint: disable=unused-argument
+
+def _unscale_grads_(self, optimizer, inv_scale, found_inf, allow_fp16):  # pylint: disable=unused-argument
     per_device_inv_scale = _MultiDeviceReplicator(inv_scale)
     per_device_found_inf = _MultiDeviceReplicator(found_inf)
 
@@ -58,6 +59,7 @@ def _unscale_grads_(self, optimizer, inv_scale, found_inf, allow_fp16): # pylint
 
     return per_device_found_inf._per_device_tensors
 
+
 def unscale_(self, optimizer):
     """
     Divides ("unscales") the optimizer's gradient tensors by the scale factor.
@@ -88,7 +90,7 @@ def unscale_(self, optimizer):
 
     optimizer_state = self._per_optimizer_states[id(optimizer)]
 
-    if optimizer_state["stage"] is OptState.UNSCALED: # pylint: disable=no-else-raise
+    if optimizer_state["stage"] is OptState.UNSCALED:  # pylint: disable=no-else-raise
         raise RuntimeError(
             "unscale_() has already been called on this optimizer since the last update()."
         )
@@ -109,6 +111,7 @@ def unscale_(self, optimizer):
         optimizer, inv_scale, found_inf, False
     )
     optimizer_state["stage"] = OptState.UNSCALED
+
 
 def update(self, new_scale=None):
     """
@@ -174,6 +177,7 @@ def update(self, new_scale=None):
         _growth_tracker = _growth_tracker.to(to_device)
     # To prepare for next iteration, clear the data collected from optimizers this iteration.
     self._per_optimizer_states = defaultdict(_refresh_per_optimizer_state)
+
 
 def gradscaler_init():
     torch.xpu.amp.GradScaler = ipex.cpu.autocast._grad_scaler.GradScaler

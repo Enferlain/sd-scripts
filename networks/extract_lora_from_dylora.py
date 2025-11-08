@@ -11,9 +11,12 @@ from tqdm import tqdm
 from library import train_util, model_util
 import numpy as np
 from library.utils import setup_logging
+
 setup_logging()
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def load_state_dict(file_name):
     if model_util.is_safetensors(file_name):

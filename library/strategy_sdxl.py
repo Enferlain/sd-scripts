@@ -6,7 +6,6 @@ import torch
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 from library.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
 
-
 from library.utils import setup_logging
 
 setup_logging()
@@ -14,14 +13,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 TOKENIZER1_PATH = "openai/clip-vit-large-patch14"
 TOKENIZER2_PATH = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
 
-TORCH_TO_NUMPY_TYPE_MAP = {torch.float32:np.float32, 
-                           torch.float64:np.float64, 
-                           torch.bfloat16:np.float32, 
-                           torch.float16:np.float16}
+TORCH_TO_NUMPY_TYPE_MAP = {torch.float32: np.float32,
+                           torch.float64: np.float64,
+                           torch.bfloat16: np.float32,
+                           torch.float16: np.float16}
 
 
 class SdxlTokenizeStrategy(TokenizeStrategy):
@@ -64,7 +62,8 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
         pass
 
     def _pool_workaround(
-        self, text_encoder: CLIPTextModelWithProjection, last_hidden_state: torch.Tensor, input_ids: torch.Tensor, eos_token_id: int
+            self, text_encoder: CLIPTextModelWithProjection, last_hidden_state: torch.Tensor, input_ids: torch.Tensor,
+            eos_token_id: int
     ):
         r"""
         workaround for CLIP's pooling bug: it returns the hidden states for the max token id as the pooled output
@@ -108,16 +107,16 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
         return pooled_output
 
     def _get_hidden_states_sdxl(
-        self,
-        input_ids1: torch.Tensor,
-        input_ids2: torch.Tensor,
-        tokenizer1: CLIPTokenizer,
-        tokenizer2: CLIPTokenizer,
-        text_encoder1: Union[CLIPTextModel, torch.nn.Module],
-        text_encoder2: Union[CLIPTextModelWithProjection, torch.nn.Module],
-        unwrapped_text_encoder2: Optional[CLIPTextModelWithProjection] = None,
-        dtype = torch.float32,
-        device = None,
+            self,
+            input_ids1: torch.Tensor,
+            input_ids2: torch.Tensor,
+            tokenizer1: CLIPTokenizer,
+            tokenizer2: CLIPTokenizer,
+            text_encoder1: Union[CLIPTextModel, torch.nn.Module],
+            text_encoder2: Union[CLIPTextModelWithProjection, torch.nn.Module],
+            unwrapped_text_encoder2: Optional[CLIPTextModelWithProjection] = None,
+            dtype=torch.float32,
+            device=None,
     ):
         # input_ids: b,n,77 -> b*n, 77
         b_size = input_ids1.size()[0]
@@ -141,7 +140,8 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
 
             # pool2 = enc_out["text_embeds"]
             unwrapped_text_encoder2 = unwrapped_text_encoder2 or text_encoder2
-            pool2 = self._pool_workaround(unwrapped_text_encoder2, enc_out["last_hidden_state"], input_ids2, tokenizer2.eos_token_id)
+            pool2 = self._pool_workaround(unwrapped_text_encoder2, enc_out["last_hidden_state"], input_ids2,
+                                          tokenizer2.eos_token_id)
 
         # b*n, 77, 768 or 1280 -> b, n*77, 768 or 1280
         n_size = 1 if max_token_length is None else max_token_length // 75
@@ -153,14 +153,14 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
             # encoder1: <BOS>...<EOS> の三連を <BOS>...<EOS> へ戻す
             states_list = [hidden_states1[:, 0].unsqueeze(1)]  # <BOS>
             for i in range(1, max_token_length, tokenizer1.model_max_length):
-                states_list.append(hidden_states1[:, i : i + tokenizer1.model_max_length - 2])  # <BOS> の後から <EOS> の前まで
+                states_list.append(hidden_states1[:, i: i + tokenizer1.model_max_length - 2])  # <BOS> の後から <EOS> の前まで
             states_list.append(hidden_states1[:, -1].unsqueeze(1))  # <EOS>
             hidden_states1 = torch.cat(states_list, dim=1)
 
             # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
             states_list = [hidden_states2[:, 0].unsqueeze(1)]  # <BOS>
             for i in range(1, max_token_length, tokenizer2.model_max_length):
-                chunk = hidden_states2[:, i : i + tokenizer2.model_max_length - 2]  # <BOS> の後から 最後の前まで
+                chunk = hidden_states2[:, i: i + tokenizer2.model_max_length - 2]  # <BOS> の後から 最後の前まで
                 # this causes an error:
                 # RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation
                 # if i > 1:
@@ -177,7 +177,8 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
         return hidden_states1, hidden_states2, pool2
 
     def encode_tokens(
-        self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor], dtype = torch.float32, device = None,
+            self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor],
+            dtype=torch.float32, device=None,
     ) -> List[torch.Tensor]:
         """
         Args:
@@ -196,30 +197,31 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
         tokenizer1, tokenizer2 = sdxl_tokenize_strategy.tokenizer1, sdxl_tokenize_strategy.tokenizer2
 
         hidden_states1, hidden_states2, pool2 = self._get_hidden_states_sdxl(
-            tokens1, 
-            tokens2, 
-            tokenizer1, 
-            tokenizer2, 
-            text_encoder1, 
-            text_encoder2, 
-            unwrapped_text_encoder2, 
-            dtype = dtype, 
-            device = device,
+            tokens1,
+            tokens2,
+            tokenizer1,
+            tokenizer2,
+            text_encoder1,
+            text_encoder2,
+            unwrapped_text_encoder2,
+            dtype=dtype,
+            device=device,
         )
         return [hidden_states1, hidden_states2, pool2]
 
     def encode_tokens_with_weights(
-        self,
-        tokenize_strategy: TokenizeStrategy,
-        models: List[Any],
-        tokens_list: List[torch.Tensor],
-        weights_list: List[torch.Tensor],
-        dtype = torch.float32, 
-        device = None,
+            self,
+            tokenize_strategy: TokenizeStrategy,
+            models: List[Any],
+            tokens_list: List[torch.Tensor],
+            weights_list: List[torch.Tensor],
+            dtype=torch.float32,
+            device=None,
     ) -> List[torch.Tensor]:
         dtype_to_use = dtype if dtype is not None else torch.float32
         with torch.autocast(dtype=dtype_to_use, device_type=device):
-            hidden_states1, hidden_states2, pool2 = self.encode_tokens(tokenize_strategy, models, tokens_list, dtype = dtype_to_use, device = device)
+            hidden_states1, hidden_states2, pool2 = self.encode_tokens(tokenize_strategy, models, tokens_list,
+                                                                       dtype=dtype_to_use, device=device)
 
             weights_list = [weights.to(hidden_states1.device) for weights in weights_list]
 
@@ -232,9 +234,11 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
                 # weights: ((b, n, 77), (b, n, 77)), hidden_states: (b, n*75+2, 768), (b, n*75+2, 768)
                 for weight, hidden_states in zip(weights_list, [hidden_states1, hidden_states2]):
                     for i in range(weight.shape[1]):
-                        hidden_states[:, i * 75 + 1 : i * 75 + 76] = hidden_states[:, i * 75 + 1 : i * 75 + 76] * weight[
-                            :, i, 1:-1
-                        ].unsqueeze(-1)
+                        hidden_states[:, i * 75 + 1: i * 75 + 76] = hidden_states[:, i * 75 + 1: i * 75 + 76] * weight[
+                                                                                                                :, i,
+                                                                                                                1:-1
+                                                                                                                ].unsqueeze(
+                            -1)
 
             return [hidden_states1, hidden_states2, pool2]
 
@@ -243,17 +247,18 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
     SDXL_TEXT_ENCODER_OUTPUTS_NPZ_SUFFIX = "_te_outputs.npz"
 
     def __init__(
-        self,
-        cache_to_disk: bool,
-        batch_size: int,
-        skip_disk_cache_validity_check: bool,
-        is_partial: bool = False,
-        is_weighted: bool = False,
+            self,
+            cache_to_disk: bool,
+            batch_size: int,
+            skip_disk_cache_validity_check: bool,
+            is_partial: bool = False,
+            is_weighted: bool = False,
     ) -> None:
         super().__init__(cache_to_disk, batch_size, skip_disk_cache_validity_check, is_partial, is_weighted)
 
     def get_outputs_npz_path(self, image_abs_path: str) -> str:
-        return os.path.splitext(image_abs_path)[0] + SdxlTextEncoderOutputsCachingStrategy.SDXL_TEXT_ENCODER_OUTPUTS_NPZ_SUFFIX
+        return os.path.splitext(image_abs_path)[
+            0] + SdxlTextEncoderOutputsCachingStrategy.SDXL_TEXT_ENCODER_OUTPUTS_NPZ_SUFFIX
 
     def is_disk_cached_outputs_expected(self, npz_path: str):
         if not self.cache_to_disk:
@@ -287,7 +292,8 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
         return [hidden_state1, hidden_state2, pool2]
 
     def cache_batch_outputs(
-        self, tokenize_strategy: TokenizeStrategy, models: List[Any], text_encoding_strategy: TextEncodingStrategy, infos: List, dtype=None, device=None
+            self, tokenize_strategy: TokenizeStrategy, models: List[Any], text_encoding_strategy: TextEncodingStrategy,
+            infos: List, dtype=None, device=None
     ):
         sdxl_text_encoding_strategy = text_encoding_strategy  # type: SdxlTextEncodingStrategy
         captions = [info.caption for info in infos]
@@ -317,9 +323,12 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
         pool2_np = pool2.cpu().numpy()
 
         if dtype:
-            hidden_state1_np = hidden_state1.astype(TORCH_TO_NUMPY_TYPE_MAP[hidden_state1.dtype] if dtype is None else TORCH_TO_NUMPY_TYPE_MAP[dtype])
-            hidden_state2_np = hidden_state2.astype(TORCH_TO_NUMPY_TYPE_MAP[hidden_state2.dtype] if dtype is None else TORCH_TO_NUMPY_TYPE_MAP[dtype])
-            pool2_np = pool2.astype(TORCH_TO_NUMPY_TYPE_MAP[pool2.dtype]if dtype is None else TORCH_TO_NUMPY_TYPE_MAP[dtype])
+            hidden_state1_np = hidden_state1.astype(
+                TORCH_TO_NUMPY_TYPE_MAP[hidden_state1.dtype] if dtype is None else TORCH_TO_NUMPY_TYPE_MAP[dtype])
+            hidden_state2_np = hidden_state2.astype(
+                TORCH_TO_NUMPY_TYPE_MAP[hidden_state2.dtype] if dtype is None else TORCH_TO_NUMPY_TYPE_MAP[dtype])
+            pool2_np = pool2.astype(
+                TORCH_TO_NUMPY_TYPE_MAP[pool2.dtype] if dtype is None else TORCH_TO_NUMPY_TYPE_MAP[dtype])
 
         for i, info in enumerate(infos):
             hidden_state1_i = hidden_state1_np[i]

@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 MIN_SV = 1e-6
 
+
 # Model save and load functions
 
 
@@ -62,7 +63,7 @@ def index_sv_fro(S, target):
     S_squared = S.pow(2)
     S_fro_sq = float(torch.sum(S_squared))
     sum_S_squared = torch.cumsum(S_squared, dim=0) / S_fro_sq
-    index = int(torch.searchsorted(sum_S_squared, target**2)) + 1
+    index = int(torch.searchsorted(sum_S_squared, target ** 2)) + 1
     index = max(1, min(index, len(S) - 1))
 
     return index
@@ -249,10 +250,12 @@ def resize_lora_model(lora_sd, new_rank, new_conv_rank, save_dtype, device, dyna
 
                 if conv2d:
                     full_weight_matrix = merge_conv(lora_down_weight, lora_up_weight, device)
-                    param_dict = extract_conv(full_weight_matrix, new_conv_rank, dynamic_method, dynamic_param, device, scale)
+                    param_dict = extract_conv(full_weight_matrix, new_conv_rank, dynamic_method, dynamic_param, device,
+                                              scale)
                 else:
                     full_weight_matrix = merge_linear(lora_down_weight, lora_up_weight, device)
-                    param_dict = extract_linear(full_weight_matrix, new_rank, dynamic_method, dynamic_param, device, scale)
+                    param_dict = extract_linear(full_weight_matrix, new_rank, dynamic_method, dynamic_param, device,
+                                                scale)
 
                 if verbose:
                     max_ratio = param_dict["max_ratio"]
@@ -272,7 +275,8 @@ def resize_lora_model(lora_sd, new_rank, new_conv_rank, save_dtype, device, dyna
                     verbose_str += "\n"
 
                 new_alpha = param_dict["new_alpha"]
-                o_lora_sd[block_down_name + "." + "lora_down.weight"] = param_dict["lora_down"].to(save_dtype).contiguous()
+                o_lora_sd[block_down_name + "." + "lora_down.weight"] = param_dict["lora_down"].to(
+                    save_dtype).contiguous()
                 o_lora_sd[block_up_name + "." + "lora_up.weight"] = param_dict["lora_up"].to(save_dtype).contiguous()
                 o_lora_sd[block_up_name + "." "alpha"] = torch.tensor(param_dict["new_alpha"]).to(save_dtype)
 
@@ -292,12 +296,13 @@ def resize_lora_model(lora_sd, new_rank, new_conv_rank, save_dtype, device, dyna
 
 def resize(args):
     if args.save_to is None or not (
-        args.save_to.endswith(".ckpt")
-        or args.save_to.endswith(".pt")
-        or args.save_to.endswith(".pth")
-        or args.save_to.endswith(".safetensors")
+            args.save_to.endswith(".ckpt")
+            or args.save_to.endswith(".pt")
+            or args.save_to.endswith(".pth")
+            or args.save_to.endswith(".safetensors")
     ):
-        raise Exception("The --save_to argument must be specified and must be a .ckpt , .pt, .pth or .safetensors file.")
+        raise Exception(
+            "The --save_to argument must be specified and must be a .ckpt , .pt, .pth or .safetensors file.")
 
     args.new_conv_rank = args.new_conv_rank if args.new_conv_rank is not None else args.new_rank
 
@@ -323,7 +328,8 @@ def resize(args):
 
     logger.info("Resizing Lora...")
     state_dict, old_dim, new_alpha = resize_lora_model(
-        lora_sd, args.new_rank, args.new_conv_rank, save_dtype, args.device, args.dynamic_method, args.dynamic_param, args.verbose
+        lora_sd, args.new_rank, args.new_conv_rank, save_dtype, args.device, args.dynamic_method, args.dynamic_param,
+        args.verbose
     )
 
     # update metadata
@@ -334,7 +340,8 @@ def resize(args):
 
     if not args.dynamic_method:
         conv_desc = "" if args.new_rank == args.new_conv_rank else f" (conv: {args.new_conv_rank})"
-        metadata["ss_training_comment"] = f"dimension is resized from {old_dim} to {args.new_rank}{conv_desc}; {comment}"
+        metadata[
+            "ss_training_comment"] = f"dimension is resized from {old_dim} to {args.new_rank}{conv_desc}; {comment}"
         metadata["ss_network_dim"] = str(args.new_rank)
         metadata["ss_network_alpha"] = str(new_alpha)
     else:
@@ -368,7 +375,8 @@ def setup_parser() -> argparse.ArgumentParser:
         choices=[None, "float", "fp16", "bf16"],
         help="precision in saving, float if omitted / 保存時の精度、未指定時はfloat",
     )
-    parser.add_argument("--new_rank", type=int, default=4, help="Specify rank of output LoRA / 出力するLoRAのrank (dim)")
+    parser.add_argument("--new_rank", type=int, default=4,
+                        help="Specify rank of output LoRA / 出力するLoRAのrank (dim)")
     parser.add_argument(
         "--new_conv_rank",
         type=int,

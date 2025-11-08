@@ -69,9 +69,11 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     set_tokenize_strategy(is_sd, is_sdxl, is_flux, args)
 
     if is_sd or is_sdxl:
-        latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(is_sd, True, args.vae_batch_size, args.skip_cache_check)
+        latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(is_sd, True, args.vae_batch_size,
+                                                                            args.skip_cache_check)
     else:
-        latents_caching_strategy = strategy_flux.FluxLatentsCachingStrategy(True, args.vae_batch_size, args.skip_cache_check)
+        latents_caching_strategy = strategy_flux.FluxLatentsCachingStrategy(True, args.vae_batch_size,
+                                                                            args.skip_cache_check)
     strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
     # データセットを準備する
@@ -147,7 +149,8 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     vae.requires_grad_(False)
     vae.eval()
 
-    if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+    if hasattr(args,
+               "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
         logger.info(f"Standalone saving latents with VAE padding mode: {args.vae_conv2d_padding_mode}")
         train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
@@ -182,7 +185,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--skip_existing",
         action="store_true",
         help="[Deprecated] This option does not work. Existing .npz files are always checked. Use `--skip_cache_check` to skip the check."
-        " / [非推奨] このオプションは機能しません。既存の .npz は常に検証されます。`--skip_cache_check` で検証をスキップできます。",
+             " / [非推奨] このオプションは機能しません。既存の .npz は常に検証されます。`--skip_cache_check` で検証をスキップできます。",
     )
     return parser
 
