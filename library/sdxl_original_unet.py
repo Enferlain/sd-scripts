@@ -56,6 +56,7 @@ USE_REENTRANT = True
 
 EPSILON = 1e-6
 
+
 # helper functions
 
 
@@ -143,7 +144,8 @@ class FlashAttentionFunction(torch.autograd.Function):
 
                 new_row_sums = exp_row_max_diff * row_sums + exp_block_row_max_diff * block_row_sums
 
-                oc.mul_((row_sums / new_row_sums) * exp_row_max_diff).add_((exp_block_row_max_diff / new_row_sums) * exp_values)
+                oc.mul_((row_sums / new_row_sums) * exp_row_max_diff).add_(
+                    (exp_block_row_max_diff / new_row_sums) * exp_values)
 
                 row_maxes.copy_(new_row_maxes)
                 row_sums.copy_(new_row_sums)
@@ -236,11 +238,11 @@ def get_parameter_device(parameter: torch.nn.Module):
 
 
 def get_timestep_embedding(
-    timesteps: torch.Tensor,
-    embedding_dim: int,
-    downscale_freq_shift: float = 1,
-    scale: float = 1,
-    max_period: int = 10000,
+        timesteps: torch.Tensor,
+        embedding_dim: int,
+        downscale_freq_shift: float = 1,
+        scale: float = 1,
+        max_period: int = 10000,
 ):
     """
     This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timestep embeddings.
@@ -297,9 +299,9 @@ class GroupNorm32(nn.GroupNorm):
 
 class ResnetBlock2D(nn.Module):
     def __init__(
-        self,
-        in_channels,
-        out_channels,
+            self,
+            in_channels,
+            out_channels,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -345,7 +347,8 @@ class ResnetBlock2D(nn.Module):
 
                 return custom_forward
 
-            x = torch.utils.checkpoint.checkpoint(create_custom_forward(self.forward_body), x, emb, use_reentrant=USE_REENTRANT)
+            x = torch.utils.checkpoint.checkpoint(create_custom_forward(self.forward_body), x, emb,
+                                                  use_reentrant=USE_REENTRANT)
         else:
             x = self.forward_body(x, emb)
 
@@ -390,19 +393,19 @@ class Downsample2D(nn.Module):
 
 class CrossAttention(nn.Module):
     def __init__(
-        self,
-        query_dim: int,
-        cross_attention_dim: Optional[int] = None,
-        heads: int = 8,
-        dim_head: int = 64,
-        upcast_attention: bool = False,
+            self,
+            query_dim: int,
+            cross_attention_dim: Optional[int] = None,
+            heads: int = 8,
+            dim_head: int = 64,
+            upcast_attention: bool = False,
     ):
         super().__init__()
         inner_dim = dim_head * heads
         cross_attention_dim = cross_attention_dim if cross_attention_dim is not None else query_dim
         self.upcast_attention = upcast_attention
 
-        self.scale = dim_head**-0.5
+        self.scale = dim_head ** -0.5
         self.heads = heads
 
         self.to_q = nn.Linear(query_dim, inner_dim, bias=False)
@@ -580,8 +583,8 @@ class GEGLU(nn.Module):
 
 class FeedForward(nn.Module):
     def __init__(
-        self,
-        dim: int,
+            self,
+            dim: int,
     ):
         super().__init__()
         inner_dim = int(dim * 4)  # mult is always 4
@@ -602,7 +605,8 @@ class FeedForward(nn.Module):
 
 class BasicTransformerBlock(nn.Module):
     def __init__(
-        self, dim: int, num_attention_heads: int, attention_head_dim: int, cross_attention_dim: int, upcast_attention: bool = False
+            self, dim: int, num_attention_heads: int, attention_head_dim: int, cross_attention_dim: int,
+            upcast_attention: bool = False
     ):
         super().__init__()
 
@@ -677,14 +681,14 @@ class BasicTransformerBlock(nn.Module):
 
 class Transformer2DModel(nn.Module):
     def __init__(
-        self,
-        num_attention_heads: int = 16,
-        attention_head_dim: int = 88,
-        in_channels: Optional[int] = None,
-        cross_attention_dim: Optional[int] = None,
-        use_linear_projection: bool = False,
-        upcast_attention: bool = False,
-        num_transformer_layers: int = 1,
+            self,
+            num_attention_heads: int = 16,
+            attention_head_dim: int = 88,
+            in_channels: Optional[int] = None,
+            cross_attention_dim: Optional[int] = None,
+            use_linear_projection: bool = False,
+            upcast_attention: bool = False,
+            num_transformer_layers: int = 1,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -822,8 +826,8 @@ class SdxlUNet2DConditionModel(nn.Module):
     _supports_gradient_checkpointing = True
 
     def __init__(
-        self,
-        **kwargs,
+            self,
+            **kwargs,
     ):
         super().__init__()
 
@@ -1015,7 +1019,8 @@ class SdxlUNet2DConditionModel(nn.Module):
 
         # output
         self.out = nn.ModuleList(
-            [GroupNorm32(32, self.model_channels), nn.SiLU(), nn.Conv2d(self.model_channels, self.out_channels, 3, padding=1)]
+            [GroupNorm32(32, self.model_channels), nn.SiLU(),
+             nn.Conv2d(self.model_channels, self.out_channels, 3, padding=1)]
         )
 
     # region diffusers compatibility
@@ -1194,10 +1199,10 @@ class InferSdxlUNet2DConditionModel:
             # Deep Shrink
             if self.ds_depth_1 is not None:
                 if (depth == self.ds_depth_1 and timesteps[0] >= self.ds_timesteps_1) or (
-                    self.ds_depth_2 is not None
-                    and depth == self.ds_depth_2
-                    and timesteps[0] < self.ds_timesteps_1
-                    and timesteps[0] >= self.ds_timesteps_2
+                        self.ds_depth_2 is not None
+                        and depth == self.ds_depth_2
+                        and timesteps[0] < self.ds_timesteps_1
+                        and timesteps[0] >= self.ds_timesteps_2
                 ):
                     # print("downsample", h.shape, self.ds_ratio)
                     org_dtype = h.dtype
@@ -1260,7 +1265,8 @@ if __name__ == "__main__":
 
     import transformers
 
-    optimizer = transformers.optimization.Adafactor(unet.parameters(), relative_step=True)  # working at 22.2GB with torch2
+    optimizer = transformers.optimization.Adafactor(unet.parameters(),
+                                                    relative_step=True)  # working at 22.2GB with torch2
 
     scaler = torch.cuda.amp.GradScaler(enabled=True)
 

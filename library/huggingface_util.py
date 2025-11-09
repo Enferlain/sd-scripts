@@ -5,9 +5,12 @@ import argparse
 import os
 from library.utils import fire_in_thread
 from library.utils import setup_logging
+
 setup_logging()
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def exists_repo(repo_id: str, repo_type: str, revision: str = "main", token: str = None):
     api = HfApi(
@@ -21,10 +24,10 @@ def exists_repo(repo_id: str, repo_type: str, revision: str = "main", token: str
 
 
 def upload(
-    args: argparse.Namespace,
-    src: Union[str, Path, bytes, BinaryIO],
-    dest_suffix: str = "",
-    force_sync_upload: bool = False,
+        args: argparse.Namespace,
+        src: Union[str, Path, bytes, BinaryIO],
+        dest_suffix: str = "",
+        force_sync_upload: bool = False,
 ):
     repo_id = args.huggingface_repo_id
     repo_type = args.huggingface_repo_type
@@ -70,11 +73,11 @@ def upload(
 
 
 def list_dir(
-    repo_id: str,
-    subfolder: str,
-    repo_type: str,
-    revision: str = "main",
-    token: str = None,
+        repo_id: str,
+        subfolder: str,
+        repo_type: str,
+        revision: str = "main",
+        token: str = None,
 ):
     api = HfApi(
         token=token,

@@ -90,6 +90,7 @@ def setup_logging(args=None, log_level=None, reset=False):
 setup_logging()
 logger = logging.getLogger(__name__)
 
+
 # endregion
 
 # region PyTorch utils
@@ -101,7 +102,8 @@ def swap_weight_devices(layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):
     weight_swap_jobs = []
     for module_to_cpu, module_to_cuda in zip(layer_to_cpu.modules(), layer_to_cuda.modules()):
         if hasattr(module_to_cpu, "weight") and module_to_cpu.weight is not None:
-            weight_swap_jobs.append((module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
+            weight_swap_jobs.append(
+                (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
 
     torch.cuda.current_stream().synchronize()  # this prevents the illegal loss value
 
@@ -214,12 +216,12 @@ def pil_resize(image, size, interpolation):
 
 
 def resize_image(
-    image: np.ndarray,
-    width: int,
-    height: int,
-    resized_width: int,
-    resized_height: int,
-    resize_interpolation: Optional[str] = None,
+        image: np.ndarray,
+        width: int,
+        height: int,
+        resized_width: int,
+        resized_height: int,
+        resize_interpolation: Optional[str] = None,
 ):
     """
     Resize image with resize interpolation. Default interpolation to AREA if image is smaller, else LANCZOS.
@@ -342,16 +344,16 @@ def validate_interpolation_fn(interpolation_str: str) -> bool:
 
 class GradualLatent:
     def __init__(
-        self,
-        ratio,
-        start_timesteps,
-        every_n_steps,
-        ratio_step,
-        s_noise=1.0,
-        gaussian_blur_ksize=None,
-        gaussian_blur_sigma=0.5,
-        gaussian_blur_strength=0.5,
-        unsharp_target_x=True,
+            self,
+            ratio,
+            start_timesteps,
+            every_n_steps,
+            ratio_step,
+            s_noise=1.0,
+            gaussian_blur_ksize=None,
+            gaussian_blur_sigma=0.5,
+            gaussian_blur_strength=0.5,
+            unsharp_target_x=True,
     ):
         self.ratio = ratio
         self.start_timesteps = start_timesteps
@@ -365,10 +367,10 @@ class GradualLatent:
 
     def __str__(self) -> str:
         return (
-            f"GradualLatent(ratio={self.ratio}, start_timesteps={self.start_timesteps}, "
-            + f"every_n_steps={self.every_n_steps}, ratio_step={self.ratio_step}, s_noise={self.s_noise}, "
-            + f"gaussian_blur_ksize={self.gaussian_blur_ksize}, gaussian_blur_sigma={self.gaussian_blur_sigma}, gaussian_blur_strength={self.gaussian_blur_strength}, "
-            + f"unsharp_target_x={self.unsharp_target_x})"
+                f"GradualLatent(ratio={self.ratio}, start_timesteps={self.start_timesteps}, "
+                + f"every_n_steps={self.every_n_steps}, ratio_step={self.ratio_step}, s_noise={self.s_noise}, "
+                + f"gaussian_blur_ksize={self.gaussian_blur_ksize}, gaussian_blur_sigma={self.gaussian_blur_sigma}, gaussian_blur_strength={self.gaussian_blur_strength}, "
+                + f"unsharp_target_x={self.unsharp_target_x})"
         )
 
     def apply_unshark_mask(self, x: torch.Tensor):
@@ -385,7 +387,8 @@ class GradualLatent:
         if org_dtype == torch.bfloat16:
             x = x.float()
 
-        x = torch.nn.functional.interpolate(x, size=resized_size, mode="bicubic", align_corners=False).to(dtype=org_dtype)
+        x = torch.nn.functional.interpolate(x, size=resized_size, mode="bicubic", align_corners=False).to(
+            dtype=org_dtype)
 
         # apply unsharp mask / アンシャープマスクを適用する
         if unsharp and self.gaussian_blur_ksize:
@@ -405,12 +408,12 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
         self.gradual_latent = gradual_latent
 
     def step(
-        self,
-        model_output: torch.FloatTensor,
-        timestep: Union[float, torch.FloatTensor],
-        sample: torch.FloatTensor,
-        generator: Optional[torch.Generator] = None,
-        return_dict: bool = True,
+            self,
+            model_output: torch.FloatTensor,
+            timestep: Union[float, torch.FloatTensor],
+            sample: torch.FloatTensor,
+            generator: Optional[torch.Generator] = None,
+            return_dict: bool = True,
     ) -> Union[EulerAncestralDiscreteSchedulerOutput, Tuple]:
         """
         Predict the sample from the previous timestep by reversing the SDE. This function propagates the diffusion
@@ -463,7 +466,7 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
             pred_original_sample = sample - sigma * model_output
         elif self.config.prediction_type == "v_prediction":
             # * c_out + input * c_skip
-            pred_original_sample = model_output * (-sigma / (sigma**2 + 1) ** 0.5) + (sample / (sigma**2 + 1))
+            pred_original_sample = model_output * (-sigma / (sigma ** 2 + 1) ** 0.5) + (sample / (sigma ** 2 + 1))
         elif self.config.prediction_type == "sample":
             raise NotImplementedError("prediction_type not implemented yet: sample")
         else:
@@ -473,8 +476,8 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
 
         sigma_from = self.sigmas[self.step_index]
         sigma_to = self.sigmas[self.step_index + 1]
-        sigma_up = (sigma_to**2 * (sigma_from**2 - sigma_to**2) / sigma_from**2) ** 0.5
-        sigma_down = (sigma_to**2 - sigma_up**2) ** 0.5
+        sigma_up = (sigma_to ** 2 * (sigma_from ** 2 - sigma_to ** 2) / sigma_from ** 2) ** 0.5
+        sigma_down = (sigma_to ** 2 - sigma_up ** 2) ** 0.5
 
         # 2. Convert to an ODE derivative
         derivative = (sample - pred_original_sample) / sigma
@@ -490,7 +493,8 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
             )
             s_noise = 1.0
         else:
-            print("resized_size", self.resized_size, "model_output.shape", model_output.shape, "sample.shape", sample.shape)
+            print("resized_size", self.resized_size, "model_output.shape", model_output.shape, "sample.shape",
+                  sample.shape)
             s_noise = self.gradual_latent.s_noise
 
             if self.gradual_latent.unsharp_target_x:
@@ -517,6 +521,5 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
             return (prev_sample,)
 
         return EulerAncestralDiscreteSchedulerOutput(prev_sample=prev_sample, pred_original_sample=pred_original_sample)
-
 
 # endregion

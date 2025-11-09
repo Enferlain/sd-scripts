@@ -44,7 +44,6 @@ def mem_eff_save_file(tensors: Dict[str, torch.Tensor], filename: str, metadata:
                 validated[key] = value
         return validated
 
-
     header = {}
     offset = 0
     if metadata:
@@ -285,7 +284,7 @@ class MemoryEfficientSafeOpen:
 
 
 def load_safetensors(
-    path: str, device: Union[str, torch.device], disable_mmap: bool = False, dtype: Optional[torch.dtype] = None
+        path: str, device: Union[str, torch.device], disable_mmap: bool = False, dtype: Optional[torch.dtype] = None
 ) -> dict[str, torch.Tensor]:
     if disable_mmap:
         # return safetensors.torch.load(open(path, "rb").read())
@@ -310,7 +309,8 @@ def load_safetensors(
 
 
 def load_split_weights(
-    file_path: str, device: Union[str, torch.device] = "cpu", disable_mmap: bool = False, dtype: Optional[torch.dtype] = None
+        file_path: str, device: Union[str, torch.device] = "cpu", disable_mmap: bool = False,
+        dtype: Optional[torch.dtype] = None
 ) -> Dict[str, torch.Tensor]:
     """
     Load split weights from a file. If the file name ends with 00001-of-00004 etc, it will load all files with the same prefix.
@@ -337,7 +337,8 @@ def load_split_weights(
     return state_dict
 
 
-def find_key(safetensors_file: str, starts_with: Optional[str] = None, ends_with: Optional[str] = None) -> Optional[str]:
+def find_key(safetensors_file: str, starts_with: Optional[str] = None, ends_with: Optional[str] = None) -> Optional[
+    str]:
     """
     Find a key in a safetensors file that starts with `starts_with` and ends with `ends_with`.
     If `starts_with` is None, it will match any key.

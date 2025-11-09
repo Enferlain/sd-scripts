@@ -13,7 +13,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 TOKENIZER_ID = "openai/clip-vit-large-patch14"
 V2_STABLE_DIFFUSION_ID = "stabilityai/stable-diffusion-2"  # ここからtokenizerだけ使う v2とv2.1はtokenizer仕様は同じ
 
@@ -56,7 +55,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         self.clip_skip = clip_skip
 
     def encode_tokens(
-        self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor]
+            self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor]
     ) -> List[torch.Tensor]:
         text_encoder = models[0]
         tokens = tokens[0]
@@ -86,7 +85,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
                 # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
                 states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
                 for i in range(1, max_token_length, model_max_length):
-                    chunk = encoder_hidden_states[:, i : i + model_max_length - 2]  # <BOS> の後から 最後の前まで
+                    chunk = encoder_hidden_states[:, i: i + model_max_length - 2]  # <BOS> の後から 最後の前まで
                     if i > 0:
                         for j in range(len(chunk)):
                             if tokens[j, 1] == sd_tokenize_strategy.tokenizer.eos_token:
@@ -99,18 +98,18 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
                 # v1: <BOS>...<EOS> の三連を <BOS>...<EOS> へ戻す
                 states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
                 for i in range(1, max_token_length, model_max_length):
-                    states_list.append(encoder_hidden_states[:, i : i + model_max_length - 2])  # <BOS> の後から <EOS> の前まで
+                    states_list.append(encoder_hidden_states[:, i: i + model_max_length - 2])  # <BOS> の後から <EOS> の前まで
                 states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # <EOS>
                 encoder_hidden_states = torch.cat(states_list, dim=1)
 
         return [encoder_hidden_states]
 
     def encode_tokens_with_weights(
-        self,
-        tokenize_strategy: TokenizeStrategy,
-        models: List[Any],
-        tokens_list: List[torch.Tensor],
-        weights_list: List[torch.Tensor],
+            self,
+            tokenize_strategy: TokenizeStrategy,
+            models: List[Any],
+            tokens_list: List[torch.Tensor],
+            weights_list: List[torch.Tensor],
     ) -> List[torch.Tensor]:
         encoder_hidden_states = self.encode_tokens(tokenize_strategy, models, tokens_list)[0]
 
@@ -123,9 +122,10 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         else:
             # weights: ((b, n, 77), (b, n, 77)), hidden_states: (b, n*75+2, 768), (b, n*75+2, 768)
             for i in range(weights.shape[1]):
-                encoder_hidden_states[:, i * 75 + 1 : i * 75 + 76] = encoder_hidden_states[:, i * 75 + 1 : i * 75 + 76] * weights[
-                    :, i, 1:-1
-                ].unsqueeze(-1)
+                encoder_hidden_states[:, i * 75 + 1: i * 75 + 76] = encoder_hidden_states[:,
+                                                                    i * 75 + 1: i * 75 + 76] * weights[
+                                                                                               :, i, 1:-1
+                                                                                               ].unsqueeze(-1)
 
         return [encoder_hidden_states]
 
@@ -144,7 +144,7 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
         self.suffix = (
             SdSdxlLatentsCachingStrategy.SD_LATENTS_NPZ_SUFFIX if sd else SdSdxlLatentsCachingStrategy.SDXL_LATENTS_NPZ_SUFFIX
         )
-    
+
     @property
     def cache_suffix(self) -> str:
         return self.suffix
@@ -156,16 +156,19 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
             return old_npz_file
         return os.path.splitext(absolute_path)[0] + f"_{image_size[0]:04d}x{image_size[1]:04d}" + self.suffix
 
-    def is_disk_cached_latents_expected(self, bucket_reso: Tuple[int, int], npz_path: str, flip_aug: bool, alpha_mask: bool):
+    def is_disk_cached_latents_expected(self, bucket_reso: Tuple[int, int], npz_path: str, flip_aug: bool,
+                                        alpha_mask: bool):
         return self._default_is_disk_cached_latents_expected(8, bucket_reso, npz_path, flip_aug, alpha_mask)
 
     # TODO remove circular dependency for ImageInfo
-    def cache_batch_latents(self, vae, image_infos: List, flip_aug: bool, alpha_mask: bool, random_crop: bool, random_crop_padding_percent: float = 0.05):
+    def cache_batch_latents(self, vae, image_infos: List, flip_aug: bool, alpha_mask: bool, random_crop: bool,
+                            random_crop_padding_percent: float = 0.05):
         encode_by_vae = lambda img_tensor: vae.encode(img_tensor).latent_dist.sample()
         vae_device = vae.device
         vae_dtype = vae.dtype
 
-        self._default_cache_batch_latents(encode_by_vae, vae_device, vae_dtype, image_infos, flip_aug, alpha_mask, random_crop, random_crop_padding_percent=random_crop_padding_percent)
+        self._default_cache_batch_latents(encode_by_vae, vae_device, vae_dtype, image_infos, flip_aug, alpha_mask,
+                                          random_crop, random_crop_padding_percent=random_crop_padding_percent)
 
         if not train_util.HIGH_VRAM:
             train_util.clean_memory_on_device(vae.device)

@@ -46,7 +46,7 @@ def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler):
         alphas_bar_sqrt *= alphas_bar_sqrt_0 / (alphas_bar_sqrt_0 - alphas_bar_sqrt_T)
 
         # Convert alphas_bar_sqrt to betas
-        alphas_bar = alphas_bar_sqrt**2
+        alphas_bar = alphas_bar_sqrt ** 2
         alphas = alphas_bar[1:] / alphas_bar[:-1]
         alphas = torch.cat([alphas_bar[0:1], alphas])
         betas = 1 - alphas
@@ -65,7 +65,8 @@ def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler):
     noise_scheduler.alphas_cumprod = alphas_cumprod
 
 
-def apply_snr_weight(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler, gamma: Number, v_prediction=False):
+def apply_snr_weight(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler, gamma: Number,
+                     v_prediction=False):
     snr = torch.stack([noise_scheduler.all_snr[t] for t in timesteps])
     min_snr_gamma = torch.minimum(snr, torch.full_like(snr, gamma))
     if v_prediction:
@@ -76,7 +77,8 @@ def apply_snr_weight(loss: torch.Tensor, timesteps: torch.IntTensor, noise_sched
     return loss
 
 
-def scale_v_prediction_loss_like_noise_prediction(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler):
+def scale_v_prediction_loss_like_noise_prediction(loss: torch.Tensor, timesteps: torch.IntTensor,
+                                                  noise_scheduler: DDPMScheduler):
     scale = get_snr_scale(timesteps, noise_scheduler)
     loss = loss * scale
     return loss
@@ -91,14 +93,16 @@ def get_snr_scale(timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler):
     return scale
 
 
-def add_v_prediction_like_loss(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler, v_pred_like_loss: torch.Tensor):
+def add_v_prediction_like_loss(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler,
+                               v_pred_like_loss: torch.Tensor):
     scale = get_snr_scale(timesteps, noise_scheduler)
     # logger.info(f"add v-prediction like loss: {v_pred_like_loss}, scale: {scale}, loss: {loss}, time: {timesteps}")
     loss = loss + loss / scale * v_pred_like_loss
     return loss
 
 
-def apply_debiased_estimation(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler, v_prediction=False):
+def apply_debiased_estimation(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler,
+                              v_prediction=False):
     snr_t = torch.stack([noise_scheduler.all_snr[t] for t in timesteps])  # batch_size
     snr_t = torch.minimum(snr_t, torch.ones_like(snr_t) * 1000)  # if timestep is 0, snr_t is inf, so limit it to 1000
     if v_prediction:
@@ -302,7 +306,7 @@ def pad_tokens_and_weights(tokens, weights, max_length, bos, eos, no_boseos_midd
             else:
                 for j in range(max_embeddings_multiples):
                     w.append(1.0)  # weight for starting token in this chunk
-                    w += weights[i][j * (chunk_length - 2) : min(len(weights[i]), (j + 1) * (chunk_length - 2))]
+                    w += weights[i][j * (chunk_length - 2): min(len(weights[i]), (j + 1) * (chunk_length - 2))]
                     w.append(1.0)  # weight for ending token in this chunk
                 w += [1.0] * (weights_length - len(w))
             weights[i] = w[:]
@@ -311,14 +315,14 @@ def pad_tokens_and_weights(tokens, weights, max_length, bos, eos, no_boseos_midd
 
 
 def get_unweighted_text_embeddings(
-    tokenizer,
-    text_encoder,
-    text_input: torch.Tensor,
-    chunk_length: int,
-    clip_skip: int,
-    eos: int,
-    pad: int,
-    no_boseos_middle: Optional[bool] = True,
+        tokenizer,
+        text_encoder,
+        text_input: torch.Tensor,
+        chunk_length: int,
+        clip_skip: int,
+        eos: int,
+        pad: int,
+        no_boseos_middle: Optional[bool] = True,
 ):
     """
     When the length of tokens is a multiple of the capacity of the text encoder,
@@ -329,7 +333,7 @@ def get_unweighted_text_embeddings(
         text_embeddings = []
         for i in range(max_embeddings_multiples):
             # extract the i-th chunk
-            text_input_chunk = text_input[:, i * (chunk_length - 2) : (i + 1) * (chunk_length - 2) + 2].clone()
+            text_input_chunk = text_input[:, i * (chunk_length - 2): (i + 1) * (chunk_length - 2) + 2].clone()
 
             # cover the head and the tail by the starting and the ending tokens
             text_input_chunk[:, 0] = text_input[0, 0]
@@ -373,13 +377,13 @@ def get_unweighted_text_embeddings(
 
 
 def get_weighted_text_embeddings(
-    tokenizer,
-    text_encoder,
-    prompt: Union[str, List[str]],
-    device,
-    max_embeddings_multiples: Optional[int] = 3,
-    no_boseos_middle: Optional[bool] = False,
-    clip_skip=None,
+        tokenizer,
+        text_encoder,
+        prompt: Union[str, List[str]],
+        device,
+        max_embeddings_multiples: Optional[int] = 3,
+        no_boseos_middle: Optional[bool] = False,
+        clip_skip=None,
 ):
     r"""
     Prompts can be assigned with local weights using brackets. For example,
@@ -460,8 +464,8 @@ def pyramid_noise_like(noise, device, iterations=6, discount=0.4) -> torch.Float
     u = torch.nn.Upsample(size=(w, h), mode="bilinear").to(device)
     for i in range(iterations):
         r = random.random() * 2 + 2  # Rather than always going 2x,
-        wn, hn = max(1, int(w / (r**i))), max(1, int(h / (r**i)))
-        noise += u(torch.randn(b, c, wn, hn).to(device)) * discount**i
+        wn, hn = max(1, int(w / (r ** i))), max(1, int(h / (r ** i)))
+        noise += u(torch.randn(b, c, wn, hn).to(device)) * discount ** i
         if wn == 1 or hn == 1:
             break  # Lowest resolution is 1x1
     return noise / noise.std()  # Scaled back to roughly unit variance
@@ -492,7 +496,7 @@ def apply_masked_loss(loss, batch) -> torch.FloatTensor:
         # print(f"conditioning_image: {mask_image.shape}")
     elif "alpha_masks" in batch and batch["alpha_masks"] is not None:
         # alpha mask is 0 to 1
-        mask_image = batch["alpha_masks"].to(dtype=loss.dtype).unsqueeze(1) # add channel dimension
+        mask_image = batch["alpha_masks"].to(dtype=loss.dtype).unsqueeze(1)  # add channel dimension
         # print(f"mask_image: {mask_image.shape}, {mask_image.mean()}")
     else:
         return loss

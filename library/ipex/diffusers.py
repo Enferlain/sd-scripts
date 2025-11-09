@@ -1,7 +1,7 @@
 from functools import wraps
 import torch
-import diffusers # pylint: disable=import-error
-from diffusers.utils import torch_utils # pylint: disable=import-error, unused-import # noqa: F401
+import diffusers  # pylint: disable=import-error
+from diffusers.utils import torch_utils  # pylint: disable=import-error, unused-import # noqa: F401
 
 # pylint: disable=protected-access, missing-function-docstring, line-too-long
 
@@ -9,6 +9,8 @@ from diffusers.utils import torch_utils # pylint: disable=import-error, unused-i
 # Diffusers FreeU
 # Diffusers is imported before ipex hijacks so fourier_filter needs hijacking too
 original_fourier_filter = diffusers.utils.torch_utils.fourier_filter
+
+
 @wraps(diffusers.utils.torch_utils.fourier_filter)
 def fourier_filter(x_in, threshold, scale):
     return_dtype = x_in.dtype
@@ -49,7 +51,7 @@ def hidream_rope(pos: torch.Tensor, dim: int, theta: int) -> torch.Tensor:
     pos = pos.to("cpu")
 
     scale = torch.arange(0, dim, 2, dtype=torch.float64, device=pos.device) / dim
-    omega = 1.0 / (theta**scale)
+    omega = 1.0 / (theta ** scale)
 
     batch_size, seq_length = pos.shape
     out = torch.einsum("...n,d->...nd", pos, omega)
@@ -69,7 +71,7 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos, output_type="np"):
 
     omega = torch.arange(embed_dim // 2, device=pos.device, dtype=torch.float32)
     omega /= embed_dim / 2.0
-    omega = 1.0 / 10000**omega  # (D/2,)
+    omega = 1.0 / 10000 ** omega  # (D/2,)
 
     pos = pos.reshape(-1)  # (M,)
     out = torch.outer(pos, omega)  # (M, D/2), outer product
@@ -114,9 +116,12 @@ def ipex_diffusers(device_supports_fp64=False):
     diffusers.utils.torch_utils.fourier_filter = fourier_filter
     if not device_supports_fp64:
         # get around lazy imports
-        from diffusers.models import embeddings as diffusers_embeddings # pylint: disable=import-error, unused-import # noqa: F401
-        from diffusers.models import transformers as diffusers_transformers # pylint: disable=import-error, unused-import # noqa: F401
-        from diffusers.models import controlnets as diffusers_controlnets # pylint: disable=import-error, unused-import # noqa: F401
+        from diffusers.models import \
+            embeddings as diffusers_embeddings  # pylint: disable=import-error, unused-import # noqa: F401
+        from diffusers.models import \
+            transformers as diffusers_transformers  # pylint: disable=import-error, unused-import # noqa: F401
+        from diffusers.models import \
+            controlnets as diffusers_controlnets  # pylint: disable=import-error, unused-import # noqa: F401
         diffusers.models.embeddings.get_1d_sincos_pos_embed_from_grid = get_1d_sincos_pos_embed_from_grid
         diffusers.models.embeddings.FluxPosEmbed = FluxPosEmbed
         diffusers.models.embeddings.apply_rotary_emb = apply_rotary_emb

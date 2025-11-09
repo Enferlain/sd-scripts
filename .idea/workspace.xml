@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="ae89517e-e70b-4a0e-9f43-a39f1c1a2fea" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/XTI_hijack.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/config_README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/fine_tune_README_ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/gen_img_README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/gen_img_README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/hunyuan_image_train_network.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/lumina_train_network.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/masked_loss_README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/sd3_train_network.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/train_README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/train_README-zh.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/train_db_README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/train_db_README-zh.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/train_lllite_README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/train_lllite_README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/train_network_README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/train_network_README-zh.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/train_ti_README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/wd14_tagger_README-en.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/wd14_tagger_README-ja.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/blip/blip.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/blip/med.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/blip/med_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/blip/vit.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/clean_captions_and_tags.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/hypernetwork_nai.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/make_captions.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/make_captions_by_git.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/merge_captions_to_metadata.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/merge_dd_tags_to_metadata.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/prepare_buckets_latents.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/finetune/tag_images_by_wd14_tagger.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/flux_minimal_inference.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/flux_train.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/flux_train_control_net.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/flux_train_network.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen_img.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen_img_diffusers.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hunyuan_image_minimal_inference.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hunyuan_image_train_network.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/adafactor_fused.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/adafactor_fused.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/attention.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/attention_processors.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/chroma_models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/config_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/config_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/custom_offloading_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/custom_offloading_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/custom_train_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/custom_train_functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/deepspeed_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/deepspeed_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/device_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/device_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/edm2_loss.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/edm2_loss.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/edm2_loss_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/edm2_loss_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/flux_models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/flux_train_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/flux_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/fp8_optimization_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/fp8_optimization_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/huggingface_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/huggingface_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/hunyuan_image_models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/hunyuan_image_modules.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/hunyuan_image_text_encoder.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/hunyuan_image_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/hunyuan_image_vae.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/hypernetwork.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/ipex/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/ipex/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/ipex/attention.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/ipex/attention.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/ipex/diffusers.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/ipex/diffusers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/ipex/hijacks.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/ipex/hijacks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/jpeg_xl_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/jpeg_xl_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/lora_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/lora_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/lpw_stable_diffusion.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/lpw_stable_diffusion.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/lumina_models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/lumina_train_util.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/lumina_util.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/model_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/model_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/original_unet.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/original_unet.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/ramtorch_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/ramtorch_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/safetensors_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/safetensors_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/sai_model_spec.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/sai_model_spec.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/sd3_models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/sd3_train_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/sd3_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/sdxl_lpw_stable_diffusion.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/sdxl_lpw_stable_diffusion.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/sdxl_model_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/sdxl_model_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/sdxl_original_control_net.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/sdxl_original_control_net.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/sdxl_original_unet.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/sdxl_original_unet.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/sdxl_train_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/sdxl_train_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/slicing_vae.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/strategy_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/strategy_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/strategy_flux.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/strategy_hunyuan_image.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/strategy_lumina.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/strategy_sd.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/strategy_sd.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/strategy_sd3.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/strategy_sdxl.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/strategy_sdxl.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/train_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/train_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/library/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/library/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lumina_minimal_inference.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lumina_train.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lumina_train_network.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/control_net_lllite.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/control_net_lllite_for_train.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/convert_flux_lora.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/convert_hunyuan_image_lora_to_comfy.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/flux_extract_lora.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/flux_merge_lora.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/lora_fa.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/lora_flux.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/lora_hunyuan_image.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/lora_lumina.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/lora_sd3.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/merge_lora.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/merge_lora_old.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/networks/oft_flux.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sd3_minimal_inference.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sd3_train.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sd3_train_network.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sdxl_gen_img.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sdxl_minimal_inference.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sdxl_train_control_net.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sdxl_train_control_net_lllite.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sdxl_train_control_net_lllite_old.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_custom_offloading_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_fine_tune.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_flux_train.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_flux_train_network.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_lumina_train_network.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_optimizer.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_sd3_train.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_sd3_train_network.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_sdxl_train.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_sdxl_train_network.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_train.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_train_network.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_train_textual_inversion.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_validation.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/canny.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/convert_diffusers20_original_sd.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/convert_diffusers_to_flux.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/detect_face_rotate.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/merge_models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/merge_sd3_safetensors.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/original_control_net.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_control_net.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_controlnet.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_db.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_textual_inversion_XTI.py" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Enferlain&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/67372a/sd-scripts&quot;,
+    &quot;accountId&quot;: &quot;5cd4a736-9276-4926-a34f-982b632804c3&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 4
+}</component>
+  <component name="ProjectId" id="35DhvGYHBVIRrrGZzDb5cDKUjiO" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;e6d1788a&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/LoRA_Easy_Training_Scripts/backend/sd_scripts&quot;
+  }
+}</component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-4f4e415b4190-aa17d162503b-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-243.26053.29" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ae89517e-e70b-4a0e-9f43-a39f1c1a2fea" name="Changes" comment="" />
+      <created>1762650779589</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1762650779589</updated>
+    </task>
+    <servers />
+  </component>
+</project>

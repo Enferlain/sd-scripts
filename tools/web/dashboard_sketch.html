@@ -1,0 +1,191 @@
+<!-- In tools/web/dashboard.html -->
+<!-- (Keep all your HTML and CSS the same, just replace the <script> block) -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF4">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diffusion Timestep Charts</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1f2937; /* Dark background */
+            color: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        .container-card {
+            background-color: #374151; /* Slightly lighter dark card */
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+            max-width: 900px;
+            width: 100%;
+        }
+        .chart-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        @media (min-width: 768px) {
+            .chart-section {
+                flex-direction: row;
+            }
+            .chart-container {
+                flex: 1;
+            }
+        }
+        .chart-container {
+            /* CRITICAL FIX: Setting fixed height to stop vertical runaway growth */
+            height: 400px;
+            padding: 1rem;
+            background-color: #2d3748;
+            border-radius: 0.5rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            position: relative;
+            /* The previous aggressive canvas CSS is removed to let Chart.js manage responsiveness properly */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container-card p-6 md:p-10 rounded-xl">
+        <h1 class="text-3xl font-bold mb-2 text-indigo-400">Diffusion Model Timestep Visualization</h1>
+        <p class="text-gray-300 mb-6">A side-by-side view of the Noise Schedule and the prioritized Sampling Distribution you showed me.</p>
+
+        <div class="chart-section mb-6">
+            <!-- 1. Noise Schedule (Line Chart) -->
+            <div class="chart-container">
+                <h2 class="text-lg font-semibold text-white mb-2 text-center">Noise Schedule (Factors)</h2>
+                <!-- The canvas is now contained by the 400px height of the container -->
+                <canvas id="timestepChart"></canvas>
+            </div>
+
+            <!-- 2. Sampling Distribution (Bar Chart - The one you uploaded!) -->
+            <div class="chart-container">
+                <h2 class="text-lg font-semibold text-white mb-2 text-center">Timestep Sampling Frequency</h2>
+                <!-- The canvas is now contained by the 400px height of the container -->
+                <canvas id="samplingChart"></canvas>
+            </div>
+        </div>
+
+        <div class="mt-6 space-y-3 text-sm">
+            <h2 class="text-xl font-semibold text-white">Lumi's Analysis: Why the Bias?</h2>
+            <ul class="list-disc list-inside text-gray-300 ml-4 space-y-1">
+                <li class="flex items-start">
+                    <span class="text-pink-400 mr-2 mt-1">•</span>
+                    <span class="flex-1">
+                        **Timestep Sampling Distribution (The Bar Chart):** This shows that during training, we intentionally sample **high timesteps ($t$)** (lots of noise) much more often than low timesteps (subtle noise).
+                    </span>
+                </li>
+                <li class="flex items-start">
+                    <span class="text-yellow-400 mr-2 mt-1">•</span>
+                    <span class="flex-1">
+                        **The Hard Part:** High-noise steps are where the model has to predict *a lot* of noise from scratch. Low-noise steps are easier because the image is almost complete.
+                    </span>
+                </li>
+                <li class="flex items-start">
+                    <span class="text-green-400 mr-2 mt-1">•</span>
+                    <span class="flex-1">
+                        **Optimization Trick:** By sampling the hard, high-noise steps more frequently, we make sure the model is *really* good at the tough parts, leading to much faster convergence and better quality images! It's like focused training!
+                    </span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- In tools/web/dashboard_improved.html -->
+    <script>
+        const CHART_COLOR_SIGNAL = 'rgb(52, 211, 153)';
+        const CHART_COLOR_NOISE = 'rgb(96, 165, 250)';
+        const CHART_COLOR_SAMPLING = 'rgb(251, 113, 133)';
+
+        let timestepLineChart = null;
+        let samplingBarChart = null;
+
+        // This function is the same as your version! It's perfect.
+        function renderLineChart(data) {
+            const ctx = document.getElementById('timestepChart').getContext('2d');
+            if (timestepLineChart) timestepLineChart.destroy();
+            timestepLineChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        { label: 'Signal Strength (√ᾱₜ)', data: data.signalData, borderColor: CHART_COLOR_SIGNAL, borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true, backgroundColor: 'rgba(52, 211, 153, 0.1)'},
+                        { label: 'Noise Level (√(1-ᾱₜ))', data: data.noiseData, borderColor: CHART_COLOR_NOISE, borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true, backgroundColor: 'rgba(96, 165, 250, 0.1)'}
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e2e8f0' } }, tooltip: { mode: 'index', intersect: false } }, interaction: { mode: 'nearest', axis: 'x', intersect: false }, scales: { x: { title: { display: true, text: 'Timestep t', color: '#cbd5e1' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, y: { title: { display: true, text: 'Factor', color: '#cbd5e1' }, min: 0, max: 1.0, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } } } }
+            });
+        }
+
+        // This function is now smarter! It creates the chart once, then just updates the data.
+        function updateBarChart(data) {
+            const ctx = document.getElementById('samplingChart').getContext('2d');
+            
+            // If the chart already exists, just update its data for a smooth animation!
+            if (samplingBarChart) {
+                samplingBarChart.data.datasets[0].data = data;
+                samplingBarChart.update('none'); // 'none' avoids a flashy animation on every update
+                return;
+            }
+
+            // If it's the first time, create the chart.
+            const labels = Array.from({ length: data.length }, (_, i) => i.toString());
+            samplingBarChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Sample Count',
+                        data: data,
+                        backgroundColor: CHART_COLOR_SAMPLING,
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => `Timestep: ${items[0].label}`, label: (item) => `Samples: ${item.formattedValue}` } } }, scales: { x: { title: { display: true, text: 'Timestep t', color: '#cbd5e1' }, grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 11 } }, y: { title: { display: true, text: 'Count', color: '#cbd5e1' }, beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } } } }
+            });
+        }
+
+        // This logic is also the same as your version! It's great.
+        async function initializeSchedule() {
+            try {
+                const response = await fetch('/schedule_data');
+                if (response.ok) {
+                    const data = await response.json();
+                    renderLineChart(data);
+                } else {
+                    setTimeout(initializeSchedule, 2000);
+                }
+            } catch (error) {
+                setTimeout(initializeSchedule, 2000);
+            }
+        }
+
+        async function refreshDistribution() {
+            try {
+                const response = await fetch('/distribution_data');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateBarChart(data);
+                }
+            } catch (error) {
+                // No need to retry here, the interval will call it again
+            }
+        }
+
+        window.onload = function() {
+            initializeSchedule();
+            // Fetch the distribution data immediately, then start the interval
+            refreshDistribution(); 
+            setInterval(refreshDistribution, 2000); // Refresh every 2 seconds for a super live feel!
+        };
+    </script>
+</body>
+</html>

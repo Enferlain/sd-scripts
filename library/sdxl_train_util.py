@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 TOKENIZER1_PATH = "openai/clip-vit-large-patch14"
 TOKENIZER2_PATH = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
 
+
 # DEFAULT_NOISE_OFFSET = 0.0357
 
 
@@ -29,7 +30,8 @@ def load_target_model(args, accelerator, model_version: str, weight_dtype):
     model_dtype = match_mixed_precision(args, weight_dtype)  # prepare fp16/bf16
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
-            logger.info(f"loading model for process {accelerator.state.local_process_index}/{accelerator.state.num_processes}")
+            logger.info(
+                f"loading model for process {accelerator.state.local_process_index}/{accelerator.state.num_processes}")
 
             (
                 load_stable_diffusion_format,
@@ -40,6 +42,7 @@ def load_target_model(args, accelerator, model_version: str, weight_dtype):
                 logit_scale,
                 ckpt_info,
             ) = _load_target_model(
+                args,
                 args.pretrained_model_name_or_path,
                 args.vae,
                 model_version,
@@ -63,7 +66,8 @@ def load_target_model(args, accelerator, model_version: str, weight_dtype):
 
 
 def _load_target_model(
-    name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype, device="cpu", model_dtype=None, disable_mmap=False
+        args: argparse.Namespace, name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype,
+    device="cpu", model_dtype=None, disable_mmap=False
 ):
     # model_dtype only work with full fp16/bf16
     name_or_path = os.readlink(name_or_path) if os.path.islink(name_or_path) else name_or_path
@@ -78,7 +82,8 @@ def _load_target_model(
             unet,
             logit_scale,
             ckpt_info,
-        ) = sdxl_model_util.load_models_from_sdxl_checkpoint(model_version, name_or_path, device, model_dtype, disable_mmap)
+        ) = sdxl_model_util.load_models_from_sdxl_checkpoint(model_version, name_or_path, device, model_dtype,
+                                                             disable_mmap)
     else:
         # Diffusers model is loaded to CPU
         from diffusers import StableDiffusionXLPipeline
@@ -130,6 +135,10 @@ def _load_target_model(
         vae = model_util.load_vae(vae_path, weight_dtype)
         logger.info("additional VAE loaded")
 
+    if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+        logger.info(f"Loading VAE with padding mode: {args.vae_conv2d_padding_mode}")
+        train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
+
     return load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info
 
 
@@ -167,12 +176,12 @@ def load_tokenizers(args: argparse.Namespace):
 def match_mixed_precision(args, weight_dtype):
     if args.full_fp16:
         assert (
-            weight_dtype == torch.float16
+                weight_dtype == torch.float16
         ), "full_fp16 requires mixed precision='fp16' / full_fp16を使う場合はmixed_precision='fp16'を指定してください。"
         return weight_dtype
     elif args.full_bf16:
         assert (
-            weight_dtype == torch.bfloat16
+                weight_dtype == torch.bfloat16
         ), "full_bf16 requires mixed precision='bf16' / full_bf16を使う場合はmixed_precision='bf16'を指定してください。"
         return weight_dtype
     else:
@@ -217,19 +226,19 @@ def get_size_embeddings(orig_size, crop_size, target_size, device):
 
 
 def save_sd_model_on_train_end(
-    args: argparse.Namespace,
-    src_path: str,
-    save_stable_diffusion_format: bool,
-    use_safetensors: bool,
-    save_dtype: torch.dtype,
-    epoch: int,
-    global_step: int,
-    text_encoder1,
-    text_encoder2,
-    unet,
-    vae,
-    logit_scale,
-    ckpt_info,
+        args: argparse.Namespace,
+        src_path: str,
+        save_stable_diffusion_format: bool,
+        use_safetensors: bool,
+        save_dtype: torch.dtype,
+        epoch: int,
+        global_step: int,
+        text_encoder1,
+        text_encoder2,
+        unet,
+        vae,
+        logit_scale,
+        ckpt_info,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
         sai_metadata = train_util.get_sai_model_spec(None, args, True, False, False, is_stable_diffusion_ckpt=True)
@@ -267,22 +276,22 @@ def save_sd_model_on_train_end(
 # epochとstepの保存、メタデータにepoch/stepが含まれ引数が同じになるため、統合している
 # on_epoch_end: Trueならepoch終了時、Falseならstep経過時
 def save_sd_model_on_epoch_end_or_stepwise(
-    args: argparse.Namespace,
-    on_epoch_end: bool,
-    accelerator,
-    src_path,
-    save_stable_diffusion_format: bool,
-    use_safetensors: bool,
-    save_dtype: torch.dtype,
-    epoch: int,
-    num_train_epochs: int,
-    global_step: int,
-    text_encoder1,
-    text_encoder2,
-    unet,
-    vae,
-    logit_scale,
-    ckpt_info,
+        args: argparse.Namespace,
+        on_epoch_end: bool,
+        accelerator,
+        src_path,
+        save_stable_diffusion_format: bool,
+        use_safetensors: bool,
+        save_dtype: torch.dtype,
+        epoch: int,
+        num_train_epochs: int,
+        global_step: int,
+        text_encoder1,
+        text_encoder2,
+        unet,
+        vae,
+        logit_scale,
+        ckpt_info,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
         sai_metadata = train_util.get_sai_model_spec(None, args, True, False, False, is_stable_diffusion_ckpt=True)

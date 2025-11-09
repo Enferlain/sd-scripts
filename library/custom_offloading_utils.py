@@ -47,7 +47,8 @@ def swap_weight_devices_cuda(device: torch.device, layer_to_cpu: nn.Module, laye
         if hasattr(module_to_cuda, "weight") and module_to_cuda.weight is not None:
             module_to_cpu = modules_to_cpu.get(module_to_cuda_name, None)
             if module_to_cpu is not None and module_to_cpu.weight.shape == module_to_cuda.weight.shape:
-                weight_swap_jobs.append((module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
+                weight_swap_jobs.append(
+                    (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
             else:
                 if module_to_cuda.weight.data.device.type != device.type:
                     # print(
@@ -84,7 +85,8 @@ def swap_weight_devices_no_cuda(device: torch.device, layer_to_cpu: nn.Module, l
     weight_swap_jobs: list[Tuple[nn.Module, nn.Module, torch.Tensor, torch.Tensor]] = []
     for module_to_cpu, module_to_cuda in zip(layer_to_cpu.modules(), layer_to_cuda.modules()):
         if hasattr(module_to_cpu, "weight") and module_to_cpu.weight is not None:
-            weight_swap_jobs.append((module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
+            weight_swap_jobs.append(
+                (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
 
     # device to cpu
     for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
@@ -131,7 +133,8 @@ class Offloader:
         def move_blocks(bidx_to_cpu, block_to_cpu, bidx_to_cuda, block_to_cuda):
             if self.debug:
                 start_time = time.perf_counter()
-                print(f"Move block {bidx_to_cpu} to CPU and block {bidx_to_cuda} to {'CUDA' if self.cuda_available else 'device'}")
+                print(
+                    f"Move block {bidx_to_cpu} to CPU and block {bidx_to_cuda} to {'CUDA' if self.cuda_available else 'device'}")
 
             self.swap_weight_devices(block_to_cpu, block_to_cuda)
 
@@ -173,12 +176,12 @@ class ModelOffloader(Offloader):
     """
 
     def __init__(
-        self,
-        blocks: Union[list[nn.Module], nn.ModuleList],
-        blocks_to_swap: int,
-        device: torch.device,
-        supports_backward: bool = True,
-        debug: bool = False,
+            self,
+            blocks: Union[list[nn.Module], nn.ModuleList],
+            blocks_to_swap: int,
+            device: torch.device,
+            supports_backward: bool = True,
+            debug: bool = False,
     ):
         super().__init__(len(blocks), blocks_to_swap, device, debug)
 
@@ -203,7 +206,7 @@ class ModelOffloader(Offloader):
                 handle.remove()
 
     def create_backward_hook(
-        self, blocks: Union[list[nn.Module], nn.ModuleList], block_index: int
+            self, blocks: Union[list[nn.Module], nn.ModuleList], block_index: int
     ) -> Optional[Callable[[nn.Module, _grad_t, _grad_t], Union[None, _grad_t]]]:
         # -1 for 0-based index
         num_blocks_propagated = self.num_blocks - block_index - 1
@@ -237,12 +240,13 @@ class ModelOffloader(Offloader):
         if self.debug:
             print(f"Prepare block devices before forward")
 
-        for b in blocks[0 : self.num_blocks - self.blocks_to_swap]:
+        for b in blocks[0: self.num_blocks - self.blocks_to_swap]:
             b.to(self.device)
             weighs_to_device(b, self.device)  # make sure weights are on device
 
-        for b in blocks[self.num_blocks - self.blocks_to_swap :]:
-            b.to(self.device)  # move block to device first. this makes sure that buffers (non weights) are on the device
+        for b in blocks[self.num_blocks - self.blocks_to_swap:]:
+            b.to(
+                self.device)  # move block to device first. this makes sure that buffers (non weights) are on the device
             weighs_to_device(b, torch.device("cpu"))  # make sure weights are on cpu
 
         _synchronize_device(self.device)
@@ -333,6 +337,5 @@ def create_cpu_offloading_wrapper(func: Callable, device: torch.device) -> Calla
         return custom_forward
 
     return wrapper(func)
-
 
 # endregion

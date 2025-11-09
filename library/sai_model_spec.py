@@ -188,7 +188,8 @@ class ModelSpecMetadata:
 
 
 def determine_architecture(
-    v2: bool, v_parameterization: bool, sdxl: bool, lora: bool, textual_inversion: bool, model_config: dict[str, str] | None = None
+        v2: bool, v_parameterization: bool, sdxl: bool, lora: bool, textual_inversion: bool,
+        model_config: dict[str, str] | None = None
 ) -> str:
     """Determine model architecture string from parameters."""
 
@@ -235,11 +236,11 @@ def determine_architecture(
 
 
 def determine_implementation(
-    lora: bool,
-    textual_inversion: bool,
-    sdxl: bool,
-    model_config: dict[str, str] | None = None,
-    is_stable_diffusion_ckpt: bool | None = None,
+        lora: bool,
+        textual_inversion: bool,
+        sdxl: bool,
+        model_config: dict[str, str] | None = None,
+        is_stable_diffusion_ckpt: bool | None = None,
 ) -> str:
     """Determine implementation string from parameters."""
 
@@ -303,11 +304,11 @@ def file_to_data_url(file_path: str) -> str:
 
 
 def determine_resolution(
-    reso: Union[int, tuple[int, int]] | None = None,
-    sdxl: bool = False,
-    model_config: dict[str, str] | None = None,
-    v2: bool = False,
-    v_parameterization: bool = False,
+        reso: Union[int, tuple[int, int]] | None = None,
+        sdxl: bool = False,
+        model_config: dict[str, str] | None = None,
+        v2: bool = False,
+        v_parameterization: bool = False,
 ) -> str:
     """Determine resolution string from parameters."""
 
@@ -365,25 +366,25 @@ def update_hash_sha256(metadata: dict, state_dict: dict):
 
 
 def build_metadata_dataclass(
-    state_dict: dict | None,
-    v2: bool,
-    v_parameterization: bool,
-    sdxl: bool,
-    lora: bool,
-    textual_inversion: bool,
-    timestamp: float,
-    title: str | None = None,
-    reso: int | tuple[int, int] | None = None,
-    is_stable_diffusion_ckpt: bool | None = None,
-    author: str | None = None,
-    description: str | None = None,
-    license: str | None = None,
-    tags: str | None = None,
-    merged_from: str | None = None,
-    timesteps: tuple[int, int] | None = None,
-    clip_skip: int | None = None,
-    model_config: dict | None = None,
-    optional_metadata: dict | None = None,
+        state_dict: dict | None,
+        v2: bool,
+        v_parameterization: bool,
+        sdxl: bool,
+        lora: bool,
+        textual_inversion: bool,
+        timestamp: float,
+        title: str | None = None,
+        reso: int | tuple[int, int] | None = None,
+        is_stable_diffusion_ckpt: bool | None = None,
+        author: str | None = None,
+        description: str | None = None,
+        license: str | None = None,
+        tags: str | None = None,
+        merged_from: str | None = None,
+        timesteps: tuple[int, int] | None = None,
+        clip_skip: int | None = None,
+        model_config: dict | None = None,
+        optional_metadata: dict | None = None,
 ) -> ModelSpecMetadata:
     """
     Build ModelSpec 1.0.1 compliant metadata dataclass.
@@ -488,25 +489,25 @@ def build_metadata_dataclass(
 
 
 def build_metadata(
-    state_dict: dict | None,
-    v2: bool,
-    v_parameterization: bool,
-    sdxl: bool,
-    lora: bool,
-    textual_inversion: bool,
-    timestamp: float,
-    title: str | None = None,
-    reso: int | tuple[int, int] | None = None,
-    is_stable_diffusion_ckpt: bool | None = None,
-    author: str | None = None,
-    description: str | None = None,
-    license: str | None = None,
-    tags: str | None = None,
-    merged_from: str | None = None,
-    timesteps: tuple[int, int] | None = None,
-    clip_skip: int | None = None,
-    model_config: dict | None = None,
-    optional_metadata: dict | None = None,
+        state_dict: dict | None,
+        v2: bool,
+        v_parameterization: bool,
+        sdxl: bool,
+        lora: bool,
+        textual_inversion: bool,
+        timestamp: float,
+        title: str | None = None,
+        reso: int | tuple[int, int] | None = None,
+        is_stable_diffusion_ckpt: bool | None = None,
+        author: str | None = None,
+        description: str | None = None,
+        license: str | None = None,
+        tags: str | None = None,
+        merged_from: str | None = None,
+        timesteps: tuple[int, int] | None = None,
+        clip_skip: int | None = None,
+        model_config: dict | None = None,
+        optional_metadata: dict | None = None,
 ) -> dict[str, str]:
     """
     Build ModelSpec 1.0.1 compliant metadata for safetensors models.

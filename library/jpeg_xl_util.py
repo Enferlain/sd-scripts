@@ -4,6 +4,7 @@
 import os
 from typing import List, Tuple
 
+
 class JXLBitstream:
     """
     A stream of bits with methods for easy handling.
@@ -29,7 +30,7 @@ class JXLBitstream:
             self.bitstream.extend(self.file.read(self.partial_to_read_length))
         else:
             self.bitstream.extend(self.file.read(length))
-        bitmask = 2**length - 1
+        bitmask = 2 ** length - 1
         bits = (int.from_bytes(self.bitstream, "little") >> self.shift) & bitmask
         self.shift += length
         return bits
@@ -46,7 +47,7 @@ class JXLBitstream:
             self.partial_read(current_length, length)
 
 
-def decode_codestream(file, offset: int = 0, offsets: List[List[int]] = None) -> Tuple[int,int]:
+def decode_codestream(file, offset: int = 0, offsets: List[List[int]] = None) -> Tuple[int, int]:
     """
     Decodes the actual codestream.
     JXL codestream specification: http://www-internal/2022/18181-1
@@ -106,7 +107,7 @@ def decode_codestream(file, offset: int = 0, offsets: List[List[int]] = None) ->
     return width, height
 
 
-def decode_container(file) -> Tuple[int,int]:
+def decode_container(file) -> Tuple[int, int]:
     """
     Parses the ISOBMFF container, extracts the codestream, and decodes it.
     JXL container specification: http://www-internal/2022/18181-2
@@ -149,7 +150,7 @@ def decode_container(file) -> Tuple[int,int]:
         raise ValueError("Invalid signature box.")
     # File Type box.
     if file.read(20) != bytes.fromhex(
-        "00000014 66747970 6A786C20 00000000 6A786C20"
+            "00000014 66747970 6A786C20 00000000 6A786C20"
     ):
         raise ValueError("Invalid file type box.")
 
@@ -179,7 +180,7 @@ def decode_container(file) -> Tuple[int,int]:
     return decode_codestream(file, offset=offset, offsets=offsets)
 
 
-def get_jxl_size(path: str) -> Tuple[int,int]:
+def get_jxl_size(path: str) -> Tuple[int, int]:
     with open(path, "rb") as file:
         if file.read(2) == bytes.fromhex("FF0A"):
             return decode_codestream(file)

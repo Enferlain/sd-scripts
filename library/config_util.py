@@ -110,6 +110,7 @@ class BaseDatasetParams:
     validation_split: float = 0.0
     resize_interpolation: Optional[str] = None
 
+
 @dataclass
 class DreamBoothDatasetParams(BaseDatasetParams):
     batch_size: int = 1
@@ -119,7 +120,8 @@ class DreamBoothDatasetParams(BaseDatasetParams):
     bucket_reso_steps: int = 64
     bucket_no_upscale: bool = False
     prior_loss_weight: float = 1.0
-    
+
+
 @dataclass
 class FineTuningDatasetParams(BaseDatasetParams):
     batch_size: int = 1
@@ -187,7 +189,7 @@ class ConfigSanitizer:
         "flip_aug": bool,
         "num_repeats": int,
         "random_crop": bool,
-        "random_crop_padding_percent":float,
+        "random_crop_padding_percent": float,
         "shuffle_caption": bool,
         "keep_tokens": int,
         "keep_tokens_separator": str,
@@ -265,10 +267,11 @@ class ConfigSanitizer:
         "dataset_repeats": "num_repeats",
     }
 
-    def __init__(self, support_dreambooth: bool, support_finetuning: bool, support_controlnet: bool, support_dropout: bool) -> None:
+    def __init__(self, support_dreambooth: bool, support_finetuning: bool, support_controlnet: bool,
+                 support_dropout: bool) -> None:
         assert support_dreambooth or support_finetuning or support_controlnet, (
-            "Neither DreamBooth mode nor fine tuning mode nor controlnet mode specified. Please specify one mode or more."
-            + " / DreamBooth モードか fine tuning モードか controlnet モードのどれも指定されていません。1つ以上指定してください。"
+                "Neither DreamBooth mode nor fine tuning mode nor controlnet mode specified. Please specify one mode or more."
+                + " / DreamBooth モードか fine tuning モードか controlnet モードのどれも指定されていません。1つ以上指定してください。"
         )
 
         self.db_subset_schema = self.__merge_dict(
@@ -439,7 +442,8 @@ class BlueprintGenerator:
             subset_blueprints = []
             for subset_config in subsets:
                 params = self.generate_params_by_fallbacks(
-                    subset_params_klass, [subset_config, dataset_config, general_config, argparse_config, runtime_params]
+                    subset_params_klass,
+                    [subset_config, dataset_config, general_config, argparse_config, runtime_params]
                 )
                 subset_blueprints.append(SubsetBlueprint(params))
 
@@ -459,7 +463,8 @@ class BlueprintGenerator:
         default_params = asdict(param_klass())
         param_names = default_params.keys()
 
-        params = {name: search_value(name_map.get(name, name), fallbacks, default_params.get(name)) for name in param_names}
+        params = {name: search_value(name_map.get(name, name), fallbacks, default_params.get(name)) for name in
+                  param_names}
 
         return param_klass(**params)
 
@@ -472,7 +477,9 @@ class BlueprintGenerator:
 
         return default_value
 
-def generate_dataset_group_by_blueprint(dataset_group_blueprint: DatasetGroupBlueprint) -> Tuple[DatasetGroup, Optional[DatasetGroup]]:
+
+def generate_dataset_group_by_blueprint(dataset_group_blueprint: DatasetGroupBlueprint) -> Tuple[
+    DatasetGroup, Optional[DatasetGroup]]:
     datasets: List[Union[DreamBoothDataset, FineTuningDataset, ControlNetDataset]] = []
 
     for dataset_blueprint in dataset_group_blueprint.datasets:
@@ -496,10 +503,12 @@ def generate_dataset_group_by_blueprint(dataset_group_blueprint: DatasetGroupBlu
 
     val_datasets: List[Union[DreamBoothDataset, FineTuningDataset, ControlNetDataset]] = []
     for dataset_blueprint in dataset_group_blueprint.datasets:
-        dataset_blueprint.params.validation_split = float(dataset_blueprint.params.validation_split) if dataset_blueprint.params.validation_split is not None else 0.0
+        dataset_blueprint.params.validation_split = float(
+            dataset_blueprint.params.validation_split) if dataset_blueprint.params.validation_split is not None else 0.0
 
         if dataset_blueprint.params.validation_split < 0.0 or dataset_blueprint.params.validation_split > 1.0:
-            logging.warning(f"Dataset param `validation_split` ({dataset_blueprint.params.validation_split}) is not a valid number between 0.0 and 1.0, skipping validation split...")
+            logging.warning(
+                f"Dataset param `validation_split` ({dataset_blueprint.params.validation_split}) is not a valid number between 0.0 and 1.0, skipping validation split...")
             continue
 
         # if the dataset isn't setting a validation split, there is no current validation dataset
@@ -591,7 +600,7 @@ def generate_dataset_group_by_blueprint(dataset_group_blueprint: DatasetGroupBlu
 
     # make buckets first because it determines the length of dataset
     # and set the same seed for all datasets
-    seed = random.randint(0, 2**31)  # actual seed is seed + epoch_no
+    seed = random.randint(0, 2 ** 31)  # actual seed is seed + epoch_no
 
     for i, dataset in enumerate(datasets):
         logger.info(f"[Prepare dataset {i}]")
@@ -609,7 +618,8 @@ def generate_dataset_group_by_blueprint(dataset_group_blueprint: DatasetGroupBlu
     )
 
 
-def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: Optional[str] = None, reg_data_dir: Optional[str] = None):
+def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: Optional[str] = None,
+                                                  reg_data_dir: Optional[str] = None):
     def extract_dreambooth_params(name: str) -> Tuple[int, str]:
         tokens = name.split("_")
         try:
@@ -637,7 +647,8 @@ def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: Optional[str] 
             if num_repeats < 1:
                 continue
 
-            subset_config = {"image_dir": str(subdir), "num_repeats": num_repeats, "is_reg": is_reg, "class_tokens": class_tokens}
+            subset_config = {"image_dir": str(subdir), "num_repeats": num_repeats, "is_reg": is_reg,
+                             "class_tokens": class_tokens}
             subsets_config.append(subset_config)
 
         return subsets_config
@@ -650,7 +661,8 @@ def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: Optional[str] 
 
 
 def generate_controlnet_subsets_config_by_subdirs(
-    train_data_dir: Optional[str] = None, conditioning_data_dir: Optional[str] = None, caption_extension: str = ".txt"
+        train_data_dir: Optional[str] = None, conditioning_data_dir: Optional[str] = None,
+        caption_extension: str = ".txt"
 ):
     def generate(base_dir: Optional[str]):
         if base_dir is None:
@@ -733,7 +745,8 @@ if __name__ == "__main__":
     logger.info(f"{user_config}")
 
     sanitizer = ConfigSanitizer(
-        config_args.support_dreambooth, config_args.support_finetuning, config_args.support_controlnet, config_args.support_dropout
+        config_args.support_dreambooth, config_args.support_finetuning, config_args.support_controlnet,
+        config_args.support_dropout
     )
     sanitized_user_config = sanitizer.sanitize_user_config(user_config)
 

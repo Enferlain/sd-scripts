@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Timestep Distribution Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+        .dashboard-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 1rem;
+            gap: 1rem;
+        }
+        .header-section {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            flex-shrink: 0;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background-color: #065f46;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            margin-left: 1rem;
+        }
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: #34d399;
+            border-radius: 50%;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            flex: 1;
+            min-height: 0;
+        }
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .chart-card {
+            background-color: #1e293b;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .chart-header {
+            padding: 0.875rem 1.25rem;
+            background-color: #334155;
+            border-bottom: 2px solid #475569;
+            flex-shrink: 0;
+        }
+        .chart-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.25rem;
+        }
+        .chart-wrapper {
+            flex: 1;
+            padding: 1.25rem;
+            min-height: 0;
+            position: relative;
+        }
+        .info-section {
+            background-color: #1e293b;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            flex-shrink: 0;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        .info-card {
+            background-color: #334155;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border-left: 3px solid;
+            font-size: 0.875rem;
+        }
+        .card-schedule { border-color: #60a5fa; }
+        .card-distribution { border-color: #fb7185; }
+        .card-insight { border-color: #34d399; }
+        .stat-display {
+            font-family: 'Courier New', monospace;
+            color: #10b981;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header-section">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+                        Live Timestep Distribution Monitor
+                    </h1>
+                    <p class="text-gray-400 text-sm mt-1">
+                        Real-time diffusion training metrics via stdin stream
+                    </p>
+                </div>
+                <div class="status-badge">
+                    <span class="pulse"></span>
+                    <span>Live</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+            <!-- Noise Schedule Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2 class="text-lg font-semibold text-blue-400">Noise Schedule α̅(t)</h2>
+                    <div class="chart-meta">
+                        <span class="text-xs text-gray-400">Forward diffusion signal/noise factors</span>
+                        <span class="stat-display" id="schedule-status">Waiting...</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="timestepChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Sampling Distribution Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2 class="text-lg font-semibold text-rose-400">Empirical Sampling Distribution</h2>
+                    <div class="chart-meta">
+                        <span class="text-xs text-gray-400">Accumulated timestep draws from batches</span>
+                        <span class="stat-display" id="dist-status">Total: 0 samples</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="samplingChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="info-section">
+            <div class="info-grid">
+                <div class="info-card card-schedule">
+                    <strong class="text-blue-300">Noise Schedule:</strong>
+                    <span class="text-gray-300"> Static α̅ₜ curve defining signal √α̅ₜ decay and noise √(1-α̅ₜ) growth across T timesteps</span>
+                </div>
+                <div class="info-card card-distribution">
+                    <strong class="text-rose-300">Distribution:</strong>
+                    <span class="text-gray-300"> Live histogram of sampled t values. Uniform = flat; logit-normal = mid-bias; loss-aware = adaptive</span>
+                </div>
+                <div class="info-card card-insight">
+                    <strong class="text-green-300">Usage:</strong>
+                    <span class="text-gray-300"> Pipe training logs via stdin. Validates sampler policy and detects DDP imbalance or drift</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CHART_COLOR_SIGNAL = 'rgb(52, 211, 153)';
+        const CHART_COLOR_NOISE = 'rgb(96, 165, 250)';
+        const CHART_COLOR_SAMPLING = 'rgb(251, 113, 133)';
+
+        let timestepLineChart = null;
+        let samplingBarChart = null;
+        let totalSamples = 0;
+
+        function renderLineChart(data) {
+            const ctx = document.getElementById('timestepChart').getContext('2d');
+            if (timestepLineChart) {
+                timestepLineChart.destroy();
+            }
+            timestepLineChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        { 
+                            label: 'Signal √α̅ₜ', 
+                            data: data.signalData, 
+                            borderColor: CHART_COLOR_SIGNAL, 
+                            backgroundColor: 'rgba(52, 211, 153, 0.15)',
+                            borderWidth: 2.5, 
+                            pointRadius: 0, 
+                            tension: 0.3,
+                            fill: true
+                        },
+                        { 
+                            label: 'Noise √(1-α̅ₜ)', 
+                            data: data.noiseData, 
+                            borderColor: CHART_COLOR_NOISE, 
+                            backgroundColor: 'rgba(96, 165, 250, 0.15)',
+                            borderWidth: 2.5, 
+                            pointRadius: 0, 
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    animation: { duration: 300 },
+                    plugins: { 
+                        legend: { 
+                            labels: { 
+                                color: '#e2e8f0', 
+                                font: { size: 11, family: "'Inter', sans-serif" },
+                                usePointStyle: true
+                            } 
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#475569',
+                            borderWidth: 1
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    scales: {
+                        x: { 
+                            title: { 
+                                display: true, 
+                                text: 'Timestep t', 
+                                color: '#cbd5e1', 
+                                font: { size: 12 } 
+                            }, 
+                            grid: { color: '#334155' }, 
+                            ticks: { color: '#94a3b8', maxTicksLimit: 10 } 
+                        },
+                        y: { 
+                            title: { 
+                                display: true, 
+                                text: 'Factor', 
+                                color: '#cbd5e1', 
+                                font: { size: 12 } 
+                            }, 
+                            min: 0, 
+                            max: 1.0, 
+                            grid: { color: '#334155' }, 
+                            ticks: { color: '#94a3b8' } 
+                        }
+                    }
+                }
+            });
+            document.getElementById('schedule-status').textContent = `T=${data.labels.length}`;
+        }
+
+        function renderBarChart(data) {
+            const ctx = document.getElementById('samplingChart').getContext('2d');
+            const labels = Array.from({ length: data.length }, (_, i) => i);
+            totalSamples = data.reduce((a, b) => a + b, 0);
+
+            if (samplingBarChart) {
+                samplingBarChart.data.labels = labels;
+                samplingBarChart.data.datasets[0].data = data;
+                samplingBarChart.update('none');
+            } else {
+                samplingBarChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Count',
+                            data: data,
+                            backgroundColor: CHART_COLOR_SAMPLING,
+                            borderWidth: 0,
+                        }]
+                    },
+                    options: {
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        animation: { duration: 0 },
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                                titleColor: '#e2e8f0',
+                                bodyColor: '#cbd5e1',
+                                borderColor: '#475569',
+                                borderWidth: 1,
+                                callbacks: {
+                                    title: (items) => `t = ${items[0].label}`,
+                                    label: (item) => {
+                                        const pct = totalSamples > 0 ? (item.parsed.y / totalSamples * 100).toFixed(2) : 0;
+                                        return `Samples: ${item.formattedValue} (${pct}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { 
+                                title: { 
+                                    display: true, 
+                                    text: 'Timestep t', 
+                                    color: '#cbd5e1', 
+                                    font: { size: 12 } 
+                                }, 
+                                grid: { display: false }, 
+                                ticks: { color: '#94a3b8', maxTicksLimit: 10 } 
+                            },
+                            y: { 
+                                title: { 
+                                    display: true, 
+                                    text: 'Sample Count', 
+                                    color: '#cbd5e1', 
+                                    font: { size: 12 } 
+                                }, 
+                                beginAtZero: true, 
+                                grid: { color: '#334155' }, 
+                                ticks: { color: '#94a3b8' } 
+                            }
+                        }
+                    }
+                });
+            }
+
+            document.getElementById('dist-status').textContent = `Total: ${totalSamples.toLocaleString()} samples`;
+        }
+
+        async function initializeSchedule() {
+            try {
+                const response = await fetch('/schedule_data');
+                if (response.ok) {
+                    const data = await response.json();
+                    renderLineChart(data);
+                } else {
+                    document.getElementById('schedule-status').textContent = 'Waiting for data...';
+                    setTimeout(initializeSchedule, 2000);
+                }
+            } catch (error) {
+                console.error("Failed to fetch schedule data:", error);
+                document.getElementById('schedule-status').textContent = 'Connection error';
+                setTimeout(initializeSchedule, 2000);
+            }
+        }
+
+        async function refreshDistribution() {
+            try {
+                const response = await fetch('/distribution_data');
+                if (response.ok) {
+                    const data = await response.json();
+                    renderBarChart(data);
+                }
+            } catch (error) {
+                console.error("Failed to refresh distribution data:", error);
+            }
+        }
+
+        window.onload = function() {
+            initializeSchedule();
+            refreshDistribution();
+            setInterval(refreshDistribution, 2000); // Faster updates (2s)
+        };
+
+        window.addEventListener('resize', () => {
+            if (timestepLineChart) timestepLineChart.resize();
+            if (samplingBarChart) samplingBarChart.resize();
+        });
+    </script>
+</body>
+</html>

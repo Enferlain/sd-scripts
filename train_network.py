@@ -50,6 +50,9 @@ from library.custom_train_functions import (
     apply_masked_loss,
 )
 from library.utils import setup_logging, add_logging_arguments
+from tools.loss_aware_sampler import LossAwareTimestepSampler
+from tools.log_snr_sampler import LogSNRUniformSampler
+from tools.tempered_adaptive_sampler import TemperedAdaptiveSampler
 
 setup_logging()
 import logging
@@ -81,6 +84,7 @@ class NetworkTrainer:
         average_loss_scaled=None, 
         current_val_loss=None,
         average_val_loss=None,
+        timesteps: Optional[torch.Tensor] = None,
     ):
         logs = {"loss/current": current_loss, "loss/average": avr_loss}
 
@@ -144,6 +148,31 @@ class NetworkTrainer:
 
         if edm2_lr_scheduler is not None:
             logs[f"lr/edm2"] = edm2_lr_scheduler.get_last_lr()[0]
+
+        if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler") and timesteps is not None:
+            if hasattr(args.la_sampler, "last_mix_p"):
+                logs["sampler/mix_p"] = args.la_sampler.last_mix_p
+            if hasattr(args.la_sampler, "last_small_t_frac"):
+                logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
+
+            # Add mean and std of ema_loss
+            if hasattr(args.la_sampler, "ema_loss"):
+                logs["sampler/ema_loss_mean"] = args.la_sampler.ema_loss.mean().item()
+                logs["sampler/ema_loss_std"] = args.la_sampler.ema_loss.std().item()
+
+                # EMA loss per bin (in a separate category for clarity in TensorBoard)
+                for i, loss_val in enumerate(args.la_sampler.ema_loss):
+                    logs[f"sampler_ema_loss_bins/bin_{i}"] = loss_val.item()
+
+            # Timestep histogram for the current batch
+            if hasattr(args.la_sampler, "num_bins") and hasattr(args.la_sampler, "T"):
+                hist = torch.histogram(
+                    timesteps.float().cpu(),
+                    bins=args.la_sampler.num_bins,
+                    range=(0, args.la_sampler.T),
+                )
+                for i, count in enumerate(hist.hist):
+                    logs[f"sampler_timestep_hist/bin_{i}"] = count.item()
 
         return logs
 
@@ -304,10 +333,20 @@ class NetworkTrainer:
         train_unet,
         fixed_timesteps=None,
         is_train=True,
+        min_timestep_override=None,
+        max_timestep_override=None,
     ):
         # Sample noise, sample a random timestep for each image, and add noise to the latents,
         # with noise offset and/or multires noise if specified
-        noise, noisy_latents, timesteps = train_util.get_noise_noisy_latents_and_timesteps(args, noise_scheduler, latents, fixed_timesteps, is_train)
+        noise, noisy_latents, timesteps = train_util.get_noise_noisy_latents_and_timesteps(
+            args, 
+            noise_scheduler, 
+            latents, 
+            fixed_timesteps, 
+            is_train=is_train, 
+            min_timestep_override=min_timestep_override,
+            max_timestep_override=max_timestep_override
+        )
 
         # ensure the hidden state will require grad
         if is_train and args.gradient_checkpointing:
@@ -418,8 +457,10 @@ class NetworkTrainer:
         is_train=True,
         train_text_encoder=True,
         train_unet=True,
-        edm2_model=None
-    ) -> torch.Tensor:
+        edm2_model=None,
+        min_timestep_override=None,
+        max_timestep_override=None
+    ) -> tuple:
         """
         Process a batch for the network
         """
@@ -497,6 +538,8 @@ class NetworkTrainer:
             weight_dtype,
             train_unet,
             is_train=is_train,
+            min_timestep_override=min_timestep_override,
+            max_timestep_override=max_timestep_override
         )
 
         if is_train:
@@ -508,7 +551,15 @@ class NetworkTrainer:
                 loss = apply_masked_loss(loss, batch)
         else:
                 loss = train_util.conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
-        loss = loss.mean([1, 2, 3])
+
+        per_sample_loss = loss.mean([1, 2, 3])
+
+        # Feed the timesteps and their corresponding per-sample loss back to the sampler for its EMA update.
+        if is_train and hasattr(args, "la_sampler") and hasattr(args.la_sampler, "update"):
+            # We detach to ensure this operation doesn't affect the gradients for backpropagation.
+            args.la_sampler.update(timesteps.detach(), per_sample_loss.detach())
+
+        loss = per_sample_loss
 
         if is_train:
             loss_weights = batch["loss_weights"]  # 各sampleごとのweight
@@ -527,7 +578,7 @@ class NetworkTrainer:
         else:
             loss_scaled = None
 
-        return loss.mean(), pre_scaling_loss, loss_scaled
+        return loss.mean(), pre_scaling_loss, loss_scaled, timesteps
     
     def process_val_batch(
         self,
@@ -854,6 +905,11 @@ class NetworkTrainer:
 
         # load target models: unet may be None for lazy loading
         model_version, text_encoder, vae, unet = self.load_target_model(args, weight_dtype, accelerator)
+
+        if args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+            logger.info(f"Training VAE in padding mode: {args.vae_conv2d_padding_mode}")
+            train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
+            
         if vae_dtype is None:
             vae_dtype = vae.dtype
             logger.info(f"vae_dtype is set to {vae_dtype} by the model since cast_vae() is false")
@@ -1522,6 +1578,40 @@ class NetworkTrainer:
 
         noise_scheduler = self.get_noise_scheduler(args, accelerator.device)
 
+        # --- START MODIFICATION 1: Centralized Sampler Initialization ---
+        # Inject sampler when specified. This block creates the sampler object.
+        if hasattr(args, "timestep_sampling"):
+            if args.timestep_sampling == "log_snr_uniform":
+                accelerator.print("Initializing LogSNRUniformSampler.")
+                args.la_sampler = LogSNRUniformSampler(noise_scheduler, noise_scheduler.config.num_train_timesteps)
+                # Route through the same code path in train_util for simplicity
+                args.timestep_sampling = "mix_adaptive" 
+            elif args.timestep_sampling == "tempered_adaptive":
+                accelerator.print("Initializing TemperedAdaptiveSampler.")
+                args.la_sampler = TemperedAdaptiveSampler(
+                    noise_scheduler,
+                    num_bins=getattr(args, "mix_adaptive_bins", 64),
+                    ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.95),
+                    temperature=getattr(args, "mix_adaptive_temperature", 0.4),
+                    prior_weight=getattr(args, "mix_adaptive_prior_weight", 0.3),
+                    min_prob=getattr(args, "mix_adaptive_min_prob", 5e-4),
+                    warmup_steps=getattr(args, "mix_adaptive_warmup_steps", 150),
+                )
+                args.timestep_sampling = "mix_adaptive"
+            elif args.timestep_sampling == "mix_adaptive":
+                accelerator.print("Initializing LossAwareTimestepSampler.")
+                args.la_sampler = LossAwareTimestepSampler(
+                    num_train_timesteps=noise_scheduler.config.num_train_timesteps,
+                    num_bins=getattr(args, "mix_adaptive_bins", 32),
+                    ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.9),
+                    small_t_frac=getattr(args, "mix_adaptive_small_t_frac", 0.15),
+                    small_t_cap=getattr(args, "mix_adaptive_small_t_cap", 0.6),
+                    start_p=getattr(args, "mix_adaptive_start_p", 0.85),
+                    end_p=getattr(args, "mix_adaptive_end_p", 0.35),
+                    anneal=getattr(args, "mix_adaptive_anneal", "cosine"),
+                    fixed_p=getattr(args, "mix_adaptive_fixed_p", None),
+                )
+
         edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(args, noise_scheduler, accelerator)
 
         train_util.init_trackers(accelerator, args, "network_train")
@@ -1645,6 +1735,19 @@ class NetworkTrainer:
             param_3rd = params_itr.__next__()
             logger.info(f"text_encoder [{i}] dtype: {param_3rd.dtype}, device: {t_enc.device}")
 
+        # --- Add this block for Dynamic Timestep Schedule ---
+        # Parse the schedule from the command-line argument string
+        dynamic_timestep_schedule = ast.literal_eval(args.dynamic_timestep_schedule) if args.dynamic_timestep_schedule else None
+        if dynamic_timestep_schedule:
+            # Sort the schedule by step number to be safe
+            dynamic_timestep_schedule.sort(key=lambda x: x[0])
+            accelerator.print(f"Using dynamic timestep schedule: {dynamic_timestep_schedule}")
+
+        # Initialize the current range with the defaults
+        current_min_timestep = 0 if args.min_timestep is None else args.min_timestep
+        current_max_timestep = noise_scheduler.config.num_train_timesteps if args.max_timestep is None else args.max_timestep
+        # ---------------------------------------------------
+
         clean_memory_on_device(accelerator.device)
 
         progress_bar = tqdm(
@@ -1668,6 +1771,17 @@ class NetworkTrainer:
             for step, batch in enumerate(skipped_dataloader or train_dataloader):
                 current_step.value = global_step
 
+                # --- Add this block to update the timestep range ---
+                if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= dynamic_timestep_schedule[0][0]:
+                    # Get the next schedule stage and remove it from the list
+                    _, new_min, new_max = dynamic_timestep_schedule.pop(0)
+                    current_min_timestep = new_min
+                    current_max_timestep = new_max
+                    accelerator.print(
+                        f"\nStep {global_step}: Timestep range dynamically changed to [{current_min_timestep}, {current_max_timestep})"
+                    )
+                # ---------------------------------------------------
+
                 if initial_step > 0:
                     initial_step -= 1
                     continue
@@ -1680,7 +1794,7 @@ class NetworkTrainer:
                     # preprocess batch for each model
                     self.on_step_start(args, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=True)
 
-                    loss, pre_scaling_loss, loss_scaled = self.process_batch(
+                    loss, pre_scaling_loss, loss_scaled, timesteps = self.process_batch(
                         batch,
                         text_encoders,
                         unet,
@@ -1697,6 +1811,8 @@ class NetworkTrainer:
                         train_text_encoder=train_text_encoder,
                         train_unet=train_unet,
                         edm2_model=edm2_model,
+                        min_timestep_override=current_min_timestep,
+                        max_timestep_override=current_max_timestep,
                     )
 
                     accelerator.backward(loss)
@@ -1855,7 +1971,8 @@ class NetworkTrainer:
                             current_global_step_loss_scaled,
                             average_loss_scaled,
                             current_val_loss=current_val_loss, 
-                            average_val_loss=average_val_loss
+                            average_val_loss=average_val_loss,
+                            timesteps=timesteps
                         )
                         self.step_logging(accelerator, logs, global_step, epoch + 1)
                     current_global_step_loss = 0.0
@@ -2265,6 +2382,14 @@ def setup_parser() -> argparse.ArgumentParser:
         type=str,
         default=r"['lora_down.weight','lora_up.weight','lora_down1.weight','lora_up1.weight','lora_down2.weight','lora_up2.weight','a1.weight','a2.weight','b1.weight','b2.weight','c1.weight']",
         help="A list of strings to determine which named parameters should subject to orthgrad, based on their name containing the string."
+    )
+
+    parser.add_argument(
+        "--vae_conv2d_padding_mode",
+        type=str,
+        default='zeros',
+        choices=["zeros", "reflect", "replicate", "circular"],
+        help="Adjusts the padding for Conv2d modules in the VAE. Use 'reflect' for EQ VAE to avoid edge artifacts."
     )
 
     return parser

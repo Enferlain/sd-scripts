@@ -15,22 +15,24 @@ logger = logging.getLogger(__name__)
 
 
 def filter_lora_state_dict(
-    weights_sd: Dict[str, torch.Tensor],
-    include_pattern: Optional[str] = None,
-    exclude_pattern: Optional[str] = None,
+        weights_sd: Dict[str, torch.Tensor],
+        include_pattern: Optional[str] = None,
+        exclude_pattern: Optional[str] = None,
 ) -> Dict[str, torch.Tensor]:
     # apply include/exclude patterns
     original_key_count = len(weights_sd.keys())
     if include_pattern is not None:
         regex_include = re.compile(include_pattern)
         weights_sd = {k: v for k, v in weights_sd.items() if regex_include.search(k)}
-        logger.info(f"Filtered keys with include pattern {include_pattern}: {original_key_count} -> {len(weights_sd.keys())}")
+        logger.info(
+            f"Filtered keys with include pattern {include_pattern}: {original_key_count} -> {len(weights_sd.keys())}")
 
     if exclude_pattern is not None:
         original_key_count_ex = len(weights_sd.keys())
         regex_exclude = re.compile(exclude_pattern)
         weights_sd = {k: v for k, v in weights_sd.items() if not regex_exclude.search(k)}
-        logger.info(f"Filtered keys with exclude pattern {exclude_pattern}: {original_key_count_ex} -> {len(weights_sd.keys())}")
+        logger.info(
+            f"Filtered keys with exclude pattern {exclude_pattern}: {original_key_count_ex} -> {len(weights_sd.keys())}")
 
     if len(weights_sd) != original_key_count:
         remaining_keys = list(set([k.split(".", 1)[0] for k in weights_sd.keys()]))
@@ -43,15 +45,15 @@ def filter_lora_state_dict(
 
 
 def load_safetensors_with_lora_and_fp8(
-    model_files: Union[str, List[str]],
-    lora_weights_list: Optional[Dict[str, torch.Tensor]],
-    lora_multipliers: Optional[List[float]],
-    fp8_optimization: bool,
-    calc_device: torch.device,
-    move_to_device: bool = False,
-    dit_weight_dtype: Optional[torch.dtype] = None,
-    target_keys: Optional[List[str]] = None,
-    exclude_keys: Optional[List[str]] = None,
+        model_files: Union[str, List[str]],
+        lora_weights_list: Optional[Dict[str, torch.Tensor]],
+        lora_multipliers: Optional[List[float]],
+        fp8_optimization: bool,
+        calc_device: torch.device,
+        move_to_device: bool = False,
+        dit_weight_dtype: Optional[torch.dtype] = None,
+        target_keys: Optional[List[str]] = None,
+        exclude_keys: Optional[List[str]] = None,
 ) -> dict[str, torch.Tensor]:
     """
     Merge LoRA weights into the state dict of a model with fp8 optimization if needed.
@@ -124,7 +126,8 @@ def load_safetensors_with_lora_and_fp8(
             if original_device != calc_device:
                 model_weight = model_weight.to(calc_device)  # to make calculation faster
 
-            for lora_weight_keys, lora_sd, multiplier in zip(list_of_lora_weight_keys, lora_weights_list, lora_multipliers):
+            for lora_weight_keys, lora_sd, multiplier in zip(list_of_lora_weight_keys, lora_weights_list,
+                                                             lora_multipliers):
                 # check if this weight has LoRA weights
                 lora_name = model_weight_key.rsplit(".", 1)[0]  # remove trailing ".weight"
                 lora_name = "lora_unet_" + lora_name.replace(".", "_")
@@ -155,10 +158,11 @@ def load_safetensors_with_lora_and_fp8(
                 elif down_weight.size()[2:4] == (1, 1):
                     # conv2d 1x1
                     model_weight = (
-                        model_weight
-                        + multiplier
-                        * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(2).unsqueeze(3)
-                        * scale
+                            model_weight
+                            + multiplier
+                            * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(
+                        2).unsqueeze(3)
+                            * scale
                     )
                 else:
                     # conv2d 3x3
@@ -200,14 +204,14 @@ def load_safetensors_with_lora_and_fp8(
 
 
 def load_safetensors_with_fp8_optimization_and_hook(
-    model_files: list[str],
-    fp8_optimization: bool,
-    calc_device: torch.device,
-    move_to_device: bool = False,
-    dit_weight_dtype: Optional[torch.dtype] = None,
-    target_keys: Optional[List[str]] = None,
-    exclude_keys: Optional[List[str]] = None,
-    weight_hook: callable = None,
+        model_files: list[str],
+        fp8_optimization: bool,
+        calc_device: torch.device,
+        move_to_device: bool = False,
+        dit_weight_dtype: Optional[torch.dtype] = None,
+        target_keys: Optional[List[str]] = None,
+        exclude_keys: Optional[List[str]] = None,
+        weight_hook: callable = None,
 ) -> dict[str, torch.Tensor]:
     """
     Load state dict from safetensors files and merge LoRA weights into the state dict with fp8 optimization if needed.
@@ -231,7 +235,8 @@ def load_safetensors_with_fp8_optimization_and_hook(
                     if weight_hook is None and move_to_device:
                         value = f.get_tensor(key, device=calc_device, dtype=dit_weight_dtype)
                     else:
-                        value = f.get_tensor(key)  # we cannot directly load to device because get_tensor does non-blocking transfer
+                        value = f.get_tensor(
+                            key)  # we cannot directly load to device because get_tensor does non-blocking transfer
                         if weight_hook is not None:
                             value = weight_hook(key, value, keep_on_calc_device=move_to_device)
                         if move_to_device:
