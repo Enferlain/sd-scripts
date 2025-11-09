@@ -28,6 +28,8 @@ import contextlib
 import kornia
 import inspect
 import types
+from collections import deque
+from typing import Deque
 
 # from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -7227,16 +7229,6 @@ def init_trackers(accelerator: Accelerator, args: argparse.Namespace, default_tr
             init_kwargs=init_kwargs,
         )
 
-        if "wandb" in [tracker.name for tracker in accelerator.trackers]:
-            import wandb
-
-            wandb_tracker = accelerator.get_tracker("wandb", unwrap=True)
-
-            # Define specific metrics to handle validation and epochs "steps"
-            wandb_tracker.define_metric("epoch", hidden=True)
-            wandb_tracker.define_metric("val_step", hidden=True)
-
-            wandb_tracker.define_metric("global_step", hidden=True)
 
 
 def set_torch_cuda_reduced_precision(args):
@@ -7466,3 +7458,53 @@ class LossRecorder:
         if losses == 0:
             return 0
         return self.loss_total / losses
+    
+class EMARecorder:
+    """
+    Calculates a bias-corrected Exponential Moving Average (EMA).
+
+    This is the preferred method for smoothing noisy data in real-time,
+    such as mini-batch losses during model training. It gives more weight
+    to recent values, making it responsive to trends.
+    """
+    def __init__(self, smoothing: float = 0.1):
+        """
+        Initializes the EMA recorder.
+
+        Args:
+            smoothing (float): The smoothing factor, typically between 0 and 1.
+                A smaller value (e.g., 0.01) results in a smoother, less responsive average.
+                A larger value (e.g., 0.1) results in a noisier, more responsive average.
+        """
+        if not 0.0 <= smoothing <= 1.0:
+            raise ValueError("Smoothing factor must be between 0 and 1.")
+            
+        self.smoothing = smoothing
+        self.beta = 1 - self.smoothing  # The decay factor
+        
+        self.ema: float = 0.0
+        self.num_updates: int = 0
+
+    def add(self, value: float) -> None:
+        """
+        Updates the EMA with a new value.
+        """
+        self.num_updates += 1
+        # Standard EMA update rule
+        self.ema = self.beta * self.ema + self.smoothing * value
+
+    @property
+    def average(self) -> float:
+        """
+        Returns the bias-corrected moving average.
+
+        Bias correction is important at the beginning of the series, as it
+        corrects for the fact that the EMA is initialized at zero.
+        """
+        if self.num_updates == 0:
+            return 0.0
+            
+        # Bias correction warms up the average faster
+        # As num_updates -> infinity, the correction factor -> 1
+        correction_factor = 1 - (self.beta ** self.num_updates)
+        return self.ema / correction_factor

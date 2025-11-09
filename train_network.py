@@ -188,8 +188,7 @@ class NetworkTrainer:
         self.accelerator_logging(accelerator, logs, epoch, global_step, epoch)
 
     def accelerator_logging(
-        self, accelerator: Accelerator, logs: dict, step_value: int, global_step: int, epoch: int, val_step: Optional[int] = None
-    ):
+        self, accelerator: Accelerator, logs: dict, step_value: int, global_step: int, epoch: int):
         """
         step_value is for tensorboard, other values are for wandb
         """
@@ -210,8 +209,6 @@ class NetworkTrainer:
         if wandb_tracker is not None:
             logs["global_step"] = global_step
             logs["epoch"] = epoch
-            if val_step is not None:
-                logs["val_step"] = val_step
             wandb_tracker.log(logs)
 
         for tracker in other_trackers:
@@ -777,6 +774,7 @@ class NetworkTrainer:
                            weight_dtype, 
                            accelerator, 
                            args, 
+                           epoch,
                            batch=None,
                            train_text_encoder=True):
         if not train_util.calculate_val_loss_check(args,global_step,epoch_step,val_dataloader,train_dataloader):
@@ -808,9 +806,9 @@ class NetworkTrainer:
                                               timesteps_list=timesteps_list)
                 total_loss += loss.detach().item()
             current_val_loss = total_loss / validation_steps
-            val_loss_recorder.add(epoch=0, step=global_step, loss=current_val_loss)   
+            val_loss_recorder.add(current_val_loss)   
                      
-        average_val_loss: float = val_loss_recorder.moving_average
+        average_val_loss: float = val_loss_recorder.average
         logs = {"loss/current_val_loss": current_val_loss, "loss/average_val_loss": average_val_loss}
 
         self.restore_rng_state(rng_states, accelerator)
@@ -1672,11 +1670,11 @@ class NetworkTrainer:
 
         train_util.init_trackers(accelerator, args, "network_train")
 
-        loss_recorder = train_util.LossRecorder()
-        val_loss_recorder = train_util.LossRecorder()
+        loss_recorder = train_util.EMARecorder()
+        val_loss_recorder = train_util.EMARecorder()
 
         if args.edm2_loss_weighting:
-            loss_scaled_recorder = train_util.LossRecorder()
+            loss_scaled_recorder = train_util.EMARecorder()
 
         del train_dataset_group
         if val_dataset_group is not None:
@@ -1744,7 +1742,7 @@ class NetworkTrainer:
                     global_step, 0, train_dataloader, val_loss_recorder, val_dataloader, 
                     cyclic_val_dataloader, network, tokenize_strategy, 
                     text_encoders, text_encoding_strategy, unet, vae, noise_scheduler, 
-                    vae_dtype, weight_dtype, accelerator, args, None, train_text_encoder)
+                    vae_dtype, weight_dtype, accelerator, args, 0, None, train_text_encoder)
             #Switch network to train mode
             optimizer_train_fn()
             accelerator.unwrap_model(network).train()
@@ -1773,7 +1771,7 @@ class NetworkTrainer:
                 average_val_loss=average_val_loss
             )
             # log empty object to commit the sample images to wandb
-            self.step_logging(accelerator, logs, global_step, 1)
+            accelerator.log(logs, step=0) 
 
         # training loop
         if initial_step > 0:  # only if skip_until_initial_step is specified
@@ -1811,10 +1809,10 @@ class NetworkTrainer:
         )
 
         for epoch in range(epoch_to_start, num_train_epochs):
-            accelerator.print(f"\nepoch {epoch+1}/{num_train_epochs}\n")
             current_epoch.value = epoch + 1
+            accelerator.print(f"\nepoch {current_epoch.value}/{num_train_epochs}\n")
 
-            metadata["ss_epoch"] = str(epoch + 1)
+            metadata["ss_epoch"] = str(current_epoch.value)
 
             accelerator.unwrap_model(network).on_epoch_start(text_encoder, unet)  # network.train() is called here
 
@@ -1881,10 +1879,10 @@ class NetworkTrainer:
                             params_to_clip = accelerator.unwrap_model(network).get_trainable_params()
                             accelerator.clip_grad_norm_(params_to_clip, args.max_grad_norm)
 
-                        if hasattr(network, "update_grad_norms"):
-                            network.update_grad_norms()
-                        if hasattr(network, "update_norms"):
-                            network.update_norms()
+                        #if hasattr(network, "update_grad_norms"):
+                        #    network.update_grad_norms()
+                        #if hasattr(network, "update_norms"):
+                        #    network.update_norms()
 
                     optimizer.step()
                     lr_scheduler.step()
@@ -1953,6 +1951,7 @@ class NetworkTrainer:
                                                                                                     accelerator, 
                                                                                                     args, 
                                                                                                     batch,
+                                                                                                    current_epoch.value,
                                                                                                     train_text_encoder)
                         else:
                             current_val_loss, average_val_loss, val_logs = None, None, {}
@@ -1995,10 +1994,10 @@ class NetworkTrainer:
                     current_global_step_loss_scaled = None
 
                 if accelerator.sync_gradients:
-                    loss_recorder.add(epoch=epoch, step=global_step, loss=current_global_step_loss / accumulation_counter)
+                    loss_recorder.add(current_global_step_loss / accumulation_counter)
                     if args.edm2_loss_weighting:
-                        loss_scaled_recorder.add(epoch=epoch, step=global_step, loss=current_global_step_loss_scaled / accumulation_counter)
-                    avr_loss: float = loss_recorder.moving_average
+                        loss_scaled_recorder.add(current_global_step_loss_scaled / accumulation_counter)
+                    avr_loss: float = loss_recorder.average
                     logs = {"avr_loss": avr_loss}  # , "lr": lr_scheduler.get_last_lr()[0]}
                     progress_bar.set_postfix(**{**max_mean_logs, **logs})
 
@@ -2006,7 +2005,7 @@ class NetworkTrainer:
                         current_global_step_loss = (current_global_step_loss / accumulation_counter)
                         if args.edm2_loss_weighting:
                             current_global_step_loss_scaled = (current_global_step_loss_scaled / accumulation_counter)
-                            average_loss_scaled: float = loss_scaled_recorder.moving_average
+                            average_loss_scaled: float = loss_scaled_recorder.average
                         else:
                             current_global_step_loss_scaled = None
                             average_loss_scaled = None
@@ -2065,28 +2064,28 @@ class NetworkTrainer:
 
             # END OF EPOCH
             if is_tracking:
-                logs = {"loss/epoch_average": loss_recorder.moving_average}
-                self.epoch_logging(accelerator, logs, global_step, epoch + 1)
+                logs = {"loss/epoch_average": loss_recorder.average}
+                accelerator.log(logs, step=global_step)
 
             accelerator.wait_for_everyone()
 
-            if (train_util.sample_images_check(args, epoch + 1, global_step) or 
+            if (train_util.sample_images_check(args, current_epoch.value, global_step) or 
                 args.save_every_n_epochs is not None):
 
                 # 指定エポックごとにモデルを保存
                 optimizer_eval_fn()
                 accelerator.unwrap_model(network).eval()
                 if args.save_every_n_epochs is not None:
-                    saving = (epoch + 1) % args.save_every_n_epochs == 0 and (epoch + 1) < num_train_epochs
+                    saving = (current_epoch.value) % args.save_every_n_epochs == 0 and (current_epoch.value) < num_train_epochs
                     if is_main_process and saving:
-                        ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, epoch + 1)
-                        save_model(ckpt_name, accelerator.unwrap_model(network), global_step, epoch + 1)
+                        ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, current_epoch.value)
+                        save_model(ckpt_name, accelerator.unwrap_model(network), global_step, current_epoch.value)
 
                         if args.edm2_loss_weighting:
-                            loss_weights_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, epoch + 1, "_edm2_loss_weights")
-                            save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, epoch + 1, dtype_override=torch.float32)
+                            loss_weights_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, current_epoch.value, "_edm2_loss_weights")
+                            save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, current_epoch.value, dtype_override=torch.float32)
 
-                        remove_epoch_no = train_util.get_remove_epoch_no(args, epoch + 1)
+                        remove_epoch_no = train_util.get_remove_epoch_no(args, current_epoch.value)
                         if remove_epoch_no is not None:
                             remove_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, remove_epoch_no)
                             remove_model(remove_ckpt_name)
@@ -2096,12 +2095,9 @@ class NetworkTrainer:
                                 remove_model(remove_loss_weights_ckpt_name)
 
                         if args.save_state:
-                            train_util.save_and_remove_state_on_epoch_end(args, accelerator, epoch + 1)
+                            train_util.save_and_remove_state_on_epoch_end(args, accelerator, current_epoch.value)
 
-                self.sample_images(accelerator, args, epoch + 1, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
-
-                if plot_edm2_loss_weighting_check(args, global_step):
-                    plot_edm2_loss_weighting(args, global_step, edm2_model, 1000, accelerator.device)
+                self.sample_images(accelerator, args, current_epoch.value, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
                 progress_bar.unpause()
                 optimizer_train_fn()
                 accelerator.unwrap_model(network).train()
