@@ -67,7 +67,7 @@ from diffusers import (
     KDPM2AncestralDiscreteScheduler,
     AutoencoderKL,
 )
-from library import custom_train_functions, sd3_utils
+from library import custom_train_functions
 from library.original_unet import UNet2DConditionModel
 from huggingface_hub import hf_hub_download
 import numpy as np
@@ -82,7 +82,6 @@ import library.huggingface_util as huggingface_util
 import library.sai_model_spec as sai_model_spec
 import library.deepspeed_utils as deepspeed_utils
 from library.utils import setup_logging, resize_image, validate_interpolation_fn
-from tools.loss_aware_sampler import LossAwareTimestepSampler
 
 setup_logging()
 import logging
@@ -144,7 +143,6 @@ IMAGE_TRANSFORMS = transforms.Compose(
 )
 
 TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX = "_te_outputs.npz"
-TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX_SD3 = "_sd3_te.npz"
 
 
 def split_train_val(
@@ -1384,23 +1382,6 @@ class BaseDataset(torch.utils.data.Dataset):
             tokenizers, text_encoders, [device, device], output_dtype, [output_dtype], cache_to_disk, is_main_process
         )
 
-    # same as above, but for SD3
-    def cache_text_encoder_outputs_sd3(
-            self, tokenizer, text_encoders, devices, output_dtype, te_dtypes, cache_to_disk=False, is_main_process=True,
-            batch_size=None
-    ):
-        return self.cache_text_encoder_outputs_common(
-            [tokenizer],
-            text_encoders,
-            devices,
-            output_dtype,
-            te_dtypes,
-            cache_to_disk,
-            is_main_process,
-            TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX_SD3,
-            batch_size,
-        )
-
     def cache_text_encoder_outputs_common(
             self,
             tokenizers,
@@ -1451,17 +1432,12 @@ class BaseDataset(torch.utils.data.Dataset):
                 text_encoder.to(dtype=te_dtype)
 
         # create batch
-        is_sd3 = len(tokenizers) == 1
         batch = []
         batches = []
         for info in image_infos_to_cache:
-            if not is_sd3:
-                input_ids1 = self.get_input_ids(info.caption, tokenizers[0])
-                input_ids2 = self.get_input_ids(info.caption, tokenizers[1])
-                batch.append((info, input_ids1, input_ids2))
-            else:
-                l_tokens, g_tokens, t5_tokens = tokenize_strategy.tokenize(info.caption)
-                batch.append((info, l_tokens, g_tokens, t5_tokens))
+            input_ids1 = self.get_input_ids(info.caption, tokenizers[0])
+            input_ids2 = self.get_input_ids(info.caption, tokenizers[1])
+            batch.append((info, input_ids1, input_ids2))
 
             if len(batch) >= batch_size:
                 batches.append(batch)
@@ -1472,33 +1448,14 @@ class BaseDataset(torch.utils.data.Dataset):
 
         # iterate batches: call text encoder and cache outputs for memory or disk
         logger.info("caching text encoder outputs...")
-        if not is_sd3:
-            for batch in tqdm(batches):
-                infos, input_ids1, input_ids2 = zip(*batch)
-                input_ids1 = torch.stack(input_ids1, dim=0)
-                input_ids2 = torch.stack(input_ids2, dim=0)
-                cache_batch_text_encoder_outputs(
-                    infos, tokenizers, text_encoders, self.max_token_length, cache_to_disk, input_ids1, input_ids2,
-                    output_dtype
-                )
-        else:
-            for batch in tqdm(batches):
-                infos, l_tokens, g_tokens, t5_tokens = zip(*batch)
-
-                # stack tokens
-                # l_tokens = [tokens[0] for tokens in l_tokens]
-                # g_tokens = [tokens[0] for tokens in g_tokens]
-                # t5_tokens = [tokens[0] for tokens in t5_tokens]
-
-                cache_batch_text_encoder_outputs_sd3(
-                    infos,
-                    tokenizers[0],
-                    text_encoders,
-                    self.max_token_length,
-                    cache_to_disk,
-                    (l_tokens, g_tokens, t5_tokens),
-                    output_dtype,
-                )
+        for batch in tqdm(batches):
+            infos, input_ids1, input_ids2 = zip(*batch)
+            input_ids1 = torch.stack(input_ids1, dim=0)
+            input_ids2 = torch.stack(input_ids2, dim=0)
+            cache_batch_text_encoder_outputs(
+                infos, tokenizers, text_encoders, self.max_token_length, cache_to_disk, input_ids1, input_ids2,
+                output_dtype
+            )
 
     def get_image_size(self, image_path):
         if image_path.endswith(".jxl") or image_path.endswith(".JXL"):
@@ -1776,7 +1733,7 @@ class BaseDataset(torch.utils.data.Dataset):
             captions.append(caption)
 
         def none_or_stack_elements(tensors_list, converter):
-            # [[clip_l, clip_g, t5xxl], [clip_l, clip_g, t5xxl], ...] -> [torch.stack(clip_l), torch.stack(clip_g), torch.stack(t5xxl)]
+            
             if len(tensors_list) == 0 or tensors_list[0] == None or len(tensors_list[0]) == 0 or tensors_list[0][
                 0] is None:
                 return None
@@ -2727,16 +2684,6 @@ class DatasetGroup(torch.utils.data.ConcatDataset):
             dataset.cache_text_encoder_outputs(tokenizers, text_encoders, device, weight_dtype, cache_to_disk,
                                                is_main_process)
 
-    def cache_text_encoder_outputs_sd3(
-            self, tokenizer, text_encoders, device, output_dtype, te_dtypes, cache_to_disk=False, is_main_process=True,
-            batch_size=None
-    ):
-        for i, dataset in enumerate(self.datasets):
-            logger.info(f"[Dataset {i}]")
-            dataset.cache_text_encoder_outputs_sd3(
-                tokenizer, text_encoders, device, output_dtype, te_dtypes, cache_to_disk, is_main_process, batch_size
-            )
-
     def new_cache_text_encoder_outputs(self, models: List[Any], accelerator: Accelerator):
         for i, dataset in enumerate(self.datasets):
             logger.info(f"[Dataset {i}]")
@@ -3253,34 +3200,6 @@ def cache_batch_text_encoder_outputs(
             info.text_encoder_pool2 = pool2
 
 
-def cache_batch_text_encoder_outputs_sd3(
-        image_infos, tokenizer, text_encoders, max_token_length, cache_to_disk, input_ids, output_dtype
-):
-    # make input_ids for each text encoder
-    l_tokens, g_tokens, t5_tokens = input_ids
-
-    clip_l, clip_g, t5xxl = text_encoders
-    with torch.no_grad():
-        b_lg_out, b_t5_out, b_pool = sd3_utils.get_cond_from_tokens(
-            l_tokens, g_tokens, t5_tokens, clip_l, clip_g, t5xxl, "cpu", output_dtype
-        )
-        b_lg_out = b_lg_out.detach()
-        b_t5_out = b_t5_out.detach()
-        b_pool = b_pool.detach()
-
-    for info, lg_out, t5_out, pool in zip(image_infos, b_lg_out, b_t5_out, b_pool):
-        # debug: NaN check
-        if torch.isnan(lg_out).any() or torch.isnan(t5_out).any() or torch.isnan(pool).any():
-            raise RuntimeError(f"NaN detected in text encoder outputs: {info.absolute_path}")
-
-        if cache_to_disk:
-            save_text_encoder_outputs_to_disk(info.text_encoder_outputs_npz, lg_out, t5_out, pool)
-        else:
-            info.text_encoder_outputs1 = lg_out
-            info.text_encoder_outputs2 = t5_out
-            info.text_encoder_pool2 = pool
-
-
 def save_text_encoder_outputs_to_disk(npz_path, hidden_state1, hidden_state2, pool2):
     np.savez(
         npz_path,
@@ -3605,7 +3524,6 @@ def get_sai_model_spec(
         lora: bool,
         textual_inversion: bool,
         is_stable_diffusion_ckpt: Optional[bool] = None,  # None for TI and LoRA
-        sd3: str = None,
         flux: str = None,  # "dev", "schnell" or "chroma"
         lumina: str = None,
         optional_metadata: dict[str, str] | None = None,
@@ -3628,8 +3546,6 @@ def get_sai_model_spec(
     # Convert individual model parameters to model_config dict
     # TODO: Update calls to this function to pass in the model config
     model_config = {}
-    if sd3 is not None:
-        model_config["sd3"] = sd3
     if flux is not None:
         model_config["flux"] = flux
     if lumina is not None:
@@ -3683,7 +3599,6 @@ def get_sai_model_spec_dataclass(
         lora: bool,
         textual_inversion: bool,
         is_stable_diffusion_ckpt: Optional[bool] = None,
-        sd3: str = None,
         flux: str = None,
         lumina: str = None,
         hunyuan_image: str = None,
@@ -3710,8 +3625,6 @@ def get_sai_model_spec_dataclass(
 
     # Convert individual model parameters to model_config dict
     model_config = {}
-    if sd3 is not None:
-        model_config["sd3"] = sd3
     if flux is not None:
         model_config["flux"] = flux
     if lumina is not None:
@@ -3878,8 +3791,8 @@ def add_optimizer_arguments(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--fused_backward_pass",
         action="store_true",
-        help="Combines backward pass and optimizer step to reduce VRAM usage. Only available in SDXL, SD3 and FLUX"
-             " / バックワードパスとオプティマイザステップを組み合わせてVRAMの使用量を削減します。SDXL、SD3、FLUXでのみ利用可能",
+        help="Combines backward pass and optimizer step to reduce VRAM usage. Only available in SDXL and FLUX"
+             " / バックワードパスとオプティマイザステップを組み合わせてVRAMの使用量を削減します。SDXL、FLUXでのみ利用可能",
     )
     parser.add_argument(
         "--lr_scheduler_timescale",
@@ -6852,7 +6765,6 @@ def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):
         names.append("unet")
     names.append("text_encoder1")
     names.append("text_encoder2")
-    names.append("text_encoder3")  # SD3
 
     append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
 
@@ -7445,7 +7357,7 @@ def prepare_optimizer(args, network):
 
     try:
         if support_multiple_lrs:
-            # only flux and sd3 atm via Kohya's
+            # only flux atm via Kohya's
             results = network.prepare_optimizer_params_with_multiple_te_lrs(text_encoder_lr=text_encoder_lr,
                                                                             unet_lr=args.unet_lr,
                                                                             learning_rate=args.learning_rate,

@@ -5,6 +5,7 @@ import math
 import os
 import typing
 from typing import Any, List, Union, Optional
+import subprocess
 import sys
 import random
 import time
@@ -13,6 +14,11 @@ from multiprocessing import Value
 import numpy as np
 import ast
 import itertools
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 
 from tqdm import tqdm
 
@@ -24,7 +30,6 @@ from library.edm2_loss_utils import prepare_edm2_loss_weighting, handle_conflict
 from ramtorch.helpers import replace_linear_with_ramtorch
 
 init_ipex()
-
 
 from accelerate import Accelerator
 from diffusers import DDPMScheduler
@@ -211,6 +216,25 @@ class NetworkTrainer:
 
         for tracker in other_trackers:
             tracker.log(logs, step=step_value)
+
+    def save_timestep_distribution_plot(self, args, global_step, timestep_counts):
+        if plt is None:
+            logger.warning("Matplotlib is not installed. Cannot save timestep distribution plot.")
+            return
+
+        output_dir = os.path.join(args.output_dir, "timestep_plots")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        plt.figure(figsize=(12, 6))
+        plt.bar(range(len(timestep_counts)), timestep_counts, width=1.0)
+        plt.title(f"Timestep Distribution at Step {global_step}")
+        plt.xlabel("Timestep")
+        plt.ylabel("Accumulated Count")
+        plt.grid(True, axis='y', linestyle='--', alpha=0.6)
+        
+        filename = os.path.join(output_dir, f"step_{global_step:06d}.png")
+        plt.savefig(filename)
+        plt.close() # Important to free memory
 
     def assert_extra_args(
         self,
@@ -1578,7 +1602,39 @@ class NetworkTrainer:
 
         noise_scheduler = self.get_noise_scheduler(args, accelerator.device)
 
-        # --- START MODIFICATION 1: Centralized Sampler Initialization ---
+        # --- LIVE PLOTTER & STATIC PLOT SETUP ---
+        live_plotter_process = None
+        timestep_counts = None
+
+        if is_main_process:
+            # Setup for the live interactive plotter
+            if args.live_plot_port is not None:
+                current_script_dir = os.path.dirname(__file__)
+                plotter_script_path = os.path.join(current_script_dir, "tools", "live_plotter.py")
+                if not os.path.exists(plotter_script_path):
+                    logger.error(f"live_plotter.py not found at {plotter_script_path}. Live plotter disabled.")
+                else:
+                    logger.info(f"Launching live plotter server on port {args.live_plot_port}")
+                    live_plotter_process = subprocess.Popen(
+                        [sys.executable, plotter_script_path, "--port", str(args.live_plot_port)],
+                        stdin=subprocess.PIPE,
+                    )
+                    
+                    # Send the noise schedule once at the beginning
+                    alphas_cumprod_np = noise_scheduler.alphas_cumprod.cpu().numpy()
+                    schedule_str = f"SCHEDULE::{','.join(map(str, alphas_cumprod_np))}\n"
+                    try:
+                        live_plotter_process.stdin.write(schedule_str.encode('utf-8'))
+                        live_plotter_process.stdin.flush()
+                    except (BrokenPipeError, OSError):
+                        logger.error("Failed to send schedule to live plotter. It may have crashed.")
+                        live_plotter_process = None
+
+            # Setup for saving static plot images
+            if args.log_timestep_distribution_every_n_steps is not None:
+                timestep_counts = np.zeros(noise_scheduler.config.num_train_timesteps, dtype=np.int64)
+
+        # --- Custom Timestep Sampler Initialization ---
         # Inject sampler when specified. This block creates the sampler object.
         if hasattr(args, "timestep_sampling"):
             if args.timestep_sampling == "log_snr_uniform":
@@ -1975,10 +2031,34 @@ class NetworkTrainer:
                             timesteps=timesteps
                         )
                         self.step_logging(accelerator, logs, global_step, epoch + 1)
+
                     current_global_step_loss = 0.0
+
                     if args.edm2_loss_weighting:
                         current_global_step_loss_scaled = 0.0
+
                     accumulation_counter = 0
+
+                    # --- LIVE PLOTTER & STATIC PLOT UPDATE ---
+                    if is_main_process:
+                        timesteps_np = timesteps.cpu().numpy()
+
+                        # Send data to the live plotter
+                        if live_plotter_process and live_plotter_process.poll() is None:
+                            try:
+                                live_plotter_process.stdin.write(f"{','.join(map(str, timesteps_np))}\n".encode('utf-8'))
+                                live_plotter_process.stdin.flush()
+                            except (BrokenPipeError, OSError):
+                                logger.error("Live plotter connection lost.")
+                                live_plotter_process = None
+                        
+                        # Update counts and save static plot if needed
+                        if timestep_counts is not None:
+                            unique, counts = np.unique(timesteps_np, return_counts=True)
+                            timestep_counts[unique] += counts
+                            
+                            if global_step % args.log_timestep_distribution_every_n_steps == 0:
+                                self.save_timestep_distribution_plot(args, global_step, timestep_counts)
 
                 if global_step >= args.max_train_steps:
                     break
@@ -2048,7 +2128,21 @@ class NetworkTrainer:
                 loss_weights_ckpt_name = train_util.get_last_ckpt_name(args, "." + args.save_model_as, "_edm2_loss_weights")
                 save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, num_train_epochs, force_sync_upload=True, dtype_override=torch.float32)
 
-            logger.info("model saved.")
+        # --- LIVE PLOTTER CLEANUP ---
+        # This should be one of the very last things to happen.
+        # It ensures the background server process is properly shut down.
+        if is_main_process and live_plotter_process:
+            logger.info("Shutting down live plotter server...")
+            try:
+                live_plotter_process.stdin.close()
+                live_plotter_process.terminate()
+                live_plotter_process.wait(timeout=5) # Wait up to 5 seconds for it to close
+                logger.info("Live plotter server shut down.")
+            except (BrokenPipeError, OSError, subprocess.TimeoutExpired) as e:
+                logger.warning(f"Could not shut down live plotter server cleanly: {e}")
+                live_plotter_process.kill() # Force kill if it doesn't respond
+
+        logger.info("model saved.")
 
 
 def setup_parser() -> argparse.ArgumentParser:
