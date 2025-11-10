@@ -928,9 +928,9 @@ class NetworkTrainer:
         # load target models: unet may be None for lazy loading
         model_version, text_encoder, vae, unet = self.load_target_model(args, weight_dtype, accelerator)
 
-        if args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
-            logger.info(f"Training VAE in padding mode: {args.vae_conv2d_padding_mode}")
-            train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
+        # if args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+            # logger.info(f"Training VAE in padding mode: {args.vae_conv2d_padding_mode}")
+            # train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
             
         if vae_dtype is None:
             vae_dtype = vae.dtype
@@ -2480,6 +2480,20 @@ def setup_parser() -> argparse.ArgumentParser:
         default='zeros',
         choices=["zeros", "reflect", "replicate", "circular"],
         help="Adjusts the padding for Conv2d modules in the VAE. Use 'reflect' for EQ VAE to avoid edge artifacts."
+    )
+
+    parser.add_argument(
+        "--log_timestep_distribution_every_n_steps",
+        type=int,
+        default=None,
+        help="Saves a snapshot of the timestep distribution chart every N steps.",
+    )
+
+    parser.add_argument(
+        "--live_plot_port",
+        type=int,
+        default=None,
+        help="Launches the live interactive dashboard server on this port.",
     )
 
     return parser
