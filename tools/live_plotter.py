@@ -3,47 +3,72 @@ import threading
 import json
 import argparse
 import os
+import logging
 
 import numpy as np
 from flask import Flask, jsonify, send_from_directory
-
+# --- REFINEMENT: Import for advanced log silencing ---
+from werkzeug.serving import WSGIRequestHandler
 
 def run_plotter_server(port):
-    # These are our in-memory "databases"
+    # In-memory "databases"
     timestep_counts = np.zeros(1000, dtype=np.int64)
     schedule_data = None
+    settings_data = None
     data_lock = threading.Lock()
 
     # --- Flask App Setup ---
-    # We tell it where to find your dashboard.html file
     web_dir = os.path.join(os.path.dirname(__file__), 'web')
     app = Flask(__name__, static_folder=web_dir)
+
+    # --- REFINEMENT: Advanced log silencing ---
+    # This is more effective than changing the logger level.
+    WSGIRequestHandler.log_request = lambda *args, **kwargs: None
+    app.logger.disabled = True
+    logging.getLogger('werkzeug').disabled = True
 
     # --- API and File Serving Routes ---
     @app.route('/')
     def index():
-        # Serves your beautiful HTML file!
         return send_from_directory(app.static_folder, 'dashboard.html')
+
+    @app.route('/settings_data')
+    def get_settings_data():
+        with data_lock:
+            if settings_data is None:
+                return jsonify({"status": "not_ready"})
+            return jsonify({"status": "ready", "data": settings_data})
 
     @app.route('/schedule_data')
     def get_schedule_data():
         with data_lock:
             if schedule_data is None:
-                return jsonify({"error": "Schedule data not yet received"}), 404
-            return jsonify(schedule_data)
+                return jsonify({"status": "not_ready"})
+            return jsonify({"status": "ready", "data": schedule_data})
 
+    # --- REFINEMENT: Use consistent status envelope ---
     @app.route('/distribution_data')
     def get_distribution_data():
         with data_lock:
-            # Send the raw counts array directly to the browser!
-            return jsonify(timestep_counts.tolist())
+            return jsonify({"status": "ready", "data": timestep_counts.tolist()})
 
-    # --- Data Listener Thread (This part doesn't change) ---
+    # --- Data Listener Thread ---
     def data_listener():
-        nonlocal schedule_data
+        nonlocal schedule_data, settings_data
         for line in sys.stdin:
+            # --- REFINEMENT: Debug print is now commented out ---
+            # print(f"Plotter RAW_IN: {line!r}")
             line = line.strip()
             if not line: continue
+
+            if line.startswith("SETTINGS::"):
+                try:
+                    with data_lock:
+                        settings_data = json.loads(line[len("SETTINGS::"):])
+                    print("Plotter: Received settings data.")
+                except Exception as e:
+                    print(f"Plotter: Error processing settings data: {e}")
+                continue
 
             if line.startswith("SCHEDULE::"):
                 try:
@@ -65,7 +90,8 @@ def run_plotter_server(port):
                 timesteps = np.fromstring(line, dtype=np.int64, sep=',')
                 with data_lock:
                     unique, counts = np.unique(timesteps, return_counts=True)
-                    timestep_counts[unique] += counts
+                    valid_indices = unique < len(timestep_counts)
+                    timestep_counts[unique[valid_indices]] += counts[valid_indices]
             except (ValueError, IndexError):
                 continue
 
@@ -76,11 +102,10 @@ def run_plotter_server(port):
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 
-# --- Main execution block (This part doesn't change) ---
+# --- Main execution block ---
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Live Timestep Plotter Server")
     parser.add_argument("--port", type=int, default=8080)
     args = parser.parse_args()
 
-    # We remove the extra args because this script no longer saves files
     run_plotter_server(args.port)

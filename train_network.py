@@ -58,6 +58,8 @@ from library.utils import setup_logging, add_logging_arguments
 from tools.loss_aware_sampler import LossAwareTimestepSampler
 from tools.log_snr_sampler import LogSNRUniformSampler
 from tools.tempered_adaptive_sampler import TemperedAdaptiveSampler
+from tools.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
+from tools.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
 
 setup_logging()
 import logging
@@ -161,7 +163,7 @@ class NetworkTrainer:
                 logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
 
             # Add mean and std of ema_loss
-            if hasattr(args.la_sampler, "ema_loss"):
+            if hasattr(args.la_sampler, "bin_loss_ema"):
                 logs["sampler/ema_loss_mean"] = args.la_sampler.ema_loss.mean().item()
                 logs["sampler/ema_loss_std"] = args.la_sampler.ema_loss.std().item()
 
@@ -214,7 +216,7 @@ class NetworkTrainer:
         for tracker in other_trackers:
             tracker.log(logs, step=step_value)
 
-    def save_timestep_distribution_plot(self, args, global_step, timestep_counts):
+    def save_timestep_distribution_plot(self, args, global_step, timestep_counts, settings_dict=None):
         if plt is None:
             logger.warning("Matplotlib is not installed. Cannot save timestep distribution plot.")
             return
@@ -222,16 +224,26 @@ class NetworkTrainer:
         output_dir = os.path.join(args.output_dir, "timestep_plots")
         os.makedirs(output_dir, exist_ok=True)
         
-        plt.figure(figsize=(12, 6))
+        plt.figure(figsize=(15, 7)) # Make figure wider
         plt.bar(range(len(timestep_counts)), timestep_counts, width=1.0)
         plt.title(f"Timestep Distribution at Step {global_step}")
         plt.xlabel("Timestep")
         plt.ylabel("Accumulated Count")
         plt.grid(True, axis='y', linestyle='--', alpha=0.6)
         
+        # --- START MODIFICATION: Add settings text to the plot ---
+        if settings_dict:
+            settings_text = "\n".join([f"{key}: {value}" for key, value in settings_dict.items() if value is not None])
+            plt.figtext(0.01, 0.01, settings_text, wrap=True, horizontalalignment='left', fontsize=8,
+                        bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.1))
+        
+        # Adjust layout to make room for the text
+        plt.tight_layout(rect=[0, 0.1, 1, 1])
+        # --- END MODIFICATION ---
+
         filename = os.path.join(output_dir, f"step_{global_step:06d}.png")
         plt.savefig(filename)
-        plt.close() # Important to free memory
+        plt.close()
 
     def assert_extra_args(
         self,
@@ -1603,28 +1615,116 @@ class NetworkTrainer:
         # --- LIVE PLOTTER & STATIC PLOT SETUP ---
         live_plotter_process = None
         timestep_counts = None
+        plotter_settings = None
 
         if is_main_process:
+            # --- START: Comprehensive Settings Gathering ---
+            # Determine the actual sampler being used
+            sampler_type = args.timestep_sampling
+            if hasattr(args, "la_sampler"):
+                if isinstance(args.la_sampler, LogSNRUniformSampler):
+                    sampler_type = "log_snr_uniform"
+                elif isinstance(args.la_sampler, TemperedAdaptiveSampler):
+                    sampler_type = "tempered_adaptive"
+                # The default is mix_adaptive if la_sampler exists
+
+            plotter_settings = {
+                "Timestep Sampler": sampler_type,
+                "Dynamic Schedule": "Enabled" if args.dynamic_timestep_schedule else "Disabled",
+                "Min Timestep": args.min_timestep,
+                "Max Timestep": args.max_timestep,
+            }
+
+            # Add sampler-specific settings
+            if sampler_type == "mix_adaptive":
+                plotter_settings.update({
+                    "Anneal": getattr(args, "mix_adaptive_anneal", "cosine"),
+                    "Start/End P": f"{getattr(args, 'mix_adaptive_start_p', 0.85)} -> {getattr(args, 'mix_adaptive_end_p', 0.35)}",
+                    "Fixed P": getattr(args, "mix_adaptive_fixed_p", None),
+                    "Num Bins": getattr(args, "mix_adaptive_bins", 32),
+                    "EMA Beta": getattr(args, "mix_adaptive_ema_beta", 0.9),
+                    "Small T Frac/Cap": f"{getattr(args, 'mix_adaptive_small_t_frac', 0.15)} / {getattr(args, 'mix_adaptive_small_t_cap', 0.6)}",
+                })
+            elif sampler_type == "tempered_adaptive":
+                plotter_settings.update({
+                    "Num Bins": getattr(args, "mix_adaptive_bins", 64),
+                    "EMA Beta": getattr(args, "mix_adaptive_ema_beta", 0.95),
+                    "Temperature": getattr(args, "mix_adaptive_temperature", 0.4),
+                    "Prior Weight": getattr(args, "mix_adaptive_prior_weight", 0.3),
+                    "Min Prob": getattr(args, "mix_adaptive_min_prob", 5e-4),
+                    "Warmup Steps": getattr(args, "mix_adaptive_warmup_steps", 150),
+                    "Prior Bias": getattr(args, "mix_adaptive_prior_bias", 0.8), # Assuming you add this arg
+                    "Entropy Floor": getattr(args, "mix_adaptive_entropy_floor_ratio", 0.7), # Assuming you add this arg
+                })
+            elif sampler_type == "gaussian_mid_snr":
+                plotter_settings.update({
+                    "Num Bins": getattr(args, "mix_adaptive_bins", 64),
+                    "EMA Beta": getattr(args, "mix_adaptive_ema_beta", 0.95),
+                    "Temperature": getattr(args, "mix_adaptive_temperature", 0.2),
+                    "Min Prob": getattr(args, "mix_adaptive_min_prob", 1e-2),
+                    "Entropy Floor": getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
+                    "Uniform Mix When Low Entropy": getattr(args, "uniform_mix_when_low_entropy", 0.1),
+                    "Prior_Mu": getattr(args, "mix_adaptive_prior_mu", 0.0),
+                    "Prior Sigma": getattr(args, "mix_adaptive_prior_sigma", 1.0), 
+                    "Prior Weight": getattr(args, "mix_adaptive_prior_weight", 0.1),
+                    "Warmup Steps": getattr(args, "mix_adaptive_warmup_steps", 5),
+                })
+            elif sampler_type == "snr_windowed":
+                plotter_settings.update({
+                    "Num Bins": getattr(args, "mix_adaptive_bins", 64),
+                    "EMA Beta": getattr(args, "mix_adaptive_ema_beta", 0.95),
+                    "Temperature": getattr(args, "mix_adaptive_temperature", 0.2),
+                    "Min Prob": getattr(args, "mix_adaptive_min_prob", 1e-2),
+                    "Entropy Floor": getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
+                    "Uniform Mix": getattr(args, "mix_adaptive_uniform_mix_when_low_entropy", 0.1),
+                    "Center Mu": getattr(args, "mix_adaptive_center_mu", 0.0),
+                    "Half Width": getattr(args, "mix_adaptive_half_width", 0.8),
+                    "Widen To": getattr(args, "mix_adaptive_widen_to", 2.5),
+                    "Total Widen Steps": getattr(args, "mix_adaptive_max_train_steps", 2000),
+                    "Cap Max T": getattr(args, "mix_adaptive_cap_max_t", 950),
+                })
+            elif sampler_type not in ["uniform", "log_snr_uniform"]: # Legacy shifted sampler
+                 plotter_settings.update({
+                    "Shift": getattr(args, "discrete_flow_shift", 1.0),
+                    "Sigmoid Scale": getattr(args, "sigmoid_scale", 1.0),
+                })
+
             # Setup for the live interactive plotter
             if args.live_plot_port is not None:
+                
+                # Step 1: Find the script to run.
                 current_script_dir = os.path.dirname(__file__)
                 plotter_script_path = os.path.join(current_script_dir, "tools", "live_plotter.py")
+
+                # Step 2: Check if the script actually exists. If not, disable the feature and continue.
                 if not os.path.exists(plotter_script_path):
                     logger.error(f"live_plotter.py not found at {plotter_script_path}. Live plotter disabled.")
                 else:
+                    # Step 3: Launch live_plotter.py as a separate, background program.
                     logger.info(f"Launching live plotter server on port {args.live_plot_port}")
                     live_plotter_process = subprocess.Popen(
+                        # This is the command to run: "python tools/live_plotter.py --port 8080"
                         [sys.executable, plotter_script_path, "--port", str(args.live_plot_port)],
+                        
+                        # This is the most important part: It creates a "pipe" (a communication channel)
                         stdin=subprocess.PIPE,
                     )
                     
-                    # Send the noise schedule once at the beginning
+                    # Step 4: Send the initial "handshake" data.
+                    # 1. Send the noise schedule
                     alphas_cumprod_np = noise_scheduler.alphas_cumprod.cpu().numpy()
                     schedule_str = f"SCHEDULE::{','.join(map(str, alphas_cumprod_np))}\n"
+                    
+                    # 2. Send the settings right after
+                    settings_str = f"SETTINGS::{json.dumps(plotter_settings)}\n"
+                    
                     try:
+                        # We "write" the data into the pipe (speak into the phone).
                         live_plotter_process.stdin.write(schedule_str.encode('utf-8'))
+                        live_plotter_process.stdin.write(settings_str.encode('utf-8'))
                         live_plotter_process.stdin.flush()
                     except (BrokenPipeError, OSError):
+                        # Error handling: If the plotter crashed on startup, the pipe will be broken.
                         logger.error("Failed to send schedule to live plotter. It may have crashed.")
                         live_plotter_process = None
 
@@ -1650,6 +1750,41 @@ class NetworkTrainer:
                     prior_weight=getattr(args, "mix_adaptive_prior_weight", 0.3),
                     min_prob=getattr(args, "mix_adaptive_min_prob", 5e-4),
                     warmup_steps=getattr(args, "mix_adaptive_warmup_steps", 150),
+                    prior_bias=getattr(args, "mix_adaptive_prior_bias", 0.8),
+                    entropy_floor_ratio=getattr(args, "mix_adaptive_entropy_floor_ratio", 0.7),
+                )
+                args.timestep_sampling = "mix_adaptive"
+            elif args.timestep_sampling == "gaussian_mid_snr":
+                accelerator.print("Initializing GaussianMidSNRAdaptiveSampler.")
+                args.la_sampler = GaussianMidSNRAdaptiveSampler(
+                    noise_scheduler,
+                    num_bins=getattr(args, "mix_adaptive_bins", 64),
+                    ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.95),
+                    temperature=getattr(args, "mix_adaptive_temperature", 0.2),
+                    min_prob=getattr(args, "mix_adaptive_min_prob", 1e-2),
+                    entropy_floor_ratio=getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
+                    uniform_mix_when_low_entropy=getattr(args, "mix_adaptive_uniform_mix_when_low_entropy", 0.1),
+                    prior_mu=getattr(args, "mix_adaptive_prior_mu", 0.0),
+                    prior_sigma=getattr(args, "mix_adaptive_prior_sigma", 1.0), 
+                    prior_weight=getattr(args, "mix_adaptive_prior_weight", 0.1),
+                    warmup_steps=getattr(args, "mix_adaptive_warmup_steps", 5),
+                )
+                args.timestep_sampling = "mix_adaptive"
+            elif args.timestep_sampling == "snr_windowed":
+                accelerator.print("Initializing SNRWindowedLossAwareSampler.")
+                args.la_sampler = SNRWindowedLossAwareSampler(
+                    noise_scheduler,
+                    num_bins=getattr(args, "mix_adaptive_bins", 64),
+                    ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.95),
+                    temperature=getattr(args, "mix_adaptive_temperature", 0.2),
+                    min_prob=getattr(args, "mix_adaptive_min_prob", 1e-2),
+                    entropy_floor_ratio=getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
+                    uniform_mix_when_low_entropy=getattr(args, "mix_adaptive_uniform_mix_when_low_entropy", 0.1),
+                    center_mu=getattr(args, "mix_adaptive_center_mu", 0.0),
+                    half_width=getattr(args, "mix_adaptive_half_width", 0.8),
+                    widen_to=getattr(args, "mix_adaptive_widen_to",  2.5),
+                    total_widen_steps=getattr(args, "mix_adaptive_max_train_steps", 2000),
+                    cap_max_t=getattr(args, "mix_adaptive_cap_max_t", 950),
                 )
                 args.timestep_sampling = "mix_adaptive"
             elif args.timestep_sampling == "mix_adaptive":
@@ -2057,7 +2192,7 @@ class NetworkTrainer:
                             timestep_counts[unique] += counts
                             
                             if global_step % args.log_timestep_distribution_every_n_steps == 0:
-                                self.save_timestep_distribution_plot(args, global_step, timestep_counts)
+                                self.save_timestep_distribution_plot(args, global_step, timestep_counts, plotter_settings)
 
                 if global_step >= args.max_train_steps:
                     break

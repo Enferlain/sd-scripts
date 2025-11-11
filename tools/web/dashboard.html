@@ -115,10 +115,23 @@
         .card-schedule { border-color: #60a5fa; }
         .card-distribution { border-color: #fb7185; }
         .card-insight { border-color: #34d399; }
+        .card-settings { border-color: #a78bfa; } /* New style for settings card */
         .stat-display {
             font-family: 'Courier New', monospace;
             color: #10b981;
             font-size: 0.75rem;
+        }
+        .setting-item:not(:last-child)::after {
+            content: "|";
+            color: #475569; /* Muted slate color */
+            margin-left: 0.5rem;
+            margin-right: 0.5rem;
+        }
+        .status-badge.disconnected {
+            background-color: #475569; /* Muted slate color for disconnected */
+        }
+        .status-badge.disconnected .pulse {
+            display: none; /* Hide the pulsing dot when disconnected */
         }
     </style>
 </head>
@@ -135,9 +148,9 @@
                         Real-time diffusion training metrics via stdin stream
                     </p>
                 </div>
-                <div class="status-badge">
-                    <span class="pulse"></span>
-                    <span>Live</span>
+                <div id="status-badge" class="status-badge">
+                    <span id="status-pulse" class="pulse"></span>
+                    <span id="status-text">Connecting...</span>
                 </div>
             </div>
         </div>
@@ -175,6 +188,14 @@
 
         <!-- Info Section -->
         <div class="info-section">
+            <!-- NEW: Settings Display Card -->
+            <div class="info-card card-settings mb-3">
+                <strong class="text-purple-300">Timestep Settings:</strong>
+                <div id="settings-display" class="text-gray-300 mt-2 space-y-1 text-xs font-mono">
+                    <span>Loading settings...</span>
+                </div>
+            </div>
+
             <div class="info-grid">
                 <div class="info-card card-schedule">
                     <strong class="text-blue-300">Noise Schedule:</strong>
@@ -201,35 +222,57 @@
         let samplingBarChart = null;
         let totalSamples = 0;
 
-        function renderLineChart(data) {
+        // Ensures the last x tick equals the current scale max (if Chart.js skips it)
+        const ensureXMaxTick = {
+            id: 'ensure-x-max-tick',
+            afterBuildTicks(scale) {
+                if (scale.id !== 'x') return;
+                const max = scale.max;
+                const ticks = scale.ticks;
+                const lastVal = ticks[ticks.length - 1]?.value;
+                if (Number.isFinite(lastVal) && lastVal < max) {
+                    ticks.push({ value: max });
+                }
+            }
+        };
+
+        Chart.register(ensureXMaxTick);
+
+        function renderLineChart(data, minTimestep, maxTimestep) {
             const ctx = document.getElementById('timestepChart').getContext('2d');
             if (timestepLineChart) {
                 timestepLineChart.destroy();
             }
+            
+            // Convert to {x, y} format for linear scale
+            const signalPoints = data.signalData.map((y, i) => ({ x: i, y }));
+            const noisePoints = data.noiseData.map((y, i) => ({ x: i, y }));
+            
             timestepLineChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: data.labels,
                     datasets: [
                         { 
                             label: 'Signal √α̅ₜ', 
-                            data: data.signalData, 
+                            data: signalPoints, 
                             borderColor: CHART_COLOR_SIGNAL, 
                             backgroundColor: 'rgba(52, 211, 153, 0.15)',
                             borderWidth: 2.5, 
                             pointRadius: 0, 
                             tension: 0.3,
-                            fill: true
+                            fill: true,
+                            parsing: false  // Data is already in {x, y} format
                         },
                         { 
                             label: 'Noise √(1-α̅ₜ)', 
-                            data: data.noiseData, 
+                            data: noisePoints, 
                             borderColor: CHART_COLOR_NOISE, 
                             backgroundColor: 'rgba(96, 165, 250, 0.15)',
                             borderWidth: 2.5, 
                             pointRadius: 0, 
                             tension: 0.3,
-                            fill: true
+                            fill: true,
+                            parsing: false
                         }
                     ]
                 },
@@ -261,27 +304,34 @@
                         intersect: false
                     },
                     scales: {
-                        x: { 
-                            title: { 
-                                display: true, 
-                                text: 'Timestep t', 
-                                color: '#cbd5e1', 
-                                font: { size: 12 } 
-                            }, 
-                            grid: { color: '#334155' }, 
-                            ticks: { color: '#94a3b8', maxTicksLimit: 10 } 
+                        x: {
+                            type: 'linear',        // KEY CHANGE: Use linear scale
+                            min: minTimestep,
+                            max: maxTimestep,      // Now works as true numeric bound
+                            title: {
+                                display: true,
+                                text: 'Timestep t',
+                                color: '#cbd5e1',
+                                font: { size: 12 }
+                            },
+                            grid: { color: '#334155' },
+                            ticks: {
+                                color: '#94a3b8',
+                                includeBounds: true,    // Now works properly
+                                stepSize: 100
+                            }
                         },
-                        y: { 
-                            title: { 
-                                display: true, 
-                                text: 'Factor', 
-                                color: '#cbd5e1', 
-                                font: { size: 12 } 
-                            }, 
-                            min: 0, 
-                            max: 1.0, 
-                            grid: { color: '#334155' }, 
-                            ticks: { color: '#94a3b8' } 
+                        y: {
+                            min: 0,
+                            max: 1,
+                            title: {
+                                display: true,
+                                text: 'Factor',
+                                color: '#cbd5e1',
+                                font: { size: 12 }
+                            },
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
                         }
                     }
                 }
@@ -289,25 +339,30 @@
             document.getElementById('schedule-status').textContent = `T=${data.labels.length}`;
         }
 
-        function renderBarChart(data) {
+        function renderBarChart(data, minTimestep, maxTimestep) {
             const ctx = document.getElementById('samplingChart').getContext('2d');
-            const labels = Array.from({ length: data.length }, (_, i) => i);
             totalSamples = data.reduce((a, b) => a + b, 0);
+            
+            // Convert to {x, y} format for linear scale
+            const points = data.map((y, i) => ({ x: i, y }));
 
             if (samplingBarChart) {
-                samplingBarChart.data.labels = labels;
-                samplingBarChart.data.datasets[0].data = data;
+                samplingBarChart.data.datasets[0].data = points;
+                samplingBarChart.options.scales.x.min = minTimestep;
+                samplingBarChart.options.scales.x.max = maxTimestep;
                 samplingBarChart.update('none');
             } else {
                 samplingBarChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: labels,
                         datasets: [{
                             label: 'Count',
-                            data: data,
+                            data: points,
                             backgroundColor: CHART_COLOR_SAMPLING,
                             borderWidth: 0,
+                            barPercentage: 1.0,       // Full width bars
+                            categoryPercentage: 1.0,  // No gaps
+                            parsing: false            // Data is {x, y} format
                         }]
                     },
                     options: {
@@ -323,16 +378,19 @@
                                 borderColor: '#475569',
                                 borderWidth: 1,
                                 callbacks: {
-                                    title: (items) => `t = ${items[0].label}`,
+                                    title: (items) => `t = ${items[0].parsed.x}`,
                                     label: (item) => {
                                         const pct = totalSamples > 0 ? (item.parsed.y / totalSamples * 100).toFixed(2) : 0;
-                                        return `Samples: ${item.formattedValue} (${pct}%)`;
+                                        return `Samples: ${item.parsed.y} (${pct}%)`;
                                     }
                                 }
                             }
                         },
                         scales: {
                             x: { 
+                                type: 'linear',              // KEY CHANGE: Use linear scale
+                                min: minTimestep,
+                                max: maxTimestep,            // Now works as true numeric bound
                                 title: { 
                                     display: true, 
                                     text: 'Timestep t', 
@@ -340,7 +398,11 @@
                                     font: { size: 12 } 
                                 }, 
                                 grid: { display: false }, 
-                                ticks: { color: '#94a3b8', maxTicksLimit: 10 } 
+                                ticks: { 
+                                    color: '#94a3b8', 
+                                    stepSize: 100, 
+                                    includeBounds: true      // Now works properly
+                                }
                             },
                             y: { 
                                 title: { 
@@ -361,39 +423,155 @@
             document.getElementById('dist-status').textContent = `Total: ${totalSamples.toLocaleString()} samples`;
         }
 
-        async function initializeSchedule() {
-            try {
-                const response = await fetch('/schedule_data');
-                if (response.ok) {
-                    const data = await response.json();
-                    renderLineChart(data);
-                } else {
-                    document.getElementById('schedule-status').textContent = 'Waiting for data...';
-                    setTimeout(initializeSchedule, 2000);
-                }
-            } catch (error) {
-                console.error("Failed to fetch schedule data:", error);
-                document.getElementById('schedule-status').textContent = 'Connection error';
-                setTimeout(initializeSchedule, 2000);
+        // --- NEW: Liveness detection logic ---
+        let livenessTimeout = null;
+
+        function updateStatus(state) {
+            const badge = document.getElementById('status-badge');
+            const text = document.getElementById('status-text');
+
+            if (state === 'live') {
+                badge.classList.remove('disconnected');
+                text.textContent = 'Live';
+            } else {
+                badge.classList.add('disconnected');
+                text.textContent = 'Disconnected';
             }
         }
 
-        async function refreshDistribution() {
+        // --- REFINEMENT: One-shot retry loop for static data ---
+        async function initializeSchedule() {
             try {
-                const response = await fetch('/distribution_data');
+                const response = await fetch('/schedule_data');
+                const settingsResponse = await fetch('/settings_data');
                 if (response.ok) {
-                    const data = await response.json();
-                    renderBarChart(data);
+                    const payload = await response.json();
+                    const settingsPayload = await settingsResponse.json();
+                    if (payload.status === 'ready' && settingsPayload.status === 'ready') {
+                        const minTimestep = (settingsPayload.data && settingsPayload.data["Min Timestep"]) ?? 0;
+                        const maxTimestep = (settingsPayload.data && settingsPayload.data["Max Timestep"]) ?? 1000;
+                        renderLineChart(payload.data, minTimestep, maxTimestep);
+                        // We also call renderBarChart here to set its initial scale correctly
+                        renderBarChart([], minTimestep, maxTimestep); 
+                        return; // Success!
+                    }
                 }
             } catch (error) {
-                console.error("Failed to refresh distribution data:", error);
+                console.error("Failed to fetch schedule data:", error);
+            }
+            // If we are here, it means it failed or was not ready. Retry.
+            document.getElementById('schedule-status').textContent = 'Waiting for data...';
+            setTimeout(initializeSchedule, 2000);
+        }
+
+        // --- MODIFIED: Settings initializer with dynamic key ordering ---
+        async function initializeSettings() {
+            const displayEl = document.getElementById('settings-display');
+            try {
+                const response = await fetch('/settings_data');
+                if (response.ok) {
+                    const payload = await response.json();
+                    if (payload.status === 'ready') {
+                        const data = payload.data;
+                        displayEl.innerHTML = ''; // Clear loading message
+
+                        // Define the keys you want to see first, in this specific order.
+                        const priorityKeys = [
+                            "Timestep Sampler", "Shift", "Sigmoid Scale", "Dynamic Schedule", "Min Timestep", "Max Timestep",
+                            "Num Bins", "EMA Beta"
+                        ];
+
+                        // Get all keys from the server data.
+                        const allServerKeys = Object.keys(data);
+                        
+                        // Get the remaining keys by filtering out the priority ones, and sort them alphabetically.
+                        const remainingKeys = allServerKeys
+                            .filter(key => !priorityKeys.includes(key))
+                            .sort();
+
+                        // Combine the two lists to create the final display order.
+                        const ordered_keys = [...priorityKeys, ...remainingKeys];
+
+                        // Iterate through the final ordered list to display the settings.
+                        for (const key of ordered_keys) {
+                            if (key in data && data[key] !== null && data[key] !== '') {
+                                const value = data[key];
+                                
+                                const settingEl = document.createElement('span');
+                                settingEl.className = 'setting-item';
+                                
+                                const keyEl = document.createElement('span');
+                                keyEl.className = 'text-gray-400';
+                                keyEl.textContent = `${key}: `;
+                                
+                                const valueEl = document.createElement('span');
+                                valueEl.className = 'text-purple-300 font-semibold';
+                                valueEl.textContent = value;
+                                
+                                settingEl.appendChild(keyEl);
+                                settingEl.appendChild(valueEl);
+                                displayEl.appendChild(settingEl);
+                            }
+                        }
+                        // Success! Stop polling.
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch settings data:", error);
+            }
+            // If we are here, it means it failed or was not ready. Retry.
+            displayEl.textContent = 'Waiting for settings...';
+            setTimeout(initializeSettings, 2000);
+        }
+
+        // --- MODIFIED: Continuous poller now includes liveness AND dynamic scaling ---
+        async function refreshDistribution() {
+            // 1. Set a death timer. If no successful update arrives within 5s, flip to "Disconnected".
+            clearTimeout(livenessTimeout);
+            livenessTimeout = setTimeout(() => updateStatus('disconnected'), 5000);
+
+            try {
+                // Fetch both distribution and settings data
+                const response = await fetch('/distribution_data');
+                const settingsResponse = await fetch('/settings_data');
+
+                if (response.ok && settingsResponse.ok) {
+                    const payload = await response.json();
+                    const settingsPayload = await settingsResponse.json();
+
+                    // Check if both endpoints are ready
+                    if (payload.status === 'ready' && settingsPayload.status === 'ready') {
+                        // 2. Success! We are live. Clear the death timer and update the badge.
+                        clearTimeout(livenessTimeout);
+                        updateStatus('live');
+
+                        // Get min/max timesteps for scaling
+                        const minTimestep = (settingsPayload.data && settingsPayload.data["Min Timestep"]) ?? 0;
+                        const maxTimestep = (settingsPayload.data && settingsPayload.data["Max Timestep"]) ?? 1000;
+                        
+                        // Render the chart with the new data and correct scale
+                        renderBarChart(payload.data, minTimestep, maxTimestep);
+                        return; // Exit successfully
+                    }
+                }
+                // Do not force "Disconnected" on transient not-ready. Let the death timer handle it.
+            } catch (error) {
+                console.error("Liveness check failed:", error);
+                // Do not force "Disconnected" on transient not-ready. Let the death timer handle it.
             }
         }
 
         window.onload = function() {
+            // Start the one-shot initializers
             initializeSchedule();
-            refreshDistribution();
-            setInterval(refreshDistribution, 2000); // Faster updates (2s)
+            initializeSettings();
+            
+            // Keep initial "Connecting..." status; death timer will flip if nothing arrives.
+
+            // Start the continuous poller for live data
+            refreshDistribution(); // Initial call
+            setInterval(refreshDistribution, 2000);
         };
 
         window.addEventListener('resize', () => {

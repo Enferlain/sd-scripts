@@ -16,6 +16,7 @@ import typing
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 from accelerate import Accelerator, InitProcessGroupKwargs, DistributedDataParallelKwargs
 from accelerate.utils import set_seed, TorchDynamoPlugin
+from accelerate.state import PartialState
 import glob
 import math
 import os
@@ -4156,6 +4157,12 @@ def add_training_arguments(parser: argparse.ArgumentParser, support_dreambooth: 
         help="set maximum time step for U-Net training (1~1000, default is 1000) / U-Net学習時のtime stepの最大値を設定する（1~1000で指定、省略時はデフォルト値(1000)）",
     )
     parser.add_argument(
+        "--dynamic_timestep_schedule",
+        type=str,
+        default=None,
+        help="A list of lists defining a dynamic timestep schedule. e.g., '[[0, 0, 500], [1000, 500, 1000]]'",
+    )
+    parser.add_argument(
         "--loss_type",
         type=str,
         default="l2",
@@ -4312,6 +4319,60 @@ def add_training_arguments(parser: argparse.ArgumentParser, support_dreambooth: 
     )
     parser.add_argument(
         "--mix_adaptive_warmup_steps", type=int, default=2000, help="warmup steps for tempered adaptive sampler"
+    )
+    parser.add_argument(
+        "--mix_adaptive_prior_bias", type=float, default=0.8, help="prior bias for tempered adaptive sampler"
+    )
+    parser.add_argument(
+        "--mix_adaptive_entropy_floor_ratio", type=float, default=0.7, help="entropy floor ratio for tempered adaptive sampler"
+    )
+    parser.add_argument(
+        "--mix_adaptive_uniform_mix_when_low_entropy",
+        type=float,
+        default=0.1,
+        help="Amount of uniform mixing to apply when entropy is low (Gaussian sampler).",
+    )
+    parser.add_argument(
+        "--mix_adaptive_prior_mu",
+        type=float,
+        default=0.0,
+        help="Mean of the Gaussian prior (Gaussian sampler).",
+    )
+    parser.add_argument(
+        "--mix_adaptive_prior_sigma",
+        type=float,
+        default=1.0,
+        help="Standard deviation of the Gaussian prior (Gaussian sampler).",
+    )
+    parser.add_argument(
+        "--mix_adaptive_center_mu",
+        type=float,
+        default=0.0,
+        help="Center mean for the SNR window (SNR Windowed sampler).",
+    )
+    parser.add_argument(
+        "--mix_adaptive_half_width",
+        type=float,
+        default=0.8,
+        help="Initial half-width of the SNR window (SNR Windowed sampler).",
+    )
+    parser.add_argument(
+        "--mix_adaptive_widen_to",
+        type=float,
+        default=2.5,
+        help="Target half-width to widen the window to (SNR Windowed sampler).",
+    )
+    parser.add_argument(
+        "--mix_adaptive_max_train_steps",
+        type=int,
+        default=2000,
+        help="Total steps over which to widen the window (SNR Windowed sampler).",
+    )
+    parser.add_argument(
+        "--mix_adaptive_cap_max_t",
+        type=int,
+        default=950,
+        help="Maximum timestep to cap the sampling at (SNR Windowed sampler).",
     )
 
     parser.add_argument(
@@ -4863,7 +4924,66 @@ def read_config_from_file(args: argparse.Namespace, parser: argparse.ArgumentPar
 
     config_args = argparse.Namespace(**ignore_nesting_dict)
     args = parser.parse_args(namespace=config_args)
-    args.config_file = os.path.splitext(args.config_file)[0]
+    if args.config_file:
+        args.config_file = os.path.splitext(args.config_file)[0]
+
+    for action in parser._actions:
+        dest = getattr(action, "dest", None)
+        if not dest or not hasattr(args, dest):
+            continue
+
+        val = getattr(args, dest)
+        if val is None:
+            continue
+
+        to_type = getattr(action, "type", None)
+
+        # No declared type on the action (flags, store_true/false, etc.)
+        if to_type is None:
+            continue
+
+        # Helper: is to_type a real Python type?
+        is_real_type = isinstance(to_type, type)
+
+        try:
+            # List-valued args
+            if isinstance(val, list):
+                out = []
+                for item in val:
+                    if to_type is str:
+                        out.append(str(item))
+                    elif is_real_type:
+                        out.append(item if isinstance(item, to_type) else to_type(item))
+                    else:
+                        # Custom converter: only parse strings
+                        out.append(to_type(item) if isinstance(item, str) else item)
+                setattr(args, dest, out)
+                continue
+
+            # Scalar args
+            if to_type is str:
+                if not isinstance(val, str):
+                    setattr(args, dest, str(val))
+                continue
+
+            if is_real_type:
+                if not isinstance(val, to_type):
+                    setattr(args, dest, to_type(val))
+            else:
+                # Custom converter (e.g., int_or_float): only parse strings
+                if isinstance(val, str):
+                    setattr(args, dest, to_type(val))
+                # else leave as-is
+
+        except Exception as e:
+            tname = getattr(to_type, "__name__", str(to_type))
+            logger.warning(
+                f"Could not convert argument '{dest}' to type '{tname}'. Value: '{val}'. Error: {e}"
+            )
+
+    # Ensure tracker name is a string specifically (W&B requires project: str)
+    if hasattr(args, "log_tracker_name") and args.log_tracker_name is not None:
+        args.log_tracker_name = str(args.log_tracker_name)
 
     return args
 
