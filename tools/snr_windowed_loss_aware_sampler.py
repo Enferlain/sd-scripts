@@ -62,24 +62,51 @@ class SNRWindowedLossAwareSampler:
     def sample(self, batch_size, device, global_step=0, max_train_steps=1000, sigmoid_scale=1.0, discrete_flow_shift=1.0):
         self.step(global_step)
         mu, half_w = self._current_window()
+
         centers = self.bin_centers_log_snr.to(device)
         mask = (centers >= (mu - half_w)) & (centers <= (mu + half_w))
-        if not mask.any(): mask = torch.ones_like(centers, dtype=torch.bool)
-        la_logits = -self.bin_loss_ema.to(device).clone()
-        la_logits[~mask] = -1e9
-        probs = self._softmax(la_logits, temp=self.temperature)
-        H = self._entropy(probs)
-        H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
-        if H < H_min:
-            u = torch.full_like(probs, 1.0 / self.num_bins)
-            probs = (1.0 - self.uniform_mix_when_low_entropy) * probs + self.uniform_mix_when_low_entropy * u
-        probs = probs.clamp_min(self.min_prob); probs = probs / (probs.sum() + 1e-12)
-        bin_idx = torch.multinomial(probs, num_samples=batch_size, replacement=True)
+        if not mask.any():
+            mask = torch.ones_like(centers, dtype=torch.bool)
+
+        with torch.amp.autocast('cuda', enabled=False):
+            # Build logits in fp32
+            la_logits = -self.bin_loss_ema.to(device, dtype=torch.float32).clone()
+            la_logits[~mask] = -1e9
+
+            # Stable softmax in fp32
+            t = max(self.temperature, 1e-6)
+            z = la_logits / t
+            z = z - z.max()
+            probs = torch.exp(z)
+            probs_sum = probs.sum()
+            # Normalize with epsilon to avoid zero-division
+            probs = probs / (probs_sum + 1e-12)
+
+            # Optional entropy floor logic (still in fp32)
+            H = -(probs * (probs + 1e-12).log()).sum()
+            H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
+            if H < H_min:
+                u = torch.full_like(probs, 1.0 / self.num_bins)
+                probs = (1.0 - self.uniform_mix_when_low_entropy) * probs + self.uniform_mix_when_low_entropy * u
+
+            # Unconditional clamp and renormalize for safety
+            probs = torch.nan_to_num(probs, nan=0.0, posinf=0.0, neginf=0.0)
+            probs = probs.clamp_min(max(self.min_prob, 1e-12))
+            probs = probs / (probs.sum() + 1e-12)
+
+            # If the row is still numerically degenerate, fall back to uniform
+            if not torch.isfinite(probs).all() or probs.sum() <= 0:
+                probs = torch.full_like(probs, 1.0 / self.num_bins)
+
+            # Sample on GPU; 1D probs → shape [batch_size]
+            bin_idx = torch.multinomial(probs, num_samples=batch_size, replacement=True)
+
         left, right = self.bin_left.to(device)[bin_idx], self.bin_right.to(device)[bin_idx]
         u = torch.rand(batch_size, device=device)
         sorted_idx = (left + (u * (right - left + 1).clamp_min(1)).floor().long()).clamp(0, self.T - 1)
         timesteps = self.sort_indices.to(device)[sorted_idx]
-        if self.cap_max_t is not None: timesteps = timesteps.clamp_max(self.cap_max_t)
+        if self.cap_max_t is not None:
+            timesteps = timesteps.clamp_max(self.cap_max_t)
         return timesteps.long()
 
     @torch.no_grad()

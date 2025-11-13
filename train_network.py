@@ -71,6 +71,20 @@ class NetworkTrainer:
     def __init__(self):
         self.vae_scale_factor = 0.18215
         self.is_sdxl = False
+        self.live_plotter_process = None
+
+    def close(self):
+        if self.live_plotter_process is not None:
+            logger.info("Shutting down live plotter server...")
+            try:
+                self.live_plotter_process.stdin.close()
+                self.live_plotter_process.terminate()
+                self.live_plotter_process.wait(timeout=5)
+                logger.info("Live plotter server shut down.")
+            except (BrokenPipeError, OSError, subprocess.TimeoutExpired) as e:
+                logger.warning(f"Could not shut down live plotter server cleanly: {e}")
+                self.live_plotter_process.kill()
+            self.live_plotter_process = None
 
     # TODO 他のスクリプトと共通化する
     def generate_step_logs(
@@ -164,11 +178,11 @@ class NetworkTrainer:
 
             # Add mean and std of ema_loss
             if hasattr(args.la_sampler, "bin_loss_ema"):
-                logs["sampler/ema_loss_mean"] = args.la_sampler.ema_loss.mean().item()
-                logs["sampler/ema_loss_std"] = args.la_sampler.ema_loss.std().item()
+                logs["sampler/ema_loss_mean"] = args.la_sampler.bin_loss_ema.mean().item()
+                logs["sampler/ema_loss_std"] = args.la_sampler.bin_loss_ema.std().item()
 
                 # EMA loss per bin (in a separate category for clarity in TensorBoard)
-                for i, loss_val in enumerate(args.la_sampler.ema_loss):
+                for i, loss_val in enumerate(args.la_sampler.bin_loss_ema):
                     logs[f"sampler_ema_loss_bins/bin_{i}"] = loss_val.item()
 
             # Timestep histogram for the current batch
@@ -1057,11 +1071,11 @@ class NetworkTrainer:
             info = network.load_weights(args.network_weights)
             accelerator.print(f"load network weights from {args.network_weights}: {info}")
 
-        if args.use_ramtorch:
-            logger.info("Applying RamTorch to network/lora.")
-            if isinstance(network, torch.nn.Module):
-                network = replace_linear_with_ramtorch(network, accelerator.device)
-                logger.info("RamTorch applied to network/lora.")
+        # if args.use_ramtorch:
+        #     logger.info("Applying RamTorch to network/lora.")
+        #     if isinstance(network, torch.nn.Module):
+        #         network = replace_linear_with_ramtorch(network, accelerator.device)
+        #         logger.info("RamTorch applied to network/lora.")
 
         if args.gradient_checkpointing:
             if args.cpu_offload_checkpointing:
@@ -1613,7 +1627,6 @@ class NetworkTrainer:
         noise_scheduler = self.get_noise_scheduler(args, accelerator.device)
 
         # --- LIVE PLOTTER & STATIC PLOT SETUP ---
-        live_plotter_process = None
         timestep_counts = None
         plotter_settings = None
 
@@ -1700,33 +1713,28 @@ class NetworkTrainer:
                 if not os.path.exists(plotter_script_path):
                     logger.error(f"live_plotter.py not found at {plotter_script_path}. Live plotter disabled.")
                 else:
-                    # Step 3: Launch live_plotter.py as a separate, background program.
-                    logger.info(f"Launching live plotter server on port {args.live_plot_port}")
-                    live_plotter_process = subprocess.Popen(
-                        # This is the command to run: "python tools/live_plotter.py --port 8080"
-                        [sys.executable, plotter_script_path, "--port", str(args.live_plot_port)],
-                        
-                        # This is the most important part: It creates a "pipe" (a communication channel)
-                        stdin=subprocess.PIPE,
-                    )
-                    
+                    # Step 3: Launch live_plotter.py if it's not already running.
+                    if self.live_plotter_process is None or self.live_plotter_process.poll() is not None:
+                        logger.info(f"Launching live plotter server on port {args.live_plot_port}")
+                        self.live_plotter_process = subprocess.Popen(
+                            [sys.executable, plotter_script_path, "--port", str(args.live_plot_port)],
+                            stdin=subprocess.PIPE,
+                        )
+
                     # Step 4: Send the initial "handshake" data.
-                    # 1. Send the noise schedule
+                    reset_str = "RESET::\n"
                     alphas_cumprod_np = noise_scheduler.alphas_cumprod.cpu().numpy()
                     schedule_str = f"SCHEDULE::{','.join(map(str, alphas_cumprod_np))}\n"
-                    
-                    # 2. Send the settings right after
                     settings_str = f"SETTINGS::{json.dumps(plotter_settings)}\n"
                     
                     try:
-                        # We "write" the data into the pipe (speak into the phone).
-                        live_plotter_process.stdin.write(schedule_str.encode('utf-8'))
-                        live_plotter_process.stdin.write(settings_str.encode('utf-8'))
-                        live_plotter_process.stdin.flush()
+                        self.live_plotter_process.stdin.write(reset_str.encode('utf-8'))
+                        self.live_plotter_process.stdin.write(schedule_str.encode('utf-8'))
+                        self.live_plotter_process.stdin.write(settings_str.encode('utf-8'))
+                        self.live_plotter_process.stdin.flush()
                     except (BrokenPipeError, OSError):
-                        # Error handling: If the plotter crashed on startup, the pipe will be broken.
-                        logger.error("Failed to send schedule to live plotter. It may have crashed.")
-                        live_plotter_process = None
+                        logger.error("Failed to send data to live plotter. It may have crashed.")
+                        self.live_plotter_process = None
 
             # Setup for saving static plot images
             if args.log_timestep_distribution_every_n_steps is not None:
@@ -2178,13 +2186,13 @@ class NetworkTrainer:
                         timesteps_np = timesteps.cpu().numpy()
 
                         # Send data to the live plotter
-                        if live_plotter_process and live_plotter_process.poll() is None:
+                        if self.live_plotter_process and self.live_plotter_process.poll() is None:
                             try:
-                                live_plotter_process.stdin.write(f"{','.join(map(str, timesteps_np))}\n".encode('utf-8'))
-                                live_plotter_process.stdin.flush()
+                                self.live_plotter_process.stdin.write(f"{','.join(map(str, timesteps_np))}\n".encode('utf-8'))
+                                self.live_plotter_process.stdin.flush()
                             except (BrokenPipeError, OSError):
                                 logger.error("Live plotter connection lost.")
-                                live_plotter_process = None
+                                self.live_plotter_process = None
                         
                         # Update counts and save static plot if needed
                         if timestep_counts is not None:
@@ -2259,19 +2267,6 @@ class NetworkTrainer:
                 loss_weights_ckpt_name = train_util.get_last_ckpt_name(args, "." + args.save_model_as, "_edm2_loss_weights")
                 save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, num_train_epochs, force_sync_upload=True, dtype_override=torch.float32)
 
-        # --- LIVE PLOTTER CLEANUP ---
-        # This should be one of the very last things to happen.
-        # It ensures the background server process is properly shut down.
-        if is_main_process and live_plotter_process:
-            logger.info("Shutting down live plotter server...")
-            try:
-                live_plotter_process.stdin.close()
-                live_plotter_process.terminate()
-                live_plotter_process.wait(timeout=5) # Wait up to 5 seconds for it to close
-                logger.info("Live plotter server shut down.")
-            except (BrokenPipeError, OSError, subprocess.TimeoutExpired) as e:
-                logger.warning(f"Could not shut down live plotter server cleanly: {e}")
-                live_plotter_process.kill() # Force kill if it doesn't respond
 
         logger.info("model saved.")
 

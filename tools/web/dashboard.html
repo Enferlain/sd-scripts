@@ -221,6 +221,7 @@
         let timestepLineChart = null;
         let samplingBarChart = null;
         let totalSamples = 0;
+        let currentSessionId = null;
 
         // Ensures the last x tick equals the current scale max (if Chart.js skips it)
         const ensureXMaxTick = {
@@ -366,10 +367,10 @@
                         }]
                     },
                     options: {
-                        responsive: true, 
+                        responsive: true,
                         maintainAspectRatio: false,
                         animation: { duration: 0 },
-                        plugins: { 
+                        plugins: {
                             legend: { display: false },
                             tooltip: {
                                 backgroundColor: 'rgba(30, 41, 59, 0.95)',
@@ -387,33 +388,33 @@
                             }
                         },
                         scales: {
-                            x: { 
+                            x: {
                                 type: 'linear',              // KEY CHANGE: Use linear scale
                                 min: minTimestep,
                                 max: maxTimestep,            // Now works as true numeric bound
-                                title: { 
-                                    display: true, 
-                                    text: 'Timestep t', 
-                                    color: '#cbd5e1', 
-                                    font: { size: 12 } 
-                                }, 
-                                grid: { display: false }, 
-                                ticks: { 
-                                    color: '#94a3b8', 
-                                    stepSize: 100, 
+                                title: {
+                                    display: true,
+                                    text: 'Timestep t',
+                                    color: '#cbd5e1',
+                                    font: { size: 12 }
+                                },
+                                grid: { display: false },
+                                ticks: {
+                                    color: '#94a3b8',
+                                    stepSize: 100,
                                     includeBounds: true      // Now works properly
                                 }
                             },
-                            y: { 
-                                title: { 
-                                    display: true, 
-                                    text: 'Sample Count', 
-                                    color: '#cbd5e1', 
-                                    font: { size: 12 } 
-                                }, 
-                                beginAtZero: true, 
-                                grid: { color: '#334155' }, 
-                                ticks: { color: '#94a3b8' } 
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Sample Count',
+                                    color: '#cbd5e1',
+                                    font: { size: 12 }
+                                },
+                                beginAtZero: true,
+                                grid: { color: '#334155' },
+                                ticks: { color: '#94a3b8' }
                             }
                         }
                     }
@@ -421,6 +422,26 @@
             }
 
             document.getElementById('dist-status').textContent = `Total: ${totalSamples.toLocaleString()} samples`;
+        }
+
+        function resetAllCharts() {
+            console.log("New session detected. Resetting all charts and data.");
+            if (timestepLineChart) {
+                timestepLineChart.destroy();
+                timestepLineChart = null;
+            }
+            if (samplingBarChart) {
+                samplingBarChart.destroy();
+                samplingBarChart = null;
+            }
+            totalSamples = 0;
+            document.getElementById('settings-display').innerHTML = '<span>Loading settings...</span>';
+            document.getElementById('schedule-status').textContent = 'Waiting...';
+            document.getElementById('dist-status').textContent = 'Total: 0 samples';
+
+            // Re-initialize everything
+            initializeSchedule();
+            initializeSettings();
         }
 
         // --- NEW: Liveness detection logic ---
@@ -447,24 +468,30 @@
                 if (response.ok) {
                     const payload = await response.json();
                     const settingsPayload = await settingsResponse.json();
+
                     if (payload.status === 'ready' && settingsPayload.status === 'ready') {
+                        if (currentSessionId === null) {
+                            currentSessionId = settingsPayload.session_id;
+                        } else if (currentSessionId !== settingsPayload.session_id) {
+                            currentSessionId = settingsPayload.session_id;
+                            resetAllCharts();
+                            return;
+                        }
+
                         const minTimestep = (settingsPayload.data && settingsPayload.data["Min Timestep"]) ?? 0;
                         const maxTimestep = (settingsPayload.data && settingsPayload.data["Max Timestep"]) ?? 1000;
                         renderLineChart(payload.data, minTimestep, maxTimestep);
-                        // We also call renderBarChart here to set its initial scale correctly
-                        renderBarChart([], minTimestep, maxTimestep); 
-                        return; // Success!
+                        renderBarChart([], minTimestep, maxTimestep);
+                        return;
                     }
                 }
             } catch (error) {
                 console.error("Failed to fetch schedule data:", error);
             }
-            // If we are here, it means it failed or was not ready. Retry.
             document.getElementById('schedule-status').textContent = 'Waiting for data...';
             setTimeout(initializeSchedule, 2000);
         }
 
-        // --- MODIFIED: Settings initializer with dynamic key ordering ---
         async function initializeSettings() {
             const displayEl = document.getElementById('settings-display');
             try {
@@ -472,67 +499,56 @@
                 if (response.ok) {
                     const payload = await response.json();
                     if (payload.status === 'ready') {
-                        const data = payload.data;
-                        displayEl.innerHTML = ''; // Clear loading message
+                        if (currentSessionId !== null && currentSessionId !== payload.session_id) {
+                            currentSessionId = payload.session_id;
+                            resetAllCharts();
+                            return;
+                        }
 
-                        // Define the keys you want to see first, in this specific order.
+                        const data = payload.data;
+                        displayEl.innerHTML = '';
+
                         const priorityKeys = [
                             "Timestep Sampler", "Shift", "Sigmoid Scale", "Dynamic Schedule", "Min Timestep", "Max Timestep",
                             "Num Bins", "EMA Beta"
                         ];
-
-                        // Get all keys from the server data.
                         const allServerKeys = Object.keys(data);
-                        
-                        // Get the remaining keys by filtering out the priority ones, and sort them alphabetically.
                         const remainingKeys = allServerKeys
                             .filter(key => !priorityKeys.includes(key))
                             .sort();
-
-                        // Combine the two lists to create the final display order.
                         const ordered_keys = [...priorityKeys, ...remainingKeys];
 
-                        // Iterate through the final ordered list to display the settings.
                         for (const key of ordered_keys) {
                             if (key in data && data[key] !== null && data[key] !== '') {
                                 const value = data[key];
-                                
                                 const settingEl = document.createElement('span');
                                 settingEl.className = 'setting-item';
-                                
                                 const keyEl = document.createElement('span');
                                 keyEl.className = 'text-gray-400';
                                 keyEl.textContent = `${key}: `;
-                                
                                 const valueEl = document.createElement('span');
                                 valueEl.className = 'text-purple-300 font-semibold';
                                 valueEl.textContent = value;
-                                
                                 settingEl.appendChild(keyEl);
                                 settingEl.appendChild(valueEl);
                                 displayEl.appendChild(settingEl);
                             }
                         }
-                        // Success! Stop polling.
                         return;
                     }
                 }
             } catch (error) {
                 console.error("Failed to fetch settings data:", error);
             }
-            // If we are here, it means it failed or was not ready. Retry.
             displayEl.textContent = 'Waiting for settings...';
             setTimeout(initializeSettings, 2000);
         }
 
-        // --- MODIFIED: Continuous poller now includes liveness AND dynamic scaling ---
         async function refreshDistribution() {
-            // 1. Set a death timer. If no successful update arrives within 5s, flip to "Disconnected".
             clearTimeout(livenessTimeout);
             livenessTimeout = setTimeout(() => updateStatus('disconnected'), 5000);
 
             try {
-                // Fetch both distribution and settings data
                 const response = await fetch('/distribution_data');
                 const settingsResponse = await fetch('/settings_data');
 
@@ -540,25 +556,25 @@
                     const payload = await response.json();
                     const settingsPayload = await settingsResponse.json();
 
-                    // Check if both endpoints are ready
                     if (payload.status === 'ready' && settingsPayload.status === 'ready') {
-                        // 2. Success! We are live. Clear the death timer and update the badge.
+                        if (currentSessionId !== null && currentSessionId !== payload.session_id) {
+                            currentSessionId = payload.session_id;
+                            resetAllCharts();
+                            return;
+                        }
+                        
                         clearTimeout(livenessTimeout);
                         updateStatus('live');
 
-                        // Get min/max timesteps for scaling
                         const minTimestep = (settingsPayload.data && settingsPayload.data["Min Timestep"]) ?? 0;
                         const maxTimestep = (settingsPayload.data && settingsPayload.data["Max Timestep"]) ?? 1000;
                         
-                        // Render the chart with the new data and correct scale
                         renderBarChart(payload.data, minTimestep, maxTimestep);
-                        return; // Exit successfully
+                        return;
                     }
                 }
-                // Do not force "Disconnected" on transient not-ready. Let the death timer handle it.
             } catch (error) {
                 console.error("Liveness check failed:", error);
-                // Do not force "Disconnected" on transient not-ready. Let the death timer handle it.
             }
         }
 

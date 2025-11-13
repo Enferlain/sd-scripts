@@ -4,6 +4,7 @@ import json
 import argparse
 import os
 import logging
+import uuid
 
 import numpy as np
 from flask import Flask, jsonify, send_from_directory
@@ -15,6 +16,7 @@ def run_plotter_server(port):
     timestep_counts = np.zeros(1000, dtype=np.int64)
     schedule_data = None
     settings_data = None
+    session_id = str(uuid.uuid4())
     data_lock = threading.Lock()
 
     # --- Flask App Setup ---
@@ -36,8 +38,8 @@ def run_plotter_server(port):
     def get_settings_data():
         with data_lock:
             if settings_data is None:
-                return jsonify({"status": "not_ready"})
-            return jsonify({"status": "ready", "data": settings_data})
+                return jsonify({"status": "not_ready", "session_id": session_id})
+            return jsonify({"status": "ready", "data": settings_data, "session_id": session_id})
 
     @app.route('/schedule_data')
     def get_schedule_data():
@@ -50,16 +52,25 @@ def run_plotter_server(port):
     @app.route('/distribution_data')
     def get_distribution_data():
         with data_lock:
-            return jsonify({"status": "ready", "data": timestep_counts.tolist()})
+            return jsonify({"status": "ready", "data": timestep_counts.tolist(), "session_id": session_id})
 
     # --- Data Listener Thread ---
     def data_listener():
-        nonlocal schedule_data, settings_data
+        nonlocal schedule_data, settings_data, session_id
         for line in sys.stdin:
             # --- REFINEMENT: Debug print is now commented out ---
             # print(f"Plotter RAW_IN: {line!r}")
             line = line.strip()
             if not line: continue
+
+            if line == "RESET::":
+                with data_lock:
+                    timestep_counts.fill(0)
+                    schedule_data = None
+                    settings_data = None
+                    session_id = str(uuid.uuid4())
+                    print("Plotter: Received RESET command. Data cleared and new session started.")
+                continue
 
             if line.startswith("SETTINGS::"):
                 try:
