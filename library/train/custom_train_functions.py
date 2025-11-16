@@ -5,7 +5,7 @@ import random
 import re
 from torch.types import Number
 from typing import List, Optional, Union
-from library.utils.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging
@@ -169,7 +169,7 @@ re_attention = re.compile(
 
 
 def parse_prompt_attention(text):
-    """
+    r"""
     Parses a string with attention tokens and returns a list of pairs: text and its associated weight.
     Accepted tokens are:
       (abc) - increases attention to abc by a multiplier of 1.1
@@ -507,7 +507,7 @@ def apply_masked_loss(loss, batch) -> torch.FloatTensor:
     return loss
 
 
-"""
+r"""
 ##########################################
 # Perlin Noise
 def rand_perlin_2d(device, shape, res, fade=lambda t: 6 * t**5 - 15 * t**4 + 10 * t**3):

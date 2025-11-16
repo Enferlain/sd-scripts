@@ -2,14 +2,14 @@ import argparse
 import os
 from typing import Optional, Union
 
-import regex
-
 import torch
-from library.device_utils import init_ipex
+from library.utils.device_utils import init_ipex
 
 init_ipex()
 
-from library import sdxl_model_util, sdxl_train_util, strategy_sd, strategy_sdxl, train_util
+from library.train import train_util, sdxl_train_util
+from library.strategies import strategy_sdxl, strategy_sd
+from library.models import sdxl_model_util
 import train_textual_inversion
 
 
@@ -19,7 +19,8 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
         self.vae_scale_factor = sdxl_model_util.VAE_SCALE_FACTOR
         self.is_sdxl = True
 
-    def assert_extra_args(self, args, train_dataset_group: Union[train_util.DatasetGroup, train_util.MinimalDataset], val_dataset_group: Optional[train_util.DatasetGroup]):
+    def assert_extra_args(self, args, train_dataset_group: Union[train_util.DatasetGroup, train_util.MinimalDataset], val_dataset_group: Optional[
+        train_util.DatasetGroup]):
         # super().assert_extra_args(args, train_dataset_group) # do not call parent because it checks reso steps with 64
         sdxl_train_util.verify_sdxl_training_args(args, support_text_encoder_caching=False)
 

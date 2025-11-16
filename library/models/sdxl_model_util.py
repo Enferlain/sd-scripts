@@ -7,7 +7,7 @@ from transformers import CLIPTextModel, CLIPTextConfig, CLIPTextModelWithProject
 from typing import List
 from diffusers import AutoencoderKL, EulerDiscreteScheduler, UNet2DConditionModel
 from library.models import sdxl_original_unet, model_util
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging

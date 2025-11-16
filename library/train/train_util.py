@@ -75,7 +75,7 @@ import library.models.model_util as model_util
 import library.utils.huggingface_util as huggingface_util
 import library.utils.sai_model_spec as sai_model_spec
 import library.optimizations.deepspeed_utils as deepspeed_utils
-from library.utils.utils import setup_logging, resize_image, validate_interpolation_fn
+from library.utils.common_utils import setup_logging, resize_image, validate_interpolation_fn
 
 setup_logging()
 import logging

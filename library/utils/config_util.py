@@ -22,10 +22,9 @@ from voluptuous import (
     Required,
     Schema,
 )
-from transformers import CLIPTokenizer
 
-from library import train_util
-from library.train_util import (
+from library.train import train_util
+from library.train.train_util import (
     DreamBoothSubset,
     FineTuningSubset,
     ControlNetSubset,
@@ -34,7 +33,7 @@ from library.train_util import (
     ControlNetDataset,
     DatasetGroup,
 )
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging

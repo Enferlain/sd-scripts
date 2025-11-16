@@ -12,7 +12,7 @@ from accelerate import init_empty_weights
 from transformers import CLIPTokenizer
 from library.train import train_util
 from library.models import sdxl_original_unet, model_util, sdxl_model_util
-from library.utils.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging

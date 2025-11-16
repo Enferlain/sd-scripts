@@ -4,24 +4,23 @@ import argparse
 
 import torch
 
-from library import (
-    config_util,
-    flux_train_utils,
-    flux_utils,
-    sdxl_model_util,
-    strategy_base,
-    strategy_flux,
-    strategy_sdxl,
-)
-from library import train_util
-from library import sdxl_train_util
+# TODO add back missing pipes
+# from library import (
+#     flux_train_utils,
+#     flux_utils,
+#     strategy_flux,
+# )
+from library.utils import config_util
+from library.strategies import strategy_sdxl, strategy_base
+from library.models import sdxl_model_util
+from library.train import train_util, sdxl_train_util
 from library import utils
-import library.sai_model_spec as sai_model_spec
-from library.config_util import (
+import library.utils.sai_model_spec as sai_model_spec
+from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
-from library.utils import setup_logging, add_logging_arguments
+from library.utils.common_utils import setup_logging, add_logging_arguments
 from tools.data_processing.cache_latents import set_tokenize_strategy
 
 setup_logging()

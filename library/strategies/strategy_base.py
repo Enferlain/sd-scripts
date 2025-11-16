@@ -6,12 +6,12 @@ from typing import Any, List, Optional, Tuple, Union, Callable
 
 import numpy as np
 import torch
-from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
+from transformers import CLIPTokenizer
 
 # TODO remove circular import by moving ImageInfo to a separate file
 # from library.train_util import ImageInfo
 
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging
@@ -508,7 +508,7 @@ class LatentsCachingStrategy:
         Returns: 
             None
         """
-        from library import train_util  # import here to avoid circular import
+        from library.train import train_util
 
         img_tensor, alpha_masks, original_sizes, crop_ltrbs = train_util.load_images_and_masks_for_caching(
             image_infos, apply_alpha_mask, random_crop, random_crop_padding_percent=random_crop_padding_percent

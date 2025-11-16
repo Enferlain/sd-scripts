@@ -7,18 +7,17 @@ from typing import List
 from tqdm import tqdm
 import numpy as np
 from PIL import Image
-import cv2
 
 import torch
-from library.device_utils import init_ipex, get_preferred_device
+from library.utils.device_utils import init_ipex, get_preferred_device
 
 init_ipex()
 
 from torchvision import transforms
 
-import library.model_util as model_util
-import library.train_util as train_util
-from library.utils import setup_logging
+import library.models.model_util as model_util
+import library.train.train_util as train_util
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging

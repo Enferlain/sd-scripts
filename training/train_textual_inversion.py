@@ -8,7 +8,7 @@ import toml
 from tqdm import tqdm
 
 import torch
-from library.device_utils import init_ipex, clean_memory_on_device
+from library.utils.device_utils import init_ipex, clean_memory_on_device
 
 
 init_ipex()
@@ -16,17 +16,19 @@ init_ipex()
 
 from diffusers import DDPMScheduler
 from transformers import CLIPTokenizer
-from library import deepspeed_utils, model_util, strategy_base, strategy_sd, sai_model_spec
+from library.strategies import strategy_sd, strategy_base
+from library.models import model_util
+from library.optimizations import deepspeed_utils
 
-import library.train_util as train_util
-import library.huggingface_util as huggingface_util
-import library.config_util as config_util
-from library.config_util import (
+import library.train.train_util as train_util
+import library.utils.huggingface_util as huggingface_util
+import library.utils.config_util as config_util
+from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
-import library.custom_train_functions as custom_train_functions
-from library.custom_train_functions import (
+import library.train.custom_train_functions as custom_train_functions
+from library.train.custom_train_functions import (
     apply_snr_weight,
     prepare_scheduler_for_custom_training,
     scale_v_prediction_loss_like_noise_prediction,
@@ -34,7 +36,8 @@ from library.custom_train_functions import (
     apply_debiased_estimation,
     apply_masked_loss,
 )
-from library.utils import setup_logging, add_logging_arguments
+from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils import sai_model_spec
 
 setup_logging()
 import logging
@@ -99,7 +102,8 @@ class TextualInversionTrainer:
         self.vae_scale_factor = 0.18215
         self.is_sdxl = False
 
-    def assert_extra_args(self, args, train_dataset_group: Union[train_util.DatasetGroup, train_util.MinimalDataset], val_dataset_group: Optional[train_util.DatasetGroup]):
+    def assert_extra_args(self, args, train_dataset_group: Union[train_util.DatasetGroup, train_util.MinimalDataset], val_dataset_group: Optional[
+        train_util.DatasetGroup]):
         train_dataset_group.verify_bucket_reso_steps(64)
 
         if val_dataset_group is not None:

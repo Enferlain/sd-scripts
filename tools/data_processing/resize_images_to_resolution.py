@@ -1,15 +1,16 @@
 import glob
 import os
-import cv2
 import argparse
 import shutil
 import math
 from PIL import Image
 import numpy as np
-from library.utils import setup_logging, resize_image
+from library.utils.common_utils import setup_logging, resize_image
+
 setup_logging()
 import logging
 logger = logging.getLogger(__name__)
+
 
 def resize_images(src_img_folder, dst_img_folder, max_resolution="512x512", divisible_by=2, interpolation=None, save_as_png=False, copy_associated_files=False):
   # Split the max_resolution string by "," and strip any whitespaces

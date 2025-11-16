@@ -3,7 +3,7 @@
 import pytest
 import time
 
-from library import sai_model_spec
+from library.utils import sai_model_spec
 
 
 class MockArgs:

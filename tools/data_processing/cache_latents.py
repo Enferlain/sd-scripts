@@ -1,22 +1,20 @@
 # latentsのdiskへの事前キャッシュを行う / cache latents to disk
 
 import argparse
-import math
-from multiprocessing import Value
-import os
 
 import torch
-from tqdm import tqdm
 
-from library import config_util, flux_train_utils, flux_utils, strategy_base, strategy_flux, strategy_sd, strategy_sdxl
-from library import train_util
-from library import sdxl_train_util
-import library.sai_model_spec as sai_model_spec
-from library.config_util import (
+# TODO add back missing pipes
+# from library import flux_train_utils, flux_utils, strategy_flux
+from library.utils import config_util
+from library.strategies import strategy_sdxl, strategy_sd, strategy_base
+from library.train import train_util, sdxl_train_util
+import library.utils.sai_model_spec as sai_model_spec
+from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
-from library.utils import setup_logging, add_logging_arguments
+from library.utils.common_utils import setup_logging, add_logging_arguments
 
 setup_logging()
 import logging

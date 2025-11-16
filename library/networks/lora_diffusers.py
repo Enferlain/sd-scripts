@@ -11,10 +11,10 @@ from tqdm import tqdm
 from transformers import CLIPTextModel
 
 import torch
-from library.device_utils import init_ipex, get_preferred_device
+from library.utils.device_utils import init_ipex, get_preferred_device
 init_ipex()
 
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 setup_logging()
 import logging
 logger = logging.getLogger(__name__)

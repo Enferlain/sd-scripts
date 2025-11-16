@@ -10,31 +10,34 @@ import toml
 from tqdm import tqdm
 
 import torch
-from library.device_utils import init_ipex, clean_memory_on_device
+from library.utils.device_utils import init_ipex, clean_memory_on_device
 
 init_ipex()
 
 
 from diffusers import DDPMScheduler
-from library import deepspeed_utils, sdxl_model_util, strategy_base, strategy_sd, strategy_sdxl, sai_model_spec
+from library.strategies import strategy_sdxl, strategy_sd, strategy_base
+from library.models import sdxl_model_util
+from library.optimizations import deepspeed_utils
 
-import library.train_util as train_util
+import library.train.train_util as train_util
 
-from library.utils import setup_logging, add_logging_arguments
+from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils import sai_model_spec
 
 setup_logging()
 import logging
 
 logger = logging.getLogger(__name__)
 
-import library.config_util as config_util
-import library.sdxl_train_util as sdxl_train_util
-from library.config_util import (
+import library.utils.config_util as config_util
+import library.train.sdxl_train_util as sdxl_train_util
+from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
-import library.custom_train_functions as custom_train_functions
-from library.custom_train_functions import (
+import library.train.custom_train_functions as custom_train_functions
+from library.train.custom_train_functions import (
     apply_snr_weight,
     prepare_scheduler_for_custom_training,
     scale_v_prediction_loss_like_noise_prediction,
@@ -42,7 +45,7 @@ from library.custom_train_functions import (
     apply_debiased_estimation,
     apply_masked_loss,
 )
-from library.sdxl_original_unet import SdxlUNet2DConditionModel
+from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
 
 
 UNET_NUM_BLOCKS_FOR_BLOCK_LR = 23
@@ -522,9 +525,9 @@ def train(args):
 
     if args.fused_backward_pass:
         # use fused optimizer for backward pass: other optimizers will be supported in the future
-        import library.adafactor_fused
+        import library.optimizers.adafactor_fused
 
-        library.adafactor_fused.patch_adafactor_fused(optimizer)
+        library.optimizers.adafactor_fused.patch_adafactor_fused(optimizer)
         for param_group in optimizer.param_groups:
             for parameter in param_group["params"]:
                 if parameter.requires_grad:

@@ -1,11 +1,11 @@
 import os
 import argparse
 import torch
-from accelerate import DeepSpeedPlugin, Accelerator
+from accelerate import DeepSpeedPlugin
 
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
-from library.device_utils import get_preferred_device
+from library.utils.device_utils import get_preferred_device
 
 setup_logging()
 import logging

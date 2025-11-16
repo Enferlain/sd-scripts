@@ -12,12 +12,12 @@
 import math
 import os
 import random
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import List, Optional, Union
 from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
 import torch
 from torch import nn
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging
@@ -231,7 +231,7 @@ def create_network(
 def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":
-            from safetensors.torch import load_file, safe_open
+            from safetensors.torch import load_file
 
             weights_sd = load_file(file)
         else:
@@ -513,7 +513,7 @@ class DyLoRANetwork(torch.nn.Module):
 
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import save_file
-            from library import train_util
+            from library.train import train_util
 
             # Precalculate model hashes to save time on indexing
             if metadata is None:

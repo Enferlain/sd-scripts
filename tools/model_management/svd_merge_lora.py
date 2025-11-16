@@ -7,10 +7,10 @@ import time
 import torch
 from safetensors.torch import load_file, save_file
 from tqdm import tqdm
-from library import sai_model_spec, train_util
-import library.model_util as model_util
-import lora
-from library.utils import setup_logging
+from library.train import train_util
+from library.networks import lora
+from library.utils.common_utils import setup_logging
+from library.utils import sai_model_spec
 
 setup_logging()
 import logging

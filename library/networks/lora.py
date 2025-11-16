@@ -5,14 +5,13 @@
 
 import math
 import os
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Dict, List, Optional, Type, Union
 from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
-import numpy as np
 import torch
 import re
-from library.utils import setup_logging
-from library.sdxl_original_unet import SdxlUNet2DConditionModel
+from library.utils.common_utils import setup_logging
+from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
 
 setup_logging()
 import logging
@@ -769,7 +768,7 @@ def convert_diffusers_to_sai_if_needed(weights_sd):
     if not found_up_down_blocks:
         return
 
-    from library.sdxl_model_util import make_unet_conversion_map
+    from library.models.sdxl_model_util import make_unet_conversion_map
 
     unet_conversion_map = make_unet_conversion_map()
     unet_conversion_map = {hf.replace(".", "_")[:-1]: sd.replace(".", "_")[:-1] for sd, hf in unet_conversion_map}
@@ -808,7 +807,7 @@ def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weigh
 
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":
-            from safetensors.torch import load_file, safe_open
+            from safetensors.torch import load_file
 
             weights_sd = load_file(file)
         else:
@@ -1271,7 +1270,7 @@ class LoRANetwork(torch.nn.Module):
 
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import save_file
-            from library import train_util
+            from library.train import train_util
 
             # Precalculate model hashes to save time on indexing
             if metadata is None:

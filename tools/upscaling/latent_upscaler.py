@@ -7,17 +7,17 @@ import os
 import cv2
 from diffusers import AutoencoderKL
 
-from typing import Dict, List
+from typing import List
 import numpy as np
 
 import torch
-from library.device_utils import init_ipex, get_preferred_device
+from library.utils.device_utils import init_ipex, get_preferred_device
 init_ipex()
 
 from torch import nn
 from tqdm import tqdm
 from PIL import Image
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 setup_logging()
 import logging
 logger = logging.getLogger(__name__)

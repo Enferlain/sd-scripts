@@ -3,14 +3,16 @@ from typing import List, Optional, Union
 
 import torch
 from accelerate import Accelerator
-from library.device_utils import init_ipex, clean_memory_on_device
+from library.utils.device_utils import init_ipex, clean_memory_on_device
 from ramtorch.helpers import replace_linear_with_ramtorch
 
 init_ipex()
 
-from library import sdxl_model_util, sdxl_train_util, strategy_base, strategy_sd, strategy_sdxl, train_util
+from library.train import train_util, sdxl_train_util
+from library.strategies import strategy_sdxl, strategy_sd
+from library.models import sdxl_model_util
 import train_network
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging

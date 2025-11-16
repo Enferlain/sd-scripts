@@ -11,7 +11,7 @@ from io import BytesIO
 import os
 from typing import Union
 import safetensors
-from library.utils.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 

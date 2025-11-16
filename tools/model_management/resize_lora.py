@@ -2,16 +2,15 @@
 # This code is based off the extract_lora_from_models.py file which is based on https://github.com/cloneofsimo/lora/blob/develop/lora_diffusion/cli_svd.py
 # Thanks to cloneofsimo
 
-import os
 import argparse
 import torch
 from safetensors.torch import load_file, save_file, safe_open
 from tqdm import tqdm
 import numpy as np
 
-from library import train_util
-from library import model_util
-from library.utils import setup_logging
+from library.train import train_util
+from library.models import model_util
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging

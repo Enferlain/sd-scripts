@@ -25,9 +25,8 @@ from tqdm import tqdm
 
 import torch
 import torch.nn as nn
-from torch.types import Number
-from library.device_utils import init_ipex, clean_memory_on_device
-from library.edm2_loss_utils import prepare_edm2_loss_weighting, handle_conflicting_configuration, plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
+from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.train.edm2_loss_utils import prepare_edm2_loss_weighting, plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
 from ramtorch.helpers import replace_linear_with_ramtorch
 
 init_ipex()
@@ -35,32 +34,34 @@ init_ipex()
 from accelerate import Accelerator
 from diffusers import DDPMScheduler
 from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL
-from library import deepspeed_utils, model_util, sai_model_spec, strategy_base, strategy_sd, sai_model_spec
+from library.strategies import strategy_sd, strategy_base
+from library.models import model_util
+from library.optimizations import deepspeed_utils
 
-import library.train_util as train_util
-from library.train_util import DreamBoothDataset
-import library.config_util as config_util
-from library.config_util import (
+import library.train.train_util as train_util
+from library.train.train_util import DreamBoothDataset
+import library.utils.config_util as config_util
+from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
-import library.huggingface_util as huggingface_util
-import library.custom_train_functions as custom_train_functions
-from library.custom_train_functions import (
+import library.utils.huggingface_util as huggingface_util
+import library.train.custom_train_functions as custom_train_functions
+from library.train.custom_train_functions import (
     apply_snr_weight,
-    get_weighted_text_embeddings,
     prepare_scheduler_for_custom_training,
     scale_v_prediction_loss_like_noise_prediction,
     add_v_prediction_like_loss,
     apply_debiased_estimation,
     apply_masked_loss,
 )
-from library.utils import setup_logging, add_logging_arguments
-from tools.loss_aware_sampler import LossAwareTimestepSampler
-from tools.log_snr_sampler import LogSNRUniformSampler
-from tools.tempered_adaptive_sampler import TemperedAdaptiveSampler
-from tools.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
-from tools.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
+from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils import sai_model_spec
+from library.timestep_samplers.loss_aware_sampler import LossAwareTimestepSampler
+from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
+from library.timestep_samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
+from library.timestep_samplers.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
+from library.timestep_samplers.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
 
 setup_logging()
 import logging
@@ -812,7 +813,7 @@ class NetworkTrainer:
                            epoch,
                            batch=None,
                            train_text_encoder=True):
-        if not train_util.calculate_val_loss_check(args,global_step,epoch_step,val_dataloader,train_dataloader):
+        if not train_util.calculate_val_loss_check(args, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
         
         if batch is not None:
@@ -1715,8 +1716,8 @@ class NetworkTrainer:
             if args.live_plot_port is not None:
                 
                 # Step 1: Find the script to run.
-                current_script_dir = os.path.dirname(__file__)
-                plotter_script_path = os.path.join(current_script_dir, "tools", "live_plotter.py")
+                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                plotter_script_path = os.path.join(project_root, "tools", "visualization", "live_plotter.py")
 
                 # Step 2: Check if the script actually exists. If not, disable the feature and continue.
                 if not os.path.exists(plotter_script_path):

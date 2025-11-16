@@ -6,7 +6,7 @@ import torch
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 from library.strategies.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
 
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging

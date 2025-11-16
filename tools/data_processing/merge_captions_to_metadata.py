@@ -3,9 +3,9 @@ import json
 from pathlib import Path
 from typing import List
 from tqdm import tqdm
-import library.train_util as train_util
+import library.train.train_util as train_util
 import os
-from library.utils import setup_logging
+from library.utils.common_utils import setup_logging
 
 setup_logging()
 import logging

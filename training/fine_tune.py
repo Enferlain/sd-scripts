@@ -10,37 +10,34 @@ import toml
 from tqdm import tqdm
 
 import torch
-from library import deepspeed_utils, strategy_base
-from library.device_utils import init_ipex, clean_memory_on_device
-
-init_ipex()
-
-
 from diffusers import DDPMScheduler
+from library.optimizations import deepspeed_utils
+from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.strategies import strategy_sd, strategy_base
 
-from library.utils import setup_logging, add_logging_arguments
-
-setup_logging()
-import logging
-
-logger = logging.getLogger(__name__)
-
-import library.train_util as train_util
-import library.config_util as config_util
-import library.sai_model_spec as sai_model_spec
-from library.config_util import (
+from library.utils.common_utils import setup_logging, add_logging_arguments
+import library.train.train_util as train_util
+import library.utils.config_util as config_util
+import library.utils.sai_model_spec as sai_model_spec
+from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
-import library.custom_train_functions as custom_train_functions
-from library.custom_train_functions import (
+import library.train.custom_train_functions as custom_train_functions
+from library.train.custom_train_functions import (
     apply_snr_weight,
     get_weighted_text_embeddings,
     prepare_scheduler_for_custom_training,
     scale_v_prediction_loss_like_noise_prediction,
     apply_debiased_estimation,
 )
-import library.strategy_sd as strategy_sd
+
+init_ipex()
+
+setup_logging()
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def train(args):

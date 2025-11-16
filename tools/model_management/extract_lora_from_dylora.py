@@ -3,17 +3,17 @@
 # Thanks to cloneofsimo
 
 import argparse
-import math
 import os
 import torch
 from safetensors.torch import load_file, save_file, safe_open
-from tqdm import tqdm
-from library import train_util, model_util
-import numpy as np
-from library.utils import setup_logging
+from library.train import train_util
+from library.models import model_util
+from library.utils.common_utils import setup_logging
+
 setup_logging()
 import logging
 logger = logging.getLogger(__name__)
+
 
 def load_state_dict(file_name):
     if model_util.is_safetensors(file_name):

@@ -18,12 +18,8 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from diffusers.utils import logging
 from PIL import Image
 
-from library import (
-    sdxl_train_util,
-    strategy_base,
-    strategy_sdxl,
-    train_util,
-)
+from library.train import train_util, sdxl_train_util
+from library.strategies import strategy_sdxl, strategy_base
 from library.models import sdxl_original_unet, sdxl_original_control_net, sdxl_model_util
 
 try:
