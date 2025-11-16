@@ -22,6 +22,12 @@ class SNRWindowedLossAwareSampler:
         total_widen_steps: int = 2000,     # steps to widen
         # Optional cap on top timesteps early in training:
         cap_max_t: Optional[int] = None,
+        # new hyperparams:
+        cap_target_t: Optional[int] = 1000,    # default: T-1
+        cap_ema_beta: float = 0.9,
+        cap_saturation_thresh: float = 0.20,    # fraction of samples hitting boundary
+        cap_step_min: int = 5,                    # min increment when moving cap
+        cap_step_max_frac: float = 0.10,          # at most this fraction of remaining range
     ):
         self.T = int(noise_scheduler.config.num_train_timesteps)
         a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1. - 1e-12)
@@ -43,6 +49,14 @@ class SNRWindowedLossAwareSampler:
         self.global_step = 0
         self.bin_loss_ema = torch.zeros(self.num_bins, device=log_snr.device)
         self.bin_counts = torch.zeros(self.num_bins, device=log_snr.device)
+
+        self.cap_max_t = None if cap_max_t is None else int(cap_max_t)
+        self.cap_target_t = (self.T - 1) if cap_target_t is None else int(cap_target_t)
+        self.cap_ema_beta = float(cap_ema_beta)
+        self.cap_saturation_thresh = float(cap_saturation_thresh)
+        self.cap_step_min = int(cap_step_min)
+        self.cap_step_max_frac = float(cap_step_max_frac)
+        self.cap_saturation_ema = 0.0
 
     def _softmax(self, x, temp):
         z = (x / max(temp, 1e-6)); z = z - z.max()
@@ -105,8 +119,36 @@ class SNRWindowedLossAwareSampler:
         u = torch.rand(batch_size, device=device)
         sorted_idx = (left + (u * (right - left + 1).clamp_min(1)).floor().long()).clamp(0, self.T - 1)
         timesteps = self.sort_indices.to(device)[sorted_idx]
+
         if self.cap_max_t is not None:
+            # measure how many samples want to go beyond the cap
+            over_mask = timesteps > self.cap_max_t
+            if over_mask.any():
+                frac_over = over_mask.float().mean().item()
+                # EMA of boundary saturation
+                self.cap_saturation_ema = (
+                    self.cap_ema_beta * self.cap_saturation_ema
+                    + (1.0 - self.cap_ema_beta) * frac_over
+                )
+
+                # if boundary is consistently hit, relax the cap a bit
+                if (
+                    self.cap_saturation_ema > self.cap_saturation_thresh
+                    and self.cap_max_t < self.cap_target_t
+                ):
+                    remaining = self.cap_target_t - self.cap_max_t
+                    # limit step size to avoid large jumps
+                    max_step = max(
+                        self.cap_step_min,
+                        int(self.cap_step_max_frac * remaining),
+                    )
+                    step = max(self.cap_step_min, int(self.cap_saturation_ema * max_step))
+                    self.cap_max_t = min(self.cap_max_t + step, self.cap_target_t)
+                    # optional: partially reset EMA so the cap does not run too fast
+                    self.cap_saturation_ema *= 0.5
+
             timesteps = timesteps.clamp_max(self.cap_max_t)
+
         return timesteps.long()
 
     @torch.no_grad()

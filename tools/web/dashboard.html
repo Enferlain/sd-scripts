@@ -461,87 +461,77 @@
         }
 
         // --- REFINEMENT: One-shot retry loop for static data ---
-        async function initializeSchedule() {
+        async function initializeData() {
+            let settingsPayload;
             try {
-                const response = await fetch('/schedule_data');
                 const settingsResponse = await fetch('/settings_data');
-                if (response.ok) {
-                    const payload = await response.json();
-                    const settingsPayload = await settingsResponse.json();
+                if (!settingsResponse.ok) throw new Error('Settings fetch failed');
+                settingsPayload = await settingsResponse.json();
 
-                    if (payload.status === 'ready' && settingsPayload.status === 'ready') {
-                        if (currentSessionId === null) {
-                            currentSessionId = settingsPayload.session_id;
-                        } else if (currentSessionId !== settingsPayload.session_id) {
-                            currentSessionId = settingsPayload.session_id;
-                            resetAllCharts();
-                            return;
-                        }
-
-                        const minTimestep = (settingsPayload.data && settingsPayload.data["Min Timestep"]) ?? 0;
-                        const maxTimestep = (settingsPayload.data && settingsPayload.data["Max Timestep"]) ?? 1000;
-                        renderLineChart(payload.data, minTimestep, maxTimestep);
-                        renderBarChart([], minTimestep, maxTimestep);
-                        return;
-                    }
+                if (settingsPayload.status !== 'ready') {
+                    throw new Error('Settings not ready');
                 }
+
+                if (currentSessionId === null) {
+                    currentSessionId = settingsPayload.session_id;
+                } else if (currentSessionId !== settingsPayload.session_id) {
+                    resetAllCharts();
+                    return;
+                }
+
+                const scheduleResponse = await fetch('/schedule_data');
+                if (!scheduleResponse.ok) throw new Error('Schedule fetch failed');
+                const schedulePayload = await scheduleResponse.json();
+
+                if (schedulePayload.status !== 'ready') {
+                    throw new Error('Schedule not ready');
+                }
+                
+                const minTimestep = settingsPayload.data?.["Min Timestep"] ?? 0;
+                const maxTimestep = settingsPayload.data?.["Max Timestep"] ?? 1000;
+
+                renderLineChart(schedulePayload.data, minTimestep, maxTimestep);
+                renderBarChart([], minTimestep, maxTimestep);
+                initializeSettings(settingsPayload);
+
             } catch (error) {
-                console.error("Failed to fetch schedule data:", error);
+                console.error("Initialization failed:", error.message);
+                document.getElementById('schedule-status').textContent = 'Waiting for data...';
+                setTimeout(initializeData, 2000);
             }
-            document.getElementById('schedule-status').textContent = 'Waiting for data...';
-            setTimeout(initializeSchedule, 2000);
         }
 
-        async function initializeSettings() {
+        function initializeSettings(payload) {
             const displayEl = document.getElementById('settings-display');
-            try {
-                const response = await fetch('/settings_data');
-                if (response.ok) {
-                    const payload = await response.json();
-                    if (payload.status === 'ready') {
-                        if (currentSessionId !== null && currentSessionId !== payload.session_id) {
-                            currentSessionId = payload.session_id;
-                            resetAllCharts();
-                            return;
-                        }
+            const data = payload.data;
+            displayEl.innerHTML = '';
 
-                        const data = payload.data;
-                        displayEl.innerHTML = '';
+            const priorityKeys = [
+                "Timestep Sampler", "Shift", "Sigmoid Scale", "Dynamic Schedule", "Min Timestep", "Max Timestep",
+                "Num Bins", "EMA Beta"
+            ];
+            const allServerKeys = Object.keys(data);
+            const remainingKeys = allServerKeys
+                .filter(key => !priorityKeys.includes(key))
+                .sort();
+            const ordered_keys = [...priorityKeys, ...remainingKeys];
 
-                        const priorityKeys = [
-                            "Timestep Sampler", "Shift", "Sigmoid Scale", "Dynamic Schedule", "Min Timestep", "Max Timestep",
-                            "Num Bins", "EMA Beta"
-                        ];
-                        const allServerKeys = Object.keys(data);
-                        const remainingKeys = allServerKeys
-                            .filter(key => !priorityKeys.includes(key))
-                            .sort();
-                        const ordered_keys = [...priorityKeys, ...remainingKeys];
-
-                        for (const key of ordered_keys) {
-                            if (key in data && data[key] !== null && data[key] !== '') {
-                                const value = data[key];
-                                const settingEl = document.createElement('span');
-                                settingEl.className = 'setting-item';
-                                const keyEl = document.createElement('span');
-                                keyEl.className = 'text-gray-400';
-                                keyEl.textContent = `${key}: `;
-                                const valueEl = document.createElement('span');
-                                valueEl.className = 'text-purple-300 font-semibold';
-                                valueEl.textContent = value;
-                                settingEl.appendChild(keyEl);
-                                settingEl.appendChild(valueEl);
-                                displayEl.appendChild(settingEl);
-                            }
-                        }
-                        return;
-                    }
+            for (const key of ordered_keys) {
+                if (key in data && data[key] !== null && data[key] !== '') {
+                    const value = data[key];
+                    const settingEl = document.createElement('span');
+                    settingEl.className = 'setting-item';
+                    const keyEl = document.createElement('span');
+                    keyEl.className = 'text-gray-400';
+                    keyEl.textContent = `${key}: `;
+                    const valueEl = document.createElement('span');
+                    valueEl.className = 'text-purple-300 font-semibold';
+                    valueEl.textContent = value;
+                    settingEl.appendChild(keyEl);
+                    settingEl.appendChild(valueEl);
+                    displayEl.appendChild(settingEl);
                 }
-            } catch (error) {
-                console.error("Failed to fetch settings data:", error);
             }
-            displayEl.textContent = 'Waiting for settings...';
-            setTimeout(initializeSettings, 2000);
         }
 
         async function refreshDistribution() {
@@ -579,9 +569,7 @@
         }
 
         window.onload = function() {
-            // Start the one-shot initializers
-            initializeSchedule();
-            initializeSettings();
+            initializeData();
             
             // Keep initial "Connecting..." status; death timer will flip if nothing arrives.
 

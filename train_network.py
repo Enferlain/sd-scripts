@@ -14,6 +14,7 @@ from multiprocessing import Value
 import numpy as np
 import ast
 import itertools
+import atexit
 
 try:
     import matplotlib.pyplot as plt
@@ -72,19 +73,26 @@ class NetworkTrainer:
         self.vae_scale_factor = 0.18215
         self.is_sdxl = False
         self.live_plotter_process = None
+        atexit.register(self.close)
+
+    def __del__(self):
+        self.close()
 
     def close(self):
         if self.live_plotter_process is not None:
             logger.info("Shutting down live plotter server...")
             try:
-                self.live_plotter_process.stdin.close()
-                self.live_plotter_process.terminate()
-                self.live_plotter_process.wait(timeout=5)
+                if self.live_plotter_process.stdin:
+                    self.live_plotter_process.stdin.close()
+                if self.live_plotter_process.poll() is None:
+                    self.live_plotter_process.terminate()
+                    self.live_plotter_process.wait(timeout=5)
                 logger.info("Live plotter server shut down.")
             except (BrokenPipeError, OSError, subprocess.TimeoutExpired) as e:
-                logger.warning(f"Could not shut down live plotter server cleanly: {e}")
+                logger.warning(f"Could not shut down live plotter server cleanly, killing: {e}")
                 self.live_plotter_process.kill()
-            self.live_plotter_process = None
+            finally:
+                self.live_plotter_process = None
 
     # TODO 他のスクリプトと共通化する
     def generate_step_logs(
@@ -748,19 +756,19 @@ class NetworkTrainer:
     def cast_unet(self, args):
         return True  # default for other than HunyuanImage
 
-    def switch_rng_state(self, val_seed: int, accelerator) -> tuple[torch.ByteTensor, Optional[torch.ByteTensor], tuple]:
+    def switch_rng_state(self, val_seed: int, accelerator):
+        # Store current RNG states
         cpu_rng_state = torch.get_rng_state()
         python_rng_state = random.getstate()
         numpy_rng_state = np.random.get_state()
+        
+        gpu_rng_state = None
         if accelerator.device.type == "cuda":
             gpu_rng_state = torch.cuda.get_rng_state()
         elif accelerator.device.type == "xpu":
             gpu_rng_state = torch.xpu.get_rng_state()
-        elif accelerator.device.type == "mps":
-            gpu_rng_state = torch.cuda.get_rng_state()
-        else:
-            gpu_rng_state = None
 
+        # Set new seed for validation
         random.seed(val_seed)
         np.random.seed(val_seed)
         torch.manual_seed(val_seed)
@@ -769,18 +777,19 @@ class NetworkTrainer:
 
         return (cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state)
 
-    def restore_rng_state(self, rng_states: tuple[torch.ByteTensor, Optional[torch.ByteTensor], tuple], accelerator):
+    def restore_rng_state(self, rng_states, accelerator):
         cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state = rng_states
+        
+        # Restore RNG states
         torch.set_rng_state(cpu_rng_state)
         random.setstate(python_rng_state)
         np.random.set_state(numpy_rng_state)
+        
         if gpu_rng_state is not None:
             if accelerator.device.type == "cuda":
                 torch.cuda.set_rng_state(gpu_rng_state)
             elif accelerator.device.type == "xpu":
                 torch.xpu.set_rng_state(gpu_rng_state)
-            elif accelerator.device.type == "mps":
-                torch.cuda.set_rng_state(gpu_rng_state)
 
     def calculate_val_loss(self, 
                            global_step,
@@ -2453,6 +2462,12 @@ def setup_parser() -> argparse.ArgumentParser:
         "--use_ramtorch",
         action="store_true",
         help="Use RamTorch to reduce GPU memory usage by keeping model weights on CPU.",
+    )
+
+    parser.add_argument(
+        "--direct_ramtorch",
+        action="store_true",
+        help="Train orig weights in lyco full module and save diff instead of keep both.",
     )
 
     parser.add_argument(

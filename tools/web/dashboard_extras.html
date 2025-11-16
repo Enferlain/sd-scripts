@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Timestep-Weighted Loss Monitor</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js for dynamic plotting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <!-- Load Inter Font -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-white p-6 min-h-screen">
+
+    <div class="max-w-4xl mx-auto">
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-sky-400">Timestep-Weighted Loss Distribution</h1>
+            <p class="text-sm text-slate-400">Simulated real-time view of average loss across 1000 diffusion timesteps. (Updates every 1s)</p>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="bg-[#1e293b] p-6 rounded-xl shadow-2xl">
+            <canvas id="lossChart"></canvas>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="mt-6 flex justify-between text-sm text-slate-300">
+            <span id="maxLoss" class="p-2 bg-red-900/50 rounded-lg">Max Loss: 0.00</span>
+            <span id="avgLoss" class="p-2 bg-blue-900/50 rounded-lg">Avg Loss: 0.00</span>
+            <span id="updateTime" class="p-2 bg-slate-700 rounded-lg">Last Update: 00:00:00</span>
+        </div>
+    </div>
+
+    <script>
+        // Version 1.0.0
+        const MAX_TIMESTEPS = 1000;
+        const TIMESTEP_BINS = 50; // We'll plot 50 data points, representing 20-step bins
+        const labels = Array.from({ length: TIMESTEP_BINS }, (_, i) => i * (MAX_TIMESTEPS / TIMESTEP_BINS));
+
+        let lossChart;
+        let updateCount = 0;
+
+        // --- Simulated Data Generation ---
+        function simulateTimestepLoss(timestep) {
+            // Core Logic: We simulate that the model has difficulty in the middle of the schedule (timesteps 300-700),
+            // which is common for initial training, showing higher loss in that region.
+            const t_norm = timestep / MAX_TIMESTEPS;
+            
+            // Base loss: A gentle U-shape or slightly decreasing curve often seen in diffusion loss
+            let base_loss = 0.002 * Math.exp(-3 * t_norm) + 0.0005; 
+            
+            // Mid-range difficulty bump (Gaussian centered around 500)
+            const center = MAX_TIMESTEPS / 2;
+            const deviation = 200;
+            const mid_bump = 0.0015 * Math.exp(-0.5 * Math.pow((timestep - center) / deviation, 2));
+
+            // Random noise for "live" feel
+            const noise = (Math.random() - 0.5) * 0.0001;
+            
+            let total_loss = base_loss + mid_bump + noise;
+
+            // Simple stabilization/smoothing (a slight decrease over time)
+            total_loss = Math.max(0.0001, total_loss - (updateCount * 0.000001));
+
+            return total_loss;
+        }
+
+        function generateLiveLossData() {
+            const data = [];
+            let totalLoss = 0;
+            let maxLoss = 0;
+
+            for (let i = 0; i < TIMESTEP_BINS; i++) {
+                const startTimestep = labels[i];
+                const endTimestep = (i === TIMESTEP_BINS - 1) ? MAX_TIMESTEPS : labels[i+1];
+                
+                // For simplicity, we sample the loss at the start of the bin
+                const loss = simulateTimestepLoss(startTimestep);
+                
+                data.push(parseFloat(loss.toFixed(6)));
+                totalLoss += loss;
+                maxLoss = Math.max(maxLoss, loss);
+            }
+            
+            const avgLoss = totalLoss / TIMESTEP_BINS;
+
+            // Update metrics display
+            document.getElementById('maxLoss').textContent = `Max Loss: ${maxLoss.toFixed(6)}`;
+            document.getElementById('avgLoss').textContent = `Avg Loss: ${avgLoss.toFixed(6)}`;
+            document.getElementById('updateTime').textContent = `Last Update: ${new Date().toLocaleTimeString()}`;
+
+            return data;
+        }
+
+        // --- Chart Initialization ---
+        function initChart() {
+            const ctx = document.getElementById('lossChart').getContext('2d');
+            
+            // Create a gradient for the area fill
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(56, 189, 248, 0.4)'); // sky-400
+            gradient.addColorStop(1, 'rgba(56, 189, 248, 0.05)');
+            
+            lossChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Loss per Timestep Bin',
+                        data: generateLiveLossData(),
+                        borderColor: 'rgb(56, 189, 248)', // sky-400
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Timestep t',
+                                color: 'rgb(148, 163, 184)', // slate-400
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                            },
+                            ticks: {
+                                color: 'rgb(203, 213, 225)', // slate-300
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Sample Count (Normalized)',
+                                color: 'rgb(148, 163, 184)', // slate-400
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                            },
+                            ticks: {
+                                color: 'rgb(203, 213, 225)',
+                                callback: function(value) {
+                                    return value.toFixed(4); // Show loss with 4 decimal places
+                                }
+                            },
+                            min: 0,
+                            max: 0.003
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Live Loss Distribution (L_simple)',
+                            color: 'rgb(203, 213, 225)',
+                            padding: {
+                                top: 10,
+                                bottom: 10
+                            }
+                        }
+                    }
+                }
+            });
+            // Set canvas size dynamically
+            document.getElementById('lossChart').style.height = '400px';
+        }
+
+        // --- Live Update Loop ---
+        function updateChart() {
+            updateCount++;
+            const newData = generateLiveLossData();
+            
+            // Update the data in the chart object
+            lossChart.data.datasets[0].data = newData;
+            
+            // Redraw the chart
+            lossChart.update('none'); // 'none' for instant update, or 'default' for animation
+        }
+
+        // Initialize and start the live update loop
+        window.onload = function () {
+            initChart();
+            // Start the animation loop (updates every 1000ms = 1s)
+            setInterval(updateChart, 1000); 
+        }
+    </script>
+</body>
+</html>
+
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sampler Dynamics Monitor</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js for dynamic plotting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <!-- Load Inter Font -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-white p-6 min-h-screen">
+
+    <div class="max-w-5xl mx-auto">
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-green-400">Adaptive Sampler Dynamics (Time-Series)</h1>
+            <p class="text-sm text-slate-400">Tracking how the LA-Sampler adjusts its policy over training steps. (Updates every 1s)</p>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="bg-[#1e293b] p-6 rounded-xl shadow-2xl h-[450px]">
+            <canvas id="dynamicsChart"></canvas>
+        </div>
+
+        <!-- Key Interpretation -->
+        <div class="mt-6 text-sm text-slate-300 grid grid-cols-3 gap-4">
+            <div class="p-3 bg-green-900/50 rounded-lg border-l-4 border-green-500">
+                <p class="font-bold text-base flex justify-between items-center">
+                    Mix P (Adaptivity)
+                    <span id="mixPValue" class="text-lg font-extrabold text-green-300">...</span>
+                </p>
+                <p class="text-xs">Should increase towards 1.0 as the EMA loss stabilizes and the sampler trusts its adaptive distribution more.</p>
+            </div>
+            <div class="p-3 bg-indigo-900/50 rounded-lg border-l-4 border-indigo-500">
+                <p class="font-bold text-base flex justify-between items-center">
+                    Small-T Fraction (Refinement)
+                    <span id="smallTValue" class="text-lg font-extrabold text-indigo-300">...</span>
+                </p>
+                <p class="text-xs">The forced minimum sample rate for the $t < 200$ range. Keeps final refinement clean (VIVAT effect). Should remain constant.</p>
+            </div>
+            <div class="p-3 bg-yellow-900/50 rounded-lg border-l-4 border-yellow-500">
+                <p class="font-bold text-base flex justify-between items-center">
+                    EMA Loss Std (Unevenness)
+                    <span id="emaStdValue" class="text-lg font-extrabold text-yellow-300">...</span>
+                </p>
+                <p class="text-xs">The standard deviation of loss across all bins. The sampler's job is to drive this value down to zero by flattening the loss curve.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Version 1.0.1 - FIXED: SyntaxError in querySelector by using explicit IDs.
+        let dynamicsChart;
+        let globalStep = 0;
+        const historyLength = 100; // Only show the last 100 steps for clarity
+
+        // --- SIMULATION FUNCTIONS ---
+
+        function simulateDynamics(step) {
+            // Simulate Mix_P (starts low, quickly rises, plateaus near 1.0)
+            const mix_p = Math.min(0.99, 0.5 + 0.5 * (1 - Math.exp(-step / 30)));
+            
+            // Simulate Small_T_Frac (Fixed parameter, but with a little batch noise)
+            const small_t_frac = 0.05 + (Math.sin(step / 10) * 0.01); 
+
+            // Simulate EMA Loss STD (Starts high, rapidly drops, then slowly declines)
+            const initial_std = 0.0003;
+            const final_std = 0.00005;
+            const std = final_std + (initial_std - final_std) * Math.exp(-step / 40) + (Math.random() * 0.00002);
+            
+            return {
+                mix_p: parseFloat(mix_p.toFixed(3)),
+                small_t_frac: parseFloat(small_t_frac.toFixed(4)),
+                ema_loss_std: parseFloat(std.toFixed(6)),
+            };
+        }
+
+        // --- DATA AND CHART LOGIC ---
+
+        function generateDynamicsData(step) {
+            const data = simulateDynamics(step);
+
+            // FIX: Using document.getElementById on the new span elements instead of
+            // querySelector with complex, unescaped class names.
+            document.getElementById('mixPValue').textContent = data.mix_p;
+            document.getElementById('smallTValue').textContent = data.small_t_frac;
+            document.getElementById('emaStdValue').textContent = data.ema_loss_std;
+            
+            return data;
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('dynamicsChart').getContext('2d');
+            
+            dynamicsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Mix Probability (Adaptivity)',
+                            yAxisID: 'y1',
+                            data: [],
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            borderColor: 'rgb(52, 211, 153)', // Green
+                        },
+                        {
+                            label: 'Small-T Fraction (Refinement Bias)',
+                            yAxisID: 'y1',
+                            data: [],
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            borderColor: 'rgb(129, 140, 248)', // Indigo
+                        },
+                        {
+                            label: 'EMA Loss Std (Unevenness)',
+                            yAxisID: 'y2',
+                            data: [],
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            borderColor: 'rgb(251, 191, 36)', // Yellow
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Global Step', color: 'rgb(148, 163, 184)' }, 
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: 'rgb(203, 213, 225)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Probability / Fraction (0.0 - 1.0)', color: 'rgb(52, 211, 153)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: 'rgb(52, 211, 153)', min: 0, max: 1.0 }
+                        },
+                        y2: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: 'EMA Loss STD (Unevenness)', color: 'rgb(251, 191, 36)' },
+                            grid: { drawOnChartArea: false }, // Only draw the left grid
+                            ticks: { color: 'rgb(251, 191, 36)', min: 0 }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: 'rgb(203, 213, 225)' } },
+                        title: {
+                            display: true,
+                            text: 'Sampler Adaptivity & Stability Over Time',
+                            color: 'rgb(203, 213, 225)',
+                            padding: { top: 10, bottom: 10 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            globalStep++;
+            const { mix_p, small_t_frac, ema_loss_std } = generateDynamicsData(globalStep);
+            
+            // Add new data
+            dynamicsChart.data.labels.push(globalStep);
+            dynamicsChart.data.datasets[0].data.push(mix_p); // Mix P
+            dynamicsChart.data.datasets[1].data.push(small_t_frac); // Small-T Frac
+            dynamicsChart.data.datasets[2].data.push(ema_loss_std); // EMA Loss Std
+
+            // Trim old data to maintain history length
+            if (dynamicsChart.data.labels.length > historyLength) {
+                dynamicsChart.data.labels.shift();
+                dynamicsChart.data.datasets.forEach(dataset => dataset.data.shift());
+            }
+
+            dynamicsChart.update('none'); 
+        }
+
+        // Initialize and start the live update loop
+        window.onload = function () {
+            initChart();
+            setInterval(updateChart, 1000);
+        }
+    </script>
+</body>
+</html>
