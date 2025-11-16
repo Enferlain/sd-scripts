@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Tuple, Union
 import numpy as np
 import torch
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
-from library.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
+from library.strategies.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
 
 from library.utils import setup_logging
 

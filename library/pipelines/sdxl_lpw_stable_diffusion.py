@@ -19,14 +19,12 @@ from diffusers.utils import logging
 from PIL import Image
 
 from library import (
-    sdxl_model_util,
     sdxl_train_util,
     strategy_base,
     strategy_sdxl,
     train_util,
-    sdxl_original_unet,
-    sdxl_original_control_net,
 )
+from library.models import sdxl_original_unet, sdxl_original_control_net, sdxl_model_util
 
 try:
     from diffusers.utils import PIL_INTERPOLATION

@@ -1,13 +1,8 @@
 # text encoder出力のdiskへの事前キャッシュを行う / cache text encoder outputs to disk in advance
 
 import argparse
-import math
-from multiprocessing import Value
-import os
-
 
 import torch
-from tqdm import tqdm
 
 from library import (
     config_util,
@@ -16,7 +11,6 @@ from library import (
     sdxl_model_util,
     strategy_base,
     strategy_flux,
-    strategy_sd,
     strategy_sdxl,
 )
 from library import train_util
@@ -28,7 +22,7 @@ from library.config_util import (
     BlueprintGenerator,
 )
 from library.utils import setup_logging, add_logging_arguments
-from cache_latents import set_tokenize_strategy
+from tools.data_processing.cache_latents import set_tokenize_strategy
 
 setup_logging()
 import logging

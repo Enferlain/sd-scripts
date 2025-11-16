@@ -1,11 +1,10 @@
-import glob
 import os
 from typing import Any, List, Optional, Tuple, Union
 
 import torch
 from transformers import CLIPTokenizer
 from library import train_util
-from library.strategy_base import LatentsCachingStrategy, TokenizeStrategy, TextEncodingStrategy
+from library.strategies.strategy_base import LatentsCachingStrategy, TokenizeStrategy, TextEncodingStrategy
 from library.utils import setup_logging
 
 setup_logging()

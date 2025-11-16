@@ -23,11 +23,11 @@ class SNRWindowedLossAwareSampler:
         # Optional cap on top timesteps early in training:
         cap_max_t: Optional[int] = None,
         # new hyperparams:
-        cap_target_t: Optional[int] = 1000,    # default: T-1
+        cap_target_t: Optional[int] = 950,       # default: T-1
         cap_ema_beta: float = 0.9,
-        cap_saturation_thresh: float = 0.20,    # fraction of samples hitting boundary
-        cap_step_min: int = 5,                    # min increment when moving cap
-        cap_step_max_frac: float = 0.10,          # at most this fraction of remaining range
+        cap_saturation_thresh: float = 0.25,      # fraction of samples hitting boundary
+        cap_step_min: int = 1,                    # min increment when moving cap
+        cap_step_max_frac: float = 0.05,          # at most this fraction of remaining range
     ):
         self.T = int(noise_scheduler.config.num_train_timesteps)
         a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1. - 1e-12)

@@ -3,9 +3,9 @@ import argparse
 import torch
 from accelerate import DeepSpeedPlugin, Accelerator
 
-from .utils import setup_logging
+from library.utils import setup_logging
 
-from .device_utils import get_preferred_device
+from library.device_utils import get_preferred_device
 
 setup_logging()
 import logging

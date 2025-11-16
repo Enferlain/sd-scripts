@@ -4,15 +4,15 @@ import os
 from typing import Optional
 
 import torch
-from library.device_utils import init_ipex, clean_memory_on_device
+from library.utils.device_utils import init_ipex, clean_memory_on_device
 
 init_ipex()
 
 from accelerate import init_empty_weights
-from tqdm import tqdm
 from transformers import CLIPTokenizer
-from library import model_util, sdxl_model_util, train_util, sdxl_original_unet
-from .utils import setup_logging
+from library.train import train_util
+from library.models import sdxl_original_unet, model_util, sdxl_model_util
+from library.utils.utils import setup_logging
 
 setup_logging()
 import logging
@@ -387,6 +387,6 @@ def verify_sdxl_training_args(args: argparse.Namespace, support_text_encoder_cac
 
 
 def sample_images(*args, **kwargs):
-    from library.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
+    from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
 
     return train_util.sample_images_common(SdxlStableDiffusionLongPromptWeightingPipeline, *args, **kwargs)

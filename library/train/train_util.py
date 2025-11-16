@@ -4,17 +4,14 @@ import argparse
 import ast
 import asyncio
 from concurrent.futures import Future, ThreadPoolExecutor
-import datetime
 import importlib
 import json
-import logging
 import pathlib
 import re
 import shutil
 import time
-import typing
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
-from accelerate import Accelerator, InitProcessGroupKwargs, DistributedDataParallelKwargs
+from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import set_seed, TorchDynamoPlugin
 from accelerate.state import PartialState
 import glob
@@ -25,27 +22,22 @@ import hashlib
 import subprocess
 from io import BytesIO
 import toml
-import contextlib
 import kornia
 import inspect
 import types
-from collections import deque
-from typing import Deque
 
 # from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from tqdm import tqdm
-from packaging.version import Version
 
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from library.device_utils import init_ipex, clean_memory_on_device
-from library.strategy_base import LatentsCachingStrategy, TokenizeStrategy, TextEncoderOutputsCachingStrategy, \
+from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.strategies.strategy_base import LatentsCachingStrategy, TokenizeStrategy, TextEncoderOutputsCachingStrategy, \
     TextEncodingStrategy
 
 init_ipex()
 
-from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import Optimizer
 from torchvision import transforms
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
@@ -70,21 +62,20 @@ from diffusers import (
     KDPM2AncestralDiscreteScheduler,
     AutoencoderKL,
 )
-from library import custom_train_functions
-from library.original_unet import UNet2DConditionModel
+from library.train import custom_train_functions
 from huggingface_hub import hf_hub_download
 import numpy as np
 from PIL import Image
 import imagesize
 import cv2
 import safetensors.torch
-from library.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
-from library.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
-import library.model_util as model_util
-import library.huggingface_util as huggingface_util
-import library.sai_model_spec as sai_model_spec
-import library.deepspeed_utils as deepspeed_utils
-from library.utils import setup_logging, resize_image, validate_interpolation_fn
+from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
+from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
+import library.models.model_util as model_util
+import library.utils.huggingface_util as huggingface_util
+import library.utils.sai_model_spec as sai_model_spec
+import library.optimizations.deepspeed_utils as deepspeed_utils
+from library.utils.utils import setup_logging, resize_image, validate_interpolation_fn
 
 setup_logging()
 import logging
@@ -92,7 +83,7 @@ import logging
 logger = logging.getLogger(__name__)
 # from library.attention_processors import FlashAttnProcessor
 # from library.hypernetwork import replace_attentions_for_hypernetwork
-from library.original_unet import UNet2DConditionModel
+from library.models.original_unet import UNet2DConditionModel
 
 HIGH_VRAM = False
 
@@ -123,7 +114,7 @@ except:
 # JPEG-XL on Linux
 try:
     from jxlpy import JXLImagePlugin
-    from library.jpeg_xl_util import get_jxl_size
+    from library.utils.jpeg_xl_util import get_jxl_size
 
     IMAGE_EXTENSIONS.extend([".jxl", ".JXL"])
 except:
@@ -132,7 +123,7 @@ except:
 # JPEG-XL on Linux and Windows
 try:
     import pillow_jxl
-    from library.jpeg_xl_util import get_jxl_size
+    from library.utils.jpeg_xl_util import get_jxl_size
 
     IMAGE_EXTENSIONS.extend([".jxl", ".JXL"])
 except:
@@ -7060,7 +7051,7 @@ def load_prompts(prompt_file: str) -> List[Dict]:
     for i in range(len(prompts)):
         prompt_dict = prompts[i]
         if isinstance(prompt_dict, str):
-            from library.train_util import line_to_prompt_dict
+            from library.train.train_util import line_to_prompt_dict
 
             prompt_dict = line_to_prompt_dict(prompt_dict)
             prompts[i] = prompt_dict
