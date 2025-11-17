@@ -12,7 +12,6 @@ from library.strategies.strategy_sdxl import TOKENIZER1_PATH, TOKENIZER2_PATH
 from library.train.checkpointing import get_sai_model_spec, save_sd_model_on_train_end_common, \
     save_sd_model_on_epoch_end_or_stepwise_common
 from library.train.model_prep import set_padding_mode_for_vae_conv2d_modules
-from library.train.sample_generation import sample_images_common
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.models import sdxl_original_unet, model_util, sdxl_model_util
 from library.utils.common_utils import setup_logging # todo is it needed?
@@ -384,6 +383,12 @@ def verify_sdxl_training_args(args: argparse.Namespace, support_text_encoder_cac
 
 
 def sample_images(*args, **kwargs):
-    from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
+    # Import here to avoid circular import at module load time
+    from library.train.sample_generation import sample_images_common
+    from library.pipelines.sdxl_lpw_stable_diffusion import (
+        SdxlStableDiffusionLongPromptWeightingPipeline,
+    )
 
-    return sample_images_common(SdxlStableDiffusionLongPromptWeightingPipeline, *args, **kwargs)
+    return sample_images_common(
+        SdxlStableDiffusionLongPromptWeightingPipeline, *args, **kwargs
+    )
