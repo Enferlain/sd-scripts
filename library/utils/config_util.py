@@ -1,19 +1,19 @@
 import argparse
+import logging
+import functools
+import random
+import toml
+import voluptuous
+import json
+
+# from toolz import curry
+from typing import Dict, List, Optional, Sequence, Tuple, Union
+from pathlib import Path
+from textwrap import dedent, indent
 from dataclasses import (
     asdict,
     dataclass,
 )
-import functools
-import random
-from textwrap import dedent, indent
-import json
-from pathlib import Path
-
-# from toolz import curry
-from typing import Dict, List, Optional, Sequence, Tuple, Union
-
-import toml
-import voluptuous
 from voluptuous import (
     Any,
     ExactSequence,
@@ -23,21 +23,12 @@ from voluptuous import (
     Schema,
 )
 
-from library.train import train_util
-from library.train.train_util import (
-    DreamBoothSubset,
-    FineTuningSubset,
-    ControlNetSubset,
-    DreamBoothDataset,
-    FineTuningDataset,
-    ControlNetDataset,
-    DatasetGroup,
-)
+from library.train.arguments import add_dataset_arguments, add_training_arguments, prepare_dataset_args
+from library.train.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
+from library.train.dataset import DatasetGroup, DreamBoothDataset, FineTuningDataset, ControlNetDataset
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -727,12 +718,12 @@ if __name__ == "__main__":
     config_args, remain = parser.parse_known_args()
 
     parser = argparse.ArgumentParser()
-    train_util.add_dataset_arguments(
+    add_dataset_arguments(
         parser, config_args.support_dreambooth, config_args.support_finetuning, config_args.support_dropout
     )
-    train_util.add_training_arguments(parser, config_args.support_dreambooth)
+    add_training_arguments(parser, config_args.support_dreambooth)
     argparse_namespace = parser.parse_args(remain)
-    train_util.prepare_dataset_args(argparse_namespace, config_args.support_finetuning)
+    prepare_dataset_args(argparse_namespace, config_args.support_finetuning)
 
     logger.info("[argparse_namespace]")
     logger.info(f"{vars(argparse_namespace)}")

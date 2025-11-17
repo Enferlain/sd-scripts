@@ -1,9 +1,10 @@
-from concurrent.futures import ThreadPoolExecutor
 import gc
 import time
-from typing import Any, Optional, Union, Callable, Tuple
 import torch
 import torch.nn as nn
+
+from typing import Any, Optional, Union, Callable, Tuple
+from concurrent.futures import ThreadPoolExecutor
 
 
 # Keep these functions here for portability, and private to avoid confusion with the ones in device_utils.py

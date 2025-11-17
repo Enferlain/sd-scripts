@@ -1,17 +1,25 @@
 import logging
 import sys
 import threading
-from typing import *
-
+import cv2
 import torch
 import torch.nn as nn
+import numpy as np
+import diffusers.schedulers.scheduling_euler_ancestral_discrete
+
+from typing import *
 from torchvision import transforms
 from diffusers import EulerAncestralDiscreteScheduler
-import diffusers.schedulers.scheduling_euler_ancestral_discrete
 from diffusers.schedulers.scheduling_euler_ancestral_discrete import EulerAncestralDiscreteSchedulerOutput
-import cv2
 from PIL import Image
-import numpy as np
+
+
+def exists(val):
+    return val is not None
+
+
+def default(val, d):
+    return val if exists(val) else d
 
 
 def fire_in_thread(f, *args, **kwargs):

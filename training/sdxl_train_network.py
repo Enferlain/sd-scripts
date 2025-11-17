@@ -1,22 +1,26 @@
 import argparse
-from typing import List, Optional, Union
-
+import logging
 import torch
+
+from typing import List, Optional, Union
 from accelerate import Accelerator
-from library.utils.device_utils import init_ipex, clean_memory_on_device
 from ramtorch.helpers import replace_linear_with_ramtorch
+
+import train_network
+
+from library.train.arguments import verify_command_line_training_args, read_config_from_file
+from library.train.dataset import DatasetGroup, MinimalDataset
+from library.train.model_prep import replace_unet_modules
+from library.train.training_utils import get_hidden_states_sdxl
+from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.train import sdxl_train_util
+from library.strategies import strategy_sdxl, strategy_sd
+from library.models import sdxl_model_util
+from library.utils.common_utils import setup_logging
 
 init_ipex()
 
-from library.train import train_util, sdxl_train_util
-from library.strategies import strategy_sdxl, strategy_sd
-from library.models import sdxl_model_util
-import train_network
-from library.utils.common_utils import setup_logging
-
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -29,8 +33,8 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
     def assert_extra_args(
         self,
         args,
-        train_dataset_group: Union[train_util.DatasetGroup, train_util.MinimalDataset],
-        val_dataset_group: Optional[train_util.DatasetGroup],
+        train_dataset_group: Union[DatasetGroup, MinimalDataset],
+        val_dataset_group: Optional[DatasetGroup],
     ):
         sdxl_train_util.verify_sdxl_training_args(args)
 
@@ -81,7 +85,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
                 logger.info("RamTorch applied to SDXL Clip-G.")
 
         # モデルに xformers とか memory efficient attention を組み込む
-        train_util.replace_unet_modules(unet, args.mem_eff_attn, args.xformers, args.sdpa)
+        replace_unet_modules(unet, args.mem_eff_attn, args.xformers, args.sdpa)
         if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
             vae.set_use_memory_efficient_attention_xformers(args.xformers)
 
@@ -114,7 +118,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             return None
 
     def cache_text_encoder_outputs_if_needed(
-        self, args, accelerator: Accelerator, unet, vae, text_encoders, dataset: train_util.DatasetGroup, weight_dtype
+        self, args, accelerator: Accelerator, unet, vae, text_encoders, dataset: DatasetGroup, weight_dtype
     ):
         if args.cache_text_encoder_outputs:
             if not args.lowram:
@@ -165,7 +169,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
                 # else:
                 input_ids1 = input_ids1.to(accelerator.device)
                 input_ids2 = input_ids2.to(accelerator.device)
-                encoder_hidden_states1, encoder_hidden_states2, pool2 = train_util.get_hidden_states_sdxl(
+                encoder_hidden_states1, encoder_hidden_states2, pool2 = get_hidden_states_sdxl(
                     args.max_token_length,
                     input_ids1,
                     input_ids2,
@@ -248,8 +252,8 @@ if __name__ == "__main__":
     parser = setup_parser()
 
     args = parser.parse_args()
-    train_util.verify_command_line_training_args(args)
-    args = train_util.read_config_from_file(args, parser)
+    verify_command_line_training_args(args)
+    args = read_config_from_file(args, parser)
 
     trainer = SdxlNetworkTrainer()
     trainer.train(args)

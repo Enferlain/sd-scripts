@@ -3,15 +3,13 @@
 
 import inspect
 import re
-from typing import Callable, List, Optional, Union
-
 import numpy as np
 import PIL.Image
 import torch
+
+from typing import Callable, List, Optional, Union
 from packaging import version
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection
-
-import diffusers
 from diffusers import SchedulerMixin, StableDiffusionPipeline
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput, StableDiffusionSafetyChecker

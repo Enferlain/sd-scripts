@@ -3,12 +3,14 @@ import os
 import argparse
 import shutil
 import math
-from PIL import Image
+import logging
 import numpy as np
+
+from PIL import Image
+
 from library.utils.common_utils import setup_logging, resize_image
 
 setup_logging()
-import logging
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,7 @@ def resize_images(src_img_folder, dst_img_folder, max_resolution="512x512", divi
     os.makedirs(dst_img_folder)
 
   # Iterate through all files in src_img_folder
-  img_exts = (".png", ".jpg", ".jpeg", ".webp", ".bmp")                   # copy from train_util.py
+  img_exts = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
   for filename in os.listdir(src_img_folder):
     # Check if the image is png, jpg or webp etc...
     if not filename.endswith(img_exts):

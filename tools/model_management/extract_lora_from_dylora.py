@@ -5,13 +5,15 @@
 import argparse
 import os
 import torch
+import logging
+
 from safetensors.torch import load_file, save_file, safe_open
-from library.train import train_util
+
 from library.models import model_util
+from library.train.checkpointing import precalculate_safetensors_hashes
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +92,7 @@ def split(args):
         new_metadata["ss_network_dim"] = str(new_rank)
         # new_metadata["ss_network_alpha"] = str(new_alpha.float().numpy())
 
-        model_hash, legacy_hash = train_util.precalculate_safetensors_hashes(state_dict, metadata)
+        model_hash, legacy_hash = precalculate_safetensors_hashes(state_dict, metadata)
         metadata["sshs_model_hash"] = model_hash
         metadata["sshs_legacy_hash"] = legacy_hash
 

@@ -1,22 +1,24 @@
 import importlib
 import ast
-from library.train import edm2_loss
-from library.train import train_util
-from library.utils.common_utils import setup_logging
-import torch
-import math
-import matplotlib
-
-matplotlib.use('Agg')  # Set the backend to 'Agg', non-interactive backend
-import matplotlib.pyplot as plt
-
-plt.ioff()  # Explicitly turn off interactive mode
+import logging
 import os
 import numpy as np
+import torch
+import math
+
+import matplotlib
+
+from library.train.optimizer import get_dummy_scheduler
+
+matplotlib.use('Agg')  # Set the backend to 'Agg', non-interactive backend
+
+import matplotlib.pyplot as plt
+plt.ioff()  # Explicitly turn off interactive mode
+
+from library.train import edm2_loss
+from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -71,7 +73,7 @@ def prepare_edm2_loss_weighting(args, noise_scheduler, accelerator):
                     args.edm2_loss_weighting_lr_scheduler_decay_scaling) if args.edm2_loss_weighting_lr_scheduler_decay_scaling is not None else 1.0,
             )
         else:
-            edm2_lr_scheduler = train_util.get_dummy_scheduler(edm2_optimizer)
+            edm2_lr_scheduler = get_dummy_scheduler(edm2_optimizer)
 
         edm2_lr_scheduler = accelerator.prepare(edm2_lr_scheduler)
 

@@ -1,8 +1,8 @@
 import functools
 import gc
-from typing import Optional, Union
-
 import torch
+
+from typing import Optional, Union
 
 try:
     # intel gpu support for pytorch older than 2.5

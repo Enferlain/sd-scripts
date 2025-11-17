@@ -1,8 +1,9 @@
 import os
-from functools import wraps
-from contextlib import nullcontext
 import torch
 import numpy as np
+
+from functools import wraps
+from contextlib import nullcontext
 
 torch_version = float(torch.__version__[:3])
 current_xpu_device = f"xpu:{torch.xpu.current_device()}"

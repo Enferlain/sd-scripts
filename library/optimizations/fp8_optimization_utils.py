@@ -1,18 +1,17 @@
 import os
-from typing import List, Optional, Union
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from tqdm import tqdm
+from typing import List, Optional, Union
 
 from library.utils.device_utils import clean_memory_on_device
 from library.utils.safetensors_utils import MemoryEfficientSafeOpen
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 

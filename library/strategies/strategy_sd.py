@@ -1,15 +1,16 @@
 import os
-from typing import Any, List, Optional, Tuple, Union
-
 import torch
-from transformers import CLIPTokenizer
-from library.train import train_util
-from library.strategies.strategy_base import LatentsCachingStrategy, TokenizeStrategy, TextEncodingStrategy
-from library.utils.common_utils import setup_logging
-
-setup_logging()
 import logging
 
+from typing import Any, List, Optional, Tuple, Union
+from transformers import CLIPTokenizer
+
+from library.strategies.strategy_base import LatentsCachingStrategy, TokenizeStrategy, TextEncodingStrategy
+from library.train.constants import HIGH_VRAM
+from library.utils.common_utils import setup_logging
+from library.utils.device_utils import clean_memory_on_device
+
+setup_logging()
 logger = logging.getLogger(__name__)
 
 TOKENIZER_ID = "openai/clip-vit-large-patch14"
@@ -169,5 +170,5 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
         self._default_cache_batch_latents(encode_by_vae, vae_device, vae_dtype, image_infos, flip_aug, alpha_mask,
                                           random_crop, random_crop_padding_percent=random_crop_padding_percent)
 
-        if not train_util.HIGH_VRAM:
-            train_util.clean_memory_on_device(vae.device)
+        if not HIGH_VRAM:
+            clean_memory_on_device(vae.device)

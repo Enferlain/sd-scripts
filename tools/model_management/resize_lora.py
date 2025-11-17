@@ -4,17 +4,17 @@
 
 import argparse
 import torch
+import numpy as np
+import logging
+
 from safetensors.torch import load_file, save_file, safe_open
 from tqdm import tqdm
-import numpy as np
 
-from library.train import train_util
 from library.models import model_util
+from library.train.checkpointing import precalculate_safetensors_hashes
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 MIN_SV = 1e-6
@@ -362,7 +362,7 @@ def resize(args):
         if type(value) == torch.Tensor and value.dtype.is_floating_point and value.dtype != save_dtype:
             state_dict[key] = value.to(save_dtype)
 
-    model_hash, legacy_hash = train_util.precalculate_safetensors_hashes(state_dict, metadata)
+    model_hash, legacy_hash = precalculate_safetensors_hashes(state_dict, metadata)
     metadata["sshs_model_hash"] = model_hash
     metadata["sshs_legacy_hash"] = legacy_hash
 

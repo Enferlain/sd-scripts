@@ -1,29 +1,26 @@
 import argparse
 import math
 import os
-from typing import Optional
-
 import torch
-from library.utils.device_utils import init_ipex, clean_memory_on_device
-
-init_ipex()
-
-from accelerate import init_empty_weights
-from transformers import CLIPTokenizer
-from library.train import train_util
-from library.models import sdxl_original_unet, model_util, sdxl_model_util
-from library.utils.common_utils import setup_logging
-
-setup_logging()
 import logging
 
+from typing import Optional
+from accelerate import init_empty_weights
+from transformers import CLIPTokenizer
+
+from library.strategies.strategy_sdxl import TOKENIZER1_PATH, TOKENIZER2_PATH
+from library.train.checkpointing import get_sai_model_spec, save_sd_model_on_train_end_common, \
+    save_sd_model_on_epoch_end_or_stepwise_common
+from library.train.model_prep import set_padding_mode_for_vae_conv2d_modules
+from library.train.sample_generation import sample_images_common
+from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.models import sdxl_original_unet, model_util, sdxl_model_util
+from library.utils.common_utils import setup_logging # todo is it needed?
+
+init_ipex()  # todo is it needed?
+
+setup_logging()  # todo is it needed?
 logger = logging.getLogger(__name__)
-
-TOKENIZER1_PATH = "openai/clip-vit-large-patch14"
-TOKENIZER2_PATH = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
-
-
-# DEFAULT_NOISE_OFFSET = 0.0357
 
 
 def load_target_model(args, accelerator, model_version: str, weight_dtype):
@@ -137,7 +134,7 @@ def _load_target_model(
 
     if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
         logger.info(f"Loading VAE with padding mode: {args.vae_conv2d_padding_mode}")
-        train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
+        set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
 
     return load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info
 
@@ -241,7 +238,7 @@ def save_sd_model_on_train_end(
         ckpt_info,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = train_util.get_sai_model_spec(None, args, True, False, False, is_stable_diffusion_ckpt=True)
+        sai_metadata = get_sai_model_spec(None, args, True, False, False, is_stable_diffusion_ckpt=True)
         sdxl_model_util.save_stable_diffusion_checkpoint(
             ckpt_file,
             text_encoder1,
@@ -268,7 +265,7 @@ def save_sd_model_on_train_end(
             save_dtype=save_dtype,
         )
 
-    train_util.save_sd_model_on_train_end_common(
+    save_sd_model_on_train_end_common(
         args, save_stable_diffusion_format, use_safetensors, epoch, global_step, sd_saver, diffusers_saver
     )
 
@@ -294,7 +291,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         ckpt_info,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = train_util.get_sai_model_spec(None, args, True, False, False, is_stable_diffusion_ckpt=True)
+        sai_metadata = get_sai_model_spec(None, args, True, False, False, is_stable_diffusion_ckpt=True)
         sdxl_model_util.save_stable_diffusion_checkpoint(
             ckpt_file,
             text_encoder1,
@@ -321,7 +318,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
             save_dtype=save_dtype,
         )
 
-    train_util.save_sd_model_on_epoch_end_or_stepwise_common(
+    save_sd_model_on_epoch_end_or_stepwise_common(
         args,
         on_epoch_end,
         accelerator,
@@ -389,4 +386,4 @@ def verify_sdxl_training_args(args: argparse.Namespace, support_text_encoder_cac
 def sample_images(*args, **kwargs):
     from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
 
-    return train_util.sample_images_common(SdxlStableDiffusionLongPromptWeightingPipeline, *args, **kwargs)
+    return sample_images_common(SdxlStableDiffusionLongPromptWeightingPipeline, *args, **kwargs)

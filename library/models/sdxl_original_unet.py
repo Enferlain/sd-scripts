@@ -22,19 +22,21 @@
         legacy: False
 """
 
+import logging
 import math
-from types import SimpleNamespace
-from typing import Optional
+
 import torch
 import torch.utils.checkpoint
+
+from types import SimpleNamespace
+from typing import Optional
 from torch import nn
 from torch.nn import functional as F
 from einops import rearrange
+
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 IN_CHANNELS: int = 4
@@ -47,19 +49,15 @@ TIME_EMBED_DIM = 320 * 4
 USE_REENTRANT = True
 
 # region memory efficient attention
-
-# FlashAttentionを使うCrossAttention
+# FlashAtentionを使うCrossAttention
 # based on https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/memory_efficient_attention_pytorch/flash_attention.py
 # LICENSE MIT https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/LICENSE
 
 # constants
-
 EPSILON = 1e-6
 
 
 # helper functions
-
-
 def exists(val):
     return val is not None
 
@@ -69,10 +67,7 @@ def default(val, d):
 
 
 # flash attention forwards and backwards
-
 # https://arxiv.org/abs/2205.14135
-
-
 class FlashAttentionFunction(torch.autograd.Function):
     @staticmethod
     @torch.no_grad()

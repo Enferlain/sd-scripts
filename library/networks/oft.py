@@ -1,18 +1,20 @@
 # OFT network module
 
 import os
-from typing import List, Optional, Type, Union
-from diffusers import AutoencoderKL
+import logging
 import einops
-from transformers import CLIPTextModel
 import torch
 import torch.nn.functional as F
 import re
+
+from typing import List, Optional, Type, Union
+from diffusers import AutoencoderKL
+from transformers import CLIPTextModel
+
+from library.train.checkpointing import precalculate_safetensors_hashes
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 RE_UPDOWN = re.compile(r"(up|down)_blocks_(\d+)_(resnets|upsamplers|downsamplers|attentions)_(\d+)_")
@@ -411,12 +413,11 @@ class OFTNetwork(torch.nn.Module):
 
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import save_file
-            from library.train import train_util
 
             # Precalculate model hashes to save time on indexing
             if metadata is None:
                 metadata = {}
-            model_hash, legacy_hash = train_util.precalculate_safetensors_hashes(state_dict, metadata)
+            model_hash, legacy_hash = precalculate_safetensors_hashes(state_dict, metadata)
             metadata["sshs_model_hash"] = model_hash
             metadata["sshs_legacy_hash"] = legacy_hash
 

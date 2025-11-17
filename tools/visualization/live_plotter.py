@@ -5,10 +5,11 @@ import argparse
 import os
 import logging
 import uuid
-
 import numpy as np
+
 from flask import Flask, jsonify, send_from_directory
 from werkzeug.serving import WSGIRequestHandler
+
 
 class PlotterState:
     def __init__(self):

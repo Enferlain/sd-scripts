@@ -7,15 +7,17 @@ import json
 import os
 import time
 import torch
+import logging
+
 from safetensors.torch import save_file
 from tqdm import tqdm
+
 from library.models import model_util, sdxl_model_util
 from library.networks import lora
 from library.utils.common_utils import setup_logging
 from library.utils import sai_model_spec
 
 setup_logging()
-import logging
 logger = logging.getLogger(__name__)
 
 # CLAMP_QUANTILE = 0.99

@@ -4,49 +4,68 @@ import argparse
 import math
 import os
 import typing
-from typing import Any, List, Union, Optional
 import subprocess
 import sys
 import random
 import time
 import json
-from multiprocessing import Value
 import numpy as np
 import ast
 import itertools
 import atexit
+import torch
+import torch.nn as nn
+import logging
+
+from typing import Any, List, Union, Optional
+from multiprocessing import Value
+from tqdm import tqdm
+from accelerate import Accelerator
+from diffusers import DDPMScheduler
+from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL
+from ramtorch.helpers import replace_linear_with_ramtorch
+
+from library.train.arguments import verify_training_args, prepare_dataset_args, add_sd_models_arguments, \
+    add_dataset_arguments, add_training_arguments, add_masked_loss_arguments, add_optimizer_arguments, \
+    verify_command_line_training_args, read_config_from_file
+from library.train.checkpointing import get_sai_model_spec, resume_from_local_or_hf_if_specified, get_git_revision_hash, \
+    model_hash, calculate_sha256, get_step_ckpt_name, save_and_remove_state_stepwise, get_remove_step_no, \
+    get_epoch_ckpt_name, get_remove_epoch_no, save_and_remove_state_on_epoch_end, get_last_ckpt_name, \
+    save_state_on_train_end
+from library.train.constants import SS_METADATA_MINIMUM_KEYS
+from library.train.dataset import DatasetGroup, MinimalDataset, load_arbitrary_dataset, collator_class, debug_dataset, \
+    DreamBoothDataset
+from library.train.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
+from library.train.model_prep import load_target_model, replace_unet_modules, set_padding_mode_for_vae_conv2d_modules, \
+    patch_accelerator_for_fp16_training
+from library.train.optimizer import prepare_optimizer, get_scheduler_fix
+from library.train.sample_generation import sample_images, sample_images_check
+from library.train.training_utils import get_noise_noisy_latents_and_timesteps, calculate_val_loss_check, \
+    set_torch_cuda_reduced_precision, args_set_seed, prepare_accelerator, prepare_dtype, init_trackers, \
+    determine_grad_sync_context
 
 try:
     import matplotlib.pyplot as plt
 except ImportError:
     plt = None
 
-from tqdm import tqdm
+import library.utils.config_util as config_util
+import library.utils.huggingface_util as huggingface_util
+import library.train.custom_train_functions as custom_train_functions
 
-import torch
-import torch.nn as nn
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.train.edm2_loss_utils import prepare_edm2_loss_weighting, plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
-from ramtorch.helpers import replace_linear_with_ramtorch
-
-init_ipex()
-
-from accelerate import Accelerator
-from diffusers import DDPMScheduler
-from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL
 from library.strategies import strategy_sd, strategy_base
 from library.models import model_util
 from library.optimizations import deepspeed_utils
+from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils import sai_model_spec
 
-import library.train.train_util as train_util
-from library.train.train_util import DreamBoothDataset
-import library.utils.config_util as config_util
 from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
-import library.utils.huggingface_util as huggingface_util
-import library.train.custom_train_functions as custom_train_functions
+
 from library.train.custom_train_functions import (
     apply_snr_weight,
     prepare_scheduler_for_custom_training,
@@ -55,17 +74,17 @@ from library.train.custom_train_functions import (
     apply_debiased_estimation,
     apply_masked_loss,
 )
-from library.utils.common_utils import setup_logging, add_logging_arguments
-from library.utils import sai_model_spec
+
+
 from library.timestep_samplers.loss_aware_sampler import LossAwareTimestepSampler
 from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
 from library.timestep_samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
 from library.timestep_samplers.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
 from library.timestep_samplers.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
 
-setup_logging()
-import logging
+init_ipex()
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -271,15 +290,15 @@ class NetworkTrainer:
     def assert_extra_args(
         self,
         args,
-        train_dataset_group: Union[train_util.DatasetGroup, train_util.MinimalDataset],
-        val_dataset_group: Optional[train_util.DatasetGroup],
+        train_dataset_group: Union[DatasetGroup, MinimalDataset],
+        val_dataset_group: Optional[DatasetGroup],
     ):
         train_dataset_group.verify_bucket_reso_steps(64)
         if val_dataset_group is not None:
             val_dataset_group.verify_bucket_reso_steps(64)
 
     def load_target_model(self, args, weight_dtype, accelerator) -> tuple[str, nn.Module, nn.Module, Optional[nn.Module]]:
-        text_encoder, vae, unet, _ = train_util.load_target_model(args, weight_dtype, accelerator)
+        text_encoder, vae, unet, _ = load_target_model(args, weight_dtype, accelerator)
 
         if args.use_ramtorch:
             logger.info("Applying RamTorch to SD UNet, VAE, and Clip-L.")
@@ -296,7 +315,7 @@ class NetworkTrainer:
                 logger.info("RamTorch applied to SD VAE.")
 
         # モデルに xformers とか memory efficient attention を組み込む
-        train_util.replace_unet_modules(unet, args.mem_eff_attn, args.xformers, args.sdpa)
+        replace_unet_modules(unet, args.mem_eff_attn, args.xformers, args.sdpa)
         if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
             vae.set_use_memory_efficient_attention_xformers(args.xformers)
 
@@ -351,7 +370,7 @@ class NetworkTrainer:
                 param.grad = accelerator.reduce(param.grad, reduction="mean")
 
     def sample_images(self, accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoder, unet):
-        train_util.sample_images(accelerator, args, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
+        sample_images(accelerator, args, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
 
     # region SD/SDXL
 
@@ -394,7 +413,7 @@ class NetworkTrainer:
     ):
         # Sample noise, sample a random timestep for each image, and add noise to the latents,
         # with noise offset and/or multires noise if specified
-        noise, noisy_latents, timesteps = train_util.get_noise_noisy_latents_and_timesteps(
+        noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
             args, 
             noise_scheduler, 
             latents, 
@@ -468,7 +487,7 @@ class NetworkTrainer:
         return loss
 
     def get_sai_model_spec(self, args):
-        return train_util.get_sai_model_spec(None, args, self.is_sdxl, True, False)
+        return get_sai_model_spec(None, args, self.is_sdxl, True, False)
 
     def update_metadata(self, metadata, args):
         pass
@@ -599,14 +618,14 @@ class NetworkTrainer:
         )
 
         if is_train:
-            huber_c = train_util.get_huber_threshold_if_needed(args, timesteps, noise_scheduler)
-            loss = train_util.conditional_loss(noise_pred.float(), target.float(), args.loss_type, "none", huber_c, scale=float(args.loss_scale))
+            huber_c = get_huber_threshold_if_needed(args, timesteps, noise_scheduler)
+            loss = conditional_loss(noise_pred.float(), target.float(), args.loss_type, "none", huber_c, scale=float(args.loss_scale))
             if weighting is not None:
                 loss = loss * weighting
             if args.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                 loss = apply_masked_loss(loss, batch)
         else:
-                loss = train_util.conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
+                loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
 
         per_sample_loss = loss.mean([1, 2, 3])
 
@@ -739,7 +758,7 @@ class NetworkTrainer:
                     is_train=False,
                 )
 
-                loss = train_util.conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
+                loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
                 loss = loss.mean([1, 2, 3])
                 loss = loss.mean()
                 total_loss += loss
@@ -813,7 +832,7 @@ class NetworkTrainer:
                            epoch,
                            batch=None,
                            train_text_encoder=True):
-        if not train_util.calculate_val_loss_check(args, global_step, epoch_step, val_dataloader, train_dataloader):
+        if not calculate_val_loss_check(args, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
         
         if batch is not None:
@@ -855,9 +874,9 @@ class NetworkTrainer:
     def train(self, args):
         session_id = random.randint(0, 2**32)
         training_started_at = time.time()
-        train_util.verify_training_args(args)
-        train_util.prepare_dataset_args(args, True)
-        train_util.set_torch_cuda_reduced_precision(args)
+        verify_training_args(args)
+        prepare_dataset_args(args, True)
+        set_torch_cuda_reduced_precision(args)
         deepspeed_utils.prepare_deepspeed_args(args)
         setup_logging(args, reset=True)
 
@@ -865,7 +884,7 @@ class NetworkTrainer:
         use_dreambooth_method = args.in_json is None
         use_user_config = args.dataset_config is not None
 
-        train_util.args_set_seed(args)
+        args_set_seed(args)
 
         tokenize_strategy = self.get_tokenize_strategy(args)
         strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
@@ -919,21 +938,21 @@ class NetworkTrainer:
             train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
         else:
             # use arbitrary dataset class
-            train_dataset_group = train_util.load_arbitrary_dataset(args)
+            train_dataset_group = load_arbitrary_dataset(args)
             val_dataset_group = None  # placeholder until validation dataset supported for arbitrary
 
         current_epoch = Value("i", 0)
         current_step = Value("i", 0)
         ds_for_collator = train_dataset_group if args.max_data_loader_n_workers == 0 else None
-        collator = train_util.collator_class(current_epoch, current_step, ds_for_collator)
+        collator = collator_class(current_epoch, current_step, ds_for_collator)
 
         if args.debug_dataset:
             train_dataset_group.set_current_strategies()  # dataset needs to know the strategies explicitly
-            train_util.debug_dataset(train_dataset_group)
+            debug_dataset(train_dataset_group)
 
             if val_dataset_group is not None:
                 val_dataset_group.set_current_strategies()  # dataset needs to know the strategies explicitly
-                train_util.debug_dataset(val_dataset_group)
+                debug_dataset(val_dataset_group)
             return
         if len(train_dataset_group) == 0:
             logger.error(
@@ -954,11 +973,11 @@ class NetworkTrainer:
 
         # acceleratorを準備する
         logger.info("preparing accelerator")
-        accelerator = train_util.prepare_accelerator(args)
+        accelerator = prepare_accelerator(args)
         is_main_process = accelerator.is_main_process
 
         # mixed precisionに対応した型を用意しておき適宜castする
-        weight_dtype, save_dtype = train_util.prepare_dtype(args)
+        weight_dtype, save_dtype = prepare_dtype(args)
         vae_dtype = (torch.float32 if args.no_half_vae else weight_dtype) if self.cast_vae(args) else None
 
         # load target models: unet may be None for lazy loading
@@ -966,7 +985,7 @@ class NetworkTrainer:
 
         # if args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
             # logger.info(f"Training VAE in padding mode: {args.vae_conv2d_padding_mode}")
-            # train_util.set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
+            # set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
             
         if vae_dtype is None:
             vae_dtype = vae.dtype
@@ -1111,7 +1130,7 @@ class NetworkTrainer:
             optimizer_eval_fn, 
             lr_descriptions, 
             text_encoder_lr
-         ) = train_util.prepare_optimizer(args, network)
+         ) = prepare_optimizer(args, network)
 
         # prepare dataloader
         # strategies are set here because they cannot be referenced in another process. Copy them with the dataset
@@ -1160,7 +1179,7 @@ class NetworkTrainer:
         train_dataset_group.set_max_train_steps(args.max_train_steps)
 
         # lr schedulerを用意する
-        lr_scheduler = train_util.get_scheduler_fix(args, optimizer, accelerator.num_processes)
+        lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
 
         # 実験的機能：勾配も含めたfp16/bf16学習を行う　モデル全体をfp16/bf16にする
         if args.full_fp16:
@@ -1282,7 +1301,7 @@ class NetworkTrainer:
 
         # 実験的機能：勾配も含めたfp16学習を行う　PyTorchにパッチを当ててfp16でのgrad scaleを有効にする
         if args.full_fp16:
-            train_util.patch_accelerator_for_fp16_training(accelerator)
+            patch_accelerator_for_fp16_training(accelerator)
 
         # before resuming make hook for saving/loading to save/load the network weights only
         def save_model_hook(models, weights, output_dir):
@@ -1330,7 +1349,7 @@ class NetworkTrainer:
         accelerator.register_load_state_pre_hook(load_model_hook)
 
         # resumeする
-        train_util.resume_from_local_or_hf_if_specified(accelerator, args)
+        resume_from_local_or_hf_if_specified(accelerator, args)
 
         # epoch数を計算する
         num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
@@ -1394,7 +1413,7 @@ class NetworkTrainer:
             "ss_adaptive_noise_scale": args.adaptive_noise_scale,
             "ss_zero_terminal_snr": args.zero_terminal_snr,
             "ss_training_comment": args.training_comment,  # will not be updated after training
-            "ss_sd_scripts_commit_hash": train_util.get_git_revision_hash(),
+            "ss_sd_scripts_commit_hash": get_git_revision_hash(),
             "ss_optimizer": optimizer_name + (f"({optimizer_args})" if len(optimizer_args) > 0 else ""),
             "ss_max_grad_norm": args.max_grad_norm,
             "ss_caption_dropout_rate": args.caption_dropout_rate,
@@ -1567,16 +1586,16 @@ class NetworkTrainer:
         if args.pretrained_model_name_or_path is not None:
             sd_model_name = args.pretrained_model_name_or_path
             if os.path.exists(sd_model_name):
-                metadata["ss_sd_model_hash"] = train_util.model_hash(sd_model_name)
-                metadata["ss_new_sd_model_hash"] = train_util.calculate_sha256(sd_model_name)
+                metadata["ss_sd_model_hash"] = model_hash(sd_model_name)
+                metadata["ss_new_sd_model_hash"] = calculate_sha256(sd_model_name)
                 sd_model_name = os.path.basename(sd_model_name)
             metadata["ss_sd_model_name"] = sd_model_name
 
         if args.vae is not None:
             vae_name = args.vae
             if os.path.exists(vae_name):
-                metadata["ss_vae_hash"] = train_util.model_hash(vae_name)
-                metadata["ss_new_vae_hash"] = train_util.calculate_sha256(vae_name)
+                metadata["ss_vae_hash"] = model_hash(vae_name)
+                metadata["ss_new_vae_hash"] = calculate_sha256(vae_name)
                 vae_name = os.path.basename(vae_name)
             metadata["ss_vae_name"] = vae_name
 
@@ -1584,7 +1603,7 @@ class NetworkTrainer:
 
         # make minimum metadata for filtering
         minimum_metadata = {}
-        for key in train_util.SS_METADATA_MINIMUM_KEYS:
+        for key in SS_METADATA_MINIMUM_KEYS:
             if key in metadata:
                 minimum_metadata[key] = metadata[key]
 
@@ -1756,7 +1775,6 @@ class NetworkTrainer:
             if args.timestep_sampling == "log_snr_uniform":
                 accelerator.print("Initializing LogSNRUniformSampler.")
                 args.la_sampler = LogSNRUniformSampler(noise_scheduler, noise_scheduler.config.num_train_timesteps)
-                # Route through the same code path in train_util for simplicity
                 args.timestep_sampling = "mix_adaptive" 
             elif args.timestep_sampling == "tempered_adaptive":
                 accelerator.print("Initializing TemperedAdaptiveSampler.")
@@ -1821,13 +1839,13 @@ class NetworkTrainer:
 
         edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(args, noise_scheduler, accelerator)
 
-        train_util.init_trackers(accelerator, args, "network_train")
+        init_trackers(accelerator, args, "network_train")
 
-        loss_recorder = train_util.EMARecorder()
-        val_loss_recorder = train_util.EMARecorder()
+        loss_recorder = EMARecorder()
+        val_loss_recorder = EMARecorder()
 
         if args.edm2_loss_weighting:
-            loss_scaled_recorder = train_util.EMARecorder()
+            loss_scaled_recorder = EMARecorder()
 
         del train_dataset_group
         if val_dataset_group is not None:
@@ -1885,12 +1903,12 @@ class NetworkTrainer:
         accumulation_counter = 0
 
         # For --sample_at_first
-        if train_util.sample_images_check(args, 0, global_step) or train_util.calculate_val_loss_check(args, global_step, 0, val_dataloader, train_dataloader):
+        if sample_images_check(args, 0, global_step) or calculate_val_loss_check(args, global_step, 0, val_dataloader, train_dataloader):
             #Switch network to eval mode
             accelerator.unwrap_model(network).eval()
             optimizer_eval_fn()
             self.sample_images(accelerator, args, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
-            if train_util.calculate_val_loss_check(args, global_step, 0, val_dataloader, train_dataloader):
+            if calculate_val_loss_check(args, global_step, 0, val_dataloader, train_dataloader):
                 current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(
                     global_step, 0, train_dataloader, val_loss_recorder, val_dataloader, 
                     cyclic_val_dataloader, network, tokenize_strategy, 
@@ -1993,7 +2011,7 @@ class NetworkTrainer:
                     initial_step -= 1
                     continue
 
-                with train_util.determine_grad_sync_context(args, accelerator, None, training_model, edm2_model):
+                with determine_grad_sync_context(args, accelerator, None, training_model, edm2_model):
                     on_step_start_for_network(text_encoder, unet)
 
                     accumulation_counter += 1
@@ -2076,8 +2094,8 @@ class NetworkTrainer:
                     progress_bar.update(1)
                     global_step += 1
 
-                    if (train_util.sample_images_check(args, None, global_step) or 
-                        train_util.calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader) or 
+                    if (sample_images_check(args, None, global_step) or
+                        calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader) or
                         args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0):
 
                         accelerator.unwrap_model(network).eval()
@@ -2086,7 +2104,7 @@ class NetworkTrainer:
                             accelerator, args, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
                         )
 
-                        if train_util.calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader):
+                        if calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader):
                             current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(global_step, step, 
                                                                                                     skipped_dataloader or train_dataloader, 
                                                                                                     val_loss_recorder, 
@@ -2114,23 +2132,23 @@ class NetworkTrainer:
                         if args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0:
                             accelerator.wait_for_everyone()
                             if accelerator.is_main_process:
-                                ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, global_step)
+                                ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, global_step)
                                 save_model(ckpt_name, accelerator.unwrap_model(network), global_step, epoch)
 
                                 if args.edm2_loss_weighting:
-                                    loss_weights_ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, global_step, "_edm2_loss_weights")
+                                    loss_weights_ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, global_step, "_edm2_loss_weights")
                                     save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, epoch, dtype_override=torch.float32)
 
                                 if args.save_state:
-                                    train_util.save_and_remove_state_stepwise(args, accelerator, global_step)
+                                    save_and_remove_state_stepwise(args, accelerator, global_step)
 
-                                remove_step_no = train_util.get_remove_step_no(args, global_step)
+                                remove_step_no = get_remove_step_no(args, global_step)
                                 if remove_step_no is not None:
-                                    remove_ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no)
+                                    remove_ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no)
                                     remove_model(remove_ckpt_name)
 
                                     if args.edm2_loss_weighting:
-                                        remove_loss_weights_ckpt_name = train_util.get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no, "_edm2_loss_weights")
+                                        remove_loss_weights_ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no, "_edm2_loss_weights")
                                         remove_model(remove_loss_weights_ckpt_name)
 
                         if plot_edm2_loss_weighting_check(args, global_step):
@@ -2222,7 +2240,7 @@ class NetworkTrainer:
 
             accelerator.wait_for_everyone()
 
-            if (train_util.sample_images_check(args, current_epoch.value, global_step) or 
+            if (sample_images_check(args, current_epoch.value, global_step) or
                 args.save_every_n_epochs is not None):
 
                 # 指定エポックごとにモデルを保存
@@ -2231,24 +2249,24 @@ class NetworkTrainer:
                 if args.save_every_n_epochs is not None:
                     saving = (current_epoch.value) % args.save_every_n_epochs == 0 and (current_epoch.value) < num_train_epochs
                     if is_main_process and saving:
-                        ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, current_epoch.value)
+                        ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, current_epoch.value)
                         save_model(ckpt_name, accelerator.unwrap_model(network), global_step, current_epoch.value)
 
                         if args.edm2_loss_weighting:
-                            loss_weights_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, current_epoch.value, "_edm2_loss_weights")
+                            loss_weights_ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, current_epoch.value, "_edm2_loss_weights")
                             save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, current_epoch.value, dtype_override=torch.float32)
 
-                        remove_epoch_no = train_util.get_remove_epoch_no(args, current_epoch.value)
+                        remove_epoch_no = get_remove_epoch_no(args, current_epoch.value)
                         if remove_epoch_no is not None:
-                            remove_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, remove_epoch_no)
+                            remove_ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, remove_epoch_no)
                             remove_model(remove_ckpt_name)
 
                             if args.edm2_loss_weighting:
-                                remove_loss_weights_ckpt_name = train_util.get_epoch_ckpt_name(args, "." + args.save_model_as, remove_epoch_no, "_edm2_loss_weights")
+                                remove_loss_weights_ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, remove_epoch_no, "_edm2_loss_weights")
                                 remove_model(remove_loss_weights_ckpt_name)
 
                         if args.save_state:
-                            train_util.save_and_remove_state_on_epoch_end(args, accelerator, current_epoch.value)
+                            save_and_remove_state_on_epoch_end(args, accelerator, current_epoch.value)
 
                 self.sample_images(accelerator, args, current_epoch.value, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
                 progress_bar.unpause()
@@ -2267,14 +2285,14 @@ class NetworkTrainer:
         optimizer_eval_fn()
 
         if is_main_process and (args.save_state or args.save_state_on_train_end):
-            train_util.save_state_on_train_end(args, accelerator)
+            save_state_on_train_end(args, accelerator)
 
         if is_main_process:
-            ckpt_name = train_util.get_last_ckpt_name(args, "." + args.save_model_as)
+            ckpt_name = get_last_ckpt_name(args, "." + args.save_model_as)
             save_model(ckpt_name, network, global_step, num_train_epochs, force_sync_upload=True)
 
             if args.edm2_loss_weighting:
-                loss_weights_ckpt_name = train_util.get_last_ckpt_name(args, "." + args.save_model_as, "_edm2_loss_weights")
+                loss_weights_ckpt_name = get_last_ckpt_name(args, "." + args.save_model_as, "_edm2_loss_weights")
                 save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, num_train_epochs, force_sync_upload=True, dtype_override=torch.float32)
 
 
@@ -2285,13 +2303,13 @@ def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
 
     add_logging_arguments(parser)
-    train_util.add_sd_models_arguments(parser)
+    add_sd_models_arguments(parser)
     sai_model_spec.add_model_spec_arguments(parser)
-    train_util.add_dataset_arguments(parser, True, True, True)
-    train_util.add_training_arguments(parser, True)
-    train_util.add_masked_loss_arguments(parser)
+    add_dataset_arguments(parser, True, True, True)
+    add_training_arguments(parser, True)
+    add_masked_loss_arguments(parser)
     deepspeed_utils.add_deepspeed_arguments(parser)
-    train_util.add_optimizer_arguments(parser)
+    add_optimizer_arguments(parser)
     config_util.add_config_arguments(parser)
     custom_train_functions.add_custom_train_arguments(parser)
 
@@ -2649,8 +2667,8 @@ if __name__ == "__main__":
     parser = setup_parser()
 
     args = parser.parse_args()
-    train_util.verify_command_line_training_args(args)
-    args = train_util.read_config_from_file(args, parser)
+    verify_command_line_training_args(args)
+    args = read_config_from_file(args, parser)
 
     trainer = NetworkTrainer()
     trainer.train(args)

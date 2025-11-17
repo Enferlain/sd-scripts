@@ -1,4 +1,5 @@
 # based on https://github.com/Stability-AI/ModelSpec
+import os
 import datetime
 import hashlib
 import argparse
@@ -6,16 +7,17 @@ import base64
 import logging
 import mimetypes
 import subprocess
+import safetensors
+
 from dataclasses import dataclass, field
 from io import BytesIO
-import os
 from typing import Union
-import safetensors
+
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-
 logger = logging.getLogger(__name__)
+
 
 r"""
 # Metadata Example
@@ -652,7 +654,6 @@ if __name__ == "__main__":
     import argparse
     import torch
     from safetensors.torch import load_file
-    from library import train_util
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--ckpt", type=str, required=True)
@@ -679,5 +680,4 @@ if __name__ == "__main__":
         by_ref = f"0x{file_hash.hexdigest()}"
     print(by_ref)
     print("is same?", by_ref == metadata["modelspec.hash_sha256"])
-
 """

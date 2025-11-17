@@ -2,20 +2,20 @@
 
 import os
 import re
-from typing import Any, List, Optional, Tuple, Union, Callable
-
 import numpy as np
 import torch
+import logging
+
+from typing import Any, List, Optional, Tuple, Union, Callable
 from transformers import CLIPTokenizer
 
+from library.train.caching import load_images_and_masks_for_caching
 # TODO remove circular import by moving ImageInfo to a separate file
 # from library.train_util import ImageInfo
 
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -508,9 +508,7 @@ class LatentsCachingStrategy:
         Returns: 
             None
         """
-        from library.train import train_util
-
-        img_tensor, alpha_masks, original_sizes, crop_ltrbs = train_util.load_images_and_masks_for_caching(
+        img_tensor, alpha_masks, original_sizes, crop_ltrbs = load_images_and_masks_for_caching(
             image_infos, apply_alpha_mask, random_crop, random_crop_padding_percent=random_crop_padding_percent
         )
         img_tensor = img_tensor.to(device=vae_device, dtype=vae_dtype)

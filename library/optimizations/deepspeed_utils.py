@@ -1,15 +1,14 @@
 import os
 import argparse
 import torch
+import logging
+
 from accelerate import DeepSpeedPlugin
 
 from library.utils.common_utils import setup_logging
-
 from library.utils.device_utils import get_preferred_device
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 

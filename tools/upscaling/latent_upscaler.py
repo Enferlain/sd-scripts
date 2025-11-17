@@ -5,22 +5,24 @@ import argparse
 import glob
 import os
 import cv2
-from diffusers import AutoencoderKL
-
-from typing import List
-import numpy as np
-
 import torch
-from library.utils.device_utils import init_ipex, get_preferred_device
-init_ipex()
+import numpy as np
+import logging
 
+from diffusers import AutoencoderKL
+from typing import List
 from torch import nn
 from tqdm import tqdm
 from PIL import Image
+
 from library.utils.common_utils import setup_logging
+from library.utils.device_utils import init_ipex, get_preferred_device
+
+init_ipex()
+
 setup_logging()
-import logging
 logger = logging.getLogger(__name__)
+
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels=None, kernel_size=3, stride=1, padding=1):

@@ -4,8 +4,8 @@ import numpy as np
 import torch
 import json
 import struct
-from typing import Dict, Any, Union, Optional
 
+from typing import Dict, Any, Union, Optional
 from safetensors.torch import load_file
 
 from library.utils.device_utils import synchronize_device

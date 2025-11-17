@@ -1,9 +1,6 @@
 import torch
 import math
 
-import torch
-import math
-
 
 class TemperedAdaptiveSampler:
     def __init__(self, noise_scheduler, num_bins: int = 64,

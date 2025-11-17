@@ -1,6 +1,6 @@
 # gaussian_mid_snr_sampler.py
 import math, torch
-from typing import Optional
+
 
 class GaussianMidSNRAdaptiveSampler:
     """

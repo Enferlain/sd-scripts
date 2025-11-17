@@ -1,16 +1,15 @@
 import os
-from typing import Any, List, Optional, Tuple, Union
-
+import logging
 import numpy as np
 import torch
-from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
-from library.strategies.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
 
+from typing import Any, List, Optional, Tuple, Union
+from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
+
+from library.strategies.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 TOKENIZER1_PATH = "openai/clip-vit-large-patch14"

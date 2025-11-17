@@ -1,16 +1,17 @@
 import os
 import re
-from typing import Dict, List, Optional, Union
+import logging
 import torch
+
+from typing import Dict, List, Optional, Union
 from tqdm import tqdm
+
 from library.utils.device_utils import synchronize_device
 from library.optimizations.fp8_optimization_utils import load_safetensors_with_fp8_optimization
 from library.utils.safetensors_utils import MemoryEfficientSafeOpen
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 

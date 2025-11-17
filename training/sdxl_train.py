@@ -3,40 +3,42 @@
 import argparse
 import math
 import os
-from multiprocessing import Value
-from typing import List
 import toml
-
-from tqdm import tqdm
-
 import torch
-from library.utils.device_utils import init_ipex, clean_memory_on_device
-
-init_ipex()
-
-
-from diffusers import DDPMScheduler
-from library.strategies import strategy_sdxl, strategy_sd, strategy_base
-from library.models import sdxl_model_util
-from library.optimizations import deepspeed_utils
-
-import library.train.train_util as train_util
-
-from library.utils.common_utils import setup_logging, add_logging_arguments
-from library.utils import sai_model_spec
-
-setup_logging()
 import logging
 
-logger = logging.getLogger(__name__)
+from multiprocessing import Value
+from typing import List
+from tqdm import tqdm
+from diffusers import DDPMScheduler
 
 import library.utils.config_util as config_util
 import library.train.sdxl_train_util as sdxl_train_util
+import library.train.custom_train_functions as custom_train_functions
+
+from library.strategies import strategy_sdxl, strategy_sd, strategy_base
+from library.models import sdxl_model_util
+from library.optimizations import deepspeed_utils
+from library.train.arguments import verify_training_args, prepare_dataset_args, get_sanitized_config_or_none, \
+    add_sd_models_arguments, add_dataset_arguments, add_training_arguments, add_masked_loss_arguments, \
+    add_sd_saving_arguments, add_optimizer_arguments, verify_command_line_training_args, read_config_from_file
+from library.train.checkpointing import resume_from_local_or_hf_if_specified, save_state_on_train_end
+from library.train.dataset import load_arbitrary_dataset, collator_class, debug_dataset
+from library.train.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
+from library.train.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
+from library.train.optimizer import get_optimizer, get_scheduler_fix
+from library.train.training_utils import append_lr_to_logs_with_names, set_torch_cuda_reduced_precision, args_set_seed, \
+    prepare_accelerator, prepare_dtype, get_noise_noisy_latents_and_timesteps, append_lr_to_logs
+from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils import sai_model_spec
+from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
+from library.utils.device_utils import init_ipex, clean_memory_on_device
+
 from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
-import library.train.custom_train_functions as custom_train_functions
+
 from library.train.custom_train_functions import (
     apply_snr_weight,
     prepare_scheduler_for_custom_training,
@@ -45,8 +47,11 @@ from library.train.custom_train_functions import (
     apply_debiased_estimation,
     apply_masked_loss,
 )
-from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
 
+init_ipex()
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 UNET_NUM_BLOCKS_FOR_BLOCK_LR = 23
 
@@ -95,14 +100,14 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
 
         block_index += 1
 
-    train_util.append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
+    append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
 
 
 def train(args):
-    train_util.verify_training_args(args)
-    train_util.prepare_dataset_args(args, True)
+    verify_training_args(args)
+    prepare_dataset_args(args, True)
     sdxl_train_util.verify_sdxl_training_args(args)
-    train_util.set_torch_cuda_reduced_precision(args)
+    set_torch_cuda_reduced_precision(args)
     deepspeed_utils.prepare_deepspeed_args(args)
     setup_logging(args, reset=True)
 
@@ -124,7 +129,7 @@ def train(args):
     cache_latents = args.cache_latents
     use_dreambooth_method = args.in_json is None
 
-    train_util.args_set_seed(args)
+    args_set_seed(args)
 
     tokenize_strategy = strategy_sdxl.SdxlTokenizeStrategy(args.max_token_length, args.tokenizer_cache_dir)
     strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
@@ -180,18 +185,18 @@ def train(args):
         blueprint = blueprint_generator.generate(user_config, args)
         train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
     else:
-        train_dataset_group = train_util.load_arbitrary_dataset(args)
+        train_dataset_group = load_arbitrary_dataset(args)
         val_dataset_group = None
 
     current_epoch = Value("i", 0)
     current_step = Value("i", 0)
     ds_for_collator = train_dataset_group if args.max_data_loader_n_workers == 0 else None
-    collator = train_util.collator_class(current_epoch, current_step, ds_for_collator)
+    collator = collator_class(current_epoch, current_step, ds_for_collator)
 
     train_dataset_group.verify_bucket_reso_steps(32)
 
     if args.debug_dataset:
-        train_util.debug_dataset(train_dataset_group, True)
+        debug_dataset(train_dataset_group, True)
         return
     if len(train_dataset_group) == 0:
         logger.error(
@@ -211,10 +216,10 @@ def train(args):
 
     # acceleratorを準備する
     logger.info("prepare accelerator")
-    accelerator = train_util.prepare_accelerator(args)
+    accelerator = prepare_accelerator(args)
 
     # mixed precisionに対応した型を用意しておき適宜castする
-    weight_dtype, save_dtype = train_util.prepare_dtype(args)
+    weight_dtype, save_dtype = prepare_dtype(args)
     vae_dtype = torch.float32 if args.no_half_vae else weight_dtype
 
     # モデルを読み込む
@@ -266,7 +271,7 @@ def train(args):
     else:
         # Windows版のxformersはfloatで学習できなかったりするのでxformersを使わない設定も可能にしておく必要がある
         accelerator.print("Disable Diffusers' xformers")
-        train_util.replace_unet_modules(unet, args.mem_eff_attn, args.xformers, args.sdpa)
+        replace_unet_modules(unet, args.mem_eff_attn, args.xformers, args.sdpa)
         if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
             vae.set_use_memory_efficient_attention_xformers(args.xformers)
 
@@ -412,14 +417,14 @@ def train(args):
         # prepare optimizers for each group
         optimizers = []
         for group in grouped_params:
-            _, _, optimizer = train_util.get_optimizer(args, trainable_params=[group])
+            _, _, optimizer = get_optimizer(args, trainable_params=[group])
             optimizers.append(optimizer)
         optimizer = optimizers[0]  # avoid error in the following code
 
         logger.info(f"using {len(optimizers)} optimizers for fused optimizer groups")
 
     else:
-        _, _, optimizer = train_util.get_optimizer(args, trainable_params=params_to_optimize)
+        _, _, optimizer = get_optimizer(args, trainable_params=params_to_optimize)
 
     # prepare dataloader
     # strategies are set here because they cannot be referenced in another process. Copy them with the dataset
@@ -452,10 +457,10 @@ def train(args):
     # lr schedulerを用意する
     if args.fused_optimizer_groups:
         # prepare lr schedulers for each optimizer
-        lr_schedulers = [train_util.get_scheduler_fix(args, optimizer, accelerator.num_processes) for optimizer in optimizers]
+        lr_schedulers = [get_scheduler_fix(args, optimizer, accelerator.num_processes) for optimizer in optimizers]
         lr_scheduler = lr_schedulers[0]  # avoid error in the following code
     else:
-        lr_scheduler = train_util.get_scheduler_fix(args, optimizer, accelerator.num_processes)
+        lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
 
     # 実験的機能：勾配も含めたfp16/bf16学習を行う　モデル全体をfp16/bf16にする
     if args.full_fp16:
@@ -518,10 +523,10 @@ def train(args):
     if args.full_fp16:
         # During deepseed training, accelerate not handles fp16/bf16|mixed precision directly via scaler. Let deepspeed engine do.
         # -> But we think it's ok to patch accelerator even if deepspeed is enabled.
-        train_util.patch_accelerator_for_fp16_training(accelerator)
+        patch_accelerator_for_fp16_training(accelerator)
 
     # resumeする
-    train_util.resume_from_local_or_hf_if_specified(accelerator, args)
+    resume_from_local_or_hf_if_specified(accelerator, args)
 
     if args.fused_backward_pass:
         # use fused optimizer for backward pass: other optimizers will be supported in the future
@@ -615,7 +620,7 @@ def train(args):
             init_kwargs = toml.load(args.log_tracker_config)
         accelerator.init_trackers(
             "finetuning" if args.log_tracker_name is None else args.log_tracker_name,
-            config=train_util.get_sanitized_config_or_none(args),
+            config=get_sanitized_config_or_none(args),
             init_kwargs=init_kwargs,
         )
 
@@ -627,7 +632,7 @@ def train(args):
         # log empty object to commit the sample images to wandb
         accelerator.log({}, step=0)
 
-    loss_recorder = train_util.LossRecorder()
+    loss_recorder = LossRecorder()
     for epoch in range(num_train_epochs):
         accelerator.print(f"\nepoch {epoch+1}/{num_train_epochs}")
         current_epoch.value = epoch + 1
@@ -701,7 +706,7 @@ def train(args):
 
                 # Sample noise, sample a random timestep for each image, and add noise to the latents,
                 # with noise offset and/or multires noise if specified
-                noise, noisy_latents, timesteps = train_util.get_noise_noisy_latents_and_timesteps(args, noise_scheduler, latents)
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(args, noise_scheduler, latents)
 
                 noisy_latents = noisy_latents.to(weight_dtype)  # TODO check why noisy_latents is not weight_dtype
 
@@ -715,7 +720,7 @@ def train(args):
                 else:
                     target = noise
 
-                huber_c = train_util.get_huber_threshold_if_needed(args, timesteps, noise_scheduler)
+                huber_c = get_huber_threshold_if_needed(args, timesteps, noise_scheduler)
                 if (
                     args.min_snr_gamma
                     or args.scale_v_pred_loss_like_noise_pred
@@ -724,7 +729,7 @@ def train(args):
                     or args.masked_loss
                 ):
                     # do not mean over batch dimension for snr weight or scale v-pred loss
-                    loss = train_util.conditional_loss(noise_pred.float(), target.float(), args.loss_type, "none", huber_c, scale=float(args.loss_scale))
+                    loss = conditional_loss(noise_pred.float(), target.float(), args.loss_type, "none", huber_c, scale=float(args.loss_scale))
                     if args.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                         loss = apply_masked_loss(loss, batch)
                     loss = loss.mean([1, 2, 3])
@@ -740,7 +745,7 @@ def train(args):
 
                     loss = loss.mean()  # mean over batch dimension
                 else:
-                    loss = train_util.conditional_loss(noise_pred.float(), target.float(), args.loss_type, "mean", huber_c, scale=float(args.loss_scale))
+                    loss = conditional_loss(noise_pred.float(), target.float(), args.loss_type, "mean", huber_c, scale=float(args.loss_scale))
 
                 accelerator.backward(loss)
 
@@ -806,7 +811,7 @@ def train(args):
             if len(accelerator.trackers) > 0:
                 logs = {"loss": current_loss}
                 if block_lrs is None:
-                    train_util.append_lr_to_logs(logs, lr_scheduler, args.optimizer_type, including_unet=train_unet)
+                    append_lr_to_logs(logs, lr_scheduler, args.optimizer_type, including_unet=train_unet)
                 else:
                     append_block_lr_to_logs(block_lrs, logs, lr_scheduler, args.optimizer_type)  # U-Net is included in block_lrs
 
@@ -869,7 +874,7 @@ def train(args):
     accelerator.end_training()
 
     if args.save_state or args.save_state_on_train_end:
-        train_util.save_state_on_train_end(args, accelerator)
+        save_state_on_train_end(args, accelerator)
 
     del accelerator  # この後メモリを使うのでこれは消す
 
@@ -897,14 +902,14 @@ def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
 
     add_logging_arguments(parser)
-    train_util.add_sd_models_arguments(parser)
+    add_sd_models_arguments(parser)
     sai_model_spec.add_model_spec_arguments(parser)
-    train_util.add_dataset_arguments(parser, True, True, True)
-    train_util.add_training_arguments(parser, False)
-    train_util.add_masked_loss_arguments(parser)
+    add_dataset_arguments(parser, True, True, True)
+    add_training_arguments(parser, False)
+    add_masked_loss_arguments(parser)
     deepspeed_utils.add_deepspeed_arguments(parser)
-    train_util.add_sd_saving_arguments(parser)
-    train_util.add_optimizer_arguments(parser)
+    add_sd_saving_arguments(parser)
+    add_optimizer_arguments(parser)
     config_util.add_config_arguments(parser)
     custom_train_functions.add_custom_train_arguments(parser)
     sdxl_train_util.add_sdxl_training_arguments(parser)
@@ -951,7 +956,7 @@ if __name__ == "__main__":
     parser = setup_parser()
 
     args = parser.parse_args()
-    train_util.verify_command_line_training_args(args)
-    args = train_util.read_config_from_file(args, parser)
+    verify_command_line_training_args(args)
+    args = read_config_from_file(args, parser)
 
     train(args)

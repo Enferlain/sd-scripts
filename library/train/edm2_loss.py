@@ -1,9 +1,12 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from diffusers import DDPMScheduler
 import os
 import logging
+
+from diffusers import DDPMScheduler
+
+from library.train.checkpointing import precalculate_safetensors_hashes
 
 logger = logging.getLogger(__name__)
 
@@ -132,12 +135,11 @@ class AdaptiveLossWeightMLP(nn.Module):
 
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import save_file
-            from library.train import train_util
 
             # Precalculate model hashes to save time on indexing
             if metadata is None:
                 metadata = {}
-            model_hash, legacy_hash = train_util.precalculate_safetensors_hashes(state_dict, metadata)
+            model_hash, legacy_hash = precalculate_safetensors_hashes(state_dict, metadata)
             metadata["sshs_model_hash"] = model_hash
             metadata["sshs_legacy_hash"] = legacy_hash
 

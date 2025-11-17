@@ -1,15 +1,16 @@
 import argparse
 import json
+import os
+import logging
+
 from pathlib import Path
 from typing import List
 from tqdm import tqdm
-import library.train.train_util as train_util
-import os
+
+from library.train.image_utils import glob_images_pathlib
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +20,7 @@ def main(args):
     ), "recursive requires full_path / recursiveはfull_pathと同時に指定してください"
 
     train_data_dir_path = Path(args.train_data_dir)
-    image_paths: List[Path] = train_util.glob_images_pathlib(train_data_dir_path, args.recursive)
+    image_paths: List[Path] = glob_images_pathlib(train_data_dir_path, args.recursive)
     logger.info(f"found {len(image_paths)} images.")
 
     if args.in_json is None and Path(args.out_json).is_file():

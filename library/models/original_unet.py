@@ -106,19 +106,21 @@ v2.1
 }
 """
 
+import logging
 import math
-from types import SimpleNamespace
-from typing import Dict, Optional, Tuple, Union
 import torch
+
 from torch import nn
 from torch.nn import functional as F
 from einops import rearrange
+from types import SimpleNamespace
+from typing import Dict, Optional, Tuple, Union
+
 from library.utils.common_utils import setup_logging
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
+
 
 BLOCK_OUT_CHANNELS: Tuple[int] = (320, 640, 1280, 1280)
 TIMESTEP_INPUT_DIM = BLOCK_OUT_CHANNELS[0]
@@ -137,19 +139,15 @@ DOWN_BLOCK_TYPES = ["CrossAttnDownBlock2D", "CrossAttnDownBlock2D", "CrossAttnDo
 UP_BLOCK_TYPES = ["UpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D"]
 
 # region memory efficient attention
-
 # FlashAttentionを使うCrossAttention
 # based on https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/memory_efficient_attention_pytorch/flash_attention.py
 # LICENSE MIT https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/LICENSE
 
 # constants
-
 EPSILON = 1e-6
 
 
 # helper functions
-
-
 def exists(val):
     return val is not None
 
@@ -159,10 +157,7 @@ def default(val, d):
 
 
 # flash attention forwards and backwards
-
 # https://arxiv.org/abs/2205.14135
-
-
 class FlashAttentionFunction(torch.autograd.Function):
     @staticmethod
     @torch.no_grad()

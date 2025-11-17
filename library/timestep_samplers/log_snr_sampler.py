@@ -1,6 +1,5 @@
 # tools/log_snr_sampler.py
 import torch
-import math
 
 
 class LogSNRUniformSampler:

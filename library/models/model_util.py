@@ -3,23 +3,22 @@
 
 import math
 import os
-
+import logging
 import torch
-from library.utils.device_utils import init_ipex
-
-init_ipex()
-
 import diffusers
+
 from transformers import CLIPTextModel, CLIPTokenizer, CLIPTextConfig
 from diffusers import AutoencoderKL, DDIMScheduler, StableDiffusionPipeline  # , UNet2DConditionModel
 from safetensors.torch import load_file, save_file
+
 from library.models.original_unet import UNet2DConditionModel
 from library.utils.common_utils import setup_logging
+from library.utils.device_utils import init_ipex
+init_ipex()
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
+
 
 # DiffUsers版StableDiffusionのモデルパラメータ
 NUM_TRAIN_TIMESTEPS = 1000

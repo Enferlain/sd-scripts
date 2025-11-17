@@ -5,25 +5,28 @@ import os
 import time
 import concurrent.futures
 import torch
+import logging
+
 from safetensors.torch import load_file, save_file
 from tqdm import tqdm
-from library.train import train_util
+
+from library.train.checkpointing import load_metadata_from_safetensors, build_minimum_network_metadata, \
+    precalculate_safetensors_hashes
+from library.train.constants import SS_METADATA_KEY_V2, SS_METADATA_KEY_BASE_MODEL_VERSION
+from svd_merge_lora import format_lbws, get_lbw_block_index, LAYER26
 from library.models import sdxl_model_util
 from library.networks import lora, oft
-from svd_merge_lora import format_lbws, get_lbw_block_index, LAYER26
 from library.utils.common_utils import setup_logging
 from library.utils import sai_model_spec
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 
 def load_state_dict(file_name, dtype):
     if os.path.splitext(file_name)[1] == ".safetensors":
         sd = load_file(file_name)
-        metadata = train_util.load_metadata_from_safetensors(file_name)
+        metadata = load_metadata_from_safetensors(file_name)
     else:
         sd = torch.load(file_name, map_location="cpu")
         metadata = {}
@@ -265,9 +268,9 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
 
         if lora_metadata is not None:
             if v2 is None:
-                v2 = lora_metadata.get(train_util.SS_METADATA_KEY_V2, None)  # returns string, SDXLはv2がないのでFalseのはず
+                v2 = lora_metadata.get(SS_METADATA_KEY_V2, None)  # returns string, SDXLはv2がないのでFalseのはず
             if base_model is None:
-                base_model = lora_metadata.get(train_util.SS_METADATA_KEY_BASE_MODEL_VERSION, None)
+                base_model = lora_metadata.get(SS_METADATA_KEY_BASE_MODEL_VERSION, None)
 
         # get alpha and dim
         alphas = {}  # alpha for current model
@@ -365,7 +368,7 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
     # build minimum metadata
     dims = f"{dims_list[0]}" if all_same_dims else "Dynamic"
     alphas = f"{alphas_list[0]}" if all_same_alphas else "Dynamic"
-    metadata = train_util.build_minimum_network_metadata(v2, base_model, "networks.lora", dims, alphas, None)
+    metadata = build_minimum_network_metadata(v2, base_model, "networks.lora", dims, alphas, None)
 
     return merged_sd, metadata
 
@@ -433,7 +436,7 @@ def merge(args):
 
         logger.info(f"calculating hashes and creating metadata...")
 
-        model_hash, legacy_hash = train_util.precalculate_safetensors_hashes(state_dict, metadata)
+        model_hash, legacy_hash = precalculate_safetensors_hashes(state_dict, metadata)
         metadata["sshs_model_hash"] = model_hash
         metadata["sshs_legacy_hash"] = legacy_hash
 

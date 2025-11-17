@@ -1,18 +1,18 @@
-
-
 from tqdm import tqdm
-import library.train.train_util as train_util
+import torch
+import logging
 import argparse
+
 from transformers import CLIPTokenizer
 
-import torch
+from library.networks import lora
+from library.train.model_prep import _load_target_model
+from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, get_preferred_device
+
 init_ipex()
 
-from library.networks import lora
-from library.utils.common_utils import setup_logging
 setup_logging()
-import logging
 logger = logging.getLogger(__name__)
 
 TOKENIZER_PATH = "openai/clip-vit-large-patch14"
@@ -28,7 +28,7 @@ def interrogate(args):
   logger.info(f"loading SD model: {args.sd_model}")
   args.pretrained_model_name_or_path = args.sd_model
   args.vae = None
-  text_encoder, vae, unet, _ = train_util._load_target_model(args, weights_dtype, DEVICE)
+  text_encoder, vae, unet, _ = _load_target_model(args, weights_dtype, DEVICE)
 
   logger.info(f"loading LoRA: {args.model}")
   network, weights_sd = lora.create_network_from_weights(1.0, args.model, vae, text_encoder, unet)

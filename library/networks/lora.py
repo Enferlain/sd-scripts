@@ -3,19 +3,21 @@
 # https://github.com/microsoft/LoRA/blob/main/loralib/layers.py
 # https://github.com/cloneofsimo/lora/blob/master/lora_diffusion/lora.py
 
+import logging
 import math
 import os
+import torch
+import re
+
 from typing import Dict, List, Optional, Type, Union
 from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
-import torch
-import re
+
+from library.train.checkpointing import precalculate_safetensors_hashes
 from library.utils.common_utils import setup_logging
 from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
 
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 RE_UPDOWN = re.compile(r"(up|down)_blocks_(\d+)_(resnets|upsamplers|downsamplers|attentions)_(\d+)_")
@@ -1270,12 +1272,11 @@ class LoRANetwork(torch.nn.Module):
 
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import save_file
-            from library.train import train_util
 
             # Precalculate model hashes to save time on indexing
             if metadata is None:
                 metadata = {}
-            model_hash, legacy_hash = train_util.precalculate_safetensors_hashes(state_dict, metadata)
+            model_hash, legacy_hash = precalculate_safetensors_hashes(state_dict, metadata)
             metadata["sshs_model_hash"] = model_hash
             metadata["sshs_legacy_hash"] = legacy_hash
 

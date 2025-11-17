@@ -1,27 +1,28 @@
 import argparse
 import os
 import json
+import numpy as np
+import torch
+import logging
 
 from pathlib import Path
 from typing import List
 from tqdm import tqdm
-import numpy as np
 from PIL import Image
+from torchvision import transforms
 
-import torch
+import library.models.model_util as model_util
+from library.train.caching import cache_batch_latents, is_disk_cached_latents_is_expected
+from library.train.data_structures import BucketManager, ImageInfo
+from library.train.dataset import ImageLoadingDataset
+from library.train.image_utils import glob_images_pathlib
+
+from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, get_preferred_device
 
 init_ipex()
 
-from torchvision import transforms
-
-import library.models.model_util as model_util
-import library.train.train_util as train_util
-from library.utils.common_utils import setup_logging
-
 setup_logging()
-import logging
-
 logger = logging.getLogger(__name__)
 
 DEVICE = get_preferred_device()
@@ -68,7 +69,7 @@ def main(args):
         )
 
     train_data_dir_path = Path(args.train_data_dir)
-    image_paths: List[str] = [str(p) for p in train_util.glob_images_pathlib(train_data_dir_path, args.recursive)]
+    image_paths: List[str] = [str(p) for p in glob_images_pathlib(train_data_dir_path, args.recursive)]
     logger.info(f"found {len(image_paths)} images.")
 
     if os.path.exists(args.in_json):
@@ -95,7 +96,7 @@ def main(args):
         len(max_reso) == 2
     ), f"illegal resolution (not 'width,height') / 画像サイズに誤りがあります。'幅,高さ'で指定してください: {args.max_resolution}"
 
-    bucket_manager = train_util.BucketManager(
+    bucket_manager = BucketManager(
         args.bucket_no_upscale, max_reso, args.min_bucket_reso, args.max_bucket_reso, args.bucket_reso_steps
     )
     if not args.bucket_no_upscale:
@@ -111,12 +112,12 @@ def main(args):
     def process_batch(is_last):
         for bucket in bucket_manager.buckets:
             if (is_last and len(bucket) > 0) or len(bucket) >= args.batch_size:
-                train_util.cache_batch_latents(vae, True, bucket, args.flip_aug, args.alpha_mask, False, random_crop_padding_percent=0.05)
+                cache_batch_latents(vae, True, bucket, args.flip_aug, args.alpha_mask, False, random_crop_padding_percent=0.05)
                 bucket.clear()
 
     # 読み込みの高速化のためにDataLoaderを使うオプション
     if args.max_data_loader_n_workers is not None:
-        dataset = train_util.ImageLoadingDataset(image_paths)
+        dataset = ImageLoadingDataset(image_paths)
         data = torch.utils.data.DataLoader(
             dataset,
             batch_size=1,
@@ -174,11 +175,11 @@ def main(args):
         # 既に存在するファイルがあればshape等を確認して同じならskipする
         npz_file_name = get_npz_filename(args.train_data_dir, image_key, args.full_path, args.recursive)
         if args.skip_existing:
-            if train_util.is_disk_cached_latents_is_expected(reso, npz_file_name, args.flip_aug):
+            if is_disk_cached_latents_is_expected(reso, npz_file_name, args.flip_aug):
                 continue
 
         # バッチへ追加
-        image_info = train_util.ImageInfo(image_key, 1, "", False, image_path)
+        image_info = ImageInfo(image_key, 1, "", False, image_path)
         image_info.latents_npz = npz_file_name
         image_info.bucket_reso = reso
         image_info.resized_size = resized_size

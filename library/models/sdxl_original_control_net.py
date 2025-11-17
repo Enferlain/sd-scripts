@@ -1,19 +1,18 @@
 # some parts are modified from Diffusers library (Apache License 2.0)
-
-from typing import Any, Optional
+import logging
 import torch
 import torch.utils.checkpoint
+
+from typing import Any, Optional
 from torch import nn
 from torch.nn import functional as F
+
 from library.utils.common_utils import setup_logging
-
-setup_logging()
-import logging
-
-logger = logging.getLogger(__name__)
-
 from library.models import sdxl_original_unet
 from library.models.sdxl_model_util import convert_sdxl_unet_state_dict_to_diffusers, convert_diffusers_unet_state_dict_to_sdxl
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 class ControlNetConditioningEmbedding(nn.Module):

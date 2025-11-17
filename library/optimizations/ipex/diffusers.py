@@ -1,10 +1,10 @@
-from functools import wraps
 import torch
 import diffusers  # pylint: disable=import-error
+
+from functools import wraps
 from diffusers.utils import torch_utils  # pylint: disable=import-error, unused-import # noqa: F401
 
 # pylint: disable=protected-access, missing-function-docstring, line-too-long
-
 
 # Diffusers FreeU
 # Diffusers is imported before ipex hijacks so fourier_filter needs hijacking too

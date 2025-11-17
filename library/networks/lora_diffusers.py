@@ -1,23 +1,26 @@
 # Diffusersで動くLoRA。このファイル単独で完結する。
 # LoRA module for Diffusers. This file works independently.
 
+import logging
 import bisect
 import math
 import random
+import numpy as np
+import torch
+
 from typing import Any, Dict, List, Mapping, Optional, Union
 from diffusers import UNet2DConditionModel
-import numpy as np
 from tqdm import tqdm
 from transformers import CLIPTextModel
 
-import torch
 from library.utils.device_utils import init_ipex, get_preferred_device
+from library.utils.common_utils import setup_logging
+
 init_ipex()
 
-from library.utils.common_utils import setup_logging
 setup_logging()
-import logging
 logger = logging.getLogger(__name__)
+
 
 def make_unet_conversion_map() -> Dict[str, str]:
     unet_conversion_map_layer = []

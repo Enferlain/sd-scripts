@@ -3,11 +3,11 @@
 
 import inspect
 import re
-from typing import Callable, List, Optional, Union
-
 import numpy as np
 import PIL.Image
 import torch
+
+from typing import Callable, List, Optional, Union
 from packaging import version
 from tqdm import tqdm
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
@@ -18,9 +18,10 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from diffusers.utils import logging
 from PIL import Image
 
-from library.train import train_util, sdxl_train_util
+from library.train import sdxl_train_util
 from library.strategies import strategy_sdxl, strategy_base
 from library.models import sdxl_original_unet, sdxl_original_control_net, sdxl_model_util
+from library.train.training_utils import pool_workaround
 
 try:
     from diffusers.utils import PIL_INTERPOLATION
@@ -222,7 +223,7 @@ def get_hidden_states(text_encoder, input_ids, is_sdxl_text_encoder2: bool, eos_
         enc_out = text_encoder(input_ids.to(text_encoder.device), output_hidden_states=True, return_dict=True)
         hidden_states = enc_out["hidden_states"][-2]  # penuultimate layer
         # pool = enc_out["text_embeds"]
-        pool = train_util.pool_workaround(text_encoder, enc_out["last_hidden_state"], input_ids, eos_token_id)
+        pool = pool_workaround(text_encoder, enc_out["last_hidden_state"], input_ids, eos_token_id)
     hidden_states = hidden_states.to(device)
     if pool is not None:
         pool = pool.to(device)
