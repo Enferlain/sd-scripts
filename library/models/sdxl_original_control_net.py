@@ -7,9 +7,14 @@ from typing import Any, Optional
 from torch import nn
 from torch.nn import functional as F
 
+from library.constants import ADM_SDXL_IN_CHANNELS
 from library.utils.common_utils import setup_logging
 from library.models import sdxl_original_unet
-from library.models.sdxl_model_util import convert_sdxl_unet_state_dict_to_diffusers, convert_diffusers_unet_state_dict_to_sdxl
+
+from library.models.sdxl_model_util import (
+    convert_sdxl_unet_state_dict_to_diffusers,
+    convert_diffusers_unet_state_dict_to_sdxl
+)
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -243,7 +248,7 @@ if __name__ == "__main__":
         x = torch.randn(batch_size, 4, 128, 128).cuda()  # 1024x1024
         t = torch.randint(low=0, high=1000, size=(batch_size,), device="cuda")
         txt = torch.randn(batch_size, 77, 2048).cuda()
-        vector = torch.randn(batch_size, sdxl_original_unet.ADM_IN_CHANNELS).cuda()
+        vector = torch.randn(batch_size, ADM_SDXL_IN_CHANNELS).cuda()
         cond_img = torch.rand(batch_size, 3, 1024, 1024).cuda()
 
         with torch.cuda.amp.autocast(enabled=True, dtype=torch.bfloat16):

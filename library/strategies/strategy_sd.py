@@ -5,16 +5,13 @@ import logging
 from typing import Any, List, Optional, Tuple, Union
 from transformers import CLIPTokenizer
 
+from library.constants import HIGH_VRAM, V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
 from library.strategies.strategy_base import LatentsCachingStrategy, TokenizeStrategy, TextEncodingStrategy
-from library.train.constants import HIGH_VRAM
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 
 setup_logging()
 logger = logging.getLogger(__name__)
-
-TOKENIZER_ID = "openai/clip-vit-large-patch14"
-V2_STABLE_DIFFUSION_ID = "stabilityai/stable-diffusion-2"  # ここからtokenizerだけ使う v2とv2.1はtokenizer仕様は同じ
 
 
 class SdTokenizeStrategy(TokenizeStrategy):

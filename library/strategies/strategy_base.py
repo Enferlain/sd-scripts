@@ -1,7 +1,6 @@
 # base class for platform strategies. this file defines the interface for strategies
 
 import os
-import re
 import numpy as np
 import torch
 import logging
@@ -9,11 +8,11 @@ import logging
 from typing import Any, List, Optional, Tuple, Union, Callable
 from transformers import CLIPTokenizer
 
-from library.train.caching import load_images_and_masks_for_caching
+from library.constants import re_attention
+from library.utils.common_utils import setup_logging
+from library.data.caching import load_images_and_masks_for_caching
 # TODO remove circular import by moving ImageInfo to a separate file
 # from library.train_util import ImageInfo
-
-from library.utils.common_utils import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -22,23 +21,7 @@ logger = logging.getLogger(__name__)
 class TokenizeStrategy:
     _strategy = None  # strategy instance: actual strategy class
 
-    _re_attention = re.compile(
-        r"""\\\(|
-\\\)|
-\\\[|
-\\]|
-\\\\|
-\\|
-\(|
-\[|
-:([+-]?[.\d]+)\)|
-\)|
-]|
-[^\\()\[\]:]+|
-:
-""",
-        re.X,
-    )
+    _re_attention = re_attention
 
     @classmethod
     def set_strategy(cls, strategy):

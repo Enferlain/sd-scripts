@@ -6,14 +6,12 @@ import torch
 from typing import Any, List, Optional, Tuple, Union
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 
+from library.constants import TOKENIZER1_PATH, TOKENIZER2_PATH
 from library.strategies.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
 from library.utils.common_utils import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
-
-TOKENIZER1_PATH = "openai/clip-vit-large-patch14"
-TOKENIZER2_PATH = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
 
 
 class SdxlTokenizeStrategy(TokenizeStrategy):

@@ -1,5 +1,6 @@
 import torch
 import safetensors
+import math
 import logging
 
 from typing import List
@@ -9,70 +10,52 @@ from safetensors.torch import load_file, save_file
 from transformers import CLIPTextModel, CLIPTextConfig, CLIPTextModelWithProjection, CLIPTokenizer
 from diffusers import AutoencoderKL, EulerDiscreteScheduler, UNet2DConditionModel
 
-from library.models import sdxl_original_unet, model_util
+from library.constants import SDXL_KEY_PREFIX, DIFFUSERS_SDXL_UNET_CONFIG, DIFFUSERS_REF_MODEL_ID_SDXL
 from library.utils.common_utils import setup_logging
+from library.models import sdxl_original_unet, model_util
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
-VAE_SCALE_FACTOR = 0.13025
-MODEL_VERSION_SDXL_BASE_V1_0 = "sdxl_base_v1-0"
 
-# Diffusersの設定を読み込むための参照モデル
-DIFFUSERS_REF_MODEL_ID_SDXL = "stabilityai/stable-diffusion-xl-base-1.0"
+def timestep_embedding(timesteps, dim, max_period=10000):
+    """
+    Create sinusoidal timestep embeddings.
+    :param timesteps: a 1-D Tensor of N indices, one per batch element.
+                      These may be fractional.
+    :param dim: the dimension of the output.
+    :param max_period: controls the minimum frequency of the embeddings.
+    :return: an [N x dim] Tensor of positional embeddings.
+    """
+    half = dim // 2
+    freqs = torch.exp(-math.log(max_period) * torch.arange(start=0, end=half, dtype=torch.float32) / half).to(
+        device=timesteps.device
+    )
+    args = timesteps[:, None].float() * freqs[None]
+    embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
+    if dim % 2:
+        embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
+    return embedding
 
-DIFFUSERS_SDXL_UNET_CONFIG = {
-    "act_fn": "silu",
-    "addition_embed_type": "text_time",
-    "addition_embed_type_num_heads": 64,
-    "addition_time_embed_dim": 256,
-    "attention_head_dim": [5, 10, 20],
-    "block_out_channels": [320, 640, 1280],
-    "center_input_sample": False,
-    "class_embed_type": None,
-    "class_embeddings_concat": False,
-    "conv_in_kernel": 3,
-    "conv_out_kernel": 3,
-    "cross_attention_dim": 2048,
-    "cross_attention_norm": None,
-    "down_block_types": ["DownBlock2D", "CrossAttnDownBlock2D", "CrossAttnDownBlock2D"],
-    "downsample_padding": 1,
-    "dual_cross_attention": False,
-    "encoder_hid_dim": None,
-    "encoder_hid_dim_type": None,
-    "flip_sin_to_cos": True,
-    "freq_shift": 0,
-    "in_channels": 4,
-    "layers_per_block": 2,
-    "mid_block_only_cross_attention": None,
-    "mid_block_scale_factor": 1,
-    "mid_block_type": "UNetMidBlock2DCrossAttn",
-    "norm_eps": 1e-05,
-    "norm_num_groups": 32,
-    "num_attention_heads": None,
-    "num_class_embeds": None,
-    "only_cross_attention": False,
-    "out_channels": 4,
-    "projection_class_embeddings_input_dim": 2816,
-    "resnet_out_scale_factor": 1.0,
-    "resnet_skip_time_act": False,
-    "resnet_time_scale_shift": "default",
-    "sample_size": 128,
-    "time_cond_proj_dim": None,
-    "time_embedding_act_fn": None,
-    "time_embedding_dim": None,
-    "time_embedding_type": "positional",
-    "timestep_post_act": None,
-    "transformer_layers_per_block": [1, 2, 10],
-    "up_block_types": ["CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "UpBlock2D"],
-    "upcast_attention": False,
-    "use_linear_projection": True,
-}
+
+def get_timestep_embedding(x, outdim):
+    assert len(x.shape) == 2
+    b, dims = x.shape[0], x.shape[1]
+    x = torch.flatten(x)
+    emb = timestep_embedding(x, outdim)
+    emb = torch.reshape(emb, (b, dims * outdim))
+    return emb
+
+
+def get_size_embeddings(orig_size, crop_size, target_size, device):
+    emb1 = get_timestep_embedding(orig_size, 256)
+    emb2 = get_timestep_embedding(crop_size, 256)
+    emb3 = get_timestep_embedding(target_size, 256)
+    vector = torch.cat([emb1, emb2, emb3], dim=1).to(device)
+    return vector
 
 
 def convert_sdxl_text_encoder_2_checkpoint(checkpoint, max_length):
-    SDXL_KEY_PREFIX = "conditioner.embedders.1.model."
-
     # SD2のと、基本的には同じ。logit_scaleを後で使うので、それを追加で返す
     # logit_scaleはcheckpointの保存時に使用する
     def convert_key(key):

@@ -7,16 +7,14 @@ import torch
 import math
 
 import matplotlib
-
-from library.train.optimizer import get_dummy_scheduler
-
 matplotlib.use('Agg')  # Set the backend to 'Agg', non-interactive backend
 
 import matplotlib.pyplot as plt
 plt.ioff()  # Explicitly turn off interactive mode
 
-from library.train import edm2_loss
 from library.utils.common_utils import setup_logging
+from library.training.optimizer import get_dummy_scheduler
+from library.losses import edm2_loss
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -87,19 +85,27 @@ def prepare_edm2_loss_weighting(args, noise_scheduler, accelerator):
 
 
 def handle_conflicting_configuration(args):
+    # Check for the critical conflicting settings
     if args.edm2_loss_weighting and args.edm2_loss_weighting_importance_weighting and not args.edm2_loss_weighting_importance_weighting_safety_override:
+
+        # --- Debiased Estimation Check ---
         if args.debiased_estimation_loss:
             args.debiased_estimation_loss = False
-            logger.warning("Debiased estimation loss AND EDM2 loss weighting with importance weighting are enabled. " \
-                           "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, " \
-                           "as such, Debiased estimation loss has been DISABLED. " \
-                           "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True.")
+            logger.warning(
+                "Debiased estimation loss AND EDM2 loss weighting with importance weighting are enabled. "
+                "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, "
+                "as such, **Debiased estimation loss has been DISABLED**. "
+                "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True."
+            )
 
+        # --- Min SNR Gamma Check ---
         if args.min_snr_gamma:
-            logger.warning("Min snr gamma AND EDM2 loss weighting with importance weighting are enabled. " \
-                           "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, " \
-                           "as such, min snr gamma has been DISABLED. " \
-                           "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True.")
+            logger.warning(
+                "Min snr gamma AND EDM2 loss weighting with importance weighting are enabled. "
+                "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, "
+                "as such, **min snr gamma has been DISABLED**. "
+                "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True."
+            )
             args.min_snr_gamma = None
 
 

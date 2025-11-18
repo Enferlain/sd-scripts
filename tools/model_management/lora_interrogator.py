@@ -5,18 +5,16 @@ import argparse
 
 from transformers import CLIPTokenizer
 
+from library.constants import V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
 from library.networks import lora
-from library.train.model_prep import _load_target_model
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, get_preferred_device
+from library.training.model_prep import _load_target_model
 
 init_ipex()
 
 setup_logging()
 logger = logging.getLogger(__name__)
-
-TOKENIZER_PATH = "openai/clip-vit-large-patch14"
-V2_STABLE_DIFFUSION_PATH = "stabilityai/stable-diffusion-2"     # ここからtokenizerだけ使う
 
 DEVICE = get_preferred_device()
 
@@ -46,9 +44,9 @@ def interrogate(args):
 
   logger.info("loading tokenizer")
   if args.v2:
-    tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(V2_STABLE_DIFFUSION_PATH, subfolder="tokenizer")
+    tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(V2_STABLE_DIFFUSION_ID, subfolder="tokenizer")
   else:
-    tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(TOKENIZER_PATH)  # , model_max_length=max_token_length + 2)
+    tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(TOKENIZER_ID)  # , model_max_length=max_token_length + 2)
 
   text_encoder.to(DEVICE, dtype=weights_dtype)
   text_encoder.eval()

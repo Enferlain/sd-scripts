@@ -7,20 +7,31 @@ import logging
 # TODO add back missing pipes
 # from library import flux_train_utils, flux_utils, strategy_flux
 import library.utils.sai_model_spec as sai_model_spec
-from library.train.arguments import prepare_dataset_args, enable_high_vram, add_sd_models_arguments, \
-    add_training_arguments, add_dataset_arguments, add_masked_loss_arguments, add_dit_training_arguments, \
-    read_config_from_file
-from library.train.dataset import load_arbitrary_dataset
-from library.train.model_prep import load_target_model
-from library.train.training_utils import args_set_seed, prepare_accelerator, prepare_dtype
-from library.utils import config_util
+
+from library.data.dataset import load_arbitrary_dataset
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
-from library.train import sdxl_train_util
+from library.training.trainer_utils import prepare_accelerator
+from library.utils import config_util
 from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.training.model_prep import load_target_model
+from library.training.sdxl_model_prep import load_target_model as load_target_model_sdxl
+
 from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
+
+from library.config.arguments import (
+    prepare_dataset_args,
+    enable_high_vram,
+    add_sd_models_arguments,
+    add_training_arguments,
+    add_dataset_arguments,
+    add_masked_loss_arguments,
+    add_dit_training_arguments,
+    read_config_from_file
+)
+from library.utils.torch_utils import args_set_seed, prepare_dtype
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -137,7 +148,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     if is_sd:
         _, vae, _, _ = load_target_model(args, weight_dtype, accelerator)
     elif is_sdxl:
-        (_, _, _, vae, _, _, _) = sdxl_train_util.load_target_model(args, accelerator, "sdxl", weight_dtype)
+        (_, _, _, vae, _, _, _) = load_target_model_sdxl(args, accelerator, "sdxl", weight_dtype)
     else:
         vae = flux_utils.load_ae(args.ae, weight_dtype, "cpu", disable_mmap=args.disable_mmap_load_safetensors)
 

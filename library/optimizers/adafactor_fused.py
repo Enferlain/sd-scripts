@@ -6,7 +6,6 @@ from transformers import Adafactor
 
 # stochastic rounding for bfloat16
 # The implementation was provided by 2kpr. Thank you very much!
-
 def copy_stochastic_(target: torch.Tensor, source: torch.Tensor):
     """
     copies source into target using stochastic rounding

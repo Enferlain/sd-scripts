@@ -27,8 +27,6 @@ def fire_in_thread(f, *args, **kwargs):
 
 
 # region Logging
-
-
 def add_logging_arguments(parser):
     parser.add_argument(
         "--console_log_level",
@@ -98,12 +96,7 @@ def setup_logging(args=None, log_level=None, reset=False):
 setup_logging()
 logger = logging.getLogger(__name__)
 
-
-# endregion
-
 # region PyTorch utils
-
-
 def swap_weight_devices(layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):
     assert layer_to_cpu.__class__ == layer_to_cuda.__class__
 
@@ -199,11 +192,7 @@ def str_to_dtype(s: Optional[str], default_dtype: Optional[torch.dtype] = None) 
         raise ValueError(f"Unsupported dtype: {s}")
 
 
-# endregion
-
 # region Image utils
-
-
 def pil_resize(image, size, interpolation):
     has_alpha = image.shape[2] == 4 if len(image.shape) == 3 else False
 
@@ -344,12 +333,8 @@ def validate_interpolation_fn(interpolation_str: str) -> bool:
     return interpolation_str in ["lanczos", "nearest", "bilinear", "linear", "bicubic", "cubic", "area", "box"]
 
 
-# endregion
-
 # TODO make inf_utils.py
 # region Gradual Latent hires fix
-
-
 class GradualLatent:
     def __init__(
             self,
@@ -529,5 +514,3 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
             return (prev_sample,)
 
         return EulerAncestralDiscreteSchedulerOutput(prev_sample=prev_sample, pred_original_sample=pred_original_sample)
-
-# endregion

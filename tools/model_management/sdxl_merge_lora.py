@@ -10,14 +10,18 @@ import logging
 from safetensors.torch import load_file, save_file
 from tqdm import tqdm
 
-from library.train.checkpointing import load_metadata_from_safetensors, build_minimum_network_metadata, \
-    precalculate_safetensors_hashes
-from library.train.constants import SS_METADATA_KEY_V2, SS_METADATA_KEY_BASE_MODEL_VERSION
 from svd_merge_lora import format_lbws, get_lbw_block_index, LAYER26
+from library.constants import SS_METADATA_KEY_V2, SS_METADATA_KEY_BASE_MODEL_VERSION
 from library.models import sdxl_model_util
 from library.networks import lora, oft
 from library.utils.common_utils import setup_logging
 from library.utils import sai_model_spec
+
+from library.training.checkpointing import (
+    load_metadata_from_safetensors,
+    build_minimum_network_metadata,
+    precalculate_safetensors_hashes
+)
 
 setup_logging()
 logger = logging.getLogger(__name__)

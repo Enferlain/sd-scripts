@@ -11,8 +11,8 @@ from safetensors.torch import load_file, save_file, safe_open
 from tqdm import tqdm
 
 from library.models import model_util
-from library.train.checkpointing import precalculate_safetensors_hashes
 from library.utils.common_utils import setup_logging
+from library.training.checkpointing import precalculate_safetensors_hashes
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -27,8 +27,6 @@ LORA_DOWN_UP_FORMATS = [
 
 
 # Model save and load functions
-
-
 def load_state_dict(file_name, dtype):
     if model_util.is_safetensors(file_name):
         sd = load_file(file_name)
@@ -53,8 +51,6 @@ def save_to_file(file_name, state_dict, metadata):
 
 
 # Indexing functions
-
-
 def index_sv_cumulative(S, target):
     original_sum = float(torch.sum(S))
     cumulative_sums = torch.cumsum(S, dim=0) / original_sum
@@ -149,8 +145,6 @@ def merge_linear(lora_down, lora_up, device):
 
 
 # Calculate new rank
-
-
 def rank_resize(S, rank, dynamic_method, dynamic_param, scale=1):
     param_dict = {}
 

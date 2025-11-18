@@ -274,11 +274,7 @@ class ModelOffloader(Offloader):
         self._submit_move_blocks(blocks, block_idx_to_cpu, block_idx_to_cuda)
 
 
-# endregion
-
 # region cpu offload utils
-
-
 def to_device(x: Any, device: torch.device) -> Any:
     if isinstance(x, torch.Tensor):
         return x.to(device)
@@ -338,5 +334,3 @@ def create_cpu_offloading_wrapper(func: Callable, device: torch.device) -> Calla
         return custom_forward
 
     return wrapper(func)
-
-# endregion

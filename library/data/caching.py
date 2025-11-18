@@ -6,11 +6,11 @@ import numpy as np
 from typing import List, Tuple
 from diffusers import AutoencoderKL
 
-from library.train.constants import HIGH_VRAM, IMAGE_TRANSFORMS
-from library.train.data_structures import ImageInfo
-from library.train.image_utils import load_image, trim_and_resize_if_required
-from library.train.training_utils import get_hidden_states_sdxl
+from library.constants import HIGH_VRAM, IMAGE_TRANSFORMS
+from library.models.text_encoder_util import get_hidden_states_sdxl
 from library.utils.device_utils import clean_memory_on_device
+from library.data.data_structures import ImageInfo
+from library.data.image_utils import load_image, trim_and_resize_if_required
 
 logger = logging.getLogger(__name__)
 

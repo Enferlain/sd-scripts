@@ -12,13 +12,13 @@ from PIL import Image
 from torchvision import transforms
 
 import library.models.model_util as model_util
-from library.train.caching import cache_batch_latents, is_disk_cached_latents_is_expected
-from library.train.data_structures import BucketManager, ImageInfo
-from library.train.dataset import ImageLoadingDataset
-from library.train.image_utils import glob_images_pathlib
 
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, get_preferred_device
+from library.data.caching import cache_batch_latents, is_disk_cached_latents_is_expected
+from library.data.data_structures import BucketManager, ImageInfo
+from library.data.dataset import ImageLoadingDataset
+from library.data.image_utils import glob_images_pathlib
 
 init_ipex()
 
@@ -26,13 +26,6 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 DEVICE = get_preferred_device()
-
-IMAGE_TRANSFORMS = transforms.Compose(
-    [
-        transforms.ToTensor(),
-        transforms.Normalize([0.5], [0.5]),
-    ]
-)
 
 
 def collate_fn_remove_corrupted(batch):

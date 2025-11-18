@@ -14,36 +14,52 @@ from diffusers import DDPMScheduler
 
 import library.utils.config_util as config_util
 import library.utils.sai_model_spec as sai_model_spec
-import library.train.custom_train_functions as custom_train_functions
 
 from library.optimizations import deepspeed_utils
-from library.train.arguments import verify_training_args, prepare_dataset_args, get_sanitized_config_or_none, \
-    add_sd_models_arguments, add_dataset_arguments, add_training_arguments, add_sd_saving_arguments, \
-    add_optimizer_arguments, verify_command_line_training_args, read_config_from_file
-from library.train.checkpointing import resume_from_local_or_hf_if_specified, save_sd_model_on_epoch_end_or_stepwise, \
-    save_state_on_train_end, save_sd_model_on_train_end
-from library.train.dataset import load_arbitrary_dataset, collator_class, debug_dataset
-from library.train.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
-from library.train.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
-from library.train.optimizer import get_optimizer, get_scheduler_fix
-from library.train.sample_generation import sample_images
-from library.train.training_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_accelerator, \
-    prepare_dtype, get_noise_noisy_latents_and_timesteps, append_lr_to_logs
-from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.strategies import strategy_sd, strategy_base
+from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_dtype
+from library.utils.config_util import ConfigSanitizer, BlueprintGenerator
+from library.data.prompt_utils import add_prompt_parsing_arguments
+from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
+from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
+from library.training.diffusion import get_noise_noisy_latents_and_timesteps
+from library.training.optimizer import get_optimizer, get_scheduler_fix
+from library.training.sample_generation import sample_images
+from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
+from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 
-from library.utils.config_util import (
-    ConfigSanitizer,
-    BlueprintGenerator,
+from library.training.checkpointing import (
+    resume_from_local_or_hf_if_specified,
+    save_sd_model_on_epoch_end_or_stepwise,
+    save_state_on_train_end,
+    save_sd_model_on_train_end
 )
 
-from library.train.custom_train_functions import (
+from library.config.arguments import (
+    verify_training_args,
+    prepare_dataset_args,
+    get_sanitized_config_or_none,
+    add_sd_models_arguments,
+    add_dataset_arguments,
+    add_training_arguments,
+    add_sd_saving_arguments,
+    add_optimizer_arguments,
+    verify_command_line_training_args,
+    read_config_from_file
+)
+
+from library.training.noise_utils import (
+    fix_noise_scheduler_betas_for_zero_terminal_snr,
+    prepare_scheduler_for_custom_training
+)
+
+from library.losses.loss_weighting import (
     apply_snr_weight,
-    get_weighted_text_embeddings,
-    prepare_scheduler_for_custom_training,
-    scale_v_prediction_loss_like_noise_prediction,
     apply_debiased_estimation,
+    scale_v_prediction_loss_like_noise_prediction,
+    add_loss_weighting_arguments
 )
 
 init_ipex()
@@ -332,7 +348,7 @@ def train(args):
     )
 
     if args.zero_terminal_snr:
-        custom_train_functions.fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
+        fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
     prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
 
@@ -538,7 +554,8 @@ def setup_parser() -> argparse.ArgumentParser:
     add_sd_saving_arguments(parser)
     add_optimizer_arguments(parser)
     config_util.add_config_arguments(parser)
-    custom_train_functions.add_custom_train_arguments(parser)
+    add_loss_weighting_arguments(parser)
+    add_prompt_parsing_arguments(parser)
 
     parser.add_argument(
         "--diffusers_xformers", action="store_true", help="use xformers by diffusers / Diffusersでxformersを使用する"

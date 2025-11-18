@@ -2,60 +2,20 @@
 # and modify to support SD2.x
 
 import inspect
-import re
 import numpy as np
 import PIL.Image
 import torch
 
 from typing import Callable, List, Optional, Union
-from packaging import version
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection
 from diffusers import SchedulerMixin, StableDiffusionPipeline
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
-from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput, StableDiffusionSafetyChecker
-from diffusers.utils import logging
+from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
+from diffusers.utils import logging, PIL_INTERPOLATION
 
-try:
-    from diffusers.utils import PIL_INTERPOLATION
-except ImportError:
-    if version.parse(version.parse(PIL.__version__).base_version) >= version.parse("9.1.0"):
-        PIL_INTERPOLATION = {
-            "linear": PIL.Image.Resampling.BILINEAR,
-            "bilinear": PIL.Image.Resampling.BILINEAR,
-            "bicubic": PIL.Image.Resampling.BICUBIC,
-            "lanczos": PIL.Image.Resampling.LANCZOS,
-            "nearest": PIL.Image.Resampling.NEAREST,
-        }
-    else:
-        PIL_INTERPOLATION = {
-            "linear": PIL.Image.LINEAR,
-            "bilinear": PIL.Image.BILINEAR,
-            "bicubic": PIL.Image.BICUBIC,
-            "lanczos": PIL.Image.LANCZOS,
-            "nearest": PIL.Image.NEAREST,
-        }
-# ------------------------------------------------------------------------------
+from library.constants import re_attention
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
-
-re_attention = re.compile(
-    r"""
-\\\(|
-\\\)|
-\\\[|
-\\]|
-\\\\|
-\\|
-\(|
-\[|
-:([+-]?[.\d]+)\)|
-\)|
-]|
-[^\\()\[\]:]+|
-:
-""",
-    re.X,
-)
 
 
 def parse_prompt_attention(text):

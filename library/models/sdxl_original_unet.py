@@ -34,38 +34,27 @@ from torch import nn
 from torch.nn import functional as F
 from einops import rearrange
 
-from library.utils.common_utils import setup_logging
+from library.utils.common_utils import setup_logging, exists
+
+from library.constants import (
+    SDXL_TIME_EMBED_DIM,
+    SDXL_IN_CHANNELS,
+    SDXL_OUT_CHANNELS,
+    SDXL_MODEL_CHANNELS,
+    ADM_SDXL_IN_CHANNELS,
+    EPSILON
+)
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
-IN_CHANNELS: int = 4
-OUT_CHANNELS: int = 4
-ADM_IN_CHANNELS: int = 2816
-CONTEXT_DIM: int = 2048
-MODEL_CHANNELS: int = 320
-TIME_EMBED_DIM = 320 * 4
-
 USE_REENTRANT = True
+
 
 # region memory efficient attention
 # FlashAtentionを使うCrossAttention
 # based on https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/memory_efficient_attention_pytorch/flash_attention.py
 # LICENSE MIT https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/LICENSE
-
-# constants
-EPSILON = 1e-6
-
-
-# helper functions
-def exists(val):
-    return val is not None
-
-
-def default(val, d):
-    return val if exists(val) else d
-
-
 # flash attention forwards and backwards
 # https://arxiv.org/abs/2205.14135
 class FlashAttentionFunction(torch.autograd.Function):
@@ -221,9 +210,6 @@ class FlashAttentionFunction(torch.autograd.Function):
         return dq, dk, dv, None, None, None, None
 
 
-# endregion
-
-
 def get_parameter_dtype(parameter: torch.nn.Module):
     return next(parameter.parameters()).dtype
 
@@ -308,7 +294,7 @@ class ResnetBlock2D(nn.Module):
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
         )
 
-        self.emb_layers = nn.Sequential(nn.SiLU(), nn.Linear(TIME_EMBED_DIM, out_channels))
+        self.emb_layers = nn.Sequential(nn.SiLU(), nn.Linear(SDXL_TIME_EMBED_DIM, out_channels))
 
         self.out_layers = nn.Sequential(
             GroupNorm32(32, out_channels),
@@ -826,11 +812,11 @@ class SdxlUNet2DConditionModel(nn.Module):
     ):
         super().__init__()
 
-        self.in_channels = IN_CHANNELS
-        self.out_channels = OUT_CHANNELS
-        self.model_channels = MODEL_CHANNELS
-        self.time_embed_dim = TIME_EMBED_DIM
-        self.adm_in_channels = ADM_IN_CHANNELS
+        self.in_channels = SDXL_IN_CHANNELS
+        self.out_channels = SDXL_OUT_CHANNELS
+        self.model_channels = SDXL_MODEL_CHANNELS
+        self.time_embed_dim = SDXL_TIME_EMBED_DIM
+        self.adm_in_channels = ADM_SDXL_IN_CHANNELS
 
         self.gradient_checkpointing = False
         # self.sample_size = sample_size
@@ -1069,8 +1055,6 @@ class SdxlUNet2DConditionModel(nn.Module):
                     # logger.info(f{module.__class__.__name__} {module.gradient_checkpointing} -> {value}")
                     module.gradient_checkpointing = value
 
-    # endregion
-
     def forward(self, x, timesteps=None, context=None, y=None, **kwargs):
         # broadcast timesteps to batch dimension
         timesteps = timesteps.expand(x.shape[0])
@@ -1277,7 +1261,7 @@ if __name__ == "__main__":
         x = torch.randn(batch_size, 4, 128, 128).cuda()  # 1024x1024
         t = torch.randint(low=0, high=10, size=(batch_size,), device="cuda")
         ctx = torch.randn(batch_size, 77, 2048).cuda()
-        y = torch.randn(batch_size, ADM_IN_CHANNELS).cuda()
+        y = torch.randn(batch_size, ADM_SDXL_IN_CHANNELS).cuda()
 
         with torch.cuda.amp.autocast(enabled=True):
             output = unet(x, t, ctx, y)

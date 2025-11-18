@@ -6,7 +6,7 @@ import logging
 
 from diffusers import DDPMScheduler
 
-from library.train.checkpointing import precalculate_safetensors_hashes
+from library.training.checkpointing import precalculate_safetensors_hashes
 
 logger = logging.getLogger(__name__)
 

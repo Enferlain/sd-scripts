@@ -15,13 +15,18 @@ attention_slice_rate = float(os.environ.get('IPEX_ATTENTION_SLICE_RATE', 0.5))
 @cache
 def find_split_size(original_size, slice_block_size, slice_rate=2):
     split_size = original_size
-    while True:
+    # Loop as long as split_size is greater than 1.
+    while split_size > 1:
+        # Check for the optimal condition first
         if (split_size * slice_block_size) <= slice_rate and original_size % split_size == 0:
             return split_size
+
+        # Decrement the size
         split_size = split_size - 1
-        if split_size <= 1:
-            return 1
-    return split_size
+
+    # If the loop finishes (i.e., split_size reached 1),
+    # the fail-safe value is returned implicitly here.
+    return 1  # Now this is reachable and serves as the catch-all
 
 
 # Find slice sizes for SDPA

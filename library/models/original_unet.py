@@ -116,46 +116,33 @@ from einops import rearrange
 from types import SimpleNamespace
 from typing import Dict, Optional, Tuple, Union
 
-from library.utils.common_utils import setup_logging
+from library.utils.common_utils import setup_logging, exists
+
+from library.constants import (
+    NORM_GROUPS,
+    NORM_EPS,
+    TIME_EMBED_DIM,
+    LAYERS_PER_BLOCK,
+    TRANSFORMER_NORM_NUM_GROUPS,
+    LAYERS_PER_BLOCK_UP,
+    IN_CHANNELS,
+    OUT_CHANNELS,
+    BLOCK_OUT_CHANNELS,
+    TIME_EMBED_FLIP_SIN_TO_COS,
+    TIME_EMBED_FREQ_SHIFT,
+    TIMESTEP_INPUT_DIM,
+    DOWN_BLOCK_TYPES,
+    UP_BLOCK_TYPES, EPSILON
+)
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
-BLOCK_OUT_CHANNELS: Tuple[int] = (320, 640, 1280, 1280)
-TIMESTEP_INPUT_DIM = BLOCK_OUT_CHANNELS[0]
-TIME_EMBED_DIM = BLOCK_OUT_CHANNELS[0] * 4
-IN_CHANNELS: int = 4
-OUT_CHANNELS: int = 4
-LAYERS_PER_BLOCK: int = 2
-LAYERS_PER_BLOCK_UP: int = LAYERS_PER_BLOCK + 1
-TIME_EMBED_FLIP_SIN_TO_COS: bool = True
-TIME_EMBED_FREQ_SHIFT: int = 0
-NORM_GROUPS: int = 32
-NORM_EPS: float = 1e-5
-TRANSFORMER_NORM_NUM_GROUPS = 32
-
-DOWN_BLOCK_TYPES = ["CrossAttnDownBlock2D", "CrossAttnDownBlock2D", "CrossAttnDownBlock2D", "DownBlock2D"]
-UP_BLOCK_TYPES = ["UpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D"]
-
 # region memory efficient attention
 # FlashAttentionを使うCrossAttention
 # based on https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/memory_efficient_attention_pytorch/flash_attention.py
 # LICENSE MIT https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/LICENSE
-
-# constants
-EPSILON = 1e-6
-
-
-# helper functions
-def exists(val):
-    return val is not None
-
-
-def default(val, d):
-    return val if exists(val) else d
-
-
 # flash attention forwards and backwards
 # https://arxiv.org/abs/2205.14135
 class FlashAttentionFunction(torch.autograd.Function):

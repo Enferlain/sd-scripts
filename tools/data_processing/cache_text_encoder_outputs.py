@@ -4,11 +4,28 @@ import argparse
 import torch
 import logging
 
-from library.train.arguments import prepare_dataset_args, enable_high_vram, add_sd_models_arguments, \
-    add_training_arguments, add_dataset_arguments, add_masked_loss_arguments, add_dit_training_arguments, \
+from library.constants import MODEL_VERSION_SDXL_BASE_V1_0
+from library.training.trainer_utils import prepare_accelerator
+from tools.data_processing.cache_latents import set_tokenize_strategy
+from library.strategies import strategy_sdxl, strategy_base
+from library.utils.torch_utils import args_set_seed, prepare_dtype
+from library.utils import config_util, sai_model_spec
+from library.utils.config_util import ConfigSanitizer, BlueprintGenerator
+from library.utils.common_utils import setup_logging, add_logging_arguments, str_to_dtype
+from library.data.dataset import load_arbitrary_dataset
+from library.training.sdxl_model_prep import load_target_model as load_target_model_sdxl
+
+from library.config.arguments import (
+    prepare_dataset_args,
+    enable_high_vram,
+    add_sd_models_arguments,
+    add_training_arguments,
+    add_dataset_arguments,
+    add_masked_loss_arguments,
+    add_dit_training_arguments,
     read_config_from_file
-from library.train.dataset import load_arbitrary_dataset
-from library.train.training_utils import args_set_seed, prepare_accelerator, prepare_dtype
+)
+
 # TODO add back missing pipes
 # from library import (
 #     flux_train_utils,
@@ -16,18 +33,6 @@ from library.train.training_utils import args_set_seed, prepare_accelerator, pre
 #     strategy_flux,
 # )
 # import library.utils.sai_model_spec as sai_model_spec
-from library.utils import config_util, sai_model_spec
-
-from library.strategies import strategy_sdxl, strategy_base
-from library.models import sdxl_model_util
-from library.train import sdxl_train_util
-from library import utils
-from library.utils.common_utils import setup_logging, add_logging_arguments
-from tools.data_processing.cache_latents import set_tokenize_strategy
-from library.utils.config_util import (
-    ConfigSanitizer,
-    BlueprintGenerator,
-)
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -113,13 +118,13 @@ def cache_to_disk(args: argparse.Namespace) -> None:
 
     # mixed precisionに対応した型を用意しておき適宜castする
     weight_dtype, _ = prepare_dtype(args)
-    t5xxl_dtype = utils.str_to_dtype(args.t5xxl_dtype, weight_dtype)
+    t5xxl_dtype = str_to_dtype(args.t5xxl_dtype, weight_dtype)
 
     # モデルを読み込む
     logger.info("load model")
     if is_sdxl:
-        _, text_encoder1, text_encoder2, _, _, _, _ = sdxl_train_util.load_target_model(
-            args, accelerator, sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype
+        _, text_encoder1, text_encoder2, _, _, _, _ = load_target_model_sdxl(
+            args, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype
         )
         text_encoder1.to(accelerator.device, weight_dtype)
         text_encoder2.to(accelerator.device, weight_dtype)

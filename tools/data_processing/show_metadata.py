@@ -3,6 +3,7 @@ import argparse
 import logging
 
 from safetensors import safe_open
+
 from library.utils.common_utils import setup_logging
 
 setup_logging()

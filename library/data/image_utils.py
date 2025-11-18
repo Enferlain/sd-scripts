@@ -7,9 +7,9 @@ from typing import Optional, Tuple
 import numpy as np
 from PIL import Image
 
-from library.train.constants import IMAGE_EXTENSIONS
-from library.train.data_structures import BucketManager
+from library.constants import IMAGE_EXTENSIONS
 from library.utils.common_utils import resize_image
+from library.data.data_structures import BucketManager
 
 logger = logging.getLogger(__name__)
 

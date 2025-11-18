@@ -11,52 +11,42 @@ from transformers import CLIPTextModel, CLIPTokenizer, CLIPTextConfig
 from diffusers import AutoencoderKL, DDIMScheduler, StableDiffusionPipeline  # , UNet2DConditionModel
 from safetensors.torch import load_file, save_file
 
-from library.models.original_unet import UNet2DConditionModel
+
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex
+from library.models.original_unet import UNet2DConditionModel
+
+from library.constants import (
+    UNET_PARAMS_MODEL_CHANNELS,
+    UNET_PARAMS_CHANNEL_MULT,
+    UNET_PARAMS_ATTENTION_RESOLUTIONS,
+    UNET_PARAMS_IMAGE_SIZE,
+    UNET_PARAMS_IN_CHANNELS,
+    UNET_PARAMS_OUT_CHANNELS,
+    UNET_PARAMS_NUM_RES_BLOCKS,
+    UNET_PARAMS_CONTEXT_DIM,
+    V2_UNET_PARAMS_CONTEXT_DIM,
+    UNET_PARAMS_NUM_HEADS,
+    V2_UNET_PARAMS_ATTENTION_HEAD_DIM,
+    VAE_PARAMS_CH,
+    VAE_PARAMS_CH_MULT,
+    VAE_PARAMS_RESOLUTION,
+    VAE_PARAMS_IN_CHANNELS,
+    VAE_PARAMS_OUT_CH,
+    VAE_PARAMS_Z_CHANNELS,
+    VAE_PARAMS_NUM_RES_BLOCKS,
+    DIFFUSERS_REF_MODEL_ID_V2,
+    DIFFUSERS_REF_MODEL_ID_V1, VAE_PREFIX
+)
+
 init_ipex()
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
-# DiffUsers版StableDiffusionのモデルパラメータ
-NUM_TRAIN_TIMESTEPS = 1000
-BETA_START = 0.00085
-BETA_END = 0.0120
-
-UNET_PARAMS_MODEL_CHANNELS = 320
-UNET_PARAMS_CHANNEL_MULT = [1, 2, 4, 4]
-UNET_PARAMS_ATTENTION_RESOLUTIONS = [4, 2, 1]
-UNET_PARAMS_IMAGE_SIZE = 64  # fixed from old invalid value `32`
-UNET_PARAMS_IN_CHANNELS = 4
-UNET_PARAMS_OUT_CHANNELS = 4
-UNET_PARAMS_NUM_RES_BLOCKS = 2
-UNET_PARAMS_CONTEXT_DIM = 768
-UNET_PARAMS_NUM_HEADS = 8
-# UNET_PARAMS_USE_LINEAR_PROJECTION = False
-
-VAE_PARAMS_Z_CHANNELS = 4
-VAE_PARAMS_RESOLUTION = 256
-VAE_PARAMS_IN_CHANNELS = 3
-VAE_PARAMS_OUT_CH = 3
-VAE_PARAMS_CH = 128
-VAE_PARAMS_CH_MULT = [1, 2, 4, 4]
-VAE_PARAMS_NUM_RES_BLOCKS = 2
-
-# V2
-V2_UNET_PARAMS_ATTENTION_HEAD_DIM = [5, 10, 20, 20]
-V2_UNET_PARAMS_CONTEXT_DIM = 1024
-# V2_UNET_PARAMS_USE_LINEAR_PROJECTION = True
-
-# Diffusersの設定を読み込むための参照モデル
-DIFFUSERS_REF_MODEL_ID_V1 = "runwayml/stable-diffusion-v1-5"
-DIFFUSERS_REF_MODEL_ID_V2 = "stabilityai/stable-diffusion-2-1"
-
-
-# region StableDiffusion->Diffusersの変換コード
-# convert_original_stable_diffusion_to_diffusers をコピーして修正している（ASL 2.0）
-
+# region StableDiffusion -> Diffusers conversion code
+# Copying and modifying convert_original_stable_diffusion_to_diffusers (ASL 2.0)
 
 def shave_segments(path, n_shave_prefix_segments=1):
     """
@@ -1274,9 +1264,6 @@ def save_diffusers_checkpoint(v2, output_dir, text_encoder, unet, pretrained_mod
         requires_safety_checker=None,
     )
     pipeline.save_pretrained(output_dir, safe_serialization=use_safetensors)
-
-
-VAE_PREFIX = "first_stage_model."
 
 
 def load_vae(vae_id, dtype):

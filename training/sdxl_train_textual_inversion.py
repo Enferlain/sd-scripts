@@ -5,13 +5,16 @@ import torch
 from typing import Optional, Union
 
 import train_textual_inversion
-from library.train.arguments import verify_command_line_training_args, read_config_from_file
-from library.train.dataset import DatasetGroup, MinimalDataset
 
+from library.constants import VAE_SCALE_FACTOR, MODEL_VERSION_SDXL_BASE_V1_0
+from library.config.arguments import verify_command_line_training_args, read_config_from_file
+from library.config.sdxl_args import verify_sdxl_training_args, add_sdxl_training_arguments
+from library.models.sdxl_model_util import get_size_embeddings
 from library.utils.device_utils import init_ipex
-from library.train import sdxl_train_util
 from library.strategies import strategy_sdxl, strategy_sd
-from library.models import sdxl_model_util
+from library.data.dataset import DatasetGroup, MinimalDataset
+from library.training.sdxl_sample_generation import sample_images
+from library.training.sdxl_model_prep import load_target_model as load_target_model_sdxl
 
 init_ipex()
 
@@ -19,13 +22,13 @@ init_ipex()
 class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTrainer):
     def __init__(self):
         super().__init__()
-        self.vae_scale_factor = sdxl_model_util.VAE_SCALE_FACTOR
+        self.vae_scale_factor = VAE_SCALE_FACTOR
         self.is_sdxl = True
 
     def assert_extra_args(self, args, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
         DatasetGroup]):
         # super().assert_extra_args(args, train_dataset_group) # do not call parent because it checks reso steps with 64
-        sdxl_train_util.verify_sdxl_training_args(args, support_text_encoder_caching=False)
+        verify_sdxl_training_args(args, support_text_encoder_caching=False)
 
         train_dataset_group.verify_bucket_reso_steps(32)
         if val_dataset_group is not None:
@@ -40,13 +43,13 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
             unet,
             logit_scale,
             ckpt_info,
-        ) = sdxl_train_util.load_target_model(args, accelerator, sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
+        ) = load_target_model_sdxl(args, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
 
         self.load_stable_diffusion_format = load_stable_diffusion_format
         self.logit_scale = logit_scale
         self.ckpt_info = ckpt_info
 
-        return sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
+        return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
     def get_tokenize_strategy(self, args):
         return strategy_sdxl.SdxlTokenizeStrategy(args.max_token_length, args.tokenizer_cache_dir)
@@ -70,7 +73,7 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
         orig_size = batch["original_sizes_hw"]
         crop_size = batch["crop_top_lefts"]
         target_size = batch["target_sizes_hw"]
-        embs = sdxl_train_util.get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
+        embs = get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
 
         # concat embeddings
         encoder_hidden_states1, encoder_hidden_states2, pool2 = text_conds
@@ -83,7 +86,7 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
     def sample_images(
         self, accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
     ):
-        sdxl_train_util.sample_images(
+        sample_images(
             accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
         )
 
@@ -123,7 +126,7 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
 
 def setup_parser() -> argparse.ArgumentParser:
     parser = train_textual_inversion.setup_parser()
-    sdxl_train_util.add_sdxl_training_arguments(parser, support_text_encoder_caching=False)
+    add_sdxl_training_arguments(parser, support_text_encoder_caching=False)
     return parser
 
 

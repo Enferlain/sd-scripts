@@ -7,15 +7,20 @@ from accelerate import Accelerator
 from ramtorch.helpers import replace_linear_with_ramtorch
 
 import train_network
-from library.train.arguments import verify_command_line_training_args, read_config_from_file
-from library.train.dataset import DatasetGroup, MinimalDataset
-from library.train.model_prep import replace_unet_modules
-from library.train.training_utils import get_hidden_states_sdxl
-from library.utils.device_utils import init_ipex, clean_memory_on_device
-from library.train import sdxl_train_util
+from library.config.sdxl_args import verify_sdxl_training_args, add_sdxl_training_arguments
+
+from library.constants import VAE_SCALE_FACTOR, MODEL_VERSION_SDXL_BASE_V1_0
+from library.models.sdxl_model_util import get_size_embeddings
 from library.strategies import strategy_sdxl, strategy_sd
-from library.models import sdxl_model_util
+from library.models.text_encoder_util import get_hidden_states_sdxl
+from library.config.arguments import verify_command_line_training_args, read_config_from_file
+from library.training.sdxl_model_prep import load_target_model
+from library.training.sdxl_sample_generation import sample_images
 from library.utils.common_utils import setup_logging
+from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.data.dataset import DatasetGroup, MinimalDataset
+
+from library.training.model_prep import replace_unet_modules
 
 init_ipex()
 
@@ -26,7 +31,7 @@ logger = logging.getLogger(__name__)
 class SdxlNetworkTrainer(train_network.NetworkTrainer):
     def __init__(self):
         super().__init__()
-        self.vae_scale_factor = sdxl_model_util.VAE_SCALE_FACTOR
+        self.vae_scale_factor = VAE_SCALE_FACTOR
         self.is_sdxl = True
 
     def assert_extra_args(
@@ -35,7 +40,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
         train_dataset_group: Union[DatasetGroup, MinimalDataset],
         val_dataset_group: Optional[DatasetGroup],
     ):
-        sdxl_train_util.verify_sdxl_training_args(args)
+        verify_sdxl_training_args(args)
 
         if args.cache_text_encoder_outputs:
             assert (
@@ -59,7 +64,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             unet,
             logit_scale,
             ckpt_info,
-        ) = sdxl_train_util.load_target_model(args, accelerator, sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
+        ) = load_target_model(args, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
 
         self.load_stable_diffusion_format = load_stable_diffusion_format
         self.logit_scale = logit_scale
@@ -88,7 +93,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
         if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
             vae.set_use_memory_efficient_attention_xformers(args.xformers)
 
-        return sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
+        return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
     def get_tokenize_strategy(self, args):
         return strategy_sdxl.SdxlTokenizeStrategy(args.max_token_length, args.tokenizer_cache_dir)
@@ -221,7 +226,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
         orig_size = batch["original_sizes_hw"]
         crop_size = batch["crop_top_lefts"]
         target_size = batch["target_sizes_hw"]
-        embs = sdxl_train_util.get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
+        embs = get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
 
         # concat embeddings
         encoder_hidden_states1, encoder_hidden_states2, pool2 = text_conds
@@ -238,12 +243,12 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
         return noise_pred
 
     def sample_images(self, accelerator, args, epoch, global_step, device, vae, tokenizer, text_encoder, unet):
-        sdxl_train_util.sample_images(accelerator, args, epoch, global_step, device, vae, tokenizer, text_encoder, unet)
+        sample_images(accelerator, args, epoch, global_step, device, vae, tokenizer, text_encoder, unet)
 
 
 def setup_parser() -> argparse.ArgumentParser:
     parser = train_network.setup_parser()
-    sdxl_train_util.add_sdxl_training_arguments(parser)
+    add_sdxl_training_arguments(parser)
     return parser
 
 

@@ -4,6 +4,7 @@ import torch
 import logging
 
 from safetensors.torch import load_file
+
 from library.utils.common_utils import setup_logging
 
 setup_logging()

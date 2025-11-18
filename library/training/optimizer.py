@@ -8,16 +8,17 @@ import types
 import torch
 import transformers
 
-from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Callable
+from typing import Any, Dict, Optional, Tuple, Callable
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers.optimization import SchedulerType, TYPE_TO_SCHEDULER_FUNCTION
+
 from diffusers.optimization import (
     SchedulerType as DiffusersSchedulerType,
     TYPE_TO_SCHEDULER_FUNCTION as DIFFUSERS_TYPE_TO_SCHEDULER_FUNCTION,
 )
 
-from library.train.constants import int_pattern, float_pattern
+from library.constants import int_pattern, float_pattern
 
 logger = logging.getLogger(__name__)
 

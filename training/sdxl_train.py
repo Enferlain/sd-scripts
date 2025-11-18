@@ -13,39 +13,61 @@ from tqdm import tqdm
 from diffusers import DDPMScheduler
 
 import library.utils.config_util as config_util
-import library.train.sdxl_train_util as sdxl_train_util
-import library.train.custom_train_functions as custom_train_functions
 
-from library.strategies import strategy_sdxl, strategy_sd, strategy_base
-from library.models import sdxl_model_util
-from library.optimizations import deepspeed_utils
-from library.train.arguments import verify_training_args, prepare_dataset_args, get_sanitized_config_or_none, \
-    add_sd_models_arguments, add_dataset_arguments, add_training_arguments, add_masked_loss_arguments, \
-    add_sd_saving_arguments, add_optimizer_arguments, verify_command_line_training_args, read_config_from_file
-from library.train.checkpointing import resume_from_local_or_hf_if_specified, save_state_on_train_end
-from library.train.dataset import load_arbitrary_dataset, collator_class, debug_dataset
-from library.train.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
-from library.train.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
-from library.train.optimizer import get_optimizer, get_scheduler_fix
-from library.train.training_utils import append_lr_to_logs_with_names, set_torch_cuda_reduced_precision, args_set_seed, \
-    prepare_accelerator, prepare_dtype, get_noise_noisy_latents_and_timesteps, append_lr_to_logs
-from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.constants import VAE_SCALE_FACTOR
+from library.models.sdxl_model_util import get_size_embeddings
+
 from library.utils import sai_model_spec
-from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
 from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_dtype
+from library.optimizations import deepspeed_utils
+from library.config.sdxl_args import verify_sdxl_training_args, add_sdxl_training_arguments
+from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
+from library.strategies import strategy_sdxl, strategy_sd, strategy_base
+from library.data.prompt_utils import add_prompt_parsing_arguments
+from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
+from library.training.checkpointing import resume_from_local_or_hf_if_specified, save_state_on_train_end
+from library.training.sdxl_checkpointing import save_sd_model_on_epoch_end_or_stepwise, save_sd_model_on_train_end
+from library.training.sdxl_model_prep import load_target_model
+from library.training.sdxl_sample_generation import sample_images
+from library.training.diffusion import get_noise_noisy_latents_and_timesteps
+from library.training.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
+from library.training.optimizer import get_optimizer, get_scheduler_fix
+from library.training.trainer_utils import append_lr_to_logs_with_names, prepare_accelerator, append_lr_to_logs
+from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 
 from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
 
-from library.train.custom_train_functions import (
-    apply_snr_weight,
-    prepare_scheduler_for_custom_training,
+from library.config.arguments import (
+    verify_training_args,
+    prepare_dataset_args,
+    get_sanitized_config_or_none,
+    add_sd_models_arguments,
+    add_dataset_arguments,
+    add_training_arguments,
+    add_masked_loss_arguments,
+    add_sd_saving_arguments,
+    add_optimizer_arguments,
+    verify_command_line_training_args,
+    read_config_from_file
+)
+
+from library.losses.loss_weighting import (
+    apply_masked_loss,
     scale_v_prediction_loss_like_noise_prediction,
     add_v_prediction_like_loss,
     apply_debiased_estimation,
-    apply_masked_loss,
+    apply_snr_weight,
+    add_loss_weighting_arguments
+)
+
+from library.training.noise_utils import (
+    fix_noise_scheduler_betas_for_zero_terminal_snr,
+    prepare_scheduler_for_custom_training
 )
 
 init_ipex()
@@ -106,7 +128,7 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
 def train(args):
     verify_training_args(args)
     prepare_dataset_args(args, True)
-    sdxl_train_util.verify_sdxl_training_args(args)
+    verify_sdxl_training_args(args)
     set_torch_cuda_reduced_precision(args)
     deepspeed_utils.prepare_deepspeed_args(args)
     setup_logging(args, reset=True)
@@ -231,7 +253,7 @@ def train(args):
         unet,
         logit_scale,
         ckpt_info,
-    ) = sdxl_train_util.load_target_model(args, accelerator, "sdxl", weight_dtype)
+    ) = load_target_model(args, accelerator, "sdxl", weight_dtype)
     # logit_scale = logit_scale.to(accelerator.device, dtype=weight_dtype)
 
 
@@ -608,7 +630,7 @@ def train(args):
     )
 
     if args.zero_terminal_snr:
-        custom_train_functions.fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
+        fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
     prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
 
@@ -625,7 +647,7 @@ def train(args):
         )
 
     # For --sample_at_first
-    sdxl_train_util.sample_images(
+    sample_images(
         accelerator, args, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
     )
     if len(accelerator.trackers) > 0:
@@ -658,7 +680,7 @@ def train(args):
                         if torch.any(torch.isnan(latents)):
                             accelerator.print("NaN found in latents, replacing with zeros")
                             latents = torch.nan_to_num(latents, 0, out=latents)
-                latents = latents * sdxl_model_util.VAE_SCALE_FACTOR
+                latents = latents * VAE_SCALE_FACTOR
 
                 text_encoder_outputs_list = batch.get("text_encoder_outputs_list", None)
                 if text_encoder_outputs_list is not None:
@@ -698,7 +720,7 @@ def train(args):
                 orig_size = batch["original_sizes_hw"]
                 crop_size = batch["crop_top_lefts"]
                 target_size = batch["target_sizes_hw"]
-                embs = sdxl_train_util.get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
+                embs = get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
 
                 # concat embeddings
                 vector_embedding = torch.cat([pool2, embs], dim=1).to(weight_dtype)
@@ -771,7 +793,7 @@ def train(args):
                 progress_bar.update(1)
                 global_step += 1
 
-                sdxl_train_util.sample_images(
+                sample_images(
                     accelerator,
                     args,
                     None,
@@ -788,7 +810,7 @@ def train(args):
                     accelerator.wait_for_everyone()
                     if accelerator.is_main_process:
                         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
-                        sdxl_train_util.save_sd_model_on_epoch_end_or_stepwise(
+                        save_sd_model_on_epoch_end_or_stepwise(
                             args,
                             False,
                             accelerator,
@@ -834,7 +856,7 @@ def train(args):
         if args.save_every_n_epochs is not None:
             if accelerator.is_main_process:
                 src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
-                sdxl_train_util.save_sd_model_on_epoch_end_or_stepwise(
+                save_sd_model_on_epoch_end_or_stepwise(
                     args,
                     True,
                     accelerator,
@@ -853,7 +875,7 @@ def train(args):
                     ckpt_info,
                 )
 
-        sdxl_train_util.sample_images(
+        sample_images(
             accelerator,
             args,
             epoch + 1,
@@ -880,7 +902,7 @@ def train(args):
 
     if is_main_process:
         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
-        sdxl_train_util.save_sd_model_on_train_end(
+        save_sd_model_on_train_end(
             args,
             src_path,
             save_stable_diffusion_format,
@@ -911,8 +933,9 @@ def setup_parser() -> argparse.ArgumentParser:
     add_sd_saving_arguments(parser)
     add_optimizer_arguments(parser)
     config_util.add_config_arguments(parser)
-    custom_train_functions.add_custom_train_arguments(parser)
-    sdxl_train_util.add_sdxl_training_arguments(parser)
+    add_loss_weighting_arguments(parser)
+    add_prompt_parsing_arguments(parser)
+    add_sdxl_training_arguments(parser)
 
     parser.add_argument(
         "--learning_rate_te1",

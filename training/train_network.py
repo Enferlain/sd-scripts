@@ -25,62 +25,99 @@ from diffusers import DDPMScheduler
 from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL
 from ramtorch.helpers import replace_linear_with_ramtorch
 
-from library.train.arguments import verify_training_args, prepare_dataset_args, add_sd_models_arguments, \
-    add_dataset_arguments, add_training_arguments, add_masked_loss_arguments, add_optimizer_arguments, \
-    verify_command_line_training_args, read_config_from_file
-from library.train.checkpointing import get_sai_model_spec, resume_from_local_or_hf_if_specified, get_git_revision_hash, \
-    model_hash, calculate_sha256, get_step_ckpt_name, save_and_remove_state_stepwise, get_remove_step_no, \
-    get_epoch_ckpt_name, get_remove_epoch_no, save_and_remove_state_on_epoch_end, get_last_ckpt_name, \
-    save_state_on_train_end
-from library.train.constants import SS_METADATA_MINIMUM_KEYS
-from library.train.dataset import DatasetGroup, MinimalDataset, load_arbitrary_dataset, collator_class, debug_dataset, \
-    DreamBoothDataset
-from library.train.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
-from library.train.model_prep import load_target_model, replace_unet_modules, set_padding_mode_for_vae_conv2d_modules, \
-    patch_accelerator_for_fp16_training
-from library.train.optimizer import prepare_optimizer, get_scheduler_fix
-from library.train.sample_generation import sample_images, sample_images_check
-from library.train.training_utils import get_noise_noisy_latents_and_timesteps, calculate_val_loss_check, \
-    set_torch_cuda_reduced_precision, args_set_seed, prepare_accelerator, prepare_dtype, init_trackers, \
-    determine_grad_sync_context
-
-try:
-    import matplotlib.pyplot as plt
-except ImportError:
-    plt = None
-
 import library.utils.config_util as config_util
 import library.utils.huggingface_util as huggingface_util
-import library.train.custom_train_functions as custom_train_functions
 
-from library.utils.device_utils import init_ipex, clean_memory_on_device
-from library.train.edm2_loss_utils import prepare_edm2_loss_weighting, plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
+from library.constants import SS_METADATA_MINIMUM_KEYS
 from library.strategies import strategy_sd, strategy_base
-from library.models import model_util
 from library.optimizations import deepspeed_utils
-from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.models import model_util
 from library.utils import sai_model_spec
-
-from library.utils.config_util import (
-    ConfigSanitizer,
-    BlueprintGenerator,
-)
-
-from library.train.custom_train_functions import (
-    apply_snr_weight,
-    prepare_scheduler_for_custom_training,
-    scale_v_prediction_loss_like_noise_prediction,
-    add_v_prediction_like_loss,
-    apply_debiased_estimation,
-    apply_masked_loss,
-)
-
+from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_dtype
+from library.data.prompt_utils import add_prompt_parsing_arguments
+from library.training.diffusion import get_noise_noisy_latents_and_timesteps
+from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
+from library.training.optimizer import prepare_optimizer, get_scheduler_fix
+from library.training.sample_generation import sample_images, sample_images_check
+from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
 
 from library.timestep_samplers.loss_aware_sampler import LossAwareTimestepSampler
 from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
 from library.timestep_samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
 from library.timestep_samplers.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
 from library.timestep_samplers.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
+
+from library.utils.config_util import (
+    ConfigSanitizer,
+    BlueprintGenerator,
+)
+
+from library.config.arguments import (
+    verify_training_args,
+    prepare_dataset_args,
+    add_sd_models_arguments,
+    add_dataset_arguments,
+    add_training_arguments,
+    add_masked_loss_arguments,
+    add_optimizer_arguments,
+    verify_command_line_training_args,
+    read_config_from_file
+)
+
+from library.training.checkpointing import (
+    get_sai_model_spec,
+    resume_from_local_or_hf_if_specified,
+    get_git_revision_hash,
+    model_hash, calculate_sha256,
+    get_step_ckpt_name,
+    save_and_remove_state_stepwise, get_remove_step_no,
+    get_epoch_ckpt_name,
+    get_remove_epoch_no,
+    save_and_remove_state_on_epoch_end,
+    get_last_ckpt_name,
+    save_state_on_train_end
+)
+
+from library.data.dataset import (
+    DatasetGroup,
+    MinimalDataset,
+    load_arbitrary_dataset,
+    collator_class,
+    debug_dataset,
+    DreamBoothDataset
+)
+
+from library.training.trainer_utils import (
+    calculate_val_loss_check,
+    prepare_accelerator,
+    init_trackers,
+    determine_grad_sync_context
+)
+
+from library.losses.edm2_loss_utils import (
+    prepare_edm2_loss_weighting,
+    plot_edm2_loss_weighting_check,
+    plot_edm2_loss_weighting
+)
+
+from library.training.noise_utils import (
+    prepare_scheduler_for_custom_training,
+    fix_noise_scheduler_betas_for_zero_terminal_snr
+)
+from library.losses.loss_weighting import (
+    add_loss_weighting_arguments,
+    apply_masked_loss, apply_snr_weight,
+    scale_v_prediction_loss_like_noise_prediction,
+    add_v_prediction_like_loss,
+    apply_debiased_estimation
+)
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 
 init_ipex()
 
@@ -383,7 +420,7 @@ class NetworkTrainer:
         )
 
         if args.zero_terminal_snr:
-            custom_train_functions.fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
+            fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
         prepare_scheduler_for_custom_training(noise_scheduler, device)
         return noise_scheduler
@@ -2247,7 +2284,7 @@ class NetworkTrainer:
                 optimizer_eval_fn()
                 accelerator.unwrap_model(network).eval()
                 if args.save_every_n_epochs is not None:
-                    saving = (current_epoch.value) % args.save_every_n_epochs == 0 and (current_epoch.value) < num_train_epochs
+                    saving = current_epoch.value % args.save_every_n_epochs == 0 and current_epoch.value < num_train_epochs
                     if is_main_process and saving:
                         ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, current_epoch.value)
                         save_model(ckpt_name, accelerator.unwrap_model(network), global_step, current_epoch.value)
@@ -2311,7 +2348,8 @@ def setup_parser() -> argparse.ArgumentParser:
     deepspeed_utils.add_deepspeed_arguments(parser)
     add_optimizer_arguments(parser)
     config_util.add_config_arguments(parser)
-    custom_train_functions.add_custom_train_arguments(parser)
+    add_loss_weighting_arguments(parser)
+    add_prompt_parsing_arguments(parser)
 
     parser.add_argument(
         "--cpu_offload_checkpointing",

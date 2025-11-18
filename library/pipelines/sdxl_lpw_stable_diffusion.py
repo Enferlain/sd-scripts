@@ -2,68 +2,26 @@
 # and modify to support SD2.x
 
 import inspect
-import re
 import numpy as np
 import PIL.Image
 import torch
 
 from typing import Callable, List, Optional, Union
-from packaging import version
 from tqdm import tqdm
+from PIL import Image
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
-
 from diffusers import SchedulerMixin, StableDiffusionPipeline
 from diffusers.models import AutoencoderKL
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
-from diffusers.utils import logging
-from PIL import Image
+from diffusers.utils import logging, PIL_INTERPOLATION
 
-from library.train import sdxl_train_util
-from library.strategies import strategy_sdxl, strategy_base
+from library.constants import re_attention
+from library.models.sdxl_model_util import get_size_embeddings
+from library.models.text_encoder_util import pool_workaround
 from library.models import sdxl_original_unet, sdxl_original_control_net, sdxl_model_util
-from library.train.training_utils import pool_workaround
-
-try:
-    from diffusers.utils import PIL_INTERPOLATION
-except ImportError:
-    if version.parse(version.parse(PIL.__version__).base_version) >= version.parse("9.1.0"):
-        PIL_INTERPOLATION = {
-            "linear": PIL.Image.Resampling.BILINEAR,
-            "bilinear": PIL.Image.Resampling.BILINEAR,
-            "bicubic": PIL.Image.Resampling.BICUBIC,
-            "lanczos": PIL.Image.Resampling.LANCZOS,
-            "nearest": PIL.Image.Resampling.NEAREST,
-        }
-    else:
-        PIL_INTERPOLATION = {
-            "linear": PIL.Image.LINEAR,
-            "bilinear": PIL.Image.BILINEAR,
-            "bicubic": PIL.Image.BICUBIC,
-            "lanczos": PIL.Image.LANCZOS,
-            "nearest": PIL.Image.NEAREST,
-        }
-# ------------------------------------------------------------------------------
+from library.strategies import strategy_sdxl, strategy_base
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
-
-re_attention = re.compile(
-    r"""
-\\\(|
-\\\)|
-\\\[|
-\\]|
-\\\\|
-\\|
-\(|
-\[|
-:([+-]?[.\d]+)\)|
-\)|
-]|
-[^\\()\[\]:]+|
-:
-""",
-    re.X,
-)
 
 
 def parse_prompt_attention(text):
@@ -903,7 +861,7 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         orig_size = torch.tensor([height, width]).repeat(batch_size * num_images_per_prompt, 1).to(device, dtype)
         crop_size = torch.zeros_like(orig_size)
         target_size = orig_size
-        embs = sdxl_train_util.get_size_embeddings(orig_size, crop_size, target_size, device).to(device, dtype)
+        embs = get_size_embeddings(orig_size, crop_size, target_size, device).to(device, dtype)
 
         # make conditionings
         text_pool = text_pool.to(device, dtype)

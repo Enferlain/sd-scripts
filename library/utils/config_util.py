@@ -10,10 +10,8 @@ import json
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 from pathlib import Path
 from textwrap import dedent, indent
-from dataclasses import (
-    asdict,
-    dataclass,
-)
+from dataclasses import asdict, dataclass
+
 from voluptuous import (
     Any,
     ExactSequence,
@@ -23,9 +21,9 @@ from voluptuous import (
     Schema,
 )
 
-from library.train.arguments import add_dataset_arguments, add_training_arguments, prepare_dataset_args
-from library.train.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
-from library.train.dataset import DatasetGroup, DreamBoothDataset, FineTuningDataset, ControlNetDataset
+from library.config.arguments import add_dataset_arguments, add_training_arguments, prepare_dataset_args
+from library.data.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
+from library.data.dataset import DatasetGroup, DreamBoothDataset, FineTuningDataset, ControlNetDataset
 from library.utils.common_utils import setup_logging
 
 setup_logging()

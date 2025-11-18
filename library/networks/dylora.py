@@ -20,7 +20,7 @@ from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
 from torch import nn
 
-from library.train.checkpointing import precalculate_safetensors_hashes
+from library.training.checkpointing import precalculate_safetensors_hashes
 from library.utils.common_utils import setup_logging
 
 setup_logging()

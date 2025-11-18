@@ -13,99 +13,73 @@ from transformers import CLIPTokenizer
 
 import library.utils.huggingface_util as huggingface_util
 import library.utils.config_util as config_util
-import library.train.custom_train_functions as custom_train_functions
 
-from library.train.arguments import verify_training_args, prepare_dataset_args, get_sanitized_config_or_none, \
-    add_sd_models_arguments, add_dataset_arguments, add_training_arguments, add_masked_loss_arguments, \
-    add_optimizer_arguments, verify_command_line_training_args, read_config_from_file
-from library.train.checkpointing import resume_from_local_or_hf_if_specified, get_sai_model_spec, \
-    save_and_remove_state_stepwise, get_step_ckpt_name, get_remove_step_no, get_epoch_ckpt_name, get_remove_epoch_no, \
-    save_and_remove_state_on_epoch_end, save_state_on_train_end, get_last_ckpt_name
-from library.train.dataset import DatasetGroup, MinimalDataset, load_arbitrary_dataset, collator_class, debug_dataset
-from library.train.loss import conditional_loss, get_huber_threshold_if_needed
-from library.train.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
-from library.train.optimizer import get_optimizer, get_scheduler_fix
-from library.train.sample_generation import sample_images
-from library.train.training_utils import args_set_seed, prepare_accelerator, prepare_dtype, \
-    get_noise_noisy_latents_and_timesteps
-
-from library.utils.device_utils import init_ipex, clean_memory_on_device
-from library.strategies import strategy_sd, strategy_base
 from library.models import model_util
-from library.optimizations import deepspeed_utils
-from library.utils.common_utils import setup_logging, add_logging_arguments
 from library.utils import sai_model_spec
+from library.optimizations import deepspeed_utils
+from library.strategies import strategy_sd, strategy_base
+from library.utils.torch_utils import prepare_dtype, args_set_seed
+from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.data.prompt_templates import imagenet_templates_small, imagenet_style_templates_small
+from library.data.dataset import DatasetGroup, MinimalDataset, load_arbitrary_dataset, collator_class, debug_dataset
+from library.data.prompt_utils import add_prompt_parsing_arguments
+from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
+from library.training.trainer_utils import prepare_accelerator
+from library.training.diffusion import get_noise_noisy_latents_and_timesteps
+from library.training.optimizer import get_optimizer, get_scheduler_fix
+from library.training.sample_generation import sample_images
+from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 
 from library.utils.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
 
-from library.train.custom_train_functions import (
-    apply_snr_weight,
-    prepare_scheduler_for_custom_training,
-    scale_v_prediction_loss_like_noise_prediction,
-    add_v_prediction_like_loss,
+from library.config.arguments import (
+    verify_training_args,
+    prepare_dataset_args,
+    get_sanitized_config_or_none,
+    add_sd_models_arguments,
+    add_dataset_arguments,
+    add_training_arguments,
+    add_masked_loss_arguments,
+    add_optimizer_arguments,
+    verify_command_line_training_args,
+    read_config_from_file
+)
+
+from library.training.checkpointing import (
+    resume_from_local_or_hf_if_specified,
+    get_sai_model_spec,
+    save_and_remove_state_stepwise,
+    get_step_ckpt_name,
+    get_remove_step_no,
+    get_epoch_ckpt_name,
+    get_remove_epoch_no,
+    save_and_remove_state_on_epoch_end,
+    save_state_on_train_end,
+    get_last_ckpt_name
+)
+
+from library.training.noise_utils import (
+    fix_noise_scheduler_betas_for_zero_terminal_snr,
+    prepare_scheduler_for_custom_training
+)
+
+from library.losses.loss_weighting import (
+    add_loss_weighting_arguments,
     apply_debiased_estimation,
-    apply_masked_loss,
+    add_v_prediction_like_loss,
+    scale_v_prediction_loss_like_noise_prediction,
+    apply_snr_weight,
+    apply_masked_loss
 )
 
 init_ipex()
 
 setup_logging()
 logger = logging.getLogger(__name__)
-
-imagenet_templates_small = [
-    "a photo of a {}",
-    "a rendering of a {}",
-    "a cropped photo of the {}",
-    "the photo of a {}",
-    "a photo of a clean {}",
-    "a photo of a dirty {}",
-    "a dark photo of the {}",
-    "a photo of my {}",
-    "a photo of the cool {}",
-    "a close-up photo of a {}",
-    "a bright photo of the {}",
-    "a cropped photo of a {}",
-    "a photo of the {}",
-    "a good photo of the {}",
-    "a photo of one {}",
-    "a close-up photo of the {}",
-    "a rendition of the {}",
-    "a photo of the clean {}",
-    "a rendition of a {}",
-    "a photo of a nice {}",
-    "a good photo of a {}",
-    "a photo of the nice {}",
-    "a photo of the small {}",
-    "a photo of the weird {}",
-    "a photo of the large {}",
-    "a photo of a cool {}",
-    "a photo of a small {}",
-]
-
-imagenet_style_templates_small = [
-    "a painting in the style of {}",
-    "a rendering in the style of {}",
-    "a cropped painting in the style of {}",
-    "the painting in the style of {}",
-    "a clean painting in the style of {}",
-    "a dirty painting in the style of {}",
-    "a dark painting in the style of {}",
-    "a picture in the style of {}",
-    "a cool painting in the style of {}",
-    "a close-up painting in the style of {}",
-    "a bright painting in the style of {}",
-    "a cropped painting in the style of {}",
-    "a good painting in the style of {}",
-    "a close-up painting in the style of {}",
-    "a rendition in the style of {}",
-    "a nice painting in the style of {}",
-    "a small painting in the style of {}",
-    "a weird painting in the style of {}",
-    "a large painting in the style of {}",
-]
 
 
 class TextualInversionTrainer:
@@ -522,7 +496,7 @@ class TextualInversionTrainer:
         )
 
         if args.zero_terminal_snr:
-            custom_train_functions.fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
+            fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
         prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
 
@@ -794,7 +768,8 @@ def setup_parser() -> argparse.ArgumentParser:
     deepspeed_utils.add_deepspeed_arguments(parser)
     add_optimizer_arguments(parser)
     config_util.add_config_arguments(parser)
-    custom_train_functions.add_custom_train_arguments(parser, False)
+    add_loss_weighting_arguments(parser)
+    add_prompt_parsing_arguments(parser)
 
     parser.add_argument(
         "--save_model_as",
