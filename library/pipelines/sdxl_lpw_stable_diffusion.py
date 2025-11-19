@@ -15,10 +15,10 @@ from diffusers.models import AutoencoderKL
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from diffusers.utils import logging, PIL_INTERPOLATION
 
-from library.constants import re_attention
+from library.constants import re_attention, VAE_SCALE_FACTOR
 from library.models.sdxl_model_util import get_size_embeddings
 from library.models.text_encoder_util import pool_workaround
-from library.models import sdxl_original_unet, sdxl_original_control_net, sdxl_model_util
+from library.models import sdxl_original_unet, sdxl_original_control_net
 from library.strategies import strategy_sdxl, strategy_base
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
@@ -597,7 +597,7 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
 
     def decode_latents(self, latents):
         with torch.no_grad():
-            latents = 1 / sdxl_model_util.VAE_SCALE_FACTOR * latents
+            latents = 1 / VAE_SCALE_FACTOR * latents
 
             # print("post_quant_conv dtype:", self.vae.post_quant_conv.weight.dtype)  # torch.float32
             # x = torch.nn.functional.conv2d(latents, self.vae.post_quant_conv.weight.detach(), stride=1, padding=0)
@@ -655,7 +655,7 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         else:
             init_latent_dist = self.vae.encode(image).latent_dist
             init_latents = init_latent_dist.sample(generator=generator)
-            init_latents = sdxl_model_util.VAE_SCALE_FACTOR * init_latents
+            init_latents = VAE_SCALE_FACTOR * init_latents
             init_latents = torch.cat([init_latents] * batch_size, dim=0)
             init_latents_orig = init_latents
             shape = init_latents.shape
