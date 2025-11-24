@@ -1,66 +1,64 @@
-## SDXL training
+# SDXL Training Guide
 
-The documentation will be moved to the training documentation in the future. The following is a brief explanation of the training scripts for SDXL.
+This document provides a brief explanation of the training scripts for SDXL.
 
-### Training scripts for SDXL
+## Training Scripts for SDXL
 
-- `sdxl_train.py` is a script for SDXL fine-tuning. The usage is almost the same as `fine_tune.py`, but it also supports DreamBooth dataset.
-  - `--full_bf16` option is added. Thanks to KohakuBlueleaf!
-    - This option enables the full bfloat16 training (includes gradients). This option is useful to reduce the GPU memory usage. 
-    - The full bfloat16 training might be unstable. Please use it at your own risk.
-  - The different learning rates for each U-Net block are now supported in sdxl_train.py. Specify with `--block_lr` option. Specify 23 values separated by commas like `--block_lr 1e-3,1e-3 ... 1e-3`.
-    - 23 values correspond to `0: time/label embed, 1-9: input blocks 0-8, 10-12: mid blocks 0-2, 13-21: output blocks 0-8, 22: out`.
-- `prepare_buckets_latents.py` now supports SDXL fine-tuning.
+### `sdxl_train.py`
+This script is used for SDXL fine-tuning. Its usage is similar to `fine_tune.py`, but it also supports DreamBooth datasets.
 
-- `sdxl_train_network.py` is a script for LoRA training for SDXL. The usage is almost the same as `train_network.py`.
+**Key Options:**
+- `--full_bf16`: Enables full bfloat16 training, including gradients. This can help reduce GPU memory usage but may be unstable. Use at your own risk.
+- `--block_lr`: Sets different learning rates for each of the 23 blocks in the U-Net. The values should be comma-separated (e.g., `--block_lr 1e-3,1e-3,...,1e-3`). The blocks are indexed as follows:
+  - `0`: time/label embed
+  - `1-9`: input blocks 0-8
+  - `10-12`: mid blocks 0-2
+  - `13-21`: output blocks 0-8
+  - `22`: out
+- `--cache_text_encoder_outputs` and `--cache_text_encoder_outputs_to_disk`: Cache the outputs of the text encoders to reduce GPU memory usage. This option cannot be used with caption shuffling or dropout.
+- `--no_half_vae`: Disables the half-precision (mixed-precision) VAE to prevent potential NaN issues.
+- `--min_timestep` and `--max_timestep`: Sets the minimum and maximum timesteps for training the U-Net (default: 0 and 1000).
 
-- Both scripts has following additional options:
-  - `--cache_text_encoder_outputs` and `--cache_text_encoder_outputs_to_disk`: Cache the outputs of the text encoders. This option is useful to reduce the GPU memory usage. This option cannot be used with options for shuffling or dropping the captions.
-  - `--no_half_vae`: Disable the half-precision (mixed-precision) VAE. VAE for SDXL seems to produce NaNs in some cases. This option is useful to avoid the NaNs.
+### `sdxl_train_network.py`
+This script is used for LoRA training for SDXL. Its usage is similar to `train_network.py`.
 
-- `--weighted_captions` option is not supported yet for both scripts.
+### `sdxl_train_textual_inversion.py`
+This script is used for Textual Inversion training for SDXL. Its usage is similar to `train_textual_inversion.py`.
+- `--cache_text_encoder_outputs` is not supported.
+- Captions can be provided in two ways:
+  1.  **With captions**: All captions must include the token string, which will be replaced with multiple tokens.
+  2.  **With templates**: Use `--use_object_template` or `--use_style_template` to generate captions from a template, ignoring existing captions.
 
-- `sdxl_train_textual_inversion.py` is a script for Textual Inversion training for SDXL. The usage is almost the same as `train_textual_inversion.py`.
-  - `--cache_text_encoder_outputs` is not supported.
-  - There are two options for captions:
-    1. Training with captions. All captions must include the token string. The token string is replaced with multiple tokens.
-    2. Use `--use_object_template` or `--use_style_template` option. The captions are generated from the template. The existing captions are ignored.
-  - See below for the format of the embeddings.
+## Utility Scripts for SDXL
 
-- `--min_timestep` and `--max_timestep` options are added to each training script. These options can be used to train U-Net with different timesteps. The default values are 0 and 1000.
+### `tools/cache_latents.py`
+This script caches latents to disk in advance. The options are similar to `sdxl_train.py`.
+- **Usage**: `accelerate launch --num_cpu_threads_per_process 1 tools/cache_latents.py ...`
 
-### Utility scripts for SDXL
+### `tools/cache_text_encoder_outputs.py`
+This script caches text encoder outputs to disk in advance. The options are similar to `sdxl_train.py`.
 
-- `tools/cache_latents.py` is added. This script can be used to cache the latents to disk in advance. 
-  - The options are almost the same as `sdxl_train.py'. See the help message for the usage.
-  - Please launch the script as follows:
-    `accelerate launch  --num_cpu_threads_per_process 1 tools/cache_latents.py ...`
-  - This script should work with multi-GPU, but it is not tested in my environment.
+### `sdxl_gen_img.py`
+This script generates images with SDXL, supporting LoRA, Textual Inversion, and ControlNet-LLLite.
 
-- `tools/cache_text_encoder_outputs.py` is added. This script can be used to cache the text encoder outputs to disk in advance. 
-  - The options are almost the same as `cache_latents.py` and `sdxl_train.py`. See the help message for the usage.
+## Tips for SDXL Training
 
-- `sdxl_gen_img.py` is added. This script can be used to generate images with SDXL, including LoRA, Textual Inversion and ControlNet-LLLite. See the help message for the usage.
-
-### Tips for SDXL training
-
-- The default resolution of SDXL is 1024x1024.
-- The fine-tuning can be done with 24GB GPU memory with the batch size of 1. For 24GB GPU, the following options are recommended __for the fine-tuning with 24GB GPU memory__:
-  - Train U-Net only.
+- The default resolution for SDXL is 1024x1024.
+- **Fine-tuning on a 24GB GPU**:
+  - Train the U-Net only.
   - Use gradient checkpointing.
-  - Use `--cache_text_encoder_outputs` option and caching latents.
-  - Use Adafactor optimizer. RMSprop 8bit or Adagrad 8bit may work. AdamW 8bit doesn't seem to work.
-- The LoRA training can be done with 8GB GPU memory (10GB recommended). For reducing the GPU memory usage, the following options are recommended:
-  - Train U-Net only.
+  - Use `--cache_text_encoder_outputs` and cache latents.
+  - Use the Adafactor optimizer. AdamW 8-bit may not work.
+- **LoRA training on an 8-10GB GPU**:
+  - Train the U-Net only (`--network_train_unet_only` is recommended).
   - Use gradient checkpointing.
-  - Use `--cache_text_encoder_outputs` option and caching latents.
-  - Use one of 8bit optimizers or Adafactor optimizer.
-  - Use lower dim (4 to 8 for 8GB GPU).
-- `--network_train_unet_only` option is highly recommended for SDXL LoRA. Because SDXL has two text encoders, the result of the training will be unexpected.
-- PyTorch 2 seems to use slightly less GPU memory than PyTorch 1.
-- `--bucket_reso_steps` can be set to 32 instead of the default value 64. Smaller values than 32 will not work for SDXL training.
+  - Use `--cache_text_encoder_outputs` and cache latents.
+  - Use an 8-bit optimizer or Adafactor.
+  - Use a lower network dimension (e.g., 4-8 for 8GB GPU).
+- Set `--bucket_reso_steps` to 32 (default is 64). Smaller values are not supported for SDXL.
+- PyTorch 2 may use slightly less GPU memory than PyTorch 1.
 
-Example of the optimizer settings for Adafactor with the fixed learning rate:
+### Example Optimizer Settings (Adafactor)
 ```toml
 optimizer_type = "adafactor"
 optimizer_args = [ "scale_parameter=False", "relative_step=False", "warmup_init=False" ]
@@ -69,16 +67,10 @@ lr_warmup_steps = 100
 learning_rate = 4e-7 # SDXL original learning rate
 ```
 
-### Format of Textual Inversion embeddings for SDXL
-
+## Textual Inversion Embeddings Format
 ```python
 from safetensors.torch import save_file
 
 state_dict = {"clip_g": embs_for_text_encoder_1280, "clip_l": embs_for_text_encoder_768}
 save_file(state_dict, file)
 ```
-
-### ControlNet-LLLite
-
-ControlNet-LLLite, a novel method for ControlNet with SDXL, is added. See [documentation](./docs/train_lllite_README.md) for details.
-
