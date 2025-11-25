@@ -52,3 +52,6 @@ This repository has recently undergone a significant refactoring to improve modu
 
 Check the original repo and [Releases](https://github.com/kohya-ss/sd-scripts/releases) page for more details and a history of original changes.
 Also worth looking up [machina's fork](https://github.com/67372a/sd-scripts/tree/sd3-upstream), specifically the sd3 and sd3-upstream branches for the stuff he did there, which there are tons of, to have an idea for how these repos diverge from the original.
+
+---
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Enferlain/sd-scripts)
