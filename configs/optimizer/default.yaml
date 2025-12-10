@@ -1,0 +1,16 @@
+optimizer_type: ""
+use_8bit_adam: false
+use_lion_optimizer: false
+learning_rate: 2.0e-6
+max_grad_norm: 1.0
+optimizer_args: []
+lr_scheduler_type: ""
+lr_scheduler_args: []
+lr_scheduler: "constant"
+lr_warmup_steps: 0
+lr_decay_steps: 0
+lr_scheduler_num_cycles: 1
+lr_scheduler_power: 1.0
+fused_backward_pass: false
+lr_scheduler_timescale: null
+lr_scheduler_min_lr_ratio: null

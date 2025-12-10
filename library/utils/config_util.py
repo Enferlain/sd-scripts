@@ -459,7 +459,11 @@ class BlueprintGenerator:
     @staticmethod
     def search_value(key: str, fallbacks: Sequence[dict], default_value=None):
         for cand in fallbacks:
-            value = cand.get(key)
+            if isinstance(cand, dict):
+                value = cand.get(key)
+            else:
+                value = getattr(cand, key, None)
+
             if value is not None:
                 return value
 
