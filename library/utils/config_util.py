@@ -371,6 +371,9 @@ class ConfigSanitizer:
     # NOTE: In nature, argument parser result is not needed to be sanitize
     #   However this will help us to detect program bug
     def sanitize_argparse_namespace(self, argparse_namespace: argparse.Namespace) -> argparse.Namespace:
+        if hasattr(argparse_namespace, "resolution") and argparse_namespace.resolution is not None:
+            argparse_namespace.resolution = list(argparse_namespace.resolution)
+
         try:
             return self.argparse_config_validator(argparse_namespace)
         except MultipleInvalid:

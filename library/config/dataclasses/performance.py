@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Optional
-from .deepspeed import DeepspeedConfig
+from .deepspeed import DeepSpeedConfig
 
 
 @dataclass
@@ -22,4 +22,5 @@ class PerformanceConfig:
     highvram: bool = False
     disable_cuda_reduced_precision_operations: bool = False
     enable_cuda_reduced_precision_operations: bool = False
-    deepspeed: DeepspeedConfig = field(default_factory=DeepspeedConfig)
+    deepspeed: DeepSpeedConfig = field(default_factory=DeepSpeedConfig)
+    logging_dir: Optional[str] = None

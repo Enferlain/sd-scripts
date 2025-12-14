@@ -114,6 +114,10 @@ from library.config.arguments import prepare_dataset_args
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
 def train(cfg: FullConfig):
+    if cfg.training.dry_run:
+        print("Dry run completed successfully.")
+        return
+
     set_torch_cuda_reduced_precision(cfg.performance)
     deepspeed_utils.prepare_deepspeed_args(cfg.performance)
     setup_logging(cfg.logging, reset=True)
