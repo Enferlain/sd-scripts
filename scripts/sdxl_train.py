@@ -34,7 +34,7 @@ from library.training.model_prep import replace_unet_modules, patch_accelerator_
 from library.training.optimizer import get_optimizer, get_scheduler_fix
 from library.training.trainer_utils import append_lr_to_logs_with_names, prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
-from library.config.dataclasses.config import MainConfig
+from library.config.dataclasses.config import FullConfig
 
 import argparse
 from dataclasses import asdict
@@ -113,10 +113,10 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
 from library.config.arguments import prepare_dataset_args
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
-def train(cfg: MainConfig):
-    set_torch_cuda_reduced_precision(cfg.training)
-    deepspeed_utils.prepare_deepspeed_args(cfg.training)
-    setup_logging(cfg.training, reset=True)
+def train(cfg: FullConfig):
+    set_torch_cuda_reduced_precision(cfg.performance)
+    deepspeed_utils.prepare_deepspeed_args(cfg.performance)
+    setup_logging(cfg.logging, reset=True)
 
     if cfg.sdxl_training.block_lr:
         block_lrs = [float(lr) for lr in cfg.sdxl_training.block_lr.split(",")]
@@ -235,9 +235,9 @@ def train(cfg: MainConfig):
         ), "when caching text encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used"
 
     logger.info("prepare accelerator")
-    accelerator = prepare_accelerator(cfg.training)
+    accelerator = prepare_accelerator(cfg.performance)
 
-    weight_dtype, save_dtype = prepare_dtype(cfg.training)
+    weight_dtype, save_dtype = prepare_dtype(cfg.performance)
     vae_dtype = torch.float32 if cfg.sdxl_training.no_half_vae else weight_dtype
 
     (
@@ -258,12 +258,12 @@ def train(cfg: MainConfig):
         src_stable_diffusion_ckpt = None
         src_diffusers_model_path = cfg.sd_models.pretrained_model_name_or_path
 
-    if cfg.training.save_model_as is None:
+    if cfg.saving.save_model_as is None:
         save_stable_diffusion_format = load_stable_diffusion_format
-        use_safetensors = cfg.training.use_safetensors
+        use_safetensors = cfg.saving.use_safetensors
     else:
-        save_stable_diffusion_format = cfg.training.save_model_as.lower() == "ckpt" or cfg.training.save_model_as.lower() == "safetensors"
-        use_safetensors = cfg.training.use_safetensors or ("safetensors" in cfg.training.save_model_as.lower())
+        save_stable_diffusion_format = cfg.saving.save_model_as.lower() == "ckpt" or cfg.saving.save_model_as.lower() == "safetensors"
+        use_safetensors = cfg.saving.use_safetensors or ("safetensors" in cfg.saving.save_model_as.lower())
 
     def set_diffusers_xformers_flag(model, valid):
         def fn_recursive_set_mem_eff(module: torch.nn.Module):
@@ -280,9 +280,9 @@ def train(cfg: MainConfig):
         set_diffusers_xformers_flag(vae, True)
     else:
         accelerator.print("Disable Diffusers' xformers")
-        replace_unet_modules(unet, cfg.training.mem_eff_attn, cfg.training.xformers, cfg.training.sdpa)
+        replace_unet_modules(unet, cfg.performance.mem_eff_attn, cfg.performance.xformers, cfg.performance.sdpa)
         if torch.__version__ >= "2.0.0":
-            vae.set_use_memory_efficient_attention_xformers(cfg.training.xformers)
+            vae.set_use_memory_efficient_attention_xformers(cfg.performance.xformers)
 
     if cache_latents:
         vae.to(accelerator.device, dtype=vae_dtype)
@@ -296,7 +296,7 @@ def train(cfg: MainConfig):
 
         accelerator.wait_for_everyone()
 
-    if cfg.training.gradient_checkpointing:
+    if cfg.performance.gradient_checkpointing:
         unet.enable_gradient_checkpointing()
     train_unet = cfg.optimizer.learning_rate != 0
     train_text_encoder1 = False
@@ -307,7 +307,7 @@ def train(cfg: MainConfig):
 
     if cfg.sdxl_training.train_text_encoder:
         accelerator.print("enable text encoder training")
-        if cfg.training.gradient_checkpointing:
+        if cfg.performance.gradient_checkpointing:
             text_encoder1.gradient_checkpointing_enable()
             text_encoder2.gradient_checkpointing_enable()
         lr_te1 = cfg.sdxl_training.learning_rate_te1 if cfg.sdxl_training.learning_rate_te1 is not None else cfg.optimizer.learning_rate
@@ -445,17 +445,17 @@ def train(cfg: MainConfig):
     else:
         lr_scheduler = get_scheduler_fix(cfg.optimizer, optimizer, accelerator.num_processes)
 
-    if cfg.training.full_fp16:
+    if cfg.performance.full_fp16:
         assert (
-            cfg.training.mixed_precision == "fp16"
+            cfg.performance.mixed_precision == "fp16"
         ), "full_fp16 requires mixed precision='fp16'"
         accelerator.print("enable full fp16 training.")
         unet.to(weight_dtype)
         text_encoder1.to(weight_dtype)
         text_encoder2.to(weight_dtype)
-    elif cfg.training.full_bf16:
+    elif cfg.performance.full_bf16:
         assert (
-            cfg.training.mixed_precision == "bf16"
+            cfg.performance.mixed_precision == "bf16"
         ), "full_bf16 requires mixed precision='bf16'"
         accelerator.print("enable full bf16 training.")
         unet.to(weight_dtype)
@@ -466,9 +466,9 @@ def train(cfg: MainConfig):
         text_encoder1.text_model.encoder.layers[-1].requires_grad_(False)
         text_encoder1.text_model.final_layer_norm.requires_grad_(False)
 
-    if cfg.training.deepspeed:
+    if cfg.performance.deepspeed:
         ds_model = deepspeed_utils.prepare_deepspeed_model(
-            cfg.training,
+            cfg.performance,
             unet=unet if train_unet else None,
             text_encoder1=text_encoder1 if train_text_encoder1 else None,
             text_encoder2=text_encoder2 if train_text_encoder2 else None,
@@ -495,10 +495,10 @@ def train(cfg: MainConfig):
         text_encoder1.to(accelerator.device)
         text_encoder2.to(accelerator.device)
 
-    if cfg.training.full_fp16:
+    if cfg.performance.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
-    resume_from_local_or_hf_if_specified(accelerator, cfg.training)
+    resume_from_local_or_hf_if_specified(accelerator, cfg)
 
     if cfg.sdxl_training.fused_backward_pass:
         import library.optimizers.adafactor_fused
@@ -550,8 +550,8 @@ def train(cfg: MainConfig):
 
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
     num_train_epochs = math.ceil(cfg.training.max_train_steps / num_update_steps_per_epoch)
-    if (cfg.training.save_n_epoch_ratio is not None) and (cfg.training.save_n_epoch_ratio > 0):
-        cfg.training.save_every_n_epochs = math.floor(num_train_epochs / cfg.training.save_n_epoch_ratio) or 1
+    if (cfg.saving.save_n_epoch_ratio is not None) and (cfg.saving.save_n_epoch_ratio > 0):
+        cfg.saving.save_every_n_epochs = math.floor(num_train_epochs / cfg.saving.save_n_epoch_ratio) or 1
 
     accelerator.print("running training")
     accelerator.print(f"  num examples / サンプル数: {train_dataset_group.num_train_images}")
@@ -570,25 +570,25 @@ def train(cfg: MainConfig):
         beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
     )
 
-    if cfg.training.zero_terminal_snr:
+    if cfg.regularization.zero_terminal_snr:
         fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
     prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
 
     if accelerator.is_main_process:
         init_kwargs = {}
-        if cfg.training.wandb_run_name:
-            init_kwargs["wandb"] = {"name": cfg.training.wandb_run_name}
-        if cfg.training.log_tracker_config is not None:
-            init_kwargs = toml.load(cfg.training.log_tracker_config)
+        if cfg.logging.wandb_run_name:
+            init_kwargs["wandb"] = {"name": cfg.logging.wandb_run_name}
+        if cfg.logging.log_tracker_config is not None:
+            init_kwargs = toml.load(cfg.logging.log_tracker_config)
         accelerator.init_trackers(
-            "finetuning" if cfg.training.log_tracker_name is None else cfg.training.log_tracker_name,
+            "finetuning" if cfg.logging.log_tracker_name is None else cfg.logging.log_tracker_name,
             config=OmegaConf.to_container(cfg, resolve=True),
             init_kwargs=init_kwargs,
         )
 
     sample_images(
-        accelerator, cfg.training, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
+        accelerator, cfg.sampling, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
     )
     if len(accelerator.trackers) > 0:
         accelerator.log({}, step=0)
@@ -646,7 +646,7 @@ def train(cfg: MainConfig):
                                 [text_encoder1, text_encoder2, accelerator.unwrap_model(text_encoder2)],
                                 [input_ids1, input_ids2],
                             )
-                        if cfg.training.full_fp16:
+                        if cfg.performance.full_fp16:
                             encoder_hidden_states1 = encoder_hidden_states1.to(weight_dtype)
                             encoder_hidden_states2 = encoder_hidden_states2.to(weight_dtype)
                             pool2 = pool2.to(weight_dtype)
@@ -659,7 +659,7 @@ def train(cfg: MainConfig):
                 vector_embedding = torch.cat([pool2, embs], dim=1).to(weight_dtype)
                 text_embedding = torch.cat([encoder_hidden_states1, encoder_hidden_states2], dim=2).to(weight_dtype)
 
-                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.training, noise_scheduler, latents)
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.regularization, noise_scheduler, latents)
 
                 noisy_latents = noisy_latents.to(weight_dtype)
 
@@ -671,31 +671,31 @@ def train(cfg: MainConfig):
                 else:
                     target = noise
 
-                huber_c = get_huber_threshold_if_needed(cfg.training, timesteps, noise_scheduler)
+                huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
                 if (
-                    cfg.training.min_snr_gamma
-                    or cfg.training.scale_v_pred_loss_like_noise_pred
-                    or cfg.training.v_pred_like_loss
-                    or cfg.training.debiased_estimation_loss
-                    or cfg.training.masked_loss
+                    cfg.loss.min_snr_gamma
+                    or cfg.loss.scale_v_pred_loss_like_noise_pred
+                    or cfg.loss.v_pred_like_loss
+                    or cfg.loss.debiased_estimation_loss
+                    or cfg.masked_loss
                 ):
-                    loss = conditional_loss(noise_pred.float(), target.float(), cfg.training.loss_type, "none", huber_c, scale=float(cfg.training.loss_scale))
-                    if cfg.training.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+                    loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale))
+                    if cfg.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                         loss = apply_masked_loss(loss, batch)
                     loss = loss.mean([1, 2, 3])
 
-                    if cfg.training.min_snr_gamma:
-                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.training.min_snr_gamma, cfg.sd_models.v_parameterization)
-                    if cfg.training.scale_v_pred_loss_like_noise_pred:
+                    if cfg.loss.min_snr_gamma:
+                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.min_snr_gamma, cfg.sd_models.v_parameterization)
+                    if cfg.loss.scale_v_pred_loss_like_noise_pred:
                         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-                    if cfg.training.v_pred_like_loss:
-                        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.training.v_pred_like_loss)
-                    if cfg.training.debiased_estimation_loss:
+                    if cfg.loss.v_pred_like_loss:
+                        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.v_pred_like_loss)
+                    if cfg.loss.debiased_estimation_loss:
                         loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.sd_models.v_parameterization)
 
                     loss = loss.mean()
                 else:
-                    loss = conditional_loss(noise_pred.float(), target.float(), cfg.training.loss_type, "mean", huber_c, scale=float(cfg.training.loss_scale))
+                    loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "mean", huber_c, scale=float(cfg.loss.loss_scale))
 
                 accelerator.backward(loss)
 
@@ -721,7 +721,7 @@ def train(cfg: MainConfig):
 
                 sample_images(
                     accelerator,
-                    cfg.training,
+                    cfg.sampling,
                     None,
                     global_step,
                     accelerator.device,
@@ -731,7 +731,7 @@ def train(cfg: MainConfig):
                     unet,
                 )
 
-                if cfg.training.save_every_n_steps is not None and global_step % cfg.training.save_every_n_steps == 0:
+                if cfg.saving.save_every_n_steps is not None and global_step % cfg.saving.save_every_n_steps == 0:
                     accelerator.wait_for_everyone()
                     if accelerator.is_main_process:
                         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
@@ -778,7 +778,7 @@ def train(cfg: MainConfig):
 
         accelerator.wait_for_everyone()
 
-        if cfg.training.save_every_n_epochs is not None:
+        if cfg.saving.save_every_n_epochs is not None:
             if accelerator.is_main_process:
                 src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
                 save_sd_model_on_epoch_end_or_stepwise(
@@ -802,7 +802,7 @@ def train(cfg: MainConfig):
 
         sample_images(
             accelerator,
-            cfg.training,
+            cfg.sampling,
             epoch + 1,
             global_step,
             accelerator.device,
@@ -819,8 +819,8 @@ def train(cfg: MainConfig):
 
     accelerator.end_training()
 
-    if cfg.training.save_state or cfg.training.save_state_on_train_end:
-        save_state_on_train_end(cfg.training, accelerator)
+    if cfg.saving.save_state or cfg.saving.save_state_on_train_end:
+        save_state_on_train_end(cfg, accelerator)
 
     del accelerator
 

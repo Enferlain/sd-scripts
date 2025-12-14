@@ -1,0 +1,27 @@
+mem_eff_attn: false
+torch_compile: false
+dynamo_backend: "inductor"
+xformers: false
+sdpa: false
+gradient_checkpointing: false
+mixed_precision: "no"
+full_fp16: false
+full_bf16: false
+fp8_base: false
+ddp_timeout: null
+ddp_gradient_as_bucket_view: false
+ddp_static_graph: false
+lowram: false
+highvram: false
+disable_cuda_reduced_precision_operations: false
+enable_cuda_reduced_precision_operations: false
+deepspeed:
+  deepspeed: false
+  zero_stage: 2
+  offload_optimizer_device: null
+  offload_optimizer_nvme_path: null
+  offload_param_device: null
+  offload_param_nvme_path: null
+  zero3_init_flag: false
+  zero3_save_16bit_model: false
+  fp16_master_weights_and_gradients: false
