@@ -5,27 +5,38 @@ from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import TorchDynamoPlugin
 
 import library.optimizations.deepspeed_utils as deepspeed_utils
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import OmegaConf
+from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.logging import LoggingConfig
+from typing import Union, Any
 
-
-def prepare_accelerator(args: DictConfig):
+def prepare_accelerator(cfg: PerformanceConfig):
     """
     this function also prepares deepspeed plugin
     """
 
-    if args.logging_dir is None:
-        logging_dir = None
-    else:
-        log_prefix = "" if args.log_prefix is None else args.log_prefix
-        logging_dir = args.logging_dir + "/" + log_prefix + time.strftime("%Y%m%d%H%M%S", time.localtime())
+    # logging_dir and log_prefix are in LoggingConfig, but logging_dir is required for accelerator if log_with is tensorboard.
+    # log_with is in LoggingConfig.
+    # However, prepare_accelerator is usually called with 'args' which contained everything.
+    # We should assume cfg is a config object that has these attributes, or we need to pass both configs.
+    # Since deepspeed_utils.prepare_deepspeed_plugin(args) also expects args, we likely need a combined object or access attributes.
 
-    if args.log_with is None:
+    logging_dir = getattr(cfg, "logging_dir", None)
+    log_prefix = getattr(cfg, "log_prefix", "")
+    if log_prefix is None:
+        log_prefix = ""
+
+    if logging_dir is not None:
+        logging_dir = logging_dir + "/" + log_prefix + time.strftime("%Y%m%d%H%M%S", time.localtime())
+
+    log_with = getattr(cfg, "log_with", None)
+
+    if log_with is None:
         if logging_dir is not None:
             log_with = "tensorboard"
         else:
             log_with = None
     else:
-        log_with = args.log_with
         if log_with in ["tensorboard", "all"]:
             if logging_dir is None:
                 raise ValueError(
@@ -39,12 +50,12 @@ def prepare_accelerator(args: DictConfig):
             if logging_dir is not None:
                 os.makedirs(logging_dir, exist_ok=True)
                 os.environ["WANDB_DIR"] = logging_dir
-            if args.wandb_api_key is not None:
-                wandb.login(key=args.wandb_api_key)
+            if getattr(cfg, "wandb_api_key", None) is not None:
+                wandb.login(key=cfg.wandb_api_key)
 
     # torch.compile のオプション。 NO の場合は torch.compile は使わない
     # torch.compile のオプション。 NO の場合は torch.compile は使わない
-    if args.torch_compile:
+    if getattr(cfg, "torch_compile", False):
         # Configure the compilation backend
         dynamo_plugin = TorchDynamoPlugin(
             backend="inductor",  # Options: "inductor", "aot_eager", "aot_nvfuser", etc.
@@ -71,18 +82,18 @@ def prepare_accelerator(args: DictConfig):
     kwargs_handlers = [
         (
             DistributedDataParallelKwargs(
-                gradient_as_bucket_view=args.ddp_gradient_as_bucket_view, static_graph=args.ddp_static_graph
+                gradient_as_bucket_view=cfg.ddp_gradient_as_bucket_view, static_graph=cfg.ddp_static_graph
             )
-            if args.ddp_gradient_as_bucket_view or args.ddp_static_graph
+            if cfg.ddp_gradient_as_bucket_view or cfg.ddp_static_graph
             else None
         ),
     ]
     kwargs_handlers = [i for i in kwargs_handlers if i is not None]
-    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(args)
+    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(cfg)
 
     accelerator = Accelerator(
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        mixed_precision=args.mixed_precision,
+        gradient_accumulation_steps=getattr(cfg, "gradient_accumulation_steps", 1), # In TrainingConfig usually
+        mixed_precision=cfg.mixed_precision,
         log_with=log_with,
         project_dir=logging_dir,
         kwargs_handlers=kwargs_handlers,
@@ -92,38 +103,67 @@ def prepare_accelerator(args: DictConfig):
     return accelerator
 
 
-def init_trackers(accelerator: Accelerator, args: DictConfig, default_tracker_name: str):
+def init_trackers(accelerator: Accelerator, cfg: Any, default_tracker_name: str):
     """
     Initialize experiment trackers with tracker specific behaviors
     """
+    # Assuming cfg is FullConfig or similar that can be converted to container
+
     if accelerator.is_main_process:
         init_kwargs = {}
-        if "wandb" in args.logging and args.logging.wandb_run_name:
-            init_kwargs["wandb"] = {"name": args.logging.wandb_run_name}
-        if "log_tracker_config" in args.logging and args.logging.log_tracker_config is not None:
-            init_kwargs = args.logging.log_tracker_config
+        # Accessing logging config. Usually cfg.logging if it's FullConfig
+        logging_cfg = getattr(cfg, "logging", cfg)
+
+        wandb_run_name = getattr(logging_cfg, "wandb_run_name", None)
+        if wandb_run_name:
+            init_kwargs["wandb"] = {"name": wandb_run_name}
+
+        log_tracker_config = getattr(logging_cfg, "log_tracker_config", None)
+        if log_tracker_config is not None:
+            init_kwargs = log_tracker_config
 
         # sanitize config for logging
-        config_to_log = OmegaConf.to_container(args, resolve=True)
-        sensitive_keys = ["wandb_api_key", "huggingface_token"]
-        for key in sensitive_keys:
-            if key in config_to_log:
-                config_to_log[key] = "*****"
+        if hasattr(cfg, "to_container"): # Omegaconf
+             config_to_log = OmegaConf.to_container(cfg, resolve=True)
+        elif hasattr(cfg, "__dataclass_fields__"): # Dataclass
+             from dataclasses import asdict
+             config_to_log = asdict(cfg)
+        else:
+             config_to_log = vars(cfg) # argparse Namespace or simple object
 
+        sensitive_keys = ["wandb_api_key", "huggingface_token"]
+
+        # Recursive cleaning might be needed if config is nested
+        def clean_recursive(d):
+            if isinstance(d, dict):
+                for key in sensitive_keys:
+                    if key in d:
+                        d[key] = "*****"
+                for v in d.values():
+                    clean_recursive(v)
+
+        clean_recursive(config_to_log)
+
+        log_tracker_name = getattr(logging_cfg, "log_tracker_name", None)
         accelerator.init_trackers(
-            default_tracker_name if args.logging.log_tracker_name is None else args.logging.log_tracker_name,
+            default_tracker_name if log_tracker_name is None else log_tracker_name,
             config=config_to_log,
             init_kwargs=init_kwargs,
         )
 
 
-def calculate_val_loss_check(args, global_step, epoch_step, val_dataloader, train_dataloader) -> bool:
+def calculate_val_loss_check(cfg, global_step, epoch_step, val_dataloader, train_dataloader) -> bool:
     if val_dataloader is None:
         return False
 
-    if global_step != 0 and global_step < args.max_train_steps:
-        if args.validation_every_n_step is not None:
-            if global_step % int(args.validation_every_n_step) != 0:
+    max_train_steps = getattr(cfg, "max_train_steps", 1000000000) # TrainingConfig
+    if global_step != 0 and global_step < max_train_steps:
+        validation_every_n_step = getattr(cfg, "validation_every_n_step", None) # Not in dataclasses? check source code
+        if validation_every_n_step is None:
+             validation_every_n_step = getattr(cfg, "validate_every_n_steps", None) # TrainingConfig has validate_every_n_steps
+
+        if validation_every_n_step is not None:
+            if global_step % int(validation_every_n_step) != 0:
                 return False
         else:
             if epoch_step != len(train_dataloader) - 1:

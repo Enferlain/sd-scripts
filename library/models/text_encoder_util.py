@@ -1,13 +1,11 @@
 import torch
-import argparse
-
-from typing import Optional
+from typing import Optional, Any
 from accelerate import Accelerator
 
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 
 
-def get_hidden_states(args: argparse.Namespace, input_ids, tokenizer, text_encoder, weight_dtype=None):
+def get_hidden_states(args: Any, input_ids, tokenizer, text_encoder, weight_dtype=None):
     # with no_token_padding, the length is not max length, return result immediately
     if input_ids.size()[-1] != tokenizer.model_max_length:
         return text_encoder(input_ids)[0]
@@ -16,21 +14,24 @@ def get_hidden_states(args: argparse.Namespace, input_ids, tokenizer, text_encod
     b_size = input_ids.size()[0]
     input_ids = input_ids.reshape((-1, tokenizer.model_max_length))  # batch_size*3, 77
 
-    if args.clip_skip is None:
+    clip_skip = getattr(args, "clip_skip", None)
+    if clip_skip is None:
         encoder_hidden_states = text_encoder(input_ids)[0]
     else:
         enc_out = text_encoder(input_ids, output_hidden_states=True, return_dict=True)
-        encoder_hidden_states = enc_out["hidden_states"][-args.clip_skip]
+        encoder_hidden_states = enc_out["hidden_states"][-clip_skip]
         encoder_hidden_states = text_encoder.text_model.final_layer_norm(encoder_hidden_states)
 
     # bs*3, 77, 768 or 1024
     encoder_hidden_states = encoder_hidden_states.reshape((b_size, -1, encoder_hidden_states.shape[-1]))
 
-    if args.max_token_length is not None:
-        if args.v2:
+    max_token_length = getattr(args, "max_token_length", None)
+    if max_token_length is not None:
+        v2 = getattr(args, "v2", False)
+        if v2:
             # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
             states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
-            for i in range(1, args.max_token_length, tokenizer.model_max_length):
+            for i in range(1, max_token_length, tokenizer.model_max_length):
                 chunk = encoder_hidden_states[:, i: i + tokenizer.model_max_length - 2]  # <BOS> の後から 最後の前まで
                 if i > 0:
                     for j in range(len(chunk)):
@@ -42,7 +43,7 @@ def get_hidden_states(args: argparse.Namespace, input_ids, tokenizer, text_encod
         else:
             # v1: <BOS>...<EOS> の三連を <BOS>...<EOS> へ戻す
             states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
-            for i in range(1, args.max_token_length, tokenizer.model_max_length):
+            for i in range(1, max_token_length, tokenizer.model_max_length):
                 states_list.append(
                     encoder_hidden_states[:, i: i + tokenizer.model_max_length - 2]
                 )  # <BOS> の後から <EOS> の前まで

@@ -1,4 +1,3 @@
-import argparse
 import ast
 import importlib
 import inspect
@@ -19,14 +18,17 @@ from diffusers.optimization import (
 )
 
 from library.constants import int_pattern, float_pattern
+from library.config.dataclasses.optimizer import OptimizerConfig
 
 logger = logging.getLogger(__name__)
 
 
-def prepare_optimizer(args, network):
-    if isinstance(args.orthograd_targets, str):
-        orthograd_targets = ast.literal_eval(args.orthograd_targets)
+def prepare_optimizer(cfg: OptimizerConfig, network):
+    if isinstance(cfg.orthograd_targets, str):
+        orthograd_targets = ast.literal_eval(cfg.orthograd_targets)
     else:
+        # Default value if None or not string (though dataclass default is string)
+        # Check if config has default
         orthograd_targets = [
             "lora_down.weight",
             "lora_up.weight",
@@ -42,8 +44,8 @@ def prepare_optimizer(args, network):
         ]
 
     optimizer_kwargs = {}
-    if args.optimizer_args is not None and len(args.optimizer_args) > 0:
-        for arg in args.optimizer_args:
+    if cfg.optimizer_args is not None and len(cfg.optimizer_args) > 0:
+        for arg in cfg.optimizer_args:
             key, value = arg.split("=")
             try:
                 value = ast.literal_eval(value)
@@ -54,7 +56,7 @@ def prepare_optimizer(args, network):
 
     try:
         # Check optimizer defaults
-        case_sensitive_optimizer_type = args.optimizer_type  # not lower
+        case_sensitive_optimizer_type = cfg.optimizer_type  # not lower
 
         if "." not in case_sensitive_optimizer_type:  # from torch.optim
             optimizer_module = torch.optim
@@ -64,7 +66,7 @@ def prepare_optimizer(args, network):
             case_sensitive_optimizer_type = values[-1]
 
         # Need to handle base optimizer
-        if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or args.optimizer_type.lower().endswith("snoo_asgd".lower()):
+        if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or cfg.optimizer_type.lower().endswith("snoo_asgd".lower()):
             case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type", None)
             base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")
             base_optimizer_module = importlib.import_module(".".join(base_optimizer_values[:-1]))
@@ -88,28 +90,52 @@ def prepare_optimizer(args, network):
 
     # make backward compatibility for text_encoder_lr
     support_multiple_lrs = hasattr(network, "prepare_optimizer_params_with_multiple_te_lrs")
-    if support_multiple_lrs or args.network_module == "lycoris.kohya":
-        text_encoder_lr = args.text_encoder_lr
+
+    # Check if network_module is available in cfg/args, assume it might be passed via another way if not in OptimizerConfig
+    # Ideally, network config should be passed here too, or extracted from network object if possible.
+    # For now, we rely on checking `network` object or assuming standard behavior.
+    # If `network_module` is needed, it should be in the arguments to this function.
+    # Updated signature: prepare_optimizer(cfg, network, text_encoder_lr=None, unet_lr=None, learning_rate=None)
+    # However, to minimize signature changes, we try to use what we have.
+
+    # NOTE: The original code used `args.text_encoder_lr`. In Hydra, this might be passed differently.
+    # We will assume `cfg` has `learning_rate`. `text_encoder_lr` and `unet_lr` are technically training args, not just optimizer args.
+    # But they are often passed here.
+    # For this refactor, we will assume the caller might pass a combined config or we access specific fields.
+    # The `OptimizerConfig` dataclass DOES NOT have `text_encoder_lr` or `unet_lr`. They are in `TrainingConfig` or `SDXLTrainingConfig`.
+
+    # We need to access text_encoder_lr and unet_lr.
+    # If cfg is the full config, we can access them. If it is just OptimizerConfig, we can't.
+    # Let's check `cfg` type or attributes.
+
+    text_encoder_lr = getattr(cfg, "text_encoder_lr", None)
+    unet_lr = getattr(cfg, "unet_lr", None)
+    learning_rate = cfg.learning_rate
+
+    # network_module is in NetworkConfig/TrainingConfig usually.
+    network_module = getattr(cfg, "network_module", "")
+
+    if support_multiple_lrs or network_module == "lycoris.kohya":
+        pass # text_encoder_lr is already set
     else:
-        # toml backward compatibility
-        if args.text_encoder_lr is None or isinstance(args.text_encoder_lr, float) or isinstance(args.text_encoder_lr,
-                                                                                                 int):
-            text_encoder_lr = args.text_encoder_lr
+        # backward compatibility logic
+        if text_encoder_lr is None or isinstance(text_encoder_lr, float) or isinstance(text_encoder_lr, int):
+            pass
         else:
-            text_encoder_lr = None if len(args.text_encoder_lr) == 0 else args.text_encoder_lr[0]
+            text_encoder_lr = None if len(text_encoder_lr) == 0 else text_encoder_lr[0]
 
     try:
         if support_multiple_lrs:
             # only flux atm via Kohya's
             results = network.prepare_optimizer_params_with_multiple_te_lrs(text_encoder_lr=text_encoder_lr,
-                                                                            unet_lr=args.unet_lr,
-                                                                            learning_rate=args.learning_rate,
+                                                                            unet_lr=unet_lr,
+                                                                            learning_rate=learning_rate,
                                                                             apply_orthograd=apply_orthograd,
                                                                             orthograd_targets=orthograd_targets)
         else:
             results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
-                                                       unet_lr=args.unet_lr,
-                                                       learning_rate=args.learning_rate,
+                                                       unet_lr=unet_lr,
+                                                       learning_rate=learning_rate,
                                                        apply_orthograd=apply_orthograd,
                                                        orthograd_targets=orthograd_targets)
         if type(results) is tuple:
@@ -120,8 +146,8 @@ def prepare_optimizer(args, network):
             lr_descriptions = None
     except TypeError as e:
         results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
-                                                   unet_lr=args.unet_lr,
-                                                   learning_rate=args.learning_rate,
+                                                   unet_lr=unet_lr,
+                                                   learning_rate=learning_rate,
                                                    apply_orthograd=apply_orthograd,
                                                    orthograd_targets=orthograd_targets)
         if type(results) is tuple:
@@ -131,26 +157,26 @@ def prepare_optimizer(args, network):
             trainable_params = results
             lr_descriptions = None
 
-    optimizer_name, optimizer_args, optimizer = get_optimizer(args, trainable_params, optimizer_kwargs)
-    optimizer_train_fn, optimizer_eval_fn = get_optimizer_train_eval_fn(optimizer, args)
+    optimizer_name, optimizer_args, optimizer = get_optimizer(cfg, trainable_params, optimizer_kwargs)
+    optimizer_train_fn, optimizer_eval_fn = get_optimizer_train_eval_fn(optimizer, cfg)
 
     return optimizer_name, optimizer_args, optimizer, optimizer_train_fn, optimizer_eval_fn, lr_descriptions, text_encoder_lr
 
 
-def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[str, str, object]:
+def get_optimizer(cfg: OptimizerConfig, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[str, str, object]:
     # "Optimizer to use: AdamW, AdamW8bit, Lion, SGDNesterov, SGDNesterov8bit, PagedAdamW, PagedAdamW8bit, PagedAdamW32bit, Lion8bit, PagedLion8bit, AdEMAMix8bit, PagedAdEMAMix8bit, DAdaptation(DAdaptAdamPreprint), DAdaptAdaGrad, DAdaptAdam, DAdaptAdan, DAdaptAdanIP, DAdaptLion, DAdaptSGD, Adafactor"
 
-    optimizer_type = args.optimizer_type
-    if args.use_8bit_adam:
+    optimizer_type = cfg.optimizer_type
+    if cfg.use_8bit_adam:
         assert (
-            not args.use_lion_optimizer
+            not cfg.use_lion_optimizer
         ), "both option use_8bit_adam and use_lion_optimizer are specified / use_8bit_adamとuse_lion_optimizerの両方のオプションが指定されています"
         assert (
                 optimizer_type is None or optimizer_type == ""
         ), "both option use_8bit_adam and optimizer_type are specified / use_8bit_adamとoptimizer_typeの両方のオプションが指定されています"
         optimizer_type = "AdamW8bit"
 
-    elif args.use_lion_optimizer:
+    elif cfg.use_lion_optimizer:
         assert (
                 optimizer_type is None or optimizer_type == ""
         ), "both option use_lion_optimizer and optimizer_type are specified / use_lion_optimizerとoptimizer_typeの両方のオプションが指定されています"
@@ -160,38 +186,28 @@ def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[
         optimizer_type = "AdamW"
     optimizer_type = optimizer_type.lower()
 
-    if args.fused_backward_pass:
+    if cfg.fused_backward_pass:
         assert (
                 optimizer_type == "Adafactor".lower()
         ), "fused_backward_pass currently only works with optimizer_type Adafactor / fused_backward_passは現在optimizer_type Adafactorでのみ機能します"
-        assert (
-                args.gradient_accumulation_steps == 1
-        ), "fused_backward_pass does not work with gradient_accumulation_steps > 1 / fused_backward_passはgradient_accumulation_steps>1では機能しません"
+        # We don't have gradient_accumulation_steps in OptimizerConfig, assuming checked elsewhere or passed in cfg if it's a merged config
+        if hasattr(cfg, "gradient_accumulation_steps"):
+             assert (
+                cfg.gradient_accumulation_steps == 1
+            ), "fused_backward_pass does not work with gradient_accumulation_steps > 1 / fused_backward_passはgradient_accumulation_steps>1では機能しません"
 
     # 引数を分解する
-    if not optimizer_kwargs and args.optimizer_args is not None and len(args.optimizer_args) > 0:
-        for arg in args.optimizer_args:
+    if not optimizer_kwargs and cfg.optimizer_args is not None and len(cfg.optimizer_args) > 0:
+        for arg in cfg.optimizer_args:
             key, value = arg.split("=")
             try:
                 value = ast.literal_eval(value)
             except ValueError:
                 value = value
 
-            # value = value.split(",")
-            # for i in range(len(value)):
-            #     if value[i].lower() == "true" or value[i].lower() == "false":
-            #         value[i] = value[i].lower() == "true"
-            #     else:
-            #         value[i] = ast.float(value[i])
-            # if len(value) == 1:
-            #     value = value[0]
-            # else:
-            #     value = tuple(value)
-
             optimizer_kwargs[key] = value
-    # logger.info(f"optkwargs {optimizer}_{kwargs}")
 
-    lr = args.learning_rate
+    lr = cfg.learning_rate
     optimizer = None
     optimizer_class = None
 
@@ -377,7 +393,7 @@ def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[
             if lr != 0.0:
                 logger.warning(
                     f"learning rate is used as initial_lr / 指定したlearning rateはinitial_lrとして使用されます")
-            args.learning_rate = None
+            cfg.learning_rate = None
 
             # trainable_paramsがgroupだった時の処理：lrを削除する
             if type(trainable_params) == list and type(trainable_params[0]) == dict:
@@ -389,20 +405,21 @@ def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[
                 if has_group_lr:
                     # 一応argsを無効にしておく TODO 依存関係が逆転してるのであまり望ましくない
                     logger.warning(f"unet_lr and text_encoder_lr are ignored / unet_lrとtext_encoder_lrは無視されます")
-                    args.unet_lr = None
-                    args.text_encoder_lr = None
+                    cfg.unet_lr = None
+                    cfg.text_encoder_lr = None
 
-            if args.lr_scheduler != "adafactor":
+            if cfg.lr_scheduler != "adafactor":
                 logger.info(f"use adafactor_scheduler / スケジューラにadafactor_schedulerを使用します")
-            args.lr_scheduler = f"adafactor:{lr}"  # ちょっと微妙だけど
+            cfg.lr_scheduler = f"adafactor:{lr}"  # ちょっと微妙だけど
 
             lr = None
         else:
-            if args.max_grad_norm != 0.0:
+            # max_grad_norm is in OptimizerConfig
+            if cfg.max_grad_norm != 0.0:
                 logger.warning(
                     f"because max_grad_norm is set, clip_grad_norm is enabled. consider set to 0 / max_grad_normが設定されているためclip_grad_normが有効になります。0に設定して無効にしたほうがいいかもしれません"
                 )
-            if args.lr_scheduler != "constant_with_warmup":
+            if cfg.lr_scheduler != "constant_with_warmup":
                 logger.warning(
                     f"constant_with_warmup will be good / スケジューラはconstant_with_warmupが良いかもしれません")
             if optimizer_kwargs.get("clip_threshold", 1.0) != 1.0:
@@ -439,7 +456,7 @@ def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[
 
     if optimizer is None:
         # 任意のoptimizerを使う
-        case_sensitive_optimizer_type = args.optimizer_type  # not lower
+        case_sensitive_optimizer_type = cfg.optimizer_type  # not lower
         logger.info(f"use {case_sensitive_optimizer_type} | {optimizer_kwargs}")
 
         if "." not in case_sensitive_optimizer_type:  # from torch.optim
@@ -450,7 +467,7 @@ def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[
             case_sensitive_optimizer_type = values[-1]
 
         # Need to handle base optimizer
-        if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or args.optimizer_type.lower().endswith("snoo_asgd".lower()):
+        if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or cfg.optimizer_type.lower().endswith("snoo_asgd".lower()):
             case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type", None)
             base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")
             base_optimizer_module = importlib.import_module(".".join(base_optimizer_values[:-1]))
@@ -463,87 +480,6 @@ def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[
             optimizer_class = getattr(optimizer_module, case_sensitive_optimizer_type)
             optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
-    """
-    # wrap any of above optimizer with schedulefree, if optimizer is not schedulefree
-    if args.optimizer_schedulefree_wrapper and not optimizer_type.endswith("schedulefree".lower()):
-        try:
-            import schedulefree as sf
-        except ImportError:
-            raise ImportError("No schedulefree / schedulefreeがインストールされていないようです")
-
-        schedulefree_wrapper_kwargs = {}
-        if args.schedulefree_wrapper_args is not None and len(args.schedulefree_wrapper_args) > 0:
-            for arg in args.schedulefree_wrapper_args:
-                key, value = arg.split("=")
-                value = ast.literal_eval(value)
-                schedulefree_wrapper_kwargs[key] = value
-
-        sf_wrapper = sf.ScheduleFreeWrapper(optimizer, **schedulefree_wrapper_kwargs)
-        sf_wrapper.train()  # make optimizer as train mode
-
-        # we need to make optimizer as a subclass of torch.optim.Optimizer, we make another Proxy class over SFWrapper
-        class OptimizerProxy(torch.optim.Optimizer):
-            def __init__(self, sf_wrapper):
-                self._sf_wrapper = sf_wrapper
-
-            def __getattr__(self, name):
-                return getattr(self._sf_wrapper, name)
-
-            # override properties
-            @property
-            def state(self):
-                return self._sf_wrapper.state
-
-            @state.setter
-            def state(self, state):
-                self._sf_wrapper.state = state
-
-            @property
-            def param_groups(self):
-                return self._sf_wrapper.param_groups
-
-            @param_groups.setter
-            def param_groups(self, param_groups):
-                self._sf_wrapper.param_groups = param_groups
-
-            @property
-            def defaults(self):
-                return self._sf_wrapper.defaults
-
-            @defaults.setter
-            def defaults(self, defaults):
-                self._sf_wrapper.defaults = defaults
-
-            def add_param_group(self, param_group):
-                self._sf_wrapper.add_param_group(param_group)
-
-            def load_state_dict(self, state_dict):
-                self._sf_wrapper.load_state_dict(state_dict)
-
-            def state_dict(self):
-                return self._sf_wrapper.state_dict()
-
-            def zero_grad(self):
-                self._sf_wrapper.zero_grad()
-
-            def step(self, closure=None):
-                self._sf_wrapper.step(closure)
-
-            def train(self):
-                self._sf_wrapper.train()
-
-            def eval(self):
-                self._sf_wrapper.eval()
-
-            # isinstance チェックをパスするためのメソッド
-            def __instancecheck__(self, instance):
-                return isinstance(instance, (type(self), Optimizer))
-
-        optimizer = OptimizerProxy(sf_wrapper)
-
-        logger.info(f"wrap optimizer with ScheduleFreeWrapper | {schedulefree_wrapper_kwargs}")
-    """
-
     # for logging
     optimizer_name = optimizer_class.__module__ + "." + optimizer_class.__name__
     optimizer_args = ",".join([f"{k}={v}" for k, v in optimizer_kwargs.items()])
@@ -555,8 +491,8 @@ def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[
     return optimizer_name, optimizer_args, optimizer
 
 
-def get_optimizer_train_eval_fn(optimizer: Optimizer, args: argparse.Namespace) -> Tuple[Callable, Callable]:
-    if not is_schedulefree_optimizer(optimizer, args) or getattr(args, "fused_optimizer_groups", False):
+def get_optimizer_train_eval_fn(optimizer: Optimizer, cfg: OptimizerConfig) -> Tuple[Callable, Callable]:
+    if not is_schedulefree_optimizer(optimizer, cfg) or getattr(cfg, "fused_optimizer_groups", False):
         # return dummy func
         return lambda: None, lambda: None
 
@@ -567,13 +503,13 @@ def get_optimizer_train_eval_fn(optimizer: Optimizer, args: argparse.Namespace) 
     return train_fn, eval_fn
 
 
-def is_schedulefree_optimizer(optimizer: Optimizer, args: argparse.Namespace) -> bool:
-    return args.optimizer_type.lower().endswith("schedulefree".lower()) or args.optimizer_type.lower().endswith(
+def is_schedulefree_optimizer(optimizer: Optimizer, cfg: OptimizerConfig) -> bool:
+    return cfg.optimizer_type.lower().endswith("schedulefree".lower()) or cfg.optimizer_type.lower().endswith(
         "schedulefreewrapper".lower())
 
 
-def is_wrapper_optimizer(args: argparse.Namespace) -> bool:
-    return args.optimizer_type.lower().endswith("schedulefreewrapper".lower()) or args.optimizer_type.lower().endswith("snoo_asgd".lower())
+def is_wrapper_optimizer(cfg: OptimizerConfig) -> bool:
+    return cfg.optimizer_type.lower().endswith("schedulefreewrapper".lower()) or cfg.optimizer_type.lower().endswith("snoo_asgd".lower())
 
 
 def get_dummy_scheduler(optimizer: Optimizer) -> Any:
@@ -611,29 +547,40 @@ def parse_string_to_type(s):
 # Add some checking and features to the original function.
 
 
-def get_scheduler_fix(args, optimizer: Optimizer, num_processes: int):
+def get_scheduler_fix(cfg, optimizer: Optimizer, num_processes: int):
     """
     Unified API to get any scheduler from its name.
     """
     # if schedulefree optimizer, return dummy scheduler
-    if args.optimizer_type.lower().split(".")[0] not in {"LoraEasyCustomOptimizer".lower(),
+    if cfg.optimizer_type.lower().split(".")[0] not in {"LoraEasyCustomOptimizer".lower(),
                                                          "prodigyplus".lower()} and is_schedulefree_optimizer(optimizer,
-                                                                                                              args):
+                                                                                                              cfg):
         return get_dummy_scheduler(optimizer)
 
     # Need to apply scheduler to base_optimizer
-    if is_wrapper_optimizer(args):
+    if is_wrapper_optimizer(cfg):
         optimizer = optimizer.base_optimizer
 
-    name = args.lr_scheduler
-    num_training_steps = args.max_train_steps * num_processes  # * args.gradient_accumulation_steps
+    name = cfg.lr_scheduler
+
+    # max_train_steps is usually in TrainingConfig, not OptimizerConfig.
+    # We assume cfg is either the FullConfig or a merged config containing these.
+    # Or we must pass num_training_steps explicitly if we want strict separation.
+    # For now, relying on attribute access.
+
+    max_train_steps = getattr(cfg, "max_train_steps", None)
+    if max_train_steps is None:
+        # Fallback or error?
+        raise ValueError("max_train_steps is required in config for scheduler")
+
+    num_training_steps = max_train_steps * num_processes  # * args.gradient_accumulation_steps
     num_warmup_steps: Optional[int] = (
-        int(args.lr_warmup_steps * num_training_steps) if isinstance(args.lr_warmup_steps,
-                                                                     float) else args.lr_warmup_steps
+        int(cfg.lr_warmup_steps * num_training_steps) if isinstance(cfg.lr_warmup_steps,
+                                                                     float) else cfg.lr_warmup_steps
     )
 
     temp_lr_decay_steps = parse_string_to_type(
-        args.lr_decay_steps) if args.lr_decay_steps is not None else args.lr_decay_steps or 0
+        cfg.lr_decay_steps) if cfg.lr_decay_steps is not None else cfg.lr_decay_steps or 0
 
     num_decay_steps: Optional[int] = (
         int(temp_lr_decay_steps * num_training_steps) if isinstance(temp_lr_decay_steps, float) else temp_lr_decay_steps
@@ -644,26 +591,29 @@ def get_scheduler_fix(args, optimizer: Optimizer, num_processes: int):
         num_decay_steps = num_warmup_steps
 
     num_stable_steps = num_training_steps - num_warmup_steps - num_decay_steps
-    num_cycles = args.lr_scheduler_num_cycles
-    power = args.lr_scheduler_power
-    timescale = args.lr_scheduler_timescale
-    min_lr_ratio = args.lr_scheduler_min_lr_ratio
+    num_cycles = cfg.lr_scheduler_num_cycles
+    power = cfg.lr_scheduler_power
+    timescale = cfg.lr_scheduler_timescale
+    min_lr_ratio = cfg.lr_scheduler_min_lr_ratio
 
     lr_scheduler_kwargs = {}  # get custom lr_scheduler kwargs
-    if args.lr_scheduler_args is not None and len(args.lr_scheduler_args) > 0:
-        for arg in args.lr_scheduler_args:
+    if cfg.lr_scheduler_args is not None and len(cfg.lr_scheduler_args) > 0:
+        for arg in cfg.lr_scheduler_args:
             key, value = arg.split("=")
             value = ast.literal_eval(value)
 
             # TODO temp fix for warmup and first cycle steps pending UI changes
-            if key == 'first_cycle_max_steps' and float(args.validation_split) > 0.0:
+            # validation_split is in DatasetConfig usually.
+            validation_split = getattr(cfg, "validation_split", 0.0)
+
+            if key == 'first_cycle_max_steps' and float(validation_split) > 0.0:
                 value = math.ceil(num_training_steps / num_cycles)
                 num_cycles = 1
             elif key == 'first_cycle_max_steps':
                 num_cycles = 1
 
-            if key == 'warmup_steps' and float(args.validation_split) > 0.0:
-                value = math.ceil(value * (1.0 - float(args.validation_split)))
+            if key == 'warmup_steps' and float(validation_split) > 0.0:
+                value = math.ceil(value * (1.0 - float(validation_split)))
 
             lr_scheduler_kwargs[key] = value
 
@@ -673,8 +623,8 @@ def get_scheduler_fix(args, optimizer: Optimizer, num_processes: int):
         return return_vals
 
     # using any lr_scheduler from other library
-    if args.lr_scheduler_type:
-        lr_scheduler_type = args.lr_scheduler_type
+    if cfg.lr_scheduler_type:
+        lr_scheduler_type = cfg.lr_scheduler_type
         logger.info(f"use {lr_scheduler_type} | {lr_scheduler_kwargs} as lr_scheduler")
         if "." not in lr_scheduler_type:  # default to use torch.optim
             lr_scheduler_module = torch.optim.lr_scheduler

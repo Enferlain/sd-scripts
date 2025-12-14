@@ -1,5 +1,4 @@
 import os
-import argparse
 import asyncio
 import json
 import hashlib
@@ -10,7 +9,7 @@ import logging
 import safetensors.torch
 import torch
 
-from typing import Optional
+from typing import Optional, Any
 from io import BytesIO
 from huggingface_hub import hf_hub_download
 
@@ -166,7 +165,7 @@ def build_minimum_network_metadata(
 
 def get_sai_model_spec(
         state_dict: dict,
-        args: argparse.Namespace,
+        args: Any,
         sdxl: bool,
         lora: bool,
         textual_inversion: bool,
@@ -177,15 +176,20 @@ def get_sai_model_spec(
 ):
     timestamp = time.time()
 
-    v2 = args.v2
-    v_parameterization = args.v_parameterization
-    reso = args.resolution
+    v2 = getattr(args, "v2", False)
+    v_parameterization = getattr(args, "v_parameterization", False)
+    reso = getattr(args, "resolution", None)
 
-    title = args.metadata_title if args.metadata_title is not None else args.output_name
+    metadata_title = getattr(args, "metadata_title", None)
+    output_name = getattr(args, "output_name", None)
+    title = metadata_title if metadata_title is not None else output_name
 
-    if args.min_timestep is not None or args.max_timestep is not None:
-        min_time_step = args.min_timestep if args.min_timestep is not None else 0
-        max_time_step = args.max_timestep if args.max_timestep is not None else 1000
+    min_timestep = getattr(args, "min_timestep", None)
+    max_timestep = getattr(args, "max_timestep", None)
+
+    if min_timestep is not None or max_timestep is not None:
+        min_time_step = min_timestep if min_timestep is not None else 0
+        max_time_step = max_timestep if max_timestep is not None else 1000
         timesteps = (min_time_step, max_time_step)
     else:
         timesteps = None
@@ -201,10 +205,21 @@ def get_sai_model_spec(
     # Extract metadata_* fields from args and merge with optional_metadata
     extracted_metadata = {}
 
-    # Extract all metadata_* attributes from args
-    for attr_name in dir(args):
+    # Extract all metadata_* attributes from args/config
+    # Supports both object attributes and dictionary-like access
+    if hasattr(args, "__dict__"):
+        iterator = dir(args)
+        getter = getattr
+    elif isinstance(args, dict):
+        iterator = args.keys()
+        getter = lambda obj, key: obj[key]
+    else:
+        iterator = []
+        getter = lambda obj, key: None
+
+    for attr_name in iterator:
         if attr_name.startswith("metadata_") and not attr_name.startswith("metadata___"):
-            value = getattr(args, attr_name, None)
+            value = getter(args, attr_name)
             if value is not None:
                 # Remove metadata_ prefix and exclude already handled fields
                 field_name = attr_name[9:]  # len("metadata_") = 9
@@ -215,6 +230,12 @@ def get_sai_model_spec(
     all_optional_metadata = {**extracted_metadata}
     if optional_metadata:
         all_optional_metadata.update(optional_metadata)
+
+    metadata_author = getattr(args, "metadata_author", None)
+    metadata_description = getattr(args, "metadata_description", None)
+    metadata_license = getattr(args, "metadata_license", None)
+    metadata_tags = getattr(args, "metadata_tags", None)
+    clip_skip = getattr(args, "clip_skip", None)
 
     metadata = sai_model_spec.build_metadata(
         state_dict,
@@ -227,12 +248,12 @@ def get_sai_model_spec(
         title=title,
         reso=reso,
         is_stable_diffusion_ckpt=is_stable_diffusion_ckpt,
-        author=args.metadata_author,
-        description=args.metadata_description,
-        license=args.metadata_license,
-        tags=args.metadata_tags,
+        author=metadata_author,
+        description=metadata_description,
+        license=metadata_license,
+        tags=metadata_tags,
         timesteps=timesteps,
-        clip_skip=args.clip_skip,  # None or int
+        clip_skip=clip_skip,  # None or int
         model_config=model_config,
         optional_metadata=all_optional_metadata if all_optional_metadata else None,
     )
@@ -241,7 +262,7 @@ def get_sai_model_spec(
 
 def get_sai_model_spec_dataclass(
         state_dict: dict,
-        args: argparse.Namespace,
+        args: Any,
         sdxl: bool,
         lora: bool,
         textual_inversion: bool,
@@ -257,15 +278,20 @@ def get_sai_model_spec_dataclass(
     """
     timestamp = time.time()
 
-    v2 = args.v2
-    v_parameterization = args.v_parameterization
-    reso = args.resolution
+    v2 = getattr(args, "v2", False)
+    v_parameterization = getattr(args, "v_parameterization", False)
+    reso = getattr(args, "resolution", None)
 
-    title = args.metadata_title if args.metadata_title is not None else args.output_name
+    metadata_title = getattr(args, "metadata_title", None)
+    output_name = getattr(args, "output_name", None)
+    title = metadata_title if metadata_title is not None else output_name
 
-    if args.min_timestep is not None or args.max_timestep is not None:
-        min_time_step = args.min_timestep if args.min_timestep is not None else 0
-        max_time_step = args.max_timestep if args.max_timestep is not None else 1000
+    min_timestep = getattr(args, "min_timestep", None)
+    max_timestep = getattr(args, "max_timestep", None)
+
+    if min_timestep is not None or max_timestep is not None:
+        min_time_step = min_timestep if min_timestep is not None else 0
+        max_time_step = max_timestep if max_timestep is not None else 1000
         timesteps = (min_time_step, max_time_step)
     else:
         timesteps = None
@@ -279,6 +305,12 @@ def get_sai_model_spec_dataclass(
     if hunyuan_image is not None:
         model_config["hunyuan_image"] = hunyuan_image
 
+    metadata_author = getattr(args, "metadata_author", None)
+    metadata_description = getattr(args, "metadata_description", None)
+    metadata_license = getattr(args, "metadata_license", None)
+    metadata_tags = getattr(args, "metadata_tags", None)
+    clip_skip = getattr(args, "clip_skip", None)
+
     # Use the dataclass function directly
     return sai_model_spec.build_metadata_dataclass(
         state_dict,
@@ -291,29 +323,31 @@ def get_sai_model_spec_dataclass(
         title=title,
         reso=reso,
         is_stable_diffusion_ckpt=is_stable_diffusion_ckpt,
-        author=args.metadata_author,
-        description=args.metadata_description,
-        license=args.metadata_license,
-        tags=args.metadata_tags,
+        author=metadata_author,
+        description=metadata_description,
+        license=metadata_license,
+        tags=metadata_tags,
         timesteps=timesteps,
-        clip_skip=args.clip_skip,
+        clip_skip=clip_skip,
         model_config=model_config,
         optional_metadata=optional_metadata,
     )
 
 
 def resume_from_local_or_hf_if_specified(accelerator, args):
-    if not args.resume:
+    resume = getattr(args, "resume", None)
+    if not resume:
         return
 
-    if not args.resume_from_huggingface:
-        logger.info(f"resume training from local state: {args.resume}")
-        accelerator.load_state(args.resume)
+    resume_from_huggingface = getattr(args, "resume_from_huggingface", False)
+    if not resume_from_huggingface:
+        logger.info(f"resume training from local state: {resume}")
+        accelerator.load_state(resume)
         return
 
-    logger.info(f"resume training from huggingface state: {args.resume}")
-    repo_id = args.resume.split("/")[0] + "/" + args.resume.split("/")[1]
-    path_in_repo = "/".join(args.resume.split("/")[2:])
+    logger.info(f"resume training from huggingface state: {resume}")
+    repo_id = resume.split("/")[0] + "/" + resume.split("/")[1]
+    path_in_repo = "/".join(resume.split("/")[2:])
     revision = None
     repo_type = None
     if ":" in path_in_repo:
@@ -325,11 +359,12 @@ def resume_from_local_or_hf_if_specified(accelerator, args):
             path_in_repo, revision, repo_type = divided
     logger.info(f"Downloading state from huggingface: {repo_id}/{path_in_repo}@{revision}")
 
+    huggingface_token = getattr(args, "huggingface_token", None)
     list_files = huggingface_util.list_dir(
         repo_id=repo_id,
         subfolder=path_in_repo,
         revision=revision,
-        token=args.huggingface_token,
+        token=huggingface_token,
         repo_type=repo_type,
     )
 
@@ -340,7 +375,7 @@ def resume_from_local_or_hf_if_specified(accelerator, args):
                 filename=filename,
                 revision=revision,
                 repo_type=repo_type,
-                token=args.huggingface_token,
+                token=huggingface_token,
             )
 
         return await asyncio.get_event_loop().run_in_executor(None, task)
@@ -360,39 +395,46 @@ def default_if_none(value, default):
     return default if value is None else value
 
 
-def get_epoch_ckpt_name(args: argparse.Namespace, ext: str, epoch_no: int, output_name_append: str = ""):
-    model_name = default_if_none(args.output_name, DEFAULT_EPOCH_NAME)
+def get_epoch_ckpt_name(args: Any, ext: str, epoch_no: int, output_name_append: str = ""):
+    output_name = getattr(args, "output_name", None)
+    model_name = default_if_none(output_name, DEFAULT_EPOCH_NAME)
     return EPOCH_FILE_NAME.format(model_name + output_name_append, epoch_no) + ext
 
 
-def get_step_ckpt_name(args: argparse.Namespace, ext: str, step_no: int, output_name_append: str = ""):
-    model_name = default_if_none(args.output_name, DEFAULT_STEP_NAME)
+def get_step_ckpt_name(args: Any, ext: str, step_no: int, output_name_append: str = ""):
+    output_name = getattr(args, "output_name", None)
+    model_name = default_if_none(output_name, DEFAULT_STEP_NAME)
     return STEP_FILE_NAME.format(model_name + output_name_append, step_no) + ext
 
 
-def get_last_ckpt_name(args: argparse.Namespace, ext: str, output_name_append: str = ""):
-    model_name = default_if_none(args.output_name, DEFAULT_LAST_OUTPUT_NAME)
+def get_last_ckpt_name(args: Any, ext: str, output_name_append: str = ""):
+    output_name = getattr(args, "output_name", None)
+    model_name = default_if_none(output_name, DEFAULT_LAST_OUTPUT_NAME)
     return model_name + output_name_append + ext
 
 
-def get_remove_epoch_no(args: argparse.Namespace, epoch_no: int):
-    if args.save_last_n_epochs is None:
+def get_remove_epoch_no(args: Any, epoch_no: int):
+    save_last_n_epochs = getattr(args, "save_last_n_epochs", None)
+    if save_last_n_epochs is None:
         return None
 
-    remove_epoch_no = epoch_no - args.save_every_n_epochs * args.save_last_n_epochs
+    save_every_n_epochs = getattr(args, "save_every_n_epochs", 1)
+    remove_epoch_no = epoch_no - save_every_n_epochs * save_last_n_epochs
     if remove_epoch_no < 0:
         return None
     return remove_epoch_no
 
 
-def get_remove_step_no(args: argparse.Namespace, step_no: int):
-    if args.save_last_n_steps is None:
+def get_remove_step_no(args: Any, step_no: int):
+    save_last_n_steps = getattr(args, "save_last_n_steps", None)
+    if save_last_n_steps is None:
         return None
 
     # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
     # save_every_n_steps=10, save_last_n_steps=30の場合、50step目には30step分残し、10step目を削除する
-    remove_step_no = step_no - args.save_last_n_steps - 1
-    remove_step_no = remove_step_no - (remove_step_no % args.save_every_n_steps)
+    save_every_n_steps = getattr(args, "save_every_n_steps", 1)
+    remove_step_no = step_no - save_last_n_steps - 1
+    remove_step_no = remove_step_no - (remove_step_no % save_every_n_steps)
     if remove_step_no < 0:
         return None
     return remove_step_no
@@ -401,7 +443,7 @@ def get_remove_step_no(args: argparse.Namespace, step_no: int):
 # epochとstepの保存、メタデータにepoch/stepが含まれ引数が同じになるため、統合している
 # on_epoch_end: Trueならepoch終了時、Falseならstep経過時
 def save_sd_model_on_epoch_end_or_stepwise(
-        args: argparse.Namespace,
+        args: Any,
         on_epoch_end: bool,
         accelerator,
         src_path: str,
@@ -418,12 +460,12 @@ def save_sd_model_on_epoch_end_or_stepwise(
     def sd_saver(ckpt_file, epoch_no, global_step):
         sai_metadata = get_sai_model_spec(None, args, False, False, False, is_stable_diffusion_ckpt=True)
         model_util.save_stable_diffusion_checkpoint(
-            args.v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, sai_metadata, save_dtype, vae
+            getattr(args, "v2", False), ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, sai_metadata, save_dtype, vae
         )
 
     def diffusers_saver(out_dir):
         model_util.save_diffusers_checkpoint(
-            args.v2, out_dir, text_encoder, unet, src_path, vae=vae, use_safetensors=use_safetensors
+            getattr(args, "v2", False), out_dir, text_encoder, unet, src_path, vae=vae, use_safetensors=use_safetensors
         )
 
     save_sd_model_on_epoch_end_or_stepwise_common(
@@ -441,7 +483,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
 
 
 def save_sd_model_on_epoch_end_or_stepwise_common(
-        args: argparse.Namespace,
+        args: Any,
         on_epoch_end: bool,
         accelerator,
         save_stable_diffusion_format: bool,
@@ -452,22 +494,28 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
         sd_saver,
         diffusers_saver,
 ):
+    output_name = getattr(args, "output_name", None)
+    output_dir = getattr(args, "output_dir", ".")
+    save_every_n_epochs = getattr(args, "save_every_n_epochs", 1)
+
     if on_epoch_end:
         epoch_no = epoch + 1
-        saving = epoch_no % args.save_every_n_epochs == 0 and epoch_no < num_train_epochs
+        saving = epoch_no % save_every_n_epochs == 0 and epoch_no < num_train_epochs
         if not saving:
             return
 
-        model_name = default_if_none(args.output_name, DEFAULT_EPOCH_NAME)
+        model_name = default_if_none(output_name, DEFAULT_EPOCH_NAME)
         remove_no = get_remove_epoch_no(args, epoch_no)
     else:
         # 保存するか否かは呼び出し側で判断済み
 
-        model_name = default_if_none(args.output_name, DEFAULT_STEP_NAME)
+        model_name = default_if_none(output_name, DEFAULT_STEP_NAME)
         epoch_no = epoch  # 例: 最初のepochの途中で保存したら0になる、SDモデルに保存される
         remove_no = get_remove_step_no(args, global_step)
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    huggingface_repo_id = getattr(args, "huggingface_repo_id", None)
+
     if save_stable_diffusion_format:
         ext = ".safetensors" if use_safetensors else ".ckpt"
 
@@ -476,12 +524,12 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
         else:
             ckpt_name = get_step_ckpt_name(args, ext, global_step)
 
-        ckpt_file = os.path.join(args.output_dir, ckpt_name)
+        ckpt_file = os.path.join(output_dir, ckpt_name)
         logger.info("")
         logger.info(f"saving checkpoint: {ckpt_file}")
         sd_saver(ckpt_file, epoch_no, global_step)
 
-        if args.huggingface_repo_id is not None:
+        if huggingface_repo_id is not None:
             huggingface_util.upload(args, ckpt_file, "/" + ckpt_name)
 
         # remove older checkpoints
@@ -491,107 +539,127 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
             else:
                 remove_ckpt_name = get_step_ckpt_name(args, ext, remove_no)
 
-            remove_ckpt_file = os.path.join(args.output_dir, remove_ckpt_name)
+            remove_ckpt_file = os.path.join(output_dir, remove_ckpt_name)
             if os.path.exists(remove_ckpt_file):
                 logger.info(f"removing old checkpoint: {remove_ckpt_file}")
                 os.remove(remove_ckpt_file)
 
     else:
         if on_epoch_end:
-            out_dir = os.path.join(args.output_dir, EPOCH_DIFFUSERS_DIR_NAME.format(model_name, epoch_no))
+            out_dir = os.path.join(output_dir, EPOCH_DIFFUSERS_DIR_NAME.format(model_name, epoch_no))
         else:
-            out_dir = os.path.join(args.output_dir, STEP_DIFFUSERS_DIR_NAME.format(model_name, global_step))
+            out_dir = os.path.join(output_dir, STEP_DIFFUSERS_DIR_NAME.format(model_name, global_step))
 
         logger.info("")
         logger.info(f"saving model: {out_dir}")
         diffusers_saver(out_dir)
 
-        if args.huggingface_repo_id is not None:
+        if huggingface_repo_id is not None:
             huggingface_util.upload(args, out_dir, "/" + model_name)
 
         # remove older checkpoints
         if remove_no is not None:
             if on_epoch_end:
-                remove_out_dir = os.path.join(args.output_dir, EPOCH_DIFFUSERS_DIR_NAME.format(model_name, remove_no))
+                remove_out_dir = os.path.join(output_dir, EPOCH_DIFFUSERS_DIR_NAME.format(model_name, remove_no))
             else:
-                remove_out_dir = os.path.join(args.output_dir, STEP_DIFFUSERS_DIR_NAME.format(model_name, remove_no))
+                remove_out_dir = os.path.join(output_dir, STEP_DIFFUSERS_DIR_NAME.format(model_name, remove_no))
 
             if os.path.exists(remove_out_dir):
                 logger.info(f"removing old model: {remove_out_dir}")
                 shutil.rmtree(remove_out_dir)
 
-    if args.save_state:
+    save_state = getattr(args, "save_state", False)
+    if save_state:
         if on_epoch_end:
             save_and_remove_state_on_epoch_end(args, accelerator, epoch_no)
         else:
             save_and_remove_state_stepwise(args, accelerator, global_step)
 
 
-def save_and_remove_state_on_epoch_end(args: argparse.Namespace, accelerator, epoch_no):
-    model_name = default_if_none(args.output_name, DEFAULT_EPOCH_NAME)
+def save_and_remove_state_on_epoch_end(args: Any, accelerator, epoch_no):
+    output_name = getattr(args, "output_name", None)
+    output_dir = getattr(args, "output_dir", ".")
+    model_name = default_if_none(output_name, DEFAULT_EPOCH_NAME)
 
     logger.info("")
     logger.info(f"saving state at epoch {epoch_no}")
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
-    state_dir = os.path.join(args.output_dir, EPOCH_STATE_NAME.format(model_name, epoch_no))
+    state_dir = os.path.join(output_dir, EPOCH_STATE_NAME.format(model_name, epoch_no))
     accelerator.save_state(state_dir)
-    if args.save_state_to_huggingface:
+
+    save_state_to_huggingface = getattr(args, "save_state_to_huggingface", False)
+    if save_state_to_huggingface:
         logger.info("uploading state to huggingface.")
         huggingface_util.upload(args, state_dir, "/" + EPOCH_STATE_NAME.format(model_name, epoch_no))
 
-    last_n_epochs = args.save_last_n_epochs_state if args.save_last_n_epochs_state else args.save_last_n_epochs
+    save_last_n_epochs_state = getattr(args, "save_last_n_epochs_state", None)
+    save_last_n_epochs = getattr(args, "save_last_n_epochs", None)
+    save_every_n_epochs = getattr(args, "save_every_n_epochs", 1)
+
+    last_n_epochs = save_last_n_epochs_state if save_last_n_epochs_state else save_last_n_epochs
     if last_n_epochs is not None:
-        remove_epoch_no = epoch_no - args.save_every_n_epochs * last_n_epochs
-        state_dir_old = os.path.join(args.output_dir, EPOCH_STATE_NAME.format(model_name, remove_epoch_no))
+        remove_epoch_no = epoch_no - save_every_n_epochs * last_n_epochs
+        state_dir_old = os.path.join(output_dir, EPOCH_STATE_NAME.format(model_name, remove_epoch_no))
         if os.path.exists(state_dir_old):
             logger.info(f"removing old state: {state_dir_old}")
             shutil.rmtree(state_dir_old)
 
 
-def save_and_remove_state_stepwise(args: argparse.Namespace, accelerator, step_no):
-    model_name = default_if_none(args.output_name, DEFAULT_STEP_NAME)
+def save_and_remove_state_stepwise(args: Any, accelerator, step_no):
+    output_name = getattr(args, "output_name", None)
+    output_dir = getattr(args, "output_dir", ".")
+    model_name = default_if_none(output_name, DEFAULT_STEP_NAME)
 
     logger.info("")
     logger.info(f"saving state at step {step_no}")
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
-    state_dir = os.path.join(args.output_dir, STEP_STATE_NAME.format(model_name, step_no))
+    state_dir = os.path.join(output_dir, STEP_STATE_NAME.format(model_name, step_no))
     accelerator.save_state(state_dir)
-    if args.save_state_to_huggingface:
+
+    save_state_to_huggingface = getattr(args, "save_state_to_huggingface", False)
+    if save_state_to_huggingface:
         logger.info("uploading state to huggingface.")
         huggingface_util.upload(args, state_dir, "/" + STEP_STATE_NAME.format(model_name, step_no))
 
-    last_n_steps = args.save_last_n_steps_state if args.save_last_n_steps_state else args.save_last_n_steps
+    save_last_n_steps_state = getattr(args, "save_last_n_steps_state", None)
+    save_last_n_steps = getattr(args, "save_last_n_steps", None)
+    save_every_n_steps = getattr(args, "save_every_n_steps", 1)
+
+    last_n_steps = save_last_n_steps_state if save_last_n_steps_state else save_last_n_steps
     if last_n_steps is not None:
         # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
         remove_step_no = step_no - last_n_steps - 1
-        remove_step_no = remove_step_no - (remove_step_no % args.save_every_n_steps)
+        remove_step_no = remove_step_no - (remove_step_no % save_every_n_steps)
 
         if remove_step_no > 0:
-            state_dir_old = os.path.join(args.output_dir, STEP_STATE_NAME.format(model_name, remove_step_no))
+            state_dir_old = os.path.join(output_dir, STEP_STATE_NAME.format(model_name, remove_step_no))
             if os.path.exists(state_dir_old):
                 logger.info(f"removing old state: {state_dir_old}")
                 shutil.rmtree(state_dir_old)
 
 
-def save_state_on_train_end(args: argparse.Namespace, accelerator):
-    model_name = default_if_none(args.output_name, DEFAULT_LAST_OUTPUT_NAME)
+def save_state_on_train_end(args: Any, accelerator):
+    output_name = getattr(args, "output_name", None)
+    output_dir = getattr(args, "output_dir", ".")
+    model_name = default_if_none(output_name, DEFAULT_LAST_OUTPUT_NAME)
 
     logger.info("")
     logger.info("saving last state.")
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
-    state_dir = os.path.join(args.output_dir, LAST_STATE_NAME.format(model_name))
+    state_dir = os.path.join(output_dir, LAST_STATE_NAME.format(model_name))
     accelerator.save_state(state_dir)
 
-    if args.save_state_to_huggingface:
+    save_state_to_huggingface = getattr(args, "save_state_to_huggingface", False)
+    if save_state_to_huggingface:
         logger.info("uploading last state to huggingface.")
         huggingface_util.upload(args, state_dir, "/" + LAST_STATE_NAME.format(model_name))
 
 
 def save_sd_model_on_train_end(
-        args: argparse.Namespace,
+        args: Any,
         src_path: str,
         save_stable_diffusion_format: bool,
         use_safetensors: bool,
@@ -605,12 +673,12 @@ def save_sd_model_on_train_end(
     def sd_saver(ckpt_file, epoch_no, global_step):
         sai_metadata = get_sai_model_spec(None, args, False, False, False, is_stable_diffusion_ckpt=True)
         model_util.save_stable_diffusion_checkpoint(
-            args.v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, sai_metadata, save_dtype, vae
+            getattr(args, "v2", False), ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, sai_metadata, save_dtype, vae
         )
 
     def diffusers_saver(out_dir):
         model_util.save_diffusers_checkpoint(
-            args.v2, out_dir, text_encoder, unet, src_path, vae=vae, use_safetensors=use_safetensors
+            getattr(args, "v2", False), out_dir, text_encoder, unet, src_path, vae=vae, use_safetensors=use_safetensors
         )
 
     save_sd_model_on_train_end_common(
@@ -619,7 +687,7 @@ def save_sd_model_on_train_end(
 
 
 def save_sd_model_on_train_end_common(
-        args: argparse.Namespace,
+        args: Any,
         save_stable_diffusion_format: bool,
         use_safetensors: bool,
         epoch: int,
@@ -627,25 +695,28 @@ def save_sd_model_on_train_end_common(
         sd_saver,
         diffusers_saver,
 ):
-    model_name = default_if_none(args.output_name, DEFAULT_LAST_OUTPUT_NAME)
+    output_name = getattr(args, "output_name", None)
+    output_dir = getattr(args, "output_dir", ".")
+    model_name = default_if_none(output_name, DEFAULT_LAST_OUTPUT_NAME)
+    huggingface_repo_id = getattr(args, "huggingface_repo_id", None)
 
     if save_stable_diffusion_format:
-        os.makedirs(args.output_dir, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
 
         ckpt_name = model_name + (".safetensors" if use_safetensors else ".ckpt")
-        ckpt_file = os.path.join(args.output_dir, ckpt_name)
+        ckpt_file = os.path.join(output_dir, ckpt_name)
 
         logger.info(f"save trained model as StableDiffusion checkpoint to {ckpt_file}")
         sd_saver(ckpt_file, epoch, global_step)
 
-        if args.huggingface_repo_id is not None:
+        if huggingface_repo_id is not None:
             huggingface_util.upload(args, ckpt_file, "/" + ckpt_name, force_sync_upload=True)
     else:
-        out_dir = os.path.join(args.output_dir, model_name)
+        out_dir = os.path.join(output_dir, model_name)
         os.makedirs(out_dir, exist_ok=True)
 
         logger.info(f"save trained model as Diffusers to {out_dir}")
         diffusers_saver(out_dir)
 
-        if args.huggingface_repo_id is not None:
+        if huggingface_repo_id is not None:
             huggingface_util.upload(args, out_dir, "/" + model_name, force_sync_upload=True)

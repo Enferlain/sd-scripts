@@ -1,7 +1,7 @@
 import os
-import argparse
 import logging
 import torch
+from typing import Any
 
 from diffusers import StableDiffusionPipeline
 
@@ -152,14 +152,17 @@ def set_padding_mode_for_vae_conv2d_modules(vae: torch.nn.Module, padding_mode: 
                 module.padding_mode = padding_mode
 
 
-def _load_target_model(args: argparse.Namespace, weight_dtype, device="cpu", unet_use_linear_projection_in_v2=False):
+def _load_target_model(args: Any, weight_dtype, device="cpu", unet_use_linear_projection_in_v2=False):
     name_or_path = args.pretrained_model_name_or_path
     name_or_path = os.path.realpath(name_or_path) if os.path.islink(name_or_path) else name_or_path
     load_stable_diffusion_format = os.path.isfile(name_or_path)  # determine SD or Diffusers
+
+    v2 = getattr(args, "v2", False)
+
     if load_stable_diffusion_format:
         logger.info(f"load StableDiffusion checkpoint: {name_or_path}")
         text_encoder, vae, unet = model_util.load_models_from_stable_diffusion_checkpoint(
-            args.v2, name_or_path, device, unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2
+            v2, name_or_path, device, unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2
         )
     else:
         # Diffusers model is loaded to CPU
@@ -191,8 +194,9 @@ def _load_target_model(args: argparse.Namespace, weight_dtype, device="cpu", une
         logger.info("U-Net converted to original U-Net")
 
     # VAEを読み込む
-    if args.vae is not None:
-        vae = model_util.load_vae(args.vae, weight_dtype)
+    vae_path = getattr(args, "vae", None)
+    if vae_path is not None:
+        vae = model_util.load_vae(vae_path, weight_dtype)
         logger.info("additional VAE loaded")
 
     if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
@@ -202,7 +206,9 @@ def _load_target_model(args: argparse.Namespace, weight_dtype, device="cpu", une
     return text_encoder, vae, unet, load_stable_diffusion_format
 
 
-def load_target_model(args, weight_dtype, accelerator, unet_use_linear_projection_in_v2=False):
+def load_target_model(args: Any, weight_dtype, accelerator, unet_use_linear_projection_in_v2=False):
+    lowram = getattr(args, "lowram", False)
+
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
             logger.info(
@@ -211,11 +217,11 @@ def load_target_model(args, weight_dtype, accelerator, unet_use_linear_projectio
             text_encoder, vae, unet, load_stable_diffusion_format = _load_target_model(
                 args,
                 weight_dtype,
-                accelerator.device if args.lowram else "cpu",
+                accelerator.device if lowram else "cpu",
                 unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2,
             )
             # work on low-ram device
-            if args.lowram:
+            if lowram:
                 text_encoder.to(accelerator.device)
                 unet.to(accelerator.device)
                 vae.to(accelerator.device)
@@ -236,4 +242,4 @@ def patch_accelerator_for_fp16_training(accelerator):
     def _unscale_grads_replacer(optimizer, inv_scale, found_inf, allow_fp16):
         return org_unscale_grads(optimizer, inv_scale, found_inf, True)
 
-    accelerator.scaler._unscale_grads_ = _unscale_grads_replacer
+    accelerator.scaler._unscale_grads_ = _unscale_grads_

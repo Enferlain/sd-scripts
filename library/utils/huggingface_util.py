@@ -1,5 +1,4 @@
 import os
-import argparse
 import logging
 
 from typing import Union, BinaryIO
@@ -7,6 +6,7 @@ from huggingface_hub import HfApi
 from pathlib import Path
 
 from library.utils.common_utils import fire_in_thread, setup_logging
+from library.config.dataclasses.huggingface import HuggingFaceConfig
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ def exists_repo(repo_id: str, repo_type: str, revision: str = "main", token: str
 
 
 def upload(
-        args: argparse.Namespace,
+        args: HuggingFaceConfig,
         src: Union[str, Path, bytes, BinaryIO],
         dest_suffix: str = "",
         force_sync_upload: bool = False,

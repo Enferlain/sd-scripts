@@ -1,5 +1,5 @@
-import argparse
 import torch
+from typing import Any
 
 from library.models import sdxl_model_util
 
@@ -11,7 +11,7 @@ from library.training.checkpointing import (
 
 
 def save_sd_model_on_train_end(
-        args: argparse.Namespace,
+        args: Any,
         src_path: str,
         save_stable_diffusion_format: bool,
         use_safetensors: bool,
@@ -61,7 +61,7 @@ def save_sd_model_on_train_end(
 # epochとstepの保存、メタデータにepoch/stepが含まれ引数が同じになるため、統合している
 # on_epoch_end: Trueならepoch終了時、Falseならstep経過時
 def save_sd_model_on_epoch_end_or_stepwise(
-        args: argparse.Namespace,
+        args: Any,
         on_epoch_end: bool,
         accelerator,
         src_path,

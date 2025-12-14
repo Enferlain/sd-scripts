@@ -1,5 +1,4 @@
 import os
-import argparse
 import json
 import toml
 import re
@@ -7,7 +6,7 @@ import logging
 import time
 import torch
 
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Any
 from PIL import Image
 from accelerate import Accelerator
 from accelerate.state import PartialState
@@ -30,6 +29,7 @@ from library.constants import SCHEDULER_TIMESTEPS, SCHEDULER_LINEAR_START, SCHED
 from library.utils.device_utils import clean_memory_on_device
 from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
+from library.config.dataclasses.sampling import SamplingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -194,19 +194,24 @@ def load_prompts(prompt_file: str) -> List[Dict]:
     return prompts
 
 
-def sample_images_check(args, epoch, steps) -> bool:
+def sample_images_check(cfg: Union[SamplingConfig, Any], epoch, steps) -> bool:
+    # cfg should have sample_at_first, sample_every_n_steps, sample_every_n_epochs
+    sample_at_first = getattr(cfg, "sample_at_first", False)
+    sample_every_n_steps = getattr(cfg, "sample_every_n_steps", None)
+    sample_every_n_epochs = getattr(cfg, "sample_every_n_epochs", None)
+
     if steps == 0:
-        if not args.sample_at_first:
+        if not sample_at_first:
             return False
     else:
-        if args.sample_every_n_steps is None and args.sample_every_n_epochs is None:
+        if sample_every_n_steps is None and sample_every_n_epochs is None:
             return False
-        if args.sample_every_n_epochs is not None:
+        if sample_every_n_epochs is not None:
             # sample_every_n_steps は無視する
-            if epoch is None or epoch % args.sample_every_n_epochs != 0:
+            if epoch is None or epoch % sample_every_n_epochs != 0:
                 return False
         else:
-            if steps % args.sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
+            if steps % sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
                 return False
     return True
 
@@ -214,7 +219,7 @@ def sample_images_check(args, epoch, steps) -> bool:
 def sample_images_common(
         pipe_class,
         accelerator: Accelerator,
-        args: argparse.Namespace,
+        cfg: Union[SamplingConfig, Any],
         epoch: int,
         steps: int,
         device,
@@ -230,24 +235,40 @@ def sample_images_common(
     TODO Use strategies here
     """
 
+    # Extract needed values from cfg
+    sample_at_first = getattr(cfg, "sample_at_first", False)
+    sample_every_n_steps = getattr(cfg, "sample_every_n_steps", None)
+    sample_every_n_epochs = getattr(cfg, "sample_every_n_epochs", None)
+    sample_prompts = getattr(cfg, "sample_prompts", None)
+    output_dir = getattr(cfg, "output_dir", None)
+    # output_dir might be in SavingConfig or TrainingConfig, so if passed combined config it's fine.
+    # If using standalone SamplingConfig, it doesn't have output_dir.
+    # But this function signature used 'args' which had everything.
+    # We assume 'cfg' has output_dir.
+
+    sample_sampler = getattr(cfg, "sample_sampler", "ddim")
+    v_parameterization = getattr(cfg, "v_parameterization", False) # Likely in SDModelsConfig
+    clip_skip = getattr(cfg, "clip_skip", None) # Likely in SDModelsConfig or TrainingConfig
+    output_name = getattr(cfg, "output_name", None) # Likely in SavingConfig
+
     if steps == 0:
-        if not args.sample_at_first:
+        if not sample_at_first:
             return
     else:
-        if args.sample_every_n_steps is None and args.sample_every_n_epochs is None:
+        if sample_every_n_steps is None and sample_every_n_epochs is None:
             return
-        if args.sample_every_n_epochs is not None:
+        if sample_every_n_epochs is not None:
             # sample_every_n_steps は無視する
-            if epoch is None or epoch % args.sample_every_n_epochs != 0:
+            if epoch is None or epoch % sample_every_n_epochs != 0:
                 return
         else:
-            if steps % args.sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
+            if steps % sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
                 return
 
     logger.info("")
     logger.info(f"generating sample images at step / サンプル画像生成 ステップ: {steps}")
-    if not os.path.isfile(args.sample_prompts):
-        logger.error(f"No prompt file / プロンプトファイルがありません: {args.sample_prompts}")
+    if sample_prompts is None or not os.path.isfile(sample_prompts):
+        logger.error(f"No prompt file / プロンプトファイルがありません: {sample_prompts}")
         return
 
     distributed_state = PartialState()  # for multi gpu distributed inference. this is a singleton, so it's safe to use it here
@@ -263,19 +284,19 @@ def sample_images_common(
         text_encoder = accelerator.unwrap_model(text_encoder)
 
     # read prompts
-    if args.sample_prompts.endswith(".txt"):
-        with open(args.sample_prompts, "r", encoding="utf-8") as f:
+    if sample_prompts.endswith(".txt"):
+        with open(sample_prompts, "r", encoding="utf-8") as f:
             lines = f.readlines()
         prompts = [line.strip() for line in lines if len(line.strip()) > 0 and line[0] != "#"]
-    elif args.sample_prompts.endswith(".toml"):
-        with open(args.sample_prompts, "r", encoding="utf-8") as f:
+    elif sample_prompts.endswith(".toml"):
+        with open(sample_prompts, "r", encoding="utf-8") as f:
             data = toml.load(f)
         prompts = [dict(**data["prompt"], **subset) for subset in data["prompt"]["subset"]]
-    elif args.sample_prompts.endswith(".json"):
-        with open(args.sample_prompts, "r", encoding="utf-8") as f:
+    elif sample_prompts.endswith(".json"):
+        with open(sample_prompts, "r", encoding="utf-8") as f:
             prompts = json.load(f)
 
-    default_scheduler = get_my_scheduler(sample_sampler=args.sample_sampler, v_parameterization=args.v_parameterization)
+    default_scheduler = get_my_scheduler(sample_sampler=sample_sampler, v_parameterization=v_parameterization)
 
     pipeline = pipe_class(
         text_encoder=text_encoder,
@@ -286,10 +307,16 @@ def sample_images_common(
         safety_checker=None,
         feature_extractor=None,
         requires_safety_checker=False,
-        clip_skip=args.clip_skip,
+        clip_skip=clip_skip,
     )
     pipeline.to(distributed_state.device)
-    save_dir = args.output_dir + "/sample"
+
+    if output_dir is None:
+        logger.warning("output_dir is not specified in config, using current directory for samples.")
+        save_dir = "sample"
+    else:
+        save_dir = output_dir + "/sample"
+
     os.makedirs(save_dir, exist_ok=True)
 
     # preprocess prompts
@@ -317,7 +344,7 @@ def sample_images_common(
         with torch.no_grad():
             for prompt_dict in prompts:
                 sample_image_inference(
-                    accelerator, args, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
+                    accelerator, cfg, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
                     controlnet=controlnet
                 )
     else:
@@ -331,7 +358,7 @@ def sample_images_common(
             with distributed_state.split_between_processes(per_process_prompts) as prompt_dict_lists:
                 for prompt_dict in prompt_dict_lists[0]:
                     sample_image_inference(
-                        accelerator, args, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
+                        accelerator, cfg, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
                         controlnet=controlnet
                     )
 
@@ -348,7 +375,7 @@ def sample_images_common(
 
 def sample_image_inference(
         accelerator: Accelerator,
-        args: argparse.Namespace,
+        cfg: Union[SamplingConfig, Any],
         pipeline: Union[StableDiffusionLongPromptWeightingPipeline, SdxlStableDiffusionLongPromptWeightingPipeline],
         save_dir,
         prompt_dict,
@@ -358,6 +385,11 @@ def sample_image_inference(
         controlnet=None,
 ):
     assert isinstance(prompt_dict, dict)
+
+    sample_sampler = getattr(cfg, "sample_sampler", "ddim")
+    v_parameterization = getattr(cfg, "v_parameterization", False)
+    output_name = getattr(cfg, "output_name", None)
+
     negative_prompt = prompt_dict.get("negative_prompt")
     sample_steps = prompt_dict.get("sample_steps", 30)
     width = prompt_dict.get("width", 512)
@@ -366,7 +398,7 @@ def sample_image_inference(
     seed = prompt_dict.get("seed")
     controlnet_image = prompt_dict.get("controlnet_image")
     prompt: str = prompt_dict.get("prompt", "")
-    sampler_name: str = prompt_dict.get("sample_sampler", args.sample_sampler)
+    sampler_name: str = prompt_dict.get("sample_sampler", sample_sampler)
 
     if prompt_replacement is not None:
         prompt = prompt.replace(prompt_replacement[0], prompt_replacement[1])
@@ -385,7 +417,7 @@ def sample_image_inference(
 
     scheduler = get_my_scheduler(
         sample_sampler=sampler_name,
-        v_parameterization=args.v_parameterization,
+        v_parameterization=v_parameterization,
     )
     pipeline.scheduler = scheduler
 
@@ -429,7 +461,7 @@ def sample_image_inference(
     num_suffix = f"e{epoch:06d}" if epoch is not None else f"{steps:06d}"
     seed_suffix = "" if seed is None else f"_{seed}"
     i: int = prompt_dict["enum"]
-    img_filename = f"{'' if args.output_name is None else args.output_name + '_'}{num_suffix}_{i:02d}_{ts_str}{seed_suffix}.png"
+    img_filename = f"{'' if output_name is None else output_name + '_'}{num_suffix}_{i:02d}_{ts_str}{seed_suffix}.png"
     image.save(os.path.join(save_dir, img_filename))
 
     # send images to wandb if enabled

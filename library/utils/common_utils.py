@@ -27,23 +27,6 @@ def fire_in_thread(f, *args, **kwargs):
 
 
 # region Logging
-def add_logging_arguments(parser):
-    parser.add_argument(
-        "--console_log_level",
-        type=str,
-        default=None,
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level, default is INFO / ログレベルを設定する。デフォルトはINFO",
-    )
-    parser.add_argument(
-        "--console_log_file",
-        type=str,
-        default=None,
-        help="Log to a file instead of stderr / 標準エラー出力ではなくファイルにログを出力する",
-    )
-    parser.add_argument("--console_log_simple", action="store_true", help="Simple log output / シンプルなログ出力")
-
-
 def setup_logging(args=None, log_level=None, reset=False):
     if logging.root.handlers:
         if reset:
@@ -55,17 +38,17 @@ def setup_logging(args=None, log_level=None, reset=False):
 
     # log_level can be set by the caller or by the args, the caller has priority. If not set, use INFO
     if log_level is None and args is not None:
-        log_level = args.console_log_level
+        log_level = getattr(args, "console_log_level", None)
     if log_level is None:
         log_level = "INFO"
     log_level = getattr(logging, log_level)
 
     msg_init = None
-    if args is not None and args.console_log_file:
+    if args is not None and getattr(args, "console_log_file", None):
         handler = logging.FileHandler(args.console_log_file, mode="w")
     else:
         handler = None
-        if not args or not args.console_log_simple:
+        if not args or not getattr(args, "console_log_simple", False):
             try:
                 from rich.logging import RichHandler
                 from rich.console import Console
