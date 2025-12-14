@@ -4,6 +4,8 @@ from typing import Optional
 
 @dataclass
 class SavingConfig:
+    output_dir: Optional[str] = None
+    output_name: Optional[str] = None
     save_precision: Optional[str] = None
     save_every_n_epochs: Optional[int] = None
     save_every_n_steps: Optional[int] = None

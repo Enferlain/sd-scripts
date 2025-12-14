@@ -3,7 +3,7 @@ log_with: null
 log_prefix: null
 log_tracker_name: null
 wandb_run_name: null
-log_tracker_config: null
+log_tracker_config: {}
 wandb_api_key: null
 log_config: false
 console_log_level: null

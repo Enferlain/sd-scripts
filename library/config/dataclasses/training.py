@@ -4,8 +4,6 @@ from typing import Optional
 
 @dataclass
 class TrainingConfig:
-    output_dir: Optional[str] = None
-    output_name: Optional[str] = None
     train_batch_size: int = 1
     max_token_length: Optional[int] = None
     vae: Optional[str] = None

@@ -1,16 +1,14 @@
-import argparse
 import time
 import os
-import toml
 
 from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import TorchDynamoPlugin
 
 import library.optimizations.deepspeed_utils as deepspeed_utils
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 
 
-def prepare_accelerator(args: object):
+def prepare_accelerator(args: DictConfig):
     """
     this function also prepares deepspeed plugin
     """
@@ -94,16 +92,16 @@ def prepare_accelerator(args: object):
     return accelerator
 
 
-def init_trackers(accelerator: Accelerator, args: object, default_tracker_name: str):
+def init_trackers(accelerator: Accelerator, args: DictConfig, default_tracker_name: str):
     """
     Initialize experiment trackers with tracker specific behaviors
     """
     if accelerator.is_main_process:
         init_kwargs = {}
-        if args.logging.wandb_run_name:
+        if "wandb" in args.logging and args.logging.wandb_run_name:
             init_kwargs["wandb"] = {"name": args.logging.wandb_run_name}
-        if args.logging.log_tracker_config is not None:
-            init_kwargs = toml.load(args.logging.log_tracker_config)
+        if "log_tracker_config" in args.logging and args.logging.log_tracker_config is not None:
+            init_kwargs = args.logging.log_tracker_config
 
         # sanitize config for logging
         config_to_log = OmegaConf.to_container(args, resolve=True)

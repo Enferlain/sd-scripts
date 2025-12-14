@@ -25,7 +25,7 @@ from diffusers import DDPMScheduler
 from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL
 from ramtorch.helpers import replace_linear_with_ramtorch
 
-import library.utils.config_util as config_util
+import library.config.config_util as config_util
 import library.utils.huggingface_util as huggingface_util
 
 from library.constants import SS_METADATA_MINIMUM_KEYS
