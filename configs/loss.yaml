@@ -1,0 +1,11 @@
+loss_type: "l2"
+huber_schedule: "snr"
+huber_c: 0.1
+huber_scale: 1.0
+loss_scale: 1.0
+prior_loss_weight: 1.0
+loss_multiplier: null
+min_snr_gamma: null
+scale_v_pred_loss_like_noise_pred: false
+v_pred_like_loss: null
+debiased_estimation_loss: false

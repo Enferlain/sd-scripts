@@ -1,0 +1,13 @@
+save_precision: null
+save_every_n_epochs: null
+save_every_n_steps: null
+save_n_epoch_ratio: null
+save_last_n_epochs: null
+save_last_n_epochs_state: null
+save_last_n_steps: null
+save_last_n_steps_state: null
+save_state: false
+save_state_on_train_end: false
+resume: null
+save_model_as: null
+use_safetensors: false

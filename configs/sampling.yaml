@@ -1,0 +1,5 @@
+sample_every_n_steps: null
+sample_at_first: false
+sample_every_n_epochs: null
+sample_prompts: null
+sample_sampler: "ddim"

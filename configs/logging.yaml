@@ -1,0 +1,11 @@
+logging_dir: null
+log_with: null
+log_prefix: null
+log_tracker_name: null
+wandb_run_name: null
+log_tracker_config: null
+wandb_api_key: null
+log_config: false
+console_log_level: null
+console_log_file: null
+console_log_simple: false

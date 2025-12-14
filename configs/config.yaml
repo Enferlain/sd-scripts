@@ -1,7 +1,15 @@
 defaults:
-  - training: default
   - optimizer: default
   - dataset: default
   - sd_models: default
   - sdxl_training: default
   - masked_loss: default
+  - training: _self_
+  - saving: _self_
+  - huggingface: _self_
+  - logging: _self_
+  - performance: _self_
+  - loss: _self_
+  - regularization: _self_
+  - timestep: _self_
+  - sampling: _self_

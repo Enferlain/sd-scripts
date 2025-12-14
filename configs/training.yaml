@@ -1,0 +1,14 @@
+output_dir: null
+output_name: null
+train_batch_size: 1
+max_token_length: null
+vae: null
+max_train_steps: 1600
+max_train_epochs: null
+max_data_loader_n_workers: 8
+persistent_data_loader_workers: false
+seed: null
+gradient_accumulation_steps: 1
+clip_skip: null
+config_file: null
+output_config: false
