@@ -7,11 +7,10 @@ from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import TorchDynamoPlugin
 
 import library.optimizations.deepspeed_utils as deepspeed_utils
+from omegaconf import OmegaConf
 
-from library.config.arguments import get_sanitized_config_or_none
 
-
-def prepare_accelerator(args: argparse.Namespace):
+def prepare_accelerator(args: object):
     """
     this function also prepares deepspeed plugin
     """
@@ -95,19 +94,27 @@ def prepare_accelerator(args: argparse.Namespace):
     return accelerator
 
 
-def init_trackers(accelerator: Accelerator, args: argparse.Namespace, default_tracker_name: str):
+def init_trackers(accelerator: Accelerator, args: object, default_tracker_name: str):
     """
     Initialize experiment trackers with tracker specific behaviors
     """
     if accelerator.is_main_process:
         init_kwargs = {}
-        if args.wandb_run_name:
-            init_kwargs["wandb"] = {"name": args.wandb_run_name}
-        if args.log_tracker_config is not None:
-            init_kwargs = toml.load(args.log_tracker_config)
+        if args.logging.wandb_run_name:
+            init_kwargs["wandb"] = {"name": args.logging.wandb_run_name}
+        if args.logging.log_tracker_config is not None:
+            init_kwargs = toml.load(args.logging.log_tracker_config)
+
+        # sanitize config for logging
+        config_to_log = OmegaConf.to_container(args, resolve=True)
+        sensitive_keys = ["wandb_api_key", "huggingface_token"]
+        for key in sensitive_keys:
+            if key in config_to_log:
+                config_to_log[key] = "*****"
+
         accelerator.init_trackers(
-            default_tracker_name if args.log_tracker_name is None else args.log_tracker_name,
-            config=get_sanitized_config_or_none(args),
+            default_tracker_name if args.logging.log_tracker_name is None else args.logging.log_tracker_name,
+            config=config_to_log,
             init_kwargs=init_kwargs,
         )
 

@@ -36,11 +36,9 @@ from library.training.trainer_utils import append_lr_to_logs_with_names, prepare
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 from library.config.dataclasses.config import FullConfig
 
-import argparse
 from dataclasses import asdict
 from library.utils.config_util import (
     BlueprintGenerator,
-    ConfigSanitizer,
 )
 
 from library.losses.loss_weighting import (
@@ -110,7 +108,6 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
 
     append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
 
-from library.config.arguments import prepare_dataset_args
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
 def train(cfg: FullConfig):
@@ -146,68 +143,11 @@ def train(cfg: FullConfig):
         strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
     if cfg.dataset.dataset_class is None:
-        blueprint_generator = BlueprintGenerator(ConfigSanitizer(True, True, cfg.masked_loss, True))
-
-        # --- FIX START ---
-        # Hydra configs are nested (cfg.dataset.resolution), but BlueprintGenerator
-        # expects a flat namespace like argparse (args.resolution).
-        # We create a temporary namespace object to bridge this gap.
-        args_compat = argparse.Namespace()
-
-        # Convert the dataset config to a dictionary
-        # Handle both DictConfig (Hydra) and standard dataclasses
-        if isinstance(cfg.dataset, DictConfig):
-            dataset_args = dict(cfg.dataset)
-        else:
-            dataset_args = asdict(cfg.dataset)
-
-        # Populate the compat object with dataset arguments
-        for key, value in dataset_args.items():
-            setattr(args_compat, key, value)
-
-        # Note: The BlueprintGenerator handles the parsing of "512,512" string
-        # to (512, 512) tuple internally, so you don't need prepare_dataset_args.
-        # --- FIX END ---
-
-        if cfg.dataset.dataset_config is not None:
-            logger.info(f"Load dataset config from {cfg.dataset.dataset_config}")
-            user_config = config_util.load_user_config(cfg.dataset.dataset_config)
-            ignored = ["train_data_dir", "in_json"]
-            if any(getattr(cfg.dataset, attr) is not None for attr in ignored):
-                logger.warning(
-                    "ignore following options because config file is found: {0}".format(
-                        ", ".join(ignored)
-                    )
-                )
-        else:
-            if use_dreambooth_method:
-                logger.info("Using DreamBooth method.")
-                user_config = {
-                    "datasets": [
-                        {
-                            "subsets": config_util.generate_dreambooth_subsets_config_by_subdirs(
-                                cfg.dataset.train_data_dir, cfg.dataset.reg_data_dir
-                            )
-                        }
-                    ]
-                }
-            else:
-                logger.info("Training with captions.")
-                user_config = {
-                    "datasets": [
-                        {
-                            "subsets": [
-                                {
-                                    "image_dir": cfg.dataset.train_data_dir,
-                                    "metadata_file": cfg.dataset.in_json,
-                                }
-                            ]
-                        }
-                    ]
-                }
-
-        blueprint = blueprint_generator.generate(user_config, args_compat)
-        train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
+        blueprint_generator = BlueprintGenerator()
+        blueprint = blueprint_generator.generate(cfg)
+        train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(
+            blueprint.dataset_group
+        )
     else:
         train_dataset_group = load_arbitrary_dataset(cfg.dataset)
         val_dataset_group = None
