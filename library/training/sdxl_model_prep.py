@@ -4,7 +4,8 @@ import torch
 
 from typing import Optional
 from accelerate import init_empty_weights
-from ..config.dataclasses.config import MainConfig
+from ..config.dataclasses.config import FullConfig
+from ..config.dataclasses.deepspeed import DeepSpeedConfig
 
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
@@ -16,7 +17,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def load_target_model(cfg: MainConfig, accelerator, model_version: str, weight_dtype):
+def load_target_model(cfg: FullConfig, accelerator, model_version: str, weight_dtype):
     model_dtype = match_mixed_precision(cfg.training, weight_dtype)
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
@@ -55,7 +56,7 @@ def load_target_model(cfg: MainConfig, accelerator, model_version: str, weight_d
 
 
 def _load_target_model(
-        cfg: MainConfig, name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype,
+        cfg: FullConfig, name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype,
     device="cpu", model_dtype=None, disable_mmap=False
 ):
     name_or_path = os.readlink(name_or_path) if os.path.islink(name_or_path) else name_or_path
