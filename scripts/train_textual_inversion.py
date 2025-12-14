@@ -12,7 +12,7 @@ from diffusers import DDPMScheduler
 from transformers import CLIPTokenizer
 
 import library.utils.huggingface_util as huggingface_util
-import library.utils.config_util as config_util
+import library.config.config_util as config_util
 
 from library.models import model_util
 from library.utils import sai_model_spec

@@ -40,8 +40,8 @@ def test_sdxl_train_dry_run():
         f"dataset.train_data_dir={data_dir}",
         "dataset.resolution=[256,256]",
         "training.max_train_steps=1",
-        f"training.output_dir={output_dir}",
-        "training.output_name=dry_run_test",
+            f"saving.output_dir={output_dir}",
+            "saving.output_name=dry_run_test",
         "dataset.reg_data_dir=tests/assets/reg"
     ]
 

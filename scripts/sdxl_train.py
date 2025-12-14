@@ -13,7 +13,7 @@ from typing import List
 from tqdm import tqdm
 from diffusers import DDPMScheduler
 
-import library.utils.config_util as config_util
+import library.config.config_util as config_util
 
 from library.constants import VAE_SCALE_FACTOR
 from library.models.sdxl_model_util import get_size_embeddings
@@ -37,7 +37,7 @@ from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, con
 from library.config.dataclasses.config import FullConfig
 
 from dataclasses import asdict
-from library.utils.config_util import (
+from library.config.config_util import (
     BlueprintGenerator,
 )
 

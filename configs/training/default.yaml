@@ -1,5 +1,3 @@
-output_dir: null
-output_name: null
 train_batch_size: 1
 max_token_length: null
 vae: null

@@ -12,7 +12,7 @@ from tqdm import tqdm
 from multiprocessing import Value
 from diffusers import DDPMScheduler
 
-import library.utils.config_util as config_util
+import library.config.config_util as config_util
 import library.utils.sai_model_spec as sai_model_spec
 
 from library.optimizations import deepspeed_utils
