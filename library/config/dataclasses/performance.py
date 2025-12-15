@@ -11,10 +11,13 @@ class PerformanceConfig:
     xformers: bool = False
     sdpa: bool = False
     gradient_checkpointing: bool = False
+    cpu_offload_checkpointing: bool = False
     mixed_precision: str = "no"
     full_fp16: bool = False
     full_bf16: bool = False
     fp8_base: bool = False
+    fp8_base_unet: bool = False
+    no_half_vae: bool = False
     ddp_timeout: Optional[int] = None
     ddp_gradient_as_bucket_view: bool = False
     ddp_static_graph: bool = False

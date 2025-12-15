@@ -1,8 +1,9 @@
 defaults:
   - optimizer: default
   - dataset: default
+  - buckets: default
   - sd_models: default
-  - sdxl_training: default
+  - network: default
   - masked_loss: default
   - training: default
   - saving: default
@@ -13,5 +14,4 @@ defaults:
   - regularization: default
   - timestep: default
   - sampling: default
-  - buckets: default
   - metadata: default

@@ -2,8 +2,9 @@ from dataclasses import dataclass, field
 from .training import TrainingConfig
 from .optimizer import OptimizerConfig
 from .dataset import DatasetConfig
+from .buckets import BucketsConfig
 from .sd_models import SDModelsConfig
-from .sdxl_training import SDXLTrainingConfig
+from .network import NetworkConfig
 from .saving import SavingConfig
 from .huggingface import HuggingFaceConfig
 from .logging import LoggingConfig
@@ -13,17 +14,17 @@ from .regularization import RegularizationConfig
 from .timestep import TimestepConfig
 from .sampling import SamplingConfig
 from .masked_loss import MaskedLossConfig
-from .buckets import BucketsConfig
 from .metadata import MetadataConfig
 
 
 @dataclass
-class FullConfig:
+class TrainNetworkConfig:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
+    buckets: BucketsConfig = field(default_factory=BucketsConfig)
     sd_models: SDModelsConfig = field(default_factory=SDModelsConfig)
-    sdxl_training: SDXLTrainingConfig = field(default_factory=SDXLTrainingConfig)
+    network: NetworkConfig = field(default_factory=NetworkConfig)
     saving: SavingConfig = field(default_factory=SavingConfig)
     huggingface: HuggingFaceConfig = field(default_factory=HuggingFaceConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
@@ -33,5 +34,4 @@ class FullConfig:
     timestep: TimestepConfig = field(default_factory=TimestepConfig)
     sampling: SamplingConfig = field(default_factory=SamplingConfig)
     masked_loss: MaskedLossConfig = field(default_factory=MaskedLossConfig)
-    buckets: BucketsConfig = field(default_factory=BucketsConfig)
     metadata: MetadataConfig = field(default_factory=MetadataConfig)

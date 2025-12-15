@@ -7,3 +7,4 @@ class SDModelsConfig:
     v_parameterization: bool = field(default=False, metadata={"help": "enable v-parameterization training"})
     pretrained_model_name_or_path: Optional[str] = field(default=None, metadata={"help": "pretrained model to train"})
     tokenizer_cache_dir: Optional[str] = field(default=None, metadata={"help": "directory for caching Tokenizer"})
+    vae_conv2d_padding_mode: str = field(default="zeros", metadata={"help": "Adjusts the padding for Conv2d modules in the VAE"})
