@@ -12,7 +12,7 @@ class NetworkConfig:
     network_train_unet_only: bool = field(default=False, metadata={"help": "only training U-Net part"})
     network_train_text_encoder_only: bool = field(default=False, metadata={"help": "only training Text Encoder part"})
     dim_from_weights: bool = field(default=False, metadata={"help": "automatically determine dim (rank) from network_weights"})
-    scale_weight_norms: Optional[float] = field(default=None, metadata={"help": "Scale the weight of each key pair to help prevent overtraing via exploding gradients. (1 is a good starting point)"})
+    scale_weight_norms: Optional[float] = field(default=None, metadata={"help": "Scale the weight of each key pair to help prevent overtraining via exploding gradients. (1 is a good starting point)"})
     base_weights: Optional[List[str]] = field(default=None, metadata={"help": "network weights to merge into the model before training"})
     base_weights_multiplier: Optional[List[float]] = field(default=None, metadata={"help": "multiplier for network weights to merge into the model before training"})
     training_comment: Optional[str] = field(default=None, metadata={"help": "arbitrary comment string stored in metadata"})
