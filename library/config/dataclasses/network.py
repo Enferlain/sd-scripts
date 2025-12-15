@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Any
 
 @dataclass
 class NetworkConfig:
@@ -22,5 +22,10 @@ class NetworkConfig:
     direct_ramtorch: bool = field(default=False, metadata={"help": "Train orig weights in lyco full module and save diff instead of keep both."})
 
     unet_lr: Optional[float] = field(default=None, metadata={"help": "learning rate for U-Net"})
-    text_encoder_lr: Optional[Union[float, List[float]]] = field(default=None, metadata={"help": "learning rate for Text Encoder, can be multiple"})
+    # OmegaConf doesn't support Union of primitives and containers well.
+    # Use Any or List and handle float in code if needed, but here List[float] usually implies we might want one or more.
+    # However, to avoid the error "Unions of containers are not supported", we can use Any or Optional[List[float]] and rely on type coercion or just Any.
+    # Given the error, simple Union[float, List[float]] fails.
+    # Let's change it to Any for now to pass OmegaConf validation, as it can be either scalar or list.
+    text_encoder_lr: Optional[Any] = field(default=None, metadata={"help": "learning rate for Text Encoder, can be multiple"})
     orthograd_targets: Optional[List[str]] = field(default=None, metadata={"help": "A list of strings to determine which named parameters should subject to orthgrad"})

@@ -999,9 +999,16 @@ class NetworkTrainer:
 
         # データセットを準備する
         if cfg.dataset.dataset_class is None:
-            # Using adapter to pass config to BlueprintGenerator if needed,
-            # but BlueprintGenerator expects FullConfig-like object which cfg is.
-            # However BlueprintGenerator logic in config_util.py expects cfg.dataset etc.
+            # Check if we have manually provided subsets via train_data_dir/reg_data_dir
+            if (cfg.dataset.train_data_dir is not None or cfg.dataset.reg_data_dir is not None) and len(cfg.dataset.subsets) == 0:
+                # Generate subsets config from dirs
+                user_config = config_util.generate_user_config_from_args(cfg.dataset)
+                # We need to inject this into cfg.dataset.subsets
+                # cfg.dataset.subsets is a List[dict] (or ListConfig)
+                # user_config['datasets'][0]['subsets'] is the list we want
+                if user_config['datasets']:
+                    cfg.dataset.subsets = user_config['datasets'][0]['subsets']
+
             blueprint_generator = BlueprintGenerator()
             blueprint = blueprint_generator.generate(cfg)
             train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
@@ -2185,6 +2192,34 @@ class NetworkTrainer:
                                                                                                     train_text_encoder)
                         else:
                             current_val_loss, average_val_loss, val_logs = None, None, None
+
+                        # 指定ステップごとにモデルを保存
+                        if args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0:
+                            accelerator.wait_for_everyone()
+                            if accelerator.is_main_process:
+                                ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, global_step)
+                                save_model(ckpt_name, accelerator.unwrap_model(network), global_step, epoch)
+
+                                if args.edm2_loss_weighting:
+                                    loss_weights_ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, global_step, "_edm2_loss_weights")
+                                    save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, epoch, dtype_override=torch.float32)
+
+                                if args.save_state:
+                                    save_and_remove_state_stepwise(args, accelerator, global_step)
+
+                                remove_step_no = get_remove_step_no(args, global_step)
+                                if remove_step_no is not None:
+                                    remove_ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no)
+                                    remove_model(remove_ckpt_name)
+
+                                    if args.edm2_loss_weighting:
+                                        remove_loss_weights_ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no, "_edm2_loss_weights")
+                                        remove_model(remove_loss_weights_ckpt_name)
+
+                        if plot_edm2_loss_weighting_check(args, global_step):
+                            plot_edm2_loss_weighting(args, global_step, edm2_model, 1000, accelerator.device)
+                        optimizer_train_fn()
+                        accelerator.unwrap_model(network).train()
 
                 current_global_step_loss += loss.detach().item()
                 if args.edm2_loss_weighting:

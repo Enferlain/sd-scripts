@@ -179,7 +179,14 @@ class BlueprintGenerator:
 
             # Overwrite with subset-specific values
             # Convert subset_cfg to dict to iterate
-            subset_cfg_dict = asdict(subset_cfg)
+            if hasattr(subset_cfg, "__dataclass_fields__"):
+                subset_cfg_dict = asdict(subset_cfg)
+            elif isinstance(subset_cfg, dict):
+                subset_cfg_dict = subset_cfg
+            else:
+                # If it's a DictConfig or similar
+                subset_cfg_dict = dict(subset_cfg)
+
             for key, value in subset_cfg_dict.items():
                 if value is not None:
                     params_dict[key] = value
@@ -192,6 +199,8 @@ class BlueprintGenerator:
         for key in asdict(dataset_params_klass()):
             if hasattr(dataset_config, key):
                 dataset_params_dict[key] = getattr(dataset_config, key)
+            elif hasattr(cfg, "buckets") and hasattr(cfg.buckets, key):
+                dataset_params_dict[key] = getattr(cfg.buckets, key)
 
         # Convert resolution list to tuple if necessary
         resolution = dataset_params_dict.get("resolution")
@@ -412,3 +421,26 @@ def generate_dreambooth_subsets_config_by_subdirs(
     subsets_config += generate(reg_data_dir, True)
 
     return subsets_config
+
+def generate_user_config_from_args(args) -> dict:
+    """
+    Generate user_config from args.
+    This is for backward compatibility.
+    """
+    # Assuming args is config.dataset (or compatible object)
+    if args.dataset_class is None:
+        user_config = {
+            "datasets": [
+                {
+                    "subsets": generate_dreambooth_subsets_config_by_subdirs(args.train_data_dir, args.reg_data_dir)
+                }
+            ]
+        }
+    else:
+        # For arbitrary dataset, we don't need subsets config in the same way,
+        # but we need to structure it if needed.
+        # However, BlueprintGenerator logic for arbitrary dataset is handled differently (by not calling it or handling it upstream).
+        # If dataset_class is present, BlueprintGenerator might not be used or used differently.
+        user_config = {"datasets": []} # Empty or handled otherwise
+
+    return user_config
