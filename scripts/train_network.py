@@ -1876,7 +1876,7 @@ class NetworkTrainer:
                     temperature=getattr(args, "mix_adaptive_temperature", 0.2),
                     min_prob=getattr(args, "mix_adaptive_min_prob", 1e-2),
                     entropy_floor_ratio=getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
-                    uniform_mix_when_low_entropy=getattr(args, "uniform_mix_when_low_entropy", 0.1),
+                    uniform_mix_when_low_entropy=getattr(args, "mix_adaptive_uniform_mix_when_low_entropy", 0.1),
                     prior_mu=getattr(args, "mix_adaptive_prior_mu", 0.0),
                     prior_sigma=getattr(args, "mix_adaptive_prior_sigma", 1.0), 
                     prior_weight=getattr(args, "mix_adaptive_prior_weight", 0.1),
