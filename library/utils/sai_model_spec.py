@@ -9,11 +9,14 @@ import mimetypes
 import subprocess
 import safetensors
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from io import BytesIO
-from typing import Union
+from typing import Union, Optional
 
 from library.utils.common_utils import setup_logging
+from library.config.dataclasses.metadata import MetadataConfig
+# Type hints only to avoid circular imports if possible, though these are dataclasses so distinct modules usually fine
+from library.config.dataclasses.timestep import TimestepConfig
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -186,6 +189,58 @@ class ModelSpecMetadata:
         if metadata_fields:
             all_fields["additional_fields"] = metadata_fields
 
+        return cls(**all_fields)
+
+    @classmethod
+    def from_config(
+            cls,
+            metadata_config: MetadataConfig,
+            timestamp: float | None = None,
+            **kwargs
+    ) -> "ModelSpecMetadata":
+        """
+        Create ModelSpecMetadata from MetadataConfig.
+        """
+        if timestamp is None:
+            timestamp = time.time()
+
+        # Extract standard fields from the config
+        # We look for fields in MetadataConfig that match "metadata_{name}"
+        metadata_fields = {}
+        for config_field in asdict(metadata_config):
+            if config_field.startswith("metadata_"):
+                value = getattr(metadata_config, config_field)
+                if value is not None:
+                     # Remove metadata_ prefix
+                    field_name = config_field[9:]  # len("metadata_") = 9
+                    metadata_fields[field_name] = value
+
+        # Handle known standard fields
+        standard_fields = {
+            "title": metadata_fields.pop("title", None),
+            "author": metadata_fields.pop("author", None),
+            "description": metadata_fields.pop("description", None),
+            "license": metadata_fields.pop("license", None),
+            "tags": metadata_fields.pop("tags", None),
+        }
+        
+        # Remove None values
+        standard_fields = {k: v for k, v in standard_fields.items() if v is not None}
+
+        # Merge with kwargs and remaining metadata fields
+        all_fields = {**standard_fields, **kwargs}
+        if metadata_fields:
+            all_fields["additional_fields"] = metadata_fields
+
+        if "date" not in all_fields:
+             # remove microsecond from time
+            int_ts = int(timestamp)
+            # time to iso-8601 compliant date
+            all_fields["date"] = datetime.datetime.fromtimestamp(int_ts).isoformat()
+        
+        # Ensure we have the required fields or let the constructor/post-init handle defaults? 
+        # The constructor expects architecture etc, which should be passed in kwargs.
+        
         return cls(**all_fields)
 
 
@@ -681,3 +736,104 @@ if __name__ == "__main__":
     print(by_ref)
     print("is same?", by_ref == metadata["modelspec.hash_sha256"])
 """
+
+
+def get_sai_model_spec_from_config(
+        state_dict: dict,
+        metadata_config: MetadataConfig,
+        is_sdxl: bool,
+        is_v2: bool,
+        v_parameterization: bool,
+        is_lora: bool,
+        is_textual_inversion: bool,
+        resolution: Union[int, tuple[int, int]] = (512, 512),
+        min_timestep: Optional[int] = None,
+        max_timestep: Optional[int] = None,
+        clip_skip: Optional[int] = None,
+        is_stable_diffusion_ckpt: Optional[bool] = None,
+        flux_type: Optional[str] = None,
+        lumina_type: Optional[str] = None,
+        hunyuan_image_type: Optional[str] = None,
+        optional_metadata: dict[str, str] | None = None,
+) -> dict:
+    """
+    Get SAI Model Spec using configuration objects directly.
+    Returns the metadata dictionary.
+    """
+    timestamp = time.time()
+    
+    title = metadata_config.metadata_title
+    
+    # Timesteps logic
+    timesteps = None
+    if min_timestep is not None or max_timestep is not None:
+        min_ts = min_timestep if min_timestep is not None else 0
+        max_ts = max_timestep if max_timestep is not None else 1000
+        timesteps = (min_ts, max_ts)
+
+    # Model Config Dict
+    model_config_dict = {}
+    if flux_type is not None:
+        model_config_dict["flux"] = flux_type
+    if lumina_type is not None:
+        model_config_dict["lumina"] = lumina_type
+    if hunyuan_image_type is not None:
+        model_config_dict["hunyuan_image"] = hunyuan_image_type
+
+    # determine_architecture etc need to be called
+    
+    architecture = determine_architecture(is_v2, v_parameterization, is_sdxl, is_lora, is_textual_inversion, model_config_dict)
+    
+    if not is_lora and not is_textual_inversion and is_stable_diffusion_ckpt is None:
+        is_stable_diffusion_ckpt = True
+
+    implementation = determine_implementation(is_lora, is_textual_inversion, is_sdxl, model_config_dict, is_stable_diffusion_ckpt)
+
+    if title is None:
+        if is_lora:
+            title = "LoRA"
+        elif is_textual_inversion:
+            title = "TextualInversion"
+        else:
+            title = "Checkpoint"
+        title += f"@{timestamp}"
+
+    resolution_str = determine_resolution(resolution, is_sdxl, model_config_dict, is_v2, v_parameterization)
+
+    # Helper to merge optional metadata and extract from config
+    extracted_metadata = {}
+    for config_field in asdict(metadata_config):
+        if config_field.startswith("metadata_"):
+             value = getattr(metadata_config, config_field)
+             if value is not None:
+                field_name = config_field[9:]
+                if field_name not in ["title", "author", "description", "license", "tags"]:
+                     extracted_metadata[field_name] = value
+
+    all_optional_metadata = {**extracted_metadata}
+    if optional_metadata:
+        all_optional_metadata.update(optional_metadata)
+
+    # Using build_metadata_dataclass which we have locally
+    metadata_obj = build_metadata_dataclass(
+        state_dict,
+        is_v2,
+        v_parameterization,
+        is_sdxl,
+        is_lora,
+        is_textual_inversion,
+        timestamp,
+        title=title,
+        reso=resolution,
+        is_stable_diffusion_ckpt=is_stable_diffusion_ckpt,
+        author=metadata_config.metadata_author,
+        description=metadata_config.metadata_description,
+        license=metadata_config.metadata_license,
+        tags=metadata_config.metadata_tags,
+        timesteps=timesteps,
+        clip_skip=clip_skip,
+        model_config=model_config_dict,
+        optional_metadata=all_optional_metadata
+    )
+    
+    return metadata_obj.to_metadata_dict()

@@ -4,7 +4,7 @@ import torch
 
 from typing import Optional
 from accelerate import init_empty_weights
-from ..config.dataclasses.config import FullConfig
+from ..config.dataclasses.config import SDXLFineTuningConfig
 from ..config.dataclasses.deepspeed import DeepSpeedConfig
 
 from library.utils.common_utils import setup_logging
@@ -17,7 +17,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def load_target_model(cfg: FullConfig, accelerator, model_version: str, weight_dtype):
+def load_target_model(cfg: SDXLFineTuningConfig, accelerator, model_version: str, weight_dtype):
     model_dtype = match_mixed_precision(cfg.training, weight_dtype)
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
@@ -35,15 +35,15 @@ def load_target_model(cfg: FullConfig, accelerator, model_version: str, weight_d
             ) = _load_target_model(
                 cfg,
                 cfg.sd_models.pretrained_model_name_or_path,
-                cfg.training.vae,
+                cfg.sd_models.vae,
                 model_version,
                 weight_dtype,
-                accelerator.device if cfg.training.lowram else "cpu",
+                accelerator.device if cfg.performance.lowram else "cpu",
                 model_dtype,
                 cfg.sdxl_training.disable_mmap_load_safetensors,
             )
 
-            if cfg.training.lowram:
+            if cfg.performance.lowram:
                 text_encoder1.to(accelerator.device)
                 text_encoder2.to(accelerator.device)
                 unet.to(accelerator.device)
@@ -56,7 +56,7 @@ def load_target_model(cfg: FullConfig, accelerator, model_version: str, weight_d
 
 
 def _load_target_model(
-        cfg: FullConfig, name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype,
+        cfg: SDXLFineTuningConfig, name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype,
     device="cpu", model_dtype=None, disable_mmap=False
 ):
     name_or_path = os.readlink(name_or_path) if os.path.islink(name_or_path) else name_or_path
@@ -120,8 +120,8 @@ def _load_target_model(
         vae = model_util.load_vae(vae_path, weight_dtype)
         logger.info("additional VAE loaded")
 
-    if hasattr(cfg.training, "vae_conv2d_padding_mode") and cfg.training.vae_conv2d_padding_mode is not None and cfg.training.vae_conv2d_padding_mode.lower() != 'zeros':
-        logger.info(f"Loading VAE with padding mode: {cfg.training.vae_conv2d_padding_mode}")
-        set_padding_mode_for_vae_conv2d_modules(vae, cfg.training.vae_conv2d_padding_mode)
+    if cfg.sd_models.vae_conv2d_padding_mode is not None and cfg.sd_models.vae_conv2d_padding_mode.lower() != 'zeros':
+        logger.info(f"Loading VAE with padding mode: {cfg.sd_models.vae_conv2d_padding_mode}")
+        set_padding_mode_for_vae_conv2d_modules(vae, cfg.sd_models.vae_conv2d_padding_mode)
 
     return load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info

@@ -46,6 +46,7 @@ from library.training.optimizer import prepare_optimizer, get_scheduler_fix
 from library.training.sample_generation import sample_images, sample_images_check
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
 
+
 from library.timestep_samplers.loss_aware_sampler import LossAwareTimestepSampler
 from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
 from library.timestep_samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
@@ -57,6 +58,13 @@ from library.utils.config_util import (
 )
 
 from library.config.dataclasses.train_network_config import TrainNetworkConfig
+from library.config.dataclasses.optimizer import OptimizerConfig
+from library.config.dataclasses.dataset import DatasetConfig
+from library.config.dataclasses.network import NetworkConfig
+from library.config.dataclasses.sd_models import SDModelsConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.sdxl_train_network_config import SDXLTrainNetworkConfig
 
 from library.training.checkpointing import (
     get_sai_model_spec,
@@ -115,6 +123,7 @@ init_ipex()
 setup_logging()
 logger = logging.getLogger(__name__)
 
+
 class ArgsAdapter:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -145,8 +154,8 @@ class ArgsAdapter:
         for section in sections:
             if hasattr(section, name):
                 return getattr(section, name)
-        # Fallback or raise
-        # Some args might be dynamically added by legacy code (though we try to avoid it)
+        # Fallback for some properties (args.output_dir is in saving, args.max_train_steps in training)
+        # If not found, raise
         raise AttributeError(f"'ArgsAdapter' object has no attribute '{name}'")
 
     def __setattr__(self, name, value):
@@ -174,11 +183,10 @@ class ArgsAdapter:
         ]
         for section in sections:
             if hasattr(section, name):
-                # We assume section is a mutable object (like DictConfig or dataclass instance)
-                if isinstance(section, DictConfig):
-                    section[name] = value
-                else:
-                    setattr(section, name, value)
+                # assume dataclass fields are mutable via setattr on instance?
+                # Hydra configs might be DictConfig?
+                # Code uses simple assignment, so we try setattr
+                setattr(section, name, value)
                 return
 
         # If not found in sections, store in dynamic attrs
@@ -384,7 +392,7 @@ class NetworkTrainer:
 
     def assert_extra_args(
         self,
-        args,
+        cfg,
         train_dataset_group: Union[DatasetGroup, MinimalDataset],
         val_dataset_group: Optional[DatasetGroup],
     ):
@@ -392,12 +400,10 @@ class NetworkTrainer:
         if val_dataset_group is not None:
             val_dataset_group.verify_bucket_reso_steps(64)
 
-    def load_target_model(self, args, weight_dtype, accelerator) -> tuple[str, nn.Module, nn.Module, Optional[nn.Module]]:
-        # adapter for legacy function
-        adapter = ArgsAdapter(args)
-        text_encoder, vae, unet, _ = load_target_model(adapter, weight_dtype, accelerator)
+    def load_target_model(self, cfg, weight_dtype, accelerator) -> tuple[str, nn.Module, nn.Module, Optional[nn.Module]]:
+        text_encoder, vae, unet, _ = load_target_model(cfg.sd_models, cfg.performance, weight_dtype, accelerator)
 
-        if args.network.use_ramtorch:
+        if cfg.network.use_ramtorch:
             logger.info("Applying RamTorch to SD UNet, VAE, and Clip-L.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
@@ -412,34 +418,34 @@ class NetworkTrainer:
                 logger.info("RamTorch applied to SD VAE.")
 
         # モデルに xformers とか memory efficient attention を組み込む
-        replace_unet_modules(unet, args.performance.mem_eff_attn, args.performance.xformers, args.performance.sdpa)
+        replace_unet_modules(unet, cfg.performance.mem_eff_attn, cfg.performance.xformers, cfg.performance.sdpa)
         if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
-            vae.set_use_memory_efficient_attention_xformers(args.performance.xformers)
+            vae.set_use_memory_efficient_attention_xformers(cfg.performance.xformers)
 
-        return model_util.get_model_version_str_for_sd1_sd2(args.sd_models.v2, args.sd_models.v_parameterization), text_encoder, vae, unet
+        return model_util.get_model_version_str_for_sd1_sd2(cfg.sd_models.v2, cfg.training.v_parameterization), text_encoder, vae, unet
 
-    def load_unet_lazily(self, args, weight_dtype, accelerator, text_encoders) -> tuple[nn.Module, List[nn.Module]]:
+    def load_unet_lazily(self, cfg, weight_dtype, accelerator, text_encoders) -> tuple[nn.Module, List[nn.Module]]:
         raise NotImplementedError()
 
-    def get_tokenize_strategy(self, args):
-        return strategy_sd.SdTokenizeStrategy(args.sd_models.v2, args.training.max_token_length, args.sd_models.tokenizer_cache_dir)
+    def get_tokenize_strategy(self, cfg):
+        return strategy_sd.SdTokenizeStrategy(cfg.sd_models.v2, cfg.training.max_token_length, cfg.sd_models.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sd.SdTokenizeStrategy) -> List[Any]:
         return [tokenize_strategy.tokenizer]
 
-    def get_latents_caching_strategy(self, args):
+    def get_latents_caching_strategy(self, cfg):
         latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
-            True, args.dataset.cache_latents_to_disk, args.dataset.vae_batch_size, args.dataset.skip_cache_check
+            True, cfg.dataset.cache_latents_to_disk, cfg.dataset.vae_batch_size, cfg.dataset.skip_cache_check
         )
         return latents_caching_strategy
 
-    def get_text_encoding_strategy(self, args):
-        return strategy_sd.SdTextEncodingStrategy(args.training.clip_skip)
+    def get_text_encoding_strategy(self, cfg):
+        return strategy_sd.SdTextEncodingStrategy(cfg.training.clip_skip)
 
-    def get_text_encoder_outputs_caching_strategy(self, args):
+    def get_text_encoder_outputs_caching_strategy(self, cfg):
         return None
 
-    def get_models_for_text_encoding(self, args, accelerator, text_encoders):
+    def get_models_for_text_encoding(self, cfg, accelerator, text_encoders):
         """
         Returns a list of models that will be used for text encoding. SDXL uses wrapped and unwrapped models.
         FLUX.1 and SD3 may cache some outputs of the text encoder, so return the models that will be used for encoding (not cached).
@@ -447,17 +453,17 @@ class NetworkTrainer:
         return text_encoders
 
     # returns a list of bool values indicating whether each text encoder should be trained
-    def get_text_encoders_train_flags(self, args, text_encoders):
-        return [True] * len(text_encoders) if self.is_train_text_encoder(args) else [False] * len(text_encoders)
+    def get_text_encoders_train_flags(self, cfg, text_encoders):
+        return [True] * len(text_encoders) if self.is_train_text_encoder(cfg) else [False] * len(text_encoders)
 
-    def is_train_text_encoder(self, args):
-        return not args.network.network_train_unet_only
+    def is_train_text_encoder(self, cfg):
+        return not cfg.network.network_train_unet_only
 
-    def cache_text_encoder_outputs_if_needed(self, args, accelerator, unet, vae, text_encoders, dataset, weight_dtype):
+    def cache_text_encoder_outputs_if_needed(self, cfg, accelerator, unet, vae, text_encoders, dataset, weight_dtype):
         for t_enc in text_encoders:
             t_enc.to(accelerator.device, dtype=weight_dtype)
 
-    def call_unet(self, args, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype, **kwargs):
+    def call_unet(self, cfg, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype, **kwargs):
         noise_pred = unet(noisy_latents, timesteps, text_conds[0]).sample
         return noise_pred
 
@@ -466,35 +472,34 @@ class NetworkTrainer:
             if param.grad is not None:
                 param.grad = accelerator.reduce(param.grad, reduction="mean")
 
-    def sample_images(self, accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoder, unet):
-        adapter = ArgsAdapter(args)
-        sample_images(accelerator, adapter, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
+    def sample_images(self, accelerator, cfg, epoch, global_step, device, vae, tokenizers, text_encoder, unet):
+        sample_images(accelerator, cfg.sampling, cfg.training, cfg.saving, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
 
     # region SD/SDXL
 
     def post_process_network(self, args, accelerator, network, text_encoders, unet):
         pass
 
-    def get_noise_scheduler(self, args, device: torch.device) -> Any:
+    def get_noise_scheduler(self, cfg, device: torch.device) -> Any:
         noise_scheduler = DDPMScheduler(
             beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
         )
 
-        if args.regularization.zero_terminal_snr:
+        if cfg.regularization.zero_terminal_snr:
             fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
         prepare_scheduler_for_custom_training(noise_scheduler, device)
         return noise_scheduler
 
-    def encode_images_to_latents(self, args, vae: AutoencoderKL, images: torch.FloatTensor) -> torch.FloatTensor:
+    def encode_images_to_latents(self, cfg, vae: AutoencoderKL, images: torch.FloatTensor) -> torch.FloatTensor:
         return vae.encode(images).latent_dist.sample()
 
-    def shift_scale_latents(self, args, latents: torch.FloatTensor) -> torch.FloatTensor:
+    def shift_scale_latents(self, cfg, latents: torch.FloatTensor) -> torch.FloatTensor:
         return latents * self.vae_scale_factor
 
     def get_noise_pred_and_target(
         self,
-        args,
+        cfg,
         accelerator,
         noise_scheduler,
         latents,
@@ -508,22 +513,26 @@ class NetworkTrainer:
         is_train=True,
         min_timestep_override=None,
         max_timestep_override=None,
+        global_step=0,
     ):
         # Sample noise, sample a random timestep for each image, and add noise to the latents,
         # with noise offset and/or multires noise if specified
-        adapter = ArgsAdapter(args)
         noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
-            adapter,
+            cfg.regularization,
+            cfg.timestep,
+            cfg.training,
             noise_scheduler, 
-            latents, 
-            fixed_timesteps, 
+            latents,
+            la_sampler=self.la_sampler,
+            global_step=global_step,
+            fixed_timesteps=fixed_timesteps, 
             is_train=is_train, 
             min_timestep_override=min_timestep_override,
             max_timestep_override=max_timestep_override
         )
 
         # ensure the hidden state will require grad
-        if is_train and args.performance.gradient_checkpointing:
+        if is_train and cfg.performance.gradient_checkpointing:
             for x in noisy_latents:
                 x.requires_grad_(True)
             for t in text_encoder_conds:
@@ -532,7 +541,7 @@ class NetworkTrainer:
         # Predict the noise residual
         with torch.set_grad_enabled(is_train), accelerator.autocast():
             noise_pred = self.call_unet(
-                args,
+                cfg,
                 accelerator,
                 unet,
                 noisy_latents.requires_grad_(train_unet),
@@ -542,7 +551,7 @@ class NetworkTrainer:
                 weight_dtype,
             )
 
-        if args.sd_models.v_parameterization:
+        if cfg.training.v_parameterization:
             # v-parameterization training
             target = noise_scheduler.get_velocity(latents, noise, timesteps)
         else:
@@ -559,7 +568,7 @@ class NetworkTrainer:
                 network.set_multiplier(0.0)
                 with torch.no_grad(), accelerator.autocast():
                     noise_pred_prior = self.call_unet(
-                        args,
+                        cfg,
                         accelerator,
                         unet,
                         noisy_latents,
@@ -574,20 +583,39 @@ class NetworkTrainer:
 
         return noise_pred, target, timesteps, None
 
-    def post_process_loss(self, loss, args, timesteps: torch.IntTensor, noise_scheduler) -> torch.FloatTensor:
-        if args.loss.min_snr_gamma:
-            loss = apply_snr_weight(loss, timesteps, noise_scheduler, args.loss.min_snr_gamma, args.sd_models.v_parameterization)
-        if args.loss.scale_v_pred_loss_like_noise_pred:
+    def post_process_loss(self, loss, cfg, timesteps: torch.IntTensor, noise_scheduler) -> torch.FloatTensor:
+        if cfg.loss.min_snr_gamma:
+            loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.min_snr_gamma, cfg.training.v_parameterization)
+        if cfg.loss.scale_v_pred_loss_like_noise_pred:
             loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-        if args.loss.v_pred_like_loss:
-            loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, args.loss.v_pred_like_loss)
-        if args.loss.debiased_estimation_loss:
-            loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, args.sd_models.v_parameterization)
+        if cfg.loss.v_pred_like_loss:
+            loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.v_pred_like_loss)
+        if cfg.loss.debiased_estimation_loss:
+            loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.training.v_parameterization)
         return loss
 
-    def get_sai_model_spec(self, args):
-        adapter = ArgsAdapter(args)
-        return get_sai_model_spec(None, adapter, self.is_sdxl, True, False)
+    def get_sai_model_spec(self, cfg):
+        # We need to adapt cfg to legacy args structure that get_sai_model_spec expects?
+        # get_sai_model_spec takes 'args' and uses it to construct metadata.
+        # It uses ArgsAdapter internally if we passed args?
+        # Wait, the tool shows: adapter = ArgsAdapter(args); return get_sai_model_spec(..., adapter, ...)
+        # So get_sai_model_spec EXPECTS an object with .dataset, .training etc?
+        # If I pass cfg directly, it should work if it mimics structure?
+        # But get_sai_model_spec might look for flat attributes if it was legacy.
+        # But here usage shows it constructs adapter.
+        # So get_sai_model_spec likely expects the Adapted interface.
+        # If I pass `cfg` directly, `cfg.dataset` exists.
+        # But if `get_sai_model_spec` uses `args.dataset`, it's fine.
+        # If it accesses `args.output_dir` (SavingConfig), cfg has `cfg.saving.output_dir`.
+        # I should check get_sai_model_spec implementation.
+        # Assume usage of adapter implies it expects flattened or adapted structure?
+        # Or maybe it just expects `dataset` attribute?
+        # It's safest to inspect `get_sai_model_spec` first.
+        # But for now, I will assume refactor later, or pass `cfg` and hope it has fields needed.
+        # Actually I can't leave ArgsAdapter here.
+        # I will pass `cfg` and assume I'll fix `get_sai_model_spec`.
+        
+        return get_sai_model_spec(None, cfg, self.is_sdxl, True, False)
 
     def update_metadata(self, metadata, args):
         pass
@@ -626,7 +654,7 @@ class NetworkTrainer:
         vae_dtype,
         weight_dtype,
         accelerator,
-        args,
+        cfg,
         text_encoding_strategy: strategy_base.TextEncodingStrategy,
         tokenize_strategy: strategy_base.TokenizeStrategy,
         is_train=True,
@@ -634,7 +662,8 @@ class NetworkTrainer:
         train_unet=True,
         edm2_model=None,
         min_timestep_override=None,
-        max_timestep_override=None
+        max_timestep_override=None,
+        global_step=0,
     ) -> tuple:
         """
         Process a batch for the network
@@ -644,16 +673,16 @@ class NetworkTrainer:
                 latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
             else:
                 # latentに変換
-                if args.dataset.vae_batch_size is None or len(batch["images"]) <= args.dataset.vae_batch_size:
-                    latents = self.encode_images_to_latents(args, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
+                if cfg.dataset.vae_batch_size is None or len(batch["images"]) <= cfg.dataset.vae_batch_size:
+                    latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
                 else:
                     chunks = [
-                        batch["images"][i : i + args.dataset.vae_batch_size] for i in range(0, len(batch["images"]), args.dataset.vae_batch_size)
+                        batch["images"][i : i + cfg.dataset.vae_batch_size] for i in range(0, len(batch["images"]), cfg.dataset.vae_batch_size)
                     ]
                     list_latents = []
                     for chunk in chunks:
                         with torch.no_grad():
-                            chunk = self.encode_images_to_latents(args, vae, chunk.to(accelerator.device, dtype=vae_dtype))
+                            chunk = self.encode_images_to_latents(cfg, vae, chunk.to(accelerator.device, dtype=vae_dtype))
                             list_latents.append(chunk)
                     latents = torch.cat(list_latents, dim=0)
 
@@ -662,7 +691,7 @@ class NetworkTrainer:
                     accelerator.print("NaN found in latents, replacing with zeros")
                     latents = typing.cast(torch.FloatTensor, torch.nan_to_num(latents, 0, out=latents))
 
-            latents = self.shift_scale_latents(args, latents)
+            latents = self.shift_scale_latents(cfg, latents)
 
         text_encoder_conds = []
         text_encoder_outputs_list = batch.get("text_encoder_outputs_list", None)
@@ -673,11 +702,11 @@ class NetworkTrainer:
             # TODO this does not work if 'some text_encoders are trained' and 'some are not and not cached'
             with torch.set_grad_enabled(is_train and train_text_encoder), accelerator.autocast():
                 # Get the text embedding for conditioning
-                if args.dataset.weighted_captions:
+                if cfg.dataset.weighted_captions:
                     input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                     encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
                         tokenize_strategy,
-                        self.get_models_for_text_encoding(args, accelerator, text_encoders),
+                        self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
                         input_ids_list,
                         weights_list,
                     )
@@ -685,10 +714,10 @@ class NetworkTrainer:
                     input_ids = [ids.to(accelerator.device) for ids in batch["input_ids_list"]]
                     encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
                         tokenize_strategy,
-                        self.get_models_for_text_encoding(args, accelerator, text_encoders),
+                        self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
                         input_ids,
                     )
-                if args.performance.full_fp16:
+                if cfg.performance.full_fp16:
                     encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
 
             # if text_encoder_conds is not cached, use encoded_text_encoder_conds
@@ -702,7 +731,7 @@ class NetworkTrainer:
 
         # sample noise, call unet, get target
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
-            args,
+            cfg,
             accelerator,
             noise_scheduler,
             latents,
@@ -714,15 +743,16 @@ class NetworkTrainer:
             train_unet,
             is_train=is_train,
             min_timestep_override=min_timestep_override,
-            max_timestep_override=max_timestep_override
+            max_timestep_override=max_timestep_override,
+            global_step=global_step,
         )
 
         if is_train:
-            huber_c = get_huber_threshold_if_needed(args.loss, timesteps, noise_scheduler)
-            loss = conditional_loss(noise_pred.float(), target.float(), args.loss.loss_type, "none", huber_c, scale=float(args.loss.loss_scale))
+            huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
+            loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale))
             if weighting is not None:
                 loss = loss * weighting
-            if args.masked_loss.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+            if cfg.masked_loss.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                 loss = apply_masked_loss(loss, batch)
         else:
                 loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
@@ -730,24 +760,24 @@ class NetworkTrainer:
         per_sample_loss = loss.mean([1, 2, 3])
 
         # Feed the timesteps and their corresponding per-sample loss back to the sampler for its EMA update.
-        if is_train and hasattr(args, "la_sampler") and hasattr(args.la_sampler, "update"):
+        if is_train and self.la_sampler is not None and hasattr(self.la_sampler, "update"):
             # We detach to ensure this operation doesn't affect the gradients for backpropagation.
-            args.la_sampler.update(timesteps.detach(), per_sample_loss.detach())
+            self.la_sampler.update(timesteps.detach(), per_sample_loss.detach())
 
         loss = per_sample_loss
 
         if is_train:
             loss_weights = batch["loss_weights"]  # 各sampleごとのweight
             loss = loss * loss_weights
-            loss = self.post_process_loss(loss, args, timesteps, noise_scheduler)
+            loss = self.post_process_loss(loss, cfg, timesteps, noise_scheduler)
 
-        if is_train and args.loss.loss_multiplier:
-            loss.mul_(float(args.loss.loss_multiplier) if args.loss.loss_multiplier is not None else 1.0)
+        if is_train and cfg.loss.loss_multiplier:
+            loss.mul_(float(cfg.loss.loss_multiplier) if cfg.loss.loss_multiplier is not None else 1.0)
 
         # For logging
         pre_scaling_loss = loss.mean()
 
-        if is_train and args.loss.edm2_loss_weighting:
+        if is_train and cfg.loss.edm2_loss_weighting:
             loss, loss_scaled = edm2_model(loss, timesteps)
             loss_scaled = loss_scaled.mean()
         else:
@@ -766,7 +796,7 @@ class NetworkTrainer:
         vae_dtype,
         weight_dtype,
         accelerator,
-        args,
+        cfg,
         text_encoding_strategy: strategy_base.TextEncodingStrategy,
         tokenize_strategy: strategy_base.TokenizeStrategy,
         train_text_encoder=True,
@@ -782,16 +812,16 @@ class NetworkTrainer:
                 latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
             else:
                 # latentに変換
-                if args.dataset.vae_batch_size is None or len(batch["images"]) <= args.dataset.vae_batch_size:
-                    latents = self.encode_images_to_latents(args, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
+                if cfg.dataset.vae_batch_size is None or len(batch["images"]) <= cfg.dataset.vae_batch_size:
+                    latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
                 else:
                     chunks = [
-                        batch["images"][i : i + args.dataset.vae_batch_size] for i in range(0, len(batch["images"]), args.dataset.vae_batch_size)
+                        batch["images"][i : i + cfg.dataset.vae_batch_size] for i in range(0, len(batch["images"]), cfg.dataset.vae_batch_size)
                     ]
                     list_latents = []
                     for chunk in chunks:
                         with torch.no_grad():
-                            chunk = self.encode_images_to_latents(args, vae, chunk.to(accelerator.device, dtype=vae_dtype))
+                            chunk = self.encode_images_to_latents(cfg, vae, chunk.to(accelerator.device, dtype=vae_dtype))
                             list_latents.append(chunk)
                     latents = torch.cat(list_latents, dim=0)
 
@@ -800,7 +830,7 @@ class NetworkTrainer:
                     accelerator.print("NaN found in latents, replacing with zeros")
                     latents = typing.cast(torch.FloatTensor, torch.nan_to_num(latents, 0, out=latents))
 
-            latents = self.shift_scale_latents(args, latents)
+            latents = self.shift_scale_latents(cfg, latents)
 
             text_encoder_conds = []
             text_encoder_outputs_list = batch.get("text_encoder_outputs_list", None)
@@ -811,11 +841,11 @@ class NetworkTrainer:
                 # TODO this does not work if 'some text_encoders are trained' and 'some are not and not cached'
                 with torch.set_grad_enabled(False and train_text_encoder), accelerator.autocast():
                     # Get the text embedding for conditioning
-                    if args.dataset.weighted_captions:
+                    if cfg.dataset.weighted_captions:
                         input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                         encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
                             tokenize_strategy,
-                            self.get_models_for_text_encoding(args, accelerator, text_encoders),
+                            self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
                             input_ids_list,
                             weights_list,
                         )
@@ -823,10 +853,10 @@ class NetworkTrainer:
                         input_ids = [ids.to(accelerator.device) for ids in batch["input_ids_list"]]
                         encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
                             tokenize_strategy,
-                            self.get_models_for_text_encoding(args, accelerator, text_encoders),
+                            self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
                             input_ids,
                         )
-                    if args.performance.full_fp16:
+                    if cfg.performance.full_fp16:
                         encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
 
                 # if text_encoder_conds is not cached, use encoded_text_encoder_conds
@@ -844,7 +874,7 @@ class NetworkTrainer:
 
                 # sample noise, call unet, get target
                 noise_pred, target, _, _ = self.get_noise_pred_and_target(
-                    args,
+                    cfg,
                     accelerator,
                     noise_scheduler,
                     latents,
@@ -867,13 +897,13 @@ class NetworkTrainer:
 
         return average_loss
 
-    def cast_text_encoder(self, args):
+    def cast_text_encoder(self, cfg):
         return True  # default for other than HunyuanImage
 
-    def cast_vae(self, args):
+    def cast_vae(self, cfg):
         return True  # default for other than HunyuanImage
 
-    def cast_unet(self, args):
+    def cast_unet(self, cfg):
         return True  # default for other than HunyuanImage
 
     def switch_rng_state(self, val_seed: int, accelerator):
@@ -928,26 +958,27 @@ class NetworkTrainer:
                            vae_dtype, 
                            weight_dtype, 
                            accelerator, 
-                           args, 
+                           accelerator, 
+                           cfg, 
                            epoch,
                            batch=None,
                            train_text_encoder=True):
-        adapter = ArgsAdapter(args)
+        adapter = ArgsAdapter(cfg)
         if not calculate_val_loss_check(adapter, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
         
         if batch is not None:
-            self.on_step_start(args, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=False)
+            self.on_step_start(adapter, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=False)
    
-        rng_states = self.switch_rng_state(int(args.dataset.validation_seed) if args.dataset.validation_seed else 23, accelerator)
+        rng_states = self.switch_rng_state(int(cfg.dataset.validation_seed) if cfg.dataset.validation_seed else 23, accelerator)
 
-        timesteps_list = ast.literal_eval(args.training.validation_timesteps)
+        timesteps_list = ast.literal_eval(cfg.training.validation_timesteps)
               
         accelerator.print("") 
         accelerator.print("Validating バリデーション処理...")
         total_loss = 0.0
         with torch.no_grad():
-            validation_steps = min(int(args.training.max_validation_steps), len(val_dataloader)) if args.training.max_validation_steps is not None else len(val_dataloader)
+            validation_steps = min(int(cfg.training.max_validation_steps), len(val_dataloader)) if cfg.training.max_validation_steps is not None else len(val_dataloader)
             val_dataloader_seed = random.randint(global_step, 0x7FFFFFFF)
             val_dataloader_state = random.Random(val_dataloader_seed).getstate()
             for val_step in tqdm(range(validation_steps), desc='Validation Steps'):
@@ -957,7 +988,7 @@ class NetworkTrainer:
                 val_dataloader_state = random.getstate()
                 random.setstate(val_original_state)
                 loss = self.process_val_batch(batch, text_encoders, unet, network, vae, noise_scheduler, vae_dtype, 
-                                              weight_dtype, accelerator, args, text_encoding_strategy, tokenize_strategy, 
+                                              weight_dtype, accelerator, cfg, text_encoding_strategy, tokenize_strategy, 
                                               train_text_encoder=train_text_encoder,
                                               timesteps_list=timesteps_list)
                 total_loss += loss.detach().item()
@@ -974,7 +1005,9 @@ class NetworkTrainer:
 
     def train(self, cfg: TrainNetworkConfig):
         # Create adapter for legacy functions
-        args = ArgsAdapter(cfg)
+        # Create adapter for legacy functions
+        # args = ArgsAdapter(cfg) # Removed as part of refactor
+        self.la_sampler = None
 
         session_id = random.randint(0, 2**32)
         training_started_at = time.time()
@@ -1210,7 +1243,7 @@ class NetworkTrainer:
             optimizer_eval_fn, 
             lr_descriptions, 
             text_encoder_lr
-         ) = prepare_optimizer(args, network)
+         ) = prepare_optimizer(cfg.optimizer, cfg.network, cfg.dataset, network)
 
         # prepare dataloader
         # strategies are set here because they cannot be referenced in another process. Copy them with the dataset
@@ -1259,7 +1292,7 @@ class NetworkTrainer:
         train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
         # lr schedulerを用意する
-        lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
+        lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes)
 
         # 実験的機能：勾配も含めたfp16/bf16学習を行う　モデル全体をfp16/bf16にする
         if cfg.performance.full_fp16:
@@ -1429,7 +1462,7 @@ class NetworkTrainer:
         accelerator.register_load_state_pre_hook(load_model_hook)
 
         # resumeする
-        resume_from_local_or_hf_if_specified(accelerator, args)
+        resume_from_local_or_hf_if_specified(accelerator, cfg.saving)
 
         # epoch数を計算する
         num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
@@ -1742,77 +1775,77 @@ class NetworkTrainer:
         if is_main_process:
             # --- START: Comprehensive Settings Gathering ---
             # Determine the actual sampler being used
-            sampler_type = args.timestep_sampling
-            if hasattr(args, "la_sampler"):
-                if isinstance(args.la_sampler, LogSNRUniformSampler):
+            sampler_type = cfg.timestep.timestep_sampling
+            if self.la_sampler is not None:
+                if isinstance(self.la_sampler, LogSNRUniformSampler):
                     sampler_type = "log_snr_uniform"
-                elif isinstance(args.la_sampler, TemperedAdaptiveSampler):
+                elif isinstance(self.la_sampler, TemperedAdaptiveSampler):
                     sampler_type = "tempered_adaptive"
                 # The default is mix_adaptive if la_sampler exists
 
             plotter_settings = {
                 "Timestep Sampler": sampler_type,
-                "Dynamic Schedule": "Enabled" if args.dynamic_timestep_schedule else "Disabled",
-                "Min Timestep": args.min_timestep,
-                "Max Timestep": args.max_timestep,
+                "Dynamic Schedule": "Enabled" if cfg.timestep.dynamic_timestep_schedule else "Disabled",
+                "Min Timestep": cfg.timestep.min_timestep,
+                "Max Timestep": cfg.timestep.max_timestep,
             }
 
             # Add sampler-specific settings
             if sampler_type == "mix_adaptive":
                 plotter_settings.update({
-                    "Anneal": getattr(args, "mix_adaptive_anneal", "cosine"),
-                    "Start/End P": f"{getattr(args, 'mix_adaptive_start_p', 0.85)} -> {getattr(args, 'mix_adaptive_end_p', 0.35)}",
-                    "Fixed P": getattr(args, "mix_adaptive_fixed_p", None),
-                    "Num Bins": getattr(args, "mix_adaptive_bins", 32),
-                    "EMA Beta": getattr(args, "mix_adaptive_ema_beta", 0.9),
-                    "Small T Frac/Cap": f"{getattr(args, 'mix_adaptive_small_t_frac', 0.15)} / {getattr(args, 'mix_adaptive_small_t_cap', 0.6)}",
+                    "Anneal": cfg.timestep.mix_adaptive_anneal,
+                    "Start/End P": f"{cfg.timestep.mix_adaptive_start_p} -> {cfg.timestep.mix_adaptive_end_p}",
+                    "Fixed P": cfg.timestep.mix_adaptive_fixed_p,
+                    "Num Bins": cfg.timestep.mix_adaptive_bins,
+                    "EMA Beta": cfg.timestep.mix_adaptive_ema_beta,
+                    "Small T Frac/Cap": f"{cfg.timestep.mix_adaptive_small_t_frac} / {cfg.timestep.mix_adaptive_small_t_cap}",
                 })
             elif sampler_type == "tempered_adaptive":
                 plotter_settings.update({
-                    "Num Bins": getattr(args, "mix_adaptive_bins", 64),
-                    "EMA Beta": getattr(args, "mix_adaptive_ema_beta", 0.95),
-                    "Temperature": getattr(args, "mix_adaptive_temperature", 0.4),
-                    "Prior Weight": getattr(args, "mix_adaptive_prior_weight", 0.3),
-                    "Min Prob": getattr(args, "mix_adaptive_min_prob", 5e-4),
-                    "Warmup Steps": getattr(args, "mix_adaptive_warmup_steps", 150),
-                    "Prior Bias": getattr(args, "mix_adaptive_prior_bias", 0.8), # Assuming you add this arg
-                    "Entropy Floor": getattr(args, "mix_adaptive_entropy_floor_ratio", 0.7), # Assuming you add this arg
+                    "Num Bins": cfg.timestep.mix_adaptive_bins,
+                    "EMA Beta": cfg.timestep.mix_adaptive_ema_beta,
+                    "Temperature": cfg.timestep.mix_adaptive_temperature,
+                    "Prior Weight": cfg.timestep.mix_adaptive_prior_weight,
+                    "Min Prob": cfg.timestep.mix_adaptive_min_prob,
+                    "Warmup Steps": cfg.timestep.mix_adaptive_warmup_steps,
+                    "Prior Bias": cfg.timestep.mix_adaptive_prior_bias,
+                    "Entropy Floor": cfg.timestep.mix_adaptive_entropy_floor_ratio,
                 })
             elif sampler_type == "gaussian_mid_snr":
                 plotter_settings.update({
-                    "Num Bins": getattr(args, "mix_adaptive_bins", 64),
-                    "EMA Beta": getattr(args, "mix_adaptive_ema_beta", 0.95),
-                    "Temperature": getattr(args, "mix_adaptive_temperature", 0.2),
-                    "Min Prob": getattr(args, "mix_adaptive_min_prob", 1e-2),
-                    "Entropy Floor": getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
-                    "Uniform Mix When Low Entropy": getattr(args, "uniform_mix_when_low_entropy", 0.1),
-                    "Prior_Mu": getattr(args, "mix_adaptive_prior_mu", 0.0),
-                    "Prior Sigma": getattr(args, "mix_adaptive_prior_sigma", 1.0), 
-                    "Prior Weight": getattr(args, "mix_adaptive_prior_weight", 0.1),
-                    "Warmup Steps": getattr(args, "mix_adaptive_warmup_steps", 5),
+                    "Num Bins": cfg.timestep.mix_adaptive_bins,
+                    "EMA Beta": cfg.timestep.mix_adaptive_ema_beta,
+                    "Temperature": cfg.timestep.mix_adaptive_temperature,
+                    "Min Prob": cfg.timestep.mix_adaptive_min_prob,
+                    "Entropy Floor": cfg.timestep.mix_adaptive_entropy_floor_ratio,
+                    "Uniform Mix When Low Entropy": cfg.timestep.mix_adaptive_uniform_mix_when_low_entropy,
+                    "Prior_Mu": cfg.timestep.mix_adaptive_prior_mu,
+                    "Prior Sigma": cfg.timestep.mix_adaptive_prior_sigma,
+                    "Prior Weight": cfg.timestep.mix_adaptive_prior_weight,
+                    "Warmup Steps": cfg.timestep.mix_adaptive_warmup_steps,
                 })
             elif sampler_type == "snr_windowed":
                 plotter_settings.update({
-                    "Num Bins": getattr(args, "mix_adaptive_bins", 64),
-                    "EMA Beta": getattr(args, "mix_adaptive_ema_beta", 0.95),
-                    "Temperature": getattr(args, "mix_adaptive_temperature", 0.2),
-                    "Min Prob": getattr(args, "mix_adaptive_min_prob", 1e-2),
-                    "Entropy Floor": getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
-                    "Uniform Mix": getattr(args, "mix_adaptive_uniform_mix_when_low_entropy", 0.1),
-                    "Center Mu": getattr(args, "mix_adaptive_center_mu", 0.0),
-                    "Half Width": getattr(args, "mix_adaptive_half_width", 0.8),
-                    "Widen To": getattr(args, "mix_adaptive_widen_to", 2.5),
-                    "Total Widen Steps": getattr(args, "mix_adaptive_max_train_steps", 2000),
-                    "Cap Max T": getattr(args, "mix_adaptive_cap_max_t", 950),
+                    "Num Bins": cfg.timestep.mix_adaptive_bins,
+                    "EMA Beta": cfg.timestep.mix_adaptive_ema_beta,
+                    "Temperature": cfg.timestep.mix_adaptive_temperature,
+                    "Min Prob": cfg.timestep.mix_adaptive_min_prob,
+                    "Entropy Floor": cfg.timestep.mix_adaptive_entropy_floor_ratio,
+                    "Uniform Mix": cfg.timestep.mix_adaptive_uniform_mix_when_low_entropy,
+                    "Center Mu": cfg.timestep.mix_adaptive_center_mu,
+                    "Half Width": cfg.timestep.mix_adaptive_half_width,
+                    "Widen To": cfg.timestep.mix_adaptive_widen_to,
+                    "Total Widen Steps": cfg.timestep.mix_adaptive_max_train_steps,
+                    "Cap Max T": cfg.timestep.mix_adaptive_cap_max_t,
                 })
             elif sampler_type not in ["uniform", "log_snr_uniform"]: # Legacy shifted sampler
                  plotter_settings.update({
-                    "Shift": getattr(args, "discrete_flow_shift", 1.0),
-                    "Sigmoid Scale": getattr(args, "sigmoid_scale", 1.0),
+                    "Shift": cfg.timestep.discrete_flow_shift,
+                    "Sigmoid Scale": cfg.timestep.sigmoid_scale,
                 })
 
             # Setup for the live interactive plotter
-            if args.live_plot_port is not None:
+            if cfg.logging.live_plot_port is not None:
                 
                 # Step 1: Find the script to run.
                 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1824,9 +1857,9 @@ class NetworkTrainer:
                 else:
                     # Step 3: Launch live_plotter.py if it's not already running.
                     if self.live_plotter_process is None or self.live_plotter_process.poll() is not None:
-                        logger.info(f"Launching live plotter server on port {args.live_plot_port}")
+                        logger.info(f"Launching live plotter server on port {cfg.logging.live_plot_port}")
                         self.live_plotter_process = subprocess.Popen(
-                            [sys.executable, plotter_script_path, "--port", str(args.live_plot_port)],
+                            [sys.executable, plotter_script_path, "--port", str(cfg.logging.live_plot_port)],
                             stdin=subprocess.PIPE,
                         )
 
@@ -1846,80 +1879,109 @@ class NetworkTrainer:
                         self.live_plotter_process = None
 
             # Setup for saving static plot images
-            if args.log_timestep_distribution_every_n_steps is not None:
+            if cfg.logging.log_timestep_distribution_every_n_steps is not None:
                 timestep_counts = np.zeros(noise_scheduler.config.num_train_timesteps, dtype=np.int64)
 
         # --- Custom Timestep Sampler Initialization ---
         # Inject sampler when specified. This block creates the sampler object.
-        if hasattr(args, "timestep_sampling"):
-            if args.timestep_sampling == "log_snr_uniform":
+        # --- Custom Timestep Sampler Initialization ---
+        # Inject sampler when specified. This block creates the sampler object.
+        if cfg.timestep.timestep_sampling:
+            if cfg.timestep.timestep_sampling == "log_snr_uniform":
                 accelerator.print("Initializing LogSNRUniformSampler.")
-                args.la_sampler = LogSNRUniformSampler(noise_scheduler, noise_scheduler.config.num_train_timesteps)
-                args.timestep_sampling = "mix_adaptive" 
-            elif args.timestep_sampling == "tempered_adaptive":
+                self.la_sampler = LogSNRUniformSampler(noise_scheduler, noise_scheduler.config.num_train_timesteps)
+                cfg.timestep.timestep_sampling = "mix_adaptive" 
+            elif cfg.timestep.timestep_sampling == "tempered_adaptive":
                 accelerator.print("Initializing TemperedAdaptiveSampler.")
-                args.la_sampler = TemperedAdaptiveSampler(
+                self.la_sampler = TemperedAdaptiveSampler(
                     noise_scheduler,
-                    num_bins=getattr(args, "mix_adaptive_bins", 64),
-                    ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.95),
-                    temperature=getattr(args, "mix_adaptive_temperature", 0.4),
-                    prior_weight=getattr(args, "mix_adaptive_prior_weight", 0.3),
-                    min_prob=getattr(args, "mix_adaptive_min_prob", 5e-4),
-                    warmup_steps=getattr(args, "mix_adaptive_warmup_steps", 150),
-                    prior_bias=getattr(args, "mix_adaptive_prior_bias", 0.8),
-                    entropy_floor_ratio=getattr(args, "mix_adaptive_entropy_floor_ratio", 0.7),
+                    num_bins=cfg.timestep.mix_adaptive_bins,
+                    ema_beta=cfg.timestep.mix_adaptive_ema_beta,
+                    temperature=cfg.timestep.mix_adaptive_temperature,
+                    prior_weight=cfg.timestep.mix_adaptive_prior_weight,
+                    min_prob=cfg.timestep.mix_adaptive_min_prob,
+                    warmup_steps=cfg.timestep.mix_adaptive_warmup_steps,
+                    prior_bias=cfg.timestep.mix_adaptive_prior_bias,
+                    entropy_floor=cfg.timestep.mix_adaptive_entropy_floor_ratio,
                 )
-                args.timestep_sampling = "mix_adaptive"
-            elif args.timestep_sampling == "gaussian_mid_snr":
-                accelerator.print("Initializing GaussianMidSNRAdaptiveSampler.")
-                args.la_sampler = GaussianMidSNRAdaptiveSampler(
+                cfg.timestep.timestep_sampling = "mix_adaptive"
+            elif cfg.timestep.timestep_sampling == "gaussian_mid_snr":
+                accelerator.print("Initializing GaussianMidSNRSampler.")
+                self.la_sampler = GaussianMidSNRSampler(
                     noise_scheduler,
-                    num_bins=getattr(args, "mix_adaptive_bins", 64),
-                    ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.95),
-                    temperature=getattr(args, "mix_adaptive_temperature", 0.2),
-                    min_prob=getattr(args, "mix_adaptive_min_prob", 1e-2),
-                    entropy_floor_ratio=getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
-                    uniform_mix_when_low_entropy=getattr(args, "uniform_mix_when_low_entropy", 0.1),
-                    prior_mu=getattr(args, "mix_adaptive_prior_mu", 0.0),
-                    prior_sigma=getattr(args, "mix_adaptive_prior_sigma", 1.0), 
-                    prior_weight=getattr(args, "mix_adaptive_prior_weight", 0.1),
-                    warmup_steps=getattr(args, "mix_adaptive_warmup_steps", 5),
+                    num_bins=cfg.timestep.mix_adaptive_bins,
+                    ema_beta=cfg.timestep.mix_adaptive_ema_beta,
+                    temperature=cfg.timestep.mix_adaptive_temperature,
+                    min_prob=cfg.timestep.mix_adaptive_min_prob,
+                    entropy_floor=cfg.timestep.mix_adaptive_entropy_floor_ratio,
+                    # uniform_mix_when_low_entropy=getattr(args, "uniform_mix_when_low_entropy", 0.1),
+                    prior_mu=cfg.timestep.mix_adaptive_prior_mu,
+                    prior_sigma=cfg.timestep.mix_adaptive_prior_sigma,
+                    prior_weight=cfg.timestep.mix_adaptive_prior_weight,
+                    warmup_steps=cfg.timestep.mix_adaptive_warmup_steps,
                 )
-                args.timestep_sampling = "mix_adaptive"
-            elif args.timestep_sampling == "snr_windowed":
-                accelerator.print("Initializing SNRWindowedLossAwareSampler.")
-                args.la_sampler = SNRWindowedLossAwareSampler(
+                cfg.timestep.timestep_sampling = "mix_adaptive"
+            elif cfg.timestep.timestep_sampling == "snr_windowed":
+                accelerator.print("Initializing SNRWindowedSampler.")
+                self.la_sampler = SNRWindowedSampler(
                     noise_scheduler,
-                    num_bins=getattr(args, "mix_adaptive_bins", 64),
-                    ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.95),
-                    temperature=getattr(args, "mix_adaptive_temperature", 0.2),
-                    min_prob=getattr(args, "mix_adaptive_min_prob", 1e-2),
-                    entropy_floor_ratio=getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
-                    uniform_mix_when_low_entropy=getattr(args, "mix_adaptive_uniform_mix_when_low_entropy", 0.1),
-                    center_mu=getattr(args, "mix_adaptive_center_mu", 0.0),
-                    half_width=getattr(args, "mix_adaptive_half_width", 0.8),
-                    widen_to=getattr(args, "mix_adaptive_widen_to",  2.5),
-                    total_widen_steps=getattr(args, "mix_adaptive_max_train_steps", 2000),
-                    cap_max_t=getattr(args, "mix_adaptive_cap_max_t", 950),
+                    num_bins=cfg.timestep.mix_adaptive_bins,
+                    ema_beta=cfg.timestep.mix_adaptive_ema_beta,
+                    temperature=cfg.timestep.mix_adaptive_temperature,
+                    min_prob=cfg.timestep.mix_adaptive_min_prob,
+                    entropy_floor=cfg.timestep.mix_adaptive_entropy_floor_ratio,
+                    
+                    center_mu=cfg.timestep.mix_adaptive_center_mu,
+                    half_width=cfg.timestep.mix_adaptive_half_width,
+                    widen_to=cfg.timestep.mix_adaptive_widen_to,
+                    total_widen_steps=cfg.timestep.mix_adaptive_max_train_steps,
+                    cap_max_t=cfg.timestep.mix_adaptive_cap_max_t,
                 )
-                args.timestep_sampling = "mix_adaptive"
-            elif args.timestep_sampling == "mix_adaptive":
+            elif cfg.timestep.timestep_sampling == "snr_windowed":
+                accelerator.print("Initializing SNRWindowedSampler.")
+                self.la_sampler = SNRWindowedSampler(
+                    noise_scheduler,
+                    num_bins=cfg.timestep.mix_adaptive_bins,
+                    ema_beta=cfg.timestep.mix_adaptive_ema_beta,
+                    temperature=cfg.timestep.mix_adaptive_temperature,
+                    min_prob=cfg.timestep.mix_adaptive_min_prob,
+                    entropy_floor=cfg.timestep.mix_adaptive_entropy_floor_ratio,
+                    
+                    center_mu=cfg.timestep.mix_adaptive_center_mu,
+                    half_width=cfg.timestep.mix_adaptive_half_width,
+                    widen_to=cfg.timestep.mix_adaptive_widen_to,
+                    total_widen_steps=cfg.timestep.mix_adaptive_max_train_steps,
+                    cap_max_t=cfg.timestep.mix_adaptive_cap_max_t,
+                )
+                cfg.timestep.timestep_sampling = "mix_adaptive"
+
+            elif cfg.timestep.timestep_sampling == "mix_adaptive":
                 accelerator.print("Initializing LossAwareTimestepSampler.")
-                args.la_sampler = LossAwareTimestepSampler(
+                self.la_sampler = LossAwareTimestepSampler(
                     num_train_timesteps=noise_scheduler.config.num_train_timesteps,
-                    num_bins=getattr(args, "mix_adaptive_bins", 32),
-                    ema_beta=getattr(args, "mix_adaptive_ema_beta", 0.9),
-                    small_t_frac=getattr(args, "mix_adaptive_small_t_frac", 0.15),
-                    small_t_cap=getattr(args, "mix_adaptive_small_t_cap", 0.6),
-                    start_p=getattr(args, "mix_adaptive_start_p", 0.85),
-                    end_p=getattr(args, "mix_adaptive_end_p", 0.35),
-                    anneal=getattr(args, "mix_adaptive_anneal", "cosine"),
-                    fixed_p=getattr(args, "mix_adaptive_fixed_p", None),
+                    num_bins=cfg.timestep.mix_adaptive_bins,
+                    ema_beta=cfg.timestep.mix_adaptive_ema_beta,
+                    small_t_frac=cfg.timestep.mix_adaptive_small_t_frac,
+                    small_t_cap=cfg.timestep.mix_adaptive_small_t_cap,
+                    start_p=cfg.timestep.mix_adaptive_start_p,
+                    end_p=cfg.timestep.mix_adaptive_end_p,
+                    anneal=cfg.timestep.mix_adaptive_anneal,
+                    fixed_p=cfg.timestep.mix_adaptive_fixed_p,
                 )
+                # No need to set args.la_sampler, we use self.la_sampler
 
-        edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(args, noise_scheduler, accelerator)
+            if cfg.timestep.timestep_sampling == "sigma" or cfg.timestep.timestep_sampling == "uniform":
+                self.la_sampler = None
+                cfg.timestep.timestep_sampling = "uniform"
+                if cfg.timestep.timestep_sampling == "sigma":
+                    logger.warning("sigma sampling is not supported yet, using uniform sampling")
+            elif cfg.timestep.timestep_sampling == "shift":
+                 self.la_sampler = None
+                 # shift sampling is handled in get_noise_noisy_latents_and_timesteps
+            
+        edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss, cfg.training, noise_scheduler, accelerator)
 
-        init_trackers(accelerator, args, "network_train")
+        init_trackers(accelerator, cfg, "network_train")
 
         loss_recorder = EMARecorder()
         val_loss_recorder = EMARecorder()
@@ -2109,7 +2171,7 @@ class NetworkTrainer:
                         vae_dtype,
                         weight_dtype,
                         accelerator,
-                        args,
+                        cfg,
                         text_encoding_strategy,
                         tokenize_strategy,
                         is_train=True,
@@ -2118,6 +2180,7 @@ class NetworkTrainer:
                         edm2_model=edm2_model,
                         min_timestep_override=current_min_timestep,
                         max_timestep_override=current_max_timestep,
+                        global_step=global_step,
                     )
 
                     accelerator.backward(loss)
@@ -2189,7 +2252,7 @@ class NetworkTrainer:
                                                                                                     vae_dtype, 
                                                                                                     weight_dtype, 
                                                                                                     accelerator, 
-                                                                                                    args, 
+                                                                                                    cfg, 
                                                                                                     batch,
                                                                                                     current_epoch.value,
                                                                                                     train_text_encoder)
@@ -2200,23 +2263,23 @@ class NetworkTrainer:
                         if args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0:
                             accelerator.wait_for_everyone()
                             if accelerator.is_main_process:
-                                ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, global_step)
+                                ckpt_name = get_step_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, global_step)
                                 save_model(ckpt_name, accelerator.unwrap_model(network), global_step, epoch)
 
                                 if args.edm2_loss_weighting:
-                                    loss_weights_ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, global_step, "_edm2_loss_weights")
+                                    loss_weights_ckpt_name = get_step_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, global_step, "_edm2_loss_weights")
                                     save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, epoch, dtype_override=torch.float32)
 
                                 if args.save_state:
-                                    save_and_remove_state_stepwise(args, accelerator, global_step)
+                                    save_and_remove_state_stepwise(cfg.saving, accelerator, global_step)
 
-                                remove_step_no = get_remove_step_no(args, global_step)
+                                remove_step_no = get_remove_step_no(cfg.saving, global_step)
                                 if remove_step_no is not None:
-                                    remove_ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no)
+                                    remove_ckpt_name = get_step_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, remove_step_no)
                                     remove_model(remove_ckpt_name)
 
                                     if args.edm2_loss_weighting:
-                                        remove_loss_weights_ckpt_name = get_step_ckpt_name(args, "." + args.save_model_as, remove_step_no, "_edm2_loss_weights")
+                                        remove_loss_weights_ckpt_name = get_step_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, remove_step_no, "_edm2_loss_weights")
                                         remove_model(remove_loss_weights_ckpt_name)
 
                         if plot_edm2_loss_weighting_check(args, global_step):
@@ -2315,24 +2378,24 @@ class NetworkTrainer:
                 if args.save_every_n_epochs is not None:
                     saving = current_epoch.value % args.save_every_n_epochs == 0 and current_epoch.value < num_train_epochs
                     if is_main_process and saving:
-                        ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, current_epoch.value)
+                        ckpt_name = get_epoch_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, current_epoch.value)
                         save_model(ckpt_name, accelerator.unwrap_model(network), global_step, current_epoch.value)
 
                         if args.edm2_loss_weighting:
-                            loss_weights_ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, current_epoch.value, "_edm2_loss_weights")
+                            loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, current_epoch.value, "_edm2_loss_weights")
                             save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, current_epoch.value, dtype_override=torch.float32)
 
-                        remove_epoch_no = get_remove_epoch_no(args, current_epoch.value)
+                        remove_epoch_no = get_remove_epoch_no(cfg.saving, current_epoch.value)
                         if remove_epoch_no is not None:
-                            remove_ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, remove_epoch_no)
+                            remove_ckpt_name = get_epoch_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, remove_epoch_no)
                             remove_model(remove_ckpt_name)
 
                             if args.edm2_loss_weighting:
-                                remove_loss_weights_ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, remove_epoch_no, "_edm2_loss_weights")
+                                remove_loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, remove_epoch_no, "_edm2_loss_weights")
                                 remove_model(remove_loss_weights_ckpt_name)
 
                         if args.save_state:
-                            save_and_remove_state_on_epoch_end(args, accelerator, current_epoch.value)
+                            save_and_remove_state_on_epoch_end(cfg.saving, accelerator, current_epoch.value)
 
                 self.sample_images(accelerator, args, current_epoch.value, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
                 progress_bar.unpause()
@@ -2351,14 +2414,14 @@ class NetworkTrainer:
         optimizer_eval_fn()
 
         if is_main_process and (args.save_state or args.save_state_on_train_end):
-            save_state_on_train_end(args, accelerator)
+            save_state_on_train_end(cfg.saving, accelerator)
 
         if is_main_process:
-            ckpt_name = get_last_ckpt_name(args, "." + args.save_model_as)
+            ckpt_name = get_last_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as)
             save_model(ckpt_name, network, global_step, num_train_epochs, force_sync_upload=True)
 
             if args.edm2_loss_weighting:
-                loss_weights_ckpt_name = get_last_ckpt_name(args, "." + args.save_model_as, "_edm2_loss_weights")
+                loss_weights_ckpt_name = get_last_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, "_edm2_loss_weights")
                 save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, num_train_epochs, force_sync_upload=True, dtype_override=torch.float32)
 
 

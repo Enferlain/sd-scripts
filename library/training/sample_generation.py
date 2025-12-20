@@ -30,6 +30,9 @@ from library.constants import SCHEDULER_TIMESTEPS, SCHEDULER_LINEAR_START, SCHED
 from library.utils.device_utils import clean_memory_on_device
 from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
+from library.config.dataclasses.sampling import SamplingConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.config.dataclasses.saving import SavingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -194,19 +197,19 @@ def load_prompts(prompt_file: str) -> List[Dict]:
     return prompts
 
 
-def sample_images_check(args, epoch, steps) -> bool:
+def sample_images_check(sampling_config: SamplingConfig, epoch, steps) -> bool:
     if steps == 0:
-        if not args.sample_at_first:
+        if not sampling_config.sample_at_first:
             return False
     else:
-        if args.sample_every_n_steps is None and args.sample_every_n_epochs is None:
+        if sampling_config.sample_every_n_steps is None and sampling_config.sample_every_n_epochs is None:
             return False
-        if args.sample_every_n_epochs is not None:
+        if sampling_config.sample_every_n_epochs is not None:
             # sample_every_n_steps は無視する
-            if epoch is None or epoch % args.sample_every_n_epochs != 0:
+            if epoch is None or epoch % sampling_config.sample_every_n_epochs != 0:
                 return False
         else:
-            if steps % args.sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
+            if steps % sampling_config.sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
                 return False
     return True
 
@@ -214,7 +217,9 @@ def sample_images_check(args, epoch, steps) -> bool:
 def sample_images_common(
         pipe_class,
         accelerator: Accelerator,
-        args: argparse.Namespace,
+        sampling_config: SamplingConfig,
+        training_config: TrainingConfig,
+        saving_config: SavingConfig,
         epoch: int,
         steps: int,
         device,
@@ -231,23 +236,23 @@ def sample_images_common(
     """
 
     if steps == 0:
-        if not args.sample_at_first:
+        if not sampling_config.sample_at_first:
             return
     else:
-        if args.sample_every_n_steps is None and args.sample_every_n_epochs is None:
+        if sampling_config.sample_every_n_steps is None and sampling_config.sample_every_n_epochs is None:
             return
-        if args.sample_every_n_epochs is not None:
+        if sampling_config.sample_every_n_epochs is not None:
             # sample_every_n_steps は無視する
-            if epoch is None or epoch % args.sample_every_n_epochs != 0:
+            if epoch is None or epoch % sampling_config.sample_every_n_epochs != 0:
                 return
         else:
-            if steps % args.sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
+            if steps % sampling_config.sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
                 return
 
     logger.info("")
     logger.info(f"generating sample images at step / サンプル画像生成 ステップ: {steps}")
-    if not os.path.isfile(args.sample_prompts):
-        logger.error(f"No prompt file / プロンプトファイルがありません: {args.sample_prompts}")
+    if not os.path.isfile(sampling_config.sample_prompts):
+        logger.error(f"No prompt file / プロンプトファイルがありません: {sampling_config.sample_prompts}")
         return
 
     distributed_state = PartialState()  # for multi gpu distributed inference. this is a singleton, so it's safe to use it here
@@ -263,19 +268,20 @@ def sample_images_common(
         text_encoder = accelerator.unwrap_model(text_encoder)
 
     # read prompts
-    if args.sample_prompts.endswith(".txt"):
-        with open(args.sample_prompts, "r", encoding="utf-8") as f:
+    # read prompts
+    if sampling_config.sample_prompts.endswith(".txt"):
+        with open(sampling_config.sample_prompts, "r", encoding="utf-8") as f:
             lines = f.readlines()
         prompts = [line.strip() for line in lines if len(line.strip()) > 0 and line[0] != "#"]
-    elif args.sample_prompts.endswith(".toml"):
-        with open(args.sample_prompts, "r", encoding="utf-8") as f:
+    elif sampling_config.sample_prompts.endswith(".toml"):
+        with open(sampling_config.sample_prompts, "r", encoding="utf-8") as f:
             data = toml.load(f)
         prompts = [dict(**data["prompt"], **subset) for subset in data["prompt"]["subset"]]
-    elif args.sample_prompts.endswith(".json"):
-        with open(args.sample_prompts, "r", encoding="utf-8") as f:
+    elif sampling_config.sample_prompts.endswith(".json"):
+        with open(sampling_config.sample_prompts, "r", encoding="utf-8") as f:
             prompts = json.load(f)
 
-    default_scheduler = get_my_scheduler(sample_sampler=args.sample_sampler, v_parameterization=args.v_parameterization)
+    default_scheduler = get_my_scheduler(sample_sampler=sampling_config.sample_sampler, v_parameterization=training_config.v_parameterization)
 
     pipeline = pipe_class(
         text_encoder=text_encoder,
@@ -286,10 +292,10 @@ def sample_images_common(
         safety_checker=None,
         feature_extractor=None,
         requires_safety_checker=False,
-        clip_skip=args.clip_skip,
+        clip_skip=training_config.clip_skip,
     )
     pipeline.to(distributed_state.device)
-    save_dir = args.output_dir + "/sample"
+    save_dir = saving_config.output_dir + "/sample"
     os.makedirs(save_dir, exist_ok=True)
 
     # preprocess prompts
@@ -317,7 +323,7 @@ def sample_images_common(
         with torch.no_grad():
             for prompt_dict in prompts:
                 sample_image_inference(
-                    accelerator, args, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
+                    accelerator, sampling_config, training_config, saving_config, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
                     controlnet=controlnet
                 )
     else:
@@ -331,7 +337,7 @@ def sample_images_common(
             with distributed_state.split_between_processes(per_process_prompts) as prompt_dict_lists:
                 for prompt_dict in prompt_dict_lists[0]:
                     sample_image_inference(
-                        accelerator, args, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
+                        accelerator, sampling_config, training_config, saving_config, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
                         controlnet=controlnet
                     )
 
@@ -348,7 +354,9 @@ def sample_images_common(
 
 def sample_image_inference(
         accelerator: Accelerator,
-        args: argparse.Namespace,
+        sampling_config: SamplingConfig,
+        training_config: TrainingConfig,
+        saving_config: SavingConfig,
         pipeline: Union[StableDiffusionLongPromptWeightingPipeline, SdxlStableDiffusionLongPromptWeightingPipeline],
         save_dir,
         prompt_dict,
@@ -366,7 +374,7 @@ def sample_image_inference(
     seed = prompt_dict.get("seed")
     controlnet_image = prompt_dict.get("controlnet_image")
     prompt: str = prompt_dict.get("prompt", "")
-    sampler_name: str = prompt_dict.get("sample_sampler", args.sample_sampler)
+    sampler_name: str = prompt_dict.get("sample_sampler", sampling_config.sample_sampler)
 
     if prompt_replacement is not None:
         prompt = prompt.replace(prompt_replacement[0], prompt_replacement[1])
@@ -385,7 +393,7 @@ def sample_image_inference(
 
     scheduler = get_my_scheduler(
         sample_sampler=sampler_name,
-        v_parameterization=args.v_parameterization,
+        v_parameterization=training_config.v_parameterization,
     )
     pipeline.scheduler = scheduler
 
@@ -429,7 +437,7 @@ def sample_image_inference(
     num_suffix = f"e{epoch:06d}" if epoch is not None else f"{steps:06d}"
     seed_suffix = "" if seed is None else f"_{seed}"
     i: int = prompt_dict["enum"]
-    img_filename = f"{'' if args.output_name is None else args.output_name + '_'}{num_suffix}_{i:02d}_{ts_str}{seed_suffix}.png"
+    img_filename = f"{'' if saving_config.output_name is None else saving_config.output_name + '_'}{num_suffix}_{i:02d}_{ts_str}{seed_suffix}.png"
     image.save(os.path.join(save_dir, img_filename))
 
     # send images to wandb if enabled

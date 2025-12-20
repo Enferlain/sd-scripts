@@ -34,7 +34,7 @@ from library.training.model_prep import replace_unet_modules, patch_accelerator_
 from library.training.optimizer import get_optimizer, get_scheduler_fix
 from library.training.trainer_utils import append_lr_to_logs_with_names, prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
-from library.config.dataclasses.config import FullConfig
+from library.config.dataclasses.config import SDXLFineTuningConfig
 
 from dataclasses import asdict
 from library.config.config_util import (
@@ -110,7 +110,7 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
-def train(cfg: FullConfig):
+def train(cfg: SDXLFineTuningConfig):
     if cfg.training.dry_run:
         print("Dry run completed successfully.")
         return
@@ -384,10 +384,10 @@ def train(cfg: FullConfig):
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
     if cfg.sdxl_training.fused_optimizer_groups:
-        lr_schedulers = [get_scheduler_fix(cfg.optimizer, optimizer, accelerator.num_processes) for optimizer in optimizers]
+        lr_schedulers = [get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes) for optimizer in optimizers]
         lr_scheduler = lr_schedulers[0]
     else:
-        lr_scheduler = get_scheduler_fix(cfg.optimizer, optimizer, accelerator.num_processes)
+        lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes)
 
     if cfg.performance.full_fp16:
         assert (
@@ -442,7 +442,7 @@ def train(cfg: FullConfig):
     if cfg.performance.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
-    resume_from_local_or_hf_if_specified(accelerator, cfg)
+    resume_from_local_or_hf_if_specified(accelerator, cfg.saving)
 
     if cfg.sdxl_training.fused_backward_pass:
         import library.optimizers.adafactor_fused
@@ -610,7 +610,7 @@ def train(cfg: FullConfig):
                 with accelerator.autocast():
                     noise_pred = unet(noisy_latents, timesteps, text_embedding, vector_embedding)
 
-                if cfg.sd_models.v_parameterization:
+                if cfg.training.v_parameterization:
                     target = noise_scheduler.get_velocity(latents, noise, timesteps)
                 else:
                     target = noise
@@ -629,13 +629,13 @@ def train(cfg: FullConfig):
                     loss = loss.mean([1, 2, 3])
 
                     if cfg.loss.min_snr_gamma:
-                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.min_snr_gamma, cfg.sd_models.v_parameterization)
+                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.min_snr_gamma, cfg.training.v_parameterization)
                     if cfg.loss.scale_v_pred_loss_like_noise_pred:
                         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
                     if cfg.loss.v_pred_like_loss:
                         loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.v_pred_like_loss)
                     if cfg.loss.debiased_estimation_loss:
-                        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.sd_models.v_parameterization)
+                        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.training.v_parameterization)
 
                     loss = loss.mean()
                 else:
@@ -666,7 +666,9 @@ def train(cfg: FullConfig):
                 sample_images(
                     accelerator,
                     cfg.sampling,
-                    None,
+                    cfg.training,
+                    cfg.saving,
+                    epoch + 1,
                     global_step,
                     accelerator.device,
                     vae,
@@ -680,7 +682,9 @@ def train(cfg: FullConfig):
                     if accelerator.is_main_process:
                         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
                         save_sd_model_on_epoch_end_or_stepwise(
-                            cfg,
+                            cfg.saving,
+                            cfg.training,
+                            cfg.metadata,
                             False,
                             accelerator,
                             src_path,
@@ -726,7 +730,9 @@ def train(cfg: FullConfig):
             if accelerator.is_main_process:
                 src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
                 save_sd_model_on_epoch_end_or_stepwise(
-                    cfg,
+                    cfg.saving,
+                    cfg.training,
+                    cfg.metadata,
                     True,
                     accelerator,
                     src_path,
@@ -764,14 +770,16 @@ def train(cfg: FullConfig):
     accelerator.end_training()
 
     if cfg.saving.save_state or cfg.saving.save_state_on_train_end:
-        save_state_on_train_end(cfg, accelerator)
+        save_state_on_train_end(cfg.saving, accelerator)
 
     del accelerator
 
     if is_main_process:
         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
         save_sd_model_on_train_end(
-            cfg,
+            cfg.saving,
+            cfg.training,
+            cfg.metadata,
             src_path,
             save_stable_diffusion_format,
             use_safetensors,

@@ -1,4 +1,6 @@
-# Hydra Migration Notes
+# [OUTDATED] Hydra Migration Notes
+
+> **NOTE:** This document is outdated. Please refer to `HYDRA_MIGRATION_PROGRESS.md` for the latest status and architectural decisions.
 
 This document details the migration of `scripts/train_network.py` and related library components from `argparse`/`toml` to Hydra/`dataclasses`.
 
@@ -12,38 +14,38 @@ The migration aims to modernize the configuration management of the project, mak
 
 New dataclasses and default YAML files were created to accommodate `train_network.py` specific arguments:
 
-*   **`buckets`**: Extracted from `dataset` to handle bucket resolution settings.
-    *   `enable_bucket`, `min_bucket_reso`, `max_bucket_reso`, `bucket_reso_steps`, `bucket_no_upscale`.
-*   **`network`**: New group for network training settings (LoRA, LyCORIS, etc.).
-    *   `network_module`, `network_dim`, `network_alpha`, `network_weights`, `network_args`, etc.
-    *   Also includes `unet_lr`, `text_encoder_lr` (moved from global/training).
-*   **`metadata`**: New group for model metadata settings (ModelSpec).
-    *   `metadata_title`, `metadata_author`, `metadata_description`, etc.
+- **`buckets`**: Extracted from `dataset` to handle bucket resolution settings.
+  - `enable_bucket`, `min_bucket_reso`, `max_bucket_reso`, `bucket_reso_steps`, `bucket_no_upscale`.
+- **`network`**: New group for network training settings (LoRA, LyCORIS, etc.).
+  - `network_module`, `network_dim`, `network_alpha`, `network_weights`, `network_args`, etc.
+  - Also includes `unet_lr`, `text_encoder_lr` (moved from global/training).
+- **`metadata`**: New group for model metadata settings (ModelSpec).
+  - `metadata_title`, `metadata_author`, `metadata_description`, etc.
 
 ### 2. Configuration Class Updates
 
 Existing dataclasses were updated to include missing arguments found in `train_network.py`:
 
-*   **`DatasetConfig`**: Added `validation_split`, `validation_seed`, `weighted_captions` (from prompt utils).
-*   **`TrainingConfig`**: Added `initial_epoch`, `initial_step`, `skip_until_initial_step`, `validation_timesteps` (and validation schedule args).
-*   **`PerformanceConfig`**: Added `cpu_offload_checkpointing`, `fp8_base_unet`, `no_half_vae`.
-*   **`LoggingConfig`**: Added `live_plot_port`, `log_timestep_distribution_every_n_steps`.
-*   **`LossConfig`**: Added EDM2 loss weighting arguments.
-*   **`SDModelsConfig`**: Added `vae_conv2d_padding_mode`.
+- **`DatasetConfig`**: Added `validation_split`, `validation_seed`, `weighted_captions` (from prompt utils).
+- **`TrainingConfig`**: Added `initial_epoch`, `initial_step`, `skip_until_initial_step`, `validation_timesteps` (and validation schedule args).
+- **`PerformanceConfig`**: Added `cpu_offload_checkpointing`, `fp8_base_unet`, `no_half_vae`.
+- **`LoggingConfig`**: Added `live_plot_port`, `log_timestep_distribution_every_n_steps`.
+- **`LossConfig`**: Added EDM2 loss weighting arguments.
+- **`SDModelsConfig`**: Added `vae_conv2d_padding_mode`.
 
 ### 3. `scripts/train_network.py` Refactoring
 
-*   **Hydra Integration**: The script now uses `@hydra.main` and accepts a `TrainNetworkConfig` object.
-*   **ArgsAdapter**: An `ArgsAdapter` class was implemented to wrap the Hydra config object. This adapter mimics the behavior of `argparse.Namespace` (flattened attribute access), allowing legacy library functions (like `prepare_optimizer`, `load_target_model`) to work without modification.
-*   **Verification Removal**: `verify_training_args` and `prepare_dataset_args` calls were removed/skipped. `verify_training_args` logic (conflict checks) should ideally be migrated to dataclass `__post_init__` methods or a dedicated validator in the future.
+- **Hydra Integration**: The script now uses `@hydra.main` and accepts a `TrainNetworkConfig` object.
+- **ArgsAdapter**: An `ArgsAdapter` class was implemented to wrap the Hydra config object. This adapter mimics the behavior of `argparse.Namespace` (flattened attribute access), allowing legacy library functions (like `prepare_optimizer`, `load_target_model`) to work without modification.
+- **Verification Removal**: `verify_training_args` and `prepare_dataset_args` calls were removed/skipped. `verify_training_args` logic (conflict checks) should ideally be migrated to dataclass `__post_init__` methods or a dedicated validator in the future.
 
 ## Verification Status
 
 All arguments from the original `train_network.py` have been mapped to the new configuration structure.
 
-*   **External Argument Providers**:
-    *   `library.utils.sai_model_spec`: Mapped to `MetadataConfig`.
-    *   `library.data.prompt_utils`: `weighted_captions` mapped to `DatasetConfig`.
+- **External Argument Providers**:
+  - `library.utils.sai_model_spec`: Mapped to `MetadataConfig`.
+  - `library.data.prompt_utils`: `weighted_captions` mapped to `DatasetConfig`.
 
 ## Advice for Future Work
 
@@ -54,8 +56,8 @@ All arguments from the original `train_network.py` have been mapped to the new c
 
 ## Naming Confusions / Redundancy
 
-*   **`unet_lr` / `text_encoder_lr`**: These are specific to network training (fine-tuning specific components) and were placed in `NetworkConfig`. In full fine-tuning (`sdxl_train.py`), they might be handled differently (e.g., block LRs).
-*   **`validation_timesteps`**: This is a string argument parsed as a list. Ideally, Hydra/OmegaConf supports lists natively. Future refactoring could change the type in `TrainingConfig` to `List[int]` and update the YAML to use list syntax `[50, 350, ...]`.
+- **`unet_lr` / `text_encoder_lr`**: These are specific to network training (fine-tuning specific components) and were placed in `NetworkConfig`. In full fine-tuning (`sdxl_train.py`), they might be handled differently (e.g., block LRs).
+- **`validation_timesteps`**: This is a string argument parsed as a list. Ideally, Hydra/OmegaConf supports lists natively. Future refactoring could change the type in `TrainingConfig` to `List[int]` and update the YAML to use list syntax `[50, 350, ...]`.
 
 ## Setup for `train_network.py`
 

@@ -1,17 +1,22 @@
 import argparse
 import torch
 
+from library.utils import sai_model_spec
 from library.models import sdxl_model_util
 
 from library.training.checkpointing import (
-    get_sai_model_spec,
     save_sd_model_on_train_end_common,
     save_sd_model_on_epoch_end_or_stepwise_common
 )
+from library.config.dataclasses.saving import SavingConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.config.dataclasses.metadata import MetadataConfig
 
 
 def save_sd_model_on_train_end(
-        args: argparse.Namespace,
+        saving_config: SavingConfig,
+        training_config: TrainingConfig,
+        metadata_config: MetadataConfig,
         src_path: str,
         save_stable_diffusion_format: bool,
         use_safetensors: bool,
@@ -26,7 +31,16 @@ def save_sd_model_on_train_end(
         ckpt_info,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = get_sai_model_spec(None, args, True, False, False, is_stable_diffusion_ckpt=True)
+        sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
+            state_dict=None,
+            metadata_config=metadata_config,
+            is_sdxl=True,
+            is_v2=False, # SDXL is not v2
+            v_parameterization=training_config.v_parameterization, # SDXL can be v-param?
+            is_lora=False,
+            is_textual_inversion=False,
+            is_stable_diffusion_ckpt=True,
+        )
         sdxl_model_util.save_stable_diffusion_checkpoint(
             ckpt_file,
             text_encoder1,
@@ -54,14 +68,16 @@ def save_sd_model_on_train_end(
         )
 
     save_sd_model_on_train_end_common(
-        args, save_stable_diffusion_format, use_safetensors, epoch, global_step, sd_saver, diffusers_saver
+        saving_config, save_stable_diffusion_format, use_safetensors, epoch, global_step, sd_saver, diffusers_saver
     )
 
 
 # epochとstepの保存、メタデータにepoch/stepが含まれ引数が同じになるため、統合している
 # on_epoch_end: Trueならepoch終了時、Falseならstep経過時
 def save_sd_model_on_epoch_end_or_stepwise(
-        args: argparse.Namespace,
+        saving_config: SavingConfig,
+        training_config: TrainingConfig,
+        metadata_config: MetadataConfig,
         on_epoch_end: bool,
         accelerator,
         src_path,
@@ -79,7 +95,16 @@ def save_sd_model_on_epoch_end_or_stepwise(
         ckpt_info,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = get_sai_model_spec(None, args, True, False, False, is_stable_diffusion_ckpt=True)
+        sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
+            state_dict=None,
+            metadata_config=metadata_config,
+            is_sdxl=True,
+            is_v2=False,
+            v_parameterization=training_config.v_parameterization,
+            is_lora=False,
+            is_textual_inversion=False,
+            is_stable_diffusion_ckpt=True,
+        )
         sdxl_model_util.save_stable_diffusion_checkpoint(
             ckpt_file,
             text_encoder1,
@@ -107,7 +132,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         )
 
     save_sd_model_on_epoch_end_or_stepwise_common(
-        args,
+        saving_config,
         on_epoch_end,
         accelerator,
         save_stable_diffusion_format,

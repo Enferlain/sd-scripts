@@ -24,3 +24,4 @@ class TrainingConfig:
     initial_epoch: Optional[int] = field(default=None, metadata={"help": "initial epoch number"})
     initial_step: Optional[int] = field(default=None, metadata={"help": "initial step number including all epochs"})
     skip_until_initial_step: bool = field(default=False, metadata={"help": "skip training until initial_step is reached"})
+    v_parameterization: bool = field(default=False, metadata={"help": "enable v-parameterization training"})

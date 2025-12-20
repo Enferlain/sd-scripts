@@ -18,7 +18,7 @@ from .metadata import MetadataConfig
 
 
 @dataclass
-class FullConfig:
+class SDXLFineTuningConfig:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)

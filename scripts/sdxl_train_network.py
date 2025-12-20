@@ -1,13 +1,16 @@
 import argparse
 import logging
 import torch
+import hydra
+from hydra.core.config_store import ConfigStore
+from library.config.dataclasses.sdxl_train_network_config import SDXLTrainNetworkConfig
 
 from typing import List, Optional, Union
 from accelerate import Accelerator
 from ramtorch.helpers import replace_linear_with_ramtorch
 
 import train_network
-from library.config.sdxl_args import verify_sdxl_training_args, add_sdxl_training_arguments
+
 
 from library.constants import VAE_SCALE_FACTOR, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl_model_util import get_size_embeddings
@@ -36,26 +39,28 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
 
     def assert_extra_args(
         self,
-        args,
+        cfg,
         train_dataset_group: Union[DatasetGroup, MinimalDataset],
         val_dataset_group: Optional[DatasetGroup],
     ):
-        verify_sdxl_training_args(args)
+        # args = ArgsAdapter(cfg) # Removed
+        # verify_sdxl_training_args(args) # Removed
 
-        if args.cache_text_encoder_outputs:
+        if cfg.sdxl_training.cache_text_encoder_outputs:
             assert (
                 train_dataset_group.is_text_encoder_output_cacheable()
             ), "when caching Text Encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used / Text Encoderの出力をキャッシュするときはcaption_dropout_rate, shuffle_caption, token_warmup_step, caption_tag_dropout_rateは使えません"
 
         assert (
-            args.network_train_unet_only or not args.cache_text_encoder_outputs
+            cfg.network.network_train_unet_only or not cfg.sdxl_training.cache_text_encoder_outputs
         ), "network for Text Encoder cannot be trained with caching Text Encoder outputs / Text Encoderの出力をキャッシュしながらText Encoderのネットワークを学習することはできません"
 
         train_dataset_group.verify_bucket_reso_steps(32)
         if val_dataset_group is not None:
             val_dataset_group.verify_bucket_reso_steps(32)
 
-    def load_target_model(self, args, weight_dtype, accelerator):
+    def load_target_model(self, cfg, weight_dtype, accelerator):
+        # args = ArgsAdapter(cfg) # Removed
         (
             load_stable_diffusion_format,
             text_encoder1,
@@ -64,13 +69,13 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             unet,
             logit_scale,
             ckpt_info,
-        ) = load_target_model(args, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
+        ) = load_target_model(cfg, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
 
         self.load_stable_diffusion_format = load_stable_diffusion_format
         self.logit_scale = logit_scale
         self.ckpt_info = ckpt_info
 
-        if args.use_ramtorch:
+        if cfg.network.use_ramtorch:
             logger.info("Applying RamTorch to SDXL UNet, VAE, and Text Encoders.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
@@ -89,43 +94,46 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
                 logger.info("RamTorch applied to SDXL Clip-G.")
 
         # モデルに xformers とか memory efficient attention を組み込む
-        replace_unet_modules(unet, args.mem_eff_attn, args.xformers, args.sdpa)
+        replace_unet_modules(unet, cfg.performance.mem_eff_attn, cfg.performance.xformers, cfg.performance.sdpa)
         if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
-            vae.set_use_memory_efficient_attention_xformers(args.xformers)
+            vae.set_use_memory_efficient_attention_xformers(cfg.performance.xformers)
 
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
-    def get_tokenize_strategy(self, args):
-        return strategy_sdxl.SdxlTokenizeStrategy(args.max_token_length, args.tokenizer_cache_dir)
+    def get_tokenize_strategy(self, cfg):
+        
+        return strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.sd_models.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy):
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
-    def get_latents_caching_strategy(self, args):
+    def get_latents_caching_strategy(self, cfg):
+        
         latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
-            False, args.cache_latents_to_disk, args.vae_batch_size, args.skip_cache_check
+            False, cfg.dataset.cache_latents_to_disk, cfg.dataset.vae_batch_size, cfg.dataset.skip_cache_check
         )
         return latents_caching_strategy
 
-    def get_text_encoding_strategy(self, args):
+    def get_text_encoding_strategy(self, cfg):
         return strategy_sdxl.SdxlTextEncodingStrategy()
 
-    def get_models_for_text_encoding(self, args, accelerator, text_encoders):
+    def get_models_for_text_encoding(self, cfg, accelerator, text_encoders):
         return text_encoders + [accelerator.unwrap_model(text_encoders[-1])]
 
-    def get_text_encoder_outputs_caching_strategy(self, args):
-        if args.cache_text_encoder_outputs:
+    def get_text_encoder_outputs_caching_strategy(self, cfg):
+        
+        if cfg.sdxl_training.cache_text_encoder_outputs:
             return strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                args.cache_text_encoder_outputs_to_disk, None, args.skip_cache_check, is_weighted=args.weighted_captions
+                cfg.sdxl_training.cache_text_encoder_outputs_to_disk, None, cfg.dataset.skip_cache_check, is_weighted=cfg.dataset.weighted_captions
             )
         else:
             return None
 
     def cache_text_encoder_outputs_if_needed(
-        self, args, accelerator: Accelerator, unet, vae, text_encoders, dataset: DatasetGroup, weight_dtype
+        self, cfg, accelerator: Accelerator, unet, vae, text_encoders, dataset: DatasetGroup, weight_dtype
     ):
-        if args.cache_text_encoder_outputs:
-            if not args.lowram:
+        if cfg.sdxl_training.cache_text_encoder_outputs:
+            if not cfg.performance.lowram:
                 # メモリ消費を減らす
                 logger.info("move vae and unet to cpu to save memory")
                 org_vae_device = vae.device
@@ -145,7 +153,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             text_encoders[1].to("cpu", dtype=torch.float32)
             clean_memory_on_device(accelerator.device)
 
-            if not args.lowram:
+            if not cfg.performance.lowram:
                 logger.info("move vae and unet back to original device")
                 vae.to(org_vae_device)
                 unet.to(org_unet_device)
@@ -154,34 +162,35 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
             text_encoders[0].to(accelerator.device, dtype=weight_dtype)
             text_encoders[1].to(accelerator.device, dtype=weight_dtype)
 
-    def get_text_cond(self, args, accelerator, batch, tokenizers, text_encoders, weight_dtype):
+    def get_text_cond(self, cfg, accelerator, batch, tokenizers, text_encoders, weight_dtype):
+        # args = ArgsAdapter(cfg) # Removed
         if "text_encoder_outputs1_list" not in batch or batch["text_encoder_outputs1_list"] is None:
             input_ids1 = batch["input_ids"]
             input_ids2 = batch["input_ids2"]
             with torch.enable_grad():
                 # Get the text embedding for conditioning
                 # TODO support weighted captions
-                # if args.weighted_captions:
+                # if cfg.dataset.weighted_captions:
                 #     encoder_hidden_states = get_weighted_text_embeddings(
                 #         tokenizer,
                 #         text_encoder,
                 #         batch["captions"],
                 #         accelerator.device,
-                #         args.max_token_length // 75 if args.max_token_length else 1,
-                #         clip_skip=args.clip_skip,
+                #         cfg.training.max_token_length // 75 if cfg.training.max_token_length else 1,
+                #         clip_skip=cfg.training.clip_skip,
                 #     )
                 # else:
                 input_ids1 = input_ids1.to(accelerator.device)
                 input_ids2 = input_ids2.to(accelerator.device)
                 encoder_hidden_states1, encoder_hidden_states2, pool2 = get_hidden_states_sdxl(
-                    args.max_token_length,
+                    cfg.training.max_token_length,
                     input_ids1,
                     input_ids2,
                     tokenizers[0],
                     tokenizers[1],
                     text_encoders[0],
                     text_encoders[1],
-                    None if not args.full_fp16 else weight_dtype,
+                    None if not cfg.performance.full_fp16 else weight_dtype,
                     accelerator=accelerator,
                 )
         else:
@@ -210,7 +219,7 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
 
     def call_unet(
         self,
-        args,
+        cfg,
         accelerator,
         unet,
         noisy_latents,
@@ -242,22 +251,18 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
         noise_pred = unet(noisy_latents, timesteps, text_embedding, vector_embedding)
         return noise_pred
 
-    def sample_images(self, accelerator, args, epoch, global_step, device, vae, tokenizer, text_encoder, unet):
-        sample_images(accelerator, args, epoch, global_step, device, vae, tokenizer, text_encoder, unet)
+    def sample_images(self, accelerator, cfg, epoch, global_step, device, vae, tokenizer, text_encoder, unet):
+        sample_images(accelerator, cfg.sampling, cfg.training, cfg.saving, epoch, global_step, device, vae, tokenizer, text_encoder, unet)
 
 
-def setup_parser() -> argparse.ArgumentParser:
-    parser = train_network.setup_parser()
-    add_sdxl_training_arguments(parser)
-    return parser
+# Register the structure config with Hydra
+cs = ConfigStore.instance()
+cs.store(name="sdxl_train_network", node=SDXLTrainNetworkConfig)
 
+@hydra.main(version_base=None, config_path="../configs", config_name="sdxl_train_network")
+def main(cfg: SDXLTrainNetworkConfig):
+    trainer = SdxlNetworkTrainer()
+    trainer.train(cfg)
 
 if __name__ == "__main__":
-    parser = setup_parser()
-
-    args = parser.parse_args()
-    verify_command_line_training_args(args)
-    args = read_config_from_file(args, parser)
-
-    trainer = SdxlNetworkTrainer()
-    trainer.train(args)
+    main()

@@ -7,7 +7,10 @@ from diffusers import StableDiffusionPipeline
 
 from library.models import model_util
 from library.models.original_unet import UNet2DConditionModel
+from library.models.original_unet import UNet2DConditionModel
 from library.utils.device_utils import clean_memory_on_device
+from library.config.dataclasses.sd_models import SDModelsConfig, ModelLoadingConfig
+from library.config.dataclasses.performance import PerformanceConfig
 
 logger = logging.getLogger(__name__)
 
@@ -152,14 +155,14 @@ def set_padding_mode_for_vae_conv2d_modules(vae: torch.nn.Module, padding_mode: 
                 module.padding_mode = padding_mode
 
 
-def _load_target_model(args: argparse.Namespace, weight_dtype, device="cpu", unet_use_linear_projection_in_v2=False):
-    name_or_path = args.pretrained_model_name_or_path
+def _load_target_model(model_config: ModelLoadingConfig, v2: bool, weight_dtype, device="cpu", unet_use_linear_projection_in_v2=False):
+    name_or_path = model_config.pretrained_model_name_or_path
     name_or_path = os.path.realpath(name_or_path) if os.path.islink(name_or_path) else name_or_path
     load_stable_diffusion_format = os.path.isfile(name_or_path)  # determine SD or Diffusers
     if load_stable_diffusion_format:
         logger.info(f"load StableDiffusion checkpoint: {name_or_path}")
         text_encoder, vae, unet = model_util.load_models_from_stable_diffusion_checkpoint(
-            args.v2, name_or_path, device, unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2
+            v2, name_or_path, device, unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2
         )
     else:
         # Diffusers model is loaded to CPU
@@ -191,31 +194,32 @@ def _load_target_model(args: argparse.Namespace, weight_dtype, device="cpu", une
         logger.info("U-Net converted to original U-Net")
 
     # VAEを読み込む
-    if args.vae is not None:
-        vae = model_util.load_vae(args.vae, weight_dtype)
+    if model_config.vae is not None:
+        vae = model_util.load_vae(model_config.vae, weight_dtype)
         logger.info("additional VAE loaded")
 
-    if hasattr(args, "vae_conv2d_padding_mode") and args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
-        logger.info(f"Loaded VAE with padding mode: {args.vae_conv2d_padding_mode}")
-        set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
+    if model_config.vae_conv2d_padding_mode is not None and model_config.vae_conv2d_padding_mode.lower() != 'zeros':
+        logger.info(f"Loaded VAE with padding mode: {model_config.vae_conv2d_padding_mode}")
+        set_padding_mode_for_vae_conv2d_modules(vae, model_config.vae_conv2d_padding_mode)
 
     return text_encoder, vae, unet, load_stable_diffusion_format
 
 
-def load_target_model(args, weight_dtype, accelerator, unet_use_linear_projection_in_v2=False):
+def load_target_model(model_config: SDModelsConfig, performance_config: PerformanceConfig, weight_dtype, accelerator, unet_use_linear_projection_in_v2=False):
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
             logger.info(
                 f"loading model for process {accelerator.state.local_process_index}/{accelerator.state.num_processes}")
 
             text_encoder, vae, unet, load_stable_diffusion_format = _load_target_model(
-                args,
+                model_config,
+                model_config.v2,
                 weight_dtype,
-                accelerator.device if args.lowram else "cpu",
+                accelerator.device if performance_config.lowram else "cpu",
                 unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2,
             )
             # work on low-ram device
-            if args.lowram:
+            if performance_config.lowram:
                 text_encoder.to(accelerator.device)
                 unet.to(accelerator.device)
                 vae.to(accelerator.device)

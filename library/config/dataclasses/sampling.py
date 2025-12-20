@@ -7,7 +7,7 @@ class SamplingConfig:
     sample_every_n_steps: Optional[int] = None
     sample_at_first: bool = False
     sample_every_n_epochs: Optional[int] = None
-    sample_prompts: Optional[List[str]] = None
+    sample_prompts: Optional[str] = None
     sample_sampler: str = "ddim"
 
     def __post_init__(self):

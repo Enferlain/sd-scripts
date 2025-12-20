@@ -19,6 +19,8 @@ class OptimizerConfig:
     fused_backward_pass: bool = field(default=False, metadata={"help": "Combines backward pass and optimizer step to reduce VRAM usage"})
     lr_scheduler_timescale: Optional[int] = field(default=None, metadata={"help": "Inverse sqrt timescale for inverse sqrt scheduler"})
     lr_scheduler_min_lr_ratio: Optional[float] = field(default=None, metadata={"help": "The minimum learning rate as a ratio of the initial learning rate"})
+    optimizer_schedulefree_wrapper: bool = field(default=False, metadata={"help": "Wrap optimizer with ScheduleFreeWrapper"})
+    schedulefree_wrapper_args: Optional[List[str]] = field(default=None, metadata={"help": "Arguments for ScheduleFreeWrapper"})
 
     def __post_init__(self):
         if self.use_8bit_adam:
