@@ -1022,7 +1022,7 @@ class NetworkTrainer:
         is_main_process = accelerator.is_main_process
 
         # mixed precisionに対応した型を用意しておき適宜castする
-        weight_dtype, save_dtype = prepare_dtype(cfg.performance)
+        weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.saving)
         vae_dtype = (torch.float32 if cfg.performance.no_half_vae else weight_dtype) if self.cast_vae(cfg) else None
 
         # load target models: unet may be None for lazy loading

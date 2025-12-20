@@ -5,15 +5,14 @@
 **Current Status (2025-12-20):**
 
 - ✅ Testing infrastructure complete (pytest, fixtures, coverage)
-- ✅ 77 unit tests passing (28 config + 26 optimizer + 23 checkpointing)
-- ✅ 7% overall code coverage (23% optimizer, 21% checkpointing)
+- ✅ 115+ unit tests passing (28 config + 26 optimizer + 23 checkpointing + 17 diffusion + 21 noise_utils)
 
 **Next Steps:**
 
 1. **Expand Core Module Tests** - Target 70% coverage on training modules
    - `library/training/model_prep.py` - Model preparation and wrapping
-   - `library/training/diffusion.py` - Diffusion utilities
-   - `library/training/noise_utils.py` - Noise generation
+   - ~~`library/training/diffusion.py` - Diffusion utilities~~ ✅ Complete
+   - ~~`library/training/noise_utils.py` - Noise generation~~ ✅ Complete
 2. **Data Module Tests** - Critical for ensuring data pipeline correctness
    - `library/data/dataset.py` - Dataset loading and bucketing (high priority)
    - `library/data/data_structures.py` - Data structures and batching

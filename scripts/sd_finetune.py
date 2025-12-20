@@ -113,7 +113,7 @@ def train(config: SDFineTuneConfig):
     logger.info("prepare accelerator")
     accelerator = prepare_accelerator(training_config)
 
-    weight_dtype, save_dtype = prepare_dtype(training_config)
+    weight_dtype, save_dtype = prepare_dtype(config.performance, saving_config)
     vae_dtype = torch.float32 if model_config.no_half_vae else weight_dtype
 
     text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(model_config, config.performance, weight_dtype, accelerator)

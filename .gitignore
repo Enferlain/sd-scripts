@@ -14,3 +14,8 @@ MagicMock
 *7z
 .idea
 outputs/
+*.txt
+*.latent
+*.whl
+*.safetensors
+.coverage

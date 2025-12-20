@@ -26,9 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tests/unit/test_configs.py` - 28 tests for configuration dataclasses (instantiation, defaults, Hydra composition, overrides)
   - `tests/unit/test_training_optimizer.py` - 26 tests for optimizer module (creation, detection, schedulers, utilities)
   - `tests/unit/test_training_checkpointing.py` - 23 tests for checkpointing module (naming, removal, metadata)
+  - `tests/unit/test_training_diffusion.py` - 17 tests for diffusion utilities (timesteps, noisy latents)
+  - `tests/unit/test_training_noise_utils.py` - 21 tests for noise utilities (SNR, pyramid noise, noise offset)
+  - `tests/unit/test_data_image_utils.py` - 14 tests for image utilities (globbing, loading, cropping)
+  - `tests/unit/test_utils_torch.py` - 12 tests for torch utilities (dtype preparation, mixed precision)
   - Enhanced `pytest.ini` with test markers (`unit`, `integration`, `config`, `training`, `data`, `slow`, `requires_gpu`)
   - Restructured tests to `tests/unit/` directory to avoid import naming collisions
-  - Added pytest-cov for code coverage reporting (7% overall, 23% optimizer, 21% checkpointing)
+  - Added pytest-cov for code coverage reporting
 
 ### Changed
 
@@ -88,3 +92,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Moved `vae` and `vae_conv2d_padding_mode` from `TrainingConfig`/`SDModelsConfig` to `ModelConfig`
   - Moved `use_ramtorch` and `direct_ramtorch` from `NetworkConfig` to `PerformanceConfig`
   - Updated all scripts and YAMLs to reflect these changes
+
+- **Type hint bug in `library/utils/torch_utils.py`**
+  - `prepare_dtype()` function was incorrectly typed to accept `TrainingConfig` but accessed fields from both `PerformanceConfig` (mixed_precision) and `SavingConfig` (save_precision). Refactored to properly accept both config types as separate parameters.

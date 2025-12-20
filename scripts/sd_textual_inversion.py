@@ -194,7 +194,7 @@ class TextualInversionTrainer:
         logger.info("prepare accelerator")
         accelerator = prepare_accelerator(training_config)
 
-        weight_dtype, save_dtype = prepare_dtype(training_config)
+        weight_dtype, save_dtype = prepare_dtype(config.performance, saving_config)
         vae_dtype = torch.float32 if sd_models_config.no_half_vae else weight_dtype
 
         model_version, text_encoders, vae, unet = self.load_target_model(sd_models_config, config.performance, weight_dtype, accelerator)
