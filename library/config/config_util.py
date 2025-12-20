@@ -1,13 +1,24 @@
 import logging
 import random
-from typing import Dict, List, Optional, Sequence, Tuple, Union, Any
+from typing import Dict, List, Optional, Sequence, Tuple, Union, Any, Protocol, runtime_checkable
 from pathlib import Path
 from textwrap import dedent, indent
 from dataclasses import asdict, dataclass
 
-# We need the FullConfig type hint, but can't import it directly without creating a circular dependency
-# if config.py imports this file. Using a string hint is fine.
-# from library.config.dataclasses.config import FullConfig
+from library.config.dataclasses.dataset import DatasetConfig
+from library.config.dataclasses.buckets import BucketsConfig
+
+
+@runtime_checkable
+class RootConfig(Protocol):
+    """Protocol defining the expected structure for any training config passed to BlueprintGenerator.
+    
+    All script-specific root configs (FineTuneConfig, TrainNetworkConfig, etc.) 
+    should satisfy this protocol.
+    """
+    dataset: DatasetConfig
+    buckets: BucketsConfig
+
 
 from library.data.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
 from library.data.dataset import DatasetGroup, DreamBoothDataset, FineTuningDataset, ControlNetDataset
@@ -140,7 +151,7 @@ class BlueprintGenerator:
     def __init__(self):
         pass
 
-    def generate(self, cfg: "FullConfig") -> Blueprint:
+    def generate(self, cfg: "RootConfig") -> Blueprint:
         dataset_blueprints = []
 
         dataset_config = cfg.dataset

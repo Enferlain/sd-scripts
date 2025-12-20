@@ -38,7 +38,7 @@ This document explains how to train Textual Inversion embeddings using the `trai
 ### 2.1. For Stable Diffusion v1.x/v2.x Models / Stable Diffusion v1.x/v2.xモデル用
 
 ```bash
-accelerate launch --num_cpu_threads_per_process 1 train_textual_inversion.py \
+accelerate launch --num_cpu_threads_per_process 1 sd_textual_inversion.py \
   --pretrained_model_name_or_path="path/to/model.safetensors" \
   --dataset_config="dataset_config.toml" \
   --output_dir="output" \
@@ -58,7 +58,7 @@ accelerate launch --num_cpu_threads_per_process 1 train_textual_inversion.py \
 ### 2.2. For SDXL Models / SDXLモデル用
 
 ```bash
-accelerate launch --num_cpu_threads_per_process 1 sdxl_train_textual_inversion.py \
+accelerate launch --num_cpu_threads_per_process 1 sdxl_textual_inversion.py \
   --pretrained_model_name_or_path="path/to/sdxl_model.safetensors" \
   --dataset_config="dataset_config.toml" \
   --output_dir="output" \

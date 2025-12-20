@@ -64,11 +64,11 @@ All arguments from the original `train_network.py` have been mapped to the new c
 The entry point configuration is `configs/train_network.yaml`. To run:
 
 ```bash
-accelerate launch scripts/train_network.py
+accelerate launch scripts/sd_peft.py
 ```
 
 Arguments can be overridden via command line:
 
 ```bash
-accelerate launch scripts/train_network.py network.network_dim=32 optimizer.learning_rate=1e-4
+accelerate launch scripts/sd_peft.py network.network_dim=32 optimizer.learning_rate=1e-4
 ```

@@ -121,7 +121,7 @@ SS_METADATA_KEY_NETWORK_ALPHA = "ss_network_alpha"
 SS_METADATA_KEY_NETWORK_ARGS = "ss_network_args"
 
 
-# --- train_network.py ---
+# --- sd_peft.py ---
 SS_METADATA_MINIMUM_KEYS = [
     SS_METADATA_KEY_V2,
     SS_METADATA_KEY_BASE_MODEL_VERSION,

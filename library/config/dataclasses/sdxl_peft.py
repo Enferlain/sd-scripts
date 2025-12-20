@@ -1,23 +1,28 @@
 from dataclasses import dataclass, field
-from library.config.dataclasses.sd_models import ModelLoadingConfig
-from library.config.dataclasses.training import TrainingConfig
-from library.config.dataclasses.optimizer import OptimizerConfig
-from library.config.dataclasses.dataset import DatasetConfig
-from library.config.dataclasses.network import NetworkConfig
-from library.config.dataclasses.sdxl_training import SDXLTrainingConfig
-from library.config.dataclasses.saving import SavingConfig
-from library.config.dataclasses.logging import LoggingConfig
-from library.config.dataclasses.performance import PerformanceConfig
-from library.config.dataclasses.loss import LossConfig
-from library.config.dataclasses.regularization import RegularizationConfig
-from library.config.dataclasses.timestep import TimestepConfig
-from library.config.dataclasses.sampling import SamplingConfig
-from library.config.dataclasses.masked_loss import MaskedLossConfig
-from library.config.dataclasses.metadata import MetadataConfig
-from library.config.dataclasses.huggingface import HuggingFaceConfig
+from .sd_models import ModelLoadingConfig
+from .training import TrainingConfig
+from .optimizer import OptimizerConfig
+from .dataset import DatasetConfig
+from .network import NetworkConfig
+from .sdxl_training import SDXLTrainingConfig
+from .saving import SavingConfig
+from .logging import LoggingConfig
+from .performance import PerformanceConfig
+from .loss import LossConfig
+from .regularization import RegularizationConfig
+from .timestep import TimestepConfig
+from .sampling import SamplingConfig
+from .masked_loss import MaskedLossConfig
+from .metadata import MetadataConfig
+from .huggingface import HuggingFaceConfig
+
 
 @dataclass
 class SDXLTrainNetworkConfig:
+    """Root configuration for SDXL PEFT/LoRA training.
+    
+    This is the main config used by scripts/sdxl_peft.py.
+    """
     sd_models: ModelLoadingConfig = field(default_factory=ModelLoadingConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     network: NetworkConfig = field(default_factory=NetworkConfig)

@@ -1,0 +1,25 @@
+# Configuration for sd_finetune.py
+# SD 1.5/2.0 Full Model Fine-tuning
+
+defaults:
+  - optimizer: default
+  - dataset: default
+  - buckets: default
+  - sd_models: default
+  - masked_loss: default
+  - training: default
+  - saving: default
+  - huggingface: default
+  - logging: default
+  - performance: default
+  - loss: default
+  - regularization: default
+  - timestep: default
+  - sampling: default
+  - metadata: default
+
+# Fine-tuning specific settings
+fine_tune:
+  diffusers_xformers: false # Use xformers via Diffusers
+  train_text_encoder: false # Train text encoder along with UNet
+  learning_rate_te: null # Separate learning rate for text encoder

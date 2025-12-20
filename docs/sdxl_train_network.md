@@ -70,7 +70,7 @@ Training starts by running `sdxl_train_network.py` from the terminal.
 Here's a basic command line execution example for SDXL LoRA training:
 
 ```bash
-accelerate launch --num_cpu_threads_per_process 1 sdxl_train_network.py 
+accelerate launch --num_cpu_threads_per_process 1 sdxl_peft.py 
  --pretrained_model_name_or_path="<SDXL base model path>" 
  --dataset_config="my_sdxl_dataset_config.toml" 
  --output_dir="<output directory for training results>" 
@@ -110,7 +110,7 @@ Next, we'll explain the main command line arguments that differ from `train_netw
 以下に、SDXL LoRA 学習における基本的なコマンドライン実行例を示します。
 
 ```bash
-accelerate launch --num_cpu_threads_per_process 1 sdxl_train_network.py 
+accelerate launch --num_cpu_threads_per_process 1 sdxl_peft.py 
  --pretrained_model_name_or_path="<SDXLベースモデルのパス>" 
  --dataset_config="my_sdxl_dataset_config.toml" 
  --output_dir="<学習結果の出力先ディレクトリ>" 

@@ -75,7 +75,7 @@ There are two primary ways to enable validation:
 
     **Example Command:**
     ```bash
-    accelerate launch train_network.py ... --validation_split 0.1
+    accelerate launch sd_peft.py ... --validation_split 0.1
     ```
     This command will use 10% of the total training data for validation.
 
@@ -119,7 +119,7 @@ There are two primary ways to enable validation:
 
     **コマンド例:**
     ```bash
-    accelerate launch train_network.py ... --validation_split 0.1
+    accelerate launch sd_peft.py ... --validation_split 0.1
     ```
     このコマンドは、全学習データの10%を検証に使用します。
 
@@ -192,7 +192,7 @@ batch_size = 2
 **2. Run the training command:**
 
 ```bash
-accelerate launch sdxl_train_network.py \
+accelerate launch sdxl_peft.py \
   --pretrained_model_name_or_path="sd_xl_base_1.0.safetensors" \
   --dataset_config="dataset_config.toml" \
   --output_dir="output" \
@@ -241,7 +241,7 @@ batch_size = 2
 **2. 学習コマンドを実行します:**
 
 ```bash
-accelerate launch sdxl_train_network.py \
+accelerate launch sdxl_peft.py \
   --pretrained_model_name_or_path="sd_xl_base_1.0.safetensors" \
   --dataset_config="dataset_config.toml" \
   --output_dir="output" \

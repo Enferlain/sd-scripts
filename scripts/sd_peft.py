@@ -57,14 +57,14 @@ from library.utils.config_util import (
     BlueprintGenerator,
 )
 
-from library.config.dataclasses.train_network_config import TrainNetworkConfig
+from library.config.dataclasses.sd_peft import TrainNetworkConfig
 from library.config.dataclasses.optimizer import OptimizerConfig
 from library.config.dataclasses.dataset import DatasetConfig
 from library.config.dataclasses.network import NetworkConfig
 from library.config.dataclasses.sd_models import SDModelsConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.performance import PerformanceConfig
-from library.config.dataclasses.sdxl_train_network_config import SDXLTrainNetworkConfig
+from library.config.dataclasses.sdxl_peft import SDXLTrainNetworkConfig
 
 from library.training.checkpointing import (
     get_sai_model_spec,
@@ -124,73 +124,6 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-class ArgsAdapter:
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self._dynamic_attrs = {}
-
-    def __getattr__(self, name):
-        if name in self._dynamic_attrs:
-            return self._dynamic_attrs[name]
-
-        sections = [
-            self.cfg.training,
-            self.cfg.optimizer,
-            self.cfg.dataset,
-            self.cfg.buckets,
-            self.cfg.sd_models,
-            self.cfg.network,
-            self.cfg.saving,
-            self.cfg.logging,
-            self.cfg.performance,
-            self.cfg.loss,
-            self.cfg.regularization,
-            self.cfg.timestep,
-            self.cfg.sampling,
-            self.cfg.masked_loss,
-            self.cfg.metadata,
-            self.cfg.huggingface
-        ]
-        for section in sections:
-            if hasattr(section, name):
-                return getattr(section, name)
-        # Fallback for some properties (args.output_dir is in saving, args.max_train_steps in training)
-        # If not found, raise
-        raise AttributeError(f"'ArgsAdapter' object has no attribute '{name}'")
-
-    def __setattr__(self, name, value):
-        if name in ['cfg', '_dynamic_attrs']:
-            super().__setattr__(name, value)
-            return
-
-        sections = [
-            self.cfg.training,
-            self.cfg.optimizer,
-            self.cfg.dataset,
-            self.cfg.buckets,
-            self.cfg.sd_models,
-            self.cfg.network,
-            self.cfg.saving,
-            self.cfg.logging,
-            self.cfg.performance,
-            self.cfg.loss,
-            self.cfg.regularization,
-            self.cfg.timestep,
-            self.cfg.sampling,
-            self.cfg.masked_loss,
-            self.cfg.metadata,
-            self.cfg.huggingface
-        ]
-        for section in sections:
-            if hasattr(section, name):
-                # assume dataclass fields are mutable via setattr on instance?
-                # Hydra configs might be DictConfig?
-                # Code uses simple assignment, so we try setattr
-                setattr(section, name, value)
-                return
-
-        # If not found in sections, store in dynamic attrs
-        self._dynamic_attrs[name] = value
 
 class NetworkTrainer:
     def __init__(self):
@@ -963,12 +896,12 @@ class NetworkTrainer:
                            epoch,
                            batch=None,
                            train_text_encoder=True):
-        adapter = ArgsAdapter(cfg)
-        if not calculate_val_loss_check(adapter, global_step, epoch_step, val_dataloader, train_dataloader):
+        # Pass training config directly instead of legacy ArgsAdapter
+        if not calculate_val_loss_check(cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
         
         if batch is not None:
-            self.on_step_start(adapter, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=False)
+            self.on_step_start(cfg, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=False)
    
         rng_states = self.switch_rng_state(int(cfg.dataset.validation_seed) if cfg.dataset.validation_seed else 23, accelerator)
 
@@ -2430,9 +2363,9 @@ class NetworkTrainer:
 
 # Register the structure config with Hydra
 cs = ConfigStore.instance()
-cs.store(name="train_network", node=TrainNetworkConfig)
+cs.store(name="sd_peft", node=TrainNetworkConfig)
 
-@hydra.main(version_base=None, config_path="../configs", config_name="train_network")
+@hydra.main(version_base=None, config_path="../configs", config_name="sd_peft")
 def main(cfg: TrainNetworkConfig):
     trainer = NetworkTrainer()
     trainer.train(cfg)

@@ -3,13 +3,13 @@ import logging
 import torch
 import hydra
 from hydra.core.config_store import ConfigStore
-from library.config.dataclasses.sdxl_train_network_config import SDXLTrainNetworkConfig
+from library.config.dataclasses.sdxl_peft import SDXLTrainNetworkConfig
 
 from typing import List, Optional, Union
 from accelerate import Accelerator
 from ramtorch.helpers import replace_linear_with_ramtorch
 
-import train_network
+import sd_peft
 
 
 from library.constants import VAE_SCALE_FACTOR, MODEL_VERSION_SDXL_BASE_V1_0
@@ -31,7 +31,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-class SdxlNetworkTrainer(train_network.NetworkTrainer):
+class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
     def __init__(self):
         super().__init__()
         self.vae_scale_factor = VAE_SCALE_FACTOR
@@ -257,9 +257,9 @@ class SdxlNetworkTrainer(train_network.NetworkTrainer):
 
 # Register the structure config with Hydra
 cs = ConfigStore.instance()
-cs.store(name="sdxl_train_network", node=SDXLTrainNetworkConfig)
+cs.store(name="sdxl_peft", node=SDXLTrainNetworkConfig)
 
-@hydra.main(version_base=None, config_path="../configs", config_name="sdxl_train_network")
+@hydra.main(version_base=None, config_path="../configs", config_name="sdxl_peft")
 def main(cfg: SDXLTrainNetworkConfig):
     trainer = SdxlNetworkTrainer()
     trainer.train(cfg)

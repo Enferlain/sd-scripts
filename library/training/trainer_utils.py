@@ -117,13 +117,22 @@ def init_trackers(accelerator: Accelerator, args: DictConfig, default_tracker_na
         )
 
 
-def calculate_val_loss_check(args, global_step, epoch_step, val_dataloader, train_dataloader) -> bool:
+def calculate_val_loss_check(training_config, global_step, epoch_step, val_dataloader, train_dataloader) -> bool:
+    """Check if validation should be run at this step.
+    
+    Args:
+        training_config: TrainingConfig object with validation settings
+        global_step: Current global training step
+        epoch_step: Current step within the epoch
+        val_dataloader: Validation dataloader (if None, returns False)
+        train_dataloader: Training dataloader for epoch length check
+    """
     if val_dataloader is None:
         return False
 
-    if global_step != 0 and global_step < args.max_train_steps:
-        if args.validation_every_n_step is not None:
-            if global_step % int(args.validation_every_n_step) != 0:
+    if global_step != 0 and global_step < training_config.max_train_steps:
+        if training_config.validate_every_n_steps is not None:
+            if global_step % int(training_config.validate_every_n_steps) != 0:
                 return False
         else:
             if epoch_step != len(train_dataloader) - 1:

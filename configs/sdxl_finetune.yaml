@@ -1,0 +1,20 @@
+# Configuration for sdxl_finetune.py
+# SDXL Full Model Fine-tuning
+
+defaults:
+  - optimizer: default
+  - dataset: default
+  - buckets: default
+  - sd_models: default
+  - sdxl_training: default
+  - masked_loss: default
+  - training: default
+  - saving: default
+  - huggingface: default
+  - logging: default
+  - performance: default
+  - loss: default
+  - regularization: default
+  - timestep: default
+  - sampling: default
+  - metadata: default

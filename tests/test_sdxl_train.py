@@ -4,10 +4,10 @@ import subprocess
 
 def test_sdxl_train_dry_run():
     """
-    Tests the sdxl_train.py script with the dry_run flag to ensure
+    Tests the sdxl_finetune.py script with the dry_run flag to ensure
     that the training setup completes without errors.
     """
-    script_path = "scripts/sdxl_train.py"
+    script_path = "scripts/sdxl_finetune.py"
     model_path = "tests/assets/dummy_model.safetensors"
     data_dir = "tests/assets"
     output_dir = "tmp_output"

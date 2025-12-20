@@ -136,7 +136,7 @@ Performs fine-tuning for SDXL models. It is possible to train both the U-Net and
 **Command Example:**
 
 ```bash
-accelerate launch --mixed_precision bf16 sdxl_train.py \
+accelerate launch --mixed_precision bf16 sdxl_finetune.py \
   --pretrained_model_name_or_path "sd_xl_base_1.0.safetensors" \
   --dataset_config "dataset_config.toml" \
   --output_dir "output" \
@@ -163,7 +163,7 @@ SDXLモデルのFine-tuningを行います。U-NetとText Encoderの両方を学
 **コマンド例:**
 
 ```bash
-accelerate launch --mixed_precision bf16 sdxl_train.py \
+accelerate launch --mixed_precision bf16 sdxl_finetune.py \
   --pretrained_model_name_or_path "sd_xl_base_1.0.safetensors" \
   --dataset_config "dataset_config.toml" \
   --output_dir "output" \

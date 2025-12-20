@@ -1,25 +1,24 @@
-import argparse
+import hydra
 import os
 import torch
 
 from typing import Optional, Union
 
-import train_textual_inversion
+import sd_textual_inversion
 
 from library.constants import VAE_SCALE_FACTOR, MODEL_VERSION_SDXL_BASE_V1_0
-from library.config.arguments import verify_command_line_training_args, read_config_from_file
-from library.config.sdxl_args import verify_sdxl_training_args, add_sdxl_training_arguments
 from library.models.sdxl_model_util import get_size_embeddings
 from library.utils.device_utils import init_ipex
 from library.strategies import strategy_sdxl, strategy_sd
 from library.data.dataset import DatasetGroup, MinimalDataset
 from library.training.sdxl_sample_generation import sample_images
 from library.training.sdxl_model_prep import load_target_model as load_target_model_sdxl
+from library.config.dataclasses.sdxl_textual_inversion import SDXLTextualInversionConfig
 
 init_ipex()
 
 
-class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTrainer):
+class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
     def __init__(self):
         super().__init__()
         self.vae_scale_factor = VAE_SCALE_FACTOR
@@ -27,14 +26,12 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
 
     def assert_extra_args(self, args, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
         DatasetGroup]):
-        # super().assert_extra_args(args, train_dataset_group) # do not call parent because it checks reso steps with 64
-        verify_sdxl_training_args(args, support_text_encoder_caching=False)
-
+        # For SDXL, we just verify bucket resolution
         train_dataset_group.verify_bucket_reso_steps(32)
         if val_dataset_group is not None:
             val_dataset_group.verify_bucket_reso_steps(32)
 
-    def load_target_model(self, args, weight_dtype, accelerator):
+    def load_target_model(self, sd_models_config, performance_config, weight_dtype, accelerator):
         (
             load_stable_diffusion_format,
             text_encoder1,
@@ -43,7 +40,7 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
             unet,
             logit_scale,
             ckpt_info,
-        ) = load_target_model_sdxl(args, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
+        ) = load_target_model_sdxl(sd_models_config, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
 
         self.load_stable_diffusion_format = load_stable_diffusion_format
         self.logit_scale = logit_scale
@@ -51,19 +48,19 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
 
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
-    def get_tokenize_strategy(self, args):
-        return strategy_sdxl.SdxlTokenizeStrategy(args.max_token_length, args.tokenizer_cache_dir)
+    def get_tokenize_strategy(self, sd_models_config, training_config):
+        return strategy_sdxl.SdxlTokenizeStrategy(training_config.max_token_length, sd_models_config.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy):
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
-    def get_latents_caching_strategy(self, args):
+    def get_latents_caching_strategy(self, dataset_config):
         latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
-            False, args.cache_latents_to_disk, args.vae_batch_size, args.skip_cache_check
+            False, dataset_config.cache_latents_to_disk, dataset_config.vae_batch_size, dataset_config.skip_cache_check
         )
         return latents_caching_strategy
 
-    def get_text_encoding_strategy(self, args):
+    def get_text_encoding_strategy(self, training_config):
         return strategy_sdxl.SdxlTextEncodingStrategy()
 
     def call_unet(self, args, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype):
@@ -84,10 +81,10 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
         return noise_pred
 
     def sample_images(
-        self, accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
+        self, accelerator, sampling_config, training_config, saving_config, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
     ):
         sample_images(
-            accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
+            accelerator, sampling_config, training_config, saving_config, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
         )
 
     def save_weights(self, file, updated_embs, save_dtype, metadata):
@@ -124,18 +121,11 @@ class SdxlTextualInversionTrainer(train_textual_inversion.TextualInversionTraine
         return [emb_l, emb_g]
 
 
-def setup_parser() -> argparse.ArgumentParser:
-    parser = train_textual_inversion.setup_parser()
-    add_sdxl_training_arguments(parser, support_text_encoder_caching=False)
-    return parser
+@hydra.main(config_path="../configs", config_name="sdxl_textual_inversion", version_base=None)
+def main(config: SDXLTextualInversionConfig):
+    trainer = SdxlTextualInversionTrainer()
+    trainer.train(config)
 
 
 if __name__ == "__main__":
-    parser = setup_parser()
-
-    args = parser.parse_args()
-    verify_command_line_training_args(args)
-    args = read_config_from_file(args, parser)
-
-    trainer = SdxlTextualInversionTrainer()
-    trainer.train(args)
+    main()

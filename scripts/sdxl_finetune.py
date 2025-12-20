@@ -34,7 +34,7 @@ from library.training.model_prep import replace_unet_modules, patch_accelerator_
 from library.training.optimizer import get_optimizer, get_scheduler_fix
 from library.training.trainer_utils import append_lr_to_logs_with_names, prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
-from library.config.dataclasses.config import SDXLFineTuningConfig
+from library.config.dataclasses.sdxl_finetune import SDXLFineTuningConfig
 
 from dataclasses import asdict
 from library.config.config_util import (
@@ -109,7 +109,7 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
     append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="config")
+@hydra.main(version_base=None, config_path="../configs", config_name="sdxl_finetune")
 def train(cfg: SDXLFineTuningConfig):
     if cfg.training.dry_run:
         print("Dry run completed successfully.")

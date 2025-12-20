@@ -1,5 +1,5 @@
 import os
-import argparse
+from typing import Any
 import asyncio
 import json
 import hashlib
@@ -10,7 +10,7 @@ import logging
 import safetensors.torch
 import torch
 
-from typing import Optional
+from typing import Optional, Any
 from io import BytesIO
 from huggingface_hub import hf_hub_download
 
@@ -169,7 +169,7 @@ def build_minimum_network_metadata(
 
 def get_sai_model_spec(
         state_dict: dict,
-        args: argparse.Namespace,
+        args: Any,
         sdxl: bool,
         lora: bool,
         textual_inversion: bool,
@@ -244,7 +244,7 @@ def get_sai_model_spec(
 
 def get_sai_model_spec_dataclass(
         state_dict: dict,
-        args: argparse.Namespace,
+        args: Any,
         sdxl: bool,
         lora: bool,
         textual_inversion: bool,

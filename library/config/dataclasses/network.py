@@ -17,7 +17,7 @@ class NetworkConfig:
     base_weights_multiplier: Optional[List[float]] = field(default=None, metadata={"help": "multiplier for network weights to merge into the model before training"})
     training_comment: Optional[str] = field(default=None, metadata={"help": "arbitrary comment string stored in metadata"})
 
-    # These were in train_network.py args but seem network related
+    # These were in sd_peft.py args but seem network related
     use_ramtorch: bool = field(default=False, metadata={"help": "Use RamTorch to reduce GPU memory usage by keeping model weights on CPU."})
     direct_ramtorch: bool = field(default=False, metadata={"help": "Train orig weights in lyco full module and save diff instead of keep both."})
 

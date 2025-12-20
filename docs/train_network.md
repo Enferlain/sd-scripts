@@ -70,7 +70,7 @@ Training is started by executing `train_network.py` from the terminal. When exec
 Below is a basic command-line execution example:
 
 ```bash
-accelerate launch --num_cpu_threads_per_process 1 train_network.py 
+accelerate launch --num_cpu_threads_per_process 1 sd_peft.py 
  --pretrained_model_name_or_path="<path to Stable Diffusion model>" 
  --dataset_config="my_dataset_config.toml" 
  --output_dir="<output directory for training results>" 
