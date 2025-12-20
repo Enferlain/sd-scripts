@@ -334,14 +334,13 @@ def stable_smooth_l1_loss(predictions, targets, reduction: str = 'mean', beta=1.
     # Where diff < beta, use quadratic form
     quadratic = 0.5 * diff.pow(2) / beta
 
-    # Add eps to address underflows due to squaring
-    loss = quadratic.add(eps)
-
     # Where diff >= beta, use linear form
     linear = diff - 0.5 * beta
 
     # Combine the two parts based on the condition
-    loss = torch.where(condition, quadratic, linear)
+    # FIX: Add eps to the quadratic term specifically to prevent underflow during squaring.
+    # We do this inside torch.where (or by updating 'quadratic' first) so it isn't lost.
+    loss = torch.where(condition, quadratic.add(eps), linear)
 
     # Return loss
     if reduction == "mean":

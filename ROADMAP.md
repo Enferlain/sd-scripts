@@ -17,6 +17,11 @@
    - ~~`library/data/dataset.py` - Dataset loading and bucketing~~ ✅ Complete (Unit tests only)
    - ~~`library/data/data_structures.py` - Data structures and batching~~ ✅ Complete
    - `library/data/image_utils.py` - Image preprocessing
+   - ~~`library/utils/common_utils.py`~~ ✅ Complete (Tested `str_to_dtype`, `size`, `GradualLatent`)
+   - ~~`library/utils/safetensors_utils.py`~~ ✅ Complete (Tested I/O, metadata, large tensors)
+   - ~~`library/losses/loss.py`~~ ✅ Complete (Tested stable losses, fixed bugs in SmoothL1)
+   - `library/losses/loss_weighting.py` - SNR weighting logic
+   - `library/timestep_samplers/` - Sampler initialization and step logic
 3. **Integration Tests** - Validate full workflows
    - **Data Loading**: `dataset.py` caching methods (`cache_latents`, `cache_text_encoder_outputs`) and image loading (requires filesystem/GPU mocks)
    - End-to-end config → training setup
@@ -55,3 +60,5 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 - `prompt_utils.py` - `get_prompts_with_weights()`, `get_weighted_text_embeddings()` - need tokenizer mocks
 - `dataset.py` - `cache_latents()`, `register_image()`, `__getitem__` - requires filesystem and VAE interaction mocks
 - `data_structures.py` - `BucketManager.make_buckets()`, `AugHelper.color_aug()` - depends on model_util and OpenCV/randomness
+- ~~`safetensors_utils.py` - `mem_eff_save_file`, `load_safetensors` - requires temporary file creation/cleanup~~ ✅ Complete
+- ~~`common_utils.py` - `swap_weight_devices` - requires CUDA context/mocks~~ ✅ Complete
