@@ -2,7 +2,7 @@ defaults:
   - optimizer: default
   - dataset: default
   - buckets: default
-  - sd_models: default
+  - model: default
   - network: default
   - masked_loss: default
   - training: default

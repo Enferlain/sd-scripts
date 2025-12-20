@@ -36,18 +36,7 @@ from library.training.checkpointing import (
     save_sd_model_on_train_end
 )
 
-from library.config.arguments import (
-    verify_training_args,
-    prepare_dataset_args,
-    get_sanitized_config_or_none,
-    add_sd_models_arguments,
-    add_dataset_arguments,
-    add_training_arguments,
-    add_sd_saving_arguments,
-    add_optimizer_arguments,
-    verify_command_line_training_args,
-    read_config_from_file
-)
+
 
 from library.training.noise_utils import (
     fix_noise_scheduler_betas_for_zero_terminal_snr,
@@ -60,7 +49,7 @@ from library.losses.loss_weighting import (
     scale_v_prediction_loss_like_noise_prediction,
 )
 
-from library.config.dataclasses.sd_finetune import FineTuneConfig
+from library.config.dataclasses.sd_finetune import SDFineTuneConfig
 
 init_ipex()
 
@@ -68,11 +57,11 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def train(config: FineTuneConfig):
+def train(config: SDFineTuneConfig):
     ft_config = config.fine_tune
     training_config = config.training
     dataset_config = config.dataset
-    sd_models_config = config.sd_models
+    model_config = config.model
     optimizer_config = config.optimizer
     saving_config = config.saving
 
@@ -84,7 +73,7 @@ def train(config: FineTuneConfig):
 
     args_set_seed(training_config)
 
-    tokenize_strategy = strategy_sd.SdTokenizeStrategy(sd_models_config.v2, training_config.max_token_length, sd_models_config.tokenizer_cache_dir)
+    tokenize_strategy = strategy_sd.SdTokenizeStrategy(model_config.v2, training_config.max_token_length, model_config.tokenizer_cache_dir)
     strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
 
     if cache_latents:
@@ -125,16 +114,16 @@ def train(config: FineTuneConfig):
     accelerator = prepare_accelerator(training_config)
 
     weight_dtype, save_dtype = prepare_dtype(training_config)
-    vae_dtype = torch.float32 if sd_models_config.no_half_vae else weight_dtype
+    vae_dtype = torch.float32 if model_config.no_half_vae else weight_dtype
 
-    text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(sd_models_config, config.performance, weight_dtype, accelerator)
+    text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(model_config, config.performance, weight_dtype, accelerator)
 
     if load_stable_diffusion_format:
-        src_stable_diffusion_ckpt = sd_models_config.pretrained_model_name_or_path
+        src_stable_diffusion_ckpt = model_config.pretrained_model_name_or_path
         src_diffusers_model_path = None
     else:
         src_stable_diffusion_ckpt = None
-        src_diffusers_model_path = sd_models_config.pretrained_model_name_or_path
+        src_diffusers_model_path = model_config.pretrained_model_name_or_path
 
     if saving_config.save_model_as is None:
         save_stable_diffusion_format = load_stable_diffusion_format
@@ -355,7 +344,7 @@ def train(config: FineTuneConfig):
                 with accelerator.autocast():
                     noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
 
-                if sd_models_config.v_parameterization:
+                if config.loss.v_parameterization:
                     target = noise_scheduler.get_velocity(latents, noise, timesteps)
                 else:
                     target = noise
@@ -366,11 +355,11 @@ def train(config: FineTuneConfig):
                     loss = loss.mean([1, 2, 3])
 
                     if training_config.min_snr_gamma:
-                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, training_config.min_snr_gamma, sd_models_config.v_parameterization)
+                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, training_config.min_snr_gamma, config.loss.v_parameterization)
                     if training_config.scale_v_pred_loss_like_noise_pred:
                         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
                     if training_config.debiased_estimation_loss:
-                        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, sd_models_config.v_parameterization)
+                        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, config.loss.v_parameterization)
 
                     loss = loss.mean()
                 else:
@@ -497,7 +486,7 @@ def train(config: FineTuneConfig):
 
 
 @hydra.main(config_path="../configs", config_name="sd_finetune", version_base=None)
-def main(config: FineTuneConfig):
+def main(config: SDFineTuneConfig):
     train(config)
 
 

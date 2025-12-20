@@ -3,7 +3,7 @@ import logging
 import torch
 import hydra
 from hydra.core.config_store import ConfigStore
-from library.config.dataclasses.sdxl_peft import SDXLTrainNetworkConfig
+from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 
 from typing import List, Optional, Union
 from accelerate import Accelerator
@@ -16,7 +16,7 @@ from library.constants import VAE_SCALE_FACTOR, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl_model_util import get_size_embeddings
 from library.strategies import strategy_sdxl, strategy_sd
 from library.models.text_encoder_util import get_hidden_states_sdxl
-from library.config.arguments import verify_command_line_training_args, read_config_from_file
+
 from library.training.sdxl_model_prep import load_target_model
 from library.training.sdxl_sample_generation import sample_images
 from library.utils.common_utils import setup_logging
@@ -46,13 +46,13 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
         # args = ArgsAdapter(cfg) # Removed
         # verify_sdxl_training_args(args) # Removed
 
-        if cfg.sdxl_training.cache_text_encoder_outputs:
+        if cfg.sdxl.cache_text_encoder_outputs:
             assert (
                 train_dataset_group.is_text_encoder_output_cacheable()
             ), "when caching Text Encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used / Text Encoderの出力をキャッシュするときはcaption_dropout_rate, shuffle_caption, token_warmup_step, caption_tag_dropout_rateは使えません"
 
         assert (
-            cfg.network.network_train_unet_only or not cfg.sdxl_training.cache_text_encoder_outputs
+            cfg.network.network_train_unet_only or not cfg.sdxl.cache_text_encoder_outputs
         ), "network for Text Encoder cannot be trained with caching Text Encoder outputs / Text Encoderの出力をキャッシュしながらText Encoderのネットワークを学習することはできません"
 
         train_dataset_group.verify_bucket_reso_steps(32)
@@ -75,7 +75,7 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
         self.logit_scale = logit_scale
         self.ckpt_info = ckpt_info
 
-        if cfg.network.use_ramtorch:
+        if cfg.performance.use_ramtorch:
             logger.info("Applying RamTorch to SDXL UNet, VAE, and Text Encoders.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
@@ -102,7 +102,7 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
 
     def get_tokenize_strategy(self, cfg):
         
-        return strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.sd_models.tokenizer_cache_dir)
+        return strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy):
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
@@ -122,9 +122,9 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
 
     def get_text_encoder_outputs_caching_strategy(self, cfg):
         
-        if cfg.sdxl_training.cache_text_encoder_outputs:
+        if cfg.sdxl.cache_text_encoder_outputs:
             return strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.sdxl_training.cache_text_encoder_outputs_to_disk, None, cfg.dataset.skip_cache_check, is_weighted=cfg.dataset.weighted_captions
+                cfg.sdxl.cache_text_encoder_outputs_to_disk, None, cfg.dataset.skip_cache_check, is_weighted=cfg.dataset.weighted_captions
             )
         else:
             return None
@@ -132,7 +132,7 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
     def cache_text_encoder_outputs_if_needed(
         self, cfg, accelerator: Accelerator, unet, vae, text_encoders, dataset: DatasetGroup, weight_dtype
     ):
-        if cfg.sdxl_training.cache_text_encoder_outputs:
+        if cfg.sdxl.cache_text_encoder_outputs:
             if not cfg.performance.lowram:
                 # メモリ消費を減らす
                 logger.info("move vae and unet to cpu to save memory")
@@ -257,10 +257,10 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
 
 # Register the structure config with Hydra
 cs = ConfigStore.instance()
-cs.store(name="sdxl_peft", node=SDXLTrainNetworkConfig)
+cs.store(name="sdxl_peft", node=SDXLPeftConfig)
 
 @hydra.main(version_base=None, config_path="../configs", config_name="sdxl_peft")
-def main(cfg: SDXLTrainNetworkConfig):
+def main(cfg: SDXLPeftConfig):
     trainer = SdxlNetworkTrainer()
     trainer.train(cfg)
 

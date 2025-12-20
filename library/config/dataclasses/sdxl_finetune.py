@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from .training import TrainingConfig
 from .optimizer import OptimizerConfig
 from .dataset import DatasetConfig
-from .sd_models import SDModelsConfig
-from .sdxl_training import SDXLTrainingConfig
+from .model import ModelConfig
+from .sdxl import SDXLConfig
 from .saving import SavingConfig
 from .huggingface import HuggingFaceConfig
 from .logging import LoggingConfig
@@ -18,7 +18,7 @@ from .metadata import MetadataConfig
 
 
 @dataclass
-class SDXLTrainConfig:
+class SDXLFineTuneConfig:
     """Root configuration for SDXL fine-tuning training.
     
     This is the main config used by scripts/sdxl_finetune.py.
@@ -26,8 +26,8 @@ class SDXLTrainConfig:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
-    sd_models: SDModelsConfig = field(default_factory=SDModelsConfig)
-    sdxl_training: SDXLTrainingConfig = field(default_factory=SDXLTrainingConfig)
+    sd_models: ModelConfig = field(default_factory=ModelConfig)
+    sdxl: SDXLConfig = field(default_factory=SDXLConfig)
     saving: SavingConfig = field(default_factory=SavingConfig)
     huggingface: HuggingFaceConfig = field(default_factory=HuggingFaceConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
@@ -39,7 +39,3 @@ class SDXLTrainConfig:
     masked_loss: MaskedLossConfig = field(default_factory=MaskedLossConfig)
     buckets: BucketsConfig = field(default_factory=BucketsConfig)
     metadata: MetadataConfig = field(default_factory=MetadataConfig)
-
-
-# Backwards compatibility alias - deprecated, will be removed
-SDXLFineTuningConfig = SDXLTrainConfig

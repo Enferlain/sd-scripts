@@ -17,9 +17,5 @@ class SavingConfig:
     save_state: bool = False
     save_state_on_train_end: bool = False
     resume: Optional[str] = None
-    resume_from_huggingface: bool = False
-    huggingface_repo_id: Optional[str] = None
-    huggingface_token: Optional[str] = None
-    huggingface_repo_type: Optional[str] = None
     save_model_as: Optional[str] = None
     use_safetensors: bool = False

@@ -1,8 +1,8 @@
 defaults:
   - optimizer: default
   - dataset: default
-  - sd_models: default
-  - sdxl_training: default
+  - model: default
+  - sdxl: default
   - masked_loss: default
   - training: default
   - saving: default

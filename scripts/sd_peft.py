@@ -53,18 +53,18 @@ from library.timestep_samplers.tempered_adaptive_sampler import TemperedAdaptive
 from library.timestep_samplers.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
 from library.timestep_samplers.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
 
-from library.utils.config_util import (
+from library.config.config_util import (
     BlueprintGenerator,
 )
 
-from library.config.dataclasses.sd_peft import TrainNetworkConfig
+from library.config.dataclasses.sd_peft import SDPeftConfig
 from library.config.dataclasses.optimizer import OptimizerConfig
 from library.config.dataclasses.dataset import DatasetConfig
 from library.config.dataclasses.network import NetworkConfig
-from library.config.dataclasses.sd_models import SDModelsConfig
+from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.performance import PerformanceConfig
-from library.config.dataclasses.sdxl_peft import SDXLTrainNetworkConfig
+from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 
 from library.training.checkpointing import (
     get_sai_model_spec,
@@ -334,9 +334,9 @@ class NetworkTrainer:
             val_dataset_group.verify_bucket_reso_steps(64)
 
     def load_target_model(self, cfg, weight_dtype, accelerator) -> tuple[str, nn.Module, nn.Module, Optional[nn.Module]]:
-        text_encoder, vae, unet, _ = load_target_model(cfg.sd_models, cfg.performance, weight_dtype, accelerator)
+        text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance, weight_dtype, accelerator)
 
-        if cfg.network.use_ramtorch:
+        if cfg.performance.use_ramtorch:
             logger.info("Applying RamTorch to SD UNet, VAE, and Clip-L.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
@@ -355,13 +355,13 @@ class NetworkTrainer:
         if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
             vae.set_use_memory_efficient_attention_xformers(cfg.performance.xformers)
 
-        return model_util.get_model_version_str_for_sd1_sd2(cfg.sd_models.v2, cfg.training.v_parameterization), text_encoder, vae, unet
+        return model_util.get_model_version_str_for_sd1_sd2(cfg.model.v2, cfg.loss.v_parameterization), text_encoder, vae, unet
 
     def load_unet_lazily(self, cfg, weight_dtype, accelerator, text_encoders) -> tuple[nn.Module, List[nn.Module]]:
         raise NotImplementedError()
 
     def get_tokenize_strategy(self, cfg):
-        return strategy_sd.SdTokenizeStrategy(cfg.sd_models.v2, cfg.training.max_token_length, cfg.sd_models.tokenizer_cache_dir)
+        return strategy_sd.SdTokenizeStrategy(cfg.model.v2, cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sd.SdTokenizeStrategy) -> List[Any]:
         return [tokenize_strategy.tokenizer]
@@ -484,7 +484,7 @@ class NetworkTrainer:
                 weight_dtype,
             )
 
-        if cfg.training.v_parameterization:
+        if cfg.loss.v_parameterization:
             # v-parameterization training
             target = noise_scheduler.get_velocity(latents, noise, timesteps)
         else:
@@ -518,13 +518,13 @@ class NetworkTrainer:
 
     def post_process_loss(self, loss, cfg, timesteps: torch.IntTensor, noise_scheduler) -> torch.FloatTensor:
         if cfg.loss.min_snr_gamma:
-            loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.min_snr_gamma, cfg.training.v_parameterization)
+            loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.min_snr_gamma, cfg.loss.v_parameterization)
         if cfg.loss.scale_v_pred_loss_like_noise_pred:
             loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
         if cfg.loss.v_pred_like_loss:
             loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.v_pred_like_loss)
         if cfg.loss.debiased_estimation_loss:
-            loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.training.v_parameterization)
+            loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
         return loss
 
     def get_sai_model_spec(self, cfg):
@@ -891,7 +891,6 @@ class NetworkTrainer:
                            vae_dtype, 
                            weight_dtype, 
                            accelerator, 
-                           accelerator, 
                            cfg, 
                            epoch,
                            batch=None,
@@ -936,7 +935,7 @@ class NetworkTrainer:
         return current_val_loss, average_val_loss, logs
 
 
-    def train(self, cfg: TrainNetworkConfig):
+    def train(self, cfg: SDPeftConfig):
         # Create adapter for legacy functions
         # Create adapter for legacy functions
         # args = ArgsAdapter(cfg) # Removed as part of refactor
@@ -1446,7 +1445,7 @@ class NetworkTrainer:
             "ss_network_dropout": cfg.network.network_dropout,  # some networks may not have dropout
             "ss_mixed_precision": cfg.performance.mixed_precision,
             "ss_full_fp16": bool(cfg.performance.full_fp16),
-            "ss_v2": bool(cfg.sd_models.v2),
+            "ss_v2": bool(cfg.model.v2),
             "ss_base_model_version": model_version,
             "ss_clip_skip": cfg.training.clip_skip,
             "ss_max_token_length": cfg.training.max_token_length,
@@ -1629,8 +1628,8 @@ class NetworkTrainer:
             metadata["ss_network_args"] = json.dumps(net_kwargs)
 
         # model name and hash
-        if cfg.sd_models.pretrained_model_name_or_path is not None:
-            sd_model_name = cfg.sd_models.pretrained_model_name_or_path
+        if cfg.model.pretrained_model_name_or_path is not None:
+            sd_model_name = cfg.model.pretrained_model_name_or_path
             if os.path.exists(sd_model_name):
                 metadata["ss_sd_model_hash"] = model_hash(sd_model_name)
                 metadata["ss_new_sd_model_hash"] = calculate_sha256(sd_model_name)
@@ -2363,10 +2362,10 @@ class NetworkTrainer:
 
 # Register the structure config with Hydra
 cs = ConfigStore.instance()
-cs.store(name="sd_peft", node=TrainNetworkConfig)
+cs.store(name="sd_peft", node=SDPeftConfig)
 
 @hydra.main(version_base=None, config_path="../configs", config_name="sd_peft")
-def main(cfg: TrainNetworkConfig):
+def main(cfg: SDPeftConfig):
     trainer = NetworkTrainer()
     trainer.train(cfg)
 

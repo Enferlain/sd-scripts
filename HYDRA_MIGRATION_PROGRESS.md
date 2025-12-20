@@ -2,6 +2,11 @@
 
 **Strategy:** Pure Hydra implementation. All scripts use `@hydra.main` with typed dataclass configs.
 
+## Refactor Updates (Dec 2025)
+
+- **Renamed `sdxl_training` -> `sdxl`**: To clarify distinction between generic training and SDXL-specific model settings.
+- **Legacy Cleanup**: Removed `library.config.arguments` and all `argparse` dependencies from migrated scripts.
+
 ## Script Status
 
 | Script                      | Config Class                 | Status      |
@@ -9,9 +14,9 @@
 | `sd_finetune.py`            | `FineTuneConfig`             | ✅ Complete |
 | `sd_textual_inversion.py`   | `TextualInversionConfig`     | ✅ Complete |
 | `sd_peft.py`                | `TrainNetworkConfig`         | ✅ Complete |
-| `sdxl_finetune.py`          | `SDXLFineTuningConfig`       | ✅ Complete |
+| `sdxl_finetune.py`          | `SDXLFineTuneConfig`         | ✅ Complete |
 | `sdxl_textual_inversion.py` | `SDXLTextualInversionConfig` | ✅ Complete |
-| `sdxl_peft.py`              | `SDXLTrainNetworkConfig`     | ✅ Complete |
+| `sdxl_peft.py`              | `SDXLPeftConfig`             | ✅ Complete |
 
 ## Naming Convention
 
@@ -36,7 +41,7 @@
 
 ## Next Steps
 
-1. **Config Audit** - Review for duplicate/misplaced settings across configs
+1. ~~**Config Audit** - Review for duplicate/misplaced settings across configs~~ ✅ Complete
 2. **Testing Infrastructure** - Add pytest tests for config instantiation
 3. **Documentation** - Update README with new script names
 

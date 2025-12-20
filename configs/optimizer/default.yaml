@@ -14,3 +14,5 @@ lr_scheduler_power: 1.0
 fused_backward_pass: false
 lr_scheduler_timescale: null
 lr_scheduler_min_lr_ratio: null
+optimizer_schedulefree_wrapper: false
+schedulefree_wrapper_args: null

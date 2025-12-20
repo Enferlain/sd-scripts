@@ -6,7 +6,6 @@ from typing import Optional
 class TrainingConfig:
     train_batch_size: int = 1
     max_token_length: Optional[int] = None
-    vae: Optional[str] = None
     max_train_steps: int = 1600
     max_train_epochs: Optional[int] = None
     max_data_loader_n_workers: int = 8
@@ -24,4 +23,4 @@ class TrainingConfig:
     initial_epoch: Optional[int] = field(default=None, metadata={"help": "initial epoch number"})
     initial_step: Optional[int] = field(default=None, metadata={"help": "initial step number including all epochs"})
     skip_until_initial_step: bool = field(default=False, metadata={"help": "skip training until initial_step is reached"})
-    v_parameterization: bool = field(default=False, metadata={"help": "enable v-parameterization training"})
+

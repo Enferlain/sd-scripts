@@ -11,8 +11,19 @@ scale_weight_norms: null
 base_weights: null
 base_weights_multiplier: null
 training_comment: null
-use_ramtorch: false
-direct_ramtorch: false
 unet_lr: null
 text_encoder_lr: null
-orthograd_targets: ["lora_down.weight", "lora_up.weight", "lora_down1.weight", "lora_up1.weight", "lora_down2.weight", "lora_up2.weight", "a1.weight", "a2.weight", "b1.weight", "b2.weight", "c1.weight"]
+orthograd_targets:
+  [
+    "lora_down.weight",
+    "lora_up.weight",
+    "lora_down1.weight",
+    "lora_up1.weight",
+    "lora_down2.weight",
+    "lora_up2.weight",
+    "a1.weight",
+    "a2.weight",
+    "b1.weight",
+    "b2.weight",
+    "c1.weight",
+  ]

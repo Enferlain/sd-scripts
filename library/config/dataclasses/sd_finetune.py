@@ -4,7 +4,7 @@ from .training import TrainingConfig
 from .optimizer import OptimizerConfig
 from .dataset import DatasetConfig
 from .buckets import BucketsConfig
-from .sd_models import SDModelsConfig
+from .model import ModelConfig
 from .saving import SavingConfig
 from .huggingface import HuggingFaceConfig
 from .logging import LoggingConfig
@@ -17,21 +17,21 @@ from .masked_loss import MaskedLossConfig
 from .metadata import MetadataConfig
 
 @dataclass
-class FineTuneSpecificConfig:
+class SDFineTuneSpecificConfig:
     """Fine-tuning specific configuration."""
     diffusers_xformers: bool = False
     train_text_encoder: bool = False
     learning_rate_te: Optional[float] = None
 
 @dataclass
-class FineTuneConfig:
+class SDFineTuneConfig:
     """Root configuration for fine-tuning training."""
-    fine_tune: FineTuneSpecificConfig = field(default_factory=FineTuneSpecificConfig)
+    fine_tune: SDFineTuneSpecificConfig = field(default_factory=SDFineTuneSpecificConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     buckets: BucketsConfig = field(default_factory=BucketsConfig)
-    sd_models: SDModelsConfig = field(default_factory=SDModelsConfig)
+    sd_models: ModelConfig = field(default_factory=ModelConfig)
     saving: SavingConfig = field(default_factory=SavingConfig)
     huggingface: HuggingFaceConfig = field(default_factory=HuggingFaceConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)

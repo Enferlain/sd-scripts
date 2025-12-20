@@ -48,3 +48,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Type hints in `config_util.py` - replaced string hint `"RootConfig"` with proper Protocol class
+
+- **Config Audit Cleanup**
+
+  - Removed duplicate `logging_dir` from `PerformanceConfig` (canonical: `LoggingConfig`)
+  - Removed duplicate `vae` from `TrainingConfig` (canonical: `ModelConfig`)
+  - Removed duplicate HuggingFace fields from `SavingConfig` (canonical: `HuggingFaceConfig`)
+  - Fixed `sdxl_peft.py` to use `ModelConfig` instead of `ModelLoadingConfig`
+  - Added missing `BucketsConfig` to `SDXLPeftConfig`
+  - Removed orphan `v_parameterization` from `sd_models/default.yaml`
+  - Added missing `optimizer_schedulefree_wrapper` fields to `optimizer/default.yaml`
+  - Removed unused `NetworkConfig` import from `sd_textual_inversion.py`
+  - Renamed `test_train_network_config.py` to `test_sd_peft_config.py`
+
+- **SDXL Configuration Refactoring**
+
+  - Renamed `sdxl_training` config group to `sdxl`
+  - Renamed `configs/sdxl_training` directory to `configs/sdxl`
+  - Renamed `SDXLTrainingConfig` to `SDXLConfig` in `library/config/dataclasses/sdxl.py`
+  - Updates to `sdxl_finetune.py` and `sdxl_peft.py` to use explicit dataclass fields instead of inheritance
+  - Fixed duplicate arguments and import errors in `sd_peft.py` and `sdxl_model_prep.py`
+  - Removed legacy `library.config.arguments` usage from `sdxl_peft.py`, `sd_finetune.py`, and `sd_textual_inversion.py`
+  - Fixed double `@dataclass` decorator in `library/config/dataclasses/model.py`
+
+- **Model Config Refactor**
+  - Renamed config group `sd_models` to `model`
+  - Merged `SDModelsConfig` and `ModelLoadingConfig` into `ModelConfig` in `library/config/dataclasses/model.py`
+  - Moved `v_parameterization` from `SDModelsConfig` to `LossConfig` (and updated scripts to use `config.loss.v_parameterization`)
+  - Moved `vae` and `vae_conv2d_padding_mode` from `TrainingConfig`/`SDModelsConfig` to `ModelConfig`
+  - Moved `use_ramtorch` and `direct_ramtorch` from `NetworkConfig` to `PerformanceConfig`
+  - Updated all scripts and YAMLs to reflect these changes

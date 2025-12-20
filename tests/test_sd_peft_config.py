@@ -4,13 +4,13 @@ from omegaconf import OmegaConf
 import pytest
 import os
 
-def test_train_network_config_loading():
+def test_sd_peft_config_loading():
     GlobalHydra.instance().clear()
-    # Use absolute path to be safe in this environment
-    abs_config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../configs"))
+    # Use absolute path for config
+    config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../configs"))
 
-    with hydra.initialize(version_base=None, config_path="../configs"):
-        cfg = hydra.compose(config_name="train_network")
+    with hydra.initialize_config_dir(version_base=None, config_dir=config_path):
+        cfg = hydra.compose(config_name="sd_peft")
         assert cfg is not None
 
         # Check if key sections exist

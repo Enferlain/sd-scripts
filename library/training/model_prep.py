@@ -9,7 +9,7 @@ from library.models import model_util
 from library.models.original_unet import UNet2DConditionModel
 from library.models.original_unet import UNet2DConditionModel
 from library.utils.device_utils import clean_memory_on_device
-from library.config.dataclasses.sd_models import SDModelsConfig, ModelLoadingConfig
+from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import PerformanceConfig
 
 logger = logging.getLogger(__name__)
@@ -155,7 +155,7 @@ def set_padding_mode_for_vae_conv2d_modules(vae: torch.nn.Module, padding_mode: 
                 module.padding_mode = padding_mode
 
 
-def _load_target_model(model_config: ModelLoadingConfig, v2: bool, weight_dtype, device="cpu", unet_use_linear_projection_in_v2=False):
+def _load_target_model(model_config: ModelConfig, v2: bool, weight_dtype, device="cpu", unet_use_linear_projection_in_v2=False):
     name_or_path = model_config.pretrained_model_name_or_path
     name_or_path = os.path.realpath(name_or_path) if os.path.islink(name_or_path) else name_or_path
     load_stable_diffusion_format = os.path.isfile(name_or_path)  # determine SD or Diffusers
@@ -205,7 +205,7 @@ def _load_target_model(model_config: ModelLoadingConfig, v2: bool, weight_dtype,
     return text_encoder, vae, unet, load_stable_diffusion_format
 
 
-def load_target_model(model_config: SDModelsConfig, performance_config: PerformanceConfig, weight_dtype, accelerator, unet_use_linear_projection_in_v2=False):
+def load_target_model(model_config: ModelConfig, performance_config: PerformanceConfig, weight_dtype, accelerator, unet_use_linear_projection_in_v2=False):
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
             logger.info(

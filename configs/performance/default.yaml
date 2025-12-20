@@ -15,6 +15,8 @@ lowram: false
 highvram: false
 disable_cuda_reduced_precision_operations: false
 enable_cuda_reduced_precision_operations: false
+use_ramtorch: false
+direct_ramtorch: false
 deepspeed:
   deepspeed: false
   zero_stage: 2

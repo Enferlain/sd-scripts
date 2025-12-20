@@ -37,16 +37,7 @@ from library.config.config_util import (
     generate_dreambooth_subsets_config_by_subdirs,
 )
 
-from library.config.arguments import (
-    verify_training_args,
-    prepare_dataset_args,
-    add_sd_models_arguments,
-    add_dataset_arguments,
-    add_training_arguments,
-    add_masked_loss_arguments,
-    add_optimizer_arguments,
-    verify_command_line_training_args,
-)
+
 
 from library.config.dataclasses.sd_textual_inversion import TextualInversionConfig
 
@@ -177,7 +168,7 @@ class TextualInversionTrainer:
         ti_config = config.textual_inversion
         training_config = config.training
         dataset_config = config.dataset
-        sd_models_config = config.sd_models
+        model_config = config.model
         optimizer_config = config.optimizer
         saving_config = config.saving
         
@@ -457,8 +448,8 @@ class TextualInversionTrainer:
                 state_dict=None,
                 metadata_config=config.metadata,
                 is_sdxl=self.is_sdxl,
-                is_v2=sd_models_config.v2,
-                v_parameterization=sd_models_config.v_parameterization,
+                is_v2=model_config.v2,
+                v_parameterization=config.loss.v_parameterization,
                 is_lora=False,
                 is_textual_inversion=True,
             )

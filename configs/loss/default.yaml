@@ -9,3 +9,4 @@ min_snr_gamma: null
 scale_v_pred_loss_like_noise_pred: false
 v_pred_like_loss: null
 debiased_estimation_loss: false
+v_parameterization: false

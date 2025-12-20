@@ -4,7 +4,7 @@ import torch
 
 from typing import Optional
 from accelerate import init_empty_weights
-from ..config.dataclasses.config import SDXLFineTuningConfig
+from ..config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
 from ..config.dataclasses.deepspeed import DeepSpeedConfig
 
 from library.utils.common_utils import setup_logging
@@ -17,7 +17,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def load_target_model(cfg: SDXLFineTuningConfig, accelerator, model_version: str, weight_dtype):
+def load_target_model(cfg: SDXLFineTuneConfig, accelerator, model_version: str, weight_dtype):
     model_dtype = match_mixed_precision(cfg.training, weight_dtype)
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
@@ -40,7 +40,7 @@ def load_target_model(cfg: SDXLFineTuningConfig, accelerator, model_version: str
                 weight_dtype,
                 accelerator.device if cfg.performance.lowram else "cpu",
                 model_dtype,
-                cfg.sdxl_training.disable_mmap_load_safetensors,
+                cfg.sdxl.disable_mmap_load_safetensors,
             )
 
             if cfg.performance.lowram:
@@ -56,7 +56,7 @@ def load_target_model(cfg: SDXLFineTuningConfig, accelerator, model_version: str
 
 
 def _load_target_model(
-        cfg: SDXLFineTuningConfig, name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype,
+        cfg: SDXLFineTuneConfig, name_or_path: str, vae_path: Optional[str], model_version: str, weight_dtype,
     device="cpu", model_dtype=None, disable_mmap=False
 ):
     name_or_path = os.readlink(name_or_path) if os.path.islink(name_or_path) else name_or_path

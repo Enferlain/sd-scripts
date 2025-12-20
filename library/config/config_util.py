@@ -13,7 +13,7 @@ from library.config.dataclasses.buckets import BucketsConfig
 class RootConfig(Protocol):
     """Protocol defining the expected structure for any training config passed to BlueprintGenerator.
     
-    All script-specific root configs (FineTuneConfig, TrainNetworkConfig, etc.) 
+    All script-specific root configs (SDFineTuneConfig, SDPeftConfig, etc.) 
     should satisfy this protocol.
     """
     dataset: DatasetConfig

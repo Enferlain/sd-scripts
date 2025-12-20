@@ -15,6 +15,7 @@ class LossConfig:
     scale_v_pred_loss_like_noise_pred: bool = False
     v_pred_like_loss: Optional[float] = None
     debiased_estimation_loss: bool = False
+    v_parameterization: bool = field(default=False, metadata={"help": "enable v-parameterization training"})
 
     # EDM2
     edm2_loss_weighting: bool = field(default=False, metadata={"help": "Use EDM2 loss weighting."})

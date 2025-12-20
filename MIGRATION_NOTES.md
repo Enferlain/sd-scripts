@@ -31,7 +31,7 @@ Existing dataclasses were updated to include missing arguments found in `train_n
 - **`PerformanceConfig`**: Added `cpu_offload_checkpointing`, `fp8_base_unet`, `no_half_vae`.
 - **`LoggingConfig`**: Added `live_plot_port`, `log_timestep_distribution_every_n_steps`.
 - **`LossConfig`**: Added EDM2 loss weighting arguments.
-- **`SDModelsConfig`**: Added `vae_conv2d_padding_mode`.
+- **`ModelConfig`**: Added `vae_conv2d_padding_mode`.
 
 ### 3. `scripts/train_network.py` Refactoring
 

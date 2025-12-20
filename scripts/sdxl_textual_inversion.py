@@ -31,7 +31,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         if val_dataset_group is not None:
             val_dataset_group.verify_bucket_reso_steps(32)
 
-    def load_target_model(self, sd_models_config, performance_config, weight_dtype, accelerator):
+    def load_target_model(self, model_config, performance_config, weight_dtype, accelerator):
         (
             load_stable_diffusion_format,
             text_encoder1,
@@ -40,7 +40,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
             unet,
             logit_scale,
             ckpt_info,
-        ) = load_target_model_sdxl(sd_models_config, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
+        ) = load_target_model_sdxl(model_config, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
 
         self.load_stable_diffusion_format = load_stable_diffusion_format
         self.logit_scale = logit_scale
@@ -48,8 +48,8 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
 
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
-    def get_tokenize_strategy(self, sd_models_config, training_config):
-        return strategy_sdxl.SdxlTokenizeStrategy(training_config.max_token_length, sd_models_config.tokenizer_cache_dir)
+    def get_tokenize_strategy(self, model_config, training_config):
+        return strategy_sdxl.SdxlTokenizeStrategy(training_config.max_token_length, model_config.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy):
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]

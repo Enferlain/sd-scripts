@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 @dataclass
-class SDXLTrainingConfig:
+class SDXLConfig:
     cache_text_encoder_outputs: bool = field(default=False, metadata={"help": "cache text encoder outputs"})
     cache_text_encoder_outputs_to_disk: bool = field(default=False, metadata={"help": "cache text encoder outputs to disk"})
     disable_mmap_load_safetensors: bool = field(default=False, metadata={"help": "disable mmap load for safetensors"})

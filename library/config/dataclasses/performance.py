@@ -25,5 +25,6 @@ class PerformanceConfig:
     highvram: bool = False
     disable_cuda_reduced_precision_operations: bool = False
     enable_cuda_reduced_precision_operations: bool = False
+    use_ramtorch: bool = field(default=False, metadata={"help": "Use RamTorch to reduce GPU memory usage by keeping model weights on CPU."})
+    direct_ramtorch: bool = field(default=False, metadata={"help": "Train orig weights in lyco full module and save diff instead of keep both."})
     deepspeed: DeepSpeedConfig = field(default_factory=DeepSpeedConfig)
-    logging_dir: Optional[str] = None
