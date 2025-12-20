@@ -16,3 +16,11 @@ class TrainingConfig:
     clip_skip: Optional[int] = None
     config_file: Optional[str] = None
     output_config: bool = False
+    validate_every_n_steps: Optional[int] = field(default=None, metadata={"help": "Run validation on validation dataset every N steps"})
+    validate_every_n_epochs: Optional[int] = field(default=None, metadata={"help": "Run validation on validation dataset every N epochs"})
+    max_validation_steps: Optional[int] = field(default=None, metadata={"help": "Max number of validation dataset items processed"})
+    validation_timesteps: str = field(default="[50, 350, 500, 650, 950]", metadata={"help": "A list of timesteps to use for each validation step"})
+    dry_run: bool = field(default=False, metadata={"help": "Run a dry run of the training process"})
+    initial_epoch: Optional[int] = field(default=None, metadata={"help": "initial epoch number"})
+    initial_step: Optional[int] = field(default=None, metadata={"help": "initial step number including all epochs"})
+    skip_until_initial_step: bool = field(default=False, metadata={"help": "skip training until initial_step is reached"})

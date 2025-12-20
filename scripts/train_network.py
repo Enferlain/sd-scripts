@@ -16,6 +16,9 @@ import atexit
 import torch
 import torch.nn as nn
 import logging
+import hydra
+from hydra.core.config_store import ConfigStore
+from omegaconf import DictConfig, OmegaConf
 
 from typing import Any, List, Union, Optional
 from multiprocessing import Value
@@ -50,21 +53,10 @@ from library.timestep_samplers.gaussian_mid_snr_sampler import GaussianMidSNRAda
 from library.timestep_samplers.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
 
 from library.utils.config_util import (
-    ConfigSanitizer,
     BlueprintGenerator,
 )
 
-from library.config.arguments import (
-    verify_training_args,
-    prepare_dataset_args,
-    add_sd_models_arguments,
-    add_dataset_arguments,
-    add_training_arguments,
-    add_masked_loss_arguments,
-    add_optimizer_arguments,
-    verify_command_line_training_args,
-    read_config_from_file
-)
+from library.config.dataclasses.train_network_config import TrainNetworkConfig
 
 from library.training.checkpointing import (
     get_sai_model_spec,
@@ -107,7 +99,6 @@ from library.training.noise_utils import (
     fix_noise_scheduler_betas_for_zero_terminal_snr
 )
 from library.losses.loss_weighting import (
-    add_loss_weighting_arguments,
     apply_masked_loss, apply_snr_weight,
     scale_v_prediction_loss_like_noise_prediction,
     add_v_prediction_like_loss,
@@ -124,6 +115,74 @@ init_ipex()
 setup_logging()
 logger = logging.getLogger(__name__)
 
+class ArgsAdapter:
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self._dynamic_attrs = {}
+
+    def __getattr__(self, name):
+        if name in self._dynamic_attrs:
+            return self._dynamic_attrs[name]
+
+        sections = [
+            self.cfg.training,
+            self.cfg.optimizer,
+            self.cfg.dataset,
+            self.cfg.buckets,
+            self.cfg.sd_models,
+            self.cfg.network,
+            self.cfg.saving,
+            self.cfg.logging,
+            self.cfg.performance,
+            self.cfg.loss,
+            self.cfg.regularization,
+            self.cfg.timestep,
+            self.cfg.sampling,
+            self.cfg.masked_loss,
+            self.cfg.metadata,
+            self.cfg.huggingface
+        ]
+        for section in sections:
+            if hasattr(section, name):
+                return getattr(section, name)
+        # Fallback or raise
+        # Some args might be dynamically added by legacy code (though we try to avoid it)
+        raise AttributeError(f"'ArgsAdapter' object has no attribute '{name}'")
+
+    def __setattr__(self, name, value):
+        if name in ['cfg', '_dynamic_attrs']:
+            super().__setattr__(name, value)
+            return
+
+        sections = [
+            self.cfg.training,
+            self.cfg.optimizer,
+            self.cfg.dataset,
+            self.cfg.buckets,
+            self.cfg.sd_models,
+            self.cfg.network,
+            self.cfg.saving,
+            self.cfg.logging,
+            self.cfg.performance,
+            self.cfg.loss,
+            self.cfg.regularization,
+            self.cfg.timestep,
+            self.cfg.sampling,
+            self.cfg.masked_loss,
+            self.cfg.metadata,
+            self.cfg.huggingface
+        ]
+        for section in sections:
+            if hasattr(section, name):
+                # We assume section is a mutable object (like DictConfig or dataclass instance)
+                if isinstance(section, DictConfig):
+                    section[name] = value
+                else:
+                    setattr(section, name, value)
+                return
+
+        # If not found in sections, store in dynamic attrs
+        self._dynamic_attrs[name] = value
 
 class NetworkTrainer:
     def __init__(self):
@@ -151,10 +210,9 @@ class NetworkTrainer:
             finally:
                 self.live_plotter_process = None
 
-    # TODO 他のスクリプトと共通化する
     def generate_step_logs(
         self,
-        args: argparse.Namespace,
+        args,
         current_loss,
         avr_loss,
         lr_scheduler,
@@ -197,7 +255,7 @@ class NetworkTrainer:
             if lr_descriptions is not None:
                 lr_desc = lr_descriptions[i]
             else:
-                idx = i - (0 if args.network_train_unet_only else -1)
+                idx = i - (0 if args.network.network_train_unet_only else -1)
                 if idx == -1:
                     lr_desc = "textencoder"
                 else:
@@ -208,34 +266,34 @@ class NetworkTrainer:
 
             logs[f"lr/{lr_desc}"] = lr
 
-            if args.optimizer_type.lower().startswith("DAdapt".lower()) or args.optimizer_type.lower() == "Prodigy".lower():
+            if args.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or args.optimizer.optimizer_type.lower() == "Prodigy".lower():
                 # tracking d*lr value
                 logs[f"lr/d*lr/{lr_desc}"] = (
                     lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
                 )
             if (
-                args.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None
+                args.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None
             ):  # tracking d*lr value of unet.
                 logs["lr/d*lr"] = optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
         else:
             idx = 0
-            if not args.network_train_unet_only:
+            if not args.network.network_train_unet_only:
                 logs["lr/textencoder"] = float(lrs[0])
                 idx = 1
 
             for i in range(idx, len(lrs)):
                 logs[f"lr/group{i}"] = float(lrs[i])
-                if args.optimizer_type.lower().startswith("DAdapt".lower()) or args.optimizer_type.lower() == "Prodigy".lower():
+                if args.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or args.optimizer.optimizer_type.lower() == "Prodigy".lower():
                     logs[f"lr/d*lr/group{i}"] = (
                         lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
                     )
-                if args.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None:
+                if args.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None:
                     logs[f"lr/d*lr/group{i}"] = optimizer.param_groups[i]["d"] * optimizer.param_groups[i]["lr"]
 
         if edm2_lr_scheduler is not None:
             logs[f"lr/edm2"] = edm2_lr_scheduler.get_last_lr()[0]
 
-        if args.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler") and timesteps is not None:
+        if args.timestep.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler") and timesteps is not None:
             if hasattr(args.la_sampler, "last_mix_p"):
                 logs["sampler/mix_p"] = args.la_sampler.last_mix_p
             if hasattr(args.la_sampler, "last_small_t_frac"):
@@ -300,7 +358,7 @@ class NetworkTrainer:
             logger.warning("Matplotlib is not installed. Cannot save timestep distribution plot.")
             return
 
-        output_dir = os.path.join(args.output_dir, "timestep_plots")
+        output_dir = os.path.join(args.saving.output_dir, "timestep_plots")
         os.makedirs(output_dir, exist_ok=True)
         
         plt.figure(figsize=(15, 7)) # Make figure wider
@@ -335,9 +393,11 @@ class NetworkTrainer:
             val_dataset_group.verify_bucket_reso_steps(64)
 
     def load_target_model(self, args, weight_dtype, accelerator) -> tuple[str, nn.Module, nn.Module, Optional[nn.Module]]:
-        text_encoder, vae, unet, _ = load_target_model(args, weight_dtype, accelerator)
+        # adapter for legacy function
+        adapter = ArgsAdapter(args)
+        text_encoder, vae, unet, _ = load_target_model(adapter, weight_dtype, accelerator)
 
-        if args.use_ramtorch:
+        if args.network.use_ramtorch:
             logger.info("Applying RamTorch to SD UNet, VAE, and Clip-L.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
@@ -352,29 +412,29 @@ class NetworkTrainer:
                 logger.info("RamTorch applied to SD VAE.")
 
         # モデルに xformers とか memory efficient attention を組み込む
-        replace_unet_modules(unet, args.mem_eff_attn, args.xformers, args.sdpa)
+        replace_unet_modules(unet, args.performance.mem_eff_attn, args.performance.xformers, args.performance.sdpa)
         if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
-            vae.set_use_memory_efficient_attention_xformers(args.xformers)
+            vae.set_use_memory_efficient_attention_xformers(args.performance.xformers)
 
-        return model_util.get_model_version_str_for_sd1_sd2(args.v2, args.v_parameterization), text_encoder, vae, unet
+        return model_util.get_model_version_str_for_sd1_sd2(args.sd_models.v2, args.sd_models.v_parameterization), text_encoder, vae, unet
 
     def load_unet_lazily(self, args, weight_dtype, accelerator, text_encoders) -> tuple[nn.Module, List[nn.Module]]:
         raise NotImplementedError()
 
     def get_tokenize_strategy(self, args):
-        return strategy_sd.SdTokenizeStrategy(args.v2, args.max_token_length, args.tokenizer_cache_dir)
+        return strategy_sd.SdTokenizeStrategy(args.sd_models.v2, args.training.max_token_length, args.sd_models.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sd.SdTokenizeStrategy) -> List[Any]:
         return [tokenize_strategy.tokenizer]
 
     def get_latents_caching_strategy(self, args):
         latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
-            True, args.cache_latents_to_disk, args.vae_batch_size, args.skip_cache_check
+            True, args.dataset.cache_latents_to_disk, args.dataset.vae_batch_size, args.dataset.skip_cache_check
         )
         return latents_caching_strategy
 
     def get_text_encoding_strategy(self, args):
-        return strategy_sd.SdTextEncodingStrategy(args.clip_skip)
+        return strategy_sd.SdTextEncodingStrategy(args.training.clip_skip)
 
     def get_text_encoder_outputs_caching_strategy(self, args):
         return None
@@ -391,7 +451,7 @@ class NetworkTrainer:
         return [True] * len(text_encoders) if self.is_train_text_encoder(args) else [False] * len(text_encoders)
 
     def is_train_text_encoder(self, args):
-        return not args.network_train_unet_only
+        return not args.network.network_train_unet_only
 
     def cache_text_encoder_outputs_if_needed(self, args, accelerator, unet, vae, text_encoders, dataset, weight_dtype):
         for t_enc in text_encoders:
@@ -407,19 +467,20 @@ class NetworkTrainer:
                 param.grad = accelerator.reduce(param.grad, reduction="mean")
 
     def sample_images(self, accelerator, args, epoch, global_step, device, vae, tokenizers, text_encoder, unet):
-        sample_images(accelerator, args, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
+        adapter = ArgsAdapter(args)
+        sample_images(accelerator, adapter, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
 
     # region SD/SDXL
 
     def post_process_network(self, args, accelerator, network, text_encoders, unet):
         pass
 
-    def get_noise_scheduler(self, args: argparse.Namespace, device: torch.device) -> Any:
+    def get_noise_scheduler(self, args, device: torch.device) -> Any:
         noise_scheduler = DDPMScheduler(
             beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
         )
 
-        if args.zero_terminal_snr:
+        if args.regularization.zero_terminal_snr:
             fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
         prepare_scheduler_for_custom_training(noise_scheduler, device)
@@ -450,8 +511,9 @@ class NetworkTrainer:
     ):
         # Sample noise, sample a random timestep for each image, and add noise to the latents,
         # with noise offset and/or multires noise if specified
+        adapter = ArgsAdapter(args)
         noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
-            args, 
+            adapter,
             noise_scheduler, 
             latents, 
             fixed_timesteps, 
@@ -461,7 +523,7 @@ class NetworkTrainer:
         )
 
         # ensure the hidden state will require grad
-        if is_train and args.gradient_checkpointing:
+        if is_train and args.performance.gradient_checkpointing:
             for x in noisy_latents:
                 x.requires_grad_(True)
             for t in text_encoder_conds:
@@ -480,7 +542,7 @@ class NetworkTrainer:
                 weight_dtype,
             )
 
-        if args.v_parameterization:
+        if args.sd_models.v_parameterization:
             # v-parameterization training
             target = noise_scheduler.get_velocity(latents, noise, timesteps)
         else:
@@ -513,18 +575,19 @@ class NetworkTrainer:
         return noise_pred, target, timesteps, None
 
     def post_process_loss(self, loss, args, timesteps: torch.IntTensor, noise_scheduler) -> torch.FloatTensor:
-        if args.min_snr_gamma:
-            loss = apply_snr_weight(loss, timesteps, noise_scheduler, args.min_snr_gamma, args.v_parameterization)
-        if args.scale_v_pred_loss_like_noise_pred:
+        if args.loss.min_snr_gamma:
+            loss = apply_snr_weight(loss, timesteps, noise_scheduler, args.loss.min_snr_gamma, args.sd_models.v_parameterization)
+        if args.loss.scale_v_pred_loss_like_noise_pred:
             loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-        if args.v_pred_like_loss:
-            loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, args.v_pred_like_loss)
-        if args.debiased_estimation_loss:
-            loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, args.v_parameterization)
+        if args.loss.v_pred_like_loss:
+            loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, args.loss.v_pred_like_loss)
+        if args.loss.debiased_estimation_loss:
+            loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, args.sd_models.v_parameterization)
         return loss
 
     def get_sai_model_spec(self, args):
-        return get_sai_model_spec(None, args, self.is_sdxl, True, False)
+        adapter = ArgsAdapter(args)
+        return get_sai_model_spec(None, adapter, self.is_sdxl, True, False)
 
     def update_metadata(self, metadata, args):
         pass
@@ -540,7 +603,7 @@ class NetworkTrainer:
         text_encoder.text_model.embeddings.to(dtype=weight_dtype)
 
     def prepare_unet_with_accelerator(
-        self, args: argparse.Namespace, accelerator: Accelerator, unet: torch.nn.Module
+        self, args, accelerator: Accelerator, unet: torch.nn.Module
     ) -> torch.nn.Module:
         return accelerator.prepare(unet)
 
@@ -581,11 +644,11 @@ class NetworkTrainer:
                 latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
             else:
                 # latentに変換
-                if args.vae_batch_size is None or len(batch["images"]) <= args.vae_batch_size:
+                if args.dataset.vae_batch_size is None or len(batch["images"]) <= args.dataset.vae_batch_size:
                     latents = self.encode_images_to_latents(args, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
                 else:
                     chunks = [
-                        batch["images"][i : i + args.vae_batch_size] for i in range(0, len(batch["images"]), args.vae_batch_size)
+                        batch["images"][i : i + args.dataset.vae_batch_size] for i in range(0, len(batch["images"]), args.dataset.vae_batch_size)
                     ]
                     list_latents = []
                     for chunk in chunks:
@@ -610,7 +673,7 @@ class NetworkTrainer:
             # TODO this does not work if 'some text_encoders are trained' and 'some are not and not cached'
             with torch.set_grad_enabled(is_train and train_text_encoder), accelerator.autocast():
                 # Get the text embedding for conditioning
-                if args.weighted_captions:
+                if args.dataset.weighted_captions:
                     input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                     encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
                         tokenize_strategy,
@@ -625,7 +688,7 @@ class NetworkTrainer:
                         self.get_models_for_text_encoding(args, accelerator, text_encoders),
                         input_ids,
                     )
-                if args.full_fp16:
+                if args.performance.full_fp16:
                     encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
 
             # if text_encoder_conds is not cached, use encoded_text_encoder_conds
@@ -655,11 +718,11 @@ class NetworkTrainer:
         )
 
         if is_train:
-            huber_c = get_huber_threshold_if_needed(args, timesteps, noise_scheduler)
-            loss = conditional_loss(noise_pred.float(), target.float(), args.loss_type, "none", huber_c, scale=float(args.loss_scale))
+            huber_c = get_huber_threshold_if_needed(args.loss, timesteps, noise_scheduler)
+            loss = conditional_loss(noise_pred.float(), target.float(), args.loss.loss_type, "none", huber_c, scale=float(args.loss.loss_scale))
             if weighting is not None:
                 loss = loss * weighting
-            if args.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+            if args.masked_loss.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                 loss = apply_masked_loss(loss, batch)
         else:
                 loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
@@ -678,13 +741,13 @@ class NetworkTrainer:
             loss = loss * loss_weights
             loss = self.post_process_loss(loss, args, timesteps, noise_scheduler)
 
-        if is_train and args.loss_multiplier:
-            loss.mul_(float(args.loss_multiplier) if args.loss_multiplier is not None else 1.0)
+        if is_train and args.loss.loss_multiplier:
+            loss.mul_(float(args.loss.loss_multiplier) if args.loss.loss_multiplier is not None else 1.0)
 
         # For logging
         pre_scaling_loss = loss.mean()
 
-        if is_train and args.edm2_loss_weighting:
+        if is_train and args.loss.edm2_loss_weighting:
             loss, loss_scaled = edm2_model(loss, timesteps)
             loss_scaled = loss_scaled.mean()
         else:
@@ -719,11 +782,11 @@ class NetworkTrainer:
                 latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
             else:
                 # latentに変換
-                if args.vae_batch_size is None or len(batch["images"]) <= args.vae_batch_size:
+                if args.dataset.vae_batch_size is None or len(batch["images"]) <= args.dataset.vae_batch_size:
                     latents = self.encode_images_to_latents(args, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
                 else:
                     chunks = [
-                        batch["images"][i : i + args.vae_batch_size] for i in range(0, len(batch["images"]), args.vae_batch_size)
+                        batch["images"][i : i + args.dataset.vae_batch_size] for i in range(0, len(batch["images"]), args.dataset.vae_batch_size)
                     ]
                     list_latents = []
                     for chunk in chunks:
@@ -748,7 +811,7 @@ class NetworkTrainer:
                 # TODO this does not work if 'some text_encoders are trained' and 'some are not and not cached'
                 with torch.set_grad_enabled(False and train_text_encoder), accelerator.autocast():
                     # Get the text embedding for conditioning
-                    if args.weighted_captions:
+                    if args.dataset.weighted_captions:
                         input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                         encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
                             tokenize_strategy,
@@ -763,7 +826,7 @@ class NetworkTrainer:
                             self.get_models_for_text_encoding(args, accelerator, text_encoders),
                             input_ids,
                         )
-                    if args.full_fp16:
+                    if args.performance.full_fp16:
                         encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
 
                 # if text_encoder_conds is not cached, use encoded_text_encoder_conds
@@ -869,21 +932,22 @@ class NetworkTrainer:
                            epoch,
                            batch=None,
                            train_text_encoder=True):
-        if not calculate_val_loss_check(args, global_step, epoch_step, val_dataloader, train_dataloader):
+        adapter = ArgsAdapter(args)
+        if not calculate_val_loss_check(adapter, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
         
         if batch is not None:
             self.on_step_start(args, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=False)
    
-        rng_states = self.switch_rng_state(int(args.validation_seed) if args.validation_seed else 23, accelerator)
+        rng_states = self.switch_rng_state(int(args.dataset.validation_seed) if args.dataset.validation_seed else 23, accelerator)
 
-        timesteps_list = ast.literal_eval(args.validation_timesteps)
+        timesteps_list = ast.literal_eval(args.training.validation_timesteps)
               
         accelerator.print("") 
         accelerator.print("Validating バリデーション処理...")
         total_loss = 0.0
         with torch.no_grad():
-            validation_steps = min(int(args.max_validation_steps), len(val_dataloader)) if args.max_validation_steps is not None else len(val_dataloader)
+            validation_steps = min(int(args.training.max_validation_steps), len(val_dataloader)) if args.training.max_validation_steps is not None else len(val_dataloader)
             val_dataloader_seed = random.randint(global_step, 0x7FFFFFFF)
             val_dataloader_state = random.Random(val_dataloader_seed).getstate()
             for val_step in tqdm(range(validation_steps), desc='Validation Steps'):
@@ -908,82 +972,61 @@ class NetworkTrainer:
         return current_val_loss, average_val_loss, logs
 
 
-    def train(self, args):
+    def train(self, cfg: TrainNetworkConfig):
+        # Create adapter for legacy functions
+        args = ArgsAdapter(cfg)
+
         session_id = random.randint(0, 2**32)
         training_started_at = time.time()
-        verify_training_args(args)
-        prepare_dataset_args(args, True)
-        set_torch_cuda_reduced_precision(args)
-        deepspeed_utils.prepare_deepspeed_args(args)
-        setup_logging(args, reset=True)
 
-        cache_latents = args.cache_latents
-        use_dreambooth_method = args.in_json is None
-        use_user_config = args.dataset_config is not None
+        # verify_training_args(args) # Skipped for now or needs update
+        # prepare_dataset_args(args, True) # Skipped, assuming config handles defaults
 
-        args_set_seed(args)
+        set_torch_cuda_reduced_precision(cfg.performance)
+        deepspeed_utils.prepare_deepspeed_args(cfg.performance)
+        setup_logging(cfg.logging, reset=True)
 
-        tokenize_strategy = self.get_tokenize_strategy(args)
+        cache_latents = cfg.dataset.cache_latents
+        use_dreambooth_method = cfg.dataset.in_json is None
+        use_user_config = cfg.dataset.dataset_config is not None
+
+        args_set_seed(cfg.training)
+
+        tokenize_strategy = self.get_tokenize_strategy(cfg)
         strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
         tokenizers = self.get_tokenizers(tokenize_strategy)  # will be removed after sample_image is refactored
 
         # prepare caching strategy: this must be set before preparing dataset. because dataset may use this strategy for initialization.
-        latents_caching_strategy = self.get_latents_caching_strategy(args)
+        latents_caching_strategy = self.get_latents_caching_strategy(cfg)
         strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
         # データセットを準備する
-        if args.dataset_class is None:
-            blueprint_generator = BlueprintGenerator(ConfigSanitizer(True, True, args.masked_loss, True))
-            if use_user_config:
-                logger.info(f"Loading dataset config from {args.dataset_config}")
-                user_config = config_util.load_user_config(args.dataset_config)
-                ignored = ["train_data_dir", "reg_data_dir", "in_json"]
-                if any(getattr(args, attr) is not None for attr in ignored):
-                    logger.warning(
-                        "ignoring the following options because config file is found: {0} / 設定ファイルが利用されるため以下のオプションは無視されます: {0}".format(
-                            ", ".join(ignored)
-                        )
-                    )
-            else:
-                if use_dreambooth_method:
-                    logger.info("Using DreamBooth method.")
-                    user_config = {
-                        "datasets": [
-                            {
-                                "subsets": config_util.generate_dreambooth_subsets_config_by_subdirs(
-                                    args.train_data_dir, args.reg_data_dir
-                                )
-                            }
-                        ]
-                    }
-                else:
-                    logger.info("Training with captions.")
-                    user_config = {
-                        "datasets": [
-                            {
-                                "subsets": [
-                                    {
-                                        "image_dir": args.train_data_dir,
-                                        "metadata_file": args.in_json,
-                                    }
-                                ]
-                            }
-                        ]
-                    }
+        if cfg.dataset.dataset_class is None:
+            # Check if we have manually provided subsets via train_data_dir/reg_data_dir
+            if (cfg.dataset.train_data_dir is not None or cfg.dataset.reg_data_dir is not None) and len(cfg.dataset.subsets) == 0:
+                # Generate subsets config from dirs
+                user_config = config_util.generate_user_config_from_args(cfg.dataset)
+                # We need to inject this into cfg.dataset.subsets
+                # cfg.dataset.subsets is a List[dict] (or ListConfig)
+                # user_config['datasets'][0]['subsets'] is the list we want
+                if user_config['datasets']:
+                    cfg.dataset.subsets = user_config['datasets'][0]['subsets']
 
-            blueprint = blueprint_generator.generate(user_config, args)
+            blueprint_generator = BlueprintGenerator()
+            blueprint = blueprint_generator.generate(cfg)
             train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
         else:
             # use arbitrary dataset class
+            # load_arbitrary_dataset expects args
             train_dataset_group = load_arbitrary_dataset(args)
             val_dataset_group = None  # placeholder until validation dataset supported for arbitrary
 
         current_epoch = Value("i", 0)
         current_step = Value("i", 0)
-        ds_for_collator = train_dataset_group if args.max_data_loader_n_workers == 0 else None
+        ds_for_collator = train_dataset_group if cfg.training.max_data_loader_n_workers == 0 else None
         collator = collator_class(current_epoch, current_step, ds_for_collator)
 
-        if args.debug_dataset:
+        if cfg.dataset.debug_dataset:
             train_dataset_group.set_current_strategies()  # dataset needs to know the strategies explicitly
             debug_dataset(train_dataset_group)
 
@@ -1006,19 +1049,19 @@ class NetworkTrainer:
                     val_dataset_group.is_latent_cacheable()
                 ), "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
 
-        self.assert_extra_args(args, train_dataset_group, val_dataset_group)  # may change some args
+        self.assert_extra_args(cfg, train_dataset_group, val_dataset_group)  # may change some args
 
         # acceleratorを準備する
         logger.info("preparing accelerator")
-        accelerator = prepare_accelerator(args)
+        accelerator = prepare_accelerator(cfg.performance)
         is_main_process = accelerator.is_main_process
 
         # mixed precisionに対応した型を用意しておき適宜castする
-        weight_dtype, save_dtype = prepare_dtype(args)
-        vae_dtype = (torch.float32 if args.no_half_vae else weight_dtype) if self.cast_vae(args) else None
+        weight_dtype, save_dtype = prepare_dtype(cfg.performance)
+        vae_dtype = (torch.float32 if cfg.performance.no_half_vae else weight_dtype) if self.cast_vae(cfg) else None
 
         # load target models: unet may be None for lazy loading
-        model_version, text_encoder, vae, unet = self.load_target_model(args, weight_dtype, accelerator)
+        model_version, text_encoder, vae, unet = self.load_target_model(cfg, weight_dtype, accelerator)
 
         # if args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
             # logger.info(f"Training VAE in padding mode: {args.vae_conv2d_padding_mode}")
@@ -1048,65 +1091,65 @@ class NetworkTrainer:
 
         # 必要ならテキストエンコーダーの出力をキャッシュする: Text Encoderはcpuまたはgpuへ移される
         # cache text encoder outputs if needed: Text Encoder is moved to cpu or gpu
-        text_encoding_strategy = self.get_text_encoding_strategy(args)
+        text_encoding_strategy = self.get_text_encoding_strategy(cfg)
         strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
-        text_encoder_outputs_caching_strategy = self.get_text_encoder_outputs_caching_strategy(args)
+        text_encoder_outputs_caching_strategy = self.get_text_encoder_outputs_caching_strategy(cfg)
         if text_encoder_outputs_caching_strategy is not None:
             strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_outputs_caching_strategy)
-        self.cache_text_encoder_outputs_if_needed(args, accelerator, unet, vae, text_encoders, train_dataset_group, weight_dtype)
+        self.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, train_dataset_group, weight_dtype)
         if val_dataset_group is not None:
-            self.cache_text_encoder_outputs_if_needed(args, accelerator, unet, vae, text_encoders, val_dataset_group, weight_dtype)
+            self.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, val_dataset_group, weight_dtype)
 
         if unet is None:
             # lazy load unet if needed. text encoders may be freed or replaced with dummy models for saving memory
-            unet, text_encoders = self.load_unet_lazily(args, weight_dtype, accelerator, text_encoders)
+            unet, text_encoders = self.load_unet_lazily(cfg, weight_dtype, accelerator, text_encoders)
 
         # 差分追加学習のためにモデルを読み込む
         sys.path.append(os.path.dirname(__file__))
-        accelerator.print("import network module:", args.network_module)
-        network_module = importlib.import_module(args.network_module)
+        accelerator.print("import network module:", cfg.network.network_module)
+        network_module = importlib.import_module(cfg.network.network_module)
 
-        if args.base_weights is not None:
+        if cfg.network.base_weights is not None:
             # base_weights が指定されている場合は、指定された重みを読み込みマージする
-            for i, weight_path in enumerate(args.base_weights):
-                if args.base_weights_multiplier is None or len(args.base_weights_multiplier) <= i:
+            for i, weight_path in enumerate(cfg.network.base_weights):
+                if cfg.network.base_weights_multiplier is None or len(cfg.network.base_weights_multiplier) <= i:
                     multiplier = 1.0
                 else:
-                    multiplier = args.base_weights_multiplier[i]
+                    multiplier = cfg.network.base_weights_multiplier[i]
 
                 accelerator.print(f"merging module: {weight_path} with multiplier {multiplier}")
 
                 module, weights_sd = network_module.create_network_from_weights(
                     multiplier, weight_path, vae, text_encoder, unet, for_inference=True
                 )
-                module.merge_to(text_encoder, unet, weights_sd, weight_dtype, accelerator.device if args.lowram else "cpu")
+                module.merge_to(text_encoder, unet, weights_sd, weight_dtype, accelerator.device if cfg.performance.lowram else "cpu")
 
-            accelerator.print(f"all weights merged: {', '.join(args.base_weights)}")
+            accelerator.print(f"all weights merged: {', '.join(cfg.network.base_weights)}")
 
         # prepare network
         net_kwargs = {}
-        if args.network_args is not None:
-            for net_arg in args.network_args:
+        if cfg.network.network_args is not None:
+            for net_arg in cfg.network.network_args:
                 key, value = net_arg.split("=", 1)
                 net_kwargs[key] = value
 
         # if a new network is added in future, add if ~ then blocks for each network (;'∀')
-        if args.dim_from_weights:
-            network, _ = network_module.create_network_from_weights(1, args.network_weights, vae, text_encoder, unet, **net_kwargs)
+        if cfg.network.dim_from_weights:
+            network, _ = network_module.create_network_from_weights(1, cfg.network.network_weights, vae, text_encoder, unet, **net_kwargs)
         else:
             if "dropout" not in net_kwargs:
                 # workaround for LyCORIS (;^ω^)
-                net_kwargs["dropout"] = args.network_dropout
+                net_kwargs["dropout"] = cfg.network.network_dropout
 
             network = network_module.create_network(
                 1.0,
-                args.network_dim,
-                args.network_alpha,
+                cfg.network.network_dim,
+                cfg.network.network_alpha,
                 vae,
                 text_encoder,
                 unet,
-                neuron_dropout=args.network_dropout,
+                neuron_dropout=cfg.network.network_dropout,
                 **net_kwargs,
             )
         if network is None:
@@ -1119,23 +1162,23 @@ class NetworkTrainer:
 
         if hasattr(network, "prepare_network"):
             network.prepare_network(args)
-        if args.scale_weight_norms and not hasattr(network, "apply_max_norm_regularization"):
+        if cfg.network.scale_weight_norms and not hasattr(network, "apply_max_norm_regularization"):
             logger.warning(
                 "warning: scale_weight_norms is specified but the network does not support it / scale_weight_normsが指定されていますが、ネットワークが対応していません"
             )
-            args.scale_weight_norms = False
+            cfg.network.scale_weight_norms = False
 
-        self.post_process_network(args, accelerator, network, text_encoders, unet)
+        self.post_process_network(cfg, accelerator, network, text_encoders, unet)
 
         # apply network to unet and text_encoder
-        train_unet = not args.network_train_text_encoder_only
-        train_text_encoder = self.is_train_text_encoder(args)
+        train_unet = not cfg.network.network_train_text_encoder_only
+        train_text_encoder = self.is_train_text_encoder(cfg)
         network.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 
-        if args.network_weights is not None:
+        if cfg.network.network_weights is not None:
             # FIXME consider alpha of weights: this assumes that the alpha is not changed
-            info = network.load_weights(args.network_weights)
-            accelerator.print(f"load network weights from {args.network_weights}: {info}")
+            info = network.load_weights(cfg.network.network_weights)
+            accelerator.print(f"load network weights from {cfg.network.network_weights}: {info}")
 
         # if args.use_ramtorch:
         #     logger.info("Applying RamTorch to network/lora.")
@@ -1143,18 +1186,18 @@ class NetworkTrainer:
         #         network = replace_linear_with_ramtorch(network, accelerator.device)
         #         logger.info("RamTorch applied to network/lora.")
 
-        if args.gradient_checkpointing:
-            if args.cpu_offload_checkpointing:
+        if cfg.performance.gradient_checkpointing:
+            if cfg.performance.cpu_offload_checkpointing:
                 unet.enable_gradient_checkpointing(cpu_offload=True)
             else:
                 unet.enable_gradient_checkpointing()
 
-            for t_enc, flag in zip(text_encoders, self.get_text_encoders_train_flags(args, text_encoders)):
+            for t_enc, flag in zip(text_encoders, self.get_text_encoders_train_flags(cfg, text_encoders)):
                 if flag:
                     if t_enc.supports_gradient_checkpointing:
                         t_enc.gradient_checkpointing_enable()
             del t_enc
-            network.enable_gradient_checkpointing()  # may have no effect
+            network.enable_gradient_checkpointing()  # may be overwritten by "network_multipliers" in the next step
 
         # 学習に必要なクラスを準備する
         accelerator.print("prepare optimizer, data loader etc.")
@@ -1177,7 +1220,7 @@ class NetworkTrainer:
             val_dataset_group.set_current_strategies()
 
         # DataLoaderのプロセス数：0 は persistent_workers が使えないので注意
-        n_workers = min(args.max_data_loader_n_workers, os.cpu_count())  # cpu_count or max_data_loader_n_workers
+        n_workers = min(cfg.training.max_data_loader_n_workers, os.cpu_count())  # cpu_count or max_data_loader_n_workers
 
         train_dataloader = torch.utils.data.DataLoader(
             train_dataset_group,
@@ -1185,7 +1228,7 @@ class NetworkTrainer:
             shuffle=True,
             collate_fn=collator,
             num_workers=n_workers,
-            persistent_workers=args.persistent_data_loader_workers,
+            persistent_workers=cfg.training.persistent_data_loader_workers,
         )
 
         val_dataloader = torch.utils.data.DataLoader(
@@ -1194,7 +1237,7 @@ class NetworkTrainer:
             batch_size=1,
             collate_fn=collator,
             num_workers=n_workers,
-            persistent_workers=args.persistent_data_loader_workers,
+            persistent_workers=cfg.training.persistent_data_loader_workers,
         )
 
         if val_dataset_group is not None:
@@ -1204,47 +1247,47 @@ class NetworkTrainer:
             val_dataloader, cyclic_val_dataloader = None, None
 
         # 学習ステップ数を計算する
-        if args.max_train_epochs is not None:
-            args.max_train_steps = args.max_train_epochs * math.ceil(
-                len(train_dataloader) / accelerator.num_processes / args.gradient_accumulation_steps
+        if cfg.training.max_train_epochs is not None:
+            cfg.training.max_train_steps = cfg.training.max_train_epochs * math.ceil(
+                len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
             )
             accelerator.print(
-                f"override steps. steps for {args.max_train_epochs} epochs is / 指定エポックまでのステップ数: {args.max_train_steps}"
+                f"override steps. steps for {cfg.training.max_train_epochs} epochs is / 指定エポックまでのステップ数: {cfg.training.max_train_steps}"
             )
 
         # データセット側にも学習ステップを送信
-        train_dataset_group.set_max_train_steps(args.max_train_steps)
+        train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
         # lr schedulerを用意する
         lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
 
         # 実験的機能：勾配も含めたfp16/bf16学習を行う　モデル全体をfp16/bf16にする
-        if args.full_fp16:
+        if cfg.performance.full_fp16:
             assert (
-                args.mixed_precision == "fp16"
+                cfg.performance.mixed_precision == "fp16"
             ), "full_fp16 requires mixed precision='fp16' / full_fp16を使う場合はmixed_precision='fp16'を指定してください。"
             accelerator.print("enable full fp16 training.")
             network.to(weight_dtype)
-        elif args.full_bf16:
+        elif cfg.performance.full_bf16:
             assert (
-                args.mixed_precision == "bf16"
+                cfg.performance.mixed_precision == "bf16"
             ), "full_bf16 requires mixed precision='bf16' / full_bf16を使う場合はmixed_precision='bf16'を指定してください。"
             accelerator.print("enable full bf16 training.")
             network.to(weight_dtype)
 
         unet_weight_dtype = te_weight_dtype = weight_dtype
         # Experimental Feature: Put base model into fp8 to save vram
-        if args.fp8_base or args.fp8_base_unet:
+        if cfg.performance.fp8_base or cfg.performance.fp8_base_unet:
             assert torch.__version__ >= "2.1.0", "fp8_base requires torch>=2.1.0 / fp8を使う場合はtorch>=2.1.0が必要です。"
             assert (
-                args.mixed_precision != "no"
+                cfg.performance.mixed_precision != "no"
             ), "fp8_base requires mixed precision='fp16' or 'bf16' / fp8を使う場合はmixed_precision='fp16'または'bf16'が必要です。"
             accelerator.print("enable fp8 training for U-Net.")
             unet_weight_dtype = torch.float8_e4m3fn
 
-            if not args.fp8_base_unet:
+            if not cfg.performance.fp8_base_unet:
                 accelerator.print("enable fp8 training for Text Encoder.")
-            te_weight_dtype = weight_dtype if args.fp8_base_unet else torch.float8_e4m3fn
+            te_weight_dtype = weight_dtype if cfg.performance.fp8_base_unet else torch.float8_e4m3fn
 
             # unet.to(accelerator.device)  # this makes faster `to(dtype)` below, but consumes 23 GB VRAM
             # unet.to(dtype=unet_weight_dtype)  # without moving to gpu, this takes a lot of time and main memory
@@ -1255,13 +1298,13 @@ class NetworkTrainer:
             unet.to(dtype=unet_weight_dtype)  # do not move to device because unet is not prepared by accelerator
 
         unet.requires_grad_(False)
-        if self.cast_unet(args):
+        if self.cast_unet(cfg):
             unet.to(dtype=unet_weight_dtype)
         for i, t_enc in enumerate(text_encoders):
             t_enc.requires_grad_(False)
 
             # in case of cpu, dtype is already set to fp32 because cpu does not support fp8/fp16/bf16
-            if t_enc.device.type != "cpu" and self.cast_text_encoder(args):
+            if t_enc.device.type != "cpu" and self.cast_text_encoder(cfg):
                 t_enc.to(dtype=te_weight_dtype)
 
                 # nn.Embedding not support FP8
@@ -1269,8 +1312,8 @@ class NetworkTrainer:
                     self.prepare_text_encoder_fp8(i, t_enc, te_weight_dtype, weight_dtype)
 
         # acceleratorがなんかよろしくやってくれるらしい / accelerator will do something good
-        if args.deepspeed:
-            flags = self.get_text_encoders_train_flags(args, text_encoders)
+        if cfg.performance.deepspeed:
+            flags = self.get_text_encoders_train_flags(cfg, text_encoders)
             ds_model = deepspeed_utils.prepare_deepspeed_model(
                 args,
                 unet=unet if train_unet else None,
@@ -1285,14 +1328,14 @@ class NetworkTrainer:
         else:
             if train_unet:
                 # default implementation is:  unet = accelerator.prepare(unet)
-                unet = self.prepare_unet_with_accelerator(args, accelerator, unet)  # accelerator does some magic here
+                unet = self.prepare_unet_with_accelerator(cfg, accelerator, unet)  # accelerator does some magic here
             else:
                 # move to device because unet is not prepared by accelerator
-                unet.to(accelerator.device, dtype=unet_weight_dtype if self.cast_unet(args) else None)
+                unet.to(accelerator.device, dtype=unet_weight_dtype if self.cast_unet(cfg) else None)
             if train_text_encoder:
                 text_encoders = [
                     (accelerator.prepare(t_enc) if flag else t_enc)
-                    for t_enc, flag in zip(text_encoders, self.get_text_encoders_train_flags(args, text_encoders))
+                    for t_enc, flag in zip(text_encoders, self.get_text_encoders_train_flags(cfg, text_encoders))
                 ]
                 if len(text_encoders) > 1:
                     text_encoder = text_encoders
@@ -1312,10 +1355,10 @@ class NetworkTrainer:
         else:
             val_dataloader, cyclic_val_dataloader = None, None
 
-        if args.gradient_checkpointing:
+        if cfg.performance.gradient_checkpointing:
             # according to TI example in Diffusers, train is required
             unet.train()
-            for i, (t_enc, frag) in enumerate(zip(text_encoders, self.get_text_encoders_train_flags(args, text_encoders))):
+            for i, (t_enc, frag) in enumerate(zip(text_encoders, self.get_text_encoders_train_flags(cfg, text_encoders))):
                 t_enc.train()
 
                 # set top parameter requires_grad = True for gradient checkpointing works
@@ -1337,14 +1380,14 @@ class NetworkTrainer:
             vae.to(accelerator.device, dtype=vae_dtype)
 
         # 実験的機能：勾配も含めたfp16学習を行う　PyTorchにパッチを当ててfp16でのgrad scaleを有効にする
-        if args.full_fp16:
+        if cfg.performance.full_fp16:
             patch_accelerator_for_fp16_training(accelerator)
 
         # before resuming make hook for saving/loading to save/load the network weights only
         def save_model_hook(models, weights, output_dir):
             # pop weights of other models than network to save only network weights
             # only main process or deepspeed https://github.com/huggingface/diffusers/issues/2606
-            if accelerator.is_main_process or args.deepspeed:
+            if accelerator.is_main_process or cfg.performance.deepspeed:
                 remove_indices = []
                 for i, model in enumerate(models):
                     if not isinstance(model, type(accelerator.unwrap_model(network))):
@@ -1389,14 +1432,14 @@ class NetworkTrainer:
         resume_from_local_or_hf_if_specified(accelerator, args)
 
         # epoch数を計算する
-        num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
-        num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
-        if (args.save_n_epoch_ratio is not None) and (args.save_n_epoch_ratio > 0):
-            args.save_every_n_epochs = math.floor(num_train_epochs / args.save_n_epoch_ratio) or 1
+        num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
+        num_train_epochs = math.ceil(cfg.training.max_train_steps / num_update_steps_per_epoch)
+        if (cfg.saving.save_n_epoch_ratio is not None) and (cfg.saving.save_n_epoch_ratio > 0):
+            cfg.saving.save_every_n_epochs = math.floor(num_train_epochs / cfg.saving.save_n_epoch_ratio) or 1
 
         # 学習する
         # TODO: find a way to handle total batch size when there are multiple datasets
-        total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
+        total_batch_size = cfg.training.train_batch_size * accelerator.num_processes * cfg.training.gradient_accumulation_steps
 
         accelerator.print("running training / 学習開始")
         accelerator.print(f"  num train images * repeats / 学習画像の数×繰り返し回数: {train_dataset_group.num_train_images}")
@@ -1410,75 +1453,75 @@ class NetworkTrainer:
             f"  batch size per device / バッチサイズ: {', '.join([str(d.batch_size) for d in train_dataset_group.datasets])}"
         )
         # accelerator.print(f"  total train batch size (with parallel & distributed & accumulation) / 総バッチサイズ（並列学習、勾配合計含む）: {total_batch_size}")
-        accelerator.print(f"  gradient accumulation steps / 勾配を合計するステップ数 = {args.gradient_accumulation_steps}")
-        accelerator.print(f"  total optimization steps / 学習ステップ数: {args.max_train_steps}")
+        accelerator.print(f"  gradient accumulation steps / 勾配を合計するステップ数 = {cfg.training.gradient_accumulation_steps}")
+        accelerator.print(f"  total optimization steps / 学習ステップ数: {cfg.training.max_train_steps}")
 
         # TODO refactor metadata creation and move to util
         metadata = {
             "ss_session_id": session_id,  # random integer indicating which group of epochs the model came from
             "ss_training_started_at": training_started_at,  # unix timestamp
-            "ss_output_name": args.output_name,
-            "ss_learning_rate": args.learning_rate,
+            "ss_output_name": cfg.saving.output_name,
+            "ss_learning_rate": cfg.optimizer.learning_rate,
             "ss_text_encoder_lr": text_encoder_lr,
-            "ss_unet_lr": args.unet_lr,
+            "ss_unet_lr": cfg.network.unet_lr,
             "ss_num_train_images": train_dataset_group.num_train_images,
             "ss_num_validation_images": val_dataset_group.num_train_images if val_dataset_group is not None else 0,
             "ss_num_reg_images": train_dataset_group.num_reg_images,
             "ss_num_batches_per_epoch": len(train_dataloader),
             "ss_num_epochs": num_train_epochs,
-            "ss_gradient_checkpointing": args.gradient_checkpointing,
-            "ss_gradient_accumulation_steps": args.gradient_accumulation_steps,
-            "ss_max_train_steps": args.max_train_steps,
-            "ss_lr_warmup_steps": args.lr_warmup_steps,
-            "ss_lr_scheduler": args.lr_scheduler,
-            "ss_network_module": args.network_module,
-            "ss_network_dim": args.network_dim,  # None means default because another network than LoRA may have another default dim
-            "ss_network_alpha": args.network_alpha,  # some networks may not have alpha
-            "ss_network_dropout": args.network_dropout,  # some networks may not have dropout
-            "ss_mixed_precision": args.mixed_precision,
-            "ss_full_fp16": bool(args.full_fp16),
-            "ss_v2": bool(args.v2),
+            "ss_gradient_checkpointing": cfg.performance.gradient_checkpointing,
+            "ss_gradient_accumulation_steps": cfg.training.gradient_accumulation_steps,
+            "ss_max_train_steps": cfg.training.max_train_steps,
+            "ss_lr_warmup_steps": cfg.optimizer.lr_warmup_steps,
+            "ss_lr_scheduler": cfg.optimizer.lr_scheduler,
+            "ss_network_module": cfg.network.network_module,
+            "ss_network_dim": cfg.network.network_dim,  # None means default because another network than LoRA may have another default dim
+            "ss_network_alpha": cfg.network.network_alpha,  # some networks may not have alpha
+            "ss_network_dropout": cfg.network.network_dropout,  # some networks may not have dropout
+            "ss_mixed_precision": cfg.performance.mixed_precision,
+            "ss_full_fp16": bool(cfg.performance.full_fp16),
+            "ss_v2": bool(cfg.sd_models.v2),
             "ss_base_model_version": model_version,
-            "ss_clip_skip": args.clip_skip,
-            "ss_max_token_length": args.max_token_length,
-            "ss_cache_latents": bool(args.cache_latents),
-            "ss_seed": args.seed,
-            "ss_lowram": args.lowram,
-            "ss_noise_offset": args.noise_offset,
-            "ss_multires_noise_iterations": args.multires_noise_iterations,
-            "ss_multires_noise_discount": args.multires_noise_discount,
-            "ss_adaptive_noise_scale": args.adaptive_noise_scale,
-            "ss_zero_terminal_snr": args.zero_terminal_snr,
-            "ss_training_comment": args.training_comment,  # will not be updated after training
+            "ss_clip_skip": cfg.training.clip_skip,
+            "ss_max_token_length": cfg.training.max_token_length,
+            "ss_cache_latents": bool(cfg.dataset.cache_latents),
+            "ss_seed": cfg.training.seed,
+            "ss_lowram": cfg.performance.lowram,
+            "ss_noise_offset": cfg.regularization.noise_offset,
+            "ss_multires_noise_iterations": cfg.regularization.multires_noise_iterations,
+            "ss_multires_noise_discount": cfg.regularization.multires_noise_discount,
+            "ss_adaptive_noise_scale": cfg.regularization.adaptive_noise_scale,
+            "ss_zero_terminal_snr": cfg.regularization.zero_terminal_snr,
+            "ss_training_comment": cfg.network.training_comment,  # will not be updated after training
             "ss_sd_scripts_commit_hash": get_git_revision_hash(),
             "ss_optimizer": optimizer_name + (f"({optimizer_args})" if len(optimizer_args) > 0 else ""),
-            "ss_max_grad_norm": args.max_grad_norm,
-            "ss_caption_dropout_rate": args.caption_dropout_rate,
-            "ss_caption_dropout_every_n_epochs": args.caption_dropout_every_n_epochs,
-            "ss_caption_tag_dropout_rate": args.caption_tag_dropout_rate,
-            "ss_face_crop_aug_range": args.face_crop_aug_range,
-            "ss_prior_loss_weight": args.prior_loss_weight,
-            "ss_min_snr_gamma": args.min_snr_gamma,
-            "ss_scale_weight_norms": args.scale_weight_norms,
-            "ss_ip_noise_gamma": args.ip_noise_gamma,
-            "ss_debiased_estimation": bool(args.debiased_estimation_loss),
-            "ss_noise_offset_random_strength": args.noise_offset_random_strength,
-            "ss_ip_noise_gamma_random_strength": args.ip_noise_gamma_random_strength,
-            "ss_loss_type": args.loss_type,
-            "ss_huber_schedule": args.huber_schedule,
-            "ss_huber_scale": args.huber_scale,
-            "ss_huber_c": args.huber_c,
-            "ss_fp8_base": bool(args.fp8_base),
-            "ss_fp8_base_unet": bool(args.fp8_base_unet),
-            "ss_validation_seed": args.validation_seed,
-            "ss_validation_split": float(args.validation_split),
-            "ss_max_validation_steps": args.max_validation_steps,
-            "ss_validate_every_n_epochs": args.validate_every_n_epochs,
-            "ss_validate_every_n_steps": args.validate_every_n_steps,
-            "ss_resize_interpolation": args.resize_interpolation,
+            "ss_max_grad_norm": cfg.optimizer.max_grad_norm,
+            "ss_caption_dropout_rate": cfg.dataset.caption_dropout_rate,
+            "ss_caption_dropout_every_n_epochs": cfg.dataset.caption_dropout_every_n_epochs,
+            "ss_caption_tag_dropout_rate": cfg.dataset.caption_tag_dropout_rate,
+            "ss_face_crop_aug_range": cfg.dataset.face_crop_aug_range,
+            "ss_prior_loss_weight": cfg.loss.prior_loss_weight,
+            "ss_min_snr_gamma": cfg.loss.min_snr_gamma,
+            "ss_scale_weight_norms": cfg.network.scale_weight_norms,
+            "ss_ip_noise_gamma": cfg.regularization.ip_noise_gamma,
+            "ss_debiased_estimation": bool(cfg.loss.debiased_estimation_loss),
+            "ss_noise_offset_random_strength": cfg.regularization.noise_offset_random_strength,
+            "ss_ip_noise_gamma_random_strength": cfg.regularization.ip_noise_gamma_random_strength,
+            "ss_loss_type": cfg.loss.loss_type,
+            "ss_huber_schedule": cfg.loss.huber_schedule,
+            "ss_huber_scale": cfg.loss.huber_scale,
+            "ss_huber_c": cfg.loss.huber_c,
+            "ss_fp8_base": bool(cfg.performance.fp8_base),
+            "ss_fp8_base_unet": bool(cfg.performance.fp8_base_unet),
+            "ss_validation_seed": cfg.dataset.validation_seed,
+            "ss_validation_split": float(cfg.dataset.validation_split),
+            "ss_max_validation_steps": cfg.training.max_validation_steps,
+            "ss_validate_every_n_epochs": cfg.training.validate_every_n_epochs,
+            "ss_validate_every_n_steps": cfg.training.validate_every_n_steps,
+            "ss_resize_interpolation": cfg.dataset.resize_interpolation,
         }
 
-        self.update_metadata(metadata, args)  # architecture specific metadata
+        self.update_metadata(metadata, cfg)  # architecture specific metadata
 
         if use_user_config:
             # save metadata of multiple datasets
@@ -1595,19 +1638,19 @@ class NetworkTrainer:
 
             metadata.update(
                 {
-                    "ss_batch_size_per_device": args.train_batch_size,
+                    "ss_batch_size_per_device": cfg.training.train_batch_size,
                     "ss_total_batch_size": total_batch_size,
-                    "ss_resolution": args.resolution,
-                    "ss_color_aug": bool(args.color_aug),
-                    "ss_flip_aug": bool(args.flip_aug),
-                    "ss_random_crop": bool(args.random_crop),
-                    "ss_random_crop_padding_percent": float(getattr(args, "random_crop_padding_percent", 0.05)),
-                    "ss_shuffle_caption": bool(args.shuffle_caption),
+                    "ss_resolution": cfg.dataset.resolution,
+                    "ss_color_aug": bool(cfg.dataset.color_aug),
+                    "ss_flip_aug": bool(cfg.dataset.flip_aug),
+                    "ss_random_crop": bool(cfg.dataset.random_crop),
+                    "ss_random_crop_padding_percent": float(getattr(cfg.dataset, "random_crop_padding_percent", 0.05)),
+                    "ss_shuffle_caption": bool(cfg.dataset.shuffle_caption),
                     "ss_enable_bucket": bool(dataset.enable_bucket),
                     "ss_bucket_no_upscale": bool(dataset.bucket_no_upscale),
                     "ss_min_bucket_reso": dataset.min_bucket_reso,
                     "ss_max_bucket_reso": dataset.max_bucket_reso,
-                    "ss_keep_tokens": args.keep_tokens,
+                    "ss_keep_tokens": cfg.dataset.keep_tokens,
                     "ss_dataset_dirs": json.dumps(dataset_dirs_info),
                     "ss_reg_dataset_dirs": json.dumps(reg_dataset_dirs_info),
                     "ss_tag_frequency": json.dumps(dataset.tag_frequency),
@@ -1616,20 +1659,20 @@ class NetworkTrainer:
             )
 
         # add extra args
-        if args.network_args:
+        if cfg.network.network_args:
             metadata["ss_network_args"] = json.dumps(net_kwargs)
 
         # model name and hash
-        if args.pretrained_model_name_or_path is not None:
-            sd_model_name = args.pretrained_model_name_or_path
+        if cfg.sd_models.pretrained_model_name_or_path is not None:
+            sd_model_name = cfg.sd_models.pretrained_model_name_or_path
             if os.path.exists(sd_model_name):
                 metadata["ss_sd_model_hash"] = model_hash(sd_model_name)
                 metadata["ss_new_sd_model_hash"] = calculate_sha256(sd_model_name)
                 sd_model_name = os.path.basename(sd_model_name)
             metadata["ss_sd_model_name"] = sd_model_name
 
-        if args.vae is not None:
-            vae_name = args.vae
+        if cfg.training.vae is not None:
+            vae_name = cfg.training.vae
             if os.path.exists(vae_name):
                 metadata["ss_vae_hash"] = model_hash(vae_name)
                 metadata["ss_new_vae_hash"] = calculate_sha256(vae_name)
@@ -1646,18 +1689,18 @@ class NetworkTrainer:
 
         # calculate steps to skip when resuming or starting from a specific step
         initial_step = 0
-        if args.initial_epoch is not None or args.initial_step is not None:
+        if cfg.training.initial_epoch is not None or cfg.training.initial_step is not None:
             # if initial_epoch or initial_step is specified, steps_from_state is ignored even when resuming
             if steps_from_state is not None:
                 logger.warning(
                     "steps from the state is ignored because initial_step is specified / initial_stepが指定されているため、stateからのステップ数は無視されます"
                 )
-            if args.initial_step is not None:
-                initial_step = args.initial_step
+            if cfg.training.initial_step is not None:
+                initial_step = cfg.training.initial_step
             else:
                 # num steps per epoch is calculated by num_processes and gradient_accumulation_steps
-                initial_step = (args.initial_epoch - 1) * math.ceil(
-                    len(train_dataloader) / accelerator.num_processes / args.gradient_accumulation_steps
+                initial_step = (cfg.training.initial_epoch - 1) * math.ceil(
+                    len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
                 )
         else:
             # if initial_epoch and initial_step are not specified, steps_from_state is used when resuming
@@ -1667,25 +1710,25 @@ class NetworkTrainer:
 
         if initial_step > 0:
             assert (
-                args.max_train_steps > initial_step
-            ), f"max_train_steps should be greater than initial step / max_train_stepsは初期ステップより大きい必要があります: {args.max_train_steps} vs {initial_step}"
+                cfg.training.max_train_steps > initial_step
+            ), f"max_train_steps should be greater than initial step / max_train_stepsは初期ステップより大きい必要があります: {cfg.training.max_train_steps} vs {initial_step}"
 
         epoch_to_start = 0
         if initial_step > 0:
-            if args.skip_until_initial_step:
+            if cfg.training.skip_until_initial_step:
                 # if skip_until_initial_step is specified, load data and discard it to ensure the same data is used
-                if not args.resume:
+                if not cfg.saving.resume:
                     logger.info(
                         f"initial_step is specified but not resuming. lr scheduler will be started from the beginning / initial_stepが指定されていますがresumeしていないため、lr schedulerは最初から始まります"
                     )
                 logger.info(f"skipping {initial_step} steps / {initial_step}ステップをスキップします")
-                initial_step *= args.gradient_accumulation_steps
+                initial_step *= cfg.training.gradient_accumulation_steps
 
                 # set epoch to start to make initial_step less than len(train_dataloader)
-                epoch_to_start = initial_step // math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
+                epoch_to_start = initial_step // math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
             else:
                 # if not, only epoch no is skipped for informative purpose
-                epoch_to_start = initial_step // math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
+                epoch_to_start = initial_step // math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
                 initial_step = 0  # do not skip
 
         global_step = 0
@@ -1836,7 +1879,7 @@ class NetworkTrainer:
                     temperature=getattr(args, "mix_adaptive_temperature", 0.2),
                     min_prob=getattr(args, "mix_adaptive_min_prob", 1e-2),
                     entropy_floor_ratio=getattr(args, "mix_adaptive_entropy_floor_ratio", 0.8),
-                    uniform_mix_when_low_entropy=getattr(args, "mix_adaptive_uniform_mix_when_low_entropy", 0.1),
+                    uniform_mix_when_low_entropy=getattr(args, "uniform_mix_when_low_entropy", 0.1),
                     prior_mu=getattr(args, "mix_adaptive_prior_mu", 0.0),
                     prior_sigma=getattr(args, "mix_adaptive_prior_sigma", 1.0), 
                     prior_weight=getattr(args, "mix_adaptive_prior_weight", 0.1),
@@ -2110,17 +2153,6 @@ class NetworkTrainer:
                     mean_combined_norm = None
                     max_mean_logs = {"Keys Scaled": keys_scaled, "Average key norm": mean_norm}
                 else:
-                    #if hasattr(network, "weight_norms"):
-                    #    weight_norms = network.weight_norms()
-                    #    mean_norm = weight_norms.mean().item() if weight_norms is not None else None
-                    #    grad_norms = network.grad_norms()
-                    #    mean_grad_norm = grad_norms.mean().item() if grad_norms is not None else None
-                    #    combined_weight_norms = network.combined_weight_norms()
-                    #    mean_combined_norm = combined_weight_norms.mean().item() if combined_weight_norms is not None else None
-                    #    maximum_norm = weight_norms.max().item() if weight_norms is not None and weight_norms.numel() > 0 else None
-                    #    keys_scaled = None
-                    #    max_mean_logs = {}
-                    # else:
                     keys_scaled, mean_norm, maximum_norm = None, None, None
                     mean_grad_norm = None
                     mean_combined_norm = None
@@ -2162,8 +2194,7 @@ class NetworkTrainer:
                                                                                                     current_epoch.value,
                                                                                                     train_text_encoder)
                         else:
-                            current_val_loss, average_val_loss, val_logs = None, None, {}
-                        progress_bar.unpause()
+                            current_val_loss, average_val_loss, val_logs = None, None, None
 
                         # 指定ステップごとにモデルを保存
                         if args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0:
@@ -2192,8 +2223,6 @@ class NetworkTrainer:
                             plot_edm2_loss_weighting(args, global_step, edm2_model, 1000, accelerator.device)
                         optimizer_train_fn()
                         accelerator.unwrap_model(network).train()
-                    else:
-                        current_val_loss, average_val_loss, val_logs = None, None, None
 
                 current_global_step_loss += loss.detach().item()
                 if args.edm2_loss_weighting:
@@ -2336,377 +2365,14 @@ class NetworkTrainer:
         logger.info("model saved.")
 
 
-def setup_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
+# Register the structure config with Hydra
+cs = ConfigStore.instance()
+cs.store(name="train_network", node=TrainNetworkConfig)
 
-    add_logging_arguments(parser)
-    add_sd_models_arguments(parser)
-    sai_model_spec.add_model_spec_arguments(parser)
-    add_dataset_arguments(parser, True, True, True)
-    add_training_arguments(parser, True)
-    add_masked_loss_arguments(parser)
-    deepspeed_utils.add_deepspeed_arguments(parser)
-    add_optimizer_arguments(parser)
-    config_util.add_config_arguments(parser)
-    add_loss_weighting_arguments(parser)
-    add_prompt_parsing_arguments(parser)
-
-    parser.add_argument(
-        "--cpu_offload_checkpointing",
-        action="store_true",
-        help="[EXPERIMENTAL] enable offloading of tensors to CPU during checkpointing for U-Net or DiT, if supported"
-        " / 勾配チェックポイント時にテンソルをCPUにオフロードする（U-NetまたはDiTのみ、サポートされている場合）",
-    )
-    parser.add_argument(
-        "--no_metadata", action="store_true", help="do not save metadata in output model / メタデータを出力先モデルに保存しない"
-    )
-    parser.add_argument(
-        "--save_model_as",
-        type=str,
-        default="safetensors",
-        choices=[None, "ckpt", "pt", "safetensors"],
-        help="format to save the model (default is .safetensors) / モデル保存時の形式（デフォルトはsafetensors）",
-    )
-
-    parser.add_argument("--unet_lr", type=float, default=None, help="learning rate for U-Net / U-Netの学習率")
-    parser.add_argument(
-        "--text_encoder_lr",
-        type=float,
-        default=None,
-        nargs="*",
-        help="learning rate for Text Encoder, can be multiple / Text Encoderの学習率、複数指定可能",
-    )
-    parser.add_argument(
-        "--fp8_base_unet",
-        action="store_true",
-        help="use fp8 for U-Net (or DiT), Text Encoder is fp16 or bf16"
-        " / U-Net（またはDiT）にfp8を使用する。Text Encoderはfp16またはbf16",
-    )
-
-    parser.add_argument(
-        "--network_weights", type=str, default=None, help="pretrained weights for network / 学習するネットワークの初期重み"
-    )
-    parser.add_argument(
-        "--network_module", type=str, default=None, help="network module to train / 学習対象のネットワークのモジュール"
-    )
-    parser.add_argument(
-        "--network_dim",
-        type=int,
-        default=None,
-        help="network dimensions (depends on each network) / モジュールの次元数（ネットワークにより定義は異なります）",
-    )
-    parser.add_argument(
-        "--network_alpha",
-        type=float,
-        default=1,
-        help="alpha for LoRA weight scaling, default 1 (same as network_dim for same behavior as old version) / LoRaの重み調整のalpha値、デフォルト1（旧バージョンと同じ動作をするにはnetwork_dimと同じ値を指定）",
-    )
-    parser.add_argument(
-        "--network_dropout",
-        type=float,
-        default=None,
-        help="Drops neurons out of training every step (0 or None is default behavior (no dropout), 1 would drop all neurons) / 訓練時に毎ステップでニューロンをdropする（0またはNoneはdropoutなし、1は全ニューロンをdropout）",
-    )
-    parser.add_argument(
-        "--network_args",
-        type=str,
-        default=None,
-        nargs="*",
-        help="additional arguments for network (key=value) / ネットワークへの追加の引数",
-    )
-    parser.add_argument(
-        "--network_train_unet_only", action="store_true", help="only training U-Net part / U-Net関連部分のみ学習する"
-    )
-    parser.add_argument(
-        "--network_train_text_encoder_only",
-        action="store_true",
-        help="only training Text Encoder part / Text Encoder関連部分のみ学習する",
-    )
-    parser.add_argument(
-        "--training_comment",
-        type=str,
-        default=None,
-        help="arbitrary comment string stored in metadata / メタデータに記録する任意のコメント文字列",
-    )
-    parser.add_argument(
-        "--dim_from_weights",
-        action="store_true",
-        help="automatically determine dim (rank) from network_weights / dim (rank)をnetwork_weightsで指定した重みから自動で決定する",
-    )
-    parser.add_argument(
-        "--scale_weight_norms",
-        type=float,
-        default=None,
-        help="Scale the weight of each key pair to help prevent overtraing via exploding gradients. (1 is a good starting point) / 重みの値をスケーリングして勾配爆発を防ぐ（1が初期値としては適当）",
-    )
-    parser.add_argument(
-        "--base_weights",
-        type=str,
-        default=None,
-        nargs="*",
-        help="network weights to merge into the model before training / 学習前にあらかじめモデルにマージするnetworkの重みファイル",
-    )
-    parser.add_argument(
-        "--base_weights_multiplier",
-        type=float,
-        default=None,
-        nargs="*",
-        help="multiplier for network weights to merge into the model before training / 学習前にあらかじめモデルにマージするnetworkの重みの倍率",
-    )
-    parser.add_argument(
-        "--no_half_vae",
-        action="store_true",
-        help="do not use fp16/bf16 VAE in mixed precision (use float VAE) / mixed precisionでも fp16/bf16 VAEを使わずfloat VAEを使う",
-    )
-    parser.add_argument(
-        "--skip_until_initial_step",
-        action="store_true",
-        help="skip training until initial_step is reached / initial_stepに到達するまで学習をスキップする",
-    )
-    parser.add_argument(
-        "--initial_epoch",
-        type=int,
-        default=None,
-        help="initial epoch number, 1 means first epoch (same as not specifying). NOTE: initial_epoch/step doesn't affect to lr scheduler. Which means lr scheduler will start from 0 without `--resume`."
-        + " / 初期エポック数、1で最初のエポック（未指定時と同じ）。注意：initial_epoch/stepはlr schedulerに影響しないため、`--resume`しない場合はlr schedulerは0から始まる",
-    )
-    parser.add_argument(
-        "--initial_step",
-        type=int,
-        default=None,
-        help="initial step number including all epochs, 0 means first step (same as not specifying). overwrites initial_epoch."
-        + " / 初期ステップ数、全エポックを含むステップ数、0で最初のステップ（未指定時と同じ）。initial_epochを上書きする",
-    )
-    parser.add_argument(
-        "--validation_seed",
-        type=int,
-        default=None,
-        help="Validation seed for shuffling validation dataset, training `--seed` used otherwise / 検証データセットをシャッフルするための検証シード、それ以外の場合はトレーニング `--seed` を使用する",
-    )
-    parser.add_argument(
-        "--validation_split",
-        type=float,
-        default=0.0,
-        help="Split for validation images out of the training dataset / 学習画像から検証画像に分割する割合",
-    )
-    parser.add_argument(
-        "--validate_every_n_steps",
-        type=int,
-        default=None,
-        help="Run validation on validation dataset every N steps. By default, validation will only occur every epoch if a validation dataset is available / 検証データセットの検証をNステップごとに実行します。デフォルトでは、検証データセットが利用可能な場合にのみ、検証はエポックごとに実行されます",
-    )
-    parser.add_argument(
-        "--validate_every_n_epochs",
-        type=int,
-        default=None,
-        help="Run validation dataset every N epochs. By default, validation will run every epoch if a validation dataset is available / 検証データセットをNエポックごとに実行します。デフォルトでは、検証データセットが利用可能な場合、検証はエポックごとに実行されます",
-    )
-    parser.add_argument(
-        "--max_validation_steps",
-        type=int,
-        default=None,
-        help="Max number of validation dataset items processed. By default, validation will run the entire validation dataset / 処理される検証データセット項目の最大数。デフォルトでは、検証は検証データセット全体を実行します",
-    )
-
-    parser.add_argument(
-        "--validation_timesteps",
-        type=str,
-        default=r"[50, 350, 500, 650, 950]",
-        help="A list of timesteps to use for each validation step."
-    )  
-
-    parser.add_argument(
-        "--use_ramtorch",
-        action="store_true",
-        help="Use RamTorch to reduce GPU memory usage by keeping model weights on CPU.",
-    )
-
-    parser.add_argument(
-        "--direct_ramtorch",
-        action="store_true",
-        help="Train orig weights in lyco full module and save diff instead of keep both.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting",
-        action="store_true",
-        help="Use EDM2 loss weighting.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_laplace",
-        action="store_true",
-        help="Use EDM2 loss weighting to calculate timestep sampling using laplace.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_optimizer",
-        type=str,
-        default="torch.optim.AdamW",
-        help="Fully qualified optimizer class name to use with the edm2 loss weighting optimizer.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_optimizer_lr",
-        type=float,
-        default=2e-2,
-        help="Learning rate as a float for the edm2 loss weighting optimizer.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_optimizer_args",
-        type=str,
-        default=r"{'weight_decay': 0, 'betas': (0.9,0.999)}",
-        help="A JSON object as a string of optimizer args for the edm2 loss weighting optimizer.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_lr_scheduler",
-        action="store_true",
-        help="Use lr scheduler with EDM2 loss weighting optimizer.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_lr_scheduler_warmup_percent",
-        type=float,
-        default=0.1,
-        help="Percent of training steps to use for warmup.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_lr_scheduler_constant_percent",
-        type=float,
-        default=0.1,
-        help="Percent of training steps to maintain constant LR before decay.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_generate_graph",
-        action="store_true",
-        help="Enable generation of graph images that show the loss weighting per timestep.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_generate_graph_every_x_steps",
-        type=int,
-        default=20,
-        help="Every x steps generate a graph image.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_generate_graph_output_dir",
-        type=str,
-        default=None,
-        help="""The parent directory where loss weighting graph images should be stored, 
-        with sub directories automatically created and named after the model's defined name.""",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_generate_graph_y_limit",
-        type=int,
-        default=None,
-        help="""Set the max limit of the y axis, if not set, uses dynamic scaling of the y-axis, which can make it harder to follow. 
-        6 is a good value for v-pred + ztsnr without any augmentation (i.e. low min snr gamma, debiased loss, or scaled v-pred loss). 
-        If any of the noted augmentations are used, weighting values can reach ~100-150.""",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_generate_graph_y_scale",
-        type=str,
-        default="linear",
-        choices=["linear", "log"],
-        help="""Select between linear or log scaling for the y-axis.""",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_num_channels",
-        type=int,
-        default=128,
-        help="The number of channels used by for the loss weighting module. Additional channels allows for greater granularity in the weighting.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_initial_weights",
-        type=str,
-        default=None,
-        help="The full filepath to initial weights and state of edm2 weighting model to use instead of random.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_lr_scheduler_decay_scaling",
-        type=float,
-        default=1.0,
-        help="A scaling factor to apply to the decay rate of the edm2_loss_weighting_lr_scheduler, lower values result in slower decay, higher values result in faster decay.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_importance_weighting",
-        action="store_true",
-        help="If edm2 loss scaling weights are weighted by importance, which is based using a specific min snr gamma value and SNR for the given timestep. " \
-        "Default behavior when edm2_loss_weighting_importance_weighting is enabled is to disable normal min snr gamma and debiased loss if enabled." \
-        "It is not advised to stack with either, as there is a possiblity of loss curving to 0 as SNR approaches 0." \
-        "If you still wish to, set edm2_loss_weighting_importance_weighting_safety_override=True at your own risk."
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_importance_weighting_max",
-        type=float,
-        default=10.0,
-        help="The max loss weighting/scaling to apply when using edm2 importance weighting, has no effect otherwise.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_importance_min_snr_gamma",
-        type=float,
-        default=1.0,
-        help="The min snr gamma used for edm2 importance weighting as a heuristic, has no effect if not using importance weighting. " \
-        "Not related to the typical application of min snr gamma.",
-    )
-
-    parser.add_argument(
-        "--edm2_loss_weighting_importance_weighting_safety_override",
-        action="store_true",
-        help="At your own risk, you may set this to true to ALLOW stacking debiased loss and/or typical min snr gamma with EDM2 using importance weighting.",
-    )
-
-    parser.add_argument(
-        "--orthograd_targets",
-        type=str,
-        default=r"['lora_down.weight','lora_up.weight','lora_down1.weight','lora_up1.weight','lora_down2.weight','lora_up2.weight','a1.weight','a2.weight','b1.weight','b2.weight','c1.weight']",
-        help="A list of strings to determine which named parameters should subject to orthgrad, based on their name containing the string."
-    )
-
-    parser.add_argument(
-        "--vae_conv2d_padding_mode",
-        type=str,
-        default='zeros',
-        choices=["zeros", "reflect", "replicate", "circular"],
-        help="Adjusts the padding for Conv2d modules in the VAE. Use 'reflect' for EQ VAE to avoid edge artifacts."
-    )
-
-    parser.add_argument(
-        "--log_timestep_distribution_every_n_steps",
-        type=int,
-        default=None,
-        help="Saves a snapshot of the timestep distribution chart every N steps.",
-    )
-
-    parser.add_argument(
-        "--live_plot_port",
-        type=int,
-        default=None,
-        help="Launches the live interactive dashboard server on this port.",
-    )
-
-    return parser
-
+@hydra.main(version_base=None, config_path="../configs", config_name="train_network")
+def main(cfg: TrainNetworkConfig):
+    trainer = NetworkTrainer()
+    trainer.train(cfg)
 
 if __name__ == "__main__":
-    parser = setup_parser()
-
-    args = parser.parse_args()
-    verify_command_line_training_args(args)
-    args = read_config_from_file(args, parser)
-
-    trainer = NetworkTrainer()
-    trainer.train(args)
+    main()

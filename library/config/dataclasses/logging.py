@@ -15,3 +15,5 @@ class LoggingConfig:
     console_log_level: Optional[str] = None
     console_log_file: Optional[str] = None
     console_log_simple: bool = False
+    log_timestep_distribution_every_n_steps: Optional[int] = field(default=None, metadata={"help": "Saves a snapshot of the timestep distribution chart every N steps."})
+    live_plot_port: Optional[int] = field(default=None, metadata={"help": "Launches the live interactive dashboard server on this port."})

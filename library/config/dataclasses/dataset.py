@@ -26,11 +26,6 @@ class DatasetConfig:
     vae_batch_size: int = field(default=1, metadata={"help": "batch size for caching latents"})
     cache_latents_to_disk: bool = field(default=False, metadata={"help": "cache latents to disk to reduce VRAM usage"})
     skip_cache_check: bool = field(default=False, metadata={"help": "skip the content validation of cache"})
-    enable_bucket: bool = field(default=False, metadata={"help": "enable buckets for multi aspect ratio training"})
-    min_bucket_reso: int = field(default=256, metadata={"help": "minimum resolution for buckets"})
-    max_bucket_reso: int = field(default=1024, metadata={"help": "maximum resolution for buckets"})
-    bucket_reso_steps: int = field(default=64, metadata={"help": "steps of resolution for buckets"})
-    bucket_no_upscale: bool = field(default=False, metadata={"help": "make bucket for each image without upscaling"})
     resize_interpolation: Optional[str] = field(default=None, metadata={"help": "Resize interpolation when required"})
     token_warmup_min: int = field(default=1, metadata={"help": "start learning at N tags"})
     token_warmup_step: float = field(default=0.0, metadata={"help": "tag length reaches maximum on N steps"})
@@ -43,6 +38,11 @@ class DatasetConfig:
     in_json: Optional[str] = field(default=None, metadata={"help": "json metadata for dataset"})
     dataset_repeats: int = field(default=1, metadata={"help": "repeat dataset when training with captions"})
     weighted_captions: bool = field(default=False, metadata={"help": "enable weighted captions"})
+    validation_split: float = field(default=0.0, metadata={"help": "Split for validation images out of the training dataset"})
+    validation_seed: Optional[int] = field(default=None, metadata={"help": "Validation seed for shuffling validation dataset, training `--seed` used otherwise"})
+
+    # Placeholder for subsets to be populated by hydra or manually
+    subsets: List[dict] = field(default_factory=list)
 
     def __post_init__(self):
         if self.cache_latents_to_disk and not self.cache_latents:
