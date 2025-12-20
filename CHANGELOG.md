@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Hydra Configuration System**
+
   - `configs/sd_finetune.yaml` - Hydra config for SD 1.5/2.0 fine-tuning
   - `configs/sd_textual_inversion.yaml` - Hydra config for SD 1.5/2.0 textual inversion
   - `configs/sd_peft.yaml` - Hydra config for SD 1.5/2.0 PEFT/LoRA training
@@ -19,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `configs/sdxl_textual_inversion.yaml` - Hydra config for SDXL textual inversion
   - `configs/sdxl_peft.yaml` - Hydra config for SDXL PEFT/LoRA training
   - `library/config/config_util.py` - Added `RootConfig` Protocol for type-safe config handling
+
+- **Testing Infrastructure**
+  - `tests/conftest.py` - Pytest fixtures for Hydra, configs, temporary directories, and mock objects
+  - `tests/unit/test_configs.py` - 28 tests for configuration dataclasses (instantiation, defaults, Hydra composition, overrides)
+  - `tests/unit/test_training_optimizer.py` - 26 tests for optimizer module (creation, detection, schedulers, utilities)
+  - `tests/unit/test_training_checkpointing.py` - 23 tests for checkpointing module (naming, removal, metadata)
+  - Enhanced `pytest.ini` with test markers (`unit`, `integration`, `config`, `training`, `data`, `slow`, `requires_gpu`)
+  - Restructured tests to `tests/unit/` directory to avoid import naming collisions
+  - Added pytest-cov for code coverage reporting (7% overall, 23% optimizer, 21% checkpointing)
 
 ### Changed
 
