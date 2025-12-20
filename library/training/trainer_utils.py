@@ -43,7 +43,6 @@ def prepare_accelerator(args: DictConfig):
                 wandb.login(key=args.wandb_api_key)
 
     # torch.compile のオプション。 NO の場合は torch.compile は使わない
-    # torch.compile のオプション。 NO の場合は torch.compile は使わない
     if args.torch_compile:
         # Configure the compilation backend
         dynamo_plugin = TorchDynamoPlugin(

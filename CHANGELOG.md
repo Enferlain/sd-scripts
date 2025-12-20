@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `library/config/config_util.py` - Added `RootConfig` Protocol for type-safe config handling
 
 - **Testing Infrastructure**
+
   - `tests/conftest.py` - Pytest fixtures for Hydra, configs, temporary directories, and mock objects
   - `tests/unit/test_configs.py` - 28 tests for configuration dataclasses (instantiation, defaults, Hydra composition, overrides)
   - `tests/unit/test_training_optimizer.py` - 26 tests for optimizer module (creation, detection, schedulers, utilities)
@@ -30,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tests/unit/test_training_noise_utils.py` - 21 tests for noise utilities (SNR, pyramid noise, noise offset)
   - `tests/unit/test_data_image_utils.py` - 14 tests for image utilities (globbing, loading, cropping)
   - `tests/unit/test_utils_torch.py` - 12 tests for torch utilities (dtype preparation, mixed precision)
+  - `tests/unit/test_training_trainer_utils.py` - 16 tests for trainer utilities (validation check, LR logging)
+  - `tests/unit/test_data_prompt_utils.py` - 16 tests for prompt utilities (attention parsing, token padding)
   - Enhanced `pytest.ini` with test markers (`unit`, `integration`, `config`, `training`, `data`, `slow`, `requires_gpu`)
   - Restructured tests to `tests/unit/` directory to avoid import naming collisions
   - Added pytest-cov for code coverage reporting
@@ -48,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dataclass File Naming** - Matched to script names in `library/config/dataclasses/`
 
 - **Library Refactoring**
+
   - `library/training/trainer_utils.py` - `calculate_val_loss_check()` now accepts `TrainingConfig` directly
   - `library/config/config_util.py` - Added `RootConfig` Protocol, removed stale circular import workaround
   - `library/data/dataset.py` - `load_arbitrary_dataset()` accepts `DatasetConfig` directly
@@ -55,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **Legacy Code**
+
   - `ArgsAdapter` class removed from `sd_peft.py` (formerly `train_network.py`)
   - `ConfigAdapter` shim removed from migrated scripts
   - `setup_parser()` and argparse removed from all migrated scripts
@@ -86,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed double `@dataclass` decorator in `library/config/dataclasses/model.py`
 
 - **Model Config Refactor**
+
   - Renamed config group `sd_models` to `model`
   - Merged `SDModelsConfig` and `ModelLoadingConfig` into `ModelConfig` in `library/config/dataclasses/model.py`
   - Moved `v_parameterization` from `SDModelsConfig` to `LossConfig` (and updated scripts to use `config.loss.v_parameterization`)
@@ -94,4 +100,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated all scripts and YAMLs to reflect these changes
 
 - **Type hint bug in `library/utils/torch_utils.py`**
+
   - `prepare_dtype()` function was incorrectly typed to accept `TrainingConfig` but accessed fields from both `PerformanceConfig` (mixed_precision) and `SavingConfig` (save_precision). Refactored to properly accept both config types as separate parameters.
