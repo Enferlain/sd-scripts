@@ -231,18 +231,18 @@ def save_to_file(file_name, state_dict, metadata):
 
 def format_lbws(lbws):
     try:
-        # lbwは"[1,1,1,1,1,1,1,1,1,1,1,1]"のような文字列で与えられることを期待している
+        # lbw is expected to be given as a string like "[1,1,1,1,1,1,1,1,1,1,1,1]"
         lbws = [json.loads(lbw) for lbw in lbws]
     except Exception:
-        raise ValueError(f"format of lbws are must be json / 層別適用率はJSON形式で書いてください")
-    assert all(isinstance(lbw, list) for lbw in lbws), f"lbws are must be list / 層別適用率はリストにしてください"
-    assert len(set(len(lbw) for lbw in lbws)) == 1, "all lbws should have the same length  / 層別適用率は同じ長さにしてください"
+        raise ValueError(f"format of lbws are must be json")
+    assert all(isinstance(lbw, list) for lbw in lbws), f"lbws are must be list"
+    assert len(set(len(lbw) for lbw in lbws)) == 1, "all lbws should have the same length "
     assert all(
         len(lbw) in ACCEPTABLE for lbw in lbws
-    ), f"length of lbw are must be in {ACCEPTABLE} / 層別適用率の長さは{ACCEPTABLE}のいずれかにしてください"
+    ), f"length of lbw are must be in {ACCEPTABLE}"
     assert all(
         all(isinstance(weight, (int, float)) for weight in lbw) for lbw in lbws
-    ), f"values of lbs are must be numbers / 層別適用率の値はすべて数値にしてください"
+    ), f"values of lbs are must be numbers"
 
     layer_num = len(lbws[0])
     is_sdxl = True if layer_num in SDXL_LAYER_NUM else False
@@ -324,7 +324,7 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
                 index = get_lbw_block_index(key, is_sdxl)
                 is_lbw_target = index in LBW_TARGET_IDX
                 if is_lbw_target:
-                    scale *= lbw_weights[index]  # keyがlbwの対象であれば、lbwの重みを掛ける
+                    scale *= lbw_weights[index]  # If key is target of lbw, apply lbw weight
 
             if device:  # and isinstance(scale, torch.Tensor):
                 scale = scale.to(device)
@@ -407,13 +407,13 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
 def merge(args):
     assert len(args.models) == len(
         args.ratios
-    ), f"number of models must be equal to number of ratios / モデルの数と重みの数は合わせてください"
+    ), f"number of models must be equal to number of ratios"
     if args.lbws:
         assert len(args.models) == len(
             args.lbws
-        ), f"number of models must be equal to number of ratios / モデルの数と層別適用率の数は合わせてください"
+        ), f"number of models must be equal to number of ratios"
     else:
-        args.lbws = []  # zip_longestで扱えるようにlbws未使用時には空のリストにしておく
+        args.lbws = []  # Make it an empty list when lbws is unused so it can be handled by zip_longest
 
     def str_to_dtype(p):
         if p == "float":
@@ -456,7 +456,7 @@ def merge(args):
         if v2:
             # TODO read sai modelspec
             logger.warning(
-                "Cannot determine if LoRA is for v-prediction, so save metadata as v-prediction / LoRAがv-prediction用か否か不明なため、仮にv-prediction用としてmetadataを保存します"
+                "Cannot determine if LoRA is for v-prediction, so save metadata as v-prediction"
             )
         metadata.update(sai_metadata)
 
@@ -471,44 +471,44 @@ def setup_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         choices=[None, "float", "fp16", "bf16"],
-        help="precision in saving, same to merging if omitted / 保存時に精度を変更して保存する、省略時はマージ時の精度と同じ",
+        help="precision in saving, same to merging if omitted",
     )
     parser.add_argument(
         "--precision",
         type=str,
         default="float",
         choices=["float", "fp16", "bf16"],
-        help="precision in merging (float is recommended) / マージの計算時の精度（floatを推奨）",
+        help="precision in merging (float is recommended)",
     )
     parser.add_argument(
         "--save_to",
         type=str,
         default=None,
-        help="destination file name: ckpt or safetensors file / 保存先のファイル名、ckptまたはsafetensors",
+        help="destination file name: ckpt or safetensors file",
     )
     parser.add_argument(
         "--models",
         type=str,
         nargs="*",
-        help="LoRA models to merge: ckpt or safetensors file / マージするLoRAモデル、ckptまたはsafetensors",
+        help="LoRA models to merge: ckpt or safetensors file",
     )
-    parser.add_argument("--ratios", type=float, nargs="*", help="ratios for each model / それぞれのLoRAモデルの比率")
-    parser.add_argument("--lbws", type=str, nargs="*", help="lbw for each model / それぞれのLoRAモデルの層別適用率")
-    parser.add_argument("--new_rank", type=int, default=4, help="Specify rank of output LoRA / 出力するLoRAのrank (dim)")
+    parser.add_argument("--ratios", type=float, nargs="*", help="ratios for each model")
+    parser.add_argument("--lbws", type=str, nargs="*", help="lbw for each model")
+    parser.add_argument("--new_rank", type=int, default=4, help="Specify rank of output LoRA")
     parser.add_argument(
         "--new_conv_rank",
         type=int,
         default=None,
-        help="Specify rank of output LoRA for Conv2d 3x3, None for same as new_rank / 出力するConv2D 3x3 LoRAのrank (dim)、Noneでnew_rankと同じ",
+        help="Specify rank of output LoRA for Conv2d 3x3, None for same as new_rank",
     )
     parser.add_argument(
-        "--device", type=str, default=None, help="device to use, cuda for GPU / 計算を行うデバイス、cuda でGPUを使う"
+        "--device", type=str, default=None, help="device to use, cuda for GPU"
     )
     parser.add_argument(
         "--no_metadata",
         action="store_true",
         help="do not save sai modelspec metadata (minimum ss_metadata for LoRA is saved) / "
-        + "sai modelspecのメタデータを保存しない（LoRAの最低限のss_metadataは保存される）",
+        + "Do not save sai modelspec metadata (minimum ss_metadata of LoRA is saved)",
     )
 
     return parser

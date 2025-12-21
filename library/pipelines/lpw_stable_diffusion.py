@@ -190,9 +190,9 @@ def get_unweighted_text_embeddings(
                 text_input_chunk[:, -1] = text_input[0, -1]
             else:  # v2
                 for j in range(len(text_input_chunk)):
-                    if text_input_chunk[j, -1] != eos and text_input_chunk[j, -1] != pad:  # 最後に普通の文字がある
+                    if text_input_chunk[j, -1] != eos and text_input_chunk[j, -1] != pad:  # There is a normal character at the end
                         text_input_chunk[j, -1] = eos
-                    if text_input_chunk[j, 1] == pad:  # BOSだけであとはPAD
+                    if text_input_chunk[j, 1] == pad:  # BOS only, rest is PAD
                         text_input_chunk[j, 1] = eos
 
             if clip_skip is None or clip_skip == 1:

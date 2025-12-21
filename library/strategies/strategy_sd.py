@@ -79,23 +79,23 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         if max_token_length != model_max_length:
             v1 = sd_tokenize_strategy.tokenizer.pad_token_id == sd_tokenize_strategy.tokenizer.eos_token_id
             if not v1:
-                # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
+                # v2: Restore the trio of <BOS>...<EOS> <PAD> ... to <BOS>...<EOS> <PAD> ...  Honestly not sure if this implementation is correct
                 states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
                 for i in range(1, max_token_length, model_max_length):
-                    chunk = encoder_hidden_states[:, i: i + model_max_length - 2]  # <BOS> の後から 最後の前まで
+                    chunk = encoder_hidden_states[:, i: i + model_max_length - 2]  # From after <BOS> to before last
                     if i > 0:
                         for j in range(len(chunk)):
                             if tokens[j, 1] == sd_tokenize_strategy.tokenizer.eos_token:
-                                # 空、つまり <BOS> <EOS> <PAD> ...のパターン
-                                chunk[j, 0] = chunk[j, 1]  # 次の <PAD> の値をコピーする
-                    states_list.append(chunk)  # <BOS> の後から <EOS> の前まで
-                states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # <EOS> か <PAD> のどちらか
+                                # Empty, i.e., <BOS> <EOS> <PAD> ... pattern
+                                chunk[j, 0] = chunk[j, 1]  # Copy the value of the next <PAD>
+                    states_list.append(chunk)  # From after <BOS> to before <EOS>
+                states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # Either <EOS> or <PAD>
                 encoder_hidden_states = torch.cat(states_list, dim=1)
             else:
-                # v1: <BOS>...<EOS> の三連を <BOS>...<EOS> へ戻す
+                # v1: Restore the trio of <BOS>...<EOS> to <BOS>...<EOS>
                 states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
                 for i in range(1, max_token_length, model_max_length):
-                    states_list.append(encoder_hidden_states[:, i: i + model_max_length - 2])  # <BOS> の後から <EOS> の前まで
+                    states_list.append(encoder_hidden_states[:, i: i + model_max_length - 2])  # From after <BOS> to before <EOS>
                 states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # <EOS>
                 encoder_hidden_states = torch.cat(states_list, dim=1)
 

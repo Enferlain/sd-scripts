@@ -15,7 +15,7 @@ from library.config.dataclasses.performance import PerformanceConfig
 logger = logging.getLogger(__name__)
 
 
-# FlashAttentionを使うCrossAttention
+# CrossAttention using FlashAttention
 # based on https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/memory_efficient_attention_pytorch/flash_attention.py
 # LICENSE MIT https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/LICENSE
 
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 #     try:
 #         import xformers.ops
 #     except ImportError:
-#         raise ImportError("No xformers / xformersがインストールされていないようです")
+#         raise ImportError("No xformers")
 
 #     def forward_xformers(self, x, context=None, mask=None):
 #         h = self.heads
@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 #         q = q.contiguous()
 #         k = k.contiguous()
 #         v = v.contiguous()
-#         out = xformers.ops.memory_efficient_attention(q, k, v, attn_bias=None)  # 最適なのを選んでくれる
+#         out = xformers.ops.memory_efficient_attention(q, k, v, attn_bias=None)  # Select the optimal one
 
 #         out = rearrange(out, "b n h d -> b n (h d)", h=h)
 
@@ -82,7 +82,7 @@ def replace_unet_modules(unet: UNet2DConditionModel, mem_eff_attn, xformers, sdp
         try:
             import xformers.ops
         except ImportError:
-            raise ImportError("No xformers / xformersがインストールされていないようです")
+            raise ImportError("No xformers")
 
         unet.set_use_memory_efficient_attention(True, False)
     elif sdpa:
@@ -96,7 +96,7 @@ def replace_vae_modules(vae: diffusers.models.AutoencoderKL, mem_eff_attn, xform
     if mem_eff_attn:
         replace_vae_attn_to_memory_efficient()
     elif xformers:
-        # とりあえずDiffusersのxformersを使う。AttentionがあるのはMidBlockのみ
+        # Use Diffusers xformers for now. Attention is only in MidBlock
         logger.info("Use Diffusers xformers for VAE")
         vae.encoder.mid_block.attentions[0].set_use_memory_efficient_attention_xformers(True)
         vae.decoder.mid_block.attentions[0].set_use_memory_efficient_attention_xformers(True)
@@ -171,7 +171,7 @@ def _load_target_model(model_config: ModelConfig, v2: bool, weight_dtype, device
             pipe = StableDiffusionPipeline.from_pretrained(name_or_path, tokenizer=None, safety_checker=None)
         except EnvironmentError as ex:
             logger.error(
-                f"model is not found as a file or in Hugging Face, perhaps file name is wrong? / 指定したモデル名のファイル、またはHugging Faceのモデルが見つかりません。ファイル名が誤っているかもしれません: {name_or_path}"
+                f"model is not found as a file or in Hugging Face, perhaps file name is wrong?: {name_or_path}"
             )
             raise ex
         text_encoder = pipe.text_encoder
@@ -180,7 +180,7 @@ def _load_target_model(model_config: ModelConfig, v2: bool, weight_dtype, device
         del pipe
 
         # Diffusers U-Net to original U-Net
-        # TODO *.ckpt/*.safetensorsのv2と同じ形式にここで変換すると良さそう
+        # TODO It would be good to convert to the same format as v2 of *.ckpt/*.safetensors here
         # logger.info(f"unet config: {unet.config}")
         original_unet = UNet2DConditionModel(
             unet.config.sample_size,
@@ -193,7 +193,7 @@ def _load_target_model(model_config: ModelConfig, v2: bool, weight_dtype, device
         unet = original_unet
         logger.info("U-Net converted to original U-Net")
 
-    # VAEを読み込む
+    # Load VAE
     if model_config.vae is not None:
         vae = model_util.load_vae(model_config.vae, weight_dtype)
         logger.info("additional VAE loaded")

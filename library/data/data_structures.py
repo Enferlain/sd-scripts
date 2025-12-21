@@ -64,7 +64,7 @@ class BucketManager:
 
         self.resos = []
         self.reso_to_id = {}
-        self.buckets = []  # 前処理時は (image_key, image, original size, crop left/top)、学習時は image_key
+        self.buckets = []  # During preprocessing: (image_key, image, original size, crop left/top), During training: image_key
 
     def add_image(self, reso, image_or_info):
         bucket_id = self.reso_to_id[reso]
@@ -75,7 +75,7 @@ class BucketManager:
             random.shuffle(bucket)
 
     def sort(self):
-        # 解像度順にソートする（表示時、メタデータ格納時の見栄えをよくするためだけ）。bucketsも入れ替えてreso_to_idも振り直す
+        # Sort by resolution (just for better visibility when displaying or saving metadata). Also swap buckets and reassign reso_to_id
         sorted_resos = self.resos.copy()
         sorted_resos.sort()
 
@@ -95,7 +95,7 @@ class BucketManager:
         self.set_predefined_resos(resos)
 
     def set_predefined_resos(self, resos):
-        # 規定サイズから選ぶ場合の解像度、aspect ratioの情報を格納しておく
+        # Store resolution and aspect ratio information when choosing from predefined sizes
         self.predefined_resos = resos.copy()
         self.predefined_resos_set = set(resos)
         self.predefined_aspect_ratios = np.array([w / h for w, h in resos])
@@ -115,18 +115,18 @@ class BucketManager:
     def select_bucket(self, image_width, image_height):
         aspect_ratio = image_width / image_height
         if not self.no_upscale:
-            # 拡大および縮小を行う
-            # 同じaspect ratioがあるかもしれないので（fine tuningで、no_upscale=Trueで前処理した場合）、解像度が同じものを優先する
+            # Perform upscaling and downscaling
+            # There might be the same aspect ratio (if preprocessed with no_upscale=True in fine tuning), so prioritize the one with the same resolution
             reso = (image_width, image_height)
             if reso in self.predefined_resos_set:
                 pass
             else:
                 ar_errors = self.predefined_aspect_ratios - aspect_ratio
-                predefined_bucket_id = np.abs(ar_errors).argmin()  # 当該解像度以外でaspect ratio errorが最も少ないもの
+                predefined_bucket_id = np.abs(ar_errors).argmin()  # The one with the least aspect ratio error other than the resolution in question
                 reso = self.predefined_resos[predefined_bucket_id]
 
             ar_reso = reso[0] / reso[1]
-            if aspect_ratio > ar_reso:  # 横が長い→縦を合わせる
+            if aspect_ratio > ar_reso:  # Width is longer -> match height
                 scale = reso[1] / image_height
             else:
                 scale = reso[0] / image_width
@@ -134,15 +134,15 @@ class BucketManager:
             resized_size = (int(image_width * scale + 0.5), int(image_height * scale + 0.5))
             # logger.info(f"use predef, {image_width}, {image_height}, {reso}, {resized_size}")
         else:
-            # 縮小のみを行う
+            # Only perform downscaling
             if image_width * image_height > self.max_area:
-                # 画像が大きすぎるのでアスペクト比を保ったまま縮小することを前提にbucketを決める
+                # The image is too large, so decide the bucket assuming downscaling while maintaining aspect ratio
                 resized_width = math.sqrt(self.max_area * aspect_ratio)
                 resized_height = self.max_area / resized_width
                 assert abs(resized_width / resized_height - aspect_ratio) < 1e-2, "aspect is illegal"
 
-                # リサイズ後の短辺または長辺をreso_steps単位にする：aspect ratioの差が少ないほうを選ぶ
-                # 元のbucketingと同じロジック
+                # Set the short or long side after resizing to units of reso_steps: choose the one with smaller aspect ratio difference
+                # Same logic as original bucketing
                 b_width_rounded = self.round_to_steps(resized_width)
                 b_height_in_wr = self.round_to_steps(b_width_rounded / aspect_ratio)
                 ar_width_rounded = b_width_rounded / b_height_in_wr
@@ -160,9 +160,9 @@ class BucketManager:
                     resized_size = (int(b_height_rounded * aspect_ratio + 0.5), b_height_rounded)
                 # logger.info(resized_size)
             else:
-                resized_size = (image_width, image_height)  # リサイズは不要
+                resized_size = (image_width, image_height)  # No resize needed
 
-            # 画像のサイズ未満をbucketのサイズとする（paddingせずにcroppingする）
+            # Set bucket size to be less than image size (crop without padding)
             bucket_width = resized_size[0] - resized_size[0] % self.reso_steps
             bucket_height = resized_size[1] - resized_size[1] % self.reso_steps
             # logger.info(f"use arbitrary {image_width}, {image_height}, {resized_size}, {bucket_width}, {bucket_height}")
@@ -176,13 +176,12 @@ class BucketManager:
 
     @staticmethod
     def get_crop_ltrb(bucket_reso: Tuple[int, int], image_size: Tuple[int, int]):
-        # Stability AIの前処理に合わせてcrop left/topを計算する。crop rightはflipのaugmentationのために求める
         # Calculate crop left/top according to the preprocessing of Stability AI. Crop right is calculated for flip augmentation.
 
         bucket_ar = bucket_reso[0] / bucket_reso[1]
         image_ar = image_size[0] / image_size[1]
         if bucket_ar > image_ar:
-            # bucketのほうが横長→縦を合わせる
+            # Bucket is wider -> match height
             resized_width = bucket_reso[1] * image_ar
             resized_height = bucket_reso[1]
         else:
@@ -202,7 +201,7 @@ class BucketBatchIndex(NamedTuple):
 
 
 class AugHelper:
-    # albumentationsへの依存をなくしたがとりあえず同じinterfaceを持たせる
+    # Removed dependency on albumentations but kept the same interface for now
 
     def __init__(self):
         pass
@@ -287,8 +286,8 @@ class BaseSubset:
         self.caption_prefix = caption_prefix
         self.caption_suffix = caption_suffix
 
-        self.token_warmup_min = token_warmup_min  # step=0におけるタグの数
-        self.token_warmup_step = token_warmup_step  # N（N<1ならN*max_train_steps）ステップ目でタグの数が最大になる
+        self.token_warmup_min = token_warmup_min  # Number of tags at step=0
+        self.token_warmup_step = token_warmup_step  # Number of tags becomes maximum at step N (N*max_train_steps if N<1)
 
         self.custom_attributes = custom_attributes if custom_attributes is not None else {}
 
@@ -333,7 +332,7 @@ class DreamBoothSubset(BaseSubset):
             validation_split: Optional[float] = 0.0,
             resize_interpolation: Optional[str] = None,
     ) -> None:
-        assert image_dir is not None, "image_dir must be specified / image_dirは指定が必須です"
+        assert image_dir is not None, "image_dir must be specified"
 
         super().__init__(
             image_dir,
@@ -406,7 +405,7 @@ class FineTuningSubset(BaseSubset):
             validation_split: Optional[float] = 0.0,
             resize_interpolation: Optional[str] = None,
     ) -> None:
-        assert metadata_file is not None, "metadata_file must be specified / metadata_fileは指定が必須です"
+        assert metadata_file is not None, "metadata_file must be specified"
 
         super().__init__(
             image_dir,
@@ -475,7 +474,7 @@ class ControlNetSubset(BaseSubset):
             validation_split: Optional[float] = 0.0,
             resize_interpolation: Optional[str] = None,
     ) -> None:
-        assert image_dir is not None, "image_dir must be specified / image_dirは指定が必須です"
+        assert image_dir is not None, "image_dir must be specified"
 
         super().__init__(
             image_dir,

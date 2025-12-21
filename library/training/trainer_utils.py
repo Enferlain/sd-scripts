@@ -29,20 +29,20 @@ def prepare_accelerator(args: DictConfig):
         if log_with in ["tensorboard", "all"]:
             if logging_dir is None:
                 raise ValueError(
-                    "logging_dir is required when log_with is tensorboard / Tensorboardを使う場合、logging_dirを指定してください"
+                    "logging_dir is required when log_with is tensorboard"
                 )
         if log_with in ["wandb", "all"]:
             try:
                 import wandb
             except ImportError:
-                raise ImportError("No wandb / wandb がインストールされていないようです")
+                raise ImportError("No wandb")
             if logging_dir is not None:
                 os.makedirs(logging_dir, exist_ok=True)
                 os.environ["WANDB_DIR"] = logging_dir
             if args.wandb_api_key is not None:
                 wandb.login(key=args.wandb_api_key)
 
-    # torch.compile のオプション。 NO の場合は torch.compile は使わない
+    # Options for torch.compile. If NO, torch.compile is not used
     if args.torch_compile:
         # Configure the compilation backend
         dynamo_plugin = TorchDynamoPlugin(

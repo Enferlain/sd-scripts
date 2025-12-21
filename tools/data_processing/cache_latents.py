@@ -1,4 +1,4 @@
-# latentsのdiskへの事前キャッシュを行う / cache latents to disk
+# cache latents to disk
 
 import argparse
 import torch
@@ -66,7 +66,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     prepare_dataset_args(args, True)
     enable_high_vram(args)
 
-    # assert args.cache_latents_to_disk, "cache_latents_to_disk must be True / cache_latents_to_diskはTrueである必要があります"
+    # assert args.cache_latents_to_disk, "cache_latents_to_disk must be True"
     args.cache_latents = True
     args.cache_latents_to_disk = True
 
@@ -86,7 +86,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
         latents_caching_strategy = strategy_flux.FluxLatentsCachingStrategy(True, args.vae_batch_size, args.skip_cache_check)
     strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
-    # データセットを準備する
+    # Prepare dataset
     use_user_config = args.dataset_config is not None
     if args.dataset_class is None:
         blueprint_generator = BlueprintGenerator(ConfigSanitizer(True, True, args.masked_loss, True))
@@ -96,7 +96,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
             ignored = ["train_data_dir", "reg_data_dir", "in_json"]
             if any(getattr(args, attr) is not None for attr in ignored):
                 logger.warning(
-                    "ignoring the following options because config file is found: {0} / 設定ファイルが利用されるため以下のオプションは無視されます: {0}".format(
+                    "ignoring the following options because config file is found: {0}".format(
                         ", ".join(ignored)
                     )
                 )
@@ -134,16 +134,16 @@ def cache_to_disk(args: argparse.Namespace) -> None:
         train_dataset_group = load_arbitrary_dataset(args)
         val_dataset_group = None
 
-    # acceleratorを準備する
+    # Prepare accelerator
     logger.info("prepare accelerator")
     args.deepspeed = False
     accelerator = prepare_accelerator(args)
 
-    # mixed precisionに対応した型を用意しておき適宜castする
+    # Prepare types for mixed precision and cast as appropriate
     weight_dtype, _ = prepare_dtype(args)
     vae_dtype = torch.float32 if args.no_half_vae else weight_dtype
 
-    # モデルを読み込む
+    # Load model
     logger.info("load model")
     if is_sd:
         _, vae, _, _ = load_target_model(args, weight_dtype, accelerator)
@@ -153,7 +153,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
         vae = flux_utils.load_ae(args.ae, weight_dtype, "cpu", disable_mmap=args.disable_mmap_load_safetensors)
 
     if is_sd or is_sdxl:
-        if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
+        if torch.__version__ >= "2.0.0":  # If xformers supports PyTorch 2.0.0 or higher, the following can be used
             vae.set_use_memory_efficient_attention_xformers(args.xformers)
 
     vae.to(accelerator.device, dtype=vae_dtype)
@@ -181,18 +181,17 @@ def setup_parser() -> argparse.ArgumentParser:
     add_dit_training_arguments(parser)
     flux_train_utils.add_flux_train_arguments(parser)
 
-    parser.add_argument("--sdxl", action="store_true", help="Use SDXL model / SDXLモデルを使用する")
-    parser.add_argument("--flux", action="store_true", help="Use FLUX model / FLUXモデルを使用する")
+    parser.add_argument("--sdxl", action="store_true", help="Use SDXL model")
+    parser.add_argument("--flux", action="store_true", help="Use FLUX model")
     parser.add_argument(
         "--no_half_vae",
         action="store_true",
-        help="do not use fp16/bf16 VAE in mixed precision (use float VAE) / mixed precisionでも fp16/bf16 VAEを使わずfloat VAEを使う",
+        help="do not use fp16/bf16 VAE in mixed precision (use float VAE)",
     )
     parser.add_argument(
         "--skip_existing",
         action="store_true",
-        help="[Deprecated] This option does not work. Existing .npz files are always checked. Use `--skip_cache_check` to skip the check."
-        " / [非推奨] このオプションは機能しません。既存の .npz は常に検証されます。`--skip_cache_check` で検証をスキップできます。",
+        help="[Deprecated] This option does not work. Existing .npz files are always checked. Use `--skip_cache_check` to skip the check.",
     )
     return parser
 

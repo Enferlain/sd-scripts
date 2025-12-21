@@ -72,8 +72,8 @@ def save_sd_model_on_train_end(
     )
 
 
-# epochとstepの保存、メタデータにepoch/stepが含まれ引数が同じになるため、統合している
-# on_epoch_end: Trueならepoch終了時、Falseならstep経過時
+# Save epoch and step. Since metadata includes epoch/step and arguments are the same, they are integrated
+# on_epoch_end: True if end of epoch, False if step elapsed
 def save_sd_model_on_epoch_end_or_stepwise(
         saving_config: SavingConfig,
         training_config: TrainingConfig,

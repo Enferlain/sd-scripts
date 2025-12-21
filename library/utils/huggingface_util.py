@@ -38,9 +38,9 @@ def upload(
     if not exists_repo(repo_id=repo_id, repo_type=repo_type, token=token):
         try:
             api.create_repo(repo_id=repo_id, repo_type=repo_type, private=private)
-        except Exception as e:  # とりあえずRepositoryNotFoundErrorは確認したが他にあると困るので
+        except Exception as e:  # I checked RepositoryNotFoundError for now, but it would be a problem if there are others
             logger.error("===========================================")
-            logger.error(f"failed to create HuggingFace repo / HuggingFaceのリポジトリの作成に失敗しました : {e}")
+            logger.error(f"failed to create HuggingFace repo : {e}")
             logger.error("===========================================")
 
     is_folder = (type(src) == str and os.path.isdir(src)) or (isinstance(src, Path) and src.is_dir())
@@ -61,9 +61,9 @@ def upload(
                     path_or_fileobj=src,
                     path_in_repo=path_in_repo,
                 )
-        except Exception as e:  # RuntimeErrorを確認済みだが他にあると困るので
+        except Exception as e:  # RuntimeError has been confirmed, but it would be a problem if there are others
             logger.error("===========================================")
-            logger.error(f"failed to upload to HuggingFace / HuggingFaceへのアップロードに失敗しました : {e}")
+            logger.error(f"failed to upload to HuggingFace : {e}")
             logger.error("===========================================")
 
     if args.async_upload and not force_sync_upload:

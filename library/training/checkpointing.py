@@ -353,7 +353,7 @@ def resume_from_local_or_hf_if_specified(accelerator, config: SavingConfig):
         asyncio.gather(*[download(filename=filename.rfilename) for filename in list_files]))
     if len(results) == 0:
         raise ValueError(
-            "No files found in the specified repo id/path/revision / 指定されたリポジトリID/パス/リビジョンにファイルが見つかりませんでした"
+            "No files found in the specified repo id/path/revision"
         )
     dirname = os.path.dirname(results[0])
     accelerator.load_state(dirname)
@@ -392,8 +392,8 @@ def get_remove_step_no(config: SavingConfig, step_no: int):
     if config.save_last_n_steps is None:
         return None
 
-    # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
-    # save_every_n_steps=10, save_last_n_steps=30の場合、50step目には30step分残し、10step目を削除する
+    # Calculate step_no that is a multiple of save_every_n_steps from step_no before last_n_steps and delete it
+    # If save_every_n_steps=10, save_last_n_steps=30, at 50th step, keep 30 steps and delete 10th step
     remove_step_no = step_no - config.save_last_n_steps - 1
     remove_step_no = remove_step_no - (remove_step_no % config.save_every_n_steps)
     if remove_step_no < 0:
@@ -401,8 +401,8 @@ def get_remove_step_no(config: SavingConfig, step_no: int):
     return remove_step_no
 
 
-# epochとstepの保存、メタデータにepoch/stepが含まれ引数が同じになるため、統合している
-# on_epoch_end: Trueならepoch終了時、Falseならstep経過時
+# Save epoch and step. Since metadata includes epoch/step and arguments are the same, they are integrated
+# on_epoch_end: True if end of epoch, False if step elapsed
 def save_sd_model_on_epoch_end_or_stepwise(
         saving_config: SavingConfig,
         training_config: TrainingConfig,
@@ -480,10 +480,10 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
         model_name = default_if_none(saving_config.output_name, DEFAULT_EPOCH_NAME)
         remove_no = get_remove_epoch_no(saving_config, epoch_no)
     else:
-        # 保存するか否かは呼び出し側で判断済み
+        # Whether to save or not is decided by the caller
 
         model_name = default_if_none(saving_config.output_name, DEFAULT_STEP_NAME)
-        epoch_no = epoch  # 例: 最初のepochの途中で保存したら0になる、SDモデルに保存される
+        epoch_no = epoch  # Example: If saved in the middle of the first epoch, it will be 0, saved in SD model
         remove_no = get_remove_step_no(saving_config, global_step)
 
     os.makedirs(saving_config.output_dir, exist_ok=True)
@@ -587,7 +587,7 @@ def save_and_remove_state_stepwise(config: SavingConfig, accelerator, step_no):
 
     last_n_steps = config.save_last_n_steps_state if config.save_last_n_steps_state else config.save_last_n_steps
     if last_n_steps is not None:
-        # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
+        # Calculate step_no that is a multiple of save_every_n_steps from step_no before last_n_steps and delete it
         remove_step_no = step_no - last_n_steps - 1
         remove_step_no = remove_step_no - (remove_step_no % config.save_every_n_steps)
 

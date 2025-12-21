@@ -148,7 +148,7 @@ class TextualInversionTrainer:
             # compatible to Web UI's file format
             data = torch.load(file, map_location="cpu")
             if type(data) != dict:
-                raise ValueError(f"weight file is not dict / 重みファイルがdict形式ではありません: {file}")
+                raise ValueError(f"weight file is not dict: {file}")
 
             if "string_to_param" in data:  # textual inversion embeddings
                 data = data["string_to_param"]
@@ -157,7 +157,7 @@ class TextualInversionTrainer:
 
         emb = next(iter(data.values()))
         if type(emb) != torch.Tensor:
-            raise ValueError(f"weight file does not contains Tensor / 重みファイルのデータがTensorではありません: {file}")
+            raise ValueError(f"weight file does not contains Tensor: {file}")
 
         if len(emb.size()) == 1:
             emb = emb.unsqueeze(0)
@@ -385,7 +385,7 @@ class TextualInversionTrainer:
             vae.eval()
             vae.to(accelerator.device, dtype=vae_dtype)
 
-        # 実験的機能：勾配も含めたfp16学習を行う　PyTorchにパッチを当ててfp16でのgrad scaleを有効にする
+        # Experimental feature: Perform fp16 training including gradients. Patch PyTorch to enable grad scale in fp16
         if training_config.full_fp16:
             patch_accelerator_for_fp16_training(accelerator)
             for text_encoder in text_encoders:
@@ -498,7 +498,7 @@ class TextualInversionTrainer:
                         if "latents" in batch and batch["latents"] is not None:
                             latents = batch["latents"].to(accelerator.device).to(dtype=weight_dtype)
                         else:
-                            # latentに変換
+                            # Convert to latent
                             latents = vae.encode(batch["images"].to(dtype=vae_dtype)).latent_dist.sample().to(dtype=weight_dtype)
                         latents = latents * self.vae_scale_factor
 

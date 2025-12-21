@@ -222,8 +222,8 @@ class TokenizeStrategy:
             iids_list = []
             if tokenizer.pad_token_id == tokenizer.eos_token_id:
                 # v1
-                # 77以上の時は "<BOS> .... <EOS> <EOS> <EOS>" でトータル227とかになっているので、"<BOS>...<EOS>"の三連に変換する
-                # 1111氏のやつは , で区切る、とかしているようだが　とりあえず単純に
+                # When 77 or more, it is "<BOS> .... <EOS> <EOS> <EOS>" and total 227 or so, so convert to triplet of "<BOS>...<EOS>"
+                # 1111 seems to separate with , but simply for now
                 for i in range(1, max_length - tokenizer.model_max_length + 2,
                                tokenizer.model_max_length - 2):  # (1, 152, 75)
                     ids_chunk = (
@@ -235,7 +235,7 @@ class TokenizeStrategy:
                     iids_list.append(ids_chunk)
             else:
                 # v2 or SDXL
-                # 77以上の時は "<BOS> .... <EOS> <PAD> <PAD>..." でトータル227とかになっているので、"<BOS>...<EOS> <PAD> <PAD> ..."の三連に変換する
+                # When 77 or more, it is "<BOS> .... <EOS> <PAD> <PAD>..." and total 227 or so, so convert to triplet of "<BOS>...<EOS> <PAD> <PAD> ..."
                 for i in range(1, max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2):
                     ids_chunk = (
                         input_ids[0].unsqueeze(0),  # BOS
@@ -244,11 +244,11 @@ class TokenizeStrategy:
                     )  # PAD or EOS
                     ids_chunk = torch.cat(ids_chunk)
 
-                    # 末尾が <EOS> <PAD> または <PAD> <PAD> の場合は、何もしなくてよい
-                    # 末尾が x <PAD/EOS> の場合は末尾を <EOS> に変える（x <EOS> なら結果的に変化なし）
+                    # If the end is <EOS> <PAD> or <PAD> <PAD>, do nothing
+                    # If the end is x <PAD/EOS>, change the end to <EOS> (if x <EOS>, no change as a result)
                     if ids_chunk[-2] != tokenizer.eos_token_id and ids_chunk[-2] != tokenizer.pad_token_id:
                         ids_chunk[-1] = tokenizer.eos_token_id
-                    # 先頭が <BOS> <PAD> ... の場合は <BOS> <EOS> <PAD> ... に変える
+                    # If the beginning is <BOS> <PAD> ..., change to <BOS> <EOS> <PAD> ...
                     if ids_chunk[1] == tokenizer.pad_token_id:
                         ids_chunk[1] = tokenizer.eos_token_id
 

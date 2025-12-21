@@ -77,18 +77,18 @@ def add_loss_weighting_arguments(parser: argparse.ArgumentParser):
         "--min_snr_gamma",
         type=float,
         default=None,
-        help="gamma for reducing the weight of high loss timesteps. Lower numbers have stronger effect. 5 is recommended by paper. / 低いタイムステップでの高いlossに対して重みを減らすためのgamma値、低いほど効果が強く、論文では5が推奨",
+        help="gamma for reducing the weight of high loss timesteps. Lower numbers have stronger effect. 5 is recommended by paper.",
     )
     parser.add_argument(
         "--scale_v_pred_loss_like_noise_pred",
         action="store_true",
-        help="scale v-prediction loss like noise prediction loss / v-prediction lossをnoise prediction lossと同じようにスケーリングする",
+        help="scale v-prediction loss like noise prediction loss",
     )
     parser.add_argument(
         "--v_pred_like_loss",
         type=float,
         default=None,
-        help="add v-prediction like loss multiplied by this value / v-prediction lossをこの値をかけたものをlossに加算する",
+        help="add v-prediction like loss multiplied by this value",
     )
     parser.add_argument(
         "--debiased_estimation_loss",

@@ -63,7 +63,7 @@ def svd(
             return torch.bfloat16
         return None
 
-    assert v2 != sdxl or (not v2 and not sdxl), "v2 and sdxl cannot be specified at the same time / v2とsdxlは同時に指定できません"
+    assert v2 != sdxl or (not v2 and not sdxl), "v2 and sdxl cannot be specified at the same time"
     if v_parameterization is None:
         v_parameterization = v2
 
@@ -124,7 +124,7 @@ def svd(
     lora_network_t = lora.create_network(1.0, dim, dim, None, text_encoders_t, unet_t, **kwargs)
     assert len(lora_network_o.text_encoder_loras) == len(
         lora_network_t.text_encoder_loras
-    ), f"model version is different (SD1.x vs SD2.x) / それぞれのモデルのバージョンが違います（SD1.xベースとSD2.xベース） "
+    ), f"model version is different (SD1.x vs SD2.x)"
 
     # get diffs
     diffs = {}
@@ -269,89 +269,89 @@ def svd(
 
 def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--v2", action="store_true", help="load Stable Diffusion v2.x model / Stable Diffusion 2.xのモデルを読み込む")
+    parser.add_argument("--v2", action="store_true", help="load Stable Diffusion v2.x model")
     parser.add_argument(
         "--v_parameterization",
         action="store_true",
         default=None,
-        help="make LoRA metadata for v-parameterization (default is same to v2) / 作成するLoRAのメタデータにv-parameterization用と設定する（省略時はv2と同じ）",
+        help="make LoRA metadata for v-parameterization (default is same to v2)",
     )
     parser.add_argument(
-        "--sdxl", action="store_true", help="load Stable Diffusion SDXL base model / Stable Diffusion SDXL baseのモデルを読み込む"
+        "--sdxl", action="store_true", help="load Stable Diffusion SDXL base model"
     )
     parser.add_argument(
         "--load_precision",
         type=str,
         default=None,
         choices=[None, "float", "fp16", "bf16"],
-        help="precision in loading, model default if omitted / 読み込み時に精度を変更して読み込む、省略時はモデルファイルによる"
+        help="precision in loading, model default if omitted"
     )
     parser.add_argument(
         "--save_precision",
         type=str,
         default=None,
         choices=[None, "float", "fp16", "bf16"],
-        help="precision in saving, same to merging if omitted / 保存時に精度を変更して保存する、省略時はfloat",
+        help="precision in saving, same to merging if omitted",
     )
     parser.add_argument(
         "--model_org",
         type=str,
         default=None,
         required=True,
-        help="Stable Diffusion original model: ckpt or safetensors file / 元モデル、ckptまたはsafetensors",
+        help="Stable Diffusion original model: ckpt or safetensors file",
     )
     parser.add_argument(
         "--model_tuned",
         type=str,
         default=None,
         required=True,
-        help="Stable Diffusion tuned model, LoRA is difference of `original to tuned`: ckpt or safetensors file / 派生モデル（生成されるLoRAは元→派生の差分になります）、ckptまたはsafetensors",
+        help="Stable Diffusion tuned model, LoRA is difference of `original to tuned`: ckpt or safetensors file",
     )
     parser.add_argument(
         "--save_to",
         type=str,
         default=None,
         required=True,
-        help="destination file name: ckpt or safetensors file / 保存先のファイル名、ckptまたはsafetensors",
+        help="destination file name: ckpt or safetensors file",
     )
-    parser.add_argument("--dim", type=int, default=4, help="dimension (rank) of LoRA (default 4) / LoRAの次元数（rank）（デフォルト4）")
+    parser.add_argument("--dim", type=int, default=4, help="dimension (rank) of LoRA (default 4)")
     parser.add_argument(
         "--conv_dim",
         type=int,
         default=None,
-        help="dimension (rank) of LoRA for Conv2d-3x3 (default None, disabled) / LoRAのConv2d-3x3の次元数（rank）（デフォルトNone、適用なし）",
+        help="dimension (rank) of LoRA for Conv2d-3x3 (default None, disabled)",
     )
-    parser.add_argument("--device", type=str, default=None, help="device to use, cuda for GPU / 計算を行うデバイス、cuda でGPUを使う")
+    parser.add_argument("--device", type=str, default=None, help="device to use, cuda for GPU")
     parser.add_argument(
         "--clamp_quantile",
         type=float,
         default=0.99,
-        help="Quantile clamping value, float, (0-1). Default = 0.99 / 値をクランプするための分位点、float、(0-1)。デフォルトは0.99",
+        help="Quantile clamping value, float, (0-1). Default = 0.99",
     )
     parser.add_argument(
         "--min_diff",
         type=float,
         default=0.01,
         help="Minimum difference between finetuned model and base to consider them different enough to extract, float, (0-1). Default = 0.01 /"
-        + "LoRAを抽出するために元モデルと派生モデルの差分の最小値、float、(0-1)。デフォルトは0.01",
+        + "Minimum difference between original and tuned model to extract LoRA, float, (0-1). Default is 0.01",
     )
     parser.add_argument(
         "--no_metadata",
         action="store_true",
         help="do not save sai modelspec metadata (minimum ss_metadata for LoRA is saved) / "
-        + "sai modelspecのメタデータを保存しない（LoRAの最低限のss_metadataは保存される）",
+        + "Do not save sai modelspec metadata (minimum ss_metadata of LoRA is saved)",
     )
     parser.add_argument(
         "--load_original_model_to",
         type=str,
         default=None,
-        help="location to load original model, cpu or cuda, cuda:0, etc, default is cpu, only for SDXL / 元モデル読み込み先、cpuまたはcuda、cuda:0など、省略時はcpu、SDXLのみ有効",
+        help="location to load original model, cpu or cuda, cuda:0, etc, default is cpu, only for SDXL",
     )
     parser.add_argument(
         "--load_tuned_model_to",
         type=str,
         default=None,
-        help="location to load tuned model, cpu or cuda, cuda:0, etc, default is cpu, only for SDXL / 派生モデル読み込み先、cpuまたはcuda、cuda:0など、省略時はcpu、SDXLのみ有効",
+        help="location to load tuned model, cpu or cuda, cuda:0, etc, default is cpu, only for SDXL",
     )
 
     return parser

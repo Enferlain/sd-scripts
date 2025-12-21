@@ -220,7 +220,7 @@ if __name__ == "__main__":
     unet.requires_grad_(False)
     control_net.requires_grad_(True)
 
-    # 使用メモリ量確認用の疑似学習ループ
+    # Pseudo training loop for checking memory usage
     logger.info("preparing optimizer")
 
     # optimizer = torch.optim.SGD(unet.parameters(), lr=1e-3, nesterov=True, momentum=0.9) # not working

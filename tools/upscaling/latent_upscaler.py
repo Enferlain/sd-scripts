@@ -1,5 +1,5 @@
-# 外部から簡単にupscalerを呼ぶためのスクリプト
-# 単体で動くようにモデル定義も含めている
+# Script to easily call upscaler from outside
+# Model definition is also included to run as a standalone
 
 import argparse
 import glob
@@ -38,7 +38,7 @@ class ResidualBlock(nn.Module):
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size, stride, padding, bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
 
-        self.relu2 = nn.ReLU(inplace=True)  # このReLUはresidualに足す前にかけるほうがいいかも
+        self.relu2 = nn.ReLU(inplace=True)  # This ReLU might be better applied before adding to residual
 
         # initialize weights
         self._initialize_weights()
@@ -85,7 +85,7 @@ class Upscaler(nn.Module):
         self.relu1 = nn.ReLU(inplace=True)
 
         # resblocks
-        # 数の暴力で20個：次元数を増やすよりもブロックを増やしたほうがreceptive fieldが広がるはずだぞ
+        # 20 blocks by brute force: Increasing blocks should widen the receptive field more than increasing dimensions
         self.resblock1 = ResidualBlock(128)
         self.resblock2 = ResidualBlock(128)
         self.resblock3 = ResidualBlock(128)
@@ -135,7 +135,7 @@ class Upscaler(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
-        # initialize final conv weights to 0: 流行りのzero conv
+        # initialize final conv weights to 0: zero conv
         nn.init.constant_(self.conv_final.weight, 0)
 
     def forward(self, x):
@@ -145,7 +145,7 @@ class Upscaler(nn.Module):
         x = self.bn1(x)
         x = self.relu1(x)
 
-        # いくつかのresblockを通した後に、residualを足すことで精度向上と学習速度向上が見込めるはず
+        # Adding residual after passing through several resblocks should improve accuracy and learning speed
         residual = x
         x = self.resblock1(x)
         x = self.resblock2(x)
@@ -183,7 +183,7 @@ class Upscaler(nn.Module):
         x = self.conv3(x)
         x = self.bn3(x)
 
-        # ここにreluを入れないほうがいい気がする
+        # I feel it's better not to put relu here
 
         x = self.conv_final(x)
 

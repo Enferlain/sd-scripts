@@ -45,7 +45,7 @@ def get_my_scheduler(
     sched_init_args = {}
     if sample_sampler == "ddim":
         scheduler_cls = DDIMScheduler
-    elif sample_sampler == "ddpm":  # ddpmはおかしくなるのでoptionから外してある
+    elif sample_sampler == "ddpm":  # ddpm is weird so removed from option
         scheduler_cls = DDPMScheduler
     elif sample_sampler == "pndm":
         scheduler_cls = PNDMScheduler
@@ -80,7 +80,7 @@ def get_my_scheduler(
         **sched_init_args,
     )
 
-    # clip_sample=Trueにする
+    # Set clip_sample=True
     if hasattr(scheduler.config, "clip_sample") and scheduler.config.clip_sample is False:
         # logger.info("set clip_sample to True")
         scheduler.config.clip_sample = True
@@ -161,7 +161,7 @@ def line_to_prompt_dict(line: str) -> dict:
                 continue
 
         except ValueError as ex:
-            logger.error(f"Exception in parsing / 解析エラー: {parg}")
+            logger.error(f"Exception in parsing: {parg}")
             logger.error(ex)
 
     return prompt_dict
@@ -205,7 +205,7 @@ def sample_images_check(sampling_config: SamplingConfig, epoch, steps) -> bool:
         if sampling_config.sample_every_n_steps is None and sampling_config.sample_every_n_epochs is None:
             return False
         if sampling_config.sample_every_n_epochs is not None:
-            # sample_every_n_steps は無視する
+            # Ignore sample_every_n_steps
             if epoch is None or epoch % sampling_config.sample_every_n_epochs != 0:
                 return False
         else:
@@ -231,7 +231,7 @@ def sample_images_common(
         controlnet=None,
 ):
     """
-    StableDiffusionLongPromptWeightingPipelineの改造版を使うようにしたので、clip skipおよびプロンプトの重みづけに対応した
+    Using modified version of StableDiffusionLongPromptWeightingPipeline, so it supports clip skip and prompt weighting
     TODO Use strategies here
     """
 
@@ -242,7 +242,7 @@ def sample_images_common(
         if sampling_config.sample_every_n_steps is None and sampling_config.sample_every_n_epochs is None:
             return
         if sampling_config.sample_every_n_epochs is not None:
-            # sample_every_n_steps は無視する
+            # Ignore sample_every_n_steps
             if epoch is None or epoch % sampling_config.sample_every_n_epochs != 0:
                 return
         else:
@@ -250,14 +250,14 @@ def sample_images_common(
                 return
 
     logger.info("")
-    logger.info(f"generating sample images at step / サンプル画像生成 ステップ: {steps}")
+    logger.info(f"generating sample images at step: {steps}")
     if not os.path.isfile(sampling_config.sample_prompts):
-        logger.error(f"No prompt file / プロンプトファイルがありません: {sampling_config.sample_prompts}")
+        logger.error(f"No prompt file: {sampling_config.sample_prompts}")
         return
 
     distributed_state = PartialState()  # for multi gpu distributed inference. this is a singleton, so it's safe to use it here
 
-    org_vae_device = vae.device  # CPUにいるはず
+    org_vae_device = vae.device  # Should be on CPU
     vae.to(distributed_state.device)  # distributed_state.device is same as accelerator.device
 
     # unwrap unet and text_encoder(s)

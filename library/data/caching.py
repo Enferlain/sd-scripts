@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_disk_cached_latents_is_expected(reso, npz_path: str, flip_aug: bool, alpha_mask: bool):
-    expected_latents_size = (reso[1] // 8, reso[0] // 8)  # bucket_resoはWxHなので注意
+    expected_latents_size = (reso[1] // 8, reso[0] // 8)  # bucket_reso is WxH, so be careful
 
     if not os.path.exists(npz_path):
         return False
@@ -70,7 +70,7 @@ def load_images_and_masks_for_caching(
     crop_ltrbs: List[Tuple[int, int, int, int]] = []
     for info in image_infos:
         image = load_image(info.absolute_path, use_alpha_mask) if info.image is None else np.array(info.image, np.uint8)
-        # TODO 画像のメタデータが壊れていて、メタデータから割り当てたbucketと実際の画像サイズが一致しない場合があるのでチェック追加要
+        # TODO The image metadata might be broken, and the bucket assigned from metadata might not match the actual image size, so a check needs to be added
         image, original_size, crop_ltrb = trim_and_resize_if_required(
             random_crop, image, info.bucket_reso, info.resized_size, resize_interpolation=info.resize_interpolation,
             random_crop_padding_percent=random_crop_padding_percent
@@ -115,7 +115,7 @@ def cache_batch_latents(
     alpha_masks: List[np.ndarray] = []
     for info in image_infos:
         image = load_image(info.absolute_path, use_alpha_mask) if info.image is None else np.array(info.image, np.uint8)
-        # TODO 画像のメタデータが壊れていて、メタデータから割り当てたbucketと実際の画像サイズが一致しない場合があるのでチェック追加要
+        # TODO The image metadata might be broken, and the bucket assigned from metadata might not match the actual image size, so a check needs to be added
         image, original_size, crop_ltrb = trim_and_resize_if_required(
             random_crop, image, info.bucket_reso, info.resized_size, resize_interpolation=info.resize_interpolation,
             random_crop_padding_percent=random_crop_padding_percent
@@ -195,7 +195,7 @@ def cache_batch_text_encoder_outputs(
             dtype,
         )
 
-        # ここでcpuに移動しておかないと、上書きされてしまう
+        # Must move to cpu here, otherwise it will be overwritten
         b_hidden_state1 = b_hidden_state1.detach().to("cpu")  # b,n*75+2,768
         b_hidden_state2 = b_hidden_state2.detach().to("cpu")  # b,n*75+2,1280
         b_pool2 = b_pool2.detach().to("cpu")  # b,1280
@@ -226,7 +226,7 @@ def load_text_encoder_outputs_from_disk(npz_path):
     return hidden_state1, hidden_state2, pool2
 
 
-# 戻り値は、latents_tensor, (original_size width, original_size height), (crop left, crop top)
+# Returns latents_tensor, (original_size width, original_size height), (crop left, crop top)
 # TODO update to use CachingStrategy
 # def load_latents_from_disk(
 #     npz_path,

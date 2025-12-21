@@ -83,7 +83,7 @@ def get_block_params_to_optimize(unet: SdxlUNet2DConditionModel, block_lrs: List
 
     params_to_optimize = []
     for i, params in enumerate(block_params):
-        if block_lrs[i] == 0:  # 0のときは学習しない do not optimize when lr is 0
+        if block_lrs[i] == 0:  # do not optimize when lr is 0
             continue
         params_to_optimize.append({"params": params, "lr": block_lrs[i]})
 
@@ -378,7 +378,7 @@ def train(cfg: SDXLFineTuneConfig):
             len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
         )
         accelerator.print(
-            f"override steps. steps for {cfg.training.max_train_epochs} epochs is / 指定エポックまでのステップ数: {cfg.training.max_train_steps}"
+            f"override steps. steps for {cfg.training.max_train_epochs} epochs is: {cfg.training.max_train_steps}"
         )
 
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
@@ -498,14 +498,14 @@ def train(cfg: SDXLFineTuneConfig):
         cfg.saving.save_every_n_epochs = math.floor(num_train_epochs / cfg.saving.save_n_epoch_ratio) or 1
 
     accelerator.print("running training")
-    accelerator.print(f"  num examples / サンプル数: {train_dataset_group.num_train_images}")
-    accelerator.print(f"  num batches per epoch / 1epochのバッチ数: {len(train_dataloader)}")
-    accelerator.print(f"  num epochs / epoch数: {num_train_epochs}")
+    accelerator.print(f"  num examples: {train_dataset_group.num_train_images}")
+    accelerator.print(f"  num batches per epoch: {len(train_dataloader)}")
+    accelerator.print(f"  num epochs: {num_train_epochs}")
     accelerator.print(
-        f"  batch size per device / バッチサイズ: {', '.join([str(d.batch_size) for d in train_dataset_group.datasets])}"
+        f"  batch size per device: {', '.join([str(d.batch_size) for d in train_dataset_group.datasets])}"
     )
-    accelerator.print(f"  gradient accumulation steps / 勾配を合計するステップ数 = {cfg.training.gradient_accumulation_steps}")
-    accelerator.print(f"  total optimization steps / 学習ステップ数: {cfg.training.max_train_steps}")
+    accelerator.print(f"  gradient accumulation steps = {cfg.training.gradient_accumulation_steps}")
+    accelerator.print(f"  total optimization steps: {cfg.training.max_train_steps}")
 
     progress_bar = tqdm(range(cfg.training.max_train_steps), smoothing=0, disable=not accelerator.is_local_main_process, desc="steps")
     global_step = 0

@@ -64,7 +64,7 @@ class OFTModule(torch.nn.Module):
         self.shape = org_module.weight.shape
 
         self.multiplier = multiplier
-        self.org_module = [org_module]  # moduleにならないようにlistに入れる
+        self.org_module = [org_module]  # Put in list so it doesn't become a module
 
     def apply_to(self):
         self.org_forward = self.org_module[0].forward
@@ -166,13 +166,12 @@ def create_network(
         network_dim = 4  # default
     if network_alpha is None:  # should be set
         logger.info(
-            "network_alpha is not set, use default value 1e-3 / network_alphaが設定されていないのでデフォルト値 1e-3 を使用します"
+            "network_alpha is not set, use default value 1e-3"
         )
         network_alpha = 1e-3
     elif network_alpha >= 1:
         logger.warning(
             "network_alpha is too large (>=1, maybe default value is too large), please consider to set smaller value like 1e-3"
-            " / network_alphaが大きすぎるようです(>=1, デフォルト値が大きすぎる可能性があります)。1e-3のような小さな値を推奨"
         )
 
     enable_all_linear = kwargs.get("enable_all_linear", None)
@@ -246,7 +245,7 @@ class OFTNetwork(torch.nn.Module):
     UNET_TARGET_REPLACE_MODULE_ATTN_ONLY = ["CrossAttention"]
     UNET_TARGET_REPLACE_MODULE_ALL_LINEAR = ["Transformer2DModel"]
     UNET_TARGET_REPLACE_MODULE_CONV2D_3X3 = ["ResnetBlock2D", "Downsample2D", "Upsample2D"]
-    OFT_PREFIX_UNET = "oft_unet"  # これ変えないほうがいいかな
+    OFT_PREFIX_UNET = "oft_unet"  # Better not change this
 
     def __init__(
         self,
@@ -339,7 +338,7 @@ class OFTNetwork(torch.nn.Module):
             oft.apply_to()
             self.add_module(oft.oft_name, oft)
 
-    # マージできるかどうかを返す
+    # Return whether it can be merged
     def is_mergeable(self):
         return True
 
@@ -357,7 +356,7 @@ class OFTNetwork(torch.nn.Module):
 
         logger.info(f"weights are merged")
 
-    # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
+    # Might be good to be able to set different learning rates for two Text Encoders
     def prepare_optimizer_params(self, 
                                  text_encoder_lr: float, 
                                  unet_lr: float, 
@@ -426,7 +425,7 @@ class OFTNetwork(torch.nn.Module):
             torch.save(state_dict, file)
 
     def backup_weights(self):
-        # 重みのバックアップを行う
+        # Backup weights
         ofts: List[OFTInfModule] = self.unet_ofts
         for oft in ofts:
             org_module = oft.org_module[0]
@@ -436,7 +435,7 @@ class OFTNetwork(torch.nn.Module):
                 org_module._lora_restored = True
 
     def restore_weights(self):
-        # 重みのリストアを行う
+        # Restore weights
         ofts: List[OFTInfModule] = self.unet_ofts
         for oft in ofts:
             org_module = oft.org_module[0]
@@ -447,7 +446,7 @@ class OFTNetwork(torch.nn.Module):
                 org_module._lora_restored = True
 
     def pre_calculation(self):
-        # 事前計算を行う
+        # Pre-calculation
         ofts: List[OFTInfModule] = self.unet_ofts
         for oft in ofts:
             org_module = oft.org_module[0]

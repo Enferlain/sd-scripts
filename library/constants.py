@@ -218,7 +218,7 @@ SDXL_KEY_PREFIX = "conditioner.embedders.1.model."
 VAE_SCALE_FACTOR = 0.13025
 MODEL_VERSION_SDXL_BASE_V1_0 = "sdxl_base_v1-0"
 
-# Diffusersの設定を読み込むための参照モデル
+# Reference model to load Diffusers configuration
 DIFFUSERS_REF_MODEL_ID_SDXL = "stabilityai/stable-diffusion-xl-base-1.0"
 
 DIFFUSERS_SDXL_UNET_CONFIG = {
@@ -281,4 +281,4 @@ SDXL_TIME_EMBED_DIM = 320 * 4
 
 # --- strategy_sd.py ---
 TOKENIZER_ID = "openai/clip-vit-large-patch14"
-V2_STABLE_DIFFUSION_ID = "stabilityai/stable-diffusion-2"  # ここからtokenizerだけ使う v2とv2.1はtokenizer仕様は同じ
+V2_STABLE_DIFFUSION_ID = "stabilityai/stable-diffusion-2"  # Use only tokenizer from here v2 and v2.1 have the same tokenizer specification

@@ -28,24 +28,24 @@ def get_hidden_states(args: argparse.Namespace, input_ids, tokenizer, text_encod
 
     if args.max_token_length is not None:
         if args.v2:
-            # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
+            # v2: Restore the triplet of <BOS>...<EOS> <PAD> ... to <BOS>...<EOS> <PAD> ... I'm not sure if this implementation is correct
             states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
             for i in range(1, args.max_token_length, tokenizer.model_max_length):
-                chunk = encoder_hidden_states[:, i: i + tokenizer.model_max_length - 2]  # <BOS> の後から 最後の前まで
+                chunk = encoder_hidden_states[:, i: i + tokenizer.model_max_length - 2]  # From after <BOS> to before the last
                 if i > 0:
                     for j in range(len(chunk)):
-                        if input_ids[j, 1] == tokenizer.eos_token:  # 空、つまり <BOS> <EOS> <PAD> ...のパターン
-                            chunk[j, 0] = chunk[j, 1]  # 次の <PAD> の値をコピーする
-                states_list.append(chunk)  # <BOS> の後から <EOS> の前まで
-            states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # <EOS> か <PAD> のどちらか
+                        if input_ids[j, 1] == tokenizer.eos_token:  # Empty, i.e., <BOS> <EOS> <PAD> ... pattern
+                            chunk[j, 0] = chunk[j, 1]  # Copy value of next <PAD>
+                states_list.append(chunk)  # From after <BOS> to before <EOS>
+            states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # Either <EOS> or <PAD>
             encoder_hidden_states = torch.cat(states_list, dim=1)
         else:
-            # v1: <BOS>...<EOS> の三連を <BOS>...<EOS> へ戻す
+            # v1: Restore the triplet of <BOS>...<EOS> to <BOS>...<EOS>
             states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
             for i in range(1, args.max_token_length, tokenizer.model_max_length):
                 states_list.append(
                     encoder_hidden_states[:, i: i + tokenizer.model_max_length - 2]
-                )  # <BOS> の後から <EOS> の前まで
+                )  # From after <BOS> to before <EOS>
             states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # <EOS>
             encoder_hidden_states = torch.cat(states_list, dim=1)
 
@@ -136,28 +136,28 @@ def get_hidden_states_sdxl(
 
     if max_token_length is not None:
         # bs*3, 77, 768 or 1024
-        # encoder1: <BOS>...<EOS> の三連を <BOS>...<EOS> へ戻す
+        # encoder1: Restore the triplet of <BOS>...<EOS> to <BOS>...<EOS>
         states_list = [hidden_states1[:, 0].unsqueeze(1)]  # <BOS>
         for i in range(1, max_token_length, tokenizer1.model_max_length):
-            states_list.append(hidden_states1[:, i: i + tokenizer1.model_max_length - 2])  # <BOS> の後から <EOS> の前まで
+            states_list.append(hidden_states1[:, i: i + tokenizer1.model_max_length - 2])  # From after <BOS> to before <EOS>
         states_list.append(hidden_states1[:, -1].unsqueeze(1))  # <EOS>
         hidden_states1 = torch.cat(states_list, dim=1)
 
-        # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
+        # v2: Restore the triplet of <BOS>...<EOS> <PAD> ... to <BOS>...<EOS> <PAD> ... I'm not sure if this implementation is correct
         states_list = [hidden_states2[:, 0].unsqueeze(1)]  # <BOS>
         for i in range(1, max_token_length, tokenizer2.model_max_length):
-            chunk = hidden_states2[:, i: i + tokenizer2.model_max_length - 2]  # <BOS> の後から 最後の前まで
+            chunk = hidden_states2[:, i: i + tokenizer2.model_max_length - 2]  # From after <BOS> to before the last
             # this causes an error:
             # RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation
             # if i > 1:
             #     for j in range(len(chunk)):  # batch_size
-            #         if input_ids2[n_index + j * n_size, 1] == tokenizer2.eos_token_id:  # 空、つまり <BOS> <EOS> <PAD> ...のパターン
-            #             chunk[j, 0] = chunk[j, 1]  # 次の <PAD> の値をコピーする
-            states_list.append(chunk)  # <BOS> の後から <EOS> の前まで
-        states_list.append(hidden_states2[:, -1].unsqueeze(1))  # <EOS> か <PAD> のどちらか
+            #         if input_ids2[n_index + j * n_size, 1] == tokenizer2.eos_token_id:  # Empty, i.e., <BOS> <EOS> <PAD> ... pattern
+            #             chunk[j, 0] = chunk[j, 1]  # Copy value of next <PAD>
+            states_list.append(chunk)  # From after <BOS> to before <EOS>
+        states_list.append(hidden_states2[:, -1].unsqueeze(1))  # Either <EOS> or <PAD>
         hidden_states2 = torch.cat(states_list, dim=1)
 
-        # pool はnの最初のものを使う
+        # Use the first pool of n
         pool2 = pool2[::n_size]
 
     if weight_dtype is not None:

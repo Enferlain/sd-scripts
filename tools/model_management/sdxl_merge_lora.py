@@ -141,7 +141,7 @@ def merge_to_sd_model(text_encoder1, text_encoder2, unet, models, ratios, lbws, 
                         index = get_lbw_block_index(key, True)
                         is_lbw_target = index in LBW_TARGET_IDX
                         if is_lbw_target:
-                            scale *= lbw_weights[index]  # keyがlbwの対象であれば、lbwの重みを掛ける
+                            scale *= lbw_weights[index]  # If key is target of lbw, apply lbw weight
 
                     # W <- W + U * D
                     weight = module.weight
@@ -249,7 +249,7 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
     method = detect_method_from_training_model(models, merge_dtype)
     if method == "OFT":
         raise ValueError(
-            "OFT model is not supported for merging OFT models. / OFTモデルはOFTモデル同士のマージには対応していません"
+            "OFT model is not supported for merging OFT models."
         )
 
     if lbws:
@@ -272,7 +272,7 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
 
         if lora_metadata is not None:
             if v2 is None:
-                v2 = lora_metadata.get(SS_METADATA_KEY_V2, None)  # returns string, SDXLはv2がないのでFalseのはず
+                v2 = lora_metadata.get(SS_METADATA_KEY_V2, None)  # returns string, SDXL has no v2 so should be False
             if base_model is None:
                 base_model = lora_metadata.get(SS_METADATA_KEY_BASE_MODEL_VERSION, None)
 
@@ -321,18 +321,18 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
             alpha = alphas[lora_module_name]
 
             scale = math.sqrt(alpha / base_alpha) * ratio
-            scale = abs(scale) if "lora_up" in key else scale  # マイナスの重みに対応する。
+            scale = abs(scale) if "lora_up" in key else scale  # Supports negative weights.
 
             if lbw:
                 index = get_lbw_block_index(key, True)
                 is_lbw_target = index in LBW_TARGET_IDX
                 if is_lbw_target:
-                    scale *= lbw_weights[index]  # keyがlbwの対象であれば、lbwの重みを掛ける
+                    scale *= lbw_weights[index]  # If key is target of lbw, apply lbw weight
 
             if key in merged_sd:
                 assert (
                     merged_sd[key].size() == lora_sd[key].size() or concat_dim is not None
-                ), f"weights shape mismatch merging v1 and v2, different dims? / 重みのサイズが合いません。v1とv2、または次元数の異なるモデルはマージできません"
+                ), f"weights shape mismatch merging v1 and v2, different dims?"
                 if concat_dim is not None:
                     merged_sd[key] = torch.cat([merged_sd[key], lora_sd[key] * scale], dim=concat_dim)
                 else:
@@ -380,13 +380,13 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
 def merge(args):
     assert len(args.models) == len(
         args.ratios
-    ), f"number of models must be equal to number of ratios / モデルの数と重みの数は合わせてください"
+    ), f"number of models must be equal to number of ratios"
     if args.lbws:
         assert len(args.models) == len(
             args.lbws
-        ), f"number of models must be equal to number of ratios / モデルの数と層別適用率の数は合わせてください"
+        ), f"number of models must be equal to number of ratios"
     else:
-        args.lbws = []  # zip_longestで扱えるようにlbws未使用時には空のリストにしておく
+        args.lbws = []  # Make it an empty list when lbws is unused so it can be handled by zip_longest
 
     def str_to_dtype(p):
         if p == "float":
@@ -463,51 +463,51 @@ def setup_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         choices=[None, "float", "fp16", "bf16"],
-        help="precision in saving, same to merging if omitted / 保存時に精度を変更して保存する、省略時はマージ時の精度と同じ",
+        help="precision in saving, same to merging if omitted",
     )
     parser.add_argument(
         "--precision",
         type=str,
         default="float",
         choices=["float", "fp16", "bf16"],
-        help="precision in merging (float is recommended) / マージの計算時の精度（floatを推奨）",
+        help="precision in merging (float is recommended)",
     )
     parser.add_argument(
         "--sd_model",
         type=str,
         default=None,
-        help="Stable Diffusion model to load: ckpt or safetensors file, merge LoRA models if omitted / 読み込むモデル、ckptまたはsafetensors。省略時はLoRAモデル同士をマージする",
+        help="Stable Diffusion model to load: ckpt or safetensors file, merge LoRA models if omitted",
     )
     parser.add_argument(
         "--save_to",
         type=str,
         default=None,
-        help="destination file name: ckpt or safetensors file / 保存先のファイル名、ckptまたはsafetensors",
+        help="destination file name: ckpt or safetensors file",
     )
     parser.add_argument(
         "--models",
         type=str,
         nargs="*",
-        help="LoRA models to merge: ckpt or safetensors file / マージするLoRAモデル、ckptまたはsafetensors",
+        help="LoRA models to merge: ckpt or safetensors file",
     )
-    parser.add_argument("--ratios", type=float, nargs="*", help="ratios for each model / それぞれのLoRAモデルの比率")
-    parser.add_argument("--lbws", type=str, nargs="*", help="lbw for each model / それぞれのLoRAモデルの層別適用率")
+    parser.add_argument("--ratios", type=float, nargs="*", help="ratios for each model")
+    parser.add_argument("--lbws", type=str, nargs="*", help="lbw for each model")
     parser.add_argument(
         "--no_metadata",
         action="store_true",
         help="do not save sai modelspec metadata (minimum ss_metadata for LoRA is saved) / "
-        + "sai modelspecのメタデータを保存しない（LoRAの最低限のss_metadataは保存される）",
+        + "Do not save sai modelspec metadata (minimum ss_metadata of LoRA is saved)",
     )
     parser.add_argument(
         "--concat",
         action="store_true",
         help="concat lora instead of merge (The dim(rank) of the output LoRA is the sum of the input dims) / "
-        + "マージの代わりに結合する（LoRAのdim(rank)は入力dimの合計になる）",
+        + "Concatenate instead of merging (LoRA dim(rank) becomes sum of input dims)",
     )
     parser.add_argument(
         "--shuffle",
         action="store_true",
-        help="shuffle lora weight./ " + "LoRAの重みをシャッフルする",
+        help="shuffle lora weight./ " + "Shuffle LoRA weights",
     )
 
     return parser

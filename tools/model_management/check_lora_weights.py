@@ -38,8 +38,8 @@ def main(file):
 
 def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("file", type=str, help="model file to check / 重みを確認するモデルファイル")
-    parser.add_argument("-s", "--show_all_keys", action="store_true", help="show all keys / 全てのキーを表示する")
+    parser.add_argument("file", type=str, help="model file to check")
+    parser.add_argument("-s", "--show_all_keys", action="store_true", help="show all keys")
 
     return parser
 

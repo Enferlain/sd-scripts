@@ -59,7 +59,7 @@ def split_lora_model(lora_sd, unit):
             elif "lora_up" in key:
                 new_sd[key] = value[:, :rank].contiguous()
             else:
-                # なぜかscaleするとおかしくなる……
+                # For some reason scaling makes it weird...
                 # this_rank = lora_sd[key.replace("alpha", "lora_down.weight")].size()[0]
                 # scale = math.sqrt(this_rank / rank)  # rank is > unit
                 # logger.info(key, value.size(), this_rank, rank, value, scale)
@@ -106,18 +106,18 @@ def split(args):
 def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--unit", type=int, default=None, help="size of rank to split into / rankを分割するサイズ")
+    parser.add_argument("--unit", type=int, default=None, help="size of rank to split into")
     parser.add_argument(
         "--save_to",
         type=str,
         default=None,
-        help="destination base file name: ckpt or safetensors file / 保存先のファイル名のbase、ckptまたはsafetensors",
+        help="destination base file name: ckpt or safetensors file",
     )
     parser.add_argument(
         "--model",
         type=str,
         default=None,
-        help="DyLoRA model to resize at to new rank: ckpt or safetensors file / 読み込むDyLoRAモデル、ckptまたはsafetensors",
+        help="DyLoRA model to resize at to new rank: ckpt or safetensors file",
     )
 
     return parser

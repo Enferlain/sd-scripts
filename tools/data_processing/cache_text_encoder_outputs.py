@@ -1,4 +1,4 @@
-# text encoder出力のdiskへの事前キャッシュを行う / cache text encoder outputs to disk in advance
+# cache text encoder outputs to disk in advance
 
 import argparse
 import torch
@@ -56,14 +56,14 @@ def cache_to_disk(args: argparse.Namespace) -> None:
 
     assert (
         is_sdxl or is_flux
-    ), "Cache text encoder outputs to disk is only supported for SDXL and FLUX models / テキストエンコーダ出力のディスクキャッシュはSDXLまたはFLUXでのみ有効です"
+    ), "Cache text encoder outputs to disk is only supported for SDXL and FLUX models"
     assert (
         is_sdxl or args.weighted_captions is None
-    ), "Weighted captions are only supported for SDXL models / 重み付きキャプションはSDXLモデルでのみ有効です"
+    ), "Weighted captions are only supported for SDXL models"
 
     set_tokenize_strategy(is_sd, is_sdxl, is_flux, args)
 
-    # データセットを準備する
+    # Prepare dataset
     use_user_config = args.dataset_config is not None
     if args.dataset_class is None:
         blueprint_generator = BlueprintGenerator(ConfigSanitizer(True, True, args.masked_loss, True))
@@ -73,7 +73,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
             ignored = ["train_data_dir", "reg_data_dir", "in_json"]
             if any(getattr(args, attr) is not None for attr in ignored):
                 logger.warning(
-                    "ignoring the following options because config file is found: {0} / 設定ファイルが利用されるため以下のオプションは無視されます: {0}".format(
+                    "ignoring the following options because config file is found: {0}".format(
                         ", ".join(ignored)
                     )
                 )
@@ -111,16 +111,16 @@ def cache_to_disk(args: argparse.Namespace) -> None:
         train_dataset_group = load_arbitrary_dataset(args)
         val_dataset_group = None
 
-    # acceleratorを準備する
+    # Prepare accelerator
     logger.info("prepare accelerator")
     args.deepspeed = False
     accelerator = prepare_accelerator(args)
 
-    # mixed precisionに対応した型を用意しておき適宜castする
+    # Prepare types for mixed precision and cast as appropriate
     weight_dtype, _ = prepare_dtype(args)
     t5xxl_dtype = str_to_dtype(args.t5xxl_dtype, weight_dtype)
 
-    # モデルを読み込む
+    # Load model
     logger.info("load model")
     if is_sdxl:
         _, text_encoder1, text_encoder2, _, _, _, _ = load_target_model_sdxl(
@@ -145,7 +145,6 @@ def cache_to_disk(args: argparse.Namespace) -> None:
             if t5xxl.dtype == torch.float8_e4m3fn and t5xxl_dtype.itemsize() >= 2:
                 logger.warning(
                     "The loaded model is fp8, but the specified T5XXL dtype is larger than fp8.  This may cause a performance drop."
-                    " / ロードされたモデルはfp8ですが、指定されたT5XXLのdtypeがfp8より高精度です。精度低下が発生する可能性があります。"
                 )
             logger.info(f"Casting T5XXL model to {t5xxl_dtype}")
             t5xxl.to(t5xxl_dtype)
@@ -198,25 +197,24 @@ def setup_parser() -> argparse.ArgumentParser:
     add_dit_training_arguments(parser)
     flux_train_utils.add_flux_train_arguments(parser)
 
-    parser.add_argument("--sdxl", action="store_true", help="Use SDXL model / SDXLモデルを使用する")
-    parser.add_argument("--flux", action="store_true", help="Use FLUX model / FLUXモデルを使用する")
+    parser.add_argument("--sdxl", action="store_true", help="Use SDXL model")
+    parser.add_argument("--flux", action="store_true", help="Use FLUX model")
     parser.add_argument(
         "--t5xxl_dtype",
         type=str,
         default=None,
-        help="T5XXL model dtype, default: None (use mixed precision dtype) / T5XXLモデルのdtype, デフォルト: None (mixed precisionのdtypeを使用)",
+        help="T5XXL model dtype, default: None (use mixed precision dtype)",
     )
     parser.add_argument(
         "--skip_existing",
         action="store_true",
-        help="[Deprecated] This option does not work. Existing .npz files are always checked. Use `--skip_cache_check` to skip the check."
-        " / [非推奨] このオプションは機能しません。既存の .npz は常に検証されます。`--skip_cache_check` で検証をスキップできます。",
+        help="[Deprecated] This option does not work. Existing .npz files are always checked. Use `--skip_cache_check` to skip the check.",
     )
     parser.add_argument(
         "--weighted_captions",
         action="store_true",
         default=False,
-        help="Enable weighted captions in the standard style (token:1.3). No commas inside parens, or shuffle/dropout may break the decoder. / 「[token]」、「(token)」「(token:1.3)」のような重み付きキャプションを有効にする。カンマを括弧内に入れるとシャッフルやdropoutで重みづけがおかしくなるので注意",
+        help="Enable weighted captions in the standard style (token:1.3). No commas inside parens, or shuffle/dropout may break the decoder.",
     )
     return parser
 

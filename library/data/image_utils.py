@@ -21,7 +21,7 @@ def glob_images(directory, base="*"):
             img_paths.extend(glob.glob(os.path.join(glob.escape(directory), base + ext)))
         else:
             img_paths.extend(glob.glob(glob.escape(os.path.join(directory, base + ext))))
-    img_paths = list(set(img_paths))  # 重複を排除
+    img_paths = list(set(img_paths))  # Remove duplicates
     img_paths.sort()
     return img_paths
 
@@ -34,7 +34,7 @@ def glob_images_pathlib(dir_path, recursive):
     else:
         for ext in IMAGE_EXTENSIONS:
             image_paths += list(dir_path.glob("*" + ext))
-    image_paths = list(set(image_paths))  # 重複を排除
+    image_paths = list(set(image_paths))  # Remove duplicates
     image_paths.sort()
     return image_paths
 
@@ -55,7 +55,7 @@ def load_image(image_path, alpha=False):
         raise e
 
 
-# 画像を読み込む。戻り値はnumpy.ndarray,(original width, original height),(crop left, crop top, crop right, crop bottom)
+# Load image. Returns numpy.ndarray, (original width, original height), (crop left, crop top, crop right, crop bottom)
 def trim_and_resize_if_required(
         random_crop: bool, image: np.ndarray, reso, resized_size: Tuple[int, int],
         resize_interpolation: Optional[str] = None, random_crop_padding_percent: float = 0.05
@@ -83,7 +83,6 @@ def trim_and_resize_if_required(
         # logger.info(f"h {trim_size} {p})
         image = image[p: p + reso[1]]
 
-    # random cropの場合のcropされた値をどうcrop left/topに反映するべきか全くアイデアがない
     # I have no idea how to reflect the cropped value in crop left/top in the case of random crop
 
     crop_ltrb = BucketManager.get_crop_ltrb(reso, original_size)

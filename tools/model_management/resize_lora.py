@@ -372,32 +372,32 @@ def setup_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         choices=[None, "float", "fp16", "bf16"],
-        help="precision in saving, float if omitted / 保存時の精度、未指定時はfloat",
+        help="precision in saving, float if omitted",
     )
-    parser.add_argument("--new_rank", type=int, default=4, help="Specify rank of output LoRA / 出力するLoRAのrank (dim)")
+    parser.add_argument("--new_rank", type=int, default=4, help="Specify rank of output LoRA")
     parser.add_argument(
         "--new_conv_rank",
         type=int,
         default=None,
-        help="Specify rank of output LoRA for Conv2d 3x3, None for same as new_rank / 出力するConv2D 3x3 LoRAのrank (dim)、Noneでnew_rankと同じ",
+        help="Specify rank of output LoRA for Conv2d 3x3, None for same as new_rank",
     )
     parser.add_argument(
         "--save_to",
         type=str,
         default=None,
-        help="destination file name: ckpt or safetensors file / 保存先のファイル名、ckptまたはsafetensors",
+        help="destination file name: ckpt or safetensors file",
     )
     parser.add_argument(
         "--model",
         type=str,
         default=None,
-        help="LoRA model to resize at to new rank: ckpt or safetensors file / 読み込むLoRAモデル、ckptまたはsafetensors",
+        help="LoRA model to resize at to new rank: ckpt or safetensors file",
     )
     parser.add_argument(
-        "--device", type=str, default=None, help="device to use, cuda for GPU / 計算を行うデバイス、cuda でGPUを使う"
+        "--device", type=str, default=None, help="device to use, cuda for GPU"
     )
     parser.add_argument(
-        "--verbose", action="store_true", help="Display verbose resizing information / rank変更時の詳細情報を出力する"
+        "--verbose", action="store_true", help="Display verbose resizing information"
     )
     parser.add_argument(
         "--dynamic_method",

@@ -97,18 +97,18 @@ def resize_images(src_img_folder, dst_img_folder, max_resolution="512x512", divi
 
 def setup_parser() -> argparse.ArgumentParser:
   parser = argparse.ArgumentParser(
-      description='Resize images in a folder to a specified max resolution(s) / 指定されたフォルダ内の画像を指定した最大画像サイズ（面積）以下にアスペクト比を維持したままリサイズします')
-  parser.add_argument('src_img_folder', type=str, help='Source folder containing the images / 元画像のフォルダ')
-  parser.add_argument('dst_img_folder', type=str, help='Destination folder to save the resized images / リサイズ後の画像を保存するフォルダ')
+      description='Resize images in a folder to a specified max resolution(s)')
+  parser.add_argument('src_img_folder', type=str, help='Source folder containing the images')
+  parser.add_argument('dst_img_folder', type=str, help='Destination folder to save the resized images')
   parser.add_argument('--max_resolution', type=str,
-                      help='Maximum resolution(s) in the format "512x512,384x384, etc, etc" / 最大画像サイズをカンマ区切りで指定 ("512x512,384x384, etc, etc" など)', default="512x512,384x384,256x256,128x128")
+                      help='Maximum resolution(s) in the format "512x512,384x384, etc, etc"', default="512x512,384x384,256x256,128x128")
   parser.add_argument('--divisible_by', type=int,
-                      help='Ensure new dimensions are divisible by this value / リサイズ後の画像のサイズをこの値で割り切れるようにします', default=1)
+                      help='Ensure new dimensions are divisible by this value', default=1)
   parser.add_argument('--interpolation', type=str, choices=['area', 'cubic', 'lanczos4', 'nearest', 'linear', 'box'],
-                      default=None, help='Interpolation method for resizing. Default to area if smaller, lanczos if larger / サイズ変更の補間方法。小さい場合はデフォルトでエリア、大きい場合はランチョスになります。')
-  parser.add_argument('--save_as_png', action='store_true', help='Save as png format / png形式で保存')
+                      default=None, help='Interpolation method for resizing. Default to area if smaller, lanczos if larger')
+  parser.add_argument('--save_as_png', action='store_true', help='Save as png format')
   parser.add_argument('--copy_associated_files', action='store_true',
-                      help='Copy files with same base name to images (captions etc) / 画像と同じファイル名（拡張子を除く）のファイルもコピーする')
+                      help='Copy files with same base name to images (captions etc)')
 
   return parser
 

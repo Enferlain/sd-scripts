@@ -49,11 +49,11 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
         if cfg.sdxl.cache_text_encoder_outputs:
             assert (
                 train_dataset_group.is_text_encoder_output_cacheable()
-            ), "when caching Text Encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used / Text Encoderの出力をキャッシュするときはcaption_dropout_rate, shuffle_caption, token_warmup_step, caption_tag_dropout_rateは使えません"
+            ), "when caching Text Encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used"
 
         assert (
             cfg.network.network_train_unet_only or not cfg.sdxl.cache_text_encoder_outputs
-        ), "network for Text Encoder cannot be trained with caching Text Encoder outputs / Text Encoderの出力をキャッシュしながらText Encoderのネットワークを学習することはできません"
+        ), "network for Text Encoder cannot be trained with caching Text Encoder outputs"
 
         train_dataset_group.verify_bucket_reso_steps(32)
         if val_dataset_group is not None:
@@ -93,9 +93,9 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
                 text_encoder2 = replace_linear_with_ramtorch(text_encoder2, accelerator.device)
                 logger.info("RamTorch applied to SDXL Clip-G.")
 
-        # モデルに xformers とか memory efficient attention を組み込む
+        # Incorporate xformers or memory efficient attention into the model
         replace_unet_modules(unet, cfg.performance.mem_eff_attn, cfg.performance.xformers, cfg.performance.sdpa)
-        if torch.__version__ >= "2.0.0":  # PyTorch 2.0.0 以上対応のxformersなら以下が使える
+        if torch.__version__ >= "2.0.0":  # If xformers supports PyTorch 2.0.0 or higher, the following can be used
             vae.set_use_memory_efficient_attention_xformers(cfg.performance.xformers)
 
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
@@ -134,7 +134,7 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
     ):
         if cfg.sdxl.cache_text_encoder_outputs:
             if not cfg.performance.lowram:
-                # メモリ消費を減らす
+                # Reduce memory consumption
                 logger.info("move vae and unet to cpu to save memory")
                 org_vae_device = vae.device
                 org_unet_device = unet.device
@@ -158,7 +158,7 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
                 vae.to(org_vae_device)
                 unet.to(org_unet_device)
         else:
-            # Text Encoderから毎回出力を取得するので、GPUに乗せておく
+            # Keep on GPU because we get output from Text Encoder every time
             text_encoders[0].to(accelerator.device, dtype=weight_dtype)
             text_encoders[1].to(accelerator.device, dtype=weight_dtype)
 

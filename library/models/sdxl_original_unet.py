@@ -1,5 +1,5 @@
-# Diffusersのコードをベースとした sd_xl_baseのU-Net
-# state dictの形式をSDXLに合わせてある
+# sd_xl_base U-Net based on Diffusers code
+# The state dict format is adapted to SDXL
 
 """
       target: sgm.modules.diffusionmodules.openaimodel.UNetModel
@@ -52,7 +52,7 @@ USE_REENTRANT = True
 
 
 # region memory efficient attention
-# FlashAtentionを使うCrossAttention
+# CrossAttention using FlashAttention
 # based on https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/memory_efficient_attention_pytorch/flash_attention.py
 # LICENSE MIT https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/LICENSE
 # flash attention forwards and backwards
@@ -487,7 +487,7 @@ class CrossAttention(nn.Module):
         q = q.contiguous()
         k = k.contiguous()
         v = v.contiguous()
-        out = xformers.ops.memory_efficient_attention(q, k, v, attn_bias=None)  # 最適なのを選んでくれる
+        out = xformers.ops.memory_efficient_attention(q, k, v, attn_bias=None)  # Chooses the optimal one
         del q, k, v
 
         out = rearrange(out, "b n h d -> b n (h d)", h=h)
@@ -1232,7 +1232,7 @@ if __name__ == "__main__":
     unet.set_gradient_checkpointing(True)
     unet.train()
 
-    # 使用メモリ量確認用の疑似学習ループ
+    # Pseudo training loop for checking memory usage
     logger.info("preparing optimizer")
 
     # optimizer = torch.optim.SGD(unet.parameters(), lr=1e-3, nesterov=True, momentum=0.9) # not working
