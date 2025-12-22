@@ -23,12 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   - **Completed `sd_peft.py` migration** to Pure Hydra (removed ~100 undefined `args` references)
   - Refactored `sd_peft.py` to use `cfg.*` paths correctly (e.g. `cfg.training`, `cfg.logging`)
-  - Removed unused `import argparse` from `sdxl_peft.py` and `sd_peft.py`
-  - Fixed type mismatches in `sample_images_check` and `generate_step_logs`
+  - Removed unused `import argparse` from `sdxl_peft.py`
+  - Fixed method signatures: `generate_step_logs(args)` → `generate_step_logs(cfg)`, `save_timestep_distribution_plot(args)` → `save_timestep_distribution_plot(cfg)`
+  - Fixed `cfg.la_sampler` → `self.la_sampler` (runtime object, not config)
+  - Fixed call sites: `sample_images_check(cfg)` → `sample_images_check(cfg.sampling)`, `calculate_val_loss_check(cfg)` → `calculate_val_loss_check(cfg.training)`
+  - Fixed `prepare_deepspeed_model(cfg)` → `prepare_deepspeed_model(cfg.training)`
+  - Fixed `cfg.training.vae` → `cfg.model.vae`
 
 - **Library Type Safety**
 
-  - Refactored `prepare_accelerator` in `trainer_utils.py` to accept typed configs (`PerformanceConfig, LoggingConfig, TrainingConfig`) instead of `DictConfig`
+  - Refactored `prepare_accelerator` in `trainer_utils.py` to accept typed configs (`PerformanceConfig`, `LoggingConfig`, `TrainingConfig`) instead of `DictConfig`
+  - Refactored `init_trackers` in `trainer_utils.py` to accept any config type with `.logging` sub-config
   - Refactored `prepare_deepspeed_plugin` and `prepare_deepspeed_args` in `deepspeed_utils.py` to accept `PerformanceConfig` and `TrainingConfig`
   - Added missing `no_metadata` field to `SavingConfig` dataclass
 

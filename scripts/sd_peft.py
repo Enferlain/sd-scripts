@@ -153,7 +153,7 @@ class NetworkTrainer:
 
     def generate_step_logs(
         self,
-        args,
+        cfg,
         current_loss,
         avr_loss,
         lr_scheduler,
@@ -234,27 +234,27 @@ class NetworkTrainer:
         if edm2_lr_scheduler is not None:
             logs[f"lr/edm2"] = edm2_lr_scheduler.get_last_lr()[0]
 
-        if cfg.timestep.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler") and timesteps is not None:
-            if hasattr(cfg.la_sampler, "last_mix_p"):
-                logs["sampler/mix_p"] = cfg.la_sampler.last_mix_p
-            if hasattr(cfg.la_sampler, "last_small_t_frac"):
-                logs["sampler/small_t_frac"] = cfg.la_sampler.last_small_t_frac
+        if cfg.timestep.timestep_sampling == "mix_adaptive" and self.la_sampler is not None and timesteps is not None:
+            if hasattr(self.la_sampler, "last_mix_p"):
+                logs["sampler/mix_p"] = self.la_sampler.last_mix_p
+            if hasattr(self.la_sampler, "last_small_t_frac"):
+                logs["sampler/small_t_frac"] = self.la_sampler.last_small_t_frac
 
             # Add mean and std of ema_loss
-            if hasattr(cfg.la_sampler, "bin_loss_ema"):
-                logs["sampler/ema_loss_mean"] = cfg.la_sampler.bin_loss_ema.mean().item()
-                logs["sampler/ema_loss_std"] = cfg.la_sampler.bin_loss_ema.std().item()
+            if hasattr(self.la_sampler, "bin_loss_ema"):
+                logs["sampler/ema_loss_mean"] = self.la_sampler.bin_loss_ema.mean().item()
+                logs["sampler/ema_loss_std"] = self.la_sampler.bin_loss_ema.std().item()
 
                 # EMA loss per bin (in a separate category for clarity in TensorBoard)
-                for i, loss_val in enumerate(cfg.la_sampler.bin_loss_ema):
+                for i, loss_val in enumerate(self.la_sampler.bin_loss_ema):
                     logs[f"sampler_ema_loss_bins/bin_{i}"] = loss_val.item()
 
             # Timestep histogram for the current batch
-            if hasattr(cfg.la_sampler, "num_bins") and hasattr(cfg.la_sampler, "T"):
+            if hasattr(self.la_sampler, "num_bins") and hasattr(self.la_sampler, "T"):
                 hist = torch.histogram(
                     timesteps.float().cpu(),
-                    bins=cfg.la_sampler.num_bins,
-                    range=(0, cfg.la_sampler.T),
+                    bins=self.la_sampler.num_bins,
+                    range=(0, self.la_sampler.T),
                 )
                 for i, count in enumerate(hist.hist):
                     logs[f"sampler_timestep_hist/bin_{i}"] = count.item()
@@ -294,7 +294,7 @@ class NetworkTrainer:
         for tracker in other_trackers:
             tracker.log(logs, step=step_value)
 
-    def save_timestep_distribution_plot(self, args, global_step, timestep_counts, settings_dict=None):
+    def save_timestep_distribution_plot(self, cfg, global_step, timestep_counts, settings_dict=None):
         if plt is None:
             logger.warning("Matplotlib is not installed. Cannot save timestep distribution plot.")
             return
@@ -1274,7 +1274,7 @@ class NetworkTrainer:
         if cfg.performance.deepspeed:
             flags = self.get_text_encoders_train_flags(cfg, text_encoders)
             ds_model = deepspeed_utils.prepare_deepspeed_model(
-                cfg,
+                cfg.training,
                 unet=unet if train_unet else None,
                 text_encoder1=text_encoders[0] if flags[0] else None,
                 text_encoder2=(text_encoders[1] if flags[1] else None) if len(text_encoders) > 1 else None,
@@ -1969,12 +1969,12 @@ class NetworkTrainer:
         accumulation_counter = 0
 
         # For --sample_at_first
-        if sample_images_check(cfg, 0, global_step) or calculate_val_loss_check(cfg, global_step, 0, val_dataloader, train_dataloader):
+        if sample_images_check(cfg.sampling, 0, global_step) or calculate_val_loss_check(cfg.training, global_step, 0, val_dataloader, train_dataloader):
             #Switch network to eval mode
             accelerator.unwrap_model(network).eval()
             optimizer_eval_fn()
             self.sample_images(accelerator, cfg, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
-            if calculate_val_loss_check(cfg, global_step, 0, val_dataloader, train_dataloader):
+            if calculate_val_loss_check(cfg.training, global_step, 0, val_dataloader, train_dataloader):
                 current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(
                     global_step, 0, train_dataloader, val_loss_recorder, val_dataloader, 
                     cyclic_val_dataloader, network, tokenize_strategy, 
@@ -2293,7 +2293,7 @@ class NetworkTrainer:
 
             accelerator.wait_for_everyone()
 
-            if (sample_images_check(cfg, current_epoch.value, global_step) or
+            if (sample_images_check(cfg.sampling, current_epoch.value, global_step) or
                 cfg.saving.save_every_n_epochs is not None):
 
                 # 指定エポックごとにモデルを保存

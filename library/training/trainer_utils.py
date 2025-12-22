@@ -96,26 +96,38 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
     return accelerator
 
 
-def init_trackers(accelerator: Accelerator, args: DictConfig, default_tracker_name: str):
+def init_trackers(accelerator: Accelerator, cfg, default_tracker_name: str):
     """
-    Initialize experiment trackers with tracker specific behaviors
+    Initialize experiment trackers with tracker specific behaviors.
+    
+    Args:
+        accelerator: Accelerator instance
+        cfg: Root config object (must have .logging sub-config)
+        default_tracker_name: Default name for the tracker
     """
     if accelerator.is_main_process:
         init_kwargs = {}
-        if "wandb" in args.logging and args.logging.wandb_run_name:
-            init_kwargs["wandb"] = {"name": args.logging.wandb_run_name}
-        if "log_tracker_config" in args.logging and args.logging.log_tracker_config is not None:
-            init_kwargs = args.logging.log_tracker_config
+        logging_config = cfg.logging
+        if hasattr(logging_config, 'wandb_run_name') and logging_config.wandb_run_name:
+            init_kwargs["wandb"] = {"name": logging_config.wandb_run_name}
+        if hasattr(logging_config, 'log_tracker_config') and logging_config.log_tracker_config is not None:
+            init_kwargs = logging_config.log_tracker_config
 
-        # sanitize config for logging
-        config_to_log = OmegaConf.to_container(args, resolve=True)
+        # sanitize config for logging - convert to dict if needed
+        if hasattr(cfg, '__dataclass_fields__'):
+            from dataclasses import asdict
+            config_to_log = asdict(cfg)
+        else:
+            config_to_log = OmegaConf.to_container(cfg, resolve=True)
+        
         sensitive_keys = ["wandb_api_key", "huggingface_token"]
         for key in sensitive_keys:
             if key in config_to_log:
                 config_to_log[key] = "*****"
 
+        tracker_name = logging_config.log_tracker_name if hasattr(logging_config, 'log_tracker_name') and logging_config.log_tracker_name else default_tracker_name
         accelerator.init_trackers(
-            default_tracker_name if args.logging.log_tracker_name is None else args.logging.log_tracker_name,
+            tracker_name,
             config=config_to_log,
             init_kwargs=init_kwargs,
         )

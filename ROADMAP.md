@@ -46,6 +46,7 @@
 
 ## Configuration Refactoring
 
+- [ ] **Config Validation**: Add explicit `validate_config(cfg)` function to check for conflicting settings. Previously handled by `verify_training_args()` and `prepare_dataset_args()` (now commented out). This should catch issues like incompatible precision settings, missing required fields, etc.
 - [ ] **Consolidate Learning Rate Configurations**: Unify the handling of learning rates across different training modes (LoRA vs Fine-tune) and models (SD1.5 vs SDXL). Currently, there is a mix of `text_encoder_lr` (List/Any in NetworkConfig) and `learning_rate_te1/te2` (floats in SDXLConfig).
 - [ ] **Type Safety**: Improve type definitions for `text_encoder_lr` to avoid `Any` when possible, perhaps by using custom validators or strict union handling if OmegaConf improves.
 - Will need to strip BASE level code from sd_peft and sd_textual_inversion and sd_finetune. Currently it's base (everything imports) AND sd1/2 combined.
