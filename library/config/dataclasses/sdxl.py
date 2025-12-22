@@ -13,7 +13,3 @@ class SDXLConfig:
     no_half_vae: bool = field(default=False, metadata={"help": "do not use fp16/bf16 VAE in mixed precision"})
     block_lr: Optional[str] = field(default=None, metadata={"help": "learning rates for each block of U-Net"})
     fused_optimizer_groups: Optional[int] = field(default=None, metadata={"help": "number of optimizers for fused backward pass and optimizer step"})
-
-    def __post_init__(self):
-        if self.cache_text_encoder_outputs_to_disk and not self.cache_text_encoder_outputs:
-            self.cache_text_encoder_outputs = True

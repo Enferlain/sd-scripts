@@ -12,7 +12,3 @@ class RegularizationConfig:
     multires_noise_discount: float = 0.3
     adaptive_noise_scale: Optional[float] = None
     zero_terminal_snr: bool = False
-
-    def __post_init__(self):
-        if self.adaptive_noise_scale is not None and self.noise_offset is None:
-            raise ValueError("adaptive_noise_scale requires noise_offset")

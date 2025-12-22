@@ -30,6 +30,7 @@ from ramtorch.helpers import replace_linear_with_ramtorch
 import library.config.config_util as config_util
 import library.utils.huggingface_util as huggingface_util
 
+from library.config.validation import prepare_config, validate_config, validate_sd_peft
 from library.constants import SS_METADATA_MINIMUM_KEYS
 from library.strategies import strategy_sd, strategy_base
 from library.optimizations import deepspeed_utils
@@ -38,7 +39,6 @@ from library.utils import sai_model_spec
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
-
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.optimizer import prepare_optimizer, get_scheduler_fix
@@ -115,7 +115,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-class NetworkTrainer:
+class SDPeftTrainer:
     def __init__(self):
         self.vae_scale_factor = 0.18215
         self.is_sdxl = False
@@ -319,9 +319,7 @@ class NetworkTrainer:
         train_dataset_group: Union[DatasetGroup, MinimalDataset],
         val_dataset_group: Optional[DatasetGroup],
     ):
-        train_dataset_group.verify_bucket_reso_steps(64)
-        if val_dataset_group is not None:
-            val_dataset_group.verify_bucket_reso_steps(64)
+        validate_sd_peft(cfg, train_dataset_group, val_dataset_group)
 
     def load_target_model(self, cfg, weight_dtype, accelerator) -> tuple[str, nn.Module, nn.Module, Optional[nn.Module]]:
         text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance, weight_dtype, accelerator)
@@ -1191,15 +1189,9 @@ class NetworkTrainer:
 
         # 実験的機能：勾配も含めたfp16/bf16学習を行う　モデル全体をfp16/bf16にする
         if cfg.performance.full_fp16:
-            assert (
-                cfg.performance.mixed_precision == "fp16"
-            ), "full_fp16 requires mixed precision='fp16' / full_fp16を使う場合はmixed_precision='fp16'を指定してください。"
             accelerator.print("enable full fp16 training.")
             network.to(weight_dtype)
         elif cfg.performance.full_bf16:
-            assert (
-                cfg.performance.mixed_precision == "bf16"
-            ), "full_bf16 requires mixed precision='bf16' / full_bf16を使う場合はmixed_precision='bf16'を指定してください。"
             accelerator.print("enable full bf16 training.")
             network.to(weight_dtype)
 
@@ -1207,9 +1199,6 @@ class NetworkTrainer:
         # Experimental Feature: Put base model into fp8 to save vram
         if cfg.performance.fp8_base or cfg.performance.fp8_base_unet:
             assert torch.__version__ >= "2.1.0", "fp8_base requires torch>=2.1.0 / fp8を使う場合はtorch>=2.1.0が必要です。"
-            assert (
-                cfg.performance.mixed_precision != "no"
-            ), "fp8_base requires mixed precision='fp16' or 'bf16' / fp8を使う場合はmixed_precision='fp16'または'bf16'が必要です。"
             accelerator.print("enable fp8 training for U-Net.")
             unet_weight_dtype = torch.float8_e4m3fn
 
@@ -2327,7 +2316,9 @@ cs.store(name="sd_peft", node=SDPeftConfig)
 
 @hydra.main(version_base=None, config_path="../configs", config_name="sd_peft")
 def main(cfg: SDPeftConfig):
-    trainer = NetworkTrainer()
+    prepare_config(cfg)
+    validate_config(cfg)
+    trainer = SDPeftTrainer()
     trainer.train(cfg)
 
 if __name__ == "__main__":

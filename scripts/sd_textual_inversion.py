@@ -31,6 +31,7 @@ from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.optimizer import get_optimizer, get_scheduler_fix
 from library.training.sample_generation import sample_images
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
+from library.config.validation import prepare_config, validate_config, validate_sd_textual_inversion
 
 from library.config.config_util import (
     BlueprintGenerator,
@@ -77,10 +78,7 @@ class TextualInversionTrainer:
 
     def validate_extra_config(self, config, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
         DatasetGroup]):
-        train_dataset_group.verify_bucket_reso_steps(64)
-
-        if val_dataset_group is not None:
-            val_dataset_group.verify_bucket_reso_steps(64)
+        validate_sd_textual_inversion(config, train_dataset_group, val_dataset_group)
 
     def load_target_model(self, sd_models_config, performance_config, weight_dtype, accelerator):
         text_encoder, vae, unet, _ = load_target_model(sd_models_config, performance_config, weight_dtype, accelerator)
@@ -679,6 +677,8 @@ class TextualInversionTrainer:
 
 @hydra.main(config_path="../configs", config_name="sd_textual_inversion", version_base=None)
 def main(config: TextualInversionConfig):
+    prepare_config(config)
+    validate_config(config)
     trainer = TextualInversionTrainer()
     trainer.train(config)
 

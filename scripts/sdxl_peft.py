@@ -20,6 +20,7 @@ from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.data.dataset import DatasetGroup, MinimalDataset
 from library.training.model_prep import replace_unet_modules
+from library.config.validation import prepare_config, validate_config, validate_sdxl_peft
 
 init_ipex()
 
@@ -27,7 +28,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
+class SDXLPeftTrainer(sd_peft.SDPeftTrainer):
     def __init__(self):
         super().__init__()
         self.vae_scale_factor = VAE_SCALE_FACTOR
@@ -39,21 +40,7 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
         train_dataset_group: Union[DatasetGroup, MinimalDataset],
         val_dataset_group: Optional[DatasetGroup],
     ):
-        # args = ArgsAdapter(cfg) # Removed
-        # verify_sdxl_training_args(args) # Removed TODO: validate configs?
-
-        if cfg.sdxl.cache_text_encoder_outputs:
-            assert (
-                train_dataset_group.is_text_encoder_output_cacheable()
-            ), "when caching Text Encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used / Text Encoderの出力をキャッシュするときはcaption_dropout_rate, shuffle_caption, token_warmup_step, caption_tag_dropout_rateは使えません"
-
-        assert (
-            cfg.network.network_train_unet_only or not cfg.sdxl.cache_text_encoder_outputs
-        ), "network for Text Encoder cannot be trained with caching Text Encoder outputs / Text Encoderの出力をキャッシュしながらText Encoderのネットワークを学習することはできません"
-
-        train_dataset_group.verify_bucket_reso_steps(32)
-        if val_dataset_group is not None:
-            val_dataset_group.verify_bucket_reso_steps(32)
+        validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group)
 
     def load_target_model(self, cfg, weight_dtype, accelerator):
         # args = ArgsAdapter(cfg) # Removed
@@ -257,7 +244,9 @@ cs.store(name="sdxl_peft", node=SDXLPeftConfig)
 
 @hydra.main(version_base=None, config_path="../configs", config_name="sdxl_peft")
 def main(cfg: SDXLPeftConfig):
-    trainer = SdxlNetworkTrainer()
+    prepare_config(cfg)
+    validate_config(cfg)
+    trainer = SDXLPeftTrainer()
     trainer.train(cfg)
 
 if __name__ == "__main__":

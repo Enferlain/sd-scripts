@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2025-12-22]
 
+### Added
+
+- **Centralized Config Validation Module** (`library/config/validation.py`)
+  - `prepare_config(cfg)` - Auto-fixups: cache flags, optimizer shortcuts, backward compat
+  - `validate_config(cfg)` - Cross-config errors: `adaptive_noise_scale`, `v_pred` conflicts, `full_fp16/bf16`, `fp8_base`, SDXL `block_lr`
+  - Script-specific validators: `validate_sd_peft`, `validate_sdxl_peft`, `validate_sd_textual_inversion`, `validate_sdxl_textual_inversion`
+  - Comprehensive unit tests in `tests/unit/test_validation.py` (24 tests)
+
 ### Fixed
 
 - **Hydra Config Field Reference Bugs**
@@ -60,8 +68,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **HuggingFace Upload Refactor**
+
   - Refactored `huggingface_util.upload()` to accept `HuggingFaceConfig` instead of `argparse.Namespace`
   - Updated callers in `sd_textual_inversion.py` and `sd_peft.py` to use `config.huggingface`
+
+- **Config Validation Architecture**
+  - Removed `__post_init__` methods from 5 dataclasses (`DatasetConfig`, `RegularizationConfig`, `SamplingConfig`, `OptimizerConfig`, `SDXLConfig`)
+  - Trainer `validate_extra_config` methods now delegate to centralized module
+  - All 6 training scripts call `prepare_config()` and `validate_config()` at entry point
+  - Removed duplicate precision validation asserts from `sd_peft.py`, `sd_finetune.py`, `sdxl_finetune.py`
 
 ### Removed
 

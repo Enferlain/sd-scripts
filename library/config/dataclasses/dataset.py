@@ -43,9 +43,3 @@ class DatasetConfig:
 
     # Placeholder for subsets to be populated by hydra or manually
     subsets: List[dict] = field(default_factory=list)
-
-    def __post_init__(self):
-        if self.cache_latents_to_disk and not self.cache_latents:
-            self.cache_latents = True
-        if self.caption_extention is not None:
-            self.caption_extension = self.caption_extention

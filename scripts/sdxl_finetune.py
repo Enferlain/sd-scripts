@@ -32,6 +32,7 @@ from library.training.optimizer import get_optimizer, get_scheduler_fix
 from library.training.trainer_utils import append_lr_to_logs_with_names, prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 from library.config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
+from library.config.validation import prepare_config, validate_config
 
 from library.config.config_util import (
     BlueprintGenerator,
@@ -107,6 +108,9 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
 
 @hydra.main(version_base=None, config_path="../configs", config_name="sdxl_finetune")
 def train(cfg: SDXLFineTuneConfig):
+    prepare_config(cfg)
+    validate_config(cfg)
+    
     if cfg.training.dry_run:
         print("Dry run completed successfully.")
         return
@@ -117,9 +121,6 @@ def train(cfg: SDXLFineTuneConfig):
 
     if cfg.sdxl.block_lr:
         block_lrs = [float(lr) for lr in cfg.sdxl.block_lr.split(",")]
-        assert (
-            len(block_lrs) == UNET_NUM_BLOCKS_FOR_BLOCK_LR
-        ), f"block_lr must have {UNET_NUM_BLOCKS_FOR_BLOCK_LR} values"
     else:
         block_lrs = None
 
@@ -386,17 +387,11 @@ def train(cfg: SDXLFineTuneConfig):
         lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes)
 
     if cfg.performance.full_fp16:
-        assert (
-            cfg.performance.mixed_precision == "fp16"
-        ), "full_fp16 requires mixed precision='fp16'"
         accelerator.print("enable full fp16 training.")
         unet.to(weight_dtype)
         text_encoder1.to(weight_dtype)
         text_encoder2.to(weight_dtype)
     elif cfg.performance.full_bf16:
-        assert (
-            cfg.performance.mixed_precision == "bf16"
-        ), "full_bf16 requires mixed precision='bf16'"
         accelerator.print("enable full bf16 training.")
         unet.to(weight_dtype)
         text_encoder1.to(weight_dtype)

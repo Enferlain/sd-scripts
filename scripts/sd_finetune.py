@@ -24,6 +24,7 @@ from library.training.sample_generation import sample_images
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 from library.config.dataclasses.sd_finetune import SDFineTuneConfig
+from library.config.validation import prepare_config, validate_config
 
 from library.training.checkpointing import (
     resume_from_local_or_hf_if_specified,
@@ -223,9 +224,6 @@ def train(config: SDFineTuneConfig):
     lr_scheduler = get_scheduler_fix(optimizer_config, optimizer, accelerator.num_processes)
 
     if config.performance.full_fp16:
-        assert (
-            config.performance.mixed_precision == "fp16"
-        ), "full_fp16 requires mixed precision='fp16'"
         accelerator.print("enable full fp16 training.")
         unet.to(weight_dtype)
         text_encoder.to(weight_dtype)
@@ -480,6 +478,8 @@ def train(config: SDFineTuneConfig):
 
 @hydra.main(config_path="../configs", config_name="sd_finetune", version_base=None)
 def main(config: SDFineTuneConfig):
+    prepare_config(config)
+    validate_config(config)
     train(config)
 
 

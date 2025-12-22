@@ -14,6 +14,7 @@ from library.data.dataset import DatasetGroup, MinimalDataset
 from library.training.sdxl_sample_generation import sample_images
 from library.training.sdxl_model_prep import load_target_model as load_target_model_sdxl
 from library.config.dataclasses.sdxl_textual_inversion import SDXLTextualInversionConfig
+from library.config.validation import prepare_config, validate_config, validate_sdxl_textual_inversion
 
 init_ipex()
 
@@ -26,10 +27,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
 
     def validate_extra_config(self, config, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
         DatasetGroup]):
-        # For SDXL, we just verify bucket resolution
-        train_dataset_group.verify_bucket_reso_steps(32)
-        if val_dataset_group is not None:
-            val_dataset_group.verify_bucket_reso_steps(32)
+        validate_sdxl_textual_inversion(config, train_dataset_group, val_dataset_group)
 
     def load_target_model(self, model_config, performance_config, weight_dtype, accelerator):
         (
@@ -123,6 +121,8 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
 
 @hydra.main(config_path="../configs", config_name="sdxl_textual_inversion", version_base=None)
 def main(config: SDXLTextualInversionConfig):
+    prepare_config(config)
+    validate_config(config)
     trainer = SdxlTextualInversionTrainer()
     trainer.train(config)
 
