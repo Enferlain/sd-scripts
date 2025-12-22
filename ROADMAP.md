@@ -22,10 +22,12 @@
    - ~~`library/utils/common_utils.py`~~ ✅ Complete (Tested `str_to_dtype`, `size`, `GradualLatent`)
    - ~~`library/utils/safetensors_utils.py`~~ ✅ Complete (Tested I/O, metadata, large tensors)
    - ~~`library/losses/loss.py`~~ ✅ Complete (Tested stable losses, fixed bugs in SmoothL1)
+   - ~~`library/losses/edm2_loss.py`~~ ✅ Complete (Neural components, MLP, configuration logic)
    - ~~`safetensors_utils.py` - `mem_eff_save_file`, `load_safetensors` - requires temporary file creation/cleanup~~ ✅ Complete
    - ~~`common_utils.py` - `swap_weight_devices` - requires CUDA context/mocks~~ ✅ Complete
-   - `library/losses/loss_weighting.py` - SNR weighting logic
-   - `library/timestep_samplers/` - Sampler initialization and step logic
+   - ~~`library/losses/loss_weighting.py` - SNR weighting logic~~ ✅ Complete (Tested SNR weighting, v-pred logic, masking)
+   - `library/timestep_samplers/` - [POSTPONED] Waiting for proper implementation
+   - ~~`library/utils/device_utils.py`~~ ✅ Complete (Mocked validation of memory cleanup and device selection)
 3. **Integration Tests** - Validate full workflows
    - **Data Loading**: `dataset.py` caching methods (`cache_latents`, `cache_text_encoder_outputs`) and image loading (requires filesystem/GPU mocks)
    - End-to-end config → training setup
@@ -66,6 +68,12 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 - `prompt_utils.py` - `get_prompts_with_weights()`, `get_weighted_text_embeddings()` - need tokenizer mocks
 - `dataset.py` - `cache_latents()`, `register_image()`, `__getitem__` - requires filesystem and VAE interaction mocks
 - `data_structures.py` - `BucketManager.make_buckets()`, `AugHelper.color_aug()` - depends on model_util and OpenCV/randomness
+- `model_util.py` / `sdxl_model_util.py` - Model loading/saving - requires filesystem and model architecture mocks
+- `huggingface_util.py` - API interaction - requires network/auth mocks
+- `deepspeed_utils.py` - Initialization logic - requires distributed context mocks
+- `strategies/*` - Tokenization/Encoding orchestration - requires tokenizer/model mocks
+- `networks/lora.py` - Network creation/injection - requires base model mocks
+- `edm2_loss_utils.py` - `prepare_edm2_loss_weighting` - requires complex mocks (loss/training configs, scheduler, accelerator)
 
 ### Other TODOs
 
