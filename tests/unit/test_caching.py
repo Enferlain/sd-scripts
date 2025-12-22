@@ -227,3 +227,338 @@ class TestTextEncoderOutputsIO:
             assert f["hidden_state1"].dtype == np.float32
             assert f["hidden_state2"].dtype == np.float32
             assert f["pool2"].dtype == np.float32
+
+
+# =============================================================================
+# Heavy Mocking Tests - load_images_and_masks_for_caching
+# =============================================================================
+
+from unittest.mock import Mock, patch, MagicMock
+from library.data.caching import (
+    load_images_and_masks_for_caching,
+    cache_batch_latents,
+    cache_batch_text_encoder_outputs,
+)
+
+
+@pytest.mark.unit
+class TestLoadImagesAndMasksForCaching:
+    """Test load_images_and_masks_for_caching with mocked image loading."""
+
+    @pytest.fixture
+    def mock_image_info(self):
+        """Create a mock ImageInfo object."""
+        info = Mock()
+        info.absolute_path = "/path/to/image.png"
+        info.image = None
+        info.bucket_reso = (512, 512)
+        info.resized_size = (512, 512)
+        info.resize_interpolation = None
+        return info
+
+    @patch('library.data.caching.load_image')
+    @patch('library.data.caching.trim_and_resize_if_required')
+    def test_returns_correct_tuple_structure(self, mock_trim, mock_load, mock_image_info):
+        """Test that function returns (tensor, masks, sizes, crops) tuple."""
+        # Setup mocks
+        mock_load.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
+        mock_trim.return_value = (
+            np.zeros((512, 512, 3), dtype=np.uint8),
+            (512, 512),  # original_size
+            (0, 0, 512, 512)  # crop_ltrb
+        )
+        
+        result = load_images_and_masks_for_caching(
+            [mock_image_info], use_alpha_mask=False, random_crop=False
+        )
+        
+        assert len(result) == 4
+        img_tensor, alpha_masks, original_sizes, crop_ltrbs = result
+        assert isinstance(img_tensor, torch.Tensor)
+        assert len(alpha_masks) == 1
+        assert len(original_sizes) == 1
+        assert len(crop_ltrbs) == 1
+
+    @patch('library.data.caching.load_image')
+    @patch('library.data.caching.trim_and_resize_if_required')
+    def test_extracts_alpha_mask_when_requested(self, mock_trim, mock_load, mock_image_info):
+        """Test that alpha mask is extracted when use_alpha_mask=True."""
+        # Image with alpha channel
+        rgba_image = np.zeros((512, 512, 4), dtype=np.uint8)
+        rgba_image[:, :, 3] = 128  # 50% alpha
+        
+        mock_load.return_value = rgba_image
+        mock_trim.return_value = (rgba_image, (512, 512), (0, 0, 512, 512))
+        
+        _, alpha_masks, _, _ = load_images_and_masks_for_caching(
+            [mock_image_info], use_alpha_mask=True, random_crop=False
+        )
+        
+        assert alpha_masks[0] is not None
+        assert isinstance(alpha_masks[0], torch.Tensor)
+
+    @patch('library.data.caching.load_image')
+    @patch('library.data.caching.trim_and_resize_if_required')
+    def test_alpha_mask_is_none_when_not_requested(self, mock_trim, mock_load, mock_image_info):
+        """Test that alpha mask is None when use_alpha_mask=False."""
+        mock_load.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
+        mock_trim.return_value = (np.zeros((512, 512, 3), dtype=np.uint8), (512, 512), (0, 0, 512, 512))
+        
+        _, alpha_masks, _, _ = load_images_and_masks_for_caching(
+            [mock_image_info], use_alpha_mask=False, random_crop=False
+        )
+        
+        assert alpha_masks[0] is None
+
+    @patch('library.data.caching.load_image')
+    @patch('library.data.caching.trim_and_resize_if_required')
+    def test_uses_preloaded_image_if_available(self, mock_trim, mock_load, mock_image_info):
+        """Test that preloaded image is used instead of loading from disk."""
+        mock_image_info.image = np.zeros((512, 512, 3), dtype=np.uint8)
+        mock_trim.return_value = (np.zeros((512, 512, 3), dtype=np.uint8), (512, 512), (0, 0, 512, 512))
+        
+        load_images_and_masks_for_caching(
+            [mock_image_info], use_alpha_mask=False, random_crop=False
+        )
+        
+        # Should not call load_image when image is preloaded
+        mock_load.assert_not_called()
+
+
+# =============================================================================
+# Heavy Mocking Tests - cache_batch_latents
+# =============================================================================
+
+@pytest.mark.unit
+class TestCacheBatchLatents:
+    """Test cache_batch_latents with mocked VAE."""
+
+    @pytest.fixture
+    def mock_vae(self):
+        """Create a mock VAE that returns fake latents."""
+        vae = Mock()
+        vae.device = torch.device("cpu")
+        vae.dtype = torch.float32
+        
+        # Mock encode chain: vae.encode(x).latent_dist.sample()
+        latent_dist = Mock()
+        latent_dist.sample.return_value = torch.randn(1, 4, 64, 64)
+        encode_result = Mock()
+        encode_result.latent_dist = latent_dist
+        vae.encode.return_value = encode_result
+        
+        return vae
+
+    @pytest.fixture
+    def mock_image_info(self):
+        """Create a mock ImageInfo for caching."""
+        info = Mock()
+        info.absolute_path = "/path/to/image.png"
+        info.image = np.zeros((512, 512, 3), dtype=np.uint8)
+        info.bucket_reso = (512, 512)
+        info.resized_size = (512, 512)
+        info.resize_interpolation = None
+        info.latents_npz = "/path/to/latents.npz"
+        return info
+
+    @patch('library.data.caching.clean_memory_on_device')
+    @patch('library.data.caching.trim_and_resize_if_required')
+    def test_sets_latents_on_info_object(self, mock_trim, mock_clean, mock_vae, mock_image_info):
+        """Test that latents are set on info object when cache_to_disk=False."""
+        mock_trim.return_value = (
+            np.zeros((512, 512, 3), dtype=np.uint8),
+            (512, 512),
+            (0, 0, 512, 512)
+        )
+        
+        cache_batch_latents(
+            mock_vae, 
+            cache_to_disk=False, 
+            image_infos=[mock_image_info],
+            flip_aug=False,
+            use_alpha_mask=False,
+            random_crop=False
+        )
+        
+        assert mock_image_info.latents is not None
+
+    @patch('library.data.caching.clean_memory_on_device')
+    @patch('library.data.caching.trim_and_resize_if_required')
+    def test_sets_flipped_latents_when_flip_aug(self, mock_trim, mock_clean, mock_vae, mock_image_info):
+        """Test that flipped latents are set when flip_aug=True."""
+        mock_trim.return_value = (
+            np.zeros((512, 512, 3), dtype=np.uint8),
+            (512, 512),
+            (0, 0, 512, 512)
+        )
+        
+        cache_batch_latents(
+            mock_vae,
+            cache_to_disk=False,
+            image_infos=[mock_image_info],
+            flip_aug=True,
+            use_alpha_mask=False,
+            random_crop=False
+        )
+        
+        assert mock_image_info.latents_flipped is not None
+
+    @patch('library.data.caching.clean_memory_on_device')
+    @patch('library.data.caching.trim_and_resize_if_required')
+    def test_calls_vae_encode(self, mock_trim, mock_clean, mock_vae, mock_image_info):
+        """Test that VAE encode is called."""
+        mock_trim.return_value = (
+            np.zeros((512, 512, 3), dtype=np.uint8),
+            (512, 512),
+            (0, 0, 512, 512)
+        )
+        
+        cache_batch_latents(
+            mock_vae,
+            cache_to_disk=False,
+            image_infos=[mock_image_info],
+            flip_aug=False,
+            use_alpha_mask=False,
+            random_crop=False
+        )
+        
+        mock_vae.encode.assert_called_once()
+
+    @patch('library.data.caching.clean_memory_on_device')
+    @patch('library.data.caching.trim_and_resize_if_required')
+    def test_cleans_memory_after_caching(self, mock_trim, mock_clean, mock_vae, mock_image_info):
+        """Test that memory cleanup is called after caching."""
+        mock_trim.return_value = (
+            np.zeros((512, 512, 3), dtype=np.uint8),
+            (512, 512),
+            (0, 0, 512, 512)
+        )
+        
+        cache_batch_latents(
+            mock_vae,
+            cache_to_disk=False,
+            image_infos=[mock_image_info],
+            flip_aug=False,
+            use_alpha_mask=False,
+            random_crop=False
+        )
+        
+        mock_clean.assert_called_once()
+
+
+# =============================================================================
+# Heavy Mocking Tests - cache_batch_text_encoder_outputs
+# =============================================================================
+
+@pytest.mark.unit
+class TestCacheBatchTextEncoderOutputs:
+    """Test cache_batch_text_encoder_outputs with mocked text encoders."""
+
+    @pytest.fixture
+    def mock_tokenizers(self):
+        """Create mock tokenizers."""
+        tok1 = Mock()
+        tok2 = Mock()
+        return [tok1, tok2]
+
+    @pytest.fixture
+    def mock_text_encoders(self):
+        """Create mock text encoders."""
+        enc1 = Mock()
+        enc1.device = torch.device("cpu")
+        enc2 = Mock()
+        enc2.device = torch.device("cpu")
+        return [enc1, enc2]
+
+    @pytest.fixture
+    def mock_image_info(self, tmp_path):
+        """Create mock ImageInfo for text encoder caching."""
+        info = Mock()
+        info.text_encoder_outputs_npz = str(tmp_path / "te_outputs.npz")
+        return info
+
+    @patch('library.data.caching.get_hidden_states_sdxl')
+    def test_sets_outputs_on_info_when_cache_to_disk_false(
+        self, mock_get_hidden, mock_tokenizers, mock_text_encoders, mock_image_info
+    ):
+        """Test that outputs are set on info object when cache_to_disk=False."""
+        mock_get_hidden.return_value = (
+            torch.randn(1, 77, 768),
+            torch.randn(1, 77, 1280),
+            torch.randn(1, 1280)
+        )
+        
+        input_ids1 = torch.randint(0, 1000, (1, 77))
+        input_ids2 = torch.randint(0, 1000, (1, 77))
+        
+        cache_batch_text_encoder_outputs(
+            [mock_image_info],
+            mock_tokenizers,
+            mock_text_encoders,
+            max_token_length=77,
+            cache_to_disk=False,
+            input_ids1=input_ids1,
+            input_ids2=input_ids2,
+            dtype=torch.float32
+        )
+        
+        assert mock_image_info.text_encoder_outputs1 is not None
+        assert mock_image_info.text_encoder_outputs2 is not None
+        assert mock_image_info.text_encoder_pool2 is not None
+
+    @patch('library.data.caching.get_hidden_states_sdxl')
+    def test_saves_to_disk_when_cache_to_disk_true(
+        self, mock_get_hidden, mock_tokenizers, mock_text_encoders, mock_image_info, tmp_path
+    ):
+        """Test that outputs are saved to disk when cache_to_disk=True."""
+        mock_get_hidden.return_value = (
+            torch.randn(1, 77, 768),
+            torch.randn(1, 77, 1280),
+            torch.randn(1, 1280)
+        )
+        
+        input_ids1 = torch.randint(0, 1000, (1, 77))
+        input_ids2 = torch.randint(0, 1000, (1, 77))
+        
+        cache_batch_text_encoder_outputs(
+            [mock_image_info],
+            mock_tokenizers,
+            mock_text_encoders,
+            max_token_length=77,
+            cache_to_disk=True,
+            input_ids1=input_ids1,
+            input_ids2=input_ids2,
+            dtype=torch.float32
+        )
+        
+        # Check file was created
+        import os
+        assert os.path.exists(mock_image_info.text_encoder_outputs_npz)
+
+    @patch('library.data.caching.get_hidden_states_sdxl')
+    def test_calls_get_hidden_states_sdxl(
+        self, mock_get_hidden, mock_tokenizers, mock_text_encoders, mock_image_info
+    ):
+        """Test that get_hidden_states_sdxl is called with correct args."""
+        mock_get_hidden.return_value = (
+            torch.randn(1, 77, 768),
+            torch.randn(1, 77, 1280),
+            torch.randn(1, 1280)
+        )
+        
+        input_ids1 = torch.randint(0, 1000, (1, 77))
+        input_ids2 = torch.randint(0, 1000, (1, 77))
+        
+        cache_batch_text_encoder_outputs(
+            [mock_image_info],
+            mock_tokenizers,
+            mock_text_encoders,
+            max_token_length=77,
+            cache_to_disk=False,
+            input_ids1=input_ids1,
+            input_ids2=input_ids2,
+            dtype=torch.float32
+        )
+        
+        mock_get_hidden.assert_called_once()
+

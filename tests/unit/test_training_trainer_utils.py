@@ -255,3 +255,264 @@ class TestAppendLrToLogs:
         
         assert "lr/text_encoder1" in logs
         assert "lr/text_encoder2" in logs
+
+
+# =============================================================================
+# Heavy Mocking Tests - prepare_accelerator
+# =============================================================================
+
+from unittest.mock import Mock, patch, MagicMock
+from library.training.trainer_utils import (
+    prepare_accelerator,
+    init_trackers,
+    determine_grad_sync_context,
+)
+from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.logging import LoggingConfig
+from library.config.dataclasses.training import TrainingConfig
+
+
+@pytest.mark.training
+@pytest.mark.unit
+class TestPrepareAccelerator:
+    """Test prepare_accelerator with mocked Accelerator."""
+
+    @pytest.fixture
+    def mock_performance_config(self):
+        """Create a mock PerformanceConfig."""
+        config = Mock(spec=PerformanceConfig)
+        config.mixed_precision = "fp16"
+        config.torch_compile = False
+        config.ddp_gradient_as_bucket_view = False
+        config.ddp_static_graph = False
+        return config
+
+    @pytest.fixture
+    def mock_logging_config(self, tmp_path):
+        """Create a mock LoggingConfig."""
+        config = Mock(spec=LoggingConfig)
+        config.logging_dir = str(tmp_path / "logs")
+        config.log_prefix = "test_"
+        config.log_with = None
+        config.wandb_api_key = None
+        return config
+
+    @pytest.fixture
+    def mock_training_config(self):
+        """Create a mock TrainingConfig."""
+        config = Mock(spec=TrainingConfig)
+        config.gradient_accumulation_steps = 2
+        return config
+
+    @patch('library.training.trainer_utils.Accelerator')
+    @patch('library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin')
+    def test_creates_accelerator_with_basic_config(
+        self, mock_ds_plugin, mock_accelerator_class, mock_performance_config
+    ):
+        """Test that Accelerator is created with basic config."""
+        mock_ds_plugin.return_value = None
+        mock_accelerator = Mock()
+        mock_accelerator_class.return_value = mock_accelerator
+        
+        result = prepare_accelerator(mock_performance_config)
+        
+        assert result is mock_accelerator
+        mock_accelerator_class.assert_called_once()
+
+    @patch('library.training.trainer_utils.Accelerator')
+    @patch('library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin')
+    def test_uses_gradient_accumulation_steps(
+        self, mock_ds_plugin, mock_accelerator_class, 
+        mock_performance_config, mock_training_config
+    ):
+        """Test that gradient_accumulation_steps is passed correctly."""
+        mock_ds_plugin.return_value = None
+        mock_accelerator = Mock()
+        mock_accelerator_class.return_value = mock_accelerator
+        
+        prepare_accelerator(mock_performance_config, training_config=mock_training_config)
+        
+        call_kwargs = mock_accelerator_class.call_args[1]
+        assert call_kwargs['gradient_accumulation_steps'] == 2
+
+    @patch('library.training.trainer_utils.Accelerator')
+    @patch('library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin')
+    def test_uses_mixed_precision(
+        self, mock_ds_plugin, mock_accelerator_class, mock_performance_config
+    ):
+        """Test that mixed_precision is passed correctly."""
+        mock_ds_plugin.return_value = None
+        mock_accelerator = Mock()
+        mock_accelerator_class.return_value = mock_accelerator
+        
+        prepare_accelerator(mock_performance_config)
+        
+        call_kwargs = mock_accelerator_class.call_args[1]
+        assert call_kwargs['mixed_precision'] == "fp16"
+
+    @patch('library.training.trainer_utils.Accelerator')
+    @patch('library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin')
+    @patch('library.training.trainer_utils.TorchDynamoPlugin')
+    def test_torch_compile_creates_dynamo_plugin(
+        self, mock_dynamo, mock_ds_plugin, mock_accelerator_class, mock_performance_config
+    ):
+        """Test that torch_compile creates dynamo plugin."""
+        mock_performance_config.torch_compile = True
+        mock_ds_plugin.return_value = None
+        mock_accelerator = Mock()
+        mock_accelerator_class.return_value = mock_accelerator
+        
+        prepare_accelerator(mock_performance_config)
+        
+        mock_dynamo.assert_called_once()
+
+
+# =============================================================================
+# Heavy Mocking Tests - init_trackers
+# =============================================================================
+
+@pytest.mark.training
+@pytest.mark.unit
+class TestInitTrackers:
+    """Test init_trackers with mocked Accelerator."""
+
+    @pytest.fixture
+    def mock_accelerator(self):
+        """Create a mock Accelerator."""
+        accel = Mock()
+        accel.is_main_process = True
+        return accel
+
+    @pytest.fixture
+    def mock_cfg(self):
+        """Create a mock config object with dataclass fields."""
+        from dataclasses import dataclass
+        
+        @dataclass
+        class MockLogging:
+            wandb_run_name: str = None
+            log_tracker_config: dict = None
+            log_tracker_name: str = None
+        
+        @dataclass
+        class MockConfig:
+            logging: MockLogging = None
+        
+        cfg = MockConfig(logging=MockLogging())
+        return cfg
+
+    def test_calls_init_trackers_on_main_process(self, mock_accelerator, mock_cfg):
+        """Test that init_trackers is called when is_main_process=True."""
+        init_trackers(mock_accelerator, mock_cfg, "test_tracker")
+        
+        mock_accelerator.init_trackers.assert_called_once()
+
+    def test_skips_on_non_main_process(self, mock_accelerator, mock_cfg):
+        """Test that init_trackers is skipped on non-main process."""
+        mock_accelerator.is_main_process = False
+        
+        init_trackers(mock_accelerator, mock_cfg, "test_tracker")
+        
+        mock_accelerator.init_trackers.assert_not_called()
+
+    def test_uses_default_tracker_name(self, mock_accelerator, mock_cfg):
+        """Test that default tracker name is used when not specified."""
+        init_trackers(mock_accelerator, mock_cfg, "default_name")
+        
+        call_args = mock_accelerator.init_trackers.call_args[0]
+        assert call_args[0] == "default_name"
+
+    def test_uses_custom_tracker_name(self, mock_accelerator, mock_cfg):
+        """Test that custom tracker name is used when specified."""
+        mock_cfg.logging.log_tracker_name = "custom_name"
+        
+        init_trackers(mock_accelerator, mock_cfg, "default_name")
+        
+        call_args = mock_accelerator.init_trackers.call_args[0]
+        assert call_args[0] == "custom_name"
+
+    def test_sanitizes_sensitive_keys(self, mock_accelerator):
+        """Test that sensitive keys are masked in logged config."""
+        from dataclasses import dataclass
+        
+        @dataclass
+        class MockLogging:
+            wandb_run_name: str = None
+            log_tracker_config: dict = None
+            log_tracker_name: str = None
+        
+        @dataclass
+        class MockConfig:
+            logging: MockLogging = None
+            wandb_api_key: str = None
+            huggingface_token: str = None
+        
+        cfg = MockConfig(
+            logging=MockLogging(),
+            wandb_api_key="secret_key",
+            huggingface_token="another_secret"
+        )
+        
+        init_trackers(mock_accelerator, cfg, "test")
+        
+        # The config should have masked sensitive keys
+        call_kwargs = mock_accelerator.init_trackers.call_args[1]
+        logged_config = call_kwargs['config']
+        assert logged_config['wandb_api_key'] == "*****"
+        assert logged_config['huggingface_token'] == "*****"
+
+
+# =============================================================================
+# Heavy Mocking Tests - determine_grad_sync_context
+# =============================================================================
+
+@pytest.mark.training
+@pytest.mark.unit
+class TestDetermineGradSyncContext:
+    """Test determine_grad_sync_context with mocked Accelerator."""
+
+    @pytest.fixture
+    def mock_args(self):
+        """Create mock args."""
+        args = Mock()
+        args.full_bf16 = False
+        return args
+
+    @pytest.fixture
+    def mock_accelerator(self):
+        """Create mock Accelerator."""
+        accel = Mock()
+        accel.accumulate = Mock(return_value="accumulate_context")
+        accel.no_sync = Mock(return_value="no_sync_context")
+        accel.num_processes = 1
+        return accel
+
+    @pytest.fixture
+    def mock_training_model(self):
+        """Create mock training model."""
+        return Mock()
+
+    def test_returns_accumulate_context(self, mock_args, mock_accelerator, mock_training_model):
+        """Test that accumulate context is returned."""
+        result = determine_grad_sync_context(
+            mock_args, mock_accelerator, 
+            sync_gradients=True, training_model=mock_training_model
+        )
+        
+        mock_accelerator.accumulate.assert_called_once_with(mock_training_model)
+        assert result == "accumulate_context"
+
+    def test_returns_accumulate_with_edm2_model(
+        self, mock_args, mock_accelerator, mock_training_model
+    ):
+        """Test that accumulate context includes edm2_model when provided."""
+        edm2_model = Mock()
+        
+        result = determine_grad_sync_context(
+            mock_args, mock_accelerator,
+            sync_gradients=True, training_model=mock_training_model,
+            edm2_model=edm2_model
+        )
+        
+        mock_accelerator.accumulate.assert_called_once_with(mock_training_model, edm2_model)
+
