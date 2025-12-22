@@ -970,7 +970,7 @@ class NetworkTrainer:
             # Check if we have manually provided subsets via train_data_dir/reg_data_dir
             if (cfg.dataset.train_data_dir is not None or cfg.dataset.reg_data_dir is not None) and len(cfg.dataset.subsets) == 0:
                 # Generate subsets config from dirs
-                user_config = config_util.generate_user_config_from_args(cfg.dataset)
+                user_config = config_util.generate_user_config_from_dataset(cfg.dataset)
                 # We need to inject this into cfg.dataset.subsets
                 # cfg.dataset.subsets is a List[dict] (or ListConfig)
                 # user_config['datasets'][0]['subsets'] is the list we want

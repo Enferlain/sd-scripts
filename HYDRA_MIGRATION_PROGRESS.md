@@ -10,6 +10,8 @@
   - Refactored `huggingface_util.upload()` to accept `HuggingFaceConfig`
   - Removed `sdxl_data_utils.py`, `add_model_spec_arguments()`, dead `get_hidden_states(args)`
   - Fixed callers in `sd_textual_inversion.py` and `sd_peft.py`
+  - Removed `ModelSpecMetadata.from_args()` legacy method from `sai_model_spec.py`
+  - Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
 
 ## Script Status
 

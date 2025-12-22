@@ -6,29 +6,6 @@ import time
 from library.utils import sai_model_spec
 
 
-class MockArgs:
-    """Mock argparse.Namespace for testing."""
-
-    def __init__(self, **kwargs):
-        # Default values
-        self.v2 = False
-        self.v_parameterization = False
-        self.resolution = 512
-        self.metadata_title = None
-        self.metadata_author = None
-        self.metadata_description = None
-        self.metadata_license = None
-        self.metadata_tags = None
-        self.min_timestep = None
-        self.max_timestep = None
-        self.clip_skip = None
-        self.output_name = "test_output"
-
-        # Override with provided values
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-
 class TestModelSpecMetadata:
     """Test the ModelSpecMetadata dataclass."""
 
@@ -68,22 +45,6 @@ class TestModelSpecMetadata:
         assert "modelspec.custom_field" in metadata_dict
         assert "modelspec.prefixed" in metadata_dict
         assert metadata_dict["modelspec.custom_field"] == "custom_value"
-
-    def test_from_args_extraction(self):
-        """Test creating ModelSpecMetadata from args with metadata_* fields."""
-        args = MockArgs(metadata_author="Test Author", metadata_trigger_phrase="anime style", metadata_usage_hint="Use CFG 7.5")
-
-        metadata = sai_model_spec.ModelSpecMetadata.from_args(
-            args,
-            architecture="stable-diffusion-v1",
-            implementation="diffusers",
-            title="Test Model",
-            resolution="512x512",
-        )
-
-        assert metadata.author == "Test Author"
-        assert metadata.additional_fields["trigger_phrase"] == "anime style"
-        assert metadata.additional_fields["usage_hint"] == "Use CFG 7.5"
 
 
 class TestArchitectureDetection:

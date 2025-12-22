@@ -159,38 +159,6 @@ class ModelSpecMetadata:
         return metadata
 
     @classmethod
-    def from_args(cls, args, **kwargs) -> "ModelSpecMetadata":
-        """Create ModelSpecMetadata from argparse Namespace, extracting metadata_* fields."""
-        metadata_fields = {}
-
-        # Extract all metadata_* attributes from args
-        for attr_name in dir(args):
-            if attr_name.startswith("metadata_") and not attr_name.startswith("metadata___"):
-                value = getattr(args, attr_name, None)
-                if value is not None:
-                    # Remove metadata_ prefix
-                    field_name = attr_name[9:]  # len("metadata_") = 9
-                    metadata_fields[field_name] = value
-
-        # Handle known standard fields
-        standard_fields = {
-            "author": metadata_fields.pop("author", None),
-            "description": metadata_fields.pop("description", None),
-            "license": metadata_fields.pop("license", None),
-            "tags": metadata_fields.pop("tags", None),
-        }
-
-        # Remove None values
-        standard_fields = {k: v for k, v in standard_fields.items() if v is not None}
-
-        # Merge with kwargs and remaining metadata fields
-        all_fields = {**standard_fields, **kwargs}
-        if metadata_fields:
-            all_fields["additional_fields"] = metadata_fields
-
-        return cls(**all_fields)
-
-    @classmethod
     def from_config(
             cls,
             metadata_config: MetadataConfig,
@@ -248,6 +216,7 @@ def determine_architecture(
         model_config: dict[str, str] | None = None
 ) -> str:
     """Determine model architecture string from parameters."""
+    # TODO: why called sai_model_spec if other model types checked in it?
 
     model_config = model_config or {}
 

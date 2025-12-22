@@ -86,6 +86,8 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 - Removed `sdxl_data_utils.py` (superseded by strategy pattern)
 - Removed dead `get_hidden_states(args)` from `text_encoder_util.py` (superseded by strategy)
 - Removed `add_model_spec_arguments()` from `sai_model_spec.py` (superseded by MetadataConfig)
+- Removed `ModelSpecMetadata.from_args()` from `sai_model_spec.py` (use `from_config()` instead)
+- Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
 
 ### 🔴 Deferred: `sd_peft.py` Migration
 

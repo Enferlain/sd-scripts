@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed `sdxl_data_utils.py` (unused, superseded by strategy pattern)
   - Removed dead `get_hidden_states(args)` from `text_encoder_util.py` (superseded by strategy)
   - Removed `add_model_spec_arguments()` from `sai_model_spec.py` (superseded by MetadataConfig)
+  - Removed `ModelSpecMetadata.from_args()` from `sai_model_spec.py` (use `from_config()` instead)
+  - Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
 
 ## [2025-12-20]
 
