@@ -1,59 +1,9 @@
 import torch
-import argparse
 
 from typing import Optional
 from accelerate import Accelerator
 
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
-
-
-def get_hidden_states(args: argparse.Namespace, input_ids, tokenizer, text_encoder, weight_dtype=None):
-    # with no_token_padding, the length is not max length, return result immediately
-    if input_ids.size()[-1] != tokenizer.model_max_length:
-        return text_encoder(input_ids)[0]
-
-    # input_ids: b,n,77
-    b_size = input_ids.size()[0]
-    input_ids = input_ids.reshape((-1, tokenizer.model_max_length))  # batch_size*3, 77
-
-    if args.clip_skip is None:
-        encoder_hidden_states = text_encoder(input_ids)[0]
-    else:
-        enc_out = text_encoder(input_ids, output_hidden_states=True, return_dict=True)
-        encoder_hidden_states = enc_out["hidden_states"][-args.clip_skip]
-        encoder_hidden_states = text_encoder.text_model.final_layer_norm(encoder_hidden_states)
-
-    # bs*3, 77, 768 or 1024
-    encoder_hidden_states = encoder_hidden_states.reshape((b_size, -1, encoder_hidden_states.shape[-1]))
-
-    if args.max_token_length is not None:
-        if args.v2:
-            # v2: Restore the triplet of <BOS>...<EOS> <PAD> ... to <BOS>...<EOS> <PAD> ... I'm not sure if this implementation is correct
-            states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
-            for i in range(1, args.max_token_length, tokenizer.model_max_length):
-                chunk = encoder_hidden_states[:, i: i + tokenizer.model_max_length - 2]  # From after <BOS> to before the last
-                if i > 0:
-                    for j in range(len(chunk)):
-                        if input_ids[j, 1] == tokenizer.eos_token:  # Empty, i.e., <BOS> <EOS> <PAD> ... pattern
-                            chunk[j, 0] = chunk[j, 1]  # Copy value of next <PAD>
-                states_list.append(chunk)  # From after <BOS> to before <EOS>
-            states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # Either <EOS> or <PAD>
-            encoder_hidden_states = torch.cat(states_list, dim=1)
-        else:
-            # v1: Restore the triplet of <BOS>...<EOS> to <BOS>...<EOS>
-            states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
-            for i in range(1, args.max_token_length, tokenizer.model_max_length):
-                states_list.append(
-                    encoder_hidden_states[:, i: i + tokenizer.model_max_length - 2]
-                )  # From after <BOS> to before <EOS>
-            states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # <EOS>
-            encoder_hidden_states = torch.cat(states_list, dim=1)
-
-    if weight_dtype is not None:
-        # this is required for additional network training
-        encoder_hidden_states = encoder_hidden_states.to(weight_dtype)
-
-    return encoder_hidden_states
 
 
 def pool_workaround(

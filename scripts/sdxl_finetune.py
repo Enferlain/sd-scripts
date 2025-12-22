@@ -1,13 +1,11 @@
-# training with captions
 import hydra
-from omegaconf import DictConfig
-
 import math
 import os
 import toml
 import torch
 import logging
 
+from omegaconf import DictConfig, OmegaConf
 from multiprocessing import Value
 from typing import List
 from tqdm import tqdm
@@ -17,10 +15,9 @@ import library.config.config_util as config_util
 
 from library.constants import VAE_SCALE_FACTOR
 from library.models.sdxl_model_util import get_size_embeddings
-
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.common_utils import setup_logging
-from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_dtype
+from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.optimizations import deepspeed_utils
 from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
@@ -36,7 +33,6 @@ from library.training.trainer_utils import append_lr_to_logs_with_names, prepare
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 from library.config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
 
-from dataclasses import asdict
 from library.config.config_util import (
     BlueprintGenerator,
 )
@@ -116,7 +112,7 @@ def train(cfg: SDXLFineTuneConfig):
         return
 
     set_torch_cuda_reduced_precision(cfg.performance)
-    deepspeed_utils.prepare_deepspeed_args(cfg.performance)
+    deepspeed_utils.prepare_deepspeed_config(cfg.performance)
     setup_logging(cfg.logging, reset=True)
 
     if cfg.sdxl.block_lr:
@@ -130,7 +126,7 @@ def train(cfg: SDXLFineTuneConfig):
     cache_latents = cfg.dataset.cache_latents
     use_dreambooth_method = cfg.dataset.in_json is None
 
-    args_set_seed(cfg.training)
+    set_seed_from_config(cfg.training)
 
     tokenize_strategy = strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
     strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
@@ -412,7 +408,7 @@ def train(cfg: SDXLFineTuneConfig):
 
     if cfg.performance.deepspeed:
         ds_model = deepspeed_utils.prepare_deepspeed_model(
-            cfg.performance,
+            cfg.training,
             unet=unet if train_unet else None,
             text_encoder1=text_encoder1 if train_text_encoder1 else None,
             text_encoder2=text_encoder2 if train_text_encoder2 else None,
@@ -444,7 +440,7 @@ def train(cfg: SDXLFineTuneConfig):
 
     resume_from_local_or_hf_if_specified(accelerator, cfg.saving)
 
-    if cfg.sdxl.fused_backward_pass:
+    if cfg.optimizer.fused_backward_pass:
         import library.optimizers.adafactor_fused
 
         library.optimizers.adafactor_fused.patch_adafactor_fused(optimizer)
@@ -643,7 +639,7 @@ def train(cfg: SDXLFineTuneConfig):
 
                 accelerator.backward(loss)
 
-                if not (cfg.sdxl.fused_backward_pass or cfg.sdxl.fused_optimizer_groups):
+                if not (cfg.optimizer.fused_backward_pass or cfg.sdxl.fused_optimizer_groups):
                     if accelerator.sync_gradients and cfg.optimizer.max_grad_norm != 0.0:
                         params_to_clip = []
                         for m in training_models:

@@ -67,7 +67,7 @@ def set_torch_cuda_reduced_precision(cfg: PerformanceConfig):
         torch.backends.cuda.allow_fp16_bf16_reduction_math_sdp(True)
 
 
-def args_set_seed(cfg: TrainingConfig):
+def set_seed_from_config(cfg: TrainingConfig):
     if cfg.seed is None or cfg.seed == -1:
         cfg.seed = random.randint(0, 2 ** 32)
         logger.info(f"As seed provided is -1, randomly selected {cfg.seed} as the seed for this training run.")

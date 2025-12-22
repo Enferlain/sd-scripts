@@ -6,6 +6,14 @@
 
 - **Renamed `sdxl_training` -> `sdxl`**: To clarify distinction between generic training and SDXL-specific model settings.
 - **Legacy Cleanup**: Removed `library.config.arguments` and all `argparse` dependencies from migrated scripts.
+- **Dec 22 Cleanup**:
+  - Refactored `huggingface_util.upload()` to accept `HuggingFaceConfig`
+  - Removed `sdxl_data_utils.py`, `add_model_spec_arguments()`, dead `get_hidden_states(args)`
+  - Fixed callers in `sd_textual_inversion.py` and `sd_peft.py`
+  - Removed `ModelSpecMetadata.from_args()` legacy method from `sai_model_spec.py`
+  - Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
+  - Renamed `args_set_seed()` → `set_seed_from_config()`, `prepare_deepspeed_args()` → `prepare_deepspeed_config()`
+  - Renamed `args` params → `config` in textual inversion trainer methods
 
 ## Script Status
 
@@ -13,7 +21,7 @@
 | --------------------------- | ---------------------------- | ----------- |
 | `sd_finetune.py`            | `FineTuneConfig`             | ✅ Complete |
 | `sd_textual_inversion.py`   | `TextualInversionConfig`     | ✅ Complete |
-| `sd_peft.py`                | `TrainNetworkConfig`         | ✅ Complete |
+| `sd_peft.py`                | `SDPeftConfig`               | ✅ Complete |
 | `sdxl_finetune.py`          | `SDXLFineTuneConfig`         | ✅ Complete |
 | `sdxl_textual_inversion.py` | `SDXLTextualInversionConfig` | ✅ Complete |
 | `sdxl_peft.py`              | `SDXLPeftConfig`             | ✅ Complete |
@@ -38,12 +46,17 @@
 | `library/training/trainer_utils.py` | ✅ Uses `TrainingConfig`                 |
 | `library/config/config_util.py`     | ✅ `RootConfig` Protocol defined         |
 | `library/data/dataset.py`           | ✅ Uses `DatasetConfig`                  |
+| `library/utils/huggingface_util.py` | ✅ Uses `HuggingFaceConfig`              |
 
 ## Next Steps
 
 1. ~~**Config Audit** - Review for duplicate/misplaced settings across configs~~ ✅ Complete
-2. **Testing Infrastructure** - Add pytest tests for config instantiation
-3. **Documentation** - Update README with new script names
+2. **`sd_peft.py` Migration** - **COMPLETED** ✅
+   - [x] Refactor `args` usage to `cfg`
+   - [x] Fix ConfigAdapter usages
+   - [x] Cleanup legacy argparse code
+3. **Testing Infrastructure** - Add pytest tests for config instantiation
+4. **Documentation** - Update README with new script names
 
 ## Migration Guide
 

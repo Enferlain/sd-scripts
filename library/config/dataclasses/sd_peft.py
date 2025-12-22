@@ -23,7 +23,7 @@ class SDPeftConfig:
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     buckets: BucketsConfig = field(default_factory=BucketsConfig)
-    sd_models: ModelConfig = field(default_factory=ModelConfig)
+    model: ModelConfig = field(default_factory=ModelConfig)
     network: NetworkConfig = field(default_factory=NetworkConfig)
     saving: SavingConfig = field(default_factory=SavingConfig)
     huggingface: HuggingFaceConfig = field(default_factory=HuggingFaceConfig)

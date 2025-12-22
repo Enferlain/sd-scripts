@@ -433,17 +433,16 @@ def generate_dreambooth_subsets_config_by_subdirs(
 
     return subsets_config
 
-def generate_user_config_from_args(args) -> dict:
+def generate_user_config_from_dataset(dataset_config) -> dict:
     """
-    Generate user_config from args.
-    This is for backward compatibility.
+    Generate user_config from DatasetConfig for DreamBooth subdirectory parsing.
     """
-    # Assuming args is config.dataset (or compatible object)
-    if args.dataset_class is None:
+    # Assuming dataset_config is cfg.dataset (or compatible object)
+    if dataset_config.dataset_class is None:
         user_config = {
             "datasets": [
                 {
-                    "subsets": generate_dreambooth_subsets_config_by_subdirs(args.train_data_dir, args.reg_data_dir)
+                    "subsets": generate_dreambooth_subsets_config_by_subdirs(dataset_config.train_data_dir, dataset_config.reg_data_dir)
                 }
             ]
         }

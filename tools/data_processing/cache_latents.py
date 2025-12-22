@@ -6,7 +6,7 @@ import logging
 
 # TODO add back missing pipes
 # from library import flux_train_utils, flux_utils, strategy_flux
-import library.utils.sai_model_spec as sai_model_spec
+
 
 from library.data.dataset import load_arbitrary_dataset
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
@@ -31,7 +31,7 @@ from library.config.arguments import (
     add_dit_training_arguments,
     read_config_from_file
 )
-from library.utils.torch_utils import args_set_seed, prepare_dtype
+from library.utils.torch_utils import set_seed_from_config, prepare_dtype
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
 
     use_dreambooth_method = args.in_json is None
 
-    args_set_seed(args)
+    set_seed_from_config(args)
 
     is_sd = not args.sdxl and not args.flux
     is_sdxl = args.sdxl
@@ -173,7 +173,7 @@ def setup_parser() -> argparse.ArgumentParser:
 
     add_logging_arguments(parser)
     add_sd_models_arguments(parser)
-    sai_model_spec.add_model_spec_arguments(parser)
+
     add_training_arguments(parser, True)
     add_dataset_arguments(parser, True, True, True)
     add_masked_loss_arguments(parser)
