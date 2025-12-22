@@ -7,7 +7,6 @@ from diffusers import StableDiffusionPipeline
 
 from library.models import model_util
 from library.models.original_unet import UNet2DConditionModel
-from library.models.original_unet import UNet2DConditionModel
 from library.utils.device_utils import clean_memory_on_device
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import PerformanceConfig

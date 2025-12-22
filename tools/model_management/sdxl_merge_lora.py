@@ -384,7 +384,7 @@ def merge(args):
     if args.lbws:
         assert len(args.models) == len(
             args.lbws
-        ), f"number of models must be equal to number of ratios"
+        ), f"number of models must be equal to number of lbws"
     else:
         args.lbws = []  # Make it an empty list when lbws is unused so it can be handled by zip_longest
 

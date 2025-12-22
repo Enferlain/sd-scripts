@@ -332,14 +332,12 @@ def setup_parser() -> argparse.ArgumentParser:
         "--min_diff",
         type=float,
         default=0.01,
-        help="Minimum difference between finetuned model and base to consider them different enough to extract, float, (0-1). Default = 0.01 /"
-        + "Minimum difference between original and tuned model to extract LoRA, float, (0-1). Default is 0.01",
+        help="Minimum difference between original and tuned model to extract LoRA, float, (0-1). Default is 0.01",
     )
     parser.add_argument(
         "--no_metadata",
         action="store_true",
-        help="do not save sai modelspec metadata (minimum ss_metadata for LoRA is saved) / "
-        + "Do not save sai modelspec metadata (minimum ss_metadata of LoRA is saved)",
+        help="Do not save sai modelspec metadata (minimum ss_metadata of LoRA is saved)",
     )
     parser.add_argument(
         "--load_original_model_to",

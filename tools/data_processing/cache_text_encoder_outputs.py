@@ -8,8 +8,8 @@ from library.constants import MODEL_VERSION_SDXL_BASE_V1_0
 from library.training.trainer_utils import prepare_accelerator
 from tools.data_processing.cache_latents import set_tokenize_strategy
 from library.strategies import strategy_sdxl, strategy_base
-from library.utils.torch_utils import set_seed_from_config, prepare_dtype
-from library.utils import config_util
+from library.utils.torch_utils import args_set_seed, prepare_dtype
+from library.utils import config_util, sai_model_spec
 from library.utils.config_util import ConfigSanitizer, BlueprintGenerator
 from library.utils.common_utils import setup_logging, add_logging_arguments, str_to_dtype
 from library.data.dataset import load_arbitrary_dataset
@@ -48,7 +48,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
 
     use_dreambooth_method = args.in_json is None
 
-    set_seed_from_config(args)
+    args_set_seed(args)
 
     is_sd = not args.sdxl and not args.flux
     is_sdxl = args.sdxl
@@ -189,7 +189,7 @@ def setup_parser() -> argparse.ArgumentParser:
 
     add_logging_arguments(parser)
     add_sd_models_arguments(parser)
-
+    sai_model_spec.add_model_spec_arguments(parser)
     add_training_arguments(parser, True)
     add_dataset_arguments(parser, True, True, True)
     add_masked_loss_arguments(parser)

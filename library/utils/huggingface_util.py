@@ -1,4 +1,5 @@
 import os
+import argparse
 import logging
 
 from typing import Union, BinaryIO
@@ -6,7 +7,6 @@ from huggingface_hub import HfApi
 from pathlib import Path
 
 from library.utils.common_utils import fire_in_thread, setup_logging
-from library.config.dataclasses.huggingface import HuggingFaceConfig
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -24,30 +24,21 @@ def exists_repo(repo_id: str, repo_type: str, revision: str = "main", token: str
 
 
 def upload(
-        hf_config: HuggingFaceConfig,
+        args: argparse.Namespace,
         src: Union[str, Path, bytes, BinaryIO],
         dest_suffix: str = "",
         force_sync_upload: bool = False,
 ):
-    """
-    Upload a file or folder to HuggingFace Hub.
-    
-    Args:
-        hf_config: HuggingFaceConfig dataclass with repo settings
-        src: Source file/folder path or file object
-        dest_suffix: Suffix to append to path_in_repo
-        force_sync_upload: Force synchronous upload even if async_upload is True
-    """
-    repo_id = hf_config.huggingface_repo_id
-    repo_type = hf_config.huggingface_repo_type
-    token = hf_config.huggingface_token
-    path_in_repo = hf_config.huggingface_path_in_repo + dest_suffix if hf_config.huggingface_path_in_repo is not None else None
-    private = hf_config.huggingface_repo_visibility is None or hf_config.huggingface_repo_visibility != "public"
+    repo_id = args.huggingface_repo_id
+    repo_type = args.huggingface_repo_type
+    token = args.huggingface_token
+    path_in_repo = args.huggingface_path_in_repo + dest_suffix if args.huggingface_path_in_repo is not None else None
+    private = args.huggingface_repo_visibility is None or args.huggingface_repo_visibility != "public"
     api = HfApi(token=token)
     if not exists_repo(repo_id=repo_id, repo_type=repo_type, token=token):
         try:
             api.create_repo(repo_id=repo_id, repo_type=repo_type, private=private)
-        except Exception as e:
+        except Exception as e:  # I checked RepositoryNotFoundError for now, but it would be a problem if there are others
             logger.error("===========================================")
             logger.error(f"failed to create HuggingFace repo : {e}")
             logger.error("===========================================")
@@ -70,12 +61,12 @@ def upload(
                     path_or_fileobj=src,
                     path_in_repo=path_in_repo,
                 )
-        except Exception as e:
+        except Exception as e:  # RuntimeError has been confirmed, but it would be a problem if there are others
             logger.error("===========================================")
             logger.error(f"failed to upload to HuggingFace : {e}")
             logger.error("===========================================")
 
-    if hf_config.async_upload and not force_sync_upload:
+    if args.async_upload and not force_sync_upload:
         fire_in_thread(uploader)
     else:
         uploader()

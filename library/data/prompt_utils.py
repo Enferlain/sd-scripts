@@ -1,5 +1,6 @@
 import torch
 import logging
+import argparse
 
 from typing import List, Optional, Union
 
@@ -299,3 +300,11 @@ def get_weighted_text_embeddings(
 
     return text_embeddings
 
+
+def add_prompt_parsing_arguments(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "--weighted_captions",
+        action="store_true",
+        default=False,
+        help="Enable weighted captions in the standard style (token:1.3). No commas inside parens, or shuffle/dropout may break the decoder.",
+    )

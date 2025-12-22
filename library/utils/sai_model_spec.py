@@ -2,6 +2,7 @@
 import os
 import datetime
 import hashlib
+import argparse
 import base64
 import logging
 import mimetypes
@@ -159,6 +160,38 @@ class ModelSpecMetadata:
         return metadata
 
     @classmethod
+    def from_args(cls, args, **kwargs) -> "ModelSpecMetadata":
+        """Create ModelSpecMetadata from argparse Namespace, extracting metadata_* fields."""
+        metadata_fields = {}
+
+        # Extract all metadata_* attributes from args
+        for attr_name in dir(args):
+            if attr_name.startswith("metadata_") and not attr_name.startswith("metadata___"):
+                value = getattr(args, attr_name, None)
+                if value is not None:
+                    # Remove metadata_ prefix
+                    field_name = attr_name[9:]  # len("metadata_") = 9
+                    metadata_fields[field_name] = value
+
+        # Handle known standard fields
+        standard_fields = {
+            "author": metadata_fields.pop("author", None),
+            "description": metadata_fields.pop("description", None),
+            "license": metadata_fields.pop("license", None),
+            "tags": metadata_fields.pop("tags", None),
+        }
+
+        # Remove None values
+        standard_fields = {k: v for k, v in standard_fields.items() if v is not None}
+
+        # Merge with kwargs and remaining metadata fields
+        all_fields = {**standard_fields, **kwargs}
+        if metadata_fields:
+            all_fields["additional_fields"] = metadata_fields
+
+        return cls(**all_fields)
+
+    @classmethod
     def from_config(
             cls,
             metadata_config: MetadataConfig,
@@ -216,7 +249,6 @@ def determine_architecture(
         model_config: dict[str, str] | None = None
 ) -> str:
     """Determine model architecture string from parameters."""
-    # TODO: why called sai_model_spec if other model types checked in it?
 
     model_config = model_config or {}
 
@@ -598,7 +630,112 @@ def build_merged_from(models: list[str]) -> str:
     return ", ".join(titles)
 
 
+def add_model_spec_arguments(parser: argparse.ArgumentParser):
+    """Add all ModelSpec metadata arguments to the parser."""
+
+    parser.add_argument(
+        "--metadata_title",
+        type=str,
+        default=None,
+        help="title for model metadata (default is output_name)",
+    )
+    parser.add_argument(
+        "--metadata_author",
+        type=str,
+        default=None,
+        help="author name for model metadata",
+    )
+    parser.add_argument(
+        "--metadata_description",
+        type=str,
+        default=None,
+        help="description for model metadata",
+    )
+    parser.add_argument(
+        "--metadata_license",
+        type=str,
+        default=None,
+        help="license for model metadata",
+    )
+    parser.add_argument(
+        "--metadata_tags",
+        type=str,
+        default=None,
+        help="tags for model metadata, separated by comma",
+    )
+    parser.add_argument(
+        "--metadata_usage_hint",
+        type=str,
+        default=None,
+        help="usage hint for model metadata",
+    )
+    parser.add_argument(
+        "--metadata_thumbnail",
+        type=str,
+        default=None,
+        help="thumbnail image as data URL or file path (will be converted to data URL) for model metadata",
+    )
+    parser.add_argument(
+        "--metadata_merged_from",
+        type=str,
+        default=None,
+        help="source models for merged model metadata",
+    )
+    parser.add_argument(
+        "--metadata_trigger_phrase",
+        type=str,
+        default=None,
+        help="trigger phrase for model metadata",
+    )
+    parser.add_argument(
+        "--metadata_preprocessor",
+        type=str,
+        default=None,
+        help="preprocessor used for model metadata",
+    )
+    parser.add_argument(
+        "--metadata_is_negative_embedding",
+        type=str,
+        default=None,
+        help="whether this is a negative embedding for model metadata",
+    )
+
+
 # endregion
+
+
+r"""
+if __name__ == "__main__":
+    import argparse
+    import torch
+    from safetensors.torch import load_file
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ckpt", type=str, required=True)
+    args = parser.parse_args()
+
+    print(f"Loading {args.ckpt}")
+    state_dict = load_file(args.ckpt)
+
+    print(f"Calculating metadata")
+    metadata = get(state_dict, False, False, False, False, "sgm", False, False, "title", "date", 256, 1000, 0)
+    print(metadata)
+    del state_dict
+
+    # by reference implementation
+    with open(args.ckpt, mode="rb") as file_data:
+        file_hash = hashlib.sha256()
+        head_len = struct.unpack("Q", file_data.read(8))  # int64 header length prefix
+        header = json.loads(file_data.read(head_len[0]))  # header itself, json string
+        content = (
+            file_data.read()
+        )  # All other content is tightly packed tensors. Copy to RAM for simplicity, but you can avoid this read with a more careful FS-dependent impl.
+        file_hash.update(content)
+        # ===== Update the hash for modelspec =====
+        by_ref = f"0x{file_hash.hexdigest()}"
+    print(by_ref)
+    print("is same?", by_ref == metadata["modelspec.hash_sha256"])
+"""
 
 
 def get_sai_model_spec_from_config(

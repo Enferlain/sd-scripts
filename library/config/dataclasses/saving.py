@@ -19,5 +19,3 @@ class SavingConfig:
     resume: Optional[str] = None
     save_model_as: Optional[str] = None
     use_safetensors: bool = False
-    no_metadata: bool = False
-

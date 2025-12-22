@@ -7,36 +7,25 @@ from accelerate.utils import TorchDynamoPlugin
 import library.optimizations.deepspeed_utils as deepspeed_utils
 from omegaconf import OmegaConf, DictConfig
 
-from library.config.dataclasses.performance import PerformanceConfig
-from library.config.dataclasses.logging import LoggingConfig
-from library.config.dataclasses.training import TrainingConfig
 
-
-def prepare_accelerator(performance_config: PerformanceConfig, logging_config: LoggingConfig = None, training_config: TrainingConfig = None):
+def prepare_accelerator(args: DictConfig):
     """
-    Prepare accelerator with optional deepspeed plugin.
-    
-    Args:
-        performance_config: Performance settings (mixed_precision, torch_compile, ddp settings, deepspeed)
-        logging_config: Optional logging settings (logging_dir, log_with, wandb settings)
-        training_config: Optional training settings (gradient_accumulation_steps)
+    this function also prepares deepspeed plugin
     """
 
-    # Handle logging directory
-    if logging_config is None or logging_config.logging_dir is None:
+    if args.logging_dir is None:
         logging_dir = None
     else:
-        log_prefix = "" if logging_config.log_prefix is None else logging_config.log_prefix
-        logging_dir = logging_config.logging_dir + "/" + log_prefix + time.strftime("%Y%m%d%H%M%S", time.localtime())
+        log_prefix = "" if args.log_prefix is None else args.log_prefix
+        logging_dir = args.logging_dir + "/" + log_prefix + time.strftime("%Y%m%d%H%M%S", time.localtime())
 
-    # Handle log_with setting
-    if logging_config is None or logging_config.log_with is None:
+    if args.log_with is None:
         if logging_dir is not None:
             log_with = "tensorboard"
         else:
             log_with = None
     else:
-        log_with = logging_config.log_with
+        log_with = args.log_with
         if log_with in ["tensorboard", "all"]:
             if logging_dir is None:
                 raise ValueError(
@@ -50,14 +39,15 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
             if logging_dir is not None:
                 os.makedirs(logging_dir, exist_ok=True)
                 os.environ["WANDB_DIR"] = logging_dir
-            if logging_config.wandb_api_key is not None:
-                wandb.login(key=logging_config.wandb_api_key)
+            if args.wandb_api_key is not None:
+                wandb.login(key=args.wandb_api_key)
 
-    # torch.compile options
-    if performance_config.torch_compile:
+    # Options for torch.compile. If NO, torch.compile is not used
+    if args.torch_compile:
+        # Configure the compilation backend
         dynamo_plugin = TorchDynamoPlugin(
-            backend="inductor",
-            mode="default",
+            backend="inductor",  # Options: "inductor", "aot_eager", "aot_nvfuser", etc.
+            mode="default",  # Options: "default", "reduce-overhead", "max-autotune"
             fullgraph=False,
             dynamic=True,
             use_regional_compilation=True,
@@ -65,28 +55,33 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
     else:
         dynamo_plugin = None
 
-    # DDP kwargs
+    #    (
+    #        InitProcessGroupKwargs(
+    #            backend="gloo" if os.name == "nt" or not torch.cuda.is_available() else "nccl",
+    #            init_method=(
+    #                "env://?use_libuv=False" if os.name == "nt" and Version(torch.__version__) >= Version("2.4.0") else None
+    #            ),
+    #            timeout=datetime.timedelta(minutes=args.ddp_timeout) if args.ddp_timeout else None,
+    #        )
+    #        if torch.cuda.device_count() > 1
+    #        else None
+    #    ),
+
     kwargs_handlers = [
         (
             DistributedDataParallelKwargs(
-                gradient_as_bucket_view=performance_config.ddp_gradient_as_bucket_view, 
-                static_graph=performance_config.ddp_static_graph
+                gradient_as_bucket_view=args.ddp_gradient_as_bucket_view, static_graph=args.ddp_static_graph
             )
-            if performance_config.ddp_gradient_as_bucket_view or performance_config.ddp_static_graph
+            if args.ddp_gradient_as_bucket_view or args.ddp_static_graph
             else None
         ),
     ]
     kwargs_handlers = [i for i in kwargs_handlers if i is not None]
-    
-    # Deepspeed plugin
-    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(performance_config, training_config)
-
-    # Gradient accumulation steps
-    gradient_accumulation_steps = training_config.gradient_accumulation_steps if training_config else 1
+    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(args)
 
     accelerator = Accelerator(
-        gradient_accumulation_steps=gradient_accumulation_steps,
-        mixed_precision=performance_config.mixed_precision,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        mixed_precision=args.mixed_precision,
         log_with=log_with,
         project_dir=logging_dir,
         kwargs_handlers=kwargs_handlers,
@@ -96,38 +91,26 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
     return accelerator
 
 
-def init_trackers(accelerator: Accelerator, cfg, default_tracker_name: str):
+def init_trackers(accelerator: Accelerator, args: DictConfig, default_tracker_name: str):
     """
-    Initialize experiment trackers with tracker specific behaviors.
-    
-    Args:
-        accelerator: Accelerator instance
-        cfg: Root config object (must have .logging sub-config)
-        default_tracker_name: Default name for the tracker
+    Initialize experiment trackers with tracker specific behaviors
     """
     if accelerator.is_main_process:
         init_kwargs = {}
-        logging_config = cfg.logging
-        if hasattr(logging_config, 'wandb_run_name') and logging_config.wandb_run_name:
-            init_kwargs["wandb"] = {"name": logging_config.wandb_run_name}
-        if hasattr(logging_config, 'log_tracker_config') and logging_config.log_tracker_config is not None:
-            init_kwargs = logging_config.log_tracker_config
+        if "wandb" in args.logging and args.logging.wandb_run_name:
+            init_kwargs["wandb"] = {"name": args.logging.wandb_run_name}
+        if "log_tracker_config" in args.logging and args.logging.log_tracker_config is not None:
+            init_kwargs = args.logging.log_tracker_config
 
-        # sanitize config for logging - convert to dict if needed
-        if hasattr(cfg, '__dataclass_fields__'):
-            from dataclasses import asdict
-            config_to_log = asdict(cfg)
-        else:
-            config_to_log = OmegaConf.to_container(cfg, resolve=True)
-        
+        # sanitize config for logging
+        config_to_log = OmegaConf.to_container(args, resolve=True)
         sensitive_keys = ["wandb_api_key", "huggingface_token"]
         for key in sensitive_keys:
             if key in config_to_log:
                 config_to_log[key] = "*****"
 
-        tracker_name = logging_config.log_tracker_name if hasattr(logging_config, 'log_tracker_name') and logging_config.log_tracker_name else default_tracker_name
         accelerator.init_trackers(
-            tracker_name,
+            default_tracker_name if args.logging.log_tracker_name is None else args.logging.log_tracker_name,
             config=config_to_log,
             init_kwargs=init_kwargs,
         )

@@ -1,3 +1,4 @@
+import argparse
 import logging
 import torch
 import hydra
@@ -10,15 +11,18 @@ from ramtorch.helpers import replace_linear_with_ramtorch
 
 import sd_peft
 
+
 from library.constants import VAE_SCALE_FACTOR, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl_model_util import get_size_embeddings
 from library.strategies import strategy_sdxl, strategy_sd
 from library.models.text_encoder_util import get_hidden_states_sdxl
+
 from library.training.sdxl_model_prep import load_target_model
 from library.training.sdxl_sample_generation import sample_images
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.data.dataset import DatasetGroup, MinimalDataset
+
 from library.training.model_prep import replace_unet_modules
 
 init_ipex()
@@ -33,14 +37,14 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
         self.vae_scale_factor = VAE_SCALE_FACTOR
         self.is_sdxl = True
 
-    def validate_extra_config(
+    def assert_extra_args(
         self,
         cfg,
         train_dataset_group: Union[DatasetGroup, MinimalDataset],
         val_dataset_group: Optional[DatasetGroup],
     ):
         # args = ArgsAdapter(cfg) # Removed
-        # verify_sdxl_training_args(args) # Removed TODO: validate configs?
+        # verify_sdxl_training_args(args) # Removed
 
         if cfg.sdxl.cache_text_encoder_outputs:
             assert (
@@ -194,7 +198,7 @@ class SdxlNetworkTrainer(sd_peft.NetworkTrainer):
             encoder_hidden_states2 = batch["text_encoder_outputs2_list"].to(accelerator.device).to(weight_dtype)
             pool2 = batch["text_encoder_pool2_list"].to(accelerator.device).to(weight_dtype)
 
-            # # verify that the text encoder outputs are correct TODO: what is this for?
+            # # verify that the text encoder outputs are correct
             # ehs1, ehs2, p2 = train_util.get_hidden_states_sdxl(
             #     args.max_token_length,
             #     batch["input_ids"].to(text_encoders[0].device),

@@ -24,7 +24,7 @@ class SDXLPeftConfig:
     
     This is the main config used by scripts/sdxl_peft.py.
     """
-    model: ModelConfig = field(default_factory=ModelConfig)
+    sd_models: ModelConfig = field(default_factory=ModelConfig)
     buckets: BucketsConfig = field(default_factory=BucketsConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     network: NetworkConfig = field(default_factory=NetworkConfig)

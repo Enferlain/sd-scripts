@@ -534,7 +534,6 @@ def get_block_dims_and_alphas(
         block_dims = parse_ints(block_dims)
         assert len(block_dims) == num_total_blocks, (
             f"block_dims must have {num_total_blocks} elements but {len(block_dims)} elements are given"
-            + f""
         )
     else:
         logger.warning(
@@ -641,20 +640,17 @@ def get_block_lr_weight(
     if (up_lr_weight != None and len(up_lr_weight) > max_len_for_down_or_up) or (
         down_lr_weight != None and len(down_lr_weight) > max_len_for_down_or_up
     ):
-        logger.warning("down_weight or up_weight is too long. Parameters after %d-th are ignored." % max_len_for_down_or_up)
         logger.warning("down_weight or up_weight is too long. Parameters after %d are ignored." % max_len_for_down_or_up)
         up_lr_weight = up_lr_weight[:max_len_for_down_or_up]
         down_lr_weight = down_lr_weight[:max_len_for_down_or_up]
 
     if mid_lr_weight != None and len(mid_lr_weight) > max_len_for_mid:
-        logger.warning("mid_weight is too long. Parameters after %d-th are ignored." % max_len_for_mid)
         logger.warning("mid_weight is too long. Parameters after %d are ignored." % max_len_for_mid)
         mid_lr_weight = mid_lr_weight[:max_len_for_mid]
 
     if (up_lr_weight != None and len(up_lr_weight) < max_len_for_down_or_up) or (
         down_lr_weight != None and len(down_lr_weight) < max_len_for_down_or_up
     ):
-        logger.warning("down_weight or up_weight is too short. Parameters after %d-th are filled with 1." % max_len_for_down_or_up)
         logger.warning(
             "down_weight or up_weight is too short. Missing parameters up to %d are filled with 1." % max_len_for_down_or_up
         )
@@ -665,7 +661,6 @@ def get_block_lr_weight(
             up_lr_weight = up_lr_weight + [1.0] * (max_len_for_down_or_up - len(up_lr_weight))
 
     if mid_lr_weight != None and len(mid_lr_weight) < max_len_for_mid:
-        logger.warning("mid_weight is too short. Parameters after %d-th are filled with 1." % max_len_for_mid)
         logger.warning("mid_weight is too short. Missing parameters up to %d are filled with 1." % max_len_for_mid)
         mid_lr_weight = mid_lr_weight + [1.0] * (max_len_for_mid - len(mid_lr_weight))
 

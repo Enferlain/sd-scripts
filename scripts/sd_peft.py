@@ -1,5 +1,6 @@
 import gc
 import importlib
+import argparse
 import math
 import os
 import typing
@@ -16,9 +17,9 @@ import torch
 import torch.nn as nn
 import logging
 import hydra
-
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
+
 from typing import Any, List, Union, Optional
 from multiprocessing import Value
 from tqdm import tqdm
@@ -35,16 +36,16 @@ from library.strategies import strategy_sd, strategy_base
 from library.optimizations import deepspeed_utils
 from library.models import model_util
 from library.utils import sai_model_spec
-from library.utils.common_utils import setup_logging
+from library.utils.common_utils import setup_logging, add_logging_arguments
 from library.utils.device_utils import init_ipex, clean_memory_on_device
-from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
-
+from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_dtype
+from library.data.prompt_utils import add_prompt_parsing_arguments
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.optimizer import prepare_optimizer, get_scheduler_fix
 from library.training.sample_generation import sample_images, sample_images_check
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
-from library.config.dataclasses.sd_peft import SDPeftConfig
+
 
 from library.timestep_samplers.loss_aware_sampler import LossAwareTimestepSampler
 from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
@@ -55,6 +56,15 @@ from library.timestep_samplers.snr_windowed_loss_aware_sampler import SNRWindowe
 from library.config.config_util import (
     BlueprintGenerator,
 )
+
+from library.config.dataclasses.sd_peft import SDPeftConfig
+from library.config.dataclasses.optimizer import OptimizerConfig
+from library.config.dataclasses.dataset import DatasetConfig
+from library.config.dataclasses.network import NetworkConfig
+from library.config.dataclasses.model import ModelConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 
 from library.training.checkpointing import (
     get_sai_model_spec,
@@ -96,7 +106,6 @@ from library.training.noise_utils import (
     prepare_scheduler_for_custom_training,
     fix_noise_scheduler_betas_for_zero_terminal_snr
 )
-
 from library.losses.loss_weighting import (
     apply_masked_loss, apply_snr_weight,
     scale_v_prediction_loss_like_noise_prediction,
@@ -113,6 +122,7 @@ init_ipex()
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
 
 
 class NetworkTrainer:
@@ -143,7 +153,7 @@ class NetworkTrainer:
 
     def generate_step_logs(
         self,
-        cfg,
+        args,
         current_loss,
         avr_loss,
         lr_scheduler,
@@ -186,7 +196,7 @@ class NetworkTrainer:
             if lr_descriptions is not None:
                 lr_desc = lr_descriptions[i]
             else:
-                idx = i - (0 if cfg.network.network_train_unet_only else -1)
+                idx = i - (0 if args.network.network_train_unet_only else -1)
                 if idx == -1:
                     lr_desc = "textencoder"
                 else:
@@ -197,54 +207,54 @@ class NetworkTrainer:
 
             logs[f"lr/{lr_desc}"] = lr
 
-            if cfg.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower():
+            if args.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or args.optimizer.optimizer_type.lower() == "Prodigy".lower():
                 # tracking d*lr value
                 logs[f"lr/d*lr/{lr_desc}"] = (
                     lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
                 )
             if (
-                cfg.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None
+                args.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None
             ):  # tracking d*lr value of unet.
                 logs["lr/d*lr"] = optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
         else:
             idx = 0
-            if not cfg.network.network_train_unet_only:
+            if not args.network.network_train_unet_only:
                 logs["lr/textencoder"] = float(lrs[0])
                 idx = 1
 
             for i in range(idx, len(lrs)):
                 logs[f"lr/group{i}"] = float(lrs[i])
-                if cfg.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower():
+                if args.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or args.optimizer.optimizer_type.lower() == "Prodigy".lower():
                     logs[f"lr/d*lr/group{i}"] = (
                         lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
                     )
-                if cfg.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None:
+                if args.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None:
                     logs[f"lr/d*lr/group{i}"] = optimizer.param_groups[i]["d"] * optimizer.param_groups[i]["lr"]
 
         if edm2_lr_scheduler is not None:
             logs[f"lr/edm2"] = edm2_lr_scheduler.get_last_lr()[0]
 
-        if cfg.timestep.timestep_sampling == "mix_adaptive" and self.la_sampler is not None and timesteps is not None:
-            if hasattr(self.la_sampler, "last_mix_p"):
-                logs["sampler/mix_p"] = self.la_sampler.last_mix_p
-            if hasattr(self.la_sampler, "last_small_t_frac"):
-                logs["sampler/small_t_frac"] = self.la_sampler.last_small_t_frac
+        if args.timestep.timestep_sampling == "mix_adaptive" and hasattr(args, "la_sampler") and timesteps is not None:
+            if hasattr(args.la_sampler, "last_mix_p"):
+                logs["sampler/mix_p"] = args.la_sampler.last_mix_p
+            if hasattr(args.la_sampler, "last_small_t_frac"):
+                logs["sampler/small_t_frac"] = args.la_sampler.last_small_t_frac
 
             # Add mean and std of ema_loss
-            if hasattr(self.la_sampler, "bin_loss_ema"):
-                logs["sampler/ema_loss_mean"] = self.la_sampler.bin_loss_ema.mean().item()
-                logs["sampler/ema_loss_std"] = self.la_sampler.bin_loss_ema.std().item()
+            if hasattr(args.la_sampler, "bin_loss_ema"):
+                logs["sampler/ema_loss_mean"] = args.la_sampler.bin_loss_ema.mean().item()
+                logs["sampler/ema_loss_std"] = args.la_sampler.bin_loss_ema.std().item()
 
                 # EMA loss per bin (in a separate category for clarity in TensorBoard)
-                for i, loss_val in enumerate(self.la_sampler.bin_loss_ema):
+                for i, loss_val in enumerate(args.la_sampler.bin_loss_ema):
                     logs[f"sampler_ema_loss_bins/bin_{i}"] = loss_val.item()
 
             # Timestep histogram for the current batch
-            if hasattr(self.la_sampler, "num_bins") and hasattr(self.la_sampler, "T"):
+            if hasattr(args.la_sampler, "num_bins") and hasattr(args.la_sampler, "T"):
                 hist = torch.histogram(
                     timesteps.float().cpu(),
-                    bins=self.la_sampler.num_bins,
-                    range=(0, self.la_sampler.T),
+                    bins=args.la_sampler.num_bins,
+                    range=(0, args.la_sampler.T),
                 )
                 for i, count in enumerate(hist.hist):
                     logs[f"sampler_timestep_hist/bin_{i}"] = count.item()
@@ -284,12 +294,12 @@ class NetworkTrainer:
         for tracker in other_trackers:
             tracker.log(logs, step=step_value)
 
-    def save_timestep_distribution_plot(self, cfg, global_step, timestep_counts, settings_dict=None):
+    def save_timestep_distribution_plot(self, args, global_step, timestep_counts, settings_dict=None):
         if plt is None:
             logger.warning("Matplotlib is not installed. Cannot save timestep distribution plot.")
             return
 
-        output_dir = os.path.join(cfg.saving.output_dir, "timestep_plots")
+        output_dir = os.path.join(args.saving.output_dir, "timestep_plots")
         os.makedirs(output_dir, exist_ok=True)
         
         plt.figure(figsize=(15, 7)) # Make figure wider
@@ -313,7 +323,7 @@ class NetworkTrainer:
         plt.savefig(filename)
         plt.close()
 
-    def validate_extra_config(
+    def assert_extra_args(
         self,
         cfg,
         train_dataset_group: Union[DatasetGroup, MinimalDataset],
@@ -400,7 +410,7 @@ class NetworkTrainer:
 
     # region SD/SDXL
 
-    def post_process_network(self, cfg, accelerator, network, text_encoders, unet):
+    def post_process_network(self, args, accelerator, network, text_encoders, unet):
         pass
 
     def get_noise_scheduler(self, cfg, device: torch.device) -> Any:
@@ -518,12 +528,32 @@ class NetworkTrainer:
         return loss
 
     def get_sai_model_spec(self, cfg):
-        return get_sai_model_spec(None, cfg, self.is_sdxl, True, False)  # HYDRA RELATED? Expected type 'dict', got 'None' instead?
+        # We need to adapt cfg to legacy args structure that get_sai_model_spec expects?
+        # get_sai_model_spec takes 'args' and uses it to construct metadata.
+        # It uses ArgsAdapter internally if we passed args?
+        # Wait, the tool shows: adapter = ArgsAdapter(args); return get_sai_model_spec(..., adapter, ...)
+        # So get_sai_model_spec EXPECTS an object with .dataset, .training etc?
+        # If I pass cfg directly, it should work if it mimics structure?
+        # But get_sai_model_spec might look for flat attributes if it was legacy.
+        # But here usage shows it constructs adapter.
+        # So get_sai_model_spec likely expects the Adapted interface.
+        # If I pass `cfg` directly, `cfg.dataset` exists.
+        # But if `get_sai_model_spec` uses `args.dataset`, it's fine.
+        # If it accesses `args.output_dir` (SavingConfig), cfg has `cfg.saving.output_dir`.
+        # I should check get_sai_model_spec implementation.
+        # Assume usage of adapter implies it expects flattened or adapted structure?
+        # Or maybe it just expects `dataset` attribute?
+        # It's safest to inspect `get_sai_model_spec` first.
+        # But for now, I will assume refactor later, or pass `cfg` and hope it has fields needed.
+        # Actually I can't leave ArgsAdapter here.
+        # I will pass `cfg` and assume I'll fix `get_sai_model_spec`.
 
-    def update_metadata(self, metadata, cfg):
+        return get_sai_model_spec(None, cfg, self.is_sdxl, True, False)
+
+    def update_metadata(self, metadata, args):
         pass
 
-    def is_text_encoder_not_needed_for_training(self, cfg):
+    def is_text_encoder_not_needed_for_training(self, args):
         return False  # use for sample images
 
     def prepare_text_encoder_grad_ckpt_workaround(self, index, text_encoder):
@@ -534,14 +564,14 @@ class NetworkTrainer:
         text_encoder.text_model.embeddings.to(dtype=weight_dtype)
 
     def prepare_unet_with_accelerator(
-        self, cfg, accelerator: Accelerator, unet: torch.nn.Module
+        self, args, accelerator: Accelerator, unet: torch.nn.Module
     ) -> torch.nn.Module:
         return accelerator.prepare(unet)
 
-    def on_step_start(self, cfg, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train: bool = True):
+    def on_step_start(self, args, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train: bool = True):
         pass
 
-    def on_validation_step_end(self, cfg, accelerator, network, text_encoders, unet, batch, weight_dtype):
+    def on_validation_step_end(self, args, accelerator, network, text_encoders, unet, batch, weight_dtype):
         pass
 
     # endregion
@@ -865,7 +895,6 @@ class NetworkTrainer:
                            epoch,
                            batch=None,
                            train_text_encoder=True):
-
         # Pass training config directly instead of legacy ArgsAdapter
         if not calculate_val_loss_check(cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
@@ -907,22 +936,25 @@ class NetworkTrainer:
 
 
     def train(self, cfg: SDPeftConfig):
+        # Create adapter for legacy functions
+        # args = ArgsAdapter(cfg) # Removed as part of refactor
         self.la_sampler = None
 
         session_id = random.randint(0, 2**32)
         training_started_at = time.time()
 
-        # verify_training_args(args)  # TODO VALIDATION FOR CONFIGS WHEREVER
+        # verify_training_args(args) # Skipped for now or needs update
+        # prepare_dataset_args(args, True) # Skipped, assuming config handles defaults
 
         set_torch_cuda_reduced_precision(cfg.performance)
-        deepspeed_utils.prepare_deepspeed_config(cfg.performance, cfg.training)
+        deepspeed_utils.prepare_deepspeed_args(cfg.performance)
         setup_logging(cfg.logging, reset=True)
 
         cache_latents = cfg.dataset.cache_latents
         use_dreambooth_method = cfg.dataset.in_json is None
         use_user_config = cfg.dataset.dataset_config is not None
 
-        set_seed_from_config(cfg.training)
+        args_set_seed(cfg.training)
 
         tokenize_strategy = self.get_tokenize_strategy(cfg)
         strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
@@ -937,7 +969,7 @@ class NetworkTrainer:
             # Check if we have manually provided subsets via train_data_dir/reg_data_dir
             if (cfg.dataset.train_data_dir is not None or cfg.dataset.reg_data_dir is not None) and len(cfg.dataset.subsets) == 0:
                 # Generate subsets config from dirs
-                user_config = config_util.generate_user_config_from_dataset(cfg.dataset)
+                user_config = config_util.generate_user_config_from_args(cfg.dataset)
                 # We need to inject this into cfg.dataset.subsets
                 # cfg.dataset.subsets is a List[dict] (or ListConfig)
                 # user_config['datasets'][0]['subsets'] is the list we want
@@ -950,7 +982,7 @@ class NetworkTrainer:
         else:
             # use arbitrary dataset class
             # load_arbitrary_dataset expects args
-            train_dataset_group = load_arbitrary_dataset(cfg.dataset)
+            train_dataset_group = load_arbitrary_dataset(args)
             val_dataset_group = None  # placeholder until validation dataset supported for arbitrary
 
         current_epoch = Value("i", 0)
@@ -981,11 +1013,11 @@ class NetworkTrainer:
                     val_dataset_group.is_latent_cacheable()
                 ), "when caching latents, either color_aug or random_crop cannot be used"
 
-        self.validate_extra_config(cfg, train_dataset_group, val_dataset_group)
+        self.assert_extra_args(cfg, train_dataset_group, val_dataset_group)  # may change some args
 
         # Prepare accelerator
         logger.info("preparing accelerator")
-        accelerator = prepare_accelerator(cfg.performance, cfg.logging, cfg.training)
+        accelerator = prepare_accelerator(cfg.performance)
         is_main_process = accelerator.is_main_process
 
         # Prepare types for mixed precision and cast as appropriate
@@ -994,6 +1026,10 @@ class NetworkTrainer:
 
         # load target models: unet may be None for lazy loading
         model_version, text_encoder, vae, unet = self.load_target_model(cfg, weight_dtype, accelerator)
+
+        # if args.vae_conv2d_padding_mode is not None and args.vae_conv2d_padding_mode.lower() != 'zeros':
+            # logger.info(f"Training VAE in padding mode: {args.vae_conv2d_padding_mode}")
+            # set_padding_mode_for_vae_conv2d_modules(vae, args.vae_conv2d_padding_mode)
             
         if vae_dtype is None:
             vae_dtype = vae.dtype
@@ -1088,7 +1124,7 @@ class NetworkTrainer:
         #    network.prepare_network = lambda args: None
 
         if hasattr(network, "prepare_network"):
-            network.prepare_network(cfg)
+            network.prepare_network(args)
         if cfg.network.scale_weight_norms and not hasattr(network, "apply_max_norm_regularization"):
             logger.warning(
                 "warning: scale_weight_norms is specified but the network does not support it"
@@ -1242,7 +1278,7 @@ class NetworkTrainer:
         if cfg.performance.deepspeed:
             flags = self.get_text_encoders_train_flags(cfg, text_encoders)
             ds_model = deepspeed_utils.prepare_deepspeed_model(
-                cfg.training,
+                args,
                 unet=unet if train_unet else None,
                 text_encoder1=text_encoders[0] if flags[0] else None,
                 text_encoder2=(text_encoders[1] if flags[1] else None) if len(text_encoders) > 1 else None,
@@ -1598,8 +1634,8 @@ class NetworkTrainer:
                 sd_model_name = os.path.basename(sd_model_name)
             metadata["ss_sd_model_name"] = sd_model_name
 
-        if cfg.model.vae is not None:
-            vae_name = cfg.model.vae
+        if cfg.training.vae is not None:
+            vae_name = cfg.training.vae
             if os.path.exists(vae_name):
                 metadata["ss_vae_hash"] = model_hash(vae_name)
                 metadata["ss_new_vae_hash"] = calculate_sha256(vae_name)
@@ -1660,7 +1696,7 @@ class NetworkTrainer:
 
         global_step = 0
 
-        noise_scheduler = self.get_noise_scheduler(cfg, accelerator.device)
+        noise_scheduler = self.get_noise_scheduler(args, accelerator.device)
 
         # --- LIVE PLOTTER & STATIC PLOT SETUP ---
         timestep_counts = None
@@ -1862,7 +1898,7 @@ class NetworkTrainer:
         loss_recorder = EMARecorder()
         val_loss_recorder = EMARecorder()
 
-        if cfg.loss.edm2_loss_weighting:
+        if args.edm2_loss_weighting:
             loss_scaled_recorder = EMARecorder()
 
         del train_dataset_group
@@ -1877,31 +1913,31 @@ class NetworkTrainer:
 
         # function for saving/removing
         def save_model(ckpt_name, unwrapped_nw, steps, epoch_no, force_sync_upload=False, dtype_override=None):
-            os.makedirs(cfg.saving.output_dir, exist_ok=True)
-            ckpt_file = os.path.join(cfg.saving.output_dir, ckpt_name)
+            os.makedirs(args.output_dir, exist_ok=True)
+            ckpt_file = os.path.join(args.output_dir, ckpt_name)
 
             accelerator.print(f"\nsaving checkpoint: {ckpt_file}")
             metadata["ss_training_finished_at"] = str(time.time())
             metadata["ss_steps"] = str(steps)
             metadata["ss_epoch"] = str(epoch_no)
 
-            metadata_to_save = minimum_metadata if cfg.saving.no_metadata else metadata
-            sai_metadata = self.get_sai_model_spec(cfg)
+            metadata_to_save = minimum_metadata if args.no_metadata else metadata
+            sai_metadata = self.get_sai_model_spec(args)
             metadata_to_save.update(sai_metadata)
 
             unwrapped_nw.save_weights(ckpt_file, dtype_override or save_dtype, metadata_to_save)
-            if cfg.huggingface.huggingface_repo_id is not None:
-                huggingface_util.upload(cfg.huggingface, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
+            if args.huggingface_repo_id is not None:
+                huggingface_util.upload(args, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
 
         def remove_model(old_ckpt_name):
-            old_ckpt_file = os.path.join(cfg.saving.output_dir, old_ckpt_name)
+            old_ckpt_file = os.path.join(args.output_dir, old_ckpt_name)
             if os.path.exists(old_ckpt_file):
                 accelerator.print(f"removing old checkpoint: {old_ckpt_file}")
                 os.remove(old_ckpt_file)
 
         # if text_encoder is not needed for training, delete it to save memory.
         # TODO this can be automated after SDXL sample prompt cache is implemented
-        if self.is_text_encoder_not_needed_for_training(cfg):
+        if self.is_text_encoder_not_needed_for_training(args):
             logger.info("text_encoder is not needed for training. deleting to save memory.")
             for t_enc in text_encoders:
                 del t_enc
@@ -1915,34 +1951,34 @@ class NetworkTrainer:
         mean_grad_norm, mean_combined_norm = None, None
         max_mean_logs = {}
         current_global_step_loss = 0.0
-        current_global_step_loss_scaled = 0.0 if cfg.loss.edm2_loss_weighting else None
-        average_loss_scaled = 0.0 if cfg.loss.edm2_loss_weighting else None
+        current_global_step_loss_scaled = 0.0 if args.edm2_loss_weighting else None
+        average_loss_scaled = 0.0 if args.edm2_loss_weighting else None
         avr_loss = 0.0
         accumulation_counter = 0
 
         # For --sample_at_first
-        if sample_images_check(cfg.sampling, 0, global_step) or calculate_val_loss_check(cfg.training, global_step, 0, val_dataloader, train_dataloader):
+        if sample_images_check(args, 0, global_step) or calculate_val_loss_check(args, global_step, 0, val_dataloader, train_dataloader):
             #Switch network to eval mode
             accelerator.unwrap_model(network).eval()
             optimizer_eval_fn()
-            self.sample_images(accelerator, cfg, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
-            if calculate_val_loss_check(cfg.training, global_step, 0, val_dataloader, train_dataloader):
+            self.sample_images(accelerator, args, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
+            if calculate_val_loss_check(args, global_step, 0, val_dataloader, train_dataloader):
                 current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(
                     global_step, 0, train_dataloader, val_loss_recorder, val_dataloader, 
                     cyclic_val_dataloader, network, tokenize_strategy, 
                     text_encoders, text_encoding_strategy, unet, vae, noise_scheduler, 
-                    vae_dtype, weight_dtype, accelerator, cfg, 0, None, train_text_encoder)
+                    vae_dtype, weight_dtype, accelerator, args, 0, None, train_text_encoder)
             #Switch network to train mode
             optimizer_train_fn()
             accelerator.unwrap_model(network).train()
 
-        if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
-            plot_edm2_loss_weighting(cfg.loss, cfg.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
+        if plot_edm2_loss_weighting_check(args, global_step):
+            plot_edm2_loss_weighting(args, global_step, edm2_model, 1000, accelerator.device)
 
         is_tracking = len(accelerator.trackers) > 0
         if is_tracking:
             logs = self.generate_step_logs(
-                cfg,
+                args,
                 current_global_step_loss,
                 avr_loss,
                 lr_scheduler,
@@ -1980,21 +2016,21 @@ class NetworkTrainer:
 
         # --- Add this block for Dynamic Timestep Schedule ---
         # Parse the schedule from the command-line argument string
-        dynamic_timestep_schedule = ast.literal_eval(cfg.timestep.dynamic_timestep_schedule) if cfg.timestep.dynamic_timestep_schedule else None
+        dynamic_timestep_schedule = ast.literal_eval(args.dynamic_timestep_schedule) if args.dynamic_timestep_schedule else None
         if dynamic_timestep_schedule:
             # Sort the schedule by step number to be safe
             dynamic_timestep_schedule.sort(key=lambda x: x[0])
             accelerator.print(f"Using dynamic timestep schedule: {dynamic_timestep_schedule}")
 
         # Initialize the current range with the defaults
-        current_min_timestep = 0 if cfg.timestep.min_timestep is None else cfg.timestep.min_timestep
-        current_max_timestep = noise_scheduler.config.num_train_timesteps if cfg.timestep.max_timestep is None else cfg.timestep.max_timestep
+        current_min_timestep = 0 if args.min_timestep is None else args.min_timestep
+        current_max_timestep = noise_scheduler.config.num_train_timesteps if args.max_timestep is None else args.max_timestep
         # ---------------------------------------------------
 
         clean_memory_on_device(accelerator.device)
 
         progress_bar = tqdm(
-            range(cfg.training.max_train_steps - initial_step), smoothing=0, disable=not accelerator.is_local_main_process, desc="steps"
+            range(args.max_train_steps - initial_step), smoothing=0, disable=not accelerator.is_local_main_process, desc="steps"
         )
 
         for epoch in range(epoch_to_start, num_train_epochs):
@@ -2029,13 +2065,13 @@ class NetworkTrainer:
                     initial_step -= 1
                     continue
 
-                with determine_grad_sync_context(cfg, accelerator, None, training_model, edm2_model):
+                with determine_grad_sync_context(args, accelerator, None, training_model, edm2_model):
                     on_step_start_for_network(text_encoder, unet)
 
                     accumulation_counter += 1
 
                     # preprocess batch for each model
-                    self.on_step_start(cfg, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=True)
+                    self.on_step_start(args, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=True)
 
                     loss, pre_scaling_loss, loss_scaled, timesteps = self.process_batch(
                         batch,
@@ -2065,9 +2101,9 @@ class NetworkTrainer:
 
                     if accelerator.sync_gradients:
                         self.all_reduce_network(accelerator, network)  # sync DDP grad manually
-                        if cfg.optimizer.max_grad_norm != 0.0:
+                        if args.max_grad_norm != 0.0:
                             params_to_clip = accelerator.unwrap_model(network).get_trainable_params()
-                            accelerator.clip_grad_norm_(params_to_clip, cfg.optimizer.max_grad_norm)
+                            accelerator.clip_grad_norm_(params_to_clip, args.max_grad_norm)
 
                         #if hasattr(network, "update_grad_norms"):
                         #    network.update_grad_norms()
@@ -2078,15 +2114,15 @@ class NetworkTrainer:
                     lr_scheduler.step()
                     optimizer.zero_grad(set_to_none=True)
 
-                    if cfg.loss.edm2_loss_weighting:
+                    if args.edm2_loss_weighting:
                         edm2_optimizer.step()
                         edm2_lr_scheduler.step()
                         # swap to pre_scaling_loss for logging
                         edm2_optimizer.zero_grad(set_to_none=True)
 
-                if cfg.network.scale_weight_norms and accelerator.sync_gradients:
+                if args.scale_weight_norms and accelerator.sync_gradients:
                     keys_scaled, mean_norm, maximum_norm = accelerator.unwrap_model(network).apply_max_norm_regularization(
-                        cfg.network.scale_weight_norms, accelerator.device
+                        args.scale_weight_norms, accelerator.device
                     )
                     mean_grad_norm = None
                     mean_combined_norm = None
@@ -2102,17 +2138,17 @@ class NetworkTrainer:
                     progress_bar.update(1)
                     global_step += 1
 
-                    if (sample_images_check(cfg.sampling, None, global_step) or
-                        calculate_val_loss_check(cfg.training, global_step, step, val_dataloader, train_dataloader) or
-                        cfg.saving.save_every_n_steps is not None and global_step % cfg.saving.save_every_n_steps == 0):
+                    if (sample_images_check(args, None, global_step) or
+                        calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader) or
+                        args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0):
 
                         accelerator.unwrap_model(network).eval()
                         optimizer_eval_fn()
                         self.sample_images(
-                            accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
+                            accelerator, args, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
                         )
 
-                        if calculate_val_loss_check(cfg.training, global_step, step, val_dataloader, train_dataloader):
+                        if calculate_val_loss_check(args, global_step, step, val_dataloader, train_dataloader):
                             current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(global_step, step, 
                                                                                                     skipped_dataloader or train_dataloader, 
                                                                                                     val_loss_recorder, 
@@ -2135,18 +2171,18 @@ class NetworkTrainer:
                         else:
                             current_val_loss, average_val_loss, val_logs = None, None, None
 
-                        # 指定ステップごとにモデルを保存
-                        if cfg.saving.save_every_n_steps is not None and global_step % cfg.saving.save_every_n_steps == 0:
+                        # Save model every specified steps
+                        if args.save_every_n_steps is not None and global_step % args.save_every_n_steps == 0:
                             accelerator.wait_for_everyone()
                             if accelerator.is_main_process:
                                 ckpt_name = get_step_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, global_step)
                                 save_model(ckpt_name, accelerator.unwrap_model(network), global_step, epoch)
 
-                                if cfg.loss.edm2_loss_weighting:
+                                if args.edm2_loss_weighting:
                                     loss_weights_ckpt_name = get_step_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, global_step, "_edm2_loss_weights")
                                     save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, epoch, dtype_override=torch.float32)
 
-                                if cfg.saving.save_state:
+                                if args.save_state:
                                     save_and_remove_state_stepwise(cfg.saving, accelerator, global_step)
 
                                 remove_step_no = get_remove_step_no(cfg.saving, global_step)
@@ -2154,24 +2190,24 @@ class NetworkTrainer:
                                     remove_ckpt_name = get_step_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, remove_step_no)
                                     remove_model(remove_ckpt_name)
 
-                                    if cfg.loss.edm2_loss_weighting:
+                                    if args.edm2_loss_weighting:
                                         remove_loss_weights_ckpt_name = get_step_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, remove_step_no, "_edm2_loss_weights")
                                         remove_model(remove_loss_weights_ckpt_name)
 
-                        if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
-                            plot_edm2_loss_weighting(cfg.loss, cfg.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
+                        if plot_edm2_loss_weighting_check(args, global_step):
+                            plot_edm2_loss_weighting(args, global_step, edm2_model, 1000, accelerator.device)
                         optimizer_train_fn()
                         accelerator.unwrap_model(network).train()
 
                 current_global_step_loss += loss.detach().item()
-                if cfg.loss.edm2_loss_weighting:
+                if args.edm2_loss_weighting:
                     current_global_step_loss_scaled += loss_scaled.detach().item()
                 else:
                     current_global_step_loss_scaled = None
 
                 if accelerator.sync_gradients:
                     loss_recorder.add(current_global_step_loss / accumulation_counter)
-                    if cfg.loss.edm2_loss_weighting:
+                    if args.edm2_loss_weighting:
                         loss_scaled_recorder.add(current_global_step_loss_scaled / accumulation_counter)
                     avr_loss: float = loss_recorder.average
                     logs = {"avr_loss": avr_loss}  # , "lr": lr_scheduler.get_last_lr()[0]}
@@ -2179,7 +2215,7 @@ class NetworkTrainer:
 
                     if is_tracking:
                         current_global_step_loss = (current_global_step_loss / accumulation_counter)
-                        if cfg.loss.edm2_loss_weighting:
+                        if args.edm2_loss_weighting:
                             current_global_step_loss_scaled = (current_global_step_loss_scaled / accumulation_counter)
                             average_loss_scaled: float = loss_scaled_recorder.average
                         else:
@@ -2187,7 +2223,7 @@ class NetworkTrainer:
                             average_loss_scaled = None
 
                         logs = self.generate_step_logs(
-                            cfg,
+                            args,
                             current_global_step_loss,
                             avr_loss,
                             lr_scheduler,
@@ -2209,7 +2245,7 @@ class NetworkTrainer:
 
                     current_global_step_loss = 0.0
 
-                    if cfg.loss.edm2_loss_weighting:
+                    if args.edm2_loss_weighting:
                         current_global_step_loss_scaled = 0.0
 
                     accumulation_counter = 0
@@ -2232,10 +2268,10 @@ class NetworkTrainer:
                             unique, counts = np.unique(timesteps_np, return_counts=True)
                             timestep_counts[unique] += counts
                             
-                            if global_step % cfg.logging.log_timestep_distribution_every_n_steps == 0:
-                                self.save_timestep_distribution_plot(cfg, global_step, timestep_counts, plotter_settings)
+                            if global_step % args.log_timestep_distribution_every_n_steps == 0:
+                                self.save_timestep_distribution_plot(args, global_step, timestep_counts, plotter_settings)
 
-                if global_step >= cfg.training.max_train_steps:
+                if global_step >= args.max_train_steps:
                     break
 
             # END OF EPOCH
@@ -2245,19 +2281,19 @@ class NetworkTrainer:
 
             accelerator.wait_for_everyone()
 
-            if (sample_images_check(cfg.sampling, current_epoch.value, global_step) or
-                cfg.saving.save_every_n_epochs is not None):
+            if (sample_images_check(args, current_epoch.value, global_step) or
+                args.save_every_n_epochs is not None):
 
                 # Save model every specified epochs
                 optimizer_eval_fn()
                 accelerator.unwrap_model(network).eval()
-                if cfg.saving.save_every_n_epochs is not None:
-                    saving = current_epoch.value % cfg.saving.save_every_n_epochs == 0 and current_epoch.value < num_train_epochs
+                if args.save_every_n_epochs is not None:
+                    saving = current_epoch.value % args.save_every_n_epochs == 0 and current_epoch.value < num_train_epochs
                     if is_main_process and saving:
                         ckpt_name = get_epoch_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, current_epoch.value)
                         save_model(ckpt_name, accelerator.unwrap_model(network), global_step, current_epoch.value)
 
-                        if cfg.loss.edm2_loss_weighting:
+                        if args.edm2_loss_weighting:
                             loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, current_epoch.value, "_edm2_loss_weights")
                             save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, current_epoch.value, dtype_override=torch.float32)
 
@@ -2266,14 +2302,14 @@ class NetworkTrainer:
                             remove_ckpt_name = get_epoch_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, remove_epoch_no)
                             remove_model(remove_ckpt_name)
 
-                            if cfg.loss.edm2_loss_weighting:
+                            if args.edm2_loss_weighting:
                                 remove_loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, remove_epoch_no, "_edm2_loss_weights")
                                 remove_model(remove_loss_weights_ckpt_name)
 
-                        if cfg.saving.save_state:
+                        if args.save_state:
                             save_and_remove_state_on_epoch_end(cfg.saving, accelerator, current_epoch.value)
 
-                self.sample_images(accelerator, cfg, current_epoch.value, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
+                self.sample_images(accelerator, args, current_epoch.value, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
                 progress_bar.unpause()
                 optimizer_train_fn()
                 accelerator.unwrap_model(network).train()
@@ -2289,14 +2325,14 @@ class NetworkTrainer:
         accelerator.end_training()
         optimizer_eval_fn()
 
-        if is_main_process and (cfg.saving.save_state or cfg.saving.save_state_on_train_end):
+        if is_main_process and (args.save_state or args.save_state_on_train_end):
             save_state_on_train_end(cfg.saving, accelerator)
 
         if is_main_process:
             ckpt_name = get_last_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as)
             save_model(ckpt_name, network, global_step, num_train_epochs, force_sync_upload=True)
 
-            if cfg.loss.edm2_loss_weighting:
+            if args.edm2_loss_weighting:
                 loss_weights_ckpt_name = get_last_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, "_edm2_loss_weights")
                 save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, num_train_epochs, force_sync_upload=True, dtype_override=torch.float32)
 

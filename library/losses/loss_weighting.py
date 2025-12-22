@@ -1,3 +1,4 @@
+import argparse
 import torch
 
 from torch.types import Number
@@ -70,3 +71,27 @@ def apply_masked_loss(loss, batch) -> torch.FloatTensor:
     loss = loss * mask_image
     return loss
 
+
+def add_loss_weighting_arguments(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "--min_snr_gamma",
+        type=float,
+        default=None,
+        help="gamma for reducing the weight of high loss timesteps. Lower numbers have stronger effect. 5 is recommended by paper.",
+    )
+    parser.add_argument(
+        "--scale_v_pred_loss_like_noise_pred",
+        action="store_true",
+        help="scale v-prediction loss like noise prediction loss",
+    )
+    parser.add_argument(
+        "--v_pred_like_loss",
+        type=float,
+        default=None,
+        help="add v-prediction like loss multiplied by this value",
+    )
+    parser.add_argument(
+        "--debiased_estimation_loss",
+        action="store_true",
+        help="debiased estimation loss / debiased estimation loss",
+    )

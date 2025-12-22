@@ -55,10 +55,10 @@ def get_npz_filename(data_dir, image_key, is_full_path, recursive):
 def main(args):
     # assert args.bucket_reso_steps % 8 == 0, f"bucket_reso_steps must be divisible by 8"
     if args.bucket_reso_steps % 8 > 0:
-        logger.warning(f"resolution of buckets in training time is a multiple of 8")
+        logger.warning(f"bucket resolution must be a multiple of 8 during training")
     if args.bucket_reso_steps % 32 > 0:
         logger.warning(
-            f"WARNING: bucket_reso_steps is not divisible by 32. It is not working with SDXL"
+            f"WARNING: bucket_reso_steps is not divisible by 32. This will not work with SDXL"
         )
 
     train_data_dir_path = Path(args.train_data_dir)
@@ -87,7 +87,7 @@ def main(args):
     max_reso = tuple([int(t) for t in args.max_resolution.split(",")])
     assert (
         len(max_reso) == 2
-    ), f"illegal resolution (not 'width,height'): {args.max_resolution}"
+    ), f"invalid resolution (not 'width,height'): {args.max_resolution}"
 
     bucket_manager = BucketManager(
         args.bucket_no_upscale, max_reso, args.min_bucket_reso, args.max_bucket_reso, args.bucket_reso_steps
@@ -153,7 +153,7 @@ def main(args):
         metadata[image_key]["train_resolution"] = (reso[0] - reso[0] % 8, reso[1] - reso[1] % 8)
 
         if not args.bucket_no_upscale:
-            # When upscaling is not performed, confirm that the resized size matches the bucket size in either width or height
+            # When upscaling is disabled, confirm that the resized size matches the bucket size in either width or height
             assert (
                 resized_size[0] == reso[0] or resized_size[1] == reso[1]
             ), f"internal error, resized size not match: {reso}, {resized_size}, {image.width}, {image.height}"
@@ -165,10 +165,10 @@ def main(args):
             resized_size[0] >= reso[0] and resized_size[1] >= reso[1]
         ), f"internal error resized size is small: {resized_size}, {reso}"
 
-        # If the file already exists, check shape etc. and skip if same
+        # If file exists, verify shape and skip if unchanged
         npz_file_name = get_npz_filename(args.train_data_dir, image_key, args.full_path, args.recursive)
         if args.skip_existing:
-            if is_disk_cached_latents_is_expected(reso, npz_file_name, args.flip_aug):
+            if is_disk_cached_latents_is_expected(reso, npz_file_name, args.flip_aug, args.alpha_mask):
                 continue
 
         # Add to batch
@@ -179,7 +179,7 @@ def main(args):
         image_info.image = image
         bucket_manager.add_image(reso, image_info)
 
-        # Determine whether to infer batch and infer
+        # Process batch if full
         process_batch(False)
 
         # Process the rest
@@ -220,7 +220,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--max_resolution",
         type=str,
         default="512,512",
-        help="max resolution in fine tuning (width,height)",
+        help="maximum resolution for fine-tuning (width,height)",
     )
     parser.add_argument("--min_bucket_reso", type=int, default=256, help="minimum resolution for buckets")
     parser.add_argument("--max_bucket_reso", type=int, default=1024, help="maximum resolution for buckets")
@@ -228,12 +228,12 @@ def setup_parser() -> argparse.ArgumentParser:
         "--bucket_reso_steps",
         type=int,
         default=64,
-        help="steps of resolution for buckets, divisible by 8 is recommended",
+        help="resolution step size for buckets, divisible by 8 is recommended",
     )
     parser.add_argument(
         "--bucket_no_upscale",
         action="store_true",
-        help="make bucket for each image without upscaling",
+        help="create a bucket for each image without upscaling",
     )
     parser.add_argument(
         "--mixed_precision",
@@ -250,23 +250,23 @@ def setup_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--flip_aug",
         action="store_true",
-        help="flip augmentation, save latents for flipped images",
+        help="enable flip augmentation and save latents for flipped images",
     )
     parser.add_argument(
         "--alpha_mask",
         type=str,
         default="",
-        help="save alpha mask for images for loss calculation",
+        help="save alpha masks from images for loss calculation",
     )
     parser.add_argument(
         "--skip_existing",
         action="store_true",
-        help="skip images if npz already exists (both normal and flipped exists if flip_aug is enabled)",
+        help="skip images if npz already exist (both normal and flipped exists if flip_aug is enabled)",
     )
     parser.add_argument(
         "--recursive",
         action="store_true",
-        help="recursively look for training tags in all child folders of train_data_dir",
+        help="recursively look for training images in all child folders of train_data_dir",
     )
 
     return parser

@@ -467,8 +467,7 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def verify_bucket_reso_steps(self, min_steps: int):
         assert self.bucket_reso_steps is None or self.bucket_reso_steps % min_steps == 0, (
-                f"bucket_reso_steps is {self.bucket_reso_steps}. it must be divisible by {min_steps}.\n"
-                + f"bucket_reso_steps is {self.bucket_reso_steps}. It must be divisible by {min_steps}."
+            f"bucket_reso_steps is {self.bucket_reso_steps}. It must be divisible by {min_steps}."
         )
 
     def is_latent_cacheable(self):

@@ -1562,7 +1562,7 @@ class UNet2DConditionModel(nn.Module):
 
         # 1. time
         timesteps = timestep
-        timesteps = self.handle_unusual_timesteps(sample, timesteps)  # Process only when weird
+        timesteps = self.handle_unusual_timesteps(sample, timesteps)  # Normalize timestep format when needed
 
         t_emb = self.time_proj(timesteps)
 
