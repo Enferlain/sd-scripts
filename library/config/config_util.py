@@ -208,7 +208,7 @@ class BlueprintGenerator:
         # Create dataset-level parameters
         dataset_params_dict = {}
         for key in asdict(dataset_params_klass()):
-            if hasattr(dataset_config, key):
+            if hasattr(dataset_config, key) and getattr(dataset_config, key) is not None:
                 dataset_params_dict[key] = getattr(dataset_config, key)
             elif hasattr(cfg, "buckets") and hasattr(cfg.buckets, key):
                 dataset_params_dict[key] = getattr(cfg.buckets, key)

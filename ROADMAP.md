@@ -34,6 +34,8 @@
    - ~~`library/losses/loss_weighting.py` - SNR weighting logic~~ ✅ Complete (Tested SNR weighting, v-pred logic, masking)
    - `library/timestep_samplers/` - [POSTPONED] Waiting for proper implementation
    - ~~`library/utils/device_utils.py`~~ ✅ Complete (Mocked validation of memory cleanup and device selection)
+   - ~~`library/training/sample_generation.py`~~ ✅ Complete (Tested parsing, checks, and scheduler selection)
+   - ~~`library/models/text_encoder_util.py`~~ ✅ Complete (Tested pooling workarounds and SDXL reshaping)
 3. **Integration Tests** - Validate full workflows
 
    - **Data Loading**: `dataset.py` caching methods (`cache_latents`, `cache_text_encoder_outputs`) and image loading (requires filesystem/GPU mocks)
@@ -41,13 +43,13 @@
    - Checkpoint save/load cycles
    - Multi-GPU scenarios (requires_gpu marker)
 
-2. **CI/CD Setup** - Automate testing
+4. **CI/CD Setup** - Automate testing
 
    - GitHub Actions workflow for pytest
    - Coverage reporting and tracking
    - Pre-commit hooks for running tests
 
-3. **Documentation** - Testing best practices
+5. **Documentation** - Testing best practices
    - Update `DEVELOPMENT_GUIDE.md` with testing patterns
    - Document fixture usage and test organization
    - Add testing examples for contributors
@@ -82,6 +84,18 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 - `strategies/*` - Tokenization/Encoding orchestration - requires tokenizer/model mocks
 - `networks/lora.py` - Network creation/injection - requires base model mocks
 - `edm2_loss_utils.py` - `prepare_edm2_loss_weighting` - requires complex mocks (loss/training configs, scheduler, accelerator)
+- `networks/oft.py` - OFT Network implementation - requires base model and recursive module mocks
+- `networks/dylora.py` - DyLoRA Network implementation - requires base model and dynamic module switching mocks
+- `networks/hypernetwork.py` - Hypernetwork implementation - requires base model mocks
+- `optimizations/custom_offloading_utils.py` - `Offloader`, `ModelOffloader`, `swap_weight_devices_cuda` - require GPU streams and thread pools
+- `optimizations/deepspeed_utils.py` - `prepare_deepspeed_plugin`, `prepare_deepspeed_model` - require DeepSpeed import and distributed context
+- `optimizations/fp8_optimization_utils.py` - `optimize_state_dict_with_fp8`, `load_safetensors_with_fp8_optimization`, `apply_fp8_monkey_patch` - require full model state dicts
+- `training/sample_generation.py` - `sample_images_common`, `sample_images_inference` - requires full pipeline (VAE, UNet, Tokenizer) mocks
+- `models/original_unet.py` - `FlashAttentionFunction`, `TimestepEmbedding`, `Timesteps`, all `*Block2D` classes, `UNet2DConditionModel` - require GPU/autograd context
+- `models/sdxl_original_unet.py` - `FlashAttentionFunction`, `GroupNorm32`, `ResnetBlock2D`, `CrossAttention`, `SdxlUNet2DConditionModel` - require SDXL architecture
+- `models/sdxl_original_control_net.py` - `ControlNetConditioningEmbedding`, `SdxlControlNet.forward`, `SdxlControlledUNet` - require UNet and forward passes
+- `training/sdxl_model_prep.py` - `load_target_model`, `_load_target_model` - require Accelerator and SDXL checkpoint loading
+- `training/sdxl_checkpointing.py` - `save_sd_model_on_train_end`, `save_sd_model_on_epoch_end_or_stepwise` - require full SDXL models
 
 ### Other TODOs
 
