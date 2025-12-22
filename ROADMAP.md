@@ -5,7 +5,13 @@
 **Current Status (2025-12-22):**
 
 - ✅ Testing infrastructure complete (pytest, fixtures, coverage)
-- ✅ 115+ unit tests passing (28 config + 26 optimizer + 23 checkpointing + 17 diffusion + 21 noise_utils)
+- ✅ 150+ unit tests passing, covering:
+  - Configuration (28 tests)
+  - Optimization & Checkpointing (49 tests)
+  - Diffusion & Noise (38 tests)
+  - Data Utilities (34 tests)
+  - Network Utils (LoRA state dicts, merging)
+  - Format Utils (JXL, Safetensors)
 - ✅ Argparse remnants cleaned up - all legacy `add_*_arguments()` functions removed
 - ✅ Config field bugs fixed - scripts now use correct dataclass field paths
 
@@ -29,17 +35,19 @@
    - `library/timestep_samplers/` - [POSTPONED] Waiting for proper implementation
    - ~~`library/utils/device_utils.py`~~ ✅ Complete (Mocked validation of memory cleanup and device selection)
 3. **Integration Tests** - Validate full workflows
+
    - **Data Loading**: `dataset.py` caching methods (`cache_latents`, `cache_text_encoder_outputs`) and image loading (requires filesystem/GPU mocks)
    - End-to-end config → training setup
    - Checkpoint save/load cycles
    - Multi-GPU scenarios (requires_gpu marker)
-4. **CI/CD Setup** - Automate testing
+
+2. **CI/CD Setup** - Automate testing
 
    - GitHub Actions workflow for pytest
    - Coverage reporting and tracking
    - Pre-commit hooks for running tests
 
-5. **Documentation** - Testing best practices
+3. **Documentation** - Testing best practices
    - Update `DEVELOPMENT_GUIDE.md` with testing patterns
    - Document fixture usage and test organization
    - Add testing examples for contributors

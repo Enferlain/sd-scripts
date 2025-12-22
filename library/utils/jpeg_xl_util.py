@@ -4,6 +4,18 @@
 import os
 
 from typing import List, Tuple
+import io
+
+
+def get_file_size(file) -> int:
+    try:
+        return os.fstat(file.fileno()).st_size
+    except (AttributeError, io.UnsupportedOperation):
+        current_pos = file.tell()
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(current_pos)
+        return size
 
 
 class JXLBitstream:
@@ -12,40 +24,56 @@ class JXLBitstream:
     """
 
     def __init__(self, file, offset: int = 0, offsets: List[List[int]] = None):
-        self.shift = 0
-        self.bitstream = bytearray()
         self.file = file
-        self.offset = offset
         self.offsets = offsets
+        self.bitstream = bytearray()
+        self.shift = 0  # Current bit position relative to start of bitstream
+
         if self.offsets:
-            self.offset = self.offsets[0][1]
-            self.previous_data_len = 0
-            self.index = 0
-        self.file.seek(self.offset)
+            self.current_box_index = 0
+            self.file.seek(self.offsets[0][1])
+            self.bytes_read_from_current_box = 0
+        else:
+            self.file.seek(offset)
 
     def get_bits(self, length: int = 1) -> int:
-        if self.offsets and self.shift + length > self.previous_data_len + self.offsets[self.index][2]:
-            self.partial_to_read_length = length
-            if self.shift < self.previous_data_len + self.offsets[self.index][2]:
-                self.partial_read(0, length)
-            self.bitstream.extend(self.file.read(self.partial_to_read_length))
-        else:
-            self.bitstream.extend(self.file.read(length))
-        bitmask = 2 ** length - 1
+        target_byte_count = (self.shift + length + 7) // 8
+        needed_bytes = target_byte_count - len(self.bitstream)
+
+        while needed_bytes > 0:
+            if self.offsets:
+                # Check availability in current box
+                if self.current_box_index >= len(self.offsets):
+                     # No more boxes, but needed bytes? Stop reading.
+                     break
+
+                box_len = self.offsets[self.current_box_index][2]
+                remain_in_box = box_len - self.bytes_read_from_current_box
+
+                to_read = min(needed_bytes, remain_in_box)
+                if to_read > 0:
+                    data = self.file.read(to_read)
+                    self.bitstream.extend(data)
+                    self.bytes_read_from_current_box += len(data)
+                    needed_bytes -= len(data)
+
+                if self.bytes_read_from_current_box >= box_len:
+                    # Move to next box
+                    self.current_box_index += 1
+                    if self.current_box_index < len(self.offsets):
+                        self.file.seek(self.offsets[self.current_box_index][1])
+                        self.bytes_read_from_current_box = 0
+            else:
+                data = self.file.read(needed_bytes)
+                if not data:
+                    break
+                self.bitstream.extend(data)
+                needed_bytes -= len(data)
+
+        bitmask = (1 << length) - 1
         bits = (int.from_bytes(self.bitstream, "little") >> self.shift) & bitmask
         self.shift += length
         return bits
-
-    def partial_read(self, current_length: int, length: int) -> None:
-        self.previous_data_len += self.offsets[self.index][2]
-        to_read_length = self.previous_data_len - (self.shift + current_length)
-        self.bitstream.extend(self.file.read(to_read_length))
-        current_length += to_read_length
-        self.partial_to_read_length -= to_read_length
-        self.index += 1
-        self.file.seek(self.offsets[self.index][1])
-        if self.shift + length > self.previous_data_len + self.offsets[self.index][2]:
-            self.partial_read(current_length, length)
 
 
 def decode_codestream(file, offset: int = 0, offsets: List[List[int]] = None) -> Tuple[int, int]:
@@ -131,7 +159,7 @@ def decode_container(file) -> Tuple[int, int]:
         else:
             header_length = 8
             if LBox == 0:
-                box_length = os.fstat(file.fileno()).st_size - file_start
+                box_length = get_file_size(file) - file_start
             else:
                 box_length = LBox
         file.seek(file_start + 4)
@@ -159,7 +187,7 @@ def decode_container(file) -> Tuple[int, int]:
     offsets = []
     data_offset_not_found = True
     container_pointer = 32
-    file_size = os.fstat(file.fileno()).st_size
+    file_size = get_file_size(file)
     while data_offset_not_found:
         box = parse_box(file, container_pointer)
         match box["type"]:

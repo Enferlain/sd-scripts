@@ -13,6 +13,9 @@ from library.utils.torch_utils import (
 )
 from library.config.dataclasses.performance import PerformanceConfig
 from library.config.dataclasses.saving import SavingConfig
+from unittest.mock import patch, MagicMock
+import random
+import numpy as np
 
 
 # =============================================================================
@@ -137,3 +140,46 @@ class TestMatchMixedPrecision:
         result = match_mixed_precision(cfg, weight_dtype)
         
         assert result is None
+
+
+# =============================================================================
+# set_seed_from_config Tests
+# =============================================================================
+
+from library.utils.torch_utils import set_seed_from_config
+
+@pytest.mark.training
+@pytest.mark.unit
+class TestSetSeedFromConfig:
+    """Test set_seed_from_config function."""
+    
+    @patch("library.utils.torch_utils.set_seed")
+    def test_seed_is_set_when_present(self, mock_set_seed):
+        """Test that set_seed is called when config has seed."""
+        # Using a dummy config object with a seed attribute
+        class DummyConfig:
+            seed = 42
+            
+        config = DummyConfig()
+        
+        set_seed_from_config(config)
+        
+        mock_set_seed.assert_called_with(42)
+        
+    @patch("library.utils.torch_utils.set_seed")
+    def test_no_seed_in_config_generates_random(self, mock_set_seed):
+        """Test that random seed is generated if seed is None."""
+        class DummyConfig:
+            seed = None
+            
+        config = DummyConfig()
+        
+        set_seed_from_config(config)
+        
+        # Verify set_seed was called with SOME integer
+        assert mock_set_seed.called
+        call_arg = mock_set_seed.call_args[0][0]
+        assert isinstance(call_arg, int)
+        assert config.seed is not None  # content should be updated
+
+

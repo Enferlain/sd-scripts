@@ -319,3 +319,86 @@ class TestBuildMetadataIntegration:
         assert isinstance(metadata_dict, dict)
         assert metadata_dict["modelspec.sai_model_spec"] == "1.0.1"
         assert metadata_dict["modelspec.architecture"] == "stable-diffusion-xl-v1-base"
+
+
+from library.config.dataclasses.metadata import MetadataConfig
+
+class TestGetSaiModelSpecFromConfig:
+    """Test get_sai_model_spec_from_config function."""
+
+    def test_basic_generation(self):
+        """Test generating spec from minimal config."""
+        metadata_config = MetadataConfig(
+            metadata_title="Test Title",
+            metadata_author="Test Author",
+        )
+        state_dict = {}
+        
+        spec = sai_model_spec.get_sai_model_spec_from_config(
+            state_dict=state_dict,
+            metadata_config=metadata_config,
+            is_sdxl=True,
+            is_v2=False,
+            v_parameterization=False,
+            is_lora=False,
+            is_textual_inversion=False,
+        )
+        
+        assert spec["modelspec.title"] == "Test Title"
+        assert spec["modelspec.author"] == "Test Author"
+        assert spec["modelspec.architecture"] == "stable-diffusion-xl-v1-base"
+        assert spec["modelspec.sai_model_spec"] == "1.0.1"
+
+    def test_with_optional_metadata(self):
+        """Test merging optional metadata dict."""
+        metadata_config = MetadataConfig()
+        optional = {"custom_tag": "anime"}
+        
+        spec = sai_model_spec.get_sai_model_spec_from_config(
+            state_dict={},
+            metadata_config=metadata_config,
+            is_sdxl=False,
+            is_v2=False,
+            v_parameterization=False,
+            is_lora=True,
+            is_textual_inversion=False,
+            optional_metadata=optional
+        )
+        
+        assert spec["modelspec.custom_tag"] == "anime"
+        assert "lora" in spec["modelspec.architecture"]
+
+    def test_resolution_override(self):
+        """Test that provided resolution overrides defaults."""
+        metadata_config = MetadataConfig()
+        
+        spec = sai_model_spec.get_sai_model_spec_from_config(
+            state_dict={},
+            metadata_config=metadata_config,
+            is_sdxl=True,
+            is_v2=False,
+            v_parameterization=False,
+            is_lora=False,
+            is_textual_inversion=False,
+            resolution=(768, 768)
+        )
+        
+        assert spec["modelspec.resolution"] == "768x768"
+
+    def test_timesteps_handling(self):
+        """Test min/max timestep logic."""
+        metadata_config = MetadataConfig()
+        
+        spec = sai_model_spec.get_sai_model_spec_from_config(
+            state_dict={},
+            metadata_config=metadata_config,
+            is_sdxl=False,
+            is_v2=False,
+            v_parameterization=False,
+            is_lora=False,
+            is_textual_inversion=False,
+            min_timestep=100,
+            max_timestep=900
+        )
+        
+        assert spec["modelspec.timestep_range"] == "100,900" 
