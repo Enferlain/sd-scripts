@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-22]
+
+### Fixed
+
+- **Hydra Config Field Reference Bugs**
+
+  - Fixed `sd_finetune.py` and `sd_textual_inversion.py` referencing non-existent config fields
+  - Fixed `training_config.min_snr_gamma` → `config.loss.min_snr_gamma` (and similar loss fields)
+  - Fixed `training_config.zero_terminal_snr` → `config.regularization.zero_terminal_snr`
+  - Fixed undefined `sd_models_config` variable → `model_config`
+  - Fixed `training_config.max_grad_norm` → `optimizer_config.max_grad_norm`
+
+- **Dataclass Naming Consistency**
+  - Renamed `sd_models: ModelConfig` → `model: ModelConfig` in 6 dataclasses to match YAML config naming
+
+### Changed
+
+- **HuggingFace Upload Refactor**
+  - Refactored `huggingface_util.upload()` to accept `HuggingFaceConfig` instead of `argparse.Namespace`
+  - Updated callers in `sd_textual_inversion.py` and `sd_peft.py` to use `config.huggingface`
+
+### Removed
+
+- **Legacy Argparse Code**
+  - Removed dead imports of `add_logging_arguments`, `add_prompt_parsing_arguments`, `add_loss_weighting_arguments` from scripts
+  - Removed deprecated `add_loss_weighting_arguments()` from `loss_weighting.py`
+  - Removed deprecated `add_logging_arguments()` from `common_utils.py`
+  - Removed deprecated `add_prompt_parsing_arguments()` from `prompt_utils.py`
+  - Removed unused `import argparse` from `loss_weighting.py` and `prompt_utils.py`
+  - Removed `sdxl_data_utils.py` (unused, superseded by strategy pattern)
+  - Removed dead `get_hidden_states(args)` from `text_encoder_util.py` (superseded by strategy)
+  - Removed `add_model_spec_arguments()` from `sai_model_spec.py` (superseded by MetadataConfig)
+
 ## [2025-12-20]
 
 ### Added

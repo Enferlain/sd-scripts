@@ -17,10 +17,10 @@ import library.utils.sai_model_spec as sai_model_spec
 from library.optimizations import deepspeed_utils
 from library.strategies import strategy_sd, strategy_base
 from library.utils.device_utils import init_ipex, clean_memory_on_device
-from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils.common_utils import setup_logging
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_dtype
 from library.config.config_util import BlueprintGenerator, generate_dataset_group_by_blueprint
-from library.data.prompt_utils import add_prompt_parsing_arguments
+
 from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
@@ -114,7 +114,7 @@ def train(config: SDFineTuneConfig):
     accelerator = prepare_accelerator(training_config)
 
     weight_dtype, save_dtype = prepare_dtype(config.performance, saving_config)
-    vae_dtype = torch.float32 if model_config.no_half_vae else weight_dtype
+    vae_dtype = torch.float32 if config.performance.no_half_vae else weight_dtype
 
     text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(model_config, config.performance, weight_dtype, accelerator)
 
@@ -148,7 +148,7 @@ def train(config: SDFineTuneConfig):
     else:
         accelerator.print("Disable Diffusers' xformers")
         set_diffusers_xformers_flag(unet, False)
-        replace_unet_modules(unet, sd_models_config.mem_eff_attn, sd_models_config.xformers, sd_models_config.sdpa)
+        replace_unet_modules(unet, config.performance.mem_eff_attn, config.performance.xformers, config.performance.sdpa)
 
     if cache_latents:
         vae.to(accelerator.device, dtype=vae_dtype)
@@ -163,19 +163,19 @@ def train(config: SDFineTuneConfig):
         accelerator.wait_for_everyone()
 
     training_models = []
-    if training_config.gradient_checkpointing:
+    if config.performance.gradient_checkpointing:
         unet.enable_gradient_checkpointing()
     training_models.append(unet)
 
     if ft_config.train_text_encoder:
         accelerator.print("enable text encoder training")
-        if training_config.gradient_checkpointing:
+        if config.performance.gradient_checkpointing:
             text_encoder.gradient_checkpointing_enable()
         training_models.append(text_encoder)
     else:
         text_encoder.to(accelerator.device, dtype=weight_dtype)
         text_encoder.requires_grad_(False)
-        if training_config.gradient_checkpointing:
+        if config.performance.gradient_checkpointing:
             text_encoder.gradient_checkpointing_enable()
             text_encoder.train()
         else:
@@ -229,9 +229,9 @@ def train(config: SDFineTuneConfig):
 
     lr_scheduler = get_scheduler_fix(optimizer_config, optimizer, accelerator.num_processes)
 
-    if training_config.full_fp16:
+    if config.performance.full_fp16:
         assert (
-            training_config.mixed_precision == "fp16"
+            config.performance.mixed_precision == "fp16"
         ), "full_fp16 requires mixed precision='fp16'"
         accelerator.print("enable full fp16 training.")
         unet.to(weight_dtype)
@@ -254,7 +254,7 @@ def train(config: SDFineTuneConfig):
         else:
             unet, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(unet, optimizer, train_dataloader, lr_scheduler)
 
-    if training_config.full_fp16:
+    if config.performance.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
     resume_from_local_or_hf_if_specified(accelerator, saving_config)
@@ -283,7 +283,7 @@ def train(config: SDFineTuneConfig):
         beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
     )
 
-    if training_config.zero_terminal_snr:
+    if config.regularization.zero_terminal_snr:
         fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
     prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
@@ -326,7 +326,7 @@ def train(config: SDFineTuneConfig):
                 b_size = latents.shape[0]
 
                 with torch.set_grad_enabled(ft_config.train_text_encoder):
-                    if training_config.weighted_captions:
+                    if dataset_config.weighted_captions:
                         input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                         encoder_hidden_states = text_encoding_strategy.encode_tokens_with_weights(
                             tokenize_strategy, [text_encoder], input_ids_list, weights_list
@@ -336,10 +336,10 @@ def train(config: SDFineTuneConfig):
                         encoder_hidden_states = text_encoding_strategy.encode_tokens(
                             tokenize_strategy, [text_encoder], [input_ids]
                         )[0]
-                    if training_config.full_fp16:
+                    if config.performance.full_fp16:
                         encoder_hidden_states = encoder_hidden_states.to(weight_dtype)
 
-                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(training_config, noise_scheduler, latents)
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(config.regularization, config.timestep, training_config, noise_scheduler, latents)
 
                 with accelerator.autocast():
                     noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
@@ -349,16 +349,16 @@ def train(config: SDFineTuneConfig):
                 else:
                     target = noise
 
-                huber_c = get_huber_threshold_if_needed(training_config, timesteps, noise_scheduler)
-                if training_config.min_snr_gamma or training_config.scale_v_pred_loss_like_noise_pred or training_config.debiased_estimation_loss:
+                huber_c = get_huber_threshold_if_needed(config.loss, timesteps, noise_scheduler)
+                if config.loss.min_snr_gamma or config.loss.scale_v_pred_loss_like_noise_pred or config.loss.debiased_estimation_loss:
                     loss = conditional_loss(noise_pred.float(), target.float(), config.loss.loss_type, "none", huber_c, scale=float(config.loss.loss_scale))
                     loss = loss.mean([1, 2, 3])
 
-                    if training_config.min_snr_gamma:
-                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, training_config.min_snr_gamma, config.loss.v_parameterization)
-                    if training_config.scale_v_pred_loss_like_noise_pred:
+                    if config.loss.min_snr_gamma:
+                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, config.loss.min_snr_gamma, config.loss.v_parameterization)
+                    if config.loss.scale_v_pred_loss_like_noise_pred:
                         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-                    if training_config.debiased_estimation_loss:
+                    if config.loss.debiased_estimation_loss:
                         loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, config.loss.v_parameterization)
 
                     loss = loss.mean()
@@ -366,11 +366,11 @@ def train(config: SDFineTuneConfig):
                     loss = conditional_loss(noise_pred.float(), target.float(), config.loss.loss_type, "mean", huber_c, scale=float(config.loss.loss_scale))
 
                 accelerator.backward(loss)
-                if accelerator.sync_gradients and training_config.max_grad_norm != 0.0:
+                if accelerator.sync_gradients and optimizer_config.max_grad_norm != 0.0:
                     params_to_clip = []
                     for m in training_models:
                         params_to_clip.extend(m.parameters())
-                    accelerator.clip_grad_norm_(params_to_clip, training_config.max_grad_norm)
+                    accelerator.clip_grad_norm_(params_to_clip, optimizer_config.max_grad_norm)
 
                 optimizer.step()
                 lr_scheduler.step()
@@ -392,7 +392,7 @@ def train(config: SDFineTuneConfig):
                             saving_config,
                             training_config,
                             config.metadata,
-                            sd_models_config.v2,
+                            model_config.v2,
                             False,
                             accelerator,
                             src_path,
@@ -434,7 +434,7 @@ def train(config: SDFineTuneConfig):
                     saving_config,
                     training_config,
                     config.metadata,
-                    sd_models_config.v2,
+                    model_config.v2,
                     True,
                     accelerator,
                     src_path,
@@ -471,7 +471,7 @@ def train(config: SDFineTuneConfig):
             saving_config,
             training_config,
             config.metadata,
-            sd_models_config.v2,
+            model_config.v2,
             src_path,
             save_stable_diffusion_format,
             use_safetensors,

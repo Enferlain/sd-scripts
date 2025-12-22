@@ -2,10 +2,12 @@
 
 ## Testing Suite
 
-**Current Status (2025-12-20):**
+**Current Status (2025-12-22):**
 
 - ✅ Testing infrastructure complete (pytest, fixtures, coverage)
 - ✅ 115+ unit tests passing (28 config + 26 optimizer + 23 checkpointing + 17 diffusion + 21 noise_utils)
+- ✅ Argparse remnants cleaned up - all legacy `add_*_arguments()` functions removed
+- ✅ Config field bugs fixed - scripts now use correct dataclass field paths
 
 **Next Steps:**
 
@@ -62,3 +64,54 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 - `prompt_utils.py` - `get_prompts_with_weights()`, `get_weighted_text_embeddings()` - need tokenizer mocks
 - `dataset.py` - `cache_latents()`, `register_image()`, `__getitem__` - requires filesystem and VAE interaction mocks
 - `data_structures.py` - `BucketManager.make_buckets()`, `AugHelper.color_aug()` - depends on model_util and OpenCV/randomness
+
+### Other TODOs
+
+- resolve duplicate settings in configs/dataclasses
+- fish for other inconsistencies around configs and their calls in scripts
+- need to look into naming scheme of scripts and proper separation of concerns for the backend modules and main training scripts. eg why is base and sd1.5/2 treated the same in strategies and model implementations, etc etc. feels like it was monkeypatched and just stayed that way after updates.
+
+---
+
+## Argparse Migration Status (2025-12-22)
+
+### ✅ Completed
+
+- Removed `add_loss_weighting_arguments()`, `add_logging_arguments()`, `add_prompt_parsing_arguments()`
+- Fixed field location bugs in `sd_finetune.py`, `sd_textual_inversion.py`
+- Fixed dataclass naming: `sd_models:` → `model:` (6 dataclasses)
+- Refactored `huggingface_util.upload()` to accept `HuggingFaceConfig`
+- Removed `sdxl_data_utils.py` (superseded by strategy pattern)
+- Removed dead `get_hidden_states(args)` from `text_encoder_util.py` (superseded by strategy)
+- Removed `add_model_spec_arguments()` from `sai_model_spec.py` (superseded by MetadataConfig)
+
+### 🔴 Deferred: `sd_peft.py` Migration
+
+**109 references to undefined `args` variable** - `ArgsAdapter(cfg)` was commented out but references remain.
+
+Affected: HuggingFace upload, metadata handling, checkpoint removal, EDM2 loss, and more.
+
+Options when addressing:
+
+1. Restore `ArgsAdapter` temporarily
+2. Full migration of all 109 `args` → `cfg.*` paths
+
+### Remaining Functions
+
+| Function                   | Location               | Used By    | Status              |
+| -------------------------- | ---------------------- | ---------- | ------------------- |
+| `get_hidden_states_sdxl()` | `text_encoder_util.py` | caching.py | Has clean params ✅ |
+
+> **Design Principle:** Training modules should not keep legacy argparse for tool API compatibility.
+> Tools are secondary to the training pipeline - if tools need argparse, they should have local adapters.
+
+---
+
+## Code Duplication (Future Consolidation)
+
+There is logic duplication between `text_encoder_util.py` and the strategy classes:
+
+- `get_hidden_states_sdxl()` in `text_encoder_util.py` (used by caching.py, sdxl_peft.py)
+- `SdxlTextEncodingStrategy._get_hidden_states_sdxl()` in `strategy_sdxl.py`
+
+Consider consolidating in the future - make `caching.py` use the strategy, or move shared logic to a common utility.

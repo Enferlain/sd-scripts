@@ -6,7 +6,7 @@ import logging
 
 # TODO add back missing pipes
 # from library import flux_train_utils, flux_utils, strategy_flux
-import library.utils.sai_model_spec as sai_model_spec
+
 
 from library.data.dataset import load_arbitrary_dataset
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
@@ -173,7 +173,7 @@ def setup_parser() -> argparse.ArgumentParser:
 
     add_logging_arguments(parser)
     add_sd_models_arguments(parser)
-    sai_model_spec.add_model_spec_arguments(parser)
+
     add_training_arguments(parser, True)
     add_dataset_arguments(parser, True, True, True)
     add_masked_loss_arguments(parser)

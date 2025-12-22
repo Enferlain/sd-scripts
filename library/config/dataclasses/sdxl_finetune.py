@@ -26,7 +26,7 @@ class SDXLFineTuneConfig:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
-    sd_models: ModelConfig = field(default_factory=ModelConfig)
+    model: ModelConfig = field(default_factory=ModelConfig)
     sdxl: SDXLConfig = field(default_factory=SDXLConfig)
     saving: SavingConfig = field(default_factory=SavingConfig)
     huggingface: HuggingFaceConfig = field(default_factory=HuggingFaceConfig)

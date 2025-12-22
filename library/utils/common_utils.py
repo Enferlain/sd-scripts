@@ -27,21 +27,6 @@ def fire_in_thread(f, *args, **kwargs):
 
 
 # region Logging
-def add_logging_arguments(parser):
-    parser.add_argument(
-        "--console_log_level",
-        type=str,
-        default=None,
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level, default is INFO / ログレベルを設定する。デフォルトはINFO",
-    )
-    parser.add_argument(
-        "--console_log_file",
-        type=str,
-        default=None,
-        help="Log to a file instead of stderr / 標準エラー出力ではなくファイルにログを出力する",
-    )
-    parser.add_argument("--console_log_simple", action="store_true", help="Simple log output / シンプルなログ出力")
 
 
 def setup_logging(args=None, log_level=None, reset=False):

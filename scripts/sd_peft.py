@@ -36,10 +36,10 @@ from library.strategies import strategy_sd, strategy_base
 from library.optimizations import deepspeed_utils
 from library.models import model_util
 from library.utils import sai_model_spec
-from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_dtype
-from library.data.prompt_utils import add_prompt_parsing_arguments
+
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.optimizer import prepare_optimizer, get_scheduler_fix
@@ -1946,8 +1946,8 @@ class NetworkTrainer:
             metadata_to_save.update(sai_metadata)
 
             unwrapped_nw.save_weights(ckpt_file, dtype_override or save_dtype, metadata_to_save)
-            if args.huggingface_repo_id is not None:
-                huggingface_util.upload(args, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
+            if cfg.huggingface.huggingface_repo_id is not None:
+                huggingface_util.upload(cfg.huggingface, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
 
         def remove_model(old_ckpt_name):
             old_ckpt_file = os.path.join(args.output_dir, old_ckpt_name)

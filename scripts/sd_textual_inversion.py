@@ -19,11 +19,11 @@ from library.utils import sai_model_spec
 from library.optimizations import deepspeed_utils
 from library.strategies import strategy_sd, strategy_base
 from library.utils.torch_utils import prepare_dtype, args_set_seed
-from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.data.prompt_templates import imagenet_templates_small, imagenet_style_templates_small
 from library.data.dataset import DatasetGroup, MinimalDataset, load_arbitrary_dataset, collator_class, debug_dataset
-from library.data.prompt_utils import add_prompt_parsing_arguments
+
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.trainer_utils import prepare_accelerator
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
@@ -61,7 +61,6 @@ from library.training.noise_utils import (
 )
 
 from library.losses.loss_weighting import (
-    add_loss_weighting_arguments,
     apply_debiased_estimation,
     add_v_prediction_like_loss,
     scale_v_prediction_loss_like_noise_prediction,
@@ -184,7 +183,7 @@ class TextualInversionTrainer:
 
         args_set_seed(training_config)
 
-        tokenize_strategy = self.get_tokenize_strategy(sd_models_config, training_config)
+        tokenize_strategy = self.get_tokenize_strategy(model_config, training_config)
         strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
         tokenizers = self.get_tokenizers(tokenize_strategy)
 
@@ -195,9 +194,9 @@ class TextualInversionTrainer:
         accelerator = prepare_accelerator(training_config)
 
         weight_dtype, save_dtype = prepare_dtype(config.performance, saving_config)
-        vae_dtype = torch.float32 if sd_models_config.no_half_vae else weight_dtype
+        vae_dtype = torch.float32 if config.performance.no_half_vae else weight_dtype
 
-        model_version, text_encoders, vae, unet = self.load_target_model(sd_models_config, config.performance, weight_dtype, accelerator)
+        model_version, text_encoders, vae, unet = self.load_target_model(model_config, config.performance, weight_dtype, accelerator)
 
         init_token_ids_list = []
         if ti_config.init_word is not None:
@@ -303,9 +302,9 @@ class TextualInversionTrainer:
                 train_dataset_group.is_latent_cacheable()
             ), "when caching latents, either color_aug or random_crop cannot be used"
 
-        replace_unet_modules(unet, sd_models_config.mem_eff_attn, sd_models_config.xformers, sd_models_config.sdpa)
+        replace_unet_modules(unet, config.performance.mem_eff_attn, config.performance.xformers, config.performance.sdpa)
         if torch.__version__ >= "2.0.0":
-            vae.set_use_memory_efficient_attention_xformers(sd_models_config.xformers)
+            vae.set_use_memory_efficient_attention_xformers(config.performance.xformers)
 
         if cache_latents:
             vae.to(accelerator.device, dtype=vae_dtype)
@@ -455,8 +454,8 @@ class TextualInversionTrainer:
             )
 
             self.save_weights(ckpt_file, embs_list, save_dtype, sai_metadata)
-            if saving_config.huggingface_repo_id is not None:
-                huggingface_util.upload(saving_config, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
+            if config.huggingface.huggingface_repo_id is not None:
+                huggingface_util.upload(config.huggingface, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
 
         def remove_model(old_ckpt_name):
             old_ckpt_file = os.path.join(saving_config.output_dir, old_ckpt_name)
@@ -504,7 +503,7 @@ class TextualInversionTrainer:
 
                     input_ids = [ids.to(accelerator.device) for ids in batch["input_ids_list"]]
                     text_encoder_conds = text_encoding_strategy.encode_tokens(
-                        tokenize_strategy, self.get_models_for_text_encoding(sd_models_config, accelerator, text_encoders), input_ids
+                        tokenize_strategy, self.get_models_for_text_encoding(model_config, accelerator, text_encoders), input_ids
                     )
                     if training_config.full_fp16:
                         text_encoder_conds = [c.to(weight_dtype) for c in text_encoder_conds]
@@ -515,15 +514,15 @@ class TextualInversionTrainer:
 
                     with accelerator.autocast():
                         noise_pred = self.call_unet(
-                            sd_models_config, accelerator, unet, noisy_latents, timesteps, text_encoder_conds, batch, weight_dtype
+                            model_config, accelerator, unet, noisy_latents, timesteps, text_encoder_conds, batch, weight_dtype
                         )
 
-                    if sd_models_config.v_parameterization:
+                    if config.loss.v_parameterization:
                         target = noise_scheduler.get_velocity(latents, noise, timesteps)
                     else:
                         target = noise
 
-                    huber_c = get_huber_threshold_if_needed(training_config, timesteps, noise_scheduler)
+                    huber_c = get_huber_threshold_if_needed(config.loss, timesteps, noise_scheduler)
                     loss = conditional_loss(noise_pred.float(), target.float(), config.loss.loss_type, "none", huber_c, scale=float(config.loss.loss_scale))
                     if config.masked_loss.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                         loss = apply_masked_loss(loss, batch)
@@ -532,21 +531,21 @@ class TextualInversionTrainer:
                     loss_weights = batch["loss_weights"]
                     loss = loss * loss_weights
 
-                    if training_config.min_snr_gamma:
-                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, training_config.min_snr_gamma, sd_models_config.v_parameterization)
-                    if training_config.scale_v_pred_loss_like_noise_pred:
+                    if config.loss.min_snr_gamma:
+                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, config.loss.min_snr_gamma, config.loss.v_parameterization)
+                    if config.loss.scale_v_pred_loss_like_noise_pred:
                         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-                    if training_config.v_pred_like_loss:
-                        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, training_config.v_pred_like_loss)
-                    if training_config.debiased_estimation_loss:
-                        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, sd_models_config.v_parameterization)
+                    if config.loss.v_pred_like_loss:
+                        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, config.loss.v_pred_like_loss)
+                    if config.loss.debiased_estimation_loss:
+                        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, config.loss.v_parameterization)
 
                     loss = loss.mean()
 
                     accelerator.backward(loss)
-                    if accelerator.sync_gradients and training_config.max_grad_norm != 0.0:
+                    if accelerator.sync_gradients and optimizer_config.max_grad_norm != 0.0:
                         params_to_clip = accelerator.unwrap_model(text_encoder).get_input_embeddings().parameters()
-                        accelerator.clip_grad_norm_(params_to_clip, training_config.max_grad_norm)
+                        accelerator.clip_grad_norm_(params_to_clip, optimizer_config.max_grad_norm)
 
                     optimizer.step()
                     lr_scheduler.step()

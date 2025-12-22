@@ -6,17 +6,21 @@
 
 - **Renamed `sdxl_training` -> `sdxl`**: To clarify distinction between generic training and SDXL-specific model settings.
 - **Legacy Cleanup**: Removed `library.config.arguments` and all `argparse` dependencies from migrated scripts.
+- **Dec 22 Cleanup**:
+  - Refactored `huggingface_util.upload()` to accept `HuggingFaceConfig`
+  - Removed `sdxl_data_utils.py`, `add_model_spec_arguments()`, dead `get_hidden_states(args)`
+  - Fixed callers in `sd_textual_inversion.py` and `sd_peft.py`
 
 ## Script Status
 
-| Script                      | Config Class                 | Status      |
-| --------------------------- | ---------------------------- | ----------- |
-| `sd_finetune.py`            | `FineTuneConfig`             | ✅ Complete |
-| `sd_textual_inversion.py`   | `TextualInversionConfig`     | ✅ Complete |
-| `sd_peft.py`                | `TrainNetworkConfig`         | ✅ Complete |
-| `sdxl_finetune.py`          | `SDXLFineTuneConfig`         | ✅ Complete |
-| `sdxl_textual_inversion.py` | `SDXLTextualInversionConfig` | ✅ Complete |
-| `sdxl_peft.py`              | `SDXLPeftConfig`             | ✅ Complete |
+| Script                      | Config Class                 | Status           |
+| --------------------------- | ---------------------------- | ---------------- |
+| `sd_finetune.py`            | `FineTuneConfig`             | ✅ Complete      |
+| `sd_textual_inversion.py`   | `TextualInversionConfig`     | ✅ Complete      |
+| `sd_peft.py`                | `SDPeftConfig`               | ⚠️ 109 args refs |
+| `sdxl_finetune.py`          | `SDXLFineTuneConfig`         | ✅ Complete      |
+| `sdxl_textual_inversion.py` | `SDXLTextualInversionConfig` | ✅ Complete      |
+| `sdxl_peft.py`              | `SDXLPeftConfig`             | ✅ Complete      |
 
 ## Naming Convention
 
@@ -38,12 +42,14 @@
 | `library/training/trainer_utils.py` | ✅ Uses `TrainingConfig`                 |
 | `library/config/config_util.py`     | ✅ `RootConfig` Protocol defined         |
 | `library/data/dataset.py`           | ✅ Uses `DatasetConfig`                  |
+| `library/utils/huggingface_util.py` | ✅ Uses `HuggingFaceConfig`              |
 
 ## Next Steps
 
 1. ~~**Config Audit** - Review for duplicate/misplaced settings across configs~~ ✅ Complete
-2. **Testing Infrastructure** - Add pytest tests for config instantiation
-3. **Documentation** - Update README with new script names
+2. **`sd_peft.py` Migration** - 109 undefined `args` refs need `cfg.*` paths
+3. **Testing Infrastructure** - Add pytest tests for config instantiation
+4. **Documentation** - Update README with new script names
 
 ## Migration Guide
 
