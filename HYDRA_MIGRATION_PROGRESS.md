@@ -12,6 +12,8 @@
   - Fixed callers in `sd_textual_inversion.py` and `sd_peft.py`
   - Removed `ModelSpecMetadata.from_args()` legacy method from `sai_model_spec.py`
   - Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
+  - Renamed `args_set_seed()` → `set_seed_from_config()`, `prepare_deepspeed_args()` → `prepare_deepspeed_config()`
+  - Renamed `args` params → `config` in textual inversion trainer methods
 
 ## Script Status
 

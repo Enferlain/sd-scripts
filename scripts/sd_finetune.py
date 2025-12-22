@@ -1,26 +1,21 @@
-# training with captions
-
 import hydra
-from omegaconf import OmegaConf
 import math
 import os
 import toml
 import torch
 import logging
 
+from omegaconf import OmegaConf
 from tqdm import tqdm
 from multiprocessing import Value
 from diffusers import DDPMScheduler
-
-import library.utils.sai_model_spec as sai_model_spec
 
 from library.optimizations import deepspeed_utils
 from library.strategies import strategy_sd, strategy_base
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.common_utils import setup_logging
-from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_dtype
+from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.config.config_util import BlueprintGenerator, generate_dataset_group_by_blueprint
-
 from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
@@ -28,6 +23,7 @@ from library.training.optimizer import get_optimizer, get_scheduler_fix
 from library.training.sample_generation import sample_images
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
+from library.config.dataclasses.sd_finetune import SDFineTuneConfig
 
 from library.training.checkpointing import (
     resume_from_local_or_hf_if_specified,
@@ -35,8 +31,6 @@ from library.training.checkpointing import (
     save_state_on_train_end,
     save_sd_model_on_train_end
 )
-
-
 
 from library.training.noise_utils import (
     fix_noise_scheduler_betas_for_zero_terminal_snr,
@@ -49,7 +43,6 @@ from library.losses.loss_weighting import (
     scale_v_prediction_loss_like_noise_prediction,
 )
 
-from library.config.dataclasses.sd_finetune import SDFineTuneConfig
 
 init_ipex()
 
@@ -67,11 +60,11 @@ def train(config: SDFineTuneConfig):
 
     setup_logging(config.logging, reset=True)
     set_torch_cuda_reduced_precision(training_config)
-    deepspeed_utils.prepare_deepspeed_args(training_config)
+    deepspeed_utils.prepare_deepspeed_config(training_config)
 
     cache_latents = dataset_config.cache_latents
 
-    args_set_seed(training_config)
+    set_seed_from_config(training_config)
 
     tokenize_strategy = strategy_sd.SdTokenizeStrategy(model_config.v2, training_config.max_token_length, model_config.tokenizer_cache_dir)
     strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)

@@ -16,9 +16,9 @@ import torch
 import torch.nn as nn
 import logging
 import hydra
+
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
-
 from typing import Any, List, Union, Optional
 from multiprocessing import Value
 from tqdm import tqdm
@@ -37,14 +37,14 @@ from library.models import model_util
 from library.utils import sai_model_spec
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
-from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set_seed, prepare_dtype
+from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.optimizer import prepare_optimizer, get_scheduler_fix
 from library.training.sample_generation import sample_images, sample_images_check
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
-
+from library.config.dataclasses.sd_peft import SDPeftConfig
 
 from library.timestep_samplers.loss_aware_sampler import LossAwareTimestepSampler
 from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
@@ -55,15 +55,6 @@ from library.timestep_samplers.snr_windowed_loss_aware_sampler import SNRWindowe
 from library.config.config_util import (
     BlueprintGenerator,
 )
-
-from library.config.dataclasses.sd_peft import SDPeftConfig
-from library.config.dataclasses.optimizer import OptimizerConfig
-from library.config.dataclasses.dataset import DatasetConfig
-from library.config.dataclasses.network import NetworkConfig
-from library.config.dataclasses.model import ModelConfig
-from library.config.dataclasses.training import TrainingConfig
-from library.config.dataclasses.performance import PerformanceConfig
-from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 
 from library.training.checkpointing import (
     get_sai_model_spec,
@@ -122,7 +113,6 @@ init_ipex()
 
 setup_logging()
 logger = logging.getLogger(__name__)
-
 
 
 class NetworkTrainer:
@@ -323,7 +313,7 @@ class NetworkTrainer:
         plt.savefig(filename)
         plt.close()
 
-    def assert_extra_args(
+    def validate_extra_config(
         self,
         cfg,
         train_dataset_group: Union[DatasetGroup, MinimalDataset],
@@ -925,14 +915,14 @@ class NetworkTrainer:
         # verify_training_args(args)  # TODO VALIDATION FOR CONFIGS WHEREVER
 
         set_torch_cuda_reduced_precision(cfg.performance)
-        deepspeed_utils.prepare_deepspeed_args(cfg.performance, cfg.training)
+        deepspeed_utils.prepare_deepspeed_config(cfg.performance, cfg.training)
         setup_logging(cfg.logging, reset=True)
 
         cache_latents = cfg.dataset.cache_latents
         use_dreambooth_method = cfg.dataset.in_json is None
         use_user_config = cfg.dataset.dataset_config is not None
 
-        args_set_seed(cfg.training)
+        set_seed_from_config(cfg.training)
 
         tokenize_strategy = self.get_tokenize_strategy(cfg)
         strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
@@ -991,7 +981,7 @@ class NetworkTrainer:
                     val_dataset_group.is_latent_cacheable()
                 ), "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
 
-        self.assert_extra_args(cfg, train_dataset_group, val_dataset_group)
+        self.validate_extra_config(cfg, train_dataset_group, val_dataset_group)
 
         # acceleratorを準備する
         logger.info("preparing accelerator")

@@ -24,7 +24,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         self.vae_scale_factor = VAE_SCALE_FACTOR
         self.is_sdxl = True
 
-    def assert_extra_args(self, args, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
+    def validate_extra_config(self, config, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
         DatasetGroup]):
         # For SDXL, we just verify bucket resolution
         train_dataset_group.verify_bucket_reso_steps(32)
@@ -63,7 +63,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
     def get_text_encoding_strategy(self, training_config):
         return strategy_sdxl.SdxlTextEncodingStrategy()
 
-    def call_unet(self, args, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype):
+    def call_unet(self, config, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype):
         noisy_latents = noisy_latents.to(weight_dtype)  # TODO check why noisy_latents is not weight_dtype
 
         # get size embeddings

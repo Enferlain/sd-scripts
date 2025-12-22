@@ -12,7 +12,7 @@ from library.utils.device_utils import get_preferred_device
 setup_logging()
 logger = logging.getLogger(__name__)
 
-def prepare_deepspeed_args(performance_config: PerformanceConfig, training_config: TrainingConfig = None):
+def prepare_deepspeed_config(performance_config: PerformanceConfig, training_config: TrainingConfig = None):
     """Modify training config for deepspeed if enabled."""
     if not performance_config.deepspeed.deepspeed:
         return

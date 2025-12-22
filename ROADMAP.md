@@ -96,6 +96,12 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 
 All `args` references removed. EDM2 loss weighting function calls corrected to use proper config sub-objects (`cfg.loss`, `cfg.training`, `cfg.saving.output_name`).
 
+### ✅ Completed: Function Naming Cleanup
+
+- Renamed `args_set_seed()` → `set_seed_from_config()` in `torch_utils.py`
+- Renamed `prepare_deepspeed_args()` → `prepare_deepspeed_config()` in `deepspeed_utils.py`
+- Renamed `args` params → `config` in textual inversion trainer methods
+
 ### Remaining Functions
 
 | Function                   | Location               | Used By    | Status              |

@@ -8,7 +8,7 @@ from library.constants import MODEL_VERSION_SDXL_BASE_V1_0
 from library.training.trainer_utils import prepare_accelerator
 from tools.data_processing.cache_latents import set_tokenize_strategy
 from library.strategies import strategy_sdxl, strategy_base
-from library.utils.torch_utils import args_set_seed, prepare_dtype
+from library.utils.torch_utils import set_seed_from_config, prepare_dtype
 from library.utils import config_util
 from library.utils.config_util import ConfigSanitizer, BlueprintGenerator
 from library.utils.common_utils import setup_logging, add_logging_arguments, str_to_dtype
@@ -48,7 +48,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
 
     use_dreambooth_method = args.in_json is None
 
-    args_set_seed(args)
+    set_seed_from_config(args)
 
     is_sd = not args.sdxl and not args.flux
     is_sdxl = args.sdxl

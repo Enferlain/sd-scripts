@@ -1,5 +1,4 @@
 import hydra
-from omegaconf import OmegaConf
 import math
 import os
 import toml
@@ -11,6 +10,7 @@ from multiprocessing import Value
 from typing import Any, List, Optional, Union
 from diffusers import DDPMScheduler
 from transformers import CLIPTokenizer
+from omegaconf import OmegaConf
 
 import library.utils.huggingface_util as huggingface_util
 
@@ -18,11 +18,12 @@ from library.models import model_util
 from library.utils import sai_model_spec
 from library.optimizations import deepspeed_utils
 from library.strategies import strategy_sd, strategy_base
-from library.utils.torch_utils import prepare_dtype, args_set_seed
+from library.utils.torch_utils import prepare_dtype, set_seed_from_config
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.data.prompt_templates import imagenet_templates_small, imagenet_style_templates_small
 from library.data.dataset import DatasetGroup, MinimalDataset, load_arbitrary_dataset, collator_class, debug_dataset
+from library.config.dataclasses.sd_textual_inversion import TextualInversionConfig
 
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.trainer_utils import prepare_accelerator
@@ -36,11 +37,6 @@ from library.config.config_util import (
     generate_dataset_group_by_blueprint,
     generate_dreambooth_subsets_config_by_subdirs,
 )
-
-
-
-from library.config.dataclasses.sd_textual_inversion import TextualInversionConfig
-
 
 from library.training.checkpointing import (
     resume_from_local_or_hf_if_specified,
@@ -79,7 +75,7 @@ class TextualInversionTrainer:
         self.vae_scale_factor = 0.18215
         self.is_sdxl = False
 
-    def assert_extra_args(self, args, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
+    def validate_extra_config(self, config, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
         DatasetGroup]):
         train_dataset_group.verify_bucket_reso_steps(64)
 
@@ -108,10 +104,10 @@ class TextualInversionTrainer:
     def get_text_encoding_strategy(self, training_config):
         return strategy_sd.SdTextEncodingStrategy(training_config.clip_skip)
 
-    def get_models_for_text_encoding(self, args, accelerator, text_encoders) -> List[Any]:
+    def get_models_for_text_encoding(self, config, accelerator, text_encoders) -> List[Any]:
         return text_encoders
 
-    def call_unet(self, args, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype):
+    def call_unet(self, config, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype):
         noise_pred = unet(noisy_latents, timesteps, text_conds[0]).sample
         return noise_pred
 
@@ -181,7 +177,7 @@ class TextualInversionTrainer:
 
         cache_latents = dataset_config.cache_latents
 
-        args_set_seed(training_config)
+        set_seed_from_config(training_config)
 
         tokenize_strategy = self.get_tokenize_strategy(model_config, training_config)
         strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
@@ -262,7 +258,7 @@ class TextualInversionTrainer:
             train_dataset_group = load_arbitrary_dataset(dataset_config)
             val_dataset_group = None
 
-        self.assert_extra_args(None, train_dataset_group, val_dataset_group)
+        self.validate_extra_config(None, train_dataset_group, val_dataset_group)
 
         current_epoch = Value("i", 0)
         current_step = Value("i", 0)

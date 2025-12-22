@@ -31,7 +31,7 @@ from library.config.arguments import (
     add_dit_training_arguments,
     read_config_from_file
 )
-from library.utils.torch_utils import args_set_seed, prepare_dtype
+from library.utils.torch_utils import set_seed_from_config, prepare_dtype
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
 
     use_dreambooth_method = args.in_json is None
 
-    args_set_seed(args)
+    set_seed_from_config(args)
 
     is_sd = not args.sdxl and not args.flux
     is_sdxl = args.sdxl

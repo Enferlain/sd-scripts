@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed undefined `sd_models_config` variable → `model_config`
   - Fixed `training_config.max_grad_norm` → `optimizer_config.max_grad_norm`
 
+- **SDXL Fine-tune Config Fixes**
+
+  - Fixed `prepare_deepspeed_model(cfg.performance)` → `prepare_deepspeed_model(cfg.training)`
+  - Fixed `cfg.sdxl.fused_backward_pass` → `cfg.optimizer.fused_backward_pass`
+  - Added missing `OmegaConf` import for tracker config serialization
+
 - **SD Peft Pure Hydra Migration**
 
   - **Completed `sd_peft.py` migration** to Pure Hydra (removed ~100 undefined `args` references)
@@ -32,11 +38,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed `plot_edm2_loss_weighting_check()` and `plot_edm2_loss_weighting()` - added missing `cfg.training` and `cfg.saving.output_name` parameters
   - Removed stale TODO comment about `no_metadata` field (it exists in `SavingConfig`)
 
+- **Textual Inversion Cleanup**
+
+  - Renamed unused `args` parameters to `config` in `sd_textual_inversion.py` and `sdxl_textual_inversion.py` for consistency
+
+- **Function Naming Cleanup**
+
+  - Renamed `args_set_seed()` → `set_seed_from_config()` in `torch_utils.py`
+  - Renamed `prepare_deepspeed_args()` → `prepare_deepspeed_config()` in `deepspeed_utils.py`
+
 - **Library Type Safety**
 
   - Refactored `prepare_accelerator` in `trainer_utils.py` to accept typed configs (`PerformanceConfig`, `LoggingConfig`, `TrainingConfig`) instead of `DictConfig`
   - Refactored `init_trackers` in `trainer_utils.py` to accept any config type with `.logging` sub-config
-  - Refactored `prepare_deepspeed_plugin` and `prepare_deepspeed_args` in `deepspeed_utils.py` to accept `PerformanceConfig` and `TrainingConfig`
+  - Refactored `prepare_deepspeed_plugin` and `prepare_deepspeed_config` in `deepspeed_utils.py` to accept `PerformanceConfig` and `TrainingConfig`
   - Added missing `no_metadata` field to `SavingConfig` dataclass
 
 - **Dataclass Naming Consistency**
