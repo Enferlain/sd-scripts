@@ -14,6 +14,18 @@
   - Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
   - Renamed `args_set_seed()` → `set_seed_from_config()`, `prepare_deepspeed_args()` → `prepare_deepspeed_config()`
   - Renamed `args` params → `config` in textual inversion trainer methods
+  - `sd_peft.py` and `sdxl_peft.py` fully migrated to Pure Hydra (all `args` removed).
+  - `prepare_accelerator`, `deepspeed_utils` updated to use typed configs.
+  - Removed `add_loss_weighting_arguments()`, `add_logging_arguments()`, `add_prompt_parsing_arguments()`
+  - Fixed field location bugs in `sd_finetune.py`, `sd_textual_inversion.py`
+  - Fixed dataclass naming: `sd_models:` → `model:` (6 dataclasses)
+  - Removed `add_model_spec_arguments()` from `sai_model_spec.py` (superseded by MetadataConfig)
+  - Removed `ModelSpecMetadata.from_args()` from `sai_model_spec.py` (use `from_config()` instead)
+  - Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
+  - All `args` references removed. EDM2 loss weighting function calls corrected to use proper config sub-objects (`cfg.loss`, `cfg.training`, `cfg.saving.output_name`).
+  - Renamed `args_set_seed()` → `set_seed_from_config()` in `torch_utils.py`
+  - Renamed `prepare_deepspeed_args()` → `prepare_deepspeed_config()` in `deepspeed_utils.py`
+  - Renamed `args` params → `config` in textual inversion trainer methods
 
 ## Script Status
 

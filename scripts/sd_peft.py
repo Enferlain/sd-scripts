@@ -86,15 +86,15 @@ from library.training.trainer_utils import (
     determine_grad_sync_context
 )
 
+from library.training.noise_utils import (
+    prepare_scheduler_for_custom_training,
+    fix_noise_scheduler_betas_for_zero_terminal_snr
+)
+
 from library.losses.edm2_loss_utils import (
     prepare_edm2_loss_weighting,
     plot_edm2_loss_weighting_check,
     plot_edm2_loss_weighting
-)
-
-from library.training.noise_utils import (
-    prepare_scheduler_for_custom_training,
-    fix_noise_scheduler_betas_for_zero_terminal_snr
 )
 
 from library.losses.loss_weighting import (

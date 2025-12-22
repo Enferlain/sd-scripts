@@ -2,153 +2,115 @@
 
 ## Testing Suite
 
-**Current Status (2025-12-22):**
+### Current Status (2025-12-22)
 
-- ✅ Testing infrastructure complete (pytest, fixtures, coverage)
-- ✅ 150+ unit tests passing, covering:
-  - Configuration (28 tests)
-  - Optimization & Checkpointing (49 tests)
-  - Diffusion & Noise (38 tests)
-  - Data Utilities (34 tests)
-  - Network Utils (LoRA state dicts, merging)
-  - Format Utils (JXL, Safetensors)
-- ✅ Argparse remnants cleaned up - all legacy `add_*_arguments()` functions removed
-- ✅ Config field bugs fixed - scripts now use correct dataclass field paths
+**Infrastructure:** ✅ Complete (pytest, fixtures, coverage)
 
-**Next Steps:**
+**Test Categories:**
 
-1. **Expand Core Module Tests** - Target 70% coverage on training modules
-   - ~~`library/training/model_prep.py` - Model preparation and wrapping~~ ✅ Complete
-   - ~~`library/training/diffusion.py` - Diffusion utilities~~ ✅ Complete
-   - ~~`library/training/noise_utils.py` - Noise generation~~ ✅ Complete
-2. **Data Module Tests** - Critical for ensuring data pipeline correctness
-   - ~~`library/data/dataset.py` - Dataset loading and bucketing~~ ✅ Complete (Unit tests only)
-   - ~~`library/data/data_structures.py` - Data structures and batching~~ ✅ Complete
-   - ~~`library/data/image_utils.py` - Image preprocessing~~ ✅ Complete
-   - ~~`library/utils/common_utils.py`~~ ✅ Complete (Tested `str_to_dtype`, `size`, `GradualLatent`)
-   - ~~`library/utils/safetensors_utils.py`~~ ✅ Complete (Tested I/O, metadata, large tensors)
-   - ~~`library/losses/loss.py`~~ ✅ Complete (Tested stable losses, fixed bugs in SmoothL1)
-   - ~~`library/losses/edm2_loss.py`~~ ✅ Complete (Neural components, MLP, configuration logic)
-   - ~~`safetensors_utils.py` - `mem_eff_save_file`, `load_safetensors` - requires temporary file creation/cleanup~~ ✅ Complete
-   - ~~`common_utils.py` - `swap_weight_devices` - requires CUDA context/mocks~~ ✅ Complete
-   - ~~`library/losses/loss_weighting.py` - SNR weighting logic~~ ✅ Complete (Tested SNR weighting, v-pred logic, masking)
-   - `library/timestep_samplers/` - [POSTPONED] Waiting for proper implementation
-   - ~~`library/utils/device_utils.py`~~ ✅ Complete (Mocked validation of memory cleanup and device selection)
-   - ~~`library/training/sample_generation.py`~~ ✅ Complete (Tested parsing, checks, and scheduler selection)
-   - ~~`library/models/text_encoder_util.py`~~ ✅ Complete (Tested pooling workarounds and SDXL reshaping)
-3. **Integration Tests** - Validate full workflows
+| Category                | Description                                     | Status         |
+| ----------------------- | ----------------------------------------------- | -------------- |
+| **Unit Tests (Pure)**   | Test isolated functions with no/minimal mocking | ✅ Complete    |
+| **Unit Tests (Mocked)** | Test functions with mocked dependencies         | ✅ In Progress |
+| **Integration Tests**   | Test multiple components working together       | 🔜 Future      |
 
-   - **Data Loading**: `dataset.py` caching methods (`cache_latents`, `cache_text_encoder_outputs`) and image loading (requires filesystem/GPU mocks)
-   - End-to-end config → training setup
-   - Checkpoint save/load cycles
-   - Multi-GPU scenarios (requires_gpu marker)
+### Completed Unit Tests (660+ tests)
 
-4. **CI/CD Setup** - Automate testing
+- **Configuration** (28 tests) - validation, dataclasses, type safety
+- **Optimization & Checkpointing** (49 tests) - training utilities, checkpointing logic
+- **Diffusion & Noise** (38 tests) - diffusion utilities, noise generation
+- **Data Utilities** (34 tests) - dataset structures, image utils
+- **Network Utils** - LoRA state dicts, merging, block LR parsing, conversion maps
+- **Format Utils** - JXL parsing, Safetensors I/O
+- **Loss Functions** - SNR weighting, v-pred logic, EDM2 components
+- **Pipelines** - Prompt attention parsing, token padding (SD + SDXL)
+- **HuggingFace Utils** - API mocking for `exists_repo`, `list_dir`
 
-   - GitHub Actions workflow for pytest
-   - Coverage reporting and tracking
-   - Pre-commit hooks for running tests
+### Next Phase: Unit Tests with Heavy Mocking
 
-5. **Documentation** - Testing best practices
-   - Update `DEVELOPMENT_GUIDE.md` with testing patterns
-   - Document fixture usage and test organization
-   - Add testing examples for contributors
+These modules require substantial mocked dependencies (Accelerator, VAE, tokenizers):
+
+**Strategy Classes:**
+
+- `strategies/*` - Tokenization/Encoding orchestration - require tokenizer/model mocks
+
+**Training Core:**
+
+- `trainer_utils.py` - `init_trackers()`, `determine_grad_sync_context()` - need Accelerator mocks
+- `caching.py` - `cache_batch_latents()`, `cache_batch_text_encoder_outputs()` - need VAE/encoder mocks
+- `dataset.py` - `cache_latents()`, `register_image()`, `__getitem__` - requires filesystem and VAE mocks
+
+**Model Utilities:**
+
+- `model_util.py` / `sdxl_model_util.py` - Model loading/saving - requires architecture mocks
+- `training/sdxl_model_prep.py` - `load_target_model` - require Accelerator and checkpoint loading
+- `training/sdxl_checkpointing.py` - Save utilities - require full SDXL models
+
+**Optimization Modules:**
+
+- `optimizations/custom_offloading_utils.py` - Require GPU streams and thread pools
+- `optimizations/deepspeed_utils.py` - Require DeepSpeed and distributed context
+- `optimizations/fp8_optimization_utils.py` - Require full model state dicts
+
+**Sample Generation:**
+
+- `training/sample_generation.py` - `sample_images_common`, `sample_images_inference` - require full pipeline mocks
+
+**Network Classes:**
+
+- `networks/lora.py` - `LoRANetwork`, `create_network()` - require UNet/TextEncoder mocks
+- `networks/oft.py` - `OFTNetwork` - require recursive module mocks
+- `networks/dylora.py` - `DyLoRANetwork` - require dynamic module switching mocks
+- `networks/lora_diffusers.py` - `LoRANetwork` class, `merge_lora_weights()` - require Diffusers model mocks
+
+### Future: Integration Tests
+
+These require real models/GPU and cannot use mocks:
+
+- End-to-end config → training setup validation
+- Checkpoint save/load cycles
+- Multi-GPU scenarios (requires `requires_gpu` marker)
+- Data loading with real filesystem caching
+
+### CI/CD Setup (Future)
+
+- GitHub Actions workflow for pytest
+- Coverage reporting and tracking
+- Pre-commit hooks for running tests
 
 ---
 
 ## Configuration Refactoring
 
-- [ ] **Config Validation**: Centralized `prepare_config(cfg)` for auto-fixups and `validate_config(cfg)` for cross-config errors/warnings. See `library/config/validation.py` and `tests/unit/test_validation.py`. Will need more thorough logic testing to see if there are any edge cases, plus dataset related conflicts
-- [ ] **Consolidate Learning Rate Configurations**: Unify the handling of learning rates across different training modes (LoRA vs Fine-tune) and models (SD1.5 vs SDXL). Currently, there is a mix of `text_encoder_lr` (List/Any in NetworkConfig) and `learning_rate_te1/te2` (floats in SDXLConfig).
-- [ ] **Type Safety**: Improve type definitions for `text_encoder_lr` to avoid `Any` when possible, perhaps by using custom validators or strict union handling if OmegaConf improves.
-- [ ] **Dataclass Deep Dive & Reorganization**: Audit and reorganize config dataclasses - currently some fields are duplicated or misplaced (e.g., `no_half_vae` in both `PerformanceConfig` and `SDXLConfig`, performance-related settings scattered in `SDXLConfig`). Create clear boundaries: model-specific vs performance vs training settings.
-- Will need to strip BASE level code from sd_peft and sd_textual_inversion and sd_finetune. Currently it's base (everything imports) AND sd1/2 combined.
-
-## Testability Improvements (Future)
-
-- **Split [prepare_accelerator](cci:1://file:///d:/Projects/sd-scripts/library/training/trainer_utils.py:10:0-90:22)** - Separate config computation from side effects
-- **Explicit step 0 validation** - Clarify [calculate_val_loss_check](cci:1://file:///d:/Projects/sd-scripts/library/training/trainer_utils.py:118:0-138:15) behavior at step 0
-
-### Modules Requiring Heavier Mocking
-
-These modules have substantial side effects requiring mocked Accelerate/tokenizers/VAE:
-
-- `trainer_utils.py` - `init_trackers()`, `determine_grad_sync_context()` - need Accelerator mocks
-- `caching.py` - `cache_batch_latents()`, `cache_batch_text_encoder_outputs()` - need VAE/encoder mocks
-- `prompt_utils.py` - `get_prompts_with_weights()`, `get_weighted_text_embeddings()` - need tokenizer mocks
-- `dataset.py` - `cache_latents()`, `register_image()`, `__getitem__` - requires filesystem and VAE interaction mocks
-- `data_structures.py` - `BucketManager.make_buckets()`, `AugHelper.color_aug()` - depends on model_util and OpenCV/randomness
-- `model_util.py` / `sdxl_model_util.py` - Model loading/saving - requires filesystem and model architecture mocks
-- `huggingface_util.py` - API interaction - requires network/auth mocks
-- `deepspeed_utils.py` - Initialization logic - requires distributed context mocks
-- `strategies/*` - Tokenization/Encoding orchestration - requires tokenizer/model mocks
-- `networks/lora.py` - Network creation/injection - requires base model mocks
-- `edm2_loss_utils.py` - `prepare_edm2_loss_weighting` - requires complex mocks (loss/training configs, scheduler, accelerator)
-- `networks/oft.py` - OFT Network implementation - requires base model and recursive module mocks
-- `networks/dylora.py` - DyLoRA Network implementation - requires base model and dynamic module switching mocks
-- `networks/hypernetwork.py` - Hypernetwork implementation - requires base model mocks
-- `optimizations/custom_offloading_utils.py` - `Offloader`, `ModelOffloader`, `swap_weight_devices_cuda` - require GPU streams and thread pools
-- `optimizations/deepspeed_utils.py` - `prepare_deepspeed_plugin`, `prepare_deepspeed_model` - require DeepSpeed import and distributed context
-- `optimizations/fp8_optimization_utils.py` - `optimize_state_dict_with_fp8`, `load_safetensors_with_fp8_optimization`, `apply_fp8_monkey_patch` - require full model state dicts
-- `training/sample_generation.py` - `sample_images_common`, `sample_images_inference` - requires full pipeline (VAE, UNet, Tokenizer) mocks
-- `models/original_unet.py` - `FlashAttentionFunction`, `TimestepEmbedding`, `Timesteps`, all `*Block2D` classes, `UNet2DConditionModel` - require GPU/autograd context
-- `models/sdxl_original_unet.py` - `FlashAttentionFunction`, `GroupNorm32`, `ResnetBlock2D`, `CrossAttention`, `SdxlUNet2DConditionModel` - require SDXL architecture
-- `models/sdxl_original_control_net.py` - `ControlNetConditioningEmbedding`, `SdxlControlNet.forward`, `SdxlControlledUNet` - require UNet and forward passes
-- `training/sdxl_model_prep.py` - `load_target_model`, `_load_target_model` - require Accelerator and SDXL checkpoint loading
-- `training/sdxl_checkpointing.py` - `save_sd_model_on_train_end`, `save_sd_model_on_epoch_end_or_stepwise` - require full SDXL models
-
-### Other TODOs
-
-- resolve duplicate settings in configs/dataclasses
-- fish for other inconsistencies around configs and their calls in scripts
-- need to look into naming scheme of scripts and proper separation of concerns for the backend modules and main training scripts. eg why is base and sd1.5/2 treated the same in strategies and model implementations, etc etc. feels like it was monkeypatched and just stayed that way after updates.
-- related to previous point, timestep sampling needs to be reimplemented properly instead of everything redefined and hacked into the training scripts
-- external live_plotter will eventually be expanded on, need to find a cleaner way to integrate it into the training scripts
+- [ ] **Config Validation Edge Cases**: Test `prepare_config(cfg)` and `validate_config(cfg)` for dataset-related conflicts
+- [ ] **Consolidate Learning Rate Configs**: Unify `text_encoder_lr` (List/Any in NetworkConfig) and `learning_rate_te1/te2` (floats in SDXLConfig)
+- [ ] **Type Safety**: Improve type definitions for `text_encoder_lr` to avoid `Any`
+- [ ] **Dataclass Reorganization**: Audit duplicated/misplaced fields (e.g., `no_half_vae` in both PerformanceConfig and SDXLConfig)
+- [ ] **Base/SD Separation**: Strip base-level code from sd_peft, sd_textual_inversion, sd_finetune - currently mixing base AND sd1/2
 
 ---
 
-## Argparse Migration Status (2025-12-22)
+## Testability Improvements
 
-### ✅ Completed
+- **Split `prepare_accelerator`** - Separate config computation from side effects
+- **Explicit step 0 validation** - Clarify `calculate_val_loss_check` behavior at step 0
 
-- **SD Peft Migration**: `sd_peft.py` and `sdxl_peft.py` fully migrated to Pure Hydra (all `args` removed).
-- **Library Refactoring**: `prepare_accelerator`, `deepspeed_utils` updated to use typed configs.
-- Removed `add_loss_weighting_arguments()`, `add_logging_arguments()`, `add_prompt_parsing_arguments()`
-- Fixed field location bugs in `sd_finetune.py`, `sd_textual_inversion.py`
-- Fixed dataclass naming: `sd_models:` → `model:` (6 dataclasses)
-- Refactored `huggingface_util.upload()` to accept `HuggingFaceConfig`
-- Removed `sdxl_data_utils.py` (superseded by strategy pattern)
-- Removed dead `get_hidden_states(args)` from `text_encoder_util.py` (superseded by strategy)
-- Removed `add_model_spec_arguments()` from `sai_model_spec.py` (superseded by MetadataConfig)
-- Removed `ModelSpecMetadata.from_args()` from `sai_model_spec.py` (use `from_config()` instead)
-- Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
+---
 
-### ✅ Completed: `sd_peft.py` Migration
+## Code Quality TODOs
 
-All `args` references removed. EDM2 loss weighting function calls corrected to use proper config sub-objects (`cfg.loss`, `cfg.training`, `cfg.saving.output_name`).
-
-### ✅ Completed: Function Naming Cleanup
-
-- Renamed `args_set_seed()` → `set_seed_from_config()` in `torch_utils.py`
-- Renamed `prepare_deepspeed_args()` → `prepare_deepspeed_config()` in `deepspeed_utils.py`
-- Renamed `args` params → `config` in textual inversion trainer methods
-
-### Remaining Functions
-
-| Function                   | Location               | Used By    | Status              |
-| -------------------------- | ---------------------- | ---------- | ------------------- |
-| `get_hidden_states_sdxl()` | `text_encoder_util.py` | caching.py | Has clean params ✅ |
-
-> **Design Principle:** Training modules should not keep legacy argparse for tool API compatibility.
-> Tools are secondary to the training pipeline - if tools need argparse, they should have local adapters.
+- Resolve duplicate settings in configs/dataclasses
+- Investigate naming scheme and separation of concerns for backend modules vs training scripts
+- Timestep sampling needs proper reimplementation (currently hacked into training scripts)
+- Clean integration for external `live_plotter`
 
 ---
 
 ## Code Duplication (Future Consolidation)
 
-There is logic duplication between `text_encoder_util.py` and the strategy classes:
+Logic duplication between `text_encoder_util.py` and strategy classes:
 
 - `get_hidden_states_sdxl()` in `text_encoder_util.py` (used by caching.py, sdxl_peft.py)
 - `SdxlTextEncodingStrategy._get_hidden_states_sdxl()` in `strategy_sdxl.py`
 
-Consider consolidating in the future - make `caching.py` use the strategy, or move shared logic to a common utility.
+Consider consolidating: make `caching.py` use the strategy, or move shared logic to common utility.
