@@ -15,14 +15,14 @@
 
 ## Script Status
 
-| Script                      | Config Class                 | Status           |
-| --------------------------- | ---------------------------- | ---------------- |
-| `sd_finetune.py`            | `FineTuneConfig`             | ✅ Complete      |
-| `sd_textual_inversion.py`   | `TextualInversionConfig`     | ✅ Complete      |
-| `sd_peft.py`                | `SDPeftConfig`               | ⚠️ 109 args refs |
-| `sdxl_finetune.py`          | `SDXLFineTuneConfig`         | ✅ Complete      |
-| `sdxl_textual_inversion.py` | `SDXLTextualInversionConfig` | ✅ Complete      |
-| `sdxl_peft.py`              | `SDXLPeftConfig`             | ✅ Complete      |
+| Script                      | Config Class                 | Status      |
+| --------------------------- | ---------------------------- | ----------- |
+| `sd_finetune.py`            | `FineTuneConfig`             | ✅ Complete |
+| `sd_textual_inversion.py`   | `TextualInversionConfig`     | ✅ Complete |
+| `sd_peft.py`                | `SDPeftConfig`               | ✅ Complete |
+| `sdxl_finetune.py`          | `SDXLFineTuneConfig`         | ✅ Complete |
+| `sdxl_textual_inversion.py` | `SDXLTextualInversionConfig` | ✅ Complete |
+| `sdxl_peft.py`              | `SDXLPeftConfig`             | ✅ Complete |
 
 ## Naming Convention
 

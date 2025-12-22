@@ -528,27 +528,7 @@ class NetworkTrainer:
         return loss
 
     def get_sai_model_spec(self, cfg):
-        # We need to adapt cfg to legacy args structure that get_sai_model_spec expects?
-        # get_sai_model_spec takes 'args' and uses it to construct metadata.
-        # It uses ArgsAdapter internally if we passed args?
-        # Wait, the tool shows: adapter = ArgsAdapter(args); return get_sai_model_spec(..., adapter, ...)
-        # So get_sai_model_spec EXPECTS an object with .dataset, .training etc?
-        # If I pass cfg directly, it should work if it mimics structure?
-        # But get_sai_model_spec might look for flat attributes if it was legacy.
-        # But here usage shows it constructs adapter.
-        # So get_sai_model_spec likely expects the Adapted interface.
-        # If I pass `cfg` directly, `cfg.dataset` exists.
-        # But if `get_sai_model_spec` uses `args.dataset`, it's fine.
-        # If it accesses `args.output_dir` (SavingConfig), cfg has `cfg.saving.output_dir`.
-        # I should check get_sai_model_spec implementation.
-        # Assume usage of adapter implies it expects flattened or adapted structure?
-        # Or maybe it just expects `dataset` attribute?
-        # It's safest to inspect `get_sai_model_spec` first.
-        # But for now, I will assume refactor later, or pass `cfg` and hope it has fields needed.
-        # Actually I can't leave ArgsAdapter here.
-        # I will pass `cfg` and assume I'll fix `get_sai_model_spec`.
-        
-        return get_sai_model_spec(None, cfg, self.is_sdxl, True, False)
+        return get_sai_model_spec(None, cfg, self.is_sdxl, True, False)  # HYDRA RELATED? Expected type 'dict', got 'None' instead?
 
     def update_metadata(self, metadata, cfg):
         pass
@@ -942,8 +922,7 @@ class NetworkTrainer:
         session_id = random.randint(0, 2**32)
         training_started_at = time.time()
 
-        # verify_training_args(args) # Skipped for now or needs update
-        # prepare_dataset_args(args, True) # Skipped, assuming config handles defaults
+        # verify_training_args(args)  # TODO VALIDATION FOR CONFIGS WHEREVER
 
         set_torch_cuda_reduced_precision(cfg.performance)
         deepspeed_utils.prepare_deepspeed_args(cfg.performance, cfg.training)
@@ -1933,7 +1912,7 @@ class NetworkTrainer:
             metadata["ss_steps"] = str(steps)
             metadata["ss_epoch"] = str(epoch_no)
 
-            metadata_to_save = minimum_metadata if cfg.saving.no_metadata else metadata  # TODO no_metadata missing from config?
+            metadata_to_save = minimum_metadata if cfg.saving.no_metadata else metadata
             sai_metadata = self.get_sai_model_spec(cfg)
             metadata_to_save.update(sai_metadata)
 
@@ -1984,8 +1963,8 @@ class NetworkTrainer:
             optimizer_train_fn()
             accelerator.unwrap_model(network).train()
 
-        if plot_edm2_loss_weighting_check(cfg.loss, global_step):
-            plot_edm2_loss_weighting(cfg.loss, global_step, edm2_model, 1000, accelerator.device)
+        if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
+            plot_edm2_loss_weighting(cfg.loss, cfg.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
 
         is_tracking = len(accelerator.trackers) > 0
         if is_tracking:
@@ -2206,8 +2185,8 @@ class NetworkTrainer:
                                         remove_loss_weights_ckpt_name = get_step_ckpt_name(cfg.saving, "." + cfg.saving.save_model_as, remove_step_no, "_edm2_loss_weights")
                                         remove_model(remove_loss_weights_ckpt_name)
 
-                        if plot_edm2_loss_weighting_check(cfg, global_step):
-                            plot_edm2_loss_weighting(cfg, global_step, edm2_model, 1000, accelerator.device)
+                        if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
+                            plot_edm2_loss_weighting(cfg.loss, cfg.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
                         optimizer_train_fn()
                         accelerator.unwrap_model(network).train()
 

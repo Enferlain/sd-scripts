@@ -168,7 +168,7 @@ def build_minimum_network_metadata(
 
 
 def get_sai_model_spec(
-        state_dict: dict,
+        state_dict: dict | None,
         args: Any,
         sdxl: bool,
         lora: bool,

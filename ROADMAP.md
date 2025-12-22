@@ -92,15 +92,9 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 - Removed `ModelSpecMetadata.from_args()` from `sai_model_spec.py` (use `from_config()` instead)
 - Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
 
-### 🔴 Deferred: `sd_peft.py` Migration
+### ✅ Completed: `sd_peft.py` Migration
 
-**109 references to undefined `args` variable**
-
-Affected: HuggingFace upload, metadata handling, checkpoint removal, EDM2 loss, and more.
-
-Options when addressing:
-
-1. Full migration of all `args` → `cfg.*` paths and fix wrong references
+All `args` references removed. EDM2 loss weighting function calls corrected to use proper config sub-objects (`cfg.loss`, `cfg.training`, `cfg.saving.output_name`).
 
 ### Remaining Functions
 
