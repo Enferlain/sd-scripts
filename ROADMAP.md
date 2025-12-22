@@ -70,6 +70,8 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 - resolve duplicate settings in configs/dataclasses
 - fish for other inconsistencies around configs and their calls in scripts
 - need to look into naming scheme of scripts and proper separation of concerns for the backend modules and main training scripts. eg why is base and sd1.5/2 treated the same in strategies and model implementations, etc etc. feels like it was monkeypatched and just stayed that way after updates.
+- related to previous point, timestep sampling needs to be reimplemented properly instead of everything redefined and hacked into the training scripts
+- external live_plotter will eventually be expanded on, need to find a cleaner way to integrate it into the training scripts
 
 ---
 
