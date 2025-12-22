@@ -7,25 +7,36 @@ from accelerate.utils import TorchDynamoPlugin
 import library.optimizations.deepspeed_utils as deepspeed_utils
 from omegaconf import OmegaConf, DictConfig
 
+from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.logging import LoggingConfig
+from library.config.dataclasses.training import TrainingConfig
 
-def prepare_accelerator(args: DictConfig):
+
+def prepare_accelerator(performance_config: PerformanceConfig, logging_config: LoggingConfig = None, training_config: TrainingConfig = None):
     """
-    this function also prepares deepspeed plugin
+    Prepare accelerator with optional deepspeed plugin.
+    
+    Args:
+        performance_config: Performance settings (mixed_precision, torch_compile, ddp settings, deepspeed)
+        logging_config: Optional logging settings (logging_dir, log_with, wandb settings)
+        training_config: Optional training settings (gradient_accumulation_steps)
     """
 
-    if args.logging_dir is None:
+    # Handle logging directory
+    if logging_config is None or logging_config.logging_dir is None:
         logging_dir = None
     else:
-        log_prefix = "" if args.log_prefix is None else args.log_prefix
-        logging_dir = args.logging_dir + "/" + log_prefix + time.strftime("%Y%m%d%H%M%S", time.localtime())
+        log_prefix = "" if logging_config.log_prefix is None else logging_config.log_prefix
+        logging_dir = logging_config.logging_dir + "/" + log_prefix + time.strftime("%Y%m%d%H%M%S", time.localtime())
 
-    if args.log_with is None:
+    # Handle log_with setting
+    if logging_config is None or logging_config.log_with is None:
         if logging_dir is not None:
             log_with = "tensorboard"
         else:
             log_with = None
     else:
-        log_with = args.log_with
+        log_with = logging_config.log_with
         if log_with in ["tensorboard", "all"]:
             if logging_dir is None:
                 raise ValueError(
@@ -39,15 +50,14 @@ def prepare_accelerator(args: DictConfig):
             if logging_dir is not None:
                 os.makedirs(logging_dir, exist_ok=True)
                 os.environ["WANDB_DIR"] = logging_dir
-            if args.wandb_api_key is not None:
-                wandb.login(key=args.wandb_api_key)
+            if logging_config.wandb_api_key is not None:
+                wandb.login(key=logging_config.wandb_api_key)
 
-    # torch.compile のオプション。 NO の場合は torch.compile は使わない
-    if args.torch_compile:
-        # Configure the compilation backend
+    # torch.compile options
+    if performance_config.torch_compile:
         dynamo_plugin = TorchDynamoPlugin(
-            backend="inductor",  # Options: "inductor", "aot_eager", "aot_nvfuser", etc.
-            mode="default",  # Options: "default", "reduce-overhead", "max-autotune"
+            backend="inductor",
+            mode="default",
             fullgraph=False,
             dynamic=True,
             use_regional_compilation=True,
@@ -55,33 +65,28 @@ def prepare_accelerator(args: DictConfig):
     else:
         dynamo_plugin = None
 
-    #    (
-    #        InitProcessGroupKwargs(
-    #            backend="gloo" if os.name == "nt" or not torch.cuda.is_available() else "nccl",
-    #            init_method=(
-    #                "env://?use_libuv=False" if os.name == "nt" and Version(torch.__version__) >= Version("2.4.0") else None
-    #            ),
-    #            timeout=datetime.timedelta(minutes=args.ddp_timeout) if args.ddp_timeout else None,
-    #        )
-    #        if torch.cuda.device_count() > 1
-    #        else None
-    #    ),
-
+    # DDP kwargs
     kwargs_handlers = [
         (
             DistributedDataParallelKwargs(
-                gradient_as_bucket_view=args.ddp_gradient_as_bucket_view, static_graph=args.ddp_static_graph
+                gradient_as_bucket_view=performance_config.ddp_gradient_as_bucket_view, 
+                static_graph=performance_config.ddp_static_graph
             )
-            if args.ddp_gradient_as_bucket_view or args.ddp_static_graph
+            if performance_config.ddp_gradient_as_bucket_view or performance_config.ddp_static_graph
             else None
         ),
     ]
     kwargs_handlers = [i for i in kwargs_handlers if i is not None]
-    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(args)
+    
+    # Deepspeed plugin
+    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(performance_config, training_config)
+
+    # Gradient accumulation steps
+    gradient_accumulation_steps = training_config.gradient_accumulation_steps if training_config else 1
 
     accelerator = Accelerator(
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        mixed_precision=args.mixed_precision,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        mixed_precision=performance_config.mixed_precision,
         log_with=log_with,
         project_dir=logging_dir,
         kwargs_handlers=kwargs_handlers,

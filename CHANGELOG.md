@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed undefined `sd_models_config` variable → `model_config`
   - Fixed `training_config.max_grad_norm` → `optimizer_config.max_grad_norm`
 
+- **SD Peft Pure Hydra Migration**
+
+  - **Completed `sd_peft.py` migration** to Pure Hydra (removed ~100 undefined `args` references)
+  - Refactored `sd_peft.py` to use `cfg.*` paths correctly (e.g. `cfg.training`, `cfg.logging`)
+  - Removed unused `import argparse` from `sdxl_peft.py` and `sd_peft.py`
+  - Fixed type mismatches in `sample_images_check` and `generate_step_logs`
+
+- **Library Type Safety**
+
+  - Refactored `prepare_accelerator` in `trainer_utils.py` to accept typed configs (`PerformanceConfig, LoggingConfig, TrainingConfig`) instead of `DictConfig`
+  - Refactored `prepare_deepspeed_plugin` and `prepare_deepspeed_args` in `deepspeed_utils.py` to accept `PerformanceConfig` and `TrainingConfig`
+  - Added missing `no_metadata` field to `SavingConfig` dataclass
+
 - **Dataclass Naming Consistency**
   - Renamed `sd_models: ModelConfig` → `model: ModelConfig` in 6 dataclasses to match YAML config naming
 

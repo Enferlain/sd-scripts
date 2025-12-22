@@ -79,6 +79,8 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 
 ### ✅ Completed
 
+- **SD Peft Migration**: `sd_peft.py` and `sdxl_peft.py` fully migrated to Pure Hydra (all `args` removed).
+- **Library Refactoring**: `prepare_accelerator`, `deepspeed_utils` updated to use typed configs.
 - Removed `add_loss_weighting_arguments()`, `add_logging_arguments()`, `add_prompt_parsing_arguments()`
 - Fixed field location bugs in `sd_finetune.py`, `sd_textual_inversion.py`
 - Fixed dataclass naming: `sd_models:` → `model:` (6 dataclasses)
@@ -91,14 +93,13 @@ These modules have substantial side effects requiring mocked Accelerate/tokenize
 
 ### 🔴 Deferred: `sd_peft.py` Migration
 
-**109 references to undefined `args` variable** - `ArgsAdapter(cfg)` was commented out but references remain.
+**109 references to undefined `args` variable**
 
 Affected: HuggingFace upload, metadata handling, checkpoint removal, EDM2 loss, and more.
 
 Options when addressing:
 
-1. Restore `ArgsAdapter` temporarily
-2. Full migration of all 109 `args` → `cfg.*` paths
+1. Full migration of all `args` → `cfg.*` paths and fix wrong references
 
 ### Remaining Functions
 

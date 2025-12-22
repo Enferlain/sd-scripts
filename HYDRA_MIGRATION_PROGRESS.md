@@ -49,7 +49,10 @@
 ## Next Steps
 
 1. ~~**Config Audit** - Review for duplicate/misplaced settings across configs~~ ✅ Complete
-2. **`sd_peft.py` Migration** - 109 undefined `args` refs need `cfg.*` paths
+2. **`sd_peft.py` Migration** - **COMPLETED** ✅
+   - [x] Refactor `args` usage to `cfg`
+   - [x] Fix ConfigAdapter usages
+   - [x] Cleanup legacy argparse code
 3. **Testing Infrastructure** - Add pytest tests for config instantiation
 4. **Documentation** - Update README with new script names
 
