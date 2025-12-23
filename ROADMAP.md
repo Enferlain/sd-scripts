@@ -2,7 +2,7 @@
 
 ## Testing Suite
 
-### Current Status (2025-12-22)
+### Current Status (2025-12-23)
 
 **Infrastructure:** ✅ Complete (pytest, fixtures, coverage)
 
@@ -14,12 +14,12 @@
 | **Unit Tests (Mocked)** | Test functions with mocked dependencies         | ✅ In Progress |
 | **Integration Tests**   | Test multiple components working together       | 🔜 Future      |
 
-### Completed Unit Tests (660+ tests)
+### Completed Unit Tests (690+ tests)
 
 - **Configuration** (28 tests) - validation, dataclasses, type safety
 - **Optimization & Checkpointing** (49 tests) - training utilities, checkpointing logic
 - **Diffusion & Noise** (38 tests) - diffusion utilities, noise generation
-- **Data Utilities** (34 tests) - dataset structures, image utils
+- **Data Utilities** (56 tests) - dataset structures, image utils, dataset.py (register_image, cache_latents, cacheability checks, shuffle)
 - **Network Utils** - LoRA state dicts, merging, block LR parsing, conversion maps
 - **Format Utils** - JXL parsing, Safetensors I/O
 - **Loss Functions** - SNR weighting, v-pred logic, EDM2 components
@@ -35,7 +35,7 @@ These modules still require substantial mocked dependencies:
 
 **Training Core:**
 
-- `dataset.py` - `cache_latents()`, `register_image()`, `__getitem__` - requires filesystem and VAE mocks
+- `dataset.py` - `__getitem__`, `make_buckets` full flow - requires complex bucket/latent setup (partial coverage done)
 
 **Model Utilities:**
 
@@ -62,17 +62,10 @@ These modules still require substantial mocked dependencies:
 
 Detailed view:
 
-- `trainer_utils.py` - `init_trackers()`, `determine_grad_sync_context()` - need Accelerator mocks
-- `caching.py` - `cache_batch_latents()`, `cache_batch_text_encoder_outputs()` - need VAE/encoder mocks
-- `prompt_utils.py` - `get_prompts_with_weights()`, `get_weighted_text_embeddings()` - need tokenizer mocks
-- `dataset.py` - `cache_latents()`, `register_image()`, `__getitem__` - requires filesystem and VAE interaction mocks
-- `data_structures.py` - `BucketManager.make_buckets()`, `AugHelper.color_aug()` - depends on model_util and OpenCV/randomness
+- `dataset.py` - `__getitem__`, `make_buckets` full flow in dataset context - requires complex bucket/latent setup (partial coverage done)
+- `data_structures.py` - `BucketManager.make_buckets()` now tested with mocked model_util
 - `model_util.py` / `sdxl_model_util.py` - Model loading/saving - requires filesystem and model architecture mocks
-- `huggingface_util.py` - API interaction - requires network/auth mocks
-- `deepspeed_utils.py` - Initialization logic - requires distributed context mocks
-- `strategies/*` - Tokenization/Encoding orchestration - requires tokenizer/model mocks
 - `networks/lora.py` - Network creation/injection - requires base model mocks
-- `edm2_loss_utils.py` - `prepare_edm2_loss_weighting` - requires complex mocks (loss/training configs, scheduler, accelerator)
 - `networks/oft.py` - OFT Network implementation - requires base model and recursive module mocks
 - `networks/dylora.py` - DyLoRA Network implementation - requires base model and dynamic module switching mocks
 - `networks/hypernetwork.py` - Hypernetwork implementation - requires base model mocks
@@ -85,7 +78,6 @@ Detailed view:
 - `models/sdxl_original_control_net.py` - `ControlNetConditioningEmbedding`, `SdxlControlNet.forward`, `SdxlControlledUNet` - require UNet and forward passes
 - `training/sdxl_model_prep.py` - `load_target_model`, `_load_target_model` - require Accelerator and SDXL checkpoint loading
 - `training/sdxl_checkpointing.py` - `save_sd_model_on_train_end`, `save_sd_model_on_epoch_end_or_stepwise` - require full SDXL models
-- `pipelines/`
 
 ### Future: Integration Tests
 
