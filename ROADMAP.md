@@ -163,7 +163,7 @@ These require real models, GPU access, or full component initialization:
 - [ ] **Consolidate Learning Rate Configs**: Unify `text_encoder_lr` (List/Any in NetworkConfig) and `learning_rate_te1/te2` (floats in SDXLConfig)
 - [ ] **Type Safety**: Improve type definitions for `text_encoder_lr` to avoid `Any`
 - [ ] **Dataclass Reorganization**: Audit duplicated/misplaced fields (e.g., `no_half_vae` in both PerformanceConfig and SDXLConfig)
-- [ ] **Base/SD Separation**: Strip base-level code from sd_peft, sd_textual_inversion, sd_finetune - currently mixing base AND sd1/2
+- [ ] **Base/SD Separation**: Strip base-level code from sd_peft, sd_textual_inversion, sd_finetune - currently mixing base AND sd1/2, outlined more in `PEFT_REFACTORING_PLAN.md`
 
 ---
 
