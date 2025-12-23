@@ -2,9 +2,13 @@
 # Follows the pattern from PEFT_REFACTORING_PLAN.md
 
 import logging
+import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, List, Optional, Tuple, Union
+
+import numpy as np
+import torch
 
 from library.utils.common_utils import setup_logging
 
@@ -192,9 +196,51 @@ class PeftTrainingStrategy(
     def on_step_start(self, cfg, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train: bool = True):
         """Hook called at the start of each training step."""
         pass
+
+    def on_validation_step_end(self, cfg, accelerator, network, text_encoders, unet, batch, weight_dtype):
+        """Hook called after each validation step."""
+        pass
+
+    def load_unet_lazily(self, cfg, weight_dtype, accelerator, text_encoders):
+        """Load UNet lazily if not loaded in load_target_model. Not used by SD."""
+        raise NotImplementedError("load_unet_lazily is not implemented for this architecture")
     
     def all_reduce_network(self, accelerator, network):
         """Sync DDP gradients manually."""
         for param in network.parameters():
             if param.grad is not None:
                 param.grad = accelerator.reduce(param.grad, reduction="mean")
+
+    def switch_rng_state(self, val_seed: int, accelerator):
+        """Store current RNG states and set new seed for validation."""
+        cpu_rng_state = torch.get_rng_state()
+        python_rng_state = random.getstate()
+        numpy_rng_state = np.random.get_state()
+        
+        gpu_rng_state = None
+        if accelerator.device.type == "cuda":
+            gpu_rng_state = torch.cuda.get_rng_state()
+        elif accelerator.device.type == "xpu":
+            gpu_rng_state = torch.xpu.get_rng_state()
+
+        random.seed(val_seed)
+        np.random.seed(val_seed)
+        torch.manual_seed(val_seed)
+        if accelerator.device.type == "cuda":
+            torch.cuda.manual_seed_all(val_seed)
+
+        return (cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state)
+
+    def restore_rng_state(self, rng_states, accelerator):
+        """Restore RNG states after validation."""
+        cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state = rng_states
+        
+        torch.set_rng_state(cpu_rng_state)
+        random.setstate(python_rng_state)
+        np.random.set_state(numpy_rng_state)
+        
+        if gpu_rng_state is not None:
+            if accelerator.device.type == "cuda":
+                torch.cuda.set_rng_state(gpu_rng_state)
+            elif accelerator.device.type == "xpu":
+                torch.xpu.set_rng_state(gpu_rng_state)

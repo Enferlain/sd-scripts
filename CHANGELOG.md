@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2025-12-23]
+### Changed
+
+- **PEFT Strategy-Based Refactoring (Phase 1-2)**
+  - Reduced `sd_peft.py` from 927 lines to 50 lines (95% reduction)
+  - Removed `SDPeftTrainer` class - all functionality extracted to modular components
+  - Created `library/strategies/peft_strategy_base.py` (16 methods) - ABC interfaces for PEFT training
+  - Created `library/strategies/peft_strategy_sd.py` (21 methods) - SD1.5/2 implementations
+  - Created `library/training/peft_common.py` (6 functions) - shared logging/plotting utilities
+  - Refactored `library/training/peft_trainer.py` to use strategy pattern and standalone functions
+  - `train()` function now accepts `strategies: PeftTrainingStrategy` parameter
 
 ### Added
 

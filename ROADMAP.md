@@ -1,57 +1,50 @@
 # Project Roadmap & Future Ideas
 
-## 🔴 HIGH PRIORITY: `sd_peft.py` Refactoring
+## ✅ COMPLETED: `sd_peft.py` Refactoring (Phase 1-2)
 
-> [!CAUTION]
-> This is the most-used training script in the repository and has accumulated significant technical debt.
+> [!NOTE]
+> Phase 1-2 of the PEFT refactoring is complete. `sd_peft.py` has been reduced from 927 lines to 50 lines.
 
-**Current State:**
-
-- `sd_peft.py` is **2,326 lines** with a monolithic `SDPeftTrainer` god class (57 methods)
-- The `train()` method alone is **~1,400 lines** (lines 907-2310)
-- `sdxl_peft.py` **inherits from** `sd_peft.SDPeftTrainer` and overrides ~15 methods
-- This creates fragile coupling unlike `*_finetune.py` scripts which use library imports only
-
-**Problems:**
-| Issue | Impact |
-|-------|--------|
-| God class pattern | Hard to understand, test, or modify safely |
-| 1,400-line method | Unmaintainable - mixes setup, loop, logging, saving |
-| Inheritance coupling | Changes to SD break SDXL; can't evolve independently |
-| Nested functions | `save_model`, `load_model_hook` defined inside `train()` - untestable |
-
-**Target Architecture:**
+**Completed Architecture:**
 
 ```
-CURRENT (fragile):                    TARGET (modular):
+OLD (monolithic):                     NEW (modular):
 ┌─────────────────┐                   ┌─────────────────┐
 │   sd_peft.py    │                   │   sd_peft.py    │
-│   (2,326 lines) │                   │   (~500 lines)  │
+│   (927 lines)   │                   │   (50 lines)    │
 │   SDPeftTrainer │                   │   thin wrapper  │
 └────────┬────────┘                   └────────┬────────┘
          │ inherits                            │ imports
          ▼                                     ▼
-┌─────────────────┐                   ┌─────────────────┐
-│  sdxl_peft.py   │                   │ library/training│
-│  (254 lines)    │                   │ /peft_utils.py  │
-│  SDXLPeftTrainer│                   │ (shared logic)  │
-└─────────────────┘                   └────────┬────────┘
-                                               │ imports
-                                               ▼
-                                      ┌─────────────────┐
-                                      │  sdxl_peft.py   │
-                                      │  (~300 lines)   │
-                                      │  thin wrapper   │
-                                      └─────────────────┘
+┌─────────────────┐                   ┌─────────────────────────────┐
+│  sdxl_peft.py   │                   │ library/strategies/         │
+│  (254 lines)    │                   │   peft_strategy_base.py     │ (16 methods)
+│  SDXLPeftTrainer│                   │   peft_strategy_sd.py       │ (21 methods)
+└─────────────────┘                   └─────────────┬───────────────┘
+                                                    │ imports
+                                                    ▼
+                                      ┌─────────────────────────────┐
+                                      │ library/training/           │
+                                      │   peft_trainer.py           │ (train function)
+                                      │   peft_common.py            │ (6 utility funcs)
+                                      └─────────────────────────────┘
 ```
 
-**Proposed Refactoring Steps:**
+**Completed Steps:**
 
-1. Extract `train()` setup phase → `library/training/peft_setup.py`
-2. Extract training loop core → `library/training/peft_loop.py`
-3. Extract logging/metrics → `library/training/peft_logging.py`
-4. Extract model saving → already have `checkpointing.py`, extend for networks
-5. Make both `sd_peft.py` and `sdxl_peft.py` thin orchestrators like `*_finetune.py`
+| Step | Description                            | Status |
+| ---- | -------------------------------------- | ------ |
+| 1    | Extract `train()` to `peft_trainer.py` | ✅     |
+| 2    | Create strategy ABC interfaces         | ✅     |
+| 3    | Create SD strategy implementations     | ✅     |
+| 4    | Extract logging/plotting utilities     | ✅     |
+| 5    | Remove `SDPeftTrainer` class           | ✅     |
+
+**Remaining (Future):**
+
+- [ ] Create SDXL strategy implementation (`peft_strategy_sdxl.py`)
+- [ ] Update `sdxl_peft.py` to use strategy pattern
+- [ ] End-to-end smoke testing
 
 ---
 

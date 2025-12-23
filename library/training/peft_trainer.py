@@ -49,6 +49,12 @@ from library.training.optimizer import prepare_optimizer, get_scheduler_fix
 from library.training.sample_generation import sample_images, sample_images_check
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
 from library.config.dataclasses.sd_peft import SDPeftConfig
+from library.strategies.peft_strategy_sd import SdPeftStrategy
+from library.training.peft_common import (
+    generate_step_logs,
+    step_logging,
+    save_timestep_distribution_plot,
+)
 
 from library.timestep_samplers.loss_aware_sampler import LossAwareTimestepSampler
 from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
@@ -119,8 +125,8 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def train(self, cfg: SDPeftConfig):
-    self.la_sampler = None
+def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
+    strategies.la_sampler = None
 
     session_id = random.randint(0, 2 ** 32)
     training_started_at = time.time()
@@ -137,12 +143,12 @@ def train(self, cfg: SDPeftConfig):
 
     set_seed_from_config(cfg.training)
 
-    tokenize_strategy = self.get_tokenize_strategy(cfg)
+    tokenize_strategy = strategies.get_tokenize_strategy(cfg)
     strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
-    tokenizers = self.get_tokenizers(tokenize_strategy)  # will be removed after sample_image is refactored
+    tokenizers = strategies.get_tokenizers(tokenize_strategy)  # will be removed after sample_image is refactored
 
     # prepare caching strategy: this must be set before preparing dataset. because dataset may use this strategy for initialization.
-    latents_caching_strategy = self.get_latents_caching_strategy(cfg)
+    latents_caching_strategy = strategies.get_latents_caching_strategy(cfg)
     strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
     # データセットを準備する
@@ -196,7 +202,7 @@ def train(self, cfg: SDPeftConfig):
                 val_dataset_group.is_latent_cacheable()
             ), "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
 
-    self.validate_extra_config(cfg, train_dataset_group, val_dataset_group)
+    strategies.validate_extra_config(cfg, train_dataset_group, val_dataset_group)
 
     # acceleratorを準備する
     logger.info("preparing accelerator")
@@ -205,10 +211,10 @@ def train(self, cfg: SDPeftConfig):
 
     # mixed precisionに対応した型を用意しておき適宜castする
     weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.saving)
-    vae_dtype = (torch.float32 if cfg.performance.no_half_vae else weight_dtype) if self.cast_vae(cfg) else None
+    vae_dtype = (torch.float32 if cfg.performance.no_half_vae else weight_dtype) if strategies.cast_vae(cfg) else None
 
     # load target models: unet may be None for lazy loading
-    model_version, text_encoder, vae, unet = self.load_target_model(cfg, weight_dtype, accelerator)
+    model_version, text_encoder, vae, unet = strategies.load_target_model(cfg, weight_dtype, accelerator)
 
     if vae_dtype is None:
         vae_dtype = vae.dtype
@@ -234,21 +240,21 @@ def train(self, cfg: SDPeftConfig):
 
     # 必要ならテキストエンコーダーの出力をキャッシュする: Text Encoderはcpuまたはgpuへ移される
     # cache text encoder outputs if needed: Text Encoder is moved to cpu or gpu
-    text_encoding_strategy = self.get_text_encoding_strategy(cfg)
+    text_encoding_strategy = strategies.get_text_encoding_strategy(cfg)
     strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
-    text_encoder_outputs_caching_strategy = self.get_text_encoder_outputs_caching_strategy(cfg)
+    text_encoder_outputs_caching_strategy = strategies.get_text_encoder_outputs_caching_strategy(cfg)
     if text_encoder_outputs_caching_strategy is not None:
         strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_outputs_caching_strategy)
-    self.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, train_dataset_group,
+    strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, train_dataset_group,
                                               weight_dtype)
     if val_dataset_group is not None:
-        self.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, val_dataset_group,
+        strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, val_dataset_group,
                                                   weight_dtype)
 
     if unet is None:
         # lazy load unet if needed. text encoders may be freed or replaced with dummy models for saving memory
-        unet, text_encoders = self.load_unet_lazily(cfg, weight_dtype, accelerator, text_encoders)
+        unet, text_encoders = strategies.load_unet_lazily(cfg, weight_dtype, accelerator, text_encoders)
 
     # 差分追加学習のためにモデルを読み込む
     sys.path.append(os.path.dirname(__file__))
@@ -315,11 +321,11 @@ def train(self, cfg: SDPeftConfig):
         )
         cfg.network.scale_weight_norms = False
 
-    self.post_process_network(cfg, accelerator, network, text_encoders, unet)
+    strategies.post_process_network(cfg, accelerator, network, text_encoders, unet)
 
     # apply network to unet and text_encoder
     train_unet = not cfg.network.network_train_text_encoder_only
-    train_text_encoder = self.is_train_text_encoder(cfg)
+    train_text_encoder = strategies.is_train_text_encoder(cfg)
     network.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 
     if cfg.network.network_weights is not None:
@@ -339,7 +345,7 @@ def train(self, cfg: SDPeftConfig):
         else:
             unet.enable_gradient_checkpointing()
 
-        for t_enc, flag in zip(text_encoders, self.get_text_encoders_train_flags(cfg, text_encoders)):
+        for t_enc, flag in zip(text_encoders, strategies.get_text_encoders_train_flags(cfg, text_encoders)):
             if flag:
                 if t_enc.supports_gradient_checkpointing:
                     t_enc.gradient_checkpointing_enable()
@@ -436,22 +442,22 @@ def train(self, cfg: SDPeftConfig):
         unet.to(dtype=unet_weight_dtype)  # do not move to device because unet is not prepared by accelerator
 
     unet.requires_grad_(False)
-    if self.cast_unet(cfg):
+    if strategies.cast_unet(cfg):
         unet.to(dtype=unet_weight_dtype)
     for i, t_enc in enumerate(text_encoders):
         t_enc.requires_grad_(False)
 
         # in case of cpu, dtype is already set to fp32 because cpu does not support fp8/fp16/bf16
-        if t_enc.device.type != "cpu" and self.cast_text_encoder(cfg):
+        if t_enc.device.type != "cpu" and strategies.cast_text_encoder(cfg):
             t_enc.to(dtype=te_weight_dtype)
 
             # nn.Embedding not support FP8
             if te_weight_dtype != weight_dtype:
-                self.prepare_text_encoder_fp8(i, t_enc, te_weight_dtype, weight_dtype)
+                strategies.prepare_text_encoder_fp8(i, t_enc, te_weight_dtype, weight_dtype)
 
     # acceleratorがなんかよろしくやってくれるらしい / accelerator will do something good
     if cfg.performance.deepspeed:
-        flags = self.get_text_encoders_train_flags(cfg, text_encoders)
+        flags = strategies.get_text_encoders_train_flags(cfg, text_encoders)
         ds_model = deepspeed_utils.prepare_deepspeed_model(
             cfg.training,
             unet=unet if train_unet else None,
@@ -466,14 +472,14 @@ def train(self, cfg: SDPeftConfig):
     else:
         if train_unet:
             # default implementation is:  unet = accelerator.prepare(unet)
-            unet = self.prepare_unet_with_accelerator(cfg, accelerator, unet)  # accelerator does some magic here
+            unet = strategies.prepare_unet_with_accelerator(cfg, accelerator, unet)  # accelerator does some magic here
         else:
             # move to device because unet is not prepared by accelerator
-            unet.to(accelerator.device, dtype=unet_weight_dtype if self.cast_unet(cfg) else None)
+            unet.to(accelerator.device, dtype=unet_weight_dtype if strategies.cast_unet(cfg) else None)
         if train_text_encoder:
             text_encoders = [
                 (accelerator.prepare(t_enc) if flag else t_enc)
-                for t_enc, flag in zip(text_encoders, self.get_text_encoders_train_flags(cfg, text_encoders))
+                for t_enc, flag in zip(text_encoders, strategies.get_text_encoders_train_flags(cfg, text_encoders))
             ]
             if len(text_encoders) > 1:
                 text_encoder = text_encoders
@@ -496,12 +502,12 @@ def train(self, cfg: SDPeftConfig):
     if cfg.performance.gradient_checkpointing:
         # according to TI example in Diffusers, train is required
         unet.train()
-        for i, (t_enc, frag) in enumerate(zip(text_encoders, self.get_text_encoders_train_flags(cfg, text_encoders))):
+        for i, (t_enc, frag) in enumerate(zip(text_encoders, strategies.get_text_encoders_train_flags(cfg, text_encoders))):
             t_enc.train()
 
             # set top parameter requires_grad = True for gradient checkpointing works
             if frag:
-                self.prepare_text_encoder_grad_ckpt_workaround(i, t_enc)
+                strategies.prepare_text_encoder_grad_ckpt_workaround(i, t_enc)
 
     else:
         unet.eval()
@@ -663,7 +669,7 @@ def train(self, cfg: SDPeftConfig):
         "ss_resize_interpolation": cfg.dataset.resize_interpolation,
     }
 
-    self.update_metadata(metadata, cfg)  # architecture specific metadata
+    strategies.update_metadata(metadata, cfg)  # architecture specific metadata
 
     if use_user_config:
         # save metadata of multiple datasets
@@ -876,7 +882,7 @@ def train(self, cfg: SDPeftConfig):
 
     global_step = 0
 
-    noise_scheduler = self.get_noise_scheduler(cfg, accelerator.device)
+    noise_scheduler = strategies.get_noise_scheduler(cfg, accelerator.device)
 
     # --- LIVE PLOTTER & STATIC PLOT SETUP ---
     timestep_counts = None
@@ -886,10 +892,10 @@ def train(self, cfg: SDPeftConfig):
         # --- START: Comprehensive Settings Gathering ---
         # Determine the actual sampler being used
         sampler_type = cfg.timestep.timestep_sampling
-        if self.la_sampler is not None:
-            if isinstance(self.la_sampler, LogSNRUniformSampler):
+        if strategies.la_sampler is not None:
+            if isinstance(strategies.la_sampler, LogSNRUniformSampler):
                 sampler_type = "log_snr_uniform"
-            elif isinstance(self.la_sampler, TemperedAdaptiveSampler):
+            elif isinstance(strategies.la_sampler, TemperedAdaptiveSampler):
                 sampler_type = "tempered_adaptive"
             # The default is mix_adaptive if la_sampler exists
 
@@ -966,9 +972,9 @@ def train(self, cfg: SDPeftConfig):
                 logger.error(f"live_plotter.py not found at {plotter_script_path}. Live plotter disabled.")
             else:
                 # Step 3: Launch live_plotter.py if it's not already running.
-                if self.live_plotter_process is None or self.live_plotter_process.poll() is not None:
+                if strategies.live_plotter_process is None or strategies.live_plotter_process.poll() is not None:
                     logger.info(f"Launching live plotter server on port {cfg.logging.live_plot_port}")
-                    self.live_plotter_process = subprocess.Popen(
+                    strategies.live_plotter_process = subprocess.Popen(
                         [sys.executable, plotter_script_path, "--port", str(cfg.logging.live_plot_port)],
                         stdin=subprocess.PIPE,
                     )
@@ -980,13 +986,13 @@ def train(self, cfg: SDPeftConfig):
                 settings_str = f"SETTINGS::{json.dumps(plotter_settings)}\n"
 
                 try:
-                    self.live_plotter_process.stdin.write(reset_str.encode('utf-8'))
-                    self.live_plotter_process.stdin.write(schedule_str.encode('utf-8'))
-                    self.live_plotter_process.stdin.write(settings_str.encode('utf-8'))
-                    self.live_plotter_process.stdin.flush()
+                    strategies.live_plotter_process.stdin.write(reset_str.encode('utf-8'))
+                    strategies.live_plotter_process.stdin.write(schedule_str.encode('utf-8'))
+                    strategies.live_plotter_process.stdin.write(settings_str.encode('utf-8'))
+                    strategies.live_plotter_process.stdin.flush()
                 except (BrokenPipeError, OSError):
                     logger.error("Failed to send data to live plotter. It may have crashed.")
-                    self.live_plotter_process = None
+                    strategies.live_plotter_process = None
 
         # Setup for saving static plot images
         if cfg.logging.log_timestep_distribution_every_n_steps is not None:
@@ -997,11 +1003,11 @@ def train(self, cfg: SDPeftConfig):
     if cfg.timestep.timestep_sampling:
         if cfg.timestep.timestep_sampling == "log_snr_uniform":
             accelerator.print("Initializing LogSNRUniformSampler.")
-            self.la_sampler = LogSNRUniformSampler(noise_scheduler, noise_scheduler.config.num_train_timesteps)
+            strategies.la_sampler = LogSNRUniformSampler(noise_scheduler, noise_scheduler.config.num_train_timesteps)
             cfg.timestep.timestep_sampling = "mix_adaptive"
         elif cfg.timestep.timestep_sampling == "tempered_adaptive":
             accelerator.print("Initializing TemperedAdaptiveSampler.")
-            self.la_sampler = TemperedAdaptiveSampler(
+            strategies.la_sampler = TemperedAdaptiveSampler(
                 noise_scheduler,
                 num_bins=cfg.timestep.mix_adaptive_bins,
                 ema_beta=cfg.timestep.mix_adaptive_ema_beta,
@@ -1015,7 +1021,7 @@ def train(self, cfg: SDPeftConfig):
             cfg.timestep.timestep_sampling = "mix_adaptive"
         elif cfg.timestep.timestep_sampling == "gaussian_mid_snr":
             accelerator.print("Initializing GaussianMidSNRSampler.")
-            self.la_sampler = GaussianMidSNRSampler(
+            strategies.la_sampler = GaussianMidSNRSampler(
                 noise_scheduler,
                 num_bins=cfg.timestep.mix_adaptive_bins,
                 ema_beta=cfg.timestep.mix_adaptive_ema_beta,
@@ -1031,7 +1037,7 @@ def train(self, cfg: SDPeftConfig):
             cfg.timestep.timestep_sampling = "mix_adaptive"
         elif cfg.timestep.timestep_sampling == "snr_windowed":
             accelerator.print("Initializing SNRWindowedSampler.")
-            self.la_sampler = SNRWindowedSampler(
+            strategies.la_sampler = SNRWindowedSampler(
                 noise_scheduler,
                 num_bins=cfg.timestep.mix_adaptive_bins,
                 ema_beta=cfg.timestep.mix_adaptive_ema_beta,
@@ -1047,7 +1053,7 @@ def train(self, cfg: SDPeftConfig):
             )
         elif cfg.timestep.timestep_sampling == "snr_windowed":
             accelerator.print("Initializing SNRWindowedSampler.")
-            self.la_sampler = SNRWindowedSampler(
+            strategies.la_sampler = SNRWindowedSampler(
                 noise_scheduler,
                 num_bins=cfg.timestep.mix_adaptive_bins,
                 ema_beta=cfg.timestep.mix_adaptive_ema_beta,
@@ -1065,7 +1071,7 @@ def train(self, cfg: SDPeftConfig):
 
         elif cfg.timestep.timestep_sampling == "mix_adaptive":
             accelerator.print("Initializing LossAwareTimestepSampler.")
-            self.la_sampler = LossAwareTimestepSampler(
+            strategies.la_sampler = LossAwareTimestepSampler(
                 num_train_timesteps=noise_scheduler.config.num_train_timesteps,
                 num_bins=cfg.timestep.mix_adaptive_bins,
                 ema_beta=cfg.timestep.mix_adaptive_ema_beta,
@@ -1076,15 +1082,15 @@ def train(self, cfg: SDPeftConfig):
                 anneal=cfg.timestep.mix_adaptive_anneal,
                 fixed_p=cfg.timestep.mix_adaptive_fixed_p,
             )
-            # No need to set args.la_sampler, we use self.la_sampler
+            # No need to set args.la_sampler, we use strategies.la_sampler
 
         if cfg.timestep.timestep_sampling == "sigma" or cfg.timestep.timestep_sampling == "uniform":
-            self.la_sampler = None
+            strategies.la_sampler = None
             cfg.timestep.timestep_sampling = "uniform"
             if cfg.timestep.timestep_sampling == "sigma":
                 logger.warning("sigma sampling is not supported yet, using uniform sampling")
         elif cfg.timestep.timestep_sampling == "shift":
-            self.la_sampler = None
+            strategies.la_sampler = None
             # shift sampling is handled in get_noise_noisy_latents_and_timesteps
 
     edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss, cfg.training, noise_scheduler,
@@ -1119,7 +1125,7 @@ def train(self, cfg: SDPeftConfig):
         metadata["ss_epoch"] = str(epoch_no)
 
         metadata_to_save = minimum_metadata if cfg.saving.no_metadata else metadata
-        sai_metadata = self.get_sai_model_spec(cfg)
+        sai_metadata = strategies.get_sai_model_spec(cfg)
         metadata_to_save.update(sai_metadata)
 
         unwrapped_nw.save_weights(ckpt_file, dtype_override or save_dtype, metadata_to_save)
@@ -1134,7 +1140,7 @@ def train(self, cfg: SDPeftConfig):
 
     # if text_encoder is not needed for training, delete it to save memory.
     # TODO this can be automated after SDXL sample prompt cache is implemented
-    if self.is_text_encoder_not_needed_for_training(cfg):
+    if strategies.is_text_encoder_not_needed_for_training(cfg):
         logger.info("text_encoder is not needed for training. deleting to save memory.")
         for t_enc in text_encoders:
             del t_enc
@@ -1159,9 +1165,9 @@ def train(self, cfg: SDPeftConfig):
         # Switch network to eval mode
         accelerator.unwrap_model(network).eval()
         optimizer_eval_fn()
-        self.sample_images(accelerator, cfg, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
+        strategies.sample_images(accelerator, cfg, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
         if calculate_val_loss_check(cfg.training, global_step, 0, val_dataloader, train_dataloader):
-            current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(
+            current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(
                 global_step, 0, train_dataloader, val_loss_recorder, val_dataloader,
                 cyclic_val_dataloader, network, tokenize_strategy,
                 text_encoders, text_encoding_strategy, unet, vae, noise_scheduler,
@@ -1175,21 +1181,22 @@ def train(self, cfg: SDPeftConfig):
 
     is_tracking = len(accelerator.trackers) > 0
     if is_tracking:
-        logs = self.generate_step_logs(
+        logs = generate_step_logs(
             cfg,
             current_global_step_loss,
             avr_loss,
             lr_scheduler,
             lr_descriptions,
-            optimizer,
-            keys_scaled,
-            mean_norm,
-            maximum_norm,
-            mean_grad_norm,
-            mean_combined_norm,
-            edm2_lr_scheduler,
-            current_global_step_loss_scaled,
-            average_loss_scaled,
+            la_sampler=strategies.la_sampler,
+            optimizer=optimizer,
+            keys_scaled=keys_scaled,
+            mean_norm=mean_norm,
+            maximum_norm=maximum_norm,
+            mean_grad_norm=mean_grad_norm,
+            mean_combined_norm=mean_combined_norm,
+            edm2_lr_scheduler=edm2_lr_scheduler,
+            current_loss_scaled=current_global_step_loss_scaled,
+            average_loss_scaled=average_loss_scaled,
             current_val_loss=current_val_loss,
             average_val_loss=average_val_loss
         )
@@ -1272,9 +1279,9 @@ def train(self, cfg: SDPeftConfig):
                 accumulation_counter += 1
 
                 # preprocess batch for each model
-                self.on_step_start(cfg, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=True)
+                strategies.on_step_start(cfg, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=True)
 
-                loss, pre_scaling_loss, loss_scaled, timesteps = self.process_batch(
+                loss, pre_scaling_loss, loss_scaled, timesteps = strategies.process_batch(
                     batch,
                     text_encoders,
                     unet,
@@ -1301,7 +1308,7 @@ def train(self, cfg: SDPeftConfig):
                 loss = pre_scaling_loss
 
                 if accelerator.sync_gradients:
-                    self.all_reduce_network(accelerator, network)  # sync DDP grad manually
+                    strategies.all_reduce_network(accelerator, network)  # sync DDP grad manually
                     if cfg.optimizer.max_grad_norm != 0.0:
                         params_to_clip = accelerator.unwrap_model(network).get_trainable_params()
                         accelerator.clip_grad_norm_(params_to_clip, cfg.optimizer.max_grad_norm)
@@ -1345,12 +1352,12 @@ def train(self, cfg: SDPeftConfig):
 
                     accelerator.unwrap_model(network).eval()
                     optimizer_eval_fn()
-                    self.sample_images(
+                    strategies.sample_images(
                         accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
                     )
 
                     if calculate_val_loss_check(cfg.training, global_step, step, val_dataloader, train_dataloader):
-                        current_val_loss, average_val_loss, val_logs = self.calculate_val_loss(global_step, step,
+                        current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(global_step, step,
                                                                                                skipped_dataloader or train_dataloader,
                                                                                                val_loss_recorder,
                                                                                                val_dataloader,
@@ -1430,26 +1437,27 @@ def train(self, cfg: SDPeftConfig):
                         current_global_step_loss_scaled = None
                         average_loss_scaled = None
 
-                    logs = self.generate_step_logs(
+                    logs = generate_step_logs(
                         cfg,
                         current_global_step_loss,
                         avr_loss,
                         lr_scheduler,
                         lr_descriptions,
-                        optimizer,
-                        keys_scaled,
-                        mean_norm,
-                        maximum_norm,
-                        mean_grad_norm,
-                        mean_combined_norm,
-                        edm2_lr_scheduler,
-                        current_global_step_loss_scaled,
-                        average_loss_scaled,
+                        la_sampler=strategies.la_sampler,
+                        optimizer=optimizer,
+                        keys_scaled=keys_scaled,
+                        mean_norm=mean_norm,
+                        maximum_norm=maximum_norm,
+                        mean_grad_norm=mean_grad_norm,
+                        mean_combined_norm=mean_combined_norm,
+                        edm2_lr_scheduler=edm2_lr_scheduler,
+                        current_loss_scaled=current_global_step_loss_scaled,
+                        average_loss_scaled=average_loss_scaled,
                         current_val_loss=current_val_loss,
                         average_val_loss=average_val_loss,
                         timesteps=timesteps
                     )
-                    self.step_logging(accelerator, logs, global_step, epoch + 1)
+                    step_logging(accelerator, logs, global_step, epoch + 1)
 
                 current_global_step_loss = 0.0
 
@@ -1463,14 +1471,14 @@ def train(self, cfg: SDPeftConfig):
                     timesteps_np = timesteps.cpu().numpy()
 
                     # Send data to the live plotter
-                    if self.live_plotter_process and self.live_plotter_process.poll() is None:
+                    if strategies.live_plotter_process and strategies.live_plotter_process.poll() is None:
                         try:
-                            self.live_plotter_process.stdin.write(
+                            strategies.live_plotter_process.stdin.write(
                                 f"{','.join(map(str, timesteps_np))}\n".encode('utf-8'))
-                            self.live_plotter_process.stdin.flush()
+                            strategies.live_plotter_process.stdin.flush()
                         except (BrokenPipeError, OSError):
                             logger.error("Live plotter connection lost.")
-                            self.live_plotter_process = None
+                            strategies.live_plotter_process = None
 
                     # Update counts and save static plot if needed
                     if timestep_counts is not None:
@@ -1478,7 +1486,7 @@ def train(self, cfg: SDPeftConfig):
                         timestep_counts[unique] += counts
 
                         if global_step % cfg.logging.log_timestep_distribution_every_n_steps == 0:
-                            self.save_timestep_distribution_plot(cfg, global_step, timestep_counts, plotter_settings)
+                            save_timestep_distribution_plot(cfg, global_step, timestep_counts, plotter_settings)
 
             if global_step >= cfg.training.max_train_steps:
                 break
@@ -1523,7 +1531,7 @@ def train(self, cfg: SDPeftConfig):
                     if cfg.saving.save_state:
                         save_and_remove_state_on_epoch_end(cfg.saving, accelerator, current_epoch.value)
 
-            self.sample_images(accelerator, cfg, current_epoch.value, global_step, accelerator.device, vae, tokenizers,
+            strategies.sample_images(accelerator, cfg, current_epoch.value, global_step, accelerator.device, vae, tokenizers,
                                text_encoder, unet)
             progress_bar.unpause()
             optimizer_train_fn()
