@@ -42,11 +42,11 @@ OLD (monolithic):                     NEW (modular):
 
 ---
 
-## 🚧 IN PROGRESS: Phase 3 - SDXL Strategy & Script-Based Training Loops
+## ✅ COMPLETED: Phase 3 - SDXL Strategy & Script-Based Training Loops
 
-**Design Decision:** Training loops should live in the scripts (not shared in library). Each model may have different orchestration needs, and the strategy pattern already handles the model-specific operations.
+**Design Decision:** Training loops live in the scripts (not shared in library). The strategy pattern handles model-specific operations.
 
-**Progress:**
+**Completed Steps:**
 
 | Step | Description                                              | Status  |
 | ---- | -------------------------------------------------------- | ------- |
@@ -58,19 +58,35 @@ OLD (monolithic):                     NEW (modular):
 | 6    | Create `sdxl_peft.py` train() using SDXL strategy        | ✅ Done |
 | 7    | Review/cleanup `peft_trainer.py`                         | ✅ Done |
 
-**Extractions added to `peft_common.py`:**
+---
 
+## ✅ COMPLETED: Phase 4 - Training Loop Cleanup
+
+**Goal:** Extract shared setup code from `sd_peft.py` and `sdxl_peft.py` into `peft_common.py`.
+
+**Completed Extractions:**
+
+| Function                            | Lines Saved (per script) | Description                         |
+| ----------------------------------- | ------------------------ | ----------------------------------- |
+| `prepare_datasets()`                | ~47                      | Dataset group creation & validation |
+| `calculate_initial_step()`          | ~42                      | Resume step/epoch calculation       |
+| `parse_dynamic_timestep_schedule()` | ~10                      | Dynamic timestep range parsing      |
+
+**Total reduction:** ~100 lines per script (from 1173 to ~1073 lines)
+
+**All extractions in `peft_common.py`:**
+
+- `prepare_datasets()` - Dataset preparation, blueprint generation, validation
+- `calculate_initial_step()` - Resume/initial step calculation
+- `parse_dynamic_timestep_schedule()` - Dynamic timestep schedule parsing
 - `init_timestep_sampler()` - Handles 5+ sampler types (~100 lines)
 - `create_training_metadata()` - Creates 65+ metadata keys (~230 lines)
 - `setup_live_plotter()` + `get_plotter_settings()` - Live plotter setup (~140 lines)
+- `generate_step_logs()` - Step logging for training progress
+- `step_logging()`, `epoch_logging()` - Accelerator logging utilities
 
-> [!IMPORTANT] > **Metadata Note:** The `create_training_metadata()` function handles complex dataset iteration logic for both DreamBooth and fine-tuning modes. If metadata issues arise during training, check this function first.
-
-**Remaining Extraction Candidate:**
-
-- Live plotter setup (~110 lines, lines 681-793) - Lower priority, can extract after SDXL script completion
-
-### Phase 4: Training Loop Cleanup
+> [!NOTE]
+> Smoke tests added for all extracted functions. Run `pytest tests/unit/test_peft_scripts_smoke.py -v` to verify.
 
 ---
 

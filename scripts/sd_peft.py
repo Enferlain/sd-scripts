@@ -68,10 +68,9 @@ from library.training.peft_common import (
     init_timestep_sampler,
     create_training_metadata,
     setup_live_plotter,
-)
-
-from library.config.config_util import (
-    BlueprintGenerator,
+    prepare_datasets,
+    calculate_initial_step,
+    parse_dynamic_timestep_schedule,
 )
 
 from library.training.checkpointing import (
@@ -157,58 +156,11 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     latents_caching_strategy = strategies.get_latents_caching_strategy(cfg)
     strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
-    # データセットを準備する
-    if cfg.dataset.dataset_class is None:
-        # Check if we have manually provided subsets via train_data_dir/reg_data_dir
-        if (cfg.dataset.train_data_dir is not None or cfg.dataset.reg_data_dir is not None) and len(
-                cfg.dataset.subsets) == 0:
-            # Generate subsets config from dirs
-            user_config = config_util.generate_user_config_from_dataset(cfg.dataset)
-            # We need to inject this into cfg.dataset.subsets
-            # cfg.dataset.subsets is a List[dict] (or ListConfig)
-            # user_config['datasets'][0]['subsets'] is the list we want
-            if user_config['datasets']:
-                cfg.dataset.subsets = user_config['datasets'][0]['subsets']
-
-        blueprint_generator = BlueprintGenerator()
-        blueprint = blueprint_generator.generate(cfg)
-        train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(
-            blueprint.dataset_group)
-    else:
-        # use arbitrary dataset class
-        # load_arbitrary_dataset expects args
-        train_dataset_group = load_arbitrary_dataset(cfg.dataset)
-        val_dataset_group = None  # placeholder until validation dataset supported for arbitrary
-
-    current_epoch = Value("i", 0)
-    current_step = Value("i", 0)
-    ds_for_collator = train_dataset_group if cfg.training.max_data_loader_n_workers == 0 else None
-    collator = collator_class(current_epoch, current_step, ds_for_collator)
-
-    if cfg.dataset.debug_dataset:
-        train_dataset_group.set_current_strategies()  # dataset needs to know the strategies explicitly
-        debug_dataset(train_dataset_group)
-
-        if val_dataset_group is not None:
-            val_dataset_group.set_current_strategies()  # dataset needs to know the strategies explicitly
-            debug_dataset(val_dataset_group)
-        return
-    if len(train_dataset_group) == 0:
-        logger.error(
-            "No data found. Please verify arguments (train_data_dir must be the parent of folders with images) / 画像がありません。引数指定を確認してください（train_data_dirには画像があるフォルダではなく、画像があるフォルダの親フォルダを指定する必要があります）"
-        )
-        return
-
-    if cache_latents:
-        assert (
-            train_dataset_group.is_latent_cacheable()
-        ), "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
-        if val_dataset_group is not None:
-            assert (
-                val_dataset_group.is_latent_cacheable()
-            ), "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
-
-    strategies.validate_extra_config(cfg, train_dataset_group, val_dataset_group)
+    # Prepare datasets
+    dataset_result = prepare_datasets(cfg, strategies)
+    if dataset_result is None:
+        return  # debug_dataset mode or no data found
+    train_dataset_group, val_dataset_group, collator, current_epoch, current_step = dataset_result
 
     # acceleratorを準備する
     logger.info("preparing accelerator")
@@ -624,48 +576,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     strategies.update_metadata(metadata, cfg)  # architecture specific metadata
 
     # calculate steps to skip when resuming or starting from a specific step
-    initial_step = 0
-    if cfg.training.initial_epoch is not None or cfg.training.initial_step is not None:
-        # if initial_epoch or initial_step is specified, steps_from_state is ignored even when resuming
-        if steps_from_state is not None:
-            logger.warning(
-                "steps from the state is ignored because initial_step is specified / initial_stepが指定されているため、stateからのステップ数は無視されます"
-            )
-        if cfg.training.initial_step is not None:
-            initial_step = cfg.training.initial_step
-        else:
-            # num steps per epoch is calculated by num_processes and gradient_accumulation_steps
-            initial_step = (cfg.training.initial_epoch - 1) * math.ceil(
-                len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
-            )
-    else:
-        # if initial_epoch and initial_step are not specified, steps_from_state is used when resuming
-        if steps_from_state is not None:
-            initial_step = steps_from_state
-            steps_from_state = None
-
-    if initial_step > 0:
-        assert (
-                cfg.training.max_train_steps > initial_step
-        ), f"max_train_steps should be greater than initial step / max_train_stepsは初期ステップより大きい必要があります: {cfg.training.max_train_steps} vs {initial_step}"
-
-    epoch_to_start = 0
-    if initial_step > 0:
-        if cfg.training.skip_until_initial_step:
-            # if skip_until_initial_step is specified, load data and discard it to ensure the same data is used
-            if not cfg.saving.resume:
-                logger.info(
-                    f"initial_step is specified but not resuming. lr scheduler will be started from the beginning / initial_stepが指定されていますがresumeしていないため、lr schedulerは最初から始まります"
-                )
-            logger.info(f"skipping {initial_step} steps / {initial_step}ステップをスキップします")
-            initial_step *= cfg.training.gradient_accumulation_steps
-
-            # set epoch to start to make initial_step less than len(train_dataloader)
-            epoch_to_start = initial_step // math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
-        else:
-            # if not, only epoch no is skipped for informative purpose
-            epoch_to_start = initial_step // math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
-            initial_step = 0  # do not skip
+    initial_step, epoch_to_start = calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
 
     global_step = 0
 
@@ -808,19 +719,10 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         param_3rd = params_itr.__next__()
         logger.info(f"text_encoder [{i}] dtype: {param_3rd.dtype}, device: {t_enc.device}")
 
-    # --- Add this block for Dynamic Timestep Schedule ---
-    # Parse the schedule from the command-line argument string
-    dynamic_timestep_schedule = ast.literal_eval(
-        cfg.timestep.dynamic_timestep_schedule) if cfg.timestep.dynamic_timestep_schedule else None
-    if dynamic_timestep_schedule:
-        # Sort the schedule by step number to be safe
-        dynamic_timestep_schedule.sort(key=lambda x: x[0])
-        accelerator.print(f"Using dynamic timestep schedule: {dynamic_timestep_schedule}")
-
-    # Initialize the current range with the defaults
-    current_min_timestep = 0 if cfg.timestep.min_timestep is None else cfg.timestep.min_timestep
-    current_max_timestep = noise_scheduler.config.num_train_timesteps if cfg.timestep.max_timestep is None else cfg.timestep.max_timestep
-    # ---------------------------------------------------
+    # --- Dynamic Timestep Schedule ---
+    dynamic_timestep_schedule, current_min_timestep, current_max_timestep = parse_dynamic_timestep_schedule(
+        cfg, noise_scheduler, accelerator
+    )
 
     clean_memory_on_device(accelerator.device)
 
