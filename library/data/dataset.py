@@ -1062,6 +1062,7 @@ class BaseDataset(torch.utils.data.Dataset):
             if tokenization_required:
                 caption = self.process_caption(subset, image_info.caption)
                 input_ids = [ids[0] for ids in self.tokenize_strategy.tokenize(caption)]  # remove batch dimension
+                # TODO: What is this commented out section for?
                 # if self.XTI_layers:
                 #     caption_layer = []
                 #     for layer in self.XTI_layers:

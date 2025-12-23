@@ -30,53 +30,69 @@
 - **Caching** (24 tests) - `caching.py` - latent cache validation, VAE encoding, text encoder output caching with heavy mocking
 - **Trainer Utils** (27 tests) - `trainer_utils.py` - validation checks, LR logging, Accelerator preparation with heavy mocking
 
-### Next Phase: Unit Tests with Heavy Mocking
-
-Legend: ✅ Done | 🔶 Partial (pure funcs done, classes need mocks) | ❌ No tests
+### Completed Unit Tests (with Heavy Mocking)
 
 **Training Core:**
 
-- 🔶 `dataset.py` - Buketing logic tested (6 tests). Remaining: `__getitem__` path.
-- ✅ `training/checkpointing.py` - 23 tests (naming, metadata, utils)
-- ✅ `training/sample_generation.py` - 25 tests (prompt parsing, scheduler, prompts loading). Remaining: `sample_images_common`, `sample_images_inference`
-- ✅ `training/model_prep.py` - 7 tests (accelerator patching, unet modules). Remaining: `load_target_model` with Accelerator
+- ✅ `dataset.py` - 14 tests (bucketing + `__getitem__`: cached/disk latents, image loading, flip aug, batching)
+- ✅ `training/checkpointing.py` - 23 tests (naming, metadata, utils). **BUG FIXED**: `v_parameterization` access
+- ✅ `training/sdxl_checkpointing.py` - 16 tests (wrapper callbacks, SAI metadata). **BUG FIXED**: same
+- ✅ `training/sample_generation.py` - 25 tests (prompt parsing, scheduler, prompts loading)
+- ✅ `training/model_prep.py` - 7 tests (accelerator patching, unet modules)
+- ✅ `training/sdxl_model_prep.py` - 10 tests (load_target_model, diffusers/ckpt handling)
 
 **Model Utilities:**
 
-- 🔶 `model_util.py` - 64 tests (pure funcs + 15 conversion tests). Remaining: loaders/savers = integration
-- 🔶 `sdxl_model_util.py` - 27 tests (embeddings, conversion maps, state dict conversion). Remaining: `load_models_from_sdxl_checkpoint`, `save_stable_diffusion_checkpoint`
-- ✅ `training/sdxl_model_prep.py` - 10 tests (load_target_model multiprocess, load logic, diffusers/ckpt handling)
-- ✅ `training/sdxl_checkpointing.py` - 16 tests (wrapper callbacks, SAI metadata, model passing). **BUG FIXED**: was accessing `training_config.v_parameterization` instead of `loss_config.v_parameterization`
-- ✅ `training/checkpointing.py` - 23 tests. **BUG FIXED**: Same `v_parameterization` fix applied (uses LossConfig now)
+- ✅ `model_util.py` - 64 tests (pure funcs + conversion utilities)
+- ✅ `sdxl_model_util.py` - 27 tests (embeddings, conversion maps, state dict conversion)
 
 **Optimization Modules:**
 
-- ✅ `optimizations/custom_offloading_utils.py` - 53 tests (utils, Offloader, ModelOffloader classes)
-- 🔶 `optimizations/deepspeed_utils.py` - 17 tests (prepare_deepspeed_config, plugin creation, model wrapping). Remaining: full integration with real DeepSpeed
-- ✅ `optimizations/fp8_optimization_utils.py` - 22 tests (quantization logic, monkey patching)
+- ✅ `optimizations/custom_offloading_utils.py` - 53 tests (utils + Offloader classes)
+- ✅ `optimizations/fp8_optimization_utils.py` - 22 tests (quantization + monkey patching)
+- ✅ `optimizations/deepspeed_utils.py` - 17 tests (config, plugin creation)
 
-**Network Classes:**
+**Network Utilities:**
 
-- 🔶 `networks/lora.py` - 42 tests (block LR, dims/alphas, utils). Remaining: `LoRANetwork` class, `create_network()`
-- 🔶 `networks/lora_diffusers.py` - 20 tests (conversion maps). Remaining: `LoRANetwork` class, `merge_lora_weights()`
-- 🔶 `networks/lora_utils.py` - 8 tests (filtering, merging). Done for pure funcs
-- ❌ `networks/oft.py` - `OFTNetwork` class (recursive module mocks)
-- ❌ `networks/dylora.py` - `DyLoRANetwork` class (dynamic module switching)
+- ✅ `networks/lora.py` - 42 tests (block LR, dims/alphas parsing)
+- ✅ `networks/lora_diffusers.py` - 20 tests (conversion maps)
+- ✅ `networks/lora_utils.py` - 8 tests (filtering, merging)
 
-**Models (Integration-level, skip for unit tests):**
+**Pipelines:**
 
-- ❌ `models/original_unet.py` - Full UNet implementation (GPU/autograd - integration only)
-- ❌ `models/sdxl_original_unet.py` - SDXL UNet (integration only)
-- ❌ `models/sdxl_original_control_net.py` - ControlNet (integration only)
+- ✅ `pipelines/lpw_stable_diffusion.py` - 31 tests (prompt attention parsing, token padding)
+- ✅ `pipelines/sdxl_lpw_stable_diffusion.py` - Same (shared test file)
 
-### Future: Integration Tests
+**Strategies:**
 
-These require real models/GPU and cannot use mocks:
+- ✅ `strategies/strategy_base.py` - 74 tests (TokenizeStrategy, TextEncodingStrategy, caching)
+- ✅ `strategies/strategy_sd.py` - 29 tests (SD1.5/2.0 tokenize, encoding, latent caching)
+- ✅ `strategies/strategy_sdxl.py` - 36 tests (SDXL dual tokenizers, dual encoders, pool workaround)
 
-- End-to-end config → training setup validation
-- Checkpoint save/load cycles
-- Multi-GPU scenarios (requires `requires_gpu` marker)
-- Data loading with real filesystem caching
+---
+
+### Integration Tests (Remaining)
+
+These require real models, GPU access, or full component initialization:
+
+| Category               | Items                                                      | Priority |
+| ---------------------- | ---------------------------------------------------------- | -------- |
+| **Checkpoint I/O**     | `load_models_from_*`, `save_*_checkpoint`                  | High     |
+| **Network Classes**    | `LoRANetwork.apply_to()`, `create_network()`               | Medium   |
+| **Sample Generation**  | `sample_images_common`, inference pipeline                 | Medium   |
+| **Full Training Loop** | Config → Trainer → Step                                    | High     |
+| **Pipelines**          | `StableDiffusionLongPromptWeightingPipeline` class methods | Low      |
+| **Multi-GPU**          | DeepSpeed/FSDP distributed                                 | Low      |
+
+**Model implementations (integration only):**
+
+- `models/original_unet.py`, `models/sdxl_original_unet.py`
+
+**Skipped (No Tests Needed):**
+
+- `networks/oft.py`, `networks/dylora.py` (rarely used)
+
+---
 
 ### CI/CD Setup (Future)
 
@@ -109,6 +125,7 @@ These require real models/GPU and cannot use mocks:
 - Investigate naming scheme and separation of concerns for backend modules vs training scripts
 - Timestep sampling needs proper reimplementation (currently hacked into training scripts)
 - Clean integration for external `live_plotter`
+- Dataset and bucketing decouple in code?
 
 ---
 

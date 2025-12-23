@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `test_models_conversion.py` - Added unit tests for model conversion functions (15 tests: VAE attention/resnet paths, checkpoint assignment, VAE state dict conversion)
   - `test_fp8_optimization.py` - Added tests for `apply_fp8_monkey_patch` and `fp8_linear_forward_patch` (7 tests)
   - `test_optimizations_offloading.py` - Added tests for `Offloader` and `ModelOffloader` classes (11 tests)
+  - `test_dataset_bucketing.py` - Added 8 tests for `BaseDataset.__getitem__` (cached/disk latents, image loading, flip aug, batching)
   - Audited ROADMAP "Heavy Mocking" section with accurate ✅/🔶/❌ status for each module
 
 ## [2025-12-22]
