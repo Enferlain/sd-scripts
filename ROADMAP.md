@@ -36,24 +36,24 @@ Legend: ✅ Done | 🔶 Partial (pure funcs done, classes need mocks) | ❌ No t
 
 **Training Core:**
 
-- 🔶 `dataset.py` - Pure functions done. Remaining: `__getitem__`, `make_buckets` full flow
+- 🔶 `dataset.py` - Buketing logic tested (6 tests). Remaining: `__getitem__` path.
 - ✅ `training/checkpointing.py` - 23 tests (naming, metadata, utils)
 - ✅ `training/sample_generation.py` - 25 tests (prompt parsing, scheduler, prompts loading). Remaining: `sample_images_common`, `sample_images_inference`
 - ✅ `training/model_prep.py` - 7 tests (accelerator patching, unet modules). Remaining: `load_target_model` with Accelerator
 
 **Model Utilities:**
 
-- 🔶 `model_util.py` - 49 tests (pure funcs + conversion utilities). Remaining: `load_checkpoint*`, `load_models_*`
+- 🔶 `model_util.py` - 64 tests (pure funcs + 15 conversion tests). Remaining: loaders/savers = integration
 - 🔶 `sdxl_model_util.py` - 27 tests (embeddings, conversion maps, state dict conversion). Remaining: `load_models_from_sdxl_checkpoint`, `save_stable_diffusion_checkpoint`
-- ❌ `training/sdxl_model_prep.py` - `load_target_model`, `_load_target_model` (Accelerator + checkpoint mocks)
+- ✅ `training/sdxl_model_prep.py` - 10 tests (load_target_model multiprocess, load logic, diffusers/ckpt handling)
 - ✅ `training/sdxl_checkpointing.py` - 16 tests (wrapper callbacks, SAI metadata, model passing). **BUG FIXED**: was accessing `training_config.v_parameterization` instead of `loss_config.v_parameterization`
 - ✅ `training/checkpointing.py` - 23 tests. **BUG FIXED**: Same `v_parameterization` fix applied (uses LossConfig now)
 
 **Optimization Modules:**
 
-- 🔶 `optimizations/custom_offloading_utils.py` - 42 tests (to_device, to_cpu, weighs_to_device, wrapper). Remaining: `Offloader`, `ModelOffloader` (GPU streams, threads)
+- ✅ `optimizations/custom_offloading_utils.py` - 53 tests (utils, Offloader, ModelOffloader classes)
 - 🔶 `optimizations/deepspeed_utils.py` - 17 tests (prepare_deepspeed_config, plugin creation, model wrapping). Remaining: full integration with real DeepSpeed
-- 🔶 `optimizations/fp8_optimization_utils.py` - 15 tests (quantization logic). Remaining: `apply_fp8_monkey_patch`, integration
+- ✅ `optimizations/fp8_optimization_utils.py` - 22 tests (quantization logic, monkey patching)
 
 **Network Classes:**
 

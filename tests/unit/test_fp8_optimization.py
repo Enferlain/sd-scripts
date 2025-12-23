@@ -225,3 +225,167 @@ class TestQuantizeWeight:
         )
         
         assert scale.dtype == torch.float32
+
+
+# =============================================================================
+# apply_fp8_monkey_patch Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestApplyFP8MonkeyPatch:
+    """Test FP8 monkey patching logic."""
+    
+    def test_patches_linear_with_scale_weight(self):
+        """Linear layers with scale_weight in state dict should be patched."""
+        import torch.nn as nn
+        from library.optimizations.fp8_optimization_utils import apply_fp8_monkey_patch
+        
+        # Create a simple model with a Linear layer
+        model = nn.Sequential(
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 16),
+        )
+        
+        # Create an optimized state dict with scale_weight keys
+        optimized_state_dict = {
+            "0.weight": torch.randn(32, 64).to(torch.float8_e4m3fn),
+            "0.bias": torch.randn(32),
+            "0.scale_weight": torch.tensor([[1.0]] * 32),  # [32, 1] shape
+            "2.weight": torch.randn(16, 32).to(torch.float8_e4m3fn),
+            "2.bias": torch.randn(16),
+            "2.scale_weight": torch.tensor([[1.0]] * 16),  # [16, 1] shape
+        }
+        
+        # Apply monkey patch
+        patched_model = apply_fp8_monkey_patch(model, optimized_state_dict)
+        
+        # Verify scale_weight buffers were registered
+        assert hasattr(model[0], "scale_weight")
+        assert hasattr(model[2], "scale_weight")
+        
+        # Verify the model is returned (same instance)
+        assert patched_model is model
+    
+    def test_does_not_patch_layers_without_scale(self):
+        """Layers without scale_weight should not be patched."""
+        import torch.nn as nn
+        from library.optimizations.fp8_optimization_utils import apply_fp8_monkey_patch
+        
+        model = nn.Sequential(
+            nn.Linear(64, 32),
+            nn.Linear(32, 16),
+        )
+        
+        # Only first layer has scale_weight
+        optimized_state_dict = {
+            "0.weight": torch.randn(32, 64).to(torch.float8_e4m3fn),
+            "0.scale_weight": torch.tensor([[1.0]] * 32),
+            "1.weight": torch.randn(16, 32),  # No scale, not FP8
+        }
+        
+        apply_fp8_monkey_patch(model, optimized_state_dict)
+        
+        # First layer patched
+        assert hasattr(model[0], "scale_weight")
+        # Second layer NOT patched
+        assert not hasattr(model[1], "scale_weight")
+    
+    def test_patched_forward_runs(self):
+        """Patched forward method should execute correctly."""
+        import torch.nn as nn
+        from library.optimizations.fp8_optimization_utils import apply_fp8_monkey_patch
+        
+        # Wrap in Sequential so named_modules() gives proper paths
+        model = nn.Sequential(nn.Linear(64, 32))
+        
+        optimized_state_dict = {
+            "0.weight": torch.randn(32, 64).to(torch.float8_e4m3fn),
+            "0.bias": torch.randn(32),
+            "0.scale_weight": torch.ones(32, 1),  # Per-channel scale
+        }
+        
+        apply_fp8_monkey_patch(model, optimized_state_dict)
+        model.load_state_dict(optimized_state_dict)
+        
+        # Run forward pass
+        x = torch.randn(4, 64)
+        output = model(x)
+        
+        assert output.shape == (4, 32)
+        assert not torch.isnan(output).any()
+    
+    def test_scale_shape_determines_quantization_mode(self):
+        """Scale shape determines dequantization behavior."""
+        import torch.nn as nn
+        from library.optimizations.fp8_optimization_utils import apply_fp8_monkey_patch
+        
+        # Wrap in Sequential so named_modules() gives proper paths
+        model = nn.Sequential(nn.Linear(128, 64))
+        
+        # Block-wise scale: [out, num_blocks, 1]
+        block_scale = torch.ones(64, 2, 1)  # 128 / 64 = 2 blocks
+        
+        optimized_state_dict = {
+            "0.weight": torch.randn(64, 128).to(torch.float8_e4m3fn),
+            "0.bias": torch.randn(64),
+            "0.scale_weight": block_scale,
+        }
+        
+        apply_fp8_monkey_patch(model, optimized_state_dict)
+        
+        # Verify scale buffer has correct shape
+        assert model[0].scale_weight.shape == (64, 2, 1)
+
+
+# =============================================================================
+# fp8_linear_forward_patch Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestFP8LinearForwardPatch:
+    """Test the patched Linear forward method."""
+    
+    def test_dequantization_per_tensor(self):
+        """Per-tensor dequantization should broadcast scale."""
+        import torch.nn as nn
+        from library.optimizations.fp8_optimization_utils import fp8_linear_forward_patch
+        
+        # Create a Linear layer with FP8 weights
+        layer = nn.Linear(64, 32, bias=False)
+        layer.weight.data = torch.randn(32, 64).to(torch.float8_e4m3fn)
+        layer.scale_weight = torch.tensor(2.0)  # Scalar scale
+        
+        x = torch.randn(4, 64)
+        output = fp8_linear_forward_patch(layer, x, use_scaled_mm=False)
+        
+        assert output.shape == (4, 32)
+    
+    def test_dequantization_per_channel(self):
+        """Per-channel dequantization should use row-wise scales."""
+        import torch.nn as nn
+        from library.optimizations.fp8_optimization_utils import fp8_linear_forward_patch
+        
+        layer = nn.Linear(64, 32, bias=True)
+        layer.weight.data = torch.randn(32, 64).to(torch.float8_e4m3fn)
+        layer.scale_weight = torch.ones(32, 1)  # Per-channel
+        
+        x = torch.randn(4, 64)
+        output = fp8_linear_forward_patch(layer, x, use_scaled_mm=False)
+        
+        assert output.shape == (4, 32)
+    
+    def test_dequantization_block_wise(self):
+        """Block-wise dequantization should reshape weights."""
+        import torch.nn as nn
+        from library.optimizations.fp8_optimization_utils import fp8_linear_forward_patch
+        
+        layer = nn.Linear(128, 64, bias=False)
+        layer.weight.data = torch.randn(64, 128).to(torch.float8_e4m3fn)
+        layer.scale_weight = torch.ones(64, 2, 1)  # Block-wise: 2 blocks
+        
+        x = torch.randn(4, 128)
+        output = fp8_linear_forward_patch(layer, x, use_scaled_mm=False)
+        
+        assert output.shape == (4, 64)
+

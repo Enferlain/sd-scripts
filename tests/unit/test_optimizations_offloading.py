@@ -474,3 +474,142 @@ class TestEdgeCases:
         result = to_device(deep, device)
         
         assert result["level1"]["level2"]["level3"][0].device == device
+
+
+# =============================================================================
+# Tests: Offloader class
+# =============================================================================
+
+class TestOffloader:
+    """Tests for Offloader class."""
+    
+    def test_initialization(self):
+        """Offloader should initialize correctly."""
+        from library.optimizations.custom_offloading_utils import Offloader
+        
+        offloader = Offloader(num_blocks=10, blocks_to_swap=3, device=torch.device("cpu"))
+        
+        assert offloader.num_blocks == 10
+        assert offloader.blocks_to_swap == 3
+        assert offloader.device == torch.device("cpu")
+        assert offloader.cuda_available is False  # CPU device
+    
+    def test_cuda_available_detection(self):
+        """cuda_available should be True for CUDA device."""
+        from library.optimizations.custom_offloading_utils import Offloader
+        
+        # Even if no GPU, we test the logic
+        offloader = Offloader(num_blocks=5, blocks_to_swap=2, device=torch.device("cuda"))
+        assert offloader.cuda_available is True
+        
+        offloader_cpu = Offloader(num_blocks=5, blocks_to_swap=2, device=torch.device("cpu"))
+        assert offloader_cpu.cuda_available is False
+    
+    def test_thread_pool_created(self):
+        """Thread pool should be created with max_workers=1."""
+        from library.optimizations.custom_offloading_utils import Offloader
+        
+        offloader = Offloader(num_blocks=5, blocks_to_swap=2, device=torch.device("cpu"))
+        
+        assert offloader.thread_pool is not None
+        assert offloader.thread_pool._max_workers == 1
+    
+    def test_futures_empty_initially(self):
+        """Futures dict should be empty initially."""
+        from library.optimizations.custom_offloading_utils import Offloader
+        
+        offloader = Offloader(num_blocks=5, blocks_to_swap=2, device=torch.device("cpu"))
+        
+        assert offloader.futures == {}
+
+
+# =============================================================================
+# Tests: ModelOffloader class
+# =============================================================================
+
+class TestModelOffloader:
+    """Tests for ModelOffloader class."""
+    
+    def test_initialization(self):
+        """ModelOffloader should initialize correctly."""
+        from library.optimizations.custom_offloading_utils import ModelOffloader
+        
+        blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
+        offloader = ModelOffloader(blocks, blocks_to_swap=2, device=torch.device("cpu"))
+        
+        assert offloader.num_blocks == 5
+        assert offloader.blocks_to_swap == 2
+        assert offloader.supports_backward is True
+    
+    def test_forward_only_mode(self):
+        """forward_only should be set correctly."""
+        from library.optimizations.custom_offloading_utils import ModelOffloader
+        
+        blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
+        
+        # With backward support
+        offloader = ModelOffloader(blocks, blocks_to_swap=2, device=torch.device("cpu"), supports_backward=True)
+        assert offloader.forward_only is False
+        
+        # Without backward support
+        offloader_fwd = ModelOffloader(blocks, blocks_to_swap=2, device=torch.device("cpu"), supports_backward=False)
+        assert offloader_fwd.forward_only is True
+    
+    def test_set_forward_only(self):
+        """set_forward_only should change the mode."""
+        from library.optimizations.custom_offloading_utils import ModelOffloader
+        
+        blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
+        offloader = ModelOffloader(blocks, blocks_to_swap=2, device=torch.device("cpu"))
+        
+        assert offloader.forward_only is False
+        offloader.set_forward_only(True)
+        assert offloader.forward_only is True
+    
+    def test_create_backward_hook_returns_none_when_not_needed(self):
+        """create_backward_hook should return None for blocks that don't need hooks."""
+        from library.optimizations.custom_offloading_utils import ModelOffloader
+        
+        blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
+        offloader = ModelOffloader(blocks, blocks_to_swap=2, device=torch.device("cpu"))
+        
+        # Middle blocks usually don't need hooks
+        hook = offloader.create_backward_hook(blocks, block_index=2)
+        # The result depends on num_blocks_propagated logic
+        # For block_index=2, num_blocks - 1 - idx = 5 - 1 - 2 = 2
+        # swapping = 2 > 0 and 2 <= 2 (blocks_to_swap) = True
+        # So this block DOES need a hook
+        assert hook is not None
+    
+    def test_wait_for_block_noop_when_no_swap(self):
+        """wait_for_block should do nothing when blocks_to_swap is 0."""
+        from library.optimizations.custom_offloading_utils import ModelOffloader
+        
+        blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
+        offloader = ModelOffloader(blocks, blocks_to_swap=0, device=torch.device("cpu"))
+        
+        # Should not raise
+        offloader.wait_for_block(0)
+        offloader.wait_for_block(3)
+    
+    def test_submit_move_blocks_noop_when_no_swap(self):
+        """submit_move_blocks should do nothing when blocks_to_swap is 0."""
+        from library.optimizations.custom_offloading_utils import ModelOffloader
+        
+        blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
+        offloader = ModelOffloader(blocks, blocks_to_swap=0, device=torch.device("cpu"))
+        
+        # Should not raise and should not add futures
+        offloader.submit_move_blocks(blocks, block_idx=0)
+        assert len(offloader.futures) == 0
+    
+    def test_prepare_block_devices_noop_when_no_swap(self):
+        """prepare_block_devices_before_forward should do nothing when blocks_to_swap is 0."""
+        from library.optimizations.custom_offloading_utils import ModelOffloader
+        
+        blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
+        offloader = ModelOffloader(blocks, blocks_to_swap=0, device=torch.device("cpu"))
+        
+        # Should not raise
+        offloader.prepare_block_devices_before_forward(blocks)
+
