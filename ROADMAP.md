@@ -1,5 +1,60 @@
 # Project Roadmap & Future Ideas
 
+## 🔴 HIGH PRIORITY: `sd_peft.py` Refactoring
+
+> [!CAUTION]
+> This is the most-used training script in the repository and has accumulated significant technical debt.
+
+**Current State:**
+
+- `sd_peft.py` is **2,326 lines** with a monolithic `SDPeftTrainer` god class (57 methods)
+- The `train()` method alone is **~1,400 lines** (lines 907-2310)
+- `sdxl_peft.py` **inherits from** `sd_peft.SDPeftTrainer` and overrides ~15 methods
+- This creates fragile coupling unlike `*_finetune.py` scripts which use library imports only
+
+**Problems:**
+| Issue | Impact |
+|-------|--------|
+| God class pattern | Hard to understand, test, or modify safely |
+| 1,400-line method | Unmaintainable - mixes setup, loop, logging, saving |
+| Inheritance coupling | Changes to SD break SDXL; can't evolve independently |
+| Nested functions | `save_model`, `load_model_hook` defined inside `train()` - untestable |
+
+**Target Architecture:**
+
+```
+CURRENT (fragile):                    TARGET (modular):
+┌─────────────────┐                   ┌─────────────────┐
+│   sd_peft.py    │                   │   sd_peft.py    │
+│   (2,326 lines) │                   │   (~500 lines)  │
+│   SDPeftTrainer │                   │   thin wrapper  │
+└────────┬────────┘                   └────────┬────────┘
+         │ inherits                            │ imports
+         ▼                                     ▼
+┌─────────────────┐                   ┌─────────────────┐
+│  sdxl_peft.py   │                   │ library/training│
+│  (254 lines)    │                   │ /peft_utils.py  │
+│  SDXLPeftTrainer│                   │ (shared logic)  │
+└─────────────────┘                   └────────┬────────┘
+                                               │ imports
+                                               ▼
+                                      ┌─────────────────┐
+                                      │  sdxl_peft.py   │
+                                      │  (~300 lines)   │
+                                      │  thin wrapper   │
+                                      └─────────────────┘
+```
+
+**Proposed Refactoring Steps:**
+
+1. Extract `train()` setup phase → `library/training/peft_setup.py`
+2. Extract training loop core → `library/training/peft_loop.py`
+3. Extract logging/metrics → `library/training/peft_logging.py`
+4. Extract model saving → already have `checkpointing.py`, extend for networks
+5. Make both `sd_peft.py` and `sdxl_peft.py` thin orchestrators like `*_finetune.py`
+
+---
+
 ## Testing Suite
 
 ### Current Status (2025-12-23)
@@ -122,10 +177,49 @@ These require real models, GPU access, or full component initialization:
 ## Code Quality TODOs
 
 - Resolve duplicate settings in configs/dataclasses
-- Investigate naming scheme and separation of concerns for backend modules vs training scripts
 - Timestep sampling needs proper reimplementation (currently hacked into training scripts)
 - Clean integration for external `live_plotter`
 - Dataset and bucketing decouple in code?
+
+### Library Module Naming Clarification
+
+> [!NOTE]
+> The library modules **are properly separated by model type**, but naming can be confusing.
+
+**Architecture Summary:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 Truly Base Modules (Model-Agnostic)             │
+├─────────────────────────────────────────────────────────────────┤
+│ training/diffusion.py, optimizer.py, noise_utils.py             │
+│ training/trainer_utils.py, losses/*, data/dataset.py            │
+│ strategies/strategy_base.py, utils/*, optimizations/*           │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+         ┌───────────────────┴───────────────────┐
+         │                                       │
+         ▼                                       ▼
+┌─────────────────────────────┐     ┌─────────────────────────────┐
+│   SD1.5/2 Modules           │     │   SDXL Modules              │
+├─────────────────────────────┤     ├─────────────────────────────┤
+│ training/model_prep.py      │     │ training/sdxl_model_prep.py │
+│ training/checkpointing.py   │     │ training/sdxl_checkpointing │
+│ training/sample_generation  │     │ training/sdxl_sample_gen    │
+│ strategies/strategy_sd.py   │     │ strategies/strategy_sdxl.py │
+│ models/model_util.py        │     │ models/sdxl_model_util.py   │
+│ models/original_unet.py     │     │ models/sdxl_original_unet   │
+└─────────────────────────────┘     └─────────────────────────────┘
+```
+
+**Confusing Names:**
+
+- `checkpointing.py` → Sounds generic, but is **SD1.5/2-specific** (SDXL uses `sdxl_checkpointing.py`)
+- `model_prep.py` → **SD1.5/2-specific** (SDXL uses `sdxl_model_prep.py`)
+- `sample_generation.py` → **SD1.5/2-specific** (SDXL uses `sdxl_sample_generation.py`)
+- `strategy_sd.py` → Handles both SD1.5 AND SD2 via `v2: bool` flag
+
+**Potential Improvement:** Rename to `sd_checkpointing.py`, `sd_model_prep.py`, `sd_sample_generation.py` for clarity.
 
 ---
 
