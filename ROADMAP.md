@@ -26,7 +26,7 @@ OLD (monolithic):                     NEW (modular):
                                       ┌─────────────────────────────┐
                                       │ library/training/           │
                                       │   peft_trainer.py           │ (train function)
-                                      │   peft_common.py            │ (6 utility funcs)
+                                      │   peft_common.py            │ (8 utility funcs)
                                       └─────────────────────────────┘
 ```
 
@@ -40,11 +40,37 @@ OLD (monolithic):                     NEW (modular):
 | 4    | Extract logging/plotting utilities     | ✅     |
 | 5    | Remove `SDPeftTrainer` class           | ✅     |
 
-**Remaining (Future):**
+---
 
-- [ ] Create SDXL strategy implementation (`peft_strategy_sdxl.py`)
-- [ ] Update `sdxl_peft.py` to use strategy pattern
-- [ ] End-to-end smoke testing
+## 🚧 IN PROGRESS: Phase 3 - SDXL Strategy & Script-Based Training Loops
+
+**Design Decision:** Training loops should live in the scripts (not shared in library). Each model may have different orchestration needs, and the strategy pattern already handles the model-specific operations.
+
+**Progress:**
+
+| Step | Description                                              | Status  |
+| ---- | -------------------------------------------------------- | ------- |
+| 1    | Create SDXL strategy (`peft_strategy_sdxl.py`)           | ✅ Done |
+| 2    | Move `train()` from `peft_trainer.py` into `sd_peft.py`  | ✅ Done |
+| 3    | Extract `init_timestep_sampler()` to `peft_common.py`    | ✅ Done |
+| 4    | Extract `create_training_metadata()` to `peft_common.py` | ✅ Done |
+| 5    | Extract `setup_live_plotter()` to `peft_common.py`       | ✅ Done |
+| 6    | Create `sdxl_peft.py` train() using SDXL strategy        | ✅ Done |
+| 7    | Review/cleanup `peft_trainer.py`                         | ✅ Done |
+
+**Extractions added to `peft_common.py`:**
+
+- `init_timestep_sampler()` - Handles 5+ sampler types (~100 lines)
+- `create_training_metadata()` - Creates 65+ metadata keys (~230 lines)
+- `setup_live_plotter()` + `get_plotter_settings()` - Live plotter setup (~140 lines)
+
+> [!IMPORTANT] > **Metadata Note:** The `create_training_metadata()` function handles complex dataset iteration logic for both DreamBooth and fine-tuning modes. If metadata issues arise during training, check this function first.
+
+**Remaining Extraction Candidate:**
+
+- Live plotter setup (~110 lines, lines 681-793) - Lower priority, can extract after SDXL script completion
+
+### Phase 4: Training Loop Cleanup
 
 ---
 
