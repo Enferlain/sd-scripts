@@ -9,14 +9,15 @@ from library.training.checkpointing import (
     save_sd_model_on_epoch_end_or_stepwise_common
 )
 from library.config.dataclasses.saving import SavingConfig
-from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.metadata import MetadataConfig
-
+from library.config.dataclasses.loss import LossConfig
+# TODO: TrainingConfig was only used for v_parameterization (which was a bug - it's in LossConfig).
+# Consider adding clip_skip from TrainingConfig to metadata in the future.
 
 def save_sd_model_on_train_end(
         saving_config: SavingConfig,
-        training_config: TrainingConfig,
         metadata_config: MetadataConfig,
+        loss_config: LossConfig,
         src_path: str,
         save_stable_diffusion_format: bool,
         use_safetensors: bool,
@@ -36,7 +37,7 @@ def save_sd_model_on_train_end(
             metadata_config=metadata_config,
             is_sdxl=True,
             is_v2=False, # SDXL is not v2
-            v_parameterization=training_config.v_parameterization, # SDXL can be v-param?
+            v_parameterization=loss_config.v_parameterization,
             is_lora=False,
             is_textual_inversion=False,
             is_stable_diffusion_ckpt=True,
@@ -76,8 +77,8 @@ def save_sd_model_on_train_end(
 # on_epoch_end: Trueならepoch終了時、Falseならstep経過時
 def save_sd_model_on_epoch_end_or_stepwise(
         saving_config: SavingConfig,
-        training_config: TrainingConfig,
         metadata_config: MetadataConfig,
+        loss_config: LossConfig,
         on_epoch_end: bool,
         accelerator,
         src_path,
@@ -100,7 +101,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
             metadata_config=metadata_config,
             is_sdxl=True,
             is_v2=False,
-            v_parameterization=training_config.v_parameterization,
+            v_parameterization=loss_config.v_parameterization,
             is_lora=False,
             is_textual_inversion=False,
             is_stable_diffusion_ckpt=True,

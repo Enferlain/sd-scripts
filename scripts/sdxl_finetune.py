@@ -674,8 +674,8 @@ def train(cfg: SDXLFineTuneConfig):
                         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
                         save_sd_model_on_epoch_end_or_stepwise(
                             cfg.saving,
-                            cfg.training,
                             cfg.metadata,
+                            cfg.loss,
                             False,
                             accelerator,
                             src_path,
@@ -722,8 +722,8 @@ def train(cfg: SDXLFineTuneConfig):
                 src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
                 save_sd_model_on_epoch_end_or_stepwise(
                     cfg.saving,
-                    cfg.training,
                     cfg.metadata,
+                    cfg.loss,
                     True,
                     accelerator,
                     src_path,
@@ -769,8 +769,8 @@ def train(cfg: SDXLFineTuneConfig):
         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
         save_sd_model_on_train_end(
             cfg.saving,
-            cfg.training,
             cfg.metadata,
+            cfg.loss,
             src_path,
             save_stable_diffusion_format,
             use_safetensors,

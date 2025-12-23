@@ -18,7 +18,9 @@ from library.utils import sai_model_spec, huggingface_util
 from library.models import model_util
 from library.config.dataclasses.saving import SavingConfig
 from library.config.dataclasses.metadata import MetadataConfig
-from library.config.dataclasses.training import TrainingConfig
+from library.config.dataclasses.loss import LossConfig
+# TODO: TrainingConfig was only used for v_parameterization (which was a bug - it's in LossConfig).
+# Consider adding clip_skip from TrainingConfig to metadata in the future.
 
 from library.constants import (
     SS_METADATA_KEY_NETWORK_MODULE,
@@ -405,8 +407,8 @@ def get_remove_step_no(config: SavingConfig, step_no: int):
 # on_epoch_end: Trueならepoch終了時、Falseならstep経過時
 def save_sd_model_on_epoch_end_or_stepwise(
         saving_config: SavingConfig,
-        training_config: TrainingConfig,
         metadata_config: MetadataConfig,
+        loss_config: LossConfig,
         v2: bool,
         on_epoch_end: bool,
         accelerator,
@@ -427,7 +429,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
             metadata_config=metadata_config,
             is_sdxl=False, # This function seems to be for SD1/2? sdxl_checkpointing has its own?
             is_v2=v2,
-            v_parameterization=training_config.v_parameterization,
+            v_parameterization=loss_config.v_parameterization,
             is_lora=False,
             is_textual_inversion=False,
             is_stable_diffusion_ckpt=True,
@@ -613,8 +615,8 @@ def save_state_on_train_end(config: SavingConfig, accelerator):
 
 def save_sd_model_on_train_end(
         saving_config: SavingConfig,
-        training_config: TrainingConfig,
         metadata_config: MetadataConfig,
+        loss_config: LossConfig,
         v2: bool,
         src_path: str,
         save_stable_diffusion_format: bool,
@@ -632,7 +634,7 @@ def save_sd_model_on_train_end(
             metadata_config=metadata_config,
             is_sdxl=False,
             is_v2=v2,
-            v_parameterization=training_config.v_parameterization,
+            v_parameterization=loss_config.v_parameterization,
             is_lora=False,
             is_textual_inversion=False,
             is_stable_diffusion_ckpt=True,

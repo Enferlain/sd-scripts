@@ -381,8 +381,8 @@ def train(config: SDFineTuneConfig):
                         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
                         save_sd_model_on_epoch_end_or_stepwise(
                             saving_config,
-                            training_config,
                             config.metadata,
+                            config.loss,
                             model_config.v2,
                             False,
                             accelerator,
@@ -423,8 +423,8 @@ def train(config: SDFineTuneConfig):
                 src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
                 save_sd_model_on_epoch_end_or_stepwise(
                     saving_config,
-                    training_config,
                     config.metadata,
+                    config.loss,
                     model_config.v2,
                     True,
                     accelerator,
@@ -460,8 +460,8 @@ def train(config: SDFineTuneConfig):
         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
         save_sd_model_on_train_end(
             saving_config,
-            training_config,
             config.metadata,
+            config.loss,
             model_config.v2,
             src_path,
             save_stable_diffusion_format,
