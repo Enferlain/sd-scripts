@@ -1,7 +1,7 @@
 import pytest
 import math
 import numpy as np
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from library.data import data_structures as ds
 
 # ============================================================================
@@ -180,6 +180,28 @@ class TestBucketManager:
         # Check buckets moved correctly
         assert manager.buckets[0] == ["img3"]
         assert manager.buckets[1] == ["img2", "img1"] # Preserves previous shuffled state
+
+    @patch("library.data.data_structures.model_util.make_bucket_resolutions")
+    def test_make_buckets_calls_model_util(self, mock_make_resos):
+        """make_buckets should call model_util.make_bucket_resolutions and set predefined resos."""
+        mock_make_resos.return_value = [(256, 256), (512, 512), (256, 512), (512, 256)]
+        
+        bm = ds.BucketManager(
+            no_upscale=False, 
+            max_reso=(512, 512), 
+            min_size=256, 
+            max_size=1024, 
+            reso_steps=64
+        )
+        bm.make_buckets()
+        
+        # Verify model_util was called with correct params
+        mock_make_resos.assert_called_once_with((512, 512), 256, 1024, 64)
+        
+        # Verify predefined_resos set correctly
+        assert (256, 256) in bm.predefined_resos
+        assert (512, 512) in bm.predefined_resos
+        assert (256, 512) in bm.predefined_resos
 
 # ============================================================================
 # AugHelper Tests

@@ -12,6 +12,12 @@ from library.models.model_util import (
     create_unet_diffusers_config,
     create_vae_diffusers_config,
     make_bucket_resolutions,
+    renew_resnet_paths,
+    renew_vae_resnet_paths,
+    renew_attention_paths,
+    get_model_version_str_for_sd1_sd2,
+    conv_attn_to_linear,
+    controlnet_conversion_map,
 )
 from library.constants import (
     UNET_PARAMS_IMAGE_SIZE,
@@ -287,3 +293,186 @@ class TestMakeBucketResolutions:
             # Area should be at or close to max_area when dimensions fit
             assert w * h <= max_area * 1.1, f"Area {w*h} exceeds max area {max_area}"
 
+
+# =============================================================================
+# renew_resnet_paths Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestRenewResnetPaths:
+    """Test resnet path renaming utility."""
+    
+    def test_basic_renaming(self):
+        """Should rename in_layers/out_layers to norm/conv."""
+        old_list = [
+            "block.in_layers.0.weight",
+            "block.in_layers.2.weight",
+            "block.out_layers.0.weight",
+            "block.out_layers.3.weight",
+        ]
+        result = renew_resnet_paths(old_list, n_shave_prefix_segments=0)
+        
+        assert result[0]["new"] == "block.norm1.weight"
+        assert result[1]["new"] == "block.conv1.weight"
+        assert result[2]["new"] == "block.norm2.weight"
+        assert result[3]["new"] == "block.conv2.weight"
+    
+    def test_emb_layers_and_skip_connection(self):
+        """Should rename emb_layers and skip_connection."""
+        old_list = [
+            "block.emb_layers.1.weight",
+            "block.skip_connection.weight",
+        ]
+        result = renew_resnet_paths(old_list, n_shave_prefix_segments=0)
+        
+        assert result[0]["new"] == "block.time_emb_proj.weight"
+        assert result[1]["new"] == "block.conv_shortcut.weight"
+    
+    def test_empty_list(self):
+        """Empty input should return empty output."""
+        result = renew_resnet_paths([], n_shave_prefix_segments=0)
+        assert result == []
+
+
+# =============================================================================
+# renew_vae_resnet_paths Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestRenewVaeResnetPaths:
+    """Test VAE resnet path renaming utility."""
+    
+    def test_nin_shortcut_renaming(self):
+        """Should rename nin_shortcut to conv_shortcut."""
+        old_list = ["block.nin_shortcut.weight"]
+        result = renew_vae_resnet_paths(old_list, n_shave_prefix_segments=0)
+        
+        assert result[0]["old"] == "block.nin_shortcut.weight"
+        assert result[0]["new"] == "block.conv_shortcut.weight"
+    
+    def test_preserves_other_paths(self):
+        """Paths without nin_shortcut should be preserved."""
+        old_list = ["block.conv.weight"]
+        result = renew_vae_resnet_paths(old_list, n_shave_prefix_segments=0)
+        
+        assert result[0]["new"] == "block.conv.weight"
+
+
+# =============================================================================
+# renew_attention_paths Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestRenewAttentionPaths:
+    """Test attention path renaming utility."""
+    
+    def test_returns_mapping_structure(self):
+        """Should return list of old/new mappings."""
+        old_list = ["attn.proj_in.weight", "attn.proj_out.weight"]
+        result = renew_attention_paths(old_list, n_shave_prefix_segments=0)
+        
+        assert len(result) == 2
+        assert "old" in result[0]
+        assert "new" in result[0]
+    
+    def test_shave_prefix_segments(self):
+        """Note: shave_segments is commented out in current implementation, path is preserved."""
+        old_list = ["model.attn.proj_in.weight"]
+        result = renew_attention_paths(old_list, n_shave_prefix_segments=1)
+        
+        # Current implementation preserves the path (shave_segments is commented out)
+        assert result[0]["new"] == "model.attn.proj_in.weight"
+
+
+# =============================================================================
+# get_model_version_str_for_sd1_sd2 Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestGetModelVersionStr:
+    """Test model version string generation."""
+    
+    def test_v1_no_vparam(self):
+        """SD v1 without v_parameterization."""
+        result = get_model_version_str_for_sd1_sd2(v2=False, v_parameterization=False)
+        assert result == "sd_v1"
+    
+    def test_v1_with_vparam(self):
+        """SD v1 with v_parameterization."""
+        result = get_model_version_str_for_sd1_sd2(v2=False, v_parameterization=True)
+        assert result == "sd_v1_v"
+    
+    def test_v2_no_vparam(self):
+        """SD v2 without v_parameterization."""
+        result = get_model_version_str_for_sd1_sd2(v2=True, v_parameterization=False)
+        assert result == "sd_v2"
+    
+    def test_v2_with_vparam(self):
+        """SD v2 with v_parameterization."""
+        result = get_model_version_str_for_sd1_sd2(v2=True, v_parameterization=True)
+        assert result == "sd_v2_v"
+
+
+# =============================================================================
+# conv_attn_to_linear Tests
+# =============================================================================
+
+import torch
+
+@pytest.mark.unit
+class TestConvAttnToLinear:
+    """Test 4D->2D weight conversion for attention."""
+    
+    def test_reshapes_query_key_value(self):
+        """Should reshape query/key/value weights from 4D to 2D."""
+        checkpoint = {
+            "attn.query.weight": torch.randn(64, 32, 1, 1),
+            "attn.key.weight": torch.randn(64, 32, 1, 1),
+            "attn.value.weight": torch.randn(64, 32, 1, 1),
+            "other.weight": torch.randn(16, 16),  # Not matching
+        }
+        conv_attn_to_linear(checkpoint)
+        
+        assert checkpoint["attn.query.weight"].shape == (64, 32)
+        assert checkpoint["attn.key.weight"].shape == (64, 32)
+        assert checkpoint["attn.value.weight"].shape == (64, 32)
+        assert checkpoint["other.weight"].shape == (16, 16)  # Unchanged
+    
+    def test_reshapes_proj_attn_to_3d(self):
+        """proj_attn.weight uses [:,:,0] -> 3D output."""
+        checkpoint = {
+            "layer.proj_attn.weight": torch.randn(32, 16, 1, 1),
+        }
+        conv_attn_to_linear(checkpoint)
+        
+        # Note: implementation uses [:,:,0] for proj_attn which gives 3D
+        assert checkpoint["layer.proj_attn.weight"].shape == (32, 16, 1)
+
+
+# =============================================================================
+# controlnet_conversion_map Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestControlnetConversionMap:
+    """Test ControlNet conversion map generation."""
+    
+    def test_returns_tuple_of_three_lists(self):
+        """Should return 3 conversion maps: base, resnet, layer."""
+        result = controlnet_conversion_map()
+        
+        assert isinstance(result, tuple)
+        assert len(result) == 3
+        # All three should be lists
+        unet_map, resnet_map, layer_map = result
+        assert isinstance(unet_map, list)
+        assert isinstance(resnet_map, list)
+        assert isinstance(layer_map, list)
+    
+    def test_contains_input_hint_block(self):
+        """Layer map should contain input_hint_block mappings."""
+        _, _, layer_map = controlnet_conversion_map()
+        keys = [item[0] for item in layer_map]
+        
+        input_hint_keys = [k for k in keys if "input_hint_block" in k]
+        assert len(input_hint_keys) > 0

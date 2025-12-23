@@ -14,13 +14,14 @@
 | **Unit Tests (Mocked)** | Test functions with mocked dependencies         | ✅ In Progress |
 | **Integration Tests**   | Test multiple components working together       | 🔜 Future      |
 
-### Completed Unit Tests (690+ tests)
+### Completed Unit Tests (808 tests)
 
 - **Configuration** (28 tests) - validation, dataclasses, type safety
 - **Optimization & Checkpointing** (49 tests) - training utilities, checkpointing logic
 - **Diffusion & Noise** (38 tests) - diffusion utilities, noise generation
-- **Data Utilities** (56 tests) - dataset structures, image utils, dataset.py (register_image, cache_latents, cacheability checks, shuffle)
-- **Network Utils** - LoRA state dicts, merging, block LR parsing, conversion maps
+- **Data Utilities** (56 tests) - dataset structures, image utils, dataset.py (register_image, cache_latents, cacheability checks, shuffle, get_image_size)
+- **Model Utilities** (43 tests) - `model_util.py` (shave_segments, is_safetensors, config creation, renew paths, conv_attn, controlnet_map)
+- **Network Utils** - LoRA state dicts, merging, block LR parsing (42 tests in test_networks_lora.py)
 - **Format Utils** - JXL parsing, Safetensors I/O
 - **Loss Functions** - SNR weighting, v-pred logic, EDM2 components
 - **Pipelines** - Prompt attention parsing, token padding (SD + SDXL)
@@ -31,53 +32,42 @@
 
 ### Next Phase: Unit Tests with Heavy Mocking
 
-These modules still require substantial mocked dependencies:
+Legend: ✅ Done | 🔶 Partial (pure funcs done, classes need mocks) | ❌ No tests
 
 **Training Core:**
 
-- `dataset.py` - `__getitem__`, `make_buckets` full flow - requires complex bucket/latent setup (partial coverage done)
+- 🔶 `dataset.py` - Pure functions done. Remaining: `__getitem__`, `make_buckets` full flow
+- ✅ `training/checkpointing.py` - 23 tests (naming, metadata, utils)
+- ✅ `training/sample_generation.py` - 25 tests (prompt parsing, scheduler, prompts loading). Remaining: `sample_images_common`, `sample_images_inference`
+- ✅ `training/model_prep.py` - 7 tests (accelerator patching, unet modules). Remaining: `load_target_model` with Accelerator
 
 **Model Utilities:**
 
-- `model_util.py` / `sdxl_model_util.py` - Model loading/saving - requires architecture mocks
-- `training/sdxl_model_prep.py` - `load_target_model` - require Accelerator and checkpoint loading
-- `training/sdxl_checkpointing.py` - Save utilities - require full SDXL models
+- 🔶 `model_util.py` - 28 tests (pure funcs). Remaining: `load_checkpoint_with_text_encoder_conversion`, `load_models_from_stable_diffusion_checkpoint`
+- 🔶 `sdxl_model_util.py` - 19 tests (embeddings, conversion maps). Remaining: `load_models_from_sdxl_checkpoint`, `save_stable_diffusion_checkpoint`
+- ❌ `training/sdxl_model_prep.py` - `load_target_model`, `_load_target_model` (Accelerator + checkpoint mocks)
+- ❌ `training/sdxl_checkpointing.py` - `save_sd_model_on_train_end`, `save_sd_model_on_epoch_end_or_stepwise`
 
 **Optimization Modules:**
 
-- `optimizations/custom_offloading_utils.py` - Require GPU streams and thread pools
-- `optimizations/deepspeed_utils.py` - Require DeepSpeed and distributed context
-- `optimizations/fp8_optimization_utils.py` - Require full model state dicts
-
-**Sample Generation:**
-
-- `training/sample_generation.py` - `sample_images_common`, `sample_images_inference` - require full pipeline mocks
+- ❌ `optimizations/custom_offloading_utils.py` - `Offloader`, `ModelOffloader` (GPU streams, threads)
+- ❌ `optimizations/deepspeed_utils.py` - `prepare_deepspeed_plugin`, `prepare_deepspeed_model` (DeepSpeed + distributed)
+- 🔶 `optimizations/fp8_optimization_utils.py` - 15 tests (quantization logic). Remaining: `apply_fp8_monkey_patch`, integration
 
 **Network Classes:**
 
-- `networks/lora.py` - `LoRANetwork`, `create_network()` - require UNet/TextEncoder mocks
-- `networks/oft.py` - `OFTNetwork` - require recursive module mocks
-- `networks/dylora.py` - `DyLoRANetwork` - require dynamic module switching mocks
-- `networks/lora_diffusers.py` - `LoRANetwork` class, `merge_lora_weights()` - require Diffusers model mocks
+- 🔶 `networks/lora.py` - 42 tests (block LR, dims/alphas, utils). Remaining: `LoRANetwork` class, `create_network()`
+- 🔶 `networks/lora_diffusers.py` - 20 tests (conversion maps). Remaining: `LoRANetwork` class, `merge_lora_weights()`
+- 🔶 `networks/lora_utils.py` - 8 tests (filtering, merging). Done for pure funcs
+- ❌ `networks/oft.py` - `OFTNetwork` class (recursive module mocks)
+- ❌ `networks/dylora.py` - `DyLoRANetwork` class (dynamic module switching)
+- ❌ `networks/hypernetwork.py` - Hypernetwork implementation
 
-Detailed view:
+**Models (Integration-level, skip for unit tests):**
 
-- `dataset.py` - `__getitem__`, `make_buckets` full flow in dataset context - requires complex bucket/latent setup (partial coverage done)
-- `data_structures.py` - `BucketManager.make_buckets()` now tested with mocked model_util
-- `model_util.py` / `sdxl_model_util.py` - Model loading/saving - requires filesystem and model architecture mocks
-- `networks/lora.py` - Network creation/injection - requires base model mocks
-- `networks/oft.py` - OFT Network implementation - requires base model and recursive module mocks
-- `networks/dylora.py` - DyLoRA Network implementation - requires base model and dynamic module switching mocks
-- `networks/hypernetwork.py` - Hypernetwork implementation - requires base model mocks
-- `optimizations/custom_offloading_utils.py` - `Offloader`, `ModelOffloader`, `swap_weight_devices_cuda` - require GPU streams and thread pools
-- `optimizations/deepspeed_utils.py` - `prepare_deepspeed_plugin`, `prepare_deepspeed_model` - require DeepSpeed import and distributed context
-- `optimizations/fp8_optimization_utils.py` - `optimize_state_dict_with_fp8`, `load_safetensors_with_fp8_optimization`, `apply_fp8_monkey_patch` - require full model state dicts
-- `training/sample_generation.py` - `sample_images_common`, `sample_images_inference` - requires full pipeline (VAE, UNet, Tokenizer) mocks
-- `models/original_unet.py` - `FlashAttentionFunction`, `TimestepEmbedding`, `Timesteps`, all `*Block2D` classes, `UNet2DConditionModel` - require GPU/autograd context
-- `models/sdxl_original_unet.py` - `FlashAttentionFunction`, `GroupNorm32`, `ResnetBlock2D`, `CrossAttention`, `SdxlUNet2DConditionModel` - require SDXL architecture
-- `models/sdxl_original_control_net.py` - `ControlNetConditioningEmbedding`, `SdxlControlNet.forward`, `SdxlControlledUNet` - require UNet and forward passes
-- `training/sdxl_model_prep.py` - `load_target_model`, `_load_target_model` - require Accelerator and SDXL checkpoint loading
-- `training/sdxl_checkpointing.py` - `save_sd_model_on_train_end`, `save_sd_model_on_epoch_end_or_stepwise` - require full SDXL models
+- ❌ `models/original_unet.py` - Full UNet implementation (GPU/autograd - integration only)
+- ❌ `models/sdxl_original_unet.py` - SDXL UNet (integration only)
+- ❌ `models/sdxl_original_control_net.py` - ControlNet (integration only)
 
 ### Future: Integration Tests
 
