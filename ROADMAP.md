@@ -14,7 +14,7 @@
 | **Unit Tests (Mocked)** | Test functions with mocked dependencies         | ✅ In Progress |
 | **Integration Tests**   | Test multiple components working together       | 🔜 Future      |
 
-### Completed Unit Tests (808 tests)
+### Completed Unit Tests (821 tests)
 
 - **Configuration** (28 tests) - validation, dataclasses, type safety
 - **Optimization & Checkpointing** (49 tests) - training utilities, checkpointing logic
@@ -43,8 +43,8 @@ Legend: ✅ Done | 🔶 Partial (pure funcs done, classes need mocks) | ❌ No t
 
 **Model Utilities:**
 
-- 🔶 `model_util.py` - 28 tests (pure funcs). Remaining: `load_checkpoint_with_text_encoder_conversion`, `load_models_from_stable_diffusion_checkpoint`
-- 🔶 `sdxl_model_util.py` - 19 tests (embeddings, conversion maps). Remaining: `load_models_from_sdxl_checkpoint`, `save_stable_diffusion_checkpoint`
+- 🔶 `model_util.py` - 49 tests (pure funcs + conversion utilities). Remaining: `load_checkpoint*`, `load_models_*`
+- 🔶 `sdxl_model_util.py` - 27 tests (embeddings, conversion maps, state dict conversion). Remaining: `load_models_from_sdxl_checkpoint`, `save_stable_diffusion_checkpoint`
 - ❌ `training/sdxl_model_prep.py` - `load_target_model`, `_load_target_model` (Accelerator + checkpoint mocks)
 - ❌ `training/sdxl_checkpointing.py` - `save_sd_model_on_train_end`, `save_sd_model_on_epoch_end_or_stepwise`
 
@@ -61,7 +61,6 @@ Legend: ✅ Done | 🔶 Partial (pure funcs done, classes need mocks) | ❌ No t
 - 🔶 `networks/lora_utils.py` - 8 tests (filtering, merging). Done for pure funcs
 - ❌ `networks/oft.py` - `OFTNetwork` class (recursive module mocks)
 - ❌ `networks/dylora.py` - `DyLoRANetwork` class (dynamic module switching)
-- ❌ `networks/hypernetwork.py` - Hypernetwork implementation
 
 **Models (Integration-level, skip for unit tests):**
 

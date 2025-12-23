@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-23]
+
+### Added
+
+- **Test Suite Expansion (821 total tests)**
+  - `test_models_model_util.py` - Added tests for `renew_*_paths`, `get_model_version_str`, `conv_attn_to_linear`, `controlnet_conversion_map`, `reshape_weight_for_sd`, `linear_transformer_to_conv` (+21 tests, 49 total)
+  - `test_models_sdxl_model_util.py` - Added tests for `convert_unet_state_dict`, bidirectional SDXL↔Diffusers conversion with roundtrip verification (+8 tests, 27 total)
+  - `test_data_structures.py` - Added `BucketManager.make_buckets` test with mocked `model_util`
+  - Audited ROADMAP "Heavy Mocking" section with accurate ✅/🔶/❌ status for each module
+
 ## [2025-12-22]
 
 ### Added

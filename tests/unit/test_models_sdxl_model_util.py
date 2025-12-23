@@ -13,6 +13,9 @@ from library.models.sdxl_model_util import (
     get_timestep_embedding,
     get_size_embeddings,
     make_unet_conversion_map,
+    convert_unet_state_dict,
+    convert_diffusers_unet_state_dict_to_sdxl,
+    convert_sdxl_unet_state_dict_to_diffusers,
 )
 
 
@@ -218,3 +221,99 @@ class TestMakeUnetConversionMap:
         
         # SDXL UNet has many layers; should have >100 mappings
         assert len(result) > 100
+
+
+# =============================================================================
+# convert_unet_state_dict Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestConvertUnetStateDict:
+    """Test state dict key conversion utility."""
+    
+    def test_converts_keys_using_map(self):
+        """Should convert keys using provided conversion map."""
+        src_sd = {
+            "input_blocks.0.0.weight": torch.randn(4, 4),
+            "input_blocks.0.0.bias": torch.randn(4),
+        }
+        conversion_map = {"input_blocks.0.0.": "conv_in."}
+        
+        result = convert_unet_state_dict(src_sd, conversion_map)
+        
+        assert "conv_in.weight" in result
+        assert "conv_in.bias" in result
+        assert "input_blocks.0.0.weight" not in result
+    
+    def test_preserves_tensor_values(self):
+        """Converted state dict should have same tensor values."""
+        original_tensor = torch.randn(8, 8)
+        src_sd = {"old_prefix.weight": original_tensor}
+        conversion_map = {"old_prefix.": "new_prefix."}
+        
+        result = convert_unet_state_dict(src_sd, conversion_map)
+        
+        assert torch.equal(result["new_prefix.weight"], original_tensor)
+    
+    def test_raises_on_unmapped_key(self):
+        """Should raise AssertionError if key not found in map."""
+        src_sd = {"unknown.key.weight": torch.randn(4)}
+        conversion_map = {"different.prefix.": "output."}
+        
+        with pytest.raises(AssertionError, match="not found in conversion map"):
+            convert_unet_state_dict(src_sd, conversion_map)
+
+
+# =============================================================================
+# Bidirectional Conversion Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestBidirectionalConversion:
+    """Test SDXL <-> Diffusers state dict conversion."""
+    
+    def test_sdxl_to_diffusers_converts_conv_in(self):
+        """Should convert SDXL input_blocks.0.0 to Diffusers conv_in."""
+        sdxl_sd = {
+            "input_blocks.0.0.weight": torch.randn(320, 4, 3, 3),
+            "input_blocks.0.0.bias": torch.randn(320),
+        }
+        
+        result = convert_sdxl_unet_state_dict_to_diffusers(sdxl_sd)
+        
+        assert "conv_in.weight" in result
+        assert "conv_in.bias" in result
+    
+    def test_diffusers_to_sdxl_converts_conv_in(self):
+        """Should convert Diffusers conv_in to SDXL input_blocks.0.0."""
+        diffusers_sd = {
+            "conv_in.weight": torch.randn(320, 4, 3, 3),
+            "conv_in.bias": torch.randn(320),
+        }
+        
+        result = convert_diffusers_unet_state_dict_to_sdxl(diffusers_sd)
+        
+        assert "input_blocks.0.0.weight" in result
+        assert "input_blocks.0.0.bias" in result
+    
+    def test_roundtrip_preserves_keys(self):
+        """Converting SDXL -> Diffusers -> SDXL should preserve keys."""
+        original_sdxl = {
+            "input_blocks.0.0.weight": torch.randn(320, 4, 3, 3),
+            "out.2.weight": torch.randn(4, 320, 3, 3),
+        }
+        
+        diffusers = convert_sdxl_unet_state_dict_to_diffusers(original_sdxl)
+        back_to_sdxl = convert_diffusers_unet_state_dict_to_sdxl(diffusers)
+        
+        assert set(original_sdxl.keys()) == set(back_to_sdxl.keys())
+    
+    def test_roundtrip_preserves_values(self):
+        """Roundtrip conversion should preserve tensor values."""
+        original_tensor = torch.randn(320, 4, 3, 3)
+        original_sdxl = {"input_blocks.0.0.weight": original_tensor}
+        
+        diffusers = convert_sdxl_unet_state_dict_to_diffusers(original_sdxl)
+        back_to_sdxl = convert_diffusers_unet_state_dict_to_sdxl(diffusers)
+        
+        assert torch.equal(back_to_sdxl["input_blocks.0.0.weight"], original_tensor)

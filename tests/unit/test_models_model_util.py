@@ -18,6 +18,8 @@ from library.models.model_util import (
     get_model_version_str_for_sd1_sd2,
     conv_attn_to_linear,
     controlnet_conversion_map,
+    reshape_weight_for_sd,
+    linear_transformer_to_conv,
 )
 from library.constants import (
     UNET_PARAMS_IMAGE_SIZE,
@@ -476,3 +478,75 @@ class TestControlnetConversionMap:
         
         input_hint_keys = [k for k in keys if "input_hint_block" in k]
         assert len(input_hint_keys) > 0
+
+
+# =============================================================================
+# reshape_weight_for_sd Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestReshapeWeightForSd:
+    """Test weight reshaping for SD format."""
+    
+    def test_adds_spatial_dimensions(self):
+        """Should add 1x1 spatial dimensions to 2D weights."""
+        weight = torch.randn(64, 32)
+        
+        result = reshape_weight_for_sd(weight)
+        
+        assert result.shape == (64, 32, 1, 1)
+    
+    def test_preserves_values(self):
+        """Reshaped tensor should have same values."""
+        weight = torch.randn(16, 8)
+        
+        result = reshape_weight_for_sd(weight)
+        
+        assert torch.equal(result.squeeze(), weight)
+
+
+# =============================================================================
+# linear_transformer_to_conv Tests
+# =============================================================================
+
+@pytest.mark.unit
+class TestLinearTransformerToConv:
+    """Test 2D->4D weight conversion for transformers."""
+    
+    def test_converts_proj_in_weight(self):
+        """Should convert 2D proj_in.weight to 4D."""
+        checkpoint = {
+            "layer.proj_in.weight": torch.randn(64, 32),
+        }
+        linear_transformer_to_conv(checkpoint)
+        
+        assert checkpoint["layer.proj_in.weight"].shape == (64, 32, 1, 1)
+    
+    def test_converts_proj_out_weight(self):
+        """Should convert 2D proj_out.weight to 4D."""
+        checkpoint = {
+            "block.proj_out.weight": torch.randn(128, 64),
+        }
+        linear_transformer_to_conv(checkpoint)
+        
+        assert checkpoint["block.proj_out.weight"].shape == (128, 64, 1, 1)
+    
+    def test_ignores_already_4d(self):
+        """Should not modify already 4D weights."""
+        checkpoint = {
+            "layer.proj_in.weight": torch.randn(64, 32, 1, 1),
+        }
+        linear_transformer_to_conv(checkpoint)
+        
+        # Should remain unchanged
+        assert checkpoint["layer.proj_in.weight"].shape == (64, 32, 1, 1)
+    
+    def test_ignores_non_matching_keys(self):
+        """Should not modify non-transformer weights."""
+        checkpoint = {
+            "other.weight": torch.randn(32, 16),
+        }
+        linear_transformer_to_conv(checkpoint)
+        
+        # Should remain 2D
+        assert checkpoint["other.weight"].shape == (32, 16)
