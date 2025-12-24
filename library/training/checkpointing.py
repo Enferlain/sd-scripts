@@ -19,6 +19,7 @@ from library.models import model_util
 from library.config.dataclasses.saving import SavingConfig
 from library.config.dataclasses.metadata import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
+from library.config.dataclasses.huggingface import HuggingFaceConfig
 # TODO: TrainingConfig was only used for v_parameterization (which was a bug - it's in LossConfig).
 # Consider adding clip_skip from TrainingConfig to metadata in the future.
 
@@ -169,142 +170,8 @@ def build_minimum_network_metadata(
     return metadata
 
 
-def get_sai_model_spec(
-        state_dict: dict | None,
-        args: Any,
-        sdxl: bool,
-        lora: bool,
-        textual_inversion: bool,
-        is_stable_diffusion_ckpt: Optional[bool] = None,  # None for TI and LoRA
-        flux: str = None,  # "dev", "schnell" or "chroma"
-        lumina: str = None,
-        optional_metadata: dict[str, str] | None = None,
-):
-    timestamp = time.time()
-
-    v2 = args.v2
-    v_parameterization = args.v_parameterization
-    reso = args.resolution
-
-    title = args.metadata_title if args.metadata_title is not None else args.output_name
-
-    if args.min_timestep is not None or args.max_timestep is not None:
-        min_time_step = args.min_timestep if args.min_timestep is not None else 0
-        max_time_step = args.max_timestep if args.max_timestep is not None else 1000
-        timesteps = (min_time_step, max_time_step)
-    else:
-        timesteps = None
-
-    # Convert individual model parameters to model_config dict
-    # TODO: Update calls to this function to pass in the model config
-    model_config = {}
-    if flux is not None:
-        model_config["flux"] = flux
-    if lumina is not None:
-        model_config["lumina"] = lumina
-
-    # Extract metadata_* fields from args and merge with optional_metadata
-    extracted_metadata = {}
-
-    # Extract all metadata_* attributes from args
-    for attr_name in dir(args):
-        if attr_name.startswith("metadata_") and not attr_name.startswith("metadata___"):
-            value = getattr(args, attr_name, None)
-            if value is not None:
-                # Remove metadata_ prefix and exclude already handled fields
-                field_name = attr_name[9:]  # len("metadata_") = 9
-                if field_name not in ["title", "author", "description", "license", "tags"]:
-                    extracted_metadata[field_name] = value
-
-    # Merge extracted metadata with provided optional_metadata
-    all_optional_metadata = {**extracted_metadata}
-    if optional_metadata:
-        all_optional_metadata.update(optional_metadata)
-
-    metadata = sai_model_spec.build_metadata(
-        state_dict,
-        v2,
-        v_parameterization,
-        sdxl,
-        lora,
-        textual_inversion,
-        timestamp,
-        title=title,
-        reso=reso,
-        is_stable_diffusion_ckpt=is_stable_diffusion_ckpt,
-        author=args.metadata_author,
-        description=args.metadata_description,
-        license=args.metadata_license,
-        tags=args.metadata_tags,
-        timesteps=timesteps,
-        clip_skip=args.clip_skip,  # None or int
-        model_config=model_config,
-        optional_metadata=all_optional_metadata if all_optional_metadata else None,
-    )
-    return metadata
-
-
-def get_sai_model_spec_dataclass(
-        state_dict: dict,
-        args: Any,
-        sdxl: bool,
-        lora: bool,
-        textual_inversion: bool,
-        is_stable_diffusion_ckpt: Optional[bool] = None,
-        flux: str = None,
-        lumina: str = None,
-        hunyuan_image: str = None,
-        optional_metadata: dict[str, str] | None = None,
-) -> sai_model_spec.ModelSpecMetadata:
-    """
-    Get ModelSpec metadata as a dataclass - preferred for new code.
-    Automatically extracts metadata_* fields from args.
-    """
-    timestamp = time.time()
-
-    v2 = args.v2
-    v_parameterization = args.v_parameterization
-    reso = args.resolution
-
-    title = args.metadata_title if args.metadata_title is not None else args.output_name
-
-    if args.min_timestep is not None or args.max_timestep is not None:
-        min_time_step = args.min_timestep if args.min_timestep is not None else 0
-        max_time_step = args.max_timestep if args.max_timestep is not None else 1000
-        timesteps = (min_time_step, max_time_step)
-    else:
-        timesteps = None
-
-    # Convert individual model parameters to model_config dict
-    model_config = {}
-    if flux is not None:
-        model_config["flux"] = flux
-    if lumina is not None:
-        model_config["lumina"] = lumina
-    if hunyuan_image is not None:
-        model_config["hunyuan_image"] = hunyuan_image
-
-    # Use the dataclass function directly
-    return sai_model_spec.build_metadata_dataclass(
-        state_dict,
-        v2,
-        v_parameterization,
-        sdxl,
-        lora,
-        textual_inversion,
-        timestamp,
-        title=title,
-        reso=reso,
-        is_stable_diffusion_ckpt=is_stable_diffusion_ckpt,
-        author=args.metadata_author,
-        description=args.metadata_description,
-        license=args.metadata_license,
-        tags=args.metadata_tags,
-        timesteps=timesteps,
-        clip_skip=args.clip_skip,
-        model_config=model_config,
-        optional_metadata=optional_metadata,
-    )
+# NOTE: Legacy get_sai_model_spec() and get_sai_model_spec_dataclass() removed.
+# Use library.utils.sai_model_spec.get_sai_model_spec_from_config() instead.
 
 
 def resume_from_local_or_hf_if_specified(accelerator, config: SavingConfig):
@@ -422,12 +289,13 @@ def save_sd_model_on_epoch_end_or_stepwise(
         text_encoder,
         unet,
         vae,
+        hf_config: Optional[HuggingFaceConfig] = None,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
         sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
             state_dict=None,
             metadata_config=metadata_config,
-            is_sdxl=False, # This function seems to be for SD1/2? sdxl_checkpointing has its own?
+            is_sdxl=False, # This function seems to be for SD1/2? sdxl_checkpointing has its own? TODO: investigate?
             is_v2=v2,
             v_parameterization=loss_config.v_parameterization,
             is_lora=False,
@@ -458,6 +326,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         global_step,
         sd_saver,
         diffusers_saver,
+        hf_config,
     )
 
 
@@ -472,6 +341,7 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
         global_step: int,
         sd_saver,
         diffusers_saver,
+        hf_config: Optional[HuggingFaceConfig] = None,
 ):
     if on_epoch_end:
         epoch_no = epoch + 1
@@ -502,17 +372,9 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
         logger.info(f"saving checkpoint: {ckpt_file}")
         sd_saver(ckpt_file, epoch_no, global_step)
 
-        if saving_config.resume is not None: 
-            # Logic for huggingface upload needs HuggingFace config or args?
-            # saving_config doesn't have huggingface_repo_id?
-            # It seems 'args' had huggingface_repo_id. SavingConfig does NOT currently have it.
-            # Check saving.py again. It has resume but not repo_id?
-            # config/dataclasses/saving.py doesn't show huggingface fields. They are likely in LoggingConfig or their own config.
-            # I will need to pass huggingface_config or add these fields to SavingConfig.
-            pass # Placeholder for now, fixing signature priority
-        
-        # NOTE: Reduced complexity: skipping huggingface upload logic refactor in this step to ensure atomicity.
-        # Retaining minimal logic for file operations.
+        # Upload to HuggingFace if configured
+        if hf_config is not None and hf_config.huggingface_repo_id is not None:
+            huggingface_util.upload(hf_config, ckpt_file, "/" + ckpt_name)
 
         # remove older checkpoints
         if remove_no is not None:
@@ -536,7 +398,9 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
         logger.info(f"saving model: {out_dir}")
         diffusers_saver(out_dir)
 
-        # Skip HF upload for now
+        # Upload to HuggingFace if configured
+        if hf_config is not None and hf_config.huggingface_repo_id is not None:
+            huggingface_util.upload(hf_config, out_dir, "/" + model_name)
 
         # remove older checkpoints
         if remove_no is not None:
@@ -556,7 +420,7 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
             save_and_remove_state_stepwise(saving_config, accelerator, global_step)
 
 
-def save_and_remove_state_on_epoch_end(config: SavingConfig, accelerator, epoch_no):
+def save_and_remove_state_on_epoch_end(config: SavingConfig, accelerator, epoch_no, hf_config: Optional[HuggingFaceConfig] = None):
     model_name = default_if_none(config.output_name, DEFAULT_EPOCH_NAME)
 
     logger.info("")
@@ -565,7 +429,10 @@ def save_and_remove_state_on_epoch_end(config: SavingConfig, accelerator, epoch_
 
     state_dir = os.path.join(config.output_dir, EPOCH_STATE_NAME.format(model_name, epoch_no))
     accelerator.save_state(state_dir)
-    # Skipping HF upload
+
+    # Upload state to HuggingFace if configured
+    if hf_config is not None and hf_config.save_state_to_huggingface and hf_config.huggingface_repo_id is not None:
+        huggingface_util.upload(hf_config, state_dir, "/" + EPOCH_STATE_NAME.format(model_name, epoch_no))
     
     last_n_epochs = config.save_last_n_epochs_state if config.save_last_n_epochs_state else config.save_last_n_epochs
     if last_n_epochs is not None:
@@ -576,7 +443,7 @@ def save_and_remove_state_on_epoch_end(config: SavingConfig, accelerator, epoch_
             shutil.rmtree(state_dir_old)
 
 
-def save_and_remove_state_stepwise(config: SavingConfig, accelerator, step_no):
+def save_and_remove_state_stepwise(config: SavingConfig, accelerator, step_no, hf_config: Optional[HuggingFaceConfig] = None):
     model_name = default_if_none(config.output_name, DEFAULT_STEP_NAME)
 
     logger.info("")
@@ -585,7 +452,10 @@ def save_and_remove_state_stepwise(config: SavingConfig, accelerator, step_no):
 
     state_dir = os.path.join(config.output_dir, STEP_STATE_NAME.format(model_name, step_no))
     accelerator.save_state(state_dir)
-    # Skipping HF upload
+
+    # Upload state to HuggingFace if configured
+    if hf_config is not None and hf_config.save_state_to_huggingface and hf_config.huggingface_repo_id is not None:
+        huggingface_util.upload(hf_config, state_dir, "/" + STEP_STATE_NAME.format(model_name, step_no))
 
     last_n_steps = config.save_last_n_steps_state if config.save_last_n_steps_state else config.save_last_n_steps
     if last_n_steps is not None:
@@ -600,7 +470,7 @@ def save_and_remove_state_stepwise(config: SavingConfig, accelerator, step_no):
                 shutil.rmtree(state_dir_old)
 
 
-def save_state_on_train_end(config: SavingConfig, accelerator):
+def save_state_on_train_end(config: SavingConfig, accelerator, hf_config: Optional[HuggingFaceConfig] = None):
     model_name = default_if_none(config.output_name, DEFAULT_LAST_OUTPUT_NAME)
 
     logger.info("")
@@ -610,7 +480,9 @@ def save_state_on_train_end(config: SavingConfig, accelerator):
     state_dir = os.path.join(config.output_dir, LAST_STATE_NAME.format(model_name))
     accelerator.save_state(state_dir)
 
-    # Skipping HF upload
+    # Upload state to HuggingFace if configured
+    if hf_config is not None and hf_config.save_state_to_huggingface and hf_config.huggingface_repo_id is not None:
+        huggingface_util.upload(hf_config, state_dir, "/" + LAST_STATE_NAME.format(model_name))
 
 
 def save_sd_model_on_train_end(
@@ -627,6 +499,7 @@ def save_sd_model_on_train_end(
         text_encoder,
         unet,
         vae,
+        hf_config: Optional[HuggingFaceConfig] = None,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
         sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
@@ -649,7 +522,7 @@ def save_sd_model_on_train_end(
         )
 
     save_sd_model_on_train_end_common(
-        saving_config, save_stable_diffusion_format, use_safetensors, epoch, global_step, sd_saver, diffusers_saver
+        saving_config, save_stable_diffusion_format, use_safetensors, epoch, global_step, sd_saver, diffusers_saver, hf_config
     )
 
 
@@ -661,6 +534,7 @@ def save_sd_model_on_train_end_common(
         global_step: int,
         sd_saver,
         diffusers_saver,
+        hf_config: Optional[HuggingFaceConfig] = None,
 ):
     model_name = default_if_none(saving_config.output_name, DEFAULT_LAST_OUTPUT_NAME)
 
@@ -673,7 +547,9 @@ def save_sd_model_on_train_end_common(
         logger.info(f"save trained model as StableDiffusion checkpoint to {ckpt_file}")
         sd_saver(ckpt_file, epoch, global_step)
 
-        # Skipping HF upload
+        # Upload to HuggingFace if configured
+        if hf_config is not None and hf_config.huggingface_repo_id is not None:
+            huggingface_util.upload(hf_config, ckpt_file, "/" + ckpt_name)
     else:
         out_dir = os.path.join(saving_config.output_dir, model_name)
         os.makedirs(out_dir, exist_ok=True)
@@ -681,4 +557,6 @@ def save_sd_model_on_train_end_common(
         logger.info(f"save trained model as Diffusers to {out_dir}")
         diffusers_saver(out_dir)
 
-        # Skipping HF upload
+        # Upload to HuggingFace if configured
+        if hf_config is not None and hf_config.huggingface_repo_id is not None:
+            huggingface_util.upload(hf_config, out_dir, "/" + model_name)

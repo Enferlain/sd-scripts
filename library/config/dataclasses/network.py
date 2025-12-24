@@ -17,10 +17,10 @@ class NetworkConfig:
     base_weights_multiplier: Optional[List[float]] = field(default=None, metadata={"help": "multiplier for network weights to merge into the model before training"})
     training_comment: Optional[str] = field(default=None, metadata={"help": "arbitrary comment string stored in metadata"})
     unet_lr: Optional[float] = field(default=None, metadata={"help": "learning rate for U-Net"})
-    # OmegaConf doesn't support Union of primitives and containers well.
-    # Use Any or List and handle float in code if needed, but here List[float] usually implies we might want one or more.
-    # However, to avoid the error "Unions of containers are not supported", we can use Any or Optional[List[float]] and rely on type coercion or just Any.
-    # Given the error, simple Union[float, List[float]] fails.
-    # Let's change it to Any for now to pass OmegaConf validation, as it can be either scalar or list.
-    text_encoder_lr: Optional[Any] = field(default=None, metadata={"help": "learning rate for Text Encoder, can be multiple"})
+    # NOTE: Type is Any due to OmegaConf limitation (Union of primitives and containers not supported).
+    # Semantically this is Optional[Union[float, List[float]]] - single LR or per-TE LRs.
+    # Future improvement: Unify all TE LR configs (text_encoder_lr, learning_rate_te1/te2) into a single
+    # list-based field that works for models with 1, 2, or more text encoders.
+    text_encoder_lr: Optional[Any] = field(default=None, metadata={"help": "learning rate for Text Encoder(s). Can be float or list of floats for multiple TEs."})
     orthograd_targets: Optional[List[str]] = field(default=None, metadata={"help": "A list of strings to determine which named parameters should subject to orthgrad"})
+

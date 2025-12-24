@@ -5,6 +5,5 @@ learning_rate_te1: null
 learning_rate_te2: null
 diffusers_xformers: false
 train_text_encoder: false
-no_half_vae: false
 block_lr: null
 fused_optimizer_groups: null

@@ -92,6 +92,36 @@ OLD (monolithic):                     NEW (modular):
 
 ---
 
+## ✅ COMPLETED: SAI Model Spec Consolidation
+
+**Issue:** Three duplicate `get_sai_model_spec` functions existed across the codebase.
+
+**Solution:**
+
+- Updated `peft_strategy_sd.py` and `peft_strategy_sdxl.py` to use `get_sai_model_spec_from_config()`
+- Removed legacy functions from `checkpointing.py`:
+  - `get_sai_model_spec()` (argparse-based, ~70 lines)
+  - `get_sai_model_spec_dataclass()` (unused, ~60 lines)
+- **Canonical function:** `library.utils.sai_model_spec.get_sai_model_spec_from_config()`
+
+**Result:** ~135 lines of duplicate code removed from `checkpointing.py`.
+
+---
+
+## ✅ COMPLETED: HuggingFace Upload Fix
+
+**Issue:** The Hydra migration broke HuggingFace upload functionality in checkpointing functions. The condition `if args.huggingface_repo_id is not None` was incorrectly changed to `if saving_config.resume is not None` and upload calls were stubbed with `pass`.
+
+**Solution:**
+
+- Added `hf_config: Optional[HuggingFaceConfig] = None` parameter to 9 checkpointing functions
+- Restored proper upload logic for both model checkpoints and training state
+- Affected files: `checkpointing.py`, `sdxl_checkpointing.py`
+
+**Note:** Callers must now pass `hf_config=cfg.huggingface` to enable uploads.
+
+---
+
 ## Testing Suite
 
 ### Current Status (2025-12-23)
@@ -197,10 +227,12 @@ These require real models, GPU access, or full component initialization:
 ## Configuration Refactoring
 
 - [ ] **Config Validation Edge Cases**: Test `prepare_config(cfg)` and `validate_config(cfg)` for dataset-related conflicts
-- [ ] **Consolidate Learning Rate Configs**: Unify `text_encoder_lr` (List/Any in NetworkConfig) and `learning_rate_te1/te2` (floats in SDXLConfig)
-- [ ] **Type Safety**: Improve type definitions for `text_encoder_lr` to avoid `Any`
-- [ ] **Dataclass Reorganization**: Audit duplicated/misplaced fields (e.g., `no_half_vae` in both PerformanceConfig and SDXLConfig)
+- [x] ~~**Consolidate Learning Rate Configs**~~: Documented with improved comments. Future work: unify all TE LR fields into single list-based config
+- [x] ~~**Type Safety**~~: Added documentation for `text_encoder_lr` Any type (OmegaConf limitation)
+- [x] ~~**Dataclass Reorganization**~~: Consolidated `no_half_vae` to `PerformanceConfig` (removed from `SDXLConfig`)
 - [ ] **Base/SD Separation**: Strip base-level code from sd_peft, sd_textual_inversion, sd_finetune - currently mixing base AND sd1/2, outlined more in `PEFT_REFACTORING_PLAN.md`
+
+> [!NOTE] > **Future LR Config Improvement**: Consider unifying `text_encoder_lr`, `learning_rate_te1/te2`, and `learning_rate_te` into a single list-based field (e.g., `text_encoder_lrs: List[float]`) that works for models with any number of text encoders.
 
 ---
 
@@ -258,13 +290,33 @@ These require real models, GPU access, or full component initialization:
 
 **Potential Improvement:** Rename to `sd_checkpointing.py`, `sd_model_prep.py`, `sd_sample_generation.py` for clarity.
 
+### Investigation Findings (2025-12-24)
+
+These modules contain **mixed generic + SD-specific code**:
+
+| Module                 | Generic Functions (used by SDXL)                                                                                                                                                      | SD-Specific Functions                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `checkpointing.py`     | `precalculate_safetensors_hashes`, `get_git_revision_hash`, `model_hash`, `calculate_sha256`, `resume_from_local_or_hf_if_specified`, `save_and_remove_state_*`, `*_common` functions | `save_sd_model_on_*` (non-common)         |
+| `model_prep.py`        | `replace_unet_modules`, `patch_accelerator_for_fp16_training`, `set_padding_mode_for_vae_conv2d_modules`                                                                              | `load_target_model`, `_load_target_model` |
+| `sample_generation.py` | `sample_images_check`, `sample_images_common`                                                                                                                                         | `sample_images`                           |
+
+**Conclusion:** Cannot simply rename to `sd_*` - need to **split** each module into:
+
+- `<module>_utils.py` (generic functions)
+- `sd_<module>.py` (SD-specific functions)
+
+**Verified:** SDXL strategy correctly uses `sdxl_sample_generation.sample_images` via the strategy pattern.
+
 ---
 
-## Code Duplication (Future Consolidation)
+## ✅ COMPLETED: Text Encoder Utility Consolidation
 
-Logic duplication between `text_encoder_util.py` and strategy classes:
+**Issue:** `get_hidden_states_sdxl()` and `pool_workaround()` were duplicated between `text_encoder_util.py` and `strategy_sdxl.py`.
 
-- `get_hidden_states_sdxl()` in `text_encoder_util.py` (used by caching.py, sdxl_peft.py)
-- `SdxlTextEncodingStrategy._get_hidden_states_sdxl()` in `strategy_sdxl.py`
+**Solution:**
 
-Consider consolidating: make `caching.py` use the strategy, or move shared logic to common utility.
+- Made `SdxlTextEncodingStrategy._pool_workaround()` delegate to `pool_workaround()` from `text_encoder_util.py`
+- Made `SdxlTextEncodingStrategy._get_hidden_states_sdxl()` call the shared utility
+- Strategy wrapper handles: deriving `max_token_length` from input shape, device movement
+
+**Result:** ~60 lines of duplicate code removed from `strategy_sdxl.py`.

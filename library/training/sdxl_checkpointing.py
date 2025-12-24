@@ -11,6 +11,8 @@ from library.training.checkpointing import (
 from library.config.dataclasses.saving import SavingConfig
 from library.config.dataclasses.metadata import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
+from library.config.dataclasses.huggingface import HuggingFaceConfig
+from typing import Optional
 # TODO: TrainingConfig was only used for v_parameterization (which was a bug - it's in LossConfig).
 # Consider adding clip_skip from TrainingConfig to metadata in the future.
 
@@ -30,6 +32,7 @@ def save_sd_model_on_train_end(
         vae,
         logit_scale,
         ckpt_info,
+        hf_config: Optional[HuggingFaceConfig] = None,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
         sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
@@ -69,7 +72,7 @@ def save_sd_model_on_train_end(
         )
 
     save_sd_model_on_train_end_common(
-        saving_config, save_stable_diffusion_format, use_safetensors, epoch, global_step, sd_saver, diffusers_saver
+        saving_config, save_stable_diffusion_format, use_safetensors, epoch, global_step, sd_saver, diffusers_saver, hf_config
     )
 
 
@@ -94,6 +97,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         vae,
         logit_scale,
         ckpt_info,
+        hf_config: Optional[HuggingFaceConfig] = None,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
         sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
@@ -143,4 +147,5 @@ def save_sd_model_on_epoch_end_or_stepwise(
         global_step,
         sd_saver,
         diffusers_saver,
+        hf_config,
     )

@@ -179,7 +179,7 @@ def train(cfg: SDXLFineTuneConfig):
     accelerator = prepare_accelerator(cfg.performance)
 
     weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.saving)
-    vae_dtype = torch.float32 if cfg.sdxl.no_half_vae else weight_dtype
+    vae_dtype = torch.float32 if cfg.performance.no_half_vae else weight_dtype
 
     (
         load_stable_diffusion_format,

@@ -47,39 +47,30 @@ def test_imports():
 
 def test_checkpointing_shim():
     print("\nTesting checkpointing shim...")
-    from library.training.checkpointing import get_sai_model_spec
+    from library.utils.sai_model_spec import get_sai_model_spec_from_config
+    from library.config.dataclasses.metadata import MetadataConfig
     
-    # Create a mock object that looks like argparse.Namespace or Config
-    class MockArgs:
-        def __init__(self):
-            self.v2 = False
-            self.v_parameterization = False
-            self.resolution = "512,512"
-            self.output_name = "test_output"
-            self.metadata_title = "Test Title"
-            self.min_timestep = None
-            self.max_timestep = None
-            self.metadata_author = "Me"
-            self.metadata_description = "Desc"
-            self.metadata_license = "Lic"
-            self.metadata_tags = "tag1"
-            self.clip_skip = 1
-            
-    mock_args = MockArgs()
+    # Create a mock MetadataConfig
+    metadata_config = MetadataConfig(
+        metadata_title="Test Title",
+        metadata_author="Me",
+        metadata_description="Desc",
+        metadata_license="Lic",
+        metadata_tags="tag1",
+    )
     
     # We need to mock sai_model_spec.build_metadata because it might require more deps or real models
     # But let's see if we can just call it and catch expected errors or if it runs enough to prove the type hint is accepted.
     # Actually, get_sai_model_spec calls build_metadata, so we need to mock that interaction or provide good inputs.
     # Let's import the module and check annotations.
     
-    import library.training.checkpointing as checkpointing
+    import library.utils.sai_model_spec as sai_model_spec
     
-    # Check annotations of get_sai_model_spec
+    # Check annotations of get_sai_model_spec_from_config
     from typing import Any
     
     # In python < 3.10, strict type checking at runtime isn't enforced, but we want to ensure
-    # we can pass our MockArgs without it exploding due to an isinstance(argparse.Namespace) check.
-    # The code we modified didn't have isinstance checks, just type hints.
+    # we can pass our MetadataConfig without it exploding due to type issues.
     
     print("✅ Shim test passed (static check). Runtime verify:")
     try:

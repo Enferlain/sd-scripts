@@ -18,7 +18,7 @@ from library.strategies.peft_strategy_base import PeftTrainingStrategy
 from library.models import model_util
 from library.training.model_prep import load_target_model, replace_unet_modules
 from library.training.sample_generation import sample_images
-from library.training.checkpointing import get_sai_model_spec
+from library.utils.sai_model_spec import get_sai_model_spec_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.trainer_utils import calculate_val_loss_check
 from library.training.noise_utils import (
@@ -125,7 +125,19 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def get_sai_model_spec(self, cfg) -> dict:
         """Get SAI model spec for SD."""
-        return get_sai_model_spec(None, cfg, self.is_sdxl, True, False)
+        return get_sai_model_spec_from_config(
+            state_dict=None,
+            metadata_config=cfg.metadata,
+            is_sdxl=self.is_sdxl,
+            is_v2=cfg.model.v2,
+            v_parameterization=cfg.loss.v_parameterization,
+            is_lora=True,
+            is_textual_inversion=False,
+            resolution=cfg.dataset.resolution,
+            min_timestep=cfg.timestep.min_timestep,
+            max_timestep=cfg.timestep.max_timestep,
+            clip_skip=cfg.training.clip_skip,
+        )
 
     def get_noise_scheduler(self, cfg, device: torch.device) -> Any:
         """Create noise scheduler for SD."""

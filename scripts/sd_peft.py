@@ -75,7 +75,6 @@ from library.training.peft_common import (
 )
 
 from library.training.checkpointing import (
-    get_sai_model_spec,
     resume_from_local_or_hf_if_specified,
     get_git_revision_hash,
     model_hash, calculate_sha256,

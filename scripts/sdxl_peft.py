@@ -56,7 +56,7 @@ from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.optimizer import prepare_optimizer, get_scheduler_fix
-from library.training.sample_generation import sample_images, sample_images_check
+from library.training.sample_generation import sample_images_check
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
 from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 from library.strategies.peft_strategy_sdxl import SdxlPeftStrategy
@@ -74,7 +74,6 @@ from library.training.peft_common import (
 )
 
 from library.training.checkpointing import (
-    get_sai_model_spec,
     resume_from_local_or_hf_if_specified,
     get_git_revision_hash,
     model_hash, calculate_sha256,

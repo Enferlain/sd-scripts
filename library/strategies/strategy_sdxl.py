@@ -7,6 +7,7 @@ from typing import Any, List, Optional, Tuple, Union
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 
 from library.constants import TOKENIZER1_PATH, TOKENIZER2_PATH
+from library.models.text_encoder_util import pool_workaround, get_hidden_states_sdxl
 from library.strategies.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
 from library.utils.common_utils import setup_logging
 
@@ -57,46 +58,8 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
             self, text_encoder: CLIPTextModelWithProjection, last_hidden_state: torch.Tensor, input_ids: torch.Tensor,
             eos_token_id: int
     ):
-        r"""
-        workaround for CLIP's pooling bug: it returns the hidden states for the max token id as the pooled output
-        instead of the hidden states for the EOS token
-        If we use Textual Inversion, we need to use the hidden states for the EOS token as the pooled output
-
-        Original code from CLIP's pooling function:
-
-        \# text_embeds.shape = [batch_size, sequence_length, transformer.width]
-        \# take features from the eot embedding (eot_token is the highest number in each sequence)
-        \# casting to torch.int for onnx compatibility: argmax doesn't support int64 inputs with opset 14
-        pooled_output = last_hidden_state[
-            torch.arange(last_hidden_state.shape[0], device=last_hidden_state.device),
-            input_ids.to(dtype=torch.int, device=last_hidden_state.device).argmax(dim=-1),
-        ]
-        """
-
-        # input_ids: b*n,77
-        # find index for EOS token
-
-        # Following code is not working if one of the input_ids has multiple EOS tokens (very odd case)
-        # eos_token_index = torch.where(input_ids == eos_token_id)[1]
-        # eos_token_index = eos_token_index.to(device=last_hidden_state.device)
-
-        # Create a mask where the EOS tokens are
-        eos_token_mask = (input_ids == eos_token_id).int()
-
-        # Use argmax to find the last index of the EOS token for each element in the batch
-        eos_token_index = torch.argmax(eos_token_mask, dim=1)  # this will be 0 if there is no EOS token, it's fine
-        eos_token_index = eos_token_index.to(device=last_hidden_state.device)
-
-        # get hidden states for EOS token
-        pooled_output = last_hidden_state[
-            torch.arange(last_hidden_state.shape[0], device=last_hidden_state.device), eos_token_index
-        ]
-
-        # apply projection: projection may be of different dtype than last_hidden_state
-        pooled_output = text_encoder.text_projection(pooled_output.to(text_encoder.text_projection.weight.dtype))
-        pooled_output = pooled_output.to(last_hidden_state.dtype)
-
-        return pooled_output
+        """Delegate to shared utility function."""
+        return pool_workaround(text_encoder, last_hidden_state, input_ids, eos_token_id)
 
     def _get_hidden_states_sdxl(
             self,
@@ -108,62 +71,39 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
             text_encoder2: Union[CLIPTextModelWithProjection, torch.nn.Module],
             unwrapped_text_encoder2: Optional[CLIPTextModelWithProjection] = None,
     ):
-        # input_ids: b,n,77 -> b*n, 77
-        b_size = input_ids1.size()[0]
+        """
+        Wrapper around shared utility that derives max_token_length from input shape.
+        
+        The input_ids have shape [b, n, 77] where n is the number of 77-token chunks.
+        """
+        # Derive max_token_length from input shape
         if input_ids1.size()[1] == 1:
             max_token_length = None
         else:
             max_token_length = input_ids1.size()[1] * input_ids1.size()[2]
-        input_ids1 = input_ids1.reshape((-1, tokenizer1.model_max_length))  # batch_size*n, 77
-        input_ids2 = input_ids2.reshape((-1, tokenizer2.model_max_length))  # batch_size*n, 77
+        
+        # Flatten and move to device
+        input_ids1 = input_ids1.reshape((-1, tokenizer1.model_max_length))
+        input_ids2 = input_ids2.reshape((-1, tokenizer2.model_max_length))
         input_ids1 = input_ids1.to(text_encoder1.device)
         input_ids2 = input_ids2.to(text_encoder2.device)
+        
+        # Use unwrapped encoder for pool workaround if provided
+        unwrapped_te2 = unwrapped_text_encoder2 or text_encoder2
+        
+        # Call shared utility - pass None for accelerator since we handle unwrapping here
+        return get_hidden_states_sdxl(
+            max_token_length,
+            input_ids1,
+            input_ids2,
+            tokenizer1,
+            tokenizer2,
+            text_encoder1,
+            unwrapped_te2,
+            weight_dtype=None,
+            accelerator=None,
+        )
 
-        # text_encoder1
-        enc_out = text_encoder1(input_ids1, output_hidden_states=True, return_dict=True)
-        hidden_states1 = enc_out["hidden_states"][11]
-
-        # text_encoder2
-        enc_out = text_encoder2(input_ids2, output_hidden_states=True, return_dict=True)
-        hidden_states2 = enc_out["hidden_states"][-2]  # penuultimate layer
-
-        # pool2 = enc_out["text_embeds"]
-        unwrapped_text_encoder2 = unwrapped_text_encoder2 or text_encoder2
-        pool2 = self._pool_workaround(unwrapped_text_encoder2, enc_out["last_hidden_state"], input_ids2,
-                                      tokenizer2.eos_token_id)
-
-        # b*n, 77, 768 or 1280 -> b, n*77, 768 or 1280
-        n_size = 1 if max_token_length is None else max_token_length // 75
-        hidden_states1 = hidden_states1.reshape((b_size, -1, hidden_states1.shape[-1]))
-        hidden_states2 = hidden_states2.reshape((b_size, -1, hidden_states2.shape[-1]))
-
-        if max_token_length is not None:
-            # bs*3, 77, 768 or 1024
-            # encoder1: <BOS>...<EOS> の三連を <BOS>...<EOS> へ戻す
-            states_list = [hidden_states1[:, 0].unsqueeze(1)]  # <BOS>
-            for i in range(1, max_token_length, tokenizer1.model_max_length):
-                states_list.append(hidden_states1[:, i: i + tokenizer1.model_max_length - 2])  # <BOS> の後から <EOS> の前まで
-            states_list.append(hidden_states1[:, -1].unsqueeze(1))  # <EOS>
-            hidden_states1 = torch.cat(states_list, dim=1)
-
-            # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
-            states_list = [hidden_states2[:, 0].unsqueeze(1)]  # <BOS>
-            for i in range(1, max_token_length, tokenizer2.model_max_length):
-                chunk = hidden_states2[:, i: i + tokenizer2.model_max_length - 2]  # <BOS> の後から 最後の前まで
-                # this causes an error:
-                # RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation
-                # if i > 1:
-                #     for j in range(len(chunk)):  # batch_size
-                #         if input_ids2[n_index + j * n_size, 1] == tokenizer2.eos_token_id:  # 空、つまり <BOS> <EOS> <PAD> ...のパターン
-                #             chunk[j, 0] = chunk[j, 1]  # 次の <PAD> の値をコピーする
-                states_list.append(chunk)  # <BOS> の後から <EOS> の前まで
-            states_list.append(hidden_states2[:, -1].unsqueeze(1))  # <EOS> か <PAD> のどちらか
-            hidden_states2 = torch.cat(states_list, dim=1)
-
-            # pool はnの最初のものを使う
-            pool2 = pool2[::n_size]
-
-        return hidden_states1, hidden_states2, pool2
 
     def encode_tokens(
             self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor]

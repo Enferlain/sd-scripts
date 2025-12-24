@@ -10,6 +10,6 @@ class SDXLConfig:
     learning_rate_te2: Optional[float] = field(default=None, metadata={"help": "learning rate for text encoder 2"})
     diffusers_xformers: bool = field(default=False, metadata={"help": "use xformers by diffusers"})
     train_text_encoder: bool = field(default=False, metadata={"help": "train text encoder"})
-    no_half_vae: bool = field(default=False, metadata={"help": "do not use fp16/bf16 VAE in mixed precision"})
     block_lr: Optional[str] = field(default=None, metadata={"help": "learning rates for each block of U-Net"})
     fused_optimizer_groups: Optional[int] = field(default=None, metadata={"help": "number of optimizers for fused backward pass and optimizer step"})
+

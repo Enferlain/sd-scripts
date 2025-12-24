@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **PEFT Strategy-Based Refactoring (Phase 1-2)**
+
   - Reduced `sd_peft.py` from 927 lines to 50 lines (95% reduction)
   - Removed `SDPeftTrainer` class - all functionality extracted to modular components
   - Created `library/strategies/peft_strategy_base.py` (16 methods) - ABC interfaces for PEFT training
@@ -17,6 +18,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Created `library/training/peft_common.py` (6 functions) - shared logging/plotting utilities
   - Refactored `library/training/peft_trainer.py` to use strategy pattern and standalone functions
   - `train()` function now accepts `strategies: PeftTrainingStrategy` parameter
+
+- **Phase 4: Training Loop Cleanup**
+
+  - Extracted `prepare_datasets()` to `peft_common.py` (~47 lines saved per script)
+  - Extracted `calculate_initial_step()` to `peft_common.py` (~42 lines saved per script)
+  - Extracted `parse_dynamic_timestep_schedule()` to `peft_common.py` (~10 lines saved per script)
+  - Extracted `register_network_state_hooks()` to `peft_common.py` (~40 lines saved per script)
+  - Total: ~140 lines reduced from each PEFT script (1173 → 1035 lines)
+
+- **SAI Model Spec Consolidation**
+
+  - Updated `peft_strategy_sd.py` and `peft_strategy_sdxl.py` to use `get_sai_model_spec_from_config()` instead of legacy argparse-based function
+  - Removed ~135 lines of duplicate legacy code from `checkpointing.py`:
+    - Removed `get_sai_model_spec()` (legacy, used argparse)
+    - Removed `get_sai_model_spec_dataclass()` (legacy, unused)
+  - Canonical function is now `library.utils.sai_model_spec.get_sai_model_spec_from_config()`
+
+- **Text Encoder Utility Consolidation**
+
+  - Consolidated duplicate `get_hidden_states_sdxl()` and `pool_workaround()` between `text_encoder_util.py` and `strategy_sdxl.py`
+  - `SdxlTextEncodingStrategy` methods now delegate to shared utilities
+  - Removed ~60 lines of duplicate code from `strategy_sdxl.py`
+
+- **Dataclass Config Cleanup**
+  - Consolidated `no_half_vae` to `PerformanceConfig` (canonical), removed from `SDXLConfig`
+  - Updated `sdxl_finetune.py` to use `cfg.performance.no_half_vae`
+  - Improved `text_encoder_lr` documentation in `NetworkConfig` (explains `Any` type, future unification plans)
+
+### Fixed
+
+- **HuggingFace Upload Bug in Checkpointing**
+  - The Hydra migration accidentally replaced `if args.huggingface_repo_id is not None` with `if saving_config.resume is not None` (wrong!) and stubbed out upload calls with `pass`
+  - Added `hf_config: Optional[HuggingFaceConfig] = None` parameter to 9 functions in `checkpointing.py` and `sdxl_checkpointing.py`
+  - Restored proper upload logic for model checkpoints and training state
+  - Functions affected: `save_sd_model_on_epoch_end_or_stepwise`, `save_sd_model_on_train_end`, `save_and_remove_state_*` variants
 
 ### Added
 
