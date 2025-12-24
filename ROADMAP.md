@@ -71,14 +71,16 @@ OLD (monolithic):                     NEW (modular):
 | `prepare_datasets()`                | ~47                      | Dataset group creation & validation |
 | `calculate_initial_step()`          | ~42                      | Resume step/epoch calculation       |
 | `parse_dynamic_timestep_schedule()` | ~10                      | Dynamic timestep range parsing      |
+| `register_network_state_hooks()`    | ~40                      | Network-only checkpointing hooks    |
 
-**Total reduction:** ~100 lines per script (from 1173 to ~1073 lines)
+**Total reduction:** ~140 lines per script (from 1173 to ~1035 lines)
 
 **All extractions in `peft_common.py`:**
 
 - `prepare_datasets()` - Dataset preparation, blueprint generation, validation
 - `calculate_initial_step()` - Resume/initial step calculation
 - `parse_dynamic_timestep_schedule()` - Dynamic timestep schedule parsing
+- `register_network_state_hooks()` - Save/load hooks for network-only checkpointing
 - `init_timestep_sampler()` - Handles 5+ sampler types (~100 lines)
 - `create_training_metadata()` - Creates 65+ metadata keys (~230 lines)
 - `setup_live_plotter()` + `get_plotter_settings()` - Live plotter setup (~140 lines)

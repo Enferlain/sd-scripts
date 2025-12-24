@@ -71,6 +71,7 @@ from library.training.peft_common import (
     prepare_datasets,
     calculate_initial_step,
     parse_dynamic_timestep_schedule,
+    register_network_state_hooks,
 )
 
 from library.training.checkpointing import (
@@ -486,53 +487,13 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         patch_accelerator_for_fp16_training(accelerator)
 
     # before resuming make hook for saving/loading to save/load the network weights only
-    def save_model_hook(models, weights, output_dir):
-        # pop weights of other models than network to save only network weights
-        # only main process or deepspeed https://github.com/huggingface/diffusers/issues/2606
-        if accelerator.is_main_process or cfg.performance.deepspeed:
-            remove_indices = []
-            for i, model in enumerate(models):
-                if not isinstance(model, type(accelerator.unwrap_model(network))):
-                    remove_indices.append(i)
-            for i in reversed(remove_indices):
-                if len(weights) > i:
-                    weights.pop(i)
-            # print(f"save model hook: {len(weights)} weights will be saved")
-
-        # save current ecpoch and step
-        train_state_file = os.path.join(output_dir, "train_state.json")
-        # +1 is needed because the state is saved before current_step is set from global_step
-        logger.info(
-            f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
-        with open(train_state_file, "w", encoding="utf-8") as f:
-            json.dump({"current_epoch": current_epoch.value, "current_step": current_step.value + 1}, f)
-
-    steps_from_state = None
-
-    def load_model_hook(models, input_dir):
-        # remove models except network
-        remove_indices = []
-        for i, model in enumerate(models):
-            if not isinstance(model, type(accelerator.unwrap_model(network))):
-                remove_indices.append(i)
-        for i in reversed(remove_indices):
-            models.pop(i)
-        # print(f"load model hook: {len(models)} models will be loaded")
-
-        # load current epoch and step to
-        nonlocal steps_from_state
-        train_state_file = os.path.join(input_dir, "train_state.json")
-        if os.path.exists(train_state_file):
-            with open(train_state_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            steps_from_state = data["current_step"]
-            logger.info(f"load train state from {train_state_file}: {data}")
-
-    accelerator.register_save_state_pre_hook(save_model_hook)
-    accelerator.register_load_state_pre_hook(load_model_hook)
+    get_steps_from_state = register_network_state_hooks(
+        accelerator, network, cfg, current_epoch, current_step
+    )
 
     # resumeする
     resume_from_local_or_hf_if_specified(accelerator, cfg.saving)
+    steps_from_state = get_steps_from_state()
 
     # epoch数を計算する
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
