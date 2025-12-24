@@ -9,7 +9,7 @@ from library.constants import V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
 from library.networks import lora
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, get_preferred_device
-from library.training.model_prep import _load_target_model
+from library.training.sd_model_prep import _load_target_model
 
 init_ipex()
 

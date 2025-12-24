@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-24]
+
+### Changed
+
+- **SAI Model Spec Consolidation**
+
+  - Updated `peft_strategy_sd.py` and `peft_strategy_sdxl.py` to use `get_sai_model_spec_from_config()` instead of legacy argparse-based function
+  - Removed ~135 lines of duplicate legacy code from `checkpointing.py`:
+    - Removed `get_sai_model_spec()` (legacy, used argparse)
+    - Removed `get_sai_model_spec_dataclass()` (legacy, unused)
+  - Canonical function is now `library.utils.sai_model_spec.get_sai_model_spec_from_config()`
+
+- **Text Encoder Utility Consolidation**
+
+  - Consolidated duplicate `get_hidden_states_sdxl()` and `pool_workaround()` between `text_encoder_util.py` and `strategy_sdxl.py`
+  - `SdxlTextEncodingStrategy` methods now delegate to shared utilities
+  - Removed ~60 lines of duplicate code from `strategy_sdxl.py`
+
+- **Dataclass Config Cleanup**
+
+  - Consolidated `no_half_vae` to `PerformanceConfig` (canonical), removed from `SDXLConfig`
+  - Updated `sdxl_finetune.py` to use `cfg.performance.no_half_vae`
+  - Improved `text_encoder_lr` documentation in `NetworkConfig` (explains `Any` type, future unification plans)
+
+- **Checkpointing Module Split**
+
+  - Created `sd_checkpointing.py` with SD1.5/2-specific save functions
+  - Removed SD-specific code from `checkpointing.py` (now generic-only)
+  - Updated `sd_finetune.py` to import from `sd_checkpointing.py`
+  - Mirrors existing pattern: `checkpointing.py` (generic) + `sdxl_checkpointing.py` (SDXL)
+
+- **Model Prep Module Split**
+
+  - Created `sd_model_prep.py` with SD1.5/2-specific model loading functions
+  - `model_prep.py` now contains only generic utilities (`replace_unet_modules`, `patch_accelerator_for_fp16_training`, `set_padding_mode_for_vae_conv2d_modules`)
+  - Updated SD scripts, strategies, and tools to import from `sd_model_prep.py`
+  - Removed unused `load_target_model` import from `sdxl_peft.py`
+
+- **Sample Generation Module Split**
+  - Created `sd_sample_generation.py` with SD-specific `sample_images` wrapper
+  - `sample_generation.py` now contains only generic utilities (`sample_images_common`, `sample_images_check`, etc.)
+  - Mirrors existing `sdxl_sample_generation.py` pattern
+
+## [2025-12-23]
+
 ### Changed
 
 - **PEFT Strategy-Based Refactoring (Phase 1-2)**
@@ -27,24 +72,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extracted `register_network_state_hooks()` to `peft_common.py` (~40 lines saved per script)
   - Total: ~140 lines reduced from each PEFT script (1173 → 1035 lines)
 
-- **SAI Model Spec Consolidation**
-
-  - Updated `peft_strategy_sd.py` and `peft_strategy_sdxl.py` to use `get_sai_model_spec_from_config()` instead of legacy argparse-based function
-  - Removed ~135 lines of duplicate legacy code from `checkpointing.py`:
-    - Removed `get_sai_model_spec()` (legacy, used argparse)
-    - Removed `get_sai_model_spec_dataclass()` (legacy, unused)
-  - Canonical function is now `library.utils.sai_model_spec.get_sai_model_spec_from_config()`
-
-- **Text Encoder Utility Consolidation**
-
-  - Consolidated duplicate `get_hidden_states_sdxl()` and `pool_workaround()` between `text_encoder_util.py` and `strategy_sdxl.py`
-  - `SdxlTextEncodingStrategy` methods now delegate to shared utilities
-  - Removed ~60 lines of duplicate code from `strategy_sdxl.py`
-
-- **Dataclass Config Cleanup**
-  - Consolidated `no_half_vae` to `PerformanceConfig` (canonical), removed from `SDXLConfig`
-  - Updated `sdxl_finetune.py` to use `cfg.performance.no_half_vae`
-  - Improved `text_encoder_lr` documentation in `NetworkConfig` (explains `Any` type, future unification plans)
 
 ### Fixed
 

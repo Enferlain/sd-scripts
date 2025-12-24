@@ -13,7 +13,7 @@ from library.strategies import strategy_sdxl, strategy_sd, strategy_base
 from library.training.trainer_utils import prepare_accelerator
 from library.utils import config_util
 from library.utils.common_utils import setup_logging, add_logging_arguments
-from library.training.model_prep import load_target_model
+from library.training.sd_model_prep import load_target_model
 from library.training.sdxl_model_prep import load_target_model as load_target_model_sdxl
 
 from library.utils.config_util import (

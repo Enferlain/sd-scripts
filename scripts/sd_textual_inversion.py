@@ -25,11 +25,12 @@ from library.data.prompt_templates import imagenet_templates_small, imagenet_sty
 from library.data.dataset import DatasetGroup, MinimalDataset, load_arbitrary_dataset, collator_class, debug_dataset
 from library.config.dataclasses.sd_textual_inversion import TextualInversionConfig
 
-from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
+from library.training.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
+from library.training.sd_model_prep import load_target_model
 from library.training.trainer_utils import prepare_accelerator
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.optimizer import get_optimizer, get_scheduler_fix
-from library.training.sample_generation import sample_images
+from library.training.sd_sample_generation import sample_images
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.config.validation import prepare_config, validate_config, validate_sd_textual_inversion
 

@@ -270,64 +270,7 @@ def get_remove_step_no(config: SavingConfig, step_no: int):
     return remove_step_no
 
 
-# epochとstepの保存、メタデータにepoch/stepが含まれ引数が同じになるため、統合している
-# on_epoch_end: Trueならepoch終了時、Falseならstep経過時
-def save_sd_model_on_epoch_end_or_stepwise(
-        saving_config: SavingConfig,
-        metadata_config: MetadataConfig,
-        loss_config: LossConfig,
-        v2: bool,
-        on_epoch_end: bool,
-        accelerator,
-        src_path: str,
-        save_stable_diffusion_format: bool,
-        use_safetensors: bool,
-        save_dtype: torch.dtype,
-        epoch: int,
-        num_train_epochs: int,
-        global_step: int,
-        text_encoder,
-        unet,
-        vae,
-        hf_config: Optional[HuggingFaceConfig] = None,
-):
-    def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
-            state_dict=None,
-            metadata_config=metadata_config,
-            is_sdxl=False, # This function seems to be for SD1/2? sdxl_checkpointing has its own? TODO: investigate?
-            is_v2=v2,
-            v_parameterization=loss_config.v_parameterization,
-            is_lora=False,
-            is_textual_inversion=False,
-            is_stable_diffusion_ckpt=True,
-            # Timesteps and resolution might need to be passed if relevant, using defaults for now or extracting from training_config if possible
-            # But training_config doesn't have resolution.
-            # We might need to add resolution argument to this function if it's strictly required for metadata.
-            # Legacy code used args.resolution.
-        )
-        model_util.save_stable_diffusion_checkpoint(
-            v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, sai_metadata, save_dtype, vae
-        )
-
-    def diffusers_saver(out_dir):
-        model_util.save_diffusers_checkpoint(
-            v2, out_dir, text_encoder, unet, src_path, vae=vae, use_safetensors=use_safetensors
-        )
-
-    save_sd_model_on_epoch_end_or_stepwise_common(
-        saving_config,
-        on_epoch_end,
-        accelerator,
-        save_stable_diffusion_format,
-        use_safetensors,
-        epoch,
-        num_train_epochs,
-        global_step,
-        sd_saver,
-        diffusers_saver,
-        hf_config,
-    )
+# NOTE: SD1.5/2-specific save_sd_model_on_epoch_end_or_stepwise moved to sd_checkpointing.py
 
 
 def save_sd_model_on_epoch_end_or_stepwise_common(
@@ -485,45 +428,7 @@ def save_state_on_train_end(config: SavingConfig, accelerator, hf_config: Option
         huggingface_util.upload(hf_config, state_dir, "/" + LAST_STATE_NAME.format(model_name))
 
 
-def save_sd_model_on_train_end(
-        saving_config: SavingConfig,
-        metadata_config: MetadataConfig,
-        loss_config: LossConfig,
-        v2: bool,
-        src_path: str,
-        save_stable_diffusion_format: bool,
-        use_safetensors: bool,
-        save_dtype: torch.dtype,
-        epoch: int,
-        global_step: int,
-        text_encoder,
-        unet,
-        vae,
-        hf_config: Optional[HuggingFaceConfig] = None,
-):
-    def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
-            state_dict=None,
-            metadata_config=metadata_config,
-            is_sdxl=False,
-            is_v2=v2,
-            v_parameterization=loss_config.v_parameterization,
-            is_lora=False,
-            is_textual_inversion=False,
-            is_stable_diffusion_ckpt=True,
-        )
-        model_util.save_stable_diffusion_checkpoint(
-            v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, sai_metadata, save_dtype, vae
-        )
-
-    def diffusers_saver(out_dir):
-        model_util.save_diffusers_checkpoint(
-            v2, out_dir, text_encoder, unet, src_path, vae=vae, use_safetensors=use_safetensors
-        )
-
-    save_sd_model_on_train_end_common(
-        saving_config, save_stable_diffusion_format, use_safetensors, epoch, global_step, sd_saver, diffusers_saver, hf_config
-    )
+# NOTE: SD1.5/2-specific save_sd_model_on_train_end moved to sd_checkpointing.py
 
 
 def save_sd_model_on_train_end_common(

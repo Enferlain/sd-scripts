@@ -55,9 +55,11 @@ from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
+from library.training.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
+from library.training.sd_model_prep import load_target_model
 from library.training.optimizer import prepare_optimizer, get_scheduler_fix
-from library.training.sample_generation import sample_images, sample_images_check
+from library.training.sample_generation import sample_images_check
+from library.training.sd_sample_generation import sample_images
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
 from library.config.dataclasses.sd_peft import SDPeftConfig
 from library.strategies.peft_strategy_sd import SdPeftStrategy

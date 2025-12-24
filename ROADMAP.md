@@ -230,7 +230,7 @@ These require real models, GPU access, or full component initialization:
 - [x] ~~**Consolidate Learning Rate Configs**~~: Documented with improved comments. Future work: unify all TE LR fields into single list-based config
 - [x] ~~**Type Safety**~~: Added documentation for `text_encoder_lr` Any type (OmegaConf limitation)
 - [x] ~~**Dataclass Reorganization**~~: Consolidated `no_half_vae` to `PerformanceConfig` (removed from `SDXLConfig`)
-- [ ] **Base/SD Separation**: Strip base-level code from sd_peft, sd_textual_inversion, sd_finetune - currently mixing base AND sd1/2, outlined more in `PEFT_REFACTORING_PLAN.md`
+- [x] ~~**Base/SD Separation**~~: Complete. Train loops intentionally remain in scripts (allows model-specific variations). All model-specific logic delegated via strategy pattern in `peft_strategy_*.py`.
 
 > [!NOTE] > **Future LR Config Improvement**: Consider unifying `text_encoder_lr`, `learning_rate_te1/te2`, and `learning_rate_te` into a single list-based field (e.g., `text_encoder_lrs: List[float]`) that works for models with any number of text encoders.
 
@@ -302,12 +302,30 @@ These modules contain **mixed generic + SD-specific code**:
 
 **Conclusion:** Cannot simply rename to `sd_*` - need to **split** each module into:
 
-- `<module>_utils.py` (generic functions)
+- `<module>_utils.py` or keep in base (generic functions)
 - `sd_<module>.py` (SD-specific functions)
 
 **Verified:** SDXL strategy correctly uses `sdxl_sample_generation.sample_images` via the strategy pattern.
 
----
+### ✅ COMPLETED: Checkpointing Module Split (2025-12-24)
+
+- Created `sd_checkpointing.py` with SD-specific save functions
+- `checkpointing.py` now contains only generic utilities + `*_common` functions
+- Updated `sd_finetune.py` to import from `sd_checkpointing.py`
+
+### ✅ COMPLETED: Model Prep Module Split (2025-12-24)
+
+- Created `sd_model_prep.py` with SD-specific `load_target_model` functions
+- `model_prep.py` now contains only generic utilities used by both SD and SDXL
+- Updated SD scripts, strategies, and tools to import from `sd_model_prep.py`
+
+### ✅ COMPLETED: Sample Generation Module Split (2025-12-24)
+
+- Created `sd_sample_generation.py` with SD-specific `sample_images` wrapper
+- `sample_generation.py` now contains only generic utilities
+- Mirrors existing `sdxl_sample_generation.py` pattern
+
+## **All 3 mixed modules now split:** `checkpointing`, `model_prep`, `sample_generation` ✅
 
 ## ✅ COMPLETED: Text Encoder Utility Consolidation
 

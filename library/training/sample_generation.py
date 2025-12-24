@@ -88,8 +88,8 @@ def get_my_scheduler(
     return scheduler
 
 
-def sample_images(*args, **kwargs):
-    return sample_images_common(StableDiffusionLongPromptWeightingPipeline, *args, **kwargs)
+# NOTE: SD-specific sample_images() moved to sd_sample_generation.py
+
 
 
 def line_to_prompt_dict(line: str) -> dict:
