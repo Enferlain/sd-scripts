@@ -10,6 +10,7 @@ class PerformanceConfig:
     dynamo_backend: str = "inductor"
     xformers: bool = False
     sdpa: bool = False
+    diffusers_xformers: bool = field(default=False, metadata={"help": "use xformers by diffusers"})
     gradient_checkpointing: bool = False
     cpu_offload_checkpointing: bool = False
     mixed_precision: str = "no"

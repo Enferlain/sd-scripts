@@ -3,6 +3,7 @@ torch_compile: false
 dynamo_backend: "inductor"
 xformers: false
 sdpa: false
+diffusers_xformers: false
 gradient_checkpointing: false
 mixed_precision: "no"
 full_fp16: false

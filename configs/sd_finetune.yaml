@@ -20,6 +20,5 @@ defaults:
 
 # Fine-tuning specific settings
 fine_tune:
-  diffusers_xformers: false # Use xformers via Diffusers
   train_text_encoder: false # Train text encoder along with UNet
   learning_rate_te: null # Separate learning rate for text encoder

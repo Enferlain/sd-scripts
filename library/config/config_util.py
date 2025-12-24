@@ -1,5 +1,6 @@
 import logging
 import random
+
 from typing import Dict, List, Optional, Sequence, Tuple, Union, Any, Protocol, runtime_checkable
 from pathlib import Path
 from textwrap import dedent, indent
@@ -7,6 +8,12 @@ from dataclasses import asdict, dataclass
 
 from library.config.dataclasses.dataset import DatasetConfig
 from library.config.dataclasses.buckets import BucketsConfig
+from library.data.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
+from library.data.dataset import DatasetGroup, DreamBoothDataset, FineTuningDataset, ControlNetDataset
+from library.utils.common_utils import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -18,15 +25,6 @@ class RootConfig(Protocol):
     """
     dataset: DatasetConfig
     buckets: BucketsConfig
-
-
-from library.data.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
-from library.data.dataset import DatasetGroup, DreamBoothDataset, FineTuningDataset, ControlNetDataset
-from library.utils.common_utils import setup_logging
-
-setup_logging()
-logger = logging.getLogger(__name__)
-
 
 # --- Dataclass Definitions for Blueprint ---
 # These dataclasses define the structure of the "blueprint" used to build the datasets.

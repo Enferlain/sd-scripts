@@ -19,7 +19,6 @@ from .metadata import MetadataConfig
 @dataclass
 class SDFineTuneSpecificConfig:
     """Fine-tuning specific configuration."""
-    diffusers_xformers: bool = False
     train_text_encoder: bool = False
     learning_rate_te: Optional[float] = None
 

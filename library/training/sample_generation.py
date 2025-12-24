@@ -231,8 +231,8 @@ def sample_images_common(
         controlnet=None,
 ):
     """
-    StableDiffusionLongPromptWeightingPipelineの改造版を使うようにしたので、clip skipおよびプロンプトの重みづけに対応した
-    TODO Use strategies here
+    Uses modified StableDiffusionLongPromptWeightingPipeline for clip skip and prompt weighting support.
+    Model-specific wrappers: sd_sample_generation.py, sdxl_sample_generation.py
     """
 
     if steps == 0:

@@ -216,7 +216,7 @@ def train(cfg: SDXLFineTuneConfig):
 
         fn_recursive_set_mem_eff(model)
 
-    if cfg.sdxl.diffusers_xformers:
+    if cfg.performance.diffusers_xformers:
         accelerator.print("Use xformers by Diffusers")
         set_diffusers_xformers_flag(vae, True)
     else:

@@ -3,7 +3,6 @@ cache_text_encoder_outputs_to_disk: false
 disable_mmap_load_safetensors: false
 learning_rate_te1: null
 learning_rate_te2: null
-diffusers_xformers: false
 train_text_encoder: false
 block_lr: null
 fused_optimizer_groups: null

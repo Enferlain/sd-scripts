@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Dataset Module Refactoring**
+
+  - Split `library/data/dataset.py` (2351 → ~1060 lines) into modular files:
+    - `dreambooth_dataset.py`: DreamBoothDataset class
+    - `finetuning_dataset.py`: FineTuningDataset class
+    - `controlnet_dataset.py`: ControlNetDataset class
+    - `minimal_dataset.py`: MinimalDataset class
+    - `dataset_group.py`: DatasetGroup class
+    - `dataset_utils.py`: Utility functions (collator_class, load_arbitrary_dataset, split_train_val, debug_dataset, ImageLoadingDataset)
+  - BaseDataset remains in `dataset.py` with backwards-compatible re-exports
+  - No breaking changes: all existing imports continue to work
+
+- **Config Consolidation: `diffusers_xformers`**
+
+  - Moved `diffusers_xformers` from `SDXLConfig` and `SDFineTuneSpecificConfig` to `PerformanceConfig`
+  - Updated `sd_finetune.py` and `sdxl_finetune.py` to use `cfg.performance.diffusers_xformers`
+  - Standardized `sd_finetune.py` to use `cfg` variable name (matching `sdxl_finetune.py`)
+
 - **SAI Model Spec Consolidation**
 
   - Updated `peft_strategy_sd.py` and `peft_strategy_sdxl.py` to use `get_sai_model_spec_from_config()` instead of legacy argparse-based function
@@ -46,9 +64,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed unused `load_target_model` import from `sdxl_peft.py`
 
 - **Sample Generation Module Split**
+
   - Created `sd_sample_generation.py` with SD-specific `sample_images` wrapper
   - `sample_generation.py` now contains only generic utilities (`sample_images_common`, `sample_images_check`, etc.)
   - Mirrors existing `sdxl_sample_generation.py` pattern
+
+- **Folder Rename: `optimizations/` → `performance/`**
+
+  - Renamed `library/optimizations/` to `library/performance/` for consistency with `PerformanceConfig`
+  - Updated all imports in scripts
+
+- **Created `AGENTS.md`**
+  - Agent instructions for working on the repository (venv location, test commands, project structure, conventions)
 
 ## [2025-12-23]
 
@@ -71,7 +98,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extracted `parse_dynamic_timestep_schedule()` to `peft_common.py` (~10 lines saved per script)
   - Extracted `register_network_state_hooks()` to `peft_common.py` (~40 lines saved per script)
   - Total: ~140 lines reduced from each PEFT script (1173 → 1035 lines)
-
 
 ### Fixed
 

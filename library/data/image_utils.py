@@ -2,9 +2,9 @@ import os
 import glob
 import logging
 import random
-from typing import Optional, Tuple
-
 import numpy as np
+
+from typing import Optional, Tuple
 from PIL import Image
 
 from library.constants import IMAGE_EXTENSIONS
