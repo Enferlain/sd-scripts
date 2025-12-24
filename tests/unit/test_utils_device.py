@@ -181,11 +181,11 @@ def test_get_preferred_device_is_cached(mock_torch):
 # -------------------------
 
 def test_init_ipex_calls_ipex_init_when_xpu():
-    # Use patch.dict to inject a mock module for library.optimizations.ipex
+    # Use patch.dict to inject a mock module for library.performance.ipex
     mock_ipex_module = MagicMock()
     mock_ipex_module.ipex_init.return_value = (True, "")
     
-    with patch.dict(sys.modules, {"library.optimizations.ipex": mock_ipex_module}):
+    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}):
         with patch("library.utils.device_utils.HAS_XPU", True):
             init_ipex()
             
@@ -195,7 +195,7 @@ def test_init_ipex_handles_failure(capsys):
     mock_ipex_module = MagicMock()
     mock_ipex_module.ipex_init.return_value = (False, "some_error")
     
-    with patch.dict(sys.modules, {"library.optimizations.ipex": mock_ipex_module}):
+    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}):
         with patch("library.utils.device_utils.HAS_XPU", True):
             init_ipex()
     
@@ -206,7 +206,7 @@ def test_init_ipex_no_xpu():
     # Even if module exists, it shouldn't be touched if HAS_XPU is False
     mock_ipex_module = MagicMock()
     
-    with patch.dict(sys.modules, {"library.optimizations.ipex": mock_ipex_module}):
+    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}):
         with patch("library.utils.device_utils.HAS_XPU", False):
             init_ipex()
             
@@ -216,7 +216,7 @@ def test_init_ipex_catches_exceptions(capsys):
     mock_ipex_module = MagicMock()
     mock_ipex_module.ipex_init.side_effect = RuntimeError("boom")
     
-    with patch.dict(sys.modules, {"library.optimizations.ipex": mock_ipex_module}):
+    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}):
         with patch("library.utils.device_utils.HAS_XPU", True):
             init_ipex()
 

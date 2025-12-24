@@ -139,7 +139,7 @@ OLD (monolithic):                     NEW (modular):
 ### Completed Unit Tests (897 tests)
 
 - **Configuration** (28 tests) - validation, dataclasses, type safety
-- **Optimization & Checkpointing** (49 tests) - training utilities, checkpointing logic
+- **Performance & Checkpointing** (49 tests) - training utilities, checkpointing logic
 - **Diffusion & Noise** (38 tests) - diffusion utilities, noise generation
 - **Data Utilities** (56 tests) - dataset structures, image utils, dataset.py (register_image, cache_latents, cacheability checks, shuffle, get_image_size)
 - **Model Utilities** (43 tests) - `model_util.py` (shave_segments, is_safetensors, config creation, renew paths, conv_attn, controlnet_map)
@@ -170,9 +170,9 @@ OLD (monolithic):                     NEW (modular):
 
 **Optimization Modules:**
 
-- ✅ `optimizations/custom_offloading_utils.py` - 53 tests (utils + Offloader classes)
-- ✅ `optimizations/fp8_optimization_utils.py` - 22 tests (quantization + monkey patching)
-- ✅ `optimizations/deepspeed_utils.py` - 17 tests (config, plugin creation)
+- ✅ `performance/custom_offloading_utils.py` - 53 tests (utils + Offloader classes)
+- ✅ `performance/fp8_optimization_utils.py` - 22 tests (quantization + monkey patching)
+- ✅ `performance/deepspeed_utils.py` - 17 tests (config, plugin creation)
 
 **Network Utilities:**
 
@@ -263,7 +263,7 @@ These require real models, GPU access, or full component initialization:
 ├─────────────────────────────────────────────────────────────────┤
 │ training/diffusion.py, optimizer.py, noise_utils.py             │
 │ training/trainer_utils.py, losses/*, data/dataset.py            │
-│ strategies/strategy_base.py, utils/*, optimizations/*           │
+│ strategies/strategy_base.py, utils/*, performance/*             │
 └────────────────────────────┬────────────────────────────────────┘
                              │
          ┌───────────────────┴───────────────────┐

@@ -10,7 +10,7 @@ from tqdm import tqdm
 from multiprocessing import Value
 from diffusers import DDPMScheduler
 
-from library.optimizations import deepspeed_utils
+from library.performance import deepspeed_utils
 from library.strategies import strategy_sd, strategy_base
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.common_utils import setup_logging

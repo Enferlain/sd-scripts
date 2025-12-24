@@ -1,5 +1,5 @@
 """
-Unit tests for library/optimizations/fp8_optimization_utils.py
+Unit tests for library/performance/fp8_optimization_utils.py
 
 Tests FP8 quantization math and weight quantization logic.
 """
@@ -7,7 +7,7 @@ Tests FP8 quantization math and weight quantization logic.
 import pytest
 import torch
 
-from library.optimizations.fp8_optimization_utils import (
+from library.performance.fp8_optimization_utils import (
     calculate_fp8_maxval,
     quantize_fp8,
     quantize_weight,
@@ -238,7 +238,7 @@ class TestApplyFP8MonkeyPatch:
     def test_patches_linear_with_scale_weight(self):
         """Linear layers with scale_weight in state dict should be patched."""
         import torch.nn as nn
-        from library.optimizations.fp8_optimization_utils import apply_fp8_monkey_patch
+        from library.performance.fp8_optimization_utils import apply_fp8_monkey_patch
         
         # Create a simple model with a Linear layer
         model = nn.Sequential(
@@ -270,7 +270,7 @@ class TestApplyFP8MonkeyPatch:
     def test_does_not_patch_layers_without_scale(self):
         """Layers without scale_weight should not be patched."""
         import torch.nn as nn
-        from library.optimizations.fp8_optimization_utils import apply_fp8_monkey_patch
+        from library.performance.fp8_optimization_utils import apply_fp8_monkey_patch
         
         model = nn.Sequential(
             nn.Linear(64, 32),
@@ -294,7 +294,7 @@ class TestApplyFP8MonkeyPatch:
     def test_patched_forward_runs(self):
         """Patched forward method should execute correctly."""
         import torch.nn as nn
-        from library.optimizations.fp8_optimization_utils import apply_fp8_monkey_patch
+        from library.performance.fp8_optimization_utils import apply_fp8_monkey_patch
         
         # Wrap in Sequential so named_modules() gives proper paths
         model = nn.Sequential(nn.Linear(64, 32))
@@ -318,7 +318,7 @@ class TestApplyFP8MonkeyPatch:
     def test_scale_shape_determines_quantization_mode(self):
         """Scale shape determines dequantization behavior."""
         import torch.nn as nn
-        from library.optimizations.fp8_optimization_utils import apply_fp8_monkey_patch
+        from library.performance.fp8_optimization_utils import apply_fp8_monkey_patch
         
         # Wrap in Sequential so named_modules() gives proper paths
         model = nn.Sequential(nn.Linear(128, 64))
@@ -349,7 +349,7 @@ class TestFP8LinearForwardPatch:
     def test_dequantization_per_tensor(self):
         """Per-tensor dequantization should broadcast scale."""
         import torch.nn as nn
-        from library.optimizations.fp8_optimization_utils import fp8_linear_forward_patch
+        from library.performance.fp8_optimization_utils import fp8_linear_forward_patch
         
         # Create a Linear layer with FP8 weights
         layer = nn.Linear(64, 32, bias=False)
@@ -364,7 +364,7 @@ class TestFP8LinearForwardPatch:
     def test_dequantization_per_channel(self):
         """Per-channel dequantization should use row-wise scales."""
         import torch.nn as nn
-        from library.optimizations.fp8_optimization_utils import fp8_linear_forward_patch
+        from library.performance.fp8_optimization_utils import fp8_linear_forward_patch
         
         layer = nn.Linear(64, 32, bias=True)
         layer.weight.data = torch.randn(32, 64).to(torch.float8_e4m3fn)
@@ -378,7 +378,7 @@ class TestFP8LinearForwardPatch:
     def test_dequantization_block_wise(self):
         """Block-wise dequantization should reshape weights."""
         import torch.nn as nn
-        from library.optimizations.fp8_optimization_utils import fp8_linear_forward_patch
+        from library.performance.fp8_optimization_utils import fp8_linear_forward_patch
         
         layer = nn.Linear(128, 64, bias=False)
         layer.weight.data = torch.randn(64, 128).to(torch.float8_e4m3fn)

@@ -18,7 +18,7 @@ from library.models.sdxl_model_util import get_size_embeddings
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.common_utils import setup_logging
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
-from library.optimizations import deepspeed_utils
+from library.performance import deepspeed_utils
 from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
 from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset

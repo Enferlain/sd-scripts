@@ -4,7 +4,7 @@ import os
 from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import TorchDynamoPlugin
 
-import library.optimizations.deepspeed_utils as deepspeed_utils
+import library.performance.deepspeed_utils as deepspeed_utils
 from omegaconf import OmegaConf, DictConfig
 
 from library.config.dataclasses.performance import PerformanceConfig

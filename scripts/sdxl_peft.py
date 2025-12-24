@@ -47,7 +47,7 @@ import library.utils.huggingface_util as huggingface_util
 from library.config.validation import prepare_config, validate_config, validate_sd_peft
 from library.constants import SS_METADATA_MINIMUM_KEYS
 from library.strategies import strategy_sd, strategy_base
-from library.optimizations import deepspeed_utils
+from library.performance import deepspeed_utils
 from library.models import model_util
 from library.utils import sai_model_spec
 from library.utils.common_utils import setup_logging

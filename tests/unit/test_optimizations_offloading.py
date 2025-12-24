@@ -1,5 +1,5 @@
 """
-Unit tests for library/optimizations/custom_offloading_utils.py
+Unit tests for library/performance/custom_offloading_utils.py
 
 Tests the pure utility functions for CPU/device offloading.
 Note: Offloader and ModelOffloader classes are not tested here as they require
@@ -10,7 +10,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from library.optimizations.custom_offloading_utils import (
+from library.performance.custom_offloading_utils import (
     to_device,
     to_cpu,
     weighs_to_device,
@@ -485,7 +485,7 @@ class TestOffloader:
     
     def test_initialization(self):
         """Offloader should initialize correctly."""
-        from library.optimizations.custom_offloading_utils import Offloader
+        from library.performance.custom_offloading_utils import Offloader
         
         offloader = Offloader(num_blocks=10, blocks_to_swap=3, device=torch.device("cpu"))
         
@@ -496,7 +496,7 @@ class TestOffloader:
     
     def test_cuda_available_detection(self):
         """cuda_available should be True for CUDA device."""
-        from library.optimizations.custom_offloading_utils import Offloader
+        from library.performance.custom_offloading_utils import Offloader
         
         # Even if no GPU, we test the logic
         offloader = Offloader(num_blocks=5, blocks_to_swap=2, device=torch.device("cuda"))
@@ -507,7 +507,7 @@ class TestOffloader:
     
     def test_thread_pool_created(self):
         """Thread pool should be created with max_workers=1."""
-        from library.optimizations.custom_offloading_utils import Offloader
+        from library.performance.custom_offloading_utils import Offloader
         
         offloader = Offloader(num_blocks=5, blocks_to_swap=2, device=torch.device("cpu"))
         
@@ -516,7 +516,7 @@ class TestOffloader:
     
     def test_futures_empty_initially(self):
         """Futures dict should be empty initially."""
-        from library.optimizations.custom_offloading_utils import Offloader
+        from library.performance.custom_offloading_utils import Offloader
         
         offloader = Offloader(num_blocks=5, blocks_to_swap=2, device=torch.device("cpu"))
         
@@ -532,7 +532,7 @@ class TestModelOffloader:
     
     def test_initialization(self):
         """ModelOffloader should initialize correctly."""
-        from library.optimizations.custom_offloading_utils import ModelOffloader
+        from library.performance.custom_offloading_utils import ModelOffloader
         
         blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
         offloader = ModelOffloader(blocks, blocks_to_swap=2, device=torch.device("cpu"))
@@ -543,7 +543,7 @@ class TestModelOffloader:
     
     def test_forward_only_mode(self):
         """forward_only should be set correctly."""
-        from library.optimizations.custom_offloading_utils import ModelOffloader
+        from library.performance.custom_offloading_utils import ModelOffloader
         
         blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
         
@@ -557,7 +557,7 @@ class TestModelOffloader:
     
     def test_set_forward_only(self):
         """set_forward_only should change the mode."""
-        from library.optimizations.custom_offloading_utils import ModelOffloader
+        from library.performance.custom_offloading_utils import ModelOffloader
         
         blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
         offloader = ModelOffloader(blocks, blocks_to_swap=2, device=torch.device("cpu"))
@@ -568,7 +568,7 @@ class TestModelOffloader:
     
     def test_create_backward_hook_returns_none_when_not_needed(self):
         """create_backward_hook should return None for blocks that don't need hooks."""
-        from library.optimizations.custom_offloading_utils import ModelOffloader
+        from library.performance.custom_offloading_utils import ModelOffloader
         
         blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
         offloader = ModelOffloader(blocks, blocks_to_swap=2, device=torch.device("cpu"))
@@ -583,7 +583,7 @@ class TestModelOffloader:
     
     def test_wait_for_block_noop_when_no_swap(self):
         """wait_for_block should do nothing when blocks_to_swap is 0."""
-        from library.optimizations.custom_offloading_utils import ModelOffloader
+        from library.performance.custom_offloading_utils import ModelOffloader
         
         blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
         offloader = ModelOffloader(blocks, blocks_to_swap=0, device=torch.device("cpu"))
@@ -594,7 +594,7 @@ class TestModelOffloader:
     
     def test_submit_move_blocks_noop_when_no_swap(self):
         """submit_move_blocks should do nothing when blocks_to_swap is 0."""
-        from library.optimizations.custom_offloading_utils import ModelOffloader
+        from library.performance.custom_offloading_utils import ModelOffloader
         
         blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
         offloader = ModelOffloader(blocks, blocks_to_swap=0, device=torch.device("cpu"))
@@ -605,7 +605,7 @@ class TestModelOffloader:
     
     def test_prepare_block_devices_noop_when_no_swap(self):
         """prepare_block_devices_before_forward should do nothing when blocks_to_swap is 0."""
-        from library.optimizations.custom_offloading_utils import ModelOffloader
+        from library.performance.custom_offloading_utils import ModelOffloader
         
         blocks = nn.ModuleList([nn.Linear(10, 10) for _ in range(5)])
         offloader = ModelOffloader(blocks, blocks_to_swap=0, device=torch.device("cpu"))

@@ -95,7 +95,7 @@ def init_ipex():
     """
     try:
         if HAS_XPU:
-            from library.optimizations.ipex import ipex_init
+            from library.performance.ipex import ipex_init
 
             is_initialized, error_message = ipex_init()
             if not is_initialized:
