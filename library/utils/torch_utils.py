@@ -33,9 +33,9 @@ def prepare_dtype(
         Tuple of (weight_dtype, save_dtype)
     """
     weight_dtype = torch.float32
-    if performance_config.mixed_precision == "fp16":
+    if performance_config.precision.mixed_precision == "fp16":
         weight_dtype = torch.float16
-    elif performance_config.mixed_precision == "bf16":
+    elif performance_config.precision.mixed_precision == "bf16":
         weight_dtype = torch.bfloat16
 
     save_dtype = None
@@ -50,15 +50,16 @@ def prepare_dtype(
     return weight_dtype, save_dtype
 
 
-def set_torch_cuda_reduced_precision(cfg: PerformanceConfig):
-    if cfg.disable_cuda_reduced_precision_operations:
+def set_torch_cuda_reduced_precision(cfg):
+    """Set CUDA reduced precision operations based on performance config."""
+    if cfg.performance.precision.disable_cuda_reduced_precision_operations:
         torch.set_float32_matmul_precision("highest")
         torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
         torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
         torch.backends.cuda.matmul.allow_tf32 = False
         torch.backends.cudnn.allow_tf32 = False
         torch.backends.cuda.allow_fp16_bf16_reduction_math_sdp(False)
-    elif cfg.enable_cuda_reduced_precision_operations:
+    elif cfg.performance.precision.enable_cuda_reduced_precision_operations:
         torch.set_float32_matmul_precision("high")
         torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = True
         torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = True
@@ -75,12 +76,13 @@ def set_seed_from_config(cfg: TrainingConfig):
 
 
 def match_mixed_precision(cfg: PerformanceConfig, weight_dtype):
-    if cfg.full_fp16:
+    """Match mixed precision settings, returning weight_dtype if full precision is enabled."""
+    if cfg.precision.full_fp16:
         assert (
                 weight_dtype == torch.float16
         ), "full_fp16 requires mixed precision='fp16'"
         return weight_dtype
-    elif cfg.full_bf16:
+    elif cfg.precision.full_bf16:
         assert (
                 weight_dtype == torch.bfloat16
         ), "full_bf16 requires mixed precision='bf16'"

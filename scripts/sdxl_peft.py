@@ -169,7 +169,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
     # mixed precisionに対応した型を用意しておき適宜castする
     weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.saving)
-    vae_dtype = (torch.float32 if cfg.performance.no_half_vae else weight_dtype) if strategies.cast_vae(cfg) else None
+    vae_dtype = (torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype) if strategies.cast_vae(cfg) else None
 
     # load target models: unet may be None for lazy loading
     model_version, text_encoder, vae, unet = strategies.load_target_model(cfg, weight_dtype, accelerator)
@@ -233,7 +233,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 multiplier, weight_path, vae, text_encoder, unet, for_inference=True
             )
             module.merge_to(text_encoder, unet, weights_sd, weight_dtype,
-                            accelerator.device if cfg.performance.lowram else "cpu")
+                            accelerator.device if cfg.performance.memory.lowram else "cpu")
 
         accelerator.print(f"all weights merged: {', '.join(cfg.peft.base_weights)}")
 
@@ -285,7 +285,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     strategies.post_process_network(cfg, accelerator, network, text_encoders, unet)
 
     # apply peft to unet and text_encoder
-    train_unet = not cfg.peft.train_text_encoder_only
+    train_unet = strategies.is_train_unet(cfg)
     train_text_encoder = strategies.is_train_text_encoder(cfg)
     network.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 
@@ -300,8 +300,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     #         peft = replace_linear_with_ramtorch(peft, accelerator.device)
     #         logger.info("RamTorch applied to peft/lora.")
 
-    if cfg.performance.gradient_checkpointing:
-        if cfg.performance.cpu_offload_checkpointing:
+    if cfg.performance.memory.gradient_checkpointing:
+        if cfg.performance.memory.cpu_offload_checkpointing:
             unet.enable_gradient_checkpointing(cpu_offload=True)
         else:
             unet.enable_gradient_checkpointing()
@@ -376,23 +376,23 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes)
 
     # 実験的機能：勾配も含めたfp16/bf16学習を行う　モデル全体をfp16/bf16にする
-    if cfg.performance.full_fp16:
+    if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
         network.to(weight_dtype)
-    elif cfg.performance.full_bf16:
+    elif cfg.performance.precision.full_bf16:
         accelerator.print("enable full bf16 training.")
         network.to(weight_dtype)
 
     unet_weight_dtype = te_weight_dtype = weight_dtype
     # Experimental Feature: Put base model into fp8 to save vram
-    if cfg.performance.fp8_base or cfg.performance.fp8_base_unet:
+    if cfg.performance.precision.fp8_base or cfg.performance.precision.fp8_base_unet:
         assert torch.__version__ >= "2.1.0", "fp8_base requires torch>=2.1.0 / fp8を使う場合はtorch>=2.1.0が必要です。"
         accelerator.print("enable fp8 training for U-Net.")
         unet_weight_dtype = torch.float8_e4m3fn
 
-        if not cfg.performance.fp8_base_unet:
+        if not cfg.performance.precision.fp8_base_unet:
             accelerator.print("enable fp8 training for Text Encoder.")
-        te_weight_dtype = weight_dtype if cfg.performance.fp8_base_unet else torch.float8_e4m3fn
+        te_weight_dtype = weight_dtype if cfg.performance.precision.fp8_base_unet else torch.float8_e4m3fn
 
         # unet.to(accelerator.device)  # this makes faster `to(dtype)` below, but consumes 23 GB VRAM
         # unet.to(dtype=unet_weight_dtype)  # without moving to gpu, this takes a lot of time and main memory
@@ -460,7 +460,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     else:
         val_dataloader, cyclic_val_dataloader = None, None
 
-    if cfg.performance.gradient_checkpointing:
+    if cfg.performance.memory.gradient_checkpointing:
         # according to TI example in Diffusers, train is required
         unet.train()
         for i, (t_enc, frag) in enumerate(zip(text_encoders, strategies.get_text_encoders_train_flags(cfg, text_encoders))):
@@ -485,7 +485,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         vae.to(accelerator.device, dtype=vae_dtype)
 
     # 実験的機能：勾配も含めたfp16学習を行う　PyTorchにパッチを当ててfp16でのgrad scaleを有効にする
-    if cfg.performance.full_fp16:
+    if cfg.performance.precision.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
     # before resuming make hook for saving/loading to save/load the peft weights only

@@ -101,7 +101,7 @@ Each script's root config (e.g., `SDPeftConfig`, `SDXLFineTuneConfig`) defines w
 def train(cfg: SDPeftConfig):
     if cfg.training.max_train_epochs:
         ...
-    if cfg.performance.gradient_checkpointing:
+    if cfg.performance.memory.gradient_checkpointing:
         ...
 
 # ❌ Bad - don't create aliases

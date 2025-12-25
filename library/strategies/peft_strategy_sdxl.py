@@ -76,7 +76,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         self.logit_scale = logit_scale
         self.ckpt_info = ckpt_info
         
-        if cfg.performance.use_ramtorch:
+        if cfg.performance.memory.use_ramtorch:
             logger.info("Applying RamTorch to SDXL UNet, VAE, and Text Encoders.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
@@ -95,9 +95,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
                 logger.info("RamTorch applied to SDXL Clip-G.")
 
         # Apply xformers / memory efficient attention
-        replace_unet_modules(unet, cfg.performance.mem_eff_attn, cfg.performance.xformers, cfg.performance.sdpa)
+        replace_unet_modules(unet, cfg.performance.attention.mem_eff_attn, cfg.performance.attention.xformers, cfg.performance.attention.sdpa)
         if torch.__version__ >= "2.0.0":
-            vae.set_use_memory_efficient_attention_xformers(cfg.performance.xformers)
+            vae.set_use_memory_efficient_attention_xformers(cfg.performance.attention.xformers)
 
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
@@ -130,17 +130,17 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
     def get_text_encoder_outputs_caching_strategy(self, cfg):
         """Return SDXL text encoder outputs caching strategy if enabled."""
-        if cfg.sdxl.cache_text_encoder_outputs:
+        if cfg.performance.caching.cache_text_encoder_outputs:
             return strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.sdxl.cache_text_encoder_outputs_to_disk, None, cfg.dataset.skip_cache_check, is_weighted=cfg.dataset.weighted_captions
+                cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, cfg.dataset.skip_cache_check, is_weighted=cfg.dataset.weighted_captions
             )
         else:
             return None
 
     def cache_text_encoder_outputs_if_needed(self, cfg, accelerator, unet, vae, text_encoders, dataset, weight_dtype):
         """Cache text encoder outputs for SDXL (dual encoders, more complex than SD)."""
-        if cfg.sdxl.cache_text_encoder_outputs:
-            if not cfg.performance.lowram:
+        if cfg.performance.caching.cache_text_encoder_outputs:
+            if not cfg.performance.memory.lowram:
                 # Save memory by moving vae and unet to cpu
                 logger.info("move vae and unet to cpu to save memory")
                 org_vae_device = vae.device
@@ -160,7 +160,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             text_encoders[1].to("cpu", dtype=torch.float32)
             clean_memory_on_device(accelerator.device)
 
-            if not cfg.performance.lowram:
+            if not cfg.performance.memory.lowram:
                 logger.info("move vae and unet back to original device")
                 vae.to(org_vae_device)
                 unet.to(org_unet_device)
@@ -271,7 +271,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
                     tokenizers[1],
                     text_encoders[0],
                     text_encoders[1],
-                    None if not cfg.performance.full_fp16 else weight_dtype,
+                    None if not cfg.performance.precision.full_fp16 else weight_dtype,
                     accelerator=accelerator,
                 )
         else:
@@ -297,7 +297,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             is_train=is_train, min_timestep_override=min_timestep_override, max_timestep_override=max_timestep_override
         )
 
-        if is_train and cfg.performance.gradient_checkpointing:
+        if is_train and cfg.performance.memory.gradient_checkpointing:
             for x in noisy_latents:
                 x.requires_grad_(True)
             # For SDXL, text_encoder_conds is a tuple, handle differently

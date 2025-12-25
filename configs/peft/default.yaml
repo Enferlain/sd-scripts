@@ -1,11 +1,9 @@
-network_dim: null
-network_alpha: 1.0
-network_dropout: null
-network_weights: null
-network_module: null
-network_args: null
-network_train_unet_only: false
-network_train_text_encoder_only: false
+dim: null
+alpha: 1.0
+neuron_dropout: null
+weights: null
+module: null
+args: null
 dim_from_weights: false
 scale_weight_norms: null
 base_weights: null

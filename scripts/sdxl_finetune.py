@@ -170,7 +170,7 @@ def train(cfg: SDXLFineTuneConfig):
             train_dataset_group.is_latent_cacheable()
         ), "when caching latents, either color_aug or random_crop cannot be used"
 
-    if cfg.sdxl.cache_text_encoder_outputs:
+    if cfg.performance.caching.cache_text_encoder_outputs:
         assert (
             train_dataset_group.is_text_encoder_output_cacheable()
         ), "when caching text encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used"
@@ -179,7 +179,7 @@ def train(cfg: SDXLFineTuneConfig):
     accelerator = prepare_accelerator(cfg.performance)
 
     weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.saving)
-    vae_dtype = torch.float32 if cfg.performance.no_half_vae else weight_dtype
+    vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
 
     (
         load_stable_diffusion_format,
@@ -216,14 +216,14 @@ def train(cfg: SDXLFineTuneConfig):
 
         fn_recursive_set_mem_eff(model)
 
-    if cfg.performance.diffusers_xformers:
+    if cfg.performance.attention.diffusers_xformers:
         accelerator.print("Use xformers by Diffusers")
         set_diffusers_xformers_flag(vae, True)
     else:
         accelerator.print("Disable Diffusers' xformers")
-        replace_unet_modules(unet, cfg.performance.mem_eff_attn, cfg.performance.xformers, cfg.performance.sdpa)
+        replace_unet_modules(unet, cfg.performance.attention.mem_eff_attn, cfg.performance.attention.xformers, cfg.performance.attention.sdpa)
         if torch.__version__ >= "2.0.0":
-            vae.set_use_memory_efficient_attention_xformers(cfg.performance.xformers)
+            vae.set_use_memory_efficient_attention_xformers(cfg.performance.attention.xformers)
 
     if cache_latents:
         vae.to(accelerator.device, dtype=vae_dtype)
@@ -237,7 +237,7 @@ def train(cfg: SDXLFineTuneConfig):
 
         accelerator.wait_for_everyone()
 
-    if cfg.performance.gradient_checkpointing:
+    if cfg.performance.memory.gradient_checkpointing:
         unet.enable_gradient_checkpointing()
     train_unet = cfg.optimizer.learning_rate != 0
     train_text_encoder1 = False
@@ -246,9 +246,12 @@ def train(cfg: SDXLFineTuneConfig):
     text_encoding_strategy = strategy_sdxl.SdxlTextEncodingStrategy()
     strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
-    if cfg.sdxl.train_text_encoder:
+    # Train text encoder if TE LR > 0 (based on LR-based training control)
+    from library.training.optimizer import should_train_text_encoder
+    train_te_based_on_lr = should_train_text_encoder(cfg.optimizer)
+    if train_te_based_on_lr:
         accelerator.print("enable text encoder training")
-        if cfg.performance.gradient_checkpointing:
+        if cfg.performance.memory.gradient_checkpointing:
             text_encoder1.gradient_checkpointing_enable()
             text_encoder2.gradient_checkpointing_enable()
         
@@ -287,9 +290,9 @@ def train(cfg: SDXLFineTuneConfig):
         text_encoder1.eval()
         text_encoder2.eval()
 
-        if cfg.sdxl.cache_text_encoder_outputs:
+        if cfg.performance.caching.cache_text_encoder_outputs:
             text_encoder_output_caching_strategy = strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.sdxl.cache_text_encoder_outputs_to_disk, None, False, is_weighted=cfg.dataset.weighted_captions
+                cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, False, is_weighted=cfg.dataset.weighted_captions
             )
             strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_output_caching_strategy)
 
@@ -336,9 +339,9 @@ def train(cfg: SDXLFineTuneConfig):
 
     accelerator.print("prepare optimizer, data loader etc.")
 
-    if cfg.sdxl.fused_optimizer_groups:
+    if cfg.optimizer.fused_optimizer_groups:
         n_total_params = sum(len(params["params"]) for params in params_to_optimize)
-        params_per_group = math.ceil(n_total_params / cfg.sdxl.fused_optimizer_groups)
+        params_per_group = math.ceil(n_total_params / cfg.optimizer.fused_optimizer_groups)
 
         grouped_params = []
         param_group = []
@@ -395,18 +398,18 @@ def train(cfg: SDXLFineTuneConfig):
 
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
-    if cfg.sdxl.fused_optimizer_groups:
+    if cfg.optimizer.fused_optimizer_groups:
         lr_schedulers = [get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes) for optimizer in optimizers]
         lr_scheduler = lr_schedulers[0]
     else:
         lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes)
 
-    if cfg.performance.full_fp16:
+    if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
         unet.to(weight_dtype)
         text_encoder1.to(weight_dtype)
         text_encoder2.to(weight_dtype)
-    elif cfg.performance.full_bf16:
+    elif cfg.performance.precision.full_bf16:
         accelerator.print("enable full bf16 training.")
         unet.to(weight_dtype)
         text_encoder1.to(weight_dtype)
@@ -437,7 +440,7 @@ def train(cfg: SDXLFineTuneConfig):
             text_encoder2 = accelerator.prepare(text_encoder2)
         optimizer, train_dataloader, lr_scheduler = accelerator.prepare(optimizer, train_dataloader, lr_scheduler)
 
-    if cfg.sdxl.cache_text_encoder_outputs:
+    if cfg.performance.caching.cache_text_encoder_outputs:
         text_encoder1.to("cpu", dtype=torch.float32)
         text_encoder2.to("cpu", dtype=torch.float32)
         clean_memory_on_device(accelerator.device)
@@ -445,7 +448,7 @@ def train(cfg: SDXLFineTuneConfig):
         text_encoder1.to(accelerator.device)
         text_encoder2.to(accelerator.device)
 
-    if cfg.performance.full_fp16:
+    if cfg.performance.precision.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
     resume_from_local_or_hf_if_specified(accelerator, cfg.saving)
@@ -466,7 +469,7 @@ def train(cfg: SDXLFineTuneConfig):
 
                     parameter.register_post_accumulate_grad_hook(__grad_hook)
 
-    elif cfg.sdxl.fused_optimizer_groups:
+    elif cfg.optimizer.fused_optimizer_groups:
         for i in range(1, len(optimizers)):
             optimizers[i] = accelerator.prepare(optimizers[i])
             lr_schedulers[i] = accelerator.prepare(lr_schedulers[i])
@@ -554,7 +557,7 @@ def train(cfg: SDXLFineTuneConfig):
         for step, batch in enumerate(train_dataloader):
             current_step.value = global_step
 
-            if cfg.sdxl.fused_optimizer_groups:
+            if cfg.optimizer.fused_optimizer_groups:
                 optimizer_hooked_count = {i: 0 for i in range(len(optimizers))}
 
             with accelerator.accumulate(*training_models):
@@ -577,7 +580,7 @@ def train(cfg: SDXLFineTuneConfig):
                     pool2 = pool2.to(accelerator.device, dtype=weight_dtype)
                 else:
                     input_ids1, input_ids2 = batch["input_ids_list"]
-                    with torch.set_grad_enabled(cfg.sdxl.train_text_encoder):
+                    with torch.set_grad_enabled(train_te_based_on_lr):
                         if cfg.dataset.weighted_captions:
                             input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                             encoder_hidden_states1, encoder_hidden_states2, pool2 = (
@@ -596,7 +599,7 @@ def train(cfg: SDXLFineTuneConfig):
                                 [text_encoder1, text_encoder2, accelerator.unwrap_model(text_encoder2)],
                                 [input_ids1, input_ids2],
                             )
-                        if cfg.performance.full_fp16:
+                        if cfg.performance.precision.full_fp16:
                             encoder_hidden_states1 = encoder_hidden_states1.to(weight_dtype)
                             encoder_hidden_states2 = encoder_hidden_states2.to(weight_dtype)
                             pool2 = pool2.to(weight_dtype)
@@ -649,7 +652,7 @@ def train(cfg: SDXLFineTuneConfig):
 
                 accelerator.backward(loss)
 
-                if not (cfg.optimizer.fused_backward_pass or cfg.sdxl.fused_optimizer_groups):
+                if not (cfg.optimizer.fused_backward_pass or cfg.optimizer.fused_optimizer_groups):
                     if accelerator.sync_gradients and cfg.optimizer.max_grad_norm != 0.0:
                         params_to_clip = []
                         for m in training_models:
@@ -661,7 +664,7 @@ def train(cfg: SDXLFineTuneConfig):
                     optimizer.zero_grad(set_to_none=True)
                 else:
                     lr_scheduler.step()
-                    if cfg.sdxl.fused_optimizer_groups:
+                    if cfg.optimizer.fused_optimizer_groups:
                         for i in range(1, len(optimizers)):
                             lr_schedulers[i].step()
 

@@ -78,6 +78,8 @@ Scripts (contain training loops):     Library Modules:
 - [ ] Clean integration for external `live_plotter`
 - [x] ~~Dataset and bucketing decouple~~ (dataset.py split into 6 modules)
 - [x] ~~Resolve duplicate `diffusers_xformers`~~ (moved to PerformanceConfig)
+- [ ] fix consistencies in how configs are used in scripts
+- [ ] get rid of lazy imports, move to top for transparency
 
 ---
 

@@ -15,6 +15,8 @@ Usage:
 """
 import logging
 
+from library.training.optimizer import should_train_text_encoder
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,10 +39,10 @@ def prepare_config(cfg) -> None:
     if cfg.dataset.caption_extention is not None:
         cfg.dataset.caption_extension = cfg.dataset.caption_extention
     
-    # SDXL: cache_text_encoder_outputs_to_disk implies cache_text_encoder_outputs
-    if hasattr(cfg, 'sdxl') and cfg.sdxl is not None:
-        if cfg.sdxl.cache_text_encoder_outputs_to_disk and not cfg.sdxl.cache_text_encoder_outputs:
-            cfg.sdxl.cache_text_encoder_outputs = True
+    # Performance: cache_text_encoder_outputs_to_disk implies cache_text_encoder_outputs
+    if hasattr(cfg, 'performance') and cfg.performance is not None:
+        if cfg.performance.caching.cache_text_encoder_outputs_to_disk and not cfg.performance.caching.cache_text_encoder_outputs:
+            cfg.performance.caching.cache_text_encoder_outputs = True
     
     # Optimizer: shortcut flags
     if cfg.optimizer.use_8bit_adam:
@@ -83,13 +85,13 @@ def validate_config(cfg) -> None:
     
     # Precision: full_fp16 requires mixed_precision='fp16'
     if hasattr(cfg, 'performance') and cfg.performance is not None:
-        if cfg.performance.full_fp16 and cfg.performance.mixed_precision != "fp16":
+        if cfg.performance.precision.full_fp16 and cfg.performance.precision.mixed_precision != "fp16":
             raise ValueError("full_fp16 requires mixed_precision='fp16'")
-        if cfg.performance.full_bf16 and cfg.performance.mixed_precision != "bf16":
+        if cfg.performance.precision.full_bf16 and cfg.performance.precision.mixed_precision != "bf16":
             raise ValueError("full_bf16 requires mixed_precision='bf16'")
         # fp8_base requires mixed precision enabled
-        if hasattr(cfg.performance, 'fp8_base') and (cfg.performance.fp8_base or getattr(cfg.performance, 'fp8_base_unet', False)):
-            if cfg.performance.mixed_precision == "no":
+        if hasattr(cfg.performance, 'fp8_base') and (cfg.performance.precision.fp8_base or getattr(cfg.performance, 'fp8_base_unet', False)):
+            if cfg.performance.precision.mixed_precision == "no":
                 raise ValueError("fp8_base requires mixed_precision='fp16' or 'bf16'")
     
     # SDXL: block_lr must have exactly 23 values (only checked if field exists and is set)
@@ -130,14 +132,16 @@ def validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group) -> None:
         val_dataset_group.verify_bucket_reso_steps(32)
     
     # SDXL caching constraints
-    if cfg.sdxl.cache_text_encoder_outputs:
+    if cfg.performance.caching.cache_text_encoder_outputs:
         assert train_dataset_group.is_text_encoder_output_cacheable(), (
             "when caching Text Encoder output, caption_dropout_rate, shuffle_caption, "
             "token_warmup_step, or caption_tag_dropout_rate cannot be used"
         )
     
-    assert cfg.peft.train_unet_only or not cfg.sdxl.cache_text_encoder_outputs, (
-        "peft for Text Encoder cannot be trained with caching Text Encoder outputs"
+    # Cannot train TE peft while caching TE outputs
+    train_te = should_train_text_encoder(cfg.optimizer)
+    assert not train_te or not cfg.performance.caching.cache_text_encoder_outputs, (
+        "peft for Text Encoder cannot be trained with caching Text Encoder outputs"  # TODO: improve message
     )
 
 

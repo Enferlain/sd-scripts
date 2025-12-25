@@ -21,3 +21,5 @@ lr_scheduler_timescale: null
 lr_scheduler_min_lr_ratio: null
 optimizer_schedulefree_wrapper: false
 schedulefree_wrapper_args: null
+# Fused backward pass with multiple optimizer groups (moved from SDXLConfig)
+fused_optimizer_groups: null

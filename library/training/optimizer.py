@@ -28,6 +28,40 @@ from library.constants import int_pattern, float_pattern
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# LR-based training control helpers
+# =============================================================================
+
+def should_train_text_encoder(optimizer_config: OptimizerConfig) -> bool:
+    """
+    Check if text encoder should be trained based on learning rates.
+    
+    Returns True if:
+    - text_encoders LR is None (will use base LR)
+    - text_encoders LR is a positive number
+    - text_encoders LR is a list with any positive values
+    """
+    te_lr = optimizer_config.learning_rates.text_encoders
+    if te_lr is None:
+        return True  # Default: train TE with base LR
+    if isinstance(te_lr, (int, float)):
+        return te_lr > 0
+    # List of LRs - train if any are positive
+    return any(lr > 0 for lr in te_lr)
+
+
+def should_train_unet(optimizer_config: OptimizerConfig) -> bool:
+    """
+    Check if UNet should be trained based on learning rates.
+    
+    Returns True if:
+    - unet LR is None (will use base LR)
+    - unet LR is a positive number
+    """
+    unet_lr = optimizer_config.learning_rates.unet
+    return unet_lr is None or unet_lr > 0
+
+
 def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: PeftConfig, dataset_config: DatasetConfig, network):
     if isinstance(network_config.orthograd_targets, str):
         orthograd_targets = ast.literal_eval(network_config.orthograd_targets)

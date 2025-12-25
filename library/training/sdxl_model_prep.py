@@ -38,12 +38,12 @@ def load_target_model(cfg: SDXLFineTuneConfig, accelerator, model_version: str, 
                 cfg.sd_models.vae,
                 model_version,
                 weight_dtype,
-                accelerator.device if cfg.performance.lowram else "cpu",
+                accelerator.device if cfg.performance.memory.lowram else "cpu",
                 model_dtype,
-                cfg.sdxl.disable_mmap_load_safetensors,
+                cfg.performance.caching.disable_mmap_load_safetensors,
             )
 
-            if cfg.performance.lowram:
+            if cfg.performance.memory.lowram:
                 text_encoder1.to(accelerator.device)
                 text_encoder2.to(accelerator.device)
                 unet.to(accelerator.device)

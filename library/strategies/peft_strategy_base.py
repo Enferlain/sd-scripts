@@ -3,14 +3,15 @@
 
 import logging
 import random
+import numpy as np
+import torch
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, List, Optional, Tuple, Union
 
-import numpy as np
-import torch
-
 from library.utils.common_utils import setup_logging
+from library.training.optimizer import should_train_text_encoder, should_train_unet
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -162,8 +163,12 @@ class PeftTrainingStrategy(
         return [True] * len(text_encoders) if self.is_train_text_encoder(cfg) else [False] * len(text_encoders)
     
     def is_train_text_encoder(self, cfg) -> bool:
-        """Check if text encoder should be trained."""
-        return not cfg.peft.train_unet_only
+        """Check if text encoder should be trained based on LR config."""
+        return should_train_text_encoder(cfg.optimizer)
+    
+    def is_train_unet(self, cfg) -> bool:
+        """Check if UNet should be trained based on LR config."""
+        return should_train_unet(cfg.optimizer)
     
     def cast_text_encoder(self, cfg) -> bool:
         return True

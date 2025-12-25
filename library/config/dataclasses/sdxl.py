@@ -3,9 +3,16 @@ from typing import Optional
 
 @dataclass
 class SDXLConfig:
-    cache_text_encoder_outputs: bool = field(default=False, metadata={"help": "cache text encoder outputs"})
-    cache_text_encoder_outputs_to_disk: bool = field(default=False, metadata={"help": "cache text encoder outputs to disk"})
-    disable_mmap_load_safetensors: bool = field(default=False, metadata={"help": "disable mmap load for safetensors"})
-    train_text_encoder: bool = field(default=False, metadata={"help": "train text encoder"})
-    fused_optimizer_groups: Optional[int] = field(default=None, metadata={"help": "number of optimizers for fused backward pass and optimizer step"})
-
+    """
+    SDXL-specific configuration.
+    
+    Note: Most fields have been migrated to other configs:
+    - cache_text_encoder_outputs -> PerformanceConfig
+    - cache_text_encoder_outputs_to_disk -> PerformanceConfig
+    - disable_mmap_load_safetensors -> PerformanceConfig
+    - train_text_encoder -> REMOVED (use LR-based control via optimizer.learning_rates.text_encoders)
+    - fused_optimizer_groups -> OptimizerConfig
+    
+    This class is kept for future SDXL-specific settings that don't belong elsewhere.
+    """
+    pass

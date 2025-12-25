@@ -55,7 +55,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         """Load SD1.5/2 model components."""
         text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance, weight_dtype, accelerator)
 
-        if cfg.performance.use_ramtorch:
+        if cfg.performance.memory.use_ramtorch:
             logger.info("Applying RamTorch to SD UNet, VAE, and Clip-L.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
@@ -70,9 +70,9 @@ class SdPeftStrategy(PeftTrainingStrategy):
                 logger.info("RamTorch applied to SD VAE.")
 
         # Apply xformers / memory efficient attention
-        replace_unet_modules(unet, cfg.performance.mem_eff_attn, cfg.performance.xformers, cfg.performance.sdpa)
+        replace_unet_modules(unet, cfg.performance.attention.mem_eff_attn, cfg.performance.attention.xformers, cfg.performance.attention.sdpa)
         if torch.__version__ >= "2.0.0":
-            vae.set_use_memory_efficient_attention_xformers(cfg.performance.xformers)
+            vae.set_use_memory_efficient_attention_xformers(cfg.performance.attention.xformers)
 
         return model_util.get_model_version_str_for_sd1_sd2(cfg.model.v2, cfg.loss.v_parameterization), text_encoder, vae, unet
 
@@ -175,7 +175,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
             is_train=is_train, min_timestep_override=min_timestep_override, max_timestep_override=max_timestep_override
         )
 
-        if is_train and cfg.performance.gradient_checkpointing:
+        if is_train and cfg.performance.memory.gradient_checkpointing:
             for x in noisy_latents:
                 x.requires_grad_(True)
             for t in text_encoder_conds:
@@ -262,7 +262,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
                     input_ids = [ids.to(accelerator.device) for ids in batch["input_ids_list"]]
                     encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
                         tokenize_strategy, self.get_models_for_text_encoding(cfg, accelerator, text_encoders), input_ids)
-                if cfg.performance.full_fp16:
+                if cfg.performance.precision.full_fp16:
                     encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
 
             if len(text_encoder_conds) == 0:
@@ -354,7 +354,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
                         input_ids = [ids.to(accelerator.device) for ids in batch["input_ids_list"]]
                         encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
                             tokenize_strategy, self.get_models_for_text_encoding(cfg, accelerator, text_encoders), input_ids)
-                    if cfg.performance.full_fp16:
+                    if cfg.performance.precision.full_fp16:
                         encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
 
                 if len(text_encoder_conds) == 0:

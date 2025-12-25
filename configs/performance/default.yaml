@@ -1,23 +1,41 @@
-mem_eff_attn: false
-torch_compile: false
-dynamo_backend: "inductor"
-xformers: false
-sdpa: false
-diffusers_xformers: false
-gradient_checkpointing: false
-mixed_precision: "no"
-full_fp16: false
-full_bf16: false
-fp8_base: false
-ddp_timeout: null
-ddp_gradient_as_bucket_view: false
-ddp_static_graph: false
-lowram: false
-highvram: false
-disable_cuda_reduced_precision_operations: false
-enable_cuda_reduced_precision_operations: false
-use_ramtorch: false
-direct_ramtorch: false
+precision:
+  mixed_precision: "no"
+  full_fp16: false
+  full_bf16: false
+  fp8_base: false
+  fp8_base_unet: false
+  no_half_vae: false
+  disable_cuda_reduced_precision_operations: false
+  enable_cuda_reduced_precision_operations: false
+
+memory:
+  gradient_checkpointing: false
+  cpu_offload_checkpointing: false
+  lowram: false
+  highvram: false
+  use_ramtorch: false
+  direct_ramtorch: false
+
+attention:
+  mem_eff_attn: false
+  xformers: false
+  sdpa: false
+  diffusers_xformers: false
+
+compilation:
+  torch_compile: false
+  dynamo_backend: "inductor"
+
+distributed:
+  ddp_timeout: null
+  ddp_gradient_as_bucket_view: false
+  ddp_static_graph: false
+
+caching:
+  cache_text_encoder_outputs: false
+  cache_text_encoder_outputs_to_disk: false
+  disable_mmap_load_safetensors: false
+
 deepspeed:
   deepspeed: false
   zero_stage: 2

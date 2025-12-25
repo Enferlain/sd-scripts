@@ -54,7 +54,7 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
                 wandb.login(key=logging_config.wandb_api_key)
 
     # torch.compile options
-    if performance_config.torch_compile:
+    if performance_config.compilation.torch_compile:
         dynamo_plugin = TorchDynamoPlugin(
             backend="inductor",
             mode="default",
@@ -69,10 +69,10 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
     kwargs_handlers = [
         (
             DistributedDataParallelKwargs(
-                gradient_as_bucket_view=performance_config.ddp_gradient_as_bucket_view, 
-                static_graph=performance_config.ddp_static_graph
+                gradient_as_bucket_view=performance_config.distributed.ddp_gradient_as_bucket_view,
+                static_graph=performance_config.distributed.ddp_static_graph
             )
-            if performance_config.ddp_gradient_as_bucket_view or performance_config.ddp_static_graph
+            if performance_config.distributed.ddp_gradient_as_bucket_view or performance_config.distributed.ddp_static_graph
             else None
         ),
     ]
@@ -86,7 +86,7 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
 
     accelerator = Accelerator(
         gradient_accumulation_steps=gradient_accumulation_steps,
-        mixed_precision=performance_config.mixed_precision,
+        mixed_precision=performance_config.precision.mixed_precision,
         log_with=log_with,
         project_dir=logging_dir,
         kwargs_handlers=kwargs_handlers,

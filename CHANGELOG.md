@@ -38,6 +38,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **`sdxl_finetune.py`**: Updated to use `cfg.optimizer.learning_rates.blocks`.
     - `validation.py` and tests updated accordingly.
 
+  - **LR-Based Training Control**:
+
+    - Removed `train_unet_only` and `train_text_encoder_only` boolean flags from `PeftConfig`.
+    - Training control now inferred from learning rates: setting a component's LR to 0 disables its training.
+    - Added `should_train_text_encoder()` and `should_train_unet()` helper functions to `optimizer.py`.
+    - Updated `peft_strategy_base.py` methods `is_train_text_encoder()` and added `is_train_unet()` to delegate to LR helpers.
+    - Updated validation, logging, and script logic to use LR-based detection.
+
+  - **SDXLConfig Dissolution**:
+
+    - Moved `cache_text_encoder_outputs`, `cache_text_encoder_outputs_to_disk`, `disable_mmap_load_safetensors` to `PerformanceConfig`.
+    - Moved `fused_optimizer_groups` to `OptimizerConfig`.
+    - Removed `train_text_encoder` (use LR-based control via `optimizer.learning_rates.text_encoders`).
+    - `SDXLConfig` is now empty; kept for future SDXL-specific settings.
+
+  - **PerformanceConfig Subcategories**:
+
+    - Restructured `PerformanceConfig` with nested dataclasses for better organization:
+      - `precision`: mixed_precision, full_fp16, full_bf16, fp8_base, fp8_base_unet, no_half_vae, cuda precision ops
+      - `memory`: gradient_checkpointing, cpu_offload_checkpointing, lowram, highvram, ramtorch
+      - `attention`: mem_eff_attn, xformers, sdpa, diffusers_xformers
+      - `compilation`: torch_compile, dynamo_backend
+      - `distributed`: ddp_timeout, ddp_gradient_as_bucket_view, ddp_static_graph
+      - `caching`: cache_text_encoder_outputs, cache_text_encoder_outputs_to_disk, disable_mmap_load_safetensors
+    - Updated all scripts, strategies, and validation to use nested paths (e.g., `cfg.performance.precision.mixed_precision`).
+
 ## [2025-12-24]
 
 ### Changed
@@ -57,7 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Config Consolidation: `diffusers_xformers`**
 
   - Moved `diffusers_xformers` from `SDXLConfig` and `SDFineTuneSpecificConfig` to `PerformanceConfig`
-  - Updated `sd_finetune.py` and `sdxl_finetune.py` to use `cfg.performance.diffusers_xformers`
+  - Updated `sd_finetune.py` and `sdxl_finetune.py` to use `cfg.performance.attention.diffusers_xformers`
   - Standardized `sd_finetune.py` to use `cfg` variable name (matching `sdxl_finetune.py`)
 
 - **SAI Model Spec Consolidation**
@@ -77,7 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dataclass Config Cleanup**
 
   - Consolidated `no_half_vae` to `PerformanceConfig` (canonical), removed from `SDXLConfig`
-  - Updated `sdxl_finetune.py` to use `cfg.performance.no_half_vae`
+  - Updated `sdxl_finetune.py` to use `cfg.performance.precision.no_half_vae`
   - Improved `text_encoder_lr` documentation in `PeftConfig` (explains `Any` type, future unification plans)
 
 - **Checkpointing Module Split**

@@ -1,15 +1,36 @@
 # PEFT Training Common Utilities
 # Shared utility functions for PEFT training that are model-agnostic
 
+import json
 import logging
 import os
-from typing import Optional
-
 import torch
+import math
+import ast
+import subprocess
+import sys
+import numpy as np
+
+from multiprocessing import Value
+from typing import Optional
 from accelerate import Accelerator
 
+import library.config.config_util as config_util
+
+from library.config.config_util import BlueprintGenerator
+from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
 from library.utils.common_utils import setup_logging
 from library.config.dataclasses.peft import PeftConfig
+from library.training.optimizer import should_train_text_encoder
+from library.training.checkpointing import get_git_revision_hash, model_hash, calculate_sha256
+from library.constants import SS_METADATA_MINIMUM_KEYS
+from library.data.dataset import DreamBoothDataset
+
+from library.timestep_samplers.loss_aware_sampler import LossAwareTimestepSampler
+from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
+from library.timestep_samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
+from library.timestep_samplers.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
+from library.timestep_samplers.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
 
 try:
     import matplotlib.pyplot as plt
@@ -39,11 +60,6 @@ def prepare_datasets(cfg, strategies):
         Tuple of (train_dataset_group, val_dataset_group, collator, current_epoch, current_step)
         Returns None for the tuple if debug_dataset mode is active or no data found.
     """
-    from multiprocessing import Value
-    import library.config.config_util as config_util
-    from library.config.config_util import BlueprintGenerator
-    from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
-    
     cache_latents = cfg.dataset.cache_latents
     
     # Prepare datasets
@@ -120,8 +136,6 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
     Returns:
         Tuple of (initial_step, epoch_to_start)
     """
-    import math
-    
     initial_step = 0
     if cfg.training.initial_epoch is not None or cfg.training.initial_step is not None:
         # if initial_epoch or initial_step is specified, steps_from_state is ignored even when resuming
@@ -180,8 +194,6 @@ def parse_dynamic_timestep_schedule(cfg, noise_scheduler, accelerator):
         Tuple of (schedule_list, current_min_timestep, current_max_timestep)
         schedule_list is None if no dynamic schedule is configured.
     """
-    import ast
-    
     # Parse the schedule from the config string
     dynamic_timestep_schedule = ast.literal_eval(
         cfg.timestep.dynamic_timestep_schedule) if cfg.timestep.dynamic_timestep_schedule else None
@@ -214,9 +226,6 @@ def register_network_state_hooks(accelerator, network, cfg, current_epoch, curre
     Returns:
         Callable that returns steps_from_state (or None if not resumed)
     """
-    import os
-    import json
-    
     # Container for steps loaded from state (nonlocal workaround)
     state_container = {"steps_from_state": None}
     
@@ -308,11 +317,15 @@ def generate_step_logs(
         logs["loss/average_val_loss"] = average_val_loss
 
     lrs = lr_scheduler.get_last_lr()
+    
+    # Check if TE is being trained (LR-based)
+    train_te = should_train_text_encoder(cfg.optimizer)
+    
     for i, lr in enumerate(lrs):
         if lr_descriptions is not None:
             lr_desc = lr_descriptions[i]
         else:
-            idx = i - (0 if cfg.peft.train_unet_only else -1)
+            idx = i - (0 if not train_te else -1)
             if idx == -1:
                 lr_desc = "textencoder"
             else:
@@ -331,7 +344,7 @@ def generate_step_logs(
             logs["lr/d*lr"] = optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
     else:
         idx = 0
-        if not cfg.peft.train_unet_only:
+        if train_te:
             logs["lr/textencoder"] = float(lrs[0])
             idx = 1
 
@@ -439,8 +452,6 @@ def save_timestep_distribution_plot(cfg, global_step, timestep_counts, settings_
 
 def close_live_plotter(live_plotter_process):
     """Clean up live plotter subprocess."""
-    import subprocess
-    
     if live_plotter_process is not None:
         logger.info("Shutting down live plotter server...")
         try:
@@ -469,12 +480,6 @@ def init_timestep_sampler(cfg, noise_scheduler, accelerator):
     Returns:
         Timestep sampler instance or None for uniform/shift sampling
     """
-    from library.timestep_samplers.loss_aware_sampler import LossAwareTimestepSampler
-    from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
-    from library.timestep_samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
-    from library.timestep_samplers.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
-    from library.timestep_samplers.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
-    
     la_sampler = None
     
     if not cfg.timestep.timestep_sampling:
@@ -585,12 +590,6 @@ def create_training_metadata(
     Returns:
         tuple: (metadata dict, minimum_metadata dict)
     """
-    import json
-    import os
-    from library.training.checkpointing import get_git_revision_hash, model_hash, calculate_sha256
-    from library.constants import SS_METADATA_MINIMUM_KEYS
-    from library.data.dataset import DreamBoothDataset
-    
     metadata = {
         "ss_session_id": session_id,
         "ss_training_started_at": training_started_at,
@@ -603,7 +602,7 @@ def create_training_metadata(
         "ss_num_reg_images": train_dataset_group.num_reg_images,
         "ss_num_batches_per_epoch": len(train_dataloader),
         "ss_num_epochs": num_train_epochs,
-        "ss_gradient_checkpointing": cfg.performance.gradient_checkpointing,
+        "ss_gradient_checkpointing": cfg.performance.memory.gradient_checkpointing,
         "ss_gradient_accumulation_steps": cfg.training.gradient_accumulation_steps,
         "ss_max_train_steps": cfg.training.max_train_steps,
         "ss_lr_warmup_steps": cfg.optimizer.lr_warmup_steps,
@@ -612,15 +611,15 @@ def create_training_metadata(
         "ss_network_dim": cfg.peft.dim,
         "ss_network_alpha": cfg.peft.alpha,
         "ss_network_dropout": cfg.peft.neuron_dropout,
-        "ss_mixed_precision": cfg.performance.mixed_precision,
-        "ss_full_fp16": bool(cfg.performance.full_fp16),
+        "ss_mixed_precision": cfg.performance.precision.mixed_precision,
+        "ss_full_fp16": bool(cfg.performance.precision.full_fp16),
         "ss_v2": bool(cfg.model.v2),
         "ss_base_model_version": model_version,
         "ss_clip_skip": cfg.training.clip_skip,
         "ss_max_token_length": cfg.training.max_token_length,
         "ss_cache_latents": bool(cfg.dataset.cache_latents),
         "ss_seed": cfg.training.seed,
-        "ss_lowram": cfg.performance.lowram,
+        "ss_lowram": cfg.performance.memory.lowram,
         "ss_noise_offset": cfg.regularization.noise_offset,
         "ss_multires_noise_iterations": cfg.regularization.multires_noise_iterations,
         "ss_multires_noise_discount": cfg.regularization.multires_noise_discount,
@@ -645,8 +644,8 @@ def create_training_metadata(
         "ss_huber_schedule": cfg.loss.huber_schedule,
         "ss_huber_scale": cfg.loss.huber_scale,
         "ss_huber_c": cfg.loss.huber_c,
-        "ss_fp8_base": bool(cfg.performance.fp8_base),
-        "ss_fp8_base_unet": bool(cfg.performance.fp8_base_unet),
+        "ss_fp8_base": bool(cfg.performance.precision.fp8_base),
+        "ss_fp8_base_unet": bool(cfg.performance.precision.fp8_base_unet),
         "ss_validation_seed": cfg.dataset.validation_seed,
         "ss_validation_split": float(cfg.dataset.validation_split),
         "ss_max_validation_steps": cfg.training.max_validation_steps,
@@ -820,10 +819,6 @@ def get_plotter_settings(cfg, la_sampler) -> dict:
     
     Returns a dict of settings for display in the live plotter.
     """
-    # Import sampler types for isinstance checks
-    from library.timestep_samplers.log_snr_sampler import LogSNRUniformSampler
-    from library.timestep_samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
-    
     # Determine the actual sampler being used
     sampler_type = cfg.timestep.timestep_sampling
     if la_sampler is not None:
@@ -909,11 +904,6 @@ def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
     Returns:
         tuple: (timestep_counts array or None, plotter_settings dict or None)
     """
-    import subprocess
-    import sys
-    import json
-    import numpy as np
-    
     timestep_counts = None
     plotter_settings = None
     

@@ -106,7 +106,7 @@ def train(cfg: SDFineTuneConfig):
     accelerator = prepare_accelerator(cfg.training)
 
     weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.saving)
-    vae_dtype = torch.float32 if cfg.performance.no_half_vae else weight_dtype
+    vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
 
     text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(cfg.model, cfg.performance, weight_dtype, accelerator)
 
@@ -134,13 +134,13 @@ def train(cfg: SDFineTuneConfig):
 
         fn_recursive_set_mem_eff(model)
 
-    if cfg.performance.diffusers_xformers:
+    if cfg.performance.attention.diffusers_xformers:
         accelerator.print("Use xformers by Diffusers")
         set_diffusers_xformers_flag(unet, True)
     else:
         accelerator.print("Disable Diffusers' xformers")
         set_diffusers_xformers_flag(unet, False)
-        replace_unet_modules(unet, cfg.performance.mem_eff_attn, cfg.performance.xformers, cfg.performance.sdpa)
+        replace_unet_modules(unet, cfg.performance.attention.mem_eff_attn, cfg.performance.attention.xformers, cfg.performance.attention.sdpa)
 
     if cache_latents:
         vae.to(accelerator.device, dtype=vae_dtype)
@@ -155,19 +155,19 @@ def train(cfg: SDFineTuneConfig):
         accelerator.wait_for_everyone()
 
     training_models = []
-    if cfg.performance.gradient_checkpointing:
+    if cfg.performance.memory.gradient_checkpointing:
         unet.enable_gradient_checkpointing()
     training_models.append(unet)
 
     if cfg.fine_tune.train_text_encoder:
         accelerator.print("enable text encoder training")
-        if cfg.performance.gradient_checkpointing:
+        if cfg.performance.memory.gradient_checkpointing:
             text_encoder.gradient_checkpointing_enable()
         training_models.append(text_encoder)
     else:
         text_encoder.to(accelerator.device, dtype=weight_dtype)
         text_encoder.requires_grad_(False)
-        if cfg.performance.gradient_checkpointing:
+        if cfg.performance.memory.gradient_checkpointing:
             text_encoder.gradient_checkpointing_enable()
             text_encoder.train()
         else:
@@ -230,7 +230,7 @@ def train(cfg: SDFineTuneConfig):
 
     lr_scheduler = get_scheduler_fix(cfg.optimizer, optimizer, accelerator.num_processes)
 
-    if cfg.performance.full_fp16:
+    if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
         unet.to(weight_dtype)
         text_encoder.to(weight_dtype)
@@ -252,7 +252,7 @@ def train(cfg: SDFineTuneConfig):
         else:
             unet, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(unet, optimizer, train_dataloader, lr_scheduler)
 
-    if cfg.performance.full_fp16:
+    if cfg.performance.precision.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
     resume_from_local_or_hf_if_specified(accelerator, cfg.saving)
@@ -334,7 +334,7 @@ def train(cfg: SDFineTuneConfig):
                         encoder_hidden_states = text_encoding_strategy.encode_tokens(
                             tokenize_strategy, [text_encoder], [input_ids]
                         )[0]
-                    if cfg.performance.full_fp16:
+                    if cfg.performance.precision.full_fp16:
                         encoder_hidden_states = encoder_hidden_states.to(weight_dtype)
 
                 noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.regularization, cfg.timestep, cfg.training, noise_scheduler, latents)

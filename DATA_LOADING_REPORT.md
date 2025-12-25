@@ -90,4 +90,4 @@ if you're gonna rewrite it however, heed this architecture design:
 1 thread for VAE encoding
 1 thread for saving to disk
 
-four threads to do "two things" may seem excessive, but even if you just break out the loading and VAE encoding, you can easily get 50+it/s on like, a 3090, I was hitting 120it/s on 1x4090, and can cache all of danbooru/e6 in like, 4-5 hours on eight cards :FubukiWheeze:"
+four threads to do "two things" may seem excessive, but even if you just break out the loading and VAE encoding, you can easily get 50+it/s on like, a 3090, I was hitting 120it/s on 1x4090, and can cache all of danbooru/e6 in like, 4-5 hours on eight cards :FubukiWheeze: "

@@ -65,10 +65,10 @@ class TestPrepareConfig:
             "dataset": {"cache_latents": False, "cache_latents_to_disk": False, "caption_extention": None},
             "optimizer": {"use_8bit_adam": False, "use_lion_optimizer": False, "optimizer_type": ""},
             "sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None},
-            "sdxl": {"cache_text_encoder_outputs": False, "cache_text_encoder_outputs_to_disk": True},
+            "performance": {"caching": {"cache_text_encoder_outputs": False, "cache_text_encoder_outputs_to_disk": True}},
         })
         prepare_config(cfg)
-        assert cfg.sdxl.cache_text_encoder_outputs is True
+        assert cfg.performance.caching.cache_text_encoder_outputs is True
 
     def test_use_8bit_adam_sets_optimizer_type(self):
         """use_8bit_adam should set optimizer_type to AdamW8bit."""
@@ -199,7 +199,7 @@ class TestValidateConfig:
             "loss": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None, "v_parameterization": False},
             "model": {"v2": False},
             "training": {"clip_skip": None},
-            "performance": {"full_fp16": True, "full_bf16": False, "mixed_precision": "bf16"},
+            "performance": {"precision": {"full_fp16": True, "full_bf16": False, "mixed_precision": "bf16"}},
         })
         with pytest.raises(ValueError, match="full_fp16 requires mixed_precision='fp16'"):
             validate_config(cfg)
@@ -211,7 +211,7 @@ class TestValidateConfig:
             "loss": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None, "v_parameterization": False},
             "model": {"v2": False},
             "training": {"clip_skip": None},
-            "performance": {"full_fp16": False, "full_bf16": True, "mixed_precision": "fp16"},
+            "performance": {"precision": {"full_fp16": False, "full_bf16": True, "mixed_precision": "fp16"}},
         })
         with pytest.raises(ValueError, match="full_bf16 requires mixed_precision='bf16'"):
             validate_config(cfg)
@@ -273,8 +273,9 @@ class TestScriptSpecificValidators:
     def test_validate_sdxl_peft_calls_verify_bucket_reso_32(self):
         """validate_sdxl_peft should verify bucket reso with 32 steps."""
         cfg = MagicMock()
-        cfg.sdxl.cache_text_encoder_outputs = False
-        cfg.peft.train_unet_only = True
+        cfg.performance.caching.cache_text_encoder_outputs = False
+        # Set TE LR to 0 (not training TE)
+        cfg.optimizer.learning_rates.text_encoders = 0
         train_ds = MagicMock()
         val_ds = MagicMock()
         
@@ -286,8 +287,9 @@ class TestScriptSpecificValidators:
     def test_validate_sdxl_peft_cache_te_requires_cacheable(self):
         """SDXL cache_text_encoder_outputs requires dataset to be cacheable."""
         cfg = MagicMock()
-        cfg.sdxl.cache_text_encoder_outputs = True
-        cfg.peft.train_unet_only = True
+        cfg.performance.caching.cache_text_encoder_outputs = True
+        # Set TE LR to 0 (not training TE, so caching is allowed)
+        cfg.optimizer.learning_rates.text_encoders = 0
         train_ds = MagicMock()
         train_ds.is_text_encoder_output_cacheable.return_value = False
         
@@ -297,8 +299,9 @@ class TestScriptSpecificValidators:
     def test_validate_sdxl_peft_cache_te_conflicts_with_te_training(self):
         """Cannot cache TE outputs while training TE peft."""
         cfg = MagicMock()
-        cfg.sdxl.cache_text_encoder_outputs = True
-        cfg.peft.train_unet_only = False  # Training TE too
+        cfg.performance.caching.cache_text_encoder_outputs = True
+        # TE LR > 0 means training TE, which conflicts with caching
+        cfg.optimizer.learning_rates.text_encoders = 1e-5
         train_ds = MagicMock()
         train_ds.is_text_encoder_output_cacheable.return_value = True
         

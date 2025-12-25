@@ -24,8 +24,8 @@ class TestSDXLModelPrep(unittest.TestCase):
         self.cfg.sd_models.pretrained_model_name_or_path = "model/path"
         self.cfg.sd_models.vae = None
         self.cfg.sd_models.vae_conv2d_padding_mode = None
-        self.cfg.performance.lowram = False
-        self.cfg.sdxl.disable_mmap_load_safetensors = False
+        self.cfg.performance.memory.lowram = False
+        self.cfg.performance.caching.disable_mmap_load_safetensors = False
         self.cfg.training.mixed_precision = "fp16"
 
     @patch("library.training.sdxl_model_prep.match_mixed_precision")
@@ -117,7 +117,7 @@ class TestSDXLModelPrep(unittest.TestCase):
     @patch("library.training.sdxl_model_prep.clean_memory_on_device")
     def test_load_target_model_lowram(self, mock_clean, mock_load_internal, mock_match_mp):
         """Test lowram behavior moving models to device."""
-        self.cfg.performance.lowram = True
+        self.cfg.performance.memory.lowram = True
         accelerator = MagicMock()
         accelerator.state.num_processes = 1
         accelerator.state.local_process_index = 0

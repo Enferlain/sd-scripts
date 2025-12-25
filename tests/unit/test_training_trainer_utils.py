@@ -279,12 +279,20 @@ class TestPrepareAccelerator:
 
     @pytest.fixture
     def mock_performance_config(self):
-        """Create a mock PerformanceConfig."""
+        """Create a mock PerformanceConfig with nested structure."""
         config = Mock(spec=PerformanceConfig)
-        config.mixed_precision = "fp16"
-        config.torch_compile = False
-        config.ddp_gradient_as_bucket_view = False
-        config.ddp_static_graph = False
+        # Nested precision config
+        config.precision = Mock()
+        config.precision.mixed_precision = "fp16"
+        # Nested compilation config
+        config.compilation = Mock()
+        config.compilation.torch_compile = False
+        # Nested distributed config
+        config.distributed = Mock()
+        config.distributed.ddp_gradient_as_bucket_view = False
+        config.distributed.ddp_static_graph = False
+        # Deepspeed
+        config.deepspeed = Mock()
         return config
 
     @pytest.fixture
@@ -357,7 +365,7 @@ class TestPrepareAccelerator:
         self, mock_dynamo, mock_ds_plugin, mock_accelerator_class, mock_performance_config
     ):
         """Test that torch_compile creates dynamo plugin."""
-        mock_performance_config.torch_compile = True
+        mock_performance_config.compilation.torch_compile = True
         mock_ds_plugin.return_value = None
         mock_accelerator = Mock()
         mock_accelerator_class.return_value = mock_accelerator

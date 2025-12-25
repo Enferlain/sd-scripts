@@ -40,4 +40,6 @@ class OptimizerConfig:
     lr_scheduler_min_lr_ratio: Optional[float] = field(default=None, metadata={"help": "The minimum learning rate as a ratio of the initial learning rate"})
     optimizer_schedulefree_wrapper: bool = field(default=False, metadata={"help": "Wrap optimizer with ScheduleFreeWrapper"})
     schedulefree_wrapper_args: Optional[List[str]] = field(default=None, metadata={"help": "Arguments for ScheduleFreeWrapper"})
+    # Fused backward pass with multiple optimizer groups (moved from SDXLConfig)
+    fused_optimizer_groups: Optional[int] = field(default=None, metadata={"help": "number of optimizers for fused backward pass and optimizer step"})
 
