@@ -511,7 +511,7 @@ def create_network(
 
 
 # このメソッドは外部から呼び出される可能性を考慮しておく
-# network_dim, network_alpha にはデフォルト値が入っている。
+# dim, alpha にはデフォルト値が入っている。
 # block_dims, block_alphas は両方ともNoneまたは両方とも値が入っている
 # conv_dim, conv_alpha は両方ともNoneまたは両方とも値が入っている
 def get_block_dims_and_alphas(

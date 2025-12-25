@@ -163,7 +163,7 @@ class PeftTrainingStrategy(
     
     def is_train_text_encoder(self, cfg) -> bool:
         """Check if text encoder should be trained."""
-        return not cfg.peft.network_train_unet_only
+        return not cfg.peft.train_unet_only
     
     def cast_text_encoder(self, cfg) -> bool:
         return True

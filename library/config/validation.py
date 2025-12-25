@@ -136,7 +136,7 @@ def validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group) -> None:
             "token_warmup_step, or caption_tag_dropout_rate cannot be used"
         )
     
-    assert cfg.peft.network_train_unet_only or not cfg.sdxl.cache_text_encoder_outputs, (
+    assert cfg.peft.train_unet_only or not cfg.sdxl.cache_text_encoder_outputs, (
         "peft for Text Encoder cannot be trained with caching Text Encoder outputs"
     )
 

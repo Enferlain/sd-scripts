@@ -82,7 +82,7 @@ class TestGetBlockDimsAndAlphas:
     """Tests for get_block_dims_and_alphas function."""
 
     def test_creates_default_dims_when_block_dims_none(self):
-        """Should fill all dims with network_dim when block_dims is None."""
+        """Should fill all dims with dim when block_dims is None."""
         network_dim = 16
         network_alpha = 8.0
         block_dims, block_alphas, conv_block_dims, conv_block_alphas = get_block_dims_and_alphas(

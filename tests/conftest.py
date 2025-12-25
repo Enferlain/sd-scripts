@@ -132,9 +132,9 @@ def mock_training_config():
 def mock_network_config():
     """Create a basic PeftConfig for testing."""
     return PeftConfig(
-        network_module="networks.lora",
-        network_dim=4,
-        network_alpha=1.0,
+        module="networks.lora",
+        dim=4,
+        alpha=1.0,
     )
 
 

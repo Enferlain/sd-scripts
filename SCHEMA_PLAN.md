@@ -190,12 +190,12 @@ model:
 mode:
   type: peft
   peft:
-    module: network_module
-    dim: network_dim
-    alpha: network_alpha
-    dropout: network_dropout
-    weights: network_weights
-    args: network_args
+    module: module
+    dim: dim
+    alpha: alpha
+    dropout: neuron_dropout
+    weights: weights
+    args: args
     dim_from_weights: dim_from_weights
     scale_weight_norms: scale_weight_norms
     base_weights: base_weights

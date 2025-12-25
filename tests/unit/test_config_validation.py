@@ -274,7 +274,7 @@ class TestScriptSpecificValidators:
         """validate_sdxl_peft should verify bucket reso with 32 steps."""
         cfg = MagicMock()
         cfg.sdxl.cache_text_encoder_outputs = False
-        cfg.peft.network_train_unet_only = True
+        cfg.peft.train_unet_only = True
         train_ds = MagicMock()
         val_ds = MagicMock()
         
@@ -287,7 +287,7 @@ class TestScriptSpecificValidators:
         """SDXL cache_text_encoder_outputs requires dataset to be cacheable."""
         cfg = MagicMock()
         cfg.sdxl.cache_text_encoder_outputs = True
-        cfg.peft.network_train_unet_only = True
+        cfg.peft.train_unet_only = True
         train_ds = MagicMock()
         train_ds.is_text_encoder_output_cacheable.return_value = False
         
@@ -298,7 +298,7 @@ class TestScriptSpecificValidators:
         """Cannot cache TE outputs while training TE peft."""
         cfg = MagicMock()
         cfg.sdxl.cache_text_encoder_outputs = True
-        cfg.peft.network_train_unet_only = False  # Training TE too
+        cfg.peft.train_unet_only = False  # Training TE too
         train_ds = MagicMock()
         train_ds.is_text_encoder_output_cacheable.return_value = True
         

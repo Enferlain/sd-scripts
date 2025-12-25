@@ -60,9 +60,9 @@ class TestConfigInstantiation:
         """Test PeftConfig instantiation with defaults."""
         config = PeftConfig()
         assert config is not None
-        assert hasattr(config, 'network_module')
-        assert hasattr(config, 'network_dim')
-        assert hasattr(config, 'network_alpha')
+        assert hasattr(config, 'module')
+        assert hasattr(config, 'dim')
+        assert hasattr(config, 'alpha')
         
     def test_buckets_config_instantiation(self):
         """Test BucketsConfig instantiation with defaults."""
@@ -152,9 +152,9 @@ class TestConfigDefaults:
     def test_network_config_defaults(self):
         """Test PeftConfig default values."""
         config = PeftConfig()
-        assert config.network_dim is None  # None by default
-        assert config.network_alpha == 1.0
-        assert config.network_module is None  # None by default
+        assert config.dim is None  # None by default
+        assert config.alpha == 1.0
+        assert config.module is None  # None by default
         
     def test_buckets_config_defaults(self):
         """Test BucketsConfig default values."""
@@ -253,10 +253,10 @@ class TestConfigOverrides:
         """Test overriding peft config values."""
         cfg = compose(
             config_name="sd_peft",
-            overrides=["peft.network_dim=128", "peft.network_alpha=128"]
+            overrides=["peft.dim=128", "peft.alpha=128"]
         )
-        assert cfg.peft.network_dim == 128
-        assert cfg.peft.network_alpha == 128
+        assert cfg.peft.dim == 128
+        assert cfg.peft.alpha == 128
         
     def test_training_override(self, hydra_ctx):
         """Test overriding training config values."""

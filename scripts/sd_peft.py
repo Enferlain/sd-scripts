@@ -288,7 +288,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     strategies.post_process_network(cfg, accelerator, network, text_encoders, unet)
 
     # apply peft to unet and text_encoder
-    train_unet = not cfg.peft.network_train_text_encoder_only
+    train_unet = not cfg.peft.train_text_encoder_only
     train_text_encoder = strategies.is_train_text_encoder(cfg)
     network.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 

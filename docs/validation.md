@@ -197,9 +197,9 @@ accelerate launch sdxl_peft.py \
   --dataset_config="dataset_config.toml" \
   --output_dir="output" \
   --output_name="my_lora" \
-  --network_module=networks.lora \
-  --network_dim=32 \
-  --network_alpha=16 \
+  --module=networks.lora \
+  --dim=32 \
+  --alpha=16 \
   --save_every_n_epochs=1 \
   --learning_rate=1e-4 \
   --optimizer_type="AdamW8bit" \
@@ -246,9 +246,9 @@ accelerate launch sdxl_peft.py \
   --dataset_config="dataset_config.toml" \
   --output_dir="output" \
   --output_name="my_lora" \
-  --network_module=networks.lora \
-  --network_dim=32 \
-  --network_alpha=16 \
+  --module=networks.lora \
+  --dim=32 \
+  --alpha=16 \
   --save_every_n_epochs=1 \
   --learning_rate=1e-4 \
   --optimizer_type="AdamW8bit" \

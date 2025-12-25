@@ -166,12 +166,12 @@ def create_network(
         network_dim = 4  # default
     if network_alpha is None:  # should be set
         logger.info(
-            "network_alpha is not set, use default value 1e-3 / network_alphaが設定されていないのでデフォルト値 1e-3 を使用します"
+            "alpha is not set, use default value 1e-3 / network_alphaが設定されていないのでデフォルト値 1e-3 を使用します"
         )
         network_alpha = 1e-3
     elif network_alpha >= 1:
         logger.warning(
-            "network_alpha is too large (>=1, maybe default value is too large), please consider to set smaller value like 1e-3"
+            "alpha is too large (>=1, maybe default value is too large), please consider to set smaller value like 1e-3"
             " / network_alphaが大きすぎるようです(>=1, デフォルト値が大きすぎる可能性があります)。1e-3のような小さな値を推奨"
         )
 

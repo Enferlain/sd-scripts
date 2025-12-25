@@ -99,7 +99,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: PeftCon
     support_multiple_lrs = hasattr(network, "prepare_optimizer_params_with_multiple_te_lrs")
     
     # Normalize text_encoder_lr based on peft capabilities
-    if support_multiple_lrs or (getattr(network_config, "network_module", None) == "lycoris.kohya"):
+    if support_multiple_lrs or (getattr(network_config, "module", None) == "lycoris.kohya"):
         text_encoder_lr = raw_te_lr
     else:
         # Single TE LR mode - take first element if list

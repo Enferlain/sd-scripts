@@ -130,9 +130,9 @@ accelerate launch --num_cpu_threads_per_process 1 flux_train_network.py \
   --output_dir="<output directory>" \
   --output_name="my_flux_lora" \
   --save_model_as=safetensors \
-  --network_module=networks.lora_flux \
-  --network_dim=16 \
-  --network_alpha=1 \
+  --module=networks.lora_flux \
+  --dim=16 \
+  --alpha=1 \
   --learning_rate=1e-4 \
   --optimizer_type="AdamW8bit" \
   --lr_scheduler="constant" \
@@ -598,7 +598,7 @@ validation_split = 1.0 # Will use this full subset as a validation subset.
 
 - **LoRA-GGPO Support**: Use LoRA-GGPO (Gradient Group Proportion Optimizer) to stabilize LoRA training:
   ```bash
-  --network_args "ggpo_sigma=0.03" "ggpo_beta=0.01"
+  --args "ggpo_sigma=0.03" "ggpo_beta=0.01"
   ```
 
 - **Q/K/V Projection Layer Splitting [Experimental]**: Specify `--network_args "split_qkv=True"` to individually split and apply LoRA to Q/K/V (and SingleStreamBlock Text) projection layers within Attention layers.

@@ -302,7 +302,7 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
             out_dim = up_weight.size()[0]
             conv2d = len(down_weight.size()) == 4
             kernel_size = None if not conv2d else down_weight.size()[2:4]
-            # logger.info(lora_module_name, network_dim, alpha, in_dim, out_dim, kernel_size)
+            # logger.info(lora_module_name, dim, alpha, in_dim, out_dim, kernel_size)
 
             # make original weight if not exist
             if lora_module_name not in merged_sd:

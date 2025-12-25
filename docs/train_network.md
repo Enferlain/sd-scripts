@@ -76,9 +76,9 @@ accelerate launch --num_cpu_threads_per_process 1 sd_peft.py
  --output_dir="<output directory for training results>" 
  --output_name="my_lora" 
  --save_model_as=safetensors 
- --network_module=networks.lora 
- --network_dim=16 
- --network_alpha=1 
+ --module=networks.lora 
+ --dim=16 
+ --alpha=1 
  --learning_rate=1e-4 
  --optimizer_type="AdamW8bit" 
  --lr_scheduler="constant" 

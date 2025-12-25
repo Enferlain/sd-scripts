@@ -195,7 +195,7 @@ def create_network(
     unit = kwargs.get("unit", None)
     if conv_dim is not None:
         conv_dim = int(conv_dim)
-        assert conv_dim == network_dim, "conv_dim must be same as network_dim"
+        assert conv_dim == network_dim, "conv_dim must be same as dim"
         if conv_alpha is None:
             conv_alpha = 1.0
         else:
