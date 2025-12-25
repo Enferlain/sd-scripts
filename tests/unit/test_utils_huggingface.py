@@ -1,7 +1,7 @@
 """
 Unit tests for library/utils/huggingface_util.py.
 
-Tests HuggingFace Hub API interactions with mocked network calls.
+Tests HuggingFace Hub API interactions with mocked peft calls.
 """
 
 import pytest

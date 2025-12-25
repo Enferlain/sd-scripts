@@ -241,7 +241,7 @@ class LoRAModule(torch.nn.Module):
         return weight
 
 
-# Create network from weights for inference, weights are not loaded here
+# Create peft from weights for inference, weights are not loaded here
 def create_network_from_weights(
     text_encoder: Union[CLIPTextModel, List[CLIPTextModel]], unet: UNet2DConditionModel, weights_sd: Dict, multiplier: float = 1.0
 ):
@@ -301,7 +301,7 @@ class LoRANetwork(torch.nn.Module):
         super().__init__()
         self.multiplier = multiplier
 
-        logger.info("create LoRA network from weights")
+        logger.info("create LoRA peft from weights")
 
         # convert SDXL Stability AI's U-Net modules to Diffusers
         converted = self.convert_unet_modules(modules_dim, modules_alpha)
@@ -522,10 +522,10 @@ if __name__ == "__main__":
         lora_sd = torch.load(args.lora_weights)
 
     # create by LoRA weights and load weights
-    logger.info(f"create LoRA network")
+    logger.info(f"create LoRA peft")
     lora_network: LoRANetwork = create_network_from_weights(text_encoders, pipe.unet, lora_sd, multiplier=1.0)
 
-    logger.info(f"load LoRA network weights")
+    logger.info(f"load LoRA peft weights")
     lora_network.load_state_dict(lora_sd)
 
     lora_network.to(device, dtype=pipe.unet.dtype)  # required to apply_to. merge_to works without this
@@ -559,8 +559,8 @@ if __name__ == "__main__":
     image = pipe(args.prompt, negative_prompt=args.negative_prompt).images[0]
     image.save(image_prefix + "original.png")
 
-    # apply LoRA network to the model: slower than merge_to, but can be reverted easily
-    logger.info(f"apply LoRA network to the model")
+    # apply LoRA peft to the model: slower than merge_to, but can be reverted easily
+    logger.info(f"apply LoRA peft to the model")
     lora_network.apply_to(multiplier=1.0)
 
     logger.info(f"create image with applied LoRA")
@@ -568,8 +568,8 @@ if __name__ == "__main__":
     image = pipe(args.prompt, negative_prompt=args.negative_prompt).images[0]
     image.save(image_prefix + "applied_lora.png")
 
-    # unapply LoRA network to the model
-    logger.info(f"unapply LoRA network to the model")
+    # unapply LoRA peft to the model
+    logger.info(f"unapply LoRA peft to the model")
     lora_network.unapply_to()
 
     logger.info(f"create image with unapplied LoRA")
@@ -577,8 +577,8 @@ if __name__ == "__main__":
     image = pipe(args.prompt, negative_prompt=args.negative_prompt).images[0]
     image.save(image_prefix + "unapplied_lora.png")
 
-    # merge LoRA network to the model: faster than apply_to, but requires back-up of original weights (or unmerge_to)
-    logger.info(f"merge LoRA network to the model")
+    # merge LoRA peft to the model: faster than apply_to, but requires back-up of original weights (or unmerge_to)
+    logger.info(f"merge LoRA peft to the model")
     lora_network.merge_to(multiplier=1.0)
 
     logger.info(f"create image with LoRA")

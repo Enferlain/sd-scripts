@@ -185,7 +185,7 @@ class TestHydraComposition:
         """Test sd_peft config loading via Hydra."""
         cfg = compose(config_name="sd_peft")
         assert cfg is not None
-        assert "network" in cfg
+        assert "peft" in cfg
         assert "optimizer" in cfg
         assert "dataset" in cfg
         assert "training" in cfg
@@ -210,7 +210,7 @@ class TestHydraComposition:
         """Test sdxl_peft config loading via Hydra."""
         cfg = compose(config_name="sdxl_peft")
         assert cfg is not None
-        assert "network" in cfg
+        assert "peft" in cfg
         assert "optimizer" in cfg
         assert "sdxl" in cfg
         
@@ -250,13 +250,13 @@ class TestConfigOverrides:
         assert cfg.optimizer.optimizer_type == "AdamW"
         
     def test_network_override(self, hydra_ctx):
-        """Test overriding network config values."""
+        """Test overriding peft config values."""
         cfg = compose(
             config_name="sd_peft",
-            overrides=["network.network_dim=128", "network.network_alpha=128"]
+            overrides=["peft.network_dim=128", "peft.network_alpha=128"]
         )
-        assert cfg.network.network_dim == 128
-        assert cfg.network.network_alpha == 128
+        assert cfg.peft.network_dim == 128
+        assert cfg.peft.network_alpha == 128
         
     def test_training_override(self, hydra_ctx):
         """Test overriding training config values."""

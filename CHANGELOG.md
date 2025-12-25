@@ -17,31 +17,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
     - `unet`: Dedicated field for UNet LR.
     - `text_encoders`: Dedicated field for Text Encoder LR(s). Supports separate LRs for SDXL via list `[lr_te1, lr_te2]`.
+    - `blocks`: Per-block learning rates (moved from `cfg.sdxl.block_lr`).
     - Falls back to base `cfg.optimizer.learning_rate` when specific LRs are not set.
-    - **Note**: Legacy fields (`learning_rate_te`, `learning_rate_te1/2`, `unet_lr`) are no longer supported.
+    - **Breaking**: Legacy fields (`unet_lr`, `text_encoder_lr` in PeftConfig, `learning_rate_te1/te2`, `block_lr` in SDXLConfig) removed.
 
-  - **PEFT Configuration Overhaul**:
+  - **Config Key Rename: `cfg.network` → `cfg.peft`**:
 
-    - Renamed `NetworkConfig` to `PeftConfig` to better reflect its purpose.
-    - Added property aliases for Schema 1 naming conventions (`dim` for `network_dim`, `alpha` for `network_alpha`, `module` for `network_module`).
-    - Promoted 11+ previously undocumented `kwargs` from `lora.py` to explicit, typed fields in `PeftConfig`:
-      - `conv_dim`, `conv_alpha`, `rank_dropout`, `module_dropout`
-      - `block_dims`, `block_alphas`, `conv_block_dims`, `conv_block_alphas`
-      - `down_lr_weight`, `mid_lr_weight`, `up_lr_weight`, `block_lr_zero_threshold`
-      - LoRA+ ratios (`loraplus_lr_ratio`, etc.)
-    - Added `resolve_network_kwargs` helper in `peft_common.py` to automatically map these config fields to network creation arguments.
-    - Persisted `lycoris` compatibility via `dropout` kwarg workaround.
+    - Renamed config group from `network` to `peft` for semantic clarity.
+    - All scripts and library modules updated to use `cfg.peft.*`.
+    - YAML config moved from `configs/network/default.yaml` to `configs/peft/default.yaml`.
+
+  - **PEFT Configuration Cleanup**:
+
+    - Removed unused `@property` aliases from `PeftConfig` (they didn't work with Hydra/YAML).
+    - Removed legacy fallback logic from `optimizer.py`.
 
   - **Script Migrations**:
 
-    - **`sd_peft.py` / `sdxl_peft.py`**: Fully migrated to use Schema 1 fields. Removed temporary compatibility bridges.
-    - **`sd_finetune.py` / `sdxl_finetune.py`**: Updated to resolve learning rates from `cfg.optimizer.learning_rates`.
-    - All scripts validated with `--help` and dry runs.
-
-  - **LyCORIS Strategy**:
-    - Decided against vendoring LyCORIS to minimize maintenance overhead.
-    - `network.args` remains generic to support LyCORIS and other external modules.
-    - Standard LoRA parameters are now strongly typed, reducing reliance on generic `args`.
+    - **`sd_peft.py` / `sdxl_peft.py`**: Fully migrated to use `cfg.peft.*` and `cfg.optimizer.learning_rates.*`.
+    - **`sdxl_finetune.py`**: Updated to use `cfg.optimizer.learning_rates.blocks`.
+    - `validation.py` and tests updated accordingly.
 
 ## [2025-12-24]
 

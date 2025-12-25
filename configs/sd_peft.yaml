@@ -3,7 +3,7 @@ defaults:
   - dataset: default
   - buckets: default
   - model: default
-  - network: default
+  - peft: default
   - masked_loss: default
   - training: default
   - saving: default

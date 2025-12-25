@@ -89,7 +89,7 @@ class UNetCallingStrategy(ABC):
 class NetworkCheckpointingStrategy(ABC):
     @abstractmethod
     def save_network(self, network, config, epoch, step):
-        """Save network checkpoint with architecture-specific metadata."""
+        """Save peft checkpoint with architecture-specific metadata."""
         pass
 ```
 

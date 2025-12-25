@@ -11,8 +11,6 @@ scale_weight_norms: null
 base_weights: null
 base_weights_multiplier: null
 training_comment: null
-unet_lr: null
-text_encoder_lr: null
 orthograd_targets:
   [
     "lora_down.weight",

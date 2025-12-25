@@ -2,6 +2,11 @@ optimizer_type: ""
 use_8bit_adam: false
 use_lion_optimizer: false
 learning_rate: 2.0e-6
+learning_rates:
+  base: null
+  unet: null
+  text_encoders: null
+  blocks: null
 max_grad_norm: 1.0
 optimizer_args: []
 lr_scheduler_type: ""

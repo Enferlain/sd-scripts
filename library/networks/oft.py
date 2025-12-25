@@ -1,4 +1,4 @@
-# OFT network module
+# OFT peft module
 
 import os
 import logging
@@ -195,7 +195,7 @@ def create_network(
     return network
 
 
-# Create network from weights for inference, weights are not loaded here (because can be merged)
+# Create peft from weights for inference, weights are not loaded here (because can be merged)
 def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":

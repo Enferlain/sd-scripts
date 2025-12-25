@@ -1,4 +1,4 @@
-# LoRA network module
+# LoRA peft module
 # reference:
 # https://github.com/microsoft/LoRA/blob/main/loralib/layers.py
 # https://github.com/cloneofsimo/lora/blob/master/lora_diffusion/lora.py
@@ -270,7 +270,7 @@ class LoRAInfModule(LoRAModule):
         # apply mask for LoRA result
         lx = self.lora_up(self.lora_down(x)) * self.multiplier * self.scale
         mask = self.get_mask_for_x(lx)
-        # print("regional", self.lora_name, self.network.sub_prompt_index, lx.size(), mask.size())
+        # print("regional", self.lora_name, self.peft.sub_prompt_index, lx.size(), mask.size())
         # if mask.ndim > lx.ndim:  # in some resolution, lx is 2d and mask is 3d (the reason is not checked)
         #     mask = mask.squeeze(-1)
         lx = lx * mask
@@ -301,7 +301,7 @@ class LoRAInfModule(LoRAModule):
         if has_real_uncond:
             query[-self.network.batch_size :] = x[-self.network.batch_size :]
 
-        # logger.info(f"postp_to_q {self.lora_name} {x.size()} {query.size()} {self.network.num_sub_prompts}")
+        # logger.info(f"postp_to_q {self.lora_name} {x.size()} {query.size()} {self.peft.num_sub_prompts}")
         return query
 
     def sub_prompt_forward(self, x):
@@ -324,7 +324,7 @@ class LoRAInfModule(LoRAModule):
         return x
 
     def to_out_forward(self, x):
-        # logger.info(f"to_out_forward {self.lora_name} {x.size()} {self.network.is_last_network}")
+        # logger.info(f"to_out_forward {self.lora_name} {x.size()} {self.peft.is_last_network}")
 
         if self.network.is_last_network:
             masks = [None] * self.network.num_sub_prompts
@@ -342,18 +342,18 @@ class LoRAInfModule(LoRAModule):
             )
             self.network.shared[self.lora_name] = (lx, masks)
 
-        # logger.info(f"to_out_forward {lx.size()} {lx1.size()} {self.network.sub_prompt_index} {self.network.num_sub_prompts}")
+        # logger.info(f"to_out_forward {lx.size()} {lx1.size()} {self.peft.sub_prompt_index} {self.peft.num_sub_prompts}")
         lx[self.network.sub_prompt_index :: self.network.num_sub_prompts] += lx1
         masks[self.network.sub_prompt_index] = self.get_mask_for_x(lx1)
 
-        # if not last network, return x and masks
+        # if not last peft, return x and masks
         x = self.org_forward(x)
         if not self.network.is_last_network:
             return x
 
         lx, masks = self.network.shared.pop(self.lora_name)
 
-        # if last network, combine separated x with mask weighted sum
+        # if last peft, combine separated x with mask weighted sum
         has_real_uncond = x.size()[0] // self.network.batch_size == self.network.num_sub_prompts + 2
 
         out = torch.zeros((self.network.batch_size * (3 if has_real_uncond else 2), *x.size()[1:]), device=x.device, dtype=x.dtype)
@@ -361,7 +361,7 @@ class LoRAInfModule(LoRAModule):
         if has_real_uncond:
             out[-self.network.batch_size :] = x[-self.network.batch_size :]  # real_uncond
 
-        # logger.info(f"to_out_forward {self.lora_name} {self.network.sub_prompt_index} {self.network.num_sub_prompts}")
+        # logger.info(f"to_out_forward {self.lora_name} {self.peft.sub_prompt_index} {self.peft.num_sub_prompts}")
         # if num_sub_prompts > num of LoRAs, fill with zero
         for i in range(len(masks)):
             if masks[i] is None:
@@ -803,7 +803,7 @@ def convert_diffusers_to_sai_if_needed(weights_sd):
             logger.warning(f"Key {k} is not found in unet_conversion_map")
 
 
-# Create network from weights for inference, weights are not loaded here (because can be merged)
+# Create peft from weights for inference, weights are not loaded here (because can be merged)
 def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
     # if unet is an instance of SdxlUNet2DConditionModel or subclass, set is_sdxl to True
     is_sdxl = unet is not None and issubclass(unet.__class__, SdxlUNet2DConditionModel)
@@ -899,7 +899,7 @@ class LoRANetwork(torch.nn.Module):
         is_sdxl: Optional[bool] = False,
     ) -> None:
         """
-        LoRA network: すごく引数が多いが、パターンは以下の通り
+        LoRA peft: すごく引数が多いが、パターンは以下の通り
         1. lora_dimとalphaを指定
         2. lora_dim、alpha、conv_lora_dim、conv_alphaを指定
         3. block_dimsとblock_alphasを指定 :  Conv2d3x3には適用しない
@@ -922,9 +922,9 @@ class LoRANetwork(torch.nn.Module):
         self.loraplus_text_encoder_lr_ratio = None
 
         if modules_dim is not None:
-            logger.info(f"create LoRA network from weights")
+            logger.info(f"create LoRA peft from weights")
         elif block_dims is not None:
-            logger.info(f"create LoRA network from block_dims")
+            logger.info(f"create LoRA peft from block_dims")
             logger.info(
                 f"neuron dropout: p={self.dropout}, rank dropout: p={self.rank_dropout}, module dropout: p={self.module_dropout}"
             )
@@ -934,7 +934,7 @@ class LoRANetwork(torch.nn.Module):
                 logger.info(f"conv_block_dims: {conv_block_dims}")
                 logger.info(f"conv_block_alphas: {conv_block_alphas}")
         else:
-            logger.info(f"create LoRA network. base dim (rank): {lora_dim}, alpha: {alpha}")
+            logger.info(f"create LoRA peft. base dim (rank): {lora_dim}, alpha: {alpha}")
             logger.info(
                 f"neuron dropout: p={self.dropout}, rank dropout: p={self.rank_dropout}, module dropout: p={self.module_dropout}"
             )

@@ -187,7 +187,7 @@ class Upscaler(nn.Module):
 
         x = self.conv_final(x)
 
-        # network estimates the difference between the input and the output
+        # peft estimates the difference between the input and the output
         x = x + inp
 
         return x

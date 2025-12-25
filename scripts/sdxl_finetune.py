@@ -119,8 +119,8 @@ def train(cfg: SDXLFineTuneConfig):
     deepspeed_utils.prepare_deepspeed_config(cfg.performance)
     setup_logging(cfg.logging, reset=True)
 
-    if cfg.sdxl.block_lr:
-        block_lrs = [float(lr) for lr in cfg.sdxl.block_lr.split(",")]
+    if cfg.optimizer.learning_rates.blocks:
+        block_lrs = [float(lr) for lr in cfg.optimizer.learning_rates.blocks.split(",")]
     else:
         block_lrs = None
 

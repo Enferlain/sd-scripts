@@ -199,14 +199,14 @@ def parse_dynamic_timestep_schedule(cfg, noise_scheduler, accelerator):
 
 def register_network_state_hooks(accelerator, network, cfg, current_epoch, current_step):
     """
-    Register save/load hooks for network-only checkpointing.
+    Register save/load hooks for peft-only checkpointing.
     
-    These hooks ensure that only the PEFT network weights (LoRA/LyCORIS) are saved/loaded
+    These hooks ensure that only the PEFT peft weights (LoRA/LyCORIS) are saved/loaded
     during checkpointing, not the full base model weights.
     
     Args:
         accelerator: HuggingFace Accelerator
-        network: The PEFT network to save/load
+        network: The PEFT peft to save/load
         cfg: Training configuration (needs cfg.performance.deepspeed)
         current_epoch: Shared Value for current epoch tracking
         current_step: Shared Value for current step tracking
@@ -221,7 +221,7 @@ def register_network_state_hooks(accelerator, network, cfg, current_epoch, curre
     state_container = {"steps_from_state": None}
     
     def save_model_hook(models, weights, output_dir):
-        # pop weights of other models than network to save only network weights
+        # pop weights of other models than peft to save only peft weights
         # only main process or deepspeed https://github.com/huggingface/diffusers/issues/2606
         if accelerator.is_main_process or cfg.performance.deepspeed:
             remove_indices = []
@@ -241,7 +241,7 @@ def register_network_state_hooks(accelerator, network, cfg, current_epoch, curre
             json.dump({"current_epoch": current_epoch.value, "current_step": current_step.value + 1}, f)
 
     def load_model_hook(models, input_dir):
-        # remove models except network
+        # remove models except peft
         remove_indices = []
         for i, model in enumerate(models):
             if not isinstance(model, type(accelerator.unwrap_model(network))):
@@ -312,7 +312,7 @@ def generate_step_logs(
         if lr_descriptions is not None:
             lr_desc = lr_descriptions[i]
         else:
-            idx = i - (0 if cfg.network.train_unet_only else -1)
+            idx = i - (0 if cfg.peft.train_unet_only else -1)
             if idx == -1:
                 lr_desc = "textencoder"
             else:
@@ -331,7 +331,7 @@ def generate_step_logs(
             logs["lr/d*lr"] = optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
     else:
         idx = 0
-        if not cfg.network.train_unet_only:
+        if not cfg.peft.train_unet_only:
             logs["lr/textencoder"] = float(lrs[0])
             idx = 1
 
@@ -608,10 +608,10 @@ def create_training_metadata(
         "ss_max_train_steps": cfg.training.max_train_steps,
         "ss_lr_warmup_steps": cfg.optimizer.lr_warmup_steps,
         "ss_lr_scheduler": cfg.optimizer.lr_scheduler,
-        "ss_network_module": cfg.network.module,
-        "ss_network_dim": cfg.network.dim,
-        "ss_network_alpha": cfg.network.alpha,
-        "ss_network_dropout": cfg.network.neuron_dropout,
+        "ss_network_module": cfg.peft.module,
+        "ss_network_dim": cfg.peft.dim,
+        "ss_network_alpha": cfg.peft.alpha,
+        "ss_network_dropout": cfg.peft.neuron_dropout,
         "ss_mixed_precision": cfg.performance.mixed_precision,
         "ss_full_fp16": bool(cfg.performance.full_fp16),
         "ss_v2": bool(cfg.model.v2),
@@ -626,7 +626,7 @@ def create_training_metadata(
         "ss_multires_noise_discount": cfg.regularization.multires_noise_discount,
         "ss_adaptive_noise_scale": cfg.regularization.adaptive_noise_scale,
         "ss_zero_terminal_snr": cfg.regularization.zero_terminal_snr,
-        "ss_training_comment": cfg.network.training_comment,
+        "ss_training_comment": cfg.peft.training_comment,
         "ss_sd_scripts_commit_hash": get_git_revision_hash(),
         "ss_optimizer": optimizer_name + (f"({optimizer_args})" if len(optimizer_args) > 0 else ""),
         "ss_max_grad_norm": cfg.optimizer.max_grad_norm,
@@ -636,7 +636,7 @@ def create_training_metadata(
         "ss_face_crop_aug_range": cfg.dataset.face_crop_aug_range,
         "ss_prior_loss_weight": cfg.loss.prior_loss_weight,
         "ss_min_snr_gamma": cfg.loss.min_snr_gamma,
-        "ss_scale_weight_norms": cfg.network.scale_weight_norms,
+        "ss_scale_weight_norms": cfg.peft.scale_weight_norms,
         "ss_ip_noise_gamma": cfg.regularization.ip_noise_gamma,
         "ss_debiased_estimation": bool(cfg.loss.debiased_estimation_loss),
         "ss_noise_offset_random_strength": cfg.regularization.noise_offset_random_strength,
@@ -782,7 +782,7 @@ def create_training_metadata(
         })
 
     # Network args
-    if cfg.network.args:
+    if cfg.peft.args:
         metadata["ss_network_args"] = json.dumps(net_kwargs)
 
     # Model name and hash
@@ -961,7 +961,7 @@ def resolve_network_kwargs(cfg: PeftConfig, net_kwargs: dict):
     """
     Populate net_kwargs with explicit LoRA fields from PeftConfig if they are set.
     """
-    # Mapping explicit config fields to network kwargs
+    # Mapping explicit config fields to peft kwargs
     fields = [
         "conv_dim", "conv_alpha", "rank_dropout", "module_dropout",
         "block_dims", "block_alphas", "conv_block_dims", "conv_block_alphas",

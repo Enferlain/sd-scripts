@@ -138,6 +138,7 @@ class TestValidateConfig:
             "loss": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None, "v_parameterization": False},
             "model": {"v2": False},
             "training": {"clip_skip": None},
+            "optimizer": {"learning_rates": {"blocks": None}},
         })
         validate_config(cfg)  # Should not raise
 
@@ -170,6 +171,7 @@ class TestValidateConfig:
             "loss": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None, "v_parameterization": False},
             "model": {"v2": True},
             "training": {"clip_skip": 2},
+            "optimizer": {"learning_rates": {"blocks": None}},
         })
         with patch("library.config.validation.logger") as mock_logger:
             validate_config(cfg)
@@ -183,6 +185,7 @@ class TestValidateConfig:
             "loss": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None, "v_parameterization": False},
             "model": {"v2": False},
             "training": {"clip_skip": None},
+            "optimizer": {"learning_rates": {"blocks": None}},
         })
         with patch("library.config.validation.logger") as mock_logger:
             validate_config(cfg)
@@ -220,7 +223,7 @@ class TestValidateConfig:
             "loss": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None, "v_parameterization": False},
             "model": {"v2": False},
             "training": {"clip_skip": None},
-            "sdxl": {"block_lr": "0.1,0.2,0.3"},  # Only 3 values, need 23
+            "optimizer": {"learning_rates": {"blocks": "0.1,0.2,0.3"}},  # Only 3 values, need 23
         })
         with pytest.raises(ValueError, match="block_lr must have 23 values"):
             validate_config(cfg)
@@ -233,7 +236,7 @@ class TestValidateConfig:
             "loss": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None, "v_parameterization": False},
             "model": {"v2": False},
             "training": {"clip_skip": None},
-            "sdxl": {"block_lr": block_lrs},
+            "optimizer": {"learning_rates": {"blocks": block_lrs}},
         })
         validate_config(cfg)  # Should not raise
 
@@ -271,7 +274,7 @@ class TestScriptSpecificValidators:
         """validate_sdxl_peft should verify bucket reso with 32 steps."""
         cfg = MagicMock()
         cfg.sdxl.cache_text_encoder_outputs = False
-        cfg.network.network_train_unet_only = True
+        cfg.peft.network_train_unet_only = True
         train_ds = MagicMock()
         val_ds = MagicMock()
         
@@ -284,7 +287,7 @@ class TestScriptSpecificValidators:
         """SDXL cache_text_encoder_outputs requires dataset to be cacheable."""
         cfg = MagicMock()
         cfg.sdxl.cache_text_encoder_outputs = True
-        cfg.network.network_train_unet_only = True
+        cfg.peft.network_train_unet_only = True
         train_ds = MagicMock()
         train_ds.is_text_encoder_output_cacheable.return_value = False
         
@@ -292,10 +295,10 @@ class TestScriptSpecificValidators:
             validate_sdxl_peft(cfg, train_ds, None)
 
     def test_validate_sdxl_peft_cache_te_conflicts_with_te_training(self):
-        """Cannot cache TE outputs while training TE network."""
+        """Cannot cache TE outputs while training TE peft."""
         cfg = MagicMock()
         cfg.sdxl.cache_text_encoder_outputs = True
-        cfg.network.network_train_unet_only = False  # Training TE too
+        cfg.peft.network_train_unet_only = False  # Training TE too
         train_ds = MagicMock()
         train_ds.is_text_encoder_output_cacheable.return_value = True
         

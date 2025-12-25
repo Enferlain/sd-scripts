@@ -219,16 +219,16 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
 
     # 差分追加学習のためにモデルを読み込む
     sys.path.append(os.path.dirname(__file__))
-    accelerator.print("import network module:", cfg.network.module)
-    network_module = importlib.import_module(cfg.network.module)
+    accelerator.print("import peft module:", cfg.peft.module)
+    network_module = importlib.import_module(cfg.peft.module)
 
-    if cfg.network.base_weights is not None:
+    if cfg.peft.base_weights is not None:
         # base_weights が指定されている場合は、指定された重みを読み込みマージする
-        for i, weight_path in enumerate(cfg.network.base_weights):
-            if cfg.network.base_weights_multiplier is None or len(cfg.network.base_weights_multiplier) <= i:
+        for i, weight_path in enumerate(cfg.peft.base_weights):
+            if cfg.peft.base_weights_multiplier is None or len(cfg.peft.base_weights_multiplier) <= i:
                 multiplier = 1.0
             else:
-                multiplier = cfg.network.base_weights_multiplier[i]
+                multiplier = cfg.peft.base_weights_multiplier[i]
 
             accelerator.print(f"merging module: {weight_path} with multiplier {multiplier}")
 
@@ -238,70 +238,70 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
             module.merge_to(text_encoder, unet, weights_sd, weight_dtype,
                             accelerator.device if cfg.performance.lowram else "cpu")
 
-        accelerator.print(f"all weights merged: {', '.join(cfg.network.base_weights)}")
+        accelerator.print(f"all weights merged: {', '.join(cfg.peft.base_weights)}")
 
-    # prepare network
+    # prepare peft
     net_kwargs = {}
-    if cfg.network.args is not None:
-        for net_arg in cfg.network.args:
+    if cfg.peft.args is not None:
+        for net_arg in cfg.peft.args:
             key, value = net_arg.split("=", 1)
             net_kwargs[key] = value
 
     # Schema 1: Resolve explicit LoRA fields from config to kwargs
-    resolve_network_kwargs(cfg.network, net_kwargs)
+    resolve_network_kwargs(cfg.peft, net_kwargs)
 
-    # if a new network is added in future, add if ~ then blocks for each network (;'∀')
-    if cfg.network.dim_from_weights:
-        network, _ = network_module.create_network_from_weights(1, cfg.network.weights, vae, text_encoder, unet,
+    # if a new peft is added in future, add if ~ then blocks for each peft (;'∀')
+    if cfg.peft.dim_from_weights:
+        network, _ = network_module.create_network_from_weights(1, cfg.peft.weights, vae, text_encoder, unet,
                                                                 **net_kwargs)
     else:
         if "dropout" not in net_kwargs:
             # workaround for LyCORIS (;^ω^)
-            net_kwargs["dropout"] = cfg.network.neuron_dropout
+            net_kwargs["dropout"] = cfg.peft.neuron_dropout
 
         network = network_module.create_network(
             1.0,
-            cfg.network.dim,
-            cfg.network.alpha,
+            cfg.peft.dim,
+            cfg.peft.alpha,
             vae,
             text_encoder,
             unet,
-            neuron_dropout=cfg.network.neuron_dropout,
+            neuron_dropout=cfg.peft.neuron_dropout,
             **net_kwargs,
         )
     if network is None:
         return
     network_has_multiplier = hasattr(network, "set_multiplier")
 
-    # TODO remove `hasattr` by setting up methods if not defined in the network like below  (hacky but will work):
-    # if not hasattr(network, "prepare_network"):
-    #    network.prepare_network = lambda args: None
+    # TODO remove `hasattr` by setting up methods if not defined in the peft like below  (hacky but will work):
+    # if not hasattr(peft, "prepare_network"):
+    #    peft.prepare_network = lambda args: None
 
     if hasattr(network, "prepare_network"):
         network.prepare_network(cfg)
-    if cfg.network.scale_weight_norms and not hasattr(network, "apply_max_norm_regularization"):
+    if cfg.peft.scale_weight_norms and not hasattr(network, "apply_max_norm_regularization"):
         logger.warning(
-            "warning: scale_weight_norms is specified but the network does not support it / scale_weight_normsが指定されていますが、ネットワークが対応していません"
+            "warning: scale_weight_norms is specified but the peft does not support it / scale_weight_normsが指定されていますが、ネットワークが対応していません"
         )
-        cfg.network.scale_weight_norms = False
+        cfg.peft.scale_weight_norms = False
 
     strategies.post_process_network(cfg, accelerator, network, text_encoders, unet)
 
-    # apply network to unet and text_encoder
-    train_unet = not cfg.network.network_train_text_encoder_only
+    # apply peft to unet and text_encoder
+    train_unet = not cfg.peft.network_train_text_encoder_only
     train_text_encoder = strategies.is_train_text_encoder(cfg)
     network.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 
     if cfg.network.weights is not None:
         # FIXME consider alpha of weights: this assumes that the alpha is not changed
         info = network.load_weights(cfg.network.weights)
-        accelerator.print(f"load network weights from {cfg.network.weights}: {info}")
+        accelerator.print(f"load peft weights from {cfg.network.weights}: {info}")
 
     # if args.use_ramtorch:
-    #     logger.info("Applying RamTorch to network/lora.")
-    #     if isinstance(network, torch.nn.Module):
-    #         network = replace_linear_with_ramtorch(network, accelerator.device)
-    #         logger.info("RamTorch applied to network/lora.")
+    #     logger.info("Applying RamTorch to peft/lora.")
+    #     if isinstance(peft, torch.nn.Module):
+    #         peft = replace_linear_with_ramtorch(peft, accelerator.device)
+    #         logger.info("RamTorch applied to peft/lora.")
 
     if cfg.performance.gradient_checkpointing:
         if cfg.performance.cpu_offload_checkpointing:
@@ -491,7 +491,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     if cfg.performance.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
-    # before resuming make hook for saving/loading to save/load the network weights only
+    # before resuming make hook for saving/loading to save/load the peft weights only
     get_steps_from_state = register_network_state_hooks(
         accelerator, network, cfg, current_epoch, current_step
     )
@@ -628,7 +628,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     # For --sample_at_first
     if sample_images_check(cfg.sampling, 0, global_step) or calculate_val_loss_check(cfg.training, global_step, 0,
                                                                                      val_dataloader, train_dataloader):
-        # Switch network to eval mode
+        # Switch peft to eval mode
         accelerator.unwrap_model(network).eval()
         optimizer_eval_fn()
         strategies.sample_images(accelerator, cfg, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
@@ -638,7 +638,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
                 cyclic_val_dataloader, network, tokenize_strategy,
                 text_encoders, text_encoding_strategy, unet, vae, noise_scheduler,
                 vae_dtype, weight_dtype, accelerator, cfg, 0, None, train_text_encoder)
-        # Switch network to train mode
+        # Switch peft to train mode
         optimizer_train_fn()
         accelerator.unwrap_model(network).train()
 
@@ -703,7 +703,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
 
         metadata["ss_epoch"] = str(current_epoch.value)
 
-        accelerator.unwrap_model(network).on_epoch_start(text_encoder, unet)  # network.train() is called here
+        accelerator.unwrap_model(network).on_epoch_start(text_encoder, unet)  # peft.train() is called here
 
         # TRAINING
         skipped_dataloader = None
@@ -770,10 +770,10 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
                         params_to_clip = accelerator.unwrap_model(network).get_trainable_params()
                         accelerator.clip_grad_norm_(params_to_clip, cfg.optimizer.max_grad_norm)
 
-                    # if hasattr(network, "update_grad_norms"):
-                    #    network.update_grad_norms()
-                    # if hasattr(network, "update_norms"):
-                    #    network.update_norms()
+                    # if hasattr(peft, "update_grad_norms"):
+                    #    peft.update_grad_norms()
+                    # if hasattr(peft, "update_norms"):
+                    #    peft.update_norms()
 
                 optimizer.step()
                 lr_scheduler.step()

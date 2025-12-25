@@ -14,14 +14,14 @@ def test_sd_peft_config_loading():
         assert cfg is not None
 
         # Check if key sections exist
-        assert "network" in cfg
+        assert "peft" in cfg
         assert "buckets" in cfg
         assert "optimizer" in cfg
         assert "dataset" in cfg
         assert "training" in cfg
 
         # Check defaults
-        assert cfg.network.network_alpha == 1.0
+        assert cfg.peft.network_alpha == 1.0
         assert cfg.buckets.min_bucket_reso == 256
         assert cfg.training.train_batch_size == 1
         assert cfg.optimizer.learning_rate == 2.0e-6

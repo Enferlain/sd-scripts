@@ -163,7 +163,7 @@ class PeftTrainingStrategy(
     
     def is_train_text_encoder(self, cfg) -> bool:
         """Check if text encoder should be trained."""
-        return not cfg.network.network_train_unet_only
+        return not cfg.peft.network_train_unet_only
     
     def cast_text_encoder(self, cfg) -> bool:
         return True
@@ -190,7 +190,7 @@ class PeftTrainingStrategy(
         return accelerator.prepare(unet)
     
     def post_process_network(self, cfg, accelerator, network, text_encoders, unet):
-        """Post-process network after creation. Override for model-specific behavior."""
+        """Post-process peft after creation. Override for model-specific behavior."""
         pass
     
     def on_step_start(self, cfg, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train: bool = True):

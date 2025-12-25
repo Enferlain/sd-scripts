@@ -93,12 +93,11 @@ def validate_config(cfg) -> None:
                 raise ValueError("fp8_base requires mixed_precision='fp16' or 'bf16'")
     
     # SDXL: block_lr must have exactly 23 values (only checked if field exists and is set)
-    if hasattr(cfg, 'sdxl') and cfg.sdxl is not None:
-        if hasattr(cfg.sdxl, 'block_lr') and cfg.sdxl.block_lr:
-            block_lr_count = len(cfg.sdxl.block_lr.split(","))
-            if block_lr_count != 23:
-                raise ValueError(f"block_lr must have 23 values, got {block_lr_count}")  # TODO: planned to be able to train x amount of blocks so this will cause issues then
-    
+    if hasattr(cfg.optimizer, 'learning_rates') and cfg.optimizer.learning_rates.blocks:
+        block_lr_count = len(cfg.optimizer.learning_rates.blocks.split(","))
+        if block_lr_count != 23:
+            raise ValueError(f"block_lr must have 23 values, got {block_lr_count}")  # TODO: planned to be able to train x amount of blocks so this will cause issues then
+
     # === Warnings ===
     
     # Model: v2 with clip_skip is unexpected
@@ -137,8 +136,8 @@ def validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group) -> None:
             "token_warmup_step, or caption_tag_dropout_rate cannot be used"
         )
     
-    assert cfg.network.network_train_unet_only or not cfg.sdxl.cache_text_encoder_outputs, (
-        "network for Text Encoder cannot be trained with caching Text Encoder outputs"
+    assert cfg.peft.network_train_unet_only or not cfg.sdxl.cache_text_encoder_outputs, (
+        "peft for Text Encoder cannot be trained with caching Text Encoder outputs"
     )
 
 

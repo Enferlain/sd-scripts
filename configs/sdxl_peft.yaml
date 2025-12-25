@@ -7,7 +7,7 @@ defaults:
   - buckets: default
   - model: default
   - sdxl: default
-  - network: default
+  - peft: default
   - masked_loss: default
   - training: default
   - saving: default

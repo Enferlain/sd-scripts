@@ -229,7 +229,7 @@ def create_network(
     return network
 
 
-# Create network from weights for inference, weights are not loaded here (because can be merged)
+# Create peft from weights for inference, weights are not loaded here (because can be merged)
 def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":
@@ -300,9 +300,9 @@ class DyLoRANetwork(torch.nn.Module):
         self.loraplus_text_encoder_lr_ratio = None
 
         if modules_dim is not None:
-            logger.info("create LoRA network from weights")
+            logger.info("create LoRA peft from weights")
         else:
-            logger.info(f"create LoRA network. base dim (rank): {lora_dim}, alpha: {alpha}, unit: {unit}")
+            logger.info(f"create LoRA peft. base dim (rank): {lora_dim}, alpha: {alpha}, unit: {unit}")
             if self.apply_to_conv:
                 logger.info("apply LoRA to Conv2d with kernel size (3,3).")
 

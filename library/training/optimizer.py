@@ -91,26 +91,18 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: PeftCon
                                                        "default", False)) == True for key in
                           ['use_orthograd', 'orthograd'])
 
-    # Resolve learning rates: prioritize optimizer_config.learning_rates (Schema 1), fallback to network_config (Legacy)
-    unet_lr = optimizer_config.learning_rates.unet if optimizer_config.learning_rates.unet is not None else network_config.unet_lr
-    
-    raw_te_lr = optimizer_config.learning_rates.text_encoders if optimizer_config.learning_rates.text_encoders is not None else network_config.text_encoder_lr
+    # Get learning rates from optimizer_config.learning_rates (Schema 1)
+    unet_lr = optimizer_config.learning_rates.unet
+    raw_te_lr = optimizer_config.learning_rates.text_encoders
 
-    # make backward compatibility for text_encoder_lr
+    # Check if peft supports multiple text encoder learning rates
     support_multiple_lrs = hasattr(network, "prepare_optimizer_params_with_multiple_te_lrs")
     
-    if support_multiple_lrs or network_config.module == "lycoris.kohya": # Note: using alias 'module' or 'network_module' is fine if dataclass has alias, but network_config might be dict or object. It is object.
-        # Check if we need to access via alias or direct field. PeftConfig has both.
-        # But wait, network_config.module IS key-value access? No, it's attribute access.
-        # I added alias 'module', so 'network_config.module' works.
-        # TODO: What's going on here?
-        pass
-    
-    # Normalize text_encoder_lr
-    if support_multiple_lrs or (getattr(network_config, "network_module", None) == "lycoris.kohya") or (getattr(network_config, "module", None) == "lycoris.kohya"):
+    # Normalize text_encoder_lr based on peft capabilities
+    if support_multiple_lrs or (getattr(network_config, "network_module", None) == "lycoris.kohya"):
         text_encoder_lr = raw_te_lr
     else:
-        # toml backward compatibility
+        # Single TE LR mode - take first element if list
         if raw_te_lr is None or isinstance(raw_te_lr, float) or isinstance(raw_te_lr, int):
             text_encoder_lr = raw_te_lr
         else:

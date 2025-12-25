@@ -186,7 +186,7 @@ class TestMetadataBuilding:
     """Test metadata building functions."""
     
     def test_build_minimum_network_metadata_basic(self):
-        """Test building basic network metadata."""
+        """Test building basic peft metadata."""
         metadata = build_minimum_network_metadata(
             v2=None,
             base_model=None,
@@ -230,7 +230,7 @@ class TestMetadataBuilding:
         assert metadata["ss_base_model_version"] == "sd-v1-5"
         
     def test_build_minimum_network_metadata_with_args(self):
-        """Test building metadata with network args."""
+        """Test building metadata with peft args."""
         network_args = {"conv_dim": 4, "conv_alpha": 1.0}
         
         metadata = build_minimum_network_metadata(

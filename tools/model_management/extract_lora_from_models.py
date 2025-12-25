@@ -114,7 +114,7 @@ def svd(
 
         model_version = sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0
 
-    # create LoRA network to extract weights: Use dim (rank) as alpha
+    # create LoRA peft to extract weights: Use dim (rank) as alpha
     if conv_dim is None:
         kwargs = {}
     else:
@@ -167,7 +167,7 @@ def svd(
 
         diffs[lora_name] = diff
 
-    # clear LoRA network, target U-Net to save memory
+    # clear LoRA peft, target U-Net to save memory
     del lora_network_o
     del lora_network_t
     del unet_t

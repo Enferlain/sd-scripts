@@ -111,7 +111,7 @@ def get_hidden_states_sdxl(
         pool2 = pool2[::n_size]
 
     if weight_dtype is not None:
-        # this is required for additional network training
+        # this is required for additional peft training
         hidden_states1 = hidden_states1.to(weight_dtype)
         hidden_states2 = hidden_states2.to(weight_dtype)
 
