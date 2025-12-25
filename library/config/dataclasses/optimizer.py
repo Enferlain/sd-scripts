@@ -1,5 +1,20 @@
 from dataclasses import dataclass, field
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Any
+
+@dataclass
+class LearningRatesConfig:
+    """
+    Consolidated learning rates for all components.
+    Prioritizes these values over the flat `learning_rate` in OptimizerConfig if set.
+    """
+    base: Optional[float] = field(default=None, metadata={"help": "Base learning rate (overrides optimizer.learning_rate if set)"})
+    unet: Optional[float] = field(default=None, metadata={"help": "Unconditional UNet LR (overrides base)"})
+    # Supports single float or list of floats for multiple text encoders
+    # NOTE: Type is Any due to OmegaConf limitation (Union of primitives and containers not supported).
+    text_encoders: Optional[Any] = field(default=None, metadata={"help": "Text Encoder LR(s)"})
+    # Block-wise LR weights/values
+    blocks: Optional[str] = field(default=None, metadata={"help": "Per-block learning rates/weights"})
+
 
 @dataclass
 class OptimizerConfig:
@@ -7,6 +22,10 @@ class OptimizerConfig:
     use_8bit_adam: bool = field(default=False, metadata={"help": "use 8bit AdamW optimizer"})
     use_lion_optimizer: bool = field(default=False, metadata={"help": "use Lion optimizer"})
     learning_rate: float = field(default=2.0e-6, metadata={"help": "learning rate"})
+    
+    # New structured learning rates container
+    learning_rates: LearningRatesConfig = field(default_factory=LearningRatesConfig, metadata={"help": "Structured learning rates"})
+    
     max_grad_norm: float = field(default=1.0, metadata={"help": "Max gradient norm"})
     optimizer_args: List[str] = field(default_factory=list, metadata={"help": "additional arguments for optimizer"})
     lr_scheduler_type: str = field(default="", metadata={"help": "custom scheduler module"})
@@ -21,3 +40,4 @@ class OptimizerConfig:
     lr_scheduler_min_lr_ratio: Optional[float] = field(default=None, metadata={"help": "The minimum learning rate as a ratio of the initial learning rate"})
     optimizer_schedulefree_wrapper: bool = field(default=False, metadata={"help": "Wrap optimizer with ScheduleFreeWrapper"})
     schedulefree_wrapper_args: Optional[List[str]] = field(default=None, metadata={"help": "Arguments for ScheduleFreeWrapper"})
+

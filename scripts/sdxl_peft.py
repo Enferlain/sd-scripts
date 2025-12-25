@@ -71,6 +71,7 @@ from library.training.peft_common import (
     calculate_initial_step,
     parse_dynamic_timestep_schedule,
     register_network_state_hooks,
+    resolve_network_kwargs,
 )
 
 from library.training.checkpointing import (
@@ -215,8 +216,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
     # 差分追加学習のためにモデルを読み込む
     sys.path.append(os.path.dirname(__file__))
-    accelerator.print("import network module:", cfg.network.network_module)
-    network_module = importlib.import_module(cfg.network.network_module)
+    accelerator.print("import network module:", cfg.network.module)
+    network_module = importlib.import_module(cfg.network.module)
 
     if cfg.network.base_weights is not None:
         # base_weights が指定されている場合は、指定された重みを読み込みマージする
@@ -238,28 +239,31 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
     # prepare network
     net_kwargs = {}
-    if cfg.network.network_args is not None:
-        for net_arg in cfg.network.network_args:
+    if cfg.network.args is not None:
+        for net_arg in cfg.network.args:
             key, value = net_arg.split("=", 1)
             net_kwargs[key] = value
 
+    # Schema 1: Resolve explicit LoRA fields from config to kwargs
+    resolve_network_kwargs(cfg.network, net_kwargs)
+
     # if a new network is added in future, add if ~ then blocks for each network (;'∀')
     if cfg.network.dim_from_weights:
-        network, _ = network_module.create_network_from_weights(1, cfg.network.network_weights, vae, text_encoder, unet,
+        network, _ = network_module.create_network_from_weights(1, cfg.network.weights, vae, text_encoder, unet,
                                                                 **net_kwargs)
     else:
         if "dropout" not in net_kwargs:
             # workaround for LyCORIS (;^ω^)
-            net_kwargs["dropout"] = cfg.network.network_dropout
+            net_kwargs["dropout"] = cfg.network.neuron_dropout
 
         network = network_module.create_network(
             1.0,
-            cfg.network.network_dim,
-            cfg.network.network_alpha,
+            cfg.network.dim,
+            cfg.network.alpha,
             vae,
             text_encoder,
             unet,
-            neuron_dropout=cfg.network.network_dropout,
+            neuron_dropout=cfg.network.neuron_dropout,
             **net_kwargs,
         )
     if network is None:
@@ -281,14 +285,14 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     strategies.post_process_network(cfg, accelerator, network, text_encoders, unet)
 
     # apply network to unet and text_encoder
-    train_unet = not cfg.network.network_train_text_encoder_only
+    train_unet = not cfg.network.train_text_encoder_only
     train_text_encoder = strategies.is_train_text_encoder(cfg)
     network.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 
-    if cfg.network.network_weights is not None:
+    if cfg.network.weights is not None:
         # FIXME consider alpha of weights: this assumes that the alpha is not changed
-        info = network.load_weights(cfg.network.network_weights)
-        accelerator.print(f"load network weights from {cfg.network.network_weights}: {info}")
+        info = network.load_weights(cfg.network.weights)
+        accelerator.print(f"load network weights from {cfg.network.weights}: {info}")
 
     # if args.use_ramtorch:
     #     logger.info("Applying RamTorch to network/lora.")
@@ -319,7 +323,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         optimizer_train_fn,
         optimizer_eval_fn,
         lr_descriptions,
-        text_encoder_lr
+        text_encoder_lr  # TODO: why only text_encoder_lr here?
     ) = prepare_optimizer(cfg.optimizer, cfg.network, cfg.dataset, network)
 
     # prepare dataloader
@@ -525,7 +529,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         num_train_epochs=num_train_epochs,
         optimizer_name=optimizer_name,
         optimizer_args=optimizer_args,
-        text_encoder_lr=text_encoder_lr,
+        text_encoder_lr=text_encoder_lr,  # TODO: why only text_encoder_lr here?
         net_kwargs=net_kwargs,
         train_dataloader=train_dataloader,
         total_batch_size=total_batch_size,

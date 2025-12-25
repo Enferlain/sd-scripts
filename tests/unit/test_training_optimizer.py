@@ -16,7 +16,7 @@ from library.training.optimizer import (
     parse_string_to_type,
 )
 from library.config.dataclasses.optimizer import OptimizerConfig
-from library.config.dataclasses.network import NetworkConfig
+from library.config.dataclasses.peft import PeftConfig
 from library.config.dataclasses.dataset import DatasetConfig
 
 

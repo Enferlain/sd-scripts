@@ -251,8 +251,23 @@ def train(cfg: SDXLFineTuneConfig):
         if cfg.performance.gradient_checkpointing:
             text_encoder1.gradient_checkpointing_enable()
             text_encoder2.gradient_checkpointing_enable()
-        lr_te1 = cfg.sdxl.learning_rate_te1 if cfg.sdxl.learning_rate_te1 is not None else cfg.optimizer.learning_rate
-        lr_te2 = cfg.sdxl.learning_rate_te2 if cfg.sdxl.learning_rate_te2 is not None else cfg.optimizer.learning_rate
+        
+        # Schema 1: Resolve TE LRs from optimizer.learning_rates.text_encoders
+        # It can be a list [lr_te1, lr_te2] or a single scalar (applied to both)
+        lr_te_schema = cfg.optimizer.learning_rates.text_encoders
+
+        if lr_te_schema is not None:
+            if isinstance(lr_te_schema, list):
+                lr_te1 = lr_te_schema[0]
+                lr_te2 = lr_te_schema[1] if len(lr_te_schema) > 1 else lr_te_schema[0]
+            else:
+                lr_te1 = lr_te_schema
+                lr_te2 = lr_te_schema
+        else:
+            # No TE-specific LR, use base LR
+            lr_te1 = cfg.optimizer.learning_rate
+            lr_te2 = cfg.optimizer.learning_rate
+        
         train_text_encoder1 = lr_te1 != 0
         train_text_encoder2 = lr_te2 != 0
 
@@ -299,16 +314,16 @@ def train(cfg: SDXLFineTuneConfig):
     if train_unet:
         training_models.append(unet)
         if block_lrs is None:
-            params_to_optimize.append({"params": list(unet.parameters()), "lr": cfg.optimizer.learning_rate})
+            params_to_optimize.append({"params": list(unet.parameters()), "lr": cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rate})
         else:
             params_to_optimize.extend(get_block_params_to_optimize(unet, block_lrs))
 
     if train_text_encoder1:
         training_models.append(text_encoder1)
-        params_to_optimize.append({"params": list(text_encoder1.parameters()), "lr": cfg.sdxl.learning_rate_te1 or cfg.optimizer.learning_rate})
+        params_to_optimize.append({"params": list(text_encoder1.parameters()), "lr": lr_te1})
     if train_text_encoder2:
         training_models.append(text_encoder2)
-        params_to_optimize.append({"params": list(text_encoder2.parameters()), "lr": cfg.sdxl.learning_rate_te2 or cfg.optimizer.learning_rate})
+        params_to_optimize.append({"params": list(text_encoder2.parameters()), "lr": lr_te2})
 
     n_params = 0
     for group in params_to_optimize:

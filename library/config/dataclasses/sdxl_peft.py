@@ -4,7 +4,7 @@ from .buckets import BucketsConfig
 from .training import TrainingConfig
 from .optimizer import OptimizerConfig
 from .dataset import DatasetConfig
-from .network import NetworkConfig
+from .peft import PeftConfig
 from .sdxl import SDXLConfig
 from .saving import SavingConfig
 from .logging import LoggingConfig
@@ -27,7 +27,7 @@ class SDXLPeftConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
     buckets: BucketsConfig = field(default_factory=BucketsConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
-    network: NetworkConfig = field(default_factory=NetworkConfig)
+    network: PeftConfig = field(default_factory=PeftConfig)
     sdxl: SDXLConfig = field(default_factory=SDXLConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)

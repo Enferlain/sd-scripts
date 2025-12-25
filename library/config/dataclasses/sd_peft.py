@@ -4,7 +4,7 @@ from .optimizer import OptimizerConfig
 from .dataset import DatasetConfig
 from .buckets import BucketsConfig
 from .model import ModelConfig
-from .network import NetworkConfig
+from .peft import PeftConfig
 from .saving import SavingConfig
 from .huggingface import HuggingFaceConfig
 from .logging import LoggingConfig
@@ -24,7 +24,7 @@ class SDPeftConfig:
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     buckets: BucketsConfig = field(default_factory=BucketsConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
-    network: NetworkConfig = field(default_factory=NetworkConfig)
+    network: PeftConfig = field(default_factory=PeftConfig)
     saving: SavingConfig = field(default_factory=SavingConfig)
     huggingface: HuggingFaceConfig = field(default_factory=HuggingFaceConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)

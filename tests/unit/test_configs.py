@@ -12,7 +12,7 @@ from omegaconf import OmegaConf
 from library.config.dataclasses.optimizer import OptimizerConfig
 from library.config.dataclasses.dataset import DatasetConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.config.dataclasses.network import NetworkConfig
+from library.config.dataclasses.peft import PeftConfig
 from library.config.dataclasses.buckets import BucketsConfig
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.saving import SavingConfig
@@ -57,8 +57,8 @@ class TestConfigInstantiation:
         assert hasattr(config, 'train_batch_size')
         
     def test_network_config_instantiation(self):
-        """Test NetworkConfig instantiation with defaults."""
-        config = NetworkConfig()
+        """Test PeftConfig instantiation with defaults."""
+        config = PeftConfig()
         assert config is not None
         assert hasattr(config, 'network_module')
         assert hasattr(config, 'network_dim')
@@ -150,8 +150,8 @@ class TestConfigDefaults:
         assert config.lr_scheduler == "constant"
         
     def test_network_config_defaults(self):
-        """Test NetworkConfig default values."""
-        config = NetworkConfig()
+        """Test PeftConfig default values."""
+        config = PeftConfig()
         assert config.network_dim is None  # None by default
         assert config.network_alpha == 1.0
         assert config.network_module is None  # None by default

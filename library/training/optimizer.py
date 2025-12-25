@@ -19,7 +19,7 @@ from diffusers.optimization import (
 )
 
 from library.config.dataclasses.optimizer import OptimizerConfig
-from library.config.dataclasses.network import NetworkConfig
+from library.config.dataclasses.peft import PeftConfig
 from library.config.dataclasses.dataset import DatasetConfig
 from library.config.dataclasses.training import TrainingConfig
 
@@ -28,7 +28,7 @@ from library.constants import int_pattern, float_pattern
 logger = logging.getLogger(__name__)
 
 
-def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: NetworkConfig, dataset_config: DatasetConfig, network):
+def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: PeftConfig, dataset_config: DatasetConfig, network):
     if isinstance(network_config.orthograd_targets, str):
         orthograd_targets = ast.literal_eval(network_config.orthograd_targets)
     else:
@@ -91,49 +91,58 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: Network
                                                        "default", False)) == True for key in
                           ['use_orthograd', 'orthograd'])
 
+    # Resolve learning rates: prioritize optimizer_config.learning_rates (Schema 1), fallback to network_config (Legacy)
+    unet_lr = optimizer_config.learning_rates.unet if optimizer_config.learning_rates.unet is not None else network_config.unet_lr
+    
+    raw_te_lr = optimizer_config.learning_rates.text_encoders if optimizer_config.learning_rates.text_encoders is not None else network_config.text_encoder_lr
+
     # make backward compatibility for text_encoder_lr
     support_multiple_lrs = hasattr(network, "prepare_optimizer_params_with_multiple_te_lrs")
-    # make backward compatibility for text_encoder_lr
-    support_multiple_lrs = hasattr(network, "prepare_optimizer_params_with_multiple_te_lrs")
-    if support_multiple_lrs or network_config.network_module == "lycoris.kohya":
-        text_encoder_lr = network_config.text_encoder_lr
+    
+    if support_multiple_lrs or network_config.module == "lycoris.kohya": # Note: using alias 'module' or 'network_module' is fine if dataclass has alias, but network_config might be dict or object. It is object.
+        # Check if we need to access via alias or direct field. PeftConfig has both.
+        # But wait, network_config.module IS key-value access? No, it's attribute access.
+        # I added alias 'module', so 'network_config.module' works.
+        # TODO: What's going on here?
+        pass
+    
+    # Normalize text_encoder_lr
+    if support_multiple_lrs or (getattr(network_config, "network_module", None) == "lycoris.kohya") or (getattr(network_config, "module", None) == "lycoris.kohya"):
+        text_encoder_lr = raw_te_lr
     else:
         # toml backward compatibility
-        if network_config.text_encoder_lr is None or isinstance(network_config.text_encoder_lr, float) or isinstance(network_config.text_encoder_lr,
-                                                                                                 int):
-            text_encoder_lr = network_config.text_encoder_lr
+        if raw_te_lr is None or isinstance(raw_te_lr, float) or isinstance(raw_te_lr, int):
+            text_encoder_lr = raw_te_lr
         else:
-            text_encoder_lr = None if len(network_config.text_encoder_lr) == 0 else network_config.text_encoder_lr[0]
+            text_encoder_lr = None if len(raw_te_lr) == 0 else raw_te_lr[0]
 
     try:
         if support_multiple_lrs:
             # only flux atm via Kohya's
             results = network.prepare_optimizer_params_with_multiple_te_lrs(text_encoder_lr=text_encoder_lr,
-                                                                            unet_lr=network_config.unet_lr,
+                                                                            unet_lr=unet_lr,
                                                                             learning_rate=optimizer_config.learning_rate,
                                                                             apply_orthograd=apply_orthograd,
                                                                             orthograd_targets=orthograd_targets)
         else:
             results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
-                                                       unet_lr=network_config.unet_lr,
+                                                       unet_lr=unet_lr,
                                                        learning_rate=optimizer_config.learning_rate,
                                                        apply_orthograd=apply_orthograd,
                                                        orthograd_targets=orthograd_targets)
         if type(results) is tuple:
-            trainable_params = results[0]
-            lr_descriptions = results[1]
+            trainable_params, lr_descriptions = results
         else:
             trainable_params = results
             lr_descriptions = None
     except TypeError as e:
         results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
-                                                   unet_lr=network_config.unet_lr,
+                                                   unet_lr=unet_lr,
                                                    learning_rate=optimizer_config.learning_rate,
                                                    apply_orthograd=apply_orthograd,
                                                    orthograd_targets=orthograd_targets)
         if type(results) is tuple:
-            trainable_params = results[0]
-            lr_descriptions = results[1]
+            trainable_params, lr_descriptions = results
         else:
             trainable_params = results
             lr_descriptions = None

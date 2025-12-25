@@ -29,7 +29,7 @@ from omegaconf import OmegaConf
 from library.config.dataclasses.optimizer import OptimizerConfig
 from library.config.dataclasses.dataset import DatasetConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.config.dataclasses.network import NetworkConfig
+from library.config.dataclasses.peft import PeftConfig
 from library.config.dataclasses.buckets import BucketsConfig
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.saving import SavingConfig
@@ -130,8 +130,8 @@ def mock_training_config():
 
 @pytest.fixture
 def mock_network_config():
-    """Create a basic NetworkConfig for testing."""
-    return NetworkConfig(
+    """Create a basic PeftConfig for testing."""
+    return PeftConfig(
         network_module="networks.lora",
         network_dim=4,
         network_alpha=1.0,

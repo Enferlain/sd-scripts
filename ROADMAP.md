@@ -60,11 +60,13 @@ Scripts (contain training loops):     Library Modules:
 ### Active TODOs
 
 - [ ] Config Validation Edge Cases: Test `prepare_config()` and `validate_config()` for dataset conflicts
+- [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
 
-### Postponed
+### Completed
 
-- **Learning Rate Consolidation**: Unify `text_encoder_lr`, `learning_rate_te1/te2`, `learning_rate_te` into single list-based field
-- **Train Text Encoder Options**: Consolidate `train_text_encoder` across configs, reconcile with `network_train_unet_only`
+- **Learning Rate Consolidation**: Unify `text_encoder_lr`, `learning_rate_te1/te2`, `learning_rate_te` into single list-based field `optimizer.learning_rates`
+- **Train Text Encoder Options**: Consolidated via `optimizer.learning_rates` usage (implicit vs explicit)
+- **Schema 1 Refactor**: Unified configuration schema for PEFT/Fine-tuning scripts
 
 ---
 
@@ -76,14 +78,6 @@ Scripts (contain training loops):     Library Modules:
 - [x] ~~Resolve duplicate `diffusers_xformers`~~ (moved to PerformanceConfig)
 
 ---
-
-## Testability Improvements
-
-- **Split `prepare_accelerator`** - Separate config computation from side effects
-- **Explicit step 0 validation** - Clarify `calculate_val_loss_check` behavior at step 0
-
----
-
 
 ## Testability Improvements
 

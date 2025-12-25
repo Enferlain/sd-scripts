@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-25]
+
+### Changed
+
+- **Configuration Schema Refactor (Schema 1: Structured/Verbose)**
+
+  - **Unified Learning Rate Configuration**: Consolidated all learning rate settings under `cfg.optimizer.learning_rates`:
+
+    - `unet`: Dedicated field for UNet LR.
+    - `text_encoders`: Dedicated field for Text Encoder LR(s). Supports separate LRs for SDXL via list `[lr_te1, lr_te2]`.
+    - Falls back to base `cfg.optimizer.learning_rate` when specific LRs are not set.
+    - **Note**: Legacy fields (`learning_rate_te`, `learning_rate_te1/2`, `unet_lr`) are no longer supported.
+
+  - **PEFT Configuration Overhaul**:
+
+    - Renamed `NetworkConfig` to `PeftConfig` to better reflect its purpose.
+    - Added property aliases for Schema 1 naming conventions (`dim` for `network_dim`, `alpha` for `network_alpha`, `module` for `network_module`).
+    - Promoted 11+ previously undocumented `kwargs` from `lora.py` to explicit, typed fields in `PeftConfig`:
+      - `conv_dim`, `conv_alpha`, `rank_dropout`, `module_dropout`
+      - `block_dims`, `block_alphas`, `conv_block_dims`, `conv_block_alphas`
+      - `down_lr_weight`, `mid_lr_weight`, `up_lr_weight`, `block_lr_zero_threshold`
+      - LoRA+ ratios (`loraplus_lr_ratio`, etc.)
+    - Added `resolve_network_kwargs` helper in `peft_common.py` to automatically map these config fields to network creation arguments.
+    - Persisted `lycoris` compatibility via `dropout` kwarg workaround.
+
+  - **Script Migrations**:
+
+    - **`sd_peft.py` / `sdxl_peft.py`**: Fully migrated to use Schema 1 fields. Removed temporary compatibility bridges.
+    - **`sd_finetune.py` / `sdxl_finetune.py`**: Updated to resolve learning rates from `cfg.optimizer.learning_rates`.
+    - All scripts validated with `--help` and dry runs.
+
+  - **LyCORIS Strategy**:
+    - Decided against vendoring LyCORIS to minimize maintenance overhead.
+    - `network.args` remains generic to support LyCORIS and other external modules.
+    - Standard LoRA parameters are now strongly typed, reducing reliance on generic `args`.
+
 ## [2025-12-24]
 
 ### Changed
@@ -47,7 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   - Consolidated `no_half_vae` to `PerformanceConfig` (canonical), removed from `SDXLConfig`
   - Updated `sdxl_finetune.py` to use `cfg.performance.no_half_vae`
-  - Improved `text_encoder_lr` documentation in `NetworkConfig` (explains `Any` type, future unification plans)
+  - Improved `text_encoder_lr` documentation in `PeftConfig` (explains `Any` type, future unification plans)
 
 - **Checkpointing Module Split**
 
@@ -319,7 +355,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added missing `BucketsConfig` to `SDXLPeftConfig`
   - Removed orphan `v_parameterization` from `sd_models/default.yaml`
   - Added missing `optimizer_schedulefree_wrapper` fields to `optimizer/default.yaml`
-  - Removed unused `NetworkConfig` import from `sd_textual_inversion.py`
+  - Removed unused `PeftConfig` import from `sd_textual_inversion.py`
   - Renamed `test_train_network_config.py` to `test_sd_peft_config.py`
 
 - **SDXL Configuration Refactoring**
@@ -338,7 +374,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Merged `SDModelsConfig` and `ModelLoadingConfig` into `ModelConfig` in `library/config/dataclasses/model.py`
   - Moved `v_parameterization` from `SDModelsConfig` to `LossConfig` (and updated scripts to use `config.loss.v_parameterization`)
   - Moved `vae` and `vae_conv2d_padding_mode` from `TrainingConfig`/`SDModelsConfig` to `ModelConfig`
-  - Moved `use_ramtorch` and `direct_ramtorch` from `NetworkConfig` to `PerformanceConfig`
+  - Moved `use_ramtorch` and `direct_ramtorch` from `PeftConfig` to `PerformanceConfig`
   - Updated all scripts and YAMLs to reflect these changes
 
 - **Type hint bug in `library/utils/torch_utils.py`**

@@ -1,0 +1,92 @@
+from dataclasses import dataclass, field
+from typing import Optional, List, Union, Any
+
+@dataclass
+class PeftConfig:
+    network_dim: Optional[int] = field(default=None, metadata={"help": "network dimensions (depends on each network)"})
+    network_alpha: float = field(default=1.0, metadata={"help": "alpha for LoRA weight scaling, default 1 (same as network_dim for same behavior as old version)"})
+    network_dropout: Optional[float] = field(default=None, metadata={"help": "Drops neurons out of training every step (0 or None is default behavior (no dropout), 1 would drop all neurons)"})
+    network_weights: Optional[str] = field(default=None, metadata={"help": "pretrained weights for network"})
+    network_module: Optional[str] = field(default=None, metadata={"help": "network module to train"})
+    network_args: Optional[List[str]] = field(default=None, metadata={"help": "additional arguments for network (key=value)"})
+    network_train_unet_only: bool = field(default=False, metadata={"help": "only training U-Net part"})
+    network_train_text_encoder_only: bool = field(default=False, metadata={"help": "only training Text Encoder part"})
+    dim_from_weights: bool = field(default=False, metadata={"help": "automatically determine dim (rank) from network_weights"})
+    scale_weight_norms: Optional[float] = field(default=None, metadata={"help": "Scale the weight of each key pair to help prevent overtraing via exploding gradients. (1 is a good starting point)"})
+    base_weights: Optional[List[str]] = field(default=None, metadata={"help": "network weights to merge into the model before training"})
+    base_weights_multiplier: Optional[List[float]] = field(default=None, metadata={"help": "multiplier for network weights to merge into the model before training"})
+    training_comment: Optional[str] = field(default=None, metadata={"help": "arbitrary comment string stored in metadata"})
+    unet_lr: Optional[float] = field(default=None, metadata={"help": "learning rate for U-Net"})
+    # NOTE: Type is Any due to OmegaConf limitation (Union of primitives and containers not supported).
+    # Semantically this is Optional[Union[float, List[float]]] - single LR or per-TE LRs.
+    # Future improvement: Unify all TE LR configs (text_encoder_lr, learning_rate_te1/te2) into a single
+    # list-based field that works for models with 1, 2, or more text encoders.
+    text_encoder_lr: Optional[Any] = field(default=None, metadata={"help": "learning rate for Text Encoder(s). Can be float or list of floats for multiple TEs."})
+    orthograd_targets: Optional[List[str]] = field(default=None, metadata={"help": "A list of strings to determine which named parameters should subject to orthgrad"})
+
+    # LoRA Specific Fields (previously undocumented kwargs)
+    conv_dim: Optional[int] = field(default=None, metadata={"help": "dim for conv layers"})
+    conv_alpha: Optional[float] = field(default=None, metadata={"help": "alpha for conv layers"})
+    rank_dropout: Optional[float] = field(default=None, metadata={"help": "rank dropout"})
+    module_dropout: Optional[float] = field(default=None, metadata={"help": "module dropout"})
+    block_dims: Optional[List[int]] = field(default=None, metadata={"help": "block dims"})
+    block_alphas: Optional[List[float]] = field(default=None, metadata={"help": "block alphas"})
+    conv_block_dims: Optional[List[int]] = field(default=None, metadata={"help": "conv block dims"})
+    conv_block_alphas: Optional[List[float]] = field(default=None, metadata={"help": "conv block alphas"})
+    # LR Weights can be list of floats or str (preset name)
+    down_lr_weight: Optional[Any] = field(default=None, metadata={"help": "down lr weight"})
+    mid_lr_weight: Optional[Any] = field(default=None, metadata={"help": "mid lr weight"})
+    up_lr_weight: Optional[Any] = field(default=None, metadata={"help": "up lr weight"})
+    block_lr_zero_threshold: Optional[float] = field(default=None, metadata={"help": "block lr zero threshold"})
+    loraplus_lr_ratio: Optional[float] = field(default=None, metadata={"help": "LoRA+ lr ratio"})
+    loraplus_unet_lr_ratio: Optional[float] = field(default=None, metadata={"help": "LoRA+ unet lr ratio"})
+    loraplus_text_encoder_lr_ratio: Optional[float] = field(default=None, metadata={"help": "LoRA+ text encoder lr ratio"})
+
+    @property
+    def dim(self) -> Optional[int]:
+        return self.network_dim
+    
+    @dim.setter
+    def dim(self, value: Optional[int]):
+        self.network_dim = value
+
+    @property
+    def alpha(self) -> float:
+        return self.network_alpha
+
+    @alpha.setter
+    def alpha(self, value: float):
+        self.network_alpha = value
+
+    @property
+    def neuron_dropout(self) -> Optional[float]:
+        return self.network_dropout
+
+    @neuron_dropout.setter
+    def neuron_dropout(self, value: Optional[float]):
+        self.network_dropout = value
+
+    @property
+    def weights(self) -> Optional[str]:
+        return self.network_weights
+
+    @weights.setter
+    def weights(self, value: Optional[str]):
+        self.network_weights = value
+
+    @property
+    def module(self) -> Optional[str]:
+        return self.network_module
+
+    @module.setter
+    def module(self, value: Optional[str]):
+        self.network_module = value
+
+    @property
+    def args(self) -> Optional[List[str]]:
+        return self.network_args
+
+    @args.setter
+    def args(self, value: Optional[List[str]]):
+        self.network_args = value
+

@@ -9,6 +9,7 @@ import torch
 from accelerate import Accelerator
 
 from library.utils.common_utils import setup_logging
+from library.config.dataclasses.peft import PeftConfig
 
 try:
     import matplotlib.pyplot as plt
@@ -311,7 +312,7 @@ def generate_step_logs(
         if lr_descriptions is not None:
             lr_desc = lr_descriptions[i]
         else:
-            idx = i - (0 if cfg.network.network_train_unet_only else -1)
+            idx = i - (0 if cfg.network.train_unet_only else -1)
             if idx == -1:
                 lr_desc = "textencoder"
             else:
@@ -330,7 +331,7 @@ def generate_step_logs(
             logs["lr/d*lr"] = optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
     else:
         idx = 0
-        if not cfg.network.network_train_unet_only:
+        if not cfg.network.train_unet_only:
             logs["lr/textencoder"] = float(lrs[0])
             idx = 1
 
@@ -571,7 +572,7 @@ def create_training_metadata(
     num_train_epochs: int,
     optimizer_name: str,
     optimizer_args: str,
-    text_encoder_lr,
+    text_encoder_lr,  # TODO: why only text_encoder_lr here?
     net_kwargs: dict,
     train_dataloader,
     total_batch_size: int,
@@ -596,7 +597,7 @@ def create_training_metadata(
         "ss_output_name": cfg.saving.output_name,
         "ss_learning_rate": cfg.optimizer.learning_rate,
         "ss_text_encoder_lr": text_encoder_lr,
-        "ss_unet_lr": cfg.network.unet_lr,
+        "ss_unet_lr": cfg.optimizer.learning_rates.unet,
         "ss_num_train_images": train_dataset_group.num_train_images,
         "ss_num_validation_images": val_dataset_group.num_train_images if val_dataset_group is not None else 0,
         "ss_num_reg_images": train_dataset_group.num_reg_images,
@@ -607,10 +608,10 @@ def create_training_metadata(
         "ss_max_train_steps": cfg.training.max_train_steps,
         "ss_lr_warmup_steps": cfg.optimizer.lr_warmup_steps,
         "ss_lr_scheduler": cfg.optimizer.lr_scheduler,
-        "ss_network_module": cfg.network.network_module,
-        "ss_network_dim": cfg.network.network_dim,
-        "ss_network_alpha": cfg.network.network_alpha,
-        "ss_network_dropout": cfg.network.network_dropout,
+        "ss_network_module": cfg.network.module,
+        "ss_network_dim": cfg.network.dim,
+        "ss_network_alpha": cfg.network.alpha,
+        "ss_network_dropout": cfg.network.neuron_dropout,
         "ss_mixed_precision": cfg.performance.mixed_precision,
         "ss_full_fp16": bool(cfg.performance.full_fp16),
         "ss_v2": bool(cfg.model.v2),
@@ -781,7 +782,7 @@ def create_training_metadata(
         })
 
     # Network args
-    if cfg.network.network_args:
+    if cfg.network.args:
         metadata["ss_network_args"] = json.dumps(net_kwargs)
 
     # Model name and hash
@@ -954,3 +955,21 @@ def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
         timestep_counts = np.zeros(noise_scheduler.config.num_train_timesteps, dtype=np.int64)
 
     return timestep_counts, plotter_settings
+
+
+def resolve_network_kwargs(cfg: PeftConfig, net_kwargs: dict):
+    """
+    Populate net_kwargs with explicit LoRA fields from PeftConfig if they are set.
+    """
+    # Mapping explicit config fields to network kwargs
+    fields = [
+        "conv_dim", "conv_alpha", "rank_dropout", "module_dropout",
+        "block_dims", "block_alphas", "conv_block_dims", "conv_block_alphas",
+        "down_lr_weight", "mid_lr_weight", "up_lr_weight", "block_lr_zero_threshold",
+        "loraplus_lr_ratio", "loraplus_unet_lr_ratio", "loraplus_text_encoder_lr_ratio"
+    ]
+    
+    for field_name in fields:
+        value = getattr(cfg, field_name, None)
+        if value is not None:
+             net_kwargs[field_name] = value

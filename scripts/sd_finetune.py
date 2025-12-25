@@ -185,13 +185,22 @@ def train(cfg: SDFineTuneConfig):
         m.requires_grad_(True)
 
     trainable_params = []
-    if cfg.fine_tune.learning_rate_te is None or not cfg.fine_tune.train_text_encoder:
+    
+    # Resolve Learning Rates (Schema 1)
+    lr_unet = cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rate
+    lr_te = cfg.optimizer.learning_rates.text_encoders
+
+    if lr_te is None or not cfg.fine_tune.train_text_encoder:
         for m in training_models:
             trainable_params.extend(m.parameters())
     else:
+        # If lr_te is a list, we only support one TE for SD1.5/2.0, so take the first element
+        if isinstance(lr_te, list):
+            lr_te = lr_te[0]
+            
         trainable_params = [
-            {"params": list(unet.parameters()), "lr": cfg.optimizer.learning_rate},
-            {"params": list(text_encoder.parameters()), "lr": cfg.fine_tune.learning_rate_te},
+            {"params": list(unet.parameters()), "lr": lr_unet},
+            {"params": list(text_encoder.parameters()), "lr": lr_te},
         ]
 
     accelerator.print("prepare optimizer, data loader etc.")

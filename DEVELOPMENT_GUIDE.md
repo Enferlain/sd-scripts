@@ -76,7 +76,44 @@ We are transitioning from a "Script-First" to a "Library-First" architecture.
 - **Docstrings:** Document the _config_ expected by functions.
 - **No Argparse:** Do not import `argparse` in `library/` modules.
 
-## 5. Workflow for Contributors
+## 5. Config Design Principles
+
+### A. Schema Enforces Validity
+
+Each script's root config (e.g., `SDPeftConfig`, `SDXLFineTuneConfig`) defines what's valid for that mode. Hydra validates YAML against the dataclass schema at load time.
+
+- **No `*SpecificConfig` pattern needed** - If `SDPeftConfig` doesn't have a `fine_tune:` field, Hydra errors if someone tries to use it.
+- **Mode-specific options** belong in the root config or a shared sub-config, not nested specific configs.
+
+### B. Config Grouping
+
+| Setting Type                                                           | Location            |
+| ---------------------------------------------------------------------- | ------------------- |
+| Performance/memory (xformers, gradient_checkpointing, mixed_precision) | `PerformanceConfig` |
+| Learning rates (optimizer LR, scheduler)                               | `OptimizerConfig`   |
+| Model-specific (SDXL cache_text_encoder_outputs)                       | `SDXLConfig`        |
+| Network/LoRA settings                                                  | `PeftConfig`     |
+
+### C. Code Style in Scripts
+
+```python
+# ✅ Good - use cfg.X.Y directly
+def train(cfg: SDPeftConfig):
+    if cfg.training.max_train_epochs:
+        ...
+    if cfg.performance.gradient_checkpointing:
+        ...
+
+# ❌ Bad - don't create aliases
+def train(cfg: SDPeftConfig):
+    training_config = cfg.training  # Unnecessary
+    perf_config = cfg.performance   # Unnecessary
+```
+
+- **Use `cfg`** as the config variable name (not `config`)
+- **Access sub-configs directly** - `cfg.training.X`, not `training_config.X`
+
+## 6. Workflow for Contributors
 
 1.  **Adding a Feature:**
     - Add key/value to the relevant Dataclass (or create a new one).
@@ -85,7 +122,7 @@ We are transitioning from a "Script-First" to a "Library-First" architecture.
 2.  **Refactoring:**
     - If you see `args` being passed, refactor it to a detailed Config object.
 
-## 6. Testing Strategy
+## 7. Testing Strategy
 
 **Goal:** Ensure reliability by testing components in isolation.
 
