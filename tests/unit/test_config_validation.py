@@ -98,7 +98,7 @@ class TestPrepareConfig:
             "sampling": {"sample_every_n_epochs": 0, "sample_every_n_steps": None},
         })
         prepare_config(cfg)
-        assert cfg.sampling.sample_every_n_epochs is None
+        assert cfg.output.sampling.sample_every_n_epochs is None
 
     def test_sample_every_n_steps_negative_becomes_none(self):
         """sample_every_n_steps <= 0 should become None."""
@@ -108,7 +108,7 @@ class TestPrepareConfig:
             "sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": -1},
         })
         prepare_config(cfg)
-        assert cfg.sampling.sample_every_n_steps is None
+        assert cfg.output.sampling.sample_every_n_steps is None
 
 
 # =============================================================================

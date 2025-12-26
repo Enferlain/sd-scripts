@@ -24,7 +24,7 @@
   - Removed `add_model_spec_arguments()` from `sai_model_spec.py` (superseded by MetadataConfig)
   - Removed `ModelSpecMetadata.from_args()` from `sai_model_spec.py` (use `from_config()` instead)
   - Renamed `generate_user_config_from_args()` → `generate_user_config_from_dataset()` in `config_util.py`
-  - All `args` references removed. EDM2 loss weighting function calls corrected to use proper config sub-objects (`cfg.loss`, `cfg.training`, `cfg.saving.output_name`).
+  - All `args` references removed. EDM2 loss weighting function calls corrected to use proper config sub-objects (`cfg.loss`, `cfg.training`, `cfg.output.saving.output_name`).
   - Renamed `args_set_seed()` → `set_seed_from_config()` in `torch_utils.py`
   - Renamed `prepare_deepspeed_args()` → `prepare_deepspeed_config()` in `deepspeed_utils.py`
   - Renamed `args` params → `config` in textual inversion trainer methods

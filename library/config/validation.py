@@ -51,12 +51,12 @@ def prepare_config(cfg) -> None:
         cfg.optimizer.optimizer_type = "Lion"
     
     # Sampling: disable if <= 0
-    if cfg.sampling.sample_every_n_epochs is not None and cfg.sampling.sample_every_n_epochs <= 0:
+    if cfg.output.sampling.sample_every_n_epochs is not None and cfg.output.sampling.sample_every_n_epochs <= 0:
         logger.warning("sample_every_n_epochs <= 0, disabling")
-        cfg.sampling.sample_every_n_epochs = None
-    if cfg.sampling.sample_every_n_steps is not None and cfg.sampling.sample_every_n_steps <= 0:
+        cfg.output.sampling.sample_every_n_epochs = None
+    if cfg.output.sampling.sample_every_n_steps is not None and cfg.output.sampling.sample_every_n_steps <= 0:
         logger.warning("sample_every_n_steps <= 0, disabling")
-        cfg.sampling.sample_every_n_steps = None
+        cfg.output.sampling.sample_every_n_steps = None
 
 
 # =============================================================================

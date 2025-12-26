@@ -1,0 +1,63 @@
+# Output configuration with nested subcategories
+saving:
+  output_dir: null
+  output_name: null
+  save_precision: null
+  save_every_n_epochs: null
+  save_every_n_steps: null
+  save_n_epoch_ratio: null
+  save_last_n_epochs: null
+  save_last_n_epochs_state: null
+  save_last_n_steps: null
+  save_last_n_steps_state: null
+  save_state: false
+  save_state_on_train_end: false
+  resume: null
+  save_model_as: null
+  use_safetensors: false
+  no_metadata: false
+
+logging:
+  logging_dir: null
+  log_with: null
+  log_prefix: null
+  log_tracker_name: null
+  wandb_run_name: null
+  log_tracker_config: {}
+  wandb_api_key: null
+  log_config: false
+  console_log_level: null
+  console_log_file: null
+  console_log_simple: false
+  log_timestep_distribution_every_n_steps: null
+  live_plot_port: null
+
+huggingface:
+  huggingface_repo_id: null
+  huggingface_repo_type: null
+  huggingface_path_in_repo: null
+  huggingface_token: null
+  huggingface_repo_visibility: null
+  save_state_to_huggingface: false
+  resume_from_huggingface: false
+  async_upload: false
+
+sampling:
+  sample_every_n_steps: null
+  sample_at_first: false
+  sample_every_n_epochs: null
+  sample_prompts: null
+  sample_sampler: "ddim"
+
+metadata:
+  metadata_title: null
+  metadata_author: null
+  metadata_description: null
+  metadata_license: null
+  metadata_tags: null
+  metadata_usage_hint: null
+  metadata_thumbnail: null
+  metadata_merged_from: null
+  metadata_trigger_phrase: null
+  metadata_preprocessor: null
+  metadata_is_negative_embedding: null

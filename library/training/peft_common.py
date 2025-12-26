@@ -164,7 +164,7 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
     if initial_step > 0:
         if cfg.training.skip_until_initial_step:
             # if skip_until_initial_step is specified, load data and discard it to ensure the same data is used
-            if not cfg.saving.resume:
+            if not cfg.output.saving.resume:
                 logger.info(
                     f"initial_step is specified but not resuming. lr scheduler will be started from the beginning / initial_stepが指定されていますがresumeしていないため、lr schedulerは最初から始まります"
                 )
@@ -429,7 +429,7 @@ def save_timestep_distribution_plot(cfg, global_step, timestep_counts, settings_
         logger.warning("Matplotlib is not installed. Cannot save timestep distribution plot.")
         return
 
-    output_dir = os.path.join(cfg.saving.output_dir, "timestep_plots")
+    output_dir = os.path.join(cfg.output.saving.output_dir, "timestep_plots")
     os.makedirs(output_dir, exist_ok=True)
 
     plt.figure(figsize=(15, 7))
@@ -593,7 +593,7 @@ def create_training_metadata(
     metadata = {
         "ss_session_id": session_id,
         "ss_training_started_at": training_started_at,
-        "ss_output_name": cfg.saving.output_name,
+        "ss_output_name": cfg.output.saving.output_name,
         "ss_learning_rate": cfg.optimizer.learning_rate,
         "ss_text_encoder_lr": text_encoder_lr,
         "ss_unet_lr": cfg.optimizer.learning_rates.unet,
@@ -911,7 +911,7 @@ def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
     plotter_settings = get_plotter_settings(cfg, la_sampler)
     
     # Setup for the live interactive plotter
-    if cfg.logging.live_plot_port is not None:
+    if cfg.output.logging.live_plot_port is not None:
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         plotter_script_path = os.path.join(project_root, "tools", "visualization", "live_plotter.py")
 
@@ -919,9 +919,9 @@ def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
             logger.error(f"live_plotter.py not found at {plotter_script_path}. Live plotter disabled.")
         else:
             if strategy.live_plotter_process is None or strategy.live_plotter_process.poll() is not None:
-                logger.info(f"Launching live plotter server on port {cfg.logging.live_plot_port}")
+                logger.info(f"Launching live plotter server on port {cfg.output.logging.live_plot_port}")
                 strategy.live_plotter_process = subprocess.Popen(
-                    [sys.executable, plotter_script_path, "--port", str(cfg.logging.live_plot_port)],
+                    [sys.executable, plotter_script_path, "--port", str(cfg.output.logging.live_plot_port)],
                     stdin=subprocess.PIPE,
                 )
 
@@ -941,7 +941,7 @@ def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
                 strategy.live_plotter_process = None
 
     # Setup for saving static plot images
-    if cfg.logging.log_timestep_distribution_every_n_steps is not None:
+    if cfg.output.logging.log_timestep_distribution_every_n_steps is not None:
         timestep_counts = np.zeros(noise_scheduler.config.num_train_timesteps, dtype=np.int64)
 
     return timestep_counts, plotter_settings

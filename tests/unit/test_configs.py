@@ -61,8 +61,8 @@ class TestConfigInstantiation:
         config = PeftConfig()
         assert config is not None
         assert hasattr(config, 'module')
-        assert hasattr(config, 'dim')
-        assert hasattr(config, 'alpha')
+        assert hasattr(config, 'adapter_rank')
+        assert hasattr(config, 'adapter_alpha')
         
     def test_buckets_config_instantiation(self):
         """Test BucketsConfig instantiation with defaults."""
@@ -100,7 +100,8 @@ class TestConfigInstantiation:
         """Test PerformanceConfig instantiation with defaults."""
         config = PerformanceConfig()
         assert config is not None
-        assert hasattr(config, 'mixed_precision')
+        assert hasattr(config, 'precision')  # Nested config
+        assert hasattr(config.precision, 'mixed_precision')
         
     def test_regularization_config_instantiation(self):
         """Test RegularizationConfig instantiation with defaults."""
@@ -152,8 +153,8 @@ class TestConfigDefaults:
     def test_adapter_config_defaults(self):
         """Test PeftConfig default values."""
         config = PeftConfig()
-        assert config.dim is None  # None by default
-        assert config.alpha == 1.0
+        assert config.adapter_rank is None  # None by default
+        assert config.adapter_alpha == 1.0
         assert config.module is None  # None by default
         
     def test_buckets_config_defaults(self):
@@ -253,10 +254,10 @@ class TestConfigOverrides:
         """Test overriding peft config values."""
         cfg = compose(
             config_name="sd_peft",
-            overrides=["peft.dim=128", "peft.alpha=128"]
+            overrides=["peft.adapter_rank=128", "peft.adapter_alpha=128"]
         )
-        assert cfg.peft.dim == 128
-        assert cfg.peft.alpha == 128
+        assert cfg.peft.adapter_rank == 128
+        assert cfg.peft.adapter_alpha == 128
         
     def test_training_override(self, hydra_ctx):
         """Test overriding training config values."""

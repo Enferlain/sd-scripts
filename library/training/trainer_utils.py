@@ -107,7 +107,7 @@ def init_trackers(accelerator: Accelerator, cfg, default_tracker_name: str):
     """
     if accelerator.is_main_process:
         init_kwargs = {}
-        logging_config = cfg.logging
+        logging_config = cfg.output.logging
         if hasattr(logging_config, 'wandb_run_name') and logging_config.wandb_run_name:
             init_kwargs["wandb"] = {"name": logging_config.wandb_run_name}
         if hasattr(logging_config, 'log_tracker_config') and logging_config.log_tracker_config is not None:

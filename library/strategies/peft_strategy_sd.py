@@ -114,7 +114,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def sample_images(self, accelerator, cfg, epoch, global_step, device, vae, tokenizers, text_encoder, unet):
         """Generate sample images for SD."""
-        sample_images(accelerator, cfg.sampling, cfg.training, cfg.saving, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
+        sample_images(accelerator, cfg.output.sampling. cfg.training, cfg.output.saving, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
 
     def validate_extra_config(self, cfg, train_dataset_group, val_dataset_group):
         """Run SD-specific config validation."""
@@ -128,7 +128,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         """Get SAI model spec for SD."""
         return get_sai_model_spec_from_config(
             state_dict=None,
-            metadata_config=cfg.metadata,
+            metadata_config=cfg.output.metadata,
             is_sdxl=self.is_sdxl,
             is_v2=cfg.model.v2,
             v_parameterization=cfg.loss.v_parameterization,

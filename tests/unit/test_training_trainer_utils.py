@@ -432,7 +432,7 @@ class TestInitTrackers:
 
     def test_uses_custom_tracker_name(self, mock_accelerator, mock_cfg):
         """Test that custom tracker name is used when specified."""
-        mock_cfg.logging.log_tracker_name = "custom_name"
+        mock_cfg.output.logging.log_tracker_name = "custom_name"
         
         init_trackers(mock_accelerator, mock_cfg, "default_name")
         

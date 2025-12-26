@@ -14,17 +14,24 @@ Total: **~200 fields** across 17 dataclasses
 | Rename `cfg.network` → `cfg.peft` in all scripts             | ✅ Done |
 | Rename `configs/network/` → `configs/peft/`                  | ✅ Done |
 | Update `validation.py` and tests                             | ✅ Done |
-| **Rename `network` → `adapter` across codebase**             | ✅ Done |
-| **Rename config fields: `dim` → `adapter_rank`, etc.**       | ✅ Done |
-| **Rename folder: `library/networks/` → `library/adapters/`** | ✅ Done |
-| **Rename classes: `LoRANetwork` → `LoRAAdapter`, etc.**      | ✅ Done |
+| Rename `network` → `adapter` across codebase                 | ✅ Done |
+| Rename config fields: `dim` → `adapter_rank`, etc.           | ✅ Done |
+| Rename folder: `library/networks/` → `library/adapters/`     | ✅ Done |
+| Rename classes: `LoRANetwork` → `LoRAAdapter`, etc.          | ✅ Done |
 
 ## 🔜 Remaining
 
-| Task                                           | Notes                              |
-| ---------------------------------------------- | ---------------------------------- |
-| Move SDXL cache fields to `performance.memory` | See SDXLConfig Dissolution section |
-| Nested restructuring for data/output/loss      | Major refactor                     |
+| Task                          | Notes          |
+| ----------------------------- | -------------- |
+| Nested restructuring for data | Major refactor |
+| Nested restructuring for loss | Major refactor |
+
+## ✅ Also Completed
+
+| Task                                            | Status  |
+| ----------------------------------------------- | ------- |
+| Move SDXL cache fields to `performance.caching` | ✅ Done |
+| Output config consolidation (`OutputConfig`)    | ✅ Done |
 
 ---
 

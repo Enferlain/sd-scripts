@@ -1,8 +1,0 @@
-huggingface_repo_id: null
-huggingface_repo_type: null
-huggingface_path_in_repo: null
-huggingface_token: null
-huggingface_repo_visibility: null
-save_state_to_huggingface: false
-resume_from_huggingface: false
-async_upload: false

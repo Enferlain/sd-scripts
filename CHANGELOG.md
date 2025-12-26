@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `neuron_dropout` kept (distinct from `rank_dropout`/`module_dropout`)
   - **Metadata keys:** `ss_network_*` → `ss_adapter_*` in safetensors metadata
 
+- **Output Config Consolidation**
+
+  - Created `OutputConfig` dataclass nesting 5 related configs: `SavingConfig`, `LoggingConfig`, `HuggingFaceConfig`, `SamplingConfig`, `MetadataConfig`
+  - Config access paths updated: `cfg.saving.*` → `cfg.output.saving.*`, `cfg.logging.*` → `cfg.output.logging.*`, etc.
+  - YAML configs consolidated: removed `configs/saving/`, `configs/logging/`, `configs/huggingface/`, `configs/sampling/`, `configs/metadata/` → single `configs/output/default.yaml`
+  - Updated all 6 root config dataclasses and YAML files
+
 ## [2025-12-25]
 
 ### Changed
@@ -270,7 +277,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed call sites: `sample_images_check(cfg)` → `sample_images_check(cfg.sampling)`, `calculate_val_loss_check(cfg)` → `calculate_val_loss_check(cfg.training)`
   - Fixed `prepare_deepspeed_model(cfg)` → `prepare_deepspeed_model(cfg.training)`
   - Fixed `cfg.training.vae` → `cfg.model.vae`
-  - Fixed `plot_edm2_loss_weighting_check()` and `plot_edm2_loss_weighting()` - added missing `cfg.training` and `cfg.saving.output_name` parameters
+  - Fixed `plot_edm2_loss_weighting_check()` and `plot_edm2_loss_weighting()` - added missing `cfg.training` and `cfg.output.saving.output_name` parameters
   - Removed stale TODO comment about `no_metadata` field (it exists in `SavingConfig`)
 
 - **Textual Inversion Cleanup**

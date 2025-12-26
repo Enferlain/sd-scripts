@@ -117,7 +117,7 @@ def train(cfg: SDXLFineTuneConfig):
 
     set_torch_cuda_reduced_precision(cfg.performance)
     deepspeed_utils.prepare_deepspeed_config(cfg.performance)
-    setup_logging(cfg.logging, reset=True)
+    setup_logging(cfg.output.logging, reset=True)
 
     if cfg.optimizer.learning_rates.blocks:
         block_lrs = [float(lr) for lr in cfg.optimizer.learning_rates.blocks.split(",")]
@@ -178,7 +178,7 @@ def train(cfg: SDXLFineTuneConfig):
     logger.info("prepare accelerator")
     accelerator = prepare_accelerator(cfg.performance)
 
-    weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.saving)
+    weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.output.saving)
     vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
 
     (
@@ -199,12 +199,12 @@ def train(cfg: SDXLFineTuneConfig):
         src_stable_diffusion_ckpt = None
         src_diffusers_model_path = cfg.model.pretrained_model_name_or_path
 
-    if cfg.saving.save_model_as is None:
+    if cfg.output.saving.save_model_as is None:
         save_stable_diffusion_format = load_stable_diffusion_format
-        use_safetensors = cfg.saving.use_safetensors
+        use_safetensors = cfg.output.saving.use_safetensors
     else:
-        save_stable_diffusion_format = cfg.saving.save_model_as.lower() == "ckpt" or cfg.saving.save_model_as.lower() == "safetensors"
-        use_safetensors = cfg.saving.use_safetensors or ("safetensors" in cfg.saving.save_model_as.lower())
+        save_stable_diffusion_format = cfg.output.saving.save_model_as.lower() == "ckpt" or cfg.output.saving.save_model_as.lower() == "safetensors"
+        use_safetensors = cfg.output.saving.use_safetensors or ("safetensors" in cfg.output.saving.save_model_as.lower())
 
     def set_diffusers_xformers_flag(model, valid):
         def fn_recursive_set_mem_eff(module: torch.nn.Module):
@@ -451,7 +451,7 @@ def train(cfg: SDXLFineTuneConfig):
     if cfg.performance.precision.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
-    resume_from_local_or_hf_if_specified(accelerator, cfg.saving)
+    resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving)
 
     if cfg.optimizer.fused_backward_pass:
         import library.optimizers.adafactor_fused
@@ -503,8 +503,8 @@ def train(cfg: SDXLFineTuneConfig):
 
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
     num_train_epochs = math.ceil(cfg.training.max_train_steps / num_update_steps_per_epoch)
-    if (cfg.saving.save_n_epoch_ratio is not None) and (cfg.saving.save_n_epoch_ratio > 0):
-        cfg.saving.save_every_n_epochs = math.floor(num_train_epochs / cfg.saving.save_n_epoch_ratio) or 1
+    if (cfg.output.saving.save_n_epoch_ratio is not None) and (cfg.output.saving.save_n_epoch_ratio > 0):
+        cfg.output.saving.save_every_n_epochs = math.floor(num_train_epochs / cfg.output.saving.save_n_epoch_ratio) or 1
 
     accelerator.print("running training")
     accelerator.print(f"  num examples / サンプル数: {train_dataset_group.num_train_images}")
@@ -530,18 +530,18 @@ def train(cfg: SDXLFineTuneConfig):
 
     if accelerator.is_main_process:
         init_kwargs = {}
-        if cfg.logging.wandb_run_name:
-            init_kwargs["wandb"] = {"name": cfg.logging.wandb_run_name}
-        if cfg.logging.log_tracker_config is not None:
-            init_kwargs = toml.load(cfg.logging.log_tracker_config)
+        if cfg.output.logging.wandb_run_name:
+            init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
+        if cfg.output.logging.log_tracker_config is not None:
+            init_kwargs = toml.load(cfg.output.logging.log_tracker_config)
         accelerator.init_trackers(
-            "finetuning" if cfg.logging.log_tracker_name is None else cfg.logging.log_tracker_name,
+            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
             config=OmegaConf.to_container(cfg, resolve=True),
             init_kwargs=init_kwargs,
         )
 
     sample_images(
-        accelerator, cfg.sampling, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
+        accelerator, cfg.output.sampling. 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
     )
     if len(accelerator.trackers) > 0:
         accelerator.log({}, step=0)
@@ -674,9 +674,9 @@ def train(cfg: SDXLFineTuneConfig):
 
                 sample_images(
                     accelerator,
-                    cfg.sampling,
+                    cfg.output.sampling.
                     cfg.training,
-                    cfg.saving,
+                    cfg.output.saving,
                     epoch + 1,
                     global_step,
                     accelerator.device,
@@ -686,13 +686,13 @@ def train(cfg: SDXLFineTuneConfig):
                     unet,
                 )
 
-                if cfg.saving.save_every_n_steps is not None and global_step % cfg.saving.save_every_n_steps == 0:
+                if cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0:
                     accelerator.wait_for_everyone()
                     if accelerator.is_main_process:
                         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
                         save_sd_model_on_epoch_end_or_stepwise(
-                            cfg.saving,
-                            cfg.metadata,
+                            cfg.output.saving,
+                            cfg.output.metadata,
                             cfg.loss,
                             False,
                             accelerator,
@@ -735,12 +735,12 @@ def train(cfg: SDXLFineTuneConfig):
 
         accelerator.wait_for_everyone()
 
-        if cfg.saving.save_every_n_epochs is not None:
+        if cfg.output.saving.save_every_n_epochs is not None:
             if accelerator.is_main_process:
                 src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
                 save_sd_model_on_epoch_end_or_stepwise(
-                    cfg.saving,
-                    cfg.metadata,
+                    cfg.output.saving,
+                    cfg.output.metadata,
                     cfg.loss,
                     True,
                     accelerator,
@@ -761,7 +761,7 @@ def train(cfg: SDXLFineTuneConfig):
 
         sample_images(
             accelerator,
-            cfg.sampling,
+            cfg.output.sampling.
             epoch + 1,
             global_step,
             accelerator.device,
@@ -778,16 +778,16 @@ def train(cfg: SDXLFineTuneConfig):
 
     accelerator.end_training()
 
-    if cfg.saving.save_state or cfg.saving.save_state_on_train_end:
-        save_state_on_train_end(cfg.saving, accelerator)
+    if cfg.output.saving.save_state or cfg.output.saving.save_state_on_train_end:
+        save_state_on_train_end(cfg.output.saving, accelerator)
 
     del accelerator
 
     if is_main_process:
         src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
         save_sd_model_on_train_end(
-            cfg.saving,
-            cfg.metadata,
+            cfg.output.saving,
+            cfg.output.metadata,
             cfg.loss,
             src_path,
             save_stable_diffusion_format,
