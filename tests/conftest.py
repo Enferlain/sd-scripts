@@ -32,9 +32,9 @@ from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.peft import PeftConfig
 from library.config.dataclasses.buckets import BucketsConfig
 from library.config.dataclasses.model import ModelConfig
-from library.config.dataclasses.saving import SavingConfig
-from library.config.dataclasses.logging import LoggingConfig
-from library.config.dataclasses.metadata import MetadataConfig
+from library.config.dataclasses.output import SavingConfig
+from library.config.dataclasses.output import LoggingConfig
+from library.config.dataclasses.output import MetadataConfig
 
 
 # ============================================================================

@@ -321,7 +321,7 @@ class TestBuildMetadataIntegration:
         assert metadata_dict["modelspec.architecture"] == "stable-diffusion-xl-v1-base"
 
 
-from library.config.dataclasses.metadata import MetadataConfig
+from library.config.dataclasses.output import MetadataConfig
 
 class TestGetSaiModelSpecFromConfig:
     """Test get_sai_model_spec_from_config function."""

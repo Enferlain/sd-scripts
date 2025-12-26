@@ -14,7 +14,7 @@ from io import BytesIO
 from typing import Union, Optional
 
 from library.utils.common_utils import setup_logging
-from library.config.dataclasses.metadata import MetadataConfig
+from library.config.dataclasses.output import MetadataConfig
 # Type hints only to avoid circular imports if possible, though these are dataclasses so distinct modules usually fine
 from library.config.dataclasses.timestep import TimestepConfig
 

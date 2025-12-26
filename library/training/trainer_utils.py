@@ -8,7 +8,7 @@ import library.performance.deepspeed_utils as deepspeed_utils
 from omegaconf import OmegaConf, DictConfig
 
 from library.config.dataclasses.performance import PerformanceConfig
-from library.config.dataclasses.logging import LoggingConfig
+from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig
 
 

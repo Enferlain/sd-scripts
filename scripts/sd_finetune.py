@@ -48,7 +48,6 @@ from library.losses.loss_weighting import (
     scale_v_prediction_loss_like_noise_prediction,
 )
 
-
 init_ipex()
 
 setup_logging()

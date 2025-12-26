@@ -6,7 +6,7 @@ from huggingface_hub import HfApi
 from pathlib import Path
 
 from library.utils.common_utils import fire_in_thread, setup_logging
-from library.config.dataclasses.huggingface import HuggingFaceConfig
+from library.config.dataclasses.output import HuggingFaceConfig
 
 setup_logging()
 logger = logging.getLogger(__name__)

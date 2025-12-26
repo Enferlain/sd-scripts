@@ -15,13 +15,13 @@ from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.peft import PeftConfig
 from library.config.dataclasses.buckets import BucketsConfig
 from library.config.dataclasses.model import ModelConfig
-from library.config.dataclasses.saving import SavingConfig
-from library.config.dataclasses.logging import LoggingConfig
-from library.config.dataclasses.metadata import MetadataConfig
+from library.config.dataclasses.output import SavingConfig
+from library.config.dataclasses.output import LoggingConfig
+from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.performance import PerformanceConfig
 from library.config.dataclasses.regularization import RegularizationConfig
 from library.config.dataclasses.loss import LossConfig
-from library.config.dataclasses.sampling import SamplingConfig
+from library.config.dataclasses.output import SamplingConfig
 from library.config.dataclasses.timestep import TimestepConfig
 from library.config.dataclasses.sdxl import SDXLConfig
 

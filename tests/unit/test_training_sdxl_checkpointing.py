@@ -8,8 +8,8 @@ import pytest
 from unittest.mock import patch, MagicMock, call
 import torch
 
-from library.config.dataclasses.saving import SavingConfig
-from library.config.dataclasses.metadata import MetadataConfig
+from library.config.dataclasses.output import SavingConfig
+from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
 from library.training.sdxl_checkpointing import (
     save_sd_model_on_train_end,

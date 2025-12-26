@@ -1,18 +1,22 @@
 
 import torch
 
+from typing import Optional
+
 from library.utils import sai_model_spec
 from library.models import model_util
+from library.config.dataclasses.loss import LossConfig
+
+from library.config.dataclasses.output import (
+    SavingConfig,
+    MetadataConfig,
+    HuggingFaceConfig
+)
 
 from library.training.checkpointing import (
     save_sd_model_on_train_end_common,
     save_sd_model_on_epoch_end_or_stepwise_common
 )
-from library.config.dataclasses.saving import SavingConfig
-from library.config.dataclasses.metadata import MetadataConfig
-from library.config.dataclasses.loss import LossConfig
-from library.config.dataclasses.huggingface import HuggingFaceConfig
-from typing import Optional
 
 
 def save_sd_model_on_train_end(

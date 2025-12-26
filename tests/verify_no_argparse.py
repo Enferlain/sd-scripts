@@ -48,7 +48,7 @@ def test_imports():
 def test_checkpointing_shim():
     print("\nTesting checkpointing shim...")
     from library.utils.sai_model_spec import get_sai_model_spec_from_config
-    from library.config.dataclasses.metadata import MetadataConfig
+    from library.config.dataclasses.output import MetadataConfig
     
     # Create a mock MetadataConfig
     metadata_config = MetadataConfig(

@@ -8,10 +8,10 @@ from library.training.checkpointing import (
     save_sd_model_on_train_end_common,
     save_sd_model_on_epoch_end_or_stepwise_common
 )
-from library.config.dataclasses.saving import SavingConfig
-from library.config.dataclasses.metadata import MetadataConfig
+from library.config.dataclasses.output import SavingConfig
+from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
-from library.config.dataclasses.huggingface import HuggingFaceConfig
+from library.config.dataclasses.output import HuggingFaceConfig
 from typing import Optional
 # TODO: TrainingConfig was only used for v_parameterization (which was a bug - it's in LossConfig).
 # Consider adding clip_skip from TrainingConfig to metadata in the future.

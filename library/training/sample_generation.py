@@ -30,9 +30,9 @@ from library.constants import SCHEDULER_TIMESTEPS, SCHEDULER_LINEAR_START, SCHED
 from library.utils.device_utils import clean_memory_on_device
 from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
-from library.config.dataclasses.sampling import SamplingConfig
+from library.config.dataclasses.output import SamplingConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.config.dataclasses.saving import SavingConfig
+from library.config.dataclasses.output import SavingConfig
 
 logger = logging.getLogger(__name__)
 

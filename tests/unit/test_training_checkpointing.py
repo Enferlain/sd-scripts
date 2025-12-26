@@ -18,7 +18,7 @@ from library.training.checkpointing import (
     build_minimum_adapter_metadata,
     default_if_none,
 )
-from library.config.dataclasses.saving import SavingConfig
+from library.config.dataclasses.output import SavingConfig
 
 
 # =============================================================================

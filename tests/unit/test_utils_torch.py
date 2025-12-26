@@ -12,7 +12,7 @@ from library.utils.torch_utils import (
     match_mixed_precision,
 )
 from library.config.dataclasses.performance import PerformanceConfig
-from library.config.dataclasses.saving import SavingConfig
+from library.config.dataclasses.output import SavingConfig
 from unittest.mock import patch, MagicMock
 import random
 import numpy as np
