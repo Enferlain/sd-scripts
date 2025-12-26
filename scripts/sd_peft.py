@@ -292,10 +292,10 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     train_text_encoder = strategies.is_train_text_encoder(cfg)
     network.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 
-    if cfg.network.weights is not None:
+    if cfg.peft.weights is not None:
         # FIXME consider alpha of weights: this assumes that the alpha is not changed
-        info = network.load_weights(cfg.network.weights)
-        accelerator.print(f"load peft weights from {cfg.network.weights}: {info}")
+        info = network.load_weights(cfg.peft.weights)
+        accelerator.print(f"load peft weights from {cfg.peft.weights}: {info}")
 
     # if args.use_ramtorch:
     #     logger.info("Applying RamTorch to peft/lora.")
@@ -327,7 +327,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         optimizer_eval_fn,
         lr_descriptions,
         text_encoder_lr  # TODO: why only text_encoder_lr here?
-    ) = prepare_optimizer(cfg.optimizer, cfg.network, cfg.dataset, network)
+    ) = prepare_optimizer(cfg.optimizer, cfg.peft, cfg.dataset, network)
 
     # prepare dataloader
     # strategies are set here because they cannot be referenced in another process. Copy them with the dataset
@@ -785,9 +785,9 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
                     # swap to pre_scaling_loss for logging
                     edm2_optimizer.zero_grad(set_to_none=True)
 
-            if cfg.network.scale_weight_norms and accelerator.sync_gradients:
+            if cfg.peft.scale_weight_norms and accelerator.sync_gradients:
                 keys_scaled, mean_norm, maximum_norm = accelerator.unwrap_model(network).apply_max_norm_regularization(
-                    cfg.network.scale_weight_norms, accelerator.device
+                    cfg.peft.scale_weight_norms, accelerator.device
                 )
                 mean_grad_norm = None
                 mean_combined_norm = None

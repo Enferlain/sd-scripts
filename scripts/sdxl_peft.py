@@ -782,9 +782,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     # swap to pre_scaling_loss for logging
                     edm2_optimizer.zero_grad(set_to_none=True)
 
-            if cfg.network.scale_weight_norms and accelerator.sync_gradients:
+            if cfg.peft.scale_weight_norms and accelerator.sync_gradients:
                 keys_scaled, mean_norm, maximum_norm = accelerator.unwrap_model(network).apply_max_norm_regularization(
-                    cfg.network.scale_weight_norms, accelerator.device
+                    cfg.peft.scale_weight_norms, accelerator.device
                 )
                 mean_grad_norm = None
                 mean_combined_norm = None
