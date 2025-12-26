@@ -54,7 +54,7 @@ class BaseDataset(torch.utils.data.Dataset):
     def __init__(
             self,
             resolution: Optional[Tuple[int, int]],
-            network_multiplier: float,
+            adapter_multiplier: float,
             debug_dataset: bool,
             resize_interpolation: Optional[str] = None,
     ) -> None:
@@ -62,7 +62,7 @@ class BaseDataset(torch.utils.data.Dataset):
 
         # width/height is used when enable_bucket==False
         self.width, self.height = (None, None) if resolution is None else resolution
-        self.network_multiplier = network_multiplier
+        self.adapter_multiplier = adapter_multiplier
         self.debug_dataset = debug_dataset
 
         self.subsets: List[Union[DreamBoothSubset, FineTuningSubset]] = []
@@ -1171,7 +1171,7 @@ class BaseDataset(torch.utils.data.Dataset):
         example["target_sizes_hw"] = torch.stack([torch.LongTensor(x) for x in target_sizes_hw])
         example["flippeds"] = flippeds
 
-        example["network_multipliers"] = torch.FloatTensor([self.network_multiplier] * len(captions))
+        example["adapter_multipliers"] = torch.FloatTensor([self.adapter_multiplier] * len(captions))
 
         if self.debug_dataset:
             example["image_keys"] = bucket[image_index: image_index + self.batch_size]

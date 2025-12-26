@@ -6,7 +6,7 @@ import argparse
 from transformers import CLIPTokenizer
 
 from library.constants import V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
-from library.networks import lora
+from library.adapters import lora
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, get_preferred_device
 from library.training.sd_model_prep import _load_target_model
@@ -29,7 +29,7 @@ def interrogate(args):
   text_encoder, vae, unet, _ = _load_target_model(args, weights_dtype, DEVICE)
 
   logger.info(f"loading LoRA: {args.model}")
-  network, weights_sd = lora.create_network_from_weights(1.0, args.model, vae, text_encoder, unet)
+  network, weights_sd = lora.create_adapter_from_weights(1.0, args.model, vae, text_encoder, unet)
 
   # text encoder向けの重みがあるかチェックする：本当はlora側でやるのがいい
   has_te_weight = False

@@ -206,7 +206,7 @@ class TestDatasetGetItem:
             dataset.caching_mode = None  # Not in caching mode
             dataset.enable_bucket = True
             dataset.prior_loss_weight = 0.5
-            dataset.network_multiplier = 1.0
+            dataset.adapter_multiplier = 1.0
             dataset.debug_dataset = False
             dataset.batch_size = 1
             dataset.width = 512

@@ -36,7 +36,7 @@ class DreamBoothDataset(BaseDataset):
             is_training_dataset: bool,
             batch_size: int,
             resolution,
-            network_multiplier: float,
+            adapter_multiplier: float,
             enable_bucket: bool,
             min_bucket_reso: int,
             max_bucket_reso: int,
@@ -48,7 +48,7 @@ class DreamBoothDataset(BaseDataset):
             validation_seed: Optional[int],
             resize_interpolation: Optional[str],
     ) -> None:
-        super().__init__(resolution, network_multiplier, debug_dataset, resize_interpolation)
+        super().__init__(resolution, adapter_multiplier, debug_dataset, resize_interpolation)
 
         assert resolution is not None, f"resolution is required / resolution（解像度）指定は必須です"
 

@@ -69,9 +69,9 @@ class TestPeftCommonImports:
         assert callable(parse_dynamic_timestep_schedule)
 
     def test_peft_common_has_register_network_state_hooks(self):
-        """Verify register_network_state_hooks function exists."""
-        from library.training.peft_common import register_network_state_hooks
-        assert callable(register_network_state_hooks)
+        """Verify register_adapter_state_hooks function exists."""
+        from library.training.peft_common import register_adapter_state_hooks
+        assert callable(register_adapter_state_hooks)
 
 
 class TestStrategyImports:

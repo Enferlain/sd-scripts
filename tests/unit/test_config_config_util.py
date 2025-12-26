@@ -57,7 +57,7 @@ class FakeDatasetConfig:
     train_data_dir: str | None = None
     reg_data_dir: str | None = None
     # other fields accessed
-    network_multiplier: float = 1.0
+    adapter_multiplier: float = 1.0
     debug_dataset: bool = False
     validation_seed: int | None = None
     validation_split: float = 0.0

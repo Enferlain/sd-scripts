@@ -84,7 +84,7 @@ class ControlNetSubsetParams(BaseSubsetParams):
 @dataclass
 class BaseDatasetParams:
     resolution: Optional[Union[Tuple[int, int], List[int]]] = None  # Accept list from hydra
-    network_multiplier: float = 1.0
+    adapter_multiplier: float = 1.0
     debug_dataset: bool = False
     validation_seed: Optional[int] = None
     validation_split: float = 0.0

@@ -76,7 +76,7 @@ accelerate launch --num_cpu_threads_per_process 1 sdxl_peft.py
  --output_dir="<output directory for training results>" 
  --output_name="my_sdxl_lora" 
  --save_model_as=safetensors 
- --module=networks.lora 
+ --module=adapters.lora 
  --dim=32 
  --alpha=16 
  --learning_rate=1e-4 
@@ -116,7 +116,7 @@ accelerate launch --num_cpu_threads_per_process 1 sdxl_peft.py
  --output_dir="<学習結果の出力先ディレクトリ>" 
  --output_name="my_sdxl_lora" 
  --save_model_as=safetensors 
- --module=networks.lora 
+ --module=adapters.lora 
  --dim=32 
  --alpha=16 
  --learning_rate=1e-4 

@@ -12,7 +12,7 @@ from library.data import dataset as ds
 @pytest.fixture
 def base_ds():
     """Create a basic BaseDataset instance for testing methods that don't need heavy setup."""
-    d = ds.BaseDataset(resolution=(512, 512), network_multiplier=1.0, debug_dataset=False)
+    d = ds.BaseDataset(resolution=(512, 512), adapter_multiplier=1.0, debug_dataset=False)
     d.tokenizer_max_length = 77
     d.max_train_steps = 100
     return d

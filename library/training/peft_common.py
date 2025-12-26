@@ -209,7 +209,7 @@ def parse_dynamic_timestep_schedule(cfg, noise_scheduler, accelerator):
     return dynamic_timestep_schedule, current_min_timestep, current_max_timestep
 
 
-def register_network_state_hooks(accelerator, network, cfg, current_epoch, current_step):
+def register_adapter_state_hooks(accelerator, adapter, cfg, current_epoch, current_step):
     """
     Register save/load hooks for peft-only checkpointing.
     
@@ -218,7 +218,7 @@ def register_network_state_hooks(accelerator, network, cfg, current_epoch, curre
     
     Args:
         accelerator: HuggingFace Accelerator
-        network: The PEFT peft to save/load
+        adapter: The PEFT peft to save/load
         cfg: Training configuration (needs cfg.performance.deepspeed)
         current_epoch: Shared Value for current epoch tracking
         current_step: Shared Value for current step tracking
@@ -235,7 +235,7 @@ def register_network_state_hooks(accelerator, network, cfg, current_epoch, curre
         if accelerator.is_main_process or cfg.performance.deepspeed:
             remove_indices = []
             for i, model in enumerate(models):
-                if not isinstance(model, type(accelerator.unwrap_model(network))):
+                if not isinstance(model, type(accelerator.unwrap_model(adapter))):
                     remove_indices.append(i)
             for i in reversed(remove_indices):
                 if len(weights) > i:
@@ -253,7 +253,7 @@ def register_network_state_hooks(accelerator, network, cfg, current_epoch, curre
         # remove models except peft
         remove_indices = []
         for i, model in enumerate(models):
-            if not isinstance(model, type(accelerator.unwrap_model(network))):
+            if not isinstance(model, type(accelerator.unwrap_model(adapter))):
                 remove_indices.append(i)
         for i in reversed(remove_indices):
             models.pop(i)
@@ -607,10 +607,10 @@ def create_training_metadata(
         "ss_max_train_steps": cfg.training.max_train_steps,
         "ss_lr_warmup_steps": cfg.optimizer.lr_warmup_steps,
         "ss_lr_scheduler": cfg.optimizer.lr_scheduler,
-        "ss_network_module": cfg.peft.module,
-        "ss_network_dim": cfg.peft.dim,
-        "ss_network_alpha": cfg.peft.alpha,
-        "ss_network_dropout": cfg.peft.neuron_dropout,
+        "ss_adapter_module": cfg.peft.module,  # adapter REFACTOR
+        "ss_adapter_rank": cfg.peft.adapter_rank,
+        "ss_adapter_alpha": cfg.peft.adapter_alpha,
+        "ss_adapter_neuron_dropout": cfg.peft.neuron_dropout,
         "ss_mixed_precision": cfg.performance.precision.mixed_precision,
         "ss_full_fp16": bool(cfg.performance.precision.full_fp16),
         "ss_v2": bool(cfg.model.v2),
@@ -780,9 +780,9 @@ def create_training_metadata(
             "ss_bucket_info": json.dumps(dataset.bucket_info),
         })
 
-    # Network args
+    # Adapter args
     if cfg.peft.args:
-        metadata["ss_network_args"] = json.dumps(net_kwargs)
+        metadata["ss_adapter_args"] = json.dumps(net_kwargs)
 
     # Model name and hash
     if cfg.model.pretrained_model_name_or_path is not None:
@@ -947,7 +947,7 @@ def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
     return timestep_counts, plotter_settings
 
 
-def resolve_network_kwargs(cfg: PeftConfig, net_kwargs: dict):
+def resolve_adapter_kwargs(cfg: PeftConfig, net_kwargs: dict):
     """
     Populate net_kwargs with explicit LoRA fields from PeftConfig if they are set.
     """

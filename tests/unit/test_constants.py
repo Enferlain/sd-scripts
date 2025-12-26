@@ -33,10 +33,10 @@ from library.constants import (
     # Metadata keys
     SS_METADATA_KEY_V2,
     SS_METADATA_KEY_BASE_MODEL_VERSION,
-    SS_METADATA_KEY_NETWORK_MODULE,
-    SS_METADATA_KEY_NETWORK_DIM,
-    SS_METADATA_KEY_NETWORK_ALPHA,
-    SS_METADATA_KEY_NETWORK_ARGS,
+    SS_METADATA_KEY_ADAPTER_MODULE,
+    SS_METADATA_KEY_ADAPTER_RANK,
+    SS_METADATA_KEY_ADAPTER_ALPHA,
+    SS_METADATA_KEY_ADAPTER_ARGS,
     SS_METADATA_MINIMUM_KEYS,
     
     # Model parameters (SD 1.x)
@@ -188,15 +188,15 @@ class TestMetadataKeys:
     def test_metadata_key_values(self):
         assert SS_METADATA_KEY_V2 == "ss_v2"
         assert SS_METADATA_KEY_BASE_MODEL_VERSION == "ss_base_model_version"
-        assert SS_METADATA_KEY_NETWORK_MODULE == "ss_network_module"
-        assert SS_METADATA_KEY_NETWORK_DIM == "ss_network_dim"
-        assert SS_METADATA_KEY_NETWORK_ALPHA == "ss_network_alpha"
-        assert SS_METADATA_KEY_NETWORK_ARGS == "ss_network_args"
+        assert SS_METADATA_KEY_ADAPTER_MODULE == "ss_adapter_module"
+        assert SS_METADATA_KEY_ADAPTER_RANK == "ss_adapter_rank"
+        assert SS_METADATA_KEY_ADAPTER_ALPHA == "ss_adapter_alpha"
+        assert SS_METADATA_KEY_ADAPTER_ARGS == "ss_adapter_args"
     
     def test_minimum_keys_contains_all(self):
         assert len(SS_METADATA_MINIMUM_KEYS) == 6
         assert SS_METADATA_KEY_V2 in SS_METADATA_MINIMUM_KEYS
-        assert SS_METADATA_KEY_NETWORK_MODULE in SS_METADATA_MINIMUM_KEYS
+        assert SS_METADATA_KEY_ADAPTER_MODULE in SS_METADATA_MINIMUM_KEYS
 
 
 # =============================================================================

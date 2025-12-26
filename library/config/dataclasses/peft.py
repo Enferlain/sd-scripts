@@ -3,16 +3,16 @@ from typing import Optional, List, Union, Any
 
 @dataclass
 class PeftConfig:  # TODO: improve help comments
-    dim: Optional[int] = field(default=None, metadata={"help": "peft dimensions (depends on each peft)"})
-    alpha: float = field(default=1.0, metadata={"help": "alpha for LoRA weight scaling, default 1 (same as dim for same behavior as old version)"})
+    adapter_rank: Optional[int] = field(default=None, metadata={"help": "adapter rank/dimensions (depends on each adapter)"})
+    adapter_alpha: float = field(default=1.0, metadata={"help": "alpha for LoRA weight scaling, default 1 (same as rank for same behavior as old version)"})
     neuron_dropout: Optional[float] = field(default=None, metadata={"help": "Drops neurons out of training every step (0 or None is default behavior (no dropout), 1 would drop all neurons)"})
-    weights: Optional[str] = field(default=None, metadata={"help": "pretrained weights for peft"})
-    module: Optional[str] = field(default=None, metadata={"help": "peft module to train"})
-    args: Optional[List[str]] = field(default=None, metadata={"help": "additional arguments for peft (key=value)"})
-    dim_from_weights: bool = field(default=False, metadata={"help": "automatically determine dim (rank) from weights"})
+    weights: Optional[str] = field(default=None, metadata={"help": "pretrained weights for adapter"})
+    module: Optional[str] = field(default=None, metadata={"help": "adapter module to train"})
+    args: Optional[List[str]] = field(default=None, metadata={"help": "additional arguments for adapter (key=value)"})
+    adapter_rank_from_weights: bool = field(default=False, metadata={"help": "automatically determine rank from weights"})
     scale_weight_norms: Optional[float] = field(default=None, metadata={"help": "Scale the weight of each key pair to help prevent overtraing via exploding gradients. (1 is a good starting point)"})
-    base_weights: Optional[List[str]] = field(default=None, metadata={"help": "peft weights to merge into the model before training"})
-    base_weights_multiplier: Optional[List[float]] = field(default=None, metadata={"help": "multiplier for peft weights to merge into the model before training"})
+    base_weights: Optional[List[str]] = field(default=None, metadata={"help": "adapter weights to merge into the model before training"})
+    base_weights_multiplier: Optional[List[float]] = field(default=None, metadata={"help": "multiplier for adapter weights to merge into the model before training"})
     training_comment: Optional[str] = field(default=None, metadata={"help": "arbitrary comment string stored in metadata"})
     orthograd_targets: Optional[List[str]] = field(default=None, metadata={"help": "A list of strings to determine which named parameters should subject to orthgrad"})
 

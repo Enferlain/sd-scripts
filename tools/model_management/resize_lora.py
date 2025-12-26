@@ -341,14 +341,14 @@ def resize(args):
     if not args.dynamic_method:
         conv_desc = "" if args.new_rank == args.new_conv_rank else f" (conv: {args.new_conv_rank})"
         metadata["ss_training_comment"] = f"dimension is resized from {old_dim} to {args.new_rank}{conv_desc}; {comment}"
-        metadata["ss_network_dim"] = str(args.new_rank)
-        metadata["ss_network_alpha"] = str(new_alpha)
+        metadata["ss_adapter_rank"] = str(args.new_rank)
+        metadata["ss_adapter_alpha"] = str(new_alpha)
     else:
         metadata["ss_training_comment"] = (
             f"Dynamic resize with {args.dynamic_method}: {args.dynamic_param} from {old_dim}; {comment}"
         )
-        metadata["ss_network_dim"] = "Dynamic"
-        metadata["ss_network_alpha"] = "Dynamic"
+        metadata["ss_adapter_rank"] = "Dynamic"
+        metadata["ss_adapter_alpha"] = "Dynamic"
 
     # cast to save_dtype before calculating hashes
     for key in list(state_dict.keys()):

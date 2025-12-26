@@ -56,7 +56,7 @@ class TestConfigInstantiation:
         assert hasattr(config, 'max_train_epochs')
         assert hasattr(config, 'train_batch_size')
         
-    def test_network_config_instantiation(self):
+    def test_adapter_config_instantiation(self):
         """Test PeftConfig instantiation with defaults."""
         config = PeftConfig()
         assert config is not None
@@ -149,7 +149,7 @@ class TestConfigDefaults:
         assert config.learning_rate == 2.0e-6
         assert config.lr_scheduler == "constant"
         
-    def test_network_config_defaults(self):
+    def test_adapter_config_defaults(self):
         """Test PeftConfig default values."""
         config = PeftConfig()
         assert config.dim is None  # None by default

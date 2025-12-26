@@ -130,7 +130,7 @@ accelerate launch --num_cpu_threads_per_process 1 flux_train_network.py \
   --output_dir="<output directory>" \
   --output_name="my_flux_lora" \
   --save_model_as=safetensors \
-  --module=networks.lora_flux \
+  --module=adapters.lora_flux \
   --dim=16 \
   --alpha=1 \
   --learning_rate=1e-4 \
@@ -195,7 +195,7 @@ Chromaモデルを学習したい場合は、`--model_type=chroma`を指定し�
 
 ### 4.1. Explanation of Key Options / 主要なコマンドライン引数の解説
 
-The script adds FLUX.1 specific arguments. For common arguments (like `--output_dir`, `--output_name`, `--network_module`, etc.), see the [`train_network.py` guide](train_network.md).
+The script adds FLUX.1 specific arguments. For common arguments (like `--output_dir`, `--output_name`, `--adapter_module`, etc.), see the [`train_network.py` guide](train_network.md).
 
 #### Model-related [Required]
 
@@ -245,7 +245,7 @@ The script adds FLUX.1 specific arguments. For common arguments (like `--output_
 <details>
 <summary>日本語</summary>
 
-[`train_network.py`のガイド](train_network.md)で説明されている引数に加え、以下のFLUX.1特有の引数を指定します。共通の引数（`--output_dir`, `--output_name`, `--network_module`, `--network_dim`, `--network_alpha`, `--learning_rate`など）については、上記ガイドを参照してください。
+[`train_network.py`のガイド](train_network.md)で説明されている引数に加え、以下のFLUX.1特有の引数を指定します。共通の引数（`--output_dir`, `--output_name`, `--adapter_module`, `--network_dim`, `--network_alpha`, `--learning_rate`など）については、上記ガイドを参照してください。
 
 コマンドラインの例と詳細な引数の説明は英語のドキュメントを参照してください。
 

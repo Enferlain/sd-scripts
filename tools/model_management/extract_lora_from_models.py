@@ -13,7 +13,7 @@ from safetensors.torch import save_file
 from tqdm import tqdm
 
 from library.models import model_util, sdxl_model_util
-from library.networks import lora
+from library.adapters import lora
 from library.utils.common_utils import setup_logging
 from library.utils import sai_model_spec
 
@@ -120,16 +120,16 @@ def svd(
     else:
         kwargs = {"conv_dim": conv_dim, "conv_alpha": conv_dim}
 
-    lora_network_o = lora.create_network(1.0, dim, dim, None, text_encoders_o, unet_o, **kwargs)
-    lora_network_t = lora.create_network(1.0, dim, dim, None, text_encoders_t, unet_t, **kwargs)
-    assert len(lora_network_o.text_encoder_loras) == len(
-        lora_network_t.text_encoder_loras
+    lora_adapter_o = lora.create_adapter(1.0, dim, dim, None, text_encoders_o, unet_o, **kwargs)
+    lora_adapter_t = lora.create_adapter(1.0, dim, dim, None, text_encoders_t, unet_t, **kwargs)
+    assert len(lora_adapter_o.text_encoder_loras) == len(
+        lora_adapter_t.text_encoder_loras
     ), f"model version is different (SD1.x vs SD2.x) / それぞれのモデルのバージョンが違います（SD1.xベースとSD2.xベース） "
 
     # get diffs
     diffs = {}
     text_encoder_different = False
-    for i, (lora_o, lora_t) in enumerate(zip(lora_network_o.text_encoder_loras, lora_network_t.text_encoder_loras)):
+    for i, (lora_o, lora_t) in enumerate(zip(lora_adapter_o.text_encoder_loras, lora_adapter_t.text_encoder_loras)):
         lora_name = lora_o.lora_name
         module_o = lora_o.org_module
         module_t = lora_t.org_module
@@ -152,10 +152,10 @@ def svd(
 
     if not text_encoder_different:
         logger.warning("Text encoder is same. Extract U-Net only.")
-        lora_network_o.text_encoder_loras = []
+        lora_adapter_o.text_encoder_loras = []
         diffs = {}  # clear diffs
 
-    for i, (lora_o, lora_t) in enumerate(zip(lora_network_o.unet_loras, lora_network_t.unet_loras)):
+    for i, (lora_o, lora_t) in enumerate(zip(lora_adapter_o.unet_loras, lora_adapter_t.unet_loras)):
         lora_name = lora_o.lora_name
         module_o = lora_o.org_module
         module_t = lora_t.org_module
@@ -168,8 +168,8 @@ def svd(
         diffs[lora_name] = diff
 
     # clear LoRA peft, target U-Net to save memory
-    del lora_network_o
-    del lora_network_t
+    del lora_adapter_o
+    del lora_adapter_t
     del unet_t
 
     # make LoRA with svd
@@ -233,10 +233,10 @@ def svd(
         lora_sd[lora_name + ".alpha"] = torch.tensor(down_weight.size()[0])
 
     # load state dict to LoRA and save it
-    lora_network_save, lora_sd = lora.create_network_from_weights(1.0, None, None, text_encoders_o, unet_o, weights_sd=lora_sd)
-    lora_network_save.apply_to(text_encoders_o, unet_o)  # create internal module references for state_dict
+    lora_adapter_save, lora_sd = lora.create_adapter_from_weights(1.0, None, None, text_encoders_o, unet_o, weights_sd=lora_sd)
+    lora_adapter_save.apply_to(text_encoders_o, unet_o)  # create internal module references for state_dict
 
-    info = lora_network_save.load_state_dict(lora_sd)
+    info = lora_adapter_save.load_state_dict(lora_sd)
     logger.info(f"Loading extracted LoRA weights: {info}")
 
     dir_name = os.path.dirname(save_to)
@@ -252,10 +252,10 @@ def svd(
     metadata = {
         "ss_v2": str(v2),
         "ss_base_model_version": model_version,
-        "ss_network_module": "networks.lora",
-        "ss_network_dim": str(dim),
-        "ss_network_alpha": str(float(dim)),
-        "ss_network_args": json.dumps(net_kwargs),
+        "ss_adapter_module": "adapters.lora",
+        "ss_adapter_rank": str(dim),
+        "ss_adapter_alpha": str(float(dim)),
+        "ss_adapter_args": json.dumps(net_kwargs),
     }
 
     if not no_metadata:
@@ -263,7 +263,7 @@ def svd(
         sai_metadata = sai_model_spec.build_metadata(None, v2, v_parameterization, sdxl, True, False, time.time(), title=title)
         metadata.update(sai_metadata)
 
-    lora_network_save.save_weights(save_to, save_dtype, metadata)
+    lora_adapter_save.save_weights(save_to, save_dtype, metadata)
     logger.info(f"LoRA weights are saved to: {save_to}")
 
 

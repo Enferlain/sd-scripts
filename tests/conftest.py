@@ -129,10 +129,10 @@ def mock_training_config():
 
 
 @pytest.fixture
-def mock_network_config():
+def mock_adapter_config():
     """Create a basic PeftConfig for testing."""
     return PeftConfig(
-        module="networks.lora",
+        module="adapters.lora",
         dim=4,
         alpha=1.0,
     )

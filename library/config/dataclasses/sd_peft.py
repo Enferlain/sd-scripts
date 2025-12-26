@@ -24,7 +24,7 @@ class SDPeftConfig:
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     buckets: BucketsConfig = field(default_factory=BucketsConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
-    network: PeftConfig = field(default_factory=PeftConfig)
+    peft: PeftConfig = field(default_factory=PeftConfig)
     saving: SavingConfig = field(default_factory=SavingConfig)
     huggingface: HuggingFaceConfig = field(default_factory=HuggingFaceConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)

@@ -123,10 +123,10 @@ class OFTInfModule(OFTModule):
         # no dropout for inference
         super().__init__(oft_name, org_module, multiplier, dim, alpha)
         self.enabled = True
-        self.network: OFTNetwork = None
+        self.adapter: OFTAdapter = None
 
-    def set_network(self, network):
-        self.network = network
+    def set_adapter(self, adapter):
+        self.adapter = adapter
 
     def forward(self, x, scale=None):
         if not self.enabled:
@@ -152,27 +152,26 @@ class OFTInfModule(OFTModule):
         self.org_module[0].load_state_dict(org_sd)
 
 
-def create_network(
+def create_adapter(
     multiplier: float,
-    network_dim: Optional[int],
-    network_alpha: Optional[float],
+    adapter_rank: Optional[int],
+    adapter_alpha: Optional[float],
     vae: AutoencoderKL,
     text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
     unet,
     neuron_dropout: Optional[float] = None,
     **kwargs,
 ):
-    if network_dim is None:
-        network_dim = 4  # default
-    if network_alpha is None:  # should be set
+    if adapter_rank is None:
+        adapter_rank = 4  # default
+    if adapter_alpha is None:  # should be set
         logger.info(
-            "alpha is not set, use default value 1e-3 / network_alphaが設定されていないのでデフォルト値 1e-3 を使用します"
+            "alpha is not set, use default value 1e-3"
         )
-        network_alpha = 1e-3
-    elif network_alpha >= 1:
+        adapter_alpha = 1e-3
+    elif adapter_alpha >= 1:
         logger.warning(
             "alpha is too large (>=1, maybe default value is too large), please consider to set smaller value like 1e-3"
-            " / network_alphaが大きすぎるようです(>=1, デフォルト値が大きすぎる可能性があります)。1e-3のような小さな値を推奨"
         )
 
     enable_all_linear = kwargs.get("enable_all_linear", None)
@@ -182,21 +181,21 @@ def create_network(
     if enable_conv is not None:
         enable_conv = bool(enable_conv)
 
-    network = OFTNetwork(
+    adapter = OFTAdapter(
         text_encoder,
         unet,
         multiplier=multiplier,
-        dim=network_dim,
-        alpha=network_alpha,
+        dim=adapter_rank,
+        alpha=adapter_alpha,
         enable_all_linear=enable_all_linear,
         enable_conv=enable_conv,
         varbose=True,
     )
-    return network
+    return adapter
 
 
 # Create peft from weights for inference, weights are not loaded here (because can be merged)
-def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
+def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import load_file
@@ -229,7 +228,7 @@ def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weigh
         all_linear = False
 
     module_class = OFTInfModule if for_inference else OFTModule
-    network = OFTNetwork(
+    adapter = OFTAdapter(
         text_encoder,
         unet,
         multiplier=multiplier,
@@ -239,10 +238,10 @@ def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weigh
         enable_conv=has_conv2d,
         module_class=module_class,
     )
-    return network, weights_sd
+    return adapter, weights_sd
 
 
-class OFTNetwork(torch.nn.Module):
+class OFTAdapter(torch.nn.Module):
     UNET_TARGET_REPLACE_MODULE_ATTN_ONLY = ["CrossAttention"]
     UNET_TARGET_REPLACE_MODULE_ALL_LINEAR = ["Transformer2DModel"]
     UNET_TARGET_REPLACE_MODULE_CONV2D_3X3 = ["ResnetBlock2D", "Downsample2D", "Upsample2D"]
@@ -267,7 +266,7 @@ class OFTNetwork(torch.nn.Module):
         self.alpha = alpha
 
         logger.info(
-            f"create OFT network. num blocks: {self.dim}, constraint: {self.alpha}, multiplier: {self.multiplier}, enable_conv: {enable_conv}, enable_all_linear: {enable_all_linear}"
+            f"create OFT adapter. num blocks: {self.dim}, constraint: {self.alpha}, multiplier: {self.multiplier}, enable_conv: {enable_conv}, enable_all_linear: {enable_all_linear}"
         )
 
         # create module instances
@@ -301,11 +300,11 @@ class OFTNetwork(torch.nn.Module):
 
         # extend U-Net target modules if conv2d 3x3 is enabled, or load from weights
         if enable_all_linear:
-            target_modules = OFTNetwork.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR
+            target_modules = OFTAdapter.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR
         else:
-            target_modules = OFTNetwork.UNET_TARGET_REPLACE_MODULE_ATTN_ONLY
+            target_modules = OFTAdapter.UNET_TARGET_REPLACE_MODULE_ATTN_ONLY
         if enable_conv:
-            target_modules += OFTNetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+            target_modules += OFTAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
 
         self.unet_ofts: List[OFTModule] = create_modules(unet, target_modules)
         logger.info(f"create OFT for U-Net: {len(self.unet_ofts)} modules.")

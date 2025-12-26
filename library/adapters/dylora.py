@@ -175,19 +175,19 @@ class DyLoRAModule(torch.nn.Module):
         super()._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
 
 
-def create_network(
+def create_adapter(
     multiplier: float,
-    network_dim: Optional[int],
-    network_alpha: Optional[float],
+    adapter_rank: Optional[int],
+    adapter_alpha: Optional[float],
     vae: AutoencoderKL,
     text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
     unet,
     **kwargs,
 ):
-    if network_dim is None:
-        network_dim = 4  # default
-    if network_alpha is None:
-        network_alpha = 1.0
+    if adapter_rank is None:
+        adapter_rank = 4  # default
+    if adapter_alpha is None:
+        adapter_alpha = 1.0
 
     # extract dim/alpha for conv2d, and block dim
     conv_dim = kwargs.get("conv_dim", None)
@@ -195,7 +195,7 @@ def create_network(
     unit = kwargs.get("unit", None)
     if conv_dim is not None:
         conv_dim = int(conv_dim)
-        assert conv_dim == network_dim, "conv_dim must be same as dim"
+        assert conv_dim == adapter_rank, "conv_dim must be same as dim"
         if conv_alpha is None:
             conv_alpha = 1.0
         else:
@@ -206,12 +206,12 @@ def create_network(
     else:
         unit = 1
 
-    network = DyLoRANetwork(
+    adapter = DyLoRAAdapter(
         text_encoder,
         unet,
         multiplier=multiplier,
-        lora_dim=network_dim,
-        alpha=network_alpha,
+        lora_dim=adapter_rank,
+        alpha=adapter_alpha,
         apply_to_conv=conv_dim is not None,
         unit=unit,
         varbose=True,
@@ -224,13 +224,13 @@ def create_network(
     loraplus_unet_lr_ratio = float(loraplus_unet_lr_ratio) if loraplus_unet_lr_ratio is not None else None
     loraplus_text_encoder_lr_ratio = float(loraplus_text_encoder_lr_ratio) if loraplus_text_encoder_lr_ratio is not None else None
     if loraplus_lr_ratio is not None or loraplus_unet_lr_ratio is not None or loraplus_text_encoder_lr_ratio is not None:
-        network.set_loraplus_lr_ratio(loraplus_lr_ratio, loraplus_unet_lr_ratio, loraplus_text_encoder_lr_ratio)
+        adapter.set_loraplus_lr_ratio(loraplus_lr_ratio, loraplus_unet_lr_ratio, loraplus_text_encoder_lr_ratio)
 
-    return network
+    return adapter
 
 
 # Create peft from weights for inference, weights are not loaded here (because can be merged)
-def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
+def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import load_file
@@ -261,13 +261,13 @@ def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weigh
 
     module_class = DyLoRAModule
 
-    network = DyLoRANetwork(
+    adapter = DyLoRAAdapter(
         text_encoder, unet, multiplier=multiplier, modules_dim=modules_dim, modules_alpha=modules_alpha, module_class=module_class
     )
-    return network, weights_sd
+    return adapter, weights_sd
 
 
-class DyLoRANetwork(torch.nn.Module):
+class DyLoRAAdapter(torch.nn.Module):
     UNET_TARGET_REPLACE_MODULE = ["Transformer2DModel"]
     UNET_TARGET_REPLACE_MODULE_CONV2D_3X3 = ["ResnetBlock2D", "Downsample2D", "Upsample2D"]
     TEXT_ENCODER_TARGET_REPLACE_MODULE = ["CLIPAttention", "CLIPSdpaAttention", "CLIPMLP"]
@@ -308,7 +308,7 @@ class DyLoRANetwork(torch.nn.Module):
 
         # create module instances
         def create_modules(is_unet, root_module: torch.nn.Module, target_replace_modules) -> List[DyLoRAModule]:
-            prefix = DyLoRANetwork.LORA_PREFIX_UNET if is_unet else DyLoRANetwork.LORA_PREFIX_TEXT_ENCODER
+            prefix = DyLoRAAdapter.LORA_PREFIX_UNET if is_unet else DyLoRAAdapter.LORA_PREFIX_TEXT_ENCODER
             loras = []
             for name, module in root_module.named_modules():
                 if module.__class__.__name__ in target_replace_modules:
@@ -351,16 +351,16 @@ class DyLoRANetwork(torch.nn.Module):
                 index = None
                 logger.info("create LoRA for Text Encoder")
 
-            text_encoder_loras = create_modules(False, text_encoder, DyLoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE)
+            text_encoder_loras = create_modules(False, text_encoder, DyLoRAAdapter.TEXT_ENCODER_TARGET_REPLACE_MODULE)
             self.text_encoder_loras.extend(text_encoder_loras)
 
-        # self.text_encoder_loras = create_modules(False, text_encoder, DyLoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE)
+        # self.text_encoder_loras = create_modules(False, text_encoder, DyLoRAAdapter.TEXT_ENCODER_TARGET_REPLACE_MODULE)
         logger.info(f"create LoRA for Text Encoder: {len(self.text_encoder_loras)} modules.")
 
         # extend U-Net target modules if conv2d 3x3 is enabled, or load from weights
-        target_modules = DyLoRANetwork.UNET_TARGET_REPLACE_MODULE
+        target_modules = DyLoRAAdapter.UNET_TARGET_REPLACE_MODULE
         if modules_dim is not None or self.apply_to_conv:
-            target_modules += DyLoRANetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+            target_modules += DyLoRAAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
 
         self.unet_loras = create_modules(True, unet, target_modules)
         logger.info(f"create LoRA for U-Net: {len(self.unet_loras)} modules.")
@@ -408,9 +408,9 @@ class DyLoRANetwork(torch.nn.Module):
     def merge_to(self, text_encoder, unet, weights_sd, dtype, device):
         apply_text_encoder = apply_unet = False
         for key in weights_sd.keys():
-            if key.startswith(DyLoRANetwork.LORA_PREFIX_TEXT_ENCODER):
+            if key.startswith(DyLoRAAdapter.LORA_PREFIX_TEXT_ENCODER):
                 apply_text_encoder = True
-            elif key.startswith(DyLoRANetwork.LORA_PREFIX_UNET):
+            elif key.startswith(DyLoRAAdapter.LORA_PREFIX_UNET):
                 apply_unet = True
 
         if apply_text_encoder:
@@ -528,7 +528,7 @@ class DyLoRANetwork(torch.nn.Module):
             torch.save(state_dict, file)
 
     # mask is a tensor with values from 0 to 1
-    def set_region(self, sub_prompt_index, is_last_network, mask):
+    def set_region(self, sub_prompt_index, is_last_adapter, mask):
         pass
 
     def set_current_generation(self, batch_size, num_sub_prompts, width, height, shared):

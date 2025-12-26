@@ -1,10 +1,10 @@
-dim: null
-alpha: 1.0
+adapter_rank: null
+adapter_alpha: 1.0
 neuron_dropout: null
 weights: null
 module: null
 args: null
-dim_from_weights: false
+adapter_rank_from_weights: false
 scale_weight_norms: null
 base_weights: null
 base_weights_multiplier: null

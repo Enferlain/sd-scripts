@@ -2,7 +2,7 @@
 
 Total: **~200 fields** across 17 dataclasses
 
-## ✅ Completed (2025-12-25)
+## ✅ Completed (2025-12-25 & 2025-12-26)
 
 | Task                                                         | Status  |
 | ------------------------------------------------------------ | ------- |
@@ -14,15 +14,17 @@ Total: **~200 fields** across 17 dataclasses
 | Rename `cfg.network` → `cfg.peft` in all scripts             | ✅ Done |
 | Rename `configs/network/` → `configs/peft/`                  | ✅ Done |
 | Update `validation.py` and tests                             | ✅ Done |
+| **Rename `network` → `adapter` across codebase**             | ✅ Done |
+| **Rename config fields: `dim` → `adapter_rank`, etc.**       | ✅ Done |
+| **Rename folder: `library/networks/` → `library/adapters/`** | ✅ Done |
+| **Rename classes: `LoRANetwork` → `LoRAAdapter`, etc.**      | ✅ Done |
 
 ## 🔜 Remaining
 
-| Task                                               | Notes                              |
-| -------------------------------------------------- | ---------------------------------- |
-| Rename `network_*` fields to drop prefix           | e.g., `network_dim` → `dim`        |
-| Remove `network_train_unet_only/text_encoder_only` | Replace with LR = 0 pattern        |
-| Move SDXL cache fields to `performance.memory`     | See SDXLConfig Dissolution section |
-| Nested restructuring for data/output/loss          | Major refactor                     |
+| Task                                           | Notes                              |
+| ---------------------------------------------- | ---------------------------------- |
+| Move SDXL cache fields to `performance.memory` | See SDXLConfig Dissolution section |
+| Nested restructuring for data/output/loss      | Major refactor                     |
 
 ---
 
@@ -101,7 +103,7 @@ Current `network_*` fields in `NetworkConfig`:
 
 - `network_dim` → keep as `dim` (drop prefix in peft context)
 - `network_alpha` → keep as `alpha`
-- `network_module` → keep as `module`
+- `adapter_module` → keep as `module`
 - `network_args` → keep as `args`
 - `network_dropout` → `neuron_dropout` (clarity vs rank/module dropout)
 
@@ -109,7 +111,7 @@ Current `network_*` fields in `NetworkConfig`:
 
 ### Undocumented kwargs in lora.py
 
-`create_network()` accepts many kwargs **not exposed in config**:
+`create_adapter()` accepts many kwargs **not exposed in config**:
 
 | kwarg                            | Type  | Purpose                   |
 | -------------------------------- | ----- | ------------------------- |

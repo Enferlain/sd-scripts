@@ -165,7 +165,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def get_noise_pred_and_target(
         self, cfg, accelerator, noise_scheduler, latents, batch, text_encoder_conds,
-        unet, network, weight_dtype, train_unet, fixed_timesteps=None, is_train=True,
+        unet, adapter, weight_dtype, train_unet, fixed_timesteps=None, is_train=True,
         min_timestep_override=None, max_timestep_override=None, global_step=0,
     ):
         """Sample noise, call UNet, get noise prediction target."""
@@ -198,11 +198,11 @@ class SdPeftStrategy(PeftTrainingStrategy):
                     diff_output_pr_indices.append(i)
 
             if len(diff_output_pr_indices) > 0:
-                network.set_multiplier(0.0)
+                adapter.set_multiplier(0.0)
                 with torch.no_grad(), accelerator.autocast():
                     noise_pred_prior = self.call_unet(cfg, accelerator, unet, noisy_latents, timesteps,
                                                        text_encoder_conds, batch, weight_dtype, indices=diff_output_pr_indices)
-                network.set_multiplier(1.0)
+                adapter.set_multiplier(1.0)
                 target[diff_output_pr_indices] = noise_pred_prior.to(target.dtype)
 
         return noise_pred, target, timesteps, None
@@ -220,7 +220,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         return loss
 
     def process_batch(
-        self, batch, text_encoders, unet, network, vae, noise_scheduler, vae_dtype, weight_dtype,
+        self, batch, text_encoders, unet, adapter, vae, noise_scheduler, vae_dtype, weight_dtype,
         accelerator, cfg, text_encoding_strategy: strategy_base.TextEncodingStrategy,
         tokenize_strategy: strategy_base.TokenizeStrategy, is_train=True, train_text_encoder=True,
         train_unet=True, edm2_model=None, min_timestep_override=None, max_timestep_override=None, global_step=0,
@@ -273,7 +273,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
                         text_encoder_conds[i] = encoded_text_encoder_conds[i]
 
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
-            cfg, accelerator, noise_scheduler, latents, batch, text_encoder_conds, unet, network,
+            cfg, accelerator, noise_scheduler, latents, batch, text_encoder_conds, unet, adapter,
             weight_dtype, train_unet, is_train=is_train, min_timestep_override=min_timestep_override,
             max_timestep_override=max_timestep_override, global_step=global_step)
 
@@ -311,7 +311,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         return loss.mean(), pre_scaling_loss, loss_scaled, timesteps
 
     def process_val_batch(
-        self, batch, text_encoders, unet, network, vae, noise_scheduler, vae_dtype, weight_dtype,
+        self, batch, text_encoders, unet, adapter, vae, noise_scheduler, vae_dtype, weight_dtype,
         accelerator, cfg, text_encoding_strategy: strategy_base.TextEncodingStrategy,
         tokenize_strategy: strategy_base.TokenizeStrategy, train_text_encoder=True, train_unet=True,
         timesteps_list: list = [50, 350, 500, 650, 950]
@@ -368,7 +368,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
             for fixed_timesteps in timesteps_list:
                 timesteps = torch.full((batch_size,), fixed_timesteps, dtype=torch.long, device=latents.device)
                 noise_pred, target, _, _ = self.get_noise_pred_and_target(
-                    cfg, accelerator, noise_scheduler, latents, batch, text_encoder_conds, unet, network,
+                    cfg, accelerator, noise_scheduler, latents, batch, text_encoder_conds, unet, adapter,
                     weight_dtype, train_unet, fixed_timesteps, is_train=False)
 
                 loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
@@ -379,7 +379,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def calculate_val_loss(
         self, global_step, epoch_step, train_dataloader, val_loss_recorder, val_dataloader,
-        cyclic_val_dataloader, network, tokenize_strategy, text_encoders, text_encoding_strategy,
+        cyclic_val_dataloader, adapter, tokenize_strategy, text_encoders, text_encoding_strategy,
         unet, vae, noise_scheduler, vae_dtype, weight_dtype, accelerator, cfg, epoch, batch=None, train_text_encoder=True
     ):
         """Calculate validation loss."""
@@ -387,7 +387,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
             return None, None, None
 
         if batch is not None:
-            self.on_step_start(cfg, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train=False)
+            self.on_step_start(cfg, accelerator, adapter, text_encoders, unet, batch, weight_dtype, is_train=False)
 
         rng_states = self.switch_rng_state(int(cfg.dataset.validation_seed) if cfg.dataset.validation_seed else 23, accelerator)
         timesteps_list = ast.literal_eval(cfg.training.validation_timesteps)
@@ -405,7 +405,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
                 batch = next(cyclic_val_dataloader)
                 val_dataloader_state = random.getstate()
                 random.setstate(val_original_state)
-                loss = self.process_val_batch(batch, text_encoders, unet, network, vae, noise_scheduler, vae_dtype,
+                loss = self.process_val_batch(batch, text_encoders, unet, adapter, vae, noise_scheduler, vae_dtype,
                                               weight_dtype, accelerator, cfg, text_encoding_strategy, tokenize_strategy,
                                               train_text_encoder=train_text_encoder, timesteps_list=timesteps_list)
                 total_loss += loss.detach().item()

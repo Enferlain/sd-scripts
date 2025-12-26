@@ -1,5 +1,5 @@
 """
-Unit tests for the pure utility functions in library/networks/lora.py.
+Unit tests for the pure utility functions in library/adapters/lora.py.
 
 These functions handle block learning rate parsing, dims/alphas calculation,
 and don't require heavy model mocks.
@@ -9,13 +9,13 @@ import pytest
 from unittest.mock import patch
 
 # Import the functions and constants we're testing
-from library.networks.lora import (
+from library.adapters.lora import (
     parse_block_lr_kwargs,
     get_block_dims_and_alphas,
     get_block_lr_weight,
     remove_block_dims_and_alphas,
     get_block_index,
-    LoRANetwork,
+    LoRAAdapter,
 )
 
 
@@ -35,14 +35,14 @@ class TestParseBlockLrKwargs:
         result = parse_block_lr_kwargs(is_sdxl=False, nw_kwargs=kwargs)
         assert result is not None
         # For SD1.5: total blocks = 12*2 + 1 = 25
-        assert len(result) == LoRANetwork.NUM_OF_BLOCKS * 2 + LoRANetwork.NUM_OF_MID_BLOCKS
+        assert len(result) == LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS
 
     def test_parses_mid_lr_weight(self):
         """Should parse mid_lr_weight string."""
         kwargs = {"mid_lr_weight": "0.5"}
         result = parse_block_lr_kwargs(is_sdxl=False, nw_kwargs=kwargs)
         assert result is not None
-        assert len(result) == LoRANetwork.NUM_OF_BLOCKS * 2 + LoRANetwork.NUM_OF_MID_BLOCKS
+        assert len(result) == LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS
 
     def test_parses_up_lr_weight_comma_separated(self):
         """Should parse comma-separated up_lr_weight string."""
@@ -74,7 +74,7 @@ class TestParseBlockLrKwargs:
         result = parse_block_lr_kwargs(is_sdxl=True, nw_kwargs=kwargs)
         assert result is not None
         # SDXL: 1 + 9*2 + 3 + 1 = 23
-        expected_len = 1 + LoRANetwork.SDXL_NUM_OF_BLOCKS * 2 + LoRANetwork.SDXL_NUM_OF_MID_BLOCKS + 1
+        expected_len = 1 + LoRAAdapter.SDXL_NUM_OF_BLOCKS * 2 + LoRAAdapter.SDXL_NUM_OF_MID_BLOCKS + 1
         assert len(result) == expected_len
 
 
@@ -83,31 +83,31 @@ class TestGetBlockDimsAndAlphas:
 
     def test_creates_default_dims_when_block_dims_none(self):
         """Should fill all dims with dim when block_dims is None."""
-        network_dim = 16
-        network_alpha = 8.0
+        adapter_rank = 16
+        adapter_alpha = 8.0
         block_dims, block_alphas, conv_block_dims, conv_block_alphas = get_block_dims_and_alphas(
             is_sdxl=False,
             block_dims=None,
             block_alphas=None,
-            network_dim=network_dim,
-            network_alpha=network_alpha,
+            adapter_rank=adapter_rank,
+            adapter_alpha=adapter_alpha,
             conv_block_dims=None,
             conv_block_alphas=None,
             conv_dim=None,
             conv_alpha=None,
         )
         
-        num_blocks = LoRANetwork.NUM_OF_BLOCKS * 2 + LoRANetwork.NUM_OF_MID_BLOCKS  # 25
+        num_blocks = LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS  # 25
         assert len(block_dims) == num_blocks
-        assert all(d == network_dim for d in block_dims)
+        assert all(d == adapter_rank for d in block_dims)
         assert len(block_alphas) == num_blocks
-        assert all(a == network_alpha for a in block_alphas)
+        assert all(a == adapter_alpha for a in block_alphas)
         assert conv_block_dims is None
         assert conv_block_alphas is None
 
     def test_parses_comma_separated_block_dims(self):
         """Should parse comma-separated block_dims string."""
-        num_blocks = LoRANetwork.NUM_OF_BLOCKS * 2 + LoRANetwork.NUM_OF_MID_BLOCKS
+        num_blocks = LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS
         block_dims_str = ",".join(str(i) for i in range(num_blocks))
         block_alphas_str = ",".join(str(float(i)) for i in range(num_blocks))
         
@@ -115,8 +115,8 @@ class TestGetBlockDimsAndAlphas:
             is_sdxl=False,
             block_dims=block_dims_str,
             block_alphas=block_alphas_str,
-            network_dim=4,
-            network_alpha=1.0,
+            adapter_rank=4,
+            adapter_alpha=1.0,
             conv_block_dims=None,
             conv_block_alphas=None,
             conv_dim=None,
@@ -128,22 +128,22 @@ class TestGetBlockDimsAndAlphas:
 
     def test_sdxl_num_blocks(self):
         """SDXL should have 23 blocks."""
-        network_dim = 8
-        network_alpha = 4.0
+        adapter_rank = 8
+        adapter_alpha = 4.0
         
         block_dims, block_alphas, _, _ = get_block_dims_and_alphas(
             is_sdxl=True,
             block_dims=None,
             block_alphas=None,
-            network_dim=network_dim,
-            network_alpha=network_alpha,
+            adapter_rank=adapter_rank,
+            adapter_alpha=adapter_alpha,
             conv_block_dims=None,
             conv_block_alphas=None,
             conv_dim=None,
             conv_alpha=None,
         )
         
-        expected_num_blocks = 1 + LoRANetwork.SDXL_NUM_OF_BLOCKS * 2 + LoRANetwork.SDXL_NUM_OF_MID_BLOCKS + 1
+        expected_num_blocks = 1 + LoRAAdapter.SDXL_NUM_OF_BLOCKS * 2 + LoRAAdapter.SDXL_NUM_OF_MID_BLOCKS + 1
         assert len(block_dims) == expected_num_blocks
 
     def test_sets_conv_block_dims_from_conv_dim(self):
@@ -155,15 +155,15 @@ class TestGetBlockDimsAndAlphas:
             is_sdxl=False,
             block_dims=None,
             block_alphas=None,
-            network_dim=8,
-            network_alpha=4.0,
+            adapter_rank=8,
+            adapter_alpha=4.0,
             conv_block_dims=None,
             conv_block_alphas=None,
             conv_dim=conv_dim,
             conv_alpha=conv_alpha,
         )
         
-        num_blocks = LoRANetwork.NUM_OF_BLOCKS * 2 + LoRANetwork.NUM_OF_MID_BLOCKS
+        num_blocks = LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS
         assert len(conv_block_dims) == num_blocks
         assert all(d == conv_dim for d in conv_block_dims)
         assert len(conv_block_alphas) == num_blocks
@@ -176,8 +176,8 @@ class TestGetBlockDimsAndAlphas:
                 is_sdxl=False,
                 block_dims="1,2,3",  # Only 3, but need 25
                 block_alphas=None,
-                network_dim=4,
-                network_alpha=1.0,
+                adapter_rank=4,
+                adapter_alpha=1.0,
                 conv_block_dims=None,
                 conv_block_alphas=None,
                 conv_dim=None,
@@ -209,7 +209,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRANetwork.NUM_OF_BLOCKS]
+        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
         # Cosine starts from 1.0 (at block 0), decreasing towards 0
         assert down_portion[0] > down_portion[-1]
 
@@ -223,7 +223,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRANetwork.NUM_OF_BLOCKS]
+        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
         # Sine starts from 0.0 (at block 0), increasing towards 1
         assert down_portion[0] < down_portion[-1]
 
@@ -237,7 +237,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRANetwork.NUM_OF_BLOCKS]
+        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
         # First value ~ 0, last value = 1.0
         assert down_portion[0] == pytest.approx(0.0, abs=0.01)
         assert down_portion[-1] == pytest.approx(1.0, abs=0.01)
@@ -252,7 +252,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRANetwork.NUM_OF_BLOCKS]
+        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
         # First value = 1.0, last value ~ 0
         assert down_portion[0] == pytest.approx(1.0, abs=0.01)
         assert down_portion[-1] == pytest.approx(0.0, abs=0.01)
@@ -267,7 +267,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRANetwork.NUM_OF_BLOCKS]
+        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
         assert all(v == 0.0 for v in down_portion)
 
     def test_base_lr_addition(self):
@@ -280,7 +280,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRANetwork.NUM_OF_BLOCKS]
+        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
         assert all(v == 0.5 for v in down_portion)
 
     def test_list_input_for_weights(self):
@@ -337,7 +337,7 @@ class TestGetBlockLrWeight:
         # First 3 should be 0.5, rest should be 1.0
         assert result[0:3] == [0.5, 0.5, 0.5]
         # Entries 3-11 (rest of down) should be 1.0
-        assert all(v == 1.0 for v in result[3:LoRANetwork.NUM_OF_BLOCKS])
+        assert all(v == 1.0 for v in result[3:LoRAAdapter.NUM_OF_BLOCKS])
 
 
 class TestRemoveBlockDimsAndAlphas:
@@ -421,7 +421,7 @@ class TestGetBlockIndex:
     def test_sd_mid_block(self):
         """SD1.5 mid_block should map to index 12."""
         result = get_block_index("lora_unet_mid_block_attentions_0", is_sdxl=False)
-        assert result == LoRANetwork.NUM_OF_BLOCKS  # 12
+        assert result == LoRAAdapter.NUM_OF_BLOCKS  # 12
 
     def test_sdxl_input_blocks(self):
         """SDXL input_blocks should map to 1-9."""

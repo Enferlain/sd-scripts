@@ -16,7 +16,7 @@ from library.utils.common_utils import setup_logging
 
 from library.training.checkpointing import (
     load_metadata_from_safetensors,
-    build_minimum_network_metadata,
+    build_minimum_adapter_metadata,
     precalculate_safetensors_hashes
 )
 
@@ -293,10 +293,10 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
             lora_module_name = key[: key.rfind(".lora_down")]
 
             down_weight = lora_sd[key]
-            network_dim = down_weight.size()[0]
+            adapter_rank = down_weight.size()[0]
 
             up_weight = lora_sd[lora_module_name + ".lora_up.weight"]
-            alpha = lora_sd.get(lora_module_name + ".alpha", network_dim)
+            alpha = lora_sd.get(lora_module_name + ".alpha", adapter_rank)
 
             in_dim = down_weight.size()[1]
             out_dim = up_weight.size()[0]
@@ -318,7 +318,7 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
                 down_weight = down_weight.to(device)
 
             # W <- W + U * D
-            scale = alpha / network_dim
+            scale = alpha / adapter_rank
 
             if lbw:
                 index = get_lbw_block_index(key, is_sdxl)
@@ -399,7 +399,7 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
         network_args = {"conv_dim": new_conv_rank, "conv_alpha": new_conv_rank}
     else:
         network_args = None
-    metadata = build_minimum_network_metadata(v2, base_model, "networks.lora", dims, alphas, network_args)
+    metadata = build_minimum_adapter_metadata(v2, base_model, "adapters.lora", dims, alphas, network_args)
 
     return merged_lora_sd, metadata, v2 == "True", base_model
 

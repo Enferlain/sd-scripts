@@ -2,7 +2,7 @@
 import pytest
 import torch
 from unittest.mock import patch, MagicMock
-from library.networks import lora_utils
+from library.adapters import lora_utils
 
 class TestLoraUtils:
     
@@ -53,7 +53,7 @@ class TestLoraUtils:
 
     # === load_safetensors_with_lora_and_fp8 Tests ===
 
-    @patch("library.networks.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
+    @patch("library.adapters.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
     def test_load_lora_merge_logic_linear(self, mock_load):
         """
         Test that LoRA weights are merged correctly for Linear layers (2D weights).
@@ -112,7 +112,7 @@ class TestLoraUtils:
         expected_weight = torch.tensor([[3.0, 0.0], [0.0, 1.0]])
         assert torch.allclose(result_sd["layer.weight"], expected_weight)
 
-    @patch("library.networks.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
+    @patch("library.adapters.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
     def test_load_lora_conv2d_1x1(self, mock_load):
         """Test LoRA merge for Conv2d 1x1 layers."""
         calc_device = torch.device("cpu")
@@ -154,8 +154,8 @@ class TestLoraUtils:
         expected = torch.full((2, 2, 1, 1), 2.0)
         assert torch.allclose(result_sd["layer.weight"], expected)
 
-    @patch("library.networks.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
-    @patch("library.networks.lora_utils.logger")
+    @patch("library.adapters.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
+    @patch("library.adapters.lora_utils.logger")
     def test_warns_on_unused_lora_keys(self, mock_logger, mock_load):
         """Test that warning is logged for LoRA keys not matched to any model weight."""
         calc_device = torch.device("cpu")
@@ -184,7 +184,7 @@ class TestLoraUtils:
         mock_logger.warning.assert_called_once()
         assert "not all LoRA keys are used" in mock_logger.warning.call_args[0][0]
 
-    @patch("library.networks.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
+    @patch("library.adapters.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
     @patch("os.path.exists", return_value=True)
     def test_handles_split_safetensors_files(self, mock_exists, mock_load):
         """Test that split model files (e.g., 00001-of-00003) are correctly discovered."""
@@ -210,7 +210,7 @@ class TestLoraUtils:
         assert "model-00002-of-00003.safetensors" in model_files_arg
         assert "model-00003-of-00003.safetensors" in model_files_arg
 
-    @patch("library.networks.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
+    @patch("library.adapters.lora_utils.load_safetensors_with_fp8_optimization_and_hook")
     def test_load_lora_multiple_loras(self, mock_load):
         """Test merging multiple LoRAs."""
         calc_device = torch.device("cpu")

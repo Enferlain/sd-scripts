@@ -27,7 +27,7 @@ class SDXLPeftConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
     buckets: BucketsConfig = field(default_factory=BucketsConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
-    network: PeftConfig = field(default_factory=PeftConfig)
+    peft: PeftConfig = field(default_factory=PeftConfig)
     sdxl: SDXLConfig = field(default_factory=SDXLConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)

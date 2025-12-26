@@ -25,7 +25,7 @@ class ControlNetDataset(BaseDataset):
             subsets: Sequence[ControlNetSubset],
             batch_size: int,
             resolution,
-            network_multiplier: float,
+            adapter_multiplier: float,
             enable_bucket: bool,
             min_bucket_reso: int,
             max_bucket_reso: int,
@@ -36,7 +36,7 @@ class ControlNetDataset(BaseDataset):
             validation_seed: Optional[int],
             resize_interpolation: Optional[str] = None,
     ) -> None:
-        super().__init__(resolution, network_multiplier, debug_dataset, resize_interpolation)
+        super().__init__(resolution, adapter_multiplier, debug_dataset, resize_interpolation)
 
         db_subsets = []
         for subset in subsets:
@@ -78,7 +78,7 @@ class ControlNetDataset(BaseDataset):
             True,
             batch_size,
             resolution,
-            network_multiplier,
+            adapter_multiplier,
             enable_bucket,
             min_bucket_reso,
             max_bucket_reso,

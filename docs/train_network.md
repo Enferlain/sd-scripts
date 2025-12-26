@@ -76,7 +76,7 @@ accelerate launch --num_cpu_threads_per_process 1 sd_peft.py
  --output_dir="<output directory for training results>" 
  --output_name="my_lora" 
  --save_model_as=safetensors 
- --module=networks.lora 
+ --module=adapters.lora 
  --dim=16 
  --alpha=1 
  --learning_rate=1e-4 
@@ -137,7 +137,7 @@ Next, we'll explain the main command-line arguments.
 
 #### LoRA Parameters / LoRA パラメータ
 
-* `--network_module=networks.lora` **[Required]**
+* `--adapter_module=networks.lora` **[Required]**
   * Specifies the type of network to train. For LoRA, specify `networks.lora`.
 * `--network_dim=16` **[Required]**
   * Specifies the rank (dimension) of LoRA. Higher values increase expressiveness but also increase file size and computational cost. Values between 4 and 128 are commonly used. There is no default (module dependent).
@@ -215,7 +215,7 @@ Next, we'll explain the main command-line arguments.
 
 #### LoRA パラメータ
 
-*   `--network_module=networks.lora` **[必須]**
+*   `--adapter_module=networks.lora` **[必須]**
     *   学習するネットワークの種別を指定します。LoRA の場合は `networks.lora` を指定します。
 *   `--network_dim=16` **[必須]**
     *   LoRA のランク (rank / 次元数) を指定します。値が大きいほど表現力は増しますが、ファイルサイズと計算コストが増加します。一般的には 4〜128 程度の値が使われます。デフォルトは指定されていません（モジュール依存）。

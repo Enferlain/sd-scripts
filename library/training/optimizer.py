@@ -62,9 +62,9 @@ def should_train_unet(optimizer_config: OptimizerConfig) -> bool:
     return unet_lr is None or unet_lr > 0
 
 
-def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: PeftConfig, dataset_config: DatasetConfig, network):
-    if isinstance(network_config.orthograd_targets, str):
-        orthograd_targets = ast.literal_eval(network_config.orthograd_targets)
+def prepare_optimizer(optimizer_config: OptimizerConfig, adapter_config: PeftConfig, dataset_config: DatasetConfig, adapter):
+    if isinstance(adapter_config.orthograd_targets, str):
+        orthograd_targets = ast.literal_eval(adapter_config.orthograd_targets)
     else:
         orthograd_targets = [
             "lora_down.weight",
@@ -130,10 +130,10 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: PeftCon
     raw_te_lr = optimizer_config.learning_rates.text_encoders
 
     # Check if peft supports multiple text encoder learning rates
-    support_multiple_lrs = hasattr(network, "prepare_optimizer_params_with_multiple_te_lrs")
+    support_multiple_lrs = hasattr(adapter, "prepare_optimizer_params_with_multiple_te_lrs")
     
     # Normalize text_encoder_lr based on peft capabilities
-    if support_multiple_lrs or (getattr(network_config, "module", None) == "lycoris.kohya"):
+    if support_multiple_lrs or (getattr(adapter_config, "module", None) == "lycoris.kohya"):
         text_encoder_lr = raw_te_lr
     else:
         # Single TE LR mode - take first element if list
@@ -145,13 +145,13 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: PeftCon
     try:
         if support_multiple_lrs:
             # only flux atm via Kohya's
-            results = network.prepare_optimizer_params_with_multiple_te_lrs(text_encoder_lr=text_encoder_lr,
+            results = adapter.prepare_optimizer_params_with_multiple_te_lrs(text_encoder_lr=text_encoder_lr,
                                                                             unet_lr=unet_lr,
                                                                             learning_rate=optimizer_config.learning_rate,
                                                                             apply_orthograd=apply_orthograd,
                                                                             orthograd_targets=orthograd_targets)
         else:
-            results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
+            results = adapter.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
                                                        unet_lr=unet_lr,
                                                        learning_rate=optimizer_config.learning_rate,
                                                        apply_orthograd=apply_orthograd,
@@ -162,7 +162,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, network_config: PeftCon
             trainable_params = results
             lr_descriptions = None
     except TypeError as e:
-        results = network.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
+        results = adapter.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
                                                    unet_lr=unet_lr,
                                                    learning_rate=optimizer_config.learning_rate,
                                                    apply_orthograd=apply_orthograd,

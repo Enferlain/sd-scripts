@@ -49,7 +49,7 @@ Scripts (contain training loops):     Library Modules:
 | Category               | Items                                        | Priority |
 | ---------------------- | -------------------------------------------- | -------- |
 | **Checkpoint I/O**     | `load_models_from_*`, `save_*_checkpoint`    | High     |
-| **Network Classes**    | `LoRANetwork.apply_to()`, `create_network()` | Medium   |
+| **Network Classes**    | `LoRAAdapter.apply_to()`, `create_adapter()` | Medium   |
 | **Sample Generation**  | `sample_images_common`, inference pipeline   | Medium   |
 | **Full Training Loop** | Config → Trainer → Step                      | High     |
 
@@ -64,8 +64,9 @@ Scripts (contain training loops):     Library Modules:
 
 ### Completed
 
-- **Learning Rate Consolidation**: Unified `unet_lr`, `text_encoder_lr`, `learning_rate_te1/te2`, `block_lr` into `optimizer.learning_rates`. **Still needs active investigation for missed sections.**
+- **Learning Rate Consolidation**: Unified `unet_lr`, `text_encoder_lr`, `learning_rate_te1/te2`, `block_lr` into `optimizer.learning_rates`.
 - **Config Key Rename**: `cfg.network` → `cfg.peft` across all scripts and library modules
+- **Network → Adapter Rename**: Renamed folder, classes, functions, variables, and config fields from `network` to `adapter` terminology
 - **Legacy Cleanup**: Removed unused `@property` aliases and fallback logic from optimizer.py
 - **Train Text Encoder Options**: Consolidated via `optimizer.learning_rates` usage (implicit vs explicit)
 - **Schema 1 Refactor**: Unified configuration schema for PEFT/Fine-tuning scripts

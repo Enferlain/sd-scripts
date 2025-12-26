@@ -155,10 +155,10 @@ class LoRAInfModule(LoRAModule):
             self.regional = True
             self.use_sub_prompt = False
 
-        self.network: LoRANetwork = None
+        self.adapter: LoRAAdapter = None
 
-    def set_network(self, network):
-        self.network = network
+    def set_adapter(self, adapter):
+        self.adapter = adapter
 
     # freezeしてマージする
     def merge_to(self, sd, dtype, device):
@@ -231,7 +231,7 @@ class LoRAInfModule(LoRAModule):
         if not self.enabled:
             return self.org_forward(x)
 
-        if self.network is None or self.network.sub_prompt_index is None:
+        if self.adapter is None or self.adapter.sub_prompt_index is None:
             return self.default_forward(x)
         if not self.regional and not self.use_sub_prompt:
             return self.default_forward(x)
@@ -249,13 +249,13 @@ class LoRAInfModule(LoRAModule):
         else:
             area = x.size()[1]
 
-        mask = self.network.mask_dic.get(area, None)
+        mask = self.adapter.mask_dic.get(area, None)
         if mask is None or len(x.size()) == 2:
             # emb_layers in SDXL doesn't have mask
             # if "emb" not in self.lora_name:
             #     print(f"mask is None for resolution {self.lora_name}, {area}, {x.size()}")
             mask_size = (1, x.size()[1]) if len(x.size()) == 2 else (1, *x.size()[1:-1], 1)
-            return torch.ones(mask_size, dtype=x.dtype, device=x.device) / self.network.num_sub_prompts
+            return torch.ones(mask_size, dtype=x.dtype, device=x.device) / self.adapter.num_sub_prompts
         if len(x.size()) == 3:
             mask = torch.reshape(mask, (1, -1, 1))
         return mask
@@ -264,7 +264,7 @@ class LoRAInfModule(LoRAModule):
         if "attn2_to_out" in self.lora_name:
             return self.to_out_forward(x)
 
-        if self.network.mask_dic is None:  # sub_prompt_index >= 3
+        if self.adapter.mask_dic is None:  # sub_prompt_index >= 3
             return self.default_forward(x)
 
         # apply mask for LoRA result
@@ -278,88 +278,88 @@ class LoRAInfModule(LoRAModule):
         x = self.org_forward(x)
         x = x + lx
 
-        if "attn2_to_q" in self.lora_name and self.network.is_last_network:
+        if "attn2_to_q" in self.lora_name and self.adapter.is_last_adapter:
             x = self.postp_to_q(x)
 
         return x
 
     def postp_to_q(self, x):
         # repeat x to num_sub_prompts
-        has_real_uncond = x.size()[0] // self.network.batch_size == 3
-        qc = self.network.batch_size  # uncond
-        qc += self.network.batch_size * self.network.num_sub_prompts  # cond
+        has_real_uncond = x.size()[0] // self.adapter.batch_size == 3
+        qc = self.adapter.batch_size  # uncond
+        qc += self.adapter.batch_size * self.adapter.num_sub_prompts  # cond
         if has_real_uncond:
-            qc += self.network.batch_size  # real_uncond
+            qc += self.adapter.batch_size  # real_uncond
 
         query = torch.zeros((qc, x.size()[1], x.size()[2]), device=x.device, dtype=x.dtype)
-        query[: self.network.batch_size] = x[: self.network.batch_size]
+        query[: self.adapter.batch_size] = x[: self.adapter.batch_size]
 
-        for i in range(self.network.batch_size):
-            qi = self.network.batch_size + i * self.network.num_sub_prompts
-            query[qi : qi + self.network.num_sub_prompts] = x[self.network.batch_size + i]
+        for i in range(self.adapter.batch_size):
+            qi = self.adapter.batch_size + i * self.adapter.num_sub_prompts
+            query[qi : qi + self.adapter.num_sub_prompts] = x[self.adapter.batch_size + i]
 
         if has_real_uncond:
-            query[-self.network.batch_size :] = x[-self.network.batch_size :]
+            query[-self.adapter.batch_size :] = x[-self.adapter.batch_size :]
 
         # logger.info(f"postp_to_q {self.lora_name} {x.size()} {query.size()} {self.peft.num_sub_prompts}")
         return query
 
     def sub_prompt_forward(self, x):
-        if x.size()[0] == self.network.batch_size:  # if uncond in text_encoder, do not apply LoRA
+        if x.size()[0] == self.adapter.batch_size:  # if uncond in text_encoder, do not apply LoRA
             return self.org_forward(x)
 
-        emb_idx = self.network.sub_prompt_index
+        emb_idx = self.adapter.sub_prompt_index
         if not self.text_encoder:
-            emb_idx += self.network.batch_size
+            emb_idx += self.adapter.batch_size
 
         # apply sub prompt of X
-        lx = x[emb_idx :: self.network.num_sub_prompts]
+        lx = x[emb_idx :: self.adapter.num_sub_prompts]
         lx = self.lora_up(self.lora_down(lx)) * self.multiplier * self.scale
 
         # logger.info(f"sub_prompt_forward {self.lora_name} {x.size()} {lx.size()} {emb_idx}")
 
         x = self.org_forward(x)
-        x[emb_idx :: self.network.num_sub_prompts] += lx
+        x[emb_idx :: self.adapter.num_sub_prompts] += lx
 
         return x
 
     def to_out_forward(self, x):
-        # logger.info(f"to_out_forward {self.lora_name} {x.size()} {self.peft.is_last_network}")
+        # logger.info(f"to_out_forward {self.lora_name} {x.size()} {self.peft.is_last_adapter}")
 
-        if self.network.is_last_network:
-            masks = [None] * self.network.num_sub_prompts
-            self.network.shared[self.lora_name] = (None, masks)
+        if self.adapter.is_last_adapter:
+            masks = [None] * self.adapter.num_sub_prompts
+            self.adapter.shared[self.lora_name] = (None, masks)
         else:
-            lx, masks = self.network.shared[self.lora_name]
+            lx, masks = self.adapter.shared[self.lora_name]
 
         # call own LoRA
-        x1 = x[self.network.batch_size + self.network.sub_prompt_index :: self.network.num_sub_prompts]
+        x1 = x[self.adapter.batch_size + self.adapter.sub_prompt_index :: self.adapter.num_sub_prompts]
         lx1 = self.lora_up(self.lora_down(x1)) * self.multiplier * self.scale
 
-        if self.network.is_last_network:
+        if self.adapter.is_last_adapter:
             lx = torch.zeros(
-                (self.network.num_sub_prompts * self.network.batch_size, *lx1.size()[1:]), device=lx1.device, dtype=lx1.dtype
+                (self.adapter.num_sub_prompts * self.adapter.batch_size, *lx1.size()[1:]), device=lx1.device, dtype=lx1.dtype
             )
-            self.network.shared[self.lora_name] = (lx, masks)
+            self.adapter.shared[self.lora_name] = (lx, masks)
 
         # logger.info(f"to_out_forward {lx.size()} {lx1.size()} {self.peft.sub_prompt_index} {self.peft.num_sub_prompts}")
-        lx[self.network.sub_prompt_index :: self.network.num_sub_prompts] += lx1
-        masks[self.network.sub_prompt_index] = self.get_mask_for_x(lx1)
+        lx[self.adapter.sub_prompt_index :: self.adapter.num_sub_prompts] += lx1
+        masks[self.adapter.sub_prompt_index] = self.get_mask_for_x(lx1)
 
         # if not last peft, return x and masks
         x = self.org_forward(x)
-        if not self.network.is_last_network:
+        if not self.adapter.is_last_adapter:
             return x
 
-        lx, masks = self.network.shared.pop(self.lora_name)
+        lx, masks = self.adapter.shared.pop(self.lora_name)
 
         # if last peft, combine separated x with mask weighted sum
-        has_real_uncond = x.size()[0] // self.network.batch_size == self.network.num_sub_prompts + 2
+        has_real_uncond = x.size()[0] // self.adapter.batch_size == self.adapter.num_sub_prompts + 2
 
-        out = torch.zeros((self.network.batch_size * (3 if has_real_uncond else 2), *x.size()[1:]), device=x.device, dtype=x.dtype)
-        out[: self.network.batch_size] = x[: self.network.batch_size]  # uncond
+        out = torch.zeros((self.adapter.batch_size * (3 if has_real_uncond else 2), *x.size()[1:]), device=x.device, dtype=x.dtype)
+        out[: self.adapter.batch_size] = x[: self.adapter.batch_size]  # uncond
         if has_real_uncond:
-            out[-self.network.batch_size :] = x[-self.network.batch_size :]  # real_uncond
+            out[-self.adapter.batch_size :] = x[-self.adapter.batch_size :]  # real_uncond
 
         # logger.info(f"to_out_forward {self.lora_name} {self.peft.sub_prompt_index} {self.peft.num_sub_prompts}")
         # if num_sub_prompts > num of LoRAs, fill with zero
@@ -369,20 +369,20 @@ class LoRAInfModule(LoRAModule):
 
         mask = torch.cat(masks)
         mask_sum = torch.sum(mask, dim=0) + 1e-4
-        for i in range(self.network.batch_size):
+        for i in range(self.adapter.batch_size):
             # 1枚の画像ごとに処理する
-            lx1 = lx[i * self.network.num_sub_prompts : (i + 1) * self.network.num_sub_prompts]
+            lx1 = lx[i * self.adapter.num_sub_prompts : (i + 1) * self.adapter.num_sub_prompts]
             lx1 = lx1 * mask
             lx1 = torch.sum(lx1, dim=0)
 
-            xi = self.network.batch_size + i * self.network.num_sub_prompts
-            x1 = x[xi : xi + self.network.num_sub_prompts]
+            xi = self.adapter.batch_size + i * self.adapter.num_sub_prompts
+            x1 = x[xi : xi + self.adapter.num_sub_prompts]
             x1 = x1 * mask
             x1 = torch.sum(x1, dim=0)
             x1 = x1 / mask_sum
 
             x1 = x1 + lx1
-            out[self.network.batch_size + i] = x1
+            out[self.adapter.batch_size + i] = x1
 
         # logger.info(f"to_out_forward {x.size()} {out.size()} {has_real_uncond}")
         return out
@@ -415,10 +415,10 @@ def parse_block_lr_kwargs(is_sdxl: bool, nw_kwargs: Dict) -> Optional[List[float
     )
 
 
-def create_network(
+def create_adapter(
     multiplier: float,
-    network_dim: Optional[int],
-    network_alpha: Optional[float],
+    adapter_rank: Optional[int],
+    adapter_alpha: Optional[float],
     vae: AutoencoderKL,
     text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
     unet,
@@ -428,10 +428,10 @@ def create_network(
     # if unet is an instance of SdxlUNet2DConditionModel or subclass, set is_sdxl to True
     is_sdxl = unet is not None and issubclass(unet.__class__, SdxlUNet2DConditionModel)
 
-    if network_dim is None:
-        network_dim = 4  # default
-    if network_alpha is None:
-        network_alpha = 1.0
+    if adapter_rank is None:
+        adapter_rank = 4  # default
+    if adapter_alpha is None:
+        adapter_alpha = 1.0
 
     # extract dim/alpha for conv2d, and block dim
     conv_dim = kwargs.get("conv_dim", None)
@@ -454,7 +454,7 @@ def create_network(
         conv_block_alphas = kwargs.get("conv_block_alphas", None)
 
         block_dims, block_alphas, conv_block_dims, conv_block_alphas = get_block_dims_and_alphas(
-            is_sdxl, block_dims, block_alphas, network_dim, network_alpha, conv_block_dims, conv_block_alphas, conv_dim, conv_alpha
+            is_sdxl, block_dims, block_alphas, adapter_rank, adapter_alpha, conv_block_dims, conv_block_alphas, conv_dim, conv_alpha
         )
 
         # remove block dim/alpha without learning rate
@@ -476,12 +476,12 @@ def create_network(
         module_dropout = float(module_dropout)
 
     # すごく引数が多いな ( ^ω^)･･･
-    network = LoRANetwork(
+    adapter = LoRAAdapter(
         text_encoder,
         unet,
         multiplier=multiplier,
-        lora_dim=network_dim,
-        alpha=network_alpha,
+        lora_dim=adapter_rank,
+        alpha=adapter_alpha,
         dropout=neuron_dropout,
         rank_dropout=rank_dropout,
         module_dropout=module_dropout,
@@ -502,12 +502,12 @@ def create_network(
     loraplus_unet_lr_ratio = float(loraplus_unet_lr_ratio) if loraplus_unet_lr_ratio is not None else None
     loraplus_text_encoder_lr_ratio = float(loraplus_text_encoder_lr_ratio) if loraplus_text_encoder_lr_ratio is not None else None
     if loraplus_lr_ratio is not None or loraplus_unet_lr_ratio is not None or loraplus_text_encoder_lr_ratio is not None:
-        network.set_loraplus_lr_ratio(loraplus_lr_ratio, loraplus_unet_lr_ratio, loraplus_text_encoder_lr_ratio)
+        adapter.set_loraplus_lr_ratio(loraplus_lr_ratio, loraplus_unet_lr_ratio, loraplus_text_encoder_lr_ratio)
 
     if block_lr_weight is not None:
-        network.set_block_lr_weight(block_lr_weight)
+        adapter.set_block_lr_weight(block_lr_weight)
 
-    return network
+    return adapter
 
 
 # このメソッドは外部から呼び出される可能性を考慮しておく
@@ -515,13 +515,13 @@ def create_network(
 # block_dims, block_alphas は両方ともNoneまたは両方とも値が入っている
 # conv_dim, conv_alpha は両方ともNoneまたは両方とも値が入っている
 def get_block_dims_and_alphas(
-    is_sdxl, block_dims, block_alphas, network_dim, network_alpha, conv_block_dims, conv_block_alphas, conv_dim, conv_alpha
+    is_sdxl, block_dims, block_alphas, adapter_rank, adapter_alpha, conv_block_dims, conv_block_alphas, conv_dim, conv_alpha
 ):
     if not is_sdxl:
-        num_total_blocks = LoRANetwork.NUM_OF_BLOCKS * 2 + LoRANetwork.NUM_OF_MID_BLOCKS
+        num_total_blocks = LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS
     else:
         # 1+9+3+9+1=23, no LoRA for emb_layers (0)
-        num_total_blocks = 1 + LoRANetwork.SDXL_NUM_OF_BLOCKS * 2 + LoRANetwork.SDXL_NUM_OF_MID_BLOCKS + 1
+        num_total_blocks = 1 + LoRAAdapter.SDXL_NUM_OF_BLOCKS * 2 + LoRAAdapter.SDXL_NUM_OF_MID_BLOCKS + 1
 
     def parse_ints(s):
         return [int(i) for i in s.split(",")]
@@ -538,9 +538,9 @@ def get_block_dims_and_alphas(
         )
     else:
         logger.warning(
-            f"block_dims is not specified. all dims are set to {network_dim} / block_dimsが指定されていません。すべてのdimは{network_dim}になります"
+            f"block_dims is not specified. all dims are set to {adapter_rank} / block_dimsが指定されていません。すべてのdimは{adapter_rank}になります"
         )
-        block_dims = [network_dim] * num_total_blocks
+        block_dims = [adapter_rank] * num_total_blocks
 
     if block_alphas is not None:
         block_alphas = parse_floats(block_alphas)
@@ -549,9 +549,9 @@ def get_block_dims_and_alphas(
         ), f"block_alphas must have {num_total_blocks} elements / block_alphasは{num_total_blocks}個指定してください"
     else:
         logger.warning(
-            f"block_alphas is not specified. all alphas are set to {network_alpha} / block_alphasが指定されていません。すべてのalphaは{network_alpha}になります"
+            f"block_alphas is not specified. all alphas are set to {adapter_alpha} / block_alphasが指定されていません。すべてのalphaは{adapter_alpha}になります"
         )
-        block_alphas = [network_alpha] * num_total_blocks
+        block_alphas = [adapter_alpha] * num_total_blocks
 
     # conv_block_dimsとconv_block_alphasを、指定がある場合のみパースする。指定がなければconv_dimとconv_alphaを使う
     if conv_block_dims is not None:
@@ -600,11 +600,11 @@ def get_block_lr_weight(
         return None
 
     if not is_sdxl:
-        max_len_for_down_or_up = LoRANetwork.NUM_OF_BLOCKS
-        max_len_for_mid = LoRANetwork.NUM_OF_MID_BLOCKS
+        max_len_for_down_or_up = LoRAAdapter.NUM_OF_BLOCKS
+        max_len_for_mid = LoRAAdapter.NUM_OF_MID_BLOCKS
     else:
-        max_len_for_down_or_up = LoRANetwork.SDXL_NUM_OF_BLOCKS
-        max_len_for_mid = LoRANetwork.SDXL_NUM_OF_MID_BLOCKS
+        max_len_for_down_or_up = LoRAAdapter.SDXL_NUM_OF_BLOCKS
+        max_len_for_mid = LoRAAdapter.SDXL_NUM_OF_MID_BLOCKS
 
     def get_list(name_with_suffix) -> List[float]:
         import math
@@ -697,8 +697,8 @@ def get_block_lr_weight(
     if is_sdxl:
         lr_weight = [1.0] + lr_weight + [1.0]  # add 1.0 for emb_layers and out
 
-    assert (not is_sdxl and len(lr_weight) == LoRANetwork.NUM_OF_BLOCKS * 2 + LoRANetwork.NUM_OF_MID_BLOCKS) or (
-        is_sdxl and len(lr_weight) == 1 + LoRANetwork.SDXL_NUM_OF_BLOCKS * 2 + LoRANetwork.SDXL_NUM_OF_MID_BLOCKS + 1
+    assert (not is_sdxl and len(lr_weight) == LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS) or (
+            is_sdxl and len(lr_weight) == 1 + LoRAAdapter.SDXL_NUM_OF_BLOCKS * 2 + LoRAAdapter.SDXL_NUM_OF_MID_BLOCKS + 1
     ), f"lr_weight length is invalid: {len(lr_weight)}"
 
     return lr_weight
@@ -736,9 +736,9 @@ def get_block_index(lora_name: str, is_sdxl: bool = False) -> int:
             if g[0] == "down":
                 block_idx = 1 + idx  # 0に該当するLoRAは存在しない
             elif g[0] == "up":
-                block_idx = LoRANetwork.NUM_OF_BLOCKS + 1 + idx
+                block_idx = LoRAAdapter.NUM_OF_BLOCKS + 1 + idx
         elif "mid_block_" in lora_name:
-            block_idx = LoRANetwork.NUM_OF_BLOCKS  # idx=12
+            block_idx = LoRAAdapter.NUM_OF_BLOCKS  # idx=12
     else:
         # copy from sdxl_train
         if lora_name.startswith("lora_unet_"):
@@ -804,7 +804,7 @@ def convert_diffusers_to_sai_if_needed(weights_sd):
 
 
 # Create peft from weights for inference, weights are not loaded here (because can be merged)
-def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
+def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
     # if unet is an instance of SdxlUNet2DConditionModel or subclass, set is_sdxl to True
     is_sdxl = unet is not None and issubclass(unet.__class__, SdxlUNet2DConditionModel)
 
@@ -842,7 +842,7 @@ def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weigh
 
     module_class = LoRAInfModule if for_inference else LoRAModule
 
-    network = LoRANetwork(
+    adapter = LoRAAdapter(
         text_encoder,
         unet,
         multiplier=multiplier,
@@ -855,12 +855,12 @@ def create_network_from_weights(multiplier, file, vae, text_encoder, unet, weigh
     # block lr
     block_lr_weight = parse_block_lr_kwargs(is_sdxl, kwargs)
     if block_lr_weight is not None:
-        network.set_block_lr_weight(block_lr_weight)
+        adapter.set_block_lr_weight(block_lr_weight)
 
-    return network, weights_sd
+    return adapter, weights_sd
 
 
-class LoRANetwork(torch.nn.Module):
+class LoRAAdapter(torch.nn.Module):
     NUM_OF_BLOCKS = 12  # フルモデル相当でのup,downの層の数
     NUM_OF_MID_BLOCKS = 1
     SDXL_NUM_OF_BLOCKS = 9  # SDXLのモデルでのinput/outputの層の数 total=1(base) 9(input) + 3(mid) + 9(output) + 1(out) = 23
@@ -1031,15 +1031,15 @@ class LoRANetwork(torch.nn.Module):
                 index = None
                 logger.info(f"create LoRA for Text Encoder:")
 
-            text_encoder_loras, skipped = create_modules(False, index, text_encoder, LoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE)
+            text_encoder_loras, skipped = create_modules(False, index, text_encoder, LoRAAdapter.TEXT_ENCODER_TARGET_REPLACE_MODULE)
             self.text_encoder_loras.extend(text_encoder_loras)
             skipped_te += skipped
         logger.info(f"create LoRA for Text Encoder: {len(self.text_encoder_loras)} modules.")
 
         # extend U-Net target modules if conv2d 3x3 is enabled, or load from weights
-        target_modules = LoRANetwork.UNET_TARGET_REPLACE_MODULE
+        target_modules = LoRAAdapter.UNET_TARGET_REPLACE_MODULE
         if modules_dim is not None or self.conv_lora_dim is not None or conv_block_dims is not None:
-            target_modules += LoRANetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+            target_modules += LoRAAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
 
         self.unet_loras, skipped_un = create_modules(True, None, unet, target_modules)
         logger.info(f"create LoRA for U-Net: {len(self.unet_loras)} modules.")
@@ -1104,9 +1104,9 @@ class LoRANetwork(torch.nn.Module):
     def merge_to(self, text_encoder, unet, weights_sd, dtype, device):
         apply_text_encoder = apply_unet = False
         for key in weights_sd.keys():
-            if key.startswith(LoRANetwork.LORA_PREFIX_TEXT_ENCODER):
+            if key.startswith(LoRAAdapter.LORA_PREFIX_TEXT_ENCODER):
                 apply_text_encoder = True
-            elif key.startswith(LoRANetwork.LORA_PREFIX_UNET):
+            elif key.startswith(LoRAAdapter.LORA_PREFIX_UNET):
                 apply_unet = True
 
         if apply_text_encoder:
@@ -1286,16 +1286,16 @@ class LoRANetwork(torch.nn.Module):
             torch.save(state_dict, file)
 
     # mask is a tensor with values from 0 to 1
-    def set_region(self, sub_prompt_index, is_last_network, mask):
+    def set_region(self, sub_prompt_index, is_last_adapter, mask):
         if mask.max() == 0:
             mask = torch.ones_like(mask)
 
         self.mask = mask
         self.sub_prompt_index = sub_prompt_index
-        self.is_last_network = is_last_network
+        self.is_last_adapter = is_last_adapter
 
         for lora in self.text_encoder_loras + self.unet_loras:
-            lora.set_network(self)
+            lora.set_adapter(self)
 
     def set_current_generation(self, batch_size, num_sub_prompts, width, height, shared, ds_ratio=None):
         self.batch_size = batch_size

@@ -41,7 +41,7 @@ Options match `train_network.py`:
 
 ### 1.4. Network Parameters (LoRA)
 
-* `--network_module=networks.lora` **[Required]**
+* `--adapter_module=networks.lora` **[Required]**
 * `--network_dim=N` **[Required]**: Specifies the rank (dimensionality) of LoRA. For SDXL, values like 32 or 64 are often tried, but adjustment is necessary depending on the dataset and purpose.
 * `--network_alpha=M`: LoRA alpha value. Generally around half of `network_dim` or the same value as `network_dim`. Default is 1.
 * `--network_dropout=P`: Dropout rate (0.0-1.0) within LoRA modules. Can be effective in suppressing overfitting. Default is None (no dropout).
@@ -278,7 +278,7 @@ This technique involves merging a pre-trained LoRA into the base model before st
 
 基本的なオプションは `train_network.py` と共通です。
 
-*   `--network_module=networks.lora` **[必須]**
+*   `--adapter_module=networks.lora` **[必須]**
 *   `--network_dim=N` **[必須]**
     *   LoRAのランク (次元数) を指定します。SDXLでは32や64などが試されることが多いですが、データセットや目的に応じて調整が必要です。
 *   `--network_alpha=M`

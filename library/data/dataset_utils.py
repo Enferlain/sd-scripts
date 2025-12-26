@@ -173,8 +173,8 @@ def debug_dataset(train_dataset, show_input_ids=False):
                 logger.info(
                     f'{ik}, size: {train_dataset.image_data[ik].image_size}, loss weight: {lw}, caption: "{cap}", original size: {orgsz}, crop top left: {crptl}, target size: {trgsz}, flipped: {flpdz}'
                 )
-                if "network_multipliers" in example:
-                    logger.info(f"network multiplier: {example['network_multipliers'][j]}")
+                if "adapter_multipliers" in example:
+                    logger.info(f"adapter multiplier: {example['adapter_multipliers'][j]}")
                 if "custom_attributes" in example:
                     logger.info(f"custom attributes: {example['custom_attributes'][j]}")
 

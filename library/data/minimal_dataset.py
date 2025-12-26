@@ -11,8 +11,8 @@ from library.data.dataset import BaseDataset
 
 
 class MinimalDataset(BaseDataset):
-    def __init__(self, resolution, network_multiplier, debug_dataset=False):
-        super().__init__(resolution, network_multiplier, debug_dataset)
+    def __init__(self, resolution, adapter_multiplier, debug_dataset=False):
+        super().__init__(resolution, adapter_multiplier, debug_dataset)
 
         self.num_train_images = 0  # update in subclass
         self.num_reg_images = 0  # update in subclass

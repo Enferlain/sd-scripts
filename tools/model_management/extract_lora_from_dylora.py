@@ -89,8 +89,8 @@ def split(args):
             new_metadata = metadata.copy()
 
         new_metadata["ss_training_comment"] = f"split from DyLoRA, rank {original_rank} to {new_rank}; {comment}"
-        new_metadata["ss_network_dim"] = str(new_rank)
-        # new_metadata["ss_network_alpha"] = str(new_alpha.float().numpy())
+        new_metadata["ss_adapter_rank"] = str(new_rank)
+        # new_metadata["ss_adapter_alpha"] = str(new_alpha.float().numpy())
 
         model_hash, legacy_hash = precalculate_safetensors_hashes(state_dict, metadata)
         metadata["sshs_model_hash"] = model_hash

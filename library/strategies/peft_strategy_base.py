@@ -194,15 +194,15 @@ class PeftTrainingStrategy(
         """Prepare UNet with accelerator."""
         return accelerator.prepare(unet)
     
-    def post_process_network(self, cfg, accelerator, network, text_encoders, unet):
-        """Post-process peft after creation. Override for model-specific behavior."""
+    def post_process_adapter(self, cfg, accelerator, adapter, text_encoders, unet):
+        """Post-process adapter after creation. Override for model-specific behavior."""
         pass
     
-    def on_step_start(self, cfg, accelerator, network, text_encoders, unet, batch, weight_dtype, is_train: bool = True):
+    def on_step_start(self, cfg, accelerator, adapter, text_encoders, unet, batch, weight_dtype, is_train: bool = True):
         """Hook called at the start of each training step."""
         pass
 
-    def on_validation_step_end(self, cfg, accelerator, network, text_encoders, unet, batch, weight_dtype):
+    def on_validation_step_end(self, cfg, accelerator, adapter, text_encoders, unet, batch, weight_dtype):
         """Hook called after each validation step."""
         pass
 
@@ -210,9 +210,9 @@ class PeftTrainingStrategy(
         """Load UNet lazily if not loaded in load_target_model. Not used by SD."""
         raise NotImplementedError("load_unet_lazily is not implemented for this architecture")
     
-    def all_reduce_network(self, accelerator, network):
+    def all_reduce_adapter(self, accelerator, adapter):
         """Sync DDP gradients manually."""
-        for param in network.parameters():
+        for param in adapter.parameters():
             if param.grad is not None:
                 param.grad = accelerator.reduce(param.grad, reduction="mean")
 

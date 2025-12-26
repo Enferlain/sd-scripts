@@ -24,12 +24,12 @@ from library.config.dataclasses.huggingface import HuggingFaceConfig
 # Consider adding clip_skip from TrainingConfig to metadata in the future.
 
 from library.constants import (
-    SS_METADATA_KEY_NETWORK_MODULE,
-    SS_METADATA_KEY_NETWORK_DIM,
-    SS_METADATA_KEY_NETWORK_ALPHA,
+    SS_METADATA_KEY_ADAPTER_MODULE,
+    SS_METADATA_KEY_ADAPTER_RANK,
+    SS_METADATA_KEY_ADAPTER_ALPHA,
     SS_METADATA_KEY_V2,
     SS_METADATA_KEY_BASE_MODEL_VERSION,
-    SS_METADATA_KEY_NETWORK_ARGS,
+    SS_METADATA_KEY_ADAPTER_ARGS,
     DEFAULT_EPOCH_NAME,
     EPOCH_FILE_NAME,
     DEFAULT_STEP_NAME,
@@ -82,7 +82,7 @@ def calculate_sha256(filename):
 
 
 def precalculate_safetensors_hashes(tensors, metadata):
-    """Precalculate the model hashes needed by sd-webui-additional-networks to
+    """Precalculate the model hashes needed by sd-webui-additional-adapters to
     save time on indexing the model later."""
 
     # Because writing user metadata to the file can change the result of
@@ -99,7 +99,7 @@ def precalculate_safetensors_hashes(tensors, metadata):
 
 
 def addnet_hash_legacy(b):
-    """Old model hash used by sd-webui-additional-networks for .safetensors format files"""
+    """Old model hash used by sd-webui-additional-adapters for .safetensors format files"""
     m = hashlib.sha256()
 
     b.seek(0x100000)
@@ -108,7 +108,7 @@ def addnet_hash_legacy(b):
 
 
 def addnet_hash_safetensors(b):
-    """New model hash used by sd-webui-additional-networks for .safetensors format files"""
+    """New model hash used by sd-webui-additional-adapters for .safetensors format files"""
     hash_sha256 = hashlib.sha256()
     blksize = 1024 * 1024
 
@@ -147,26 +147,26 @@ def load_metadata_from_safetensors(safetensors_file: str) -> dict:
     return metadata
 
 
-def build_minimum_network_metadata(
+def build_minimum_adapter_metadata(
         v2: Optional[str],
         base_model: Optional[str],
-        network_module: str,
-        network_dim: str,
-        network_alpha: str,
-        network_args: Optional[dict],
+        adapter_module: str,
+        adapter_rank: str,
+        adapter_alpha: str,
+        adapter_args: Optional[dict],
 ):
     # old LoRA doesn't have base_model
     metadata = {
-        SS_METADATA_KEY_NETWORK_MODULE: network_module,
-        SS_METADATA_KEY_NETWORK_DIM: network_dim,
-        SS_METADATA_KEY_NETWORK_ALPHA: network_alpha,
+        SS_METADATA_KEY_ADAPTER_MODULE: adapter_module,
+        SS_METADATA_KEY_ADAPTER_RANK: adapter_rank,
+        SS_METADATA_KEY_ADAPTER_ALPHA: adapter_alpha,
     }
     if v2 is not None:
         metadata[SS_METADATA_KEY_V2] = v2
     if base_model is not None:
         metadata[SS_METADATA_KEY_BASE_MODEL_VERSION] = base_model
-    if network_args is not None:
-        metadata[SS_METADATA_KEY_NETWORK_ARGS] = json.dumps(network_args)
+    if adapter_args is not None:
+        metadata[SS_METADATA_KEY_ADAPTER_ARGS] = json.dumps(adapter_args)
     return metadata
 
 
@@ -178,7 +178,7 @@ def resume_from_local_or_hf_if_specified(accelerator, config: SavingConfig):
     if not config.resume:
         return
 
-    if not config.resume_from_huggingface:
+    if not config.resume_from_huggingface:  # TODO HYDRA
         logger.info(f"resume training from local state: {config.resume}")
         accelerator.load_state(config.resume)
         return

@@ -25,7 +25,7 @@ class FineTuningDataset(BaseDataset):
             subsets: Sequence[FineTuningSubset],
             batch_size: int,
             resolution,
-            network_multiplier: float,
+            adapter_multiplier: float,
             enable_bucket: bool,
             min_bucket_reso: int,
             max_bucket_reso: int,
@@ -36,7 +36,7 @@ class FineTuningDataset(BaseDataset):
             validation_split: float,
             resize_interpolation: Optional[str],
     ) -> None:
-        super().__init__(resolution, network_multiplier, debug_dataset, resize_interpolation)
+        super().__init__(resolution, adapter_multiplier, debug_dataset, resize_interpolation)
 
         self.batch_size = batch_size
 

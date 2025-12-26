@@ -159,7 +159,7 @@ class LoRAModule(torch.nn.Module):
         self.multiplier = multiplier
         self.org_module = [org_module]
         self.enabled = True
-        self.network: LoRANetwork = None
+        self.adapter: LoRAAdapter = None
         self.org_forward = None
 
     # override org_module's forward method
@@ -182,8 +182,8 @@ class LoRAModule(torch.nn.Module):
             return self.org_forward(x)
         return self.org_forward(x) + self.lora_up(self.lora_down(x)) * self.multiplier * self.scale
 
-    def set_network(self, network):
-        self.network = network
+    def set_adapter(self, adapter):
+        self.adapter = adapter
 
     # merge lora weight to org weight
     def merge_to(self, multiplier=1.0):
@@ -242,7 +242,7 @@ class LoRAModule(torch.nn.Module):
 
 
 # Create peft from weights for inference, weights are not loaded here
-def create_network_from_weights(
+def create_adapter_from_weights(
     text_encoder: Union[CLIPTextModel, List[CLIPTextModel]], unet: UNet2DConditionModel, weights_sd: Dict, multiplier: float = 1.0
 ):
     # get dim/alpha mapping
@@ -265,20 +265,20 @@ def create_network_from_weights(
         if key not in modules_alpha:
             modules_alpha[key] = modules_dim[key]
 
-    return LoRANetwork(text_encoder, unet, multiplier=multiplier, modules_dim=modules_dim, modules_alpha=modules_alpha)
+    return LoRAAdapter(text_encoder, unet, multiplier=multiplier, modules_dim=modules_dim, modules_alpha=modules_alpha)
 
 
 def merge_lora_weights(pipe, weights_sd: Dict, multiplier: float = 1.0):
     text_encoders = [pipe.text_encoder, pipe.text_encoder_2] if hasattr(pipe, "text_encoder_2") else [pipe.text_encoder]
     unet = pipe.unet
 
-    lora_network = create_network_from_weights(text_encoders, unet, weights_sd, multiplier=multiplier)
-    lora_network.load_state_dict(weights_sd)
-    lora_network.merge_to(multiplier=multiplier)
+    lora_adapter = create_adapter_from_weights(text_encoders, unet, weights_sd, multiplier=multiplier)
+    lora_adapter.load_state_dict(weights_sd)
+    lora_adapter.merge_to(multiplier=multiplier)
 
 
 # block weightや学習に対応しない簡易版 / simple version without block weight and training
-class LoRANetwork(torch.nn.Module):
+class LoRAAdapter(torch.nn.Module):
     UNET_TARGET_REPLACE_MODULE = ["Transformer2DModel"]
     UNET_TARGET_REPLACE_MODULE_CONV2D_3X3 = ["ResnetBlock2D", "Downsample2D", "Upsample2D"]
     TEXT_ENCODER_TARGET_REPLACE_MODULE = ["CLIPAttention", "CLIPSdpaAttention", "CLIPMLP"]
@@ -369,7 +369,7 @@ class LoRANetwork(torch.nn.Module):
             else:
                 index = None
 
-            text_encoder_loras, skipped = create_modules(False, index, text_encoder, LoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE)
+            text_encoder_loras, skipped = create_modules(False, index, text_encoder, LoRAAdapter.TEXT_ENCODER_TARGET_REPLACE_MODULE)
             self.text_encoder_loras.extend(text_encoder_loras)
             skipped_te += skipped
         logger.info(f"create LoRA for Text Encoder: {len(self.text_encoder_loras)} modules.")
@@ -377,7 +377,7 @@ class LoRANetwork(torch.nn.Module):
             logger.warning(f"skipped {len(skipped_te)} modules because of missing weight for text encoder.")
 
         # extend U-Net target modules to include Conv2d 3x3
-        target_modules = LoRANetwork.UNET_TARGET_REPLACE_MODULE + LoRANetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+        target_modules = LoRAAdapter.UNET_TARGET_REPLACE_MODULE + LoRAAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
 
         self.unet_loras: List[LoRAModule]
         self.unet_loras, skipped_un = create_modules(True, None, unet, target_modules)
@@ -405,8 +405,8 @@ class LoRANetwork(torch.nn.Module):
         map_keys.sort()
 
         for key in list(modules_dim.keys()):
-            if key.startswith(LoRANetwork.LORA_PREFIX_UNET + "_"):
-                search_key = key.replace(LoRANetwork.LORA_PREFIX_UNET + "_", "")
+            if key.startswith(LoRAAdapter.LORA_PREFIX_UNET + "_"):
+                search_key = key.replace(LoRAAdapter.LORA_PREFIX_UNET + "_", "")
                 position = bisect.bisect_right(map_keys, search_key)
                 map_key = map_keys[position - 1]
                 if search_key.startswith(map_key):
@@ -459,8 +459,8 @@ class LoRANetwork(torch.nn.Module):
         map_keys = list(UNET_CONVERSION_MAP.keys())  # prefix of U-Net modules
         map_keys.sort()
         for key in list(state_dict.keys()):
-            if key.startswith(LoRANetwork.LORA_PREFIX_UNET + "_"):
-                search_key = key.replace(LoRANetwork.LORA_PREFIX_UNET + "_", "")
+            if key.startswith(LoRAAdapter.LORA_PREFIX_UNET + "_"):
+                search_key = key.replace(LoRAAdapter.LORA_PREFIX_UNET + "_", "")
                 position = bisect.bisect_right(map_keys, search_key)
                 map_key = map_keys[position - 1]
                 if search_key.startswith(map_key):
@@ -480,7 +480,7 @@ class LoRANetwork(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    # sample code to use LoRANetwork
+    # sample code to use LoRAAdapter
     import os
     import argparse
     from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline
@@ -523,12 +523,12 @@ if __name__ == "__main__":
 
     # create by LoRA weights and load weights
     logger.info(f"create LoRA peft")
-    lora_network: LoRANetwork = create_network_from_weights(text_encoders, pipe.unet, lora_sd, multiplier=1.0)
+    lora_adapter: LoRAAdapter = create_adapter_from_weights(text_encoders, pipe.unet, lora_sd, multiplier=1.0)
 
     logger.info(f"load LoRA peft weights")
-    lora_network.load_state_dict(lora_sd)
+    lora_adapter.load_state_dict(lora_sd)
 
-    lora_network.to(device, dtype=pipe.unet.dtype)  # required to apply_to. merge_to works without this
+    lora_adapter.to(device, dtype=pipe.unet.dtype)  # required to apply_to. merge_to works without this
 
     # 必要があれば、元のモデルの重みをバックアップしておく
     # back-up unet/text encoder weights if necessary
@@ -561,7 +561,7 @@ if __name__ == "__main__":
 
     # apply LoRA peft to the model: slower than merge_to, but can be reverted easily
     logger.info(f"apply LoRA peft to the model")
-    lora_network.apply_to(multiplier=1.0)
+    lora_adapter.apply_to(multiplier=1.0)
 
     logger.info(f"create image with applied LoRA")
     seed_everything(args.seed)
@@ -570,7 +570,7 @@ if __name__ == "__main__":
 
     # unapply LoRA peft to the model
     logger.info(f"unapply LoRA peft to the model")
-    lora_network.unapply_to()
+    lora_adapter.unapply_to()
 
     logger.info(f"create image with unapplied LoRA")
     seed_everything(args.seed)
@@ -579,7 +579,7 @@ if __name__ == "__main__":
 
     # merge LoRA peft to the model: faster than apply_to, but requires back-up of original weights (or unmerge_to)
     logger.info(f"merge LoRA peft to the model")
-    lora_network.merge_to(multiplier=1.0)
+    lora_adapter.merge_to(multiplier=1.0)
 
     logger.info(f"create image with LoRA")
     seed_everything(args.seed)
@@ -590,7 +590,7 @@ if __name__ == "__main__":
     # マージされた重みを元に戻す。計算誤差のため、元の重みと完全に一致しないことがあるかもしれない
     # 保存したstate_dictから元の重みを復元するのが確実
     logger.info(f"restore (unmerge) LoRA weights")
-    lora_network.restore_from(multiplier=1.0)
+    lora_adapter.restore_from(multiplier=1.0)
 
     logger.info(f"create image without LoRA")
     seed_everything(args.seed)

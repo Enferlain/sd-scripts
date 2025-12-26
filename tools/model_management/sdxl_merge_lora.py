@@ -13,13 +13,13 @@ from tqdm import tqdm
 from svd_merge_lora import format_lbws, get_lbw_block_index, LAYER26
 from library.constants import SS_METADATA_KEY_V2, SS_METADATA_KEY_BASE_MODEL_VERSION
 from library.models import sdxl_model_util
-from library.networks import lora, oft
+from library.adapters import lora, oft
 from library.utils.common_utils import setup_logging
 from library.utils import sai_model_spec
 
 from library.training.checkpointing import (
     load_metadata_from_safetensors,
-    build_minimum_network_metadata,
+    build_minimum_adapter_metadata,
     precalculate_safetensors_hashes
 )
 
@@ -80,20 +80,20 @@ def merge_to_sd_model(text_encoder1, text_encoder2, unet, models, ratios, lbws, 
         if method == "LoRA":
             if i <= 1:
                 if i == 0:
-                    prefix = lora.LoRANetwork.LORA_PREFIX_TEXT_ENCODER1
+                    prefix = lora.LoRAAdapter.LORA_PREFIX_TEXT_ENCODER1
                 else:
-                    prefix = lora.LoRANetwork.LORA_PREFIX_TEXT_ENCODER2
-                target_replace_modules = lora.LoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE
+                    prefix = lora.LoRAAdapter.LORA_PREFIX_TEXT_ENCODER2
+                target_replace_modules = lora.LoRAAdapter.TEXT_ENCODER_TARGET_REPLACE_MODULE
             else:
-                prefix = lora.LoRANetwork.LORA_PREFIX_UNET
+                prefix = lora.LoRAAdapter.LORA_PREFIX_UNET
                 target_replace_modules = (
-                    lora.LoRANetwork.UNET_TARGET_REPLACE_MODULE + lora.LoRANetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+                        lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE + lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
                 )
         elif method == "OFT":
-            prefix = oft.OFTNetwork.OFT_PREFIX_UNET
+            prefix = oft.OFTAdapter.OFT_PREFIX_UNET
             # ALL_LINEAR includes ATTN_ONLY, so we don't need to specify ATTN_ONLY
             target_replace_modules = (
-                oft.OFTNetwork.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR + oft.OFTNetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+                    oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR + oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
             )
 
         for name, module in root_module.named_modules():
@@ -372,7 +372,7 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
     # build minimum metadata
     dims = f"{dims_list[0]}" if all_same_dims else "Dynamic"
     alphas = f"{alphas_list[0]}" if all_same_alphas else "Dynamic"
-    metadata = build_minimum_network_metadata(v2, base_model, "networks.lora", dims, alphas, None)
+    metadata = build_minimum_adapter_metadata(v2, base_model, "adapters.lora", dims, alphas, None)
 
     return merged_sd, metadata
 

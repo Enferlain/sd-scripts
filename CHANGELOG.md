@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-26]
+
+### Changed
+
+- **Network → Adapter Terminology Rename**
+
+  - **Folder:** `library/networks/` → `library/adapters/`
+  - **Classes:** `LoRANetwork` → `LoRAAdapter`, `OFTNetwork` → `OFTAdapter`, `DyLoRANetwork` → `DyLoRAAdapter`
+  - **Variable:** `network` → `adapter` across all scripts and library modules (~200+ occurrences)
+  - **Functions:** `create_network` → `create_adapter`, `prepare_network` → `prepare_adapter`, etc.
+  - **Config fields renamed:**
+    - `dim` → `adapter_rank`
+    - `alpha` → `adapter_alpha`
+    - `dim_from_weights` → `adapter_rank_from_weights`
+    - `neuron_dropout` kept (distinct from `rank_dropout`/`module_dropout`)
+  - **Metadata keys:** `ss_network_*` → `ss_adapter_*` in safetensors metadata
+
 ## [2025-12-25]
 
 ### Changed
@@ -153,7 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extracted `prepare_datasets()` to `peft_common.py` (~47 lines saved per script)
   - Extracted `calculate_initial_step()` to `peft_common.py` (~42 lines saved per script)
   - Extracted `parse_dynamic_timestep_schedule()` to `peft_common.py` (~10 lines saved per script)
-  - Extracted `register_network_state_hooks()` to `peft_common.py` (~40 lines saved per script)
+  - Extracted `register_adapter_state_hooks()` to `peft_common.py` (~40 lines saved per script)
   - Total: ~140 lines reduced from each PEFT script (1173 → 1035 lines)
 
 ### Fixed
