@@ -2,8 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 from .training import TrainingConfig
 from .optimizer import OptimizerConfig
-from .dataset import DatasetConfig
-from .buckets import BucketsConfig
+from .data import DataConfig
 from .model import ModelConfig
 from .performance import PerformanceConfig
 from .loss import LossConfig
@@ -27,8 +26,7 @@ class TextualInversionConfig:
     textual_inversion: TextualInversionSpecificConfig = field(default_factory=TextualInversionSpecificConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
-    dataset: DatasetConfig = field(default_factory=DatasetConfig)
-    buckets: BucketsConfig = field(default_factory=BucketsConfig)
+    data: DataConfig = field(default_factory=DataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     performance: PerformanceConfig = field(default_factory=PerformanceConfig)

@@ -1,5 +1,0 @@
-enable_bucket: false
-min_bucket_reso: 256
-max_bucket_reso: 1024
-bucket_reso_steps: 64
-bucket_no_upscale: false

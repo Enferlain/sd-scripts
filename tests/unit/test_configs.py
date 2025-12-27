@@ -10,10 +10,9 @@ from hydra import compose
 from omegaconf import OmegaConf
 
 from library.config.dataclasses.optimizer import OptimizerConfig
-from library.config.dataclasses.dataset import DatasetConfig
+from library.config.dataclasses.data import DataConfig, SourceConfig, PreprocessingConfig, BucketingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.peft import PeftConfig
-from library.config.dataclasses.buckets import BucketsConfig
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import LoggingConfig
@@ -40,14 +39,16 @@ class TestConfigInstantiation:
         config = OptimizerConfig()
         assert config is not None
         assert hasattr(config, 'optimizer_type')
-        assert hasattr(config, 'learning_rate')
+        assert hasattr(config, 'learning_rates')
+        assert hasattr(config.learning_rates, 'base')
         
-    def test_dataset_config_instantiation(self):
-        """Test DatasetConfig instantiation with defaults."""
-        config = DatasetConfig()
+    def test_data_config_instantiation(self):
+        """Test DataConfig instantiation with defaults."""
+        config = DataConfig()
         assert config is not None
-        assert hasattr(config, 'train_data_dir')
-        assert hasattr(config, 'resolution')  # Dataset config has resolution, not batch_size
+        assert hasattr(config, 'source')
+        assert hasattr(config, 'preprocessing')
+        assert hasattr(config, 'bucketing')
         
     def test_training_config_instantiation(self):
         """Test TrainingConfig instantiation with defaults."""
@@ -64,9 +65,9 @@ class TestConfigInstantiation:
         assert hasattr(config, 'adapter_rank')
         assert hasattr(config, 'adapter_alpha')
         
-    def test_buckets_config_instantiation(self):
-        """Test BucketsConfig instantiation with defaults."""
-        config = BucketsConfig()
+    def test_bucketing_config_instantiation(self):
+        """Test BucketingConfig instantiation with defaults."""
+        config = BucketingConfig()
         assert config is not None
         assert hasattr(config, 'enable_bucket')
         assert hasattr(config, 'min_bucket_reso')
@@ -147,8 +148,8 @@ class TestConfigDefaults:
         """Test OptimizerConfig default values."""
         config = OptimizerConfig()
         assert config.optimizer_type == ""  # Empty by default
-        assert config.learning_rate == 2.0e-6
-        assert config.lr_scheduler == "constant"
+        assert config.learning_rates.base == 2.0e-6
+        assert config.scheduler.lr_scheduler == "constant"
         
     def test_adapter_config_defaults(self):
         """Test PeftConfig default values."""
@@ -157,10 +158,10 @@ class TestConfigDefaults:
         assert config.adapter_alpha == 1.0
         assert config.module is None  # None by default
         
-    def test_buckets_config_defaults(self):
-        """Test BucketsConfig default values."""
-        config = BucketsConfig()
-        assert config.enable_bucket == False  # Default is False, not True
+    def test_bucketing_config_defaults(self):
+        """Test BucketingConfig default values."""
+        config = BucketingConfig()
+        assert config.enable_bucket == False
         assert config.min_bucket_reso == 256
         assert config.max_bucket_reso == 1024
         assert config.bucket_reso_steps == 64
@@ -188,7 +189,7 @@ class TestHydraComposition:
         assert cfg is not None
         assert "peft" in cfg
         assert "optimizer" in cfg
-        assert "dataset" in cfg
+        assert "data" in cfg
         assert "training" in cfg
         
     def test_sd_finetune_config_composition(self, hydra_ctx):
@@ -196,7 +197,7 @@ class TestHydraComposition:
         cfg = compose(config_name="sd_finetune")
         assert cfg is not None
         assert "optimizer" in cfg
-        assert "dataset" in cfg
+        assert "data" in cfg
         assert "training" in cfg
         
     def test_sd_textual_inversion_config_composition(self, hydra_ctx):
@@ -204,7 +205,7 @@ class TestHydraComposition:
         cfg = compose(config_name="sd_textual_inversion")
         assert cfg is not None
         assert "optimizer" in cfg
-        assert "dataset" in cfg
+        assert "data" in cfg
         assert "training" in cfg
         
     def test_sdxl_peft_config_composition(self, hydra_ctx):
@@ -220,7 +221,7 @@ class TestHydraComposition:
         cfg = compose(config_name="sdxl_finetune")
         assert cfg is not None
         assert "optimizer" in cfg
-        assert "dataset" in cfg
+        assert "data" in cfg
         assert "sdxl" in cfg
         
     def test_sdxl_textual_inversion_config_composition(self, hydra_ctx):
@@ -228,7 +229,7 @@ class TestHydraComposition:
         cfg = compose(config_name="sdxl_textual_inversion")
         assert cfg is not None
         assert "optimizer" in cfg
-        assert "dataset" in cfg
+        assert "data" in cfg
         assert "sdxl" in cfg
 
 
@@ -245,7 +246,7 @@ class TestConfigOverrides:
         """Test overriding optimizer config values."""
         cfg = compose(
             config_name="sd_peft",
-            overrides=["optimizer.learning_rate=5e-5", "optimizer.optimizer_type=AdamW"]
+            overrides=["optimizer.learning_rates.base=5e-5", "optimizer.optimizer_type=AdamW"]
         )
         assert cfg.optimizer.learning_rates.base == 5e-5
         assert cfg.optimizer.optimizer_type == "AdamW"

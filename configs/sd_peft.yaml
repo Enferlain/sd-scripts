@@ -1,7 +1,6 @@
 defaults:
   - optimizer: default
-  - dataset: default
-  - buckets: default
+  - data: default
   - model: default
   - peft: default
   - training: default

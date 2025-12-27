@@ -3,8 +3,7 @@
 
 defaults:
   - optimizer: default
-  - dataset: default
-  - buckets: default
+  - data: default
   - model: default
   - training: default
   - output: default

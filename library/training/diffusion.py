@@ -68,7 +68,7 @@ def get_noise_noisy_latents_and_timesteps(
             num_samples=b_size,
             replacement=True
         ).to(dtype=torch.long, device=latents.device)
-    elif is_train and timestep_config.timestep_sampling == "mix_adaptive":
+    elif is_train and timestep_config.timestep_sampling == "mix_adaptive":  # Todo related to custom timestep samplers
         # The main script is now responsible for creating the sampler.
         # We just check that it exists and use it.
         if la_sampler is None:

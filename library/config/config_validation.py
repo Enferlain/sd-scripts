@@ -32,12 +32,12 @@ def prepare_config(cfg) -> None:
     backward compatibility.
     """
     # Dataset: cache_latents_to_disk implies cache_latents
-    if cfg.dataset.cache_latents_to_disk and not cfg.dataset.cache_latents:
-        cfg.dataset.cache_latents = True
+    if cfg.data.caching.cache_latents_to_disk and not cfg.data.caching.cache_latents:
+        cfg.data.caching.cache_latents = True
     
     # Dataset: backward compat for old typo
-    if cfg.dataset.caption_extention is not None:
-        cfg.dataset.caption_extension = cfg.dataset.caption_extention
+    if cfg.data.caption.caption_extention is not None:
+        cfg.data.caption.caption_extension = cfg.data.caption.caption_extention
     
     # Performance: cache_text_encoder_outputs_to_disk implies cache_text_encoder_outputs
     if hasattr(cfg, 'performance') and cfg.performance is not None:

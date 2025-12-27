@@ -7,7 +7,7 @@ Tests the DeepSpeed configuration preparation and plugin creation functions.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from library.config.dataclasses.deepspeed import DeepSpeedConfig
+from library.config.dataclasses.performance import DeepSpeedConfig
 from library.config.dataclasses.performance import PerformanceConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.performance.deepspeed_utils import (

@@ -25,7 +25,7 @@ from library.training.sd_sample_generation import sample_images
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 from library.config.dataclasses.sd_finetune import SDFineTuneConfig
-from library.config.validation import prepare_config, validate_config
+from library.config.config_validation import prepare_config, validate_config
 
 from library.training.checkpointing import (
     resume_from_local_or_hf_if_specified,
@@ -60,7 +60,7 @@ def train(cfg: SDFineTuneConfig):
     set_torch_cuda_reduced_precision(cfg.training)
     deepspeed_utils.prepare_deepspeed_config(cfg.performance)
 
-    cache_latents = cfg.dataset.cache_latents
+    cache_latents = cfg.data.caching.cache_latents
 
     set_seed_from_config(cfg.training)
 
@@ -69,17 +69,17 @@ def train(cfg: SDFineTuneConfig):
 
     if cache_latents:
         latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
-            False, cfg.dataset.cache_latents_to_disk, cfg.dataset.vae_batch_size, cfg.dataset.skip_cache_check
+            False, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
         )
         strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
-    if cfg.dataset.dataset_class is None:
+    if cfg.data.source.dataset_class is None:
         blueprint_generator = BlueprintGenerator()
         blueprint = blueprint_generator.generate(cfg)
         train_dataset_group, val_dataset_group = generate_dataset_group_by_blueprint(blueprint.dataset_group)
     else:
         # load_arbitrary_dataset now accepts DatasetConfig directly
-        train_dataset_group = load_arbitrary_dataset(cfg.dataset)
+        train_dataset_group = load_arbitrary_dataset(cfg)
         val_dataset_group = None
 
     current_epoch = Value("i", 0)
@@ -89,7 +89,7 @@ def train(cfg: SDFineTuneConfig):
 
     train_dataset_group.verify_bucket_reso_steps(64)
 
-    if cfg.dataset.debug_dataset:
+    if cfg.data.preprocessing.debug_dataset:
         debug_dataset(train_dataset_group)
         return
     if len(train_dataset_group) == 0:
@@ -230,7 +230,7 @@ def train(cfg: SDFineTuneConfig):
 
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
-    lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes)
+    lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.validation.validation_split, cfg.training, optimizer, accelerator.num_processes)
 
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
@@ -326,7 +326,7 @@ def train(cfg: SDFineTuneConfig):
                 b_size = latents.shape[0]
 
                 with torch.set_grad_enabled(train_text_encoder):
-                    if cfg.dataset.weighted_captions:
+                    if cfg.data.caption.weighted_captions:
                         input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                         encoder_hidden_states = text_encoding_strategy.encode_tokens_with_weights(
                             tokenize_strategy, [text_encoder], input_ids_list, weights_list

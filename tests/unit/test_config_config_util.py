@@ -42,40 +42,84 @@ class FakeSubsetCfg:
     custom_attributes: str | None = None
 
 @dataclass
-class FakeDatasetConfig:
+class FakeSourceConfig:
+    """Fake source config for testing."""
     subsets: list
-    # dataset-level fields
+    dataset_class: str | None = None
+    train_data_dir: str | None = None
+    reg_data_dir: str | None = None
+
+@dataclass
+class FakePreprocessingConfig:
+    """Fake preprocessing config for testing."""
     resolution: list[int] | None = None
-    batch_size: int = 1
+    debug_dataset: bool = False
+    resize_interpolation: str | None = None
+    flip_aug: bool = False
+    color_aug: bool = False
+    random_crop: bool = False
+    face_crop_aug_range: str | None = None
+    alpha_mask: bool = False
+    cache_info: bool = False
+
+@dataclass
+class FakeCaptionConfig:
+    """Fake caption config for testing."""
+    shuffle_caption: bool = False
+    keep_tokens: int = 0
+    caption_separator: str = ","
+    keep_tokens_separator: str = ""
+    secondary_separator: str | None = None
+    enable_wildcard: bool = False
+    caption_prefix: str | None = None
+    caption_suffix: str | None = None
+    caption_dropout_rate: float = 0.0
+    caption_dropout_every_n_epochs: int = 0
+    caption_tag_dropout_rate: float = 0.0
+    token_warmup_min: int = 1
+    token_warmup_step: float = 0.0
+    caption_extension: str = ".caption"
+
+@dataclass
+class FakeBucketingConfig:
+    """Fake bucketing config for testing."""
     enable_bucket: bool = False
     min_bucket_reso: int = 256
     max_bucket_reso: int = 1024
     bucket_reso_steps: int = 64
     bucket_no_upscale: bool = False
-    # for dreambooth user_config
-    dataset_class: str | None = None
-    train_data_dir: str | None = None
-    reg_data_dir: str | None = None
-    # other fields accessed
-    adapter_multiplier: float = 1.0
-    debug_dataset: bool = False
-    validation_seed: int | None = None
-    validation_split: float = 0.0
-    resize_interpolation: str | None = None
-    prior_loss_weight: float = 1.0
 
 @dataclass
-class FakeBucketsConfig:
-    resolution: list[int] | None = None
-    min_bucket_reso: int | None = None
-    max_bucket_reso: int | None = None
-    bucket_reso_steps: int | None = None
-    bucket_no_upscale: bool | None = None
+class FakeDataConfig:
+    """Fake DataConfig with nested subcategories for testing."""
+    source: FakeSourceConfig
+    preprocessing: FakePreprocessingConfig = None
+    caption: FakeCaptionConfig = None
+    bucketing: FakeBucketingConfig = None
+    
+    # Legacy fields needed by BaseDatasetParams
+    adapter_multiplier: float = 1.0
+    validation_seed: int | None = None
+    validation_split: float = 0.0
+    prior_loss_weight: float = 1.0
+    batch_size: int = 1
+    
+    def __post_init__(self):
+        if self.preprocessing is None:
+            self.preprocessing = FakePreprocessingConfig()
+        if self.caption is None:
+            self.caption = FakeCaptionConfig()
+        if self.bucketing is None:
+            self.bucketing = FakeBucketingConfig()
 
-def make_root_cfg(dataset_cfg, buckets_cfg=None):
+def make_root_cfg(source_cfg, preprocessing_cfg=None, bucketing_cfg=None):
     root = types.SimpleNamespace()
-    root.dataset = dataset_cfg
-    root.buckets = buckets_cfg or FakeBucketsConfig()
+    data = FakeDataConfig(
+        source=source_cfg,
+        preprocessing=preprocessing_cfg or FakePreprocessingConfig(),
+        bucketing=bucketing_cfg or FakeBucketingConfig(),
+    )
+    root.data = data
     return root
 
 # ============================================================================
@@ -84,8 +128,9 @@ def make_root_cfg(dataset_cfg, buckets_cfg=None):
 
 def test_blueprint_dreambooth_type():
     subset = FakeSubsetCfg(image_dir="db", num_repeats=2)
-    ds_cfg = FakeDatasetConfig(subsets=[subset], resolution=[512, 512])
-    root = make_root_cfg(ds_cfg)
+    source_cfg = FakeSourceConfig(subsets=[subset])
+    preprocessing_cfg = FakePreprocessingConfig(resolution=[512, 512])
+    root = make_root_cfg(source_cfg, preprocessing_cfg=preprocessing_cfg)
 
     bg = BlueprintGenerator()
     bp = bg.generate(root)
@@ -103,8 +148,8 @@ def test_blueprint_dreambooth_type():
 
 def test_blueprint_finetune_type():
     subset = FakeSubsetCfg(image_dir="ft", num_repeats=1, metadata_file="meta.json")
-    ds_cfg = FakeDatasetConfig(subsets=[subset])
-    root = make_root_cfg(ds_cfg)
+    source_cfg = FakeSourceConfig(subsets=[subset])
+    root = make_root_cfg(source_cfg)
 
     bg = BlueprintGenerator()
     bp = bg.generate(root)
@@ -124,8 +169,8 @@ class FakeControlNetSubsetCfg:
     
 def test_blueprint_controlnet_type():
     subset = FakeControlNetSubsetCfg(image_dir="cn", conditioning_data_dir="conds")
-    ds_cfg = FakeDatasetConfig(subsets=[subset])
-    root = make_root_cfg(ds_cfg)
+    source_cfg = FakeSourceConfig(subsets=[subset])
+    root = make_root_cfg(source_cfg)
 
     bg = BlueprintGenerator()
     bp = bg.generate(root)
@@ -138,15 +183,16 @@ def test_blueprint_controlnet_type():
 
 def test_blueprint_uses_buckets_defaults():
     subset = FakeSubsetCfg(image_dir="db")
-    ds_cfg = FakeDatasetConfig(subsets=[subset], resolution=None)
-    buckets = FakeBucketsConfig(resolution=[256, 384])
-    root = make_root_cfg(ds_cfg, buckets_cfg=buckets)
-    
+    source_cfg = FakeSourceConfig(subsets=[subset])
+    # Resolution is None in preprocessing, should fall back
+    preprocessing_cfg = FakePreprocessingConfig(resolution=[256, 384])
+    root = make_root_cfg(source_cfg, preprocessing_cfg=preprocessing_cfg)
+
     bg = BlueprintGenerator()
     bp = bg.generate(root)
     db = bp.dataset_group.datasets[0]
     
-    # Needs to take resolution from buckets config if dataset config is None
+    # Takes resolution from preprocessing config
     assert db.params.resolution == (256, 384)
 
 # ============================================================================
@@ -435,25 +481,27 @@ def test_generate_dreambooth_subdirs_with_reg(tmp_path):
 @patch("library.config.config_util.generate_dreambooth_subsets_config_by_subdirs")
 def test_generate_user_config_from_dataset_dreambooth(mock_gen):
     mock_gen.return_value = [{"image_dir": "x", "num_repeats": 1}]
-    ds_cfg = FakeDatasetConfig(
+    source_cfg = FakeSourceConfig(
         subsets=[],
         dataset_class=None,
         train_data_dir="train_dir",
         reg_data_dir="reg_dir",
     )
-    user_cfg = generate_user_config_from_dataset(ds_cfg)
+    root = make_root_cfg(source_cfg)
+    user_cfg = generate_user_config_from_dataset(root)
 
     mock_gen.assert_called_once()
     assert "datasets" in user_cfg
     assert user_cfg["datasets"][0]["subsets"] == mock_gen.return_value
 
 def test_generate_user_config_from_dataset_arbitrary():
-    ds_cfg = FakeDatasetConfig(
+    source_cfg = FakeSourceConfig(
         subsets=[],
         dataset_class="some.class",
     )
-    user_cfg = generate_user_config_from_dataset(ds_cfg)
+    root = make_root_cfg(source_cfg)
+    user_cfg = generate_user_config_from_dataset(root)
     
     # Arbitrary dataset class usage returns empty datasets list structure
-    # logic: if dataset_config.dataset_class is None: ... else: user_config = {"datasets": []}
+    # logic: if source_config.dataset_class is None: ... else: user_config = {"datasets": []}
     assert user_cfg == {"datasets": []}

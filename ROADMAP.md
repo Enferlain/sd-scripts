@@ -70,6 +70,7 @@ Scripts (contain training loops):     Library Modules:
 - **Legacy Cleanup**: Removed unused `@property` aliases and fallback logic from optimizer.py
 - **Train Text Encoder Options**: Consolidated via `optimizer.learning_rates` usage (implicit vs explicit)
 - **Schema 1 Refactor**: Unified configuration schema for PEFT/Fine-tuning scripts
+- **Data Config Restructuring**: Merged `DatasetConfig` + `BucketsConfig` into `DataConfig` with 5 nested sub-configs (source, preprocessing, caption, bucketing, caching)
 
 ---
 

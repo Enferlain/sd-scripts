@@ -44,7 +44,7 @@ from ramtorch.helpers import replace_linear_with_ramtorch
 import library.config.config_util as config_util
 import library.utils.huggingface_util as huggingface_util
 
-from library.config.validation import prepare_config, validate_config, validate_sd_peft
+from library.config.config_validation import prepare_config, validate_config, validate_sd_peft
 from library.constants import SS_METADATA_MINIMUM_KEYS
 from library.strategies import strategy_sd, strategy_base
 from library.performance import deepspeed_utils
@@ -63,15 +63,21 @@ from library.strategies.peft_strategy_sdxl import SdxlPeftStrategy
 from library.training.peft_common import (
     generate_step_logs,
     step_logging,
-    save_timestep_distribution_plot,
-    init_timestep_sampler,
     create_training_metadata,
-    setup_live_plotter,
     prepare_datasets,
     calculate_initial_step,
-    parse_dynamic_timestep_schedule,
     register_adapter_state_hooks,
     resolve_adapter_kwargs,
+)
+
+from library.timestep.timestep_utils import (
+    init_timestep_sampler,
+    parse_dynamic_timestep_schedule,
+)
+
+from library.logging.training_plots import (
+    save_timestep_distribution_plot,
+    setup_live_plotter,
 )
 
 from library.training.checkpointing import (
@@ -142,9 +148,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     deepspeed_utils.prepare_deepspeed_config(cfg.performance, cfg.training)
     setup_logging(cfg.output.logging, reset=True)
 
-    cache_latents = cfg.dataset.cache_latents
-    use_dreambooth_method = cfg.dataset.in_json is None
-    use_user_config = cfg.dataset.dataset_config is not None
+    cache_latents = cfg.data.caching.cache_latents
+    use_dreambooth_method = cfg.data.source.in_json is None
+    use_user_config = cfg.data.source.dataset_config is not None
 
     set_seed_from_config(cfg.training)
 
@@ -324,7 +330,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         optimizer_eval_fn,
         lr_descriptions,
         text_encoder_lr  # TODO: why only text_encoder_lr here?
-    ) = prepare_optimizer(cfg.optimizer, cfg.peft, cfg.dataset, adapter)
+    ) = prepare_optimizer(cfg.optimizer, cfg.peft, adapter)
 
     # prepare dataloader
     # strategies are set here because they cannot be referenced in another process. Copy them with the dataset
@@ -373,7 +379,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
     # lr schedulerを用意する
-    lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes)
+    lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.validation.validation_split, cfg.training, optimizer, accelerator.num_processes)
 
     # 実験的機能：勾配も含めたfp16/bf16学習を行う　モデル全体をfp16/bf16にする
     if cfg.performance.precision.full_fp16:

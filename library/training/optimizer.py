@@ -20,7 +20,7 @@ from diffusers.optimization import (
 
 from library.config.dataclasses.optimizer import OptimizerConfig
 from library.config.dataclasses.peft import PeftConfig
-from library.config.dataclasses.dataset import DatasetConfig
+
 from library.config.dataclasses.training import TrainingConfig
 
 from library.constants import int_pattern, float_pattern
@@ -62,7 +62,7 @@ def should_train_unet(optimizer_config: OptimizerConfig) -> bool:
     return unet_lr is None or unet_lr > 0
 
 
-def prepare_optimizer(optimizer_config: OptimizerConfig, adapter_config: PeftConfig, dataset_config: DatasetConfig, adapter):
+def prepare_optimizer(optimizer_config: OptimizerConfig, adapter_config: PeftConfig, adapter):
     if isinstance(adapter_config.orthograd_targets, str):
         orthograd_targets = ast.literal_eval(adapter_config.orthograd_targets)
     else:
@@ -654,7 +654,7 @@ def parse_string_to_type(s):
 # Add some checking and features to the original function.
 
 
-def get_scheduler_fix(optimizer_config: OptimizerConfig, dataset_config: DatasetConfig, training_config: TrainingConfig, optimizer: Optimizer, num_processes: int):
+def get_scheduler_fix(optimizer_config: OptimizerConfig, validation_split: float, training_config: TrainingConfig, optimizer: Optimizer, num_processes: int):
     """
     Unified API to get any scheduler from its name.
     """
@@ -699,14 +699,14 @@ def get_scheduler_fix(optimizer_config: OptimizerConfig, dataset_config: Dataset
             value = ast.literal_eval(value)
 
             # TODO temp fix for warmup and first cycle steps pending UI changes
-            if key == 'first_cycle_max_steps' and float(dataset_config.validation_split) > 0.0:
+            if key == 'first_cycle_max_steps' and validation_split > 0.0:
                 value = math.ceil(num_training_steps / num_cycles)
                 num_cycles = 1
             elif key == 'first_cycle_max_steps':
                 num_cycles = 1
 
-            if key == 'warmup_steps' and float(dataset_config.validation_split) > 0.0:
-                value = math.ceil(value * (1.0 - float(dataset_config.validation_split)))
+            if key == 'warmup_steps' and validation_split > 0.0:
+                value = math.ceil(value * (1.0 - validation_split))
 
             lr_scheduler_kwargs[key] = value
 

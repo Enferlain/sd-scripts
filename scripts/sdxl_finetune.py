@@ -32,7 +32,7 @@ from library.training.optimizer import get_optimizer, get_scheduler_fix
 from library.training.trainer_utils import append_lr_to_logs_with_names, prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 from library.config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
-from library.config.validation import prepare_config, validate_config
+from library.config.config_validation import prepare_config, validate_config
 
 from library.config.config_util import (
     BlueprintGenerator,
@@ -124,8 +124,8 @@ def train(cfg: SDXLFineTuneConfig):
     else:
         block_lrs = None
 
-    cache_latents = cfg.dataset.cache_latents
-    use_dreambooth_method = cfg.dataset.in_json is None
+    cache_latents = cfg.data.caching.cache_latents
+    use_dreambooth_method = cfg.data.source.in_json is None
 
     set_seed_from_config(cfg.training)
 
@@ -133,20 +133,20 @@ def train(cfg: SDXLFineTuneConfig):
     strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
     tokenizers = [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
-    if cfg.dataset.cache_latents:
+    if cfg.data.caching.cache_latents:
         latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
-            False, cfg.dataset.cache_latents_to_disk, cfg.dataset.vae_batch_size, cfg.dataset.skip_cache_check
+            False, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
         )
         strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
-    if cfg.dataset.dataset_class is None:
+    if cfg.data.source.dataset_class is None:
         blueprint_generator = BlueprintGenerator()
         blueprint = blueprint_generator.generate(cfg)
         train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(
             blueprint.dataset_group
         )
     else:
-        train_dataset_group = load_arbitrary_dataset(cfg.dataset)
+        train_dataset_group = load_arbitrary_dataset(cfg.data)
         val_dataset_group = None
 
     current_epoch = Value("i", 0)
@@ -156,7 +156,7 @@ def train(cfg: SDXLFineTuneConfig):
 
     train_dataset_group.verify_bucket_reso_steps(32)
 
-    if cfg.dataset.debug_dataset:
+    if cfg.data.preprocessing.debug_dataset:
         debug_dataset(train_dataset_group, True)
         return
     if len(train_dataset_group) == 0:
@@ -292,7 +292,7 @@ def train(cfg: SDXLFineTuneConfig):
 
         if cfg.performance.caching.cache_text_encoder_outputs:
             text_encoder_output_caching_strategy = strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, False, is_weighted=cfg.dataset.weighted_captions
+                cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, False, is_weighted=cfg.data.caption.weighted_captions
             )
             strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_output_caching_strategy)
 
@@ -399,10 +399,10 @@ def train(cfg: SDXLFineTuneConfig):
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
     if cfg.optimizer.fused_optimizer_groups:
-        lr_schedulers = [get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes) for optimizer in optimizers]
+        lr_schedulers = [get_scheduler_fix(cfg.optimizer, cfg.validation.validation_split, cfg.training, optimizer, accelerator.num_processes) for optimizer in optimizers]
         lr_scheduler = lr_schedulers[0]
     else:
-        lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes)
+        lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.validation.validation_split, cfg.training, optimizer, accelerator.num_processes)
 
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
@@ -581,7 +581,7 @@ def train(cfg: SDXLFineTuneConfig):
                 else:
                     input_ids1, input_ids2 = batch["input_ids_list"]
                     with torch.set_grad_enabled(train_te_based_on_lr):
-                        if cfg.dataset.weighted_captions:
+                        if cfg.data.caption.weighted_captions:
                             input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                             encoder_hidden_states1, encoder_hidden_states2, pool2 = (
                                 text_encoding_strategy.encode_tokens_with_weights(

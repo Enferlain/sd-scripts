@@ -4,13 +4,13 @@ Total: **~200 fields** across 17 dataclasses
 
 ## 🔜 Remaining
 
-| Task                          | Notes                                                                               |
-| ----------------------------- | ----------------------------------------------------------------------------------- |
-| ~~`model` restructuring~~     | ✅ Done: Added `model_type` field, removed `v2`                                     |
-| ~~`training` restructuring~~  | ✅ Validation separated to top-level `ValidationConfig`                             |
-| ~~`optimizer` restructuring~~ | ✅ Done: `scheduler` subcategory nested (alongside `learning_rates`)                |
-| `data` restructuring          | Major refactor: split 37 fields into `source`, `processing`, `captions`, `batching` |
-| `timestep` restructuring      | Possibly nest `mix_adaptive` subcategory                                            |
+| Task                          | Notes                                                                                         |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| ~~`model` restructuring~~     | ✅ Done: Added `model_type` field, removed `v2`                                               |
+| ~~`training` restructuring~~  | ✅ Validation separated to top-level `ValidationConfig`                                       |
+| ~~`optimizer` restructuring~~ | ✅ Done: `scheduler` subcategory nested (alongside `learning_rates`)                          |
+| ~~`data` restructuring~~      | ✅ Done: Split into 5 nested sub-configs (source, preprocessing, caption, bucketing, caching) |
+| ~~`timestep` restructuring~~  | ✅ Done: Per-sampler nested configs (mix_adaptive, tempered_adaptive, etc.)                   |
 
 ## 🔮 Future Design Goals
 

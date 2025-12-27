@@ -6,8 +6,7 @@ from pathlib import Path
 from textwrap import dedent, indent
 from dataclasses import asdict, dataclass
 
-from library.config.dataclasses.dataset import DatasetConfig
-from library.config.dataclasses.buckets import BucketsConfig
+from library.config.dataclasses.data import DataConfig
 from library.data.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
 from library.data.dataset import DatasetGroup, DreamBoothDataset, FineTuningDataset, ControlNetDataset
 from library.utils.common_utils import setup_logging
@@ -23,8 +22,7 @@ class RootConfig(Protocol):
     All script-specific root configs (SDFineTuneConfig, SDPeftConfig, etc.) 
     should satisfy this protocol.
     """
-    dataset: DatasetConfig
-    buckets: BucketsConfig
+    data: DataConfig
 
 # --- Dataclass Definitions for Blueprint ---
 # These dataclasses define the structure of the "blueprint" used to build the datasets.
@@ -152,12 +150,13 @@ class BlueprintGenerator:
     def generate(self, cfg: "RootConfig") -> Blueprint:
         dataset_blueprints = []
 
-        dataset_config = cfg.dataset
+        # Access nested data config
+        data_config = cfg.data
 
         # Determine dataset type from the configuration of its subsets
-        is_finetuning_type = any(hasattr(s, "metadata_file") and s.metadata_file for s in dataset_config.subsets)
+        is_finetuning_type = any(hasattr(s, "metadata_file") and s.metadata_file for s in data_config.source.subsets)
         is_controlnet_type = any(
-            hasattr(s, "conditioning_data_dir") and s.conditioning_data_dir for s in dataset_config.subsets
+            hasattr(s, "conditioning_data_dir") and s.conditioning_data_dir for s in data_config.source.subsets
         )
 
         if is_controlnet_type:
@@ -176,15 +175,22 @@ class BlueprintGenerator:
             subset_params_klass = DreamBoothSubsetParams
             dataset_params_klass = DreamBoothDatasetParams
 
+        # Sub-configs to search for field values
+        SUB_CONFIGS = ['preprocessing', 'caption', 'bucketing', 'caching', 'source']
+
         subset_blueprints = []
-        for subset_cfg in dataset_config.subsets:
+        for subset_cfg in data_config.source.subsets:
             params_dict = {}
 
-            # Populate params from the dataset config as a base,
+            # Populate params from the data config sub-configs as defaults,
             # using the correct subset parameter class to get all possible keys.
             for key in asdict(subset_params_klass()):
-                if hasattr(dataset_config, key):
-                    params_dict[key] = getattr(dataset_config, key)
+                # Search through sub-configs to find where the field lives
+                for config_name in SUB_CONFIGS:
+                    sub_config = getattr(data_config, config_name, None)
+                    if sub_config and hasattr(sub_config, key):
+                        params_dict[key] = getattr(sub_config, key)
+                        break  # Found it, stop searching
 
             # Overwrite with subset-specific values
             # Convert subset_cfg to dict to iterate
@@ -206,10 +212,14 @@ class BlueprintGenerator:
         # Create dataset-level parameters
         dataset_params_dict = {}
         for key in asdict(dataset_params_klass()):
-            if hasattr(dataset_config, key) and getattr(dataset_config, key) is not None:
-                dataset_params_dict[key] = getattr(dataset_config, key)
-            elif hasattr(cfg, "buckets") and hasattr(cfg.buckets, key):
-                dataset_params_dict[key] = getattr(cfg.buckets, key)
+            # Search through sub-configs to find where the field lives
+            for config_name in SUB_CONFIGS:
+                sub_config = getattr(data_config, config_name, None)
+                if sub_config and hasattr(sub_config, key):
+                    value = getattr(sub_config, key)
+                    if value is not None:
+                        dataset_params_dict[key] = value
+                    break  # Found it, stop searching
 
         # Convert resolution list to tuple if necessary
         resolution = dataset_params_dict.get("resolution")
@@ -431,21 +441,21 @@ def generate_dreambooth_subsets_config_by_subdirs(
 
     return subsets_config
 
-def generate_user_config_from_dataset(dataset_config) -> dict:
+def generate_user_config_from_dataset(cfg) -> dict:
     """
-    Generate user_config from DatasetConfig for DreamBooth subdirectory parsing.
+    Generate user_config from root config for DreamBooth subdirectory parsing.
     """
-    # Assuming dataset_config is cfg.dataset (or compatible object)
-    if dataset_config.dataset_class is None:
+    source_config = cfg.data.source
+    if source_config.dataset_class is None:
         user_config = {
             "datasets": [
                 {
-                    "subsets": generate_dreambooth_subsets_config_by_subdirs(dataset_config.train_data_dir, dataset_config.reg_data_dir)
+                    "subsets": generate_dreambooth_subsets_config_by_subdirs(source_config.train_data_dir, source_config.reg_data_dir)
                 }
             ]
         }
     else:
-        # For arbitrary dataset, we don't need subsets config in the same way,
+        # For arbitrary dataset, we don't need subsets config in the same way,  # TODO: what does this mean?
         # but we need to structure it if needed.
         # However, BlueprintGenerator logic for arbitrary dataset is handled differently (by not calling it or handling it upstream).
         # If dataset_class is present, BlueprintGenerator might not be used or used differently.

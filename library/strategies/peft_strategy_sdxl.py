@@ -24,7 +24,7 @@ from library.training.sdxl_sample_generation import sample_images
 from library.utils.sai_model_spec import get_sai_model_spec_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.trainer_utils import calculate_val_loss_check
-from library.config.validation import validate_sdxl_peft
+from library.config.config_validation import validate_sdxl_peft
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
@@ -114,7 +114,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
     def get_latents_caching_strategy(self, cfg):
         """Return SD/SDXL latents caching strategy (shared implementation)."""
         return strategy_sd.SdSdxlLatentsCachingStrategy(
-            False, cfg.dataset.cache_latents_to_disk, cfg.dataset.vae_batch_size, cfg.dataset.skip_cache_check
+            False, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
         )
 
     def get_text_encoding_strategy(self, cfg):
@@ -134,7 +134,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         """Return SDXL text encoder outputs caching strategy if enabled."""
         if cfg.performance.caching.cache_text_encoder_outputs:
             return strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, cfg.dataset.skip_cache_check, is_weighted=cfg.dataset.weighted_captions
+                cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, cfg.data.caching.skip_cache_check, is_weighted=cfg.data.caption.weighted_captions
             )
         else:
             return None
@@ -224,7 +224,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             v_parameterization=cfg.loss.v_parameterization,
             is_lora=True,
             is_textual_inversion=False,
-            resolution=cfg.dataset.resolution,
+            resolution=cfg.data.preprocessing.resolution,
             min_timestep=cfg.timestep.min_timestep,
             max_timestep=cfg.timestep.max_timestep,
             clip_skip=cfg.training.clip_skip,
@@ -357,10 +357,10 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             if "latents" in batch and batch["latents"] is not None:
                 latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
             else:
-                if cfg.dataset.vae_batch_size is None or len(batch["images"]) <= cfg.dataset.vae_batch_size:
+                if cfg.data.caching.vae_batch_size is None or len(batch["images"]) <= cfg.data.caching.vae_batch_size:
                     latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
                 else:
-                    chunks = [batch["images"][i : i + cfg.dataset.vae_batch_size] for i in range(0, len(batch["images"]), cfg.dataset.vae_batch_size)]
+                    chunks = [batch["images"][i : i + cfg.data.caching.vae_batch_size] for i in range(0, len(batch["images"]), cfg.data.caching.vae_batch_size)]
                     list_latents = []
                     for chunk in chunks:
                         with torch.no_grad():
@@ -428,10 +428,10 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             if "latents" in batch and batch["latents"] is not None:
                 latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
             else:
-                if cfg.dataset.vae_batch_size is None or len(batch["images"]) <= cfg.dataset.vae_batch_size:
+                if cfg.data.caching.vae_batch_size is None or len(batch["images"]) <= cfg.data.caching.vae_batch_size:
                     latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
                 else:
-                    chunks = [batch["images"][i : i + cfg.dataset.vae_batch_size] for i in range(0, len(batch["images"]), cfg.dataset.vae_batch_size)]
+                    chunks = [batch["images"][i : i + cfg.data.caching.vae_batch_size] for i in range(0, len(batch["images"]), cfg.data.caching.vae_batch_size)]
                     list_latents = []
                     for chunk in chunks:
                         with torch.no_grad():

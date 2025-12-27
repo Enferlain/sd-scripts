@@ -128,7 +128,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
 
 
 class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
-    # sd and sdxl share the same strategy. we can make them separate, but the difference is only the suffix.
+    # sd and sdxl share the same strategy. we can make them separate, but the difference is only the suffix.  ## TODO: what does this mean and why is it here?
     # and we keep the old npz for the backward compatibility.
 
     SD_OLD_LATENTS_NPZ_SUFFIX = ".npz"

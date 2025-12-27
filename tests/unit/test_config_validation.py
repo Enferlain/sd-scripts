@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from omegaconf import OmegaConf
 
-from library.config.validation import (
+from library.config.config_validation import (
     prepare_config,
     validate_config,
     validate_sd_peft,
@@ -36,7 +36,7 @@ class TestPrepareConfig:
             "sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None},
         })
         prepare_config(cfg)
-        assert cfg.dataset.cache_latents is True
+        assert cfg.data.caching.cache_latents is True
 
     def test_cache_latents_unchanged_if_disk_false(self):
         """cache_latents should remain False if cache_latents_to_disk is False."""
@@ -46,7 +46,7 @@ class TestPrepareConfig:
             "sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None},
         })
         prepare_config(cfg)
-        assert cfg.dataset.cache_latents is False
+        assert cfg.data.caching.cache_latents is False
 
     def test_caption_extention_backward_compat(self):
         """caption_extention (typo) should copy to caption_extension."""
@@ -57,7 +57,7 @@ class TestPrepareConfig:
             "sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None},
         })
         prepare_config(cfg)
-        assert cfg.dataset.caption_extension == ".txt"
+        assert cfg.data.caption.caption_extension == ".txt"
 
     def test_sdxl_cache_text_encoder_outputs_to_disk_enables_parent(self):
         """SDXL cache_text_encoder_outputs_to_disk enables cache_text_encoder_outputs."""

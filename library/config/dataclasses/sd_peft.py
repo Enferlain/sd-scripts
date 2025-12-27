@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
 from .training import TrainingConfig
 from .optimizer import OptimizerConfig
-from .dataset import DatasetConfig
-from .buckets import BucketsConfig
+from .data import DataConfig
 from .model import ModelConfig
 from .peft import PeftConfig
 from .performance import PerformanceConfig
@@ -16,8 +15,7 @@ from .validation import ValidationConfig
 class SDPeftConfig:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
-    dataset: DatasetConfig = field(default_factory=DatasetConfig)
-    buckets: BucketsConfig = field(default_factory=BucketsConfig)
+    data: DataConfig = field(default_factory=DataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     peft: PeftConfig = field(default_factory=PeftConfig)
     output: OutputConfig = field(default_factory=OutputConfig)

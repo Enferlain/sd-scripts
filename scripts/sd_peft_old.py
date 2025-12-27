@@ -18,7 +18,7 @@ import hydra
 from hydra.core.config_store import ConfigStore
 
 from library.config.dataclasses.sd_peft import SDPeftConfig
-from library.config.validation import prepare_config, validate_config
+from library.config.config_validation import prepare_config, validate_config
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex
 

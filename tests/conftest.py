@@ -27,10 +27,9 @@ from omegaconf import OmegaConf
 
 # Import all config dataclasses for fixture creation
 from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig
-from library.config.dataclasses.dataset import DatasetConfig
+from library.config.dataclasses.data import DataConfig, SourceConfig, PreprocessingConfig, BucketingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.peft import PeftConfig
-from library.config.dataclasses.buckets import BucketsConfig
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import LoggingConfig
@@ -106,13 +105,12 @@ def mock_optimizer_config():
 
 
 @pytest.fixture
-def mock_dataset_config(tmp_dataset_dir):
-    """Create a basic DatasetConfig for testing."""
-    return DatasetConfig(
-        train_data_dir=tmp_dataset_dir,
-        resolution="512,512",
-        batch_size=1,
-        max_token_length=225,
+def mock_data_config(tmp_dataset_dir):
+    """Create a basic DataConfig for testing."""
+    return DataConfig(
+        source=SourceConfig(train_data_dir=tmp_dataset_dir),
+        preprocessing=PreprocessingConfig(resolution="512,512"),
+        bucketing=BucketingConfig(enable_bucket=True, min_bucket_reso=256, max_bucket_reso=1024, bucket_reso_steps=64),
     )
 
 
@@ -122,7 +120,6 @@ def mock_training_config():
     return TrainingConfig(
         max_train_epochs=10,
         train_batch_size=1,
-        mixed_precision="fp16",
         gradient_accumulation_steps=1,
     )
 
@@ -134,17 +131,6 @@ def mock_adapter_config():
         module="adapters.lora",
         dim=4,
         alpha=1.0,
-    )
-
-
-@pytest.fixture
-def mock_buckets_config():
-    """Create a basic BucketsConfig for testing."""
-    return BucketsConfig(
-        enable_bucket=True,
-        min_bucket_reso=256,
-        max_bucket_reso=1024,
-        bucket_reso_steps=64,
     )
 
 

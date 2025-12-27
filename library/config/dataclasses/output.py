@@ -55,7 +55,7 @@ class HuggingFaceConfig:
 
 
 @dataclass
-class SamplingConfig:
+class SamplingConfig:  # TODO: Maybe add granular sampling options? Where are they?
     """Sample image generation settings."""
     sample_every_n_steps: Optional[int] = None
     sample_at_first: bool = False

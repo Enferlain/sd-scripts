@@ -32,7 +32,7 @@ from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.optimizer import get_optimizer, get_scheduler_fix
 from library.training.sd_sample_generation import sample_images
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
-from library.config.validation import prepare_config, validate_config, validate_sd_textual_inversion
+from library.config.config_validation import prepare_config, validate_config, validate_sd_textual_inversion
 
 from library.config.config_util import (
     BlueprintGenerator,

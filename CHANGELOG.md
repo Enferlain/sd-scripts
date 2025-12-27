@@ -44,6 +44,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - YAML configs consolidated: removed `configs/masked_loss/`, `configs/regularization/` → merged into `configs/loss/default.yaml`
   - Updated all 6 root config dataclasses and YAML files
 
+- **Timestep Config Restructuring**
+
+  - Replaced 22 flat `mix_adaptive_*` fields with 4 per-sampler nested dataclasses
+  - New nested sections: `mix_adaptive`, `tempered_adaptive`, `gaussian_mid_snr`, `snr_windowed`
+  - Config access paths updated: `cfg.timestep.mix_adaptive_bins` → `cfg.timestep.mix_adaptive.bins`, etc.
+  - Each sampler type now has its own complete config section
+
+- **Timestep and Logging Folder Reorganization**
+
+  - Moved `library/timestep_samplers/` → `library/timestep/samplers/`
+  - Created `library/timestep/timestep_utils.py` with `init_timestep_sampler`, `parse_dynamic_timestep_schedule`
+  - Moved `tools/visualization/` → `library/logging/live_plotter/`
+  - Created `library/logging/training_plots.py` with `save_timestep_distribution_plot`, `close_live_plotter`, `get_plotter_settings`, `setup_live_plotter`
+  - Scripts (`sd_peft.py`, `sdxl_peft.py`) now import directly from new modules
+
+- **Data Config Restructuring**
+
+  - Merged `DatasetConfig` (~35 fields) + `BucketsConfig` (5 fields) into unified `DataConfig`
+  - Created 5 nested sub-configs: `SourceConfig`, `PreprocessingConfig`, `CaptionConfig`, `BucketingConfig`, `CachingConfig`
+  - New files: `library/config/dataclasses/data.py`, `configs/data/default.yaml`
+  - Removed: `library/config/dataclasses/buckets.py`, `configs/dataset/`, `configs/buckets/`
+  - Config access paths updated:
+    - `cfg.dataset.train_data_dir` → `cfg.data.source.train_data_dir`
+    - `cfg.dataset.cache_latents` → `cfg.data.caching.cache_latents`
+    - `cfg.dataset.shuffle_caption` → `cfg.data.caption.shuffle_caption`
+    - `cfg.dataset.flip_aug` → `cfg.data.preprocessing.flip_aug`
+    - `cfg.buckets.enable_bucket` → `cfg.data.bucketing.enable_bucket`
+  - Updated function signatures: `prepare_optimizer` (removed unused dataset_config param), `get_scheduler_fix` (now takes validation_split float), `load_arbitrary_dataset` (now takes root cfg)
+  - `BlueprintGenerator` refactored to auto-search sub-configs for field values
+
+- **DeepSpeedConfig Consolidation**
+
+  - Moved `DeepSpeedConfig` from separate `deepspeed.py` into `performance.py` with other sub-configs
+  - Deleted: `library/config/dataclasses/deepspeed.py`
+  - Updated test imports to use new location
+  - `peft_common.py` reduced from 974 → 650 lines
+
 ## [2025-12-26]
 
 ### Changed

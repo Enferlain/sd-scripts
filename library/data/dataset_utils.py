@@ -66,15 +66,15 @@ class collator_class:
         return examples[0]
 
 
-def load_arbitrary_dataset(dataset_config, tokenizer=None):
+def load_arbitrary_dataset(cfg, tokenizer=None):
     """Load arbitrary dataset class.
     
     Args:
-        dataset_config: Either a DatasetConfig dataclass or a namespace-like object with:
-            - dataset_class: str path to the dataset class
-            - max_token_length: int maximum token length
-            - resolution: resolution configuration  
-            - debug_dataset: bool whether to debug
+        cfg: Root config object with:
+            - data.source.dataset_class: str path to the dataset class
+            - training.max_token_length: int maximum token length
+            - data.preprocessing.resolution: resolution configuration  
+            - data.preprocessing.debug_dataset: bool whether to debug
         tokenizer: Optional tokenizer to pass to the dataset
     
     Returns:
@@ -82,15 +82,16 @@ def load_arbitrary_dataset(dataset_config, tokenizer=None):
     """
     from library.data.minimal_dataset import MinimalDataset
     
-    module = ".".join(dataset_config.dataset_class.split(".")[:-1])
-    dataset_class = dataset_config.dataset_class.split(".")[-1]
+    dataset_class_path = cfg.data.source.dataset_class
+    module = ".".join(dataset_class_path.split(".")[:-1])
+    dataset_class = dataset_class_path.split(".")[-1]
     module = importlib.import_module(module)
     dataset_class = getattr(module, dataset_class)
     train_dataset_group: MinimalDataset = dataset_class(
         tokenizer,
-        dataset_config.max_token_length,
-        dataset_config.resolution,
-        dataset_config.debug_dataset
+        cfg.training.max_token_length,
+        cfg.data.preprocessing.resolution,
+        cfg.data.preprocessing.debug_dataset
     )
     return train_dataset_group
 

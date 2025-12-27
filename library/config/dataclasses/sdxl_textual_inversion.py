@@ -2,8 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 from .training import TrainingConfig
 from .optimizer import OptimizerConfig
-from .dataset import DatasetConfig
-from .buckets import BucketsConfig
+from .data import DataConfig
 from .model import ModelConfig
 from .sdxl import SDXLConfig
 from .performance import PerformanceConfig
@@ -33,8 +32,7 @@ class SDXLTextualInversionConfig:
     textual_inversion: SDXLTextualInversionSpecificConfig = field(default_factory=SDXLTextualInversionSpecificConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
-    dataset: DatasetConfig = field(default_factory=DatasetConfig)
-    buckets: BucketsConfig = field(default_factory=BucketsConfig)
+    data: DataConfig = field(default_factory=DataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     sdxl: SDXLConfig = field(default_factory=SDXLConfig)
     output: OutputConfig = field(default_factory=OutputConfig)

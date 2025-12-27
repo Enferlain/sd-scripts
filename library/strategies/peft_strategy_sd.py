@@ -33,7 +33,7 @@ from library.losses.loss_weighting import (
     add_v_prediction_like_loss,
     apply_debiased_estimation
 )
-from library.config.validation import validate_sd_peft
+from library.config.config_validation import validate_sd_peft
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -87,7 +87,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
     def get_latents_caching_strategy(self, cfg):
         """Return SD latents caching strategy."""
         return strategy_sd.SdSdxlLatentsCachingStrategy(
-            True, cfg.dataset.cache_latents_to_disk, cfg.dataset.vae_batch_size, cfg.dataset.skip_cache_check
+            True, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
         )
 
     def get_text_encoding_strategy(self, cfg):
@@ -134,7 +134,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
             v_parameterization=cfg.loss.v_parameterization,
             is_lora=True,
             is_textual_inversion=False,
-            resolution=cfg.dataset.resolution,
+            resolution=cfg.data.preprocessing.resolution,
             min_timestep=cfg.timestep.min_timestep,
             max_timestep=cfg.timestep.max_timestep,
             clip_skip=cfg.training.clip_skip,
@@ -230,10 +230,10 @@ class SdPeftStrategy(PeftTrainingStrategy):
             if "latents" in batch and batch["latents"] is not None:
                 latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
             else:
-                if cfg.dataset.vae_batch_size is None or len(batch["images"]) <= cfg.dataset.vae_batch_size:
+                if cfg.data.caching.vae_batch_size is None or len(batch["images"]) <= cfg.data.caching.vae_batch_size:
                     latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
                 else:
-                    chunks = [batch["images"][i : i + cfg.dataset.vae_batch_size] for i in range(0, len(batch["images"]), cfg.dataset.vae_batch_size)]
+                    chunks = [batch["images"][i : i + cfg.data.caching.vae_batch_size] for i in range(0, len(batch["images"]), cfg.data.caching.vae_batch_size)]
                     list_latents = []
                     for chunk in chunks:
                         with torch.no_grad():
@@ -254,7 +254,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
         if len(text_encoder_conds) == 0 or text_encoder_conds[0] is None or train_text_encoder:
             with torch.set_grad_enabled(is_train and train_text_encoder), accelerator.autocast():
-                if cfg.dataset.weighted_captions:
+                if cfg.data.caption.weighted_captions:
                     input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                     encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
                         tokenize_strategy, self.get_models_for_text_encoding(cfg, accelerator, text_encoders), input_ids_list, weights_list)
@@ -322,10 +322,10 @@ class SdPeftStrategy(PeftTrainingStrategy):
             if "latents" in batch and batch["latents"] is not None:
                 latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
             else:
-                if cfg.dataset.vae_batch_size is None or len(batch["images"]) <= cfg.dataset.vae_batch_size:
+                if cfg.data.caching.vae_batch_size is None or len(batch["images"]) <= cfg.data.caching.vae_batch_size:
                     latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
                 else:
-                    chunks = [batch["images"][i : i + cfg.dataset.vae_batch_size] for i in range(0, len(batch["images"]), cfg.dataset.vae_batch_size)]
+                    chunks = [batch["images"][i : i + cfg.data.caching.vae_batch_size] for i in range(0, len(batch["images"]), cfg.data.caching.vae_batch_size)]
                     list_latents = []
                     for chunk in chunks:
                         with torch.no_grad():
@@ -346,7 +346,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
             if len(text_encoder_conds) == 0 or text_encoder_conds[0] is None or train_text_encoder:
                 with torch.set_grad_enabled(False and train_text_encoder), accelerator.autocast():
-                    if cfg.dataset.weighted_captions:
+                    if cfg.data.caption.weighted_captions:
                         input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                         encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
                             tokenize_strategy, self.get_models_for_text_encoding(cfg, accelerator, text_encoders), input_ids_list, weights_list)

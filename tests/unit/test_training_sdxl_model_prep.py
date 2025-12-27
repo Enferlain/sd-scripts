@@ -8,7 +8,7 @@ import os
 # Import the module under test
 import library.training.sdxl_model_prep as sdxl_model_prep
 from library.config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
-from library.config.dataclasses.deepspeed import DeepSpeedConfig
+from library.config.dataclasses.performance import DeepSpeedConfig
 
 @pytest.mark.unit
 class TestSDXLModelPrep(unittest.TestCase):

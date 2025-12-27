@@ -14,7 +14,7 @@ from library.data.dataset import DatasetGroup, MinimalDataset
 from library.training.sdxl_sample_generation import sample_images
 from library.training.sdxl_model_prep import load_target_model as load_target_model_sdxl
 from library.config.dataclasses.sdxl_textual_inversion import SDXLTextualInversionConfig
-from library.config.validation import prepare_config, validate_config, validate_sdxl_textual_inversion
+from library.config.config_validation import prepare_config, validate_config, validate_sdxl_textual_inversion
 
 init_ipex()
 

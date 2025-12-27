@@ -21,7 +21,7 @@ def test_sd_peft_config_loading():
         assert "training" in cfg
 
         # Check defaults
-        assert cfg.peft.alpha == 1.0
-        assert cfg.buckets.min_bucket_reso == 256
+        assert cfg.peft.adapter_alpha == 1.0
+        assert cfg.data.bucketing.min_bucket_reso == 256
         assert cfg.training.train_batch_size == 1
         assert cfg.optimizer.learning_rates.base == 2.0e-6
