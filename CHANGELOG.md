@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Optimizer Scheduler Config Nesting**
+
+  - Created `SchedulerConfig` dataclass with 9 LR scheduler fields
+  - Nested under `OptimizerConfig.scheduler`
+  - Config access paths updated: `cfg.optimizer.lr_scheduler` → `cfg.optimizer.scheduler.lr_scheduler`, etc.
+  - YAML updated: `configs/optimizer/default.yaml` now has `scheduler:` section
+
+- **Learning Rate Consolidation**
+
+  - Removed redundant `OptimizerConfig.learning_rate` field
+  - `LearningRatesConfig.base` is now the canonical base LR (default: `2.0e-6`)
+  - Config access paths updated: `cfg.optimizer.learning_rate` → `cfg.optimizer.learning_rates.base`
+
 - **Loss Config Consolidation**
 
   - Created nested `LossConfig` with 5 sub-configs: `HuberConfig`, `SNRConfig`, `MaskedLossConfig`, `RegularizationConfig`, `EDM2Config`

@@ -239,7 +239,7 @@ def train(cfg: SDXLFineTuneConfig):
 
     if cfg.performance.memory.gradient_checkpointing:
         unet.enable_gradient_checkpointing()
-    train_unet = cfg.optimizer.learning_rate != 0
+    train_unet = cfg.optimizer.learning_rates.base != 0
     train_text_encoder1 = False
     train_text_encoder2 = False
 
@@ -268,8 +268,8 @@ def train(cfg: SDXLFineTuneConfig):
                 lr_te2 = lr_te_schema
         else:
             # No TE-specific LR, use base LR
-            lr_te1 = cfg.optimizer.learning_rate
-            lr_te2 = cfg.optimizer.learning_rate
+            lr_te1 = cfg.optimizer.learning_rates.base
+            lr_te2 = cfg.optimizer.learning_rates.base
         
         train_text_encoder1 = lr_te1 != 0
         train_text_encoder2 = lr_te2 != 0
@@ -317,7 +317,7 @@ def train(cfg: SDXLFineTuneConfig):
     if train_unet:
         training_models.append(unet)
         if block_lrs is None:
-            params_to_optimize.append({"params": list(unet.parameters()), "lr": cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rate})
+            params_to_optimize.append({"params": list(unet.parameters()), "lr": cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rates.base})
         else:
             params_to_optimize.extend(get_block_params_to_optimize(unet, block_lrs))
 

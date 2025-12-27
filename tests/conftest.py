@@ -26,7 +26,7 @@ from hydra.core.global_hydra import GlobalHydra
 from omegaconf import OmegaConf
 
 # Import all config dataclasses for fixture creation
-from library.config.dataclasses.optimizer import OptimizerConfig
+from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig
 from library.config.dataclasses.dataset import DatasetConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.peft import PeftConfig
@@ -101,8 +101,7 @@ def mock_optimizer_config():
     return OptimizerConfig(
         optimizer_type="AdamW",
         learning_rate=1e-4,
-        lr_scheduler="constant",
-        lr_warmup_steps=0,
+        scheduler=SchedulerConfig(lr_scheduler="constant", lr_warmup_steps=0),
     )
 
 

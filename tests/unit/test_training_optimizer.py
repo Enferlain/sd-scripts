@@ -15,7 +15,7 @@ from library.training.optimizer import (
     get_dummy_scheduler,
     parse_string_to_type,
 )
-from library.config.dataclasses.optimizer import OptimizerConfig
+from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig
 from library.config.dataclasses.peft import PeftConfig
 from library.config.dataclasses.dataset import DatasetConfig
 
@@ -270,23 +270,22 @@ class TestOptimizerConfigIntegration:
         """Test that lr_scheduler config value is preserved."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            lr_scheduler="constant",
+            scheduler=SchedulerConfig(lr_scheduler="constant"),
             learning_rate=1e-4
         )
         
-        assert config.lr_scheduler == "constant"
+        assert config.scheduler.lr_scheduler == "constant"
         
     def test_lr_warmup_steps(self):
         """Test that lr_warmup_steps config value is preserved."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            lr_scheduler="cosine",
-            lr_warmup_steps=100,
+            scheduler=SchedulerConfig(lr_scheduler="cosine", lr_warmup_steps=100),
             learning_rate=1e-4
         )
         
-        assert config.lr_warmup_steps == 100
-        assert config.lr_scheduler == "cosine"
+        assert config.scheduler.lr_warmup_steps == 100
+        assert config.scheduler.lr_scheduler == "cosine"
         
     def test_multiple_optimizer_args(self, mock_model_parameters):
         """Test multiple optimizer arguments parsing."""
@@ -365,8 +364,7 @@ class TestOptimizerEdgeCases:
         """Test config with zero warmup steps."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            lr_scheduler="cosine",
-            lr_warmup_steps=0
+            scheduler=SchedulerConfig(lr_scheduler="cosine", lr_warmup_steps=0)
         )
         
-        assert config.lr_warmup_steps == 0
+        assert config.scheduler.lr_warmup_steps == 0

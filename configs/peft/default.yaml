@@ -1,9 +1,9 @@
 adapter_rank: null
 adapter_alpha: 1.0
 neuron_dropout: null
-weights: null
-module: null
-args: null
+adapter_weights: null
+adapter_module: null
+adapter_args: null
 adapter_rank_from_weights: false
 scale_weight_norms: null
 base_weights: null

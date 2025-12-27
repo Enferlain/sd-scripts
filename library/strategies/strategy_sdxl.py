@@ -203,7 +203,7 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
             self, tokenize_strategy: TokenizeStrategy, models: List[Any], text_encoding_strategy: TextEncodingStrategy,
             infos: List
     ):
-        sdxl_text_encoding_strategy = text_encoding_strategy  # type: SdxlTextEncodingStrategy
+        sdxl_text_encoding_strategy = text_encoding_strategy  # TODO: type ok?
         captions = [info.caption for info in infos]
 
         if self.is_weighted:

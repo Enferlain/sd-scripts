@@ -147,13 +147,13 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, adapter_config: PeftCon
             # only flux atm via Kohya's
             results = adapter.prepare_optimizer_params_with_multiple_te_lrs(text_encoder_lr=text_encoder_lr,
                                                                             unet_lr=unet_lr,
-                                                                            learning_rate=optimizer_config.learning_rate,
+                                                                            learning_rate=optimizer_config.learning_rates.base,
                                                                             apply_orthograd=apply_orthograd,
                                                                             orthograd_targets=orthograd_targets)
         else:
             results = adapter.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
                                                        unet_lr=unet_lr,
-                                                       learning_rate=optimizer_config.learning_rate,
+                                                       learning_rate=optimizer_config.learning_rates.base,
                                                        apply_orthograd=apply_orthograd,
                                                        orthograd_targets=orthograd_targets)
         if type(results) is tuple:
@@ -164,7 +164,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, adapter_config: PeftCon
     except TypeError as e:
         results = adapter.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
                                                    unet_lr=unet_lr,
-                                                   learning_rate=optimizer_config.learning_rate,
+                                                   learning_rate=optimizer_config.learning_rates.base,
                                                    apply_orthograd=apply_orthograd,
                                                    orthograd_targets=orthograd_targets)
         if type(results) is tuple:
@@ -234,7 +234,7 @@ def get_optimizer(optimizer_config: OptimizerConfig, trainable_params, optimizer
             optimizer_kwargs[key] = value
     # logger.info(f"optkwargs {optimizer}_{kwargs}")
 
-    lr = optimizer_config.learning_rate
+    lr = optimizer_config.learning_rates.base
     optimizer = None
     optimizer_class = None
 
@@ -420,7 +420,7 @@ def get_optimizer(optimizer_config: OptimizerConfig, trainable_params, optimizer
             if lr != 0.0:
                 logger.warning(
                     f"learning rate is used as initial_lr / 指定したlearning rateはinitial_lrとして使用されます")
-            optimizer_config.learning_rate = None
+            optimizer_config.learning_rates.base = None  # TODO: expected float got none?
 
             # trainable_paramsがgroupだった時の処理：lrを削除する
             if type(trainable_params) == list and type(trainable_params[0]) == dict:
@@ -435,9 +435,9 @@ def get_optimizer(optimizer_config: OptimizerConfig, trainable_params, optimizer
                     # args.unet_lr = None # cannot modifying config easily here, just ignore
                     # args.text_encoder_lr = None
 
-            if optimizer_config.lr_scheduler != "adafactor":
+            if optimizer_config.scheduler.lr_scheduler != "adafactor":
                 logger.info(f"use adafactor_scheduler / スケジューラにadafactor_schedulerを使用します")
-            # optimizer_config.lr_scheduler = f"adafactor:{lr}"  # Avoiding modification of config
+            # optimizer_config.scheduler.lr_scheduler = f"adafactor:{lr}"  # Avoiding modification of config
 
             lr = None
         else:
@@ -445,7 +445,7 @@ def get_optimizer(optimizer_config: OptimizerConfig, trainable_params, optimizer
                 logger.warning(
                     f"because max_grad_norm is set, clip_grad_norm is enabled. consider set to 0 / max_grad_normが設定されているためclip_grad_normが有効になります。0に設定して無効にしたほうがいいかもしれません"
                 )
-            if optimizer_config.lr_scheduler != "constant_with_warmup":
+            if optimizer_config.scheduler.lr_scheduler != "constant_with_warmup":
                 logger.warning(
                     f"constant_with_warmup will be good / スケジューラはconstant_with_warmupが良いかもしれません")
             if optimizer_kwargs.get("clip_threshold", 1.0) != 1.0:
@@ -495,7 +495,7 @@ def get_optimizer(optimizer_config: OptimizerConfig, trainable_params, optimizer
         # Need to handle base optimizer
         if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower()):
             case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type", None)
-            base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")
+            base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")  # TODO: unresolved attribute split?
             base_optimizer_module = importlib.import_module(".".join(base_optimizer_values[:-1]))
             case_sensitive_base_optimizer_type = base_optimizer_values[-1]
             base_optimizer_class = getattr(base_optimizer_module, case_sensitive_base_optimizer_type)
@@ -604,8 +604,8 @@ def get_optimizer_train_eval_fn(optimizer: Optimizer, optimizer_config: Optimize
         return lambda: None, lambda: None
 
     # get train and eval functions from optimizer
-    train_fn = optimizer.train
-    eval_fn = optimizer.eval
+    train_fn = optimizer.train  # TODO: unresovled attribute?
+    eval_fn = optimizer.eval  # TODO: unresovled attribute?
 
     return train_fn, eval_fn
 
@@ -666,17 +666,17 @@ def get_scheduler_fix(optimizer_config: OptimizerConfig, dataset_config: Dataset
 
     # Need to apply scheduler to base_optimizer
     if is_wrapper_optimizer(optimizer_config):
-        optimizer = optimizer.base_optimizer
+        optimizer = optimizer.base_optimizer  # TODO: unresolved attribute?
 
-    name = optimizer_config.lr_scheduler
+    name = optimizer_config.scheduler.lr_scheduler
     num_training_steps = training_config.max_train_steps * num_processes  # * args.gradient_accumulation_steps
     num_warmup_steps: Optional[int] = (
-        int(optimizer_config.lr_warmup_steps * num_training_steps) if isinstance(optimizer_config.lr_warmup_steps,
-                                                                     float) else optimizer_config.lr_warmup_steps
+        int(optimizer_config.scheduler.lr_warmup_steps * num_training_steps) if isinstance(optimizer_config.scheduler.lr_warmup_steps,
+                                                                     float) else optimizer_config.scheduler.lr_warmup_steps
     )
 
     temp_lr_decay_steps = parse_string_to_type(
-        optimizer_config.lr_decay_steps) if optimizer_config.lr_decay_steps is not None else optimizer_config.lr_decay_steps or 0
+        optimizer_config.scheduler.lr_decay_steps) if optimizer_config.scheduler.lr_decay_steps is not None else optimizer_config.scheduler.lr_decay_steps or 0
 
     num_decay_steps: Optional[int] = (
         int(temp_lr_decay_steps * num_training_steps) if isinstance(temp_lr_decay_steps, float) else temp_lr_decay_steps
@@ -687,14 +687,14 @@ def get_scheduler_fix(optimizer_config: OptimizerConfig, dataset_config: Dataset
         num_decay_steps = num_warmup_steps
 
     num_stable_steps = num_training_steps - num_warmup_steps - num_decay_steps
-    num_cycles = optimizer_config.lr_scheduler_num_cycles
-    power = optimizer_config.lr_scheduler_power
-    timescale = optimizer_config.lr_scheduler_timescale
-    min_lr_ratio = optimizer_config.lr_scheduler_min_lr_ratio
+    num_cycles = optimizer_config.scheduler.lr_scheduler_num_cycles
+    power = optimizer_config.scheduler.lr_scheduler_power
+    timescale = optimizer_config.scheduler.lr_scheduler_timescale
+    min_lr_ratio = optimizer_config.scheduler.lr_scheduler_min_lr_ratio
 
     lr_scheduler_kwargs = {}  # get custom lr_scheduler kwargs
-    if optimizer_config.lr_scheduler_args is not None and len(optimizer_config.lr_scheduler_args) > 0:
-        for arg in optimizer_config.lr_scheduler_args:
+    if optimizer_config.scheduler.lr_scheduler_args is not None and len(optimizer_config.scheduler.lr_scheduler_args) > 0:
+        for arg in optimizer_config.scheduler.lr_scheduler_args:
             key, value = arg.split("=")
             value = ast.literal_eval(value)
 
@@ -716,8 +716,8 @@ def get_scheduler_fix(optimizer_config: OptimizerConfig, dataset_config: Dataset
         return return_vals
 
     # using any lr_scheduler from other library
-    if optimizer_config.lr_scheduler_type:
-        lr_scheduler_type = optimizer_config.lr_scheduler_type
+    if optimizer_config.scheduler.lr_scheduler_type:
+        lr_scheduler_type = optimizer_config.scheduler.lr_scheduler_type
         logger.info(f"use {lr_scheduler_type} | {lr_scheduler_kwargs} as lr_scheduler")
         if "." not in lr_scheduler_type:  # default to use torch.optim
             lr_scheduler_module = torch.optim.lr_scheduler

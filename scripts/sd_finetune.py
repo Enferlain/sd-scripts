@@ -189,7 +189,7 @@ def train(cfg: SDFineTuneConfig):
     trainable_params = []
     
     # Resolve Learning Rates (Schema 1)
-    lr_unet = cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rate
+    lr_unet = cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rates.base
     lr_te = cfg.optimizer.learning_rates.text_encoders
 
     if lr_te is None or not train_text_encoder:

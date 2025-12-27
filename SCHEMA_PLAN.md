@@ -4,13 +4,13 @@ Total: **~200 fields** across 17 dataclasses
 
 ## 🔜 Remaining
 
-| Task                      | Notes                                                                               |
-| ------------------------- | ----------------------------------------------------------------------------------- |
-| `model` restructuring     | Add `model_type` field, keep fields flat                                            |
-| `training` restructuring  | Add `method` field, possibly nest validation subcategory                            |
-| `optimizer` restructuring | Nest `scheduler` subcategory (currently only `learning_rates` nested)               |
-| `data` restructuring      | Major refactor: split 37 fields into `source`, `processing`, `captions`, `batching` |
-| `timestep` restructuring  | Possibly nest `mix_adaptive` subcategory                                            |
+| Task                          | Notes                                                                               |
+| ----------------------------- | ----------------------------------------------------------------------------------- |
+| `model` restructuring         | Add `model_type` field, keep fields flat                                            |
+| `training` restructuring      | Add `method` field, possibly nest validation subcategory                            |
+| ~~`optimizer` restructuring~~ | ✅ Done: `scheduler` subcategory nested (alongside `learning_rates`)                |
+| `data` restructuring          | Major refactor: split 37 fields into `source`, `processing`, `captions`, `batching` |
+| `timestep` restructuring      | Possibly nest `mix_adaptive` subcategory                                            |
 
 ## 🔮 Future Design Goals
 

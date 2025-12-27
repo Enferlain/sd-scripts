@@ -246,7 +246,7 @@ class TestConfigOverrides:
             config_name="sd_peft",
             overrides=["optimizer.learning_rate=5e-5", "optimizer.optimizer_type=AdamW"]
         )
-        assert cfg.optimizer.learning_rate == 5e-5
+        assert cfg.optimizer.learning_rates.base == 5e-5
         assert cfg.optimizer.optimizer_type == "AdamW"
         
     def test_network_override(self, hydra_ctx):
