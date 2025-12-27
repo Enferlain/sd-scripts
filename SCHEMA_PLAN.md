@@ -2,38 +2,46 @@
 
 Total: **~200 fields** across 17 dataclasses
 
-## ✅ Completed (2025-12-25 & 2025-12-26)
-
-| Task                                                         | Status  |
-| ------------------------------------------------------------ | ------- |
-| Remove `@property` aliases from `PeftConfig`                 | ✅ Done |
-| Remove `unet_lr`, `text_encoder_lr` from `PeftConfig`        | ✅ Done |
-| Remove `learning_rate_te1/te2`, `block_lr` from `SDXLConfig` | ✅ Done |
-| Add `learning_rates` section to `optimizer/default.yaml`     | ✅ Done |
-| Remove fallback logic from `optimizer.py`                    | ✅ Done |
-| Rename `cfg.network` → `cfg.peft` in all scripts             | ✅ Done |
-| Rename `configs/network/` → `configs/peft/`                  | ✅ Done |
-| Update `validation.py` and tests                             | ✅ Done |
-| Rename `network` → `adapter` across codebase                 | ✅ Done |
-| Rename config fields: `dim` → `adapter_rank`, etc.           | ✅ Done |
-| Rename folder: `library/networks/` → `library/adapters/`     | ✅ Done |
-| Rename classes: `LoRANetwork` → `LoRAAdapter`, etc.          | ✅ Done |
-
 ## 🔜 Remaining
 
-| Task                          | Notes          |
-| ----------------------------- | -------------- |
-| Nested restructuring for data | Major refactor |
+| Task                      | Notes                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| `model` restructuring     | Add `model_type` field, keep fields flat                                            |
+| `training` restructuring  | Add `method` field, possibly nest validation subcategory                            |
+| `optimizer` restructuring | Nest `scheduler` subcategory (currently only `learning_rates` nested)               |
+| `data` restructuring      | Major refactor: split 37 fields into `source`, `processing`, `captions`, `batching` |
+| `timestep` restructuring  | Possibly nest `mix_adaptive` subcategory                                            |
 
-## ✅ Also Completed
+## 🔮 Future Design Goals
 
-| Task                                            | Status  |
-| ----------------------------------------------- | ------- |
-| Move SDXL cache fields to `performance.caching` | ✅ Done |
-| Output config consolidation (`OutputConfig`)    | ✅ Done |
-| Loss config consolidation (`LossConfig`)        | ✅ Done |
+### Self-Documenting Configs
 
-* Might need to consider renaming redundant settings after the nested restructuring
+Add explicit fields so configs are identifiable at a glance:
+
+- **`model.model_type`**: `sd15 | sd2 | sdxl | flux` - which base model architecture
+- **`training.method`**: `peft | finetune | textual_inversion` - what training approach
+
+Example:
+
+```yaml
+model:
+  model_type: sdxl
+  pretrained_model_name_or_path: "stabilityai/sdxl-base-1.0"
+
+training:
+  method: peft
+  max_train_epochs: 10
+```
+
+This enables:
+
+1. Configs are self-documenting (no need to infer from filename)
+2. Potential unified entry point script that dispatches based on these fields
+3. Better validation (e.g., `peft:` section only valid when `training.method: peft`)
+
+### Other Considerations
+
+- Might need to consider renaming redundant settings after the nested restructuring (e.g., `huber.huber_schedule` → `huber.schedule`)
 
 ---
 
@@ -180,7 +188,7 @@ Current `network_*` fields in `NetworkConfig`:
 
 ## Detailed Field Mapping
 
-### `model` (from ModelConfig)
+### `model` (from ModelConfig) 🔜
 
 ```yaml
 model:
@@ -195,7 +203,7 @@ model:
 
 ---
 
-### `mode.peft` (from NetworkConfig)
+### `peft` (from NetworkConfig) ✅
 
 ```yaml
 mode:
@@ -227,7 +235,7 @@ mode:
 
 ---
 
-### `optimizer` (from OptimizerConfig + LR fields from other configs)
+### `optimizer` (from OptimizerConfig + LR fields) 🔜
 
 ```yaml
 optimizer:
@@ -261,7 +269,7 @@ optimizer:
 
 ---
 
-### `training` (from TrainingConfig)
+### `training` (from TrainingConfig) 🔜
 
 ```yaml
 training:
@@ -290,7 +298,7 @@ training:
 
 ---
 
-### `data.source` (from DatasetConfig)
+### `data.source` (from DatasetConfig) 🔜
 
 ```yaml
 data:
@@ -306,7 +314,7 @@ data:
 
 ---
 
-### `data.processing` (from DatasetConfig)
+### `data.processing` (from DatasetConfig) 🔜
 
 ```yaml
 data:
@@ -348,7 +356,7 @@ data:
 
 ---
 
-### `data.batching` (from BucketsConfig + partial DatasetConfig)
+### `data.batching` (from BucketsConfig + partial DatasetConfig) 🔜
 
 ```yaml
 data:
@@ -363,7 +371,7 @@ data:
 
 ---
 
-### `output.saving` (from SavingConfig)
+### `output.saving` (from SavingConfig) ✅
 
 ```yaml
 output:
@@ -388,7 +396,7 @@ output:
 
 ---
 
-### `output.logging` (from LoggingConfig)
+### `output.logging` (from LoggingConfig) ✅
 
 ```yaml
 output:
@@ -410,7 +418,7 @@ output:
 
 ---
 
-### `output.huggingface` (from HuggingFaceConfig)
+### `output.huggingface` (from HuggingFaceConfig) ✅
 
 ```yaml
 output:
@@ -427,7 +435,7 @@ output:
 
 ---
 
-### `output.sampling` (from SamplingConfig)
+### `output.sampling` (from SamplingConfig) ✅
 
 ```yaml
 output:
@@ -441,7 +449,7 @@ output:
 
 ---
 
-### `output.metadata` (from MetadataConfig)
+### `output.metadata` (from MetadataConfig) ✅
 
 ```yaml
 output:
@@ -461,7 +469,7 @@ output:
 
 ---
 
-### `performance.precision` (from PerformanceConfig)
+### `performance.precision` (from PerformanceConfig) ✅
 
 ```yaml
 performance:
@@ -478,7 +486,7 @@ performance:
 
 ---
 
-### `performance.memory` (from PerformanceConfig)
+### `performance.memory` (from PerformanceConfig) ✅
 
 ```yaml
 performance:
@@ -508,7 +516,7 @@ performance:
 
 ---
 
-### `performance.deepspeed` (from DeepSpeedConfig)
+### `performance.deepspeed` (from DeepSpeedConfig) ✅
 
 ```yaml
 performance:
@@ -526,7 +534,7 @@ performance:
 
 ---
 
-### `loss` (from LossConfig + MaskedLossConfig + RegularizationConfig)
+### `loss` (from LossConfig + MaskedLossConfig + RegularizationConfig) ✅
 
 ```yaml
 loss:
@@ -572,7 +580,7 @@ loss:
 
 ---
 
-### `timestep` (from TimestepConfig)
+### `timestep` (from TimestepConfig) 🔜
 
 ```yaml
 timestep:
@@ -592,7 +600,7 @@ timestep:
 
 ---
 
-### SDXLConfig Dissolution
+### SDXLConfig Dissolution ✅
 
 | SDXLConfig Field                     | New Location                                | Rationale         |
 | ------------------------------------ | ------------------------------------------- | ----------------- |
