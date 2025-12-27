@@ -114,7 +114,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def sample_images(self, accelerator, cfg, epoch, global_step, device, vae, tokenizers, text_encoder, unet):
         """Generate sample images for SD."""
-        sample_images(accelerator, cfg.output.sampling. cfg.training, cfg.output.saving, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
+        sample_images(accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
 
     def validate_extra_config(self, cfg, train_dataset_group, val_dataset_group):
         """Run SD-specific config validation."""
@@ -147,7 +147,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
             num_train_timesteps=1000, clip_sample=False
         )
 
-        if cfg.regularization.zero_terminal_snr:
+        if cfg.loss.regularization.zero_terminal_snr:
             fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
         prepare_scheduler_for_custom_training(noise_scheduler, device)
@@ -170,7 +170,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
     ):
         """Sample noise, call UNet, get noise prediction target."""
         noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
-            cfg.regularization, cfg.timestep, cfg.training, noise_scheduler, latents,
+            cfg.loss.regularization, cfg.timestep, cfg.training, noise_scheduler, latents,
             la_sampler=self.la_sampler, global_step=global_step, fixed_timesteps=fixed_timesteps,
             is_train=is_train, min_timestep_override=min_timestep_override, max_timestep_override=max_timestep_override
         )
@@ -209,13 +209,13 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def post_process_loss(self, loss, cfg, timesteps: torch.IntTensor, noise_scheduler) -> torch.FloatTensor:
         """Apply SNR weighting, v-pred scaling, debiased estimation etc."""
-        if cfg.loss.min_snr_gamma:
-            loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.min_snr_gamma, cfg.loss.v_parameterization)
-        if cfg.loss.scale_v_pred_loss_like_noise_pred:
+        if cfg.loss.snr.min_snr_gamma:
+            loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.snr.min_snr_gamma, cfg.loss.v_parameterization)
+        if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
             loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-        if cfg.loss.v_pred_like_loss:
-            loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.v_pred_like_loss)
-        if cfg.loss.debiased_estimation_loss:
+        if cfg.loss.snr.v_pred_like_loss:
+            loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)
+        if cfg.loss.snr.debiased_estimation_loss:
             loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
         return loss
 
@@ -282,7 +282,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
             loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale))
             if weighting is not None:
                 loss = loss * weighting
-            if cfg.masked_loss.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+            if cfg.loss.masked.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                 loss = apply_masked_loss(loss, batch)
         else:
             loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
@@ -302,7 +302,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
         pre_scaling_loss = loss.mean()
 
-        if is_train and cfg.loss.edm2_loss_weighting:
+        if is_train and cfg.loss.edm2.edm2_loss_weighting:
             loss, loss_scaled = edm2_model(loss, timesteps)
             loss_scaled = loss_scaled.mean()
         else:

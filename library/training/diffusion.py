@@ -3,7 +3,7 @@ import torch
 from typing import Tuple
 
 from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
-from library.config.dataclasses.regularization import RegularizationConfig
+from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.timestep import TimestepConfig
 from library.config.dataclasses.training import TrainingConfig
 

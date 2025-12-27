@@ -58,7 +58,7 @@ def train(cfg: SDFineTuneConfig):
 
     setup_logging(cfg.output.logging, reset=True)
     set_torch_cuda_reduced_precision(cfg.training)
-    deepspeed_utils.prepare_deepspeed_config(cfg.training)
+    deepspeed_utils.prepare_deepspeed_config(cfg.performance)
 
     cache_latents = cfg.dataset.cache_latents
 
@@ -79,7 +79,7 @@ def train(cfg: SDFineTuneConfig):
         train_dataset_group, val_dataset_group = generate_dataset_group_by_blueprint(blueprint.dataset_group)
     else:
         # load_arbitrary_dataset now accepts DatasetConfig directly
-        train_dataset_group = load_arbitrary_dataset(dataset_config)
+        train_dataset_group = load_arbitrary_dataset(cfg.dataset)
         val_dataset_group = None
 
     current_epoch = Value("i", 0)
@@ -102,7 +102,7 @@ def train(cfg: SDFineTuneConfig):
         ), "when caching latents, either color_aug or random_crop cannot be used"
 
     logger.info("prepare accelerator")
-    accelerator = prepare_accelerator(cfg.training)
+    accelerator = prepare_accelerator(cfg.performance)
 
     weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.output.saving)
     vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
@@ -227,14 +227,14 @@ def train(cfg: SDFineTuneConfig):
 
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
-    lr_scheduler = get_scheduler_fix(cfg.optimizer, optimizer, accelerator.num_processes)
+    lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.dataset, cfg.training, optimizer, accelerator.num_processes)
 
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
         unet.to(weight_dtype)
         text_encoder.to(weight_dtype)
 
-    if cfg.training.deepspeed:
+    if cfg.performance.deepspeed:
         if cfg.fine_tune.train_text_encoder:
             ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.training, unet=unet, text_encoder=text_encoder)
         else:
@@ -280,7 +280,7 @@ def train(cfg: SDFineTuneConfig):
         beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
     )
 
-    if cfg.regularization.zero_terminal_snr:
+    if cfg.loss.regularization.zero_terminal_snr:
         fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
     prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
@@ -290,7 +290,7 @@ def train(cfg: SDFineTuneConfig):
         if cfg.output.logging.wandb_run_name:
             init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
         if cfg.output.logging.log_tracker_config is not None:
-            init_kwargs = toml.load(cfg.output.logging.log_tracker_config)
+            init_kwargs = cfg.output.logging.log_tracker_config
         accelerator.init_trackers(
             "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
             config=OmegaConf.to_container(cfg),
@@ -298,7 +298,7 @@ def train(cfg: SDFineTuneConfig):
         )
 
     sample_images(
-        accelerator, cfg.output.sampling. cfg.training, cfg.output.saving, 0, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
+        accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, 0, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
     )
     if len(accelerator.trackers) > 0:
         accelerator.log({}, step=0)
@@ -336,7 +336,7 @@ def train(cfg: SDFineTuneConfig):
                     if cfg.performance.precision.full_fp16:
                         encoder_hidden_states = encoder_hidden_states.to(weight_dtype)
 
-                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.regularization, cfg.timestep, cfg.training, noise_scheduler, latents)
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, cfg.timestep, cfg.training, noise_scheduler, latents)
 
                 with accelerator.autocast():
                     noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
@@ -347,15 +347,15 @@ def train(cfg: SDFineTuneConfig):
                     target = noise
 
                 huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
-                if cfg.loss.min_snr_gamma or cfg.loss.scale_v_pred_loss_like_noise_pred or cfg.loss.debiased_estimation_loss:
+                if cfg.loss.snr.min_snr_gamma or cfg.loss.snr.scale_v_pred_loss_like_noise_pred or cfg.loss.snr.debiased_estimation_loss:
                     loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale))
                     loss = loss.mean([1, 2, 3])
 
-                    if cfg.loss.min_snr_gamma:
-                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.min_snr_gamma, cfg.loss.v_parameterization)
-                    if cfg.loss.scale_v_pred_loss_like_noise_pred:
+                    if cfg.loss.snr.min_snr_gamma:
+                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.snr.min_snr_gamma, cfg.loss.v_parameterization)
+                    if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
                         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-                    if cfg.loss.debiased_estimation_loss:
+                    if cfg.loss.snr.debiased_estimation_loss:
                         loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
 
                     loss = loss.mean()
@@ -378,7 +378,7 @@ def train(cfg: SDFineTuneConfig):
                 global_step += 1
 
                 sample_images(
-                    accelerator, cfg.output.sampling. cfg.training, cfg.output.saving, None, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
+                    accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, None, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
                 )
 
                 if cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0:
@@ -447,7 +447,7 @@ def train(cfg: SDFineTuneConfig):
                 )
 
         sample_images(
-            accelerator, cfg.output.sampling. cfg.training, cfg.output.saving, epoch + 1, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
+            accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, epoch + 1, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
         )
 
     is_main_process = accelerator.is_main_process
@@ -473,7 +473,7 @@ def train(cfg: SDFineTuneConfig):
             save_stable_diffusion_format,
             use_safetensors,
             save_dtype,
-            epoch,
+            epoch,  # TODO: local variable might be referenced before assignment, problem or?
             global_step,
             text_encoder,
             unet,

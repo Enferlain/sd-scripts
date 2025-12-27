@@ -24,7 +24,6 @@ Total: **~200 fields** across 17 dataclasses
 | Task                          | Notes          |
 | ----------------------------- | -------------- |
 | Nested restructuring for data | Major refactor |
-| Nested restructuring for loss | Major refactor |
 
 ## ✅ Also Completed
 
@@ -32,6 +31,9 @@ Total: **~200 fields** across 17 dataclasses
 | ----------------------------------------------- | ------- |
 | Move SDXL cache fields to `performance.caching` | ✅ Done |
 | Output config consolidation (`OutputConfig`)    | ✅ Done |
+| Loss config consolidation (`LossConfig`)        | ✅ Done |
+
+* Might need to consider renaming redundant settings after the nested restructuring
 
 ---
 

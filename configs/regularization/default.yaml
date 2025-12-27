@@ -1,8 +1,0 @@
-noise_offset: null
-noise_offset_random_strength: false
-multires_noise_iterations: null
-ip_noise_gamma: null
-ip_noise_gamma_random_strength: false
-multires_noise_discount: 0.3
-adaptive_noise_scale: null
-zero_terminal_snr: false

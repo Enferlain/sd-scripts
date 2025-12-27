@@ -7,9 +7,7 @@ from .buckets import BucketsConfig
 from .model import ModelConfig
 from .performance import PerformanceConfig
 from .loss import LossConfig
-from .regularization import RegularizationConfig
 from .timestep import TimestepConfig
-from .masked_loss import MaskedLossConfig
 from .output import OutputConfig
 
 
@@ -34,6 +32,4 @@ class TextualInversionConfig:
     output: OutputConfig = field(default_factory=OutputConfig)
     performance: PerformanceConfig = field(default_factory=PerformanceConfig)
     loss: LossConfig = field(default_factory=LossConfig)
-    regularization: RegularizationConfig = field(default_factory=RegularizationConfig)
     timestep: TimestepConfig = field(default_factory=TimestepConfig)
-    masked_loss: MaskedLossConfig = field(default_factory=MaskedLossConfig)

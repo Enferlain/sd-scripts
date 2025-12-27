@@ -72,15 +72,15 @@ def validate_config(cfg) -> None:
     # === Errors ===
     
     # Regularization: adaptive_noise_scale requires noise_offset
-    if cfg.regularization.adaptive_noise_scale is not None and cfg.regularization.noise_offset is None:
+    if cfg.loss.regularization.adaptive_noise_scale is not None and cfg.loss.regularization.noise_offset is None:
         raise ValueError("adaptive_noise_scale requires noise_offset")
     
     # Loss: scale_v_pred_loss_like_noise_pred requires v_parameterization
-    if cfg.loss.scale_v_pred_loss_like_noise_pred and not cfg.loss.v_parameterization:
+    if cfg.loss.snr.scale_v_pred_loss_like_noise_pred and not cfg.loss.v_parameterization:
         raise ValueError("scale_v_pred_loss_like_noise_pred requires v_parameterization")
     
     # Loss: v_pred_like_loss conflicts with v_parameterization
-    if cfg.loss.v_pred_like_loss is not None and cfg.loss.v_parameterization:
+    if cfg.loss.snr.v_pred_like_loss is not None and cfg.loss.v_parameterization:
         raise ValueError("v_pred_like_loss conflicts with v_parameterization")
     
     # Precision: full_fp16 requires mixed_precision='fp16'
@@ -107,7 +107,7 @@ def validate_config(cfg) -> None:
         logger.warning("v2 with clip_skip is unexpected")
     
     # Regularization: zero_terminal_snr without v_parameterization
-    if cfg.regularization.zero_terminal_snr and not cfg.loss.v_parameterization:
+    if cfg.loss.regularization.zero_terminal_snr and not cfg.loss.v_parameterization:
         logger.warning(
             "zero_terminal_snr is enabled but v_parameterization is not. "
             "Training results may be unexpected."

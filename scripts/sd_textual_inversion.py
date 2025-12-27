@@ -344,7 +344,7 @@ class TextualInversionTrainer:
 
         train_dataset_group.set_max_train_steps(training_config.max_train_steps)
 
-        lr_scheduler = get_scheduler_fix(optimizer_config, optimizer, accelerator.num_processes)
+        lr_scheduler = get_scheduler_fix(config.optimizer, config.dataset, config.training, optimizer, accelerator.num_processes)
 
         optimizer, train_dataloader, lr_scheduler = accelerator.prepare(optimizer, train_dataloader, lr_scheduler)
         text_encoders = [accelerator.prepare(text_encoder) for text_encoder in text_encoders]
@@ -425,7 +425,7 @@ class TextualInversionTrainer:
             if config.logging.wandb_run_name:
                 init_kwargs["wandb"] = {"name": config.logging.wandb_run_name}
             if config.logging.log_tracker_config is not None:
-                init_kwargs = toml.load(config.logging.log_tracker_config)
+                init_kwargs = config.logging.log_tracker_config
             accelerator.init_trackers(
                 "textual_inversion" if config.logging.log_tracker_name is None else config.logging.log_tracker_name,
                 config=OmegaConf.to_container(config),

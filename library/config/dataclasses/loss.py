@@ -3,21 +3,45 @@ from typing import Optional
 
 
 @dataclass
-class LossConfig:
-    loss_type: str = "l2"
+class HuberConfig:
+    """Huber loss settings."""
     huber_schedule: str = "snr"
     huber_c: float = 0.1
     huber_scale: float = 1.0
-    loss_scale: float = 1.0
-    prior_loss_weight: float = 1.0
-    loss_multiplier: Optional[float] = None
+
+
+@dataclass
+class SNRConfig:
+    """SNR-based loss weighting settings."""
     min_snr_gamma: Optional[float] = None
     scale_v_pred_loss_like_noise_pred: bool = False
     v_pred_like_loss: Optional[float] = None
     debiased_estimation_loss: bool = False
-    v_parameterization: bool = field(default=False, metadata={"help": "enable v-parameterization training"})
 
-    # EDM2
+
+@dataclass
+class MaskedLossConfig:
+    """Masked loss settings."""
+    masked_loss: bool = field(default=False, metadata={"help": "apply mask for calculating loss"})
+    conditioning_data_dir: Optional[str] = field(default=None, metadata={"help": "conditioning data directory"})
+
+
+@dataclass
+class RegularizationConfig:
+    """Noise regularization settings."""
+    noise_offset: Optional[float] = None
+    noise_offset_random_strength: bool = False
+    multires_noise_iterations: Optional[int] = None
+    multires_noise_discount: float = 0.3
+    ip_noise_gamma: Optional[float] = None
+    ip_noise_gamma_random_strength: bool = False
+    adaptive_noise_scale: Optional[float] = None
+    zero_terminal_snr: bool = False
+
+
+@dataclass
+class EDM2Config:
+    """EDM2 loss weighting settings."""
     edm2_loss_weighting: bool = field(default=False, metadata={"help": "Use EDM2 loss weighting."})
     edm2_loss_weighting_laplace: bool = field(default=False, metadata={"help": "Use EDM2 loss weighting to calculate timestep sampling using laplace."})
     edm2_loss_weighting_optimizer: str = field(default="torch.optim.AdamW", metadata={"help": "Fully qualified optimizer class name to use with the edm2 loss weighting optimizer."})
@@ -38,3 +62,21 @@ class LossConfig:
     edm2_loss_weighting_importance_weighting_max: float = field(default=10.0, metadata={"help": "The max loss weighting/scaling to apply when using edm2 importance weighting"})
     edm2_loss_weighting_importance_min_snr_gamma: float = field(default=1.0, metadata={"help": "The min snr gamma used for edm2 importance weighting as a heuristic"})
     edm2_loss_weighting_importance_weighting_safety_override: bool = field(default=False, metadata={"help": "At your own risk, you may set this to true to ALLOW stacking debiased loss and/or typical min snr gamma with EDM2 using importance weighting."})
+
+
+@dataclass
+class LossConfig:
+    """Loss configuration with organized subcategories."""
+    # Core loss settings
+    loss_type: str = "l2"
+    loss_scale: float = 1.0
+    loss_multiplier: Optional[float] = None
+    prior_loss_weight: float = 1.0
+    v_parameterization: bool = field(default=False, metadata={"help": "enable v-parameterization training"})
+    
+    # Nested subcategories
+    huber: HuberConfig = field(default_factory=HuberConfig)
+    snr: SNRConfig = field(default_factory=SNRConfig)
+    masked: MaskedLossConfig = field(default_factory=MaskedLossConfig)
+    regularization: RegularizationConfig = field(default_factory=RegularizationConfig)
+    edm2: EDM2Config = field(default_factory=EDM2Config)

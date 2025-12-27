@@ -19,7 +19,7 @@ from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.performance import PerformanceConfig
-from library.config.dataclasses.regularization import RegularizationConfig
+from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import SamplingConfig
 from library.config.dataclasses.timestep import TimestepConfig

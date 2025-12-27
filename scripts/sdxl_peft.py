@@ -564,7 +564,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     loss_recorder = EMARecorder()
     val_loss_recorder = EMARecorder()
 
-    if cfg.loss.edm2_loss_weighting:
+    if cfg.loss.edm2.edm2_loss_weighting:
         loss_scaled_recorder = EMARecorder()
 
     del train_dataset_group
@@ -617,8 +617,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     mean_grad_norm, mean_combined_norm = None, None
     max_mean_logs = {}
     current_global_step_loss = 0.0
-    current_global_step_loss_scaled = 0.0 if cfg.loss.edm2_loss_weighting else None
-    average_loss_scaled = 0.0 if cfg.loss.edm2_loss_weighting else None
+    current_global_step_loss_scaled = 0.0 if cfg.loss.edm2.edm2_loss_weighting else None
+    average_loss_scaled = 0.0 if cfg.loss.edm2.edm2_loss_weighting else None
     avr_loss = 0.0
     accumulation_counter = 0
 
@@ -776,7 +776,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 lr_scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
 
-                if cfg.loss.edm2_loss_weighting:
+                if cfg.loss.edm2.edm2_loss_weighting:
                     edm2_optimizer.step()
                     edm2_lr_scheduler.step()
                     # swap to pre_scaling_loss for logging
@@ -840,7 +840,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                             ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, global_step)
                             save_model(ckpt_name, accelerator.unwrap_model(adapter), global_step, epoch)
 
-                            if cfg.loss.edm2_loss_weighting:
+                            if cfg.loss.edm2.edm2_loss_weighting:
                                 loss_weights_ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
                                                                             global_step, "_edm2_loss_weights")
                                 save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step,
@@ -855,7 +855,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                                                                       remove_step_no)
                                 remove_model(remove_ckpt_name)
 
-                                if cfg.loss.edm2_loss_weighting:
+                                if cfg.loss.edm2.edm2_loss_weighting:
                                     remove_loss_weights_ckpt_name = get_step_ckpt_name(cfg.output.saving,
                                                                                        "." + cfg.output.saving.save_model_as,
                                                                                        remove_step_no,
@@ -869,14 +869,14 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     accelerator.unwrap_model(adapter).train()
 
             current_global_step_loss += loss.detach().item()
-            if cfg.loss.edm2_loss_weighting:
+            if cfg.loss.edm2.edm2_loss_weighting:
                 current_global_step_loss_scaled += loss_scaled.detach().item()
             else:
                 current_global_step_loss_scaled = None
 
             if accelerator.sync_gradients:
                 loss_recorder.add(current_global_step_loss / accumulation_counter)
-                if cfg.loss.edm2_loss_weighting:
+                if cfg.loss.edm2.edm2_loss_weighting:
                     loss_scaled_recorder.add(current_global_step_loss_scaled / accumulation_counter)
                 avr_loss: float = loss_recorder.average
                 logs = {"avr_loss": avr_loss}  # , "lr": lr_scheduler.get_last_lr()[0]}
@@ -884,7 +884,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
                 if is_tracking:
                     current_global_step_loss = (current_global_step_loss / accumulation_counter)
-                    if cfg.loss.edm2_loss_weighting:
+                    if cfg.loss.edm2.edm2_loss_weighting:
                         current_global_step_loss_scaled = (current_global_step_loss_scaled / accumulation_counter)
                         average_loss_scaled: float = loss_scaled_recorder.average
                     else:
@@ -915,7 +915,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
                 current_global_step_loss = 0.0
 
-                if cfg.loss.edm2_loss_weighting:
+                if cfg.loss.edm2.edm2_loss_weighting:
                     current_global_step_loss_scaled = 0.0
 
                 accumulation_counter = 0
@@ -964,7 +964,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, current_epoch.value)
                     save_model(ckpt_name, accelerator.unwrap_model(adapter), global_step, current_epoch.value)
 
-                    if cfg.loss.edm2_loss_weighting:
+                    if cfg.loss.edm2.edm2_loss_weighting:
                         loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
                                                                      current_epoch.value, "_edm2_loss_weights")
                         save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step,
@@ -976,7 +976,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                                                                remove_epoch_no)
                         remove_model(remove_ckpt_name)
 
-                        if cfg.loss.edm2_loss_weighting:
+                        if cfg.loss.edm2.edm2_loss_weighting:
                             remove_loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.output.saving,
                                                                                 "." + cfg.output.saving.save_model_as,
                                                                                 remove_epoch_no, "_edm2_loss_weights")
@@ -1009,7 +1009,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as)
         save_model(ckpt_name, adapter, global_step, num_train_epochs, force_sync_upload=True)
 
-        if cfg.loss.edm2_loss_weighting:
+        if cfg.loss.edm2.edm2_loss_weighting:
             loss_weights_ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
                                                         "_edm2_loss_weights")
             save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, num_train_epochs,

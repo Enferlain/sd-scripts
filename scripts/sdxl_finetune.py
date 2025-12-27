@@ -523,7 +523,7 @@ def train(cfg: SDXLFineTuneConfig):
         beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
     )
 
-    if cfg.regularization.zero_terminal_snr:
+    if cfg.loss.regularization.zero_terminal_snr:
         fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
     prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
@@ -533,7 +533,7 @@ def train(cfg: SDXLFineTuneConfig):
         if cfg.output.logging.wandb_run_name:
             init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
         if cfg.output.logging.log_tracker_config is not None:
-            init_kwargs = toml.load(cfg.output.logging.log_tracker_config)
+            init_kwargs = cfg.output.logging.log_tracker_config
         accelerator.init_trackers(
             "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
             config=OmegaConf.to_container(cfg, resolve=True),
@@ -541,7 +541,7 @@ def train(cfg: SDXLFineTuneConfig):
         )
 
     sample_images(
-        accelerator, cfg.output.sampling. 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
+        accelerator, cfg.output.sampling, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
     )
     if len(accelerator.trackers) > 0:
         accelerator.log({}, step=0)
@@ -612,7 +612,7 @@ def train(cfg: SDXLFineTuneConfig):
                 vector_embedding = torch.cat([pool2, embs], dim=1).to(weight_dtype)
                 text_embedding = torch.cat([encoder_hidden_states1, encoder_hidden_states2], dim=2).to(weight_dtype)
 
-                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.regularization, noise_scheduler, latents)
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, noise_scheduler, latents)
 
                 noisy_latents = noisy_latents.to(weight_dtype)
 
@@ -626,24 +626,24 @@ def train(cfg: SDXLFineTuneConfig):
 
                 huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
                 if (
-                    cfg.loss.min_snr_gamma
-                    or cfg.loss.scale_v_pred_loss_like_noise_pred
-                    or cfg.loss.v_pred_like_loss
-                    or cfg.loss.debiased_estimation_loss
-                    or cfg.masked_loss
+                    cfg.loss.snr.min_snr_gamma
+                    or cfg.loss.snr.scale_v_pred_loss_like_noise_pred
+                    or cfg.loss.snr.v_pred_like_loss
+                    or cfg.loss.snr.debiased_estimation_loss
+                    or cfg.loss.masked
                 ):
                     loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale))
-                    if cfg.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+                    if cfg.loss.masked or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                         loss = apply_masked_loss(loss, batch)
                     loss = loss.mean([1, 2, 3])
 
-                    if cfg.loss.min_snr_gamma:
-                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.min_snr_gamma, cfg.loss.v_parameterization)
-                    if cfg.loss.scale_v_pred_loss_like_noise_pred:
+                    if cfg.loss.snr.min_snr_gamma:
+                        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.snr.min_snr_gamma, cfg.loss.v_parameterization)
+                    if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
                         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-                    if cfg.loss.v_pred_like_loss:
-                        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.v_pred_like_loss)
-                    if cfg.loss.debiased_estimation_loss:
+                    if cfg.loss.snr.v_pred_like_loss:
+                        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)
+                    if cfg.loss.snr.debiased_estimation_loss:
                         loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
 
                     loss = loss.mean()
@@ -761,7 +761,7 @@ def train(cfg: SDXLFineTuneConfig):
 
         sample_images(
             accelerator,
-            cfg.output.sampling.
+            cfg.output.sampling,
             epoch + 1,
             global_step,
             accelerator.device,

@@ -81,6 +81,8 @@ Scripts (contain training loops):     Library Modules:
 - [x] ~~Resolve duplicate `diffusers_xformers`~~ (moved to PerformanceConfig)
 - [ ] fix consistencies in how configs are used in scripts
 - [ ] get rid of lazy imports, move to top for transparency
+- [ ] **PEFT Strategy Deduplication**: 4 methods identical between `peft_strategy_sd.py` and `peft_strategy_sdxl.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`) - should move to shared base class
+- [ ] **PEFT Strategy Internal Dedup**: `process_batch` and `process_val_batch` share ~45 lines of identical latent/text encoding setup - extract to helper method
 
 ---
 

@@ -12,7 +12,7 @@ from library.training.diffusion import (
     get_timesteps,
     get_noise_noisy_latents_and_timesteps,
 )
-from library.config.dataclasses.regularization import RegularizationConfig
+from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.timestep import TimestepConfig
 from library.config.dataclasses.training import TrainingConfig
 

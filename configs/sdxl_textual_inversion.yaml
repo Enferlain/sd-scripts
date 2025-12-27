@@ -7,12 +7,10 @@ defaults:
   - buckets: default
   - model: default
   - sdxl: default
-  - masked_loss: default
   - training: default
   - output: default
   - performance: default
   - loss: default
-  - regularization: default
   - timestep: default
 
 # Textual Inversion specific settings
