@@ -4,13 +4,13 @@
 
 # ─── MODEL ──────────────────────────────────────────────────────────────────
 model:
-  model_type: sdxl                    # sd15 | sd2 | sdxl | flux
+  model_type: sdxl # sd15 | sd2 | sdxl | flux
   pretrained_model_name_or_path: "stabilityai/stable-diffusion-xl-base-1.0"
   vae: null
 
 # ─── TRAINING ───────────────────────────────────────────────────────────────
 training:
-  method: peft                        # peft | finetune | textual_inversion
+  method: peft # peft | finetune | textual_inversion
   max_train_epochs: 10
   train_batch_size: 2
   gradient_accumulation_steps: 4
@@ -18,16 +18,20 @@ training:
   max_token_length: 225
   clip_skip: 2
 
-# ─── DATASET ────────────────────────────────────────────────────────────────
-dataset:
-  train_data_dir: "./dataset/my_character"
-  resolution: 1024
-  enable_bucket: true
-  cache_latents: true
-
-buckets:
-  min_bucket_reso: 512
-  max_bucket_reso: 2048
+# ─── DATA ────────────────────────────────────────────────────────────────────
+data:
+  source:
+    train_data_dir: "./dataset/my_character"
+  preprocessing:
+    resolution: 1024
+  caption:
+    shuffle_caption: false
+  bucketing:
+    enable_bucket: true
+    min_bucket_reso: 512
+    max_bucket_reso: 2048
+  caching:
+    cache_latents: true
 
 # ─── PEFT (only relevant when training.method: peft) ───────────────────────
 peft:
@@ -40,12 +44,13 @@ peft:
 # ─── OPTIMIZER ──────────────────────────────────────────────────────────────
 optimizer:
   optimizer_type: "AdamW8bit"
-  learning_rate: 1e-4
   learning_rates:
+    base: 1e-4
     unet: 1e-4
-    text_encoders: [5e-5, 5e-5]       # Training for both text encoders SDXL
-  lr_scheduler: "cosine_with_restarts"
-  lr_warmup_steps: 0.05
+    text_encoders: [5e-5, 5e-5] # Training for both text encoders SDXL
+  scheduler:
+    lr_scheduler: "cosine_with_restarts"
+    lr_warmup_steps: 0.05
 
 # ─── PERFORMANCE ────────────────────────────────────────────────────────────
 performance:
