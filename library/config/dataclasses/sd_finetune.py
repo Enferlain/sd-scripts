@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 from .training import TrainingConfig
 from .optimizer import OptimizerConfig
 from .dataset import DatasetConfig
@@ -12,16 +11,13 @@ from .output import OutputConfig
 
 
 @dataclass
-class SDFineTuneSpecificConfig:
-    """Fine-tuning specific configuration."""
-    train_text_encoder: bool = False
-    learning_rate_te: Optional[float] = None  # didn't we take care of this in the learning rate consolidation?
-
-
-@dataclass
 class SDFineTuneConfig:
-    """Root configuration for fine-tuning training."""
-    fine_tune: SDFineTuneSpecificConfig = field(default_factory=SDFineTuneSpecificConfig)
+    """Root configuration for SD fine-tuning training.
+    
+    Note: train_text_encoder and learning_rate_te have been removed.
+    Text encoder training is now controlled via optimizer.learning_rates.text_encoders
+    (LR-based control per Schema 1).
+    """
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)

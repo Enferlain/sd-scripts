@@ -1,5 +1,8 @@
 # Configuration for sd_finetune.py
 # SD 1.5/2.0 Full Model Fine-tuning
+#
+# Note: train_text_encoder is now controlled via optimizer.learning_rates.text_encoders
+# Set a text encoder learning rate to enable TE training (LR-based control per Schema 1)
 
 defaults:
   - optimizer: default
@@ -11,8 +14,3 @@ defaults:
   - performance: default
   - loss: default
   - timestep: default
-
-# Fine-tuning specific settings
-fine_tune:
-  train_text_encoder: false # Train text encoder along with UNet
-  learning_rate_te: null # Separate learning rate for text encoder

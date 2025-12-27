@@ -42,6 +42,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - YAML configs consolidated: removed `configs/saving/`, `configs/logging/`, `configs/huggingface/`, `configs/sampling/`, `configs/metadata/` → single `configs/output/default.yaml`
   - Updated all 6 root config dataclasses and YAML files
 
+- **Loss Config Consolidation**
+
+  - Created nested `LossConfig` with 5 sub-configs: `HuberConfig`, `SNRConfig`, `MaskedLossConfig`, `RegularizationConfig`, `EDM2Config`
+  - Config access paths updated: `cfg.masked_loss.*` → `cfg.loss.masked.*`, `cfg.regularization.*` → `cfg.loss.regularization.*`
+  - YAML configs consolidated: removed `configs/masked_loss/`, `configs/regularization/` → merged into `configs/loss/default.yaml`
+  - Updated all 6 root config dataclasses and YAML files
+
+- **SD Fine-Tune Legacy Cleanup**
+
+  - Removed `SDFineTuneSpecificConfig` dataclass and `fine_tune:` YAML section
+  - `train_text_encoder` is now controlled via LR: set `optimizer.learning_rates.text_encoders` to enable TE training
+  - `learning_rate_te` removed (use `optimizer.learning_rates.text_encoders` instead)
+
 ## [2025-12-25]
 
 ### Changed

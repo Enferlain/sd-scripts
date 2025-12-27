@@ -153,12 +153,15 @@ def train(cfg: SDFineTuneConfig):
 
         accelerator.wait_for_everyone()
 
+    # Determine if we should train text encoder based on LR config (Schema 1 pattern)
+    train_text_encoder = cfg.optimizer.learning_rates.text_encoders is not None
+
     training_models = []
     if cfg.performance.memory.gradient_checkpointing:
         unet.enable_gradient_checkpointing()
     training_models.append(unet)
 
-    if cfg.fine_tune.train_text_encoder:
+    if train_text_encoder:
         accelerator.print("enable text encoder training")
         if cfg.performance.memory.gradient_checkpointing:
             text_encoder.gradient_checkpointing_enable()
@@ -189,7 +192,7 @@ def train(cfg: SDFineTuneConfig):
     lr_unet = cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rate
     lr_te = cfg.optimizer.learning_rates.text_encoders
 
-    if lr_te is None or not cfg.fine_tune.train_text_encoder:
+    if lr_te is None or not train_text_encoder:
         for m in training_models:
             trainable_params.extend(m.parameters())
     else:
@@ -235,7 +238,7 @@ def train(cfg: SDFineTuneConfig):
         text_encoder.to(weight_dtype)
 
     if cfg.performance.deepspeed:
-        if cfg.fine_tune.train_text_encoder:
+        if train_text_encoder:
             ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.training, unet=unet, text_encoder=text_encoder)
         else:
             ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.training, unet=unet)
@@ -244,7 +247,7 @@ def train(cfg: SDFineTuneConfig):
         )
         training_models = [ds_model]
     else:
-        if cfg.fine_tune.train_text_encoder:
+        if train_text_encoder:
             unet, text_encoder, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
                 unet, text_encoder, optimizer, train_dataloader, lr_scheduler
             )
@@ -322,7 +325,7 @@ def train(cfg: SDFineTuneConfig):
                     latents = latents * 0.18215
                 b_size = latents.shape[0]
 
-                with torch.set_grad_enabled(cfg.fine_tune.train_text_encoder):
+                with torch.set_grad_enabled(train_text_encoder):
                     if cfg.dataset.weighted_captions:
                         input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
                         encoder_hidden_states = text_encoding_strategy.encode_tokens_with_weights(
