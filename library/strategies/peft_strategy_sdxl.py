@@ -468,20 +468,20 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         unet, vae, noise_scheduler, vae_dtype, weight_dtype, accelerator, cfg, epoch, batch=None, train_text_encoder=True
     ):
         """Calculate validation loss for SDXL."""
-        if not calculate_val_loss_check(cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
+        if not calculate_val_loss_check(cfg.validation, cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
 
         if batch is not None:
             self.on_step_start(cfg, accelerator, adapter, text_encoders, unet, batch, weight_dtype, is_train=False)
 
-        rng_states = self.switch_rng_state(int(cfg.dataset.validation_seed) if cfg.dataset.validation_seed else 23, accelerator)
-        timesteps_list = ast.literal_eval(cfg.training.validation_timesteps)
+        rng_states = self.switch_rng_state(int(cfg.validation.validation_seed) if cfg.validation.validation_seed else 23, accelerator)
+        timesteps_list = ast.literal_eval(cfg.validation.validation_timesteps)
 
         accelerator.print("")
         accelerator.print("Validating バリデーション処理...")
         total_loss = 0.0
         with torch.no_grad():
-            validation_steps = min(int(cfg.training.max_validation_steps), len(val_dataloader)) if cfg.training.max_validation_steps is not None else len(val_dataloader)
+            validation_steps = min(int(cfg.validation.max_validation_steps), len(val_dataloader)) if cfg.validation.max_validation_steps is not None else len(val_dataloader)
             val_dataloader_seed = random.randint(global_step, 0x7FFFFFFF)
             val_dataloader_state = random.Random(val_dataloader_seed).getstate()
             for val_step in tqdm(range(validation_steps), desc='Validation Steps'):

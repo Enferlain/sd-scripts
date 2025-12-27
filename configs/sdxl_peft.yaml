@@ -13,3 +13,4 @@ defaults:
   - performance: default
   - loss: default
   - timestep: default
+  - validation: default

@@ -11,6 +11,7 @@ defaults:
   - performance: default
   - loss: default
   - timestep: default
+  - validation: default
 
 # Textual Inversion specific settings
 textual_inversion:

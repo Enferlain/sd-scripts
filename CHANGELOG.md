@@ -24,6 +24,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `LearningRatesConfig.base` is now the canonical base LR (default: `2.0e-6`)
   - Config access paths updated: `cfg.optimizer.learning_rate` → `cfg.optimizer.learning_rates.base`
 
+- **Model Config Restructuring**
+
+  - Added `model_type` field to `ModelConfig` (`sd15 | sd2 | sdxl | flux`)
+  - Removed `v2` boolean field - replaced with `model_type == "sd2"` checks
+  - Configs are now self-documenting (model architecture visible at a glance)
+
+- **Unified Validation Config**
+
+  - Created top-level `ValidationConfig` with all 6 validation fields
+  - Moved from `cfg.training.*` and `cfg.dataset.*` → `cfg.validation.*`
+  - New file: `library/config/dataclasses/validation.py`, `configs/validation/default.yaml`
+  - Added to all root config dataclasses and Hydra defaults
+
 - **Loss Config Consolidation**
 
   - Created nested `LossConfig` with 5 sub-configs: `HuberConfig`, `SNRConfig`, `MaskedLossConfig`, `RegularizationConfig`, `EDM2Config`

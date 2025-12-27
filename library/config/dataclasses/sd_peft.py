@@ -9,6 +9,7 @@ from .performance import PerformanceConfig
 from .loss import LossConfig
 from .timestep import TimestepConfig
 from .output import OutputConfig
+from .validation import ValidationConfig
 
 
 @dataclass
@@ -23,3 +24,4 @@ class SDPeftConfig:
     performance: PerformanceConfig = field(default_factory=PerformanceConfig)
     loss: LossConfig = field(default_factory=LossConfig)
     timestep: TimestepConfig = field(default_factory=TimestepConfig)
+    validation: ValidationConfig = field(default_factory=ValidationConfig)

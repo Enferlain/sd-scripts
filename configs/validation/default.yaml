@@ -1,0 +1,10 @@
+# Validation configuration
+# Data splitting
+validation_split: 0.0
+validation_seed: null
+
+# Validation loop execution
+validate_every_n_steps: null
+validate_every_n_epochs: null
+max_validation_steps: null
+validation_timesteps: "[50, 350, 500, 650, 950]"

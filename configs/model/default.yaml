@@ -1,4 +1,5 @@
-v2: false
+# Model configuration
+model_type: sd15 # sd15, sd2, sdxl, flux
 pretrained_model_name_or_path: null
 tokenizer_cache_dir: null
 vae: null

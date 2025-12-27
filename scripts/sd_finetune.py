@@ -64,7 +64,7 @@ def train(cfg: SDFineTuneConfig):
 
     set_seed_from_config(cfg.training)
 
-    tokenize_strategy = strategy_sd.SdTokenizeStrategy(cfg.model.v2, cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
+    tokenize_strategy = strategy_sd.SdTokenizeStrategy(cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
     strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
 
     if cache_latents:
@@ -392,7 +392,7 @@ def train(cfg: SDFineTuneConfig):
                             cfg.output.saving,
                             cfg.output.metadata,
                             cfg.loss,
-                            cfg.model.v2,
+                            cfg.model.model_type == "sd2",
                             False,
                             accelerator,
                             src_path,
@@ -434,7 +434,7 @@ def train(cfg: SDFineTuneConfig):
                     cfg.output.saving,
                     cfg.output.metadata,
                     cfg.loss,
-                    cfg.model.v2,
+                    cfg.model.model_type == "sd2",
                     True,
                     accelerator,
                     src_path,
@@ -471,7 +471,7 @@ def train(cfg: SDFineTuneConfig):
             cfg.output.saving,
             cfg.output.metadata,
             cfg.loss,
-            cfg.model.v2,
+            cfg.model.model_type == "sd2",
             src_path,
             save_stable_diffusion_format,
             use_safetensors,

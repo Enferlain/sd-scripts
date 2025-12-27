@@ -38,8 +38,6 @@ class DatasetConfig:
     in_json: Optional[str] = field(default=None, metadata={"help": "json metadata for dataset"})
     dataset_repeats: int = field(default=1, metadata={"help": "repeat dataset when training with captions"})
     weighted_captions: bool = field(default=False, metadata={"help": "enable weighted captions"})
-    validation_split: float = field(default=0.0, metadata={"help": "Split for validation images out of the training dataset"})
-    validation_seed: Optional[int] = field(default=None, metadata={"help": "Validation seed for shuffling validation dataset, training `--seed` used otherwise"})
 
     # Placeholder for subsets to be populated by hydra or manually
     subsets: List[dict] = field(default_factory=list)

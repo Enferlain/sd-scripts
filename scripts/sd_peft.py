@@ -626,13 +626,13 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     accumulation_counter = 0
 
     # For --sample_at_first
-    if sample_images_check(cfg.output.sampling, 0, global_step) or calculate_val_loss_check(cfg.training, global_step, 0,
+    if sample_images_check(cfg.output.sampling, 0, global_step) or calculate_val_loss_check(cfg.validation, cfg.training, global_step, 0,
                                                                                      val_dataloader, train_dataloader):
         # Switch peft to eval mode
         accelerator.unwrap_model(adapter).eval()
         optimizer_eval_fn()
         strategies.sample_images(accelerator, cfg, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
-        if calculate_val_loss_check(cfg.training, global_step, 0, val_dataloader, train_dataloader):
+        if calculate_val_loss_check(cfg.validation, cfg.training, global_step, 0, val_dataloader, train_dataloader):
             current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(
                 global_step, 0, train_dataloader, val_loss_recorder, val_dataloader,
                 cyclic_val_dataloader, adapter, tokenize_strategy,
@@ -804,7 +804,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
                 global_step += 1
 
                 if (sample_images_check(cfg.output.sampling, None, global_step) or
-                        calculate_val_loss_check(cfg.training, global_step, step, val_dataloader, train_dataloader) or
+                        calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, train_dataloader) or
                         cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0):
 
                     accelerator.unwrap_model(adapter).eval()
@@ -813,7 +813,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
                         accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
                     )
 
-                    if calculate_val_loss_check(cfg.training, global_step, step, val_dataloader, train_dataloader):
+                    if calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, train_dataloader):
                         current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(global_step, step,
                                                                                                skipped_dataloader or train_dataloader,
                                                                                                val_loss_recorder,

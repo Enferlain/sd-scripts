@@ -103,7 +103,7 @@ def validate_config(cfg) -> None:
     # === Warnings ===
     
     # Model: v2 with clip_skip is unexpected
-    if cfg.model.v2 and cfg.training.clip_skip is not None:
+    if cfg.model.model_type == "sd2" and cfg.training.clip_skip is not None:
         logger.warning("v2 with clip_skip is unexpected")
     
     # Regularization: zero_terminal_snr without v_parameterization

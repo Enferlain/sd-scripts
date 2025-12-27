@@ -9,6 +9,7 @@ from .loss import LossConfig
 from .timestep import TimestepConfig
 from .buckets import BucketsConfig
 from .output import OutputConfig
+from .validation import ValidationConfig
 
 
 @dataclass
@@ -27,3 +28,4 @@ class SDXLFineTuneConfig:
     loss: LossConfig = field(default_factory=LossConfig)
     timestep: TimestepConfig = field(default_factory=TimestepConfig)
     buckets: BucketsConfig = field(default_factory=BucketsConfig)
+    validation: ValidationConfig = field(default_factory=ValidationConfig)

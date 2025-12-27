@@ -74,11 +74,11 @@ class SdPeftStrategy(PeftTrainingStrategy):
         if torch.__version__ >= "2.0.0":
             vae.set_use_memory_efficient_attention_xformers(cfg.performance.attention.xformers)
 
-        return model_util.get_model_version_str_for_sd1_sd2(cfg.model.v2, cfg.loss.v_parameterization), text_encoder, vae, unet
+        return model_util.get_model_version_str_for_sd1_sd2(cfg.model.model_type == "sd2", cfg.loss.v_parameterization), text_encoder, vae, unet
 
     def get_tokenize_strategy(self, cfg):
         """Return SD1.5/2 tokenize strategy."""
-        return strategy_sd.SdTokenizeStrategy(cfg.model.v2, cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
+        return strategy_sd.SdTokenizeStrategy(cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sd.SdTokenizeStrategy) -> List[Any]:
         """Return single tokenizer for SD1.5/2."""
@@ -130,7 +130,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
             state_dict=None,
             metadata_config=cfg.output.metadata,
             is_sdxl=self.is_sdxl,
-            is_v2=cfg.model.v2,
+            is_v2=cfg.model.model_type == "sd2",
             v_parameterization=cfg.loss.v_parameterization,
             is_lora=True,
             is_textual_inversion=False,
@@ -383,20 +383,20 @@ class SdPeftStrategy(PeftTrainingStrategy):
         unet, vae, noise_scheduler, vae_dtype, weight_dtype, accelerator, cfg, epoch, batch=None, train_text_encoder=True
     ):
         """Calculate validation loss."""
-        if not calculate_val_loss_check(cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
+        if not calculate_val_loss_check(cfg.validation, cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
 
         if batch is not None:
             self.on_step_start(cfg, accelerator, adapter, text_encoders, unet, batch, weight_dtype, is_train=False)
 
-        rng_states = self.switch_rng_state(int(cfg.dataset.validation_seed) if cfg.dataset.validation_seed else 23, accelerator)
-        timesteps_list = ast.literal_eval(cfg.training.validation_timesteps)
+        rng_states = self.switch_rng_state(int(cfg.validation.validation_seed) if cfg.validation.validation_seed else 23, accelerator)
+        timesteps_list = ast.literal_eval(cfg.validation.validation_timesteps)
 
         accelerator.print("")
         accelerator.print("Validating バリデーション処理...")
         total_loss = 0.0
         with torch.no_grad():
-            validation_steps = min(int(cfg.training.max_validation_steps), len(val_dataloader)) if cfg.training.max_validation_steps is not None else len(val_dataloader)
+            validation_steps = min(int(cfg.validation.max_validation_steps), len(val_dataloader)) if cfg.validation.max_validation_steps is not None else len(val_dataloader)
             val_dataloader_seed = random.randint(global_step, 0x7FFFFFFF)
             val_dataloader_state = random.Random(val_dataloader_seed).getstate()
             for val_step in tqdm(range(validation_steps), desc='Validation Steps'):
