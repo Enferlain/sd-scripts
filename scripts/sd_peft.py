@@ -50,7 +50,7 @@ from library.constants import SS_METADATA_MINIMUM_KEYS
 from library.strategies import strategy_sd, strategy_base
 from library.performance import deepspeed_utils
 from library.models import model_util
-from library.utils import sai_model_spec
+from library.utils import model_metadata
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
@@ -595,8 +595,8 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         metadata["ss_epoch"] = str(epoch_no)
 
         metadata_to_save = minimum_metadata if cfg.output.saving.no_metadata else metadata
-        sai_metadata = strategies.get_sai_model_spec(cfg)
-        metadata_to_save.update(sai_metadata)
+        modelspec_metadata = strategies.get_model_metadata(cfg)
+        metadata_to_save.update(modelspec_metadata)
 
         unwrapped_nw.save_weights(ckpt_file, dtype_override or save_dtype, metadata_to_save)
         if cfg.output.huggingface.huggingface_repo_id is not None:

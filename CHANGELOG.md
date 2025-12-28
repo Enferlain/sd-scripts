@@ -32,6 +32,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed auto-adjustment of `first_cycle_max_steps` and `warmup_steps` based on `validation_split` in scheduler setup
   - Callers are now responsible for passing correct values
 
+- **VAE Scale Factor Naming Cleanup**
+
+  - Added `SD_VAE_LATENT_SCALE = 0.18215` constant to `constants.py`
+  - Renamed `SDXL_VAE_SCALE_FACTOR` → `SDXL_VAE_LATENT_SCALE` for clarity
+  - Renamed strategy field `vae_scale_factor` → `vae_latent_scale` in peft strategies and textual inversion trainers
+  - lpw pipelines retain `vae_scale_factor` (spatial 8x, matches diffusers naming)
+
+- **Model Metadata Module Rename**
+
+  - Renamed `sai_model_spec.py` → `model_metadata.py` (now model-agnostic for Flux, Lumina, Hunyuan, etc.)
+  - Renamed variable `sai_metadata` → `modelspec_metadata` across all files
+  - Renamed strategy method `get_sai_model_spec()` → `get_model_metadata()`
+  - Updated module imports throughout codebase
+
 - **Naming Convention Cleanup**
   - Renamed `config` → `cfg` in `resume_from_local_or_hf_if_specified()` for consistency
 
@@ -39,6 +53,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Stale TODO comments about TrainingConfig/v_parameterization in checkpointing modules
 - Legacy `# TODO HYDRA` comment
+- Hardcoded block_lr 23-value validation in `config_validation.py` (deferred for model-agnostic block/layer granular training)
+- Unused `make_bucket_resolutions()` test code from `model_util.py`
+
+### In Progress
+
+- **`sd_textual_inversion.py` Config Migration** (partial)
+  - Renamed `config` → `cfg` throughout script
+  - Updated config access patterns for new nested structure:
+    - `cfg.dataset` → `cfg.data`
+    - `cfg.saving/sampling/logging/huggingface/metadata` → `cfg.output.*`
+    - `cfg.performance.xformers/sdpa/mem_eff_attn` → `cfg.performance.attention.*`
+    - `cfg.loss.min_snr_gamma/debiased_estimation_loss/etc` → `cfg.loss.snr.*`
+    - `cfg.masked_loss` → `cfg.loss.masked`
+    - `training_config.gradient_checkpointing` → `cfg.performance.memory.gradient_checkpointing`
+    - `training_config.full_fp16` → `cfg.performance.precision.full_fp16`
+  - Added `tools/scan_config_patterns.py` utility for auditing config access
+  - **Remaining**: `model_config.v2` needs to be derived from `model_type` or handled via strategy
 
 ## [2025-12-27]
 

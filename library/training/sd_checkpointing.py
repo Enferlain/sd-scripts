@@ -3,7 +3,7 @@ import torch
 
 from typing import Optional
 
-from library.utils import sai_model_spec
+from library.utils import model_metadata
 from library.models import model_util
 from library.config.dataclasses.loss import LossConfig
 
@@ -36,7 +36,7 @@ def save_sd_model_on_train_end(
         hf_config: Optional[HuggingFaceConfig] = None,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
+        modelspec_metadata = model_metadata.get_model_metadata_from_config(
             state_dict=None,
             metadata_config=metadata_config,
             is_sdxl=False,
@@ -47,7 +47,7 @@ def save_sd_model_on_train_end(
             is_stable_diffusion_ckpt=True,
         )
         model_util.save_stable_diffusion_checkpoint(
-            v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, sai_metadata, save_dtype, vae
+            v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, modelspec_metadata, save_dtype, vae
         )
 
     def diffusers_saver(out_dir):
@@ -82,7 +82,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         hf_config: Optional[HuggingFaceConfig] = None,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
+        modelspec_metadata = model_metadata.get_model_metadata_from_config(
             state_dict=None,
             metadata_config=metadata_config,
             is_sdxl=False,
@@ -93,7 +93,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
             is_stable_diffusion_ckpt=True,
         )
         model_util.save_stable_diffusion_checkpoint(
-            v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, sai_metadata, save_dtype, vae
+            v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, modelspec_metadata, save_dtype, vae
         )
 
     def diffusers_saver(out_dir):

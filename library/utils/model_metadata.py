@@ -217,7 +217,6 @@ def determine_architecture(
         model_config: dict[str, str] | None = None
 ) -> str:
     """Determine model architecture string from parameters."""
-    # TODO: why called sai_model_spec if other model types checked in it?
 
     model_config = model_config or {}
 
@@ -602,7 +601,7 @@ def build_merged_from(models: list[str]) -> str:
 # endregion
 
 
-def get_sai_model_spec_from_config(
+def get_model_metadata_from_config(
         state_dict: dict,
         metadata_config: MetadataConfig,
         is_sdxl: bool,

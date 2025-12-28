@@ -33,8 +33,8 @@ def load_target_model(cfg: SDXLFineTuneConfig, accelerator, model_version: str, 
                 ckpt_info,
             ) = _load_target_model(
                 cfg,
-                cfg.sd_models.pretrained_model_name_or_path,
-                cfg.sd_models.vae,
+                cfg.sd_models.pretrained_model_name_or_path,  # FIXME
+                cfg.sd_models.vae,  # FIXME
                 model_version,
                 weight_dtype,
                 accelerator.device if cfg.performance.memory.lowram else "cpu",
@@ -119,8 +119,8 @@ def _load_target_model(
         vae = model_util.load_vae(vae_path, weight_dtype)
         logger.info("additional VAE loaded")
 
-    if cfg.sd_models.vae_conv2d_padding_mode is not None and cfg.sd_models.vae_conv2d_padding_mode.lower() != 'zeros':
-        logger.info(f"Loading VAE with padding mode: {cfg.sd_models.vae_conv2d_padding_mode}")
-        set_padding_mode_for_vae_conv2d_modules(vae, cfg.sd_models.vae_conv2d_padding_mode)
+    if cfg.sd_models.vae_conv2d_padding_mode is not None and cfg.sd_models.vae_conv2d_padding_mode.lower() != 'zeros':  # FIXME
+        logger.info(f"Loading VAE with padding mode: {cfg.sd_models.vae_conv2d_padding_mode}")  # FIXME
+        set_padding_mode_for_vae_conv2d_modules(vae, cfg.sd_models.vae_conv2d_padding_mode)  # FIXME
 
     return load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info

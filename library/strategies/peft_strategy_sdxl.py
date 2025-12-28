@@ -21,7 +21,7 @@ from library.models.text_encoder_util import get_hidden_states_sdxl
 from library.training.sdxl_model_prep import load_target_model
 from library.training.model_prep import replace_unet_modules
 from library.training.sdxl_sample_generation import sample_images
-from library.utils.sai_model_spec import get_sai_model_spec_from_config
+from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.trainer_utils import calculate_val_loss_check
 from library.config.config_validation import validate_sdxl_peft
@@ -208,12 +208,12 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
     def update_metadata(self, metadata: dict, cfg):
         """Add SDXL-specific metadata fields."""
-        # SDXL doesn't add extra metadata beyond what get_sai_model_spec provides
+        # SDXL doesn't add extra metadata beyond what get_model_metadata provides
         pass
 
-    def get_sai_model_spec(self, cfg) -> dict:
+    def get_model_metadata(self, cfg) -> dict:
         """Get SAI model spec for SDXL."""
-        return get_sai_model_spec_from_config(
+        return get_model_metadata_from_config(
             state_dict=None,
             metadata_config=cfg.output.metadata,
             is_sdxl=True,  # SDXL strategy is always SDXL

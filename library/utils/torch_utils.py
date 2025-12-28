@@ -50,7 +50,7 @@ def prepare_dtype(
     return weight_dtype, save_dtype
 
 
-def set_torch_cuda_reduced_precision(cfg):
+def set_torch_cuda_reduced_precision(cfg: PerformanceConfig):  # FIXME cfg performance
     """Set CUDA reduced precision operations based on performance config."""
     if cfg.performance.precision.disable_cuda_reduced_precision_operations:
         torch.set_float32_matmul_precision("highest")

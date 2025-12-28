@@ -118,8 +118,8 @@ class CheckpointingPeftStrategy(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def get_sai_model_spec(self, cfg) -> dict:
-        """Get SAI model spec metadata."""
+    def get_model_metadata(self, cfg) -> dict:
+        """Get model spec metadata."""
         raise NotImplementedError
 
 

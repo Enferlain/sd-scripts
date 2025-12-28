@@ -3,7 +3,7 @@
 import pytest
 import time
 
-from library.utils import sai_model_spec
+from library.utils import model_metadata
 
 
 class TestModelSpecMetadata:
@@ -324,7 +324,7 @@ class TestBuildMetadataIntegration:
 from library.config.dataclasses.output import MetadataConfig
 
 class TestGetSaiModelSpecFromConfig:
-    """Test get_sai_model_spec_from_config function."""
+    """Test get_model_metadata_from_config function."""
 
     def test_basic_generation(self):
         """Test generating spec from minimal config."""
@@ -334,7 +334,7 @@ class TestGetSaiModelSpecFromConfig:
         )
         state_dict = {}
         
-        spec = sai_model_spec.get_sai_model_spec_from_config(
+        spec = sai_model_spec.get_model_metadata_from_config(
             state_dict=state_dict,
             metadata_config=metadata_config,
             is_sdxl=True,
@@ -354,7 +354,7 @@ class TestGetSaiModelSpecFromConfig:
         metadata_config = MetadataConfig()
         optional = {"custom_tag": "anime"}
         
-        spec = sai_model_spec.get_sai_model_spec_from_config(
+        spec = sai_model_spec.get_model_metadata_from_config(
             state_dict={},
             metadata_config=metadata_config,
             is_sdxl=False,
@@ -372,7 +372,7 @@ class TestGetSaiModelSpecFromConfig:
         """Test that provided resolution overrides defaults."""
         metadata_config = MetadataConfig()
         
-        spec = sai_model_spec.get_sai_model_spec_from_config(
+        spec = sai_model_spec.get_model_metadata_from_config(
             state_dict={},
             metadata_config=metadata_config,
             is_sdxl=True,
@@ -389,7 +389,7 @@ class TestGetSaiModelSpecFromConfig:
         """Test min/max timestep logic."""
         metadata_config = MetadataConfig()
         
-        spec = sai_model_spec.get_sai_model_spec_from_config(
+        spec = sai_model_spec.get_model_metadata_from_config(
             state_dict={},
             metadata_config=metadata_config,
             is_sdxl=False,

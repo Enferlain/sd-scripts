@@ -14,7 +14,7 @@ from typing import Optional, Any
 from io import BytesIO
 from huggingface_hub import hf_hub_download
 
-from library.utils import sai_model_spec, huggingface_util
+from library.utils import model_metadata, huggingface_util
 from library.models import model_util
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import MetadataConfig
@@ -168,15 +168,15 @@ def build_minimum_adapter_metadata(
     return metadata
 
 
-# NOTE: Legacy get_sai_model_spec() and get_sai_model_spec_dataclass() removed.
-# Use library.utils.sai_model_spec.get_sai_model_spec_from_config() instead.
+# NOTE: Legacy get_model_metadata() and get_sai_model_spec_dataclass() removed.
+# Use library.utils.model_metadata.get_model_metadata_from_config() instead.
 
 
 def resume_from_local_or_hf_if_specified(accelerator, cfg: SavingConfig):
     if not cfg.resume:
         return
 
-    if not cfg.resume_from_huggingface:
+    if not cfg.resume_from_huggingface:  # CONFIG ERROR
         logger.info(f"resume training from local state: {cfg.resume}")
         accelerator.load_state(cfg.resume)
         return
@@ -199,7 +199,7 @@ def resume_from_local_or_hf_if_specified(accelerator, cfg: SavingConfig):
         repo_id=repo_id,
         subfolder=path_in_repo,
         revision=revision,
-        token=cfg.huggingface_token,
+        token=cfg.huggingface_token,  # CONFIG ERROR
         repo_type=repo_type,
     )
 
@@ -210,7 +210,7 @@ def resume_from_local_or_hf_if_specified(accelerator, cfg: SavingConfig):
                 filename=filename,
                 revision=revision,
                 repo_type=repo_type,
-                token=cfg.huggingface_token,
+                token=cfg.huggingface_token,  # CONFIG ERROR
             )
 
         return await asyncio.get_event_loop().run_in_executor(None, task)

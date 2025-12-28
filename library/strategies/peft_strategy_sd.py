@@ -20,7 +20,7 @@ from library.models import model_util
 from library.training.model_prep import replace_unet_modules
 from library.training.sd_model_prep import load_target_model
 from library.training.sd_sample_generation import sample_images
-from library.utils.sai_model_spec import get_sai_model_spec_from_config
+from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.trainer_utils import calculate_val_loss_check
 from library.training.noise_utils import (
@@ -117,16 +117,16 @@ class SdPeftStrategy(PeftTrainingStrategy):
         sample_images(accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
 
     def validate_extra_config(self, cfg, train_dataset_group, val_dataset_group):
-        """Run SD-specific config validation."""
+        """Run SD-specific cfg validation."""
         validate_sd_peft(cfg, train_dataset_group, val_dataset_group)
 
     def update_metadata(self, metadata: dict, cfg):
         """SD doesn't add extra metadata."""
         pass
 
-    def get_sai_model_spec(self, cfg) -> dict:
+    def get_model_metadata(self, cfg) -> dict:
         """Get SAI model spec for SD."""
-        return get_sai_model_spec_from_config(
+        return get_model_metadata_from_config(
             state_dict=None,
             metadata_config=cfg.output.metadata,
             is_sdxl=False,  # SD strategy is never used for SDXL
@@ -159,7 +159,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def shift_scale_latents(self, cfg, latents: torch.FloatTensor) -> torch.FloatTensor:
         """Apply VAE scale factor to latents."""
-        return latents * self.vae_latent_scale
+        return latents * self.vae_latent_scale  # TODO: Expected type 'FloatTensor', got 'Tensor' instead
 
     # region Training batch processing methods
 
@@ -376,7 +376,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
                 loss = loss.mean([1, 2, 3]).mean()
                 total_loss += loss
 
-        return total_loss / len(timesteps_list)
+        return total_loss / len(timesteps_list)  # TODO: Expected type 'Tensor', got 'float' instead
 
     def calculate_val_loss(
         self, global_step, epoch_step, train_dataloader, val_loss_recorder, val_dataloader,

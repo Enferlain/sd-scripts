@@ -21,6 +21,8 @@ from library.config.dataclasses.sd_peft import SDPeftConfig
 from library.config.config_validation import prepare_config, validate_config
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex
+from library.strategies.peft_strategy_sd import SdPeftStrategy
+from library.training.peft_trainer import train
 
 init_ipex()
 
@@ -38,9 +40,6 @@ def main(cfg: SDPeftConfig):
     """Main entry point for SD PEFT training."""
     prepare_config(cfg)
     validate_config(cfg)
-
-    from library.strategies.peft_strategy_sd import SdPeftStrategy
-    from library.training.peft_trainer import train
 
     strategies = SdPeftStrategy()
     train(cfg, strategies)

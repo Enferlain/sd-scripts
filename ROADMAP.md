@@ -106,3 +106,7 @@ Scripts (contain training loops):     Library Modules:
 
 - Library reorganization based on cleaner categories
 - May extend to functions across scattered files
+- **BLAKE3 Model Hashing**: Add optional fast model hashing using BLAKE3 (compatible with CivitAI AutoV3). Currently SHA256 is disabled due to ~1min overhead for 6GB models. BLAKE3 offers 4-8x speed improvement and multi-threading.
+  - Add optional `blake3` dependency
+  - Config option `metadata_hash_algorithm: "none" | "blake3" | "sha256"`
+  - Compute hash after saving (stream from disk, no serialization overhead)

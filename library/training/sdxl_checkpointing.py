@@ -1,7 +1,7 @@
 
 import torch
 
-from library.utils import sai_model_spec
+from library.utils import model_metadata
 from library.models import sdxl_model_util
 
 from library.training.checkpointing import (
@@ -33,7 +33,7 @@ def save_sd_model_on_train_end(
         hf_config: Optional[HuggingFaceConfig] = None,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
+        modelspec_metadata = model_metadata.get_model_metadata_from_config(
             state_dict=None,
             metadata_config=metadata_config,
             is_sdxl=True,
@@ -53,7 +53,7 @@ def save_sd_model_on_train_end(
             ckpt_info,
             vae,
             logit_scale,
-            sai_metadata,
+            modelspec_metadata,
             save_dtype,
         )
 
@@ -98,7 +98,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         hf_config: Optional[HuggingFaceConfig] = None,
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
-        sai_metadata = sai_model_spec.get_sai_model_spec_from_config(
+        modelspec_metadata = model_metadata.get_model_metadata_from_config(
             state_dict=None,
             metadata_config=metadata_config,
             is_sdxl=True,
@@ -118,7 +118,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
             ckpt_info,
             vae,
             logit_scale,
-            sai_metadata,
+            modelspec_metadata,
             save_dtype,
         )
 
