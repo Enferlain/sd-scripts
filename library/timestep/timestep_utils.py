@@ -7,6 +7,7 @@ Factory functions for initializing timestep samplers based on configuration.
 import ast
 import logging
 
+from library.config.dataclasses.timestep import TimestepConfig
 from library.timestep.samplers.loss_aware_sampler import LossAwareTimestepSampler
 from library.timestep.samplers.log_snr_sampler import LogSNRUniformSampler
 from library.timestep.samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
@@ -16,12 +17,12 @@ from library.timestep.samplers.snr_windowed_loss_aware_sampler import SNRWindowe
 logger = logging.getLogger(__name__)
 
 
-def parse_dynamic_timestep_schedule(cfg, noise_scheduler, accelerator):
+def parse_dynamic_timestep_schedule(timestep_config: TimestepConfig, noise_scheduler, accelerator):
     """
     Parse dynamic timestep schedule from config.
     
     Args:
-        cfg: Training configuration
+        timestep_config: Training configuration
         noise_scheduler: Diffusers noise scheduler
         accelerator: HuggingFace Accelerator (for printing)
         
@@ -31,27 +32,27 @@ def parse_dynamic_timestep_schedule(cfg, noise_scheduler, accelerator):
     """
     # Parse the schedule from the config string
     dynamic_timestep_schedule = ast.literal_eval(
-        cfg.timestep.dynamic_timestep_schedule) if cfg.timestep.dynamic_timestep_schedule else None
+        timestep_config.dynamic_timestep_schedule) if timestep_config.dynamic_timestep_schedule else None
     if dynamic_timestep_schedule:
         # Sort the schedule by step number to be safe
         dynamic_timestep_schedule.sort(key=lambda x: x[0])
         accelerator.print(f"Using dynamic timestep schedule: {dynamic_timestep_schedule}")
 
     # Initialize the current range with the defaults
-    current_min_timestep = 0 if cfg.timestep.min_timestep is None else cfg.timestep.min_timestep
-    current_max_timestep = noise_scheduler.config.num_train_timesteps if cfg.timestep.max_timestep is None else cfg.timestep.max_timestep
+    current_min_timestep = 0 if timestep_config.min_timestep is None else timestep_config.min_timestep
+    current_max_timestep = noise_scheduler.config.num_train_timesteps if timestep_config.max_timestep is None else timestep_config.max_timestep
 
     return dynamic_timestep_schedule, current_min_timestep, current_max_timestep
 
 
-def init_timestep_sampler(cfg, noise_scheduler, accelerator):
+def init_timestep_sampler(timestep_config: TimestepConfig, noise_scheduler, accelerator):
     """
     Initialize the appropriate timestep sampler based on config.
     
     Returns the sampler instance and potentially modifies cfg.timestep.timestep_sampling.
     
     Args:
-        cfg: Training configuration
+        timestep_config: Training configuration
         noise_scheduler: Diffusers noise scheduler
         accelerator: HuggingFace Accelerator
         
@@ -60,19 +61,19 @@ def init_timestep_sampler(cfg, noise_scheduler, accelerator):
     """
     la_sampler = None
     
-    if not cfg.timestep.timestep_sampling:
+    if not timestep_config.timestep_sampling:
         return None
     
-    sampling_type = cfg.timestep.timestep_sampling
+    sampling_type = timestep_config.timestep_sampling
     
     if sampling_type == "log_snr_uniform":
         accelerator.print("Initializing LogSNRUniformSampler.")
         la_sampler = LogSNRUniformSampler(noise_scheduler, noise_scheduler.config.num_train_timesteps)
-        cfg.timestep.timestep_sampling = "mix_adaptive"
+        timestep_config.timestep_sampling = "mix_adaptive"
         
     elif sampling_type == "tempered_adaptive":
         accelerator.print("Initializing TemperedAdaptiveSampler.")
-        tc = cfg.timestep.tempered_adaptive
+        tc = timestep_config.tempered_adaptive
         la_sampler = TemperedAdaptiveSampler(
             noise_scheduler,
             num_bins=tc.bins,
@@ -84,11 +85,11 @@ def init_timestep_sampler(cfg, noise_scheduler, accelerator):
             prior_bias=tc.prior_bias,
             entropy_floor=tc.entropy_floor,
         )
-        cfg.timestep.timestep_sampling = "mix_adaptive"
+        timestep_config.timestep_sampling = "mix_adaptive"
         
     elif sampling_type == "gaussian_mid_snr":
         accelerator.print("Initializing GaussianMidSNRSampler.")
-        gc = cfg.timestep.gaussian_mid_snr
+        gc = timestep_config.gaussian_mid_snr
         la_sampler = GaussianMidSNRAdaptiveSampler(
             noise_scheduler,
             num_bins=gc.bins,
@@ -101,11 +102,11 @@ def init_timestep_sampler(cfg, noise_scheduler, accelerator):
             prior_weight=gc.prior_weight,
             warmup_steps=gc.warmup_steps,
         )
-        cfg.timestep.timestep_sampling = "mix_adaptive"
+        timestep_config.timestep_sampling = "mix_adaptive"
         
     elif sampling_type == "snr_windowed":
         accelerator.print("Initializing SNRWindowedSampler.")
-        sc = cfg.timestep.snr_windowed
+        sc = timestep_config.snr_windowed
         la_sampler = SNRWindowedLossAwareSampler(
             noise_scheduler,
             num_bins=sc.bins,
@@ -119,11 +120,11 @@ def init_timestep_sampler(cfg, noise_scheduler, accelerator):
             total_widen_steps=sc.max_train_steps,
             cap_max_t=sc.cap_max_t,
         )
-        cfg.timestep.timestep_sampling = "mix_adaptive"
+        timestep_config.timestep_sampling = "mix_adaptive"
         
     elif sampling_type == "mix_adaptive":
         accelerator.print("Initializing LossAwareTimestepSampler.")
-        mc = cfg.timestep.mix_adaptive
+        mc = timestep_config.mix_adaptive
         la_sampler = LossAwareTimestepSampler(
             num_train_timesteps=noise_scheduler.config.num_train_timesteps,
             num_bins=mc.bins,
@@ -138,7 +139,7 @@ def init_timestep_sampler(cfg, noise_scheduler, accelerator):
         
     elif sampling_type in ("sigma", "uniform"):
         la_sampler = None
-        cfg.timestep.timestep_sampling = "uniform"
+        timestep_config.timestep_sampling = "uniform"
         if sampling_type == "sigma":
             logger.warning("sigma sampling is not supported yet, using uniform sampling")
             

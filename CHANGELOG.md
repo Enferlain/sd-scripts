@@ -49,27 +49,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Naming Convention Cleanup**
   - Renamed `config` → `cfg` in `resume_from_local_or_hf_if_specified()` for consistency
 
+- **Config Pattern Standardization in Library Utilities**
+  - Established pattern: library utilities receive the **smallest container** that has what they need
+  - `torch_utils.py`: Refactored `prepare_dtype`, `match_mixed_precision`, `set_torch_cuda_reduced_precision` to use `PrecisionConfig` instead of opaque `cfg`
+  - `torch_utils.py`: Refactored `set_seed_from_config` to use `training_config: TrainingConfig`
+  - `trainer_utils.py`: Fixed `init_trackers` to use `logging_config: LoggingConfig` directly
+  - `sdxl_model_prep.py`: Fixed wrong `cfg.sd_models.*` → `cfg.model.*` and `cfg.performance.precision` type mismatch
+  - `timestep_utils.py`: Refactored `parse_dynamic_timestep_schedule` and `init_timestep_sampler` to use `timestep_config: TimestepConfig`
+  - `dataset_utils.py`: Refactored `load_arbitrary_dataset` to use `data_config: DataConfig` + `max_token_length: int`
+  - Updated all corresponding tests to use new signatures
+
 ### Removed
 
 - Stale TODO comments about TrainingConfig/v_parameterization in checkpointing modules
 - Legacy `# TODO HYDRA` comment
 - Hardcoded block_lr 23-value validation in `config_validation.py` (deferred for model-agnostic block/layer granular training)
 - Unused `make_bucket_resolutions()` test code from `model_util.py`
-
-### In Progress
-
-- **`sd_textual_inversion.py` Config Migration** (partial)
-  - Renamed `config` → `cfg` throughout script
-  - Updated config access patterns for new nested structure:
-    - `cfg.dataset` → `cfg.data`
-    - `cfg.saving/sampling/logging/huggingface/metadata` → `cfg.output.*`
-    - `cfg.performance.xformers/sdpa/mem_eff_attn` → `cfg.performance.attention.*`
-    - `cfg.loss.min_snr_gamma/debiased_estimation_loss/etc` → `cfg.loss.snr.*`
-    - `cfg.masked_loss` → `cfg.loss.masked`
-    - `training_config.gradient_checkpointing` → `cfg.performance.memory.gradient_checkpointing`
-    - `training_config.full_fp16` → `cfg.performance.precision.full_fp16`
-  - Added `tools/scan_config_patterns.py` utility for auditing config access
-  - **Remaining**: `model_config.v2` needs to be derived from `model_type` or handled via strategy
 
 ## [2025-12-27]
 

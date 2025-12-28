@@ -146,7 +146,7 @@ def train(cfg: SDXLFineTuneConfig):
             blueprint.dataset_group
         )
     else:
-        train_dataset_group = load_arbitrary_dataset(cfg.data)
+        train_dataset_group = load_arbitrary_dataset(cfg.data, cfg.training.max_token_length)
         val_dataset_group = None
 
     current_epoch = Value("i", 0)
@@ -535,10 +535,7 @@ def train(cfg: SDXLFineTuneConfig):
         if cfg.output.logging.log_tracker_config is not None:
             init_kwargs = cfg.output.logging.log_tracker_config
         accelerator.init_trackers(
-            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
-            config=OmegaConf.to_container(cfg, resolve=True),
-            init_kwargs=init_kwargs,
-        )
+            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,,
 
     sample_images(
         accelerator, cfg.output.sampling, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet

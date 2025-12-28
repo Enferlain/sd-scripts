@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import random
 import torch
 import logging
@@ -6,7 +5,7 @@ from typing import Optional, Tuple
 
 from accelerate.utils import set_seed
 from ..config.dataclasses.training import TrainingConfig
-from ..config.dataclasses.performance import PerformanceConfig
+from ..config.dataclasses.performance import PrecisionConfig
 from ..config.dataclasses.output import SavingConfig
 
 from library.utils.common_utils import setup_logging
@@ -18,24 +17,21 @@ setup_logging()  # TODO: is it needed?
 logger = logging.getLogger(__name__)
 
 
-def prepare_dtype(
-    performance_config: PerformanceConfig,
-    saving_config: Optional[SavingConfig] = None
-) -> Tuple[torch.dtype, Optional[torch.dtype]]:  # TODO: why does this handle both saving and training related concerns?
+def prepare_dtype(precision_config: PrecisionConfig, saving_config: Optional[SavingConfig] = None) -> Tuple[torch.dtype, Optional[torch.dtype]]:  # TODO: why does this handle both saving and training related concerns?
     """
     Prepare weight and save dtypes based on configuration.
     
     Args:
-        performance_config: Config containing mixed_precision setting
+        precision_config: Config containing mixed_precision setting
         saving_config: Optional config containing save_precision setting
         
     Returns:
         Tuple of (weight_dtype, save_dtype)
     """
     weight_dtype = torch.float32
-    if performance_config.precision.mixed_precision == "fp16":
+    if precision_config.mixed_precision == "fp16":
         weight_dtype = torch.float16
-    elif performance_config.precision.mixed_precision == "bf16":
+    elif precision_config.mixed_precision == "bf16":
         weight_dtype = torch.bfloat16
 
     save_dtype = None
@@ -50,16 +46,16 @@ def prepare_dtype(
     return weight_dtype, save_dtype
 
 
-def set_torch_cuda_reduced_precision(cfg: PerformanceConfig):  # FIXME cfg performance
+def set_torch_cuda_reduced_precision(precision_config: PrecisionConfig):  # FIXME cfg performance
     """Set CUDA reduced precision operations based on performance config."""
-    if cfg.performance.precision.disable_cuda_reduced_precision_operations:
+    if precision_config.disable_cuda_reduced_precision_operations:
         torch.set_float32_matmul_precision("highest")
         torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
         torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
         torch.backends.cuda.matmul.allow_tf32 = False
         torch.backends.cudnn.allow_tf32 = False
         torch.backends.cuda.allow_fp16_bf16_reduction_math_sdp(False)
-    elif cfg.performance.precision.enable_cuda_reduced_precision_operations:
+    elif precision_config.enable_cuda_reduced_precision_operations:
         torch.set_float32_matmul_precision("high")
         torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = True
         torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = True
@@ -68,21 +64,21 @@ def set_torch_cuda_reduced_precision(cfg: PerformanceConfig):  # FIXME cfg perfo
         torch.backends.cuda.allow_fp16_bf16_reduction_math_sdp(True)
 
 
-def set_seed_from_config(cfg: TrainingConfig):
-    if cfg.seed is None or cfg.seed == -1:
-        cfg.seed = random.randint(0, 2 ** 32)
-        logger.info(f"As seed provided is -1, randomly selected {cfg.seed} as the seed for this training run.")
-    set_seed(int(cfg.seed))
+def set_seed_from_config(training_config: TrainingConfig):
+    if training_config.seed is None or training_config.seed == -1:
+        training_config.seed = random.randint(0, 2 ** 32)
+        logger.info(f"As seed provided is -1, randomly selected {training_config.seed} as the seed for this training run.")
+    set_seed(int(training_config.seed))
 
 
-def match_mixed_precision(cfg: PerformanceConfig, weight_dtype):
+def match_mixed_precision(precision_config: PrecisionConfig, weight_dtype):
     """Match mixed precision settings, returning weight_dtype if full precision is enabled."""
-    if cfg.precision.full_fp16:
+    if precision_config.full_fp16:
         assert (
                 weight_dtype == torch.float16
         ), "full_fp16 requires mixed precision='fp16'"
         return weight_dtype
-    elif cfg.precision.full_bf16:
+    elif precision_config.full_bf16:
         assert (
                 weight_dtype == torch.bfloat16
         ), "full_bf16 requires mixed precision='bf16'"

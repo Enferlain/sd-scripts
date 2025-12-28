@@ -61,7 +61,19 @@ Scripts (contain training loops):     Library Modules:
 
 - [ ] Config Validation Edge Cases: Test `prepare_config()` and `validate_config()` for dataset conflicts
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
-
+- [ ] **`sd_textual_inversion.py` Config Migration** (partial)
+  - Renamed `config` → `cfg` throughout script
+  - Updated config access patterns for new nested structure:
+    - `cfg.dataset` → `cfg.data`
+    - `cfg.saving/sampling/logging/huggingface/metadata` → `cfg.output.*`
+    - `cfg.performance.xformers/sdpa/mem_eff_attn` → `cfg.performance.attention.*`
+    - `cfg.loss.min_snr_gamma/debiased_estimation_loss/etc` → `cfg.loss.snr.*`
+    - `cfg.masked_loss` → `cfg.loss.masked`
+    - `training_config.gradient_checkpointing` → `cfg.performance.memory.gradient_checkpointing`
+    - `training_config.full_fp16` → `cfg.performance.precision.full_fp16`
+  - Added `tools/scan_config_patterns.py` utility for auditing config access
+  - **Remaining**: `model_config.v2` needs to be derived from `model_type` or handled via strategy
+  
 ### Completed
 
 - **Learning Rate Consolidation**: Unified `unet_lr`, `text_encoder_lr`, `learning_rate_te1/te2`, `block_lr` into `optimizer.learning_rates`.
@@ -80,7 +92,13 @@ Scripts (contain training loops):     Library Modules:
 - [ ] Clean integration for external `live_plotter`
 - [x] ~~Dataset and bucketing decouple~~ (dataset.py split into 6 modules)
 - [x] ~~Resolve duplicate `diffusers_xformers`~~ (moved to PerformanceConfig)
-- [ ] fix consistencies in how configs are used in scripts
+- [x] ~~Config passing pattern~~ (see DEVELOPMENT_GUIDE.md Section 5.D)
+  - **Scripts/Strategies**: Use `cfg.*` directly (full root config access)
+  - **Library Utilities**: Receive the **smallest container** with what they need:
+    - Pass `PrecisionConfig` if only precision fields needed (not full `PerformanceConfig`)
+    - Pass `LoggingConfig` if only logging fields needed (not full `OutputConfig`)
+    - Different params can be at different depths (e.g., `precision_config, saving_config`)
+- [ ] Apply config pattern to `sd_textual_inversion.py` (use `cfg.*` in `train()`, keep typed params in helper methods that are called externally)
 - [ ] get rid of lazy imports, move to top for transparency
 - [ ] **PEFT Strategy Deduplication**: 4 methods identical between `peft_strategy_sd.py` and `peft_strategy_sdxl.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`) - should move to shared base class
 - [ ] **PEFT Strategy Internal Dedup**: `process_batch` and `process_val_batch` share ~45 lines of identical latent/text encoding setup - extract to helper method

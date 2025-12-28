@@ -78,8 +78,8 @@ def train(cfg: SDFineTuneConfig):
         blueprint = blueprint_generator.generate(cfg)
         train_dataset_group, val_dataset_group = generate_dataset_group_by_blueprint(blueprint.dataset_group)
     else:
-        # load_arbitrary_dataset now accepts DatasetConfig directly
-        train_dataset_group = load_arbitrary_dataset(cfg)
+        # load_arbitrary_dataset accepts data_config and max_token_length
+        train_dataset_group = load_arbitrary_dataset(cfg.data, cfg.training.max_token_length)
         val_dataset_group = None
 
     current_epoch = Value("i", 0)
@@ -295,10 +295,7 @@ def train(cfg: SDFineTuneConfig):
         if cfg.output.logging.log_tracker_config is not None:
             init_kwargs = cfg.output.logging.log_tracker_config
         accelerator.init_trackers(
-            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
-            config=OmegaConf.to_container(cfg),
-            init_kwargs=init_kwargs,
-        )
+            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,,
 
     sample_images(
         accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, 0, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet

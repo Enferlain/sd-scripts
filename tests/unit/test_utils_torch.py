@@ -100,44 +100,49 @@ class TestMatchMixedPrecision:
     
     def test_full_fp16_with_matching_dtype(self):
         """Test full_fp16=True returns weight_dtype when matched."""
-        cfg = PerformanceConfig(full_fp16=True)
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig(full_fp16=True)
         weight_dtype = torch.float16
         
-        result = match_mixed_precision(cfg, weight_dtype)
+        result = match_mixed_precision(precision_cfg, weight_dtype)
         
         assert result == torch.float16
         
     def test_full_bf16_with_matching_dtype(self):
         """Test full_bf16=True returns weight_dtype when matched."""
-        cfg = PerformanceConfig(full_bf16=True)
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig(full_bf16=True)
         weight_dtype = torch.bfloat16
         
-        result = match_mixed_precision(cfg, weight_dtype)
+        result = match_mixed_precision(precision_cfg, weight_dtype)
         
         assert result == torch.bfloat16
         
     def test_full_fp16_requires_fp16_dtype(self):
         """Test that full_fp16 raises if weight_dtype is not float16."""
-        cfg = PerformanceConfig(full_fp16=True)
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig(full_fp16=True)
         weight_dtype = torch.float32
         
         with pytest.raises(AssertionError):
-            match_mixed_precision(cfg, weight_dtype)
+            match_mixed_precision(precision_cfg, weight_dtype)
             
     def test_full_bf16_requires_bf16_dtype(self):
         """Test that full_bf16 raises if weight_dtype is not bfloat16."""
-        cfg = PerformanceConfig(full_bf16=True)
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig(full_bf16=True)
         weight_dtype = torch.float32
         
         with pytest.raises(AssertionError):
-            match_mixed_precision(cfg, weight_dtype)
+            match_mixed_precision(precision_cfg, weight_dtype)
             
     def test_no_full_precision_returns_none(self):
         """Test that without full_fp16/bf16, returns None."""
-        cfg = PerformanceConfig(full_fp16=False, full_bf16=False)
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig(full_fp16=False, full_bf16=False)
         weight_dtype = torch.float16
         
-        result = match_mixed_precision(cfg, weight_dtype)
+        result = match_mixed_precision(precision_cfg, weight_dtype)
         
         assert result is None
 
@@ -161,7 +166,7 @@ class TestSetSeedFromConfig:
             seed = 42
             
         config = DummyConfig()
-        
+
         set_seed_from_config(config)
         
         mock_set_seed.assert_called_with(42)
@@ -173,7 +178,7 @@ class TestSetSeedFromConfig:
             seed = None
             
         config = DummyConfig()
-        
+
         set_seed_from_config(config)
         
         # Verify set_seed was called with SOME integer

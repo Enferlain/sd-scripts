@@ -71,7 +71,7 @@ def prepare_datasets(cfg, strategies):
             blueprint.dataset_group)
     else:
         # use arbitrary dataset class
-        train_dataset_group = load_arbitrary_dataset(cfg)
+        train_dataset_group = load_arbitrary_dataset(cfg.data, cfg.training.max_token_length)
         val_dataset_group = None  # placeholder until validation dataset supported for arbitrary
 
     current_epoch = Value("i", 0)

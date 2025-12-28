@@ -93,9 +93,9 @@ Each script's root config (e.g., `SDPeftConfig`, `SDXLFineTuneConfig`) defines w
 | Performance/memory (xformers, gradient_checkpointing, mixed_precision) | `PerformanceConfig` |
 | Learning rates (optimizer LR, scheduler)                               | `OptimizerConfig`   |
 | Model-specific (SDXL cache_text_encoder_outputs)                       | `SDXLConfig`        |
-| Network/LoRA settings                                                  | `PeftConfig`     |
+| Network/LoRA settings                                                  | `PeftConfig`        |
 
-### C. Code Style in Scripts
+### C. Code Style in Scripts and Strategies
 
 ```python
 # ✅ Good - use cfg.X.Y directly
@@ -113,6 +113,45 @@ def train(cfg: SDPeftConfig):
 
 - **Use `cfg`** as the config variable name (not `config`)
 - **Access sub-configs directly** - `cfg.training.X`, not `training_config.X`
+
+### D. Config Passing Patterns
+
+Different layers of the codebase use different patterns for passing configuration:
+
+| Layer                   | Pattern      | Example                                   | Reason                                   |
+| ----------------------- | ------------ | ----------------------------------------- | ---------------------------------------- |
+| **Scripts** (`train()`) | `cfg.*`      | `cfg.training.max_train_epochs`           | Has full typed root config               |
+| **Strategies**          | `cfg.*`      | `cfg.data.caching.cache_latents`          | Receives full config, model-specific     |
+| **Library utilities**   | Typed params | `func(precision_config: PrecisionConfig)` | Modular, testable, explicit dependencies |
+
+**Key Rule: Pass the smallest container that has what the function needs.**
+
+```python
+# ✅ Good - Pass exactly what's needed (can be at different depths)
+def prepare_dtype(precision_config: PrecisionConfig, saving_config: SavingConfig):
+    if precision_config.mixed_precision == "fp16":  # Direct access
+        ...
+
+# ❌ Bad - Passing more than needed
+def prepare_dtype(performance_config: PerformanceConfig, ...):
+    if performance_config.precision.mixed_precision == "fp16":  # Unnecessary nesting
+        ...
+
+# ❌ Bad - Opaque untyped cfg
+def prepare_dtype(cfg):  # What type? What does it need?
+    if cfg.performance.precision.mixed_precision:
+        ...
+```
+
+**Call sites show the full config path:**
+
+```python
+# In script (uses cfg.* pattern)
+def train(cfg: SDPeftConfig):
+    # When calling library functions, pass the smallest container needed:
+    prepare_dtype(cfg.performance.precision, cfg.output.saving)  # Different depths OK
+    init_trackers(accelerator, cfg.output.logging, "my_project")
+```
 
 ## 6. Workflow for Contributors
 

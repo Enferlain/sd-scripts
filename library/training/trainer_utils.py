@@ -96,29 +96,28 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
     return accelerator
 
 
-def init_trackers(accelerator: Accelerator, cfg, default_tracker_name: str):
+def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, default_tracker_name: str):
     """
     Initialize experiment trackers with tracker specific behaviors.
     
     Args:
         accelerator: Accelerator instance
-        cfg: Root config object (must have .logging sub-config)
+        logging_config: LoggingConfig with tracker settings
         default_tracker_name: Default name for the tracker
     """
     if accelerator.is_main_process:
         init_kwargs = {}
-        logging_config = cfg.output.logging
         if hasattr(logging_config, 'wandb_run_name') and logging_config.wandb_run_name:
             init_kwargs["wandb"] = {"name": logging_config.wandb_run_name}
         if hasattr(logging_config, 'log_tracker_config') and logging_config.log_tracker_config is not None:
             init_kwargs = logging_config.log_tracker_config
 
         # sanitize config for logging - convert to dict if needed
-        if hasattr(cfg, '__dataclass_fields__'):
+        if hasattr(logging_config, '__dataclass_fields__'):
             from dataclasses import asdict
-            config_to_log = asdict(cfg)
+            config_to_log = asdict(logging_config)
         else:
-            config_to_log = OmegaConf.to_container(cfg, resolve=True)
+            config_to_log = OmegaConf.to_container(logging_config, resolve=True)
         
         sensitive_keys = ["wandb_api_key", "huggingface_token"]
         for key in sensitive_keys:

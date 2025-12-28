@@ -248,8 +248,8 @@ class TextualInversionTrainer:
         saving_config = cfg.output.saving
 
         if saving_config.output_name is None:
-            saving_config.output_name = ti_config.token_string
-        use_template = ti_config.use_object_template or ti_config.use_style_template
+            saving_config.output_name = cfg.textual_inversion.token_string
+        use_template = cfg.textual_inversion.use_object_template or cfg.textual_inversion.use_style_template
 
         # verify_training_args(args) # skipped, Hydra validation assumed
         # prepare_dataset_args(args, True) # skipped
@@ -285,14 +285,14 @@ class TextualInversionTrainer:
         )
 
         init_token_ids_list = []
-        if ti_config.init_word is not None:
+        if cfg.textual_inversion.init_word is not None:
             for i, tokenizer in enumerate(tokenizers):
                 init_token_ids = tokenizer.encode(
-                    ti_config.init_word, add_special_tokens=False
+                    cfg.textual_inversion.init_word, add_special_tokens=False
                 )
                 if (
                     len(init_token_ids) > 1
-                    and len(init_token_ids) != ti_config.num_vectors_per_token
+                    and len(init_token_ids) != cfg.textual_inversion.num_vectors_per_token
                 ):
                     accelerator.print(
                         f"token length for init words is not same to num_vectors_per_token, init words is repeated or truncated: tokenizer {i + 1}, length {len(init_token_ids)}"
@@ -301,11 +301,11 @@ class TextualInversionTrainer:
         else:
             init_token_ids_list = [None] * len(tokenizers)
 
-        self.assert_token_string(ti_config.token_string, tokenizers)
+        self.assert_token_string(cfg.textual_inversion.token_string, tokenizers)
 
-        token_strings = [ti_config.token_string] + [
-            f"{ti_config.token_string}{i + 1}"
-            for i in range(ti_config.num_vectors_per_token - 1)
+        token_strings = [cfg.textual_inversion.token_string] + [
+            f"{cfg.textual_inversion.token_string}{i + 1}"
+            for i in range(cfg.textual_inversion.num_vectors_per_token - 1)
         ]
         token_ids_list = []
         token_embeds_list = []
@@ -313,8 +313,8 @@ class TextualInversionTrainer:
             zip(tokenizers, text_encoders, init_token_ids_list)
         ):
             num_added_tokens = tokenizer.add_tokens(token_strings)
-            assert num_added_tokens == ti_config.num_vectors_per_token, (
-                f"tokenizer has same word to token string. please use another one: tokenizer {i + 1}, {ti_config.token_string}"
+            assert num_added_tokens == cfg.textual_inversion.num_vectors_per_token, (
+                f"tokenizer has same word to token string. please use another one: tokenizer {i + 1}, {cfg.textual_inversion.token_string}"
             )
 
             token_ids = tokenizer.convert_tokens_to_ids(token_strings)
@@ -339,8 +339,8 @@ class TextualInversionTrainer:
                     # accelerator.print(token_id, token_embeds[token_id].mean(), token_embeds[token_id].min())
             token_embeds_list.append(token_embeds)
 
-        if ti_config.weights is not None:
-            embeddings_list = self.load_weights(ti_config.weights)
+        if cfg.textual_inversion.weights is not None:
+            embeddings_list = self.load_weights(cfg.textual_inversion.weights)
             assert len(token_ids) == len(embeddings_list[0]), (
                 f"num_vectors_per_token is mismatch for weights: {len(embeddings_list[0])}"
             )
@@ -352,7 +352,7 @@ class TextualInversionTrainer:
             accelerator.print(f"weights loaded")
 
         accelerator.print(
-            f"create embeddings for {ti_config.num_vectors_per_token} tokens, for {ti_config.token_string}"
+            f"create embeddings for {cfg.textual_inversion.num_vectors_per_token} tokens, for {cfg.textual_inversion.token_string}"
         )
 
         if data_config.source.dataset_class is None:
@@ -363,8 +363,8 @@ class TextualInversionTrainer:
                 generate_dataset_group_by_blueprint(blueprint.dataset_group)
             )
         else:
-            # load_arbitrary_dataset now accepts DatasetConfig directly
-            train_dataset_group = load_arbitrary_dataset(data_config)
+            # load_arbitrary_dataset accepts data_config and max_token_length
+            train_dataset_group = load_arbitrary_dataset(data_config, training_config.max_token_length)
             val_dataset_group = None
 
         self.validate_extra_config(None, train_dataset_group, val_dataset_group)
@@ -380,11 +380,11 @@ class TextualInversionTrainer:
 
         if use_template:
             accelerator.print(
-                f"use template for training captions. is object: {ti_config.use_object_template}"
+                f"use template for training captions. is object: {cfg.textual_inversion.use_object_template}"
             )
             templates = (
                 imagenet_templates_small
-                if ti_config.use_object_template
+                if cfg.textual_inversion.use_object_template
                 else imagenet_style_templates_small
             )
             replace_to = " ".join(token_strings)
@@ -393,15 +393,15 @@ class TextualInversionTrainer:
                 captions.append(tmpl.format(replace_to))
             train_dataset_group.add_replacement("", captions)
 
-            if ti_config.num_vectors_per_token > 1:
-                prompt_replacement = (ti_config.token_string, replace_to)
+            if cfg.textual_inversion.num_vectors_per_token > 1:
+                prompt_replacement = (cfg.textual_inversion.token_string, replace_to)
             else:
                 prompt_replacement = None
         else:
-            if ti_config.num_vectors_per_token > 1:
+            if cfg.textual_inversion.num_vectors_per_token > 1:
                 replace_to = " ".join(token_strings)
-                train_dataset_group.add_replacement(ti_config.token_string, replace_to)
-                prompt_replacement = (ti_config.token_string, replace_to)
+                train_dataset_group.add_replacement(cfg.textual_inversion.token_string, replace_to)
+                prompt_replacement = (cfg.textual_inversion.token_string, replace_to)
             else:
                 prompt_replacement = None
 
@@ -606,13 +606,9 @@ class TextualInversionTrainer:
                 init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
             if cfg.output.logging.log_tracker_config is not None:
                 init_kwargs = cfg.output.logging.log_tracker_config
-            accelerator.init_trackers(
-                "textual_inversion"
-                if cfg.output.logging.log_tracker_name is None
-                else cfg.output.logging.log_tracker_name,
-                config=OmegaConf.to_container(cfg),
-                init_kwargs=init_kwargs,
-            )
+            accelerator.init_trackers("textual_inversion"
+                                      if cfg.output.logging.log_tracker_name is None
+                                      else cfg.output.logging.log_tracker_name,,
 
         def save_model(ckpt_name, embs_list, steps, epoch_no, force_sync_upload=False):
             os.makedirs(saving_config.output_dir, exist_ok=True)

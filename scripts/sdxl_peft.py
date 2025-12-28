@@ -563,7 +563,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss, cfg.training, noise_scheduler,
                                                                                 accelerator)
 
-    init_trackers(accelerator, cfg, "adapter_train")
+    init_trackers(accelerator, cfg.output.logging, "adapter_train")
 
     loss_recorder = EMARecorder()
     val_loss_recorder = EMARecorder()
@@ -687,9 +687,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         logger.info(f"text_encoder [{i}] dtype: {param_3rd.dtype}, device: {t_enc.device}")
 
     # --- Dynamic Timestep Schedule ---
-    dynamic_timestep_schedule, current_min_timestep, current_max_timestep = parse_dynamic_timestep_schedule(
-        cfg, noise_scheduler, accelerator
-    )
+    dynamic_timestep_schedule, current_min_timestep, current_max_timestep = parse_dynamic_timestep_schedule(cfg,
+                                                                                                            noise_scheduler,
+                                                                                                            accelerator)
 
     clean_memory_on_device(accelerator.device)
 

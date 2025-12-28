@@ -56,7 +56,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
     ) -> List[torch.Tensor]:
         text_encoder = models[0]
         tokens = tokens[0]
-        sd_tokenize_strategy = tokenize_strategy  # type: SdTokenizeStrategy
+        sd_tokenize_strategy = tokenize_strategy
 
         # tokens: b,n,77
         b_size = tokens.size()[0]
@@ -77,7 +77,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         encoder_hidden_states = encoder_hidden_states.reshape((b_size, -1, encoder_hidden_states.shape[-1]))
 
         if max_token_length != model_max_length:
-            v1 = sd_tokenize_strategy.tokenizer.pad_token_id == sd_tokenize_strategy.tokenizer.eos_token_id
+            v1 = sd_tokenize_strategy.tokenizer.pad_token_id == sd_tokenize_strategy.tokenizer.eos_token_id  # FIXME: Unresolved attribute reference 'tokenizer' for class 'TokenizeStrategy'
             if not v1:
                 # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
                 states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>

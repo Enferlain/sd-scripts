@@ -168,17 +168,21 @@ def test_load_arbitrary_dataset(monkeypatch):
 
     fake_module.MyDataset = FakeDataset
     
-    # Patch importlib.import_module on the library.data.dataset module as suggested
-    monkeypatch.setattr(ds.importlib, "import_module", lambda _: fake_module)
+    # Patch importlib.import_module on the library.data.dataset_utils module
+    from library.data import dataset_utils
+    monkeypatch.setattr(dataset_utils.importlib, "import_module", lambda _: fake_module)
 
-    cfg = types.SimpleNamespace(
-        dataset_class="my.module.MyDataset",
-        max_token_length=75,
-        resolution=(512, 512),
-        debug_dataset=False,
+    # Create nested data_config structure
+    data_config = types.SimpleNamespace(
+        source=types.SimpleNamespace(dataset_class="my.module.MyDataset"),
+        preprocessing=types.SimpleNamespace(
+            resolution=(512, 512),
+            debug_dataset=False,
+        ),
     )
+    max_token_length = 75
     
-    out = ds.load_arbitrary_dataset(cfg, tokenizer="mock_tokenizer")
+    out = dataset_utils.load_arbitrary_dataset(data_config, max_token_length, tokenizer="mock_tokenizer")
     
     assert isinstance(out, FakeDataset)
     assert fake_ctor_args["args"] == ("mock_tokenizer", 75, (512, 512), False)

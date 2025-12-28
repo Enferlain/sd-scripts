@@ -21,6 +21,8 @@ from PIL import Image
 from typing import List, Optional, Tuple
 from torchvision import transforms
 
+from library.data.minimal_dataset import MinimalDataset
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,32 +68,30 @@ class collator_class:
         return examples[0]
 
 
-def load_arbitrary_dataset(cfg, tokenizer=None):
+def load_arbitrary_dataset(data_config, max_token_length: int, tokenizer=None):
     """Load arbitrary dataset class.
     
     Args:
-        cfg: Root config object with:
-            - data.source.dataset_class: str path to the dataset class
-            - training.max_token_length: int maximum token length
-            - data.preprocessing.resolution: resolution configuration  
-            - data.preprocessing.debug_dataset: bool whether to debug
+        data_config: DataConfig object with:
+            - source.dataset_class: str path to the dataset class
+            - preprocessing.resolution: resolution configuration  
+            - preprocessing.debug_dataset: bool whether to debug
+        max_token_length: Maximum token length for the tokenizer
         tokenizer: Optional tokenizer to pass to the dataset
     
     Returns:
         MinimalDataset: The loaded dataset instance
     """
-    from library.data.minimal_dataset import MinimalDataset
-    
-    dataset_class_path = cfg.data.source.dataset_class
+    dataset_class_path = data_config.source.dataset_class
     module = ".".join(dataset_class_path.split(".")[:-1])
     dataset_class = dataset_class_path.split(".")[-1]
     module = importlib.import_module(module)
     dataset_class = getattr(module, dataset_class)
     train_dataset_group: MinimalDataset = dataset_class(
         tokenizer,
-        cfg.training.max_token_length,
-        cfg.data.preprocessing.resolution,
-        cfg.data.preprocessing.debug_dataset
+        max_token_length,
+        data_config.preprocessing.resolution,
+        data_config.preprocessing.debug_dataset
     )
     return train_dataset_group
 

@@ -432,7 +432,7 @@ class TestInitTrackers:
     def test_skips_on_non_main_process(self, mock_accelerator, mock_cfg):
         """Test that init_trackers is skipped on non-main process."""
         mock_accelerator.is_main_process = False
-        
+
         init_trackers(mock_accelerator, mock_cfg, "test_tracker")
         
         mock_accelerator.init_trackers.assert_not_called()
@@ -447,7 +447,7 @@ class TestInitTrackers:
     def test_uses_custom_tracker_name(self, mock_accelerator, mock_cfg):
         """Test that custom tracker name is used when specified."""
         mock_cfg.output.logging.log_tracker_name = "custom_name"
-        
+
         init_trackers(mock_accelerator, mock_cfg, "default_name")
         
         call_args = mock_accelerator.init_trackers.call_args[0]
@@ -474,7 +474,7 @@ class TestInitTrackers:
             wandb_api_key="secret_key",
             huggingface_token="another_secret"
         )
-        
+
         init_trackers(mock_accelerator, cfg, "test")
         
         # The config should have masked sensitive keys

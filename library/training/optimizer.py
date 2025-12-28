@@ -673,7 +673,7 @@ def get_scheduler_fix(optimizer_config: OptimizerConfig, validation_split: float
 
     # Need to apply scheduler to base_optimizer
     if is_wrapper_optimizer(optimizer_config):
-        optimizer = optimizer.base_optimizer
+        optimizer = optimizer.base_optimizer  # FIXME: UNRESOLVED ATTRIBUTE
 
     name = optimizer_config.scheduler.lr_scheduler
     num_training_steps = training_config.max_train_steps * num_processes  # * args.gradient_accumulation_steps
