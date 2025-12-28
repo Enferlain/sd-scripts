@@ -7,21 +7,21 @@ from typing import Optional, Tuple
 from accelerate.utils import set_seed
 from ..config.dataclasses.training import TrainingConfig
 from ..config.dataclasses.performance import PerformanceConfig
-from ..config.dataclasses.saving import SavingConfig
+from ..config.dataclasses.output import SavingConfig
 
 from library.utils.common_utils import setup_logging
-from library.utils.device_utils import init_ipex   # todo is it needed?
+from library.utils.device_utils import init_ipex   # TODO: is it needed?
 
-init_ipex()  # todo is it needed?
+init_ipex()  # TODO: is it needed?
 
-setup_logging()  # todo is it needed?
+setup_logging()  # TODO: is it needed?
 logger = logging.getLogger(__name__)
 
 
 def prepare_dtype(
     performance_config: PerformanceConfig,
     saving_config: Optional[SavingConfig] = None
-) -> Tuple[torch.dtype, Optional[torch.dtype]]:  # TODO why does this handle both saving and training related concerns?
+) -> Tuple[torch.dtype, Optional[torch.dtype]]:  # TODO: why does this handle both saving and training related concerns?
     """
     Prepare weight and save dtypes based on configuration.
     

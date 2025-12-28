@@ -85,7 +85,7 @@ from library.constants import (
     
     # SDXL
     SDXL_KEY_PREFIX,
-    VAE_SCALE_FACTOR,
+    SDXL_VAE_LATENT_SCALE,
     MODEL_VERSION_SDXL_BASE_V1_0,
     DIFFUSERS_REF_MODEL_ID_SDXL,
     DIFFUSERS_SDXL_UNET_CONFIG,
@@ -291,7 +291,7 @@ class TestSDXLConstants:
     
     def test_vae_scale_factor(self):
         # Critical: this value affects latent space scaling
-        assert VAE_SCALE_FACTOR == 0.13025
+        assert SDXL_VAE_LATENT_SCALE == 0.13025
     
     def test_model_version(self):
         assert MODEL_VERSION_SDXL_BASE_V1_0 == "sdxl_base_v1-0"

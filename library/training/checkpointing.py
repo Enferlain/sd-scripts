@@ -20,8 +20,6 @@ from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import HuggingFaceConfig
-# TODO: TrainingConfig was only used for v_parameterization (which was a bug - it's in LossConfig).
-# Consider adding clip_skip from TrainingConfig to metadata in the future.
 
 from library.constants import (
     SS_METADATA_KEY_ADAPTER_MODULE,
@@ -174,18 +172,18 @@ def build_minimum_adapter_metadata(
 # Use library.utils.sai_model_spec.get_sai_model_spec_from_config() instead.
 
 
-def resume_from_local_or_hf_if_specified(accelerator, config: SavingConfig):
-    if not config.resume:
+def resume_from_local_or_hf_if_specified(accelerator, cfg: SavingConfig):
+    if not cfg.resume:
         return
 
-    if not config.resume_from_huggingface:  # TODO HYDRA
-        logger.info(f"resume training from local state: {config.resume}")
-        accelerator.load_state(config.resume)
+    if not cfg.resume_from_huggingface:
+        logger.info(f"resume training from local state: {cfg.resume}")
+        accelerator.load_state(cfg.resume)
         return
 
-    logger.info(f"resume training from huggingface state: {config.resume}")
-    repo_id = config.resume.split("/")[0] + "/" + config.resume.split("/")[1]
-    path_in_repo = "/".join(config.resume.split("/")[2:])
+    logger.info(f"resume training from huggingface state: {cfg.resume}")
+    repo_id = cfg.resume.split("/")[0] + "/" + cfg.resume.split("/")[1]
+    path_in_repo = "/".join(cfg.resume.split("/")[2:])
     revision = None
     repo_type = None
     if ":" in path_in_repo:
@@ -201,7 +199,7 @@ def resume_from_local_or_hf_if_specified(accelerator, config: SavingConfig):
         repo_id=repo_id,
         subfolder=path_in_repo,
         revision=revision,
-        token=config.huggingface_token,
+        token=cfg.huggingface_token,
         repo_type=repo_type,
     )
 
@@ -212,7 +210,7 @@ def resume_from_local_or_hf_if_specified(accelerator, config: SavingConfig):
                 filename=filename,
                 revision=revision,
                 repo_type=repo_type,
-                token=config.huggingface_token,
+                token=cfg.huggingface_token,
             )
 
         return await asyncio.get_event_loop().run_in_executor(None, task)

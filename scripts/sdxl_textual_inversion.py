@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 import sd_textual_inversion
 
-from library.constants import VAE_SCALE_FACTOR, MODEL_VERSION_SDXL_BASE_V1_0
+from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl_model_util import get_size_embeddings
 from library.utils.device_utils import init_ipex
 from library.strategies import strategy_sdxl, strategy_sd
@@ -19,10 +19,11 @@ from library.config.config_validation import prepare_config, validate_config, va
 init_ipex()
 
 
+# TODO: Proper training loop needs to be implemented (not parented to sd_textual_inversion)
 class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
     def __init__(self):
         super().__init__()
-        self.vae_scale_factor = VAE_SCALE_FACTOR
+        self.vae_latent_scale = SDXL_VAE_LATENT_SCALE
         self.is_sdxl = True
 
     def validate_extra_config(self, config, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
@@ -62,8 +63,6 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         return strategy_sdxl.SdxlTextEncodingStrategy()
 
     def call_unet(self, config, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype):
-        noisy_latents = noisy_latents.to(weight_dtype)  # TODO check why noisy_latents is not weight_dtype
-
         # get size embeddings
         orig_size = batch["original_sizes_hw"]
         crop_size = batch["crop_top_lefts"]

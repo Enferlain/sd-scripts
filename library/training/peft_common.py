@@ -396,7 +396,6 @@ def create_training_metadata(
     num_train_epochs: int,
     optimizer_name: str,
     optimizer_args: str,
-    text_encoder_lr,  # TODO: why only text_encoder_lr here?
     net_kwargs: dict,
     train_dataloader,
     total_batch_size: int,
@@ -414,7 +413,7 @@ def create_training_metadata(
         "ss_training_started_at": training_started_at,
         "ss_output_name": cfg.output.saving.output_name,
         "ss_learning_rate": cfg.optimizer.learning_rates.base,
-        "ss_text_encoder_lr": text_encoder_lr,
+        "ss_text_encoder_lr": cfg.optimizer.learning_rates.text_encoders,
         "ss_unet_lr": cfg.optimizer.learning_rates.unet,
         "ss_num_train_images": train_dataset_group.num_train_images,
         "ss_num_validation_images": val_dataset_group.num_train_images if val_dataset_group is not None else 0,

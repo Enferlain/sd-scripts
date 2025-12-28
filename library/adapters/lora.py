@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Type, Union
 from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
 
-
+from library.config.dataclasses.optimizer import LearningRatesConfig
 from library.utils.common_utils import setup_logging
 from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
 from library.training.checkpointing import precalculate_safetensors_hashes
@@ -1148,9 +1148,7 @@ class LoRAAdapter(torch.nn.Module):
 
     # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
     def prepare_optimizer_params(self, 
-                                 text_encoder_lr: float, 
-                                 unet_lr: float, 
-                                 learning_rate: float, 
+                                 learning_rates: LearningRatesConfig, 
                                  apply_orthograd: bool, 
                                  orthograd_targets: list[str]):
         # TODO warn if optimizer is not compatible with LoRA+ (but it will cause error so we don't need to check it here?)
@@ -1162,6 +1160,17 @@ class LoRAAdapter(torch.nn.Module):
         #     assert (
         #         optimizer_type.lower() != "prodigy" and "dadapt" not in optimizer_type.lower()
         #     ), "LoRA+ and Prodigy/DAdaptation is not supported / LoRA+とProdigy/DAdaptationの組み合わせはサポートされていません"
+
+        # Extract LRs from config
+        unet_lr = learning_rates.unet
+        base_lr = learning_rates.base
+        # Handle text_encoders which may be float, list, or None
+        raw_te_lr = learning_rates.text_encoders
+        if raw_te_lr is None or isinstance(raw_te_lr, (float, int)):
+            text_encoder_lr = raw_te_lr
+        else:
+            # List - take first element for single-TE adapters
+            text_encoder_lr = raw_te_lr[0] if len(raw_te_lr) > 0 else None
 
         self.requires_grad_(True)
 
@@ -1203,7 +1212,7 @@ class LoRAAdapter(torch.nn.Module):
         if self.text_encoder_loras:
             params, descriptions = assemble_params(
                 self.text_encoder_loras,
-                text_encoder_lr if text_encoder_lr is not None else learning_rate,
+                text_encoder_lr if text_encoder_lr is not None else base_lr,
                 self.loraplus_text_encoder_lr_ratio or self.loraplus_lr_ratio,
             )
             all_params.extend(params)
@@ -1229,7 +1238,7 @@ class LoRAAdapter(torch.nn.Module):
                 for idx, block_loras in block_idx_to_lora.items():
                     params, descriptions = assemble_params(
                         block_loras,
-                        (unet_lr if unet_lr is not None else learning_rate) * self.get_lr_weight(idx),
+                        (unet_lr if unet_lr is not None else base_lr) * self.get_lr_weight(idx),
                         self.loraplus_unet_lr_ratio or self.loraplus_lr_ratio,
                     )
                     all_params.extend(params)
@@ -1238,7 +1247,7 @@ class LoRAAdapter(torch.nn.Module):
             else:
                 params, descriptions = assemble_params(
                     self.unet_loras,
-                    unet_lr if unet_lr is not None else learning_rate,
+                    unet_lr if unet_lr is not None else base_lr,
                     self.loraplus_unet_lr_ratio or self.loraplus_lr_ratio,
                 )
                 all_params.extend(params)

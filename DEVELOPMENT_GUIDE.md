@@ -6,6 +6,7 @@
 
 **Philosophy:**
 
+- **No backwards compatibility:** The focus is on refactoring, not to keep legacy working. Only keeps for as long as references are needed for the active work.
 - **Centralized Configuration:** Move from per-script `argparse` definitions to a global, type-safe system using **Hydra** and **Dataclasses**.
 - **Separation of Concerns:** Break down multi-thousand line scripts into focused, reusable library modules.
 - **Explicit over Implicit:** Functions should declare exactly what configuration they need. Avoid passing opaque `args` objects or global state.

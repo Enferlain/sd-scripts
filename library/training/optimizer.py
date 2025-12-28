@@ -126,47 +126,52 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, adapter_config: PeftCon
                           ['use_orthograd', 'orthograd'])
 
     # Get learning rates from optimizer_config.learning_rates (Schema 1)
-    unet_lr = optimizer_config.learning_rates.unet
-    raw_te_lr = optimizer_config.learning_rates.text_encoders
+    learning_rates = optimizer_config.learning_rates
 
     # Check if peft supports multiple text encoder learning rates
     support_multiple_lrs = hasattr(adapter, "prepare_optimizer_params_with_multiple_te_lrs")
-    
-    # Normalize text_encoder_lr based on peft capabilities
-    if support_multiple_lrs or (getattr(adapter_config, "module", None) == "lycoris.kohya"):
-        text_encoder_lr = raw_te_lr
-    else:
-        # Single TE LR mode - take first element if list
-        if raw_te_lr is None or isinstance(raw_te_lr, float) or isinstance(raw_te_lr, int):
-            text_encoder_lr = raw_te_lr
-        else:
-            text_encoder_lr = None if len(raw_te_lr) == 0 else raw_te_lr[0]
 
     try:
         if support_multiple_lrs:
-            # only flux atm via Kohya's
-            results = adapter.prepare_optimizer_params_with_multiple_te_lrs(text_encoder_lr=text_encoder_lr,
-                                                                            unet_lr=unet_lr,
-                                                                            learning_rate=optimizer_config.learning_rates.base,
-                                                                            apply_orthograd=apply_orthograd,
-                                                                            orthograd_targets=orthograd_targets)
+            # only flux atm via Kohya's - still uses old signature for now
+            raw_te_lr = learning_rates.text_encoders
+            if raw_te_lr is None or isinstance(raw_te_lr, (float, int)):
+                text_encoder_lr = raw_te_lr
+            else:
+                text_encoder_lr = raw_te_lr  # Keep as list
+            results = adapter.prepare_optimizer_params_with_multiple_te_lrs(
+                text_encoder_lr=text_encoder_lr,
+                unet_lr=learning_rates.unet,
+                learning_rate=learning_rates.base,
+                apply_orthograd=apply_orthograd,
+                orthograd_targets=orthograd_targets
+            )
         else:
-            results = adapter.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
-                                                       unet_lr=unet_lr,
-                                                       learning_rate=optimizer_config.learning_rates.base,
-                                                       apply_orthograd=apply_orthograd,
-                                                       orthograd_targets=orthograd_targets)
+            # New signature: pass LearningRatesConfig directly
+            results = adapter.prepare_optimizer_params(
+                learning_rates=learning_rates,
+                apply_orthograd=apply_orthograd,
+                orthograd_targets=orthograd_targets
+            )
         if type(results) is tuple:
             trainable_params, lr_descriptions = results
         else:
             trainable_params = results
             lr_descriptions = None
     except TypeError as e:
-        results = adapter.prepare_optimizer_params(text_encoder_lr=text_encoder_lr,
-                                                   unet_lr=unet_lr,
-                                                   learning_rate=optimizer_config.learning_rates.base,
-                                                   apply_orthograd=apply_orthograd,
-                                                   orthograd_targets=orthograd_targets)
+        # Fallback for adapters that don't yet support new signature (e.g., LyCORIS)
+        raw_te_lr = learning_rates.text_encoders
+        if raw_te_lr is None or isinstance(raw_te_lr, (float, int)):
+            text_encoder_lr = raw_te_lr
+        else:
+            text_encoder_lr = raw_te_lr[0] if len(raw_te_lr) > 0 else None
+        results = adapter.prepare_optimizer_params(
+            text_encoder_lr=text_encoder_lr,
+            unet_lr=learning_rates.unet,
+            learning_rate=learning_rates.base,
+            apply_orthograd=apply_orthograd,
+            orthograd_targets=orthograd_targets
+        )
         if type(results) is tuple:
             trainable_params, lr_descriptions = results
         else:
@@ -176,7 +181,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, adapter_config: PeftCon
     optimizer_name, optimizer_args, optimizer = get_optimizer(optimizer_config, trainable_params, optimizer_kwargs)
     optimizer_train_fn, optimizer_eval_fn = get_optimizer_train_eval_fn(optimizer, optimizer_config)
 
-    return optimizer_name, optimizer_args, optimizer, optimizer_train_fn, optimizer_eval_fn, lr_descriptions, text_encoder_lr
+    return optimizer_name, optimizer_args, optimizer, optimizer_train_fn, optimizer_eval_fn, lr_descriptions
 
 
 def get_optimizer(optimizer_config: OptimizerConfig, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[str, str, object]:
@@ -495,7 +500,9 @@ def get_optimizer(optimizer_config: OptimizerConfig, trainable_params, optimizer
         # Need to handle base optimizer
         if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower()):
             case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type", None)
-            base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")  # TODO: unresolved attribute split?
+            if case_sensitive_full_base_optimizer_name is None:
+                raise ValueError("base_optimizer_type is required in optimizer_args for ScheduleFreeWrapper/snoo_asgd optimizers")
+            base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")
             base_optimizer_module = importlib.import_module(".".join(base_optimizer_values[:-1]))
             case_sensitive_base_optimizer_type = base_optimizer_values[-1]
             base_optimizer_class = getattr(base_optimizer_module, case_sensitive_base_optimizer_type)
@@ -666,7 +673,7 @@ def get_scheduler_fix(optimizer_config: OptimizerConfig, validation_split: float
 
     # Need to apply scheduler to base_optimizer
     if is_wrapper_optimizer(optimizer_config):
-        optimizer = optimizer.base_optimizer  # TODO: unresolved attribute?
+        optimizer = optimizer.base_optimizer
 
     name = optimizer_config.scheduler.lr_scheduler
     num_training_steps = training_config.max_train_steps * num_processes  # * args.gradient_accumulation_steps
@@ -697,17 +704,6 @@ def get_scheduler_fix(optimizer_config: OptimizerConfig, validation_split: float
         for arg in optimizer_config.scheduler.lr_scheduler_args:
             key, value = arg.split("=")
             value = ast.literal_eval(value)
-
-            # TODO temp fix for warmup and first cycle steps pending UI changes
-            if key == 'first_cycle_max_steps' and validation_split > 0.0:
-                value = math.ceil(num_training_steps / num_cycles)
-                num_cycles = 1
-            elif key == 'first_cycle_max_steps':
-                num_cycles = 1
-
-            if key == 'warmup_steps' and validation_split > 0.0:
-                value = math.ceil(value * (1.0 - validation_split))
-
             lr_scheduler_kwargs[key] = value
 
     def wrap_check_needless_num_warmup_steps(return_vals):

@@ -307,6 +307,7 @@ def train(cfg: SDFineTuneConfig):
         accelerator.log({}, step=0)
 
     loss_recorder = LossRecorder()
+    epoch = 0  # Initialize before loop to handle edge case of 0 epochs
     for epoch in range(num_train_epochs):
         accelerator.print(f"\nepoch {epoch+1}/{num_train_epochs}")
         current_epoch.value = epoch + 1
@@ -339,7 +340,7 @@ def train(cfg: SDFineTuneConfig):
                     if cfg.performance.precision.full_fp16:
                         encoder_hidden_states = encoder_hidden_states.to(weight_dtype)
 
-                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, cfg.timestep, cfg.training, noise_scheduler, latents)
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, cfg.timestep, cfg.training, noise_scheduler, latents, output_dtype=weight_dtype)
 
                 with accelerator.autocast():
                     noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
@@ -476,7 +477,7 @@ def train(cfg: SDFineTuneConfig):
             save_stable_diffusion_format,
             use_safetensors,
             save_dtype,
-            epoch,  # TODO: local variable might be referenced before assignment, problem or?
+            epoch,
             global_step,
             text_encoder,
             unet,

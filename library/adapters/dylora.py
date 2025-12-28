@@ -20,6 +20,7 @@ from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
 from torch import nn
 
+from library.config.dataclasses.optimizer import LearningRatesConfig
 from library.training.checkpointing import precalculate_safetensors_hashes
 from library.utils.common_utils import setup_logging
 
@@ -435,11 +436,20 @@ class DyLoRAAdapter(torch.nn.Module):
 
     # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
     def prepare_optimizer_params(self, 
-                                 text_encoder_lr: float, 
-                                 unet_lr: float, 
-                                 learning_rate: float, 
+                                 learning_rates: LearningRatesConfig, 
                                  apply_orthograd: bool, 
                                  orthograd_targets: list[str]):
+        # Extract LRs from config
+        unet_lr = learning_rates.unet
+        base_lr = learning_rates.base
+        # Handle text_encoders which may be float, list, or None
+        raw_te_lr = learning_rates.text_encoders
+        if raw_te_lr is None or isinstance(raw_te_lr, (float, int)):
+            text_encoder_lr = raw_te_lr
+        else:
+            # List - take first element for single-TE adapters
+            text_encoder_lr = raw_te_lr[0] if len(raw_te_lr) > 0 else None
+
         self.requires_grad_(True)
         all_params = []
 
@@ -475,14 +485,14 @@ class DyLoRAAdapter(torch.nn.Module):
         if self.text_encoder_loras:
             params = assemble_params(
                 self.text_encoder_loras,
-                text_encoder_lr if text_encoder_lr is not None else learning_rate,
+                text_encoder_lr if text_encoder_lr is not None else base_lr,
                 self.loraplus_text_encoder_lr_ratio or self.loraplus_lr_ratio,
             )
             all_params.extend(params)
 
         if self.unet_loras:
             params = assemble_params(
-                self.unet_loras, learning_rate if unet_lr is None else unet_lr, self.loraplus_unet_lr_ratio or self.loraplus_lr_ratio
+                self.unet_loras, base_lr if unet_lr is None else unet_lr, self.loraplus_unet_lr_ratio or self.loraplus_lr_ratio
             )
             all_params.extend(params)
 

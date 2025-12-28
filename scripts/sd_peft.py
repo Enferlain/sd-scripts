@@ -332,7 +332,6 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         optimizer_train_fn,
         optimizer_eval_fn,
         lr_descriptions,
-        text_encoder_lr  # TODO: why only text_encoder_lr here?
     ) = prepare_optimizer(cfg.optimizer, cfg.peft, adapter)
 
     # prepare dataloader
@@ -538,7 +537,6 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         num_train_epochs=num_train_epochs,
         optimizer_name=optimizer_name,
         optimizer_args=optimizer_args,
-        text_encoder_lr=text_encoder_lr,  # TODO: why only text_encoder_lr here?
         net_kwargs=net_kwargs,
         train_dataloader=train_dataloader,
         total_batch_size=total_batch_size,

@@ -94,11 +94,12 @@ def validate_config(cfg) -> None:
             if cfg.performance.precision.mixed_precision == "no":
                 raise ValueError("fp8_base requires mixed_precision='fp16' or 'bf16'")
     
-    # SDXL: block_lr must have exactly 23 values (only checked if field exists and is set)
-    if hasattr(cfg.optimizer, 'learning_rates') and cfg.optimizer.learning_rates.blocks:
-        block_lr_count = len(cfg.optimizer.learning_rates.blocks.split(","))
-        if block_lr_count != 23:
-            raise ValueError(f"block_lr must have 23 values, got {block_lr_count}")  # TODO: planned to be able to train x amount of blocks so this will cause issues then
+    # TODO: Revisit when model-agnostic block/layer granular LR is implemented
+    # Currently SDXL-specific and assumes 23 blocks - not widely used
+    # if hasattr(cfg.optimizer, 'learning_rates') and cfg.optimizer.learning_rates.blocks:
+    #     block_lr_count = len(cfg.optimizer.learning_rates.blocks.split(","))
+    #     if block_lr_count != 23:
+    #         raise ValueError(f"block_lr must have 23 values, got {block_lr_count}")
 
     # === Warnings ===
     

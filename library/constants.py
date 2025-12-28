@@ -215,7 +215,8 @@ UP_BLOCK_TYPES = ["UpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "Cros
 # --- library/models/sdxl_model_util.py ---
 SDXL_KEY_PREFIX = "conditioner.embedders.1.model."
 
-VAE_SCALE_FACTOR = 0.13025
+SD_VAE_LATENT_SCALE = 0.18215
+SDXL_VAE_LATENT_SCALE = 0.13025
 MODEL_VERSION_SDXL_BASE_V1_0 = "sdxl_base_v1-0"
 
 # Diffusersの設定を読み込むための参照モデル

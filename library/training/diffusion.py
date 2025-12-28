@@ -28,10 +28,30 @@ def get_noise_noisy_latents_and_timesteps(
         fixed_timesteps=None,
         is_train=True,
         min_timestep_override=None,
-        max_timestep_override=None
+        max_timestep_override=None,
+        output_dtype: torch.dtype = None,
 ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.IntTensor]:
     """
-    todo
+    Generate noise, noisy latents, and timesteps for diffusion training.
+    
+    Args:
+        regularization_config: Config for noise offset, multires noise, etc.
+        timestep_config: Config for timestep sampling parameters.
+        training_config: Config for training settings.
+        noise_scheduler: The diffusion noise scheduler.
+        latents: Input latents tensor.
+        la_sampler: Optional custom timestep sampler.
+        global_step: Current training step (for adaptive sampling).
+        fixed_timesteps: Optional fixed timesteps to use.
+        is_train: Whether in training mode (affects noise augmentation).
+        min_timestep_override: Override minimum timestep.
+        max_timestep_override: Override maximum timestep.
+        output_dtype: If provided, cast noisy_latents to this dtype before returning.
+                      Useful because noise_scheduler.add_noise() may return float32
+                      even when inputs are float16/bfloat16 for numerical stability.
+    
+    Returns:
+        Tuple of (noise, noisy_latents, timesteps)
     """
     # --- 1. Determine Timestep Range ---
     # This part handles the dynamic timestep schedule!
@@ -114,9 +134,8 @@ def get_noise_noisy_latents_and_timesteps(
     else:
         noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
-    # Important! The old script had a .cpu() call here. It was a workaround.
-    # Modern diffusers handles device placement better, so we can often omit this.
-    # If you see device errors, we can add it back!
-    # noise_scheduler.alphas_cumprod = noise_scheduler.alphas_cumprod.cpu()
+    # Cast to output dtype if specified (scheduler may return float32 for numerical stability)
+    if output_dtype is not None:
+        noisy_latents = noisy_latents.to(output_dtype)
 
     return noise, noisy_latents, timesteps

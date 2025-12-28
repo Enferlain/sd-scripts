@@ -5,7 +5,6 @@ import torch
 from typing import Optional
 from accelerate import init_empty_weights
 from ..config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
-from ..config.dataclasses.deepspeed import DeepSpeedConfig
 
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device

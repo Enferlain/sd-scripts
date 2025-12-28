@@ -11,6 +11,7 @@ from typing import List, Optional, Type, Union
 from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
 
+from library.config.dataclasses.optimizer import LearningRatesConfig
 from library.training.checkpointing import precalculate_safetensors_hashes
 from library.utils.common_utils import setup_logging
 
@@ -358,11 +359,12 @@ class OFTAdapter(torch.nn.Module):
 
     # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
     def prepare_optimizer_params(self, 
-                                 text_encoder_lr: float, 
-                                 unet_lr: float, 
-                                 learning_rate: float, 
+                                 learning_rates: LearningRatesConfig, 
                                  apply_orthograd: bool, 
                                  orthograd_targets: list[str]):
+        # Extract LRs from config
+        unet_lr = learning_rates.unet
+
         self.requires_grad_(True)
         all_params = []
 

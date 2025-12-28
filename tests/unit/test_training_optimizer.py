@@ -15,7 +15,7 @@ from library.training.optimizer import (
     get_dummy_scheduler,
     parse_string_to_type,
 )
-from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig
+from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig, LearningRatesConfig
 from library.config.dataclasses.peft import PeftConfig
 from library.config.dataclasses.dataset import DatasetConfig
 
@@ -33,7 +33,7 @@ class TestGetOptimizer:
         """Test creating default AdamW optimizer."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            learning_rate=1e-4
+            learning_rates=LearningRatesConfig(base=1e-4)
         )
         
         optimizer_name, optimizer_class_name, optimizer = get_optimizer(
@@ -50,7 +50,7 @@ class TestGetOptimizer:
         
         config = OptimizerConfig(
             optimizer_type="AdamW8bit",
-            learning_rate=1e-4
+            learning_rates=LearningRatesConfig(base=1e-4)
         )
         
         optimizer_name, optimizer_class_name, optimizer = get_optimizer(
@@ -64,7 +64,7 @@ class TestGetOptimizer:
         """Test optimizer with custom learning rate."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            learning_rate=5e-5
+            learning_rates=LearningRatesConfig(base=5e-5)
         )
         
         _, _, optimizer = get_optimizer(config, mock_model_parameters)
@@ -78,7 +78,7 @@ class TestGetOptimizer:
         """Test optimizer with additional arguments."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            learning_rate=1e-4,
+            learning_rates=LearningRatesConfig(base=1e-4),
             optimizer_args=["weight_decay=0.01", "betas=(0.9,0.999)"]
         )
         
@@ -93,7 +93,7 @@ class TestGetOptimizer:
         """Test that empty optimizer_type defaults to AdamW."""
         config = OptimizerConfig(
             optimizer_type="",
-            learning_rate=1e-4
+            learning_rates=LearningRatesConfig(base=1e-4)
         )
         
         optimizer_name, _, optimizer = get_optimizer(config, mock_model_parameters)
@@ -105,7 +105,7 @@ class TestGetOptimizer:
         """Test creating SGD optimizer."""
         config = OptimizerConfig(
             optimizer_type="SGD",
-            learning_rate=0.01
+            learning_rates=LearningRatesConfig(base=0.01)
         )
         
         optimizer_name, _, optimizer = get_optimizer(config, mock_model_parameters)
@@ -161,7 +161,7 @@ class TestScheduler:
     
     def test_get_dummy_scheduler(self, mock_model_parameters):
         """Test dummy scheduler creation."""
-        config = OptimizerConfig(optimizer_type="AdamW", learning_rate=1e-4)
+        config = OptimizerConfig(optimizer_type="AdamW", learning_rates=LearningRatesConfig(base=1e-4))
         _, _, optimizer = get_optimizer(config, mock_model_parameters)
         
         scheduler = get_dummy_scheduler(optimizer)
@@ -180,7 +180,7 @@ class TestScheduler:
         
     def test_dummy_scheduler_preserves_lr(self, mock_model_parameters):
         """Test that dummy scheduler doesn't modify learning rate."""
-        config = OptimizerConfig(optimizer_type="AdamW", learning_rate=3e-5)
+        config = OptimizerConfig(optimizer_type="AdamW", learning_rates=LearningRatesConfig(base=3e-5))
         _, _, optimizer = get_optimizer(config, mock_model_parameters)
         
         initial_lr = optimizer.param_groups[0]['lr']
@@ -248,7 +248,7 @@ class TestOptimizerConfigIntegration:
         
         config = OptimizerConfig(
             use_8bit_adam=True,
-            learning_rate=1e-4
+            learning_rates=LearningRatesConfig(base=1e-4)
         )
         
         # The __post_init__ should set optimizer_type to AdamW8bit
@@ -260,7 +260,7 @@ class TestOptimizerConfigIntegration:
         
         config = OptimizerConfig(
             use_lion_optimizer=True,
-            learning_rate=1e-4
+            learning_rates=LearningRatesConfig(base=1e-4)
         )
         
         # The __post_init__ should set optimizer_type to Lion
@@ -271,7 +271,7 @@ class TestOptimizerConfigIntegration:
         config = OptimizerConfig(
             optimizer_type="AdamW",
             scheduler=SchedulerConfig(lr_scheduler="constant"),
-            learning_rate=1e-4
+            learning_rates=LearningRatesConfig(base=1e-4)
         )
         
         assert config.scheduler.lr_scheduler == "constant"
@@ -281,7 +281,7 @@ class TestOptimizerConfigIntegration:
         config = OptimizerConfig(
             optimizer_type="AdamW",
             scheduler=SchedulerConfig(lr_scheduler="cosine", lr_warmup_steps=100),
-            learning_rate=1e-4
+            learning_rates=LearningRatesConfig(base=1e-4)
         )
         
         assert config.scheduler.lr_warmup_steps == 100
@@ -291,7 +291,7 @@ class TestOptimizerConfigIntegration:
         """Test multiple optimizer arguments parsing."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            learning_rate=1e-4,
+            learning_rates=LearningRatesConfig(base=1e-4),
             optimizer_args=[
                 "weight_decay=0.01",
                 "eps=1e-8",
@@ -310,7 +310,7 @@ class TestOptimizerConfigIntegration:
         """Test that max_grad_norm config is preserved."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            learning_rate=1e-4,
+            learning_rates=LearningRatesConfig(base=1e-4),
             max_grad_norm=0.5
         )
         
@@ -320,7 +320,7 @@ class TestOptimizerConfigIntegration:
         """Test fused_backward_pass flag is preserved."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            learning_rate=1e-4,
+            learning_rates=LearningRatesConfig(base=1e-4),
             fused_backward_pass=True
         )
         
@@ -342,7 +342,7 @@ class TestOptimizerEdgeCases:
         """Test optimizer with very small learning rate."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            learning_rate=1e-10
+            learning_rates=LearningRatesConfig(base=1e-10)
         )
         
         _, _, optimizer = get_optimizer(config, mock_model_parameters)
@@ -353,7 +353,7 @@ class TestOptimizerEdgeCases:
         """Test optimizer with large learning rate."""
         config = OptimizerConfig(
             optimizer_type="AdamW",
-            learning_rate=0.1
+            learning_rates=LearningRatesConfig(base=0.1)
         )
         
         _, _, optimizer = get_optimizer(config, mock_model_parameters)

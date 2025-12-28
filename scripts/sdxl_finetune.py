@@ -13,7 +13,7 @@ from diffusers import DDPMScheduler
 
 import library.config.config_util as config_util
 
-from library.constants import VAE_SCALE_FACTOR
+from library.constants import SDXL_VAE_LATENT_SCALE
 from library.models.sdxl_model_util import get_size_embeddings
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.common_utils import setup_logging
@@ -547,6 +547,7 @@ def train(cfg: SDXLFineTuneConfig):
         accelerator.log({}, step=0)
 
     loss_recorder = LossRecorder()
+    epoch = 0  # Initialize before loop to handle edge case of 0 epochs
     for epoch in range(num_train_epochs):
         accelerator.print(f"\nepoch {epoch+1}/{num_train_epochs}")
         current_epoch.value = epoch + 1
@@ -570,7 +571,7 @@ def train(cfg: SDXLFineTuneConfig):
                         if torch.any(torch.isnan(latents)):
                             accelerator.print("NaN found in latents, replacing with zeros")
                             latents = torch.nan_to_num(latents, 0, out=latents)
-                latents = latents * VAE_SCALE_FACTOR
+                latents = latents * SDXL_VAE_LATENT_SCALE
 
                 text_encoder_outputs_list = batch.get("text_encoder_outputs_list", None)
                 if text_encoder_outputs_list is not None:
@@ -612,9 +613,7 @@ def train(cfg: SDXLFineTuneConfig):
                 vector_embedding = torch.cat([pool2, embs], dim=1).to(weight_dtype)
                 text_embedding = torch.cat([encoder_hidden_states1, encoder_hidden_states2], dim=2).to(weight_dtype)
 
-                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, noise_scheduler, latents)
-
-                noisy_latents = noisy_latents.to(weight_dtype)
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, noise_scheduler, latents, output_dtype=weight_dtype)
 
                 with accelerator.autocast():
                     noise_pred = unet(noisy_latents, timesteps, text_embedding, vector_embedding)

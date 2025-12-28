@@ -13,8 +13,6 @@ from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import HuggingFaceConfig
 from typing import Optional
-# TODO: TrainingConfig was only used for v_parameterization (which was a bug - it's in LossConfig).
-# Consider adding clip_skip from TrainingConfig to metadata in the future.
 
 def save_sd_model_on_train_end(
         saving_config: SavingConfig,

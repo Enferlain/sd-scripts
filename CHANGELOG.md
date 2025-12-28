@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-28]
+
+### Fixed
+
+- **Epoch Variable Initialization**
+
+  - Added `epoch = 0` initialization before training loops in `sd_finetune.py` and `sdxl_finetune.py` to prevent potential "referenced before assignment" errors when `num_train_epochs` is 0
+
+- **noisy_latents dtype Handling**
+
+  - Added `output_dtype` parameter to `get_noise_noisy_latents_and_timesteps()` in `diffusion.py`
+  - Updated all callers (peft strategies, finetune scripts) to pass `output_dtype=weight_dtype`
+  - Removed redundant `.to(weight_dtype)` casts from `call_unet` methods
+  - Fixed incorrect function signature in `sd_textual_inversion.py` (pre-existing bug)
+
+- **Optimizer Wrapper Guard**
+  - Added guard in `optimizer.py` to raise clear error when `base_optimizer_type` is missing for ScheduleFreeWrapper/snoo_asgd optimizers
+
+### Changed
+
+- **Removed Legacy UI Workarounds**
+
+  - Removed auto-adjustment of `first_cycle_max_steps` and `warmup_steps` based on `validation_split` in scheduler setup
+  - Callers are now responsible for passing correct values
+
+- **Naming Convention Cleanup**
+  - Renamed `config` → `cfg` in `resume_from_local_or_hf_if_specified()` for consistency
+
+### Removed
+
+- Stale TODO comments about TrainingConfig/v_parameterization in checkpointing modules
+- Legacy `# TODO HYDRA` comment
+
 ## [2025-12-27]
 
 ### Changed
@@ -23,6 +56,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed redundant `OptimizerConfig.learning_rate` field
   - `LearningRatesConfig.base` is now the canonical base LR (default: `2.0e-6`)
   - Config access paths updated: `cfg.optimizer.learning_rate` → `cfg.optimizer.learning_rates.base`
+
+- **Learning Rate Parameter Passing Consolidation**
+
+  - Refactored adapter `prepare_optimizer_params` methods (`lora.py`, `dylora.py`, `oft.py`) to accept `LearningRatesConfig` object instead of individual `text_encoder_lr`, `unet_lr`, and `learning_rate` float params
+  - Removed legacy `text_encoder_lr` return value from `prepare_optimizer()` in `optimizer.py`
+  - Updated `create_training_metadata()` to read `ss_text_encoder_lr` directly from `cfg.optimizer.learning_rates.text_encoders`
+  - `cfg.optimizer.learning_rates` is now the single source of truth for all learning rates throughout the training pipeline
 
 - **Model Config Restructuring**
 

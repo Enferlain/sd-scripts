@@ -14,6 +14,7 @@ from tqdm import tqdm
 from ramtorch.helpers import replace_linear_with_ramtorch
 
 from library.strategies import strategy_sd, strategy_base
+from library.constants import SD_VAE_LATENT_SCALE
 from library.strategies.peft_strategy_base import PeftTrainingStrategy
 from library.models import model_util
 from library.training.model_prep import replace_unet_modules
@@ -48,8 +49,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
     Extracted from SDPeftTrainer class methods.
     """
     
-    vae_scale_factor: float = 0.18215
-    is_sdxl: bool = False
+    vae_latent_scale: float = SD_VAE_LATENT_SCALE
     
     def load_target_model(self, cfg, weight_dtype, accelerator) -> tuple[str, nn.Module, nn.Module, Optional[nn.Module]]:
         """Load SD1.5/2 model components."""
@@ -129,7 +129,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         return get_sai_model_spec_from_config(
             state_dict=None,
             metadata_config=cfg.output.metadata,
-            is_sdxl=self.is_sdxl,
+            is_sdxl=False,  # SD strategy is never used for SDXL
             is_v2=cfg.model.model_type == "sd2",
             v_parameterization=cfg.loss.v_parameterization,
             is_lora=True,
@@ -159,7 +159,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def shift_scale_latents(self, cfg, latents: torch.FloatTensor) -> torch.FloatTensor:
         """Apply VAE scale factor to latents."""
-        return latents * self.vae_scale_factor
+        return latents * self.vae_latent_scale
 
     # region Training batch processing methods
 
@@ -172,7 +172,8 @@ class SdPeftStrategy(PeftTrainingStrategy):
         noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
             cfg.loss.regularization, cfg.timestep, cfg.training, noise_scheduler, latents,
             la_sampler=self.la_sampler, global_step=global_step, fixed_timesteps=fixed_timesteps,
-            is_train=is_train, min_timestep_override=min_timestep_override, max_timestep_override=max_timestep_override
+            is_train=is_train, min_timestep_override=min_timestep_override, max_timestep_override=max_timestep_override,
+            output_dtype=weight_dtype
         )
 
         if is_train and cfg.performance.memory.gradient_checkpointing:

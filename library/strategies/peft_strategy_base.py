@@ -148,10 +148,6 @@ class PeftTrainingStrategy(
     Implementations inherit from this and provide model-specific implementations.
     """
     
-    # Model-specific constants  # TODO: if model specific why in base?
-    vae_scale_factor: float = 0.18215
-    is_sdxl: bool = False  # TODO: Why is there a "is_sdxl" in the repo when config model type exists?
-    
     # Instance state (set during training)
     la_sampler: Any = field(default=None, init=False, repr=False)
     live_plotter_process: Any = field(default=None, init=False, repr=False)

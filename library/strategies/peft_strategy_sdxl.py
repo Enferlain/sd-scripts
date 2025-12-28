@@ -15,7 +15,7 @@ from ramtorch.helpers import replace_linear_with_ramtorch
 
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
 from library.strategies.peft_strategy_base import PeftTrainingStrategy
-from library.constants import VAE_SCALE_FACTOR, MODEL_VERSION_SDXL_BASE_V1_0
+from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl_model_util import get_size_embeddings
 from library.models.text_encoder_util import get_hidden_states_sdxl
 from library.training.sdxl_model_prep import load_target_model
@@ -53,8 +53,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
     Extracted from SDXLPeftTrainer class methods.
     """
     
-    vae_scale_factor: float = VAE_SCALE_FACTOR
-    is_sdxl: bool = True
+    vae_latent_scale: float = SDXL_VAE_LATENT_SCALE
     
     # Instance state set during model loading
     load_stable_diffusion_format: bool = False
@@ -178,8 +177,6 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         SDXL UNet signature includes vector_embedding (size/crop conditioning).
         """
         indices = kwargs.get("indices", None)
-        
-        noisy_latents = noisy_latents.to(weight_dtype)
 
         # Get size embeddings
         orig_size = batch["original_sizes_hw"]
@@ -219,7 +216,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         return get_sai_model_spec_from_config(
             state_dict=None,
             metadata_config=cfg.output.metadata,
-            is_sdxl=self.is_sdxl,
+            is_sdxl=True,  # SDXL strategy is always SDXL
             is_v2=False,  # SDXL is not v2
             v_parameterization=cfg.loss.v_parameterization,
             is_lora=True,
@@ -249,7 +246,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
     def shift_scale_latents(self, cfg, latents: torch.FloatTensor) -> torch.FloatTensor:
         """Apply VAE scale factor to latents."""
-        return latents * self.vae_scale_factor
+        return latents * self.vae_latent_scale
 
     # region SDXL-specific text conditioning
 
@@ -296,7 +293,8 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
             cfg.loss.regularization, cfg.timestep, cfg.training, noise_scheduler, latents,
             la_sampler=self.la_sampler, global_step=global_step, fixed_timesteps=fixed_timesteps,
-            is_train=is_train, min_timestep_override=min_timestep_override, max_timestep_override=max_timestep_override
+            is_train=is_train, min_timestep_override=min_timestep_override, max_timestep_override=max_timestep_override,
+            output_dtype=weight_dtype
         )
 
         if is_train and cfg.performance.memory.gradient_checkpointing:

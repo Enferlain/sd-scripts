@@ -33,6 +33,7 @@ from library.training.optimizer import get_optimizer, get_scheduler_fix
 from library.training.sd_sample_generation import sample_images
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.config.config_validation import prepare_config, validate_config, validate_sd_textual_inversion
+from library.constants import SD_VAE_LATENT_SCALE
 
 from library.config.config_util import (
     BlueprintGenerator,
@@ -74,7 +75,7 @@ logger = logging.getLogger(__name__)
 
 class TextualInversionTrainer:
     def __init__(self):
-        self.vae_scale_factor = 0.18215
+        self.vae_latent_scale = SD_VAE_LATENT_SCALE
         self.is_sdxl = False
 
     def validate_extra_config(self, config, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
@@ -494,7 +495,7 @@ class TextualInversionTrainer:
                         else:
                             # latentに変換
                             latents = vae.encode(batch["images"].to(dtype=vae_dtype)).latent_dist.sample().to(dtype=weight_dtype)
-                        latents = latents * self.vae_scale_factor
+                        latents = latents * self.vae_latent_scale
 
                     input_ids = [ids.to(accelerator.device) for ids in batch["input_ids_list"]]
                     text_encoder_conds = text_encoding_strategy.encode_tokens(
@@ -504,7 +505,7 @@ class TextualInversionTrainer:
                         text_encoder_conds = [c.to(weight_dtype) for c in text_encoder_conds]
 
                     noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
-                        training_config, noise_scheduler, latents
+                        config.regularization, config.timestep, training_config, noise_scheduler, latents, output_dtype=weight_dtype
                     )
 
                     with accelerator.autocast():

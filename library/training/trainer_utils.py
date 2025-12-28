@@ -182,7 +182,7 @@ def append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names):
 
 
 def determine_grad_sync_context(args, accelerator, sync_gradients, training_model, edm2_model=None):
-    # TODO
+    # TODO: Investigate why this was considered
     # if args.full_bf16:
     #    if not sync_gradients and accelerator.num_processes > 1:
     #        if edm2_model is not None:
