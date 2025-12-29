@@ -475,7 +475,7 @@ class TextualInversionTrainer:
 
         lr_scheduler = get_scheduler_fix(
             cfg.optimizer.scheduler,
-            cfg.optimizer.optimizer_type,
+            cfg.optimizer,
             cfg.training,
             optimizer,
             accelerator.num_processes,

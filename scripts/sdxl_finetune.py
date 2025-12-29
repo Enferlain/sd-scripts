@@ -412,10 +412,10 @@ def train(cfg: SDXLFineTuneConfig):
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
     if cfg.optimizer.fused_optimizer_groups:
-        lr_schedulers = [get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer.optimizer_type, cfg.training, optimizer, accelerator.num_processes) for optimizer in optimizers]
+        lr_schedulers = [get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes) for optimizer in optimizers]
         lr_scheduler = lr_schedulers[0]
     else:
-        lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer.optimizer_type, cfg.training, optimizer, accelerator.num_processes)
+        lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes)
 
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")

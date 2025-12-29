@@ -658,10 +658,11 @@ def parse_string_to_type(s):
 # Add some checking and features to the original function.
 
 
-def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_type: str, training_config: TrainingConfig, optimizer: Optimizer, num_processes: int):
+def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: OptimizerConfig, training_config: TrainingConfig, optimizer: Optimizer, num_processes: int):
     """
     Unified API to get any scheduler from its name.
     """
+    optimizer_type = optimizer_config.optimizer_type
     # if schedulefree optimizer, return dummy scheduler
     if optimizer_type.lower().split(".")[0] not in {"LoraEasyCustomOptimizer".lower(),
                                                          "prodigyplus".lower()} and optimizer_type.lower().endswith("schedulefree".lower()):

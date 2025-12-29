@@ -236,7 +236,7 @@ def train(cfg: SDFineTuneConfig):
 
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
-    lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer.optimizer_type, cfg.training, optimizer, accelerator.num_processes)
+    lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes)
 
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
