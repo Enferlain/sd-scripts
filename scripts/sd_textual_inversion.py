@@ -102,12 +102,10 @@ class TextualInversionTrainer:
         validate_sd_textual_inversion(config, train_dataset_group, val_dataset_group)
 
     def load_target_model(
-        self, model_config, loss_config, performance_config, weight_dtype, accelerator
+        self, model_config, loss_config, memory_config, weight_dtype, accelerator
     ):
         is_v2 = model_config.model_type == "sd2"
-        text_encoder, vae, unet, _ = load_target_model(
-            model_config, performance_config, weight_dtype, accelerator
-        )
+        text_encoder, vae, unet, _ = load_target_model(model_config, memory_config, weight_dtype, accelerator)
         return (
             model_util.get_model_version_str_for_sd1_sd2(
                 is_v2, loss_config.v_parameterization
@@ -279,7 +277,7 @@ class TextualInversionTrainer:
         model_version, text_encoders, vae, unet = self.load_target_model(
             model_config,
             cfg.loss,
-            cfg.performance,
+            cfg.performance.memory,
             weight_dtype,
             accelerator,
         )

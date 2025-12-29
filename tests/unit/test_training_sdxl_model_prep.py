@@ -7,26 +7,25 @@ import os
 
 # Import the module under test
 import library.training.sdxl_model_prep as sdxl_model_prep
-from library.config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
-from library.config.dataclasses.performance import DeepSpeedConfig
+from library.config.dataclasses.model import ModelConfig
+from library.config.dataclasses.performance import MemoryConfig, CachingConfig, PrecisionConfig
 
 @pytest.mark.unit
 class TestSDXLModelPrep(unittest.TestCase):
     def setUp(self):
-        # Create a mock config
-        self.cfg = MagicMock(spec=SDXLFineTuneConfig)
-        self.cfg.training = MagicMock()
-        self.cfg.sd_models = MagicMock()
-        self.cfg.performance = MagicMock()
-        self.cfg.sdxl = MagicMock()
+        # Create mock configs
+        self.model_config = MagicMock(spec=ModelConfig)
+        self.memory_config = MagicMock(spec=MemoryConfig)
+        self.caching_config = MagicMock(spec=CachingConfig)
+        self.precision_config = MagicMock(spec=PrecisionConfig)
         
         # Default config values
-        self.cfg.sd_models.pretrained_model_name_or_path = "model/path"
-        self.cfg.sd_models.vae = None
-        self.cfg.sd_models.vae_conv2d_padding_mode = None
-        self.cfg.performance.memory.lowram = False
-        self.cfg.performance.caching.disable_mmap_load_safetensors = False
-        self.cfg.training.mixed_precision = "fp16"
+        self.model_config.pretrained_model_name_or_path = "model/path"
+        self.model_config.vae = None
+        self.model_config.vae_conv2d_padding_mode = None
+        self.memory_config.lowram = False
+        self.caching_config.disable_mmap_load_safetensors = False
+        self.precision_config.mixed_precision = "fp16"
 
     @patch("library.training.sdxl_model_prep.match_mixed_precision")
     @patch("library.training.sdxl_model_prep._load_target_model")
@@ -52,11 +51,14 @@ class TestSDXLModelPrep(unittest.TestCase):
         mock_load_internal.return_value = return_tuple
         
         # Execute
-        result = sdxl_model_prep.load_target_model(self.cfg, accelerator, "v1", torch.float16)
+        result = sdxl_model_prep.load_target_model(
+            self.model_config, self.memory_config, self.caching_config, self.precision_config,
+            accelerator, "v1", torch.float16
+        )
         
         # Assertions
         mock_load_internal.assert_called_once_with(
-            self.cfg,
+            self.model_config,
             "model/path",
             None,
             "v1",
@@ -84,7 +86,10 @@ class TestSDXLModelPrep(unittest.TestCase):
         te1 = MagicMock()
         mock_load_internal.return_value = (True, te1, MagicMock(), MagicMock(), MagicMock(), 1.0, None)
         
-        result = sdxl_model_prep.load_target_model(self.cfg, accelerator, "v1", torch.float16)
+        result = sdxl_model_prep.load_target_model(
+            self.model_config, self.memory_config, self.caching_config, self.precision_config,
+            accelerator, "v1", torch.float16
+        )
         
         # It should call load when pi matches local_process_index (which is 1)
         mock_load_internal.assert_called_once()
@@ -104,7 +109,10 @@ class TestSDXLModelPrep(unittest.TestCase):
         te1 = MagicMock()
         mock_load_internal.return_value = (True, te1, MagicMock(), MagicMock(), MagicMock(), 1.0, None)
         
-        sdxl_model_prep.load_target_model(self.cfg, accelerator, "v1", torch.float16)
+        sdxl_model_prep.load_target_model(
+            self.model_config, self.memory_config, self.caching_config, self.precision_config,
+            accelerator, "v1", torch.float16
+        )
         
         # It should have called wait_for_everyone twice (once for pi=0, once for pi=1)
         self.assertEqual(accelerator.wait_for_everyone.call_count, 2)
@@ -117,7 +125,7 @@ class TestSDXLModelPrep(unittest.TestCase):
     @patch("library.training.sdxl_model_prep.clean_memory_on_device")
     def test_load_target_model_lowram(self, mock_clean, mock_load_internal, mock_match_mp):
         """Test lowram behavior moving models to device."""
-        self.cfg.performance.memory.lowram = True
+        self.memory_config.lowram = True
         accelerator = MagicMock()
         accelerator.state.num_processes = 1
         accelerator.state.local_process_index = 0
@@ -130,7 +138,10 @@ class TestSDXLModelPrep(unittest.TestCase):
         
         mock_load_internal.return_value = (True, te1, te2, vae, unet, 1.0, None)
         
-        sdxl_model_prep.load_target_model(self.cfg, accelerator, "v1", torch.float16)
+        sdxl_model_prep.load_target_model(
+            self.model_config, self.memory_config, self.caching_config, self.precision_config,
+            accelerator, "v1", torch.float16
+        )
         
         # Verify passed device was 'cuda:0' because lowram=True
         args, _ = mock_load_internal.call_args
@@ -158,7 +169,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         mock_load_ckpt.return_value = ("te1", "te2", "vae", "unet", "logit", "info")
         
         result = sdxl_model_prep._load_target_model(
-            self.cfg, "my_model.safetensors", None, "v1", torch.float16, "cpu"
+            self.model_config, "my_model.safetensors", None, "v1", torch.float16, "cpu"
         )
         
         # Assertions
@@ -181,7 +192,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         mock_load_vae.return_value = "new_vae"
         
         result = sdxl_model_prep._load_target_model(
-            self.cfg, "my_model.safetensors", "vae_path.pt", "v1", torch.float16, "cpu"
+            self.model_config, "my_model.safetensors", "vae_path.pt", "v1", torch.float16, "cpu"
         )
         
         mock_load_vae.assert_called_once_with("vae_path.pt", torch.float16)
@@ -196,10 +207,10 @@ class TestSDXLModelPrep(unittest.TestCase):
         mock_isfile.return_value = True
         mock_load_ckpt.return_value = ("te1", "te2", "vae", "unet", "logit", "info")
         
-        self.cfg.sd_models.vae_conv2d_padding_mode = "reflect"
+        self.model_config.vae_conv2d_padding_mode = "reflect"
         
         sdxl_model_prep._load_target_model(
-            self.cfg, "my_model.safetensors", None, "v1", torch.float16
+            self.model_config, "my_model.safetensors", None, "v1", torch.float16
         )
         
         mock_set_padding.assert_called_once_with("vae", "reflect")
@@ -234,7 +245,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         mock_unet_class.return_value = target_unet
         
         result = sdxl_model_prep._load_target_model(
-            self.cfg, "user/repo", None, "v1", torch.float16, "cpu"
+            self.model_config, "user/repo", None, "v1", torch.float16, "cpu"
         )
         
         # Assertions
@@ -276,7 +287,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         
         # Run
         sdxl_model_prep._load_target_model(
-            self.cfg, "user/repo", None, "v1", torch.float16
+            self.model_config, "user/repo", None, "v1", torch.float16
         )
         
         self.assertEqual(mock_pipeline.from_pretrained.call_count, 2)
@@ -293,5 +304,5 @@ class TestSDXLModelPrep(unittest.TestCase):
         
         with self.assertRaises(OSError):
            sdxl_model_prep._load_target_model(
-                self.cfg, "invalid/path", None, "v1", torch.float32
+                self.model_config, "invalid/path", None, "v1", torch.float32
             ) 

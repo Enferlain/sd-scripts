@@ -115,8 +115,8 @@ def train(cfg: SDXLFineTuneConfig):
         print("Dry run completed successfully.")
         return
 
-    set_torch_cuda_reduced_precision(cfg.performance)
-    deepspeed_utils.prepare_deepspeed_config(cfg.performance)
+    set_torch_cuda_reduced_precision(cfg.performance.precision)
+    deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed)
     setup_logging(cfg.output.logging, reset=True)
 
     if cfg.optimizer.learning_rates.blocks:
@@ -176,7 +176,12 @@ def train(cfg: SDXLFineTuneConfig):
         ), "when caching text encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used"
 
     logger.info("prepare accelerator")
-    accelerator = prepare_accelerator(cfg.performance)
+    accelerator = prepare_accelerator(
+        cfg.performance.precision,
+        cfg.performance.compilation,
+        cfg.performance.distributed,
+        cfg.performance.deepspeed,
+    )
 
     weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.output.saving)
     vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
@@ -189,7 +194,15 @@ def train(cfg: SDXLFineTuneConfig):
         unet,
         logit_scale,
         ckpt_info,
-    ) = load_target_model(cfg, accelerator, "sdxl", weight_dtype)
+    ) = load_target_model(
+        cfg.model,
+        cfg.performance.memory,
+        cfg.performance.caching,
+        cfg.performance.precision,
+        accelerator,
+        "sdxl",
+        weight_dtype,
+    )
 
 
     if load_stable_diffusion_format:

@@ -57,8 +57,8 @@ logger = logging.getLogger(__name__)
 def train(cfg: SDFineTuneConfig):
 
     setup_logging(cfg.output.logging, reset=True)
-    set_torch_cuda_reduced_precision(cfg.training)
-    deepspeed_utils.prepare_deepspeed_config(cfg.performance)
+    set_torch_cuda_reduced_precision(cfg.performance.precision)
+    deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed)
 
     cache_latents = cfg.data.caching.cache_latents
 
@@ -102,12 +102,18 @@ def train(cfg: SDFineTuneConfig):
         ), "when caching latents, either color_aug or random_crop cannot be used"
 
     logger.info("prepare accelerator")
-    accelerator = prepare_accelerator(cfg.performance)
+    accelerator = prepare_accelerator(
+        cfg.performance.precision,
+        cfg.performance.compilation,
+        cfg.performance.distributed,
+        cfg.performance.deepspeed,
+    )
 
     weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.output.saving)
     vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
 
-    text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(cfg.model, cfg.performance, weight_dtype, accelerator)
+    text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(cfg.model, cfg.performance.memory, weight_dtype,
+                                                                              accelerator)
 
     if load_stable_diffusion_format:
         src_stable_diffusion_ckpt = cfg.model.pretrained_model_name_or_path

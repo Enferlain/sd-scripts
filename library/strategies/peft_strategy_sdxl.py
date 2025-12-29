@@ -70,7 +70,15 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             unet,
             logit_scale,
             ckpt_info,
-        ) = load_target_model(cfg, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
+        ) = load_target_model(
+            cfg.model,
+            cfg.performance.memory,
+            cfg.performance.caching,
+            cfg.performance.precision,
+            accelerator,
+            MODEL_VERSION_SDXL_BASE_V1_0,
+            weight_dtype,
+        )
         
         # Store for later use in checkpointing
         self.load_stable_diffusion_format = load_stable_diffusion_format

@@ -281,7 +281,7 @@ from library.training.trainer_utils import (
     init_trackers,
     determine_grad_sync_context,
 )
-from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.performance import PerformanceConfig, PrecisionConfig, CompilationConfig, DistributedConfig, DeepSpeedConfig
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig
 
@@ -292,21 +292,31 @@ class TestPrepareAccelerator:
     """Test prepare_accelerator with mocked Accelerator."""
 
     @pytest.fixture
-    def mock_performance_config(self):
-        """Create a mock PerformanceConfig with nested structure."""
-        config = Mock(spec=PerformanceConfig)
-        # Nested precision config
-        config.precision = Mock()
-        config.precision.mixed_precision = "fp16"
-        # Nested compilation config
-        config.compilation = Mock()
-        config.compilation.torch_compile = False
-        # Nested distributed config
-        config.distributed = Mock()
-        config.distributed.ddp_gradient_as_bucket_view = False
-        config.distributed.ddp_static_graph = False
-        # Deepspeed
-        config.deepspeed = Mock()
+    def mock_precision_config(self):
+        """Create a mock PrecisionConfig."""
+        config = Mock(spec=PrecisionConfig)
+        config.mixed_precision = "fp16"
+        return config
+
+    @pytest.fixture
+    def mock_compilation_config(self):
+        """Create a mock CompilationConfig."""
+        config = Mock(spec=CompilationConfig)
+        config.torch_compile = False
+        return config
+
+    @pytest.fixture
+    def mock_distributed_config(self):
+        """Create a mock DistributedConfig."""
+        config = Mock(spec=DistributedConfig)
+        config.ddp_gradient_as_bucket_view = False
+        config.ddp_static_graph = False
+        return config
+
+    @pytest.fixture
+    def mock_deepspeed_config(self):
+        """Create a mock DeepSpeedConfig."""
+        config = Mock(spec=DeepSpeedConfig)
         return config
 
     @pytest.fixture
@@ -329,14 +339,17 @@ class TestPrepareAccelerator:
     @patch('library.training.trainer_utils.Accelerator')
     @patch('library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin')
     def test_creates_accelerator_with_basic_config(
-        self, mock_ds_plugin, mock_accelerator_class, mock_performance_config
+        self, mock_ds_plugin, mock_accelerator_class,
+        mock_precision_config, mock_compilation_config, mock_distributed_config, mock_deepspeed_config
     ):
         """Test that Accelerator is created with basic config."""
         mock_ds_plugin.return_value = None
         mock_accelerator = Mock()
         mock_accelerator_class.return_value = mock_accelerator
         
-        result = prepare_accelerator(mock_performance_config)
+        result = prepare_accelerator(
+            mock_precision_config, mock_compilation_config, mock_distributed_config, mock_deepspeed_config
+        )
         
         assert result is mock_accelerator
         mock_accelerator_class.assert_called_once()
@@ -345,14 +358,17 @@ class TestPrepareAccelerator:
     @patch('library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin')
     def test_uses_gradient_accumulation_steps(
         self, mock_ds_plugin, mock_accelerator_class, 
-        mock_performance_config, mock_training_config
+        mock_precision_config, mock_compilation_config, mock_distributed_config, mock_deepspeed_config, mock_training_config
     ):
         """Test that gradient_accumulation_steps is passed correctly."""
         mock_ds_plugin.return_value = None
         mock_accelerator = Mock()
         mock_accelerator_class.return_value = mock_accelerator
         
-        prepare_accelerator(mock_performance_config, training_config=mock_training_config)
+        prepare_accelerator(
+            mock_precision_config, mock_compilation_config, mock_distributed_config, mock_deepspeed_config,
+            training_config=mock_training_config
+        )
         
         call_kwargs = mock_accelerator_class.call_args[1]
         assert call_kwargs['gradient_accumulation_steps'] == 2
@@ -360,14 +376,17 @@ class TestPrepareAccelerator:
     @patch('library.training.trainer_utils.Accelerator')
     @patch('library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin')
     def test_uses_mixed_precision(
-        self, mock_ds_plugin, mock_accelerator_class, mock_performance_config
+        self, mock_ds_plugin, mock_accelerator_class,
+        mock_precision_config, mock_compilation_config, mock_distributed_config, mock_deepspeed_config
     ):
         """Test that mixed_precision is passed correctly."""
         mock_ds_plugin.return_value = None
         mock_accelerator = Mock()
         mock_accelerator_class.return_value = mock_accelerator
         
-        prepare_accelerator(mock_performance_config)
+        prepare_accelerator(
+            mock_precision_config, mock_compilation_config, mock_distributed_config, mock_deepspeed_config
+        )
         
         call_kwargs = mock_accelerator_class.call_args[1]
         assert call_kwargs['mixed_precision'] == "fp16"
@@ -376,15 +395,18 @@ class TestPrepareAccelerator:
     @patch('library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin')
     @patch('library.training.trainer_utils.TorchDynamoPlugin')
     def test_torch_compile_creates_dynamo_plugin(
-        self, mock_dynamo, mock_ds_plugin, mock_accelerator_class, mock_performance_config
+        self, mock_dynamo, mock_ds_plugin, mock_accelerator_class,
+        mock_precision_config, mock_compilation_config, mock_distributed_config, mock_deepspeed_config
     ):
         """Test that torch_compile creates dynamo plugin."""
-        mock_performance_config.compilation.torch_compile = True
+        mock_compilation_config.torch_compile = True
         mock_ds_plugin.return_value = None
         mock_accelerator = Mock()
         mock_accelerator_class.return_value = mock_accelerator
         
-        prepare_accelerator(mock_performance_config)
+        prepare_accelerator(
+            mock_precision_config, mock_compilation_config, mock_distributed_config, mock_deepspeed_config
+        )
         
         mock_dynamo.assert_called_once()
 
@@ -446,9 +468,9 @@ class TestInitTrackers:
 
     def test_uses_custom_tracker_name(self, mock_accelerator, mock_cfg):
         """Test that custom tracker name is used when specified."""
-        mock_cfg.output.logging.log_tracker_name = "custom_name"
+        mock_cfg.logging.log_tracker_name = "custom_name"
 
-        init_trackers(mock_accelerator, mock_cfg, "default_name")
+        init_trackers(mock_accelerator, mock_cfg.logging, "default_name")
         
         call_args = mock_accelerator.init_trackers.call_args[0]
         assert call_args[0] == "custom_name"

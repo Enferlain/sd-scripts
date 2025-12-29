@@ -1,28 +1,41 @@
 import os
 import torch
 import logging
+from typing import Optional
 
 from accelerate import DeepSpeedPlugin
 
 from library.config.dataclasses.training import TrainingConfig
-from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.performance import DeepSpeedConfig, PrecisionConfig
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import get_preferred_device
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
-def prepare_deepspeed_config(performance_config: PerformanceConfig, training_config: TrainingConfig = None):
+
+def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, training_config: TrainingConfig = None):
     """Modify training config for deepspeed if enabled."""
-    if not performance_config.deepspeed.deepspeed:
+    if not deepspeed_config.deepspeed:
         return
     
     if training_config is not None:
         training_config.max_data_loader_n_workers = 1
 
-def prepare_deepspeed_plugin(performance_config: PerformanceConfig, training_config: TrainingConfig = None):
-    """Create deepspeed plugin from performance and training configs."""
-    if not performance_config.deepspeed.deepspeed:
+
+def prepare_deepspeed_plugin(
+    deepspeed_config: DeepSpeedConfig,
+    precision_config: PrecisionConfig,
+    training_config: TrainingConfig = None,
+) -> Optional[DeepSpeedPlugin]:
+    """Create deepspeed plugin from configs.
+    
+    Args:
+        deepspeed_config: DeepSpeed settings (zero_stage, offload options, etc.)
+        precision_config: Precision settings (mixed_precision, full_fp16)
+        training_config: Optional training settings (gradient_accumulation_steps, train_batch_size)
+    """
+    if not deepspeed_config.deepspeed:
         return None
 
     try:
@@ -41,28 +54,27 @@ def prepare_deepspeed_plugin(performance_config: PerformanceConfig, training_con
     # Note: This may need to be passed in separately
     max_grad_norm = 1.0
 
-    ds_cfg = performance_config.deepspeed
     deepspeed_plugin = DeepSpeedPlugin(
-        zero_stage=ds_cfg.zero_stage,
+        zero_stage=deepspeed_config.zero_stage,
         gradient_accumulation_steps=gradient_accumulation_steps,
         gradient_clipping=max_grad_norm,
-        offload_optimizer_device=ds_cfg.offload_optimizer_device,
-        offload_optimizer_nvme_path=ds_cfg.offload_optimizer_nvme_path,
-        offload_param_device=ds_cfg.offload_param_device,
-        offload_param_nvme_path=ds_cfg.offload_param_nvme_path,
-        zero3_init_flag=ds_cfg.zero3_init_flag,
-        zero3_save_16bit_model=ds_cfg.zero3_save_16bit_model,
+        offload_optimizer_device=deepspeed_config.offload_optimizer_device,
+        offload_optimizer_nvme_path=deepspeed_config.offload_optimizer_nvme_path,
+        offload_param_device=deepspeed_config.offload_param_device,
+        offload_param_nvme_path=deepspeed_config.offload_param_nvme_path,
+        zero3_init_flag=deepspeed_config.zero3_init_flag,
+        zero3_save_16bit_model=deepspeed_config.zero3_save_16bit_model,
     )
     deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = train_batch_size
     deepspeed_plugin.deepspeed_config["train_batch_size"] = (
             train_batch_size * gradient_accumulation_steps * int(os.environ.get("WORLD_SIZE", 1))
     )
 
-    deepspeed_plugin.set_mixed_precision(performance_config.mixed_precision)
-    if performance_config.mixed_precision.lower() == "fp16":
+    deepspeed_plugin.set_mixed_precision(precision_config.mixed_precision)
+    if precision_config.mixed_precision.lower() == "fp16":
         deepspeed_plugin.deepspeed_config["fp16"]["initial_scale_power"] = 0
-    if performance_config.full_fp16 or ds_cfg.fp16_master_weights_and_gradients:
-        if ds_cfg.offload_optimizer_device == "cpu" and ds_cfg.zero_stage == 2:
+    if precision_config.full_fp16 or deepspeed_config.fp16_master_weights_and_gradients:
+        if deepspeed_config.offload_optimizer_device == "cpu" and deepspeed_config.zero_stage == 2:
             deepspeed_plugin.deepspeed_config["fp16"]["fp16_master_weights_and_grads"] = True
             logger.info("[DeepSpeed] full fp16 enable.")
         else:
@@ -70,7 +82,7 @@ def prepare_deepspeed_plugin(performance_config: PerformanceConfig, training_con
                 "[DeepSpeed]full fp16, fp16_master_weights_and_grads currently only supported using ZeRO-Offload with DeepSpeedCPUAdam on ZeRO-2 stage."
             )
 
-    if ds_cfg.offload_optimizer_device is not None:
+    if deepspeed_config.offload_optimizer_device is not None:
         logger.info("[DeepSpeed] start to manually build cpu_adam.")
         deepspeed.ops.op_builder.CPUAdamBuilder().load()
         logger.info("[DeepSpeed] building cpu_adam done.")
@@ -78,7 +90,13 @@ def prepare_deepspeed_plugin(performance_config: PerformanceConfig, training_con
     return deepspeed_plugin
 
 
-def prepare_deepspeed_model(cfg: TrainingConfig, **models):
+def prepare_deepspeed_model(training_config: TrainingConfig, **models):
+    """Wrap models for DeepSpeed training.
+    
+    Args:
+        training_config: TrainingConfig with mixed_precision setting
+        **models: Named model arguments to wrap
+    """
     models = {k: v for k, v in models.items() if v is not None}
 
     class DeepSpeedWrapper(torch.nn.Module):
@@ -87,7 +105,7 @@ def prepare_deepspeed_model(cfg: TrainingConfig, **models):
 
             self.models = torch.nn.ModuleDict()
 
-            wrap_model_forward_with_torch_autocast = cfg.mixed_precision != "no"
+            wrap_model_forward_with_torch_autocast = training_config.mixed_precision != "no"
 
             for key, model in kw_models.items():
                 if isinstance(model, list):

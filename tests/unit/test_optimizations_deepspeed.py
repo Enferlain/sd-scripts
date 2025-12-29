@@ -7,7 +7,7 @@ Tests the DeepSpeed configuration preparation and plugin creation functions.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from library.config.dataclasses.performance import DeepSpeedConfig
+from library.config.dataclasses.performance import DeepSpeedConfig, PrecisionConfig
 from library.config.dataclasses.performance import PerformanceConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.performance.deepspeed_utils import (
@@ -42,18 +42,26 @@ def enabled_deepspeed_config():
 def performance_config_disabled():
     """PerformanceConfig with deepspeed disabled."""
     return PerformanceConfig(
-        mixed_precision="no",
-        full_fp16=False,
         deepspeed=DeepSpeedConfig(deepspeed=False),
     )
+
+
+@pytest.fixture
+def deepspeed_config_disabled():
+    """DeepSpeedConfig with deepspeed disabled."""
+    return DeepSpeedConfig(deepspeed=False)
+
+
+@pytest.fixture
+def precision_config_default():
+    """PrecisionConfig with default settings."""
+    return PrecisionConfig(mixed_precision="no", full_fp16=False)
 
 
 @pytest.fixture
 def performance_config_enabled():
     """PerformanceConfig with deepspeed enabled."""
     return PerformanceConfig(
-        mixed_precision="fp16",
-        full_fp16=False,
         deepspeed=DeepSpeedConfig(
             deepspeed=True,
             zero_stage=2,
@@ -61,6 +69,23 @@ def performance_config_enabled():
             offload_param_device=None,
         ),
     )
+
+
+@pytest.fixture
+def deepspeed_config_enabled():
+    """DeepSpeedConfig with deepspeed enabled."""
+    return DeepSpeedConfig(
+        deepspeed=True,
+        zero_stage=2,
+        offload_optimizer_device=None,
+        offload_param_device=None,
+    )
+
+
+@pytest.fixture
+def precision_config_fp16():
+    """PrecisionConfig with fp16 mixed precision."""
+    return PrecisionConfig(mixed_precision="fp16", full_fp16=False)
 
 
 @pytest.fixture
@@ -80,32 +105,32 @@ def training_config():
 class TestPrepareDeepspeedConfig:
     """Tests for prepare_deepspeed_config function."""
     
-    def test_disabled_deepspeed_does_nothing(self, performance_config_disabled, training_config):
+    def test_disabled_deepspeed_does_nothing(self, deepspeed_config_disabled, training_config):
         """When deepspeed is disabled, training_config should not be modified."""
         original_workers = training_config.max_data_loader_n_workers
         
-        prepare_deepspeed_config(performance_config_disabled, training_config)
+        prepare_deepspeed_config(deepspeed_config_disabled, training_config)
         
         # Should remain unchanged
         assert training_config.max_data_loader_n_workers == original_workers
     
-    def test_enabled_deepspeed_sets_workers_to_one(self, performance_config_enabled, training_config):
+    def test_enabled_deepspeed_sets_workers_to_one(self, deepspeed_config_enabled, training_config):
         """When deepspeed is enabled, max_data_loader_n_workers should be set to 1."""
         assert training_config.max_data_loader_n_workers == 8  # Initial value
         
-        prepare_deepspeed_config(performance_config_enabled, training_config)
+        prepare_deepspeed_config(deepspeed_config_enabled, training_config)
         
         assert training_config.max_data_loader_n_workers == 1
     
-    def test_enabled_deepspeed_no_training_config(self, performance_config_enabled):
+    def test_enabled_deepspeed_no_training_config(self, deepspeed_config_enabled):
         """When training_config is None, should not raise error."""
         # Should not raise
-        prepare_deepspeed_config(performance_config_enabled, None)
+        prepare_deepspeed_config(deepspeed_config_enabled, None)
     
-    def test_disabled_deepspeed_no_training_config(self, performance_config_disabled):
+    def test_disabled_deepspeed_no_training_config(self, deepspeed_config_disabled):
         """When both disabled and no training_config, should not raise error."""
         # Should not raise
-        prepare_deepspeed_config(performance_config_disabled, None)
+        prepare_deepspeed_config(deepspeed_config_disabled, None)
 
 
 # =============================================================================
@@ -115,46 +140,40 @@ class TestPrepareDeepspeedConfig:
 class TestPrepareDeepspeedPlugin:
     """Tests for prepare_deepspeed_plugin function."""
     
-    def test_disabled_returns_none(self, performance_config_disabled):
+    def test_disabled_returns_none(self, deepspeed_config_disabled, precision_config_default):
         """When deepspeed is disabled, should return None."""
-        result = prepare_deepspeed_plugin(performance_config_disabled)
+        result = prepare_deepspeed_plugin(deepspeed_config_disabled, precision_config_default)
         assert result is None
     
-    def test_disabled_with_training_config_returns_none(self, performance_config_disabled, training_config):
+    def test_disabled_with_training_config_returns_none(self, deepspeed_config_disabled, precision_config_default, training_config):
         """When deepspeed is disabled with training config, should return None."""
-        result = prepare_deepspeed_plugin(performance_config_disabled, training_config)
+        result = prepare_deepspeed_plugin(deepspeed_config_disabled, precision_config_default, training_config)
         assert result is None
     
     @patch("library.performance.deepspeed_utils.DeepSpeedPlugin")
     @patch.dict("sys.modules", {"deepspeed": MagicMock()})
-    def test_enabled_creates_plugin(self, mock_plugin_class, performance_config_enabled, training_config):
+    def test_enabled_creates_plugin(self, mock_plugin_class, deepspeed_config_enabled, precision_config_fp16, training_config):
         """When deepspeed is enabled, should create and return a DeepSpeedPlugin."""
         mock_plugin = MagicMock()
         mock_plugin.deepspeed_config = {"fp16": {}}
         mock_plugin_class.return_value = mock_plugin
         
-        result = prepare_deepspeed_plugin(performance_config_enabled, training_config)
+        result = prepare_deepspeed_plugin(deepspeed_config_enabled, precision_config_fp16, training_config)
         
         assert result is mock_plugin
         mock_plugin_class.assert_called_once()
     
     @patch("library.performance.deepspeed_utils.DeepSpeedPlugin")
     @patch.dict("sys.modules", {"deepspeed": MagicMock()})
-    def test_plugin_receives_correct_zero_stage(self, mock_plugin_class, training_config):
+    def test_plugin_receives_correct_zero_stage(self, mock_plugin_class, precision_config_default, training_config):
         """Plugin should receive zero_stage from config."""
-        perf_config = PerformanceConfig(
-            mixed_precision="no",
-            deepspeed=DeepSpeedConfig(
-                deepspeed=True,
-                zero_stage=3,
-            ),
-        )
+        ds_config = DeepSpeedConfig(deepspeed=True, zero_stage=3)
         
         mock_plugin = MagicMock()
         mock_plugin.deepspeed_config = {}
         mock_plugin_class.return_value = mock_plugin
         
-        prepare_deepspeed_plugin(perf_config, training_config)
+        prepare_deepspeed_plugin(ds_config, precision_config_default, training_config)
         
         call_kwargs = mock_plugin_class.call_args.kwargs
         assert call_kwargs["zero_stage"] == 3
@@ -162,14 +181,14 @@ class TestPrepareDeepspeedPlugin:
     @patch("library.performance.deepspeed_utils.DeepSpeedPlugin")
     @patch.dict("sys.modules", {"deepspeed": MagicMock()})
     def test_plugin_receives_gradient_accumulation_from_training_config(
-        self, mock_plugin_class, performance_config_enabled, training_config
+        self, mock_plugin_class, deepspeed_config_enabled, precision_config_fp16, training_config
     ):
         """Plugin should receive gradient_accumulation_steps from training_config."""
         mock_plugin = MagicMock()
         mock_plugin.deepspeed_config = {"fp16": {}}
         mock_plugin_class.return_value = mock_plugin
         
-        prepare_deepspeed_plugin(performance_config_enabled, training_config)
+        prepare_deepspeed_plugin(deepspeed_config_enabled, precision_config_fp16, training_config)
         
         call_kwargs = mock_plugin_class.call_args.kwargs
         assert call_kwargs["gradient_accumulation_steps"] == 4  # From fixture
@@ -177,39 +196,39 @@ class TestPrepareDeepspeedPlugin:
     @patch("library.performance.deepspeed_utils.DeepSpeedPlugin")
     @patch.dict("sys.modules", {"deepspeed": MagicMock()})
     def test_plugin_defaults_gradient_accumulation_without_training_config(
-        self, mock_plugin_class, performance_config_enabled
+        self, mock_plugin_class, deepspeed_config_enabled, precision_config_fp16
     ):
         """Without training_config, gradient_accumulation_steps should default to 1."""
         mock_plugin = MagicMock()
         mock_plugin.deepspeed_config = {"fp16": {}}
         mock_plugin_class.return_value = mock_plugin
         
-        prepare_deepspeed_plugin(performance_config_enabled, None)
+        prepare_deepspeed_plugin(deepspeed_config_enabled, precision_config_fp16, None)
         
         call_kwargs = mock_plugin_class.call_args.kwargs
         assert call_kwargs["gradient_accumulation_steps"] == 1
     
     @patch("library.performance.deepspeed_utils.DeepSpeedPlugin")
     @patch.dict("sys.modules", {"deepspeed": MagicMock()})
-    def test_batch_size_set_in_config(self, mock_plugin_class, performance_config_enabled, training_config):
+    def test_batch_size_set_in_config(self, mock_plugin_class, deepspeed_config_enabled, precision_config_fp16, training_config):
         """train_micro_batch_size_per_gpu should be set in deepspeed_config."""
         mock_plugin = MagicMock()
         mock_plugin.deepspeed_config = {"fp16": {}}
         mock_plugin_class.return_value = mock_plugin
         
-        prepare_deepspeed_plugin(performance_config_enabled, training_config)
+        prepare_deepspeed_plugin(deepspeed_config_enabled, precision_config_fp16, training_config)
         
         assert mock_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] == 2  # From fixture
     
     @patch("library.performance.deepspeed_utils.DeepSpeedPlugin")
     @patch.dict("sys.modules", {"deepspeed": MagicMock()})
-    def test_mixed_precision_applied(self, mock_plugin_class, performance_config_enabled, training_config):
+    def test_mixed_precision_applied(self, mock_plugin_class, deepspeed_config_enabled, precision_config_fp16, training_config):
         """set_mixed_precision should be called with the config value."""
         mock_plugin = MagicMock()
         mock_plugin.deepspeed_config = {"fp16": {}}
         mock_plugin_class.return_value = mock_plugin
         
-        prepare_deepspeed_plugin(performance_config_enabled, training_config)
+        prepare_deepspeed_plugin(deepspeed_config_enabled, precision_config_fp16, training_config)
         
         mock_plugin.set_mixed_precision.assert_called_once_with("fp16")
     
@@ -217,16 +236,14 @@ class TestPrepareDeepspeedPlugin:
     @patch.dict("sys.modules", {"deepspeed": MagicMock()})
     def test_fp16_initial_scale_power_set(self, mock_plugin_class, training_config):
         """When mixed_precision is fp16, initial_scale_power should be set to 0."""
-        perf_config = PerformanceConfig(
-            mixed_precision="fp16",
-            deepspeed=DeepSpeedConfig(deepspeed=True),
-        )
+        ds_config = DeepSpeedConfig(deepspeed=True)
+        prec_config = PrecisionConfig(mixed_precision="fp16")
         
         mock_plugin = MagicMock()
         mock_plugin.deepspeed_config = {"fp16": {}}
         mock_plugin_class.return_value = mock_plugin
         
-        prepare_deepspeed_plugin(perf_config, training_config)
+        prepare_deepspeed_plugin(ds_config, prec_config, training_config)
         
         assert mock_plugin.deepspeed_config["fp16"]["initial_scale_power"] == 0
     
@@ -234,47 +251,41 @@ class TestPrepareDeepspeedPlugin:
     @patch.dict("sys.modules", {"deepspeed": MagicMock()})
     def test_full_fp16_with_cpu_offload_zero2(self, mock_plugin_class, training_config):
         """With full_fp16, cpu offload, and zero_stage=2, fp16_master_weights_and_grads should be True."""
-        perf_config = PerformanceConfig(
-            mixed_precision="fp16",
-            full_fp16=True,
-            deepspeed=DeepSpeedConfig(
-                deepspeed=True,
-                zero_stage=2,
-                offload_optimizer_device="cpu",
-            ),
+        ds_config = DeepSpeedConfig(
+            deepspeed=True,
+            zero_stage=2,
+            offload_optimizer_device="cpu",
         )
+        prec_config = PrecisionConfig(mixed_precision="fp16", full_fp16=True)
         
         mock_plugin = MagicMock()
         mock_plugin.deepspeed_config = {"fp16": {}}
         mock_plugin_class.return_value = mock_plugin
         
-        prepare_deepspeed_plugin(perf_config, training_config)
+        prepare_deepspeed_plugin(ds_config, prec_config, training_config)
         
         assert mock_plugin.deepspeed_config["fp16"]["fp16_master_weights_and_grads"] is True
     
     @patch("library.performance.deepspeed_utils.DeepSpeedPlugin")
     @patch.dict("sys.modules", {"deepspeed": MagicMock()})
-    def test_offload_params_passed_correctly(self, mock_plugin_class, training_config):
+    def test_offload_params_passed_correctly(self, mock_plugin_class, precision_config_default, training_config):
         """Offload parameters should be passed to the plugin."""
-        perf_config = PerformanceConfig(
-            mixed_precision="no",
-            deepspeed=DeepSpeedConfig(
-                deepspeed=True,
-                zero_stage=2,
-                offload_optimizer_device="cpu",
-                offload_optimizer_nvme_path="/nvme",
-                offload_param_device="cpu",
-                offload_param_nvme_path="/local_nvme",
-                zero3_init_flag=True,
-                zero3_save_16bit_model=True,
-            ),
+        ds_config = DeepSpeedConfig(
+            deepspeed=True,
+            zero_stage=2,
+            offload_optimizer_device="cpu",
+            offload_optimizer_nvme_path="/nvme",
+            offload_param_device="cpu",
+            offload_param_nvme_path="/local_nvme",
+            zero3_init_flag=True,
+            zero3_save_16bit_model=True,
         )
         
         mock_plugin = MagicMock()
         mock_plugin.deepspeed_config = {}
         mock_plugin_class.return_value = mock_plugin
         
-        prepare_deepspeed_plugin(perf_config, training_config)
+        prepare_deepspeed_plugin(ds_config, precision_config_default, training_config)
         
         call_kwargs = mock_plugin_class.call_args.kwargs
         assert call_kwargs["offload_optimizer_device"] == "cpu"

@@ -30,7 +30,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         DatasetGroup]):
         validate_sdxl_textual_inversion(config, train_dataset_group, val_dataset_group)
 
-    def load_target_model(self, model_config, performance_config, weight_dtype, accelerator):
+    def load_target_model(self, model_config, memory_config, caching_config, precision_config, weight_dtype, accelerator):
         (
             load_stable_diffusion_format,
             text_encoder1,
@@ -39,7 +39,15 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
             unet,
             logit_scale,
             ckpt_info,
-        ) = load_target_model_sdxl(model_config, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
+        ) = load_target_model_sdxl(
+            model_config,
+            memory_config,
+            caching_config,
+            precision_config,
+            accelerator,
+            MODEL_VERSION_SDXL_BASE_V1_0,
+            weight_dtype,
+        )
 
         self.load_stable_diffusion_format = load_stable_diffusion_format
         self.logit_scale = logit_scale

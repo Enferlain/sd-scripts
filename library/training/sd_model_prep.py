@@ -14,7 +14,7 @@ from library.models import model_util
 from library.models.original_unet import UNet2DConditionModel
 from library.utils.device_utils import clean_memory_on_device
 from library.config.dataclasses.model import ModelConfig
-from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.performance import PerformanceConfig, MemoryConfig
 from library.training.model_prep import set_padding_mode_for_vae_conv2d_modules
 
 logger = logging.getLogger(__name__)
@@ -92,13 +92,8 @@ def _load_target_model(
     return text_encoder, vae, unet, load_stable_diffusion_format
 
 
-def load_target_model(
-    model_config: ModelConfig,
-    performance_config: PerformanceConfig,
-    weight_dtype,
-    accelerator,
-    unet_use_linear_projection_in_v2=False,
-):
+def load_target_model(model_config: ModelConfig, memory_config: MemoryConfig, weight_dtype, accelerator,
+                      unet_use_linear_projection_in_v2=False):
     is_v2 = model_config.model_type == "sd2"
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
@@ -110,11 +105,11 @@ def load_target_model(
                 model_config,
                 is_v2,
                 weight_dtype,
-                accelerator.device if performance_config.memory.lowram else "cpu",
+                accelerator.device if memory_config.lowram else "cpu",
                 unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2,
             )
             # work on low-ram device
-            if performance_config.memory.lowram:
+            if memory_config.lowram:
                 text_encoder.to(accelerator.device)
                 unet.to(accelerator.device)
                 vae.to(accelerator.device)

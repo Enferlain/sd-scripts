@@ -148,7 +148,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     training_started_at = time.time()
 
     set_torch_cuda_reduced_precision(cfg.performance.precision)
-    deepspeed_utils.prepare_deepspeed_config(cfg.performance, cfg.training)
+    deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed, cfg.training)
     setup_logging(cfg.output.logging, reset=True)
 
     cache_latents = cfg.data.caching.cache_latents
@@ -173,7 +173,14 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
 
     # acceleratorを準備する
     logger.info("preparing accelerator")
-    accelerator = prepare_accelerator(cfg.performance, cfg.output.logging, cfg.training)
+    accelerator = prepare_accelerator(
+        cfg.performance.precision,
+        cfg.performance.compilation,
+        cfg.performance.distributed,
+        cfg.performance.deepspeed,
+        cfg.output.logging,
+        cfg.training,
+    )
     is_main_process = accelerator.is_main_process
 
     # mixed precisionに対応した型を用意しておき適宜castする
@@ -734,7 +741,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
                 initial_step -= 1
                 continue
 
-            with determine_grad_sync_context(cfg, accelerator, None, training_model, edm2_model):
+            with determine_grad_sync_context(cfg.performance.precision, accelerator, None, training_model, edm2_model):
                 on_step_start_for_adapter(text_encoder, unet)
 
                 accumulation_counter += 1

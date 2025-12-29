@@ -1,23 +1,40 @@
 import time
 import os
+from typing import Optional
 
 from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import TorchDynamoPlugin
 
 import library.performance.deepspeed_utils as deepspeed_utils
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import OmegaConf
 
-from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.performance import (
+    PrecisionConfig,
+    CompilationConfig,
+    DistributedConfig,
+    DeepSpeedConfig,
+)
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig
+from library.config.dataclasses.validation import ValidationConfig
 
 
-def prepare_accelerator(performance_config: PerformanceConfig, logging_config: LoggingConfig = None, training_config: TrainingConfig = None):
+def prepare_accelerator(
+    precision_config: PrecisionConfig,
+    compilation_config: CompilationConfig,
+    distributed_config: DistributedConfig,
+    deepspeed_config: DeepSpeedConfig,
+    logging_config: LoggingConfig = None,
+    training_config: TrainingConfig = None,
+):
     """
     Prepare accelerator with optional deepspeed plugin.
     
     Args:
-        performance_config: Performance settings (mixed_precision, torch_compile, ddp settings, deepspeed)
+        precision_config: Precision settings (mixed_precision)
+        compilation_config: Torch compile settings
+        distributed_config: DDP settings (gradient_as_bucket_view, static_graph)
+        deepspeed_config: DeepSpeed settings
         logging_config: Optional logging settings (logging_dir, log_with, wandb settings)
         training_config: Optional training settings (gradient_accumulation_steps)
     """
@@ -54,7 +71,7 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
                 wandb.login(key=logging_config.wandb_api_key)
 
     # torch.compile options
-    if performance_config.compilation.torch_compile:
+    if compilation_config.torch_compile:
         dynamo_plugin = TorchDynamoPlugin(
             backend="inductor",
             mode="default",
@@ -69,24 +86,26 @@ def prepare_accelerator(performance_config: PerformanceConfig, logging_config: L
     kwargs_handlers = [
         (
             DistributedDataParallelKwargs(
-                gradient_as_bucket_view=performance_config.distributed.ddp_gradient_as_bucket_view,
-                static_graph=performance_config.distributed.ddp_static_graph
+                gradient_as_bucket_view=distributed_config.ddp_gradient_as_bucket_view,
+                static_graph=distributed_config.ddp_static_graph
             )
-            if performance_config.distributed.ddp_gradient_as_bucket_view or performance_config.distributed.ddp_static_graph
+            if distributed_config.ddp_gradient_as_bucket_view or distributed_config.ddp_static_graph
             else None
         ),
     ]
     kwargs_handlers = [i for i in kwargs_handlers if i is not None]
     
     # Deepspeed plugin
-    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(performance_config, training_config)
+    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(
+        deepspeed_config, precision_config, training_config
+    )
 
     # Gradient accumulation steps
     gradient_accumulation_steps = training_config.gradient_accumulation_steps if training_config else 1
 
     accelerator = Accelerator(
         gradient_accumulation_steps=gradient_accumulation_steps,
-        mixed_precision=performance_config.precision.mixed_precision,
+        mixed_precision=precision_config.mixed_precision,
         log_with=log_with,
         project_dir=logging_dir,
         kwargs_handlers=kwargs_handlers,
@@ -132,7 +151,14 @@ def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, defau
         )
 
 
-def calculate_val_loss_check(validation_config, training_config, global_step, epoch_step, val_dataloader, train_dataloader) -> bool:
+def calculate_val_loss_check(
+    validation_config: ValidationConfig,
+    training_config: TrainingConfig,
+    global_step: int,
+    epoch_step: int,
+    val_dataloader,
+    train_dataloader,
+) -> bool:
     """Check if validation should be run at this step.
     
     Args:
@@ -180,9 +206,9 @@ def append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names):
             )
 
 
-def determine_grad_sync_context(args, accelerator, sync_gradients, training_model, edm2_model=None):
-    # TODO: Investigate why this was considered
-    # if args.full_bf16:
+def determine_grad_sync_context(precision_config: Optional[PrecisionConfig], accelerator, sync_gradients, training_model, edm2_model=None):
+    # TODO: Investigate why this was considered and update signature maybe?
+    # if precision_config and precision_config.full_bf16:
     #    if not sync_gradients and accelerator.num_processes > 1:
     #        if edm2_model is not None:
     #            return accelerator.no_sync(training_model, edm2_model)

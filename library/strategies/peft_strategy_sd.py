@@ -53,7 +53,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
     
     def load_target_model(self, cfg, weight_dtype, accelerator) -> tuple[str, nn.Module, nn.Module, Optional[nn.Module]]:
         """Load SD1.5/2 model components."""
-        text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance, weight_dtype, accelerator)
+        text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance.memory, weight_dtype, accelerator)
 
         if cfg.performance.memory.use_ramtorch:
             logger.info("Applying RamTorch to SD UNet, VAE, and Clip-L.")

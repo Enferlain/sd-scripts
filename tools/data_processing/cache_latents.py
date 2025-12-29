@@ -146,7 +146,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     # モデルを読み込む
     logger.info("load model")
     if is_sd:
-        _, vae, _, _ = load_target_model(args, weight_dtype, accelerator)
+        _, vae, _, _ = load_target_model(args, weight_dtype, accelerator, )
     elif is_sdxl:
         (_, _, _, vae, _, _, _) = load_target_model_sdxl(args, accelerator, "sdxl", weight_dtype)
     else:

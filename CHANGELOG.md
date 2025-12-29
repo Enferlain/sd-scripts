@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-29]
+
+### Changed
+
+- **Configs sanitization continued:**
+
+  - `trainer_utils.py`: Refactored `prepare_accelerator` to use `PrecisionConfig`, `CompilationConfig`, `DistributedConfig`, `DeepSpeedConfig` instead of parent `PerformanceConfig`
+  - `trainer_utils.py`: Refactored `determine_grad_sync_context` to use `precision_config: PrecisionConfig` instead of `args`
+  - `deepspeed_utils.py`: Fixed bugs where `prepare_deepspeed_plugin` accessed non-existent fields (e.g., `performance_config.mixed_precision` instead of `precision_config.mixed_precision`)
+  - `deepspeed_utils.py`: Refactored `prepare_deepspeed_plugin` to use `DeepSpeedConfig`, `PrecisionConfig`, `TrainingConfig` instead of parent `PerformanceConfig`
+  - `deepspeed_utils.py`: Refactored `prepare_deepspeed_config` to use `DeepSpeedConfig` instead of parent `PerformanceConfig`
+
 ## [2025-12-28]
 
 ### Fixed
