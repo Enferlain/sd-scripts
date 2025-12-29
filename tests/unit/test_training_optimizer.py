@@ -37,7 +37,7 @@ class TestGetOptimizer:
         )
         
         optimizer_name, optimizer_class_name, optimizer = get_optimizer(
-            config, mock_model_parameters
+            config, config.learning_rates, config.scheduler, mock_model_parameters
         )
         
         assert optimizer is not None
@@ -54,7 +54,7 @@ class TestGetOptimizer:
         )
         
         optimizer_name, optimizer_class_name, optimizer = get_optimizer(
-            config, mock_model_parameters
+            config, config.learning_rates, config.scheduler, mock_model_parameters
         )
         
         assert optimizer is not None
@@ -67,7 +67,7 @@ class TestGetOptimizer:
             learning_rates=LearningRatesConfig(base=5e-5)
         )
         
-        _, _, optimizer = get_optimizer(config, mock_model_parameters)
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         # Check that the learning rate is set correctly
         param_groups = optimizer.param_groups
@@ -82,7 +82,7 @@ class TestGetOptimizer:
             optimizer_args=["weight_decay=0.01", "betas=(0.9,0.999)"]
         )
         
-        _, _, optimizer = get_optimizer(config, mock_model_parameters)
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         assert optimizer is not None
         # Arguments should be parsed and applied
@@ -96,7 +96,7 @@ class TestGetOptimizer:
             learning_rates=LearningRatesConfig(base=1e-4)
         )
         
-        optimizer_name, _, optimizer = get_optimizer(config, mock_model_parameters)
+        optimizer_name, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         assert optimizer is not None
         assert "adamw" in optimizer_name.lower()
@@ -108,7 +108,7 @@ class TestGetOptimizer:
             learning_rates=LearningRatesConfig(base=0.01)
         )
         
-        optimizer_name, _, optimizer = get_optimizer(config, mock_model_parameters)
+        optimizer_name, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         assert optimizer is not None
         assert "sgd" in optimizer_name.lower()
@@ -126,7 +126,7 @@ class TestOptimizerDetection:
     def test_is_schedulefree_optimizer_false(self, mock_model_parameters):
         """Test schedulefree detection for regular optimizer."""
         config = OptimizerConfig(optimizer_type="AdamW")
-        _, _, optimizer = get_optimizer(config, mock_model_parameters)
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         assert not is_schedulefree_optimizer(optimizer, config)
         
@@ -162,7 +162,7 @@ class TestScheduler:
     def test_get_dummy_scheduler(self, mock_model_parameters):
         """Test dummy scheduler creation."""
         config = OptimizerConfig(optimizer_type="AdamW", learning_rates=LearningRatesConfig(base=1e-4))
-        _, _, optimizer = get_optimizer(config, mock_model_parameters)
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         scheduler = get_dummy_scheduler(optimizer)
         
@@ -181,7 +181,7 @@ class TestScheduler:
     def test_dummy_scheduler_preserves_lr(self, mock_model_parameters):
         """Test that dummy scheduler doesn't modify learning rate."""
         config = OptimizerConfig(optimizer_type="AdamW", learning_rates=LearningRatesConfig(base=3e-5))
-        _, _, optimizer = get_optimizer(config, mock_model_parameters)
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         initial_lr = optimizer.param_groups[0]['lr']
         scheduler = get_dummy_scheduler(optimizer)
@@ -299,7 +299,7 @@ class TestOptimizerConfigIntegration:
             ]
         )
         
-        _, _, optimizer = get_optimizer(config, mock_model_parameters)
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         assert optimizer is not None
         param_groups = optimizer.param_groups[0]
@@ -345,7 +345,7 @@ class TestOptimizerEdgeCases:
             learning_rates=LearningRatesConfig(base=1e-10)
         )
         
-        _, _, optimizer = get_optimizer(config, mock_model_parameters)
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         assert optimizer.param_groups[0]['lr'] == 1e-10
         
@@ -356,7 +356,7 @@ class TestOptimizerEdgeCases:
             learning_rates=LearningRatesConfig(base=0.1)
         )
         
-        _, _, optimizer = get_optimizer(config, mock_model_parameters)
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
         
         assert optimizer.param_groups[0]['lr'] == 0.1
         

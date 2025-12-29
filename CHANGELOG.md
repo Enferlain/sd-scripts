@@ -21,6 +21,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `sd_model_prep.py`: Refactored `load_target_model` to use `MemoryConfig` instead of parent `PerformanceConfig`
   - `sdxl_model_prep.py`: Refactored `load_target_model` to use `ModelConfig`, `MemoryConfig`, `CachingConfig`, `PrecisionConfig` instead of full `SDXLFineTuneConfig`
   - `sdxl_model_prep.py`: Refactored `_load_target_model` to use `ModelConfig` instead of full config
+  - `checkpointing.py`: Renamed `config` → `saving_config` for consistency; added `hf_config: HuggingFaceConfig` to `resume_from_local_or_hf_if_specified`
+  - `sample_generation.py`: Added `loss_config: LossConfig` parameter; fixed `v_parameterization` access (was incorrectly using `training_config`, now correctly uses `loss_config`)
+  - `optimizer.py`: Refactored `prepare_optimizer` to add explicit `learning_rates: LearningRatesConfig` parameter
+  - `optimizer.py`: Refactored `get_optimizer` to add explicit `learning_rates: LearningRatesConfig` and `scheduler_config: SchedulerConfig` parameters
+  - `optimizer.py`: Refactored `get_scheduler_fix` to use `scheduler_config: SchedulerConfig` and `optimizer_type: str` instead of full `OptimizerConfig`
+
+### Fixed
+
+- **Truncated `init_trackers` calls**
+
+  - Fixed syntax errors in `sd_finetune.py`, `sdxl_finetune.py`, and `sd_textual_inversion.py` where `accelerator.init_trackers()` calls were malformed (double commas, missing `init_kwargs`, missing closing paren)
+
+- **Null check for `hf_config`**
+
+  - Fixed `resume_from_local_or_hf_if_specified` to check `hf_config is None` before accessing `resume_from_huggingface`
+
+- **Test parameter naming**
+
+  - Fixed `test_training_checkpointing.py` to use `adapter_args` instead of `network_args` and `ss_adapter_args` instead of `ss_network_args`
 
 ## [2025-12-28]
 

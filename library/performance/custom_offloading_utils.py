@@ -7,7 +7,7 @@ from typing import Any, Optional, Union, Callable, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
 
-# This file was used by flux and sd3 and others
+# This file was used by flux and sd3 and others, maybe reusable with all models?
 # Keep these functions here for portability, and private to avoid confusion with the ones in device_utils.py
 def _clean_memory_on_device(device: torch.device):
     r"""

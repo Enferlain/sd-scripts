@@ -86,10 +86,10 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         return noise_pred
 
     def sample_images(
-        self, accelerator, sampling_config, training_config, saving_config, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
+        self, accelerator, sampling_config, training_config, saving_config, loss_config, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
     ):
         sample_images(
-            accelerator, sampling_config, training_config, saving_config, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
+            accelerator, sampling_config, training_config, saving_config, loss_config, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
         )
 
     def save_weights(self, file, updated_embs, save_dtype, metadata):

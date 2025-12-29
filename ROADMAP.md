@@ -73,7 +73,7 @@ Scripts (contain training loops):     Library Modules:
     - `training_config.full_fp16` → `cfg.performance.precision.full_fp16`
   - Added `tools/scan_config_patterns.py` utility for auditing config access
   - **Remaining**: `model_config.v2` needs to be derived from `model_type` or handled via strategy
-  
+
 ### Completed
 
 - **Learning Rate Consolidation**: Unified `unet_lr`, `text_encoder_lr`, `learning_rate_te1/te2`, `block_lr` into `optimizer.learning_rates`.
@@ -89,7 +89,12 @@ Scripts (contain training loops):     Library Modules:
 ## Code Quality TODOs
 
 - [ ] Timestep sampling needs proper reimplementation (currently hacked into training scripts)
-- [ ] Clean integration for external `live_plotter`
+- [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
+- [ ] **`edm2_loss_utils.py` Config Cleanup** (low priority, not critical component)
+  - 15+ flat config fields with absurdly long names (`edm2_loss_weighting_importance_weighting_safety_override`)
+  - Should extract to dedicated `Edm2LossConfig` sub-dataclass
+  - Mutates config directly (`loss_config.debiased_estimation_loss = False`)
+- [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner
 - [x] ~~Dataset and bucketing decouple~~ (dataset.py split into 6 modules)
 - [x] ~~Resolve duplicate `diffusers_xformers`~~ (moved to PerformanceConfig)
 - [x] ~~Config passing pattern~~ (see DEVELOPMENT_GUIDE.md Section 5.D)

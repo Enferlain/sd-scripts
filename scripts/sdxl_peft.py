@@ -336,7 +336,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         optimizer_train_fn,
         optimizer_eval_fn,
         lr_descriptions,
-    ) = prepare_optimizer(cfg.optimizer, cfg.peft, adapter)
+    ) = prepare_optimizer(cfg.optimizer, cfg.optimizer.learning_rates, cfg.peft, adapter)
 
     # prepare dataloader
     # strategies are set here because they cannot be referenced in another process. Copy them with the dataset
@@ -385,7 +385,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
     # lr schedulerを用意する
-    lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.validation.validation_split, cfg.training, optimizer, accelerator.num_processes)
+    lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer.optimizer_type, cfg.training, optimizer, accelerator.num_processes)
 
     # 実験的機能：勾配も含めたfp16/bf16学習を行う　モデル全体をfp16/bf16にする
     if cfg.performance.precision.full_fp16:

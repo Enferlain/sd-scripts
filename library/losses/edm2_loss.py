@@ -90,7 +90,7 @@ class AdaptiveLossWeightMLP(nn.Module):
 
         if self.use_importance_weights:
             # min snr importance weights
-            all_timesteps = torch.arange(noise_scheduler.config.num_train_timesteps).to(device=device)
+            all_timesteps = torch.arange(noise_scheduler.config.num_train_timesteps).to(device=device)  # TODO: Unresolved attribute reference 'num_train_timesteps' for class 'dict'
             snr = torch.stack([noise_scheduler.all_snr[t] for t in all_timesteps])
 
             min_snr_gamma = (

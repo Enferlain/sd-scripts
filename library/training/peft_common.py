@@ -631,7 +631,6 @@ def create_training_metadata(
     return metadata, minimum_metadata
 
 
-
 def resolve_adapter_kwargs(cfg: PeftConfig, net_kwargs: dict):
     """
     Populate net_kwargs with explicit LoRA fields from PeftConfig if they are set.

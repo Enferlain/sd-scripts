@@ -114,7 +114,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def sample_images(self, accelerator, cfg, epoch, global_step, device, vae, tokenizers, text_encoder, unet):
         """Generate sample images for SD."""
-        sample_images(accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
+        sample_images(accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, epoch, global_step, device, vae, tokenizers[0], text_encoder, unet)
 
     def validate_extra_config(self, cfg, train_dataset_group, val_dataset_group):
         """Run SD-specific cfg validation."""

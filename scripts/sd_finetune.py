@@ -212,7 +212,7 @@ def train(cfg: SDFineTuneConfig):
         ]
 
     accelerator.print("prepare optimizer, data loader etc.")
-    _, _, optimizer = get_optimizer(cfg.optimizer, trainable_params=trainable_params)
+    _, _, optimizer = get_optimizer(cfg.optimizer, cfg.optimizer.learning_rates, cfg.optimizer.scheduler, trainable_params=trainable_params)
 
     train_dataset_group.set_current_strategies()
 
@@ -236,7 +236,7 @@ def train(cfg: SDFineTuneConfig):
 
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
-    lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.validation.validation_split, cfg.training, optimizer, accelerator.num_processes)
+    lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer.optimizer_type, cfg.training, optimizer, accelerator.num_processes)
 
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
@@ -301,10 +301,12 @@ def train(cfg: SDFineTuneConfig):
         if cfg.output.logging.log_tracker_config is not None:
             init_kwargs = cfg.output.logging.log_tracker_config
         accelerator.init_trackers(
-            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,,
+            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
+            init_kwargs=init_kwargs,
+        )
 
     sample_images(
-        accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, 0, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
+        accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, 0, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
     )
     if len(accelerator.trackers) > 0:
         accelerator.log({}, step=0)
@@ -385,7 +387,7 @@ def train(cfg: SDFineTuneConfig):
                 global_step += 1
 
                 sample_images(
-                    accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, None, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
+                    accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, None, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
                 )
 
                 if cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0:
@@ -454,7 +456,7 @@ def train(cfg: SDFineTuneConfig):
                 )
 
         sample_images(
-            accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, epoch + 1, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
+            accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, epoch + 1, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
         )
 
     is_main_process = accelerator.is_main_process

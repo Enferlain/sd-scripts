@@ -11,7 +11,6 @@ from transformers import CLIPTextModel, CLIPTokenizer, CLIPTextConfig
 from diffusers import AutoencoderKL, DDIMScheduler, StableDiffusionPipeline  # , UNet2DConditionModel
 from safetensors.torch import load_file, save_file
 
-
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex
 from library.models.original_unet import UNet2DConditionModel

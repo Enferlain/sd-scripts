@@ -168,6 +168,7 @@ class TextualInversionTrainer:
         sampling_config,
         training_config,
         saving_config,
+        loss_config,
         epoch,
         global_step,
         device,
@@ -182,6 +183,7 @@ class TextualInversionTrainer:
             sampling_config,
             training_config,
             saving_config,
+            loss_config,
             epoch,
             global_step,
             device,
@@ -445,7 +447,7 @@ class TextualInversionTrainer:
         trainable_params = []
         for text_encoder in text_encoders:
             trainable_params += text_encoder.get_input_embeddings().parameters()
-        _, _, optimizer = get_optimizer(optimizer_config, trainable_params)
+        _, _, optimizer = get_optimizer(optimizer_config, optimizer_config.learning_rates, optimizer_config.scheduler, trainable_params)
 
         train_dataset_group.set_current_strategies()
 
@@ -475,8 +477,8 @@ class TextualInversionTrainer:
         train_dataset_group.set_max_train_steps(training_config.max_train_steps)
 
         lr_scheduler = get_scheduler_fix(
-            cfg.optimizer,
-            cfg.validation.validation_split,
+            cfg.optimizer.scheduler,
+            cfg.optimizer.optimizer_type,
             cfg.training,
             optimizer,
             accelerator.num_processes,
@@ -604,9 +606,10 @@ class TextualInversionTrainer:
                 init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
             if cfg.output.logging.log_tracker_config is not None:
                 init_kwargs = cfg.output.logging.log_tracker_config
-            accelerator.init_trackers("textual_inversion"
-                                      if cfg.output.logging.log_tracker_name is None
-                                      else cfg.output.logging.log_tracker_name,,
+            accelerator.init_trackers(
+                "textual_inversion" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
+                init_kwargs=init_kwargs,
+            )
 
         def save_model(ckpt_name, embs_list, steps, epoch_no, force_sync_upload=False):
             os.makedirs(saving_config.output_dir, exist_ok=True)
@@ -644,6 +647,7 @@ class TextualInversionTrainer:
             cfg.output.sampling,
             cfg.training,
             cfg.output.saving,
+            cfg.loss,
             0,
             global_step,
             accelerator.device,
@@ -821,6 +825,7 @@ class TextualInversionTrainer:
                         cfg.output.sampling,
                         cfg.training,
                         cfg.output.saving,
+                        cfg.loss,
                         None,
                         global_step,
                         accelerator.device,
@@ -928,6 +933,7 @@ class TextualInversionTrainer:
                 cfg.output.sampling,
                 cfg.training,
                 cfg.output.saving,
+                cfg.loss,
                 epoch + 1,
                 global_step,
                 accelerator.device,

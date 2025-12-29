@@ -33,6 +33,7 @@ from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongP
 from library.config.dataclasses.output import SamplingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.output import SavingConfig
+from library.config.dataclasses.loss import LossConfig
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,6 @@ def get_my_scheduler(
 
 
 # NOTE: SD-specific sample_images() moved to sd_sample_generation.py
-
 
 
 def line_to_prompt_dict(line: str) -> dict:
@@ -220,6 +220,7 @@ def sample_images_common(
         sampling_config: SamplingConfig,
         training_config: TrainingConfig,
         saving_config: SavingConfig,
+        loss_config: LossConfig,
         epoch: int,
         steps: int,
         device,
@@ -268,7 +269,6 @@ def sample_images_common(
         text_encoder = accelerator.unwrap_model(text_encoder)
 
     # read prompts
-    # read prompts
     if sampling_config.sample_prompts.endswith(".txt"):
         with open(sampling_config.sample_prompts, "r", encoding="utf-8") as f:
             lines = f.readlines()
@@ -281,7 +281,7 @@ def sample_images_common(
         with open(sampling_config.sample_prompts, "r", encoding="utf-8") as f:
             prompts = json.load(f)
 
-    default_scheduler = get_my_scheduler(sample_sampler=sampling_config.sample_sampler, v_parameterization=training_config.v_parameterization)
+    default_scheduler = get_my_scheduler(sample_sampler=sampling_config.sample_sampler, v_parameterization=loss_config.v_parameterization)
 
     pipeline = pipe_class(
         text_encoder=text_encoder,
@@ -323,7 +323,7 @@ def sample_images_common(
         with torch.no_grad():
             for prompt_dict in prompts:
                 sample_image_inference(
-                    accelerator, sampling_config, training_config, saving_config, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
+                    accelerator, sampling_config, training_config, saving_config, loss_config, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
                     controlnet=controlnet
                 )
     else:
@@ -337,7 +337,7 @@ def sample_images_common(
             with distributed_state.split_between_processes(per_process_prompts) as prompt_dict_lists:
                 for prompt_dict in prompt_dict_lists[0]:
                     sample_image_inference(
-                        accelerator, sampling_config, training_config, saving_config, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
+                        accelerator, sampling_config, training_config, saving_config, loss_config, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
                         controlnet=controlnet
                     )
 
@@ -357,6 +357,7 @@ def sample_image_inference(
         sampling_config: SamplingConfig,
         training_config: TrainingConfig,
         saving_config: SavingConfig,
+        loss_config: LossConfig,
         pipeline: Union[StableDiffusionLongPromptWeightingPipeline, SdxlStableDiffusionLongPromptWeightingPipeline],
         save_dir,
         prompt_dict,
@@ -393,7 +394,7 @@ def sample_image_inference(
 
     scheduler = get_my_scheduler(
         sample_sampler=sampler_name,
-        v_parameterization=training_config.v_parameterization,
+        v_parameterization=loss_config.v_parameterization,
     )
     pipeline.scheduler = scheduler
 

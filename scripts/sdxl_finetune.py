@@ -380,14 +380,14 @@ def train(cfg: SDXLFineTuneConfig):
 
         optimizers = []
         for group in grouped_params:
-            _, _, optimizer = get_optimizer(cfg.optimizer, trainable_params=[group])
+            _, _, optimizer = get_optimizer(cfg.optimizer, cfg.optimizer.learning_rates, cfg.optimizer.scheduler, trainable_params=[group])
             optimizers.append(optimizer)
         optimizer = optimizers[0]
 
         logger.info(f"using {len(optimizers)} optimizers for fused optimizer groups")
 
     else:
-        _, _, optimizer = get_optimizer(cfg.optimizer, trainable_params=params_to_optimize)
+        _, _, optimizer = get_optimizer(cfg.optimizer, cfg.optimizer.learning_rates, cfg.optimizer.scheduler, trainable_params=params_to_optimize)
 
     train_dataset_group.set_current_strategies()
 
@@ -412,10 +412,10 @@ def train(cfg: SDXLFineTuneConfig):
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
     if cfg.optimizer.fused_optimizer_groups:
-        lr_schedulers = [get_scheduler_fix(cfg.optimizer, cfg.validation.validation_split, cfg.training, optimizer, accelerator.num_processes) for optimizer in optimizers]
+        lr_schedulers = [get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer.optimizer_type, cfg.training, optimizer, accelerator.num_processes) for optimizer in optimizers]
         lr_scheduler = lr_schedulers[0]
     else:
-        lr_scheduler = get_scheduler_fix(cfg.optimizer, cfg.validation.validation_split, cfg.training, optimizer, accelerator.num_processes)
+        lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer.optimizer_type, cfg.training, optimizer, accelerator.num_processes)
 
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
@@ -548,10 +548,12 @@ def train(cfg: SDXLFineTuneConfig):
         if cfg.output.logging.log_tracker_config is not None:
             init_kwargs = cfg.output.logging.log_tracker_config
         accelerator.init_trackers(
-            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,,
+            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
+            init_kwargs=init_kwargs,
+        )
 
     sample_images(
-        accelerator, cfg.output.sampling, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
+        accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
     )
     if len(accelerator.trackers) > 0:
         accelerator.log({}, step=0)
@@ -683,9 +685,10 @@ def train(cfg: SDXLFineTuneConfig):
 
                 sample_images(
                     accelerator,
-                    cfg.output.sampling.
+                    cfg.output.sampling,
                     cfg.training,
                     cfg.output.saving,
+                    cfg.loss,
                     epoch + 1,
                     global_step,
                     accelerator.device,
@@ -771,6 +774,9 @@ def train(cfg: SDXLFineTuneConfig):
         sample_images(
             accelerator,
             cfg.output.sampling,
+            cfg.training,
+            cfg.output.saving,
+            cfg.loss,
             epoch + 1,
             global_step,
             accelerator.device,

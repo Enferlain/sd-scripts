@@ -208,7 +208,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
     def sample_images(self, accelerator, cfg, epoch, global_step, device, vae, tokenizers, text_encoder, unet):
         """Generate sample images for SDXL."""
-        sample_images(accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, epoch, global_step, device, vae, tokenizers, text_encoder, unet)
+        sample_images(accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, epoch, global_step, device, vae, tokenizers, text_encoder, unet)
 
     def validate_extra_config(self, cfg, train_dataset_group, val_dataset_group):
         """Run SDXL-specific config validation."""
