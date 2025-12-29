@@ -13,9 +13,6 @@ from diffusers import EulerAncestralDiscreteScheduler
 from diffusers.schedulers.scheduling_euler_ancestral_discrete import EulerAncestralDiscreteSchedulerOutput
 from PIL import Image
 
-setup_logging()
-logger = logging.getLogger(__name__)
-
 
 def exists(val):
     return val is not None
@@ -80,6 +77,10 @@ def setup_logging(args=None, log_level=None, reset=False):
         logger = logging.getLogger(__name__)
         logger.info(msg_init)
 
+
+# Module-level logger
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # region PyTorch utils
 def swap_weight_devices(layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):

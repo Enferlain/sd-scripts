@@ -240,44 +240,40 @@ class TextualInversionTrainer:
         return [emb]
 
     def train(self, cfg: TextualInversionConfig):
-        ti_config = cfg.textual_inversion
-        training_config = cfg.training
-        data_config = cfg.data
-        model_config = cfg.model
-        optimizer_config = cfg.optimizer
-        saving_config = cfg.output.saving
-
-        if saving_config.output_name is None:
-            saving_config.output_name = cfg.textual_inversion.token_string
+        if cfg.output.saving.output_name is None:
+            (cfg.output.saving).output_name = cfg.textual_inversion.token_string
         use_template = cfg.textual_inversion.use_object_template or cfg.textual_inversion.use_style_template
 
-        # verify_training_args(args) # skipped, Hydra validation assumed
-        # prepare_dataset_args(args, True) # skipped
-        setup_logging(cfg.output.logging, reset=True)  # pyright: ignore[reportAttributeAccessIssue]
+        setup_logging(cfg.output.logging, reset=True)
 
-        cache_latents = data_config.caching.cache_latents
+        cache_latents = cfg.data.caching.cache_latents
 
-        set_seed_from_config(training_config)
+        set_seed_from_config(cfg.training)
 
-        tokenize_strategy = self.get_tokenize_strategy(model_config, training_config)
+        tokenize_strategy = self.get_tokenize_strategy(cfg.model, cfg.training)
         strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
         tokenizers = self.get_tokenizers(tokenize_strategy)
 
-        latents_caching_strategy = self.get_latents_caching_strategy(data_config)
+        latents_caching_strategy = self.get_latents_caching_strategy(cfg.data)
         strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
         logger.info("prepare accelerator")
         accelerator = prepare_accelerator(
-            cfg.performance, cfg.output.logging, training_config
+            cfg.performance.precision,
+            cfg.performance.compilation,
+            cfg.performance.distributed,
+            cfg.performance.deepspeed,
+            cfg.output.logging,
+            cfg.training,
         )
 
-        weight_dtype, save_dtype = prepare_dtype(cfg.performance, saving_config)
+        weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
         vae_dtype = (
             torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
         )
 
         model_version, text_encoders, vae, unet = self.load_target_model(
-            model_config,
+            cfg.model,
             cfg.loss,
             cfg.performance.memory,
             weight_dtype,
@@ -355,7 +351,7 @@ class TextualInversionTrainer:
             f"create embeddings for {cfg.textual_inversion.num_vectors_per_token} tokens, for {cfg.textual_inversion.token_string}"
         )
 
-        if data_config.source.dataset_class is None:
+        if cfg.data.source.dataset_class is None:
             blueprint_generator = BlueprintGenerator()
             # BlueprintGenerator.generate() expects a RootConfig-like object with a .dataset attribute.
             blueprint = blueprint_generator.generate(cfg)
@@ -364,7 +360,7 @@ class TextualInversionTrainer:
             )
         else:
             # load_arbitrary_dataset accepts data_config and max_token_length
-            train_dataset_group = load_arbitrary_dataset(data_config, training_config.max_token_length)
+            train_dataset_group = load_arbitrary_dataset(cfg.data, cfg.training.max_token_length)
             val_dataset_group = None
 
         self.validate_extra_config(None, train_dataset_group, val_dataset_group)
@@ -373,7 +369,7 @@ class TextualInversionTrainer:
         current_step = Value("i", 0)
         ds_for_collator = (
             train_dataset_group
-            if training_config.max_data_loader_n_workers == 0
+            if cfg.training.max_data_loader_n_workers == 0
             else None
         )
         collator = collator_class(current_epoch, current_step, ds_for_collator)
@@ -405,7 +401,7 @@ class TextualInversionTrainer:
             else:
                 prompt_replacement = None
 
-        if data_config.preprocessing.debug_dataset:
+        if cfg.data.preprocessing.debug_dataset:
             debug_dataset(train_dataset_group, show_input_ids=True)
             return
         if len(train_dataset_group) == 0:
@@ -438,7 +434,7 @@ class TextualInversionTrainer:
             clean_memory_on_device(accelerator.device)
             accelerator.wait_for_everyone()
 
-        if cfg.performance.memory.gradient_checkpointing:  # FIXME
+        if cfg.performance.memory.gradient_checkpointing:
             unet.enable_gradient_checkpointing()
             for text_encoder in text_encoders:
                 text_encoder.gradient_checkpointing_enable()
@@ -447,34 +443,35 @@ class TextualInversionTrainer:
         trainable_params = []
         for text_encoder in text_encoders:
             trainable_params += text_encoder.get_input_embeddings().parameters()
-        _, _, optimizer = get_optimizer(optimizer_config, optimizer_config.learning_rates, optimizer_config.scheduler, trainable_params)
+        _, _, optimizer = get_optimizer(cfg.optimizer, cfg.optimizer.learning_rates, cfg.optimizer.scheduler,
+                                        trainable_params)
 
         train_dataset_group.set_current_strategies()
 
-        n_workers = min(training_config.max_data_loader_n_workers, os.cpu_count())
+        n_workers = min(cfg.training.max_data_loader_n_workers, os.cpu_count())
         train_dataloader = torch.utils.data.DataLoader(
             train_dataset_group,
             batch_size=1,
             shuffle=True,
             collate_fn=collator,
             num_workers=n_workers,
-            persistent_workers=training_config.persistent_data_loader_workers,
+            persistent_workers=cfg.training.persistent_data_loader_workers,
         )
 
-        if training_config.max_train_epochs is not None:
-            training_config.max_train_steps = (
-                training_config.max_train_epochs
-                * math.ceil(
-                    len(train_dataloader)
-                    / accelerator.num_processes
-                    / training_config.gradient_accumulation_steps
-                )
+        if cfg.training.max_train_epochs is not None:
+            (cfg.training).max_train_steps = (
+                    cfg.training.max_train_epochs
+                    * math.ceil(
+                len(train_dataloader)
+                / accelerator.num_processes
+                / cfg.training.gradient_accumulation_steps
+            )
             )
             accelerator.print(
-                f"override steps. steps for {training_config.max_train_epochs} epochs is: {training_config.max_train_steps}"
+                f"override steps. steps for {cfg.training.max_train_epochs} epochs is: {cfg.training.max_train_steps}"
             )
 
-        train_dataset_group.set_max_train_steps(training_config.max_train_steps)
+        train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
         lr_scheduler = get_scheduler_fix(
             cfg.optimizer.scheduler,
@@ -522,7 +519,7 @@ class TextualInversionTrainer:
         else:
             unet.eval()
 
-        text_encoding_strategy = self.get_text_encoding_strategy(training_config)
+        text_encoding_strategy = self.get_text_encoding_strategy(cfg.training)
         strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
         if not cache_latents:
@@ -539,25 +536,25 @@ class TextualInversionTrainer:
             for text_encoder in text_encoders:
                 text_encoder.to(weight_dtype)
 
-        resume_from_local_or_hf_if_specified(accelerator, saving_config, cfg.output.huggingface)
+        resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving, cfg.output.huggingface)
 
         num_update_steps_per_epoch = math.ceil(
-            len(train_dataloader) / training_config.gradient_accumulation_steps
+            len(train_dataloader) / cfg.training.gradient_accumulation_steps
         )
         num_train_epochs = math.ceil(
-            training_config.max_train_steps / num_update_steps_per_epoch
+            cfg.training.max_train_steps / num_update_steps_per_epoch
         )
-        if (saving_config.save_n_epoch_ratio is not None) and (
-            saving_config.save_n_epoch_ratio > 0
+        if (cfg.output.saving.save_n_epoch_ratio is not None) and (
+                cfg.output.saving.save_n_epoch_ratio > 0
         ):
-            saving_config.save_every_n_epochs = (
-                math.floor(num_train_epochs / saving_config.save_n_epoch_ratio) or 1
+            (cfg.output.saving).save_every_n_epochs = (
+                    math.floor(num_train_epochs / cfg.output.saving.save_n_epoch_ratio) or 1
             )
 
         total_batch_size = (
-            training_config.train_batch_size
-            * accelerator.num_processes
-            * training_config.gradient_accumulation_steps
+                cfg.training.train_batch_size
+                * accelerator.num_processes
+                * cfg.training.gradient_accumulation_steps
         )
         accelerator.print("running training")
         accelerator.print(
@@ -567,20 +564,20 @@ class TextualInversionTrainer:
         accelerator.print(f"  num batches per epoch: {len(train_dataloader)}")
         accelerator.print(f"  num epochs: {num_train_epochs}")
         accelerator.print(
-            f"  batch size per device: {training_config.train_batch_size}"
+            f"  batch size per device: {cfg.training.train_batch_size}"
         )
         accelerator.print(
             f"  total train batch size (with parallel & distributed & accumulation): {total_batch_size}"
         )
         accelerator.print(
-            f"  gradient accumulation steps = {training_config.gradient_accumulation_steps}"
+            f"  gradient accumulation steps = {cfg.training.gradient_accumulation_steps}"
         )
         accelerator.print(
-            f"  total optimization steps: {training_config.max_train_steps}"
+            f"  total optimization steps: {cfg.training.max_train_steps}"
         )
 
         progress_bar = tqdm(
-            range(training_config.max_train_steps),
+            range(cfg.training.max_train_steps),
             smoothing=0,
             disable=not accelerator.is_local_main_process,
             desc="steps",
@@ -595,7 +592,7 @@ class TextualInversionTrainer:
             clip_sample=False,
         )
 
-        if training_config.zero_terminal_snr:
+        if cfg.loss.regularization.zero_terminal_snr:
             fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
         prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
@@ -612,8 +609,8 @@ class TextualInversionTrainer:
             )
 
         def save_model(ckpt_name, embs_list, steps, epoch_no, force_sync_upload=False):
-            os.makedirs(saving_config.output_dir, exist_ok=True)
-            ckpt_file = os.path.join(saving_config.output_dir, ckpt_name)
+            os.makedirs(cfg.output.saving.output_dir, exist_ok=True)
+            ckpt_file = os.path.join(cfg.output.saving.output_dir, ckpt_name)
 
             accelerator.print(f"\nsaving checkpoint: {ckpt_file}")
 
@@ -621,7 +618,7 @@ class TextualInversionTrainer:
                 state_dict=None,
                 metadata_config=cfg.output.metadata,
                 is_sdxl=self.is_sdxl,
-                is_v2=model_config.model_type == "sd2",
+                is_v2=cfg.model.model_type == "sd2",
                 v_parameterization=cfg.loss.v_parameterization,
                 is_lora=False,
                 is_textual_inversion=True,
@@ -637,7 +634,7 @@ class TextualInversionTrainer:
                 )
 
         def remove_model(old_ckpt_name):
-            old_ckpt_file = os.path.join(saving_config.output_dir, old_ckpt_name)
+            old_ckpt_file = os.path.join(cfg.output.saving.output_dir, old_ckpt_name)
             if os.path.exists(old_ckpt_file):
                 accelerator.print(f"removing old checkpoint: {old_ckpt_file}")
                 os.remove(old_ckpt_file)
@@ -695,11 +692,11 @@ class TextualInversionTrainer:
                     text_encoder_conds = text_encoding_strategy.encode_tokens(
                         tokenize_strategy,
                         self.get_models_for_text_encoding(
-                            model_config, accelerator, text_encoders
+                            cfg.model, accelerator, text_encoders
                         ),
                         input_ids,
                     )
-                    if cfg.performance.precision.full_fp16:  # FIXME
+                    if cfg.performance.precision.full_fp16:
                         text_encoder_conds = [
                             c.to(weight_dtype) for c in text_encoder_conds
                         ]
@@ -708,7 +705,7 @@ class TextualInversionTrainer:
                         get_noise_noisy_latents_and_timesteps(
                             cfg.loss.regularization,
                             cfg.timestep,
-                            training_config,
+                            cfg.training,
                             noise_scheduler,
                             latents,
                             output_dtype=weight_dtype,
@@ -717,7 +714,7 @@ class TextualInversionTrainer:
 
                     with accelerator.autocast():
                         noise_pred = self.call_unet(
-                            model_config,
+                            cfg.model,
                             accelerator,
                             unet,
                             noisy_latents,
@@ -783,8 +780,8 @@ class TextualInversionTrainer:
 
                     accelerator.backward(loss)
                     if (
-                        accelerator.sync_gradients
-                        and optimizer_config.max_grad_norm != 0.0
+                            accelerator.sync_gradients
+                            and cfg.optimizer.max_grad_norm != 0.0
                     ):
                         params_to_clip = (
                             accelerator.unwrap_model(text_encoder)
@@ -792,7 +789,7 @@ class TextualInversionTrainer:
                             .parameters()
                         )
                         accelerator.clip_grad_norm_(
-                            params_to_clip, optimizer_config.max_grad_norm
+                            params_to_clip, cfg.optimizer.max_grad_norm
                         )
 
                     optimizer.step()
@@ -837,14 +834,14 @@ class TextualInversionTrainer:
                     )
 
                     if (
-                        saving_config.save_every_n_steps is not None
-                        and global_step % saving_config.save_every_n_steps == 0
+                            cfg.output.saving.save_every_n_steps is not None
+                            and global_step % cfg.output.saving.save_every_n_steps == 0
                     ):
                         accelerator.wait_for_everyone()
                         if accelerator.is_main_process:
                             updated_embs_list = []
                             for text_encoder, token_ids in zip(
-                                text_encoders, token_ids_list
+                                    text_encoders, token_ids_list
                             ):
                                 updated_embs = (
                                     accelerator.unwrap_model(text_encoder)
@@ -855,16 +852,17 @@ class TextualInversionTrainer:
                                 )
                                 updated_embs_list.append(updated_embs)
 
-                            ckpt_name = get_step_ckpt_name(saving_config, "." + saving_config.save_model_as,
+                            ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
                                                            global_step)
                             save_model(ckpt_name, updated_embs_list, global_step, epoch)
 
-                            if saving_config.save_state:
-                                save_and_remove_state_stepwise(saving_config, accelerator, global_step)
+                            if cfg.output.saving.save_state:
+                                save_and_remove_state_stepwise(cfg.output.saving, accelerator, global_step)
 
-                            remove_step_no = get_remove_step_no(saving_config, global_step)
+                            remove_step_no = get_remove_step_no(cfg.output.saving, global_step)
                             if remove_step_no is not None:
-                                remove_ckpt_name = get_step_ckpt_name(saving_config, "." + saving_config.save_model_as,
+                                remove_ckpt_name = get_step_ckpt_name(cfg.output.saving,
+                                                                      "." + cfg.output.saving.save_model_as,
                                                                       remove_step_no)
                                 remove_model(remove_ckpt_name)
 
@@ -875,14 +873,14 @@ class TextualInversionTrainer:
                         "lr": float(lr_scheduler.get_last_lr()[0]),
                     }
                     if (
-                        optimizer_config.optimizer_type.lower().startswith(
-                            "DAdapt".lower()
-                        )
-                        or optimizer_config.optimizer_type.lower() == "Prodigy".lower()
+                            cfg.optimizer.optimizer_type.lower().startswith(
+                                "DAdapt".lower()
+                            )
+                            or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower()
                     ):
                         logs["lr/d*lr"] = (
-                            lr_scheduler.optimizers[0].param_groups[0]["d"]
-                            * lr_scheduler.optimizers[0].param_groups[0]["lr"]
+                                lr_scheduler.optimizers[0].param_groups[0]["d"]
+                                * lr_scheduler.optimizers[0].param_groups[0]["lr"]
                         )
                     accelerator.log(logs, step=global_step)
 
@@ -891,7 +889,7 @@ class TextualInversionTrainer:
                 logs = {"loss": avr_loss}
                 progress_bar.set_postfix(**logs)
 
-                if global_step >= training_config.max_train_steps:
+                if global_step >= cfg.training.max_train_steps:
                     break
 
             if len(accelerator.trackers) > 0:
@@ -911,22 +909,22 @@ class TextualInversionTrainer:
                 )
                 updated_embs_list.append(updated_embs)
 
-            if saving_config.save_every_n_epochs is not None:
-                saving = (epoch + 1) % saving_config.save_every_n_epochs == 0 and (
-                    epoch + 1
+            if cfg.output.saving.save_every_n_epochs is not None:
+                saving = (epoch + 1) % cfg.output.saving.save_every_n_epochs == 0 and (
+                        epoch + 1
                 ) < num_train_epochs
                 if accelerator.is_main_process and saving:
-                    ckpt_name = get_epoch_ckpt_name(saving_config, "." + saving_config.save_model_as, epoch + 1)
+                    ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, epoch + 1)
                     save_model(ckpt_name, updated_embs_list, epoch + 1, global_step)
 
-                    remove_epoch_no = get_remove_epoch_no(saving_config, epoch + 1)
+                    remove_epoch_no = get_remove_epoch_no(cfg.output.saving, epoch + 1)
                     if remove_epoch_no is not None:
-                        remove_ckpt_name = get_epoch_ckpt_name(saving_config, "." + saving_config.save_model_as,
+                        remove_ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
                                                                remove_epoch_no)
                         remove_model(remove_ckpt_name)
 
-                    if saving_config.save_state:
-                        save_and_remove_state_on_epoch_end(saving_config, accelerator, epoch + 1)
+                    if cfg.output.saving.save_state:
+                        save_and_remove_state_on_epoch_end(cfg.output.saving, accelerator, epoch + 1)
 
             self.sample_images(
                 accelerator,
@@ -958,12 +956,12 @@ class TextualInversionTrainer:
         accelerator.end_training()
 
         if is_main_process and (
-            saving_config.save_state or saving_config.save_state_on_train_end
+                cfg.output.saving.save_state or cfg.output.saving.save_state_on_train_end
         ):
-            save_state_on_train_end(saving_config, accelerator)
+            save_state_on_train_end(cfg.output.saving, accelerator)
 
         if is_main_process:
-            ckpt_name = get_last_ckpt_name(saving_config, "." + saving_config.save_model_as)
+            ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as)
             save_model(
                 ckpt_name,
                 updated_embs_list,
