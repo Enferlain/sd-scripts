@@ -172,18 +172,18 @@ def build_minimum_adapter_metadata(
 # Use library.utils.model_metadata.get_model_metadata_from_config() instead.
 
 
-def resume_from_local_or_hf_if_specified(accelerator, cfg: SavingConfig):
-    if not cfg.resume:
+def resume_from_local_or_hf_if_specified(accelerator, saving_config: SavingConfig, hf_config: Optional[HuggingFaceConfig] = None):
+    if not saving_config.resume:
         return
 
-    if not cfg.resume_from_huggingface:  # CONFIG ERROR
-        logger.info(f"resume training from local state: {cfg.resume}")
-        accelerator.load_state(cfg.resume)
+    if hf_config is None or not hf_config.resume_from_huggingface:
+        logger.info(f"resume training from local state: {saving_config.resume}")
+        accelerator.load_state(saving_config.resume)
         return
 
-    logger.info(f"resume training from huggingface state: {cfg.resume}")
-    repo_id = cfg.resume.split("/")[0] + "/" + cfg.resume.split("/")[1]
-    path_in_repo = "/".join(cfg.resume.split("/")[2:])
+    logger.info(f"resume training from huggingface state: {saving_config.resume}")
+    repo_id = saving_config.resume.split("/")[0] + "/" + saving_config.resume.split("/")[1]
+    path_in_repo = "/".join(saving_config.resume.split("/")[2:])
     revision = None
     repo_type = None
     if ":" in path_in_repo:
@@ -199,7 +199,7 @@ def resume_from_local_or_hf_if_specified(accelerator, cfg: SavingConfig):
         repo_id=repo_id,
         subfolder=path_in_repo,
         revision=revision,
-        token=cfg.huggingface_token,  # CONFIG ERROR
+        token=hf_config.huggingface_token,  # CONFIG ERROR
         repo_type=repo_type,
     )
 
@@ -210,10 +210,10 @@ def resume_from_local_or_hf_if_specified(accelerator, cfg: SavingConfig):
                 filename=filename,
                 revision=revision,
                 repo_type=repo_type,
-                token=cfg.huggingface_token,  # CONFIG ERROR
+                token=hf_config.huggingface_token,  # CONFIG ERROR
             )
 
-        return await asyncio.get_event_loop().run_in_executor(None, task)
+        return await asyncio.get_event_loop().run_in_executor(None, task)  # FIXME: Parameter 'args' unfilled, expected '*tuple[]'
 
     loop = asyncio.get_event_loop()
     results = loop.run_until_complete(
@@ -230,39 +230,39 @@ def default_if_none(value, default):
     return default if value is None else value
 
 
-def get_epoch_ckpt_name(config: SavingConfig, ext: str, epoch_no: int, output_name_append: str = ""):
-    model_name = default_if_none(config.output_name, DEFAULT_EPOCH_NAME)
+def get_epoch_ckpt_name(saving_config: SavingConfig, ext: str, epoch_no: int, output_name_append: str = ""):
+    model_name = default_if_none(saving_config.output_name, DEFAULT_EPOCH_NAME)
     return EPOCH_FILE_NAME.format(model_name + output_name_append, epoch_no) + ext
 
 
-def get_step_ckpt_name(config: SavingConfig, ext: str, step_no: int, output_name_append: str = ""):
-    model_name = default_if_none(config.output_name, DEFAULT_STEP_NAME)
+def get_step_ckpt_name(saving_config: SavingConfig, ext: str, step_no: int, output_name_append: str = ""):
+    model_name = default_if_none(saving_config.output_name, DEFAULT_STEP_NAME)
     return STEP_FILE_NAME.format(model_name + output_name_append, step_no) + ext
 
 
-def get_last_ckpt_name(config: SavingConfig, ext: str, output_name_append: str = ""):
-    model_name = default_if_none(config.output_name, DEFAULT_LAST_OUTPUT_NAME)
+def get_last_ckpt_name(saving_config: SavingConfig, ext: str, output_name_append: str = ""):
+    model_name = default_if_none(saving_config.output_name, DEFAULT_LAST_OUTPUT_NAME)
     return model_name + output_name_append + ext
 
 
-def get_remove_epoch_no(config: SavingConfig, epoch_no: int):
-    if config.save_last_n_epochs is None:
+def get_remove_epoch_no(saving_config: SavingConfig, epoch_no: int):
+    if saving_config.save_last_n_epochs is None:
         return None
 
-    remove_epoch_no = epoch_no - config.save_every_n_epochs * config.save_last_n_epochs
+    remove_epoch_no = epoch_no - saving_config.save_every_n_epochs * saving_config.save_last_n_epochs
     if remove_epoch_no < 0:
         return None
     return remove_epoch_no
 
 
-def get_remove_step_no(config: SavingConfig, step_no: int):
-    if config.save_last_n_steps is None:
+def get_remove_step_no(saving_config: SavingConfig, step_no: int):
+    if saving_config.save_last_n_steps is None:
         return None
 
     # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
     # save_every_n_steps=10, save_last_n_steps=30の場合、50step目には30step分残し、10step目を削除する
-    remove_step_no = step_no - config.save_last_n_steps - 1
-    remove_step_no = remove_step_no - (remove_step_no % config.save_every_n_steps)
+    remove_step_no = step_no - saving_config.save_last_n_steps - 1
+    remove_step_no = remove_step_no - (remove_step_no % saving_config.save_every_n_steps)
     if remove_step_no < 0:
         return None
     return remove_step_no
@@ -361,64 +361,66 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
             save_and_remove_state_stepwise(saving_config, accelerator, global_step)
 
 
-def save_and_remove_state_on_epoch_end(config: SavingConfig, accelerator, epoch_no, hf_config: Optional[HuggingFaceConfig] = None):
-    model_name = default_if_none(config.output_name, DEFAULT_EPOCH_NAME)
+def save_and_remove_state_on_epoch_end(saving_config: SavingConfig, accelerator, epoch_no,
+                                       hf_config: Optional[HuggingFaceConfig] = None):
+    model_name = default_if_none(saving_config.output_name, DEFAULT_EPOCH_NAME)
 
     logger.info("")
     logger.info(f"saving state at epoch {epoch_no}")
-    os.makedirs(config.output_dir, exist_ok=True)
+    os.makedirs(saving_config.output_dir, exist_ok=True)
 
-    state_dir = os.path.join(config.output_dir, EPOCH_STATE_NAME.format(model_name, epoch_no))
+    state_dir = os.path.join(saving_config.output_dir, EPOCH_STATE_NAME.format(model_name, epoch_no))
     accelerator.save_state(state_dir)
 
     # Upload state to HuggingFace if configured
     if hf_config is not None and hf_config.save_state_to_huggingface and hf_config.huggingface_repo_id is not None:
         huggingface_util.upload(hf_config, state_dir, "/" + EPOCH_STATE_NAME.format(model_name, epoch_no))
     
-    last_n_epochs = config.save_last_n_epochs_state if config.save_last_n_epochs_state else config.save_last_n_epochs
+    last_n_epochs = saving_config.save_last_n_epochs_state if saving_config.save_last_n_epochs_state else saving_config.save_last_n_epochs
     if last_n_epochs is not None:
-        remove_epoch_no = epoch_no - config.save_every_n_epochs * last_n_epochs
-        state_dir_old = os.path.join(config.output_dir, EPOCH_STATE_NAME.format(model_name, remove_epoch_no))
+        remove_epoch_no = epoch_no - saving_config.save_every_n_epochs * last_n_epochs
+        state_dir_old = os.path.join(saving_config.output_dir, EPOCH_STATE_NAME.format(model_name, remove_epoch_no))
         if os.path.exists(state_dir_old):
             logger.info(f"removing old state: {state_dir_old}")
             shutil.rmtree(state_dir_old)
 
 
-def save_and_remove_state_stepwise(config: SavingConfig, accelerator, step_no, hf_config: Optional[HuggingFaceConfig] = None):
-    model_name = default_if_none(config.output_name, DEFAULT_STEP_NAME)
+def save_and_remove_state_stepwise(saving_config: SavingConfig, accelerator, step_no,
+                                   hf_config: Optional[HuggingFaceConfig] = None):
+    model_name = default_if_none(saving_config.output_name, DEFAULT_STEP_NAME)
 
     logger.info("")
     logger.info(f"saving state at step {step_no}")
-    os.makedirs(config.output_dir, exist_ok=True)
+    os.makedirs(saving_config.output_dir, exist_ok=True)
 
-    state_dir = os.path.join(config.output_dir, STEP_STATE_NAME.format(model_name, step_no))
+    state_dir = os.path.join(saving_config.output_dir, STEP_STATE_NAME.format(model_name, step_no))
     accelerator.save_state(state_dir)
 
     # Upload state to HuggingFace if configured
     if hf_config is not None and hf_config.save_state_to_huggingface and hf_config.huggingface_repo_id is not None:
         huggingface_util.upload(hf_config, state_dir, "/" + STEP_STATE_NAME.format(model_name, step_no))
 
-    last_n_steps = config.save_last_n_steps_state if config.save_last_n_steps_state else config.save_last_n_steps
+    last_n_steps = saving_config.save_last_n_steps_state if saving_config.save_last_n_steps_state else saving_config.save_last_n_steps
     if last_n_steps is not None:
         # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
         remove_step_no = step_no - last_n_steps - 1
-        remove_step_no = remove_step_no - (remove_step_no % config.save_every_n_steps)
+        remove_step_no = remove_step_no - (remove_step_no % saving_config.save_every_n_steps)
 
         if remove_step_no > 0:
-            state_dir_old = os.path.join(config.output_dir, STEP_STATE_NAME.format(model_name, remove_step_no))
+            state_dir_old = os.path.join(saving_config.output_dir, STEP_STATE_NAME.format(model_name, remove_step_no))
             if os.path.exists(state_dir_old):
                 logger.info(f"removing old state: {state_dir_old}")
                 shutil.rmtree(state_dir_old)
 
 
-def save_state_on_train_end(config: SavingConfig, accelerator, hf_config: Optional[HuggingFaceConfig] = None):
-    model_name = default_if_none(config.output_name, DEFAULT_LAST_OUTPUT_NAME)
+def save_state_on_train_end(saving_config: SavingConfig, accelerator, hf_config: Optional[HuggingFaceConfig] = None):
+    model_name = default_if_none(saving_config.output_name, DEFAULT_LAST_OUTPUT_NAME)
 
     logger.info("")
     logger.info("saving last state.")
-    os.makedirs(config.output_dir, exist_ok=True)
+    os.makedirs(saving_config.output_dir, exist_ok=True)
 
-    state_dir = os.path.join(config.output_dir, LAST_STATE_NAME.format(model_name))
+    state_dir = os.path.join(saving_config.output_dir, LAST_STATE_NAME.format(model_name))
     accelerator.save_state(state_dir)
 
     # Upload state to HuggingFace if configured

@@ -506,7 +506,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     )
 
     # resumeする
-    resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving)
+    resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving, cfg.output.huggingface)
     steps_from_state = get_steps_from_state()
 
     # epoch数を計算する
@@ -848,11 +848,13 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     if cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0:
                         accelerator.wait_for_everyone()
                         if accelerator.is_main_process:
-                            ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, global_step)
+                            ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
+                                                           global_step)
                             save_model(ckpt_name, accelerator.unwrap_model(adapter), global_step, epoch)
 
                             if cfg.loss.edm2.edm2_loss_weighting:
-                                loss_weights_ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
+                                loss_weights_ckpt_name = get_step_ckpt_name(cfg.output.saving,
+                                                                            "." + cfg.output.saving.save_model_as,
                                                                             global_step, "_edm2_loss_weights")
                                 save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step,
                                            epoch, dtype_override=torch.float32)
@@ -862,7 +864,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
                             remove_step_no = get_remove_step_no(cfg.output.saving, global_step)
                             if remove_step_no is not None:
-                                remove_ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
+                                remove_ckpt_name = get_step_ckpt_name(cfg.output.saving,
+                                                                      "." + cfg.output.saving.save_model_as,
                                                                       remove_step_no)
                                 remove_model(remove_ckpt_name)
 
@@ -972,11 +975,13 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             if cfg.output.saving.save_every_n_epochs is not None:
                 saving = current_epoch.value % cfg.output.saving.save_every_n_epochs == 0 and current_epoch.value < num_train_epochs
                 if is_main_process and saving:
-                    ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, current_epoch.value)
+                    ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
+                                                    current_epoch.value)
                     save_model(ckpt_name, accelerator.unwrap_model(adapter), global_step, current_epoch.value)
 
                     if cfg.loss.edm2.edm2_loss_weighting:
-                        loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
+                        loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.output.saving,
+                                                                     "." + cfg.output.saving.save_model_as,
                                                                      current_epoch.value, "_edm2_loss_weights")
                         save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step,
                                    current_epoch.value, dtype_override=torch.float32)

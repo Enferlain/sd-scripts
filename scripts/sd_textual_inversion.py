@@ -537,7 +537,7 @@ class TextualInversionTrainer:
             for text_encoder in text_encoders:
                 text_encoder.to(weight_dtype)
 
-        resume_from_local_or_hf_if_specified(accelerator, saving_config)
+        resume_from_local_or_hf_if_specified(accelerator, saving_config, cfg.output.huggingface)
 
         num_update_steps_per_epoch = math.ceil(
             len(train_dataloader) / training_config.gradient_accumulation_steps
@@ -850,27 +850,17 @@ class TextualInversionTrainer:
                                 )
                                 updated_embs_list.append(updated_embs)
 
-                            ckpt_name = get_step_ckpt_name(
-                                saving_config,
-                                "." + saving_config.save_model_as,
-                                global_step,
-                            )
+                            ckpt_name = get_step_ckpt_name(saving_config, "." + saving_config.save_model_as,
+                                                           global_step)
                             save_model(ckpt_name, updated_embs_list, global_step, epoch)
 
                             if saving_config.save_state:
-                                save_and_remove_state_stepwise(
-                                    saving_config, accelerator, global_step
-                                )
+                                save_and_remove_state_stepwise(saving_config, accelerator, global_step)
 
-                            remove_step_no = get_remove_step_no(
-                                saving_config, global_step
-                            )
+                            remove_step_no = get_remove_step_no(saving_config, global_step)
                             if remove_step_no is not None:
-                                remove_ckpt_name = get_step_ckpt_name(
-                                    saving_config,
-                                    "." + saving_config.save_model_as,
-                                    remove_step_no,
-                                )
+                                remove_ckpt_name = get_step_ckpt_name(saving_config, "." + saving_config.save_model_as,
+                                                                      remove_step_no)
                                 remove_model(remove_ckpt_name)
 
                 current_loss = loss.detach().item()
@@ -921,24 +911,17 @@ class TextualInversionTrainer:
                     epoch + 1
                 ) < num_train_epochs
                 if accelerator.is_main_process and saving:
-                    ckpt_name = get_epoch_ckpt_name(
-                        saving_config, "." + saving_config.save_model_as, epoch + 1
-                    )
+                    ckpt_name = get_epoch_ckpt_name(saving_config, "." + saving_config.save_model_as, epoch + 1)
                     save_model(ckpt_name, updated_embs_list, epoch + 1, global_step)
 
                     remove_epoch_no = get_remove_epoch_no(saving_config, epoch + 1)
                     if remove_epoch_no is not None:
-                        remove_ckpt_name = get_epoch_ckpt_name(
-                            saving_config,
-                            "." + saving_config.save_model_as,
-                            remove_epoch_no,
-                        )
+                        remove_ckpt_name = get_epoch_ckpt_name(saving_config, "." + saving_config.save_model_as,
+                                                               remove_epoch_no)
                         remove_model(remove_ckpt_name)
 
                     if saving_config.save_state:
-                        save_and_remove_state_on_epoch_end(
-                            saving_config, accelerator, epoch + 1
-                        )
+                        save_and_remove_state_on_epoch_end(saving_config, accelerator, epoch + 1)
 
             self.sample_images(
                 accelerator,
@@ -974,9 +957,7 @@ class TextualInversionTrainer:
             save_state_on_train_end(saving_config, accelerator)
 
         if is_main_process:
-            ckpt_name = get_last_ckpt_name(
-                saving_config, "." + saving_config.save_model_as
-            )
+            ckpt_name = get_last_ckpt_name(saving_config, "." + saving_config.save_model_as)
             save_model(
                 ckpt_name,
                 updated_embs_list,

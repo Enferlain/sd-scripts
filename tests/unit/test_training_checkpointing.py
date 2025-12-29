@@ -193,7 +193,7 @@ class TestMetadataBuilding:
             adapter_module="adapters.lora",
             adapter_rank="8",
             adapter_alpha="1.0",
-            network_args=None
+            adapter_args=None
         )
         
         assert metadata is not None
@@ -223,7 +223,7 @@ class TestMetadataBuilding:
             adapter_module="adapters.lora",
             adapter_rank="32",
             adapter_alpha="16.0",
-            network_args=None
+            adapter_args=None
         )
         
         assert "ss_base_model_version" in metadata
@@ -231,7 +231,7 @@ class TestMetadataBuilding:
         
     def test_build_minimum_adapter_metadata_with_args(self):
         """Test building metadata with peft args."""
-        network_args = {"conv_dim": 4, "conv_alpha": 1.0}
+        adapter_args = {"conv_dim": 4, "conv_alpha": 1.0}
         
         metadata = build_minimum_adapter_metadata(
             v2=None,
@@ -239,19 +239,19 @@ class TestMetadataBuilding:
             adapter_module="adapters.lora",
             adapter_rank="64",
             adapter_alpha="32.0",
-            network_args=network_args
+            adapter_args=adapter_args
         )
         
-        assert "ss_network_args" in metadata
+        assert "ss_adapter_args" in metadata
         # Adapter args should be JSON-encoded
         import json
-        decoded_args = json.loads(metadata["ss_network_args"])
+        decoded_args = json.loads(metadata["ss_adapter_args"])
         assert decoded_args["conv_dim"] == 4
         assert decoded_args["conv_alpha"] == 1.0
         
     def test_build_minimum_adapter_metadata_complete(self):
         """Test building metadata with all optional fields."""
-        network_args = {"dropout": 0.1}
+        adapter_args = {"dropout": 0.1}
         
         metadata = build_minimum_adapter_metadata(
             v2="v2-1",
@@ -259,7 +259,7 @@ class TestMetadataBuilding:
             adapter_module="adapters.lora",
             adapter_rank="128",
             adapter_alpha="64.0",
-            network_args=network_args
+            adapter_args=adapter_args
         )
         
         # Check all fields are present
@@ -268,7 +268,7 @@ class TestMetadataBuilding:
         assert "ss_adapter_alpha" in metadata
         assert "ss_v2" in metadata
         assert "ss_base_model_version" in metadata
-        assert "ss_network_args" in metadata
+        assert "ss_adapter_args" in metadata
 
 
 # =============================================================================

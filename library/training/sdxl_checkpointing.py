@@ -14,6 +14,7 @@ from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import HuggingFaceConfig
 from typing import Optional
 
+
 def save_sd_model_on_train_end(
         saving_config: SavingConfig,
         metadata_config: MetadataConfig,

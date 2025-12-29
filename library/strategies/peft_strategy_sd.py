@@ -61,7 +61,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
                 logger.info("RamTorch applied to SD unet.")
 
-            if isinstance(text_encoder, torch.nn.Module):
+            if isinstance(text_encoder, torch.nn.Module):  # TODO: text_encoder vs text_encoders?
                 text_encoder = replace_linear_with_ramtorch(text_encoder, accelerator.device)
                 logger.info("RamTorch applied to SD Clip-L.")
 

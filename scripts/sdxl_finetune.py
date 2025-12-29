@@ -464,7 +464,7 @@ def train(cfg: SDXLFineTuneConfig):
     if cfg.performance.precision.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
-    resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving)
+    resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving, cfg.output.huggingface)
 
     if cfg.optimizer.fused_backward_pass:
         import library.optimizers.adafactor_fused

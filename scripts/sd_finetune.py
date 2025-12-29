@@ -263,7 +263,7 @@ def train(cfg: SDFineTuneConfig):
     if cfg.performance.precision.full_fp16:
         patch_accelerator_for_fp16_training(accelerator)
 
-    resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving)
+    resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving, cfg.output.huggingface)
 
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
     num_train_epochs = math.ceil(cfg.training.max_train_steps / num_update_steps_per_epoch)
