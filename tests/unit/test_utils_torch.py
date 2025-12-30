@@ -29,61 +29,68 @@ class TestPrepareDtype:
     
     def test_default_returns_fp32(self):
         """Test that default mixed_precision='no' returns float32."""
-        perf_cfg = PerformanceConfig()
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig()
         
-        weight_dtype, save_dtype = prepare_dtype(perf_cfg)
+        weight_dtype, save_dtype = prepare_dtype(precision_cfg)
         
         assert weight_dtype == torch.float32
         assert save_dtype is None
         
     def test_fp16_mixed_precision(self):
         """Test fp16 mixed precision returns float16 weight dtype."""
-        perf_cfg = PerformanceConfig(mixed_precision="fp16")
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig(mixed_precision="fp16")
         
-        weight_dtype, _ = prepare_dtype(perf_cfg)
+        weight_dtype, _ = prepare_dtype(precision_cfg)
         
         assert weight_dtype == torch.float16
         
     def test_bf16_mixed_precision(self):
         """Test bf16 mixed precision returns bfloat16 weight dtype."""
-        perf_cfg = PerformanceConfig(mixed_precision="bf16")
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig(mixed_precision="bf16")
         
-        weight_dtype, _ = prepare_dtype(perf_cfg)
+        weight_dtype, _ = prepare_dtype(precision_cfg)
         
         assert weight_dtype == torch.bfloat16
         
     def test_save_precision_fp16(self):
         """Test save_precision='fp16' returns float16 save dtype."""
-        perf_cfg = PerformanceConfig()
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig()
         save_cfg = SavingConfig(save_precision="fp16")
         
-        _, save_dtype = prepare_dtype(perf_cfg, save_cfg)
+        _, save_dtype = prepare_dtype(precision_cfg, save_cfg)
         
         assert save_dtype == torch.float16
         
     def test_save_precision_bf16(self):
         """Test save_precision='bf16' returns bfloat16 save dtype."""
-        perf_cfg = PerformanceConfig()
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig()
         save_cfg = SavingConfig(save_precision="bf16")
         
-        _, save_dtype = prepare_dtype(perf_cfg, save_cfg)
+        _, save_dtype = prepare_dtype(precision_cfg, save_cfg)
         
         assert save_dtype == torch.bfloat16
         
     def test_save_precision_float(self):
         """Test save_precision='float' returns float32 save dtype."""
-        perf_cfg = PerformanceConfig()
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig()
         save_cfg = SavingConfig(save_precision="float")
         
-        _, save_dtype = prepare_dtype(perf_cfg, save_cfg)
+        _, save_dtype = prepare_dtype(precision_cfg, save_cfg)
         
         assert save_dtype == torch.float32
         
     def test_no_saving_config_returns_none_save_dtype(self):
         """Test that without saving_config, save_dtype is None."""
-        perf_cfg = PerformanceConfig(mixed_precision="fp16")
+        from library.config.dataclasses.performance import PrecisionConfig
+        precision_cfg = PrecisionConfig(mixed_precision="fp16")
         
-        weight_dtype, save_dtype = prepare_dtype(perf_cfg)
+        weight_dtype, save_dtype = prepare_dtype(precision_cfg)
         
         assert weight_dtype == torch.float16
         assert save_dtype is None

@@ -101,26 +101,24 @@ class TextualInversionTrainer:
     ):
         validate_sd_textual_inversion(config, train_dataset_group, val_dataset_group)
 
-    def load_target_model(
-        self, model_config, loss_config, memory_config, weight_dtype, accelerator
-    ):
-        is_v2 = model_config.model_type == "sd2"
-        text_encoder, vae, unet, _ = load_target_model(model_config, memory_config, weight_dtype, accelerator)
+    def load_target_model(self, cfg, weight_dtype, accelerator):
+        is_v2 = cfg.model.model_type == "sd2"
+        text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance.memory, weight_dtype, accelerator)
         return (
             model_util.get_model_version_str_for_sd1_sd2(
-                is_v2, loss_config.v_parameterization
+                is_v2, cfg.loss.v_parameterization
             ),
             [text_encoder],
             vae,
             unet,
         )
 
-    def get_tokenize_strategy(self, model_config, training_config):
-        is_v2 = model_config.model_type == "sd2"
+    def get_tokenize_strategy(self, cfg):
+        is_v2 = cfg.model.model_type == "sd2"
         return strategy_sd.SdTokenizeStrategy(
             is_v2,
-            training_config.max_token_length,
-            model_config.tokenizer_cache_dir,
+            cfg.training.max_token_length,
+            cfg.model.tokenizer_cache_dir,
         )
 
     def get_tokenizers(
@@ -128,20 +126,20 @@ class TextualInversionTrainer:
     ) -> List[Any]:
         return [tokenize_strategy.tokenizer]
 
-    def get_latents_caching_strategy(self, data_config):
+    def get_latents_caching_strategy(self, cfg):
         latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
             True,
-            data_config.caching.cache_latents_to_disk,
-            data_config.caching.vae_batch_size,
-            data_config.caching.skip_cache_check,
+            cfg.data.caching.cache_latents_to_disk,
+            cfg.data.caching.vae_batch_size,
+            cfg.data.caching.skip_cache_check,
         )
         return latents_caching_strategy
 
-    def assert_token_string(self, token_string, tokenizers: CLIPTokenizer):
+    def assert_token_string(self, token_string, tokenizers: List[Any]):
         pass
 
-    def get_text_encoding_strategy(self, training_config):
-        return strategy_sd.SdTextEncodingStrategy(training_config.clip_skip)
+    def get_text_encoding_strategy(self, cfg):
+        return strategy_sd.SdTextEncodingStrategy(cfg.training.clip_skip)
 
     def get_models_for_text_encoding(
         self, config, accelerator, text_encoders
@@ -250,11 +248,11 @@ class TextualInversionTrainer:
 
         set_seed_from_config(cfg.training)
 
-        tokenize_strategy = self.get_tokenize_strategy(cfg.model, cfg.training)
+        tokenize_strategy = self.get_tokenize_strategy(cfg)
         strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
         tokenizers = self.get_tokenizers(tokenize_strategy)
 
-        latents_caching_strategy = self.get_latents_caching_strategy(cfg.data)
+        latents_caching_strategy = self.get_latents_caching_strategy(cfg)
         strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
         logger.info("prepare accelerator")
@@ -273,9 +271,7 @@ class TextualInversionTrainer:
         )
 
         model_version, text_encoders, vae, unet = self.load_target_model(
-            cfg.model,
-            cfg.loss,
-            cfg.performance.memory,
+            cfg,
             weight_dtype,
             accelerator,
         )
@@ -337,7 +333,7 @@ class TextualInversionTrainer:
 
         if cfg.textual_inversion.weights is not None:
             embeddings_list = self.load_weights(cfg.textual_inversion.weights)
-            assert len(token_ids) == len(embeddings_list[0]), (
+            assert len(token_ids_list[-1]) == len(embeddings_list[0]), (
                 f"num_vectors_per_token is mismatch for weights: {len(embeddings_list[0])}"
             )
             for token_ids, embeddings, token_embeds in zip(
@@ -519,7 +515,7 @@ class TextualInversionTrainer:
         else:
             unet.eval()
 
-        text_encoding_strategy = self.get_text_encoding_strategy(cfg.training)
+        text_encoding_strategy = self.get_text_encoding_strategy(cfg)
         strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
         if not cache_latents:
@@ -547,7 +543,7 @@ class TextualInversionTrainer:
         if (cfg.output.saving.save_n_epoch_ratio is not None) and (
                 cfg.output.saving.save_n_epoch_ratio > 0
         ):
-            (cfg.output.saving).save_every_n_epochs = (
+            cfg.output.saving.save_every_n_epochs = (
                     math.floor(num_train_epochs / cfg.output.saving.save_n_epoch_ratio) or 1
             )
 

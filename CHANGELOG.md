@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-30]
+
+### Changed
+
+- **Textual Inversion Config Pattern Refactoring**
+
+  - Refactored `TextualInversionTrainer` methods to follow Strategies pattern (receive full `cfg`, use `cfg.*` access):
+    - `load_target_model(cfg, weight_dtype, accelerator)`
+    - `get_tokenize_strategy(cfg)`
+    - `get_latents_caching_strategy(cfg)`
+    - `get_text_encoding_strategy(cfg)`
+  - Updated `SdxlTextualInversionTrainer` overrides to match new base class signatures
+  - Fixed type hint: `assert_token_string` now correctly takes `tokenizers: List[Any]` instead of `CLIPTokenizer`
+  - Fixed confusing `token_ids` reference to use `token_ids_list[-1]` for clarity
+
+- **Config Validation Fix**
+
+  - Fixed `should_train_text_encoder(cfg.optimizer)` → `should_train_text_encoder(cfg.optimizer.learning_rates)` in `config_validation.py`
+
+### Fixed
+
+- **Stale Test Fixtures**
+
+  - Updated `test_config_validation.py` fixtures to use new config schema (`data.caching`, `loss.regularization`, `loss.snr`, `model.model_type`)
+  - Updated `test_utils_torch.py` fixtures to use `PrecisionConfig` instead of `PerformanceConfig`
+  - Updated `test_utils_sai_model_spec.py` to reference `model_metadata` instead of old `sai_model_spec` module
+  - Updated `test_training_sdxl_checkpointing.py` patches and function names (`sai_model_spec` → `model_metadata`, `get_sai_model_spec_from_config` → `get_model_metadata_from_config`)
+  - Removed stale `make_bucket_resolutions` tests from `test_models_model_util.py` (function was deleted)
+
+### Removed
+
+- Removed obsolete TODO/FIXME comments from textual inversion scripts (IDE type warnings, resolved issues)
+
 ## [2025-12-29]
 
 ### Changed

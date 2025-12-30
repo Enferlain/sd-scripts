@@ -74,7 +74,7 @@ class TestSaveSDModelOnTrainEnd:
     """Tests for save_sd_model_on_train_end function."""
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_calls_common_function(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -105,7 +105,7 @@ class TestSaveSDModelOnTrainEnd:
         assert call_args.args[4] == 1000  # global_step
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_sd_saver_callback_calls_sdxl_util(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -135,14 +135,14 @@ class TestSaveSDModelOnTrainEnd:
         mock_sdxl_util.save_stable_diffusion_checkpoint.assert_called_once()
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_sd_saver_gets_sai_metadata(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
         saving_config, metadata_config, loss_config, mock_models
     ):
         """The sd_saver callback should get SAI metadata with SDXL flags."""
-        mock_sai_spec.get_sai_model_spec_from_config.return_value = {"mock": "metadata"}
+        mock_sai_spec.get_model_metadata_from_config.return_value = {"mock": "metadata"}
         
         save_sd_model_on_train_end(
             saving_config=saving_config,
@@ -162,14 +162,14 @@ class TestSaveSDModelOnTrainEnd:
         sd_saver("/output/model.safetensors", 10, 1000)
         
         # Check SAI spec was called with SDXL flags
-        mock_sai_spec.get_sai_model_spec_from_config.assert_called_once()
-        call_kwargs = mock_sai_spec.get_sai_model_spec_from_config.call_args.kwargs
+        mock_sai_spec.get_model_metadata_from_config.assert_called_once()
+        call_kwargs = mock_sai_spec.get_model_metadata_from_config.call_args.kwargs
         assert call_kwargs["is_sdxl"] is True
         assert call_kwargs["is_v2"] is False
         assert call_kwargs["is_stable_diffusion_ckpt"] is True
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_diffusers_saver_callback_calls_sdxl_util(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -199,7 +199,7 @@ class TestSaveSDModelOnTrainEnd:
         mock_sdxl_util.save_diffusers_checkpoint.assert_called_once()
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_diffusers_saver_passes_models_and_config(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -239,7 +239,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
     """Tests for save_sd_model_on_epoch_end_or_stepwise function."""
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_calls_common_function(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -265,7 +265,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
         mock_common.assert_called_once()
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_passes_on_epoch_end_flag(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -292,7 +292,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
         assert call_args.args[1] is True  # on_epoch_end
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_passes_accelerator(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -319,7 +319,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
         assert call_args.args[2] is mock_accelerator
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_passes_epochs_and_steps(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -348,7 +348,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
         assert call_args.args[7] == 750   # global_step
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_sd_saver_callback_saves_checkpoint(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -378,7 +378,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
         mock_sdxl_util.save_stable_diffusion_checkpoint.assert_called_once()
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_diffusers_saver_callback_saves_checkpoint(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -408,7 +408,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
         mock_sdxl_util.save_diffusers_checkpoint.assert_called_once()
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_v_parameterization_passed_to_metadata(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -436,7 +436,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
         sd_saver = mock_common.call_args.args[8]
         sd_saver("/output/model.safetensors", 5, 500)
         
-        call_kwargs = mock_sai_spec.get_sai_model_spec_from_config.call_args.kwargs
+        call_kwargs = mock_sai_spec.get_model_metadata_from_config.call_args.kwargs
         assert call_kwargs["v_parameterization"] is True
 
 
@@ -448,7 +448,7 @@ class TestCommonParameters:
     """Tests verifying common patterns across both functions."""
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_train_end_is_sdxl_true(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -471,14 +471,14 @@ class TestCommonParameters:
         sd_saver = mock_common.call_args.args[5]
         sd_saver("/output/model.safetensors", 10, 1000)
         
-        call_kwargs = mock_sai_spec.get_sai_model_spec_from_config.call_args.kwargs
+        call_kwargs = mock_sai_spec.get_model_metadata_from_config.call_args.kwargs
         assert call_kwargs["is_sdxl"] is True
         assert call_kwargs["is_v2"] is False
         assert call_kwargs["is_lora"] is False
         assert call_kwargs["is_textual_inversion"] is False
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_save_dtype_passed_to_checkpoint(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -506,7 +506,7 @@ class TestCommonParameters:
         assert call_args[-1] == torch.bfloat16
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_use_safetensors_passed_to_diffusers(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -533,7 +533,7 @@ class TestCommonParameters:
         assert call_kwargs["use_safetensors"] is False
     
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
-    @patch("library.training.sdxl_checkpointing.sai_model_spec")
+    @patch("library.training.sdxl_checkpointing.model_metadata")
     @patch("library.training.sdxl_checkpointing.sdxl_model_util")
     def test_v_parameterization_from_loss_config(
         self, mock_sdxl_util, mock_sai_spec, mock_common,
@@ -559,5 +559,5 @@ class TestCommonParameters:
         sd_saver = mock_common.call_args.args[5]
         sd_saver("/output/model.safetensors", 10, 1000)
         
-        call_kwargs = mock_sai_spec.get_sai_model_spec_from_config.call_args.kwargs
+        call_kwargs = mock_sai_spec.get_model_metadata_from_config.call_args.kwargs
         assert call_kwargs["v_parameterization"] is True

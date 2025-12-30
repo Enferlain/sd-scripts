@@ -30,7 +30,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         DatasetGroup]):
         validate_sdxl_textual_inversion(config, train_dataset_group, val_dataset_group)
 
-    def load_target_model(self, model_config, memory_config, caching_config, precision_config, weight_dtype, accelerator):
+    def load_target_model(self, cfg, weight_dtype, accelerator):
         (
             load_stable_diffusion_format,
             text_encoder1,
@@ -40,10 +40,10 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
             logit_scale,
             ckpt_info,
         ) = load_target_model_sdxl(
-            model_config,
-            memory_config,
-            caching_config,
-            precision_config,
+            cfg.model,
+            cfg.performance.memory,
+            cfg.performance.caching,
+            cfg.performance.precision,
             accelerator,
             MODEL_VERSION_SDXL_BASE_V1_0,
             weight_dtype,
@@ -55,19 +55,22 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
 
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
-    def get_tokenize_strategy(self, model_config, training_config):
-        return strategy_sdxl.SdxlTokenizeStrategy(training_config.max_token_length, model_config.tokenizer_cache_dir)
+    def get_tokenize_strategy(self, cfg):
+        return strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy):
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
-    def get_latents_caching_strategy(self, dataset_config):
+    def get_latents_caching_strategy(self, cfg):
         latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
-            False, dataset_config.cache_latents_to_disk, dataset_config.vae_batch_size, dataset_config.skip_cache_check
+            False,
+            cfg.data.caching.cache_latents_to_disk,
+            cfg.data.caching.vae_batch_size,
+            cfg.data.caching.skip_cache_check,
         )
         return latents_caching_strategy
 
-    def get_text_encoding_strategy(self, training_config):
+    def get_text_encoding_strategy(self, cfg):
         return strategy_sdxl.SdxlTextEncodingStrategy()
 
     def call_unet(self, config, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype):

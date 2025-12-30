@@ -11,7 +11,7 @@ class TestModelSpecMetadata:
 
     def test_creation_and_conversion(self):
         """Test creating dataclass and converting to metadata dict."""
-        metadata = sai_model_spec.ModelSpecMetadata(
+        metadata = model_metadata.ModelSpecMetadata(
             architecture="stable-diffusion-v1",
             implementation="diffusers",
             title="Test Model",
@@ -33,7 +33,7 @@ class TestModelSpecMetadata:
         """Test handling of additional metadata fields."""
         additional = {"custom_field": "custom_value", "modelspec.prefixed": "prefixed_value"}
 
-        metadata = sai_model_spec.ModelSpecMetadata(
+        metadata = model_metadata.ModelSpecMetadata(
             architecture="stable-diffusion-v1",
             implementation="diffusers",
             title="Test Model",
@@ -67,17 +67,17 @@ class TestArchitectureDetection:
     def test_architecture_detection(self, config, expected):
         """Test architecture detection for various model configurations."""
         model_config = config.pop("model_config", None)
-        arch = sai_model_spec.determine_architecture(lora=False, textual_inversion=False, model_config=model_config, **config)
+        arch = model_metadata.determine_architecture(lora=False, textual_inversion=False, model_config=model_config, **config)
         assert arch == expected
 
     def test_adapter_suffixes(self):
         """Test LoRA and textual inversion suffixes."""
-        lora_arch = sai_model_spec.determine_architecture(
+        lora_arch = model_metadata.determine_architecture(
             v2=False, v_parameterization=False, sdxl=True, lora=True, textual_inversion=False
         )
         assert lora_arch == "stable-diffusion-xl-v1-base/lora"
 
-        ti_arch = sai_model_spec.determine_architecture(
+        ti_arch = model_metadata.determine_architecture(
             v2=False, v_parameterization=False, sdxl=False, lora=False, textual_inversion=True
         )
         assert ti_arch == "stable-diffusion-v1/textual-inversion"
@@ -99,7 +99,7 @@ class TestImplementationDetection:
     def test_implementation_detection(self, config, expected):
         """Test implementation detection for various configurations."""
         model_config = config.pop("model_config", None)
-        impl = sai_model_spec.determine_implementation(
+        impl = model_metadata.determine_implementation(
             lora=config.get("lora", False), textual_inversion=False, sdxl=config.get("sdxl", False), model_config=model_config
         )
         assert impl == expected
@@ -118,7 +118,7 @@ class TestResolutionHandling:
     )
     def test_explicit_resolution_formats(self, input_reso, expected):
         """Test different resolution input formats."""
-        res = sai_model_spec.determine_resolution(reso=input_reso)
+        res = model_metadata.determine_resolution(reso=input_reso)
         assert res == expected
 
     @pytest.mark.parametrize(
@@ -133,7 +133,7 @@ class TestResolutionHandling:
     def test_default_resolutions(self, config, expected):
         """Test default resolution detection."""
         model_config = config.pop("model_config", None)
-        res = sai_model_spec.determine_resolution(model_config=model_config, **config)
+        res = model_metadata.determine_resolution(model_config=model_config, **config)
         assert res == expected
 
 
@@ -153,7 +153,7 @@ class TestThumbnailProcessing:
             temp_path = f.name
 
         try:
-            data_url = sai_model_spec.file_to_data_url(temp_path)
+            data_url = model_metadata.file_to_data_url(temp_path)
 
             # Check format
             assert data_url.startswith("data:image/png;base64,")
@@ -176,7 +176,7 @@ class TestThumbnailProcessing:
         import pytest
 
         with pytest.raises(FileNotFoundError):
-            sai_model_spec.file_to_data_url("/nonexistent/file.png")
+            model_metadata.file_to_data_url("/nonexistent/file.png")
 
     def test_thumbnail_processing_in_metadata(self):
         """Test thumbnail processing in build_metadata_dataclass."""
@@ -194,7 +194,7 @@ class TestThumbnailProcessing:
             timestamp = time.time()
 
             # Test with file path - should be converted to data URL
-            metadata = sai_model_spec.build_metadata_dataclass(
+            metadata = model_metadata.build_metadata_dataclass(
                 state_dict=None,
                 v2=False,
                 v_parameterization=False,
@@ -221,7 +221,7 @@ class TestThumbnailProcessing:
             "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
         )
 
-        metadata = sai_model_spec.build_metadata_dataclass(
+        metadata = model_metadata.build_metadata_dataclass(
             state_dict=None,
             v2=False,
             v_parameterization=False,
@@ -240,7 +240,7 @@ class TestThumbnailProcessing:
         """Test graceful handling of invalid thumbnail files."""
         timestamp = time.time()
 
-        metadata = sai_model_spec.build_metadata_dataclass(
+        metadata = model_metadata.build_metadata_dataclass(
             state_dict=None,
             v2=False,
             v_parameterization=False,
@@ -263,7 +263,7 @@ class TestBuildMetadataIntegration:
         """Test complete workflow for SDXL model."""
         timestamp = time.time()
 
-        metadata = sai_model_spec.build_metadata_dataclass(
+        metadata = model_metadata.build_metadata_dataclass(
             state_dict=None,
             v2=False,
             v_parameterization=False,
@@ -283,7 +283,7 @@ class TestBuildMetadataIntegration:
         """Test complete workflow for Flux model."""
         timestamp = time.time()
 
-        metadata = sai_model_spec.build_metadata_dataclass(
+        metadata = model_metadata.build_metadata_dataclass(
             state_dict=None,
             v2=False,
             v_parameterization=False,
@@ -305,7 +305,7 @@ class TestBuildMetadataIntegration:
         """Test that legacy build_metadata function works correctly."""
         timestamp = time.time()
 
-        metadata_dict = sai_model_spec.build_metadata(
+        metadata_dict = model_metadata.build_metadata(
             state_dict=None,
             v2=False,
             v_parameterization=False,
@@ -334,7 +334,7 @@ class TestGetSaiModelSpecFromConfig:
         )
         state_dict = {}
         
-        spec = sai_model_spec.get_model_metadata_from_config(
+        spec = model_metadata.get_model_metadata_from_config(
             state_dict=state_dict,
             metadata_config=metadata_config,
             is_sdxl=True,
@@ -354,7 +354,7 @@ class TestGetSaiModelSpecFromConfig:
         metadata_config = MetadataConfig()
         optional = {"custom_tag": "anime"}
         
-        spec = sai_model_spec.get_model_metadata_from_config(
+        spec = model_metadata.get_model_metadata_from_config(
             state_dict={},
             metadata_config=metadata_config,
             is_sdxl=False,
@@ -372,7 +372,7 @@ class TestGetSaiModelSpecFromConfig:
         """Test that provided resolution overrides defaults."""
         metadata_config = MetadataConfig()
         
-        spec = sai_model_spec.get_model_metadata_from_config(
+        spec = model_metadata.get_model_metadata_from_config(
             state_dict={},
             metadata_config=metadata_config,
             is_sdxl=True,
@@ -389,7 +389,7 @@ class TestGetSaiModelSpecFromConfig:
         """Test min/max timestep logic."""
         metadata_config = MetadataConfig()
         
-        spec = sai_model_spec.get_model_metadata_from_config(
+        spec = model_metadata.get_model_metadata_from_config(
             state_dict={},
             metadata_config=metadata_config,
             is_sdxl=False,

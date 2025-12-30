@@ -261,7 +261,7 @@ def train(cfg: SDXLFineTuneConfig):
 
     # Train text encoder if TE LR > 0 (based on LR-based training control)
     from library.training.optimizer import should_train_text_encoder
-    train_te_based_on_lr = should_train_text_encoder(cfg.optimizer)
+    train_te_based_on_lr = should_train_text_encoder(cfg.optimizer)  # FIXME: Expected type 'LearningRatesConfig', got 'OptimizerConfig' instead
     if train_te_based_on_lr:
         accelerator.print("enable text encoder training")
         if cfg.performance.memory.gradient_checkpointing:
