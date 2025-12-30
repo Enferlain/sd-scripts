@@ -11,7 +11,7 @@ from safetensors.torch import load_file, save_file, safe_open
 
 from library.models import model_util
 from library.utils.common_utils import setup_logging
-from library.training.checkpointing import precalculate_safetensors_hashes
+from library.utils.hash_utils import precalculate_safetensors_hashes
 
 setup_logging()
 logger = logging.getLogger(__name__)

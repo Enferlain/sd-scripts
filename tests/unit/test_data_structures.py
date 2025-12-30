@@ -181,11 +181,8 @@ class TestBucketManager:
         assert manager.buckets[0] == ["img3"]
         assert manager.buckets[1] == ["img2", "img1"] # Preserves previous shuffled state
 
-    @patch("library.data.data_structures.model_util.make_bucket_resolutions")
-    def test_make_buckets_calls_model_util(self, mock_make_resos):
-        """make_buckets should call model_util.make_bucket_resolutions and set predefined resos."""
-        mock_make_resos.return_value = [(256, 256), (512, 512), (256, 512), (512, 256)]
-        
+    def test_make_buckets_calls_make_bucket_resolutions(self):
+        """make_buckets should call make_bucket_resolutions and set predefined resos."""
         bm = ds.BucketManager(
             no_upscale=False, 
             max_reso=(512, 512), 
@@ -195,13 +192,13 @@ class TestBucketManager:
         )
         bm.make_buckets()
         
-        # Verify model_util was called with correct params
-        mock_make_resos.assert_called_once_with((512, 512), 256, 1024, 64)
-        
-        # Verify predefined_resos set correctly
-        assert (256, 256) in bm.predefined_resos
-        assert (512, 512) in bm.predefined_resos
-        assert (256, 512) in bm.predefined_resos
+        # Verify predefined_resos were set (using real make_bucket_resolutions)
+        assert len(bm.predefined_resos) > 0
+        assert (512, 512) in bm.predefined_resos  # Square bucket should exist
+        # All resos should be divisible by 64
+        for w, h in bm.predefined_resos:
+            assert w % 64 == 0
+            assert h % 64 == 0
 
 # ============================================================================
 # AugHelper Tests

@@ -233,6 +233,8 @@ class TestSampleImageInference:
         training_config.v_parameterization = False
         saving_config = MagicMock()
         saving_config.output_name = "test"
+        loss_config = MagicMock()
+        loss_config.v_parameterization = False
         
         prompt_dict = {
             "prompt": "a {token} cat",
@@ -254,6 +256,7 @@ class TestSampleImageInference:
                 sampling_config,
                 training_config,
                 saving_config,
+                loss_config,
                 mock_pipeline,
                 "/tmp",
                 prompt_dict,

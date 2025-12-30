@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, PropertyMock
 from library.training.trainer_utils import (
     calculate_val_loss_check,
     append_lr_to_logs,
-    append_lr_to_logs_with_names,
 )
 
 
@@ -280,7 +279,7 @@ from library.training.trainer_utils import (
     prepare_accelerator,
     determine_grad_sync_context,
 )
-from library.logging.step_logging import init_trackers
+from library.logging.step_logging import init_trackers, append_lr_to_logs_with_names
 from library.config.dataclasses.performance import PerformanceConfig, PrecisionConfig, CompilationConfig, DistributedConfig, DeepSpeedConfig
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig

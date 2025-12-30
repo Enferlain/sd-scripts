@@ -19,9 +19,9 @@ from library.utils import sai_model_spec
 
 from library.training.checkpointing import (
     load_metadata_from_safetensors,
-    build_minimum_adapter_metadata,
-    precalculate_safetensors_hashes
+    build_minimum_adapter_metadata
 )
+from library.utils.hash_utils import precalculate_safetensors_hashes
 
 setup_logging()
 logger = logging.getLogger(__name__)

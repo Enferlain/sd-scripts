@@ -7,19 +7,13 @@ Tests pure utility functions that don't require model loading.
 import pytest
 
 from library.models.model_util import (
-    shave_segments,
     is_safetensors,
-    create_unet_diffusers_config,
     create_vae_diffusers_config,
-    renew_resnet_paths,
-    renew_vae_resnet_paths,
-    renew_attention_paths,
-    get_model_version_str_for_sd1_sd2,
-    conv_attn_to_linear,
-    controlnet_conversion_map,
-    reshape_weight_for_sd,
-    linear_transformer_to_conv,
+    reshape_weight_for_sd, conv_attn_to_linear, renew_attention_paths, renew_vae_resnet_paths, renew_resnet_paths,
+    shave_segments,
 )
+from library.models.sd_model_util import controlnet_conversion_map, get_model_version_str_for_sd1_sd2, \
+    create_unet_diffusers_config, linear_transformer_to_conv
 from library.constants import (
     UNET_PARAMS_IMAGE_SIZE,
     UNET_PARAMS_IN_CHANNELS,

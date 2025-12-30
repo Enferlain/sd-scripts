@@ -13,6 +13,7 @@ from transformers import CLIPTokenizer
 from omegaconf import OmegaConf
 
 import library.logging.step_logging
+import library.models.sd_model_util
 import library.utils.huggingface_util as huggingface_util
 
 from library.models import model_util
@@ -106,7 +107,7 @@ class TextualInversionTrainer:
         is_v2 = cfg.model.model_type == "sd2"
         text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance.memory, weight_dtype, accelerator)
         return (
-            model_util.get_model_version_str_for_sd1_sd2(
+            library.models.sd_model_util.get_model_version_str_for_sd1_sd2(
                 is_v2, cfg.loss.v_parameterization
             ),
             [text_encoder],

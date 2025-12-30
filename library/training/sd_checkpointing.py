@@ -3,6 +3,7 @@ import torch
 
 from typing import Optional
 
+import library.models.sd_model_util
 from library.utils import model_metadata
 from library.models import model_util
 from library.config.dataclasses.loss import LossConfig
@@ -46,12 +47,12 @@ def save_sd_model_on_train_end(
             is_textual_inversion=False,
             is_stable_diffusion_ckpt=True,
         )
-        model_util.save_stable_diffusion_checkpoint(
+        library.models.sd_model_util.save_stable_diffusion_checkpoint(
             v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, modelspec_metadata, save_dtype, vae
         )
 
     def diffusers_saver(out_dir):
-        model_util.save_diffusers_checkpoint(
+        library.models.sd_model_util.save_diffusers_checkpoint(
             v2, out_dir, text_encoder, unet, src_path, vae=vae, use_safetensors=use_safetensors
         )
 
@@ -92,12 +93,12 @@ def save_sd_model_on_epoch_end_or_stepwise(
             is_textual_inversion=False,
             is_stable_diffusion_ckpt=True,
         )
-        model_util.save_stable_diffusion_checkpoint(
+        library.models.sd_model_util.save_stable_diffusion_checkpoint(
             v2, ckpt_file, text_encoder, unet, src_path, epoch_no, global_step, modelspec_metadata, save_dtype, vae
         )
 
     def diffusers_saver(out_dir):
-        model_util.save_diffusers_checkpoint(
+        library.models.sd_model_util.save_diffusers_checkpoint(
             v2, out_dir, text_encoder, unet, src_path, vae=vae, use_safetensors=use_safetensors
         )
 

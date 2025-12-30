@@ -114,8 +114,8 @@ def test_validate_interpolation_fn():
 
 def test_swap_weight_devices_mock():
     # Mock logic that typically requires CUDA
-    # We patch 'library.utils.common_utils.torch' so that torch.cuda calls inside usage are mocked
-    with patch("library.utils.common_utils.torch") as mock_torch:
+    # We patch 'library.utils.torch_utils.torch' since swap_weight_devices is in torch_utils
+    with patch("library.utils.torch_utils.torch") as mock_torch:
         m1 = MagicMock()
         m2 = MagicMock()
         
@@ -140,7 +140,8 @@ def test_swap_weight_devices_mock():
 class TestEulerSchedulerGL:
     def test_step_with_gradual_latent(self):
         # We need to suppress the parent class __init__ if it does complex stuff
-        with patch("library.utils.common_utils.EulerAncestralDiscreteScheduler.__init__", return_value=None):
+        # EulerAncestralDiscreteScheduler is imported from diffusers in gradual_latent module
+        with patch("library.pipelines.gradual_latent.EulerAncestralDiscreteScheduler.__init__", return_value=None):
             # Also patch sigmas property on the class using create=True since it might not exist yet
             with patch.object(EulerAncestralDiscreteSchedulerGL, 'sigmas', new_callable=PropertyMock, create=True) as mock_sigmas, \
                  patch.object(EulerAncestralDiscreteSchedulerGL, 'step_index', new_callable=PropertyMock, create=True) as mock_step_index, \
@@ -181,7 +182,7 @@ class TestEulerSchedulerGL:
                 
                 # We mock the internal random generator and torch in common_utils to avoid issues
                 # Note: internal code uses 'diffusers.schedulers.scheduling_euler_ancestral_discrete.randn_tensor'
-                with patch("library.utils.common_utils.diffusers.schedulers.scheduling_euler_ancestral_discrete.randn_tensor") as mock_randn:
+                with patch("diffusers.schedulers.scheduling_euler_ancestral_discrete.randn_tensor") as mock_randn:
                     mock_randn.return_value = torch.zeros((1, 4, 32, 32))
                     
                     # step returns a scheduler output object or tuple

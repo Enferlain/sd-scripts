@@ -16,7 +16,7 @@ from transformers import CLIPTextModel
 from library.config.dataclasses.optimizer import LearningRatesConfig
 from library.utils.common_utils import setup_logging
 from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
-from library.training.checkpointing import precalculate_safetensors_hashes
+from library.utils.hash_utils import precalculate_safetensors_hashes
 
 setup_logging()
 logger = logging.getLogger(__name__)

@@ -91,7 +91,7 @@ class BucketManager:
         self.reso_to_id = sorted_reso_to_id
 
     def make_buckets(self):
-        resos = model_util.make_bucket_resolutions(self.max_reso, self.min_size, self.max_size, self.reso_steps)
+        resos = make_bucket_resolutions(self.max_reso, self.min_size, self.max_size, self.reso_steps)
         self.set_predefined_resos(resos)
 
     def set_predefined_resos(self, resos):
@@ -515,3 +515,38 @@ class ControlNetSubset(BaseSubset):
         if not isinstance(other, ControlNetSubset):
             return NotImplemented
         return self.image_dir == other.image_dir and self.conditioning_data_dir == other.conditioning_data_dir
+
+
+def make_bucket_resolutions(max_reso, min_size=256, max_size=1024, divisible=64):
+    """Generate bucket resolutions for training with aspect ratio bucketing.
+
+    Args:
+        max_reso: Tuple of (max_width, max_height) defining the maximum resolution
+        min_size: Minimum dimension size (default: 256)
+        max_size: Maximum dimension size (default: 1024)
+        divisible: All dimensions must be divisible by this (default: 64)
+
+    Returns:
+        Sorted list of (width, height) tuples representing bucket resolutions
+    """
+    max_width, max_height = max_reso
+    max_area = max_width * max_height
+
+    resos = set()
+
+    # Add square bucket
+    width = int(math.sqrt(max_area) // divisible) * divisible
+    resos.add((width, width))
+
+    # Generate aspect ratio buckets
+    width = min_size
+    while width <= max_size:
+        height = min(max_size, int((max_area // width) // divisible) * divisible)
+        if height >= min_size:
+            resos.add((width, height))
+            resos.add((height, width))
+        width += divisible
+
+    resos = list(resos)
+    resos.sort()
+    return resos

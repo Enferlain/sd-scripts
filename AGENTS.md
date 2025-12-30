@@ -36,6 +36,8 @@ d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=sho
 | `DEVELOPMENT_GUIDE.md` | Architectural principles and coding standards |
 | `pytest.ini`           | Test configuration and markers                |
 
+Always check DEVELOPMENT_GUIDE.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELOG.md to refresh your memory of the latest work and the current state of the project.
+
 ## Project Structure
 
 ```

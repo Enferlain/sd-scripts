@@ -9,7 +9,6 @@ from typing import Any, List, Optional
 
 import torch
 from torch import nn
-from diffusers import DDPMScheduler
 from tqdm import tqdm
 from ramtorch.helpers import replace_linear_with_ramtorch
 
@@ -28,18 +27,7 @@ from library.config.config_validation import validate_sdxl_peft
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
-
-from library.training.noise_utils import (
-    prepare_scheduler_for_custom_training,
-    fix_noise_scheduler_betas_for_zero_terminal_snr
-)
-
-from library.losses.loss_weighting import (
-    apply_masked_loss, apply_snr_weight,
-    scale_v_prediction_loss_like_noise_prediction,
-    add_v_prediction_like_loss,
-    apply_debiased_estimation
-)
+from library.losses.loss_weighting import apply_masked_loss
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -235,27 +223,6 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             clip_skip=cfg.training.clip_skip,
         )
 
-    def get_noise_scheduler(self, cfg, device: torch.device) -> Any:
-        """Create noise scheduler for SDXL (same as SD)."""
-        noise_scheduler = DDPMScheduler(
-            beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", 
-            num_train_timesteps=1000, clip_sample=False
-        )
-
-        if cfg.loss.regularization.zero_terminal_snr:
-            fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
-
-        prepare_scheduler_for_custom_training(noise_scheduler, device)
-        return noise_scheduler
-
-    def encode_images_to_latents(self, cfg, vae, images: torch.FloatTensor) -> torch.FloatTensor:
-        """Encode images to latents using VAE."""
-        return vae.encode(images).latent_dist.sample()
-
-    def shift_scale_latents(self, cfg, latents: torch.FloatTensor) -> torch.FloatTensor:
-        """Apply VAE scale factor to latents."""
-        return latents * self.vae_latent_scale
-
     # region SDXL-specific text conditioning
 
     def _get_text_cond(self, cfg, accelerator, batch, tokenizers, text_encoders, weight_dtype):
@@ -340,17 +307,6 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
         return noise_pred, target, timesteps, None
 
-    def post_process_loss(self, loss, cfg, timesteps: torch.IntTensor, noise_scheduler) -> torch.FloatTensor:
-        """Apply SNR weighting, v-pred scaling, debiased estimation etc."""
-        if cfg.loss.snr.min_snr_gamma:
-            loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.snr.min_snr_gamma, cfg.loss.v_parameterization)
-        if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
-            loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-        if cfg.loss.snr.v_pred_like_loss:
-            loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)
-        if cfg.loss.snr.debiased_estimation_loss:
-            loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
-        return loss
 
     def process_batch(
         self, batch, text_encoders, unet, adapter, vae, noise_scheduler, vae_dtype, weight_dtype,

@@ -15,7 +15,7 @@ from io import BytesIO
 from typing import Union, Optional
 
 from library.constants import SS_METADATA_MINIMUM_KEYS
-from library.training.checkpointing import get_git_revision_hash, model_hash, calculate_sha256
+from library.utils.hash_utils import model_hash, calculate_sha256, get_git_revision_hash
 
 from library.utils.common_utils import setup_logging
 from library.config.dataclasses.output import MetadataConfig
@@ -364,35 +364,7 @@ def determine_resolution(
 
     return f"{reso[0]}x{reso[1]}"
 
-
-def load_bytes_in_safetensors(tensors):
-    bytes = safetensors.torch.save(tensors)
-    b = BytesIO(bytes)
-
-    b.seek(0)
-    header = b.read(8)
-    n = int.from_bytes(header, "little")
-
-    offset = n + 8
-    b.seek(offset)
-
-    return b.read()
-
-
-def precalculate_safetensors_hashes(state_dict):
-    # calculate each tensor one by one to reduce memory usage
-    hash_sha256 = hashlib.sha256()
-    for tensor in state_dict.values():
-        single_tensor_sd = {"tensor": tensor}
-        bytes_for_tensor = load_bytes_in_safetensors(single_tensor_sd)
-        hash_sha256.update(bytes_for_tensor)
-
-    return f"0x{hash_sha256.hexdigest()}"
-
-
-def update_hash_sha256(metadata: dict, state_dict: dict):
-    raise NotImplementedError
-
+# removed load_bytes_in_safetensorsw, precalculate_safetensors_hashes and update_hash_sha256 as these were unused
 
 def build_metadata_dataclass(
         state_dict: dict | None,

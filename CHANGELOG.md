@@ -67,6 +67,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `test_training_sdxl_checkpointing.py` patches and function names (`sai_model_spec` → `model_metadata`, `get_sai_model_spec_from_config` → `get_model_metadata_from_config`)
   - Removed stale `make_bucket_resolutions` tests from `test_models_model_util.py` (function was deleted)
 
+- **Model Utility Refactoring**
+
+  - Split `model_util.py` into shared utilities and SD-specific `sd_model_util.py`
+  - Moved `make_bucket_resolutions` to `data_structures.py` (where `BucketManager` uses it)
+  - Fixed circular import between `model_util.py` and `sd_model_util.py` by keeping helper functions in shared module
+  - Added `__post_init__` to `OptimizerConfig` to handle legacy `use_8bit_adam` and `use_lion_optimizer` flags
+
+- **Test Suite Fixes (13 tests fixed)**
+
+  - `test_sd_peft_config.py`: Updated config key assertions (`buckets` → `data`, `dataset` → `model`)
+  - `test_data_structures.py`: Updated `test_make_buckets_calls_model_util` to test real function (no longer mocks)
+  - `test_utils_common.py`: Fixed mock paths (`common_utils` → `torch_utils`, `gradual_latent`)
+  - `test_training_sample_generation.py`: Added missing `loss_config` parameter
+  - `test_training_sdxl_checkpointing.py` (8 tests): Fixed to use `mock_sdxl_util` instead of importing real module
+  - `test_models_bucket_resolutions.py`: Added new test file for `make_bucket_resolutions` function
+
 ### Removed
 
 - Removed obsolete TODO/FIXME comments from textual inversion scripts (IDE type warnings, resolved issues)

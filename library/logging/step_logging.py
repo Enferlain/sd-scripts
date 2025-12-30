@@ -190,3 +190,17 @@ def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, defau
             config=config_to_log,
             init_kwargs=init_kwargs,
         )
+
+
+def append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names):
+    lrs = lr_scheduler.get_last_lr()
+
+    for lr_index in range(len(lrs)):
+        name = names[lr_index]
+        logs["lr/" + name] = float(lrs[lr_index])
+
+        if optimizer_type.lower().startswith("DAdapt".lower()) or optimizer_type.lower() == "Prodigy".lower():
+            logs["lr/d*lr/" + name] = (
+                    lr_scheduler.optimizers[-1].param_groups[lr_index]["d"] *
+                    lr_scheduler.optimizers[-1].param_groups[lr_index]["lr"]
+            )

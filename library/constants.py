@@ -6,7 +6,7 @@ from typing import Tuple
 from torchvision import transforms
 
 
-# --- original_unet.py, sdxl_original_unet.py ---
+# --- sd_original_unet.py, sdxl_original_unet.py ---
 EPSILON = 1e-6
 
 
@@ -194,7 +194,7 @@ DIFFUSERS_REF_MODEL_ID_V1 = "runwayml/stable-diffusion-v1-5"
 DIFFUSERS_REF_MODEL_ID_V2 = "stabilityai/stable-diffusion-2-1"
 
 
-# --- library/models/original_unet.py ---
+# --- library/models/sd_original_unet.py ---
 BLOCK_OUT_CHANNELS: Tuple[int] = (320, 640, 1280, 1280)
 TIMESTEP_INPUT_DIM = BLOCK_OUT_CHANNELS[0]
 TIME_EMBED_DIM = BLOCK_OUT_CHANNELS[0] * 4

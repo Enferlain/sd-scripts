@@ -10,8 +10,9 @@ import logging
 
 from diffusers import StableDiffusionPipeline
 
+import library.models.sd_model_util
 from library.models import model_util
-from library.models.original_unet import UNet2DConditionModel
+from library.models.sd_original_unet import UNet2DConditionModel
 from library.utils.device_utils import clean_memory_on_device
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import PerformanceConfig, MemoryConfig
@@ -37,7 +38,7 @@ def _load_target_model(
     if load_stable_diffusion_format:
         logger.info(f"load StableDiffusion checkpoint: {name_or_path}")
         text_encoder, vae, unet = (
-            model_util.load_models_from_stable_diffusion_checkpoint(
+            library.models.sd_model_util.load_models_from_stable_diffusion_checkpoint(
                 v2,
                 name_or_path,
                 device,

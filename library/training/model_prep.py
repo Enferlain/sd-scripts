@@ -8,7 +8,7 @@ SDXL-specific model loading is in sdxl_model_prep.py.
 import logging
 import torch
 
-from library.models.original_unet import UNet2DConditionModel
+from library.models.sd_original_unet import UNet2DConditionModel
 
 logger = logging.getLogger(__name__)
 

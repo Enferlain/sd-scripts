@@ -15,9 +15,9 @@ def test_sd_peft_config_loading():
 
         # Check if key sections exist
         assert "peft" in cfg
-        assert "buckets" in cfg
+        assert "data" in cfg  # bucketing is at cfg.data.bucketing
         assert "optimizer" in cfg
-        assert "dataset" in cfg
+        assert "model" in cfg
         assert "training" in cfg
 
         # Check defaults

@@ -4,14 +4,11 @@ import torch
 from unittest.mock import patch, MagicMock
 
 from library.models.model_util import (
-    renew_vae_attention_paths,
-    renew_vae_resnet_paths,
-    conv_transformer_to_linear,
-    linear_transformer_to_conv,
     reshape_weight_for_sd,
-    convert_vae_state_dict,
-    assign_to_checkpoint,
+    convert_vae_state_dict, assign_to_checkpoint, renew_vae_attention_paths, renew_vae_resnet_paths,
 )
+from library.models.sd_model_util import conv_transformer_to_linear, linear_transformer_to_conv
+
 
 @pytest.mark.unit
 class TestRenewVaeAttentionPaths:

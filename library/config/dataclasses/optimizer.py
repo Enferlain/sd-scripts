@@ -52,3 +52,13 @@ class OptimizerConfig:
     schedulefree_wrapper_args: Optional[List[str]] = field(default=None, metadata={"help": "Arguments for ScheduleFreeWrapper"})
     # Fused backward pass with multiple optimizer groups (moved from SDXLConfig)
     fused_optimizer_groups: Optional[int] = field(default=None, metadata={"help": "number of optimizers for fused backward pass and optimizer step"})
+
+    def __post_init__(self):
+        """Handle legacy flags that should set optimizer_type."""
+        # use_8bit_adam and use_lion_optimizer are legacy flags
+        # If set and optimizer_type is not specified, set optimizer_type accordingly
+        if self.use_8bit_adam and not self.optimizer_type:
+            self.optimizer_type = "AdamW8bit"
+        elif self.use_lion_optimizer and not self.optimizer_type:
+            self.optimizer_type = "Lion"
+

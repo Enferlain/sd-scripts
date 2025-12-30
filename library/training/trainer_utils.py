@@ -18,6 +18,7 @@ from library.config.dataclasses.performance import (
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.validation import ValidationConfig
+from library.logging.step_logging import append_lr_to_logs_with_names
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -159,20 +160,6 @@ def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):
     names.append("text_encoder2")
 
     append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
-
-
-def append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names):
-    lrs = lr_scheduler.get_last_lr()
-
-    for lr_index in range(len(lrs)):
-        name = names[lr_index]
-        logs["lr/" + name] = float(lrs[lr_index])
-
-        if optimizer_type.lower().startswith("DAdapt".lower()) or optimizer_type.lower() == "Prodigy".lower():
-            logs["lr/d*lr/" + name] = (
-                    lr_scheduler.optimizers[-1].param_groups[lr_index]["d"] *
-                    lr_scheduler.optimizers[-1].param_groups[lr_index]["lr"]
-            )
 
 
 def determine_grad_sync_context(precision_config: Optional[PrecisionConfig], accelerator, sync_gradients, training_model, edm2_model=None):

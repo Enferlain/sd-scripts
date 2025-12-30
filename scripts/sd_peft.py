@@ -80,8 +80,6 @@ from library.logging.training_plots import (
 
 from library.training.checkpointing import (
     resume_from_local_or_hf_if_specified,
-    get_git_revision_hash,
-    model_hash, calculate_sha256,
     get_step_ckpt_name,
     save_and_remove_state_stepwise, get_remove_step_no,
     get_epoch_ckpt_name,
@@ -90,6 +88,7 @@ from library.training.checkpointing import (
     get_last_ckpt_name,
     save_state_on_train_end, register_adapter_state_hooks
 )
+from library.utils.hash_utils import model_hash, calculate_sha256, get_git_revision_hash
 
 from library.data.dataset import (
     DatasetGroup,

@@ -133,3 +133,52 @@ Scripts (contain training loops):     Library Modules:
   - Add optional `blake3` dependency
   - Config option `metadata_hash_algorithm: "none" | "blake3" | "sha256"`
   - Compute hash after saving (stream from disk, no serialization overhead)
+
+---
+
+## Future Architecture: Per-Model Directory Structure
+
+**Goal:** Reorganize `library/models/` from flat files to per-model directories for better maintainability as more architectures are added.
+
+Currently:
+
+```
+library/models/
+├── model_util.py          # Shared VAE utils + is_safetensors
+├── sd_model_util.py       # SD1/2 conversion & loading
+├── sdxl_model_util.py     # SDXL conversion & loading
+├── sd_original_unet.py    # SD1/2 UNet architecture
+├── flux.py, hunyuan.py... # Other model utilities
+```
+
+Proposed future structure:
+
+```
+library/models/
+├── sd/
+│   ├── unet.py            # SD UNet architecture (from sd_original_unet.py)
+│   ├── conversion.py      # SD checkpoint conversion
+│   └── loader.py          # load_models_from_sd_checkpoint
+├── sdxl/
+│   ├── unet.py
+│   ├── conversion.py
+│   └── loader.py
+├── flux/
+│   ├── dit.py
+│   ├── conversion.py
+│   └── loader.py
+├── hunyuan/
+│   └── ...
+├── shared/
+│   ├── vae.py             # Common VAE utilities (from model_util.py)
+│   ├── text_encoder.py    # Common TE utilities
+│   └── safetensors.py     # is_safetensors, load_file helpers
+└── __init__.py
+```
+
+**Benefits:**
+
+- Clear separation of concerns per model type
+- Easier to add new architectures without bloating existing files
+- Consistent structure makes navigation predictable
+- Shared utilities clearly identified in `shared/` folder

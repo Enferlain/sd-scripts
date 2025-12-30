@@ -12,6 +12,7 @@ import logging
 from safetensors.torch import save_file
 from tqdm import tqdm
 
+import library.models.sd_model_util
 from library.models import model_util, sdxl_model_util
 from library.adapters import lora
 from library.utils.common_utils import setup_logging
@@ -74,20 +75,20 @@ def svd(
     # load models
     if not sdxl:
         logger.info(f"loading original SD model : {model_org}")
-        text_encoder_o, _, unet_o = model_util.load_models_from_stable_diffusion_checkpoint(v2, model_org)
+        text_encoder_o, _, unet_o = library.models.sd_model_util.load_models_from_stable_diffusion_checkpoint(v2, model_org)
         text_encoders_o = [text_encoder_o]
         if load_dtype is not None:
             text_encoder_o = text_encoder_o.to(load_dtype)
             unet_o = unet_o.to(load_dtype)
 
         logger.info(f"loading tuned SD model : {model_tuned}")
-        text_encoder_t, _, unet_t = model_util.load_models_from_stable_diffusion_checkpoint(v2, model_tuned)
+        text_encoder_t, _, unet_t = library.models.sd_model_util.load_models_from_stable_diffusion_checkpoint(v2, model_tuned)
         text_encoders_t = [text_encoder_t]
         if load_dtype is not None:
             text_encoder_t = text_encoder_t.to(load_dtype)
             unet_t = unet_t.to(load_dtype)
 
-        model_version = model_util.get_model_version_str_for_sd1_sd2(v2, v_parameterization)
+        model_version = library.models.sd_model_util.get_model_version_str_for_sd1_sd2(v2, v_parameterization)
     else:
         device_org = load_original_model_to if load_original_model_to else "cpu"
         device_tuned = load_tuned_model_to if load_tuned_model_to else "cpu"
