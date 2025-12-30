@@ -35,7 +35,7 @@ This file violates the single-responsibility principle.
 
 | Function/Class | Proposed Location | Rationale |
 | :--- | :--- | :--- |
-| `setup_logging` | `library/logging/setup.py` | App logging configuration. |
+| `setup_logging` | `library/logging/logging_setup.py` | App logging configuration. |
 | `swap_weight_devices` | `library/utils/torch_utils.py` | Generic PyTorch tensor operation. |
 | `weighs_to_device` | `library/utils/torch_utils.py` | Generic PyTorch tensor operation. |
 | `str_to_dtype` | `library/utils/torch_utils.py` | Generic PyTorch type conversion. |
@@ -50,8 +50,8 @@ This file contains mixed concerns (Setup, Logging, Training Loop).
 
 | Function | Proposed Location | Rationale |
 | :--- | :--- | :--- |
-| `prepare_accelerator` | `library/training/setup.py` | Environment/Accelerator setup. |
-| `init_trackers` | `library/logging/setup.py` | Tracker initialization. |
+| `prepare_accelerator` | `library/training/training_setup.py` | Environment/Accelerator setup. |
+| `init_trackers` | `library/logging/logging_setup.py` | Tracker initialization. |
 | `calculate_val_loss_check` | `library/training/validation.py` | Logic to determine if validation runs. |
 | `append_lr_to_logs*` | `library/logging/step_logging.py` | Logging helper. |
 | `determine_grad_sync_context` | `library/training/training_loop.py` | Training loop execution details. |
@@ -79,10 +79,10 @@ library/
     dataset_setup.py      <-- NEW (from peft_common.py)
     image_utils.py        <-- UPDATE (absorb common_utils.py image ops)
   logging/
-    setup.py              <-- NEW (setup_logging, init_trackers)
+    logging_setup.py      <-- NEW (setup_logging, init_trackers) - Renamed from setup.py
     step_logging.py       <-- NEW (logging functions from peft_common, trainer_utils)
   training/
-    setup.py              <-- NEW (prepare_accelerator)
+    training_setup.py     <-- NEW (prepare_accelerator) - Renamed from setup.py
     training_loop.py      <-- NEW (step calculation, grad sync)
     validation.py         <-- NEW (validation checks)
     checkpointing.py      <-- UPDATE (absorb register_adapter_state_hooks)
