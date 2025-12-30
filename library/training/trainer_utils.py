@@ -1,3 +1,5 @@
+import logging
+import math
 import time
 import os
 from typing import Optional
@@ -6,7 +8,6 @@ from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import TorchDynamoPlugin
 
 import library.performance.deepspeed_utils as deepspeed_utils
-from omegaconf import OmegaConf
 
 from library.config.dataclasses.performance import (
     PrecisionConfig,
@@ -17,6 +18,10 @@ from library.config.dataclasses.performance import (
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.validation import ValidationConfig
+from library.utils.common_utils import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 def prepare_accelerator(
@@ -115,42 +120,6 @@ def prepare_accelerator(
     return accelerator
 
 
-def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, default_tracker_name: str):
-    """
-    Initialize experiment trackers with tracker specific behaviors.
-    
-    Args:
-        accelerator: Accelerator instance
-        logging_config: LoggingConfig with tracker settings
-        default_tracker_name: Default name for the tracker
-    """
-    if accelerator.is_main_process:
-        init_kwargs = {}
-        if hasattr(logging_config, 'wandb_run_name') and logging_config.wandb_run_name:
-            init_kwargs["wandb"] = {"name": logging_config.wandb_run_name}
-        if hasattr(logging_config, 'log_tracker_config') and logging_config.log_tracker_config is not None:
-            init_kwargs = logging_config.log_tracker_config
-
-        # sanitize config for logging - convert to dict if needed
-        if hasattr(logging_config, '__dataclass_fields__'):
-            from dataclasses import asdict
-            config_to_log = asdict(logging_config)
-        else:
-            config_to_log = OmegaConf.to_container(logging_config, resolve=True)
-        
-        sensitive_keys = ["wandb_api_key", "huggingface_token"]
-        for key in sensitive_keys:
-            if key in config_to_log:
-                config_to_log[key] = "*****"
-
-        tracker_name = logging_config.log_tracker_name if hasattr(logging_config, 'log_tracker_name') and logging_config.log_tracker_name else default_tracker_name
-        accelerator.init_trackers(
-            tracker_name,
-            config=config_to_log,
-            init_kwargs=init_kwargs,
-        )
-
-
 def calculate_val_loss_check(
     validation_config: ValidationConfig,
     training_config: TrainingConfig,
@@ -221,3 +190,67 @@ def determine_grad_sync_context(precision_config: Optional[PrecisionConfig], acc
         return accelerator.accumulate(training_model, edm2_model)
     else:
         return accelerator.accumulate(training_model)
+
+
+def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state):
+    """
+    Calculate initial step and epoch for training start/resume.
+
+    Handles:
+    - initial_epoch/initial_step from config
+    - steps_from_state from resume
+    - skip_until_initial_step logic
+
+    Args:
+        cfg: Training configuration
+        train_dataloader: Training data loader
+        accelerator: HuggingFace Accelerator
+        steps_from_state: Steps loaded from saved state (or None)
+
+    Returns:
+        Tuple of (initial_step, epoch_to_start)
+    """
+    initial_step = 0
+    if cfg.training.initial_epoch is not None or cfg.training.initial_step is not None:
+        # if initial_epoch or initial_step is specified, steps_from_state is ignored even when resuming
+        if steps_from_state is not None:
+            logger.warning(
+                "steps from the state is ignored because initial_step is specified / initial_stepが指定されているため、stateからのステップ数は無視されます"
+            )
+        if cfg.training.initial_step is not None:
+            initial_step = cfg.training.initial_step
+        else:
+            # num steps per epoch is calculated by num_processes and gradient_accumulation_steps
+            initial_step = (cfg.training.initial_epoch - 1) * math.ceil(
+                len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
+            )
+    else:
+        # if initial_epoch and initial_step are not specified, steps_from_state is used when resuming
+        if steps_from_state is not None:
+            initial_step = steps_from_state
+
+    if initial_step > 0:
+        assert (
+                cfg.training.max_train_steps > initial_step
+        ), f"max_train_steps should be greater than initial step / max_train_stepsは初期ステップより大きい必要があります: {cfg.training.max_train_steps} vs {initial_step}"
+
+    epoch_to_start = 0
+    if initial_step > 0:
+        if cfg.training.skip_until_initial_step:
+            # if skip_until_initial_step is specified, load data and discard it to ensure the same data is used
+            if not cfg.output.saving.resume:
+                logger.info(
+                    f"initial_step is specified but not resuming. lr scheduler will be started from the beginning / initial_stepが指定されていますがresumeしていないため、lr schedulerは最初から始まります"
+                )
+            logger.info(f"skipping {initial_step} steps / {initial_step}ステップをスキップします")
+            initial_step *= cfg.training.gradient_accumulation_steps
+
+            # set epoch to start to make initial_step less than len(train_dataloader)
+            epoch_to_start = initial_step // math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
+        else:
+            # if not, only epoch no is skipped for informative purpose
+            epoch_to_start = initial_step // math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
+            initial_step = 0  # do not skip
+
+
+    return initial_step, epoch_to_start

@@ -14,7 +14,7 @@ from typing import Optional, Any
 from io import BytesIO
 from huggingface_hub import hf_hub_download
 
-from library.utils import model_metadata, huggingface_util
+from library.utils import huggingface_util
 from library.models import model_util
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import MetadataConfig
@@ -39,7 +39,9 @@ from library.constants import (
     STEP_STATE_NAME,
     LAST_STATE_NAME
 )
+from library.utils.common_utils import setup_logging
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -465,3 +467,69 @@ def save_sd_model_on_train_end_common(
         # Upload to HuggingFace if configured
         if hf_config is not None and hf_config.huggingface_repo_id is not None:
             huggingface_util.upload(hf_config, out_dir, "/" + model_name)
+
+
+def register_adapter_state_hooks(accelerator, adapter, cfg, current_epoch, current_step):
+    """
+    Register save/load hooks for peft-only checkpointing.
+
+    These hooks ensure that only the PEFT peft weights (LoRA/LyCORIS) are saved/loaded
+    during checkpointing, not the full base model weights.
+
+    Args:
+        accelerator: HuggingFace Accelerator
+        adapter: The PEFT peft to save/load
+        cfg: Training configuration (needs cfg.performance.deepspeed)
+        current_epoch: Shared Value for current epoch tracking
+        current_step: Shared Value for current step tracking
+
+    Returns:
+        Callable that returns steps_from_state (or None if not resumed)
+    """
+    # Container for steps loaded from state (nonlocal workaround)
+    state_container = {"steps_from_state": None}
+
+    def save_model_hook(models, weights, output_dir):
+        # pop weights of other models than peft to save only peft weights
+        # only main process or deepspeed https://github.com/huggingface/diffusers/issues/2606
+        if accelerator.is_main_process or cfg.performance.deepspeed:
+            remove_indices = []
+            for i, model in enumerate(models):
+                if not isinstance(model, type(accelerator.unwrap_model(adapter))):
+                    remove_indices.append(i)
+            for i in reversed(remove_indices):
+                if len(weights) > i:
+                    weights.pop(i)
+
+        # save current epoch and step
+        train_state_file = os.path.join(output_dir, "train_state.json")
+        # +1 is needed because the state is saved before current_step is set from global_step
+        logger.info(
+            f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
+        with open(train_state_file, "w", encoding="utf-8") as f:
+            json.dump({"current_epoch": current_epoch.value, "current_step": current_step.value + 1}, f)
+
+    def load_model_hook(models, input_dir):
+        # remove models except peft
+        remove_indices = []
+        for i, model in enumerate(models):
+            if not isinstance(model, type(accelerator.unwrap_model(adapter))):
+                remove_indices.append(i)
+        for i in reversed(remove_indices):
+            models.pop(i)
+
+        # load current epoch and step
+        train_state_file = os.path.join(input_dir, "train_state.json")
+        if os.path.exists(train_state_file):
+            with open(train_state_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            state_container["steps_from_state"] = data["current_step"]
+            logger.info(f"load train state from {train_state_file}: {data}")
+
+    accelerator.register_save_state_pre_hook(save_model_hook)
+    accelerator.register_load_state_pre_hook(load_model_hook)
+
+    def get_steps_from_state():
+        return state_container["steps_from_state"]
+
+    return get_steps_from_state

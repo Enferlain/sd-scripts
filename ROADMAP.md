@@ -15,8 +15,8 @@ Scripts (contain training loops):     Library Modules:
 │   (~860 lines)  │                                 │ uses
 └─────────────────┘                   ┌─────────────┴───────────────┐
                                       │ library/training/           │
-                                      │   peft_common.py (utilities)│
-                                      │   checkpointing.py (generic)│
+                                      │   trainer_utils.py          │
+                                      │   checkpointing.py          │
                                       │   sd/sdxl_checkpointing.py  │
                                       └─────────────────────────────┘
 ```
@@ -127,7 +127,7 @@ Scripts (contain training loops):     Library Modules:
 
 ## Future Ideas
 
-- Library reorganization based on cleaner categories
+- [x] ~~Library reorganization based on cleaner categories~~ (completed 2025-12-30: deleted `peft_common.py`, split `common_utils.py`)
 - May extend to functions across scattered files
 - **BLAKE3 Model Hashing**: Add optional fast model hashing using BLAKE3 (compatible with CivitAI AutoV3). Currently SHA256 is disabled due to ~1min overhead for 6GB models. BLAKE3 offers 4-8x speed improvement and multi-threading.
   - Add optional `blake3` dependency

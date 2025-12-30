@@ -11,6 +11,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Library Reorganization - Phase 1 Complete**
+
+  - **Deleted `peft_common.py`** - All functions moved to specialized modules:
+
+    - `prepare_datasets` → `library/data/dataset_setup.py`
+    - `calculate_initial_step` → `library/training/trainer_utils.py`
+    - `register_adapter_state_hooks` → `library/training/checkpointing.py`
+    - `generate_step_logs`, `step_logging`, `epoch_logging` → `library/logging/step_logging.py`
+    - `create_training_metadata` → `library/utils/model_metadata.py`
+    - `resolve_adapter_kwargs` → `library/adapters/lora_utils.py`
+    - `init_timestep_sampler`, `parse_dynamic_timestep_schedule` → `library/timestep/timestep_utils.py`
+    - `setup_live_plotter` → `library/logging/training_plots.py`
+
+  - **Refactored `common_utils.py`** (503 → 69 lines - 86% reduction):
+
+    - Moved `swap_weight_devices`, `weighs_to_device`, `str_to_dtype` → `library/utils/torch_utils.py`
+    - Moved `pil_resize`, `resize_image`, `get_cv2_interpolation`, `get_pil_interpolation`, `validate_interpolation_fn` → `library/data/image_utils.py`
+    - Moved `GradualLatent`, `EulerAncestralDiscreteSchedulerGL` → `library/pipelines/gradual_latent.py` (NEW)
+    - Remaining: `setup_logging`, `exists`, `default`, `fire_in_thread`
+
+  - **Moved `init_trackers`** from `trainer_utils.py` → `library/logging/step_logging.py`
+
+  - **Fixed circular imports**:
+
+    - Removed unused `model_metadata` import from `checkpointing.py`
+    - Added `setup_logging()` pattern to `dataset_setup.py`, `trainer_utils.py`, `checkpointing.py`
+    - Applied duck-typing workaround in `model_metadata.py` for DreamBoothDataset detection
+
+  - Updated smoke tests to import from new module locations
+  - Updated documentation comments in `sd_peft.py`, `sdxl_peft.py`, `sd_peft_old.py`
+
 - **Textual Inversion Config Pattern Refactoring**
 
   - Refactored `TextualInversionTrainer` methods to follow Strategies pattern (receive full `cfg`, use `cfg.*` access):

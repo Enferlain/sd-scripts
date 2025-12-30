@@ -21,56 +21,51 @@ if str(scripts_dir) not in sys.path:
 
 
 class TestPeftCommonImports:
-    """Test that peft_common.py can be imported and has expected functions."""
-
-    def test_peft_common_imports(self):
-        """Verify peft_common.py imports without errors."""
-        from library.training import peft_common
-        assert peft_common is not None
+    """Test that peft utility functions can be imported from their new locations."""
 
     def test_peft_common_has_generate_step_logs(self):
         """Verify generate_step_logs function exists."""
-        from library.training.peft_common import generate_step_logs
+        from library.logging.step_logging import generate_step_logs
         assert callable(generate_step_logs)
 
     def test_peft_common_has_step_logging(self):
         """Verify step_logging function exists."""
-        from library.training.peft_common import step_logging
+        from library.logging.step_logging import step_logging
         assert callable(step_logging)
 
     def test_peft_common_has_init_timestep_sampler(self):
         """Verify init_timestep_sampler function exists."""
-        from library.training.peft_common import init_timestep_sampler
+        from library.timestep.timestep_utils import init_timestep_sampler
         assert callable(init_timestep_sampler)
 
     def test_peft_common_has_create_training_metadata(self):
         """Verify create_training_metadata function exists."""
-        from library.training.peft_common import create_training_metadata
+        from library.utils.model_metadata import create_training_metadata
         assert callable(create_training_metadata)
 
     def test_peft_common_has_setup_live_plotter(self):
         """Verify setup_live_plotter function exists."""
-        from library.training.peft_common import setup_live_plotter
+        from library.logging.training_plots import setup_live_plotter
         assert callable(setup_live_plotter)
 
     def test_peft_common_has_prepare_datasets(self):
         """Verify prepare_datasets function exists."""
-        from library.training.peft_common import prepare_datasets
+        from library.data.dataset_setup import prepare_datasets
         assert callable(prepare_datasets)
 
     def test_peft_common_has_calculate_initial_step(self):
         """Verify calculate_initial_step function exists."""
-        from library.training.peft_common import calculate_initial_step
+        from library.training.trainer_utils import calculate_initial_step
         assert callable(calculate_initial_step)
 
     def test_peft_common_has_parse_dynamic_timestep_schedule(self):
         """Verify parse_dynamic_timestep_schedule function exists."""
-        from library.training.peft_common import parse_dynamic_timestep_schedule
+        from library.timestep.timestep_utils import parse_dynamic_timestep_schedule
         assert callable(parse_dynamic_timestep_schedule)
 
     def test_peft_common_has_register_network_state_hooks(self):
         """Verify register_adapter_state_hooks function exists."""
-        from library.training.peft_common import register_adapter_state_hooks
+        from library.training.checkpointing import register_adapter_state_hooks
         assert callable(register_adapter_state_hooks)
 
 

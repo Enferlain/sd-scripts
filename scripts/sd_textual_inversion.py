@@ -12,6 +12,7 @@ from diffusers import DDPMScheduler
 from transformers import CLIPTokenizer
 from omegaconf import OmegaConf
 
+import library.logging.step_logging
 import library.utils.huggingface_util as huggingface_util
 
 from library.models import model_util
@@ -599,7 +600,7 @@ class TextualInversionTrainer:
                 init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
             if cfg.output.logging.log_tracker_config is not None:
                 init_kwargs = cfg.output.logging.log_tracker_config
-            accelerator.init_trackers(
+            library.logging.step_logging.init_trackers(
                 "textual_inversion" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
                 init_kwargs=init_kwargs,
             )

@@ -8,10 +8,10 @@ from library.constants import MODEL_VERSION_SDXL_BASE_V1_0
 from library.training.trainer_utils import prepare_accelerator
 from tools.data_processing.cache_latents import set_tokenize_strategy
 from library.strategies import strategy_sdxl, strategy_base
-from library.utils.torch_utils import set_seed_from_config, prepare_dtype
+from library.utils.torch_utils import set_seed_from_config, prepare_dtype, str_to_dtype
 from library.utils import config_util
 from library.utils.config_util import ConfigSanitizer, BlueprintGenerator
-from library.utils.common_utils import setup_logging, add_logging_arguments, str_to_dtype
+from library.utils.common_utils import setup_logging, add_logging_arguments
 from library.data.dataset import load_arbitrary_dataset
 from library.training.sdxl_model_prep import load_target_model as load_target_model_sdxl
 

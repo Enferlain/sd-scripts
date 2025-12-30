@@ -9,7 +9,7 @@ This is a thin orchestrator that:
 The actual training logic is in:
 - library/training/peft_trainer.py (train function)
 - library/strategies/peft_strategy_sd.py (model-specific methods)
-- library/training/peft_common.py (shared utilities)
+- library/training/*.py, library/logging/*.py, library/data/*.py (shared utilities)
 """
 
 import logging

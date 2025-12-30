@@ -9,7 +9,7 @@ Structure:
 
 Model-specific operations are delegated to:
 - library/strategies/peft_strategy_sdxl.py (strategy pattern)
-- library/training/peft_common.py (shared utilities)
+- library/training/*.py, library/logging/*.py, library/data/*.py (shared utilities)
 """
 
 import gc
@@ -60,15 +60,10 @@ from library.training.sample_generation import sample_images_check
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
 from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 from library.strategies.peft_strategy_sdxl import SdxlPeftStrategy
-from library.training.peft_common import (
-    generate_step_logs,
-    step_logging,
-    create_training_metadata,
-    prepare_datasets,
-    calculate_initial_step,
-    register_adapter_state_hooks,
-    resolve_adapter_kwargs,
-)
+from library.adapters.lora_utils import resolve_adapter_kwargs
+from library.utils.model_metadata import create_training_metadata
+from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
+from library.data.dataset_setup import prepare_datasets
 
 from library.timestep.timestep_utils import (
     init_timestep_sampler,
@@ -90,7 +85,7 @@ from library.training.checkpointing import (
     get_remove_epoch_no,
     save_and_remove_state_on_epoch_end,
     get_last_ckpt_name,
-    save_state_on_train_end
+    save_state_on_train_end, register_adapter_state_hooks
 )
 
 from library.data.dataset import (
@@ -105,8 +100,7 @@ from library.data.dataset import (
 from library.training.trainer_utils import (
     calculate_val_loss_check,
     prepare_accelerator,
-    init_trackers,
-    determine_grad_sync_context
+    determine_grad_sync_context, calculate_initial_step
 )
 
 from library.training.noise_utils import (

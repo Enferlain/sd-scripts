@@ -278,9 +278,9 @@ class TestAppendLrToLogs:
 from unittest.mock import Mock, patch, MagicMock
 from library.training.trainer_utils import (
     prepare_accelerator,
-    init_trackers,
     determine_grad_sync_context,
 )
+from library.logging.step_logging import init_trackers
 from library.config.dataclasses.performance import PerformanceConfig, PrecisionConfig, CompilationConfig, DistributedConfig, DeepSpeedConfig
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig

@@ -8,7 +8,8 @@ import numpy as np
 
 from PIL import Image
 
-from library.utils.common_utils import setup_logging, resize_image
+from library.utils.common_utils import setup_logging
+from library.data.image_utils import resize_image
 
 setup_logging()
 logger = logging.getLogger(__name__)

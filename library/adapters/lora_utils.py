@@ -6,6 +6,7 @@ import torch
 from typing import Dict, List, Optional, Union
 from tqdm import tqdm
 
+from library.config.dataclasses.peft import PeftConfig
 from library.utils.device_utils import synchronize_device
 from library.performance.fp8_optimization_utils import load_safetensors_with_fp8_optimization
 from library.utils.safetensors_utils import MemoryEfficientSafeOpen
@@ -250,3 +251,21 @@ def load_safetensors_with_fp8_optimization_and_hook(
             synchronize_device(calc_device)
 
     return state_dict
+
+
+def resolve_adapter_kwargs(cfg: PeftConfig, net_kwargs: dict):
+    """
+    Populate net_kwargs with explicit LoRA fields from PeftConfig if they are set.
+    """
+    # Mapping explicit config fields to peft kwargs
+    fields = [
+        "conv_dim", "conv_alpha", "rank_dropout", "module_dropout",
+        "block_dims", "block_alphas", "conv_block_dims", "conv_block_alphas",
+        "down_lr_weight", "mid_lr_weight", "up_lr_weight", "block_lr_zero_threshold",
+        "loraplus_lr_ratio", "loraplus_unet_lr_ratio", "loraplus_text_encoder_lr_ratio"
+    ]
+
+    for field_name in fields:
+        value = getattr(cfg, field_name, None)
+        if value is not None:
+             net_kwargs[field_name] = value

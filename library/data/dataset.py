@@ -20,8 +20,8 @@ from concurrent.futures import Future, ThreadPoolExecutor
 
 from library.constants import TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX, IMAGE_TRANSFORMS
 from library.utils.jpeg_xl_util import get_jxl_size
-from library.utils.common_utils import validate_interpolation_fn, resize_image
-from library.data.image_utils import load_image, trim_and_resize_if_required, glob_images
+from library.data.image_utils import load_image, trim_and_resize_if_required, glob_images, resize_image, \
+    validate_interpolation_fn
 
 from library.strategies.strategy_base import (
     LatentsCachingStrategy,

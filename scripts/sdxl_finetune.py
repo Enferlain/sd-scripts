@@ -12,6 +12,7 @@ from tqdm import tqdm
 from diffusers import DDPMScheduler
 
 import library.config.config_util as config_util
+import library.logging.step_logging
 
 from library.constants import SDXL_VAE_LATENT_SCALE
 from library.models.sdxl_model_util import get_size_embeddings
@@ -547,7 +548,7 @@ def train(cfg: SDXLFineTuneConfig):
             init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
         if cfg.output.logging.log_tracker_config is not None:
             init_kwargs = cfg.output.logging.log_tracker_config
-        accelerator.init_trackers(
+        library.logging.step_logging.init_trackers(
             "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
             init_kwargs=init_kwargs,
         )

@@ -3,15 +3,10 @@ import pytest
 import cv2
 import numpy as np
 from unittest.mock import MagicMock, patch, PropertyMock
-from library.utils.common_utils import (
-    str_to_dtype,
-    resize_image,
-    pil_resize,
-    GradualLatent,
-    validate_interpolation_fn,
-    swap_weight_devices,
-    EulerAncestralDiscreteSchedulerGL
-)
+from library.data.image_utils import pil_resize, resize_image, validate_interpolation_fn
+from library.utils.torch_utils import swap_weight_devices, str_to_dtype
+from library.pipelines.gradual_latent import GradualLatent, EulerAncestralDiscreteSchedulerGL
+
 
 class TestStrToDtype:
     def test_float32(self):

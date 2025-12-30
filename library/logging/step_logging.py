@@ -1,0 +1,192 @@
+from typing import Optional
+
+import torch
+from accelerate import Accelerator
+from omegaconf import OmegaConf
+
+from library.config.dataclasses.output import LoggingConfig
+from library.training.optimizer import should_train_text_encoder
+
+
+def generate_step_logs(
+    cfg,
+    current_loss,
+    avr_loss,
+    lr_scheduler,
+    lr_descriptions,
+    la_sampler=None,
+    optimizer=None,
+    keys_scaled=None,
+    mean_norm=None,
+    maximum_norm=None,
+    mean_grad_norm=None,
+    mean_combined_norm=None,
+    edm2_lr_scheduler=None,
+    current_loss_scaled=None,
+    average_loss_scaled=None,
+    current_val_loss=None,
+    average_val_loss=None,
+    timesteps: Optional[torch.Tensor] = None,
+):
+    """Generate step logs for training progress tracking."""
+    logs = {"loss/current": current_loss, "loss/average": avr_loss}
+
+    if current_loss_scaled is not None:
+        logs["loss/current_scaled"] = current_loss_scaled
+        logs["loss/average_scaled"] = average_loss_scaled
+
+    if keys_scaled is not None:
+        logs["max_norm/keys_scaled"] = keys_scaled
+        logs["max_norm/max_key_norm"] = maximum_norm
+    if mean_norm is not None:
+        logs["norm/avg_key_norm"] = mean_norm
+    if mean_grad_norm is not None:
+        logs["norm/avg_grad_norm"] = mean_grad_norm
+    if mean_combined_norm is not None:
+        logs["norm/avg_combined_norm"] = mean_combined_norm
+
+    if current_val_loss is not None:
+        logs["loss/current_val_loss"] = current_val_loss
+        logs["loss/average_val_loss"] = average_val_loss
+
+    lrs = lr_scheduler.get_last_lr()
+
+    # Check if TE is being trained (LR-based)
+    train_te = should_train_text_encoder(cfg.optimizer)
+
+    for i, lr in enumerate(lrs):
+        if lr_descriptions is not None:
+            lr_desc = lr_descriptions[i]
+        else:
+            idx = i - (0 if not train_te else -1)
+            if idx == -1:
+                lr_desc = "textencoder"
+            else:
+                if len(lrs) > 2:
+                    lr_desc = f"group{idx}"
+                else:
+                    lr_desc = "unet"
+
+        logs[f"lr/{lr_desc}"] = lr
+
+        if cfg.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower():
+            logs[f"lr/d*lr/{lr_desc}"] = (
+                lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
+            )
+        if cfg.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None:
+            logs["lr/d*lr"] = optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
+    else:
+        idx = 0
+        if train_te:
+            logs["lr/textencoder"] = float(lrs[0])
+            idx = 1
+
+        for i in range(idx, len(lrs)):
+            logs[f"lr/group{i}"] = float(lrs[i])
+            if cfg.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower():
+                logs[f"lr/d*lr/group{i}"] = (
+                    lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
+                )
+            if cfg.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None:
+                logs[f"lr/d*lr/group{i}"] = optimizer.param_groups[i]["d"] * optimizer.param_groups[i]["lr"]
+
+    if edm2_lr_scheduler is not None:
+        logs["lr/edm2"] = edm2_lr_scheduler.get_last_lr()[0]
+
+    if cfg.timestep.timestep_sampling == "mix_adaptive" and la_sampler is not None and timesteps is not None:
+        if hasattr(la_sampler, "last_mix_p"):
+            logs["sampler/mix_p"] = la_sampler.last_mix_p
+        if hasattr(la_sampler, "last_small_t_frac"):
+            logs["sampler/small_t_frac"] = la_sampler.last_small_t_frac
+
+        if hasattr(la_sampler, "bin_loss_ema"):
+            logs["sampler/ema_loss_mean"] = la_sampler.bin_loss_ema.mean().item()
+            logs["sampler/ema_loss_std"] = la_sampler.bin_loss_ema.std().item()
+
+            for i, loss_val in enumerate(la_sampler.bin_loss_ema):
+                logs[f"sampler_ema_loss_bins/bin_{i}"] = loss_val.item()
+
+        if hasattr(la_sampler, "num_bins") and hasattr(la_sampler, "T"):
+            hist = torch.histogram(
+                timesteps.float().cpu(),
+                bins=la_sampler.num_bins,
+                range=(0, la_sampler.T),
+            )
+            for i, count in enumerate(hist.hist):
+                logs[f"sampler_timestep_hist/bin_{i}"] = count.item()
+
+    return logs
+
+
+def step_logging(accelerator: Accelerator, logs: dict, global_step: int, epoch: int):
+    """Log metrics at each step."""
+    accelerator_logging(accelerator, logs, global_step, global_step, epoch)
+
+
+def epoch_logging(accelerator: Accelerator, logs: dict, global_step: int, epoch: int):
+    """Log metrics at epoch end."""
+    accelerator_logging(accelerator, logs, epoch, global_step, epoch)
+
+
+def accelerator_logging(accelerator: Accelerator, logs: dict, step_value: int, global_step: int, epoch: int):
+    """
+    Log metrics to trackers.
+    step_value is for tensorboard, other values are for wandb.
+    """
+    tensorboard_tracker = None
+    wandb_tracker = None
+    other_trackers = []
+    for tracker in accelerator.trackers:
+        if tracker.name == "tensorboard":
+            tensorboard_tracker = accelerator.get_tracker("tensorboard")
+        elif tracker.name == "wandb":
+            wandb_tracker = accelerator.get_tracker("wandb")
+        else:
+            other_trackers.append(accelerator.get_tracker(tracker.name))
+
+    if tensorboard_tracker is not None:
+        tensorboard_tracker.log(logs, step=step_value)
+
+    if wandb_tracker is not None:
+        logs["global_step"] = global_step
+        logs["epoch"] = epoch
+        wandb_tracker.log(logs)
+
+    for tracker in other_trackers:
+        tracker.log(logs, step=step_value)
+
+
+def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, default_tracker_name: str):
+    """
+    Initialize experiment trackers with tracker specific behaviors.
+
+    Args:
+        accelerator: Accelerator instance
+        logging_config: LoggingConfig with tracker settings
+        default_tracker_name: Default name for the tracker
+    """
+    if accelerator.is_main_process:
+        init_kwargs = {}
+        if hasattr(logging_config, 'wandb_run_name') and logging_config.wandb_run_name:
+            init_kwargs["wandb"] = {"name": logging_config.wandb_run_name}
+        if hasattr(logging_config, 'log_tracker_config') and logging_config.log_tracker_config is not None:
+            init_kwargs = logging_config.log_tracker_config
+
+        # sanitize config for logging - convert to dict if needed
+        if hasattr(logging_config, '__dataclass_fields__'):
+            from dataclasses import asdict
+            config_to_log = asdict(logging_config)
+        else:
+            config_to_log = OmegaConf.to_container(logging_config, resolve=True)
+
+        sensitive_keys = ["wandb_api_key", "huggingface_token"]
+        for key in sensitive_keys:
+            if key in config_to_log:
+                config_to_log[key] = "*****"
+
+        tracker_name = logging_config.log_tracker_name if hasattr(logging_config, 'log_tracker_name') and logging_config.log_tracker_name else default_tracker_name
+        accelerator.init_trackers(
+            tracker_name,
+            config=config_to_log,
+            init_kwargs=init_kwargs,
+        )

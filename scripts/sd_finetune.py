@@ -10,6 +10,7 @@ from tqdm import tqdm
 from multiprocessing import Value
 from diffusers import DDPMScheduler
 
+import library.logging.step_logging
 from library.performance import deepspeed_utils
 from library.strategies import strategy_sd, strategy_base
 from library.utils.device_utils import init_ipex, clean_memory_on_device
@@ -300,7 +301,7 @@ def train(cfg: SDFineTuneConfig):
             init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
         if cfg.output.logging.log_tracker_config is not None:
             init_kwargs = cfg.output.logging.log_tracker_config
-        accelerator.init_trackers(
+        library.logging.step_logging.init_trackers(
             "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
             init_kwargs=init_kwargs,
         )
