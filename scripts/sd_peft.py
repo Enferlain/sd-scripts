@@ -184,8 +184,8 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
 
     # 差分追加学習のためにモデルを読み込む
     sys.path.append(os.path.dirname(__file__))
-    accelerator.print("import peft module:", cfg.peft.module)
-    adapter_module = importlib.import_module(cfg.peft.module)
+    accelerator.print("import peft module:", cfg.peft.adapter_module)
+    adapter_module = importlib.import_module(cfg.peft.adapter_module)
 
     if cfg.peft.base_weights is not None:
         # base_weights が指定されている場合は、指定された重みを読み込みマージする
@@ -207,8 +207,8 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
 
     # prepare peft
     net_kwargs = {}
-    if cfg.peft.args is not None:
-        for net_arg in cfg.peft.args:
+    if cfg.peft.adapter_args is not None:
+        for net_arg in cfg.peft.adapter_args:
             key, value = net_arg.split("=", 1)
             net_kwargs[key] = value
 
@@ -217,7 +217,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
 
     # if a new adapter is added in the future, add if ~ then blocks for each adapter (;'∀')
     if cfg.peft.adapter_rank_from_weights:
-        adapter, _ = adapter_module.create_adapter_from_weights(1, cfg.peft.weights, vae, text_encoder, unet,
+        adapter, _ = adapter_module.create_adapter_from_weights(1, cfg.peft.adapter_weights, vae, text_encoder, unet,
                                                                 **net_kwargs)
     else:
         if "dropout" not in net_kwargs:
@@ -257,10 +257,10 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     train_text_encoder = strategies.is_train_text_encoder(cfg)
     adapter.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 
-    if cfg.peft.weights is not None:
+    if cfg.peft.adapter_weights is not None:
         # FIXME consider alpha of weights: this assumes that the alpha is not changed
-        info = adapter.load_weights(cfg.peft.weights)
-        accelerator.print(f"load peft weights from {cfg.peft.weights}: {info}")
+        info = adapter.load_weights(cfg.peft.adapter_weights)
+        accelerator.print(f"load peft weights from {cfg.peft.adapter_weights}: {info}")
 
     # if args.use_ramtorch:
     #     logger.info("Applying RamTorch to peft/lora.")

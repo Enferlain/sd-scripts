@@ -5,38 +5,38 @@ from typing import Optional
 @dataclass
 class HuberConfig:
     """Huber loss settings."""
-    huber_schedule: str = "snr"
-    huber_c: float = 0.1
-    huber_scale: float = 1.0
+    huber_schedule: str = field(default="snr", metadata={"help": "Huber threshold schedule: constant, exponential, or snr"})
+    huber_c: float = field(default=0.1, metadata={"help": "Base Huber threshold value"})
+    huber_scale: float = field(default=1.0, metadata={"help": "Scale factor applied to Huber threshold"})
 
 
 @dataclass
 class SNRConfig:
     """SNR-based loss weighting settings."""
-    min_snr_gamma: Optional[float] = None
-    scale_v_pred_loss_like_noise_pred: bool = False
-    v_pred_like_loss: Optional[float] = None
-    debiased_estimation_loss: bool = False
+    min_snr_gamma: Optional[float] = field(default=None, metadata={"help": "Min-SNR gamma for loss weighting (None to disable)"})
+    scale_v_pred_loss_like_noise_pred: bool = field(default=False, metadata={"help": "Scale v-prediction loss like noise prediction"})
+    v_pred_like_loss: Optional[float] = field(default=None, metadata={"help": "Add v-prediction-like loss term (multiplier, None to disable)"})
+    debiased_estimation_loss: bool = field(default=False, metadata={"help": "Apply debiased estimation loss weighting"})
 
 
 @dataclass
 class MaskedLossConfig:
     """Masked loss settings."""
-    masked_loss: bool = field(default=False, metadata={"help": "apply mask for calculating loss"})
-    conditioning_data_dir: Optional[str] = field(default=None, metadata={"help": "conditioning data directory"})
+    masked_loss: bool = field(default=False, metadata={"help": "Apply mask for calculating loss"})
+    conditioning_data_dir: Optional[str] = field(default=None, metadata={"help": "Directory containing conditioning/mask images"})
 
 
 @dataclass
 class RegularizationConfig:
     """Noise regularization settings."""
-    noise_offset: Optional[float] = None
-    noise_offset_random_strength: bool = False
-    multires_noise_iterations: Optional[int] = None
-    multires_noise_discount: float = 0.3
-    ip_noise_gamma: Optional[float] = None
-    ip_noise_gamma_random_strength: bool = False
-    adaptive_noise_scale: Optional[float] = None
-    zero_terminal_snr: bool = False
+    noise_offset: Optional[float] = field(default=None, metadata={"help": "Noise offset for improving dark/light image handling"})
+    noise_offset_random_strength: bool = field(default=False, metadata={"help": "Randomize noise offset strength between 0 and noise_offset"})
+    multires_noise_iterations: Optional[int] = field(default=None, metadata={"help": "Pyramid noise iterations (enables multires noise if set)"})
+    multires_noise_discount: float = field(default=0.3, metadata={"help": "Discount factor per pyramid level for multires noise"})
+    ip_noise_gamma: Optional[float] = field(default=None, metadata={"help": "Input perturbation noise gamma (None to disable)"})
+    ip_noise_gamma_random_strength: bool = field(default=False, metadata={"help": "Randomize input perturbation noise strength"})
+    adaptive_noise_scale: Optional[float] = field(default=None, metadata={"help": "Scale noise offset adaptively based on latent statistics"})
+    zero_terminal_snr: bool = field(default=False, metadata={"help": "Use zero terminal SNR noise scheduling"})
 
 
 @dataclass
@@ -68,11 +68,11 @@ class EDM2Config:
 class LossConfig:
     """Loss configuration with organized subcategories."""
     # Core loss settings
-    loss_type: str = "l2"
-    loss_scale: float = 1.0
-    loss_multiplier: Optional[float] = None
-    prior_loss_weight: float = 1.0
-    v_parameterization: bool = field(default=False, metadata={"help": "enable v-parameterization training"})
+    loss_type: str = field(default="l2", metadata={"help": "Loss function type: l2, l1, huber, smooth_l1, log_cosh, etc."})
+    loss_scale: float = field(default=1.0, metadata={"help": "Multiplier applied to the computed loss"})
+    loss_multiplier: Optional[float] = field(default=None, metadata={"help": "Alternative loss multiplier (deprecated, use loss_scale)"})
+    prior_loss_weight: float = field(default=1.0, metadata={"help": "Weight for prior preservation loss in DreamBooth training"})
+    v_parameterization: bool = field(default=False, metadata={"help": "Enable v-parameterization training"})
     
     # Nested subcategories
     huber: HuberConfig = field(default_factory=HuberConfig)

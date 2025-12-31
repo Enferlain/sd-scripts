@@ -11,6 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Dataclass Field Metadata Documentation**
+
+  - Added comprehensive `metadata={"help": ...}` to all fields across config files:
+    - `training.py`: All 11 fields in `TrainingConfig`
+    - `loss.py`: All fields in `HuberConfig`, `SNRConfig`, `RegularizationConfig`, `LossConfig`
+    - `performance.py`: All fields in `PrecisionConfig`, `MemoryConfig`, `AttentionConfig`, `CompilationConfig`, `DistributedConfig`
+    - `output.py`: All fields in `SavingConfig`, `LoggingConfig`, `HuggingFaceConfig`, `SamplingConfig`, `MetadataConfig`
+    - `sd_textual_inversion.py` / `sdxl_textual_inversion.py`: All fields in `TextualInversionSpecificConfig`
+    - `peft.py`: All fields in `PeftConfig` with improved help text
+    - `data.py`: Added missing `subsets` field help in `SourceConfig`
+  - Added NOTE comments about TF32 enable/disable flags being mutually exclusive (could be consolidated)
+  - Added TODO comment about `highvram` config field being unused (never sets `HIGH_VRAM` constant)
+
+- **PeftConfig Field Naming Consistency**
+
+  - Renamed config fields to use `adapter_` prefix consistently:
+    - `weights` → `adapter_weights`
+    - `module` → `adapter_module`
+    - `args` → `adapter_args`
+  - Updated all references in `sd_peft.py`, `sdxl_peft.py`, `training_metadata.py`
+  - YAML config (`configs/peft/default.yaml`) already had correct naming
+
 - **Library Reorganization - Model Prep Move**
 
   - Moved `model_prep.py`, `sd_model_prep.py`, `sdxl_model_prep.py` from `library/training/` → `library/models/` (model loading belongs with models, not training)

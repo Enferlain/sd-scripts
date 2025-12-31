@@ -44,7 +44,7 @@ def create_training_metadata(
         "ss_max_train_steps": cfg.training.max_train_steps,
         "ss_lr_warmup_steps": cfg.optimizer.scheduler.lr_warmup_steps,
         "ss_lr_scheduler": cfg.optimizer.scheduler.lr_scheduler,
-        "ss_adapter_module": cfg.peft.module,  # adapter REFACTOR
+        "ss_adapter_module": cfg.peft.adapter_module,  # adapter REFACTOR
         "ss_adapter_rank": cfg.peft.adapter_rank,
         "ss_adapter_alpha": cfg.peft.adapter_alpha,
         "ss_adapter_neuron_dropout": cfg.peft.neuron_dropout,
@@ -220,7 +220,7 @@ def create_training_metadata(
         })
 
     # Adapter args
-    if cfg.peft.args:
+    if cfg.peft.adapter_args:
         metadata["ss_adapter_args"] = json.dumps(net_kwargs)
 
     # Model name and hash

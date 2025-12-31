@@ -12,7 +12,7 @@ class SourceConfig:
     dataset_class: Optional[str] = field(default=None, metadata={"help": "dataset class for arbitrary dataset"})
     dataset_repeats: int = field(default=1, metadata={"help": "repeat dataset when training with captions"})
     # Placeholder for subsets to be populated by hydra or manually
-    subsets: List[dict] = field(default_factory=list)
+    subsets: List[dict] = field(default_factory=list, metadata={"help": "List of dataset subset configurations (populated via YAML or dataset_config)"})
 
 
 @dataclass
