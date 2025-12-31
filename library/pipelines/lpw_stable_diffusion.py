@@ -362,6 +362,15 @@ def get_weighted_text_embeddings(
 
 
 def preprocess_image(image):
+    """
+    Preprocesses the image for the pipeline.
+
+    Args:
+        image (PIL.Image.Image): The input image.
+
+    Returns:
+        torch.Tensor: The preprocessed image tensor.
+    """
     w, h = image.size
     w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
     image = image.resize((w, h), resample=PIL_INTERPOLATION["lanczos"])
@@ -372,6 +381,16 @@ def preprocess_image(image):
 
 
 def preprocess_mask(mask, scale_factor=8):
+    """
+    Preprocesses the mask for the pipeline.
+
+    Args:
+        mask (PIL.Image.Image): The input mask.
+        scale_factor (int, optional): The scaling factor for the mask. Defaults to 8.
+
+    Returns:
+        torch.Tensor: The preprocessed mask tensor.
+    """
     mask = mask.convert("L")
     w, h = mask.size
     w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
@@ -395,6 +414,23 @@ def prepare_controlnet_image(
         do_classifier_free_guidance: bool = False,
         guess_mode: bool = False,
 ):
+    """
+    Prepares the controlnet image for the pipeline.
+
+    Args:
+        image (PIL.Image.Image): The input controlnet image.
+        width (int): The width of the image.
+        height (int): The height of the image.
+        batch_size (int): The batch size.
+        num_images_per_prompt (int): The number of images per prompt.
+        device (torch.device): The device to use.
+        dtype (torch.dtype): The data type to use.
+        do_classifier_free_guidance (bool, optional): Whether to use classifier-free guidance. Defaults to False.
+        guess_mode (bool, optional): Whether to use guess mode. Defaults to False.
+
+    Returns:
+        torch.Tensor: The prepared controlnet image tensor.
+    """
     if not isinstance(image, torch.Tensor):
         if isinstance(image, PIL.Image.Image):
             image = [image]
@@ -496,6 +532,9 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
         self.__init__additional__()
 
     def __init__additional__(self):
+        """
+        Additional initialization steps for the pipeline.
+        """
         if not hasattr(self, "vae_scale_factor"):
             setattr(self, "vae_scale_factor", 2 ** (len(self.vae.config.block_out_channels) - 1))
 
@@ -577,6 +616,19 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
         return text_embeddings
 
     def check_inputs(self, prompt, height, width, strength, callback_steps):
+        """
+        Checks the validity of the inputs.
+
+        Args:
+            prompt: The prompt input.
+            height: The height of the image.
+            width: The width of the image.
+            strength: The strength of the image generation.
+            callback_steps: The number of steps between callbacks.
+
+        Raises:
+            ValueError: If any input is invalid.
+        """
         if not isinstance(prompt, str) and not isinstance(prompt, list):
             raise ValueError(f"`prompt` has to be of type `str` or `list` but is {type(prompt)}")
 
@@ -595,6 +647,18 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
             )
 
     def get_timesteps(self, num_inference_steps, strength, device, is_text2img):
+        """
+        Gets the timesteps for the diffusion process.
+
+        Args:
+            num_inference_steps (int): The number of inference steps.
+            strength (float): The strength of the image generation.
+            device (torch.device): The device to use.
+            is_text2img (bool): Whether the process is text-to-image.
+
+        Returns:
+            tuple: A tuple containing the timesteps and the number of steps.
+        """
         if is_text2img:
             return self.scheduler.timesteps.to(device), num_inference_steps
         else:
@@ -608,6 +672,17 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
             return timesteps, num_inference_steps - t_start
 
     def run_safety_checker(self, image, device, dtype):
+        """
+        Runs the safety checker on the generated images.
+
+        Args:
+            image (torch.Tensor): The generated images.
+            device (torch.device): The device to use.
+            dtype (torch.dtype): The data type to use.
+
+        Returns:
+            tuple: A tuple containing the images and the NSFW concept flags.
+        """
         if self.safety_checker is not None:
             safety_checker_input = self.feature_extractor(self.numpy_to_pil(image), return_tensors="pt").to(device)
             image, has_nsfw_concept = self.safety_checker(images=image,
@@ -617,6 +692,15 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
         return image, has_nsfw_concept
 
     def decode_latents(self, latents):
+        """
+        Decodes the latents into images.
+
+        Args:
+            latents (torch.Tensor): The latents to decode.
+
+        Returns:
+            numpy.ndarray: The decoded images.
+        """
         latents = 1 / 0.18215 * latents
         image = self.vae.decode(latents).sample
         image = (image / 2 + 0.5).clamp(0, 1)
@@ -625,6 +709,16 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
         return image
 
     def prepare_extra_step_kwargs(self, generator, eta):
+        """
+        Prepares extra kwargs for the scheduler step.
+
+        Args:
+            generator (torch.Generator): The random number generator.
+            eta (float): The eta value for the scheduler.
+
+        Returns:
+            dict: The extra kwargs for the scheduler step.
+        """
         # prepare extra kwargs for the scheduler step, since not all schedulers have the same signature
         # eta (η) is only used with the DDIMScheduler, it will be ignored for other schedulers.
         # eta corresponds to η in DDIM paper: https://arxiv.org/abs/2010.02502
@@ -642,6 +736,23 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
         return extra_step_kwargs
 
     def prepare_latents(self, image, timestep, batch_size, height, width, dtype, device, generator, latents=None):
+        """
+        Prepares the latents for the diffusion process.
+
+        Args:
+            image (torch.Tensor): The input image.
+            timestep (torch.Tensor): The current timestep.
+            batch_size (int): The batch size.
+            height (int): The height of the image.
+            width (int): The width of the image.
+            dtype (torch.dtype): The data type to use.
+            device (torch.device): The device to use.
+            generator (torch.Generator): The random number generator.
+            latents (torch.Tensor, optional): The initial latents. Defaults to None.
+
+        Returns:
+            tuple: A tuple containing the latents, the original initial latents, and the noise.
+        """
         if image is None:
             shape = (
                 batch_size,
@@ -900,6 +1011,15 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
         return latents
 
     def latents_to_image(self, latents):
+        """
+        Converts the latents to a PIL image.
+
+        Args:
+            latents (torch.Tensor): The latents to convert.
+
+        Returns:
+            PIL.Image.Image: The converted PIL image.
+        """
         # 9. Post-processing
         image = self.decode_latents(latents.to(self.vae.dtype))
         image = self.numpy_to_pil(image)
