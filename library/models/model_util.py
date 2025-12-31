@@ -372,6 +372,9 @@ def conv_attn_to_linear(checkpoint):
 
     Args:
         checkpoint (dict): The state dictionary to modify.
+
+    Note:
+        Modifies the checkpoint dictionary in-place.
     """
     keys = list(checkpoint.keys())
     attn_keys = ["query.weight", "key.weight", "value.weight"]
