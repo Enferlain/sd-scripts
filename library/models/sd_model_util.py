@@ -35,6 +35,9 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 def convert_ldm_clip_checkpoint_v1(checkpoint):
+    """
+    Converts a SD1.x CLIP text encoder checkpoint from LDM to Diffusers format.
+    """
     keys = list(checkpoint.keys())
     text_model_dict = {}
     for key in keys:
@@ -49,6 +52,9 @@ def convert_ldm_clip_checkpoint_v1(checkpoint):
 
 
 def convert_ldm_clip_checkpoint_v2(checkpoint, max_length):
+    """
+    Converts a SD2.x CLIP text encoder checkpoint from LDM to Diffusers format.
+    """
     # 嫌になるくらい違うぞ！
     def convert_key(key):
         if not key.startswith("cond_stage_model"):
@@ -125,6 +131,9 @@ def convert_ldm_clip_checkpoint_v2(checkpoint, max_length):
 
 
 def conv_transformer_to_linear(checkpoint):
+    """
+    Converts transformer projection layers from Conv2d to Linear.
+    """
     keys = list(checkpoint.keys())
     tf_keys = ["proj_in.weight", "proj_out.weight"]
     for key in keys:
@@ -134,6 +143,9 @@ def conv_transformer_to_linear(checkpoint):
 
 
 def convert_unet_state_dict_to_sd(v2, unet_state_dict):
+    """
+    Converts a U-Net state dict from Diffusers to Stable Diffusion format.
+    """
     unet_conversion_map = [
         # (stable-diffusion, HF Diffusers)
         ("time_embed.0.weight", "time_embedding.linear_1.weight"),
@@ -230,6 +242,9 @@ def convert_unet_state_dict_to_sd(v2, unet_state_dict):
 
 
 def controlnet_conversion_map():
+    """
+    Returns the conversion map for ControlNet from Diffusers to Stable Diffusion format.
+    """
     unet_conversion_map = [
         ("time_embed.0.weight", "time_embedding.linear_1.weight"),
         ("time_embed.0.bias", "time_embedding.linear_1.bias"),
@@ -291,6 +306,9 @@ def controlnet_conversion_map():
 
 
 def convert_controlnet_state_dict_to_sd(controlnet_state_dict):
+    """
+    Converts a ControlNet state dict from Diffusers to Stable Diffusion format.
+    """
     unet_conversion_map, unet_conversion_map_resnet, unet_conversion_map_layer = controlnet_conversion_map()
 
     mapping = {k: k for k in controlnet_state_dict.keys()}
@@ -310,6 +328,9 @@ def convert_controlnet_state_dict_to_sd(controlnet_state_dict):
 
 
 def convert_controlnet_state_dict_to_diffusers(controlnet_state_dict):
+    """
+    Converts a ControlNet state dict from Stable Diffusion to Diffusers format.
+    """
     unet_conversion_map, unet_conversion_map_resnet, unet_conversion_map_layer = controlnet_conversion_map()
 
     mapping = {k: k for k in controlnet_state_dict.keys()}
@@ -329,6 +350,9 @@ def convert_controlnet_state_dict_to_diffusers(controlnet_state_dict):
 
 
 def load_checkpoint_with_text_encoder_conversion(ckpt_path, device="cpu"):
+    """
+    Loads a checkpoint and converts the text encoder state dict if necessary (handles different keys for text encoder).
+    """
     # text encoderの格納形式が違うモデルに対応する ('text_model'がない)
     TEXT_ENCODER_KEY_REPLACEMENTS = [
         ("cond_stage_model.transformer.embeddings.", "cond_stage_model.transformer.text_model.embeddings."),
@@ -364,6 +388,9 @@ def load_checkpoint_with_text_encoder_conversion(ckpt_path, device="cpu"):
 # TODO dtype指定の動作が怪しいので確認する text_encoderを指定形式で作れるか未確認
 def load_models_from_stable_diffusion_checkpoint(v2, ckpt_path, device="cpu", dtype=None,
                                                  unet_use_linear_projection_in_v2=True):
+    """
+    Loads models from a Stable Diffusion checkpoint.
+    """
     _, state_dict = load_checkpoint_with_text_encoder_conversion(ckpt_path, device)
 
     # Convert the UNet2DConditionModel model.
@@ -443,6 +470,9 @@ def load_models_from_stable_diffusion_checkpoint(v2, ckpt_path, device="cpu", dt
 
 
 def get_model_version_str_for_sd1_sd2(v2, v_parameterization):
+    """
+    Returns a model version string for SD1/SD2.
+    """
     # only for reference
     version_str = "sd"
     if v2:
@@ -455,6 +485,9 @@ def get_model_version_str_for_sd1_sd2(v2, v_parameterization):
 
 
 def convert_text_encoder_state_dict_to_sd_v2(checkpoint, make_dummy_weights=False):
+    """
+    Converts a text encoder state dict from Diffusers to Stable Diffusion V2 format.
+    """
     def convert_key(key):
         # position_idsの除去
         if ".position_ids" in key:
@@ -528,6 +561,9 @@ def convert_text_encoder_state_dict_to_sd_v2(checkpoint, make_dummy_weights=Fals
 def save_stable_diffusion_checkpoint(
         v2, output_file, text_encoder, unet, ckpt_path, epochs, steps, metadata, save_dtype=None, vae=None
 ):
+    """
+    Saves a Stable Diffusion checkpoint.
+    """
     if ckpt_path is not None:
         # epoch/stepを参照する。またVAEがメモリ上にないときなど、もう一度VAEを含めて読み込む
         checkpoint, state_dict = load_checkpoint_with_text_encoder_conversion(ckpt_path)
@@ -598,6 +634,9 @@ def save_stable_diffusion_checkpoint(
 
 def save_diffusers_checkpoint(v2, output_dir, text_encoder, unet, pretrained_model_name_or_path, vae=None,
                               use_safetensors=False):
+    """
+    Saves a Diffusers checkpoint.
+    """
     if pretrained_model_name_or_path is None:
         # load default settings for v1/v2
         if v2:
@@ -670,7 +709,7 @@ def create_unet_diffusers_config(v2, use_linear_projection_in_v2=False):
 
 def convert_ldm_unet_checkpoint(v2, checkpoint, config):
     """
-    Takes a state dict and a config, and returns a converted checkpoint.
+    Takes a state dict and a config, and returns a converted checkpoint (LDM -> Diffusers).
     """
 
     # extract state_dict for UNet
@@ -827,6 +866,9 @@ def convert_ldm_unet_checkpoint(v2, checkpoint, config):
 
 
 def linear_transformer_to_conv(checkpoint):
+    """
+    Converts transformer projection layers from Linear to Conv2d.
+    """
     keys = list(checkpoint.keys())
     tf_keys = ["proj_in.weight", "proj_out.weight"]
     for key in keys:

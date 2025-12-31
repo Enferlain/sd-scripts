@@ -39,6 +39,9 @@ def timestep_embedding(timesteps, dim, max_period=10000):
 
 
 def get_timestep_embedding(x, outdim):
+    """
+    Calculates timestep embeddings for a given input tensor.
+    """
     assert len(x.shape) == 2
     b, dims = x.shape[0], x.shape[1]
     x = torch.flatten(x)
@@ -48,6 +51,9 @@ def get_timestep_embedding(x, outdim):
 
 
 def get_size_embeddings(orig_size, crop_size, target_size, device):
+    """
+    Calculates size embeddings (original size, crop size, target size) for SDXL.
+    """
     emb1 = get_timestep_embedding(orig_size, 256)
     emb2 = get_timestep_embedding(crop_size, 256)
     emb3 = get_timestep_embedding(target_size, 256)
@@ -56,6 +62,9 @@ def get_size_embeddings(orig_size, crop_size, target_size, device):
 
 
 def convert_sdxl_text_encoder_2_checkpoint(checkpoint, max_length):
+    """
+    Converts a SDXL Text Encoder 2 checkpoint from LDM to Diffusers format.
+    """
     # SD2のと、基本的には同じ。logit_scaleを後で使うので、それを追加で返す
     # logit_scaleはcheckpointの保存時に使用する
     def convert_key(key):
@@ -130,6 +139,9 @@ def convert_sdxl_text_encoder_2_checkpoint(checkpoint, max_length):
 
 # load state_dict without allocating new tensors
 def _load_state_dict_on_device(model, state_dict, device, dtype=None):
+    """
+    Loads a state dict onto a model on a specific device, handling missing and unexpected keys.
+    """
     # dtype will use fp32 as default
     missing_keys = list(model.state_dict().keys() - state_dict.keys())
     unexpected_keys = list(state_dict.keys() - model.state_dict().keys())
@@ -154,6 +166,9 @@ def _load_state_dict_on_device(model, state_dict, device, dtype=None):
 
 
 def load_models_from_sdxl_checkpoint(model_version, ckpt_path, map_location, dtype=None, disable_mmap=False):
+    """
+    Loads SDXL models from a checkpoint.
+    """
     # model_version is reserved for future use
     # dtype is used for full_fp16/bf16 integration. Text Encoder will remain fp32, because it runs on CPU when caching
 
@@ -284,6 +299,9 @@ def load_models_from_sdxl_checkpoint(model_version, ckpt_path, map_location, dty
 
 
 def make_unet_conversion_map():
+    """
+    Creates a conversion map for U-Net between SDXL and Diffusers formats.
+    """
     unet_conversion_map_layer = []
 
     for i in range(3):  # num_blocks is 3 in sdxl
@@ -368,6 +386,9 @@ def make_unet_conversion_map():
 
 
 def convert_diffusers_unet_state_dict_to_sdxl(du_sd):
+    """
+    Converts a Diffusers U-Net state dict to SDXL format.
+    """
     unet_conversion_map = make_unet_conversion_map()
 
     conversion_map = {hf: sd for sd, hf in unet_conversion_map}
@@ -375,6 +396,9 @@ def convert_diffusers_unet_state_dict_to_sdxl(du_sd):
 
 
 def convert_unet_state_dict(src_sd, conversion_map):
+    """
+    Converts a U-Net state dict using a conversion map.
+    """
     converted_sd = {}
     for src_key, value in src_sd.items():
         # さすがに全部回すのは時間がかかるので右から要素を削りつつprefixを探す
@@ -393,6 +417,9 @@ def convert_unet_state_dict(src_sd, conversion_map):
 
 
 def convert_sdxl_unet_state_dict_to_diffusers(sd):
+    """
+    Converts a SDXL U-Net state dict to Diffusers format.
+    """
     unet_conversion_map = make_unet_conversion_map()
 
     conversion_dict = {sd: hf for sd, hf in unet_conversion_map}
@@ -400,6 +427,9 @@ def convert_sdxl_unet_state_dict_to_diffusers(sd):
 
 
 def convert_text_encoder_2_state_dict_to_sdxl(checkpoint, logit_scale):
+    """
+    Converts a Text Encoder 2 state dict to SDXL format.
+    """
     def convert_key(key):
         # position_idsの除去
         if ".position_ids" in key:
@@ -476,6 +506,9 @@ def save_stable_diffusion_checkpoint(
         metadata,
         save_dtype=None,
 ):
+    """
+    Saves a SDXL checkpoint.
+    """
     state_dict = {}
 
     def update_sd(prefix, sd):
@@ -522,6 +555,9 @@ def save_diffusers_checkpoint(
         output_dir, text_encoder1, text_encoder2, unet, pretrained_model_name_or_path, vae=None, use_safetensors=False,
         save_dtype=None
 ):
+    """
+    Saves a SDXL Diffusers checkpoint.
+    """
     from diffusers import StableDiffusionXLPipeline
 
     # convert U-Net

@@ -62,6 +62,9 @@ def get_hidden_states_sdxl(
         weight_dtype: Optional[str] = None,
         accelerator: Optional[Accelerator] = None,
 ):
+    """
+    Get hidden states for SDXL text encoders.
+    """
     # input_ids: b,n,77 -> b*n, 77
     b_size = input_ids1.size()[0]
     input_ids1 = input_ids1.reshape((-1, tokenizer1.model_max_length))  # batch_size*n, 77

@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 
 
 def is_safetensors(path):
+    """
+    Checks if the given path is a safetensors file.
+    """
     return os.path.splitext(path)[1].lower() == ".safetensors"
 
 
@@ -44,7 +47,10 @@ def shave_segments(path, n_shave_prefix_segments=1):
 
 
 def convert_ldm_vae_checkpoint(checkpoint, config):
-    # extract state dict for VAE
+    """
+    Converts a LDM VAE checkpoint to a Diffusers VAE checkpoint.
+    """
+    # extract state_dict for VAE
     vae_state_dict = {}
     vae_key = "first_stage_model."
     keys = list(checkpoint.keys())
@@ -181,11 +187,17 @@ def create_vae_diffusers_config():
 
 
 def reshape_weight_for_sd(w):
+    """
+    Reshapes weights for Stable Diffusion (Linear -> Conv2d 1x1).
+    """
     # convert HF linear weights to SD conv2d weights
     return w.reshape(*w.shape, 1, 1)
 
 
 def convert_vae_state_dict(vae_state_dict):
+    """
+    Converts a VAE state dict from Diffusers to Stable Diffusion format.
+    """
     vae_conversion_map = [
         # (stable-diffusion, HF Diffusers)
         ("nin_shortcut", "conv_shortcut"),
@@ -263,6 +275,9 @@ def convert_vae_state_dict(vae_state_dict):
 
 
 def load_vae(vae_id, dtype):
+    """
+    Loads a VAE model from a specified ID or path.
+    """
     logger.info(f"load VAE: {vae_id}")
     if os.path.isdir(vae_id) or not os.path.isfile(vae_id):
         # Diffusers local/remote
@@ -307,6 +322,9 @@ def load_vae(vae_id, dtype):
 
 
 def conv_attn_to_linear(checkpoint):
+    """
+    Converts attention layers from Conv2d to Linear.
+    """
     keys = list(checkpoint.keys())
     attn_keys = ["query.weight", "key.weight", "value.weight"]
     for key in keys:

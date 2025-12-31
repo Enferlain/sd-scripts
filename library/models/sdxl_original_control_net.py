@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 class ControlNetConditioningEmbedding(nn.Module):
+    """
+    ControlNet Conditioning Embedding.
+    """
     def __init__(self):
         super().__init__()
 
@@ -50,6 +53,9 @@ class ControlNetConditioningEmbedding(nn.Module):
 
 
 class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
+    """
+    SDXL ControlNet.
+    """
     def __init__(self, multiplier: Optional[float] = None, **kwargs):
         super().__init__(**kwargs)
         self.multiplier = multiplier

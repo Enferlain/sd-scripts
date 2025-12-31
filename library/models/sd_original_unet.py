@@ -1665,6 +1665,9 @@ class UNet2DConditionModel(nn.Module):
 
 
 class InferUNet2DConditionModel:
+    """
+    Inference wrapper for UNet2DConditionModel to support Deep Shrink.
+    """
     def __init__(self, original_unet: UNet2DConditionModel):
         self.delegate = original_unet
 

@@ -1101,6 +1101,9 @@ class SdxlUNet2DConditionModel(nn.Module):
 
 
 class InferSdxlUNet2DConditionModel:
+    """
+    Inference wrapper for SdxlUNet2DConditionModel to support Deep Shrink.
+    """
     def __init__(self, original_unet: SdxlUNet2DConditionModel, **kwargs):
         self.delegate = original_unet
 

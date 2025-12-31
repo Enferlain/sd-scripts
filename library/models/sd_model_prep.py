@@ -28,6 +28,9 @@ def _load_target_model(
     device="cpu",
     unet_use_linear_projection_in_v2=False,
 ):
+    """
+    Internal function to load SD1.5/2 model from checkpoint or diffusers.
+    """
     name_or_path = model_config.pretrained_model_name_or_path
     name_or_path = (
         os.path.realpath(name_or_path) if os.path.islink(name_or_path) else name_or_path
@@ -95,6 +98,19 @@ def _load_target_model(
 
 def load_target_model(model_config: ModelConfig, memory_config: MemoryConfig, weight_dtype, accelerator,
                       unet_use_linear_projection_in_v2=False):
+    """
+    Load SD1.5/2 model components.
+
+    Args:
+        model_config: Model configuration (pretrained path, VAE, etc.)
+        memory_config: Memory configuration (lowram, etc.)
+        weight_dtype: Weight data type
+        accelerator: Accelerator instance
+        unet_use_linear_projection_in_v2: Whether to use linear projection in V2 U-Net
+
+    Returns:
+        Tuple of (text_encoder, vae, unet, load_stable_diffusion_format)
+    """
     is_v2 = model_config.model_type == "sd2"
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:

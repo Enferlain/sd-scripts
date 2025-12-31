@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 def replace_unet_modules(unet: UNet2DConditionModel, mem_eff_attn, xformers, sdpa):
+    """
+    Replace U-Net modules with optimized versions (memory efficient attention, xformers, or SDPA).
+    """
     if mem_eff_attn:
         logger.info("Enable memory efficient attention for U-Net")
         unet.set_use_memory_efficient_attention(False, True)
@@ -44,6 +47,9 @@ def set_padding_mode_for_vae_conv2d_modules(vae: torch.nn.Module, padding_mode: 
 
 
 def patch_accelerator_for_fp16_training(accelerator):
+    """
+    Patch accelerator to support FP16 training with specific scalers.
+    """
     from accelerate import DistributedType
 
     if accelerator.distributed_type == DistributedType.DEEPSPEED:
