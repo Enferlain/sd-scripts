@@ -23,7 +23,7 @@ RE_UPDOWN = re.compile(r"(up|down)_blocks_(\d+)_(resnets|upsamplers|downsamplers
 
 class OFTModule(torch.nn.Module):
     """
-    replaces forward method of the original Linear, instead of replacing the original Linear module.
+    OFT module that replaces the forward method of the original Linear or Conv2d module.
     """
 
     def __init__(
@@ -34,6 +34,16 @@ class OFTModule(torch.nn.Module):
         dim=4,
         alpha=1,
     ):
+        """
+        Initialize the OFTModule.
+
+        Args:
+            oft_name (str): The name of the OFT module.
+            org_module (torch.nn.Module): The original module to be adapted.
+            multiplier (float, optional): The multiplier for the OFT output. Defaults to 1.0.
+            dim (int, optional): The number of blocks. Defaults to 4.
+            alpha (float, optional): The constraint parameter. Defaults to 1.
+        """
         """
         dim -> num blocks
         alpha -> constraint
@@ -68,10 +78,22 @@ class OFTModule(torch.nn.Module):
         self.org_module = [org_module]  # moduleにならないようにlistに入れる
 
     def apply_to(self):
+        """
+        Apply the OFT module to the original module by replacing its forward method.
+        """
         self.org_forward = self.org_module[0].forward
         self.org_module[0].forward = self.forward
 
     def get_weight(self, multiplier=None):
+        """
+        Calculate and return the OFT weight matrix R.
+
+        Args:
+            multiplier (float, optional): Multiplier for the OFT weight. Defaults to self.multiplier.
+
+        Returns:
+            torch.Tensor: The calculated OFT weight matrix.
+        """
         if multiplier is None:
             multiplier = self.multiplier
 
@@ -88,6 +110,17 @@ class OFTModule(torch.nn.Module):
         return block_R_weighted
 
     def forward(self, x, scale=None):
+        """
+        Forward pass of the OFT module.
+        Applies the OFT transformation to the weights of the original module.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+            scale (float, optional): Scale factor (unused).
+
+        Returns:
+            torch.Tensor: Output tensor with OFT adaptation applied.
+        """
         if self.multiplier == 0.0:
             return self.org_forward(x)
         org_module = self.org_module[0]
@@ -112,6 +145,10 @@ class OFTModule(torch.nn.Module):
 
 
 class OFTInfModule(OFTModule):
+    """
+    OFT module for inference.
+    """
+
     def __init__(
         self,
         oft_name,
@@ -121,20 +158,36 @@ class OFTInfModule(OFTModule):
         alpha=1,
         **kwargs,
     ):
+        """
+        Initialize the OFTInfModule.
+        Similar to OFTModule.
+        """
         # no dropout for inference
         super().__init__(oft_name, org_module, multiplier, dim, alpha)
         self.enabled = True
         self.adapter: OFTAdapter = None
 
     def set_adapter(self, adapter):
+        """
+        Set the adapter that owns this module.
+        """
         self.adapter = adapter
 
     def forward(self, x, scale=None):
+        """
+        Forward pass for inference.
+        """
         if not self.enabled:
             return self.org_forward(x)
         return super().forward(x, scale)
 
     def merge_to(self, multiplier=None):
+        """
+        Merge the OFT weights into the original module weights.
+
+        Args:
+            multiplier (float, optional): Multiplier for the OFT weight. Defaults to self.multiplier.
+        """
         # get org weight
         org_sd = self.org_module[0].state_dict()
         org_weight = org_sd["weight"].to(torch.float32)
@@ -163,6 +216,22 @@ def create_adapter(
     neuron_dropout: Optional[float] = None,
     **kwargs,
 ):
+    """
+    Creates an OFT adapter.
+
+    Args:
+        multiplier (float): Multiplier for the adapter output.
+        adapter_rank (int, optional): Number of blocks (dim). Defaults to 4.
+        adapter_alpha (float, optional): Constraint (alpha). Defaults to 1e-3.
+        vae (AutoencoderKL): VAE model (unused).
+        text_encoder (Union[CLIPTextModel, List[CLIPTextModel]]): Text encoder(s).
+        unet (UNet2DConditionModel): U-Net model.
+        neuron_dropout (float, optional): Unused.
+        **kwargs: Additional arguments for enable_all_linear and enable_conv.
+
+    Returns:
+        OFTAdapter: The created OFT adapter.
+    """
     if adapter_rank is None:
         adapter_rank = 4  # default
     if adapter_alpha is None:  # should be set
@@ -197,6 +266,22 @@ def create_adapter(
 
 # Create peft from weights for inference, weights are not loaded here (because can be merged)
 def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
+    """
+    Creates an OFT adapter from weights for inference.
+
+    Args:
+        multiplier (float): Multiplier for the adapter output.
+        file (str): Path to the weights file.
+        vae (AutoencoderKL): VAE model.
+        text_encoder (Union[CLIPTextModel, List[CLIPTextModel]]): Text encoder(s).
+        unet (UNet2DConditionModel): U-Net model.
+        weights_sd (dict, optional): State dict of weights. If None, loaded from file.
+        for_inference (bool, optional): Whether to create for inference. Defaults to False.
+        **kwargs: Additional arguments.
+
+    Returns:
+        tuple: (OFTAdapter, dict) The created adapter and the weights state dict.
+    """
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import load_file
@@ -243,6 +328,10 @@ def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weigh
 
 
 class OFTAdapter(torch.nn.Module):
+    """
+    Adapter class for OFT (Orthogonal Finetuning).
+    Manages the application and training of OFT modules on U-Net.
+    """
     UNET_TARGET_REPLACE_MODULE_ATTN_ONLY = ["CrossAttention"]
     UNET_TARGET_REPLACE_MODULE_ALL_LINEAR = ["Transformer2DModel"]
     UNET_TARGET_REPLACE_MODULE_CONV2D_3X3 = ["ResnetBlock2D", "Downsample2D", "Upsample2D"]
@@ -260,6 +349,20 @@ class OFTAdapter(torch.nn.Module):
         module_class: Type[object] = OFTModule,
         varbose: Optional[bool] = False,
     ) -> None:
+        """
+        Initialize the OFTAdapter.
+
+        Args:
+            text_encoder (Union[List[CLIPTextModel], CLIPTextModel]): Text encoder(s) (unused).
+            unet (UNet2DConditionModel): U-Net model.
+            multiplier (float, optional): Multiplier for the adapter. Defaults to 1.0.
+            dim (int, optional): Number of blocks. Defaults to 4.
+            alpha (float, optional): Constraint. Defaults to 1.
+            enable_all_linear (bool, optional): Whether to apply to all linear layers. Defaults to False.
+            enable_conv (bool, optional): Whether to apply to Conv2d layers. Defaults to False.
+            module_class (Type[object], optional): Class to use for OFT modules. Defaults to OFTModule.
+            varbose (bool, optional): Whether to print verbose output. Defaults to False.
+        """
         super().__init__()
         self.multiplier = multiplier
 
@@ -317,11 +420,17 @@ class OFTAdapter(torch.nn.Module):
             names.add(oft.oft_name)
 
     def set_multiplier(self, multiplier):
+        """
+        Set multiplier for all OFT modules.
+        """
         self.multiplier = multiplier
         for oft in self.unet_ofts:
             oft.multiplier = self.multiplier
 
     def load_weights(self, file):
+        """
+        Load weights from a file (safetensors or torch).
+        """
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import load_file
 
@@ -333,6 +442,9 @@ class OFTAdapter(torch.nn.Module):
         return info
 
     def apply_to(self, text_encoder, unet, apply_text_encoder=True, apply_unet=True):
+        """
+        Apply OFT to the models.
+        """
         assert apply_unet, "apply_unet must be True"
 
         for oft in self.unet_ofts:
@@ -345,6 +457,9 @@ class OFTAdapter(torch.nn.Module):
 
     # TODO refactor to common function with apply_to
     def merge_to(self, text_encoder, unet, weights_sd, dtype, device):
+        """
+        Merge OFT weights into the models.
+        """
         logger.info("enable OFT for U-Net")
 
         for oft in self.unet_ofts:
@@ -362,6 +477,9 @@ class OFTAdapter(torch.nn.Module):
                                  learning_rates: LearningRatesConfig, 
                                  apply_orthograd: bool, 
                                  orthograd_targets: list[str]):
+        """
+        Prepare optimizer parameters.
+        """
         # Extract LRs from config
         unet_lr = learning_rates.unet
 
@@ -388,19 +506,34 @@ class OFTAdapter(torch.nn.Module):
         return all_params
 
     def enable_gradient_checkpointing(self):
+        """
+        Enable gradient checkpointing (not supported).
+        """
         # not supported
         pass
 
     def prepare_grad_etc(self, text_encoder, unet):
+        """
+        Prepare gradients and set requires_grad to True.
+        """
         self.requires_grad_(True)
 
     def on_epoch_start(self, text_encoder, unet):
+        """
+        Called at the start of each epoch.
+        """
         self.train()
 
     def get_trainable_params(self):
+        """
+        Get trainable parameters.
+        """
         return self.parameters()
 
     def save_weights(self, file, dtype, metadata):
+        """
+        Save weights to file.
+        """
         if metadata is not None and len(metadata) == 0:
             metadata = None
 
@@ -428,6 +561,9 @@ class OFTAdapter(torch.nn.Module):
 
     def backup_weights(self):
         # 重みのバックアップを行う
+        """
+        Backup original weights before merging.
+        """
         ofts: List[OFTInfModule] = self.unet_ofts
         for oft in ofts:
             org_module = oft.org_module[0]
@@ -438,6 +574,9 @@ class OFTAdapter(torch.nn.Module):
 
     def restore_weights(self):
         # 重みのリストアを行う
+        """
+        Restore original weights from backup.
+        """
         ofts: List[OFTInfModule] = self.unet_ofts
         for oft in ofts:
             org_module = oft.org_module[0]
@@ -449,6 +588,9 @@ class OFTAdapter(torch.nn.Module):
 
     def pre_calculation(self):
         # 事前計算を行う
+        """
+        Pre-calculate weights and merge them for efficiency.
+        """
         ofts: List[OFTInfModule] = self.unet_ofts
         for oft in ofts:
             org_module = oft.org_module[0]
