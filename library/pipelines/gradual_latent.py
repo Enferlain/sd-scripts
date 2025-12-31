@@ -56,7 +56,7 @@ class GradualLatent:
                 + f"unsharp_target_x={self.unsharp_target_x})"
         )
 
-    def apply_unshark_mask(self, x: torch.Tensor):
+    def apply_unsharp_mask(self, x: torch.Tensor):
         """
         Applies an unsharp mask to the input tensor.
 
@@ -95,7 +95,7 @@ class GradualLatent:
 
         # apply unsharp mask / アンシャープマスクを適用する
         if unsharp and self.gaussian_blur_ksize:
-            x = self.apply_unshark_mask(x)
+            x = self.apply_unsharp_mask(x)
 
         return x
 
