@@ -1,6 +1,6 @@
 import torch
 
-from typing import Optional
+from typing import Optional, Tuple
 from accelerate import Accelerator
 
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
@@ -61,9 +61,9 @@ def get_hidden_states_sdxl(
     tokenizer2: CLIPTokenizer,
     text_encoder1: CLIPTextModel,
     text_encoder2: CLIPTextModelWithProjection,
-    weight_dtype: Optional[str] = None,
+    weight_dtype: Optional[torch.dtype] = None,
     accelerator: Optional[Accelerator] = None,
-):
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Get hidden states for SDXL from two text encoders.
 
@@ -75,11 +75,11 @@ def get_hidden_states_sdxl(
         tokenizer2 (CLIPTokenizer): The second tokenizer.
         text_encoder1 (CLIPTextModel): The first text encoder.
         text_encoder2 (CLIPTextModelWithProjection): The second text encoder.
-        weight_dtype (str, optional): The weight data type. Defaults to None.
+        weight_dtype (torch.dtype, optional): The weight data type. Defaults to None.
         accelerator (Accelerator, optional): The accelerator for distributed training. Defaults to None.
 
     Returns:
-        tuple: A tuple containing:
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing:
             - hidden_states1 (torch.Tensor): Hidden states from the first text encoder.
             - hidden_states2 (torch.Tensor): Hidden states from the second text encoder.
             - pool2 (torch.Tensor): Pooled output from the second text encoder.
