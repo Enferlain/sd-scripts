@@ -666,6 +666,13 @@ class FeedForward(nn.Module):
 class BasicTransformerBlock(nn.Module):
     """
     Basic transformer block comprising self-attention, cross-attention, and feed-forward layers.
+
+    Args:
+        dim (int): The number of channels in the input and output.
+        num_attention_heads (int): The number of heads to use for multi-head attention.
+        attention_head_dim (int): The number of channels in each attention head.
+        cross_attention_dim (int): The number of channels in the encoder_hidden_states (if used).
+        upcast_attention (bool, optional): Whether to upcast attention to float32. Defaults to False.
     """
     def __init__(
             self, dim: int, num_attention_heads: int, attention_head_dim: int, cross_attention_dim: int,
@@ -745,6 +752,15 @@ class BasicTransformerBlock(nn.Module):
 class Transformer2DModel(nn.Module):
     """
     Transformer model for 2D data, consisting of a series of BasicTransformerBlocks.
+
+    Args:
+        num_attention_heads (int, optional): The number of heads to use for multi-head attention. Defaults to 16.
+        attention_head_dim (int, optional): The number of channels in each attention head. Defaults to 88.
+        in_channels (int, optional): The number of channels in the input and output.
+        cross_attention_dim (int, optional): The number of channels in the encoder_hidden_states (if used).
+        use_linear_projection (bool, optional): Whether to use linear projection for input/output. Defaults to False.
+        upcast_attention (bool, optional): Whether to upcast attention to float32. Defaults to False.
+        num_transformer_layers (int, optional): The number of transformer layers to use. Defaults to 1.
     """
     def __init__(
             self,
@@ -894,6 +910,10 @@ class Upsample2D(nn.Module):
 class SdxlUNet2DConditionModel(nn.Module):
     """
     The SDXL U-Net model.
+
+    This class implements the U-Net architecture for Stable Diffusion XL.
+    It consists of a series of input blocks, a middle block, and output blocks.
+    The model processes the input latents and conditions to predict noise residuals.
     """
     _supports_gradient_checkpointing = True
 
