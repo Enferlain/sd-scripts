@@ -130,6 +130,7 @@ def load_target_model(model_config: ModelConfig, memory_config: MemoryConfig, we
             - load_stable_diffusion_format (bool): Whether the model was loaded from a Stable Diffusion checkpoint.
     """
     is_v2 = model_config.model_type == "sd2"
+    assert accelerator.state.num_processes > 0, "num_processes must be greater than 0"
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
             logger.info(

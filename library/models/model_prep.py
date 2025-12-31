@@ -7,6 +7,7 @@ SDXL-specific model loading is in sdxl_model_prep.py.
 """
 import logging
 import torch
+from typing import Literal
 
 from library.models.sd_original_unet import UNet2DConditionModel
 
@@ -39,13 +40,15 @@ def replace_unet_modules(unet: UNet2DConditionModel, mem_eff_attn, xformers, sdp
         unet.set_use_sdpa(True)
 
 
-def set_padding_mode_for_vae_conv2d_modules(vae: torch.nn.Module, padding_mode: str = 'zeros'):
+def set_padding_mode_for_vae_conv2d_modules(
+    vae: torch.nn.Module, padding_mode: Literal["zeros", "reflect", "replicate", "circular"] = "zeros"
+):
     """
     Apply padding mode only to Conv2d modules with non-zero padding (for EQ VAE).
 
     Args:
         vae (torch.nn.Module): The VAE model.
-        padding_mode (str): The padding mode to apply (e.g., 'zeros', 'reflect', 'replicate', 'circular').
+        padding_mode (Literal["zeros", "reflect", "replicate", "circular"]): The padding mode to apply.
     """
     logger.info(f"VAE padding mode set to: {padding_mode}")
     for name, module in vae.named_modules():
