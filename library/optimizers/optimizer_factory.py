@@ -14,6 +14,19 @@ logger = logging.getLogger(__name__)
 
 
 def get_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRatesConfig, scheduler_config: SchedulerConfig, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[str, str, object]:
+    """
+    Creates and returns an optimizer based on the provided configuration.
+
+    Args:
+        optimizer_config (OptimizerConfig): Configuration for the optimizer.
+        learning_rates (LearningRatesConfig): Configuration for learning rates.
+        scheduler_config (SchedulerConfig): Configuration for the scheduler.
+        trainable_params: Parameters to be optimized.
+        optimizer_kwargs (Dict): Additional keyword arguments for the optimizer.
+
+    Returns:
+        tuple[str, str, object]: A tuple containing the optimizer name, the optimizer arguments string, and the optimizer instance.
+    """
     # "Optimizer to use: AdamW, AdamW8bit, Lion, SGDNesterov, SGDNesterov8bit, PagedAdamW, PagedAdamW8bit, PagedAdamW32bit, Lion8bit, PagedLion8bit, AdEMAMix8bit, PagedAdEMAMix8bit, DAdaptation(DAdaptAdamPreprint), DAdaptAdaGrad, DAdaptAdam, DAdaptAdan, DAdaptAdanIP, DAdaptLion, DAdaptSGD, Adafactor"
 
     optimizer_type = optimizer_config.optimizer_type

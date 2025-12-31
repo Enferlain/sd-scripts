@@ -54,6 +54,19 @@ def should_train_unet(learning_rates: LearningRatesConfig) -> bool:
 
 
 def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRatesConfig, adapter_config: PeftConfig, adapter):
+    """
+    Prepares the optimizer for training, including handling adapter-specific logic and learning rate setup.
+
+    Args:
+        optimizer_config (OptimizerConfig): Configuration for the optimizer.
+        learning_rates (LearningRatesConfig): Configuration for learning rates.
+        adapter_config (PeftConfig): Configuration for PEFT/Adapters.
+        adapter: The adapter module or object handling the specific adapter logic.
+
+    Returns:
+        tuple: A tuple containing the optimizer name, optimizer arguments string, optimizer instance,
+               train function, eval function, and learning rate descriptions.
+    """
     if isinstance(adapter_config.orthograd_targets, str):
         orthograd_targets = ast.literal_eval(adapter_config.orthograd_targets)
     else:
@@ -175,6 +188,17 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
 
 
 def get_optimizer_train_eval_fn(optimizer: Optimizer, optimizer_config: OptimizerConfig) -> Tuple[Callable, Callable]:
+    """
+    Returns the train and eval functions for the optimizer if it is schedule-free.
+
+    Args:
+        optimizer (Optimizer): The optimizer instance.
+        optimizer_config (OptimizerConfig): Configuration for the optimizer.
+
+    Returns:
+        Tuple[Callable, Callable]: A tuple containing the train function and the eval function.
+                                   Returns dummy no-op functions if not schedule-free.
+    """
     if not is_schedulefree_optimizer(optimizer, optimizer_config) or getattr(optimizer_config, "fused_optimizer_groups", False):
         # return dummy func
         return lambda: None, lambda: None
@@ -187,15 +211,43 @@ def get_optimizer_train_eval_fn(optimizer: Optimizer, optimizer_config: Optimize
 
 
 def is_schedulefree_optimizer(optimizer: Optimizer, optimizer_config: OptimizerConfig) -> bool:
+    """
+    Checks if the optimizer is a schedule-free optimizer.
+
+    Args:
+        optimizer (Optimizer): The optimizer instance.
+        optimizer_config (OptimizerConfig): Configuration for the optimizer.
+
+    Returns:
+        bool: True if the optimizer is schedule-free, False otherwise.
+    """
     return optimizer_config.optimizer_type.lower().endswith("schedulefree".lower()) or optimizer_config.optimizer_type.lower().endswith(
         "schedulefreewrapper".lower())
 
 
 def is_wrapper_optimizer(optimizer_config: OptimizerConfig) -> bool:
+    """
+    Checks if the optimizer is a wrapper type optimizer.
+
+    Args:
+        optimizer_config (OptimizerConfig): Configuration for the optimizer.
+
+    Returns:
+        bool: True if the optimizer is a wrapper optimizer, False otherwise.
+    """
     return optimizer_config.optimizer_type.lower().endswith("schedulefreewrapper".lower()) or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower())
 
 
 def parse_string_to_type(s):
+    """
+    Parses a string into a specific type (int, float) if possible.
+
+    Args:
+        s: The string to parse.
+
+    Returns:
+        The parsed value as int, float, or the original string.
+    """
     if s is not None:
         if isinstance(s, float) or isinstance(s, int):
             return s
