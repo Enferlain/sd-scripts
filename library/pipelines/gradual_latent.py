@@ -21,6 +21,20 @@ class GradualLatent:
             gaussian_blur_strength=0.5,
             unsharp_target_x=True,
     ):
+        """
+        Initializes the GradualLatent object.
+
+        Args:
+            ratio (float): The ratio of the resolution change.
+            start_timesteps (int): The timestep to start the gradual latent process.
+            every_n_steps (int): The frequency of steps to apply the gradual latent process.
+            ratio_step (float): The step size for the ratio change.
+            s_noise (float, optional): The noise scale factor. Defaults to 1.0.
+            gaussian_blur_ksize (int, optional): The kernel size for Gaussian blur. Defaults to None.
+            gaussian_blur_sigma (float, optional): The sigma value for Gaussian blur. Defaults to 0.5.
+            gaussian_blur_strength (float, optional): The strength of the Gaussian blur. Defaults to 0.5.
+            unsharp_target_x (bool, optional): Whether to apply unsharp mask to the target x. Defaults to True.
+        """
         self.ratio = ratio
         self.start_timesteps = start_timesteps
         self.every_n_steps = every_n_steps
@@ -32,6 +46,9 @@ class GradualLatent:
         self.unsharp_target_x = unsharp_target_x
 
     def __str__(self) -> str:
+        """
+        Returns a string representation of the GradualLatent object.
+        """
         return (
                 f"GradualLatent(ratio={self.ratio}, start_timesteps={self.start_timesteps}, "
                 + f"every_n_steps={self.every_n_steps}, ratio_step={self.ratio_step}, s_noise={self.s_noise}, "
@@ -39,7 +56,16 @@ class GradualLatent:
                 + f"unsharp_target_x={self.unsharp_target_x})"
         )
 
-    def apply_unshark_mask(self, x: torch.Tensor):
+    def apply_unsharp_mask(self, x: torch.Tensor):
+        """
+        Applies an unsharp mask to the input tensor.
+
+        Args:
+            x (torch.Tensor): The input tensor to be sharpened.
+
+        Returns:
+            torch.Tensor: The sharpened tensor.
+        """
         if self.gaussian_blur_ksize is None:
             return x
         blurred = transforms.functional.gaussian_blur(x, self.gaussian_blur_ksize, self.gaussian_blur_sigma)  # TODO: Cannot find reference 'functional' in '__init__.py'
@@ -49,6 +75,17 @@ class GradualLatent:
         return sharpened
 
     def interpolate(self, x: torch.Tensor, resized_size, unsharp=True):
+        """
+        Interpolates the input tensor to a new size, optionally applying an unsharp mask.
+
+        Args:
+            x (torch.Tensor): The input tensor to be interpolated.
+            resized_size (tuple): The target size for interpolation.
+            unsharp (bool, optional): Whether to apply an unsharp mask after interpolation. Defaults to True.
+
+        Returns:
+            torch.Tensor: The interpolated (and optionally sharpened) tensor.
+        """
         org_dtype = x.dtype
         if org_dtype == torch.bfloat16:
             x = x.float()
@@ -58,18 +95,32 @@ class GradualLatent:
 
         # apply unsharp mask / アンシャープマスクを適用する
         if unsharp and self.gaussian_blur_ksize:
-            x = self.apply_unshark_mask(x)
+            x = self.apply_unsharp_mask(x)
 
         return x
 
 
 class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
+    """
+    Euler Ancestral Discrete Scheduler with Gradual Latent support.
+    """
+
     def __init__(self, *args, **kwargs):
+        """
+        Initializes the EulerAncestralDiscreteSchedulerGL.
+        """
         super().__init__(*args, **kwargs)
         self.resized_size = None
         self.gradual_latent = None
 
     def set_gradual_latent_params(self, size, gradual_latent: GradualLatent):
+        """
+        Sets the parameters for the gradual latent process.
+
+        Args:
+            size (tuple): The target size for the latent.
+            gradual_latent (GradualLatent): The GradualLatent configuration object.
+        """
         self.resized_size = size
         self.gradual_latent = gradual_latent
 
