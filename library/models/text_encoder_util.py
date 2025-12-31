@@ -1,31 +1,33 @@
 import torch
 
-from typing import Optional
+from typing import Optional, Tuple
 from accelerate import Accelerator
 
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 
 
 def pool_workaround(
-        text_encoder: CLIPTextModelWithProjection, last_hidden_state: torch.Tensor, input_ids: torch.Tensor,
-        eos_token_id: int
-):
-    r"""
-    workaround for CLIP's pooling bug: it returns the hidden states for the max token id as the pooled output
-    instead of the hidden states for the EOS token
-    If we use Textual Inversion, we need to use the hidden states for the EOS token as the pooled output
-
-    Original code from CLIP's pooling function:
-
-    \# text_embeds.shape = [batch_size, sequence_length, transformer.width]
-    \# take features from the eot embedding (eot_token is the highest number in each sequence)
-    \# casting to torch.int for onnx compatibility: argmax doesn't support int64 inputs with opset 14
-    pooled_output = last_hidden_state[
-        torch.arange(last_hidden_state.shape[0], device=last_hidden_state.device),
-        input_ids.to(dtype=torch.int, device=last_hidden_state.device).argmax(dim=-1),
-    ]
+    text_encoder: CLIPTextModelWithProjection,
+    last_hidden_state: torch.Tensor,
+    input_ids: torch.Tensor,
+    eos_token_id: int
+) -> torch.Tensor:
     """
+    Workaround for CLIP's pooling bug.
 
+    CLIP's pooling function returns the hidden states for the max token id as the pooled output
+    instead of the hidden states for the EOS token. If we use Textual Inversion, we need to use
+    the hidden states for the EOS token as the pooled output.
+
+    Args:
+        text_encoder (CLIPTextModelWithProjection): The text encoder model.
+        last_hidden_state (torch.Tensor): The last hidden state from the text encoder.
+        input_ids (torch.Tensor): The input token IDs.
+        eos_token_id (int): The ID of the EOS token.
+
+    Returns:
+        torch.Tensor: The pooled output using the hidden state corresponding to the EOS token.
+    """
     # input_ids: b*n,77
     # find index for EOS token
 
@@ -52,16 +54,36 @@ def pool_workaround(
 
 
 def get_hidden_states_sdxl(
-        max_token_length: int,
-        input_ids1: torch.Tensor,
-        input_ids2: torch.Tensor,
-        tokenizer1: CLIPTokenizer,
-        tokenizer2: CLIPTokenizer,
-        text_encoder1: CLIPTextModel,
-        text_encoder2: CLIPTextModelWithProjection,
-        weight_dtype: Optional[str] = None,
-        accelerator: Optional[Accelerator] = None,
-):
+    max_token_length: int,
+    input_ids1: torch.Tensor,
+    input_ids2: torch.Tensor,
+    tokenizer1: CLIPTokenizer,
+    tokenizer2: CLIPTokenizer,
+    text_encoder1: CLIPTextModel,
+    text_encoder2: CLIPTextModelWithProjection,
+    weight_dtype: Optional[torch.dtype] = None,
+    accelerator: Optional[Accelerator] = None,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Get hidden states for SDXL from two text encoders.
+
+    Args:
+        max_token_length (int): The maximum token length.
+        input_ids1 (torch.Tensor): Input IDs for the first text encoder.
+        input_ids2 (torch.Tensor): Input IDs for the second text encoder.
+        tokenizer1 (CLIPTokenizer): The first tokenizer.
+        tokenizer2 (CLIPTokenizer): The second tokenizer.
+        text_encoder1 (CLIPTextModel): The first text encoder.
+        text_encoder2 (CLIPTextModelWithProjection): The second text encoder.
+        weight_dtype (torch.dtype, optional): The weight data type. Defaults to None.
+        accelerator (Accelerator, optional): The accelerator for distributed training. Defaults to None.
+
+    Returns:
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing:
+            - hidden_states1 (torch.Tensor): Hidden states from the first text encoder.
+            - hidden_states2 (torch.Tensor): Hidden states from the second text encoder.
+            - pool2 (torch.Tensor): Pooled output from the second text encoder.
+    """
     # input_ids: b,n,77 -> b*n, 77
     b_size = input_ids1.size()[0]
     input_ids1 = input_ids1.reshape((-1, tokenizer1.model_max_length))  # batch_size*n, 77
@@ -73,7 +95,7 @@ def get_hidden_states_sdxl(
 
     # text_encoder2
     enc_out = text_encoder2(input_ids2, output_hidden_states=True, return_dict=True)
-    hidden_states2 = enc_out["hidden_states"][-2]  # penuultimate layer
+    hidden_states2 = enc_out["hidden_states"][-2]  # penultimate layer
 
     # pool2 = enc_out["text_embeds"]
     unwrapped_text_encoder2 = text_encoder2 if accelerator is None else accelerator.unwrap_model(text_encoder2)
@@ -86,28 +108,29 @@ def get_hidden_states_sdxl(
 
     if max_token_length is not None:
         # bs*3, 77, 768 or 1024
-        # encoder1: <BOS>...<EOS> の三連を <BOS>...<EOS> へ戻す
+        # encoder1: restore <BOS>...<EOS> from three consecutive <BOS>...<EOS>
         states_list = [hidden_states1[:, 0].unsqueeze(1)]  # <BOS>
         for i in range(1, max_token_length, tokenizer1.model_max_length):
-            states_list.append(hidden_states1[:, i: i + tokenizer1.model_max_length - 2])  # <BOS> の後から <EOS> の前まで
+            states_list.append(hidden_states1[:, i: i + tokenizer1.model_max_length - 2])  # From after <BOS> to before <EOS>
         states_list.append(hidden_states1[:, -1].unsqueeze(1))  # <EOS>
         hidden_states1 = torch.cat(states_list, dim=1)
 
-        # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
+        # v2: restore <BOS>...<EOS> <PAD> ... from three consecutive <BOS>...<EOS> <PAD> ... sequences.
+        # Honestly, I am not sure if this implementation is correct.
         states_list = [hidden_states2[:, 0].unsqueeze(1)]  # <BOS>
         for i in range(1, max_token_length, tokenizer2.model_max_length):
-            chunk = hidden_states2[:, i: i + tokenizer2.model_max_length - 2]  # <BOS> の後から 最後の前まで
+            chunk = hidden_states2[:, i: i + tokenizer2.model_max_length - 2]  # From after <BOS> to before the last one
             # this causes an error:
             # RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation
             # if i > 1:
             #     for j in range(len(chunk)):  # batch_size
-            #         if input_ids2[n_index + j * n_size, 1] == tokenizer2.eos_token_id:  # 空、つまり <BOS> <EOS> <PAD> ...のパターン
-            #             chunk[j, 0] = chunk[j, 1]  # 次の <PAD> の値をコピーする
-            states_list.append(chunk)  # <BOS> の後から <EOS> の前まで
-        states_list.append(hidden_states2[:, -1].unsqueeze(1))  # <EOS> か <PAD> のどちらか
+            #         if input_ids2[n_index + j * n_size, 1] == tokenizer2.eos_token_id:  # Empty, i.e., the pattern <BOS> <EOS> <PAD> ...
+            #             chunk[j, 0] = chunk[j, 1]  # Copy the value of the next <PAD>
+            states_list.append(chunk)  # From after <BOS> to before <EOS>
+        states_list.append(hidden_states2[:, -1].unsqueeze(1))  # Either <EOS> or <PAD>
         hidden_states2 = torch.cat(states_list, dim=1)
 
-        # pool はnの最初のものを使う
+        # pool uses the first one of n
         pool2 = pool2[::n_size]
 
     if weight_dtype is not None:
