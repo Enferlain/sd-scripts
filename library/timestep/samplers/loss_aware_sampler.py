@@ -1,17 +1,53 @@
-# loss_aware_sampler.py (or inline where you keep sampling code)
-import math, torch
+# loss_aware_sampler.py
+import math
+import torch
+from typing import Optional, Union
 
 
 class LossAwareTimestepSampler:
-    def __init__(self, num_train_timesteps: int, num_bins: int = 32,
-                 ema_beta: float = 0.9, small_t_frac: float = 0.15, small_t_cap: float = 0.6,
-                 start_p=0.85, end_p=0.35, anneal="cosine", fixed_p=None):
+    """
+    Timestep sampler that balances between a prior (sigmoid/shift) and loss-aware sampling.
+
+    This sampler blends a fixed prior distribution (which can be annealed over time)
+    with a learned distribution based on the historical loss of different timestep bins.
+    It also includes mechanisms to cap the sampling of small timesteps.
+    """
+
+    def __init__(
+        self,
+        num_train_timesteps: int,
+        num_bins: int = 32,
+        ema_beta: float = 0.9,
+        small_t_frac: float = 0.15,
+        small_t_cap: float = 0.6,
+        start_p: float = 0.85,
+        end_p: float = 0.35,
+        anneal: str = "cosine",
+        fixed_p: Optional[float] = None,
+    ):
+        """
+        Initialize the LossAwareTimestepSampler.
+
+        Args:
+            num_train_timesteps (int): Total number of training timesteps.
+            num_bins (int): Number of bins to track loss statistics.
+            ema_beta (float): Decay factor for the exponential moving average of bin losses.
+            small_t_frac (float): Fraction of the total timesteps considered as "small t".
+            small_t_cap (float): Maximum fraction of the batch allowed to be from the "small t" region.
+            start_p (float): Starting probability for the prior component (vs. loss-aware component).
+            end_p (float): Ending probability for the prior component.
+            anneal (str): Annealing schedule for mixing probability ("cosine", "linear", or "none").
+            fixed_p (float, optional): If set, uses a fixed mixing probability, overriding anneal/start/end.
+        """
         print(
-            f"LossAwareTimestepSampler initialized with: num_train_timesteps={num_train_timesteps}, num_bins={num_bins}, ema_beta={ema_beta}, small_t_frac={small_t_frac}, small_t_cap={small_t_cap}, start_p={start_p}, end_p={end_p}, anneal={anneal}, fixed_p={fixed_p}")
+            f"LossAwareTimestepSampler initialized with: num_train_timesteps={num_train_timesteps}, num_bins={num_bins}, ema_beta={ema_beta}, small_t_frac={small_t_frac}, small_t_cap={small_t_cap}, start_p={start_p}, end_p={end_p}, anneal={anneal}, fixed_p={fixed_p}"
+        )
         self.T = int(num_train_timesteps)
         self.num_bins = int(num_bins)
         self.ema_beta = float(ema_beta)
-        self.small_t_frac = float(small_t_frac)  # define "small t" region as lowest X% of steps
+        self.small_t_frac = float(
+            small_t_frac
+        )  # define "small t" region as lowest X% of steps
         self.small_t_cap = float(small_t_cap)  # max batch fraction from small t
         self.eps = 1e-8
 
@@ -28,23 +64,39 @@ class LossAwareTimestepSampler:
 
     @torch.no_grad()
     def update(self, timesteps: torch.Tensor, per_sample_losses: torch.Tensor):
+        """
+        Update the sampler state with observed losses.
+
+        Args:
+            timesteps (torch.Tensor): The timesteps used for the batch.
+            per_sample_losses (torch.Tensor): The loss for each sample in the batch.
+        """
         # expects 1D tensors on same device
-        bins = torch.bucketize(timesteps.float(), self.bin_edges.to(timesteps.device)) - 1
+        bins = (
+            torch.bucketize(timesteps.float(), self.bin_edges.to(timesteps.device)) - 1
+        )
         bins = bins.clamp(0, self.num_bins - 1)
 
         # EMA update in float32
         update_dtype = torch.float32
-        bin_loss = torch.zeros(self.num_bins, device=timesteps.device, dtype=update_dtype)
-        bin_cnt = torch.zeros(self.num_bins, device=timesteps.device, dtype=update_dtype)
+        bin_loss = torch.zeros(
+            self.num_bins, device=timesteps.device, dtype=update_dtype
+        )
+        bin_cnt = torch.zeros(
+            self.num_bins, device=timesteps.device, dtype=update_dtype
+        )
         bin_loss.index_add_(0, bins, per_sample_losses.detach().to(dtype=update_dtype))
-        bin_cnt.index_add_(0, bins, torch.ones_like(per_sample_losses, dtype=update_dtype))
+        bin_cnt.index_add_(
+            0, bins, torch.ones_like(per_sample_losses, dtype=update_dtype)
+        )
 
         mask = bin_cnt > 0
         ema_loss_device = self.ema_loss.to(device=timesteps.device, dtype=update_dtype)
         new_vals = torch.where(mask, bin_loss / (bin_cnt + self.eps), ema_loss_device)
         self.ema_loss = self.ema_beta * ema_loss_device + (1 - self.ema_beta) * new_vals
 
-    def _sched(self, step, total):
+    def _sched(self, step: int, total: int) -> float:
+        """Calculate the mixing probability based on the current step."""
         if self.fixed_p is not None:
             return self.fixed_p
         if self.anneal == "none":
@@ -57,8 +109,29 @@ class LossAwareTimestepSampler:
         cos = 0.5 * (1 - math.cos(math.pi * s / max(1, total)))
         return self.start_p + (self.end_p - self.start_p) * cos
 
-    def sample(self, bsz: int, device, global_step: int, max_steps: int,
-               sigmoid_scale: float = 1.0, discrete_flow_shift: float = 0.9):
+    def sample(
+        self,
+        bsz: int,
+        device: torch.device,
+        global_step: int,
+        max_steps: int,
+        sigmoid_scale: float = 1.0,
+        discrete_flow_shift: float = 0.9,
+    ) -> torch.Tensor:
+        """
+        Sample timesteps for a batch.
+
+        Args:
+            bsz (int): Batch size.
+            device (torch.device): Device to put the sampled timesteps on.
+            global_step (int): Current global step.
+            max_steps (int): Total training steps used for annealing.
+            sigmoid_scale (float): Scale factor for the sigmoid prior.
+            discrete_flow_shift (float): Shift parameter for the discrete flow prior.
+
+        Returns:
+            torch.Tensor: A tensor of sampled timesteps with shape (bsz,).
+        """
         # mix_p: probability of taking the sigmoid branch (composition prior)
         mix_p = self._sched(global_step, max_steps)
         self.last_mix_p = mix_p
@@ -85,7 +158,9 @@ class LossAwareTimestepSampler:
         bin_ids = cat.sample((bsz,))
         left = self.bin_edges[:-1].to(device)[bin_ids]
         right = self.bin_edges[1:].to(device)[bin_ids]
-        t_bin = left + torch.rand(bsz, device=device) * (right - left - 1).clamp(min=1.0)
+        t_bin = (
+            left + torch.rand(bsz, device=device) * (right - left - 1).clamp(min=1.0)
+        )
         t_bin = t_bin.round().clamp(0, self.T - 1).long()
 
         # Blend prior index with loss-aware index (lean more loss-aware as mix_p decays)

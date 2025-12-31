@@ -1,17 +1,48 @@
 import torch
 import math
+from typing import Optional
 
 
 class TemperedAdaptiveSampler:
-    def __init__(self, noise_scheduler, num_bins: int = 64,
-                 ema_beta: float = 0.95, temperature: float = 0.4,
-                 prior_weight: float = 0.3, min_prob: float = 5e-4,
-                 warmup_steps: int = 150, prior_bias: float = 1.0,
-                 entropy_floor_ratio: float = 0.6):
+    """
+    Adaptive timestep sampler that balances loss-based sampling with a prior distribution.
+
+    This sampler maintains a running history of loss statistics for different log-SNR bins.
+    It uses these statistics to prioritize sampling from bins with higher loss (harder examples),
+    tempered by a temperature parameter and mixed with a prior distribution to ensure coverage.
+    """
+
+    def __init__(
+        self,
+        noise_scheduler,
+        num_bins: int = 64,
+        ema_beta: float = 0.95,
+        temperature: float = 0.4,
+        prior_weight: float = 0.3,
+        min_prob: float = 5e-4,
+        warmup_steps: int = 150,
+        prior_bias: float = 1.0,
+        entropy_floor_ratio: float = 0.6,
+    ):
+        """
+        Initialize the TemperedAdaptiveSampler.
+
+        Args:
+            noise_scheduler: Diffusers noise scheduler (e.g. DDPMScheduler).
+            num_bins (int): Number of bins for the log-SNR space.
+            ema_beta (float): Decay factor for the exponential moving average of bin losses.
+            temperature (float): Temperature for the softmax distribution of sampling probabilities.
+            prior_weight (float): Weight given to the prior distribution relative to the learned loss distribution.
+            min_prob (float): Minimum probability for any bin to avoid starvation.
+            warmup_steps (int): Number of steps to use a warm-up schedule before full adaptive sampling.
+            prior_bias (float): Bias factor for the prior distribution (emphasizing high-noise bins).
+            entropy_floor_ratio (float): Minimum entropy ratio relative to uniform distribution.
+        """
         print(
-            f"TemperedAdaptiveSampler initialized with: num_bins={num_bins}, ema_beta={ema_beta}, temperature={temperature}, prior_weight={prior_weight}, min_prob={min_prob}, warmup_steps={warmup_steps}, prior_bias={prior_bias}, entropy_floor_ratio={entropy_floor_ratio}")
-        a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1. - 1e-12)  # [T]
-        snr = a2 / (1. - a2)
+            f"TemperedAdaptiveSampler initialized with: num_bins={num_bins}, ema_beta={ema_beta}, temperature={temperature}, prior_weight={prior_weight}, min_prob={min_prob}, warmup_steps={warmup_steps}, prior_bias={prior_bias}, entropy_floor_ratio={entropy_floor_ratio}"
+        )
+        a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1.0 - 1e-12)  # [T]
+        snr = a2 / (1.0 - a2)
         log_snr = torch.log(snr.clamp(min=1e-20))  # [T]
 
         # Sort to ascending for searchsorted (store both original and sorted)
@@ -22,7 +53,7 @@ class TemperedAdaptiveSampler:
         self.T = int(noise_scheduler.config.num_train_timesteps)  # scalar
 
         # Bins over original log_snr distribution
-        q = torch.linspace(0., 1., int(num_bins) + 1, dtype=torch.float32)
+        q = torch.linspace(0.0, 1.0, int(num_bins) + 1, dtype=torch.float32)
         self.bin_edges = torch.quantile(log_snr, q).to(torch.float32).contiguous()
         self.num_bins = int(num_bins)
 
@@ -45,11 +76,18 @@ class TemperedAdaptiveSampler:
         prior = torch.softmax(prior_logits.to(torch.float32), dim=0)
 
         # Ensure no bin is starved, even with a strong bias
-        self.prior_probs = (prior + self.min_prob)
+        self.prior_probs = prior + self.min_prob
         self.prior_probs = self.prior_probs / self.prior_probs.sum()
 
     @torch.no_grad()
     def update(self, timesteps: torch.Tensor, per_sample_losses: torch.Tensor):
+        """
+        Update the sampler state with observed losses.
+
+        Args:
+            timesteps (torch.Tensor): The timesteps used for the batch.
+            per_sample_losses (torch.Tensor): The loss for each sample in the batch.
+        """
         # Map t -> bin via log-SNR
         device = timesteps.device
         log_snr_t = self.log_snr_original.to(device)[timesteps]
@@ -76,22 +114,45 @@ class TemperedAdaptiveSampler:
         self.counts = self.counts.to(device) + bin_cnt
 
     @torch.no_grad()
-    def sample(self, bsz: int, device, global_step: int, max_steps: int,
-            sigmoid_scale: float = 1.0, discrete_flow_shift: float = 1.0):
+    def sample(
+        self,
+        bsz: int,
+        device: torch.device,
+        global_step: int,
+        max_steps: int,
+        sigmoid_scale: float = 1.0,
+        discrete_flow_shift: float = 1.0,
+    ) -> torch.Tensor:
+        """
+        Sample timesteps for a batch.
+
+        Args:
+            bsz (int): Batch size.
+            device (torch.device): Device to put the sampled timesteps on.
+            global_step (int): Current global step.
+            max_steps (int): Total training steps (unused).
+            sigmoid_scale (float): Scale for sigmoid (unused).
+            discrete_flow_shift (float): Shift for discrete flow (unused).
+
+        Returns:
+            torch.Tensor: A tensor of sampled timesteps with shape (bsz,).
+        """
         # Optional: expose this once in __init__
-        uniform_mix_when_low_entropy = getattr(self, "uniform_mix_when_low_entropy", 0.10)
+        uniform_mix_when_low_entropy = getattr(
+            self, "uniform_mix_when_low_entropy", 0.10
+        )
 
         # Short warmup: either off or tiny, and mix in uniform (not pure prior)
         if global_step < self.warmup_steps:
             prior = self.prior_probs.to(device)
             uniform = torch.full_like(prior, 1.0 / self.num_bins)
             mixed = 0.5 * prior + 0.5 * uniform
-            mixed = (mixed + self.min_prob)
+            mixed = mixed + self.min_prob
             mixed = mixed / mixed.sum()
         else:
             # Loss-aware term
             ema = self.bin_loss_ema.to(device).clamp(min=1e-8)
-            var = (self.ema_sq.to(device) - ema * ema).clamp(min=0.)
+            var = (self.ema_sq.to(device) - ema * ema).clamp(min=0.0)
             score = ema / (torch.sqrt(var + 1e-6) + 1e-6)
 
             # Tempered logits
@@ -108,9 +169,11 @@ class TemperedAdaptiveSampler:
             H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
             if H < H_min:
                 uniform = torch.full_like(mixed, 1.0 / self.num_bins)
-                mixed = (1.0 - uniform_mix_when_low_entropy) * mixed + uniform_mix_when_low_entropy * uniform
+                mixed = (
+                    1.0 - uniform_mix_when_low_entropy
+                ) * mixed + uniform_mix_when_low_entropy * uniform
 
-            mixed = (mixed + self.min_prob)
+            mixed = mixed + self.min_prob
             mixed = mixed / mixed.sum()
 
         # Sample bins and map to timesteps (unchanged)
@@ -120,9 +183,12 @@ class TemperedAdaptiveSampler:
         span = (right - left).clamp_min(1e-8)
         target_lsnr = left + torch.rand(bsz, device=device) * span
         sorted_lsnr = self.log_snr_sorted.to(device)
-        idx_in_sorted = torch.searchsorted(sorted_lsnr, target_lsnr).clamp(1, self.T - 1)
-        j = (idx_in_sorted - 1)
-        l0 = sorted_lsnr[j]; l1 = sorted_lsnr[idx_in_sorted]
+        idx_in_sorted = torch.searchsorted(sorted_lsnr, target_lsnr).clamp(
+            1, self.T - 1
+        )
+        j = idx_in_sorted - 1
+        l0 = sorted_lsnr[j]
+        l1 = sorted_lsnr[idx_in_sorted]
         w = ((target_lsnr - l0) / (l1 - l0 + 1e-12)).clamp(0, 1)
         t0 = self.sort_indices.to(device)[j].float()
         t1 = self.sort_indices.to(device)[idx_in_sorted].float()
