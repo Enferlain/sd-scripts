@@ -47,7 +47,7 @@ class TokenizeStrategy:
         if tokenizer is None:
             tokenizer = model_class.from_pretrained(model_id, subfolder=subfolder)
 
-        if tokenizer_cache_dir and not os.path.exists(local_tokenizer_path):
+        if tokenizer_cache_dir and not os.path.exists(local_tokenizer_path):  # TODO: Local variable 'local_tokenizer_path' might be referenced before assignment
             logger.info(f"save Tokenizer to cache: {local_tokenizer_path}")
             tokenizer.save_pretrained(local_tokenizer_path)
 
@@ -257,7 +257,7 @@ class TokenizeStrategy:
             input_ids = torch.stack(iids_list)  # 3,77
 
             if weighted:
-                weights = weights.squeeze(0)
+                weights = weights.squeeze(0)  # TODO: Local variable 'weights' might be referenced before assignment
                 new_weights = torch.ones(input_ids.shape)
                 for i in range(1, max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2):
                     b = i // (tokenizer.model_max_length - 2)
@@ -266,7 +266,7 @@ class TokenizeStrategy:
                 weights = new_weights
 
         if weighted:
-            return input_ids, weights
+            return input_ids, weights  # TODO: Expected type 'Tensor', got 'tuple[Tensor | Any, Tensor]' instead
         return input_ids
 
 
@@ -519,7 +519,7 @@ class LatentsCachingStrategy:
 
             if self.cache_to_disk:
                 self.save_latents_to_disk(
-                    info.latents_npz, latents, original_size, crop_ltrb, flipped_latent, alpha_mask, key_reso_suffix
+                    info.latents_npz, latents, original_size, crop_ltrb, flipped_latent, alpha_mask, key_reso_suffix  # TODO: Expected type 'list[int]', got 'tuple[int, int]' instead
                 )
             else:
                 info.latents_original_size = original_size
@@ -624,7 +624,7 @@ class LatentsCachingStrategy:
         kwargs["original_size" + key_reso_suffix] = np.array(original_size)
         kwargs["crop_ltrb" + key_reso_suffix] = np.array(crop_ltrb)
         if flipped_latents_tensor is not None:
-            kwargs["latents_flipped" + key_reso_suffix] = flipped_latents_tensor.float().cpu().numpy()
+            kwargs["latents_flipped" + key_reso_suffix] = flipped_latents_tensor.float().cpu().numpy()  # TODO: Unresolved attribute reference 'float' for class '_SpecialForm'
         if alpha_mask is not None:
-            kwargs["alpha_mask" + key_reso_suffix] = alpha_mask.float().cpu().numpy()
+            kwargs["alpha_mask" + key_reso_suffix] = alpha_mask.float().cpu().numpy()  # TODO: Unresolved attribute reference 'float' for class '_SpecialForm'
         np.savez(npz_path, **kwargs)

@@ -117,7 +117,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
     def get_model_metadata(self, cfg) -> dict:
         """Get SAI model spec for SD."""
         return get_model_metadata_from_config(
-            state_dict=None,
+            state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
             metadata_config=cfg.output.metadata,
             is_sdxl=False,  # SD strategy is never used for SDXL
             is_v2=cfg.model.model_type == "sd2",
@@ -274,7 +274,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         self, batch, text_encoders, unet, adapter, vae, noise_scheduler, vae_dtype, weight_dtype,
         accelerator, cfg, text_encoding_strategy: strategy_base.TextEncodingStrategy,
         tokenize_strategy: strategy_base.TokenizeStrategy, train_text_encoder=True, train_unet=True,
-        timesteps_list: list = [50, 350, 500, 650, 950]
+        timesteps_list: list = [50, 350, 500, 650, 950]  # TODO: Default argument value is mutable
     ) -> torch.Tensor:
         """Process a batch for validation loss."""
         total_loss = 0.0

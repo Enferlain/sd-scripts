@@ -5,6 +5,7 @@ from typing import Optional
 
 from accelerate import DeepSpeedPlugin
 
+from library.config.dataclasses.data import LoaderConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.performance import DeepSpeedConfig, PrecisionConfig
 from library.utils.common_utils import setup_logging
@@ -14,13 +15,13 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, training_config: TrainingConfig = None):
+def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, loader_config: LoaderConfig = None):
     """Modify training config for deepspeed if enabled."""
     if not deepspeed_config.deepspeed:
         return
     
-    if training_config is not None:
-        training_config.max_data_loader_n_workers = 1
+    if loader_config is not None:
+        loader_config.max_workers = 1
 
 
 def prepare_deepspeed_plugin(
@@ -90,11 +91,11 @@ def prepare_deepspeed_plugin(
     return deepspeed_plugin
 
 
-def prepare_deepspeed_model(training_config: TrainingConfig, **models):
+def prepare_deepspeed_model(precision_config: PrecisionConfig, **models):
     """Wrap models for DeepSpeed training.
     
     Args:
-        training_config: TrainingConfig with mixed_precision setting
+        precision_config: PrecisionConfig with mixed_precision setting
         **models: Named model arguments to wrap
     """
     models = {k: v for k, v in models.items() if v is not None}
@@ -105,7 +106,7 @@ def prepare_deepspeed_model(training_config: TrainingConfig, **models):
 
             self.models = torch.nn.ModuleDict()
 
-            wrap_model_forward_with_torch_autocast = training_config.mixed_precision != "no"
+            wrap_model_forward_with_torch_autocast = precision_config.mixed_precision != "no"
 
             for key, model in kw_models.items():
                 if isinstance(model, list):

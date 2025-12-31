@@ -99,7 +99,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     training_started_at = time.time()
 
     set_torch_cuda_reduced_precision(cfg.performance.precision)
-    deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed, cfg.training)
+    deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed, cfg.data.loader)
     setup_logging(cfg.output.logging, reset=True)
 
     cache_latents = cfg.data.caching.cache_latents
@@ -135,7 +135,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     is_main_process = accelerator.is_main_process
 
     # mixed precisionに対応した型を用意しておき適宜castする
-    weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.output.saving)
+    weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
     vae_dtype = (torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype) if strategies.cast_vae(cfg) else None
 
     # load target models: unet may be None for lazy loading
@@ -300,7 +300,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         val_dataset_group.set_current_strategies()
 
     # DataLoaderのプロセス数：0 は persistent_workers が使えないので注意
-    n_workers = min(cfg.training.max_data_loader_n_workers, os.cpu_count())  # cpu_count or max_data_loader_n_workers
+    n_workers = min(cfg.data.loader.max_workers, os.cpu_count())  # cpu_count or max_data_loader_n_workers
 
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset_group,
@@ -308,7 +308,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         shuffle=True,
         collate_fn=collator,
         num_workers=n_workers,
-        persistent_workers=cfg.training.persistent_data_loader_workers,
+        persistent_workers=cfg.data.loader.persistent_workers,
     )
 
     val_dataloader = torch.utils.data.DataLoader(
@@ -317,7 +317,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         batch_size=1,
         collate_fn=collator,
         num_workers=n_workers,
-        persistent_workers=cfg.training.persistent_data_loader_workers,
+        persistent_workers=cfg.data.loader.persistent_workers,
     )
 
     if val_dataset_group is not None:
@@ -385,13 +385,11 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     # acceleratorがなんかよろしくやってくれるらしい / accelerator will do something good
     if cfg.performance.deepspeed:
         flags = strategies.get_text_encoders_train_flags(cfg, text_encoders)
-        ds_model = deepspeed_utils.prepare_deepspeed_model(
-            cfg.training,
-            unet=unet if train_unet else None,
-            text_encoder1=text_encoders[0] if flags[0] else None,
-            text_encoder2=(text_encoders[1] if flags[1] else None) if len(text_encoders) > 1 else None,
-            adapter=adapter,
-        )
+        ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, unet=unet if train_unet else None,
+                                                           text_encoder1=text_encoders[0] if flags[0] else None,
+                                                           text_encoder2=(
+                                                               text_encoders[1] if flags[1] else None) if len(
+                                                               text_encoders) > 1 else None, adapter=adapter)
         ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
             ds_model, optimizer, train_dataloader, lr_scheduler
         )

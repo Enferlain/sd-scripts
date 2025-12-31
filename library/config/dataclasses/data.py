@@ -70,6 +70,13 @@ class CachingConfig:
 
 
 @dataclass
+class LoaderConfig:
+    """DataLoader settings."""
+    max_workers: int = field(default=8, metadata={"help": "max number of data loader workers (0 to disable multiprocessing)"})
+    persistent_workers: bool = field(default=False, metadata={"help": "keep data loader workers alive between epochs"})
+
+
+@dataclass
 class DataConfig:
     """Data configuration with organized subcategories."""
     source: SourceConfig = field(default_factory=SourceConfig)
@@ -77,3 +84,4 @@ class DataConfig:
     caption: CaptionConfig = field(default_factory=CaptionConfig)
     bucketing: BucketingConfig = field(default_factory=BucketingConfig)
     caching: CachingConfig = field(default_factory=CachingConfig)
+    loader: LoaderConfig = field(default_factory=LoaderConfig)

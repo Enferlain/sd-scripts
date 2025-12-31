@@ -134,7 +134,7 @@ def main(config: SDXLTextualInversionConfig):
     prepare_config(config)
     validate_config(config)
     trainer = SdxlTextualInversionTrainer()
-    trainer.train(config)
+    trainer.train(config)  # TODO: Expected type 'TextualInversionConfig', got 'SDXLTextualInversionConfig' instead
 
 
 if __name__ == "__main__":

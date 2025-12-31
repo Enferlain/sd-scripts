@@ -47,3 +47,7 @@ caching:
   cache_latents_to_disk: false
   vae_batch_size: 1
   skip_cache_check: false
+
+loader:
+  max_workers: 8
+  persistent_workers: false

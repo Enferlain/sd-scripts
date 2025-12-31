@@ -61,7 +61,6 @@ Scripts (contain training loops):     Library Modules:
 
 - [ ] Config Validation Edge Cases: Test `prepare_config()` and `validate_config()` for dataset conflicts
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
-- [x] ~~**`sd_textual_inversion.py` Config Migration**~~ - Completed: uses `cfg.*` pattern, `model_type` handling done via strategy
 
 ### Completed
 
@@ -72,6 +71,7 @@ Scripts (contain training loops):     Library Modules:
 - **Train Text Encoder Options**: Consolidated via `optimizer.learning_rates` usage (implicit vs explicit)
 - **Schema 1 Refactor**: Unified configuration schema for PEFT/Fine-tuning scripts
 - **Data Config Restructuring**: Merged `DatasetConfig` + `BucketsConfig` into `DataConfig` with 5 nested sub-configs (source, preprocessing, caption, bucketing, caching)
+- **`sd_textual_inversion.py` Config Migration** - Completed: uses `cfg.*` pattern, `model_type` handling done via strategy
 
 ---
 
@@ -93,7 +93,7 @@ Scripts (contain training loops):     Library Modules:
     - Pass `LoggingConfig` if only logging fields needed (not full `OutputConfig`)
     - Different params can be at different depths (e.g., `precision_config, saving_config`)
 - [x] ~~Apply config pattern to `sd_textual_inversion.py`~~ (completed)
-- [ ] get rid of lazy imports, move to top for transparency
+- [x] get rid of lazy imports, move to top for transparency
 - [x] ~~**PEFT Strategy Deduplication**~~: 4 methods moved to `peft_strategy_base.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`)
 - [ ] **PEFT Strategy Internal Dedup**: `process_batch` and `process_val_batch` share ~45 lines of identical latent/text encoding setup - extract to helper method
 
@@ -101,8 +101,16 @@ Scripts (contain training loops):     Library Modules:
 
 ## Testability Improvements
 
-- **Split `prepare_accelerator`** - Separate config computation from side effects
-- **Explicit step 0 validation** - Clarify `calculate_val_loss_check` behavior at step 0
+- [ ] **Split `prepare_accelerator`** - Separate config computation from side effects
+
+  - Currently mixes pure computation (logging_dir, log_with, plugins) with side effects (`os.makedirs`, `os.environ["WANDB_DIR"]`, `wandb.login`)
+  - Suggested: Split into `compute_accelerator_config() -> AcceleratorConfig` (pure) and `prepare_accelerator(config)` (side effects)
+  - Benefits: Easier to test config logic without network calls or filesystem changes
+
+- [ ] **Explicit step 0 validation** - Clarify `calculate_val_loss_check` behavior at step 0
+  - Current logic: `if global_step != 0 and ...` skips the check at step 0, implicitly returning `True`
+  - This means validation always runs at step 0, but it's easy to miss in the code
+  - Suggested: Add explicit early return `if global_step == 0: return True` with comment, or add `validate_at_start` config flag
 
 ---
 
@@ -116,12 +124,7 @@ Scripts (contain training loops):     Library Modules:
 
 ## Future Ideas
 
-- [x] ~~Library reorganization based on cleaner categories~~ (completed 2025-12-30: deleted `peft_common.py`, split `common_utils.py`)
-- May extend to functions across scattered files
-- **BLAKE3 Model Hashing**: Add optional fast model hashing using BLAKE3 (compatible with CivitAI AutoV3). Currently SHA256 is disabled due to ~1min overhead for 6GB models. BLAKE3 offers 4-8x speed improvement and multi-threading.
-  - Add optional `blake3` dependency
-  - Config option `metadata_hash_algorithm: "none" | "blake3" | "sha256"`
-  - Compute hash after saving (stream from disk, no serialization overhead)
+-
 
 ---
 

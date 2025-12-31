@@ -152,7 +152,7 @@ def train(cfg: SDXLFineTuneConfig):
 
     current_epoch = Value("i", 0)
     current_step = Value("i", 0)
-    ds_for_collator = train_dataset_group if cfg.training.max_data_loader_n_workers == 0 else None
+    ds_for_collator = train_dataset_group if cfg.data.loader.max_workers == 0 else None
     collator = collator_class(current_epoch, current_step, ds_for_collator)
 
     train_dataset_group.verify_bucket_reso_steps(32)
@@ -184,7 +184,7 @@ def train(cfg: SDXLFineTuneConfig):
         cfg.performance.deepspeed,
     )
 
-    weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.output.saving)
+    weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
     vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
 
     (
@@ -262,7 +262,7 @@ def train(cfg: SDXLFineTuneConfig):
 
     # Train text encoder if TE LR > 0 (based on LR-based training control)
     from library.optimizers.optimizer_utils import should_train_text_encoder
-    train_te_based_on_lr = should_train_text_encoder(cfg.optimizer)  # FIXME: Expected type 'LearningRatesConfig', got 'OptimizerConfig' instead
+    train_te_based_on_lr = should_train_text_encoder(cfg.optimizer.learning_rates)
     if train_te_based_on_lr:
         accelerator.print("enable text encoder training")
         if cfg.performance.memory.gradient_checkpointing:
@@ -307,7 +307,7 @@ def train(cfg: SDXLFineTuneConfig):
         if cfg.performance.caching.cache_text_encoder_outputs:
             text_encoder_output_caching_strategy = strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
                 cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, False, is_weighted=cfg.data.caption.weighted_captions
-            )
+            )  # TODO: Expected type 'int', got 'None' instead
             strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_output_caching_strategy)
 
             text_encoder1.to(accelerator.device)
@@ -337,10 +337,10 @@ def train(cfg: SDXLFineTuneConfig):
 
     if train_text_encoder1:
         training_models.append(text_encoder1)
-        params_to_optimize.append({"params": list(text_encoder1.parameters()), "lr": lr_te1})
+        params_to_optimize.append({"params": list(text_encoder1.parameters()), "lr": lr_te1})  # TODO: Local variable 'lr_te1' might be referenced before assignment
     if train_text_encoder2:
         training_models.append(text_encoder2)
-        params_to_optimize.append({"params": list(text_encoder2.parameters()), "lr": lr_te2})
+        params_to_optimize.append({"params": list(text_encoder2.parameters()), "lr": lr_te2})  # TODO: Local variable 'lr_te2' might be referenced before assignment
 
     n_params = 0
     for group in params_to_optimize:
@@ -392,14 +392,14 @@ def train(cfg: SDXLFineTuneConfig):
 
     train_dataset_group.set_current_strategies()
 
-    n_workers = min(cfg.training.max_data_loader_n_workers, os.cpu_count())
+    n_workers = min(cfg.data.loader.max_workers, os.cpu_count())
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset_group,
         batch_size=1,
         shuffle=True,
         collate_fn=collator,
         num_workers=n_workers,
-        persistent_workers=cfg.training.persistent_data_loader_workers,
+        persistent_workers=cfg.data.loader.persistent_workers,
     )
 
     if cfg.training.max_train_epochs is not None:
@@ -434,12 +434,9 @@ def train(cfg: SDXLFineTuneConfig):
         text_encoder1.text_model.final_layer_norm.requires_grad_(False)
 
     if cfg.performance.deepspeed:
-        ds_model = deepspeed_utils.prepare_deepspeed_model(
-            cfg.training,
-            unet=unet if train_unet else None,
-            text_encoder1=text_encoder1 if train_text_encoder1 else None,
-            text_encoder2=text_encoder2 if train_text_encoder2 else None,
-        )
+        ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, unet=unet if train_unet else None,
+                                                           text_encoder1=text_encoder1 if train_text_encoder1 else None,
+                                                           text_encoder2=text_encoder2 if train_text_encoder2 else None)
         ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
             ds_model, optimizer, train_dataloader, lr_scheduler
         )
@@ -548,10 +545,10 @@ def train(cfg: SDXLFineTuneConfig):
             init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
         if cfg.output.logging.log_tracker_config is not None:
             init_kwargs = cfg.output.logging.log_tracker_config
-        library.logging.step_logging.init_trackers(
+        library.logging.step_logging.init_trackers(  # TODO: Local variable 'library' might be referenced before assignment
             "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
-            init_kwargs=init_kwargs,
-        )
+            init_kwargs=init_kwargs,  # TODO: Unexpected argument
+        )  # TODO: Parameter 'logging_config' unfilled, Parameter 'default_tracker_name' unfilled
 
     sample_images(
         accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
@@ -596,7 +593,7 @@ def train(cfg: SDXLFineTuneConfig):
                     input_ids1, input_ids2 = batch["input_ids_list"]
                     with torch.set_grad_enabled(train_te_based_on_lr):
                         if cfg.data.caption.weighted_captions:
-                            input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
+                            input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])  #  TODO: Need more values to unpack
                             encoder_hidden_states1, encoder_hidden_states2, pool2 = (
                                 text_encoding_strategy.encode_tokens_with_weights(
                                     tokenize_strategy,
@@ -626,7 +623,7 @@ def train(cfg: SDXLFineTuneConfig):
                 vector_embedding = torch.cat([pool2, embs], dim=1).to(weight_dtype)
                 text_embedding = torch.cat([encoder_hidden_states1, encoder_hidden_states2], dim=2).to(weight_dtype)
 
-                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, noise_scheduler, latents, output_dtype=weight_dtype)
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, noise_scheduler, latents, output_dtype=weight_dtype)  # TODO: Parameter 'noise_scheduler' unfilled, Parameter 'latents' unfilled
 
                 with accelerator.autocast():
                     noise_pred = unet(noisy_latents, timesteps, text_embedding, vector_embedding)
@@ -654,7 +651,7 @@ def train(cfg: SDXLFineTuneConfig):
                     if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
                         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
                     if cfg.loss.snr.v_pred_like_loss:
-                        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)
+                        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)  # TODO: Expected type 'Tensor', got 'float' instead
                     if cfg.loss.snr.debiased_estimation_loss:
                         loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
 

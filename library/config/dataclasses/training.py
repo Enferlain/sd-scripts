@@ -8,13 +8,9 @@ class TrainingConfig:
     max_token_length: Optional[int] = None
     max_train_steps: int = 1600
     max_train_epochs: Optional[int] = None
-    max_data_loader_n_workers: int = 8
-    persistent_data_loader_workers: bool = False
     seed: Optional[int] = None
     gradient_accumulation_steps: int = 1
     clip_skip: Optional[int] = None
-    config_file: Optional[str] = None
-    output_config: bool = False
     dry_run: bool = field(default=False, metadata={"help": "Run a dry run of the training process"})
     initial_epoch: Optional[int] = field(default=None, metadata={"help": "initial epoch number"})
     initial_step: Optional[int] = field(default=None, metadata={"help": "initial step number including all epochs"})

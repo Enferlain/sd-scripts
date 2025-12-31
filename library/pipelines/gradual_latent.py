@@ -42,7 +42,7 @@ class GradualLatent:
     def apply_unshark_mask(self, x: torch.Tensor):
         if self.gaussian_blur_ksize is None:
             return x
-        blurred = transforms.functional.gaussian_blur(x, self.gaussian_blur_ksize, self.gaussian_blur_sigma)
+        blurred = transforms.functional.gaussian_blur(x, self.gaussian_blur_ksize, self.gaussian_blur_sigma)  # TODO: Cannot find reference 'functional' in '__init__.py'
         # mask = torch.sigmoid((x - blurred) * self.gaussian_blur_strength)
         mask = (x - blurred) * self.gaussian_blur_strength
         sharpened = x + mask
@@ -127,7 +127,7 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
 
         sigma = self.sigmas[self.step_index]
 
-        # 1. compute predicted original sample (x_0) from sigma-scaled predicted noise
+        # 1. compute predicted original sample (x_0) from sigma-scaled predicted noise TODO: Unresolved attribute reference 'prediction_type' for class 'dict'
         if self.config.prediction_type == "epsilon":
             pred_original_sample = sample - sigma * model_output
         elif self.config.prediction_type == "v_prediction":

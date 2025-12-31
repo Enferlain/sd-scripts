@@ -184,7 +184,7 @@ class PeftTrainingStrategy(
 
     def shift_scale_latents(self, cfg, latents: torch.FloatTensor) -> torch.FloatTensor:
         """Apply VAE scale factor to latents. Uses self.vae_latent_scale from child class."""
-        return latents * self.vae_latent_scale
+        return latents * self.vae_latent_scale  # TODO: Unresolved attribute reference 'vae_latent_scale' for class 'PeftTrainingStrategy'
 
     def post_process_loss(self, loss, cfg, timesteps: torch.IntTensor, noise_scheduler) -> torch.FloatTensor:
         """Apply SNR weighting, v-pred scaling, debiased estimation etc."""

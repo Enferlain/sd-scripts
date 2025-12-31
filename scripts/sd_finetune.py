@@ -84,7 +84,7 @@ def train(cfg: SDFineTuneConfig):
 
     current_epoch = Value("i", 0)
     current_step = Value("i", 0)
-    ds_for_collator = train_dataset_group if cfg.training.max_data_loader_n_workers == 0 else None
+    ds_for_collator = train_dataset_group if cfg.data.loader.max_workers == 0 else None
     collator = collator_class(current_epoch, current_step, ds_for_collator)
 
     train_dataset_group.verify_bucket_reso_steps(64)
@@ -109,7 +109,7 @@ def train(cfg: SDFineTuneConfig):
         cfg.performance.deepspeed,
     )
 
-    weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.output.saving)
+    weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
     vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
 
     text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(cfg.model, cfg.performance.memory, weight_dtype,
@@ -216,14 +216,14 @@ def train(cfg: SDFineTuneConfig):
 
     train_dataset_group.set_current_strategies()
 
-    n_workers = min(cfg.training.max_data_loader_n_workers, os.cpu_count())
+    n_workers = min(cfg.data.loader.max_workers, os.cpu_count())
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset_group,
         batch_size=1,
         shuffle=True,
         collate_fn=collator,
         num_workers=n_workers,
-        persistent_workers=cfg.training.persistent_data_loader_workers,
+        persistent_workers=cfg.data.loader.persistent_workers,
     )
 
     if cfg.training.max_train_epochs is not None:
@@ -236,7 +236,7 @@ def train(cfg: SDFineTuneConfig):
 
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
-    lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes)
+    lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes)  # TODO: Expected type 'Optimizer', got 'object' instead
 
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
@@ -245,9 +245,9 @@ def train(cfg: SDFineTuneConfig):
 
     if cfg.performance.deepspeed:
         if train_text_encoder:
-            ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.training, unet=unet, text_encoder=text_encoder)
+            ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, unet=unet, text_encoder=text_encoder)
         else:
-            ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.training, unet=unet)
+            ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, unet=unet)
         ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
             ds_model, optimizer, train_dataloader, lr_scheduler
         )
@@ -302,8 +302,8 @@ def train(cfg: SDFineTuneConfig):
             init_kwargs = cfg.output.logging.log_tracker_config
         library.logging.step_logging.init_trackers(
             "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
-            init_kwargs=init_kwargs,
-        )
+            init_kwargs=init_kwargs,  # TODO: Unexpected argument
+        )  # TODO Parameter 'logging_config' unfilled, Parameter 'default_tracker_name' unfilled
 
     sample_images(
         accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, 0, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet

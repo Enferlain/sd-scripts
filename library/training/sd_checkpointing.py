@@ -38,7 +38,7 @@ def save_sd_model_on_train_end(
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
         modelspec_metadata = model_metadata.get_model_metadata_from_config(
-            state_dict=None,
+            state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
             metadata_config=metadata_config,
             is_sdxl=False,
             is_v2=v2,
@@ -84,7 +84,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
 ):
     def sd_saver(ckpt_file, epoch_no, global_step):
         modelspec_metadata = model_metadata.get_model_metadata_from_config(
-            state_dict=None,
+            state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
             metadata_config=metadata_config,
             is_sdxl=False,
             is_v2=v2,

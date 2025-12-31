@@ -129,7 +129,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         """Return SDXL text encoder outputs caching strategy if enabled."""
         if cfg.performance.caching.cache_text_encoder_outputs:
             return strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, cfg.data.caching.skip_cache_check, is_weighted=cfg.data.caption.weighted_captions
+                cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, cfg.data.caching.skip_cache_check, is_weighted=cfg.data.caption.weighted_captions  # TODO: Expected type 'int', got 'None' instead
             )
         else:
             return None
@@ -159,8 +159,8 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
             if not cfg.performance.memory.lowram:
                 logger.info("move vae and unet back to original device")
-                vae.to(org_vae_device)
-                unet.to(org_unet_device)
+                vae.to(org_vae_device)  # TODO: Local variable 'org_vae_device' might be referenced before assignment
+                unet.to(org_unet_device)  # TODO: Local variable 'org_unet_device' might be referenced before assignment
         else:
             # Get text encoder outputs at each training step, so keep on GPU
             text_encoders[0].to(accelerator.device, dtype=weight_dtype)
@@ -210,7 +210,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
     def get_model_metadata(self, cfg) -> dict:
         """Get SAI model spec for SDXL."""
         return get_model_metadata_from_config(
-            state_dict=None,
+            state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
             metadata_config=cfg.output.metadata,
             is_sdxl=True,  # SDXL strategy is always SDXL
             is_v2=False,  # SDXL is not v2
@@ -337,7 +337,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             latents = self.shift_scale_latents(cfg, latents)
 
         # SDXL text conditioning - use cached outputs or encode on the fly
-        tokenizers = self.get_tokenizers(tokenize_strategy)
+        tokenizers = self.get_tokenizers(tokenize_strategy)  #  TODO: Expected type 'SdxlTokenizeStrategy', got 'TokenizeStrategy' instead
         text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, tokenizers, text_encoders, weight_dtype)
 
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
@@ -408,7 +408,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             latents = self.shift_scale_latents(cfg, latents)
 
             # SDXL text conditioning
-            tokenizers = self.get_tokenizers(tokenize_strategy)
+            tokenizers = self.get_tokenizers(tokenize_strategy)  # TODO: Expected type 'SdxlTokenizeStrategy', got 'TokenizeStrategy' instead
             text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, tokenizers, text_encoders, weight_dtype)
 
             batch_size = latents.shape[0]
@@ -422,7 +422,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
                 loss = loss.mean([1, 2, 3]).mean()
                 total_loss += loss
 
-        return total_loss / len(timesteps_list)
+        return total_loss / len(timesteps_list)  # TODO: Expected type 'Tensor', got 'float' instead
 
     def calculate_val_loss(
         self, global_step, epoch_step, train_dataloader, val_loss_recorder, val_dataloader,

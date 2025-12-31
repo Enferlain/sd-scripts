@@ -55,7 +55,7 @@ def prepare_datasets(cfg, strategies):
 
     current_epoch = Value("i", 0)
     current_step = Value("i", 0)
-    ds_for_collator = train_dataset_group if cfg.training.max_data_loader_n_workers == 0 else None
+    ds_for_collator = train_dataset_group if cfg.data.loader.max_workers == 0 else None
     collator = collator_class(current_epoch, current_step, ds_for_collator)
 
     if cfg.data.preprocessing.debug_dataset:

@@ -61,7 +61,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         # tokens: b,n,77
         b_size = tokens.size()[0]
         max_token_length = tokens.size()[1] * tokens.size()[2]
-        model_max_length = sd_tokenize_strategy.tokenizer.model_max_length
+        model_max_length = sd_tokenize_strategy.tokenizer.model_max_length  # TODO: Unresolved attribute reference 'tokenizer' for class 'TokenizeStrategy'
         tokens = tokens.reshape((-1, model_max_length))  # batch_size*3, 77
 
         tokens = tokens.to(text_encoder.device)
@@ -77,7 +77,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         encoder_hidden_states = encoder_hidden_states.reshape((b_size, -1, encoder_hidden_states.shape[-1]))
 
         if max_token_length != model_max_length:
-            v1 = sd_tokenize_strategy.tokenizer.pad_token_id == sd_tokenize_strategy.tokenizer.eos_token_id  # FIXME: Unresolved attribute reference 'tokenizer' for class 'TokenizeStrategy'
+            v1 = sd_tokenize_strategy.tokenizer.pad_token_id == sd_tokenize_strategy.tokenizer.eos_token_id  # TODO: Unresolved attribute reference 'tokenizer' for class 'TokenizeStrategy'
             if not v1:
                 # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
                 states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
@@ -85,7 +85,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
                     chunk = encoder_hidden_states[:, i: i + model_max_length - 2]  # <BOS> の後から 最後の前まで
                     if i > 0:
                         for j in range(len(chunk)):
-                            if tokens[j, 1] == sd_tokenize_strategy.tokenizer.eos_token:
+                            if tokens[j, 1] == sd_tokenize_strategy.tokenizer.eos_token:  # TODO: Unresolved attribute reference 'tokenizer' for class 'TokenizeStrategy'
                                 # 空、つまり <BOS> <EOS> <PAD> ...のパターン
                                 chunk[j, 0] = chunk[j, 1]  # 次の <PAD> の値をコピーする
                     states_list.append(chunk)  # <BOS> の後から <EOS> の前まで

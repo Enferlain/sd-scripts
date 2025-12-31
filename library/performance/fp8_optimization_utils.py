@@ -460,7 +460,7 @@ def apply_fp8_monkey_patch(model, optimized_state_dict, use_scaled_mm=False):
 
             # Create a new forward method with the patched version.
             def new_forward(self, x):
-                return fp8_linear_forward_patch(self, x, use_scaled_mm, max_value)
+                return fp8_linear_forward_patch(self, x, use_scaled_mm, max_value)  # TODO: Expected type 'float', got 'None' instead
 
             # Bind method to module
             module.forward = new_forward.__get__(module, type(module))

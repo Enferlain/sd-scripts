@@ -7,6 +7,7 @@ Tests the DeepSpeed configuration preparation and plugin creation functions.
 import pytest
 from unittest.mock import patch, MagicMock
 
+from library.config.dataclasses.data import LoaderConfig
 from library.config.dataclasses.performance import DeepSpeedConfig, PrecisionConfig
 from library.config.dataclasses.performance import PerformanceConfig
 from library.config.dataclasses.training import TrainingConfig
@@ -94,7 +95,15 @@ def training_config():
     return TrainingConfig(
         gradient_accumulation_steps=4,
         train_batch_size=2,
-        max_data_loader_n_workers=8,
+    )
+
+
+@pytest.fixture
+def loader_config():
+    """Basic LoaderConfig for testing."""
+    return LoaderConfig(
+        max_workers=8,
+        persistent_workers=False,
     )
 
 
@@ -105,30 +114,30 @@ def training_config():
 class TestPrepareDeepspeedConfig:
     """Tests for prepare_deepspeed_config function."""
     
-    def test_disabled_deepspeed_does_nothing(self, deepspeed_config_disabled, training_config):
-        """When deepspeed is disabled, training_config should not be modified."""
-        original_workers = training_config.max_data_loader_n_workers
-        
-        prepare_deepspeed_config(deepspeed_config_disabled, training_config)
+    def test_disabled_deepspeed_does_nothing(self, deepspeed_config_disabled, loader_config):
+        """When deepspeed is disabled, loader_config should not be modified."""
+        original_workers = loader_config.max_workers
+
+        prepare_deepspeed_config(deepspeed_config_disabled, loader_config)
         
         # Should remain unchanged
-        assert training_config.max_data_loader_n_workers == original_workers
+        assert loader_config.max_workers == original_workers
     
-    def test_enabled_deepspeed_sets_workers_to_one(self, deepspeed_config_enabled, training_config):
-        """When deepspeed is enabled, max_data_loader_n_workers should be set to 1."""
-        assert training_config.max_data_loader_n_workers == 8  # Initial value
+    def test_enabled_deepspeed_sets_workers_to_one(self, deepspeed_config_enabled, loader_config):
+        """When deepspeed is enabled, max_workers should be set to 1."""
+        assert loader_config.max_workers == 8  # Initial value
+
+        prepare_deepspeed_config(deepspeed_config_enabled, loader_config)
         
-        prepare_deepspeed_config(deepspeed_config_enabled, training_config)
-        
-        assert training_config.max_data_loader_n_workers == 1
+        assert loader_config.max_workers == 1
     
-    def test_enabled_deepspeed_no_training_config(self, deepspeed_config_enabled):
-        """When training_config is None, should not raise error."""
+    def test_enabled_deepspeed_no_loader_config(self, deepspeed_config_enabled):
+        """When loader_config is None, should not raise error."""
         # Should not raise
         prepare_deepspeed_config(deepspeed_config_enabled, None)
     
-    def test_disabled_deepspeed_no_training_config(self, deepspeed_config_disabled):
-        """When both disabled and no training_config, should not raise error."""
+    def test_disabled_deepspeed_no_loader_config(self, deepspeed_config_disabled):
+        """When both disabled and no loader_config, should not raise error."""
         # Should not raise
         prepare_deepspeed_config(deepspeed_config_disabled, None)
 

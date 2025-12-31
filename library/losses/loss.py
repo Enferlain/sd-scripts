@@ -404,7 +404,7 @@ def conditional_loss(
         huber_c: Optional[torch.Tensor] = None,
         eps: float = None,
         scale: float = 1.0,
-):
+):  # TODO: Expected type 'float', got 'Tensor | None' instead  on a bunch
     if eps is None or eps <= 0.0:
         eps = torch.finfo(torch.float32).tiny
 

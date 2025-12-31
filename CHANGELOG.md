@@ -39,10 +39,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `sha256` recommended for compatibility with A1111/ComfyUI/ModelSpec
   - Added `calculate_hash(filename, algorithm)` function in `hash_utils.py`
 
+- **DataLoader Config Migration** (`data.loader`)
+
+  - Moved `max_data_loader_n_workers` → `data.loader.max_workers`
+  - Moved `persistent_data_loader_workers` → `data.loader.persistent_workers`
+  - Removed unused `config_file` and `output_config` from `TrainingConfig`
+  - Updated `prepare_deepspeed_config()` to accept `LoaderConfig` instead of `TrainingConfig`
+
 - **ROADMAP Updates**
-  - Marked `sd_textual_inversion.py` config migration as complete
-  - Marked PEFT strategy deduplication as complete (4 methods moved to `peft_strategy_base.py`)
-  - Clarified per-model directory structure: `text_encoder_util.py` is SDXL-specific (should move to `sdxl/`), VAE is SD/SDXL shared but not generic for Flux (16-ch vs 4-ch)
+  - Added detailed explanations for `prepare_accelerator` split and `calculate_val_loss_check` TODOs
+  - Marked lazy imports cleanup as complete
 
 ## [2025-12-30]
 

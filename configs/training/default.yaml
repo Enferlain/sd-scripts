@@ -1,15 +1,11 @@
 # Training configuration
-train_batch_size: 1  # Data?
+train_batch_size: 1
 max_token_length: null
 max_train_steps: 1600
 max_train_epochs: null
-max_data_loader_n_workers: 8  # Performance?
-persistent_data_loader_workers: false  # Performance?
 seed: null
-gradient_accumulation_steps: 1  # Performance?
+gradient_accumulation_steps: 1
 clip_skip: null
-config_file: null  # Output?
-output_config: false  # Output?
 dry_run: false
 initial_epoch: null
 initial_step: null

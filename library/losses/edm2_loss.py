@@ -161,10 +161,10 @@ class AdaptiveLossWeightMLP(nn.Module):
 
 def create_weight_MLP(noise_scheduler: DDPMScheduler,
                       logvar_channels: int = 128,
-                      lambda_weights: torch.tensor = None,
+                      lambda_weights: torch.tensor = None,  # TODO: Type hint is invalid or refers to the expression which is not a correct type
                       optimizer: torch.optim.Optimizer = torch.optim.AdamW,
                       lr: float = 2e-2,
-                      optimizer_args: dict = {'weight_decay': 0, 'betas': (0.9, 0.99)},
+                      optimizer_args: dict = {'weight_decay': 0, 'betas': (0.9, 0.99)},  # TODO: Default argument value is mutable
                       dtype=torch.float32,
                       device='cuda',
                       use_importance_weights: bool = True,
@@ -176,5 +176,5 @@ def create_weight_MLP(noise_scheduler: DDPMScheduler,
                                           importance_weights_max_weight=importance_weights_max_weight,
                                           importance_weights_min_snr_gamma=importance_weights_min_snr_gamma,
                                           use_importance_weights=use_importance_weights)
-    MLP_optim = optimizer(lossweightMLP.parameters(), lr=lr, **optimizer_args)
+    MLP_optim = optimizer(lossweightMLP.parameters(), lr=lr, **optimizer_args)  # TODO: 'Optimizer' object is not callable
     return lossweightMLP, MLP_optim

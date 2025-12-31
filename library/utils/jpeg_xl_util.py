@@ -120,7 +120,7 @@ def decode_codestream(file, offset: int = 0, offsets: List[List[int]] = None) ->
     else:
         match ratio:
             case 1:
-                width = height
+                width = height  # TODO: Local variable 'height' might be referenced before assignment
             case 2:
                 width = (height * 12) // 10
             case 3:
@@ -133,7 +133,7 @@ def decode_codestream(file, offset: int = 0, offsets: List[List[int]] = None) ->
                 width = (height * 5) // 4
             case 7:
                 width = (height * 2) // 1
-    return width, height
+    return width, height  # TODO: Local variable 'width' might be referenced before assignment
 
 
 def decode_container(file) -> Tuple[int, int]:

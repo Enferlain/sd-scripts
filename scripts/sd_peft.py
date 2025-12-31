@@ -100,7 +100,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     training_started_at = time.time()
 
     set_torch_cuda_reduced_precision(cfg.performance.precision)
-    deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed, cfg.training)
+    deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed, cfg.data.loader)
     setup_logging(cfg.output.logging, reset=True)
 
     cache_latents = cfg.data.caching.cache_latents
@@ -136,7 +136,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     is_main_process = accelerator.is_main_process
 
     # mixed precisionに対応した型を用意しておき適宜castする
-    weight_dtype, save_dtype = prepare_dtype(cfg.performance, cfg.output.saving)
+    weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
     vae_dtype = (torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype) if strategies.cast_vae(cfg) else None
 
     # load target models: unet may be None for lazy loading
@@ -301,7 +301,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         val_dataset_group.set_current_strategies()
 
     # DataLoaderのプロセス数：0 は persistent_workers が使えないので注意
-    n_workers = min(cfg.training.max_data_loader_n_workers, os.cpu_count())  # cpu_count or max_data_loader_n_workers
+    n_workers = min(cfg.data.loader.max_workers, os.cpu_count())  # cpu_count or max_data_loader_n_workers
 
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset_group,
@@ -309,7 +309,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         shuffle=True,
         collate_fn=collator,
         num_workers=n_workers,
-        persistent_workers=cfg.training.persistent_data_loader_workers,
+        persistent_workers=cfg.data.loader.persistent_workers,
     )
 
     val_dataloader = torch.utils.data.DataLoader(
@@ -318,7 +318,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         batch_size=1,
         collate_fn=collator,
         num_workers=n_workers,
-        persistent_workers=cfg.training.persistent_data_loader_workers,
+        persistent_workers=cfg.data.loader.persistent_workers,
     )
 
     if val_dataset_group is not None:
@@ -386,13 +386,11 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     # acceleratorがなんかよろしくやってくれるらしい / accelerator will do something good
     if cfg.performance.deepspeed:
         flags = strategies.get_text_encoders_train_flags(cfg, text_encoders)
-        ds_model = deepspeed_utils.prepare_deepspeed_model(
-            cfg.training,
-            unet=unet if train_unet else None,
-            text_encoder1=text_encoders[0] if flags[0] else None,
-            text_encoder2=(text_encoders[1] if flags[1] else None) if len(text_encoders) > 1 else None,
-            adapter=adapter,
-        )
+        ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, unet=unet if train_unet else None,
+                                                           text_encoder1=text_encoders[0] if flags[0] else None,
+                                                           text_encoder2=(
+                                                               text_encoders[1] if flags[1] else None) if len(
+                                                               text_encoders) > 1 else None, adapter=adapter)
         ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
             ds_model, optimizer, train_dataloader, lr_scheduler
         )
@@ -512,7 +510,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     noise_scheduler = strategies.get_noise_scheduler(cfg, accelerator.device)
 
     # --- Custom Timestep Sampler Initialization ---
-    strategies.la_sampler = init_timestep_sampler(cfg, noise_scheduler, accelerator)
+    strategies.la_sampler = init_timestep_sampler(cfg.timestep, noise_scheduler, accelerator)
 
     # --- LIVE PLOTTER & STATIC PLOT SETUP ---
     timestep_counts = None
@@ -649,7 +647,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         logger.info(f"text_encoder [{i}] dtype: {param_3rd.dtype}, device: {t_enc.device}")
 
     # --- Dynamic Timestep Schedule ---
-    dynamic_timestep_schedule, current_min_timestep, current_max_timestep = parse_dynamic_timestep_schedule(cfg,
+    dynamic_timestep_schedule, current_min_timestep, current_max_timestep = parse_dynamic_timestep_schedule(cfg.timestep,
                                                                                                             noise_scheduler,
                                                                                                             accelerator)
 
@@ -774,7 +772,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
                     optimizer_eval_fn()
                     strategies.sample_images(
                         accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
-                    )
+                    )  # TODO: Expected type 'int', got 'None' instead
 
                     if calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, train_dataloader):
                         current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(global_step, step,
@@ -846,7 +844,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
             if accelerator.sync_gradients:
                 loss_recorder.add(current_global_step_loss / accumulation_counter)
                 if cfg.loss.edm2.edm2_loss_weighting:
-                    loss_scaled_recorder.add(current_global_step_loss_scaled / accumulation_counter)
+                    loss_scaled_recorder.add(current_global_step_loss_scaled / accumulation_counter)  # TODO: Local variable 'loss_scaled_recorder' might be referenced before assignment
                 avr_loss: float = loss_recorder.average
                 logs = {"avr_loss": avr_loss}  # , "lr": lr_scheduler.get_last_lr()[0]}
                 progress_bar.set_postfix(**{**max_mean_logs, **logs})
@@ -858,7 +856,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
                         average_loss_scaled: float = loss_scaled_recorder.average
                     else:
                         current_global_step_loss_scaled = None
-                        average_loss_scaled = None
+                        average_loss_scaled = None  # TODO: Expected type 'float', got 'None' instead
 
                     logs = generate_step_logs(
                         cfg,

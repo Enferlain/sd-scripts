@@ -37,7 +37,7 @@ def set_padding_mode_for_vae_conv2d_modules(vae: torch.nn.Module, padding_mode: 
         if isinstance(module, torch.nn.Conv2d):
             pad = module.padding if isinstance(module.padding, tuple) else (module.padding, module.padding)
             if pad[0] > 0 or pad[1] > 0:
-                module.padding_mode = padding_mode
+                module.padding_mode = padding_mode  # TODO: Expected type 'Literal["zeros", "reflect", "replicate", "circular"]', got 'str' instead
 
 
 # NOTE: SD-specific load_target_model and _load_target_model moved to sd_model_prep.py
@@ -55,4 +55,3 @@ def patch_accelerator_for_fp16_training(accelerator):
         return org_unscale_grads(optimizer, inv_scale, found_inf, True)
 
     accelerator.scaler._unscale_grads_ = _unscale_grads_replacer
-

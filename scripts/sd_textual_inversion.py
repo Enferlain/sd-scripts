@@ -362,7 +362,7 @@ class TextualInversionTrainer:
         current_step = Value("i", 0)
         ds_for_collator = (
             train_dataset_group
-            if cfg.training.max_data_loader_n_workers == 0
+            if cfg.data.loader.max_workers == 0
             else None
         )
         collator = collator_class(current_epoch, current_step, ds_for_collator)
@@ -441,14 +441,14 @@ class TextualInversionTrainer:
 
         train_dataset_group.set_current_strategies()
 
-        n_workers = min(cfg.training.max_data_loader_n_workers, os.cpu_count())
+        n_workers = min(cfg.data.loader.max_workers, os.cpu_count())
         train_dataloader = torch.utils.data.DataLoader(
             train_dataset_group,
             batch_size=1,
             shuffle=True,
             collate_fn=collator,
             num_workers=n_workers,
-            persistent_workers=cfg.training.persistent_data_loader_workers,
+            persistent_workers=cfg.data.loader.persistent_workers,
         )
 
         if cfg.training.max_train_epochs is not None:
@@ -470,7 +470,7 @@ class TextualInversionTrainer:
             cfg.optimizer.scheduler,
             cfg.optimizer,
             cfg.training,
-            optimizer,
+            optimizer,  # TODO: Expected type 'Optimizer', got 'object' instead
             accelerator.num_processes,
         )
 
@@ -598,8 +598,8 @@ class TextualInversionTrainer:
                 init_kwargs = cfg.output.logging.log_tracker_config
             library.logging.step_logging.init_trackers(
                 "textual_inversion" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
-                init_kwargs=init_kwargs,
-            )
+                init_kwargs=init_kwargs,  # TODO: Unexpected argument
+            )  # TODO Parameter 'logging_config' unfilled, Parameter 'default_tracker_name' unfilled
 
         def save_model(ckpt_name, embs_list, steps, epoch_no, force_sync_upload=False):
             os.makedirs(cfg.output.saving.output_dir, exist_ok=True)
@@ -608,7 +608,7 @@ class TextualInversionTrainer:
             accelerator.print(f"\nsaving checkpoint: {ckpt_file}")
 
             modelspec_metadata = model_metadata.get_model_metadata_from_config(
-                state_dict=None,
+                state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
                 metadata_config=cfg.output.metadata,
                 is_sdxl=self.is_sdxl,
                 is_v2=cfg.model.model_type == "sd2",
@@ -759,7 +759,7 @@ class TextualInversionTrainer:
                             loss,
                             timesteps,
                             noise_scheduler,
-                            cfg.loss.snr.v_pred_like_loss,
+                            cfg.loss.snr.v_pred_like_loss,  # TODO: Expected type 'Tensor', got 'float' instead
                         )
                     if cfg.loss.snr.debiased_estimation_loss:
                         loss = apply_debiased_estimation(
@@ -777,7 +777,7 @@ class TextualInversionTrainer:
                             and cfg.optimizer.max_grad_norm != 0.0
                     ):
                         params_to_clip = (
-                            accelerator.unwrap_model(text_encoder)
+                            accelerator.unwrap_model(text_encoder)  # TODO: Local variable 'text_encoder' might be referenced before assignment
                             .get_input_embeddings()
                             .parameters()
                         )
@@ -941,7 +941,7 @@ class TextualInversionTrainer:
             text_encoder = accelerator.unwrap_model(text_encoder)
             updated_embs = (
                 text_encoder.get_input_embeddings()
-                .weight[token_ids]
+                .weight[token_ids]  # TODO: Local variable 'token_ids' might be referenced before assignment
                 .data.detach()
                 .clone()
             )
@@ -957,7 +957,7 @@ class TextualInversionTrainer:
             ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as)
             save_model(
                 ckpt_name,
-                updated_embs_list,
+                updated_embs_list,  # TODO: Local variable 'updated_embs_list' might be referenced before assignment
                 global_step,
                 num_train_epochs,
                 force_sync_upload=True,

@@ -83,7 +83,7 @@ def init_timestep_sampler(timestep_config: TimestepConfig, noise_scheduler, acce
             min_prob=tc.min_prob,
             warmup_steps=tc.warmup_steps,
             prior_bias=tc.prior_bias,
-            entropy_floor=tc.entropy_floor,
+            entropy_floor=tc.entropy_floor,  # TODO: Unexpected argument
         )
         timestep_config.timestep_sampling = "mix_adaptive"
         
@@ -96,7 +96,7 @@ def init_timestep_sampler(timestep_config: TimestepConfig, noise_scheduler, acce
             ema_beta=gc.ema_beta,
             temperature=gc.temperature,
             min_prob=gc.min_prob,
-            entropy_floor=gc.entropy_floor,
+            entropy_floor=gc.entropy_floor,  # TODO: Unexpected argument
             prior_mu=gc.prior_mu,
             prior_sigma=gc.prior_sigma,
             prior_weight=gc.prior_weight,
@@ -113,7 +113,7 @@ def init_timestep_sampler(timestep_config: TimestepConfig, noise_scheduler, acce
             ema_beta=sc.ema_beta,
             temperature=sc.temperature,
             min_prob=sc.min_prob,
-            entropy_floor=sc.entropy_floor,
+            entropy_floor=sc.entropy_floor,  # TODO: Unexpected argument
             center_mu=sc.center_mu,
             half_width=sc.half_width,
             widen_to=sc.widen_to,

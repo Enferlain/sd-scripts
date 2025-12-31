@@ -31,7 +31,7 @@ class SdxlTokenizeStrategy(TokenizeStrategy):
         return (
             torch.stack([self._get_input_ids(self.tokenizer1, t, self.max_length) for t in text], dim=0),
             torch.stack([self._get_input_ids(self.tokenizer2, t, self.max_length) for t in text], dim=0),
-        )
+        )  # TODO: Expected type 'list[Tensor]', got 'tuple[Tensor, Tensor]' instead
 
     def tokenize_with_weights(self, text: str | List[str]) -> Tuple[List[torch.Tensor]]:
         text = [text] if isinstance(text, str) else text
@@ -47,7 +47,7 @@ class SdxlTokenizeStrategy(TokenizeStrategy):
         return [torch.stack(tokens1_list, dim=0), torch.stack(tokens2_list, dim=0)], [
             torch.stack(weights1_list, dim=0),
             torch.stack(weights2_list, dim=0),
-        ]
+        ]  # TODO: Expected type 'tuple[list[Tensor]]', got 'tuple[list[Tensor], list[Tensor]]' instead
 
 
 class SdxlTextEncodingStrategy(TextEncodingStrategy):
@@ -121,8 +121,8 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
         else:
             text_encoder1, text_encoder2, unwrapped_text_encoder2 = models
         tokens1, tokens2 = tokens
-        sdxl_tokenize_strategy = tokenize_strategy  # type: SdxlTokenizeStrategy
-        tokenizer1, tokenizer2 = sdxl_tokenize_strategy.tokenizer1, sdxl_tokenize_strategy.tokenizer2
+        sdxl_tokenize_strategy = tokenize_strategy
+        tokenizer1, tokenizer2 = sdxl_tokenize_strategy.tokenizer1, sdxl_tokenize_strategy.tokenizer2  # TODO: Unresolved attribute reference 'tokenizer1'/'tokenizer2' for class 'TokenizeStrategy'
 
         hidden_states1, hidden_states2, pool2 = self._get_hidden_states_sdxl(
             tokens1, tokens2, tokenizer1, tokenizer2, text_encoder1, text_encoder2, unwrapped_text_encoder2

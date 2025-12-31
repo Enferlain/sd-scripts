@@ -43,7 +43,7 @@ def save_timestep_distribution_plot(cfg, global_step, timestep_counts, settings_
         plt.figtext(0.01, 0.01, settings_text, wrap=True, horizontalalignment='left', fontsize=8,
                     bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.1))
 
-    plt.tight_layout(rect=[0, 0.1, 1, 1])
+    plt.tight_layout(rect=[0, 0.1, 1, 1])  # TODO: Expected type 'tuple[float, float, float, float] | None', got 'list[int | float]' instead
     filename = os.path.join(output_dir, f"step_{global_step:06d}.png")
     plt.savefig(filename)
     plt.close()

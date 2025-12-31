@@ -141,7 +141,7 @@ class Offloader:
             self.swap_weight_devices(block_to_cpu, block_to_cuda)
 
             if self.debug:
-                print(f"Moved blocks {bidx_to_cpu} and {bidx_to_cuda} in {time.perf_counter() - start_time:.2f}s")
+                print(f"Moved blocks {bidx_to_cpu} and {bidx_to_cuda} in {time.perf_counter() - start_time:.2f}s")  # TODO: Local variable 'start_time' might be referenced before assignment
             return bidx_to_cpu, bidx_to_cuda  # , event
 
         block_to_cpu = blocks[block_idx_to_cpu]
@@ -165,7 +165,7 @@ class Offloader:
         assert block_idx == bidx_to_cuda, f"Block index mismatch: {block_idx} != {bidx_to_cuda}"
 
         if self.debug:
-            print(f"Waited for block {block_idx}: {time.perf_counter() - start_time:.2f}s")
+            print(f"Waited for block {block_idx}: {time.perf_counter() - start_time:.2f}s")  # TODO: Local variable 'start_time' might be referenced before assignment
 
 
 # Gradient tensors

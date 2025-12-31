@@ -294,7 +294,12 @@ training:
 
 **Removed** (meta/internal):
 
-- `config_file`, `output_config`, `max_data_loader_n_workers`, `persistent_data_loader_workers`
+- `config_file`, `output_config`
+
+**Moved to `data.loader`**:
+
+- `max_data_loader_n_workers` → `data.loader.max_workers`
+- `persistent_data_loader_workers` → `data.loader.persistent_workers`
 
 ---
 

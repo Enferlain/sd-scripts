@@ -79,7 +79,7 @@ def prepare_accelerator(
     # torch.compile options
     if compilation_config.torch_compile:
         dynamo_plugin = TorchDynamoPlugin(
-            backend="inductor",
+            backend="inductor",  # TODO: Expected type 'DynamoBackend', got 'str' instead
             mode="default",
             fullgraph=False,
             dynamic=True,

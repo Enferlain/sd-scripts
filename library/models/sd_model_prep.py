@@ -117,4 +117,4 @@ def load_target_model(model_config: ModelConfig, memory_config: MemoryConfig, we
 
             clean_memory_on_device(accelerator.device)
         accelerator.wait_for_everyone()
-    return text_encoder, vae, unet, load_stable_diffusion_format
+    return text_encoder, vae, unet, load_stable_diffusion_format  # TODO: Local variables might be referenced before assignment
