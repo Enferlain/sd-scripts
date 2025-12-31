@@ -8,11 +8,11 @@ from transformers import Adafactor
 # The implementation was provided by 2kpr. Thank you very much!
 def copy_stochastic_(target: torch.Tensor, source: torch.Tensor):
     """
-    copies source into target using stochastic rounding
+    Copies source into target using stochastic rounding.
 
     Args:
-        target: the target tensor with dtype=bfloat16
-        source: the target tensor with dtype=float32
+        target (torch.Tensor): The target tensor with dtype=bfloat16.
+        source (torch.Tensor): The source tensor with dtype=float32.
     """
     # create a random 16 bit integer
     result = torch.randint_like(source, dtype=torch.int32, low=0, high=(1 << 16))
@@ -31,6 +31,14 @@ def copy_stochastic_(target: torch.Tensor, source: torch.Tensor):
 
 @torch.no_grad()
 def adafactor_step_param(self, p, group):
+    """
+    Performs a single optimization step for a specific parameter.
+
+    Args:
+        self: The optimizer instance.
+        p (torch.Tensor): The parameter to update.
+        group (dict): The parameter group containing the parameter.
+    """
     if p.grad is None:
         return
     grad = p.grad
@@ -117,11 +125,14 @@ def adafactor_step_param(self, p, group):
 @torch.no_grad()
 def adafactor_step(self, closure=None):
     """
-    Performs a single optimization step
+    Performs a single optimization step.
 
-    Arguments:
+    Args:
         closure (callable, optional): A closure that reevaluates the model
             and returns the loss.
+
+    Returns:
+        float: The loss if closure is provided, otherwise None.
     """
     loss = None
     if closure is not None:
@@ -135,5 +146,14 @@ def adafactor_step(self, closure=None):
 
 
 def patch_adafactor_fused(optimizer: Adafactor):
+    """
+    Patches an Adafactor optimizer instance to use the fused step functions.
+
+    This replaces the `step` and `step_param` methods of the optimizer with
+    the custom implementations `adafactor_step` and `adafactor_step_param`.
+
+    Args:
+        optimizer (Adafactor): The Adafactor optimizer instance to patch.
+    """
     optimizer.step_param = adafactor_step_param.__get__(optimizer)
     optimizer.step = adafactor_step.__get__(optimizer)
