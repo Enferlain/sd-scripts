@@ -24,6 +24,24 @@ logger = logging.getLogger(__name__)
 
 
 def prepare_optimizer(args, network):
+    """
+    Prepares the optimizer for training.
+
+    Args:
+        args (argparse.Namespace): The arguments for the training script.
+        network (Any): The network model to be trained.
+
+    Returns:
+        Tuple[str, str, object, Callable, Callable, Optional[str], Optional[float]]:
+            A tuple containing:
+            - optimizer_name (str): The name of the optimizer class.
+            - optimizer_args (str): The arguments passed to the optimizer.
+            - optimizer (object): The optimizer instance.
+            - optimizer_train_fn (Callable): The function to switch the optimizer to train mode.
+            - optimizer_eval_fn (Callable): The function to switch the optimizer to eval mode.
+            - lr_descriptions (Optional[str]): Descriptions of learning rates for different parameter groups.
+            - text_encoder_lr (Optional[float]): The learning rate for the text encoder.
+    """
     if isinstance(args.orthograd_targets, str):
         orthograd_targets = ast.literal_eval(args.orthograd_targets)
     else:
@@ -138,6 +156,24 @@ def prepare_optimizer(args, network):
 
 
 def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[str, str, object]:
+    """
+    Creates and returns the optimizer based on the provided arguments.
+
+    Args:
+        args (argparse.Namespace): The arguments for the training script.
+        trainable_params (Any): The parameters to be optimized.
+        optimizer_kwargs (Dict, optional): Additional keyword arguments for the optimizer. Defaults to {}.
+
+    Returns:
+        tuple[str, str, object]: A tuple containing:
+            - optimizer_name (str): The name of the optimizer class.
+            - optimizer_args (str): The arguments passed to the optimizer as a string.
+            - optimizer (object): The optimizer instance.
+
+    Raises:
+        ValueError: If an unknown optimizer type is specified.
+        ImportError: If a required library for a specific optimizer is not installed.
+    """
     # "Optimizer to use: AdamW, AdamW8bit, Lion, SGDNesterov, SGDNesterov8bit, PagedAdamW, PagedAdamW8bit, PagedAdamW32bit, Lion8bit, PagedLion8bit, AdEMAMix8bit, PagedAdEMAMix8bit, DAdaptation(DAdaptAdamPreprint), DAdaptAdaGrad, DAdaptAdam, DAdaptAdan, DAdaptAdanIP, DAdaptLion, DAdaptSGD, Adafactor"
 
     optimizer_type = args.optimizer_type
@@ -556,6 +592,16 @@ def get_optimizer(args, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[
 
 
 def get_optimizer_train_eval_fn(optimizer: Optimizer, args: argparse.Namespace) -> Tuple[Callable, Callable]:
+    """
+    Returns the train and eval functions for the optimizer.
+
+    Args:
+        optimizer (Optimizer): The optimizer instance.
+        args (argparse.Namespace): The arguments for the training script.
+
+    Returns:
+        Tuple[Callable, Callable]: A tuple containing the train and eval functions.
+    """
     if not is_schedulefree_optimizer(optimizer, args) or getattr(args, "fused_optimizer_groups", False):
         # return dummy func
         return lambda: None, lambda: None
@@ -568,15 +614,45 @@ def get_optimizer_train_eval_fn(optimizer: Optimizer, args: argparse.Namespace) 
 
 
 def is_schedulefree_optimizer(optimizer: Optimizer, args: argparse.Namespace) -> bool:
+    """
+    Checks if the optimizer is a schedule-free optimizer.
+
+    Args:
+        optimizer (Optimizer): The optimizer instance.
+        args (argparse.Namespace): The arguments for the training script.
+
+    Returns:
+        bool: True if the optimizer is schedule-free, False otherwise.
+    """
     return args.optimizer_type.lower().endswith("schedulefree".lower()) or args.optimizer_type.lower().endswith(
         "schedulefreewrapper".lower())
 
 
 def is_wrapper_optimizer(args: argparse.Namespace) -> bool:
+    """
+    Checks if the optimizer is a wrapper optimizer.
+
+    Args:
+        args (argparse.Namespace): The arguments for the training script.
+
+    Returns:
+        bool: True if the optimizer is a wrapper optimizer, False otherwise.
+    """
     return args.optimizer_type.lower().endswith("schedulefreewrapper".lower()) or args.optimizer_type.lower().endswith("snoo_asgd".lower())
 
 
 def get_dummy_scheduler(optimizer: Optimizer) -> Any:
+    """
+    Returns a dummy scheduler for schedule-free optimizers.
+
+    This scheduler is used for logging only and supports empty step() and get_last_lr() methods.
+
+    Args:
+        optimizer (Optimizer): The optimizer instance.
+
+    Returns:
+        Any: A dummy scheduler instance.
+    """
     # dummy scheduler for schedulefree optimizer. supports only empty step(), get_last_lr() and optimizers.
     # this scheduler is used for logging only.
     # this isn't be wrapped by accelerator because of this class is not a subclass of torch.optim.lr_scheduler._LRScheduler
@@ -594,6 +670,15 @@ def get_dummy_scheduler(optimizer: Optimizer) -> Any:
 
 
 def parse_string_to_type(s):
+    """
+    Parses a string to an integer or float if possible.
+
+    Args:
+        s (Any): The string (or value) to parse.
+
+    Returns:
+        Any: The parsed value as int or float, or the original value if parsing fails or input is None.
+    """
     if s is not None:
         if isinstance(s, float) or isinstance(s, int):
             return s
@@ -614,6 +699,17 @@ def parse_string_to_type(s):
 def get_scheduler_fix(args, optimizer: Optimizer, num_processes: int):
     """
     Unified API to get any scheduler from its name.
+
+    Args:
+        args (argparse.Namespace): The arguments for the training script.
+        optimizer (Optimizer): The optimizer to schedule.
+        num_processes (int): The number of processes being used for training.
+
+    Returns:
+        Any: The learning rate scheduler.
+
+    Raises:
+        ValueError: If a required argument for a specific scheduler is missing.
     """
     # if schedulefree optimizer, return dummy scheduler
     if args.optimizer_type.lower().split(".")[0] not in {"LoraEasyCustomOptimizer".lower(),

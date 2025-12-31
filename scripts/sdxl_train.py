@@ -33,7 +33,7 @@ from library.training.sdxl_model_prep import load_target_model
 from library.training.sdxl_sample_generation import sample_images
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
-from library.training.optimizer import get_optimizer, get_scheduler_fix
+from library.optimizers.setup import get_optimizer, get_scheduler_fix
 from library.training.trainer_utils import append_lr_to_logs_with_names, prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 

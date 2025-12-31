@@ -39,7 +39,7 @@ from library.utils.torch_utils import set_torch_cuda_reduced_precision, args_set
 from library.data.prompt_utils import add_prompt_parsing_arguments
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
-from library.training.optimizer import prepare_optimizer, get_scheduler_fix
+from library.optimizers.setup import prepare_optimizer, get_scheduler_fix
 from library.training.sample_generation import sample_images, sample_images_check
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
 

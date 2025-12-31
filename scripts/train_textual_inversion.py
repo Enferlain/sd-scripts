@@ -27,7 +27,7 @@ from library.data.prompt_utils import add_prompt_parsing_arguments
 from library.training.model_prep import load_target_model, replace_unet_modules, patch_accelerator_for_fp16_training
 from library.training.trainer_utils import prepare_accelerator
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.training.optimizer import get_optimizer, get_scheduler_fix
+from library.optimizers.setup import get_optimizer, get_scheduler_fix
 from library.training.sample_generation import sample_images
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 

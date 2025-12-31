@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 plt.ioff()  # Explicitly turn off interactive mode
 
 from library.utils.common_utils import setup_logging
-from library.training.optimizer import get_dummy_scheduler
+from library.optimizers.setup import get_dummy_scheduler
 from library.losses import edm2_loss
 
 setup_logging()
