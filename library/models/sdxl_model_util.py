@@ -39,6 +39,16 @@ def timestep_embedding(timesteps, dim, max_period=10000):
 
 
 def get_timestep_embedding(x, outdim):
+    """
+    Computes timestep embeddings for a given input tensor.
+
+    Args:
+        x (torch.Tensor): Input tensor of shape (batch_size, dims).
+        outdim (int): The dimension of the output embeddings.
+
+    Returns:
+        torch.Tensor: The computed timestep embeddings of shape (batch_size, dims * outdim).
+    """
     assert len(x.shape) == 2
     b, dims = x.shape[0], x.shape[1]
     x = torch.flatten(x)
@@ -48,6 +58,18 @@ def get_timestep_embedding(x, outdim):
 
 
 def get_size_embeddings(orig_size, crop_size, target_size, device):
+    """
+    Computes size embeddings for original size, crop size, and target size.
+
+    Args:
+        orig_size (torch.Tensor): Tensor representing the original size.
+        crop_size (torch.Tensor): Tensor representing the crop size.
+        target_size (torch.Tensor): Tensor representing the target size.
+        device (torch.device): The device to place the embeddings on.
+
+    Returns:
+        torch.Tensor: The concatenated size embeddings.
+    """
     emb1 = get_timestep_embedding(orig_size, 256)
     emb2 = get_timestep_embedding(crop_size, 256)
     emb3 = get_timestep_embedding(target_size, 256)
@@ -56,6 +78,16 @@ def get_size_embeddings(orig_size, crop_size, target_size, device):
 
 
 def convert_sdxl_text_encoder_2_checkpoint(checkpoint, max_length):
+    """
+    Converts the SDXL Text Encoder 2 checkpoint to a format suitable for Diffusers.
+
+    Args:
+        checkpoint (dict): The source checkpoint dictionary.
+        max_length (int): The maximum sequence length (unused in function body).
+
+    Returns:
+        tuple: A tuple containing the converted state dictionary and the logit scale.
+    """
     # SD2のと、基本的には同じ。logit_scaleを後で使うので、それを追加で返す
     # logit_scaleはcheckpointの保存時に使用する
     def convert_key(key):
@@ -130,6 +162,21 @@ def convert_sdxl_text_encoder_2_checkpoint(checkpoint, max_length):
 
 # load state_dict without allocating new tensors
 def _load_state_dict_on_device(model, state_dict, device, dtype=None):
+    """
+    Loads a state dictionary into a model on a specific device without allocating new tensors.
+
+    Args:
+        model (torch.nn.Module): The model to load the state dictionary into.
+        state_dict (dict): The state dictionary to load.
+        device (torch.device): The device to load the tensors onto.
+        dtype (torch.dtype, optional): The data type to cast the tensors to.
+
+    Returns:
+        str: A message indicating the result of the loading process.
+
+    Raises:
+        RuntimeError: If there are missing or unexpected keys in the state dictionary.
+    """
     # dtype will use fp32 as default
     missing_keys = list(model.state_dict().keys() - state_dict.keys())
     unexpected_keys = list(state_dict.keys() - model.state_dict().keys())
@@ -154,6 +201,19 @@ def _load_state_dict_on_device(model, state_dict, device, dtype=None):
 
 
 def load_models_from_sdxl_checkpoint(model_version, ckpt_path, map_location, dtype=None, disable_mmap=False):
+    """
+    Loads SDXL models (Text Encoders, VAE, U-Net) from a checkpoint file.
+
+    Args:
+        model_version (str): The model version (reserved for future use).
+        ckpt_path (str): Path to the checkpoint file.
+        map_location (str or torch.device): Device to map the location to.
+        dtype (torch.dtype, optional): Data type to load the models in.
+        disable_mmap (bool): Whether to disable memory mapping for safetensors.
+
+    Returns:
+        tuple: A tuple containing (text_model1, text_model2, vae, unet, logit_scale, ckpt_info).
+    """
     # model_version is reserved for future use
     # dtype is used for full_fp16/bf16 integration. Text Encoder will remain fp32, because it runs on CPU when caching
 
@@ -284,6 +344,12 @@ def load_models_from_sdxl_checkpoint(model_version, ckpt_path, map_location, dty
 
 
 def make_unet_conversion_map():
+    """
+    Creates a mapping for converting SDXL UNet models.
+
+    Returns:
+        list: A list of tuples mapping SDXL keys to Diffusers keys.
+    """
     unet_conversion_map_layer = []
 
     for i in range(3):  # num_blocks is 3 in sdxl
@@ -368,6 +434,15 @@ def make_unet_conversion_map():
 
 
 def convert_diffusers_unet_state_dict_to_sdxl(du_sd):
+    """
+    Converts a Diffusers UNet state dictionary to SDXL format.
+
+    Args:
+        du_sd (dict): The Diffusers UNet state dictionary.
+
+    Returns:
+        dict: The converted SDXL state dictionary.
+    """
     unet_conversion_map = make_unet_conversion_map()
 
     conversion_map = {hf: sd for sd, hf in unet_conversion_map}
@@ -375,6 +450,16 @@ def convert_diffusers_unet_state_dict_to_sdxl(du_sd):
 
 
 def convert_unet_state_dict(src_sd, conversion_map):
+    """
+    Converts a UNet state dictionary using a provided conversion map.
+
+    Args:
+        src_sd (dict): The source state dictionary.
+        conversion_map (dict): A dictionary mapping source keys to target keys.
+
+    Returns:
+        dict: The converted state dictionary.
+    """
     converted_sd = {}
     for src_key, value in src_sd.items():
         # さすがに全部回すのは時間がかかるので右から要素を削りつつprefixを探す
@@ -393,6 +478,15 @@ def convert_unet_state_dict(src_sd, conversion_map):
 
 
 def convert_sdxl_unet_state_dict_to_diffusers(sd):
+    """
+    Converts an SDXL UNet state dictionary to Diffusers format.
+
+    Args:
+        sd (dict): The SDXL UNet state dictionary.
+
+    Returns:
+        dict: The converted Diffusers state dictionary.
+    """
     unet_conversion_map = make_unet_conversion_map()
 
     conversion_dict = {sd: hf for sd, hf in unet_conversion_map}
@@ -400,6 +494,16 @@ def convert_sdxl_unet_state_dict_to_diffusers(sd):
 
 
 def convert_text_encoder_2_state_dict_to_sdxl(checkpoint, logit_scale):
+    """
+    Converts an SDXL Text Encoder 2 state dictionary to SDXL format.
+
+    Args:
+        checkpoint (dict): The source checkpoint state dictionary.
+        logit_scale (float): The logit scale to add to the state dictionary.
+
+    Returns:
+        dict: The converted SDXL state dictionary.
+    """
     def convert_key(key):
         # position_idsの除去
         if ".position_ids" in key:
@@ -476,6 +580,25 @@ def save_stable_diffusion_checkpoint(
         metadata,
         save_dtype=None,
 ):
+    """
+    Saves an SDXL Stable Diffusion checkpoint.
+
+    Args:
+        output_file (str): Path to the output file.
+        text_encoder1 (CLIPTextModel): The first text encoder.
+        text_encoder2 (CLIPTextModelWithProjection): The second text encoder.
+        unet (UNet2DConditionModel): The U-Net model.
+        epochs (int): Number of epochs trained.
+        steps (int): Number of global steps trained.
+        ckpt_info (tuple): Tuple containing (epochs, steps) from the loaded checkpoint.
+        vae (AutoencoderKL): The VAE model.
+        logit_scale (float): The logit scale for the second text encoder.
+        metadata (dict): Metadata to save with the checkpoint.
+        save_dtype (torch.dtype, optional): Data type to save the checkpoint in.
+
+    Returns:
+        int: The number of keys in the saved state dictionary.
+    """
     state_dict = {}
 
     def update_sd(prefix, sd):
@@ -522,6 +645,19 @@ def save_diffusers_checkpoint(
         output_dir, text_encoder1, text_encoder2, unet, pretrained_model_name_or_path, vae=None, use_safetensors=False,
         save_dtype=None
 ):
+    """
+    Saves an SDXL Diffusers checkpoint.
+
+    Args:
+        output_dir (str): Directory to save the checkpoint.
+        text_encoder1 (CLIPTextModel): The first text encoder.
+        text_encoder2 (CLIPTextModelWithProjection): The second text encoder.
+        unet (UNet2DConditionModel): The U-Net model.
+        pretrained_model_name_or_path (str): Path to the pretrained model or model ID.
+        vae (AutoencoderKL, optional): The VAE model.
+        use_safetensors (bool): Whether to use safetensors format.
+        save_dtype (torch.dtype, optional): Data type to save the checkpoint in.
+    """
     from diffusers import StableDiffusionXLPipeline
 
     # convert U-Net
