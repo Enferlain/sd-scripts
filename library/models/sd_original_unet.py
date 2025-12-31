@@ -1,23 +1,18 @@
-# Diffusers 0.10.2からStable Diffusionに必要な部分だけを持ってくる
-# 条件分岐等で不要な部分は削除している
-# コードの多くはDiffusersからコピーしている
-# 制約として、モデルのstate_dictがDiffusers 0.10.2のものと同じ形式である必要がある
-
 # Copy from Diffusers 0.10.2 for Stable Diffusion. Most of the code is copied from Diffusers.
 # Unnecessary parts are deleted by condition branching.
 # As a constraint, the state_dict of the model must be in the same format as that of Diffusers 0.10.2
 
 """
-v1.5とv2.1の相違点は
-- attention_head_dimがintかlist[int]か
-- cross_attention_dimが768か1024か
-- use_linear_projection: trueがない（=False, 1.5）かあるか
-- upcast_attentionがFalse(1.5)かTrue(2.1)か
-- （以下は多分無視していい）
-- sample_sizeが64か96か
-- dual_cross_attentionがあるかないか
-- num_class_embedsがあるかないか
-- only_cross_attentionがあるかないか
+The differences between v1.5 and v2.1 are:
+- attention_head_dim is int or list[int]
+- cross_attention_dim is 768 or 1024
+- use_linear_projection: true is missing (=False, 1.5) or present
+- upcast_attention is False (1.5) or True (2.1)
+- (The following can probably be ignored)
+- sample_size is 64 or 96
+- dual_cross_attention is present or absent
+- num_class_embeds is present or absent
+- only_cross_attention is present or absent
 
 v1.5
 {
@@ -140,12 +135,17 @@ logger = logging.getLogger(__name__)
 
 
 # region memory efficient attention
-# FlashAttentionを使うCrossAttention
+# CrossAttention using FlashAttention
 # based on https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/memory_efficient_attention_pytorch/flash_attention.py
 # LICENSE MIT https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/LICENSE
 # flash attention forwards and backwards
 # https://arxiv.org/abs/2205.14135
 class FlashAttentionFunction(torch.autograd.Function):
+    """
+    Flash Attention Function.
+    Implements Flash Attention forward and backward passes per the algorithm in https://arxiv.org/abs/2205.14135.
+    """
+
     @staticmethod
     @torch.no_grad()
     def forward(ctx, q, k, v, mask, causal, q_bucket_size, k_bucket_size):
@@ -302,10 +302,28 @@ class FlashAttentionFunction(torch.autograd.Function):
 
 
 def get_parameter_dtype(parameter: torch.nn.Module):
+    """
+    Get the dtype of the first parameter of the module.
+
+    Args:
+        parameter (torch.nn.Module): The module to check.
+
+    Returns:
+        torch.dtype: The dtype of the first parameter.
+    """
     return next(parameter.parameters()).dtype
 
 
 def get_parameter_device(parameter: torch.nn.Module):
+    """
+    Get the device of the first parameter of the module.
+
+    Args:
+        parameter (torch.nn.Module): The module to check.
+
+    Returns:
+        torch.device: The device of the first parameter.
+    """
     return next(parameter.parameters()).device
 
 
@@ -320,10 +338,17 @@ def get_timestep_embedding(
     """
     This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timestep embeddings.
 
-    :param timesteps: a 1-D Tensor of N indices, one per batch element.
-                      These may be fractional.
-    :param embedding_dim: the dimension of the output. :param max_period: controls the minimum frequency of the
-    embeddings. :return: an [N x dim] Tensor of positional embeddings.
+    Args:
+        timesteps (torch.Tensor): a 1-D Tensor of N indices, one per batch element.
+            These may be fractional.
+        embedding_dim (int): the dimension of the output.
+        flip_sin_to_cos (bool): Whether to flip sin to cos.
+        downscale_freq_shift (float):
+        scale (float):
+        max_period (int): controls the minimum frequency of the embeddings.
+
+    Returns:
+        torch.Tensor: an [N x dim] Tensor of positional embeddings.
     """
     assert len(timesteps.shape) == 1, "Timesteps should be a 1d-array"
 
@@ -352,6 +377,18 @@ def get_timestep_embedding(
 
 # Deep Shrink: We do not common this function, because minimize dependencies.
 def resize_like(x, target, mode="bicubic", align_corners=False):
+    """
+    Resize the input tensor x to match the size of the target tensor.
+
+    Args:
+        x (torch.Tensor): Input tensor.
+        target (torch.Tensor): Target tensor to match size with.
+        mode (str): Interpolation mode (default: "bicubic").
+        align_corners (bool): align_corners flag for interpolation.
+
+    Returns:
+        torch.Tensor: Resized tensor.
+    """
     org_dtype = x.dtype
     if org_dtype == torch.bfloat16:
         x = x.to(torch.float32)
@@ -368,11 +405,19 @@ def resize_like(x, target, mode="bicubic", align_corners=False):
 
 
 class SampleOutput:
+    """
+    Simple wrapper for sample output.
+    """
     def __init__(self, sample):
         self.sample = sample
 
 
 class TimestepEmbedding(nn.Module):
+    """
+    Timestep embedding projection.
+
+    This module projects timestep embeddings to a higher dimension.
+    """
     def __init__(self, in_channels: int, time_embed_dim: int, act_fn: str = "silu", out_dim: int = None):
         super().__init__()
 
@@ -400,6 +445,11 @@ class TimestepEmbedding(nn.Module):
 
 
 class Timesteps(nn.Module):
+    """
+    Wrapper for getting timestep embedding.
+
+    This module generates sinusoidal timestep embeddings.
+    """
     def __init__(self, num_channels: int, flip_sin_to_cos: bool, downscale_freq_shift: float):
         super().__init__()
         self.num_channels = num_channels
@@ -417,6 +467,11 @@ class Timesteps(nn.Module):
 
 
 class ResnetBlock2D(nn.Module):
+    """
+    ResNet block.
+
+    A residual block with GroupNorm, SiLU activation, and optional time embedding projection.
+    """
     def __init__(
             self,
             in_channels,
@@ -469,6 +524,9 @@ class ResnetBlock2D(nn.Module):
 
 
 class DownBlock2D(nn.Module):
+    """
+    DownBlock2D consisting of ResNet blocks and optional downsampling.
+    """
     def __init__(
             self,
             in_channels: int,
@@ -533,6 +591,11 @@ class DownBlock2D(nn.Module):
 
 
 class Downsample2D(nn.Module):
+    """
+    Downsampling layer.
+
+    Reduces the spatial dimensions of the input tensor.
+    """
     def __init__(self, channels, out_channels):
         super().__init__()
 
@@ -549,6 +612,9 @@ class Downsample2D(nn.Module):
 
 
 class CrossAttention(nn.Module):
+    """
+    CrossAttention layer.
+    """
     def __init__(
             self,
             query_dim: int,
@@ -682,7 +748,7 @@ class CrossAttention(nn.Module):
         q = q.contiguous()
         k = k.contiguous()
         v = v.contiguous()
-        out = xformers.ops.memory_efficient_attention(q, k, v, attn_bias=None)  # 最適なのを選んでくれる
+        out = xformers.ops.memory_efficient_attention(q, k, v, attn_bias=None)  # Selects the optimal implementation
 
         out = rearrange(out, "b n h d -> b n (h d)", h=h)
 
@@ -754,8 +820,8 @@ class GEGLU(nn.Module):
     A variant of the gated linear unit activation function from https://arxiv.org/abs/2002.05202.
 
     Parameters:
-        dim_in (`int`): The number of channels in the input.
-        dim_out (`int`): The number of channels in the output.
+        dim_in (int): The number of channels in the input.
+        dim_out (int): The number of channels in the output.
     """
 
     def __init__(self, dim_in: int, dim_out: int):
@@ -774,6 +840,9 @@ class GEGLU(nn.Module):
 
 
 class FeedForward(nn.Module):
+    """
+    FeedForward layer.
+    """
     def __init__(
             self,
             dim: int,
@@ -796,6 +865,9 @@ class FeedForward(nn.Module):
 
 
 class BasicTransformerBlock(nn.Module):
+    """
+    Basic Transformer block.
+    """
     def __init__(
             self, dim: int, num_attention_heads: int, attention_head_dim: int, cross_attention_dim: int,
             upcast_attention: bool = False
@@ -852,6 +924,9 @@ class BasicTransformerBlock(nn.Module):
 
 
 class Transformer2DModel(nn.Module):
+    """
+    Transformer2DModel used in UNet.
+    """
     def __init__(
             self,
             num_attention_heads: int = 16,
@@ -937,6 +1012,11 @@ class Transformer2DModel(nn.Module):
 
 
 class CrossAttnDownBlock2D(nn.Module):
+    """
+    CrossAttnDownBlock2D.
+
+    Downsampling block with cross-attention and ResNet layers.
+    """
     def __init__(
             self,
             in_channels: int,
@@ -1024,6 +1104,11 @@ class CrossAttnDownBlock2D(nn.Module):
 
 
 class UNetMidBlock2DCrossAttn(nn.Module):
+    """
+    UNetMidBlock2DCrossAttn.
+
+    Middle block with cross-attention and ResNet layers.
+    """
     def __init__(
             self,
             in_channels: int,
@@ -1103,6 +1188,11 @@ class UNetMidBlock2DCrossAttn(nn.Module):
 
 
 class Upsample2D(nn.Module):
+    """
+    Upsample2D.
+
+    Upsampling layer.
+    """
     def __init__(self, channels, out_channels):
         super().__init__()
         self.channels = channels
@@ -1139,6 +1229,11 @@ class Upsample2D(nn.Module):
 
 
 class UpBlock2D(nn.Module):
+    """
+    UpBlock2D.
+
+    Upsampling block with ResNet layers.
+    """
     def __init__(
             self,
             in_channels: int,
@@ -1207,6 +1302,11 @@ class UpBlock2D(nn.Module):
 
 
 class CrossAttnUpBlock2D(nn.Module):
+    """
+    CrossAttnUpBlock2D.
+
+    Upsampling block with cross-attention and ResNet layers.
+    """
     def __init__(
             self,
             in_channels: int,
@@ -1318,6 +1418,11 @@ def get_down_block(
         use_linear_projection,
         upcast_attention,
 ):
+    """
+    Get down block.
+
+    Factory function that returns the appropriate down block based on block type.
+    """
     if down_block_type == "DownBlock2D":
         return DownBlock2D(
             in_channels=in_channels,
@@ -1347,6 +1452,11 @@ def get_up_block(
         use_linear_projection=False,
         upcast_attention=False,
 ):
+    """
+    Get up block.
+
+    Factory function that returns the appropriate up block based on block type.
+    """
     if up_block_type == "UpBlock2D":
         return UpBlock2D(
             in_channels=in_channels,
@@ -1368,6 +1478,12 @@ def get_up_block(
 
 
 class UNet2DConditionModel(nn.Module):
+    """
+    UNet2DConditionModel.
+
+    UNet model for conditional image generation in Stable Diffusion.
+    Supports cross-attention conditioning and optional ControlNet integration.
+    """
     _supports_gradient_checkpointing = True
 
     def __init__(
@@ -1385,14 +1501,14 @@ class UNet2DConditionModel(nn.Module):
             f"UNet2DConditionModel: {sample_size}, {attention_head_dim}, {cross_attention_dim}, {use_linear_projection}, {upcast_attention}"
         )
 
-        # 外部からの参照用に定義しておく
+        # Defined for external reference
         self.in_channels = IN_CHANNELS
         self.out_channels = OUT_CHANNELS
 
         self.sample_size = sample_size
         self.prepare_config(sample_size=sample_size)
 
-        # state_dictの書式が変わるのでmoduleの持ち方は変えられない
+        # The format of state_dict changes, so the way the module is held cannot be changed
 
         # input
         self.conv_in = nn.Conv2d(IN_CHANNELS, BLOCK_OUT_CHANNELS[0], kernel_size=3, padding=(1, 1))
@@ -1546,13 +1662,11 @@ class UNet2DConditionModel(nn.Module):
         # The overall upsampling factor is equal to 2 ** (# num of upsampling layears).
         # However, the upsampling interpolation output size can be forced to fit any upsampling size
         # on the fly if necessary.
-        # デフォルトではサンプルは「2^アップサンプルの数」、つまり64の倍数である必要がある
-        # ただそれ以外のサイズにも対応できるように、必要ならアップサンプルのサイズを変更する
-        # 多分画質が悪くなるので、64で割り切れるようにしておくのが良い
+        # It is recommended to keep it divisible by 64 as image quality might degrade.
         default_overall_up_factor = 2 ** self.num_upsamplers
 
         # upsample size should be forwarded when sample is not a multiple of `default_overall_up_factor`
-        # 64で割り切れないときはupsamplerにサイズを伝える
+        # Forward upsample size to upsampler when not divisible by 64
         forward_upsample_size = False
         upsample_size = None
 
@@ -1562,16 +1676,16 @@ class UNet2DConditionModel(nn.Module):
 
         # 1. time
         timesteps = timestep
-        timesteps = self.handle_unusual_timesteps(sample, timesteps)  # 変な時だけ処理
+        timesteps = self.handle_unusual_timesteps(sample, timesteps)  # Handle unusual timesteps only
 
         t_emb = self.time_proj(timesteps)
 
         # timesteps does not contain any weights and will always return f32 tensors
         # but time_embedding might actually be running in fp16. so we need to cast here.
         # there might be better ways to encapsulate this.
-        # timestepsは重みを含まないので常にfloat32のテンソルを返す
-        # しかしtime_embeddingはfp16で動いているかもしれないので、ここでキャストする必要がある
-        # time_projでキャストしておけばいいんじゃね？
+        # timesteps does not contain weights so it always returns a float32 tensor
+        # However, time_embedding might be running in fp16, so casting is needed here.
+        # Maybe it should be cast in time_proj?
         t_emb = t_emb.to(dtype=self.dtype)
         emb = self.time_embedding(t_emb)
 
@@ -1580,8 +1694,8 @@ class UNet2DConditionModel(nn.Module):
 
         down_block_res_samples = (sample,)
         for downsample_block in self.down_blocks:
-            # downblockはforwardで必ずencoder_hidden_statesを受け取るようにしても良さそうだけど、
-            # まあこちらのほうがわかりやすいかもしれない
+            # It might be good to ensure downblock always receives encoder_hidden_states in forward,
+            # but this might be easier to understand.
             if downsample_block.has_cross_attention:
                 sample, res_samples = downsample_block(
                     hidden_states=sample,
@@ -1593,7 +1707,7 @@ class UNet2DConditionModel(nn.Module):
 
             down_block_res_samples += res_samples
 
-        # skip connectionにControlNetの出力を追加する
+        # Add ControlNet output to skip connection
         if down_block_additional_residuals is not None:
             down_block_res_samples = list(down_block_res_samples)
             for i in range(len(down_block_res_samples)):
@@ -1603,7 +1717,7 @@ class UNet2DConditionModel(nn.Module):
         # 4. mid
         sample = self.mid_block(sample, emb, encoder_hidden_states=encoder_hidden_states)
 
-        # ControlNetの出力を追加する
+        # Add ControlNet output
         if mid_block_additional_residual is not None:
             sample += mid_block_additional_residual
 
@@ -1615,7 +1729,7 @@ class UNet2DConditionModel(nn.Module):
             down_block_res_samples = down_block_res_samples[: -len(upsample_block.resnets)]  # skip connection
 
             # if we have not reached the final block and need to forward the upsample size, we do it here
-            # 前述のように最後のブロック以外ではupsample_sizeを伝える
+            # As mentioned above, forward upsample_size except for the last block
             if not is_final_block and forward_upsample_size:
                 upsample_size = down_block_res_samples[-1].shape[2:]
 
@@ -1644,7 +1758,7 @@ class UNet2DConditionModel(nn.Module):
 
     def handle_unusual_timesteps(self, sample, timesteps):
         r"""
-        timestampsがTensorでない場合、Tensorに変換する。またOnnx/Core MLと互換性のあるようにbatchサイズまでbroadcastする。
+        Converts timesteps to Tensor if it is not a Tensor. Also broadcasts to batch size for compatibility with Onnx/Core ML.
         """
         if not torch.is_tensor(timesteps):
             # TODO: this requires sync between CPU and GPU. So try to pass timesteps as tensors if you can
@@ -1665,6 +1779,9 @@ class UNet2DConditionModel(nn.Module):
 
 
 class InferUNet2DConditionModel:
+    """
+    Wrapper for UNet2DConditionModel to support Deep Shrink.
+    """
     def __init__(self, original_unet: UNet2DConditionModel):
         self.delegate = original_unet
 
@@ -1785,9 +1902,7 @@ class InferUNet2DConditionModel:
     ) -> Union[Dict, Tuple]:
         r"""
         current implementation is a copy of `UNet2DConditionModel.forward()` with Deep Shrink.
-        """
 
-        r"""
         Args:
             sample (`torch.FloatTensor`): (batch, channel, height, width) noisy inputs tensor
             timestep (`torch.FloatTensor` or `float` or `int`): (batch) timesteps
@@ -1806,13 +1921,11 @@ class InferUNet2DConditionModel:
         # The overall upsampling factor is equal to 2 ** (# num of upsampling layears).
         # However, the upsampling interpolation output size can be forced to fit any upsampling size
         # on the fly if necessary.
-        # デフォルトではサンプルは「2^アップサンプルの数」、つまり64の倍数である必要がある
-        # ただそれ以外のサイズにも対応できるように、必要ならアップサンプルのサイズを変更する
-        # 多分画質が悪くなるので、64で割り切れるようにしておくのが良い
+        # It is recommended to keep it divisible by 64 as image quality might degrade.
         default_overall_up_factor = 2 ** _self.num_upsamplers
 
         # upsample size should be forwarded when sample is not a multiple of `default_overall_up_factor`
-        # 64で割り切れないときはupsamplerにサイズを伝える
+        # Forward upsample size to upsampler when not divisible by 64
         forward_upsample_size = False
         upsample_size = None
 
@@ -1822,16 +1935,16 @@ class InferUNet2DConditionModel:
 
         # 1. time
         timesteps = timestep
-        timesteps = _self.handle_unusual_timesteps(sample, timesteps)  # 変な時だけ処理
+        timesteps = _self.handle_unusual_timesteps(sample, timesteps)  # Handle unusual timesteps only
 
         t_emb = _self.time_proj(timesteps)
 
         # timesteps does not contain any weights and will always return f32 tensors
         # but time_embedding might actually be running in fp16. so we need to cast here.
         # there might be better ways to encapsulate this.
-        # timestepsは重みを含まないので常にfloat32のテンソルを返す
-        # しかしtime_embeddingはfp16で動いているかもしれないので、ここでキャストする必要がある
-        # time_projでキャストしておけばいいんじゃね？
+        # timesteps does not contain weights so it always returns a float32 tensor
+        # However, time_embedding might be running in fp16, so casting is needed here.
+        # Maybe it should be cast in time_proj?
         t_emb = t_emb.to(dtype=_self.dtype)
         emb = _self.time_embedding(t_emb)
 
@@ -1854,8 +1967,8 @@ class InferUNet2DConditionModel:
                     sample = F.interpolate(sample, scale_factor=self.ds_ratio, mode="bicubic", align_corners=False).to(
                         org_dtype)
 
-            # downblockはforwardで必ずencoder_hidden_statesを受け取るようにしても良さそうだけど、
-            # まあこちらのほうがわかりやすいかもしれない
+            # It might be good to ensure downblock always receives encoder_hidden_states in forward,
+            # but this might be easier to understand.
             if downsample_block.has_cross_attention:
                 sample, res_samples = downsample_block(
                     hidden_states=sample,
@@ -1867,7 +1980,7 @@ class InferUNet2DConditionModel:
 
             down_block_res_samples += res_samples
 
-        # skip connectionにControlNetの出力を追加する
+        # Add ControlNet output to skip connection
         if down_block_additional_residuals is not None:
             down_block_res_samples = list(down_block_res_samples)
             for i in range(len(down_block_res_samples)):
@@ -1877,7 +1990,7 @@ class InferUNet2DConditionModel:
         # 4. mid
         sample = _self.mid_block(sample, emb, encoder_hidden_states=encoder_hidden_states)
 
-        # ControlNetの出力を追加する
+        # Add ControlNet output
         if mid_block_additional_residual is not None:
             sample += mid_block_additional_residual
 
@@ -1889,7 +2002,7 @@ class InferUNet2DConditionModel:
             down_block_res_samples = down_block_res_samples[: -len(upsample_block.resnets)]  # skip connection
 
             # if we have not reached the final block and need to forward the upsample size, we do it here
-            # 前述のように最後のブロック以外ではupsample_sizeを伝える
+            # As mentioned above, forward upsample_size except for the last block
             if not is_final_block and forward_upsample_size:
                 upsample_size = down_block_res_samples[-1].shape[2:]
 
