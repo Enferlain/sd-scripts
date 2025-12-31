@@ -28,6 +28,23 @@ def _load_target_model(
     device="cpu",
     unet_use_linear_projection_in_v2=False,
 ):
+    """
+    Internal function to load the target Stable Diffusion model (v1.5 or v2).
+
+    Args:
+        model_config (ModelConfig): Configuration for the model.
+        v2 (bool): Whether the model is Stable Diffusion v2.
+        weight_dtype: The data type for the model weights.
+        device (str, optional): The device to load the model on. Defaults to "cpu".
+        unet_use_linear_projection_in_v2 (bool, optional): Whether to use linear projection in v2 U-Net. Defaults to False.
+
+    Returns:
+        tuple: A tuple containing:
+            - text_encoder: The text encoder model.
+            - vae: The VAE model.
+            - unet: The U-Net model.
+            - load_stable_diffusion_format (bool): Whether the model was loaded from a Stable Diffusion checkpoint.
+    """
     name_or_path = model_config.pretrained_model_name_or_path
     name_or_path = (
         os.path.realpath(name_or_path) if os.path.islink(name_or_path) else name_or_path
@@ -95,7 +112,25 @@ def _load_target_model(
 
 def load_target_model(model_config: ModelConfig, memory_config: MemoryConfig, weight_dtype, accelerator,
                       unet_use_linear_projection_in_v2=False):
+    """
+    Load the target Stable Diffusion model, handling distributed loading and memory configurations.
+
+    Args:
+        model_config (ModelConfig): Configuration for the model.
+        memory_config (MemoryConfig): Configuration for memory usage.
+        weight_dtype: The data type for the model weights.
+        accelerator: The Accelerator instance.
+        unet_use_linear_projection_in_v2 (bool, optional): Whether to use linear projection in v2 U-Net. Defaults to False.
+
+    Returns:
+        tuple: A tuple containing:
+            - text_encoder: The text encoder model.
+            - vae: The VAE model.
+            - unet: The U-Net model.
+            - load_stable_diffusion_format (bool): Whether the model was loaded from a Stable Diffusion checkpoint.
+    """
     is_v2 = model_config.model_type == "sd2"
+    assert accelerator.state.num_processes > 0, "num_processes must be greater than 0"
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
             logger.info(
