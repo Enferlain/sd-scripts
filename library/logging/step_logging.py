@@ -162,6 +162,8 @@ def init_trackers(
     """
     Initialize experiment trackers with tracker specific behaviors.
 
+    Note: This function only executes on the main process.
+
     Args:
         accelerator: Accelerator instance.
         logging_config: LoggingConfig with tracker settings.
@@ -207,6 +209,12 @@ def append_lr_to_logs_with_names(
         names: A list of names corresponding to the parameter groups.
     """
     lrs = lr_scheduler.get_last_lr()
+
+    if len(names) < len(lrs):
+        raise ValueError(
+            f"names list has {len(names)} elements but lr_scheduler has {len(lrs)} learning rates. "
+            "Ensure names list matches the number of parameter groups."
+        )
 
     for lr_index in range(len(lrs)):
         name = names[lr_index]

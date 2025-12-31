@@ -15,7 +15,12 @@ class PlotterState:
     """
     Manages the state of the live plotter server.
 
-    Stores timestep counts, schedule data, and settings data.
+    Attributes:
+        timestep_counts: Accumulated counts for each timestep.
+        schedule_data: Noise schedule information for plotting.
+        settings_data: Configuration settings for the plotter.
+        session_id: Unique identifier for the current session.
+        data_lock: Thread lock for safe concurrent access.
     """
     def __init__(self):
         self.timestep_counts = np.zeros(1000, dtype=np.int64)
