@@ -21,6 +21,19 @@ logger = logging.getLogger(__name__)
 
 
 def prepare_edm2_loss_weighting(loss_config, training_config, noise_scheduler, accelerator):
+    """
+    Prepares the EDM2 loss weighting model, optimizer, and scheduler based on the configuration.
+
+    Args:
+        loss_config: Configuration object containing loss settings.
+        training_config: Configuration object containing training settings.
+        noise_scheduler: The noise scheduler used in training.
+        accelerator: The accelerator object for distributed training.
+
+    Returns:
+        tuple: A tuple containing (edm2_model, edm2_optimizer, edm2_lr_scheduler).
+               If EDM2 loss weighting is not enabled, returns (None, None, None).
+    """
     if loss_config.edm2_loss_weighting:
         values = loss_config.edm2_loss_weighting_optimizer.split(".")
         optimizer_module = importlib.import_module(".".join(values[:-1]))
@@ -85,6 +98,15 @@ def prepare_edm2_loss_weighting(loss_config, training_config, noise_scheduler, a
 
 
 def handle_conflicting_configuration(loss_config):
+    """
+    Checks for and handles conflicting configurations related to EDM2 loss weighting.
+
+    Specifically, it resolves conflicts between EDM2 importance weighting,
+    debiased estimation loss, and Min-SNR gamma.
+
+    Args:
+        loss_config: Configuration object containing loss settings.
+    """
     # Check for the critical conflicting settings
     if loss_config.edm2_loss_weighting and loss_config.edm2_loss_weighting_importance_weighting and not loss_config.edm2_loss_weighting_importance_weighting_safety_override:
 
@@ -93,7 +115,7 @@ def handle_conflicting_configuration(loss_config):
             loss_config.debiased_estimation_loss = False
             logger.warning(
                 "Debiased estimation loss AND EDM2 loss weighting with importance weighting are enabled. "
-                "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, "
+                "It is not advised to use both, as there is a possibility of loss curving to 0 as SNR approaches 0, "
                 "as such, **Debiased estimation loss has been DISABLED**. "
                 "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True."
             )
@@ -102,7 +124,7 @@ def handle_conflicting_configuration(loss_config):
         if loss_config.min_snr_gamma:
             logger.warning(
                 "Min snr gamma AND EDM2 loss weighting with importance weighting are enabled. "
-                "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, "
+                "It is not advised to use both, as there is a possibility of loss curving to 0 as SNR approaches 0, "
                 "as such, **min snr gamma has been DISABLED**. "
                 "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True."
             )
@@ -110,6 +132,17 @@ def handle_conflicting_configuration(loss_config):
 
 
 def plot_edm2_loss_weighting_check(loss_config, training_config, global_step):
+    """
+    Determines whether to plot the EDM2 loss weighting graph at the current step.
+
+    Args:
+        loss_config: Configuration object containing loss settings.
+        training_config: Configuration object containing training settings.
+        global_step (int): The current global training step.
+
+    Returns:
+        bool: True if the graph should be plotted, False otherwise.
+    """
     return loss_config.edm2_loss_weighting and loss_config.edm2_loss_weighting_generate_graph and (global_step % (
         int(loss_config.edm2_loss_weighting_generate_graph_every_x_steps) if loss_config.edm2_loss_weighting_generate_graph_every_x_steps else 20) == 0 or global_step >= training_config.max_train_steps)
 
@@ -118,9 +151,13 @@ def plot_edm2_loss_weighting(loss_config, output_name, step: int, model, num_tim
     """
     Plot the edm2 loss weighting across timesteps using the learned parameters.
 
-    :param model: The edm2 model instance (after training).
-    :param num_timesteps: Total number of timesteps to plot.
-    :param device: Device to run computations on.
+    Args:
+        loss_config: Configuration object containing loss settings.
+        output_name (str): Name of the output directory/file prefix.
+        step (int): Current training step.
+        model: The edm2 model instance (after training).
+        num_timesteps (int): Total number of timesteps to plot.
+        device: Device to run computations on.
     """
     with torch.inference_mode():
         model.train(False)
