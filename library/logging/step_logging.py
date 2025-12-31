@@ -156,14 +156,16 @@ def accelerator_logging(accelerator: Accelerator, logs: dict, step_value: int, g
         tracker.log(logs, step=step_value)
 
 
-def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, default_tracker_name: str):
+def init_trackers(
+    accelerator: Accelerator, logging_config: LoggingConfig, default_tracker_name: str
+):
     """
     Initialize experiment trackers with tracker specific behaviors.
 
     Args:
-        accelerator: Accelerator instance
-        logging_config: LoggingConfig with tracker settings
-        default_tracker_name: Default name for the tracker
+        accelerator: Accelerator instance.
+        logging_config: LoggingConfig with tracker settings.
+        default_tracker_name: Default name for the tracker.
     """
     if accelerator.is_main_process:
         init_kwargs = {}
@@ -192,7 +194,18 @@ def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, defau
         )
 
 
-def append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names):
+def append_lr_to_logs_with_names(
+    logs: dict, lr_scheduler, optimizer_type: str, names: list[str]
+):
+    """
+    Append learning rate information to the logs with specific parameter group names.
+
+    Args:
+        logs: The dictionary of logs to update.
+        lr_scheduler: The learning rate scheduler.
+        optimizer_type: The type name of the optimizer.
+        names: A list of names corresponding to the parameter groups.
+    """
     lrs = lr_scheduler.get_last_lr()
 
     for lr_index in range(len(lrs)):
