@@ -31,6 +31,14 @@ def copy_stochastic_(target: torch.Tensor, source: torch.Tensor):
 
 @torch.no_grad()
 def adafactor_step_param(self, p, group):
+    """
+    Performs a single optimization step for a specific parameter group.
+
+    Args:
+        self: The optimizer instance.
+        p (torch.Tensor): The parameter to optimize.
+        group (dict): The parameter group dictionary containing optimization settings.
+    """
     if p.grad is None:
         return
     grad = p.grad
@@ -135,5 +143,11 @@ def adafactor_step(self, closure=None):
 
 
 def patch_adafactor_fused(optimizer: Adafactor):
+    """
+    Patches the Adafactor optimizer to use the fused step functions.
+
+    Args:
+        optimizer (transformers.Adafactor): The Adafactor optimizer instance to patch.
+    """
     optimizer.step_param = adafactor_step_param.__get__(optimizer)
     optimizer.step = adafactor_step.__get__(optimizer)
