@@ -26,7 +26,7 @@ RE_UPDOWN = re.compile(r"(up|down)_blocks_(\d+)_(resnets|upsamplers|downsamplers
 
 class LoRAModule(torch.nn.Module):
     """
-    replaces forward method of the original Linear, instead of replacing the original Linear module.
+    LoRA module that replaces the forward method of the original Linear or Conv2d module.
     """
 
     def __init__(
@@ -40,6 +40,19 @@ class LoRAModule(torch.nn.Module):
         rank_dropout=None,
         module_dropout=None,
     ):
+        """
+        Initialize the LoRAModule.
+
+        Args:
+            lora_name (str): The name of the LoRA module.
+            org_module (torch.nn.Module): The original module to be adapted.
+            multiplier (float, optional): The multiplier for the LoRA output. Defaults to 1.0.
+            lora_dim (int, optional): The dimension (rank) of the LoRA. Defaults to 4.
+            alpha (float, optional): The alpha parameter for LoRA scaling. If 0 or None, alpha is set to lora_dim (no scaling). Defaults to 1.
+            dropout (float, optional): Dropout probability for the LoRA output. Defaults to None.
+            rank_dropout (float, optional): Rank dropout probability. Defaults to None.
+            module_dropout (float, optional): Module dropout probability. Defaults to None.
+        """
         """if alpha == 0 or None, alpha is rank (no scaling)."""
         super().__init__()
         self.lora_name = lora_name
@@ -85,11 +98,24 @@ class LoRAModule(torch.nn.Module):
         self.module_dropout = module_dropout
 
     def apply_to(self):
+        """
+        Apply the LoRA module to the original module by replacing its forward method.
+        """
         self.org_forward = self.org_module.forward
         self.org_module.forward = self.forward
         del self.org_module
 
     def forward(self, x):
+        """
+        Forward pass of the LoRA module.
+        Applies LoRA adaptation with optional dropouts.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor with LoRA adaptation applied.
+        """
         org_forwarded = self.org_forward(x)
 
         # module dropout
@@ -124,6 +150,11 @@ class LoRAModule(torch.nn.Module):
 
 
 class LoRAInfModule(LoRAModule):
+    """
+    LoRA module for inference.
+    Supports regional LoRA and sub-prompts.
+    """
+
     def __init__(
         self,
         lora_name,
@@ -133,6 +164,10 @@ class LoRAInfModule(LoRAModule):
         alpha=1,
         **kwargs,
     ):
+        """
+        Initialize the LoRAInfModule.
+        Similar to LoRAModule but without dropout support.
+        """
         # no dropout for inference
         super().__init__(lora_name, org_module, multiplier, lora_dim, alpha)
 
@@ -158,10 +193,21 @@ class LoRAInfModule(LoRAModule):
         self.adapter: LoRAAdapter = None
 
     def set_adapter(self, adapter):
+        """
+        Set the adapter that owns this module.
+        """
         self.adapter = adapter
 
     # freezeしてマージする
     def merge_to(self, sd, dtype, device):
+        """
+        Merge the LoRA weights into the original module weights.
+
+        Args:
+            sd (dict): State dict containing the LoRA weights.
+            dtype (torch.dtype): Data type to use for merging.
+            device (torch.device): Device to use for merging.
+        """
         # get up/down weight
         up_weight = sd["lora_up.weight"].to(torch.float).to(device)
         down_weight = sd["lora_down.weight"].to(torch.float).to(device)
@@ -194,6 +240,15 @@ class LoRAInfModule(LoRAModule):
 
     # 復元できるマージのため、このモジュールのweightを返す
     def get_weight(self, multiplier=None):
+        """
+        Calculate and return the LoRA weight delta.
+
+        Args:
+            multiplier (float, optional): Multiplier for the LoRA weight. Defaults to self.multiplier.
+
+        Returns:
+            torch.Tensor: The calculated LoRA weight delta.
+        """
         if multiplier is None:
             multiplier = self.multiplier
 
@@ -220,14 +275,23 @@ class LoRAInfModule(LoRAModule):
         return weight
 
     def set_region(self, region):
+        """
+        Set the region for regional LoRA.
+        """
         self.region = region
         self.region_mask = None
 
     def default_forward(self, x):
+        """
+        Standard forward pass without regional or sub-prompt handling.
+        """
         # logger.info(f"default_forward {self.lora_name} {x.size()}")
         return self.org_forward(x) + self.lora_up(self.lora_down(x)) * self.multiplier * self.scale
 
     def forward(self, x):
+        """
+        Forward pass with support for regional LoRA and sub-prompts.
+        """
         if not self.enabled:
             return self.org_forward(x)
 
@@ -242,6 +306,9 @@ class LoRAInfModule(LoRAModule):
             return self.sub_prompt_forward(x)
 
     def get_mask_for_x(self, x):
+        """
+        Get the mask corresponding to the input tensor x.
+        """
         # calculate size from shape of x
         if len(x.size()) == 4:
             h, w = x.size()[2:4]
@@ -261,6 +328,9 @@ class LoRAInfModule(LoRAModule):
         return mask
 
     def regional_forward(self, x):
+        """
+        Forward pass for regional LoRA.
+        """
         if "attn2_to_out" in self.lora_name:
             return self.to_out_forward(x)
 
@@ -284,6 +354,9 @@ class LoRAInfModule(LoRAModule):
         return x
 
     def postp_to_q(self, x):
+        """
+        Post-processing for attention query in regional LoRA.
+        """
         # repeat x to num_sub_prompts
         has_real_uncond = x.size()[0] // self.adapter.batch_size == 3
         qc = self.adapter.batch_size  # uncond
@@ -305,6 +378,9 @@ class LoRAInfModule(LoRAModule):
         return query
 
     def sub_prompt_forward(self, x):
+        """
+        Forward pass for sub-prompt handling.
+        """
         if x.size()[0] == self.adapter.batch_size:  # if uncond in text_encoder, do not apply LoRA
             return self.org_forward(x)
 
@@ -324,6 +400,9 @@ class LoRAInfModule(LoRAModule):
         return x
 
     def to_out_forward(self, x):
+        """
+        Forward pass for attention output projection in regional LoRA.
+        """
         # logger.info(f"to_out_forward {self.lora_name} {x.size()} {self.peft.is_last_adapter}")
 
         if self.adapter.is_last_adapter:
@@ -389,6 +468,16 @@ class LoRAInfModule(LoRAModule):
 
 
 def parse_block_lr_kwargs(is_sdxl: bool, nw_kwargs: Dict) -> Optional[List[float]]:
+    """
+    Parses block learning rate arguments from kwargs.
+
+    Args:
+        is_sdxl (bool): Whether the model is SDXL.
+        nw_kwargs (Dict): Keyword arguments containing block LR settings.
+
+    Returns:
+        Optional[List[float]]: List of block learning rate weights, or None if not set.
+    """
     down_lr_weight = nw_kwargs.get("down_lr_weight", None)
     mid_lr_weight = nw_kwargs.get("mid_lr_weight", None)
     up_lr_weight = nw_kwargs.get("up_lr_weight", None)
@@ -425,6 +514,22 @@ def create_adapter(
     neuron_dropout: Optional[float] = None,
     **kwargs,
 ):
+    """
+    Creates a LoRA adapter.
+
+    Args:
+        multiplier (float): Multiplier for the adapter output.
+        adapter_rank (int, optional): Rank of the adapter (lora_dim). Defaults to 4.
+        adapter_alpha (float, optional): Alpha parameter for scaling. Defaults to 1.0.
+        vae (AutoencoderKL): VAE model (unused).
+        text_encoder (Union[CLIPTextModel, List[CLIPTextModel]]): Text encoder(s).
+        unet (UNet2DConditionModel): U-Net model.
+        neuron_dropout (float, optional): Dropout probability. Defaults to None.
+        **kwargs: Additional arguments for block dims, alphas, and other settings.
+
+    Returns:
+        LoRAAdapter: The created LoRA adapter.
+    """
     # if unet is an instance of SdxlUNet2DConditionModel or subclass, set is_sdxl to True
     is_sdxl = unet is not None and issubclass(unet.__class__, SdxlUNet2DConditionModel)
 
@@ -517,6 +622,23 @@ def create_adapter(
 def get_block_dims_and_alphas(
     is_sdxl, block_dims, block_alphas, adapter_rank, adapter_alpha, conv_block_dims, conv_block_alphas, conv_dim, conv_alpha
 ):
+    """
+    Parse block dimensions and alphas.
+
+    Args:
+        is_sdxl (bool): Whether the model is SDXL.
+        block_dims (str/list): Block dimensions.
+        block_alphas (str/list): Block alphas.
+        adapter_rank (int): Default rank.
+        adapter_alpha (float): Default alpha.
+        conv_block_dims (str/list): Convolution block dimensions.
+        conv_block_alphas (str/list): Convolution block alphas.
+        conv_dim (int): Default convolution dimension.
+        conv_alpha (float): Default convolution alpha.
+
+    Returns:
+        tuple: (block_dims, block_alphas, conv_block_dims, conv_block_alphas)
+    """
     if not is_sdxl:
         num_total_blocks = LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS
     else:
@@ -595,6 +717,19 @@ def get_block_lr_weight(
     up_lr_weight: Union[str, List[float]],
     zero_threshold: float,
 ) -> Optional[List[float]]:
+    """
+    Get the learning rate weights for each block based on the provided configuration.
+
+    Args:
+        is_sdxl (bool): Whether the model is SDXL.
+        down_lr_weight (Union[str, List[float]]): Learning rate weights for down blocks.
+        mid_lr_weight (List[float]): Learning rate weights for mid blocks.
+        up_lr_weight (Union[str, List[float]]): Learning rate weights for up blocks.
+        zero_threshold (float): Threshold below which weights are set to 0.
+
+    Returns:
+        Optional[List[float]]: A list of learning rate weights for all blocks, or None if no block LR is configured.
+    """
     # パラメータ未指定時は何もせず、今までと同じ動作とする
     if up_lr_weight is None and mid_lr_weight is None and down_lr_weight is None:
         return None
@@ -708,6 +843,20 @@ def get_block_lr_weight(
 def remove_block_dims_and_alphas(
     is_sdxl, block_dims, block_alphas, conv_block_dims, conv_block_alphas, block_lr_weight: Optional[List[float]]
 ):
+    """
+    Remove block dimensions and alphas where learning rate is 0.
+
+    Args:
+        is_sdxl (bool): Whether the model is SDXL.
+        block_dims (list): Block dimensions.
+        block_alphas (list): Block alphas.
+        conv_block_dims (list): Convolution block dimensions.
+        conv_block_alphas (list): Convolution block alphas.
+        block_lr_weight (Optional[List[float]]): Block learning rate weights.
+
+    Returns:
+        tuple: (block_dims, block_alphas, conv_block_dims, conv_block_alphas)
+    """
     if block_lr_weight is not None:
         for i, lr in enumerate(block_lr_weight):
             if lr == 0:
@@ -719,6 +868,16 @@ def remove_block_dims_and_alphas(
 
 # 外部から呼び出す可能性を考慮しておく
 def get_block_index(lora_name: str, is_sdxl: bool = False) -> int:
+    """
+    Get the block index for a given LoRA module name.
+
+    Args:
+        lora_name (str): Name of the LoRA module.
+        is_sdxl (bool, optional): Whether the model is SDXL. Defaults to False.
+
+    Returns:
+        int: Block index. Returns -1 if invalid or not found.
+    """
     block_idx = -1  # invalid lora name
     if not is_sdxl:
         m = RE_UPDOWN.search(lora_name)
@@ -758,6 +917,12 @@ def get_block_index(lora_name: str, is_sdxl: bool = False) -> int:
 
 
 def convert_diffusers_to_sai_if_needed(weights_sd):
+    """
+    Convert Diffusers U-Net LoRA keys to Stability AI format if needed.
+
+    Args:
+        weights_sd (dict): State dictionary containing weights.
+    """
     # only supports U-Net LoRA modules
 
     found_up_down_blocks = False
@@ -805,6 +970,22 @@ def convert_diffusers_to_sai_if_needed(weights_sd):
 
 # Create peft from weights for inference, weights are not loaded here (because can be merged)
 def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
+    """
+    Creates a LoRA adapter from weights for inference.
+
+    Args:
+        multiplier (float): Multiplier for the adapter output.
+        file (str): Path to the weights file.
+        vae (AutoencoderKL): VAE model.
+        text_encoder (Union[CLIPTextModel, List[CLIPTextModel]]): Text encoder(s).
+        unet (UNet2DConditionModel): U-Net model.
+        weights_sd (dict, optional): State dict of weights. If None, loaded from file.
+        for_inference (bool, optional): Whether to create for inference (uses LoRAInfModule). Defaults to False.
+        **kwargs: Additional arguments.
+
+    Returns:
+        tuple: (LoRAAdapter, dict) The created adapter and the weights state dict.
+    """
     # if unet is an instance of SdxlUNet2DConditionModel or subclass, set is_sdxl to True
     is_sdxl = unet is not None and issubclass(unet.__class__, SdxlUNet2DConditionModel)
 
@@ -861,6 +1042,10 @@ def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weigh
 
 
 class LoRAAdapter(torch.nn.Module):
+    """
+    Adapter class for LoRA (Low-Rank Adaptation).
+    Manages the application and training of LoRA modules on Text Encoder and U-Net.
+    """
     NUM_OF_BLOCKS = 12  # フルモデル相当でのup,downの層の数
     NUM_OF_MID_BLOCKS = 1
     SDXL_NUM_OF_BLOCKS = 9  # SDXLのモデルでのinput/outputの層の数 total=1(base) 9(input) + 3(mid) + 9(output) + 1(out) = 23
@@ -898,6 +1083,30 @@ class LoRAAdapter(torch.nn.Module):
         varbose: Optional[bool] = False,
         is_sdxl: Optional[bool] = False,
     ) -> None:
+        """
+        Initialize the LoRAAdapter.
+
+        Args:
+            text_encoder (Union[List[CLIPTextModel], CLIPTextModel]): Text encoder(s).
+            unet (UNet2DConditionModel): U-Net model.
+            multiplier (float, optional): Multiplier for the adapter. Defaults to 1.0.
+            lora_dim (int, optional): Rank for LoRA. Defaults to 4.
+            alpha (float, optional): Alpha for LoRA. Defaults to 1.
+            dropout (float, optional): Dropout probability. Defaults to None.
+            rank_dropout (float, optional): Rank dropout probability. Defaults to None.
+            module_dropout (float, optional): Module dropout probability. Defaults to None.
+            conv_lora_dim (int, optional): Rank for Conv2d LoRA. Defaults to None.
+            conv_alpha (float, optional): Alpha for Conv2d LoRA. Defaults to None.
+            block_dims (List[int], optional): List of ranks for each block. Defaults to None.
+            block_alphas (List[float], optional): List of alphas for each block. Defaults to None.
+            conv_block_dims (List[int], optional): List of ranks for each Conv2d block. Defaults to None.
+            conv_block_alphas (List[float], optional): List of alphas for each Conv2d block. Defaults to None.
+            modules_dim (Dict[str, int], optional): Dictionary of module ranks (for loading from weights). Defaults to None.
+            modules_alpha (Dict[str, int], optional): Dictionary of module alphas (for loading from weights). Defaults to None.
+            module_class (Type[object], optional): Class to use for LoRA modules. Defaults to LoRAModule.
+            varbose (bool, optional): Whether to print verbose output. Defaults to False.
+            is_sdxl (bool, optional): Whether the model is SDXL. Defaults to False.
+        """
         """
         LoRA peft: すごく引数が多いが、パターンは以下の通り
         1. lora_dimとalphaを指定
@@ -1062,15 +1271,24 @@ class LoRAAdapter(torch.nn.Module):
             names.add(lora.lora_name)
 
     def set_multiplier(self, multiplier):
+        """
+        Set multiplier for all LoRA modules.
+        """
         self.multiplier = multiplier
         for lora in self.text_encoder_loras + self.unet_loras:
             lora.multiplier = self.multiplier
 
     def set_enabled(self, is_enabled):
+        """
+        Enable or disable all LoRA modules.
+        """
         for lora in self.text_encoder_loras + self.unet_loras:
             lora.enabled = is_enabled
 
     def load_weights(self, file):
+        """
+        Load weights from a file (safetensors or torch).
+        """
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import load_file
 
@@ -1082,6 +1300,9 @@ class LoRAAdapter(torch.nn.Module):
         return info
 
     def apply_to(self, text_encoder, unet, apply_text_encoder=True, apply_unet=True):
+        """
+        Apply LoRA to the models.
+        """
         if apply_text_encoder:
             logger.info(f"enable LoRA for text encoder: {len(self.text_encoder_loras)} modules")
         else:
@@ -1102,6 +1323,9 @@ class LoRAAdapter(torch.nn.Module):
 
     # TODO refactor to common function with apply_to
     def merge_to(self, text_encoder, unet, weights_sd, dtype, device):
+        """
+        Merge LoRA weights into the models.
+        """
         apply_text_encoder = apply_unet = False
         for key in weights_sd.keys():
             if key.startswith(LoRAAdapter.LORA_PREFIX_TEXT_ENCODER):
@@ -1130,15 +1354,24 @@ class LoRAAdapter(torch.nn.Module):
 
     # 層別学習率用に層ごとの学習率に対する倍率を定義する　引数の順番が逆だがとりあえず気にしない
     def set_block_lr_weight(self, block_lr_weight: Optional[List[float]]):
+        """
+        Set block learning rate weights.
+        """
         self.block_lr = True
         self.block_lr_weight = block_lr_weight
 
     def get_lr_weight(self, block_idx: int) -> float:
+        """
+        Get learning rate weight for a specific block.
+        """
         if not self.block_lr or self.block_lr_weight is None:
             return 1.0
         return self.block_lr_weight[block_idx]
 
     def set_loraplus_lr_ratio(self, loraplus_lr_ratio, loraplus_unet_lr_ratio, loraplus_text_encoder_lr_ratio):
+        """
+        Set LoRA+ learning rate ratios.
+        """
         self.loraplus_lr_ratio = loraplus_lr_ratio
         self.loraplus_unet_lr_ratio = loraplus_unet_lr_ratio
         self.loraplus_text_encoder_lr_ratio = loraplus_text_encoder_lr_ratio
@@ -1151,6 +1384,9 @@ class LoRAAdapter(torch.nn.Module):
                                  learning_rates: LearningRatesConfig, 
                                  apply_orthograd: bool, 
                                  orthograd_targets: list[str]):
+        """
+        Prepare optimizer parameters.
+        """
         # TODO warn if optimizer is not compatible with LoRA+ (but it will cause error so we don't need to check it here?)
         # if (
         #     self.loraplus_lr_ratio is not None
@@ -1256,19 +1492,34 @@ class LoRAAdapter(torch.nn.Module):
         return all_params, lr_descriptions
 
     def enable_gradient_checkpointing(self):
+        """
+        Enable gradient checkpointing (not supported).
+        """
         # not supported
         pass
 
     def prepare_grad_etc(self, text_encoder, unet):
+        """
+        Prepare gradients and set requires_grad to True.
+        """
         self.requires_grad_(True)
 
     def on_epoch_start(self, text_encoder, unet):
+        """
+        Called at the start of each epoch.
+        """
         self.train()
 
     def get_trainable_params(self):
+        """
+        Get trainable parameters.
+        """
         return self.parameters()
 
     def save_weights(self, file, dtype, metadata):
+        """
+        Save weights to file.
+        """
         if metadata is not None and len(metadata) == 0:
             metadata = None
 
@@ -1296,6 +1547,9 @@ class LoRAAdapter(torch.nn.Module):
 
     # mask is a tensor with values from 0 to 1
     def set_region(self, sub_prompt_index, is_last_adapter, mask):
+        """
+        Set region for regional LoRA.
+        """
         if mask.max() == 0:
             mask = torch.ones_like(mask)
 
@@ -1307,6 +1561,9 @@ class LoRAAdapter(torch.nn.Module):
             lora.set_adapter(self)
 
     def set_current_generation(self, batch_size, num_sub_prompts, width, height, shared, ds_ratio=None):
+        """
+        Set parameters for the current generation step.
+        """
         self.batch_size = batch_size
         self.num_sub_prompts = num_sub_prompts
         self.current_size = (height, width)
@@ -1346,6 +1603,9 @@ class LoRAAdapter(torch.nn.Module):
 
     def backup_weights(self):
         # 重みのバックアップを行う
+        """
+        Backup original weights before merging.
+        """
         loras: List[LoRAInfModule] = self.text_encoder_loras + self.unet_loras
         for lora in loras:
             org_module = lora.org_module_ref[0]
@@ -1356,6 +1616,9 @@ class LoRAAdapter(torch.nn.Module):
 
     def restore_weights(self):
         # 重みのリストアを行う
+        """
+        Restore original weights from backup.
+        """
         loras: List[LoRAInfModule] = self.text_encoder_loras + self.unet_loras
         for lora in loras:
             org_module = lora.org_module_ref[0]
@@ -1367,6 +1630,9 @@ class LoRAAdapter(torch.nn.Module):
 
     def pre_calculation(self):
         # 事前計算を行う
+        """
+        Pre-calculate weights and merge them for efficiency.
+        """
         loras: List[LoRAInfModule] = self.text_encoder_loras + self.unet_loras
         for lora in loras:
             org_module = lora.org_module_ref[0]
@@ -1382,6 +1648,16 @@ class LoRAAdapter(torch.nn.Module):
             lora.enabled = False
 
     def apply_max_norm_regularization(self, max_norm_value, device):
+        """
+        Apply Max Norm Regularization to the LoRA weights.
+
+        Args:
+            max_norm_value (float): The maximum allowed norm value.
+            device (torch.device): Device to perform calculations on.
+
+        Returns:
+            tuple: (keys_scaled, average_norm, max_norm)
+        """
         downkeys = []
         upkeys = []
         alphakeys = []

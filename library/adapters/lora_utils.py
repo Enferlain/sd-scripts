@@ -21,6 +21,17 @@ def filter_lora_state_dict(
         include_pattern: Optional[str] = None,
         exclude_pattern: Optional[str] = None,
 ) -> Dict[str, torch.Tensor]:
+    """
+    Filter the LoRA state dict by include and exclude patterns.
+
+    Args:
+        weights_sd (Dict[str, torch.Tensor]): The state dict to filter.
+        include_pattern (Optional[str]): Regex pattern to include keys.
+        exclude_pattern (Optional[str]): Regex pattern to exclude keys.
+
+    Returns:
+        Dict[str, torch.Tensor]: The filtered state dict.
+    """
     # apply include/exclude patterns
     original_key_count = len(weights_sd.keys())
     if include_pattern is not None:
@@ -58,7 +69,7 @@ def load_safetensors_with_lora_and_fp8(
         exclude_keys: Optional[List[str]] = None,
 ) -> dict[str, torch.Tensor]:
     """
-    Merge LoRA weights into the state dict of a model with fp8 optimization if needed.
+    Load state dict from safetensors files and merge LoRA weights into the state dict with fp8 optimization if needed.
 
     Args:
         model_files (Union[str, List[str]]): Path to the model file or list of paths. If the path matches a pattern like `00001-of-00004`, it will load all files with the same prefix.
@@ -67,8 +78,12 @@ def load_safetensors_with_lora_and_fp8(
         fp8_optimization (bool): Whether to apply FP8 optimization.
         calc_device (torch.device): Device to calculate on.
         move_to_device (bool): Whether to move tensors to the calculation device after loading.
+        dit_weight_dtype (Optional[torch.dtype]): Dtype for weights if not using FP8 optimization.
         target_keys (Optional[List[str]]): Keys to target for optimization.
         exclude_keys (Optional[List[str]]): Keys to exclude from optimization.
+
+    Returns:
+        dict[str, torch.Tensor]: The loaded and merged state dict.
     """
 
     # if the file name ends with 00001-of-00004 etc, we need to load the files with the same prefix
@@ -217,6 +232,19 @@ def load_safetensors_with_fp8_optimization_and_hook(
 ) -> dict[str, torch.Tensor]:
     """
     Load state dict from safetensors files and merge LoRA weights into the state dict with fp8 optimization if needed.
+
+    Args:
+        model_files (list[str]): List of model file paths.
+        fp8_optimization (bool): Whether to apply FP8 optimization.
+        calc_device (torch.device): Device to calculate on.
+        move_to_device (bool): Whether to move tensors to the calculation device.
+        dit_weight_dtype (Optional[torch.dtype]): Data type for weights.
+        target_keys (Optional[List[str]]): List of keys to target for optimization.
+        exclude_keys (Optional[List[str]]): List of keys to exclude from optimization.
+        weight_hook (callable): Hook function to apply to weights during loading.
+
+    Returns:
+        dict[str, torch.Tensor]: The loaded state dict.
     """
     if fp8_optimization:
         logger.info(
@@ -256,6 +284,10 @@ def load_safetensors_with_fp8_optimization_and_hook(
 def resolve_adapter_kwargs(cfg: PeftConfig, net_kwargs: dict):
     """
     Populate net_kwargs with explicit LoRA fields from PeftConfig if they are set.
+
+    Args:
+        cfg (PeftConfig): The PEFT configuration object.
+        net_kwargs (dict): The network kwargs dictionary to populate.
     """
     # Mapping explicit config fields to peft kwargs
     fields = [

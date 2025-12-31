@@ -23,6 +23,12 @@ logger = logging.getLogger(__name__)
 
 
 def make_unet_conversion_map() -> Dict[str, str]:
+    """
+    Creates a map for converting Stability AI's U-Net module names to Diffusers' U-Net module names.
+
+    Returns:
+        Dict[str, str]: A dictionary mapping Stability AI module names to Diffusers module names.
+    """
     unet_conversion_map_layer = []
 
     for i in range(3):  # num_blocks is 3 in sdxl
@@ -112,7 +118,8 @@ UNET_CONVERSION_MAP = make_unet_conversion_map()
 
 class LoRAModule(torch.nn.Module):
     """
-    replaces forward method of the original Linear, instead of replacing the original Linear module.
+    LoRA module for Diffusers.
+    Replaces the forward method of the original Linear or Conv2d module.
     """
 
     def __init__(
@@ -123,6 +130,16 @@ class LoRAModule(torch.nn.Module):
         lora_dim=4,
         alpha=1,
     ):
+        """
+        Initialize the LoRAModule.
+
+        Args:
+            lora_name (str): The name of the LoRA module.
+            org_module (torch.nn.Module): The original module to be adapted.
+            multiplier (float, optional): The multiplier for the LoRA output. Defaults to 1.0.
+            lora_dim (int, optional): The dimension (rank) of the LoRA. Defaults to 4.
+            alpha (float, optional): The alpha parameter for LoRA scaling. Defaults to 1.
+        """
         """if alpha == 0 or None, alpha is rank (no scaling)."""
         super().__init__()
         self.lora_name = lora_name
@@ -164,6 +181,12 @@ class LoRAModule(torch.nn.Module):
 
     # override org_module's forward method
     def apply_to(self, multiplier=None):
+        """
+        Apply the LoRA module to the original module by replacing its forward method.
+
+        Args:
+            multiplier (float, optional): The multiplier for the LoRA output.
+        """
         if multiplier is not None:
             self.multiplier = multiplier
         if self.org_forward is None:
@@ -172,21 +195,43 @@ class LoRAModule(torch.nn.Module):
 
     # restore org_module's forward method
     def unapply_to(self):
+        """
+        Restore the original forward method of the module.
+        """
         if self.org_forward is not None:
             self.org_module[0].forward = self.org_forward
 
     # forward with lora
     # scale is used LoRACompatibleConv, but we ignore it because we have multiplier
     def forward(self, x, scale=1.0):
+        """
+        Forward pass of the LoRA module.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+            scale (float, optional): Scale factor (unused, using multiplier instead).
+
+        Returns:
+            torch.Tensor: Output tensor with LoRA adaptation applied.
+        """
         if not self.enabled:
             return self.org_forward(x)
         return self.org_forward(x) + self.lora_up(self.lora_down(x)) * self.multiplier * self.scale
 
     def set_adapter(self, adapter):
+        """
+        Set the adapter that owns this module.
+        """
         self.adapter = adapter
 
     # merge lora weight to org weight
     def merge_to(self, multiplier=1.0):
+        """
+        Merge the LoRA weights into the original module weights.
+
+        Args:
+            multiplier (float, optional): Multiplier for the LoRA weight. Defaults to 1.0.
+        """
         # get lora weight
         lora_weight = self.get_weight(multiplier)
 
@@ -201,6 +246,12 @@ class LoRAModule(torch.nn.Module):
 
     # restore org weight from lora weight
     def restore_from(self, multiplier=1.0):
+        """
+        Restore the original module weights by subtracting the LoRA weights.
+
+        Args:
+            multiplier (float, optional): Multiplier for the LoRA weight. Defaults to 1.0.
+        """
         # get lora weight
         lora_weight = self.get_weight(multiplier)
 
@@ -215,6 +266,15 @@ class LoRAModule(torch.nn.Module):
 
     # return lora weight
     def get_weight(self, multiplier=None):
+        """
+        Calculate and return the LoRA weight delta.
+
+        Args:
+            multiplier (float, optional): Multiplier for the LoRA weight. Defaults to self.multiplier.
+
+        Returns:
+            torch.Tensor: The calculated LoRA weight delta.
+        """
         if multiplier is None:
             multiplier = self.multiplier
 
@@ -245,6 +305,18 @@ class LoRAModule(torch.nn.Module):
 def create_adapter_from_weights(
     text_encoder: Union[CLIPTextModel, List[CLIPTextModel]], unet: UNet2DConditionModel, weights_sd: Dict, multiplier: float = 1.0
 ):
+    """
+    Creates a LoRA adapter from weights for inference.
+
+    Args:
+        text_encoder (Union[CLIPTextModel, List[CLIPTextModel]]): Text encoder(s).
+        unet (UNet2DConditionModel): U-Net model.
+        weights_sd (Dict): State dict of weights.
+        multiplier (float, optional): Multiplier for the adapter output. Defaults to 1.0.
+
+    Returns:
+        LoRAAdapter: The created LoRA adapter.
+    """
     # get dim/alpha mapping
     modules_dim = {}
     modules_alpha = {}
@@ -269,6 +341,14 @@ def create_adapter_from_weights(
 
 
 def merge_lora_weights(pipe, weights_sd: Dict, multiplier: float = 1.0):
+    """
+    Merges LoRA weights into the pipeline models.
+
+    Args:
+        pipe: Diffusers pipeline.
+        weights_sd (Dict): State dict of LoRA weights.
+        multiplier (float, optional): Multiplier for the LoRA weights. Defaults to 1.0.
+    """
     text_encoders = [pipe.text_encoder, pipe.text_encoder_2] if hasattr(pipe, "text_encoder_2") else [pipe.text_encoder]
     unet = pipe.unet
 
@@ -279,6 +359,11 @@ def merge_lora_weights(pipe, weights_sd: Dict, multiplier: float = 1.0):
 
 # block weightや学習に対応しない簡易版 / simple version without block weight and training
 class LoRAAdapter(torch.nn.Module):
+    """
+    Adapter class for LoRA (Low-Rank Adaptation) for Diffusers.
+    This is a simplified version that does not support block weights or training.
+    """
+
     UNET_TARGET_REPLACE_MODULE = ["Transformer2DModel"]
     UNET_TARGET_REPLACE_MODULE_CONV2D_3X3 = ["ResnetBlock2D", "Downsample2D", "Upsample2D"]
     TEXT_ENCODER_TARGET_REPLACE_MODULE = ["CLIPAttention", "CLIPSdpaAttention", "CLIPMLP"]
@@ -298,6 +383,17 @@ class LoRAAdapter(torch.nn.Module):
         modules_alpha: Optional[Dict[str, int]] = None,
         varbose: Optional[bool] = False,
     ) -> None:
+        """
+        Initialize the LoRAAdapter.
+
+        Args:
+            text_encoder (Union[List[CLIPTextModel], CLIPTextModel]): Text encoder(s).
+            unet (UNet2DConditionModel): U-Net model.
+            multiplier (float, optional): Multiplier for the adapter. Defaults to 1.0.
+            modules_dim (Dict[str, int], optional): Dictionary of module ranks. Defaults to None.
+            modules_alpha (Dict[str, int], optional): Dictionary of module alphas. Defaults to None.
+            varbose (bool, optional): Whether to print verbose output. Defaults to False.
+        """
         super().__init__()
         self.multiplier = multiplier
 
@@ -398,6 +494,16 @@ class LoRAAdapter(torch.nn.Module):
 
     # SDXL: convert SDXL Stability AI's U-Net modules to Diffusers
     def convert_unet_modules(self, modules_dim, modules_alpha):
+        """
+        Convert Stability AI U-Net module names to Diffusers U-Net module names in place.
+
+        Args:
+            modules_dim (Dict): Dictionary of module ranks.
+            modules_alpha (Dict): Dictionary of module alphas.
+
+        Returns:
+            int: Number of converted modules.
+        """
         converted_count = 0
         not_converted_count = 0
 
@@ -424,11 +530,22 @@ class LoRAAdapter(torch.nn.Module):
         return converted_count
 
     def set_multiplier(self, multiplier):
+        """
+        Set multiplier for all LoRA modules.
+        """
         self.multiplier = multiplier
         for lora in self.text_encoder_loras + self.unet_loras:
             lora.multiplier = self.multiplier
 
     def apply_to(self, multiplier=1.0, apply_text_encoder=True, apply_unet=True):
+        """
+        Apply LoRA to the models.
+
+        Args:
+            multiplier (float, optional): Multiplier for the LoRA output. Defaults to 1.0.
+            apply_text_encoder (bool, optional): Whether to apply to Text Encoder. Defaults to True.
+            apply_unet (bool, optional): Whether to apply to U-Net. Defaults to True.
+        """
         if apply_text_encoder:
             logger.info("enable LoRA for text encoder")
             for lora in self.text_encoder_loras:
@@ -439,22 +556,40 @@ class LoRAAdapter(torch.nn.Module):
                 lora.apply_to(multiplier)
 
     def unapply_to(self):
+        """
+        Unapply LoRA from the models (restore original forward methods).
+        """
         for lora in self.text_encoder_loras + self.unet_loras:
             lora.unapply_to()
 
     def merge_to(self, multiplier=1.0):
+        """
+        Merge LoRA weights into the models.
+
+        Args:
+            multiplier (float, optional): Multiplier for the LoRA weight. Defaults to 1.0.
+        """
         logger.info("merge LoRA weights to original weights")
         for lora in tqdm(self.text_encoder_loras + self.unet_loras):
             lora.merge_to(multiplier)
         logger.info(f"weights are merged")
 
     def restore_from(self, multiplier=1.0):
+        """
+        Restore original weights by subtracting LoRA weights.
+
+        Args:
+            multiplier (float, optional): Multiplier for the LoRA weight. Defaults to 1.0.
+        """
         logger.info("restore LoRA weights from original weights")
         for lora in tqdm(self.text_encoder_loras + self.unet_loras):
             lora.restore_from(multiplier)
         logger.info(f"weights are restored")
 
     def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
+        """
+        Load state dict, converting keys if necessary.
+        """
         # convert SDXL Stability AI's state dict to Diffusers' based state dict
         map_keys = list(UNET_CONVERSION_MAP.keys())  # prefix of U-Net modules
         map_keys.sort()

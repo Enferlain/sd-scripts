@@ -30,11 +30,23 @@ logger = logging.getLogger(__name__)
 
 class DyLoRAModule(torch.nn.Module):
     """
-    replaces forward method of the original Linear, instead of replacing the original Linear module.
+    DyLoRA module that replaces the forward method of the original Linear or Conv2d module.
+    It implements Dynamic Low-Rank Adaptation (DyLoRA).
     """
 
     # NOTE: support dropout in future
     def __init__(self, lora_name, org_module: torch.nn.Module, multiplier=1.0, lora_dim=4, alpha=1, unit=1):
+        """
+        Initialize the DyLoRAModule.
+
+        Args:
+            lora_name (str): The name of the LoRA module.
+            org_module (torch.nn.Module): The original module to be adapted.
+            multiplier (float, optional): The multiplier for the LoRA output. Defaults to 1.0.
+            lora_dim (int, optional): The dimension (rank) of the LoRA. Defaults to 4.
+            alpha (float, optional): The alpha parameter for LoRA scaling. Defaults to 1.
+            unit (int, optional): The unit for dynamic rank selection. Defaults to 1.
+        """
         super().__init__()
         self.lora_name = lora_name
         self.lora_dim = lora_dim
@@ -77,11 +89,24 @@ class DyLoRAModule(torch.nn.Module):
         self.org_module = org_module  # remove in applying
 
     def apply_to(self):
+        """
+        Apply the DyLoRA module to the original module by replacing its forward method.
+        """
         self.org_forward = self.org_module.forward
         self.org_module.forward = self.forward
         del self.org_module
 
     def forward(self, x):
+        """
+        Forward pass of the DyLoRA module.
+        Randomly selects a rank for training.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor with LoRA adaptation applied.
+        """
         result = self.org_forward(x)
 
         # specify the dynamic rank
@@ -124,6 +149,18 @@ class DyLoRAModule(torch.nn.Module):
         return result
 
     def state_dict(self, destination=None, prefix="", keep_vars=False):
+        """
+        Returns a dictionary containing a whole state of the module.
+        The state dict is formatted to be compatible with standard LoRA state dicts.
+
+        Args:
+            destination (dict, optional): If provided, the state of module will be updated into the dict and the same object is returned. Otherwise, an OrderedDict will be created and returned.
+            prefix (str, optional): a prefix string that will be added to the key of the state.
+            keep_vars (bool, optional): by default the Tensor s returned in the state dict are detached from the parameter history.
+
+        Returns:
+            dict: The state dictionary.
+        """
         # state dictを通常のLoRAと同じにする:
         # nn.ParameterListは `.lora_A.0` みたいな名前になるので、forwardと同様にcatして入れ替える
         sd = super().state_dict(destination=destination, prefix=prefix, keep_vars=keep_vars)
@@ -152,6 +189,10 @@ class DyLoRAModule(torch.nn.Module):
         return sd
 
     def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+        """
+        Loads the module state from a state dictionary.
+        Compatible with standard LoRA state dicts.
+        """
         # 通常のLoRAと同じstate dictを読み込めるようにする：この方法はchatGPTに聞いた
         lora_A_weight = state_dict.pop(self.lora_name + ".lora_down.weight", None)
         lora_B_weight = state_dict.pop(self.lora_name + ".lora_up.weight", None)
@@ -185,6 +226,21 @@ def create_adapter(
     unet,
     **kwargs,
 ):
+    """
+    Creates a DyLoRA adapter.
+
+    Args:
+        multiplier (float): Multiplier for the adapter output.
+        adapter_rank (int, optional): Rank of the adapter (lora_dim). Defaults to 4.
+        adapter_alpha (float, optional): Alpha parameter for scaling. Defaults to 1.0.
+        vae (AutoencoderKL): VAE model (not used in DyLoRA creation but kept for interface consistency).
+        text_encoder (Union[CLIPTextModel, List[CLIPTextModel]]): Text encoder(s).
+        unet (UNet2DConditionModel): U-Net model.
+        **kwargs: Additional arguments, including 'conv_dim', 'conv_alpha', 'unit', and LoRA+ ratios.
+
+    Returns:
+        DyLoRAAdapter: The created DyLoRA adapter.
+    """
     if adapter_rank is None:
         adapter_rank = 4  # default
     if adapter_alpha is None:
@@ -232,6 +288,22 @@ def create_adapter(
 
 # Create peft from weights for inference, weights are not loaded here (because can be merged)
 def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weights_sd=None, for_inference=False, **kwargs):
+    """
+    Creates a DyLoRA adapter from weights for inference.
+
+    Args:
+        multiplier (float): Multiplier for the adapter output.
+        file (str): Path to the weights file.
+        vae (AutoencoderKL): VAE model.
+        text_encoder (Union[CLIPTextModel, List[CLIPTextModel]]): Text encoder(s).
+        unet (UNet2DConditionModel): U-Net model.
+        weights_sd (dict, optional): State dict of weights. If None, loaded from file.
+        for_inference (bool, optional): Whether to create for inference. Defaults to False.
+        **kwargs: Additional arguments.
+
+    Returns:
+        tuple: (DyLoRAAdapter, dict) The created adapter and the weights state dict.
+    """
     if weights_sd is None:
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import load_file
@@ -269,6 +341,11 @@ def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weigh
 
 
 class DyLoRAAdapter(torch.nn.Module):
+    """
+    Adapter class for DyLoRA (Dynamic Low-Rank Adaptation).
+    Manages the application and training of DyLoRA modules on Text Encoder and U-Net.
+    """
+
     UNET_TARGET_REPLACE_MODULE = ["Transformer2DModel"]
     UNET_TARGET_REPLACE_MODULE_CONV2D_3X3 = ["ResnetBlock2D", "Downsample2D", "Upsample2D"]
     TEXT_ENCODER_TARGET_REPLACE_MODULE = ["CLIPAttention", "CLIPSdpaAttention", "CLIPMLP"]
@@ -289,6 +366,22 @@ class DyLoRAAdapter(torch.nn.Module):
         module_class=DyLoRAModule,
         varbose=False,
     ) -> None:
+        """
+        Initialize the DyLoRAAdapter.
+
+        Args:
+            text_encoder (Union[CLIPTextModel, List[CLIPTextModel]]): The text encoder model(s).
+            unet (UNet2DConditionModel): The U-Net model.
+            multiplier (float, optional): The multiplier for the adapter. Defaults to 1.0.
+            lora_dim (int, optional): The dimension (rank) of the LoRA. Defaults to 4.
+            alpha (float, optional): The alpha parameter for LoRA scaling. Defaults to 1.
+            apply_to_conv (bool, optional): Whether to apply LoRA to Conv2d layers. Defaults to False.
+            modules_dim (dict, optional): Dictionary mapping module names to dimensions (ranks) for loading from weights.
+            modules_alpha (dict, optional): Dictionary mapping module names to alpha values for loading from weights.
+            unit (int, optional): The unit for dynamic rank selection. Defaults to 1.
+            module_class (type, optional): The class to use for LoRA modules. Defaults to DyLoRAModule.
+            varbose (bool, optional): Whether to print verbose output. Defaults to False.
+        """
         super().__init__()
         self.multiplier = multiplier
 
@@ -367,6 +460,14 @@ class DyLoRAAdapter(torch.nn.Module):
         logger.info(f"create LoRA for U-Net: {len(self.unet_loras)} modules.")
 
     def set_loraplus_lr_ratio(self, loraplus_lr_ratio, loraplus_unet_lr_ratio, loraplus_text_encoder_lr_ratio):
+        """
+        Sets the learning rate ratios for LoRA+.
+
+        Args:
+            loraplus_lr_ratio (float): General LoRA+ learning rate ratio.
+            loraplus_unet_lr_ratio (float): LoRA+ learning rate ratio specifically for U-Net.
+            loraplus_text_encoder_lr_ratio (float): LoRA+ learning rate ratio specifically for Text Encoder.
+        """
         self.loraplus_lr_ratio = loraplus_lr_ratio
         self.loraplus_unet_lr_ratio = loraplus_unet_lr_ratio
         self.loraplus_text_encoder_lr_ratio = loraplus_text_encoder_lr_ratio
@@ -375,11 +476,26 @@ class DyLoRAAdapter(torch.nn.Module):
         logger.info(f"LoRA+ Text Encoder LR Ratio: {self.loraplus_text_encoder_lr_ratio or self.loraplus_lr_ratio}")
 
     def set_multiplier(self, multiplier):
+        """
+        Sets the multiplier for all LoRA modules.
+
+        Args:
+            multiplier (float): The new multiplier value.
+        """
         self.multiplier = multiplier
         for lora in self.text_encoder_loras + self.unet_loras:
             lora.multiplier = self.multiplier
 
     def load_weights(self, file):
+        """
+        Loads weights from a file (safetensors or torch).
+
+        Args:
+            file (str): Path to the weights file.
+
+        Returns:
+            The result of load_state_dict.
+        """
         if os.path.splitext(file)[1] == ".safetensors":
             from safetensors.torch import load_file
 
@@ -391,6 +507,15 @@ class DyLoRAAdapter(torch.nn.Module):
         return info
 
     def apply_to(self, text_encoder, unet, apply_text_encoder=True, apply_unet=True):
+        """
+        Applies the LoRA adapter to the Text Encoder and U-Net.
+
+        Args:
+            text_encoder: Text Encoder model (unused but kept for signature compatibility).
+            unet: U-Net model (unused but kept for signature compatibility).
+            apply_text_encoder (bool, optional): Whether to apply to Text Encoder. Defaults to True.
+            apply_unet (bool, optional): Whether to apply to U-Net. Defaults to True.
+        """
         if apply_text_encoder:
             logger.info("enable LoRA for text encoder")
         else:
@@ -439,6 +564,17 @@ class DyLoRAAdapter(torch.nn.Module):
                                  learning_rates: LearningRatesConfig, 
                                  apply_orthograd: bool, 
                                  orthograd_targets: list[str]):
+        """
+        Prepares optimizer parameters for training.
+
+        Args:
+            learning_rates (LearningRatesConfig): Configuration for learning rates.
+            apply_orthograd (bool): Whether to apply OrthoGrad.
+            orthograd_targets (list[str]): List of targets for OrthoGrad.
+
+        Returns:
+            list: List of parameter groups for the optimizer.
+        """
         # Extract LRs from config
         unet_lr = learning_rates.unet
         base_lr = learning_rates.base
@@ -499,19 +635,39 @@ class DyLoRAAdapter(torch.nn.Module):
         return all_params
 
     def enable_gradient_checkpointing(self):
+        """
+        Enables gradient checkpointing (not supported for DyLoRA).
+        """
         # not supported
         pass
 
     def prepare_grad_etc(self, text_encoder, unet):
+        """
+        Prepares for gradient calculation. Sets requires_grad to True.
+        """
         self.requires_grad_(True)
 
     def on_epoch_start(self, text_encoder, unet):
+        """
+        Called at the start of each epoch. Sets the model to train mode.
+        """
         self.train()
 
     def get_trainable_params(self):
+        """
+        Returns the trainable parameters of the adapter.
+        """
         return self.parameters()
 
     def save_weights(self, file, dtype, metadata):
+        """
+        Saves the adapter weights to a file.
+
+        Args:
+            file (str): Path to the output file.
+            dtype (torch.dtype): Data type to save weights in.
+            metadata (dict): Metadata to save with the weights (for safetensors).
+        """
         if metadata is not None and len(metadata) == 0:
             metadata = None
 
@@ -539,7 +695,13 @@ class DyLoRAAdapter(torch.nn.Module):
 
     # mask is a tensor with values from 0 to 1
     def set_region(self, sub_prompt_index, is_last_adapter, mask):
+        """
+        Sets the region for regional LoRA (not implemented for DyLoRA).
+        """
         pass
 
     def set_current_generation(self, batch_size, num_sub_prompts, width, height, shared):
+        """
+        Sets the current generation parameters (not implemented for DyLoRA).
+        """
         pass
