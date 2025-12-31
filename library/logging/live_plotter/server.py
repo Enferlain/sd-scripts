@@ -12,6 +12,16 @@ from werkzeug.serving import WSGIRequestHandler
 
 
 class PlotterState:
+    """
+    Manages the state of the live plotter server.
+
+    Attributes:
+        timestep_counts: Accumulated counts for each timestep.
+        schedule_data: Noise schedule information for plotting.
+        settings_data: Configuration settings for the plotter.
+        session_id: Unique identifier for the current session.
+        data_lock: Thread lock for safe concurrent access.
+    """
     def __init__(self):
         self.timestep_counts = np.zeros(1000, dtype=np.int64)
         self.schedule_data = None
@@ -20,6 +30,7 @@ class PlotterState:
         self.data_lock = threading.Lock()
 
     def reset(self):
+        """Resets the plotter state."""
         with self.data_lock:
             self.timestep_counts.fill(0)
             self.schedule_data = None
@@ -29,7 +40,13 @@ class PlotterState:
 
 state = PlotterState()
 
-def run_plotter_server(port):
+def run_plotter_server(port: int):
+    """
+    Runs the live plotter server.
+
+    Args:
+        port: The port number to run the server on.
+    """
     web_dir = os.path.join(os.path.dirname(__file__), 'web')
     app = Flask(__name__, static_folder=web_dir)
 
