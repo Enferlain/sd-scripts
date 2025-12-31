@@ -106,6 +106,8 @@ def optimize_state_dict_with_fp8(
         exp_bits (int): Number of exponent bits
         mantissa_bits (int): Number of mantissa bits
         move_to_device (bool): Move optimized tensors to the calculating device
+        quantization_mode (str): Quantization mode, "tensor", "channel", or "block". Defaults to "block".
+        block_size (int, optional): Block size for block-wise quantization (used if quantization_mode is "block"). Defaults to 64.
 
     Returns:
         dict: FP8 optimized state dict
@@ -183,6 +185,21 @@ def quantize_weight(
         quantization_mode: str = "block",
         block_size: int = 64,
 ):
+    """
+    Quantizes a weight tensor to FP8.
+
+    Args:
+        key (str): Key name of the tensor.
+        tensor (torch.Tensor): The weight tensor to quantize.
+        fp8_dtype (torch.dtype): The target FP8 data type.
+        max_value (float): The maximum representable value in the FP8 format.
+        min_value (float): The minimum representable value in the FP8 format.
+        quantization_mode (str): Quantization mode, "tensor", "channel", or "block". Defaults to "block".
+        block_size (int): Block size for block-wise quantization. Defaults to 64.
+
+    Returns:
+        tuple[torch.Tensor, torch.Tensor]: The quantized weight tensor and the scale tensor.
+    """
     original_shape = tensor.shape
 
     # Determine quantization mode

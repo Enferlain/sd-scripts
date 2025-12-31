@@ -10,8 +10,11 @@ from concurrent.futures import ThreadPoolExecutor
 # This file was used by flux and sd3 and others, maybe reusable with all models?
 # Keep these functions here for portability, and private to avoid confusion with the ones in device_utils.py
 def _clean_memory_on_device(device: torch.device):
-    r"""
+    """
     Clean memory on the specified device, will be called from training scripts.
+
+    Args:
+        device (torch.device): The device to clean memory on.
     """
     gc.collect()
 
@@ -25,6 +28,12 @@ def _clean_memory_on_device(device: torch.device):
 
 
 def _synchronize_device(device: torch.device):
+    """
+    Synchronizes the specified device.
+
+    Args:
+        device (torch.device): The device to synchronize.
+    """
     if device.type == "cuda":
         torch.cuda.synchronize()
     elif device.type == "xpu":
@@ -34,6 +43,14 @@ def _synchronize_device(device: torch.device):
 
 
 def swap_weight_devices_cuda(device: torch.device, layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):
+    """
+    Swaps weights between a CPU module and a CUDA module using CUDA streams.
+
+    Args:
+        device (torch.device): The CUDA device to use for the swap.
+        layer_to_cpu (nn.Module): The module currently on CPU (destination for CUDA weights).
+        layer_to_cuda (nn.Module): The module currently on CUDA (destination for CPU weights).
+    """
     assert layer_to_cpu.__class__ == layer_to_cuda.__class__
 
     weight_swap_jobs: list[Tuple[nn.Module, nn.Module, torch.Tensor, torch.Tensor]] = []
@@ -80,7 +97,14 @@ def swap_weight_devices_cuda(device: torch.device, layer_to_cpu: nn.Module, laye
 
 def swap_weight_devices_no_cuda(device: torch.device, layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):
     """
-    not tested
+    Swaps weights between a CPU module and a device module without using CUDA specific optimizations.
+
+    This function is intended for devices other than CUDA (e.g. MPS, XPU), but is currently marked as not tested.
+
+    Args:
+        device (torch.device): The device to use for the swap.
+        layer_to_cpu (nn.Module): The module currently on CPU.
+        layer_to_cuda (nn.Module): The module currently on the device.
     """
     assert layer_to_cpu.__class__ == layer_to_cuda.__class__
 
@@ -105,6 +129,13 @@ def swap_weight_devices_no_cuda(device: torch.device, layer_to_cpu: nn.Module, l
 
 
 def weighs_to_device(layer: nn.Module, device: torch.device):
+    """
+    Moves the weights of a module to the specified device non-blocking.
+
+    Args:
+        layer (nn.Module): The module whose weights to move.
+        device (torch.device): The destination device.
+    """
     for module in layer.modules():
         if hasattr(module, "weight") and module.weight is not None:
             module.weight.data = module.weight.data.to(device, non_blocking=True)
@@ -112,7 +143,15 @@ def weighs_to_device(layer: nn.Module, device: torch.device):
 
 class Offloader:
     """
-    common offloading class
+    Base class for offloading model blocks between CPU and a device (e.g. GPU).
+
+    Manages the background swapping of weights using a thread pool.
+
+    Args:
+        num_blocks (int): Total number of blocks in the model.
+        blocks_to_swap (int): Number of blocks to keep on the device.
+        device (torch.device): The device to offload to.
+        debug (bool, optional): Whether to print debug information. Defaults to False.
     """
 
     def __init__(self, num_blocks: int, blocks_to_swap: int, device: torch.device, debug: bool = False):
@@ -126,12 +165,27 @@ class Offloader:
         self.cuda_available = device.type == "cuda"
 
     def swap_weight_devices(self, block_to_cpu: nn.Module, block_to_cuda: nn.Module):
+        """
+        Swaps weights between a block on CPU and a block on the device.
+
+        Args:
+            block_to_cpu (nn.Module): The block currently on CPU.
+            block_to_cuda (nn.Module): The block currently on the device.
+        """
         if self.cuda_available:
             swap_weight_devices_cuda(self.device, block_to_cpu, block_to_cuda)
         else:
             swap_weight_devices_no_cuda(self.device, block_to_cpu, block_to_cuda)
 
     def _submit_move_blocks(self, blocks, block_idx_to_cpu, block_idx_to_cuda):
+        """
+        Submits a job to the thread pool to swap blocks.
+
+        Args:
+            blocks (list): List of model blocks.
+            block_idx_to_cpu (int): Index of the block to move to CPU.
+            block_idx_to_cuda (int): Index of the block to move to the device.
+        """
         def move_blocks(bidx_to_cpu, block_to_cpu, bidx_to_cuda, block_to_cuda):
             if self.debug:
                 start_time = time.perf_counter()
@@ -152,6 +206,12 @@ class Offloader:
         )
 
     def _wait_blocks_move(self, block_idx):
+        """
+        Waits for the swap operation for a specific block to complete.
+
+        Args:
+            block_idx (int): The index of the block to wait for (the one moving to device).
+        """
         if block_idx not in self.futures:
             return
 
@@ -174,7 +234,16 @@ _grad_t = Union[tuple[torch.Tensor, ...], torch.Tensor]
 
 class ModelOffloader(Offloader):
     """
-    supports forward offloading
+    Manages model offloading during forward and backward passes.
+
+    Extends Offloader to handle hook registration and timing of swaps relative to forward/backward propagation.
+
+    Args:
+        blocks (Union[list[nn.Module], nn.ModuleList]): The list of model blocks to manage.
+        blocks_to_swap (int): Number of blocks to keep on the device.
+        device (torch.device): The device to offload to.
+        supports_backward (bool, optional): Whether to support backward pass offloading. Defaults to True.
+        debug (bool, optional): Whether to print debug information. Defaults to False.
     """
 
     def __init__(
@@ -200,6 +269,12 @@ class ModelOffloader(Offloader):
                     self.remove_handles.append(handle)
 
     def set_forward_only(self, forward_only: bool):
+        """
+        Sets whether offloading should be done only for the forward pass.
+
+        Args:
+            forward_only (bool): True to enable forward-only offloading, False otherwise.
+        """
         self.forward_only = forward_only
 
     def __del__(self):
@@ -210,6 +285,16 @@ class ModelOffloader(Offloader):
     def create_backward_hook(
             self, blocks: Union[list[nn.Module], nn.ModuleList], block_index: int
     ) -> Optional[Callable[[nn.Module, _grad_t, _grad_t], Union[None, _grad_t]]]:
+        """
+        Creates a backward hook to trigger block swapping during backpropagation.
+
+        Args:
+            blocks (Union[list[nn.Module], nn.ModuleList]): The list of model blocks.
+            block_index (int): The index of the current block.
+
+        Returns:
+            Optional[Callable]: The hook function, or None if no hook is needed for this block.
+        """
         # -1 for 0-based index
         num_blocks_propagated = self.num_blocks - block_index - 1
         swapping = num_blocks_propagated > 0 and num_blocks_propagated <= self.blocks_to_swap
@@ -236,6 +321,12 @@ class ModelOffloader(Offloader):
         return backward_hook
 
     def prepare_block_devices_before_forward(self, blocks: Union[list[nn.Module], nn.ModuleList]):
+        """
+        Prepares the initial state of blocks on device and CPU before the forward pass.
+
+        Args:
+            blocks (Union[list[nn.Module], nn.ModuleList]): The list of model blocks.
+        """
         if self.blocks_to_swap is None or self.blocks_to_swap == 0:
             return
 
@@ -255,11 +346,24 @@ class ModelOffloader(Offloader):
         _clean_memory_on_device(self.device)
 
     def wait_for_block(self, block_idx: int):
+        """
+        Waits for a specific block to be ready on the device.
+
+        Args:
+            block_idx (int): The index of the block to wait for.
+        """
         if self.blocks_to_swap is None or self.blocks_to_swap == 0:
             return
         self._wait_blocks_move(block_idx)
 
     def submit_move_blocks(self, blocks: Union[list[nn.Module], nn.ModuleList], block_idx: int):
+        """
+        Submits a job to move the next required blocks during the forward pass.
+
+        Args:
+            blocks (Union[list[nn.Module], nn.ModuleList]): The list of model blocks.
+            block_idx (int): The index of the current block being processed.
+        """
         # check if blocks_to_swap is enabled
         if self.blocks_to_swap is None or self.blocks_to_swap == 0:
             return
@@ -277,6 +381,16 @@ class ModelOffloader(Offloader):
 
 # region cpu offload utils
 def to_device(x: Any, device: torch.device) -> Any:
+    """
+    Recursively moves torch.Tensor objects (and containers thereof) to the specified device.
+
+    Args:
+        x (Any): A torch.Tensor, or a (possibly nested) list, tuple, or dict containing tensors.
+        device (torch.device): The destination device.
+
+    Returns:
+        Any: The same structure as x, with all torch.Tensor objects moved to the device.
+    """
     if isinstance(x, torch.Tensor):
         return x.to(device)
     elif isinstance(x, list):
