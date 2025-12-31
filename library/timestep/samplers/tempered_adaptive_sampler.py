@@ -23,6 +23,7 @@ class TemperedAdaptiveSampler:
         warmup_steps: int = 150,
         prior_bias: float = 1.0,
         entropy_floor_ratio: float = 0.6,
+        uniform_mix_when_low_entropy: float = 0.1,
     ):
         """
         Initialize the TemperedAdaptiveSampler.
@@ -37,9 +38,10 @@ class TemperedAdaptiveSampler:
             warmup_steps (int): Number of steps to use a warm-up schedule before full adaptive sampling.
             prior_bias (float): Bias factor for the prior distribution (emphasizing high-noise bins).
             entropy_floor_ratio (float): Minimum entropy ratio relative to uniform distribution.
+            uniform_mix_when_low_entropy (float): Mixing factor for uniform distribution when entropy is low.
         """
         print(
-            f"TemperedAdaptiveSampler initialized with: num_bins={num_bins}, ema_beta={ema_beta}, temperature={temperature}, prior_weight={prior_weight}, min_prob={min_prob}, warmup_steps={warmup_steps}, prior_bias={prior_bias}, entropy_floor_ratio={entropy_floor_ratio}"
+            f"TemperedAdaptiveSampler initialized with: num_bins={num_bins}, ema_beta={ema_beta}, temperature={temperature}, prior_weight={prior_weight}, min_prob={min_prob}, warmup_steps={warmup_steps}, prior_bias={prior_bias}, entropy_floor_ratio={entropy_floor_ratio}, uniform_mix_when_low_entropy={uniform_mix_when_low_entropy}"
         )
         a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1.0 - 1e-12)  # [T]
         snr = a2 / (1.0 - a2)
@@ -64,6 +66,7 @@ class TemperedAdaptiveSampler:
         self.min_prob = float(min_prob)
         self.warmup_steps = int(warmup_steps)
         self.entropy_floor_ratio = float(entropy_floor_ratio)
+        self.uniform_mix_when_low_entropy = float(uniform_mix_when_low_entropy)
 
         self.bin_loss_ema = torch.ones(self.num_bins, dtype=torch.float32)
         self.ema_sq = torch.ones(self.num_bins, dtype=torch.float32)
@@ -137,11 +140,6 @@ class TemperedAdaptiveSampler:
         Returns:
             torch.Tensor: A tensor of sampled timesteps with shape (bsz,).
         """
-        # Optional: expose this once in __init__
-        uniform_mix_when_low_entropy = getattr(
-            self, "uniform_mix_when_low_entropy", 0.10
-        )
-
         # Short warmup: either off or tiny, and mix in uniform (not pure prior)
         if global_step < self.warmup_steps:
             prior = self.prior_probs.to(device)
@@ -170,8 +168,8 @@ class TemperedAdaptiveSampler:
             if H < H_min:
                 uniform = torch.full_like(mixed, 1.0 / self.num_bins)
                 mixed = (
-                    1.0 - uniform_mix_when_low_entropy
-                ) * mixed + uniform_mix_when_low_entropy * uniform
+                    1.0 - self.uniform_mix_when_low_entropy
+                ) * mixed + self.uniform_mix_when_low_entropy * uniform
 
             mixed = mixed + self.min_prob
             mixed = mixed / mixed.sum()

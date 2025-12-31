@@ -93,7 +93,6 @@ class SNRWindowedLossAwareSampler:
         self.bin_loss_ema = torch.zeros(self.num_bins, device=log_snr.device)
         self.bin_counts = torch.zeros(self.num_bins, device=log_snr.device)
 
-        self.cap_max_t = None if cap_max_t is None else int(cap_max_t)
         self.cap_target_t = (self.T - 1) if cap_target_t is None else int(cap_target_t)
         self.cap_ema_beta = float(cap_ema_beta)
         self.cap_saturation_thresh = float(cap_saturation_thresh)

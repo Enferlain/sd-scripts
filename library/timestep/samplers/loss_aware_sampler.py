@@ -1,7 +1,7 @@
 # loss_aware_sampler.py
 import math
 import torch
-from typing import Optional, Union
+from typing import Optional
 
 
 class LossAwareTimestepSampler:
