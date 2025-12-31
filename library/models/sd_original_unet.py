@@ -3,16 +3,16 @@
 # As a constraint, the state_dict of the model must be in the same format as that of Diffusers 0.10.2
 
 """
-v1.5とv2.1の相違点は
-- attention_head_dimがintかlist[int]か
-- cross_attention_dimが768か1024か
-- use_linear_projection: trueがない（=False, 1.5）かあるか
-- upcast_attentionがFalse(1.5)かTrue(2.1)か
-- （以下は多分無視していい）
-- sample_sizeが64か96か
-- dual_cross_attentionがあるかないか
-- num_class_embedsがあるかないか
-- only_cross_attentionがあるかないか
+The differences between v1.5 and v2.1 are:
+- attention_head_dim is int or list[int]
+- cross_attention_dim is 768 or 1024
+- use_linear_projection: true is missing (=False, 1.5) or present
+- upcast_attention is False (1.5) or True (2.1)
+- (The following can probably be ignored)
+- sample_size is 64 or 96
+- dual_cross_attention is present or absent
+- num_class_embeds is present or absent
+- only_cross_attention is present or absent
 
 v1.5
 {
@@ -143,6 +143,7 @@ logger = logging.getLogger(__name__)
 class FlashAttentionFunction(torch.autograd.Function):
     """
     Flash Attention Function.
+    Implements Flash Attention forward and backward passes per the algorithm in https://arxiv.org/abs/2205.14135.
     """
 
     @staticmethod
@@ -414,6 +415,8 @@ class SampleOutput:
 class TimestepEmbedding(nn.Module):
     """
     Timestep embedding projection.
+
+    This module projects timestep embeddings to a higher dimension.
     """
     def __init__(self, in_channels: int, time_embed_dim: int, act_fn: str = "silu", out_dim: int = None):
         super().__init__()
@@ -444,6 +447,8 @@ class TimestepEmbedding(nn.Module):
 class Timesteps(nn.Module):
     """
     Wrapper for getting timestep embedding.
+
+    This module generates sinusoidal timestep embeddings.
     """
     def __init__(self, num_channels: int, flip_sin_to_cos: bool, downscale_freq_shift: float):
         super().__init__()
@@ -464,6 +469,8 @@ class Timesteps(nn.Module):
 class ResnetBlock2D(nn.Module):
     """
     ResNet block.
+
+    A residual block with GroupNorm, SiLU activation, and optional time embedding projection.
     """
     def __init__(
             self,
@@ -586,6 +593,8 @@ class DownBlock2D(nn.Module):
 class Downsample2D(nn.Module):
     """
     Downsampling layer.
+
+    Reduces the spatial dimensions of the input tensor.
     """
     def __init__(self, channels, out_channels):
         super().__init__()
@@ -1005,6 +1014,8 @@ class Transformer2DModel(nn.Module):
 class CrossAttnDownBlock2D(nn.Module):
     """
     CrossAttnDownBlock2D.
+
+    Downsampling block with cross-attention and ResNet layers.
     """
     def __init__(
             self,
@@ -1095,6 +1106,8 @@ class CrossAttnDownBlock2D(nn.Module):
 class UNetMidBlock2DCrossAttn(nn.Module):
     """
     UNetMidBlock2DCrossAttn.
+
+    Middle block with cross-attention and ResNet layers.
     """
     def __init__(
             self,
@@ -1177,6 +1190,8 @@ class UNetMidBlock2DCrossAttn(nn.Module):
 class Upsample2D(nn.Module):
     """
     Upsample2D.
+
+    Upsampling layer.
     """
     def __init__(self, channels, out_channels):
         super().__init__()
@@ -1216,6 +1231,8 @@ class Upsample2D(nn.Module):
 class UpBlock2D(nn.Module):
     """
     UpBlock2D.
+
+    Upsampling block with ResNet layers.
     """
     def __init__(
             self,
@@ -1287,6 +1304,8 @@ class UpBlock2D(nn.Module):
 class CrossAttnUpBlock2D(nn.Module):
     """
     CrossAttnUpBlock2D.
+
+    Upsampling block with cross-attention and ResNet layers.
     """
     def __init__(
             self,
@@ -1401,6 +1420,8 @@ def get_down_block(
 ):
     """
     Get down block.
+
+    Factory function that returns the appropriate down block based on block type.
     """
     if down_block_type == "DownBlock2D":
         return DownBlock2D(
@@ -1433,6 +1454,8 @@ def get_up_block(
 ):
     """
     Get up block.
+
+    Factory function that returns the appropriate up block based on block type.
     """
     if up_block_type == "UpBlock2D":
         return UpBlock2D(
@@ -1457,6 +1480,9 @@ def get_up_block(
 class UNet2DConditionModel(nn.Module):
     """
     UNet2DConditionModel.
+
+    UNet model for conditional image generation in Stable Diffusion.
+    Supports cross-attention conditioning and optional ControlNet integration.
     """
     _supports_gradient_checkpointing = True
 
