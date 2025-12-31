@@ -16,9 +16,8 @@ import library.models.sd_model_util
 from library.strategies import strategy_sd, strategy_base
 from library.constants import SD_VAE_LATENT_SCALE
 from library.strategies.peft_strategy_base import PeftTrainingStrategy
-from library.models import model_util
-from library.training.model_prep import replace_unet_modules
-from library.training.sd_model_prep import load_target_model
+from library.models.model_prep import replace_unet_modules
+from library.models.sd_model_prep import load_target_model
 from library.training.sd_sample_generation import sample_images
 from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps

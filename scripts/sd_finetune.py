@@ -1,11 +1,9 @@
 import hydra
 import math
 import os
-import toml
 import torch
 import logging
 
-from omegaconf import OmegaConf
 from tqdm import tqdm
 from multiprocessing import Value
 from diffusers import DDPMScheduler
@@ -18,10 +16,11 @@ from library.utils.common_utils import setup_logging
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.config.config_util import BlueprintGenerator, generate_dataset_group_by_blueprint
 from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
-from library.training.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
-from library.training.sd_model_prep import load_target_model
+from library.models.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
+from library.models.sd_model_prep import load_target_model
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.training.optimizer import get_optimizer, get_scheduler_fix
+from library.optimizers.scheduler import get_scheduler_fix
+from library.optimizers.optimizer_factory import get_optimizer
 from library.training.sd_sample_generation import sample_images
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss

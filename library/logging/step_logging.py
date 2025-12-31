@@ -5,7 +5,7 @@ from accelerate import Accelerator
 from omegaconf import OmegaConf
 
 from library.config.dataclasses.output import LoggingConfig
-from library.training.optimizer import should_train_text_encoder
+from library.optimizers.optimizer_utils import should_train_text_encoder
 
 
 def generate_step_logs(

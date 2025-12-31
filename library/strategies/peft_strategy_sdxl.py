@@ -17,8 +17,8 @@ from library.strategies.peft_strategy_base import PeftTrainingStrategy
 from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl_model_util import get_size_embeddings
 from library.models.text_encoder_util import get_hidden_states_sdxl
-from library.training.sdxl_model_prep import load_target_model
-from library.training.model_prep import replace_unet_modules
+from library.models.sdxl_model_prep import load_target_model
+from library.models.model_prep import replace_unet_modules
 from library.training.sdxl_sample_generation import sample_images
 from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps

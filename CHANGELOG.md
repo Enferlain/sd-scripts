@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-31]
+
+### Changed
+
+- **Library Reorganization - Model Prep Move**
+
+  - Moved `model_prep.py`, `sd_model_prep.py`, `sdxl_model_prep.py` from `library/training/` → `library/models/` (model loading belongs with models, not training)
+  - Updated test patches in `test_training_model_prep.py` and `test_training_sdxl_model_prep.py` to use new `library.models.*` paths
+
+- **Library Reorganization - Optimizer Module Split**
+
+  - Moved `optimizer.py` from `library/training/` → `library/optimizers/` and split into:
+    - `optimizer_factory.py` - `get_optimizer()` factory function (431 lines)
+    - `optimizer_utils.py` - `prepare_optimizer()` + helper functions (210 lines)
+    - `scheduler.py` - `get_scheduler_fix()` + `get_dummy_scheduler()` (200 lines)
+  - Moved `get_dummy_scheduler()` and `parse_string_to_type()` to `scheduler.py`
+  - Fixed circular import by giving each file its own logger via `setup_logging()` pattern
+
+- **Extracted `create_training_metadata()`**
+  - Moved from `library/utils/model_metadata.py` → `library/training/training_metadata.py`
+  - Training-specific `ss_*` metadata now in dedicated file
+
+### Added
+
+- **Configurable Hash Algorithm** (`output.saving.hash_algorithm`)
+
+  - New config option to choose hash algorithm for model checksums
+  - Options: `md5`, `sha1`, `sha256` (default), `sha512`, `blake3`
+  - `blake3` is fastest (~3s for 6GB, saturates NVMe) but requires `pip install blake3`
+  - `sha256` recommended for compatibility with A1111/ComfyUI/ModelSpec
+  - Added `calculate_hash(filename, algorithm)` function in `hash_utils.py`
+
+- **ROADMAP Updates**
+  - Marked `sd_textual_inversion.py` config migration as complete
+  - Marked PEFT strategy deduplication as complete (4 methods moved to `peft_strategy_base.py`)
+  - Clarified per-model directory structure: `text_encoder_util.py` is SDXL-specific (should move to `sdxl/`), VAE is SD/SDXL shared but not generic for Flux (16-ch vs 4-ch)
+
 ## [2025-12-30]
 
 ### Changed

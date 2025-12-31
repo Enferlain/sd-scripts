@@ -15,7 +15,7 @@ Usage:
 """
 import logging
 
-from library.training.optimizer import should_train_text_encoder
+from library.optimizers.optimizer_utils import should_train_text_encoder
 
 logger = logging.getLogger(__name__)
 

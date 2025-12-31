@@ -140,7 +140,7 @@ SCHEDULER_TIMESTEPS = 1000
 SCHEDLER_SCHEDULE = "scaled_linear"
 
 
-# --- optimizer.py ---
+# --- optimizer_utils.py ---
 # Compile the regular expression patterns for float and integer
 float_pattern = re.compile(r'''^[+-]?(
     ( (\d+\.\d*) | (\.\d+) ) ([eE][+-]?\d+)?   # Decimal numbers with optional exponent

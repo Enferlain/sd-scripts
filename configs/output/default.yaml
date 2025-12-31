@@ -16,6 +16,7 @@ saving:
   save_model_as: null
   use_safetensors: false
   no_metadata: false
+  hash_algorithm: sha256 # Options: md5, sha1, sha256, sha512, blake3
 
 logging:
   logging_dir: null

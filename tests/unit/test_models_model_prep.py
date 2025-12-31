@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import pytest
 import torch
-from library.training import model_prep
+from library.models import model_prep
+
 
 class TestModelPrep(unittest.TestCase):
     def test_set_padding_mode_for_vae_conv2d_modules(self):
@@ -28,7 +28,7 @@ class TestModelPrep(unittest.TestCase):
         self.assertEqual(vae.conv2.padding_mode, 'zeros') # Should remain zeros as padding was 0
         self.assertEqual(vae.conv3.padding_mode, 'reflect')
 
-    @patch("library.training.model_prep.logger")
+    @patch("library.models.model_prep.logger")
     def test_replace_unet_modules_mem_eff(self, mock_logger):
         # Mock UNet
         mock_unet = MagicMock()
@@ -39,7 +39,7 @@ class TestModelPrep(unittest.TestCase):
         mock_unet.set_use_memory_efficient_attention.assert_called_with(False, True)
         mock_logger.info.assert_called_with("Enable memory efficient attention for U-Net")
 
-    @patch("library.training.model_prep.logger")
+    @patch("library.models.model_prep.logger")
     def test_replace_unet_modules_sdpa(self, mock_logger):
         # Mock UNet
         mock_unet = MagicMock()
@@ -51,7 +51,7 @@ class TestModelPrep(unittest.TestCase):
         # Check logs if needed, though exact string matching might be brittle
         mock_logger.info.assert_called_with("Enable SDPA for U-Net")
 
-    @patch("library.training.model_prep.logger")
+    @patch("library.models.model_prep.logger")
     def test_replace_unet_modules_xformers(self, mock_logger):
         # Mock UNet
         mock_unet = MagicMock()
@@ -74,7 +74,7 @@ class TestModelPrep(unittest.TestCase):
                  with self.assertRaises(ImportError):
                     model_prep.replace_unet_modules(mock_unet, mem_eff_attn=False, xformers=True, sdpa=False)
 
-    @patch("library.training.model_prep.logger")
+    @patch("library.models.model_prep.logger")
     def test_patch_accelerator_for_fp16_training(self, mock_logger):
         mock_accelerator = MagicMock()
         from accelerate import DistributedType
@@ -99,7 +99,7 @@ class TestModelPrep(unittest.TestCase):
         # Verify it called original with True
         original_unscale.assert_called_with(mock_optimizer, 1.0, False, True)
 
-    @patch("library.training.model_prep.logger")
+    @patch("library.models.model_prep.logger")
     def test_patch_accelerator_deepspeed_skip(self, mock_logger):
         mock_accelerator = MagicMock()
         from accelerate import DistributedType

@@ -1,23 +1,20 @@
 """
-Unit tests for library/training/optimizer.py
+Unit tests for library/training/optimizer_utils.py
 
 Tests optimizer creation, scheduler setup, and config-based initialization.
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
 import torch
 
-from library.training.optimizer import (
-    get_optimizer,
+from library.optimizers.optimizer_utils import (
     is_schedulefree_optimizer,
     is_wrapper_optimizer,
-    get_dummy_scheduler,
     parse_string_to_type,
 )
+from library.optimizers.scheduler import get_dummy_scheduler
+from library.optimizers.optimizer_factory import get_optimizer
 from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig, LearningRatesConfig
-from library.config.dataclasses.peft import PeftConfig
-from library.config.dataclasses.dataset import DatasetConfig
 
 
 # =============================================================================

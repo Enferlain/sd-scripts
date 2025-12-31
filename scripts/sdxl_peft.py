@@ -16,52 +16,35 @@ import gc
 import importlib
 import math
 import os
-import typing
-import subprocess
 import sys
 import random
 import time
-import json
 import numpy as np
-import ast
 import itertools
-import atexit
 import torch
-import torch.nn as nn
 import logging
 import hydra
 
 from hydra.core.config_store import ConfigStore
-from omegaconf import DictConfig, OmegaConf
-from typing import Any, List, Union, Optional
-from multiprocessing import Value
 from tqdm import tqdm
-from accelerate import Accelerator
-from diffusers import DDPMScheduler
-from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL
-from ramtorch.helpers import replace_linear_with_ramtorch
 
-import library.config.config_util as config_util
 import library.utils.huggingface_util as huggingface_util
 
-from library.config.config_validation import prepare_config, validate_config, validate_sd_peft
-from library.constants import SS_METADATA_MINIMUM_KEYS
-from library.strategies import strategy_sd, strategy_base
+from library.config.config_validation import prepare_config, validate_config
+from library.strategies import strategy_base
 from library.performance import deepspeed_utils
-from library.models import model_util
-from library.utils import model_metadata
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
-from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.training.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
-from library.training.optimizer import prepare_optimizer, get_scheduler_fix
+from library.models.model_prep import patch_accelerator_for_fp16_training
+from library.optimizers.optimizer_utils import prepare_optimizer
+from library.optimizers.scheduler import get_scheduler_fix
 from library.training.sample_generation import sample_images_check
-from library.losses.loss import get_huber_threshold_if_needed, conditional_loss, EMARecorder
+from library.losses.loss import EMARecorder
 from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 from library.strategies.peft_strategy_sdxl import SdxlPeftStrategy
 from library.adapters.lora_utils import resolve_adapter_kwargs
-from library.utils.model_metadata import create_training_metadata
+from library.training.training_metadata import create_training_metadata
 from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
 from library.data.dataset_setup import prepare_datasets
 
@@ -85,16 +68,6 @@ from library.training.checkpointing import (
     get_last_ckpt_name,
     save_state_on_train_end, register_adapter_state_hooks
 )
-from library.utils.hash_utils import model_hash, calculate_sha256, get_git_revision_hash
-
-from library.data.dataset import (
-    DatasetGroup,
-    MinimalDataset,
-    load_arbitrary_dataset,
-    collator_class,
-    debug_dataset,
-    DreamBoothDataset
-)
 
 from library.training.trainer_utils import (
     calculate_val_loss_check,
@@ -102,22 +75,10 @@ from library.training.trainer_utils import (
     determine_grad_sync_context, calculate_initial_step
 )
 
-from library.training.noise_utils import (
-    prepare_scheduler_for_custom_training,
-    fix_noise_scheduler_betas_for_zero_terminal_snr
-)
-
 from library.losses.edm2_loss_utils import (
     prepare_edm2_loss_weighting,
     plot_edm2_loss_weighting_check,
     plot_edm2_loss_weighting
-)
-
-from library.losses.loss_weighting import (
-    apply_masked_loss, apply_snr_weight,
-    scale_v_prediction_loss_like_noise_prediction,
-    add_v_prediction_like_loss,
-    apply_debiased_estimation
 )
 
 try:

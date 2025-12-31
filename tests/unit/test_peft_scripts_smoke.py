@@ -40,7 +40,7 @@ class TestPeftCommonImports:
 
     def test_peft_common_has_create_training_metadata(self):
         """Verify create_training_metadata function exists."""
-        from library.utils.model_metadata import create_training_metadata
+        from library.training.training_metadata import create_training_metadata
         assert callable(create_training_metadata)
 
     def test_peft_common_has_setup_live_plotter(self):

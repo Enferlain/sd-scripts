@@ -1,7 +1,6 @@
 import hydra
 import math
 import os
-import toml
 import logging
 import torch
 
@@ -9,16 +8,12 @@ from tqdm import tqdm
 from multiprocessing import Value
 from typing import Any, List, Optional, Union
 from diffusers import DDPMScheduler
-from transformers import CLIPTokenizer
-from omegaconf import OmegaConf
 
 import library.logging.step_logging
 import library.models.sd_model_util
 import library.utils.huggingface_util as huggingface_util
 
-from library.models import model_util
 from library.utils import model_metadata
-from library.performance import deepspeed_utils
 from library.strategies import strategy_sd, strategy_base
 from library.utils.torch_utils import prepare_dtype, set_seed_from_config
 from library.utils.common_utils import setup_logging
@@ -36,14 +31,15 @@ from library.data.dataset import (
 )
 from library.config.dataclasses.sd_textual_inversion import TextualInversionConfig
 
-from library.training.model_prep import (
+from library.models.model_prep import (
     replace_unet_modules,
     patch_accelerator_for_fp16_training,
 )
-from library.training.sd_model_prep import load_target_model
+from library.models.sd_model_prep import load_target_model
 from library.training.trainer_utils import prepare_accelerator
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.training.optimizer import get_optimizer, get_scheduler_fix
+from library.optimizers.scheduler import get_scheduler_fix
+from library.optimizers.optimizer_factory import get_optimizer
 from library.training.sd_sample_generation import sample_images
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.config.config_validation import (
@@ -56,7 +52,6 @@ from library.constants import SD_VAE_LATENT_SCALE
 from library.config.config_util import (
     BlueprintGenerator,
     generate_dataset_group_by_blueprint,
-    generate_dreambooth_subsets_config_by_subdirs,
 )
 
 from library.training.checkpointing import (

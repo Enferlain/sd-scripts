@@ -61,18 +61,7 @@ Scripts (contain training loops):     Library Modules:
 
 - [ ] Config Validation Edge Cases: Test `prepare_config()` and `validate_config()` for dataset conflicts
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
-- [ ] **`sd_textual_inversion.py` Config Migration** (partial)
-  - Renamed `config` → `cfg` throughout script
-  - Updated config access patterns for new nested structure:
-    - `cfg.dataset` → `cfg.data`
-    - `cfg.saving/sampling/logging/huggingface/metadata` → `cfg.output.*`
-    - `cfg.performance.xformers/sdpa/mem_eff_attn` → `cfg.performance.attention.*`
-    - `cfg.loss.min_snr_gamma/debiased_estimation_loss/etc` → `cfg.loss.snr.*`
-    - `cfg.masked_loss` → `cfg.loss.masked`
-    - `training_config.gradient_checkpointing` → `cfg.performance.memory.gradient_checkpointing`
-    - `training_config.full_fp16` → `cfg.performance.precision.full_fp16`
-  - Added `tools/scan_config_patterns.py` utility for auditing config access
-  - **Remaining**: `model_config.v2` needs to be derived from `model_type` or handled via strategy
+- [x] ~~**`sd_textual_inversion.py` Config Migration**~~ - Completed: uses `cfg.*` pattern, `model_type` handling done via strategy
 
 ### Completed
 
@@ -103,9 +92,9 @@ Scripts (contain training loops):     Library Modules:
     - Pass `PrecisionConfig` if only precision fields needed (not full `PerformanceConfig`)
     - Pass `LoggingConfig` if only logging fields needed (not full `OutputConfig`)
     - Different params can be at different depths (e.g., `precision_config, saving_config`)
-- [ ] Apply config pattern to `sd_textual_inversion.py` (use `cfg.*` in `train()`, keep typed params in helper methods that are called externally)
+- [x] ~~Apply config pattern to `sd_textual_inversion.py`~~ (completed)
 - [ ] get rid of lazy imports, move to top for transparency
-- [ ] **PEFT Strategy Deduplication**: 4 methods identical between `peft_strategy_sd.py` and `peft_strategy_sdxl.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`) - should move to shared base class
+- [x] ~~**PEFT Strategy Deduplication**~~: 4 methods moved to `peft_strategy_base.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`)
 - [ ] **PEFT Strategy Internal Dedup**: `process_batch` and `process_val_batch` share ~45 lines of identical latent/text encoding setup - extract to helper method
 
 ---
@@ -140,15 +129,31 @@ Scripts (contain training loops):     Library Modules:
 
 **Goal:** Reorganize `library/models/` from flat files to per-model directories for better maintainability as more architectures are added.
 
+**Recent changes:**
+
+- [x] Moved `model_prep.py`, `sd_model_prep.py`, `sdxl_model_prep.py` from `training/` → `models/` (model loading belongs here)
+
+**Key insights:**
+
+- `text_encoder_util.py` is **SDXL-specific** (dual CLIP encoders) → should move to `sdxl/`
+- `model_util.py` VAE functions are **SD/SDXL shared** (same 4-channel VAE architecture) but not generic for Flux (16-channel)
+- No truly "universal" shared folder makes sense - different model families have different architectures
+- Truly generic utilities (e.g., `is_safetensors()`) can stay in a `common.py` or move to `utils/`
+
 Currently:
 
 ```
 library/models/
-├── model_util.py          # Shared VAE utils + is_safetensors
+├── model_util.py          # SD/SDXL VAE utils + is_safetensors
+├── model_prep.py          # Generic module patching
 ├── sd_model_util.py       # SD1/2 conversion & loading
+├── sd_model_prep.py       # SD model loading
 ├── sdxl_model_util.py     # SDXL conversion & loading
+├── sdxl_model_prep.py     # SDXL model loading
 ├── sd_original_unet.py    # SD1/2 UNet architecture
-├── flux.py, hunyuan.py... # Other model utilities
+├── sdxl_original_unet.py  # SDXL UNet architecture
+├── text_encoder_util.py   # SDXL text encoder utils (misnamed!)
+└── ...
 ```
 
 Proposed future structure:
@@ -157,22 +162,19 @@ Proposed future structure:
 library/models/
 ├── sd/
 │   ├── unet.py            # SD UNet architecture (from sd_original_unet.py)
-│   ├── conversion.py      # SD checkpoint conversion
-│   └── loader.py          # load_models_from_sd_checkpoint
+│   ├── conversion.py      # SD checkpoint conversion (from sd_model_util.py)
+│   └── loader.py          # SD model loading (from sd_model_prep.py)
 ├── sdxl/
-│   ├── unet.py
-│   ├── conversion.py
-│   └── loader.py
+│   ├── unet.py            # from sdxl_original_unet.py
+│   ├── conversion.py      # from sdxl_model_util.py
+│   ├── loader.py          # from sdxl_model_prep.py
+│   └── text_encoder.py    # from text_encoder_util.py (SDXL-specific!)
 ├── flux/
 │   ├── dit.py
 │   ├── conversion.py
 │   └── loader.py
-├── hunyuan/
-│   └── ...
-├── shared/
-│   ├── vae.py             # Common VAE utilities (from model_util.py)
-│   ├── text_encoder.py    # Common TE utilities
-│   └── safetensors.py     # is_safetensors, load_file helpers
+├── vae.py                 # SD/SDXL shared VAE (same 4-ch architecture)
+├── common.py              # Truly generic: is_safetensors(), shave_segments()
 └── __init__.py
 ```
 
@@ -181,4 +183,4 @@ library/models/
 - Clear separation of concerns per model type
 - Easier to add new architectures without bloating existing files
 - Consistent structure makes navigation predictable
-- Shared utilities clearly identified in `shared/` folder
+- No misleading "shared" folder - VAE/common utilities explicit about their scope

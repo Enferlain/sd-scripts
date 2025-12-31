@@ -21,6 +21,10 @@ class SavingConfig:
     save_model_as: Optional[str] = None
     use_safetensors: bool = False
     no_metadata: bool = False
+    hash_algorithm: str = field(
+        default='sha256',
+        metadata={"help": "Hash algorithm for model checksums: md5, sha1, sha256, sha512, blake3."}
+    )
 
 
 @dataclass

@@ -1,7 +1,6 @@
 
 import sys
 import os
-import types
 
 # Ensure we can import from library
 sys.path.append(os.getcwd())
@@ -9,14 +8,14 @@ sys.path.append(os.getcwd())
 def test_imports():
     print("Testing imports...")
     try:
-        import library.training.optimizer
+        import library.optimizers.optimizer_utils
         print("✅ library.training.optimizer imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import library.training.optimizer: {e}")
         return False
         
     try:
-        import library.training.model_prep
+        import library.models.model_prep
         print("✅ library.training.model_prep imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import library.training.model_prep: {e}")
@@ -67,8 +66,7 @@ def test_checkpointing_shim():
     import library.utils.sai_model_spec as sai_model_spec
     
     # Check annotations of get_sai_model_spec_from_config
-    from typing import Any
-    
+
     # In python < 3.10, strict type checking at runtime isn't enforced, but we want to ensure
     # we can pass our MetadataConfig without it exploding due to type issues.
     

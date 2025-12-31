@@ -1,11 +1,9 @@
 import hydra
 import math
 import os
-import toml
 import torch
 import logging
 
-from omegaconf import DictConfig, OmegaConf
 from multiprocessing import Value
 from typing import List
 from tqdm import tqdm
@@ -25,11 +23,12 @@ from library.strategies import strategy_sdxl, strategy_sd, strategy_base
 from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
 from library.training.checkpointing import resume_from_local_or_hf_if_specified, save_state_on_train_end
 from library.training.sdxl_checkpointing import save_sd_model_on_epoch_end_or_stepwise, save_sd_model_on_train_end
-from library.training.sdxl_model_prep import load_target_model
+from library.models.sdxl_model_prep import load_target_model
 from library.training.sdxl_sample_generation import sample_images
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.training.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
-from library.training.optimizer import get_optimizer, get_scheduler_fix
+from library.models.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
+from library.optimizers.scheduler import get_scheduler_fix
+from library.optimizers.optimizer_factory import get_optimizer
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.logging.step_logging import append_lr_to_logs_with_names
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
@@ -262,7 +261,7 @@ def train(cfg: SDXLFineTuneConfig):
     strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
     # Train text encoder if TE LR > 0 (based on LR-based training control)
-    from library.training.optimizer import should_train_text_encoder
+    from library.optimizers.optimizer_utils import should_train_text_encoder
     train_te_based_on_lr = should_train_text_encoder(cfg.optimizer)  # FIXME: Expected type 'LearningRatesConfig', got 'OptimizerConfig' instead
     if train_te_based_on_lr:
         accelerator.print("enable text encoder training")

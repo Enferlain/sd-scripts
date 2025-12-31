@@ -1,12 +1,11 @@
 
 import unittest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
 import torch
 import pytest
-import os
 
 # Import the module under test
-import library.training.sdxl_model_prep as sdxl_model_prep
+import library.models.sdxl_model_prep as sdxl_model_prep
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import MemoryConfig, CachingConfig, PrecisionConfig
 
@@ -27,9 +26,9 @@ class TestSDXLModelPrep(unittest.TestCase):
         self.caching_config.disable_mmap_load_safetensors = False
         self.precision_config.mixed_precision = "fp16"
 
-    @patch("library.training.sdxl_model_prep.match_mixed_precision")
-    @patch("library.training.sdxl_model_prep._load_target_model")
-    @patch("library.training.sdxl_model_prep.clean_memory_on_device")
+    @patch("library.models.sdxl_model_prep.match_mixed_precision")
+    @patch("library.models.sdxl_model_prep._load_target_model")
+    @patch("library.models.sdxl_model_prep.clean_memory_on_device")
     def test_load_target_model_main_process(self, mock_clean, mock_load_internal, mock_match_mp):
         """Test load_target_model on the main process (index 0)."""
         # Mock accelerator
@@ -74,8 +73,8 @@ class TestSDXLModelPrep(unittest.TestCase):
         # Check return
         self.assertEqual(result, return_tuple)
 
-    @patch("library.training.sdxl_model_prep.match_mixed_precision")
-    @patch("library.training.sdxl_model_prep._load_target_model")
+    @patch("library.models.sdxl_model_prep.match_mixed_precision")
+    @patch("library.models.sdxl_model_prep._load_target_model")
     def test_load_target_model_secondary_process(self, mock_load_internal, mock_match_mp):
         """Test load_target_model on a secondary process (index 1)."""
         accelerator = MagicMock()
@@ -96,9 +95,9 @@ class TestSDXLModelPrep(unittest.TestCase):
         self.assertEqual(accelerator.wait_for_everyone.call_count, 2)
 
 
-    @patch("library.training.sdxl_model_prep.match_mixed_precision")
-    @patch("library.training.sdxl_model_prep._load_target_model")
-    @patch("library.training.sdxl_model_prep.clean_memory_on_device")
+    @patch("library.models.sdxl_model_prep.match_mixed_precision")
+    @patch("library.models.sdxl_model_prep._load_target_model")
+    @patch("library.models.sdxl_model_prep.clean_memory_on_device")
     def test_load_target_model_iterates_processes(self, mock_clean, mock_load_internal, mock_match_mp):
         """Test that the loop correctly triggers loading when it matches local index."""
         accelerator = MagicMock()
@@ -120,9 +119,9 @@ class TestSDXLModelPrep(unittest.TestCase):
         # load should be called exactly once
         mock_load_internal.assert_called_once()
 
-    @patch("library.training.sdxl_model_prep.match_mixed_precision")
-    @patch("library.training.sdxl_model_prep._load_target_model")
-    @patch("library.training.sdxl_model_prep.clean_memory_on_device")
+    @patch("library.models.sdxl_model_prep.match_mixed_precision")
+    @patch("library.models.sdxl_model_prep._load_target_model")
+    @patch("library.models.sdxl_model_prep.clean_memory_on_device")
     def test_load_target_model_lowram(self, mock_clean, mock_load_internal, mock_match_mp):
         """Test lowram behavior moving models to device."""
         self.memory_config.lowram = True
@@ -200,7 +199,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         self.assertEqual(result[3], "new_vae")
 
     @patch("os.path.isfile")
-    @patch("library.training.sdxl_model_prep.set_padding_mode_for_vae_conv2d_modules")
+    @patch("library.models.sdxl_model_prep.set_padding_mode_for_vae_conv2d_modules")
     @patch("library.models.sdxl_model_util.load_models_from_sdxl_checkpoint")
     def test_load_internal_vae_padding(self, mock_load_ckpt, mock_set_padding, mock_isfile):
         """Test that VAE padding mode is applied if configured."""
@@ -220,7 +219,7 @@ class TestSDXLModelPrep(unittest.TestCase):
     @patch("library.models.sdxl_model_util.convert_diffusers_unet_state_dict_to_sdxl")
     @patch("library.models.sdxl_original_unet.SdxlUNet2DConditionModel")
     @patch("library.models.sdxl_model_util._load_state_dict_on_device")
-    @patch("library.training.sdxl_model_prep.init_empty_weights")
+    @patch("library.models.sdxl_model_prep.init_empty_weights")
     def test_load_internal_diffusers_folder(self, mock_init_empty, mock_load_on_device, 
                                           mock_unet_class, mock_convert_sd, mock_pipeline, mock_isfile):
         """Test loading from a Diffusers folder/repo."""
@@ -273,7 +272,7 @@ class TestSDXLModelPrep(unittest.TestCase):
     @patch("library.models.sdxl_model_util.convert_diffusers_unet_state_dict_to_sdxl")
     @patch("library.models.sdxl_original_unet.SdxlUNet2DConditionModel")
     @patch("library.models.sdxl_model_util._load_state_dict_on_device")
-    @patch("library.training.sdxl_model_prep.init_empty_weights")
+    @patch("library.models.sdxl_model_prep.init_empty_weights")
     def test_load_internal_diffusers_fallback_fp32(self, mock_init, mock_load, mock_unet_cls, 
                                                  mock_conv, mock_pipeline, mock_isfile):
         """Test fallback to fp32/non-variant if variant load fails."""

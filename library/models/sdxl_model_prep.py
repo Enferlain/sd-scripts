@@ -9,7 +9,7 @@ from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 from library.utils.torch_utils import match_mixed_precision
 from library.models import sdxl_original_unet, model_util, sdxl_model_util
-from library.training.model_prep import set_padding_mode_for_vae_conv2d_modules
+from library.models.model_prep import set_padding_mode_for_vae_conv2d_modules
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import MemoryConfig, CachingConfig, PrecisionConfig
 

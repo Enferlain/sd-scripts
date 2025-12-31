@@ -9,10 +9,10 @@ import torch
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from diffusers import DDPMScheduler
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Tuple
 
 from library.utils.common_utils import setup_logging
-from library.training.optimizer import should_train_text_encoder, should_train_unet
+from library.optimizers.optimizer_utils import should_train_text_encoder, should_train_unet
 from library.training.noise_utils import (
     prepare_scheduler_for_custom_training,
     fix_noise_scheduler_betas_for_zero_terminal_snr,

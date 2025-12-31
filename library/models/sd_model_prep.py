@@ -15,8 +15,8 @@ from library.models import model_util
 from library.models.sd_original_unet import UNet2DConditionModel
 from library.utils.device_utils import clean_memory_on_device
 from library.config.dataclasses.model import ModelConfig
-from library.config.dataclasses.performance import PerformanceConfig, MemoryConfig
-from library.training.model_prep import set_padding_mode_for_vae_conv2d_modules
+from library.config.dataclasses.performance import MemoryConfig
+from library.models.model_prep import set_padding_mode_for_vae_conv2d_modules
 
 logger = logging.getLogger(__name__)
 
