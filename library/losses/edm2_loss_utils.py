@@ -115,7 +115,7 @@ def handle_conflicting_configuration(loss_config):
             loss_config.debiased_estimation_loss = False
             logger.warning(
                 "Debiased estimation loss AND EDM2 loss weighting with importance weighting are enabled. "
-                "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, "
+                "It is not advised to use both, as there is a possibility of loss curving to 0 as SNR approaches 0, "
                 "as such, **Debiased estimation loss has been DISABLED**. "
                 "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True."
             )
@@ -124,7 +124,7 @@ def handle_conflicting_configuration(loss_config):
         if loss_config.min_snr_gamma:
             logger.warning(
                 "Min snr gamma AND EDM2 loss weighting with importance weighting are enabled. "
-                "It is not advised to use both, as there is a possiblity of loss curving to 0 as SNR approaches 0, "
+                "It is not advised to use both, as there is a possibility of loss curving to 0 as SNR approaches 0, "
                 "as such, **min snr gamma has been DISABLED**. "
                 "You may override this behavior by setting edm2_loss_weighting_importance_weighting_safety_override=True."
             )
