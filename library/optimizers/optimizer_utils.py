@@ -109,6 +109,8 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
         # Need to handle base optimizer
         if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower()):
             case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type", None)
+            if case_sensitive_full_base_optimizer_name is None:
+                raise ValueError("base_optimizer_type is required in optimizer_args for ScheduleFreeWrapper/snoo_asgd optimizers")
             base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")  # TODO: Unresolved attribute reference 'split' for class 'None'
             base_optimizer_module = importlib.import_module(".".join(base_optimizer_values[:-1]))
             case_sensitive_base_optimizer_type = base_optimizer_values[-1]
@@ -204,8 +206,8 @@ def get_optimizer_train_eval_fn(optimizer: Optimizer, optimizer_config: Optimize
         return lambda: None, lambda: None
 
     # get train and eval functions from optimizer
-    train_fn = optimizer.train  # TODO: unresovled attribute?
-    eval_fn = optimizer.eval  # TODO: unresovled attribute?
+    train_fn = optimizer.train  # TODO: unresolved attribute?
+    eval_fn = optimizer.eval  # TODO: unresolved attribute?
 
     return train_fn, eval_fn
 
