@@ -125,11 +125,28 @@ Scripts (contain training loops):     Library Modules:
 ## Future Ideas
 
 - [ ] **Sample Generation Config Defaults** - Add global defaults to `SamplingConfig` for common sampling parameters:
+
   - `sample_width`, `sample_height` (default dimensions)
   - `sample_steps`, `sample_cfg_scale` (default inference settings)
   - `sample_negative_prompt` (global negative prompt)
   - These would serve as defaults that per-prompt overrides (in sample_prompts file) could supersede
   - Also: Add YAML support for `sample_prompts` for consistency with the rest of the config system (currently only .txt, .toml, .json)
+
+- [ ] **Hydra 1.2 Schema Migration** - Fix deprecation warning about automatic schema matching:
+  - Current: Hydra guesses dataclass schema from field names (deprecated in 1.1, removed in 1.2)
+  - Fix: Add `_target_` to each root YAML config file:
+
+    ```yaml
+    # configs/sdxl_peft.yaml
+    _target_: library.config.dataclasses.sdxl_peft.SDXLPeftConfig
+
+    defaults:
+      - optimizer: default
+      # ... rest unchanged
+    ```
+
+  - Files to update: `sd_peft.yaml`, `sdxl_peft.yaml`, `sd_finetune.yaml`, `sdxl_finetune.yaml`, `sd_textual_inversion.yaml`, `sdxl_textual_inversion.yaml`
+  - Dataclasses stay unchanged - this is just a wiring fix
 
 ---
 
