@@ -88,14 +88,14 @@ def set_seed_from_config(training_config: TrainingConfig):
 
 def match_mixed_precision(precision_config: PrecisionConfig, weight_dtype):
     """
-    Match mixed precision settings, returning weight_dtype if full precision is enabled.
+    Match mixed precision settings, returning weight_dtype if full fp16/bf16 mode is enabled.
 
     Args:
         precision_config (PrecisionConfig): The configuration for precision settings.
         weight_dtype (torch.dtype): The weight data type.
 
     Returns:
-        Optional[torch.dtype]: The weight data type if full precision is enabled, otherwise None.
+        Optional[torch.dtype]: The weight data type if full_fp16 or full_bf16 is enabled, otherwise None.
     """
     if precision_config.full_fp16:
         assert (
@@ -147,7 +147,7 @@ def swap_weight_devices(layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):
     torch.cuda.current_stream().synchronize()  # this prevents the illegal loss value
 
 
-def weighs_to_device(layer: nn.Module, device: torch.device):
+def weights_to_device(layer: nn.Module, device: torch.device):
     """
     Move the weights of a layer to the specified device.
 
@@ -158,6 +158,14 @@ def weighs_to_device(layer: nn.Module, device: torch.device):
     for module in layer.modules():
         if hasattr(module, "weight") and module.weight is not None:
             module.weight.data = module.weight.data.to(device, non_blocking=True)
+
+
+def weighs_to_device(layer: nn.Module, device: torch.device):
+    """
+    Deprecated alias for weights_to_device.
+    """
+    logger.warning("weighs_to_device is deprecated and will be removed in a future version. Use weights_to_device instead.")
+    weights_to_device(layer, device)
 
 
 def str_to_dtype(s: Optional[str], default_dtype: Optional[torch.dtype] = None) -> torch.dtype:

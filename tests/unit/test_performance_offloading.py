@@ -13,9 +13,10 @@ import torch.nn as nn
 from library.performance.custom_offloading_utils import (
     to_device,
     to_cpu,
-    weighs_to_device,
     create_cpu_offloading_wrapper,
 )
+
+from library.utils.torch_utils import weights_to_device
 
 
 # =============================================================================
@@ -212,30 +213,30 @@ class TestToCpu:
 
 
 # =============================================================================
-# Tests: weighs_to_device
+# Tests: weights_to_device
 # =============================================================================
 
-class TestWeighsToDevice:
-    """Tests for weighs_to_device function."""
-    
+class TestWeightsToDevice:
+    """Tests for weights_to_device function."""
+
     def test_linear_layer_weights(self):
         """Linear layer weights should be moved."""
         layer = nn.Linear(10, 5)
         device = torch.device("cpu")
-        
-        weighs_to_device(layer, device)
-        
+
+        weights_to_device(layer, device)
+
         assert layer.weight.data.device == device
-    
+
     def test_conv_layer_weights(self):
         """Conv2d layer weights should be moved."""
         layer = nn.Conv2d(3, 16, 3)
         device = torch.device("cpu")
-        
-        weighs_to_device(layer, device)
-        
+
+        weights_to_device(layer, device)
+
         assert layer.weight.data.device == device
-    
+
     def test_nested_modules(self):
         """Nested modules should all have weights moved."""
         model = nn.Sequential(
@@ -244,20 +245,20 @@ class TestWeighsToDevice:
             nn.Linear(20, 5),
         )
         device = torch.device("cpu")
-        
-        weighs_to_device(model, device)
-        
+
+        weights_to_device(model, device)
+
         assert model[0].weight.data.device == device
         assert model[2].weight.data.device == device
-    
+
     def test_module_without_weight_no_error(self):
         """Modules without weight attribute should not error."""
         layer = nn.ReLU()  # Has no weight
         device = torch.device("cpu")
-        
+
         # Should not raise
-        weighs_to_device(layer, device)
-    
+        weights_to_device(layer, device)
+
     def test_module_with_none_weight_no_error(self):
         """Modules with None weight should not error."""
         layer = nn.Linear(10, 5, bias=False)
@@ -265,10 +266,10 @@ class TestWeighsToDevice:
         # Actually, let's test a different scenario - BatchNorm affine=False
         layer = nn.BatchNorm2d(10, affine=False)  # Has no weight
         device = torch.device("cpu")
-        
+
         # Should not raise
-        weighs_to_device(layer, device)
-    
+        weights_to_device(layer, device)
+
     def test_complex_model(self):
         """Complex model with multiple layer types."""
         model = nn.Sequential(
@@ -280,9 +281,9 @@ class TestWeighsToDevice:
             nn.Linear(32, 10),
         )
         device = torch.device("cpu")
-        
-        weighs_to_device(model, device)
-        
+
+        weights_to_device(model, device)
+
         # All weighted layers should have weights on device
         assert model[0].weight.data.device == device  # Conv2d
         assert model[1].weight.data.device == device  # BatchNorm2d
@@ -430,9 +431,9 @@ class TestEdgeCases:
         """Empty Sequential should not error."""
         model = nn.Sequential()
         device = torch.device("cpu")
-        
+
         # Should not raise
-        weighs_to_device(model, device)
+        weights_to_device(model, device)
     
     def test_to_device_preserves_tensor_dtype(self):
         """Tensor dtype should be preserved after move."""

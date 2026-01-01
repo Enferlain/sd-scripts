@@ -6,6 +6,8 @@ import torch.nn as nn
 from typing import Any, Optional, Union, Callable, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
+from library.utils.torch_utils import weights_to_device
+
 
 # This file was used by flux and sd3 and others, maybe reusable with all models?
 # Keep these functions here for portability, and private to avoid confusion with the ones in device_utils.py
@@ -126,19 +128,6 @@ def swap_weight_devices_no_cuda(device: torch.device, layer_to_cpu: nn.Module, l
         module_to_cuda.weight.data = cuda_data_view
 
     _synchronize_device(device)
-
-
-def weighs_to_device(layer: nn.Module, device: torch.device):
-    """
-    Moves the weights of a module to the specified device non-blocking.
-
-    Args:
-        layer (nn.Module): The module whose weights to move.
-        device (torch.device): The destination device.
-    """
-    for module in layer.modules():
-        if hasattr(module, "weight") and module.weight is not None:
-            module.weight.data = module.weight.data.to(device, non_blocking=True)
 
 
 class Offloader:
@@ -335,12 +324,12 @@ class ModelOffloader(Offloader):
 
         for b in blocks[0: self.num_blocks - self.blocks_to_swap]:
             b.to(self.device)
-            weighs_to_device(b, self.device)  # make sure weights are on device
+            weights_to_device(b, self.device)  # make sure weights are on device
 
         for b in blocks[self.num_blocks - self.blocks_to_swap:]:
             b.to(
                 self.device)  # move block to device first. this makes sure that buffers (non weights) are on the device
-            weighs_to_device(b, torch.device("cpu"))  # make sure weights are on cpu
+            weights_to_device(b, torch.device("cpu"))  # make sure weights are on cpu
 
         _synchronize_device(self.device)
         _clean_memory_on_device(self.device)
