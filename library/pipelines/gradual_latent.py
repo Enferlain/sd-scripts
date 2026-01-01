@@ -26,7 +26,7 @@ class GradualLatent:
 
         Args:
             ratio (float): The ratio of the resolution change.
-            start_timesteps (int): The timestep to start the gradual latent process.
+            start_timesteps (int): The timesteps to start the gradual latent process.
             every_n_steps (int): The frequency of steps to apply the gradual latent process.
             ratio_step (float): The step size for the ratio change.
             s_noise (float, optional): The noise scale factor. Defaults to 1.0.
@@ -133,14 +133,14 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
             return_dict: bool = True,
     ) -> Union[EulerAncestralDiscreteSchedulerOutput, Tuple]:
         """
-        Predict the sample from the previous timestep by reversing the SDE. This function propagates the diffusion
+        Predict the sample from the previous timesteps by reversing the SDE. This function propagates the diffusion
         process from the learned model outputs (most often the predicted noise).
 
         Args:
             model_output (`torch.FloatTensor`):
                 The direct output from learned diffusion model.
             timestep (`float`):
-                The current discrete timestep in the diffusion chain.
+                The current discrete timesteps in the diffusion chain.
             sample (`torch.FloatTensor`):
                 A current instance of a sample created by the diffusion process.
             generator (`torch.Generator`, *optional*):
@@ -162,7 +162,7 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
                 (
                     "Passing integer indices (e.g. from `enumerate(timesteps)`) as timesteps to"
                     " `EulerDiscreteScheduler.step()` is not supported. Make sure to pass"
-                    " one of the `scheduler.timesteps` as a timestep."
+                    " one of the `scheduler.timesteps` as a timesteps."
                 ),
             )
 

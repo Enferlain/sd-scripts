@@ -1,4 +1,4 @@
-# library/timestep/samplers/log_snr_sampler.py
+# library/timesteps/samplers/log_snr_sampler.py
 import torch
 from typing import Any
 

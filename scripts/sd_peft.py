@@ -49,7 +49,7 @@ from library.training.training_metadata import create_training_metadata
 from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
 from library.data.dataset_setup import prepare_datasets
 
-from library.timestep.timestep_utils import (
+from library.timesteps.timestep_utils import (
     init_timestep_sampler,
     parse_dynamic_timestep_schedule,
 )
@@ -675,7 +675,7 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
         for step, batch in enumerate(skipped_dataloader or train_dataloader):
             current_step.value = global_step
 
-            # --- Add this block to update the timestep range ---
+            # --- Add this block to update the timesteps range ---
             if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= \
                     dynamic_timestep_schedule[0][0]:
                 # Get the next schedule stage and remove it from the list

@@ -4,7 +4,7 @@ from typing import Optional
 
 @dataclass
 class MixAdaptiveConfig:
-    """Configuration for the original loss-aware timestep sampler."""
+    """Configuration for the original loss-aware timesteps sampler."""
     bins: int = field(default=32, metadata={"help": "Number of bins for adaptive sampling"})
     ema_beta: float = field(default=0.9, metadata={"help": "EMA decay factor for loss tracking"})
     start_p: float = field(default=0.85, metadata={"help": "Starting probability for adaptive mixing"})
@@ -12,12 +12,12 @@ class MixAdaptiveConfig:
     fixed_p: Optional[float] = field(default=None, metadata={"help": "Fixed probability (overrides start_p/end_p if set)"})
     anneal: str = field(default="cosine", metadata={"help": "Annealing schedule: linear, cosine"})
     small_t_frac: float = field(default=0.15, metadata={"help": "Fraction of bins considered 'small t'"})
-    small_t_cap: float = field(default=0.6, metadata={"help": "Cap for small timestep sampling probability"})
+    small_t_cap: float = field(default=0.6, metadata={"help": "Cap for small timesteps sampling probability"})
 
 
 @dataclass
 class TemperedAdaptiveConfig:
-    """Configuration for tempered adaptive timestep sampler."""
+    """Configuration for tempered adaptive timesteps sampler."""
     bins: int = field(default=32, metadata={"help": "Number of bins for adaptive sampling"})
     ema_beta: float = field(default=0.9, metadata={"help": "EMA decay factor for loss tracking"})
     temperature: float = field(default=0.5, metadata={"help": "Temperature for softmax distribution"})
@@ -30,7 +30,7 @@ class TemperedAdaptiveConfig:
 
 @dataclass
 class GaussianMidSNRConfig:
-    """Configuration for Gaussian mid-SNR adaptive timestep sampler."""
+    """Configuration for Gaussian mid-SNR adaptive timesteps sampler."""
     bins: int = field(default=32, metadata={"help": "Number of bins for adaptive sampling"})
     ema_beta: float = field(default=0.9, metadata={"help": "EMA decay factor for loss tracking"})
     temperature: float = field(default=0.5, metadata={"help": "Temperature for softmax distribution"})
@@ -45,7 +45,7 @@ class GaussianMidSNRConfig:
 
 @dataclass
 class SNRWindowedConfig:
-    """Configuration for SNR-windowed loss-aware timestep sampler."""
+    """Configuration for SNR-windowed loss-aware timesteps sampler."""
     bins: int = field(default=32, metadata={"help": "Number of bins for adaptive sampling"})
     ema_beta: float = field(default=0.9, metadata={"help": "EMA decay factor for loss tracking"})
     temperature: float = field(default=0.5, metadata={"help": "Temperature for softmax distribution"})
@@ -55,7 +55,7 @@ class SNRWindowedConfig:
     half_width: float = field(default=0.8, metadata={"help": "Half-width of sampling window"})
     widen_to: float = field(default=2.5, metadata={"help": "Final width to widen to"})
     max_train_steps: int = field(default=2000, metadata={"help": "Steps to fully widen window"})
-    cap_max_t: int = field(default=950, metadata={"help": "Maximum timestep cap"})
+    cap_max_t: int = field(default=950, metadata={"help": "Maximum timesteps cap"})
     uniform_mix_when_low_entropy: float = field(default=0.1, metadata={"help": "Uniform mix ratio when entropy is low"})
 
 
@@ -68,9 +68,9 @@ class TimestepConfig:
     """
     # Core settings
     timestep_sampling: str = field(default="uniform", metadata={"help": "Timestep sampling method"})
-    min_timestep: Optional[int] = field(default=None, metadata={"help": "Minimum timestep for training"})
-    max_timestep: Optional[int] = field(default=None, metadata={"help": "Maximum timestep for training"})
-    dynamic_timestep_schedule: Optional[str] = field(default=None, metadata={"help": "Dynamic timestep schedule string"})
+    min_timestep: Optional[int] = field(default=None, metadata={"help": "Minimum timesteps for training"})
+    max_timestep: Optional[int] = field(default=None, metadata={"help": "Maximum timesteps for training"})
+    dynamic_timestep_schedule: Optional[str] = field(default=None, metadata={"help": "Dynamic timesteps schedule string"})
     sigmoid_scale: float = field(default=1.0, metadata={"help": "Scale for sigmoid sampling"})
     discrete_flow_shift: float = field(default=1.0, metadata={"help": "Shift for discrete flow sampling"})
     

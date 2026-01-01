@@ -111,42 +111,6 @@ def match_mixed_precision(precision_config: PrecisionConfig, weight_dtype):
         return None
 
 
-def swap_weight_devices(layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):
-    """
-    Swap weights between a CPU module and a CUDA module.
-
-    Args:
-        layer_to_cpu (nn.Module): The module to move weights to CPU.
-        layer_to_cuda (nn.Module): The module to move weights to CUDA.
-    """
-    assert layer_to_cpu.__class__ == layer_to_cuda.__class__
-
-    weight_swap_jobs = []
-    for module_to_cpu, module_to_cuda in zip(layer_to_cpu.modules(), layer_to_cuda.modules()):
-        if hasattr(module_to_cpu, "weight") and module_to_cpu.weight is not None:
-            weight_swap_jobs.append(
-                (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
-
-    torch.cuda.current_stream().synchronize()  # this prevents the illegal loss value
-
-    stream = torch.cuda.Stream()
-    with torch.cuda.stream(stream):
-        # cuda to cpu
-        for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
-            cuda_data_view.record_stream(stream)
-            module_to_cpu.weight.data = cuda_data_view.data.to("cpu", non_blocking=True)
-
-        stream.synchronize()
-
-        # cpu to cuda
-        for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
-            cuda_data_view.copy_(module_to_cuda.weight.data, non_blocking=True)
-            module_to_cuda.weight.data = cuda_data_view
-
-    stream.synchronize()
-    torch.cuda.current_stream().synchronize()  # this prevents the illegal loss value
-
-
 def weights_to_device(layer: nn.Module, device: torch.device):
     """
     Move the weights of a layer to the specified device.

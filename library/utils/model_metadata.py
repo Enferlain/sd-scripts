@@ -460,7 +460,7 @@ def build_metadata_dataclass(
         license (str, optional): The model license.
         tags (str, optional): The model tags.
         merged_from (str, optional): The model merge source.
-        timesteps (tuple[int, int], optional): The timestep range.
+        timesteps (tuple[int, int], optional): The timesteps range.
         clip_skip (int, optional): The clip skip value.
         model_config (dict, optional): Dict containing model type info, e.g. {"flux": "dev"}, {"sd3": "large"}.
         optional_metadata (dict, optional): Dict of additional metadata fields to include.
@@ -604,7 +604,7 @@ def build_metadata(
         license (str, optional): The model license.
         tags (str, optional): The model tags.
         merged_from (str, optional): The model merge source.
-        timesteps (tuple[int, int], optional): The timestep range.
+        timesteps (tuple[int, int], optional): The timesteps range.
         clip_skip (int, optional): The clip skip value.
         model_config (dict, optional): Dict containing model type info, e.g. {"flux": "dev"}, {"sd3": "large"}.
         optional_metadata (dict, optional): Dict of additional metadata fields to include.
@@ -722,8 +722,8 @@ def get_model_metadata_from_config(
         is_lora (bool): Whether the model is a LoRA.
         is_textual_inversion (bool): Whether the model is a Textual Inversion.
         resolution (Union[int, tuple[int, int]], optional): The resolution. Defaults to (512, 512).
-        min_timestep (int, optional): The minimum timestep. Defaults to None.
-        max_timestep (int, optional): The maximum timestep. Defaults to None.
+        min_timestep (int, optional): The minimum timesteps. Defaults to None.
+        max_timestep (int, optional): The maximum timesteps. Defaults to None.
         clip_skip (int, optional): The clip skip value. Defaults to None.
         is_stable_diffusion_ckpt (bool, optional): Whether the model is a Stable Diffusion checkpoint. Defaults to None.
         flux_type (str, optional): The Flux model type. Defaults to None.

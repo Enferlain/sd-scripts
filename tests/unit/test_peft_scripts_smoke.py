@@ -35,7 +35,7 @@ class TestPeftCommonImports:
 
     def test_peft_common_has_init_timestep_sampler(self):
         """Verify init_timestep_sampler function exists."""
-        from library.timestep.timestep_utils import init_timestep_sampler
+        from library.timesteps.timestep_utils import init_timestep_sampler
         assert callable(init_timestep_sampler)
 
     def test_peft_common_has_create_training_metadata(self):
@@ -60,7 +60,7 @@ class TestPeftCommonImports:
 
     def test_peft_common_has_parse_dynamic_timestep_schedule(self):
         """Verify parse_dynamic_timestep_schedule function exists."""
-        from library.timestep.timestep_utils import parse_dynamic_timestep_schedule
+        from library.timesteps.timestep_utils import parse_dynamic_timestep_schedule
         assert callable(parse_dynamic_timestep_schedule)
 
     def test_peft_common_has_register_network_state_hooks(self):

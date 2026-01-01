@@ -153,7 +153,7 @@ V2_STABLE_DIFFUSION_ID = "stabilityai/stable-diffusion-2"  # Only used for token
 SCHEDULER_LINEAR_START = 0.00085
 SCHEDULER_LINEAR_END = 0.0120
 SCHEDULER_TIMESTEPS = 1000
-SCHEDLER_SCHEDULE = "scaled_linear"
+SCHEDULER_SCHEDULE = "scaled_linear"
 
 # --- optimizer_utils.py ---
 # Compile the regular expression patterns for float and integer

@@ -389,3 +389,16 @@ def find_key(safetensors_file: str, starts_with: Optional[str] = None, ends_with
             if (starts_with is None or key.startswith(starts_with)) and (ends_with is None or key.endswith(ends_with)):
                 return key
     return None
+
+
+def is_safetensors(path):
+    """
+    Checks if the given path corresponds to a safetensors file.
+
+    Args:
+        path (str): The file path to check.
+
+    Returns:
+        bool: True if the file extension is .safetensors, False otherwise.
+    """
+    return os.path.splitext(path)[1].lower() == ".safetensors"

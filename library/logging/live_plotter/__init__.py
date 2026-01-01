@@ -1,2 +1,2 @@
 # Live plotter package
-# Interactive dashboard for timestep distribution visualization
+# Interactive dashboard for timesteps distribution visualization

@@ -9,6 +9,7 @@ import logging
 
 from safetensors.torch import load_file, save_file, safe_open
 
+import library.utils.safetensors_utils
 from library.models import model_util
 from library.utils.common_utils import setup_logging
 from library.utils.hash_utils import precalculate_safetensors_hashes
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_state_dict(file_name):
-    if model_util.is_safetensors(file_name):
+    if library.utils.safetensors_utils.is_safetensors(file_name):
         sd = load_file(file_name)
         with safe_open(file_name, framework="pt") as f:
             metadata = f.metadata()
@@ -30,7 +31,7 @@ def load_state_dict(file_name):
 
 
 def save_to_file(file_name, model, metadata):
-    if model_util.is_safetensors(file_name):
+    if library.utils.safetensors_utils.is_safetensors(file_name):
         save_file(model, file_name, metadata)
     else:
         torch.save(model, file_name)

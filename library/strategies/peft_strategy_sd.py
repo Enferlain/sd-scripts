@@ -281,8 +281,8 @@ class SdPeftStrategy(PeftTrainingStrategy):
             train_unet: Boolean indicating if UNet is trained.
             fixed_timesteps: Optional fixed timesteps.
             is_train: Boolean indicating training mode.
-            min_timestep_override: Optional minimum timestep override.
-            max_timestep_override: Optional maximum timestep override.
+            min_timestep_override: Optional minimum timesteps override.
+            max_timestep_override: Optional maximum timesteps override.
             global_step: Current global step.
 
         Returns:
@@ -355,8 +355,8 @@ class SdPeftStrategy(PeftTrainingStrategy):
             train_text_encoder: Train text encoder flag.
             train_unet: Train UNet flag.
             edm2_model: EDM2 model (optional).
-            min_timestep_override: Minimum timestep override.
-            max_timestep_override: Maximum timestep override.
+            min_timestep_override: Minimum timesteps override.
+            max_timestep_override: Maximum timesteps override.
             global_step: Global step.
 
         Returns:

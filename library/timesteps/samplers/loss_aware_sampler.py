@@ -9,7 +9,7 @@ class LossAwareTimestepSampler:
     Timestep sampler that balances between a prior (sigmoid/shift) and loss-aware sampling.
 
     This sampler blends a fixed prior distribution (which can be annealed over time)
-    with a learned distribution based on the historical loss of different timestep bins.
+    with a learned distribution based on the historical loss of different timesteps bins.
     It also includes mechanisms to cap the sampling of small timesteps.
     """
 

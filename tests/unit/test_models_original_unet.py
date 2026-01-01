@@ -22,7 +22,7 @@ from library.models.sd_original_unet import (
 
 @pytest.mark.unit
 class TestGetTimestepEmbedding:
-    """Test sinusoidal timestep embedding generation."""
+    """Test sinusoidal timesteps embedding generation."""
     
     def test_output_shape_even_dim(self):
         """Even embedding_dim should produce correct output shape."""

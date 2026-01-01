@@ -11,6 +11,7 @@ from safetensors.torch import load_file
 
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex
+from library.utils.safetensors_utils import is_safetensors
 
 from library.constants import (
     VAE_PARAMS_CH,
@@ -23,23 +24,11 @@ from library.constants import (
     VAE_PREFIX
 )
 
+
 init_ipex()
 
 setup_logging()
 logger = logging.getLogger(__name__)
-
-
-def is_safetensors(path):
-    """
-    Checks if the given path corresponds to a safetensors file.
-
-    Args:
-        path (str): The file path to check.
-
-    Returns:
-        bool: True if the file extension is .safetensors, False otherwise.
-    """
-    return os.path.splitext(path)[1].lower() == ".safetensors"
 
 
 def shave_segments(path, n_shave_prefix_segments=1):

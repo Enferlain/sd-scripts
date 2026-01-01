@@ -273,7 +273,7 @@ def get_timestep_embedding(
         max_period: int = 10000,
 ):
     """
-    This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timestep embeddings.
+    This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timesteps embeddings.
 
     Args:
         timesteps (torch.Tensor): A 1-D Tensor of N indices, one per batch element. These may be fractional.

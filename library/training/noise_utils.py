@@ -41,7 +41,7 @@ def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler):
     See: https://arxiv.org/abs/2305.08891
 
     This modifies the scheduler in-place to ensure that the signal-to-noise ratio
-    at the final timestep is effectively zero, which can improve training stability
+    at the final timesteps is effectively zero, which can improve training stability
     and performance for certain diffusion models.
 
     Args:
@@ -59,9 +59,9 @@ def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler):
         # Store old values.
         alphas_bar_sqrt_0 = alphas_bar_sqrt[0].clone()
         alphas_bar_sqrt_T = alphas_bar_sqrt[-1].clone()
-        # Shift so last timestep is zero.
+        # Shift so last timesteps is zero.
         alphas_bar_sqrt -= alphas_bar_sqrt_T
-        # Scale so first timestep is back to old value.
+        # Scale so first timesteps is back to old value.
         alphas_bar_sqrt *= alphas_bar_sqrt_0 / (alphas_bar_sqrt_0 - alphas_bar_sqrt_T)
 
         # Convert alphas_bar_sqrt to betas

@@ -43,14 +43,14 @@ class RegularizationConfig:
 class EDM2Config:
     """EDM2 loss weighting settings."""
     edm2_loss_weighting: bool = field(default=False, metadata={"help": "Use EDM2 loss weighting."})
-    edm2_loss_weighting_laplace: bool = field(default=False, metadata={"help": "Use EDM2 loss weighting to calculate timestep sampling using laplace."})
+    edm2_loss_weighting_laplace: bool = field(default=False, metadata={"help": "Use EDM2 loss weighting to calculate timesteps sampling using laplace."})
     edm2_loss_weighting_optimizer: str = field(default="torch.optim.AdamW", metadata={"help": "Fully qualified optimizer class name to use with the edm2 loss weighting optimizer."})
     edm2_loss_weighting_optimizer_lr: float = field(default=2e-2, metadata={"help": "Learning rate as a float for the edm2 loss weighting optimizer."})
     edm2_loss_weighting_optimizer_args: str = field(default="{'weight_decay': 0, 'betas': (0.9,0.999)}", metadata={"help": "A JSON object as a string of optimizer args for the edm2 loss weighting optimizer."})
     edm2_loss_weighting_lr_scheduler: bool = field(default=False, metadata={"help": "Use lr scheduler with EDM2 loss weighting optimizer."})
     edm2_loss_weighting_lr_scheduler_warmup_percent: float = field(default=0.1, metadata={"help": "Percent of training steps to use for warmup."})
     edm2_loss_weighting_lr_scheduler_constant_percent: float = field(default=0.1, metadata={"help": "Percent of training steps to maintain constant LR before decay."})
-    edm2_loss_weighting_generate_graph: bool = field(default=False, metadata={"help": "Enable generation of graph images that show the loss weighting per timestep."})
+    edm2_loss_weighting_generate_graph: bool = field(default=False, metadata={"help": "Enable generation of graph images that show the loss weighting per timesteps."})
     edm2_loss_weighting_generate_graph_every_x_steps: int = field(default=20, metadata={"help": "Every x steps generate a graph image."})
     edm2_loss_weighting_generate_graph_output_dir: Optional[str] = field(default=None, metadata={"help": "The parent directory where loss weighting graph images should be stored"})
     edm2_loss_weighting_generate_graph_y_limit: Optional[int] = field(default=None, metadata={"help": "Set the max limit of the y axis"})

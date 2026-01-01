@@ -13,8 +13,8 @@ def get_timesteps(min_timestep: int, max_timestep: int, b_size: int, device: tor
     Generates a batch of timesteps for diffusion training.
 
     Args:
-        min_timestep (int): The minimum timestep index (inclusive).
-        max_timestep (int): The maximum timestep index (exclusive).
+        min_timestep (int): The minimum timesteps index (inclusive).
+        max_timestep (int): The maximum timesteps index (exclusive).
         b_size (int): The batch size (number of timesteps to generate).
         device (torch.device): The device to place the resulting tensor on.
 
@@ -48,16 +48,16 @@ def get_noise_noisy_latents_and_timesteps(
 
     Args:
         regularization_config (RegularizationConfig): Config for noise offset, multires noise, etc.
-        timestep_config (TimestepConfig): Config for timestep sampling parameters.
+        timestep_config (TimestepConfig): Config for timesteps sampling parameters.
         training_config (TrainingConfig): Config for training settings.
         noise_scheduler: The diffusion noise scheduler.
         latents (torch.FloatTensor): Input latents tensor.
-        la_sampler (Optional): Optional custom timestep sampler.
+        la_sampler (Optional): Optional custom timesteps sampler.
         global_step (int, optional): Current training step (for adaptive sampling). Defaults to 0.
         fixed_timesteps (Optional): Optional fixed timesteps to use.
         is_train (bool, optional): Whether in training mode (affects noise augmentation). Defaults to True.
-        min_timestep_override (Optional[int]): Override minimum timestep.
-        max_timestep_override (Optional[int]): Override maximum timestep.
+        min_timestep_override (Optional[int]): Override minimum timesteps.
+        max_timestep_override (Optional[int]): Override maximum timesteps.
         output_dtype (Optional[torch.dtype]): If provided, cast noisy_latents to this dtype before returning.
             Useful because noise_scheduler.add_noise() may return float32
             even when inputs are float16/bfloat16 for numerical stability.
@@ -67,7 +67,7 @@ def get_noise_noisy_latents_and_timesteps(
         (noise, noisy_latents, timesteps).
     """
     # --- 1. Determine Timestep Range ---
-    # This part handles the dynamic timestep schedule!
+    # This part handles the dynamic timesteps schedule!
     if min_timestep_override is not None:
         min_timestep = min_timestep_override
     else:
@@ -101,7 +101,7 @@ def get_noise_noisy_latents_and_timesteps(
             num_samples=b_size,
             replacement=True
         ).to(dtype=torch.long, device=latents.device)
-    elif is_train and timestep_config.timestep_sampling == "mix_adaptive":  # Todo related to custom timestep samplers
+    elif is_train and timestep_config.timestep_sampling == "mix_adaptive":  # Todo related to custom timesteps samplers
         # The main script is now responsible for creating the sampler.
         # We just check that it exists and use it.
         if la_sampler is None:

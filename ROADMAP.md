@@ -96,6 +96,7 @@ Scripts (contain training loops):     Library Modules:
 - [x] get rid of lazy imports, move to top for transparency
 - [x] ~~**PEFT Strategy Deduplication**~~: 4 methods moved to `peft_strategy_base.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`)
 - [ ] **PEFT Strategy Internal Dedup**: `process_batch` and `process_val_batch` share ~45 lines of identical latent/text encoding setup - extract to helper method
+- [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`.
 
 ---
 
@@ -133,6 +134,7 @@ Scripts (contain training loops):     Library Modules:
   - Also: Add YAML support for `sample_prompts` for consistency with the rest of the config system (currently only .txt, .toml, .json)
 
 - [ ] **Hydra 1.2 Schema Migration** - Fix deprecation warning about automatic schema matching:
+
   - Current: Hydra guesses dataclass schema from field names (deprecated in 1.1, removed in 1.2)
   - Fix: Add `_target_` to each root YAML config file:
 
@@ -149,7 +151,7 @@ Scripts (contain training loops):     Library Modules:
   - Dataclasses stay unchanged - this is just a wiring fix
 
 - [ ] **Supporwt for feather** - https://github.com/SuriyaaMM/feather
-  - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU    architectures (Ampere, Turing, Volta) that lack native hardware support.
+  - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support.
 
 ---
 

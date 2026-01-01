@@ -28,7 +28,7 @@ CONFIG_VAR_PATTERN = re.compile(
     r"\b(ti_config|training_config|data_config|model_config|optimizer_config|saving_config|performance_config|loss_config|peft_config|output_config|scheduler_config)\b"
 )
 CFG_DOT_PATTERN = re.compile(
-    r"\bcfg\.(training|model|optimizer|performance|data|output|loss|peft|validation|timestep|textual_inversion|sdxl)\b"
+    r"\bcfg\.(training|model|optimizer|performance|data|output|loss|peft|validation|timesteps|textual_inversion|sdxl)\b"
 )
 
 

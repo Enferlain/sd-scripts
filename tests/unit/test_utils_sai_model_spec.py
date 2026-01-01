@@ -386,7 +386,7 @@ class TestGetSaiModelSpecFromConfig:
         assert spec["modelspec.resolution"] == "768x768"
 
     def test_timesteps_handling(self):
-        """Test min/max timestep logic."""
+        """Test min/max timesteps logic."""
         metadata_config = MetadataConfig()
         
         spec = model_metadata.get_model_metadata_from_config(

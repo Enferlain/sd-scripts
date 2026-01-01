@@ -662,7 +662,7 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
         if is_text2img:
             return self.scheduler.timesteps.to(device), num_inference_steps
         else:
-            # get the original timestep using init_timestep
+            # get the original timesteps using init_timestep
             offset = self.scheduler.config.get("steps_offset", 0)
             init_timestep = int(num_inference_steps * strength) + offset
             init_timestep = min(init_timestep, num_inference_steps)
@@ -741,7 +741,7 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
 
         Args:
             image (torch.Tensor): The input image.
-            timestep (torch.Tensor): The current timestep.
+            timestep (torch.Tensor): The current timesteps.
             batch_size (int): The batch size.
             height (int): The height of the image.
             width (int): The width of the image.
@@ -879,7 +879,7 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
                 inference.
             callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. The function will be
-                called with the following arguments: `callback(step: int, timestep: int, latents: torch.FloatTensor)`.
+                called with the following arguments: `callback(step: int, timesteps: int, latents: torch.FloatTensor)`.
             is_cancelled_callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. If the function returns
                 `True`, the inference will be cancelled.
@@ -1087,7 +1087,7 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
                 plain tuple.
             callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. The function will be
-                called with the following arguments: `callback(step: int, timestep: int, latents: torch.FloatTensor)`.
+                called with the following arguments: `callback(step: int, timesteps: int, latents: torch.FloatTensor)`.
             is_cancelled_callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. If the function returns
                 `True`, the inference will be cancelled.
@@ -1182,7 +1182,7 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
                 plain tuple.
             callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. The function will be
-                called with the following arguments: `callback(step: int, timestep: int, latents: torch.FloatTensor)`.
+                called with the following arguments: `callback(step: int, timesteps: int, latents: torch.FloatTensor)`.
             is_cancelled_callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. If the function returns
                 `True`, the inference will be cancelled.
@@ -1281,7 +1281,7 @@ class StableDiffusionLongPromptWeightingPipeline(StableDiffusionPipeline):
                 plain tuple.
             callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. The function will be
-                called with the following arguments: `callback(step: int, timestep: int, latents: torch.FloatTensor)`.
+                called with the following arguments: `callback(step: int, timesteps: int, latents: torch.FloatTensor)`.
             is_cancelled_callback (`Callable`, *optional*):
                 A function that will be called every `callback_steps` steps during inference. If the function returns
                 `True`, the inference will be cancelled.

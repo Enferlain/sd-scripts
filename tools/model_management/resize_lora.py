@@ -10,6 +10,7 @@ import logging
 from safetensors.torch import load_file, save_file, safe_open
 from tqdm import tqdm
 
+import library.utils.safetensors_utils
 from library.models import model_util
 from library.utils.common_utils import setup_logging
 from library.utils.hash_utils import precalculate_safetensors_hashes
@@ -28,7 +29,7 @@ LORA_DOWN_UP_FORMATS = [
 
 # Model save and load functions
 def load_state_dict(file_name, dtype):
-    if model_util.is_safetensors(file_name):
+    if library.utils.safetensors_utils.is_safetensors(file_name):
         sd = load_file(file_name)
         with safe_open(file_name, framework="pt") as f:
             metadata = f.metadata()
@@ -44,7 +45,7 @@ def load_state_dict(file_name, dtype):
 
 
 def save_to_file(file_name, state_dict, metadata):
-    if model_util.is_safetensors(file_name):
+    if library.utils.safetensors_utils.is_safetensors(file_name):
         save_file(state_dict, file_name, metadata)
     else:
         torch.save(state_dict, file_name)

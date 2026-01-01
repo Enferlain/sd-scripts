@@ -4,7 +4,8 @@ import cv2
 import numpy as np
 from unittest.mock import MagicMock, patch, PropertyMock
 from library.data.image_utils import pil_resize, resize_image, validate_interpolation_fn
-from library.utils.torch_utils import swap_weight_devices, str_to_dtype
+from library.utils.torch_utils import str_to_dtype
+from library.performance.custom_offloading_utils import swap_weight_devices
 from library.pipelines.gradual_latent import GradualLatent, EulerAncestralDiscreteSchedulerGL
 
 
@@ -191,7 +192,7 @@ class TestEulerSchedulerGL:
                     # but typically explicitly passing tensor avoids ambiguous index vs time
                     
                     # NOTE: Diffusers error: "Passing integer indices... is not supported." 
-                    # This happens when timestep is int and scheduler thinks it's an index.
+                    # This happens when timesteps is int and scheduler thinks it's an index.
                     # We pass a tensor to be safe/correct for modern diffusers.
                     t = torch.tensor(0.0, dtype=torch.float32)
 

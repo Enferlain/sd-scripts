@@ -5,7 +5,7 @@ from typing import Optional
 
 class TemperedAdaptiveSampler:
     """
-    Adaptive timestep sampler that balances loss-based sampling with a prior distribution.
+    Adaptive timesteps sampler that balances loss-based sampling with a prior distribution.
 
     This sampler maintains a running history of loss statistics for different log-SNR bins.
     It uses these statistics to prioritize sampling from bins with higher loss (harder examples),

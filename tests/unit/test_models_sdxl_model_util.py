@@ -25,7 +25,7 @@ from library.models.sdxl_model_util import (
 
 @pytest.mark.unit
 class TestTimestepEmbedding:
-    """Test sinusoidal timestep embedding generation."""
+    """Test sinusoidal timesteps embedding generation."""
     
     def test_output_shape_even_dim(self):
         """Even dimension should produce correct output shape."""
@@ -96,7 +96,7 @@ class TestTimestepEmbedding:
 
 @pytest.mark.unit
 class TestGetTimestepEmbedding:
-    """Test timestep embedding wrapper for 2D inputs."""
+    """Test timesteps embedding wrapper for 2D inputs."""
     
     def test_2d_input_shape(self):
         """2D input should flatten, embed, and reshape correctly."""

@@ -10,6 +10,7 @@ from safetensors.torch import load_file, save_file
 from transformers import CLIPTextModel, CLIPTextConfig, CLIPTextModelWithProjection, CLIPTokenizer
 from diffusers import AutoencoderKL, EulerDiscreteScheduler, UNet2DConditionModel
 
+import library.utils.safetensors_utils
 from library.constants import SDXL_KEY_PREFIX, DIFFUSERS_SDXL_UNET_CONFIG, DIFFUSERS_REF_MODEL_ID_SDXL
 from library.utils.common_utils import setup_logging
 from library.models import sdxl_original_unet, model_util
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def timestep_embedding(timesteps, dim, max_period=10000):
     """
-    Create sinusoidal timestep embeddings.
+    Create sinusoidal timesteps embeddings.
     :param timesteps: a 1-D Tensor of N indices, one per batch element.
                       These may be fractional.
     :param dim: the dimension of the output.
@@ -40,14 +41,14 @@ def timestep_embedding(timesteps, dim, max_period=10000):
 
 def get_timestep_embedding(x, outdim):
     """
-    Computes timestep embeddings for a given input tensor.
+    Computes timesteps embeddings for a given input tensor.
 
     Args:
         x (torch.Tensor): Input tensor of shape (batch_size, dims).
         outdim (int): The dimension of the output embeddings.
 
     Returns:
-        torch.Tensor: The computed timestep embeddings of shape (batch_size, dims * outdim).
+        torch.Tensor: The computed timesteps embeddings of shape (batch_size, dims * outdim).
     """
     assert len(x.shape) == 2
     b, dims = x.shape[0], x.shape[1]
@@ -218,7 +219,7 @@ def load_models_from_sdxl_checkpoint(model_version, ckpt_path, map_location, dty
     # dtype is used for full_fp16/bf16 integration. Text Encoder will remain fp32, because it runs on CPU when caching
 
     # Load the state dict
-    if model_util.is_safetensors(ckpt_path):
+    if library.utils.safetensors_utils.is_safetensors(ckpt_path):
         checkpoint = None
         if disable_mmap:
             state_dict = safetensors.torch.load(open(ckpt_path, "rb").read())
@@ -633,7 +634,7 @@ def save_stable_diffusion_checkpoint(
     new_ckpt["epoch"] = epochs
     new_ckpt["global_step"] = steps
 
-    if model_util.is_safetensors(output_file):
+    if library.utils.safetensors_utils.is_safetensors(output_file):
         save_file(state_dict, output_file, metadata)
     else:
         torch.save(new_ckpt, output_file)

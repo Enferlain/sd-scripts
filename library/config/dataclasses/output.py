@@ -38,7 +38,7 @@ class LoggingConfig:
     console_log_level: Optional[str] = field(default=None, metadata={"help": "Console log level: DEBUG, INFO, WARNING, ERROR"})
     console_log_file: Optional[str] = field(default=None, metadata={"help": "Path to save console output to file"})
     console_log_simple: bool = field(default=False, metadata={"help": "Use simplified console log format"})
-    log_timestep_distribution_every_n_steps: Optional[int] = field(default=None, metadata={"help": "Save timestep distribution chart every N steps"})
+    log_timestep_distribution_every_n_steps: Optional[int] = field(default=None, metadata={"help": "Save timesteps distribution chart every N steps"})
     live_plot_port: Optional[int] = field(default=None, metadata={"help": "Launch live interactive dashboard server on this port"})
 
 

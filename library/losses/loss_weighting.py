@@ -59,7 +59,7 @@ def get_snr_scale(timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler):
         torch.Tensor: The calculated scale factor.
     """
     snr_t = torch.stack([noise_scheduler.all_snr[t] for t in timesteps])  # batch_size
-    snr_t = torch.minimum(snr_t, torch.ones_like(snr_t) * 1000)  # if timestep is 0, snr_t is inf, so limit it to 1000
+    snr_t = torch.minimum(snr_t, torch.ones_like(snr_t) * 1000)  # if timesteps is 0, snr_t is inf, so limit it to 1000
     scale = snr_t / (snr_t + 1)
     # # show debug info
     # logger.info(f"timesteps: {timesteps}, snr_t: {snr_t}, scale: {scale}")
@@ -101,7 +101,7 @@ def apply_debiased_estimation(loss: torch.Tensor, timesteps: torch.IntTensor, no
         torch.Tensor: The weighted loss.
     """
     snr_t = torch.stack([noise_scheduler.all_snr[t] for t in timesteps])  # batch_size
-    snr_t = torch.minimum(snr_t, torch.ones_like(snr_t) * 1000)  # if timestep is 0, snr_t is inf, so limit it to 1000
+    snr_t = torch.minimum(snr_t, torch.ones_like(snr_t) * 1000)  # if timesteps is 0, snr_t is inf, so limit it to 1000
     if v_prediction:
         weight = 1 / (snr_t + 1)
     else:

@@ -20,7 +20,7 @@ from library.constants import (
     SCHEDULER_LINEAR_START,
     SCHEDULER_LINEAR_END,
     SCHEDULER_TIMESTEPS,
-    SCHEDLER_SCHEDULE,
+    SCHEDULER_SCHEDULE,
     
     # Checkpointing
     EPOCH_STATE_NAME,
@@ -155,7 +155,7 @@ class TestSchedulerConstants:
         assert SCHEDULER_TIMESTEPS == 1000
     
     def test_scheduler_schedule(self):
-        assert SCHEDLER_SCHEDULE == "scaled_linear"
+        assert SCHEDULER_SCHEDULE == "scaled_linear"
 
 
 # =============================================================================

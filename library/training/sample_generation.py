@@ -26,7 +26,7 @@ from diffusers import (
     KDPM2AncestralDiscreteScheduler,
 )
 
-from library.constants import SCHEDULER_TIMESTEPS, SCHEDULER_LINEAR_START, SCHEDULER_LINEAR_END, SCHEDLER_SCHEDULE
+from library.constants import SCHEDULER_TIMESTEPS, SCHEDULER_LINEAR_START, SCHEDULER_LINEAR_END, SCHEDULER_SCHEDULE
 from library.utils.device_utils import clean_memory_on_device
 from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
@@ -87,7 +87,7 @@ def get_my_scheduler(
         num_train_timesteps=SCHEDULER_TIMESTEPS,
         beta_start=SCHEDULER_LINEAR_START,
         beta_end=SCHEDULER_LINEAR_END,
-        beta_schedule=SCHEDLER_SCHEDULE,
+        beta_schedule=SCHEDULER_SCHEDULE,
         **sched_init_args,
     )
 

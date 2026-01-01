@@ -3,7 +3,7 @@ import torch
 
 class TemperedAdaptiveSampler:
     """
-    Adaptive timestep sampler (v1) that balances loss-based sampling with a uniform prior.
+    Adaptive timesteps sampler (v1) that balances loss-based sampling with a uniform prior.
 
     This version uses a uniform prior for all bins, unlike the newer version which supports
     biased priors. It maintains a running history of loss statistics for different log-SNR bins

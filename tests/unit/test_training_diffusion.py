@@ -1,7 +1,7 @@
 """
 Unit tests for library/training/diffusion.py
 
-Tests timestep generation and noisy latent creation functions.
+Tests timesteps generation and noisy latent creation functions.
 """
 
 import pytest
@@ -110,7 +110,7 @@ def default_regularization_config():
 
 @pytest.fixture
 def default_timestep_config():
-    """Create default timestep config."""
+    """Create default timesteps config."""
     return TimestepConfig()
 
 
@@ -289,7 +289,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         default_regularization_config,
         default_training_config
     ):
-        """Test that timestep config min/max are respected."""
+        """Test that timesteps config min/max are respected."""
         timestep_config = TimestepConfig(min_timestep=200, max_timestep=400)
         
         _, _, timesteps = get_noise_noisy_latents_and_timesteps(

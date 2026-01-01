@@ -11,7 +11,7 @@ class SNRWindowedLossAwareSampler:
 
     This sampler focuses on a specific window of log-SNR values that can shift and widen over time.
     It combines a loss-aware distribution within the window with a mechanism to dynamically
-    adjust the maximum timestep cap based on boundary saturation.
+    adjust the maximum timesteps cap based on boundary saturation.
     """
 
     def __init__(
@@ -52,8 +52,8 @@ class SNRWindowedLossAwareSampler:
             half_width (float): Initial half-width of the sampling window in log-SNR space.
             widen_to (float): Target half-width of the sampling window.
             total_widen_steps (int): Number of steps to widen the window from `half_width` to `widen_to`.
-            cap_max_t (int, optional): Initial maximum timestep cap.
-            cap_target_t (int, optional): Target maximum timestep cap (default: T-1).
+            cap_max_t (int, optional): Initial maximum timesteps cap.
+            cap_target_t (int, optional): Target maximum timesteps cap (default: T-1).
             cap_ema_beta (float): Decay factor for the EMA of boundary saturation.
             cap_saturation_thresh (float): Threshold of boundary saturation to trigger cap relaxation.
             cap_step_min (int): Minimum step size for relaxing the cap.

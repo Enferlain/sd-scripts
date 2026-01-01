@@ -336,7 +336,7 @@ def get_timestep_embedding(
         max_period: int = 10000,
 ):
     """
-    This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timestep embeddings.
+    This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timesteps embeddings.
 
     Args:
         timesteps (torch.Tensor): a 1-D Tensor of N indices, one per batch element.
@@ -416,7 +416,7 @@ class TimestepEmbedding(nn.Module):
     """
     Timestep embedding projection.
 
-    This module projects timestep embeddings to a higher dimension.
+    This module projects timesteps embeddings to a higher dimension.
     """
     def __init__(self, in_channels: int, time_embed_dim: int, act_fn: str = "silu", out_dim: int = None):
         super().__init__()
@@ -446,9 +446,9 @@ class TimestepEmbedding(nn.Module):
 
 class Timesteps(nn.Module):
     """
-    Wrapper for getting timestep embedding.
+    Wrapper for getting timesteps embedding.
 
-    This module generates sinusoidal timestep embeddings.
+    This module generates sinusoidal timesteps embeddings.
     """
     def __init__(self, num_channels: int, flip_sin_to_cos: bool, downscale_freq_shift: float):
         super().__init__()

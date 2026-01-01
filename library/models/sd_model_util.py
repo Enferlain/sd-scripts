@@ -25,11 +25,11 @@ from library.constants import (
 )
 
 from library.models.model_util import (
-    is_safetensors,
     create_vae_diffusers_config,
     convert_ldm_vae_checkpoint,
     convert_vae_state_dict, assign_to_checkpoint, renew_attention_paths, renew_resnet_paths, shave_segments
 )
+from library.utils.safetensors_utils import is_safetensors
 
 setup_logging()
 logger = logging.getLogger(__name__)

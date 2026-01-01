@@ -1,7 +1,7 @@
 """
 Training visualization utilities.
 
-Functions for plotting timestep distributions and managing the live plotter.
+Functions for plotting timesteps distributions and managing the live plotter.
 """
 
 import json
@@ -11,8 +11,8 @@ import subprocess
 import sys
 
 import numpy as np
-from library.timestep.samplers.log_snr_sampler import LogSNRUniformSampler
-from library.timestep.samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
+from library.timesteps.samplers.log_snr_sampler import LogSNRUniformSampler
+from library.timesteps.samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
 
 try:
     import matplotlib.pyplot as plt
@@ -26,17 +26,17 @@ def save_timestep_distribution_plot(
     cfg, global_step: int, timestep_counts: np.ndarray, settings_dict: dict = None
 ):
     """
-    Save the timestep distribution plot to disk.
+    Save the timesteps distribution plot to disk.
 
     Args:
         cfg: The training configuration object.
         global_step: The current global step of training.
-        timestep_counts: An array containing the counts of each timestep.
+        timestep_counts: An array containing the counts of each timesteps.
         settings_dict: A dictionary of settings to display on the plot.
     """
     if plt is None:
         logger.warning(
-            "Matplotlib is not installed. Cannot save timestep distribution plot."
+            "Matplotlib is not installed. Cannot save timesteps distribution plot."
         )
         return
 
@@ -171,17 +171,17 @@ def get_plotter_settings(cfg, la_sampler) -> dict:
 
 def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
     """
-    Setup the live plotter subprocess and initialize static plot timestep tracking.
+    Setup the live plotter subprocess and initialize static plot timesteps tracking.
 
     Args:
         cfg: The training configuration object.
         noise_scheduler: The noise scheduler from Diffusers.
-        la_sampler: The loss-aware timestep sampler (or None).
+        la_sampler: The loss-aware timesteps sampler (or None).
         strategy: The training strategy object, used to store the plotter process handle.
 
     Returns:
         A tuple containing:
-            - timestep_counts: An array for tracking timestep counts (or None).
+            - timestep_counts: An array for tracking timesteps counts (or None).
             - plotter_settings: A dictionary of settings for the plotter (or None).
     """
     timestep_counts = None

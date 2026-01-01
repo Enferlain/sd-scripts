@@ -1,7 +1,7 @@
 """
 Timestep sampling utilities.
 
-Factory functions for initializing timestep samplers based on configuration.
+Factory functions for initializing timesteps samplers based on configuration.
 """
 
 import ast
@@ -9,11 +9,11 @@ import logging
 from typing import Optional, Tuple, List, Any
 
 from library.config.dataclasses.timestep import TimestepConfig
-from library.timestep.samplers.loss_aware_sampler import LossAwareTimestepSampler
-from library.timestep.samplers.log_snr_sampler import LogSNRUniformSampler
-from library.timestep.samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
-from library.timestep.samplers.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
-from library.timestep.samplers.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
+from library.timesteps.samplers.loss_aware_sampler import LossAwareTimestepSampler
+from library.timesteps.samplers.log_snr_sampler import LogSNRUniformSampler
+from library.timesteps.samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
+from library.timesteps.samplers.gaussian_mid_snr_sampler import GaussianMidSNRAdaptiveSampler
+from library.timesteps.samplers.snr_windowed_loss_aware_sampler import SNRWindowedLossAwareSampler
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def parse_dynamic_timestep_schedule(
     timestep_config: TimestepConfig, noise_scheduler: Any, accelerator: Any
 ) -> Tuple[Optional[List[Tuple[int, int]]], int, int]:
     """
-    Parse dynamic timestep schedule from config.
+    Parse dynamic timesteps schedule from config.
 
     Args:
         timestep_config: Training configuration
@@ -42,7 +42,7 @@ def parse_dynamic_timestep_schedule(
     if dynamic_timestep_schedule:
         # Sort the schedule by step number to be safe
         dynamic_timestep_schedule.sort(key=lambda x: x[0])
-        accelerator.print(f"Using dynamic timestep schedule: {dynamic_timestep_schedule}")
+        accelerator.print(f"Using dynamic timesteps schedule: {dynamic_timestep_schedule}")
 
     # Initialize the current range with the defaults
     current_min_timestep = (
@@ -61,9 +61,9 @@ def init_timestep_sampler(
     timestep_config: TimestepConfig, noise_scheduler: Any, accelerator: Any
 ) -> Any:
     """
-    Initialize the appropriate timestep sampler based on config.
+    Initialize the appropriate timesteps sampler based on config.
 
-    Returns the sampler instance and potentially modifies cfg.timestep.timestep_sampling.
+    Returns the sampler instance and potentially modifies cfg.timesteps.timestep_sampling.
 
     Args:
         timestep_config: Training configuration
