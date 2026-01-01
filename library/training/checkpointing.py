@@ -5,8 +5,11 @@ import shutil
 import logging
 import safetensors.torch
 
-from typing import Optional, Dict, Any, Callable, List
+from typing import Optional, Dict, Any, Callable, List, TYPE_CHECKING
 from huggingface_hub import hf_hub_download
+
+if TYPE_CHECKING:
+    from accelerate import Accelerator
 
 from library.utils import huggingface_util
 from library.config.dataclasses.output import SavingConfig
@@ -101,7 +104,7 @@ def build_minimum_adapter_metadata(
 
 
 def resume_from_local_or_hf_if_specified(
-    accelerator,
+    accelerator: "Accelerator",
     saving_config: SavingConfig,
     hf_config: Optional[HuggingFaceConfig] = None
 ) -> None:
@@ -293,7 +296,7 @@ def get_remove_step_no(saving_config: SavingConfig, step_no: int) -> Optional[in
 def save_sd_model_on_epoch_end_or_stepwise_common(
         saving_config: SavingConfig,
         on_epoch_end: bool,
-        accelerator,
+        accelerator: "Accelerator",
         save_stable_diffusion_format: bool,
         use_safetensors: bool,
         epoch: int,
@@ -399,7 +402,7 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
 
 def save_and_remove_state_on_epoch_end(
     saving_config: SavingConfig,
-    accelerator,
+    accelerator: "Accelerator",
     epoch_no: int,
     hf_config: Optional[HuggingFaceConfig] = None
 ) -> None:
@@ -436,7 +439,7 @@ def save_and_remove_state_on_epoch_end(
 
 def save_and_remove_state_stepwise(
     saving_config: SavingConfig,
-    accelerator,
+    accelerator: "Accelerator",
     step_no: int,
     hf_config: Optional[HuggingFaceConfig] = None
 ) -> None:
@@ -477,7 +480,7 @@ def save_and_remove_state_stepwise(
 
 def save_state_on_train_end(
     saving_config: SavingConfig,
-    accelerator,
+    accelerator: "Accelerator",
     hf_config: Optional[HuggingFaceConfig] = None
 ) -> None:
     """
@@ -555,7 +558,7 @@ def save_sd_model_on_train_end_common(
 
 
 def register_adapter_state_hooks(
-    accelerator,
+    accelerator: "Accelerator",
     adapter,
     cfg,
     current_epoch,

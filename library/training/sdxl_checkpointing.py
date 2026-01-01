@@ -12,7 +12,10 @@ from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import HuggingFaceConfig
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from accelerate import Accelerator
 
 
 def save_sd_model_on_train_end(
@@ -101,7 +104,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         metadata_config: MetadataConfig,
         loss_config: LossConfig,
         on_epoch_end: bool,
-        accelerator,
+        accelerator: "Accelerator",
         src_path,
         save_stable_diffusion_format: bool,
         use_safetensors: bool,

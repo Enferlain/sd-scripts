@@ -1,5 +1,6 @@
 
 import torch
+from typing import Optional, TYPE_CHECKING
 import library.models.sd_model_util
 from library.utils import model_metadata
 from library.models import model_util
@@ -13,7 +14,9 @@ from library.training.checkpointing import (
     save_sd_model_on_train_end_common,
     save_sd_model_on_epoch_end_or_stepwise_common
 )
-from typing import Optional
+
+if TYPE_CHECKING:
+    from accelerate import Accelerator
 
 
 def save_sd_model_on_train_end(
@@ -82,7 +85,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         loss_config: LossConfig,
         v2: bool,
         on_epoch_end: bool,
-        accelerator,
+        accelerator: "Accelerator",
         src_path: str,
         save_stable_diffusion_format: bool,
         use_safetensors: bool,
