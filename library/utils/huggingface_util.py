@@ -13,6 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 def exists_repo(repo_id: str, repo_type: str, revision: str = "main", token: str = None):
+    """
+    Checks if a HuggingFace repository exists.
+
+    Args:
+        repo_id: The ID of the repository (e.g., "username/repo_name").
+        repo_type: The type of the repository (e.g., "model", "dataset", "space").
+        revision: The revision to check (default is "main").
+        token: The HuggingFace API token.
+
+    Returns:
+        bool: True if the repository exists, False otherwise.
+    """
     api = HfApi(
         token=token,
     )
@@ -88,6 +100,19 @@ def list_dir(
         revision: str = "main",
         token: str = None,
 ):
+    """
+    Lists files in a subdirectory of a HuggingFace repository.
+
+    Args:
+        repo_id: The ID of the repository.
+        subfolder: The subdirectory to list files from.
+        repo_type: The type of the repository.
+        revision: The revision to list from (default is "main").
+        token: The HuggingFace API token.
+
+    Returns:
+        list: A list of RepoFile objects in the specified subdirectory.
+    """
     api = HfApi(
         token=token,
     )
