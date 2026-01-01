@@ -5,8 +5,11 @@ import shutil
 import logging
 import safetensors.torch
 
-from typing import Optional
+from typing import Optional, Dict, Any, Callable, List, TYPE_CHECKING
 from huggingface_hub import hf_hub_download
+
+if TYPE_CHECKING:
+    from accelerate import Accelerator
 
 from library.utils import huggingface_util
 from library.config.dataclasses.output import SavingConfig
@@ -36,10 +39,18 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def load_metadata_from_safetensors(safetensors_file: str) -> dict:
-    """r
-    This method locks the file. see https://github.com/huggingface/safetensors/issues/164
-    If the file isn't .safetensors or doesn't have metadata, return empty dict.
+def load_metadata_from_safetensors(safetensors_file: str) -> Dict[str, str]:
+    """
+    Loads metadata from a SafeTensors file.
+
+    This method locks the file. See https://github.com/huggingface/safetensors/issues/164.
+    If the file isn't .safetensors or doesn't have metadata, returns an empty dict.
+
+    Args:
+        safetensors_file: Path to the SafeTensors file.
+
+    Returns:
+        Dict[str, str]: The metadata dictionary from the file, or an empty dict if not found.
     """
     if os.path.splitext(safetensors_file)[1] != ".safetensors":
         return {}
@@ -57,8 +68,22 @@ def build_minimum_adapter_metadata(
         adapter_module: str,
         adapter_rank: str,
         adapter_alpha: str,
-        adapter_args: Optional[dict],
-):
+        adapter_args: Optional[Dict[str, Any]],
+) -> Dict[str, str]:
+    """
+    Builds the minimum metadata required for an adapter (LoRA).
+
+    Args:
+        v2: Version 2 flag or string.
+        base_model: Base model version string.
+        adapter_module: Module name for the adapter.
+        adapter_rank: Rank of the adapter.
+        adapter_alpha: Alpha value of the adapter.
+        adapter_args: Additional arguments for the adapter.
+
+    Returns:
+        Dict[str, str]: A dictionary containing the adapter metadata.
+    """
     # old LoRA doesn't have base_model
     metadata = {
         SS_METADATA_KEY_ADAPTER_MODULE: adapter_module,
@@ -78,7 +103,19 @@ def build_minimum_adapter_metadata(
 # Use library.utils.model_metadata.get_model_metadata_from_config() instead.
 
 
-def resume_from_local_or_hf_if_specified(accelerator, saving_config: SavingConfig, hf_config: Optional[HuggingFaceConfig] = None):
+def resume_from_local_or_hf_if_specified(
+    accelerator: "Accelerator",
+    saving_config: SavingConfig,
+    hf_config: Optional[HuggingFaceConfig] = None
+) -> None:
+    """
+    Resumes training from a local checkpoint or a Hugging Face repository if specified in the configuration.
+
+    Args:
+        accelerator: The Accelerator instance used for training.
+        saving_config: Configuration object containing saving and resuming settings.
+        hf_config: Configuration object containing Hugging Face settings.
+    """
     if not saving_config.resume:
         return
 
@@ -105,7 +142,7 @@ def resume_from_local_or_hf_if_specified(accelerator, saving_config: SavingConfi
         repo_id=repo_id,
         subfolder=path_in_repo,
         revision=revision,
-        token=hf_config.huggingface_token,  # CONFIG ERROR
+        token=hf_config.huggingface_token,
         repo_type=repo_type,
     )
 
@@ -116,10 +153,10 @@ def resume_from_local_or_hf_if_specified(accelerator, saving_config: SavingConfi
                 filename=filename,
                 revision=revision,
                 repo_type=repo_type,
-                token=hf_config.huggingface_token,  # CONFIG ERROR
+                token=hf_config.huggingface_token,
             )
 
-        return await asyncio.get_event_loop().run_in_executor(None, task)  # FIXME: Parameter 'args' unfilled, expected '*tuple[]'
+        return await asyncio.get_event_loop().run_in_executor(None, task)
 
     loop = asyncio.get_event_loop()
     results = loop.run_until_complete(
@@ -132,26 +169,95 @@ def resume_from_local_or_hf_if_specified(accelerator, saving_config: SavingConfi
     accelerator.load_state(dirname)
 
 
-def default_if_none(value, default):
+def default_if_none(value: Any, default: Any) -> Any:
+    """
+    Returns the value if it is not None, otherwise returns the default value.
+
+    Args:
+        value: The value to check.
+        default: The default value to return if value is None.
+
+    Returns:
+        Any: The value or the default.
+    """
     return default if value is None else value
 
 
-def get_epoch_ckpt_name(saving_config: SavingConfig, ext: str, epoch_no: int, output_name_append: str = ""):
+def get_epoch_ckpt_name(
+    saving_config: SavingConfig,
+    ext: str,
+    epoch_no: int,
+    output_name_append: str = ""
+) -> str:
+    """
+    Generates the filename for an epoch-based checkpoint.
+
+    Args:
+        saving_config: Configuration object containing output naming settings.
+        ext: File extension (e.g., ".safetensors", ".ckpt").
+        epoch_no: The epoch number.
+        output_name_append: Additional string to append to the output name.
+
+    Returns:
+        str: The generated checkpoint filename.
+    """
     model_name = default_if_none(saving_config.output_name, DEFAULT_EPOCH_NAME)
     return EPOCH_FILE_NAME.format(model_name + output_name_append, epoch_no) + ext
 
 
-def get_step_ckpt_name(saving_config: SavingConfig, ext: str, step_no: int, output_name_append: str = ""):
+def get_step_ckpt_name(
+    saving_config: SavingConfig,
+    ext: str,
+    step_no: int,
+    output_name_append: str = ""
+) -> str:
+    """
+    Generates the filename for a step-based checkpoint.
+
+    Args:
+        saving_config: Configuration object containing output naming settings.
+        ext: File extension (e.g., ".safetensors", ".ckpt").
+        step_no: The step number.
+        output_name_append: Additional string to append to the output name.
+
+    Returns:
+        str: The generated checkpoint filename.
+    """
     model_name = default_if_none(saving_config.output_name, DEFAULT_STEP_NAME)
     return STEP_FILE_NAME.format(model_name + output_name_append, step_no) + ext
 
 
-def get_last_ckpt_name(saving_config: SavingConfig, ext: str, output_name_append: str = ""):
+def get_last_ckpt_name(
+    saving_config: SavingConfig,
+    ext: str,
+    output_name_append: str = ""
+) -> str:
+    """
+    Generates the filename for the last checkpoint.
+
+    Args:
+        saving_config: Configuration object containing output naming settings.
+        ext: File extension (e.g., ".safetensors", ".ckpt").
+        output_name_append: Additional string to append to the output name.
+
+    Returns:
+        str: The generated checkpoint filename.
+    """
     model_name = default_if_none(saving_config.output_name, DEFAULT_LAST_OUTPUT_NAME)
     return model_name + output_name_append + ext
 
 
-def get_remove_epoch_no(saving_config: SavingConfig, epoch_no: int):
+def get_remove_epoch_no(saving_config: SavingConfig, epoch_no: int) -> Optional[int]:
+    """
+    Calculates the epoch number of the checkpoint to remove based on retention settings.
+
+    Args:
+        saving_config: Configuration object containing retention settings.
+        epoch_no: The current epoch number.
+
+    Returns:
+        Optional[int]: The epoch number to remove, or None if no checkpoint should be removed.
+    """
     if saving_config.save_last_n_epochs is None:
         return None
 
@@ -161,7 +267,17 @@ def get_remove_epoch_no(saving_config: SavingConfig, epoch_no: int):
     return remove_epoch_no
 
 
-def get_remove_step_no(saving_config: SavingConfig, step_no: int):
+def get_remove_step_no(saving_config: SavingConfig, step_no: int) -> Optional[int]:
+    """
+    Calculates the step number of the checkpoint to remove based on retention settings.
+
+    Args:
+        saving_config: Configuration object containing retention settings.
+        step_no: The current step number.
+
+    Returns:
+        Optional[int]: The step number to remove, or None if no checkpoint should be removed.
+    """
     if saving_config.save_last_n_steps is None:
         return None
 
@@ -180,16 +296,32 @@ def get_remove_step_no(saving_config: SavingConfig, step_no: int):
 def save_sd_model_on_epoch_end_or_stepwise_common(
         saving_config: SavingConfig,
         on_epoch_end: bool,
-        accelerator,
+        accelerator: "Accelerator",
         save_stable_diffusion_format: bool,
         use_safetensors: bool,
         epoch: int,
         num_train_epochs: int,
         global_step: int,
-        sd_saver,
-        diffusers_saver,
+        sd_saver: Callable[[str, int, int], None],
+        diffusers_saver: Callable[[str], None],
         hf_config: Optional[HuggingFaceConfig] = None,
-):
+) -> None:
+    """
+    Common logic for saving Stable Diffusion models at the end of an epoch or stepwise.
+
+    Args:
+        saving_config: Configuration object containing saving settings.
+        on_epoch_end: Boolean indicating if this is an epoch-end save.
+        accelerator: The Accelerator instance.
+        save_stable_diffusion_format: Boolean indicating if the model should be saved in SD format (ckpt/safetensors).
+        use_safetensors: Boolean indicating if SafeTensors format should be used.
+        epoch: Current epoch number.
+        num_train_epochs: Total number of training epochs.
+        global_step: Current global step.
+        sd_saver: Callback function to save in SD format.
+        diffusers_saver: Callback function to save in Diffusers format.
+        hf_config: Configuration object containing Hugging Face settings.
+    """
     if on_epoch_end:
         epoch_no = epoch + 1
         saving = epoch_no % saving_config.save_every_n_epochs == 0 and epoch_no < num_train_epochs
@@ -200,6 +332,7 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
         remove_no = get_remove_epoch_no(saving_config, epoch_no)
     else:
         # 保存するか否かは呼び出し側で判断済み
+        # Decision to save is made by the caller
 
         model_name = default_if_none(saving_config.output_name, DEFAULT_STEP_NAME)
         epoch_no = epoch  # 例: 最初のepochの途中で保存したら0になる、SDモデルに保存される
@@ -267,8 +400,21 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
             save_and_remove_state_stepwise(saving_config, accelerator, global_step)
 
 
-def save_and_remove_state_on_epoch_end(saving_config: SavingConfig, accelerator, epoch_no,
-                                       hf_config: Optional[HuggingFaceConfig] = None):
+def save_and_remove_state_on_epoch_end(
+    saving_config: SavingConfig,
+    accelerator: "Accelerator",
+    epoch_no: int,
+    hf_config: Optional[HuggingFaceConfig] = None
+) -> None:
+    """
+    Saves the training state at the end of an epoch and removes old states if necessary.
+
+    Args:
+        saving_config: Configuration object containing saving settings.
+        accelerator: The Accelerator instance.
+        epoch_no: The current epoch number.
+        hf_config: Configuration object containing Hugging Face settings.
+    """
     model_name = default_if_none(saving_config.output_name, DEFAULT_EPOCH_NAME)
 
     logger.info("")
@@ -291,8 +437,21 @@ def save_and_remove_state_on_epoch_end(saving_config: SavingConfig, accelerator,
             shutil.rmtree(state_dir_old)
 
 
-def save_and_remove_state_stepwise(saving_config: SavingConfig, accelerator, step_no,
-                                   hf_config: Optional[HuggingFaceConfig] = None):
+def save_and_remove_state_stepwise(
+    saving_config: SavingConfig,
+    accelerator: "Accelerator",
+    step_no: int,
+    hf_config: Optional[HuggingFaceConfig] = None
+) -> None:
+    """
+    Saves the training state at a specific step and removes old states if necessary.
+
+    Args:
+        saving_config: Configuration object containing saving settings.
+        accelerator: The Accelerator instance.
+        step_no: The current step number.
+        hf_config: Configuration object containing Hugging Face settings.
+    """
     model_name = default_if_none(saving_config.output_name, DEFAULT_STEP_NAME)
 
     logger.info("")
@@ -319,7 +478,19 @@ def save_and_remove_state_stepwise(saving_config: SavingConfig, accelerator, ste
                 shutil.rmtree(state_dir_old)
 
 
-def save_state_on_train_end(saving_config: SavingConfig, accelerator, hf_config: Optional[HuggingFaceConfig] = None):
+def save_state_on_train_end(
+    saving_config: SavingConfig,
+    accelerator: "Accelerator",
+    hf_config: Optional[HuggingFaceConfig] = None
+) -> None:
+    """
+    Saves the training state at the end of training.
+
+    Args:
+        saving_config: Configuration object containing saving settings.
+        accelerator: The Accelerator instance.
+        hf_config: Configuration object containing Hugging Face settings.
+    """
     model_name = default_if_none(saving_config.output_name, DEFAULT_LAST_OUTPUT_NAME)
 
     logger.info("")
@@ -343,10 +514,23 @@ def save_sd_model_on_train_end_common(
         use_safetensors: bool,
         epoch: int,
         global_step: int,
-        sd_saver,
-        diffusers_saver,
+        sd_saver: Callable[[str, int, int], None],
+        diffusers_saver: Callable[[str], None],
         hf_config: Optional[HuggingFaceConfig] = None,
-):
+) -> None:
+    """
+    Common logic for saving Stable Diffusion models at the end of training.
+
+    Args:
+        saving_config: Configuration object containing saving settings.
+        save_stable_diffusion_format: Boolean indicating if the model should be saved in SD format.
+        use_safetensors: Boolean indicating if SafeTensors format should be used.
+        epoch: Final epoch number.
+        global_step: Final global step.
+        sd_saver: Callback function to save in SD format.
+        diffusers_saver: Callback function to save in Diffusers format.
+        hf_config: Configuration object containing Hugging Face settings.
+    """
     model_name = default_if_none(saving_config.output_name, DEFAULT_LAST_OUTPUT_NAME)
 
     if save_stable_diffusion_format:
@@ -373,16 +557,22 @@ def save_sd_model_on_train_end_common(
             huggingface_util.upload(hf_config, out_dir, "/" + model_name)
 
 
-def register_adapter_state_hooks(accelerator, adapter, cfg, current_epoch, current_step):
+def register_adapter_state_hooks(
+    accelerator: "Accelerator",
+    adapter,
+    cfg,
+    current_epoch,
+    current_step
+) -> Callable[[], Optional[int]]:
     """
     Register save/load hooks for peft-only checkpointing.
 
-    These hooks ensure that only the PEFT peft weights (LoRA/LyCORIS) are saved/loaded
+    These hooks ensure that only the PEFT weights (LoRA/LyCORIS) are saved/loaded
     during checkpointing, not the full base model weights.
 
     Args:
         accelerator: HuggingFace Accelerator
-        adapter: The PEFT peft to save/load
+        adapter: The PEFT adapter to save/load
         cfg: Training configuration (needs cfg.performance.deepspeed)
         current_epoch: Shared Value for current epoch tracking
         current_step: Shared Value for current step tracking

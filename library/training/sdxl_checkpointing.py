@@ -12,7 +12,10 @@ from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import HuggingFaceConfig
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from accelerate import Accelerator
 
 
 def save_sd_model_on_train_end(
@@ -32,10 +35,31 @@ def save_sd_model_on_train_end(
         logit_scale,
         ckpt_info,
         hf_config: Optional[HuggingFaceConfig] = None,
-):
+) -> None:
+    """
+    Saves the SDXL model at the end of training.
+
+    Args:
+        saving_config: Configuration for saving outputs.
+        metadata_config: Configuration for metadata generation.
+        loss_config: Configuration for loss parameters.
+        src_path: Path to the source model.
+        save_stable_diffusion_format: Whether to save in SD format.
+        use_safetensors: Whether to use SafeTensors format.
+        save_dtype: Data type for saving weights.
+        epoch: Final epoch number.
+        global_step: Final global step count.
+        text_encoder1: First text encoder.
+        text_encoder2: Second text encoder.
+        unet: UNet model.
+        vae: VAE model.
+        logit_scale: Logit scale value (if applicable).
+        ckpt_info: Additional checkpoint information.
+        hf_config: Configuration for Hugging Face integration.
+    """
     def sd_saver(ckpt_file, epoch_no, global_step):
         modelspec_metadata = model_metadata.get_model_metadata_from_config(
-            state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
+            state_dict=None,
             metadata_config=metadata_config,
             is_sdxl=True,
             is_v2=False, # SDXL is not v2
@@ -75,14 +99,12 @@ def save_sd_model_on_train_end(
     )
 
 
-# epochとstepの保存、メタデータにepoch/stepが含まれ引数が同じになるため、統合している
-# on_epoch_end: Trueならepoch終了時、Falseならstep経過時
 def save_sd_model_on_epoch_end_or_stepwise(
         saving_config: SavingConfig,
         metadata_config: MetadataConfig,
         loss_config: LossConfig,
         on_epoch_end: bool,
-        accelerator,
+        accelerator: "Accelerator",
         src_path,
         save_stable_diffusion_format: bool,
         use_safetensors: bool,
@@ -97,10 +119,37 @@ def save_sd_model_on_epoch_end_or_stepwise(
         logit_scale,
         ckpt_info,
         hf_config: Optional[HuggingFaceConfig] = None,
-):
+) -> None:
+    """
+    Saves the SDXL model at epoch end or stepwise.
+
+    This function integrates epoch and step saving logic as metadata includes both,
+    and arguments are largely shared.
+
+    Args:
+        saving_config: Configuration for saving outputs.
+        metadata_config: Configuration for metadata generation.
+        loss_config: Configuration for loss parameters.
+        on_epoch_end: True if saving at epoch end, False if stepwise.
+        accelerator: Accelerator instance.
+        src_path: Path to the source model.
+        save_stable_diffusion_format: Whether to save in SD format.
+        use_safetensors: Whether to use SafeTensors format.
+        save_dtype: Data type for saving weights.
+        epoch: Current epoch number.
+        num_train_epochs: Total number of training epochs.
+        global_step: Current global step count.
+        text_encoder1: First text encoder.
+        text_encoder2: Second text encoder.
+        unet: UNet model.
+        vae: VAE model.
+        logit_scale: Logit scale value.
+        ckpt_info: Additional checkpoint information.
+        hf_config: Configuration for Hugging Face integration.
+    """
     def sd_saver(ckpt_file, epoch_no, global_step):
         modelspec_metadata = model_metadata.get_model_metadata_from_config(
-            state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
+            state_dict=None,
             metadata_config=metadata_config,
             is_sdxl=True,
             is_v2=False,
