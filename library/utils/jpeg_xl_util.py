@@ -8,6 +8,15 @@ import io
 
 
 def get_file_size(file) -> int:
+    """
+    Get the size of a file.
+
+    Args:
+        file: The file object to get the size of.
+
+    Returns:
+        int: The size of the file in bytes.
+    """
     try:
         return os.fstat(file.fileno()).st_size
     except (AttributeError, io.UnsupportedOperation):
@@ -24,6 +33,14 @@ class JXLBitstream:
     """
 
     def __init__(self, file, offset: int = 0, offsets: List[List[int]] = None):
+        """
+        Initialize the JXLBitstream.
+
+        Args:
+            file: The file object to read from.
+            offset (int, optional): The offset to start reading from. Defaults to 0.
+            offsets (List[List[int]], optional): A list of offsets for partial reading. Defaults to None.
+        """
         self.file = file
         self.offsets = offsets
         self.bitstream = bytearray()
@@ -37,6 +54,15 @@ class JXLBitstream:
             self.file.seek(offset)
 
     def get_bits(self, length: int = 1) -> int:
+        """
+        Get the specified number of bits from the bitstream.
+
+        Args:
+            length (int, optional): The number of bits to read. Defaults to 1.
+
+        Returns:
+            int: The read bits as an integer.
+        """
         target_byte_count = (self.shift + length + 7) // 8
         needed_bytes = target_byte_count - len(self.bitstream)
 
@@ -80,6 +106,14 @@ def decode_codestream(file, offset: int = 0, offsets: List[List[int]] = None) ->
     """
     Decodes the actual codestream.
     JXL codestream specification: http://www-internal/2022/18181-1
+
+    Args:
+        file: The file object containing the codestream.
+        offset (int, optional): The offset to start reading from. Defaults to 0.
+        offsets (List[List[int]], optional): A list of offsets for partial reading. Defaults to None.
+
+    Returns:
+        Tuple[int, int]: A tuple containing the width and height of the image.
     """
 
     # Convert codestream to int within an object to get some handy methods.
@@ -140,6 +174,15 @@ def decode_container(file) -> Tuple[int, int]:
     """
     Parses the ISOBMFF container, extracts the codestream, and decodes it.
     JXL container specification: http://www-internal/2022/18181-2
+
+    Args:
+        file: The file object containing the container.
+
+    Returns:
+        Tuple[int, int]: A tuple containing the width and height of the image.
+
+    Raises:
+        ValueError: If the container structure is invalid or required boxes are missing.
     """
 
     def parse_box(file, file_start: int) -> dict:
@@ -210,6 +253,15 @@ def decode_container(file) -> Tuple[int, int]:
 
 
 def get_jxl_size(path: str) -> Tuple[int, int]:
+    """
+    Get the dimensions of a JPEG XL image.
+
+    Args:
+        path (str): The path to the JPEG XL file.
+
+    Returns:
+        Tuple[int, int]: A tuple containing the width and height of the image.
+    """
     with open(path, "rb") as file:
         if file.read(2) == bytes.fromhex("FF0A"):
             return decode_codestream(file)

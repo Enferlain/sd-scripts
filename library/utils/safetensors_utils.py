@@ -13,7 +13,12 @@ from library.utils.device_utils import synchronize_device
 
 def mem_eff_save_file(tensors: Dict[str, torch.Tensor], filename: str, metadata: Dict[str, Any] = None):
     """
-    memory efficient save file
+    Save a file using a memory-efficient method.
+
+    Args:
+        tensors (Dict[str, torch.Tensor]): A dictionary mapping tensor names to tensors.
+        filename (str): The name of the file to save to.
+        metadata (Dict[str, Any], optional): A dictionary of metadata to save with the file. Defaults to None.
     """
 
     _TYPES = {
@@ -286,6 +291,18 @@ class MemoryEfficientSafeOpen:
 def load_safetensors(
         path: str, device: Union[str, torch.device], disable_mmap: bool = False, dtype: Optional[torch.dtype] = None
 ) -> dict[str, torch.Tensor]:
+    """
+    Load tensors from a safetensors file.
+
+    Args:
+        path (str): The path to the safetensors file.
+        device (Union[str, torch.device]): The device to load the tensors to.
+        disable_mmap (bool, optional): Whether to disable memory mapping. Defaults to False.
+        dtype (Optional[torch.dtype], optional): The data type to cast the tensors to. Defaults to None.
+
+    Returns:
+        dict[str, torch.Tensor]: A dictionary mapping tensor names to loaded tensors.
+    """
     if disable_mmap:
         # return safetensors.torch.load(open(path, "rb").read())
         # use experimental loader
@@ -313,8 +330,22 @@ def load_split_weights(
         dtype: Optional[torch.dtype] = None
 ) -> Dict[str, torch.Tensor]:
     """
-    Load split weights from a file. If the file name ends with 00001-of-00004 etc, it will load all files with the same prefix.
+    Load split weights from a file.
+
+    If the file name ends with 00001-of-00004 etc, it will load all files with the same prefix.
     dtype is as is, no conversion is done.
+
+    Args:
+        file_path (str): The path to the weights file.
+        device (Union[str, torch.device], optional): The device to load the weights to. Defaults to "cpu".
+        disable_mmap (bool, optional): Whether to disable memory mapping. Defaults to False.
+        dtype (Optional[torch.dtype], optional): The data type to cast the weights to. Defaults to None.
+
+    Returns:
+        Dict[str, torch.Tensor]: A dictionary mapping tensor names to loaded tensors.
+
+    Raises:
+        FileNotFoundError: If a split file is missing.
     """
     device = torch.device(device)
 
@@ -341,9 +372,17 @@ def find_key(safetensors_file: str, starts_with: Optional[str] = None, ends_with
     str]:
     """
     Find a key in a safetensors file that starts with `starts_with` and ends with `ends_with`.
+
     If `starts_with` is None, it will match any key.
     If `ends_with` is None, it will match any key.
-    Returns the first matching key or None if no key matches.
+
+    Args:
+        safetensors_file (str): The path to the safetensors file.
+        starts_with (Optional[str], optional): The prefix to look for. Defaults to None.
+        ends_with (Optional[str], optional): The suffix to look for. Defaults to None.
+
+    Returns:
+        Optional[str]: The first matching key or None if no key matches.
     """
     with MemoryEfficientSafeOpen(safetensors_file) as f:
         for key in f.keys():
