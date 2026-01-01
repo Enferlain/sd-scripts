@@ -7,7 +7,7 @@ import logging
 import time
 import torch
 
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional, Tuple
 from PIL import Image
 from accelerate import Accelerator
 from accelerate.state import PartialState
@@ -43,6 +43,16 @@ def get_my_scheduler(
         sample_sampler: str,
         v_parameterization: bool,
 ):
+    """
+    Returns a scheduler object based on the provided sampler name and parameterization settings.
+
+    Args:
+        sample_sampler (str): The name of the sampler to use (e.g., "ddim", "pndm", "euler_a").
+        v_parameterization (bool): Whether to use v-parameterization.
+
+    Returns:
+        SchedulerMixin: The initialized scheduler object.
+    """
     sched_init_args = {}
     if sample_sampler == "ddim":
         scheduler_cls = DDIMScheduler
@@ -93,6 +103,16 @@ def get_my_scheduler(
 
 
 def line_to_prompt_dict(line: str) -> dict:
+    """
+    Parses a string line into a prompt dictionary.
+
+    Args:
+        line (str): The input string containing the prompt and arguments.
+                    Arguments are expected to be in the format "--arg value".
+
+    Returns:
+        dict: A dictionary containing the parsed prompt and arguments.
+    """
     # subset of gen_img_diffusers
     prompt_args = line.split(" --")
     prompt_dict = {}
@@ -168,6 +188,18 @@ def line_to_prompt_dict(line: str) -> dict:
 
 
 def load_prompts(prompt_file: str) -> List[Dict]:
+    """
+    Loads prompts from a file.
+
+    Supported file formats are .txt, .toml, and .json.
+
+    Args:
+        prompt_file (str): The path to the prompt file.
+
+    Returns:
+        List[Dict]: A list of dictionaries, where each dictionary represents a prompt
+                    and its associated settings.
+    """
     # read prompts
     if prompt_file.endswith(".txt"):
         with open(prompt_file, "r", encoding="utf-8") as f:
@@ -197,7 +229,18 @@ def load_prompts(prompt_file: str) -> List[Dict]:
     return prompts
 
 
-def sample_images_check(sampling_config: SamplingConfig, epoch, steps) -> bool:
+def sample_images_check(sampling_config: SamplingConfig, epoch: Optional[int], steps: int) -> bool:
+    """
+    Checks if sample images should be generated at the current step or epoch.
+
+    Args:
+        sampling_config (SamplingConfig): The sampling configuration.
+        epoch (int, optional): The current epoch number.
+        steps (int): The current step number.
+
+    Returns:
+        bool: True if images should be generated, False otherwise.
+    """
     if steps == 0:
         if not sampling_config.sample_at_first:
             return False
@@ -221,19 +264,38 @@ def sample_images_common(
         training_config: TrainingConfig,
         saving_config: SavingConfig,
         loss_config: LossConfig,
-        epoch: int,
+        epoch: Optional[int],
         steps: int,
         device,
         vae,
         tokenizer,
         text_encoder,
         unet_wrapped,
-        prompt_replacement=None,
+        prompt_replacement: Optional[Tuple[str, str]] = None,
         controlnet=None,
 ):
     """
-    Uses modified StableDiffusionLongPromptWeightingPipeline for clip skip and prompt weighting support.
-    Model-specific wrappers: sd_sample_generation.py, sdxl_sample_generation.py
+    Common function for generating sample images during training.
+
+    This function handles the setup of the pipeline, loading of prompts, and distribution
+    of work across available devices.
+
+    Args:
+        pipe_class: The pipeline class to use (e.g., StableDiffusionLongPromptWeightingPipeline).
+        accelerator (Accelerator): The accelerator instance for distributed training.
+        sampling_config (SamplingConfig): Configuration for sampling.
+        training_config (TrainingConfig): Configuration for training.
+        saving_config (SavingConfig): Configuration for saving outputs.
+        loss_config (LossConfig): Configuration related to loss (used for v_parameterization).
+        epoch (int, optional): The current epoch.
+        steps (int): The current step.
+        device: The device to run inference on.
+        vae: The VAE model.
+        tokenizer: The tokenizer.
+        text_encoder: The text encoder model(s).
+        unet_wrapped: The UNet model (wrapped).
+        prompt_replacement (tuple, optional): A tuple (target, replacement) to modify prompts.
+        controlnet: ControlNet model (optional).
     """
 
     if steps == 0:
@@ -359,13 +421,30 @@ def sample_image_inference(
         saving_config: SavingConfig,
         loss_config: LossConfig,
         pipeline: Union[StableDiffusionLongPromptWeightingPipeline, SdxlStableDiffusionLongPromptWeightingPipeline],
-        save_dir,
-        prompt_dict,
-        epoch,
-        steps,
-        prompt_replacement,
+        save_dir: str,
+        prompt_dict: Dict,
+        epoch: Optional[int],
+        steps: int,
+        prompt_replacement: Optional[Tuple[str, str]],
         controlnet=None,
 ):
+    """
+    Performs the actual image inference for a single prompt.
+
+    Args:
+        accelerator (Accelerator): The accelerator instance.
+        sampling_config (SamplingConfig): Sampling configuration.
+        training_config (TrainingConfig): Training configuration.
+        saving_config (SavingConfig): Saving configuration.
+        loss_config (LossConfig): Loss configuration.
+        pipeline: The inference pipeline.
+        save_dir (str): Directory to save the generated images.
+        prompt_dict (dict): Dictionary containing the prompt and parameters.
+        epoch (int, optional): Current epoch.
+        steps (int): Current step.
+        prompt_replacement (tuple, optional): Tuple for prompt replacement.
+        controlnet: ControlNet model (optional).
+    """
     assert isinstance(prompt_dict, dict)
     negative_prompt = prompt_dict.get("negative_prompt")
     sample_steps = prompt_dict.get("sample_steps", 30)
