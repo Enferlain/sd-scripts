@@ -5,12 +5,17 @@ import logging
 import random
 import typing
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple, Union
 
 import torch
 from torch import nn
 from tqdm import tqdm
-from ramtorch.helpers import replace_linear_with_ramtorch
+try:
+    from ramtorch.helpers import replace_linear_with_ramtorch
+except ImportError:
+    replace_linear_with_ramtorch = None
+except AssertionError:
+    replace_linear_with_ramtorch = None
 
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
 from library.strategies.peft_strategy_base import PeftTrainingStrategy
@@ -48,8 +53,18 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
     logit_scale: Any = None
     ckpt_info: Any = None
     
-    def load_target_model(self, cfg, weight_dtype, accelerator) -> tuple[str, List[nn.Module], nn.Module, Optional[nn.Module]]:
-        """Load SDXL model components (dual text encoders, VAE, UNet)."""
+    def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, List[nn.Module], nn.Module, Optional[nn.Module]]:
+        """
+        Load SDXL model components (dual text encoders, VAE, UNet).
+
+        Args:
+            cfg: Configuration object.
+            weight_dtype: Weight data type.
+            accelerator: Accelerator instance.
+
+        Returns:
+            Tuple of (model_version, text_encoders, vae, unet).
+        """
         (
             load_stable_diffusion_format,
             text_encoder1,
@@ -74,6 +89,8 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         self.ckpt_info = ckpt_info
         
         if cfg.performance.memory.use_ramtorch:
+            if replace_linear_with_ramtorch is None:
+                raise ImportError("RamTorch is not available. Please install it or set use_ramtorch to False.")
             logger.info("Applying RamTorch to SDXL UNet, VAE, and Text Encoders.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
@@ -98,35 +115,83 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
-    def get_tokenize_strategy(self, cfg):
-        """Return SDXL tokenize strategy (dual tokenizers)."""
+    def get_tokenize_strategy(self, cfg: Any) -> Any:
+        """
+        Return SDXL tokenize strategy (dual tokenizers).
+
+        Args:
+            cfg: Configuration object.
+
+        Returns:
+            SdxlTokenizeStrategy instance.
+        """
         return strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
     def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy) -> List[Any]:
-        """Return both tokenizers for SDXL."""
+        """
+        Return both tokenizers for SDXL.
+
+        Args:
+            tokenize_strategy: SdxlTokenizeStrategy instance.
+
+        Returns:
+            List containing two tokenizers.
+        """
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
-    def get_latents_caching_strategy(self, cfg):
-        """Return SD/SDXL latents caching strategy (shared implementation)."""
+    def get_latents_caching_strategy(self, cfg: Any) -> Any:
+        """
+        Return SD/SDXL latents caching strategy (shared implementation).
+
+        Args:
+            cfg: Configuration object.
+
+        Returns:
+            SdSdxlLatentsCachingStrategy instance.
+        """
         return strategy_sd.SdSdxlLatentsCachingStrategy(
             False, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
         )
 
-    def get_text_encoding_strategy(self, cfg):
-        """Return SDXL text encoding strategy."""
+    def get_text_encoding_strategy(self, cfg: Any) -> Any:
+        """
+        Return SDXL text encoding strategy.
+
+        Args:
+            cfg: Configuration object.
+
+        Returns:
+            SdxlTextEncodingStrategy instance.
+        """
         return strategy_sdxl.SdxlTextEncodingStrategy()
 
-    def get_models_for_text_encoding(self, cfg, accelerator, text_encoders) -> List:
+    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: List[Any]) -> List[Any]:
         """
         Return text encoders for encoding in SDXL.
         
         SDXL needs unwrapped text_encoder2 for pooled output.
         Returns: [text_encoder1, text_encoder2, unwrapped_text_encoder2]
+
+        Args:
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            text_encoders: List of text encoders.
+
+        Returns:
+            List of models for text encoding.
         """
         return text_encoders + [accelerator.unwrap_model(text_encoders[-1])]
 
-    def get_text_encoder_outputs_caching_strategy(self, cfg):
-        """Return SDXL text encoder outputs caching strategy if enabled."""
+    def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> Optional[Any]:
+        """
+        Return SDXL text encoder outputs caching strategy if enabled.
+
+        Args:
+            cfg: Configuration object.
+
+        Returns:
+            SdxlTextEncoderOutputsCachingStrategy instance or None.
+        """
         if cfg.performance.caching.cache_text_encoder_outputs:
             return strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
                 cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, cfg.data.caching.skip_cache_check, is_weighted=cfg.data.caption.weighted_captions  # TODO: Expected type 'int', got 'None' instead
@@ -134,8 +199,19 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         else:
             return None
 
-    def cache_text_encoder_outputs_if_needed(self, cfg, accelerator, unet, vae, text_encoders, dataset, weight_dtype):
-        """Cache text encoder outputs for SDXL (dual encoders, more complex than SD)."""
+    def cache_text_encoder_outputs_if_needed(self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: List[Any], dataset: Any, weight_dtype: torch.dtype) -> None:
+        """
+        Cache text encoder outputs for SDXL (dual encoders, more complex than SD).
+
+        Args:
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            unet: UNet model.
+            vae: VAE model.
+            text_encoders: List of text encoders.
+            dataset: Dataset object.
+            weight_dtype: Weight data type.
+        """
         if cfg.performance.caching.cache_text_encoder_outputs:
             if not cfg.performance.memory.lowram:
                 # Save memory by moving vae and unet to cpu
@@ -166,11 +242,25 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             text_encoders[0].to(accelerator.device, dtype=weight_dtype)
             text_encoders[1].to(accelerator.device, dtype=weight_dtype)
 
-    def call_unet(self, cfg, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype, **kwargs):
+    def call_unet(self, cfg: Any, accelerator: Any, unet: Any, noisy_latents: torch.Tensor, timesteps: torch.Tensor, text_conds: Any, batch: Any, weight_dtype: torch.dtype, **kwargs) -> torch.Tensor:
         """
         Call SDXL UNet with size embeddings.
         
         SDXL UNet signature includes vector_embedding (size/crop conditioning).
+
+        Args:
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            unet: UNet model.
+            noisy_latents: Noisy latents tensor.
+            timesteps: Timesteps tensor.
+            text_conds: Tuple of text conditioning (encoder_hidden_states1, encoder_hidden_states2, pool2).
+            batch: Batch data.
+            weight_dtype: Weight data type.
+            **kwargs: Additional arguments.
+
+        Returns:
+            Noise prediction tensor.
         """
         indices = kwargs.get("indices", None)
 
@@ -194,21 +284,55 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         noise_pred = unet(noisy_latents, timesteps, text_embedding, vector_embedding)
         return noise_pred
 
-    def sample_images(self, accelerator, cfg, epoch, global_step, device, vae, tokenizers, text_encoder, unet):
-        """Generate sample images for SDXL."""
+    def sample_images(self, accelerator: Any, cfg: Any, epoch: int, global_step: int, device: torch.device, vae: Any, tokenizers: List[Any], text_encoder: Any, unet: Any) -> None:
+        """
+        Generate sample images for SDXL.
+
+        Args:
+            accelerator: Accelerator instance.
+            cfg: Configuration object.
+            epoch: Current epoch.
+            global_step: Current global step.
+            device: Device.
+            vae: VAE model.
+            tokenizers: List of tokenizers.
+            text_encoder: Text encoder.
+            unet: UNet model.
+        """
         sample_images(accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, epoch, global_step, device, vae, tokenizers, text_encoder, unet)
 
-    def validate_extra_config(self, cfg, train_dataset_group, val_dataset_group):
-        """Run SDXL-specific config validation."""
+    def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:
+        """
+        Run SDXL-specific config validation.
+
+        Args:
+            cfg: Configuration object.
+            train_dataset_group: Training dataset group.
+            val_dataset_group: Validation dataset group.
+        """
         validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group)
 
-    def update_metadata(self, metadata: dict, cfg):
-        """Add SDXL-specific metadata fields."""
-        # SDXL doesn't add extra metadata beyond what get_model_metadata provides
+    def update_metadata(self, metadata: dict, cfg: Any) -> None:
+        """
+        Add SDXL-specific metadata fields.
+        SDXL doesn't add extra metadata beyond what get_model_metadata provides.
+
+        Args:
+            metadata: Metadata dictionary.
+            cfg: Configuration object.
+        """
         pass
 
-    def get_model_metadata(self, cfg) -> dict:
-        """Get SAI model spec for SDXL."""
+    def get_model_metadata(self, cfg: Any) -> dict:
+        """
+        Get SAI model spec for SDXL.
+
+        Args:
+            cfg: Configuration object.
+
+        Returns:
+            Metadata dictionary.
+        """
         return get_model_metadata_from_config(
             state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
             metadata_config=cfg.output.metadata,
@@ -225,11 +349,20 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
     # region SDXL-specific text conditioning
 
-    def _get_text_cond(self, cfg, accelerator, batch, tokenizers, text_encoders, weight_dtype):
+    def _get_text_cond(self, cfg: Any, accelerator: Any, batch: Any, tokenizers: List[Any], text_encoders: List[Any], weight_dtype: torch.dtype) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get SDXL text conditioning from batch.
         
-        Returns tuple of (encoder_hidden_states1, encoder_hidden_states2, pool2).
+        Args:
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            batch: Batch data.
+            tokenizers: List of tokenizers.
+            text_encoders: List of text encoders.
+            weight_dtype: Weight data type.
+
+        Returns:
+            Tuple of (encoder_hidden_states1, encoder_hidden_states2, pool2).
         """
         if "text_encoder_outputs1_list" not in batch or batch["text_encoder_outputs1_list"] is None:
             input_ids1 = batch["input_ids"]
@@ -260,11 +393,33 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
     # region Training batch processing methods
 
     def get_noise_pred_and_target(
-        self, cfg, accelerator, noise_scheduler, latents, batch, text_encoder_conds,
-        unet, adapter, weight_dtype, train_unet, fixed_timesteps=None, is_train=True,
-        min_timestep_override=None, max_timestep_override=None, global_step=0,
-    ):
-        """Sample noise, call UNet, get noise prediction target."""
+        self, cfg: Any, accelerator: Any, noise_scheduler: Any, latents: torch.Tensor, batch: Any, text_encoder_conds: Any,
+        unet: Any, adapter: Any, weight_dtype: torch.dtype, train_unet: bool, fixed_timesteps: Optional[torch.Tensor] = None, is_train: bool = True,
+        min_timestep_override: Optional[int] = None, max_timestep_override: Optional[int] = None, global_step: int = 0,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+        """
+        Sample noise, call UNet, get noise prediction target.
+
+        Args:
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            noise_scheduler: Noise scheduler.
+            latents: Latents tensor.
+            batch: Batch data.
+            text_encoder_conds: Text conditioning.
+            unet: UNet model.
+            adapter: Adapter model.
+            weight_dtype: Weight data type.
+            train_unet: Boolean indicating if UNet is trained.
+            fixed_timesteps: Optional fixed timesteps.
+            is_train: Boolean indicating training mode.
+            min_timestep_override: Optional minimum timestep override.
+            max_timestep_override: Optional maximum timestep override.
+            global_step: Current global step.
+
+        Returns:
+            Tuple of (noise_pred, target, timesteps, weighting).
+        """
         noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
             cfg.loss.regularization, cfg.timestep, cfg.training, noise_scheduler, latents,
             la_sampler=self.la_sampler, global_step=global_step, fixed_timesteps=fixed_timesteps,
@@ -309,12 +464,38 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
 
     def process_batch(
-        self, batch, text_encoders, unet, adapter, vae, noise_scheduler, vae_dtype, weight_dtype,
-        accelerator, cfg, text_encoding_strategy: strategy_base.TextEncodingStrategy,
-        tokenize_strategy: strategy_base.TokenizeStrategy, is_train=True, train_text_encoder=True,
-        train_unet=True, edm2_model=None, min_timestep_override=None, max_timestep_override=None, global_step=0,
-    ) -> tuple:
-        """Process a batch for SDXL training."""
+        self, batch: Any, text_encoders: List[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
+        accelerator: Any, cfg: Any, text_encoding_strategy: strategy_base.TextEncodingStrategy,
+        tokenize_strategy: strategy_base.TokenizeStrategy, is_train: bool = True, train_text_encoder: bool = True,
+        train_unet: bool = True, edm2_model: Optional[Any] = None, min_timestep_override: Optional[int] = None, max_timestep_override: Optional[int] = None, global_step: int = 0,
+    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor], torch.Tensor]:
+        """
+        Process a batch for SDXL training.
+
+        Args:
+            batch: Batch data.
+            text_encoders: List of text encoders.
+            unet: UNet model.
+            adapter: Adapter model.
+            vae: VAE model.
+            noise_scheduler: Noise scheduler.
+            vae_dtype: VAE data type.
+            weight_dtype: Weight data type.
+            accelerator: Accelerator instance.
+            cfg: Configuration object.
+            text_encoding_strategy: Text encoding strategy.
+            tokenize_strategy: Tokenize strategy.
+            is_train: Training mode flag.
+            train_text_encoder: Train text encoder flag.
+            train_unet: Train UNet flag.
+            edm2_model: EDM2 model (optional).
+            min_timestep_override: Minimum timestep override.
+            max_timestep_override: Maximum timestep override.
+            global_step: Global step.
+
+        Returns:
+            Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
+        """
         with torch.no_grad():
             if "latents" in batch and batch["latents"] is not None:
                 latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
@@ -379,12 +560,34 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         return loss.mean(), pre_scaling_loss, loss_scaled, timesteps
 
     def process_val_batch(
-        self, batch, text_encoders, unet, adapter, vae, noise_scheduler, vae_dtype, weight_dtype,
-        accelerator, cfg, text_encoding_strategy: strategy_base.TextEncodingStrategy,
-        tokenize_strategy: strategy_base.TokenizeStrategy, train_text_encoder=True, train_unet=True,
+        self, batch: Any, text_encoders: List[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
+        accelerator: Any, cfg: Any, text_encoding_strategy: strategy_base.TextEncodingStrategy,
+        tokenize_strategy: strategy_base.TokenizeStrategy, train_text_encoder: bool = True, train_unet: bool = True,
         timesteps_list: list = [50, 350, 500, 650, 950]
     ) -> torch.Tensor:
-        """Process a batch for SDXL validation loss."""
+        """
+        Process a batch for SDXL validation loss.
+
+        Args:
+            batch: Batch data.
+            text_encoders: List of text encoders.
+            unet: UNet model.
+            adapter: Adapter model.
+            vae: VAE model.
+            noise_scheduler: Noise scheduler.
+            vae_dtype: VAE data type.
+            weight_dtype: Weight data type.
+            accelerator: Accelerator instance.
+            cfg: Configuration object.
+            text_encoding_strategy: Text encoding strategy.
+            tokenize_strategy: Tokenize strategy.
+            train_text_encoder: Train text encoder flag.
+            train_unet: Train UNet flag.
+            timesteps_list: List of timesteps for validation.
+
+        Returns:
+            Validation loss.
+        """
         total_loss = 0.0
         with torch.autograd.grad_mode.inference_mode(mode=True):
             if "latents" in batch and batch["latents"] is not None:
@@ -425,11 +628,38 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         return total_loss / len(timesteps_list)  # TODO: Expected type 'Tensor', got 'float' instead
 
     def calculate_val_loss(
-        self, global_step, epoch_step, train_dataloader, val_loss_recorder, val_dataloader,
-        cyclic_val_dataloader, adapter, tokenize_strategy, text_encoders, text_encoding_strategy,
-        unet, vae, noise_scheduler, vae_dtype, weight_dtype, accelerator, cfg, epoch, batch=None, train_text_encoder=True
-    ):
-        """Calculate validation loss for SDXL."""
+        self, global_step: int, epoch_step: int, train_dataloader: Any, val_loss_recorder: Any, val_dataloader: Any,
+        cyclic_val_dataloader: Any, adapter: Any, tokenize_strategy: Any, text_encoders: List[Any], text_encoding_strategy: Any,
+        unet: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype, accelerator: Any, cfg: Any, epoch: int, batch: Optional[Any] = None, train_text_encoder: bool = True
+    ) -> Tuple[Optional[float], Optional[float], Optional[dict]]:
+        """
+        Calculate validation loss for SDXL.
+
+        Args:
+            global_step: Global step.
+            epoch_step: Epoch step.
+            train_dataloader: Training dataloader.
+            val_loss_recorder: Validation loss recorder.
+            val_dataloader: Validation dataloader.
+            cyclic_val_dataloader: Cyclic validation dataloader.
+            adapter: Adapter model.
+            tokenize_strategy: Tokenize strategy.
+            text_encoders: List of text encoders.
+            text_encoding_strategy: Text encoding strategy.
+            unet: UNet model.
+            vae: VAE model.
+            noise_scheduler: Noise scheduler.
+            vae_dtype: VAE data type.
+            weight_dtype: Weight data type.
+            accelerator: Accelerator instance.
+            cfg: Configuration object.
+            epoch: Current epoch.
+            batch: Optional batch.
+            train_text_encoder: Train text encoder flag.
+
+        Returns:
+            Tuple of (current_val_loss, average_val_loss, logs).
+        """
         if not calculate_val_loss_check(cfg.validation, cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
             return None, None, None
 
