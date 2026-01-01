@@ -22,13 +22,13 @@ logger = logging.getLogger(__name__)
 def prepare_dtype(precision_config: PrecisionConfig, saving_config: Optional[SavingConfig] = None) -> Tuple[torch.dtype, Optional[torch.dtype]]:  # TODO: why does this handle both saving and training related concerns?
     """
     Prepare weight and save dtypes based on configuration.
-    
+
     Args:
-        precision_config: Config containing mixed_precision setting
-        saving_config: Optional config containing save_precision setting
-        
+        precision_config (PrecisionConfig): Config containing mixed_precision setting.
+        saving_config (Optional[SavingConfig], optional): Optional config containing save_precision setting. Defaults to None.
+
     Returns:
-        Tuple of (weight_dtype, save_dtype)
+        Tuple[torch.dtype, Optional[torch.dtype]]: Tuple of (weight_dtype, save_dtype).
     """
     weight_dtype = torch.float32
     if precision_config.mixed_precision == "fp16":
@@ -49,7 +49,12 @@ def prepare_dtype(precision_config: PrecisionConfig, saving_config: Optional[Sav
 
 
 def set_torch_cuda_reduced_precision(precision_config: PrecisionConfig):  # FIXME cfg performance
-    """Set CUDA reduced precision operations based on performance config."""
+    """
+    Set CUDA reduced precision operations based on performance config.
+
+    Args:
+        precision_config (PrecisionConfig): The configuration for precision settings.
+    """
     if precision_config.disable_cuda_reduced_precision_operations:
         torch.set_float32_matmul_precision("highest")
         torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
@@ -67,6 +72,14 @@ def set_torch_cuda_reduced_precision(precision_config: PrecisionConfig):  # FIXM
 
 
 def set_seed_from_config(training_config: TrainingConfig):
+    """
+    Set the random seed from the training configuration.
+
+    If the seed is -1 or None, a random seed is generated and logged.
+
+    Args:
+        training_config (TrainingConfig): The training configuration object containing the seed.
+    """
     if training_config.seed is None or training_config.seed == -1:
         training_config.seed = random.randint(0, 2 ** 32)
         logger.info(f"As seed provided is -1, randomly selected {training_config.seed} as the seed for this training run.")
@@ -74,7 +87,16 @@ def set_seed_from_config(training_config: TrainingConfig):
 
 
 def match_mixed_precision(precision_config: PrecisionConfig, weight_dtype):
-    """Match mixed precision settings, returning weight_dtype if full precision is enabled."""
+    """
+    Match mixed precision settings, returning weight_dtype if full fp16/bf16 mode is enabled.
+
+    Args:
+        precision_config (PrecisionConfig): The configuration for precision settings.
+        weight_dtype (torch.dtype): The weight data type.
+
+    Returns:
+        Optional[torch.dtype]: The weight data type if full_fp16 or full_bf16 is enabled, otherwise None.
+    """
     if precision_config.full_fp16:
         assert (
                 weight_dtype == torch.float16
@@ -90,6 +112,13 @@ def match_mixed_precision(precision_config: PrecisionConfig, weight_dtype):
 
 
 def swap_weight_devices(layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):
+    """
+    Swap weights between a CPU module and a CUDA module.
+
+    Args:
+        layer_to_cpu (nn.Module): The module to move weights to CPU.
+        layer_to_cuda (nn.Module): The module to move weights to CUDA.
+    """
     assert layer_to_cpu.__class__ == layer_to_cuda.__class__
 
     weight_swap_jobs = []
@@ -118,10 +147,25 @@ def swap_weight_devices(layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):
     torch.cuda.current_stream().synchronize()  # this prevents the illegal loss value
 
 
-def weighs_to_device(layer: nn.Module, device: torch.device):
+def weights_to_device(layer: nn.Module, device: torch.device):
+    """
+    Move the weights of a layer to the specified device.
+
+    Args:
+        layer (nn.Module): The layer to move weights for.
+        device (torch.device): The target device.
+    """
     for module in layer.modules():
         if hasattr(module, "weight") and module.weight is not None:
             module.weight.data = module.weight.data.to(device, non_blocking=True)
+
+
+def weighs_to_device(layer: nn.Module, device: torch.device):
+    """
+    Deprecated alias for weights_to_device.
+    """
+    logger.warning("weighs_to_device is deprecated and will be removed in a future version. Use weights_to_device instead.")
+    weights_to_device(layer, device)
 
 
 def str_to_dtype(s: Optional[str], default_dtype: Optional[torch.dtype] = None) -> torch.dtype:

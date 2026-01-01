@@ -4,18 +4,56 @@ import threading
 
 
 def exists(val):
+    """
+    Checks if a value is not None.
+
+    Args:
+        val: The value to check.
+
+    Returns:
+        bool: True if val is not None, False otherwise.
+    """
     return val is not None
 
 
 def default(val, d):
+    """
+    Returns val if it exists, otherwise returns d.
+
+    Args:
+        val: The value to check.
+        d: The default value to return if val is None.
+
+    Returns:
+        The value or the default value.
+    """
     return val if exists(val) else d
 
 
 def fire_in_thread(f, *args, **kwargs):
+    """
+    Executes a function in a separate thread.
+
+    This function starts a new thread to execute the provided function with the given arguments.
+    It does not wait for the thread to complete (fire and forget).
+
+    Args:
+        f: The function to execute.
+        *args: Positional arguments to pass to the function.
+        **kwargs: Keyword arguments to pass to the function.
+    """
     threading.Thread(target=f, args=args, kwargs=kwargs).start()
 
 
 def setup_logging(args=None, log_level=None, reset=False):
+    """
+    Configures logging for the application.
+
+    Args:
+        args: Parsed arguments containing logging configurations (e.g., console_log_level).
+        log_level: The logging level to set (e.g., "INFO", "DEBUG"). Overrides args if provided.
+        reset (bool): If True, removes all existing handlers before configuring.
+    """
     if logging.root.handlers:
         if reset:
             # remove all handlers

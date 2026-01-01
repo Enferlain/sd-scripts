@@ -6,26 +6,73 @@ from typing import Tuple
 from torchvision import transforms
 
 
-# --- sd_original_unet.py, sdxl_original_unet.py ---
+# =============================================================================
+# General / Math
+# =============================================================================
+
+# --- sd_original_unet.py, sdxl_original_unet.py, model_metadata.py ---
 EPSILON = 1e-6
 
 
-# --- caching.py, strategy_base.py ---
+# =============================================================================
+# Files / Logging / Checkpointing
+# =============================================================================
+
+# --- caching.py, strategy_base.py, strategy_sd.py ---
+# Note: highvram is currently unused - the HIGH_VRAM constant is never set from config.
 HIGH_VRAM = False
 
+# --- checkpointing.py ---
+EPOCH_STATE_NAME = "{}-{:06d}-state"
+EPOCH_FILE_NAME = "{}-{:06d}"
+EPOCH_DIFFUSERS_DIR_NAME = "{}-{:06d}"
+LAST_STATE_NAME = "{}-state"
+DEFAULT_EPOCH_NAME = "epoch"
+DEFAULT_LAST_OUTPUT_NAME = "last"
+
+DEFAULT_STEP_NAME = "at"
+STEP_STATE_NAME = "{}-step{:08d}-state"
+STEP_FILE_NAME = "{}-step{:08d}"
+STEP_DIFFUSERS_DIR_NAME = "{}-step{:08d}"
+
+
+# =============================================================================
+# Metadata
+# =============================================================================
+
+# --- checkpointing.py, sd_peft.py, svd_merge_lora.py, sdxl_merge_lora.py ---
+SS_METADATA_KEY_V2 = "ss_v2"
+SS_METADATA_KEY_BASE_MODEL_VERSION = "ss_base_model_version"
+SS_METADATA_KEY_ADAPTER_MODULE = "ss_adapter_module"
+SS_METADATA_KEY_ADAPTER_RANK = "ss_adapter_rank"
+SS_METADATA_KEY_ADAPTER_ALPHA = "ss_adapter_alpha"
+SS_METADATA_KEY_ADAPTER_ARGS = "ss_adapter_args"
+
+# --- sd_peft.py ---
+SS_METADATA_MINIMUM_KEYS = [
+    SS_METADATA_KEY_V2,
+    SS_METADATA_KEY_BASE_MODEL_VERSION,
+    SS_METADATA_KEY_ADAPTER_MODULE,
+    SS_METADATA_KEY_ADAPTER_RANK,
+    SS_METADATA_KEY_ADAPTER_ALPHA,
+    SS_METADATA_KEY_ADAPTER_ARGS,
+]
+
+
+# =============================================================================
+# Image / Dataset
+# =============================================================================
 
 # --- dataset.py ---
 TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX = "_te_outputs.npz"
 
-
-# --- caching.py, dataset.py ---
+# --- caching.py, dataset.py, controlnet_dataset.py ---
 IMAGE_TRANSFORMS = transforms.Compose(
     [
         transforms.ToTensor(),
         transforms.Normalize([0.5], [0.5]),
     ]
 )
-
 
 # --- image_utils.py ---
 IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".bmp", ".PNG", ".JPG", ".JPEG", ".WEBP", ".BMP"]
@@ -55,8 +102,8 @@ try:
 except:
     pass
 
-
 # --- lpw_stable_diffusion.py, sdxl_lpw_stable_diffusion.py ---
+# Note: Pipelines currently import PIL_INTERPOLATION from diffusers.utils directly.
 try:
     from diffusers.utils import PIL_INTERPOLATION
 except ImportError:
@@ -78,6 +125,45 @@ except ImportError:
         }
 
 
+# =============================================================================
+# HuggingFace / Diffusers / Tokenizers
+# =============================================================================
+
+# --- library/models/model_util.py ---
+DIFFUSERS_REF_MODEL_ID_V1 = "runwayml/stable-diffusion-v1-5"
+DIFFUSERS_REF_MODEL_ID_V2 = "stabilityai/stable-diffusion-2-1"
+
+# --- library/models/sdxl_model_util.py ---
+DIFFUSERS_REF_MODEL_ID_SDXL = "stabilityai/stable-diffusion-xl-base-1.0"
+
+# --- strategy_sdxl.py, sdxl_data_utils.py ---
+TOKENIZER1_PATH = "openai/clip-vit-large-patch14"
+TOKENIZER2_PATH = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
+
+# --- strategy_sd.py, lora_interrogator.py ---
+TOKENIZER_ID = "openai/clip-vit-large-patch14"
+V2_STABLE_DIFFUSION_ID = "stabilityai/stable-diffusion-2"  # Only used for tokenizer; v2 and v2.1 share tokenizer specs
+
+
+# =============================================================================
+# Training / Optimization
+# =============================================================================
+
+# --- sample_generation.py ---
+SCHEDULER_LINEAR_START = 0.00085
+SCHEDULER_LINEAR_END = 0.0120
+SCHEDULER_TIMESTEPS = 1000
+SCHEDLER_SCHEDULE = "scaled_linear"
+
+# --- optimizer_utils.py ---
+# Compile the regular expression patterns for float and integer
+float_pattern = re.compile(r'''^[+-]?(
+    ( (\d+\.\d*) | (\.\d+) ) ([eE][+-]?\d+)?   # Decimal numbers with optional exponent
+    | \d+[eE][+-]?\d+                          # Integers with exponent
+)$''', re.VERBOSE)
+
+int_pattern = re.compile(r'^[+-]?\d+$')
+
 # --- lpw_stable_diffusion.py, sdxl_lpw_stable_diffusion.py, prompt_utils.py, strategy_base.py ---
 re_attention = re.compile(
     r"""
@@ -98,68 +184,16 @@ re_attention = re.compile(
     re.X,
 )
 
-
-# --- checkponting.py ---
-EPOCH_STATE_NAME = "{}-{:06d}-state"
-EPOCH_FILE_NAME = "{}-{:06d}"
-EPOCH_DIFFUSERS_DIR_NAME = "{}-{:06d}"
-LAST_STATE_NAME = "{}-state"
-DEFAULT_EPOCH_NAME = "epoch"
-DEFAULT_LAST_OUTPUT_NAME = "last"
-
-DEFAULT_STEP_NAME = "at"
-STEP_STATE_NAME = "{}-step{:08d}-state"
-STEP_FILE_NAME = "{}-step{:08d}"
-STEP_DIFFUSERS_DIR_NAME = "{}-step{:08d}"
-
-# this metadata is referred from sd_peft and various scripts, so we wrote here
-SS_METADATA_KEY_V2 = "ss_v2"
-SS_METADATA_KEY_BASE_MODEL_VERSION = "ss_base_model_version"
-SS_METADATA_KEY_ADAPTER_MODULE = "ss_adapter_module"
-SS_METADATA_KEY_ADAPTER_RANK = "ss_adapter_rank"
-SS_METADATA_KEY_ADAPTER_ALPHA = "ss_adapter_alpha"
-SS_METADATA_KEY_ADAPTER_ARGS = "ss_adapter_args"
-
-
-# --- sd_peft.py ---
-SS_METADATA_MINIMUM_KEYS = [
-    SS_METADATA_KEY_V2,
-    SS_METADATA_KEY_BASE_MODEL_VERSION,
-    SS_METADATA_KEY_ADAPTER_MODULE,
-    SS_METADATA_KEY_ADAPTER_RANK,
-    SS_METADATA_KEY_ADAPTER_ALPHA,
-    SS_METADATA_KEY_ADAPTER_ARGS,
-]
-
-
-# --- sample_generation.py ---
-# scheduler:
-SCHEDULER_LINEAR_START = 0.00085
-SCHEDULER_LINEAR_END = 0.0120
-SCHEDULER_TIMESTEPS = 1000
-SCHEDLER_SCHEDULE = "scaled_linear"
-
-
-# --- optimizer_utils.py ---
-# Compile the regular expression patterns for float and integer
-float_pattern = re.compile(r'''^[+-]?(
-    ( (\d+\.\d*) | (\.\d+) ) ([eE][+-]?\d+)?   # Decimal numbers with optional exponent
-    | \d+[eE][+-]?\d+                          # Integers with exponent
-)$''', re.VERBOSE)
-
-int_pattern = re.compile(r'^[+-]?\d+$')
-
-
-# --- strategy_sdxl.py, sdxl_data_utils.py ---
-TOKENIZER1_PATH = "openai/clip-vit-large-patch14"
-TOKENIZER2_PATH = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
-
-
 # DEFAULT_NOISE_OFFSET = 0.0357  # todo where is this from?
 
 
+# =============================================================================
+# Model Parameters: Stable Diffusion (General / V1 / V2)
+# =============================================================================
+
 # --- library/models/model_util.py ---
 # Model Parameters for Diffusers Stable Diffusion
+# Note: NUM_TRAIN_TIMESTEPS, BETA_START, BETA_END appear unused in codebase but preserved here.
 NUM_TRAIN_TIMESTEPS = 1000
 BETA_START = 0.00085
 BETA_END = 0.0120
@@ -189,10 +223,10 @@ V2_UNET_PARAMS_ATTENTION_HEAD_DIM = [5, 10, 20, 20]
 V2_UNET_PARAMS_CONTEXT_DIM = 1024
 # V2_UNET_PARAMS_USE_LINEAR_PROJECTION = True
 
-# Reference Models for Diffusers Config Loading
-DIFFUSERS_REF_MODEL_ID_V1 = "runwayml/stable-diffusion-v1-5"
-DIFFUSERS_REF_MODEL_ID_V2 = "stabilityai/stable-diffusion-2-1"
 
+# =============================================================================
+# Model Parameters: SD Original UNet Implementation
+# =============================================================================
 
 # --- library/models/sd_original_unet.py ---
 BLOCK_OUT_CHANNELS: Tuple[int] = (320, 640, 1280, 1280)  # TODO: Expected type 'tuple[int]', got 'tuple[int, int, int, int]' instead
@@ -212,16 +246,23 @@ DOWN_BLOCK_TYPES = ["CrossAttnDownBlock2D", "CrossAttnDownBlock2D", "CrossAttnDo
 UP_BLOCK_TYPES = ["UpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D"]
 
 
+# =============================================================================
+# Model Parameters: SDXL
+# =============================================================================
+
 # --- library/models/sdxl_model_util.py ---
 SDXL_KEY_PREFIX = "conditioner.embedders.1.model."
 
+# --- strategy_sd.py, sd_textual_inversion.py ---
 SD_VAE_LATENT_SCALE = 0.18215
+
+# --- strategy_sdxl.py, sdxl_lpw_stable_diffusion.py, sdxl_textual_inversion.py, sdxl_finetune.py ---
 SDXL_VAE_LATENT_SCALE = 0.13025
+
+# --- strategy_sdxl.py, cache_text_encoder_outputs.py, sdxl_merge_lora.py, extract_lora_from_models.py, sdxl_textual_inversion.py ---
 MODEL_VERSION_SDXL_BASE_V1_0 = "sdxl_base_v1-0"
 
-# Diffusersの設定を読み込むための参照モデル
-DIFFUSERS_REF_MODEL_ID_SDXL = "stabilityai/stable-diffusion-xl-base-1.0"
-
+# --- library/models/sdxl_model_util.py ---
 DIFFUSERS_SDXL_UNET_CONFIG = {
     "act_fn": "silu",
     "addition_embed_type": "text_time",
@@ -270,7 +311,6 @@ DIFFUSERS_SDXL_UNET_CONFIG = {
     "use_linear_projection": True,
 }
 
-
 # --- library/models/sdxl_original_unet.py ---
 SDXL_IN_CHANNELS: int = 4
 SDXL_OUT_CHANNELS: int = 4
@@ -278,8 +318,3 @@ ADM_SDXL_IN_CHANNELS: int = 2816
 SDXL_CONTEXT_DIM: int = 2048
 SDXL_MODEL_CHANNELS: int = 320
 SDXL_TIME_EMBED_DIM = 320 * 4
-
-
-# --- strategy_sd.py ---
-TOKENIZER_ID = "openai/clip-vit-large-patch14"
-V2_STABLE_DIFFUSION_ID = "stabilityai/stable-diffusion-2"  # ここからtokenizerだけ使う v2とv2.1はtokenizer仕様は同じ
