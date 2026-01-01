@@ -165,6 +165,14 @@ class ModelSpecMetadata:
     ) -> "ModelSpecMetadata":
         """
         Create ModelSpecMetadata from MetadataConfig.
+
+        Args:
+            metadata_config (MetadataConfig): The metadata configuration.
+            timestamp (float, optional): The timestamp. Defaults to None.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            ModelSpecMetadata: The created metadata instance.
         """
         if timestamp is None:
             timestamp = time.time()
@@ -213,7 +221,20 @@ def determine_architecture(
         v2: bool, v_parameterization: bool, sdxl: bool, lora: bool, textual_inversion: bool,
         model_config: dict[str, str] | None = None
 ) -> str:
-    """Determine model architecture string from parameters."""
+    """
+    Determine model architecture string from parameters.
+
+    Args:
+        v2 (bool): Whether the model is SD v2.
+        v_parameterization (bool): Whether the model uses v-parameterization.
+        sdxl (bool): Whether the model is SDXL.
+        lora (bool): Whether the model is a LoRA.
+        textual_inversion (bool): Whether the model is a Textual Inversion.
+        model_config (dict[str, str], optional): Configuration for specific models (Flux, SD3, etc.).
+
+    Returns:
+        str: The model architecture string.
+    """
 
     model_config = model_config or {}
 
@@ -264,7 +285,19 @@ def determine_implementation(
         model_config: dict[str, str] | None = None,
         is_stable_diffusion_ckpt: bool | None = None,
 ) -> str:
-    """Determine implementation string from parameters."""
+    """
+    Determine implementation string from parameters.
+
+    Args:
+        lora (bool): Whether the model is a LoRA.
+        textual_inversion (bool): Whether the model is a Textual Inversion.
+        sdxl (bool): Whether the model is SDXL.
+        model_config (dict[str, str], optional): Configuration for specific models (Flux, SD3, etc.).
+        is_stable_diffusion_ckpt (bool, optional): Whether the model is a Stable Diffusion checkpoint.
+
+    Returns:
+        str: The implementation string.
+    """
 
     model_config = model_config or {}
 
@@ -282,7 +315,12 @@ def determine_implementation(
 
 
 def get_implementation_version() -> str:
-    """Get the current implementation version as sd-scripts/{commit_hash}."""
+    """
+    Get the current implementation version as sd-scripts/{commit_hash}.
+
+    Returns:
+        str: The implementation version string.
+    """
     try:
         # Get the git commit hash
         result = subprocess.run(
@@ -306,7 +344,18 @@ def get_implementation_version() -> str:
 
 
 def file_to_data_url(file_path: str) -> str:
-    """Convert a file path to a data URL for embedding in metadata."""
+    """
+    Convert a file path to a data URL for embedding in metadata.
+
+    Args:
+        file_path (str): The path to the file.
+
+    Returns:
+        str: The data URL.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+    """
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -332,7 +381,19 @@ def determine_resolution(
         v2: bool = False,
         v_parameterization: bool = False,
 ) -> str:
-    """Determine resolution string from parameters."""
+    """
+    Determine resolution string from parameters.
+
+    Args:
+        reso (Union[int, tuple[int, int]], optional): The resolution.
+        sdxl (bool, optional): Whether the model is SDXL. Defaults to False.
+        model_config (dict[str, str], optional): Configuration for specific models. Defaults to None.
+        v2 (bool, optional): Whether the model is SD v2. Defaults to False.
+        v_parameterization (bool, optional): Whether the model uses v-parameterization. Defaults to False.
+
+    Returns:
+        str: The resolution string (e.g., "1024x1024").
+    """
 
     model_config = model_config or {}
 
@@ -384,8 +445,28 @@ def build_metadata_dataclass(
     Build ModelSpec 1.0.1 compliant metadata dataclass.
 
     Args:
-        model_config: Dict containing model type info, e.g. {"flux": "dev"}, {"sd3": "large"}
-        optional_metadata: Dict of additional metadata fields to include
+        state_dict (dict, optional): The model state dictionary.
+        v2 (bool): Whether the model is SD v2.
+        v_parameterization (bool): Whether the model uses v-parameterization.
+        sdxl (bool): Whether the model is SDXL.
+        lora (bool): Whether the model is a LoRA.
+        textual_inversion (bool): Whether the model is a Textual Inversion.
+        timestamp (float): The timestamp of model creation.
+        title (str, optional): The model title.
+        reso (Union[int, tuple[int, int]], optional): The resolution.
+        is_stable_diffusion_ckpt (bool, optional): Whether the model is a Stable Diffusion checkpoint.
+        author (str, optional): The model author.
+        description (str, optional): The model description.
+        license (str, optional): The model license.
+        tags (str, optional): The model tags.
+        merged_from (str, optional): The model merge source.
+        timesteps (tuple[int, int], optional): The timestep range.
+        clip_skip (int, optional): The clip skip value.
+        model_config (dict, optional): Dict containing model type info, e.g. {"flux": "dev"}, {"sd3": "large"}.
+        optional_metadata (dict, optional): Dict of additional metadata fields to include.
+
+    Returns:
+        ModelSpecMetadata: The populated metadata dataclass.
     """
 
     # Use helper functions for complex logic
@@ -508,8 +589,28 @@ def build_metadata(
     Legacy function that returns dict - prefer build_metadata_dataclass for new code.
 
     Args:
-        model_config: Dict containing model type info, e.g. {"flux": "dev"}, {"sd3": "large"}
-        optional_metadata: Dict of additional metadata fields to include
+        state_dict (dict, optional): The model state dictionary.
+        v2 (bool): Whether the model is SD v2.
+        v_parameterization (bool): Whether the model uses v-parameterization.
+        sdxl (bool): Whether the model is SDXL.
+        lora (bool): Whether the model is a LoRA.
+        textual_inversion (bool): Whether the model is a Textual Inversion.
+        timestamp (float): The timestamp of model creation.
+        title (str, optional): The model title.
+        reso (Union[int, tuple[int, int]], optional): The resolution.
+        is_stable_diffusion_ckpt (bool, optional): Whether the model is a Stable Diffusion checkpoint.
+        author (str, optional): The model author.
+        description (str, optional): The model description.
+        license (str, optional): The model license.
+        tags (str, optional): The model tags.
+        merged_from (str, optional): The model merge source.
+        timesteps (tuple[int, int], optional): The timestep range.
+        clip_skip (int, optional): The clip skip value.
+        model_config (dict, optional): Dict containing model type info, e.g. {"flux": "dev"}, {"sd3": "large"}.
+        optional_metadata (dict, optional): Dict of additional metadata fields to include.
+
+    Returns:
+        dict[str, str]: The metadata dictionary.
     """
     # Use the dataclass function and convert to dict
     metadata_obj = build_metadata_dataclass(
@@ -538,10 +639,28 @@ def build_metadata(
 
 
 def get_title(metadata: dict) -> str | None:
+    """
+    Get the title from the metadata dictionary.
+
+    Args:
+        metadata (dict): The metadata dictionary.
+
+    Returns:
+        str | None: The title, or None if not found.
+    """
     return metadata.get(MODELSPEC_TITLE, None)
 
 
 def load_metadata_from_safetensors(model: str) -> dict:
+    """
+    Load metadata from a safetensors file.
+
+    Args:
+        model (str): The path to the safetensors file.
+
+    Returns:
+        dict: The metadata dictionary.
+    """
     if not model.endswith(".safetensors"):
         return {}
 
@@ -553,6 +672,15 @@ def load_metadata_from_safetensors(model: str) -> dict:
 
 
 def build_merged_from(models: list[str]) -> str:
+    """
+    Build a comma-separated string of model titles from a list of model paths.
+
+    Args:
+        models (list[str]): A list of paths to model files.
+
+    Returns:
+        str: A comma-separated string of model titles.
+    """
     def get_title(model: str):
         metadata = load_metadata_from_safetensors(model)
         title = metadata.get(MODELSPEC_TITLE, None)
@@ -584,7 +712,27 @@ def get_model_metadata_from_config(
 ) -> dict:
     """
     Get SAI Model Spec using configuration objects directly.
-    Returns the metadata dictionary.
+
+    Args:
+        state_dict (dict): The model state dictionary.
+        metadata_config (MetadataConfig): The metadata configuration.
+        is_sdxl (bool): Whether the model is SDXL.
+        is_v2 (bool): Whether the model is SD v2.
+        v_parameterization (bool): Whether the model uses v-parameterization.
+        is_lora (bool): Whether the model is a LoRA.
+        is_textual_inversion (bool): Whether the model is a Textual Inversion.
+        resolution (Union[int, tuple[int, int]], optional): The resolution. Defaults to (512, 512).
+        min_timestep (int, optional): The minimum timestep. Defaults to None.
+        max_timestep (int, optional): The maximum timestep. Defaults to None.
+        clip_skip (int, optional): The clip skip value. Defaults to None.
+        is_stable_diffusion_ckpt (bool, optional): Whether the model is a Stable Diffusion checkpoint. Defaults to None.
+        flux_type (str, optional): The Flux model type. Defaults to None.
+        lumina_type (str, optional): The Lumina model type. Defaults to None.
+        hunyuan_image_type (str, optional): The Hunyuan Image model type. Defaults to None.
+        optional_metadata (dict, optional): Additional metadata. Defaults to None.
+
+    Returns:
+        dict: The metadata dictionary.
     """
     timestamp = time.time()
     
