@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-01]
+
+### Changed
+
+- **Docstring Additions**
+  - `model_prep.py`: Added docstrings with Args to most library scripts, utils folder remaining
+  - `sdxl_model_util.py`: Added docstrings to 10+ functions including `get_timestep_embedding()`, `load_models_from_sdxl_checkpoint()`, `save_sdxl_checkpoint()`, conversion utilities
+  - `training_metadata.py`: Added Args documentation to `create_training_metadata()`
+  - `model_prep.py`: Fixed type hint for `padding_mode` parameter using `Literal["zeros", "reflect", "replicate", "circular"]`
+
 ## [2025-12-31]
 
 ### Changed

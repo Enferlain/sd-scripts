@@ -148,6 +148,9 @@ Scripts (contain training loops):     Library Modules:
   - Files to update: `sd_peft.yaml`, `sdxl_peft.yaml`, `sd_finetune.yaml`, `sdxl_finetune.yaml`, `sd_textual_inversion.yaml`, `sdxl_textual_inversion.yaml`
   - Dataclasses stay unchanged - this is just a wiring fix
 
+- [ ] **Supporwt for feather** - https://github.com/SuriyaaMM/feather
+  - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU    architectures (Ampere, Turing, Volta) that lack native hardware support.
+
 ---
 
 ## Future Architecture: Per-Model Directory Structure
