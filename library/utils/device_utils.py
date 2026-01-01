@@ -47,7 +47,7 @@ def clean_memory_on_device(device: Optional[Union[str, torch.device]]):
     This function collects garbage and empties the cache for the specified device type.
 
     Args:
-        device: The device to clean memory on. Can be a string or torch.device.
+        device (Optional[Union[str, torch.device]]): The device to clean memory on.
     """
     gc.collect()
     if device is None:
@@ -68,7 +68,7 @@ def synchronize_device(device: Optional[Union[str, torch.device]]):
     Synchronizes the specified device.
 
     Args:
-        device: The device to synchronize. Can be a string or torch.device.
+        device (Optional[Union[str, torch.device]]): The device to synchronize.
     """
     if device is None:
         return

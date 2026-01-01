@@ -34,6 +34,9 @@ def fire_in_thread(f, *args, **kwargs):
     """
     Executes a function in a separate thread.
 
+    This function starts a new thread to execute the provided function with the given arguments.
+    It does not wait for the thread to complete (fire and forget).
+
     Args:
         f: The function to execute.
         *args: Positional arguments to pass to the function.

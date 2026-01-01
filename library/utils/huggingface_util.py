@@ -111,7 +111,7 @@ def list_dir(
         token: The HuggingFace API token.
 
     Returns:
-        list: A list of file objects in the specified subdirectory.
+        list: A list of RepoFile objects in the specified subdirectory.
     """
     api = HfApi(
         token=token,
