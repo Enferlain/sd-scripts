@@ -333,7 +333,7 @@ def load_split_weights(
     Load split weights from a file.
 
     If the file name ends with 00001-of-00004 etc, it will load all files with the same prefix.
-    dtype is as is, no conversion is done.
+    If dtype is specified, tensors will be cast to that type; otherwise, they are loaded as-is.
 
     Args:
         file_path (str): The path to the weights file.
