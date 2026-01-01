@@ -1,4 +1,5 @@
 import random
+from typing import Any
 import torch
 import logging
 
@@ -8,7 +9,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def prepare_scheduler_for_custom_training(noise_scheduler, device):
+def prepare_scheduler_for_custom_training(noise_scheduler: Any, device: torch.device) -> None:
     """
     Precalculates SNR (Signal-to-Noise Ratio) for the noise scheduler and attaches it.
 
