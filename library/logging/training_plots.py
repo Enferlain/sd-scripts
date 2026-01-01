@@ -22,10 +22,22 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def save_timestep_distribution_plot(cfg, global_step, timestep_counts, settings_dict=None):
-    """Save timestep distribution plot to disk."""
+def save_timestep_distribution_plot(
+    cfg, global_step: int, timestep_counts: np.ndarray, settings_dict: dict = None
+):
+    """
+    Save the timestep distribution plot to disk.
+
+    Args:
+        cfg: The training configuration object.
+        global_step: The current global step of training.
+        timestep_counts: An array containing the counts of each timestep.
+        settings_dict: A dictionary of settings to display on the plot.
+    """
     if plt is None:
-        logger.warning("Matplotlib is not installed. Cannot save timestep distribution plot.")
+        logger.warning(
+            "Matplotlib is not installed. Cannot save timestep distribution plot."
+        )
         return
 
     output_dir = os.path.join(cfg.output.saving.output_dir, "timestep_plots")
@@ -49,8 +61,13 @@ def save_timestep_distribution_plot(cfg, global_step, timestep_counts, settings_
     plt.close()
 
 
-def close_live_plotter(live_plotter_process):
-    """Clean up live plotter subprocess."""
+def close_live_plotter(live_plotter_process: subprocess.Popen):
+    """
+    Clean up the live plotter subprocess.
+
+    Args:
+        live_plotter_process: The subprocess object for the live plotter server.
+    """
     if live_plotter_process is not None:
         logger.info("Shutting down live plotter server...")
         try:
@@ -68,8 +85,13 @@ def close_live_plotter(live_plotter_process):
 def get_plotter_settings(cfg, la_sampler) -> dict:
     """
     Gather plotter settings based on the sampler type and config.
-    
-    Returns a dict of settings for display in the live plotter.
+
+    Args:
+        cfg: The training configuration object.
+        la_sampler: The loss-aware sampler object, or None.
+
+    Returns:
+        A dictionary containing the plotter settings to be displayed.
     """
     # Determine the actual sampler being used
     sampler_type = cfg.timestep.timestep_sampling
@@ -149,20 +171,22 @@ def get_plotter_settings(cfg, la_sampler) -> dict:
 
 def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
     """
-    Setup live plotter subprocess and static plot timestep tracking.
-    
+    Setup the live plotter subprocess and initialize static plot timestep tracking.
+
     Args:
-        cfg: Training configuration
-        noise_scheduler: Diffusers noise scheduler
-        la_sampler: Loss-aware timestep sampler (or None)
-        strategy: Training strategy (used to store plotter process)
-        
+        cfg: The training configuration object.
+        noise_scheduler: The noise scheduler from Diffusers.
+        la_sampler: The loss-aware timestep sampler (or None).
+        strategy: The training strategy object, used to store the plotter process handle.
+
     Returns:
-        tuple: (timestep_counts array or None, plotter_settings dict or None)
+        A tuple containing:
+            - timestep_counts: An array for tracking timestep counts (or None).
+            - plotter_settings: A dictionary of settings for the plotter (or None).
     """
     timestep_counts = None
     plotter_settings = None
-    
+
     # Get plotter settings
     plotter_settings = get_plotter_settings(cfg, la_sampler)
     

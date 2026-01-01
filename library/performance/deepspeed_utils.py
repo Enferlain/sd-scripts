@@ -16,7 +16,15 @@ logger = logging.getLogger(__name__)
 
 
 def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, loader_config: LoaderConfig = None):
-    """Modify training config for deepspeed if enabled."""
+    """
+    Modify training configuration for DeepSpeed if enabled.
+
+    This function adjusts loader settings (e.g., max_workers) when DeepSpeed is enabled.
+
+    Args:
+        deepspeed_config (DeepSpeedConfig): The DeepSpeed configuration object.
+        loader_config (LoaderConfig, optional): The data loader configuration object. Defaults to None.
+    """
     if not deepspeed_config.deepspeed:
         return
     
@@ -29,12 +37,24 @@ def prepare_deepspeed_plugin(
     precision_config: PrecisionConfig,
     training_config: TrainingConfig = None,
 ) -> Optional[DeepSpeedPlugin]:
-    """Create deepspeed plugin from configs.
+    """
+    Creates and configures a DeepSpeedPlugin based on the provided configurations.
+
+    This function handles DeepSpeed initialization, including mixed precision settings,
+    gradient accumulation, and offloading parameters. It also attempts to build/load
+    CPUAdam if optimizer offloading is configured.
     
     Args:
-        deepspeed_config: DeepSpeed settings (zero_stage, offload options, etc.)
-        precision_config: Precision settings (mixed_precision, full_fp16)
-        training_config: Optional training settings (gradient_accumulation_steps, train_batch_size)
+        deepspeed_config (DeepSpeedConfig): DeepSpeed settings (zero_stage, offload options, etc.).
+        precision_config (PrecisionConfig): Precision settings (mixed_precision, full_fp16).
+        training_config (TrainingConfig, optional): Training settings (gradient_accumulation_steps, train_batch_size).
+                                                    Defaults to None.
+
+    Returns:
+        Optional[DeepSpeedPlugin]: The configured DeepSpeedPlugin instance, or None if DeepSpeed is not enabled.
+
+    Raises:
+        SystemExit: If DeepSpeed is enabled but not installed in the environment.
     """
     if not deepspeed_config.deepspeed:
         return None
@@ -92,11 +112,19 @@ def prepare_deepspeed_plugin(
 
 
 def prepare_deepspeed_model(precision_config: PrecisionConfig, **models):
-    """Wrap models for DeepSpeed training.
+    """
+    Wraps models for DeepSpeed training with optional autocast support.
+
+    This function creates a wrapper module that holds the provided models and handles
+    forward passes with `torch.autocast` if mixed precision is enabled.
     
     Args:
-        precision_config: PrecisionConfig with mixed_precision setting
-        **models: Named model arguments to wrap
+        precision_config (PrecisionConfig): Precision configuration containing mixed_precision setting.
+        **models (dict): Keyword arguments where keys are model names and values are the model instances
+                         (nn.Module or list of nn.Module).
+
+    Returns:
+        nn.Module: A DeepSpeedWrapper instance containing the wrapped models.
     """
     models = {k: v for k, v in models.items() if v is not None}
 

@@ -6,7 +6,7 @@ import numpy as np
 import PIL.Image
 import torch
 
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional, Union, Tuple, Dict, Any
 from tqdm import tqdm
 from PIL import Image
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
@@ -24,7 +24,7 @@ from library.strategies import strategy_sdxl, strategy_base
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 
-def parse_prompt_attention(text):
+def parse_prompt_attention(text: str) -> List[List[Union[str, float]]]:
     r"""
     Parses a string with attention tokens and returns a list of pairs: text and its associated weight.
     Accepted tokens are:
@@ -37,26 +37,34 @@ def parse_prompt_attention(text):
       \] - literal character ']'
       \\ - literal character '\'
       anything else - just text
-    >>> parse_prompt_attention('normal text')
-    [['normal text', 1.0]]
-    >>> parse_prompt_attention('an (important) word')
-    [['an ', 1.0], ['important', 1.1], [' word', 1.0]]
-    >>> parse_prompt_attention('(unbalanced')
-    [['unbalanced', 1.1]]
-    >>> parse_prompt_attention('\(literal\]')
-    [['(literal]', 1.0]]
-    >>> parse_prompt_attention('(unnecessary)(parens)')
-    [['unnecessaryparens', 1.1]]
-    >>> parse_prompt_attention('a (((house:1.3)) [on] a (hill:0.5), sun, (((sky))).')
-    [['a ', 1.0],
-     ['house', 1.5730000000000004],
-     [' ', 1.1],
-     ['on', 1.0],
-     [' a ', 1.1],
-     ['hill', 0.55],
-     [', sun, ', 1.1],
-     ['sky', 1.4641000000000006],
-     ['.', 1.1]]
+
+    Args:
+        text (str): The text to parse.
+
+    Returns:
+        List[List[str, float]]: A list of pairs, where each pair contains the text and its associated weight.
+
+    Examples:
+        >>> parse_prompt_attention('normal text')
+        [['normal text', 1.0]]
+        >>> parse_prompt_attention('an (important) word')
+        [['an ', 1.0], ['important', 1.1], [' word', 1.0]]
+        >>> parse_prompt_attention('(unbalanced')
+        [['unbalanced', 1.1]]
+        >>> parse_prompt_attention('\(literal\]')
+        [['(literal]', 1.0]]
+        >>> parse_prompt_attention('(unnecessary)(parens)')
+        [['unnecessaryparens', 1.1]]
+        >>> parse_prompt_attention('a (((house:1.3)) [on] a (hill:0.5), sun, (((sky))).')
+        [['a ', 1.0],
+         ['house', 1.5730000000000004],
+         [' ', 1.1],
+         ['on', 1.0],
+         [' a ', 1.1],
+         ['hill', 0.55],
+         [', sun, ', 1.1],
+         ['sky', 1.4641000000000006],
+         ['.', 1.1]]
     """
 
     res = []
@@ -110,11 +118,19 @@ def parse_prompt_attention(text):
     return res
 
 
-def get_prompts_with_weights(pipe: StableDiffusionPipeline, prompt: List[str], max_length: int):
+def get_prompts_with_weights(pipe: StableDiffusionPipeline, prompt: List[str], max_length: int) -> Tuple[List[List[int]], List[List[float]]]:
     r"""
     Tokenize a list of prompts and return its tokens with weights of each token.
 
     No padding, starting or ending token is included.
+
+    Args:
+        pipe (StableDiffusionPipeline): The pipeline to use for tokenization.
+        prompt (List[str]): A list of prompts to tokenize.
+        max_length (int): The maximum length of the tokens.
+
+    Returns:
+        Tuple[List[List[int]], List[List[float]]]: A tuple containing the tokens and their weights.
     """
     tokens = []
     weights = []
@@ -145,9 +161,23 @@ def get_prompts_with_weights(pipe: StableDiffusionPipeline, prompt: List[str], m
     return tokens, weights
 
 
-def pad_tokens_and_weights(tokens, weights, max_length, bos, eos, pad, no_boseos_middle=True, chunk_length=77):
+def pad_tokens_and_weights(tokens: List[List[int]], weights: List[List[float]], max_length: int, bos: int, eos: int, pad: int, no_boseos_middle: Optional[bool] = True, chunk_length: int = 77) -> Tuple[List[List[int]], List[List[float]]]:
     r"""
     Pad the tokens (with starting and ending tokens) and weights (with 1.0) to max_length.
+
+    Args:
+        tokens (List[List[int]]): The tokens to pad.
+        weights (List[List[float]]): The weights to pad.
+        max_length (int): The maximum length of the tokens.
+        bos (int): The beginning of sequence token id.
+        eos (int): The end of sequence token id.
+        pad (int): The padding token id.
+        no_boseos_middle (bool, optional):
+            Whether to prevent adding BOS/EOS tokens in the middle of chunks. Defaults to True.
+        chunk_length (int, optional): The length of each chunk. Defaults to 77.
+
+    Returns:
+        Tuple[List[List[int]], List[List[float]]]: A tuple containing the padded tokens and weights.
     """
     max_embeddings_multiples = (max_length - 2) // (chunk_length - 2)
     weights_length = max_length if no_boseos_middle else max_embeddings_multiples * chunk_length
@@ -170,7 +200,20 @@ def pad_tokens_and_weights(tokens, weights, max_length, bos, eos, pad, no_boseos
     return tokens, weights
 
 
-def get_hidden_states(text_encoder, input_ids, is_sdxl_text_encoder2: bool, eos_token_id, device):
+def get_hidden_states(text_encoder: CLIPTextModel, input_ids: torch.Tensor, is_sdxl_text_encoder2: bool, eos_token_id: int, device: torch.device) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    """
+    Get the hidden states and pool from the text encoder.
+
+    Args:
+        text_encoder (CLIPTextModel): The text encoder.
+        input_ids (torch.Tensor): The input ids.
+        is_sdxl_text_encoder2 (bool): Whether the text encoder is the second text encoder of SDXL.
+        eos_token_id (int): The end of sequence token id.
+        device (torch.device): The device to use.
+
+    Returns:
+        Tuple[torch.Tensor, Optional[torch.Tensor]]: A tuple containing the hidden states and the pool.
+    """
     if not is_sdxl_text_encoder2:
         # text_encoder1: same as SD1/2
         enc_out = text_encoder(input_ids.to(text_encoder.device), output_hidden_states=True, return_dict=True)
@@ -197,10 +240,24 @@ def get_unweighted_text_embeddings(
         pad: int,
         is_sdxl_text_encoder2: bool,
         no_boseos_middle: Optional[bool] = True,
-):
+) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
     """
     When the length of tokens is a multiple of the capacity of the text encoder,
     it should be split into chunks and sent to the text encoder individually.
+
+    Args:
+        pipe (StableDiffusionPipeline): The pipeline object.
+        text_input (torch.Tensor): The input text tensor.
+        chunk_length (int): The length of each chunk.
+        clip_skip (int): The number of layers to skip in the CLIP model.
+        eos (int): The end of sequence token id.
+        pad (int): The padding token id.
+        is_sdxl_text_encoder2 (bool): Whether the text encoder is the second text encoder of SDXL.
+        no_boseos_middle (bool, optional):
+            Whether to prevent adding BOS/EOS tokens in the middle of chunks. Defaults to True.
+
+    Returns:
+        Tuple[torch.Tensor, Optional[torch.Tensor]]: A tuple containing the text embeddings and the pool.
     """
     max_embeddings_multiples = (text_input.shape[1] - 2) // (chunk_length - 2)
     text_pool = None
@@ -247,16 +304,16 @@ def get_unweighted_text_embeddings(
 
 
 def get_weighted_text_embeddings(
-        pipe,  # : SdxlStableDiffusionLongPromptWeightingPipeline,
+        pipe: "SdxlStableDiffusionLongPromptWeightingPipeline",
         prompt: Union[str, List[str]],
         uncond_prompt: Optional[Union[str, List[str]]] = None,
         max_embeddings_multiples: Optional[int] = 3,
         no_boseos_middle: Optional[bool] = False,
         skip_parsing: Optional[bool] = False,
         skip_weighting: Optional[bool] = False,
-        clip_skip=None,
-        is_sdxl_text_encoder2=False,
-):
+        clip_skip: Optional[int] = None,
+        is_sdxl_text_encoder2: bool = False,
+) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
     r"""
     Prompts can be assigned with local weights using brackets. For example,
     prompt 'A (very beautiful) masterpiece' highlights the words 'very beautiful',
@@ -281,6 +338,10 @@ def get_weighted_text_embeddings(
             Skip the parsing of brackets.
         skip_weighting (`bool`, *optional*, defaults to `False`):
             Skip the weighting. When the parsing is skipped, it is forced True.
+        clip_skip (`int`, *optional*):
+            The number of layers to skip in the CLIP model.
+        is_sdxl_text_encoder2 (`bool`, *optional*, defaults to `False`):
+            Whether the text encoder is the second text encoder of SDXL.
     """
     max_length = (pipe.tokenizer.model_max_length - 2) * max_embeddings_multiples + 2
     if isinstance(prompt, str):
@@ -388,7 +449,16 @@ def get_weighted_text_embeddings(
     return text_embeddings, text_pool, None, None
 
 
-def preprocess_image(image):
+def preprocess_image(image: PIL.Image.Image) -> torch.Tensor:
+    """
+    Preprocess the image.
+
+    Args:
+        image (PIL.Image.Image): The image to preprocess.
+
+    Returns:
+        torch.Tensor: The preprocessed image.
+    """
     w, h = image.size
     w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
     image = image.resize((w, h), resample=PIL_INTERPOLATION["lanczos"])
@@ -398,7 +468,17 @@ def preprocess_image(image):
     return 2.0 * image - 1.0
 
 
-def preprocess_mask(mask, scale_factor=8):
+def preprocess_mask(mask: PIL.Image.Image, scale_factor: int = 8) -> torch.Tensor:
+    """
+    Preprocess the mask.
+
+    Args:
+        mask (PIL.Image.Image): The mask to preprocess.
+        scale_factor (int, optional): The scale factor. Defaults to 8.
+
+    Returns:
+        torch.Tensor: The preprocessed mask.
+    """
     mask = mask.convert("L")
     w, h = mask.size
     w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
@@ -421,7 +501,25 @@ def prepare_controlnet_image(
         dtype: torch.dtype,
         do_classifier_free_guidance: bool = False,
         guess_mode: bool = False,
-):
+) -> torch.Tensor:
+    """
+    Prepare the controlnet image.
+
+    Args:
+        image (PIL.Image.Image): The image to prepare.
+        width (int): The width of the image.
+        height (int): The height of the image.
+        batch_size (int): The batch size.
+        num_images_per_prompt (int): The number of images per prompt.
+        device (torch.device): The device to use.
+        dtype (torch.dtype): The data type.
+        do_classifier_free_guidance (bool, optional):
+            Whether to use classifier free guidance. Defaults to False.
+        guess_mode (bool, optional): Whether to use guess mode. Defaults to False.
+
+    Returns:
+        torch.Tensor: The prepared controlnet image.
+    """
     if not isinstance(image, torch.Tensor):
         if isinstance(image, PIL.Image.Image):
             image = [image]
@@ -556,7 +654,20 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
                 return torch.device(module._hf_hook.execution_device)
         return self.device
 
-    def check_inputs(self, prompt, height, width, strength, callback_steps):
+    def check_inputs(self, prompt: Union[str, List[str]], height: int, width: int, strength: float, callback_steps: int):
+        """
+        Check the validity of the inputs.
+
+        Args:
+            prompt (str or List[str]): The prompt or prompts.
+            height (int): The height of the image.
+            width (int): The width of the image.
+            strength (float): The strength of the transformation.
+            callback_steps (int): The number of steps between callbacks.
+
+        Raises:
+            ValueError: If any of the inputs are invalid.
+        """
         if not isinstance(prompt, str) and not isinstance(prompt, list):
             raise ValueError(f"`prompt` has to be of type `str` or `list` but is {type(prompt)}")
 
@@ -573,7 +684,19 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
                 f"`callback_steps` has to be a positive integer but is {callback_steps} of type" f" {type(callback_steps)}."
             )
 
-    def get_timesteps(self, num_inference_steps, strength, device, is_text2img):
+    def get_timesteps(self, num_inference_steps: int, strength: float, device: torch.device, is_text2img: bool) -> Tuple[torch.Tensor, int]:
+        """
+        Get the timesteps for the diffusion process.
+
+        Args:
+            num_inference_steps (int): The number of inference steps.
+            strength (float): The strength of the transformation.
+            device (torch.device): The device to use.
+            is_text2img (bool): Whether it is text-to-image generation.
+
+        Returns:
+            Tuple[torch.Tensor, int]: A tuple containing the timesteps and the number of inference steps.
+        """
         if is_text2img:
             return self.scheduler.timesteps.to(device), num_inference_steps
         else:
@@ -586,7 +709,18 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
             timesteps = self.scheduler.timesteps[t_start:].to(device)
             return timesteps, num_inference_steps - t_start
 
-    def run_safety_checker(self, image, device, dtype):
+    def run_safety_checker(self, image: torch.Tensor, device: torch.device, dtype: torch.dtype) -> Tuple[torch.Tensor, Optional[bool]]:
+        """
+        Run the safety checker on the image.
+
+        Args:
+            image (torch.Tensor): The image to check.
+            device (torch.device): The device to use.
+            dtype (torch.dtype): The data type.
+
+        Returns:
+            Tuple[torch.Tensor, Optional[bool]]: A tuple containing the image and a boolean indicating if it contains NSFW concepts.
+        """
         if self.safety_checker is not None:
             safety_checker_input = self.feature_extractor(self.numpy_to_pil(image), return_tensors="pt").to(device)
             image, has_nsfw_concept = self.safety_checker(images=image,
@@ -595,7 +729,16 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
             has_nsfw_concept = None
         return image, has_nsfw_concept
 
-    def decode_latents(self, latents):
+    def decode_latents(self, latents: torch.Tensor) -> np.ndarray:
+        """
+        Decode the latents to images.
+
+        Args:
+            latents (torch.Tensor): The latents to decode.
+
+        Returns:
+            np.ndarray: The decoded images.
+        """
         with torch.no_grad():
             latents = 1 / SDXL_VAE_LATENT_SCALE * latents
 
@@ -612,7 +755,17 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
             image = image.cpu().permute(0, 2, 3, 1).float().numpy()
             return image
 
-    def prepare_extra_step_kwargs(self, generator, eta):
+    def prepare_extra_step_kwargs(self, generator: torch.Generator, eta: float) -> Dict[str, Any]:
+        """
+        Prepare extra arguments for the scheduler step.
+
+        Args:
+            generator (torch.Generator): The generator to use.
+            eta (float): The eta value for DDIM scheduler.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the extra arguments.
+        """
         # prepare extra kwargs for the scheduler step, since not all schedulers have the same signature
         # eta (η) is only used with the DDIMScheduler, it will be ignored for other schedulers.
         # eta corresponds to η in DDIM paper: https://arxiv.org/abs/2010.02502
@@ -629,7 +782,25 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
             extra_step_kwargs["generator"] = generator
         return extra_step_kwargs
 
-    def prepare_latents(self, image, timestep, batch_size, height, width, dtype, device, generator, latents=None):
+    def prepare_latents(self, image: Optional[torch.Tensor], timestep: torch.Tensor, batch_size: int, height: int, width: int, dtype: torch.dtype, device: torch.device, generator: torch.Generator, latents: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]:
+        """
+        Prepare the latents for the diffusion process.
+
+        Args:
+            image (torch.Tensor, optional): The initial image for image-to-image generation.
+            timestep (torch.Tensor): The timestep for adding noise.
+            batch_size (int): The batch size.
+            height (int): The height of the image.
+            width (int): The width of the image.
+            dtype (torch.dtype): The data type.
+            device (torch.device): The device to use.
+            generator (torch.Generator, optional): The generator to use.
+            latents (torch.Tensor, optional): The initial latents.
+
+        Returns:
+            Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]:
+                A tuple containing the latents, the original initial latents (if image provided), and the noise.
+        """
         if image is None:
             shape = (
                 batch_size,
@@ -916,7 +1087,16 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         self.unet.to(unet_dtype)
         return latents
 
-    def latents_to_image(self, latents):
+    def latents_to_image(self, latents: torch.Tensor) -> List[PIL.Image.Image]:
+        """
+        Convert latents to a PIL image.
+
+        Args:
+            latents (torch.Tensor): The latents to convert.
+
+        Returns:
+            List[PIL.Image.Image]: The converted images.
+        """
         # 9. Post-processing
         image = self.decode_latents(latents.to(self.vae.dtype))
         image = self.numpy_to_pil(image)

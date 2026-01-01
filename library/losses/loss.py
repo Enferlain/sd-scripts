@@ -6,11 +6,22 @@ from typing import List, Optional
 
 
 class LossRecorder:
+    """
+    Records and calculates the moving average of loss values during training.
+    """
     def __init__(self):
         self.loss_list: List[float] = []
         self.loss_total: float = 0.0
 
     def add(self, *, epoch: int, step: int, loss: float) -> None:
+        """
+        Adds a loss value to the recorder.
+
+        Args:
+            epoch (int): The current epoch number.
+            step (int): The current step number within the epoch.
+            loss (float): The loss value to record.
+        """
         if epoch == 0:
             self.loss_list.append(loss)
         else:
@@ -22,6 +33,12 @@ class LossRecorder:
 
     @property
     def moving_average(self) -> float:
+        """
+        Calculates the moving average of the recorded losses.
+
+        Returns:
+            float: The moving average of the losses.
+        """
         losses = len(self.loss_list)
         if losses == 0:
             return 0
@@ -56,6 +73,9 @@ class EMARecorder:
     def add(self, value: float) -> None:
         """
         Updates the EMA with a new value.
+
+        Args:
+            value (float): The new value to add to the EMA.
         """
         self.num_updates += 1
         # Standard EMA update rule
@@ -79,6 +99,20 @@ class EMARecorder:
 
 
 def get_huber_threshold_if_needed(args, timesteps: torch.Tensor, noise_scheduler) -> Optional[torch.Tensor]:
+    """
+    Calculates the Huber loss threshold based on the configured schedule.
+
+    Args:
+        args: Configuration arguments containing loss settings.
+        timesteps (torch.Tensor): Tensor of current timesteps.
+        noise_scheduler: The noise scheduler used during training.
+
+    Returns:
+        Optional[torch.Tensor]: The calculated Huber threshold if needed, otherwise None.
+
+    Raises:
+        NotImplementedError: If the specified Huber schedule is not supported.
+    """
     if args.loss_type not in {"huber", "smooth_l1", "standard_pseudo_huber", "standard_huber", "standard_smooth_l1",
                               "soft_welsch", "scaled_quadratic", "smooth_l2_log"}:
         return None
@@ -106,6 +140,19 @@ def soft_welsch_loss(predictions: torch.Tensor,
                      reduction: str = "mean",
                      scale: float = 1.0,
                      delta: float = 1.0):
+    """
+    Computes the Soft Welsch loss.
+
+    Args:
+        predictions (torch.Tensor): Predicted values.
+        targets (torch.Tensor): Ground truth values.
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
+        scale (float, optional): Scaling factor for the loss. Defaults to 1.0.
+        delta (float, optional): Parameter controlling the shape of the loss function. Defaults to 1.0.
+
+    Returns:
+        torch.Tensor: The computed loss.
+    """
     differences = predictions - targets
     loss = torch.arcsinh(4 * (scale * differences ** 2) / delta) * delta / 4
     if reduction == "mean":
@@ -121,6 +168,18 @@ def soft_welsch_loss(predictions: torch.Tensor,
 
 # Inspired by Grokking at the Edge of Numerical Stability (https://arxiv.org/abs/2501.04697)
 def stable_mse_loss(predictions, targets, reduction="mean", eps=1e-37):
+    """
+    Computes the Mean Squared Error (MSE) loss with numerical stability improvements.
+
+    Args:
+        predictions: Predicted values.
+        targets: Ground truth values.
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
+        eps (float, optional): Small constant added to squared differences to prevent underflow. Defaults to 1e-37.
+
+    Returns:
+        torch.Tensor: The computed loss.
+    """
     differences = predictions.to(torch.float64) - targets.to(torch.float64)
     squared_differences = differences ** 2
 
@@ -139,6 +198,17 @@ def stable_mse_loss(predictions, targets, reduction="mean", eps=1e-37):
 
 
 def stable_log_cosh_loss(predictions, targets, reduction='mean'):
+    """
+    Computes the Log-Cosh loss with numerical stability improvements.
+
+    Args:
+        predictions: Predicted values.
+        targets: Ground truth values.
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
+
+    Returns:
+        torch.Tensor: The computed loss.
+    """
     diff = predictions - targets
     # For x >= 0
     pos_mask = diff >= 0
@@ -161,6 +231,17 @@ def stable_log_cosh_loss(predictions, targets, reduction='mean'):
 
 
 def stable_msle_loss(predictions, targets, reduction='mean'):
+    """
+    Computes the Mean Squared Logarithmic Error (MSLE) loss.
+
+    Args:
+        predictions: Predicted values.
+        targets: Ground truth values.
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
+
+    Returns:
+        torch.Tensor: The computed loss.
+    """
     msle = torch.square(torch.log(targets + 1) - torch.log(predictions + 1))
 
     if reduction == "mean":
@@ -175,6 +256,17 @@ def stable_msle_loss(predictions, targets, reduction='mean'):
 
 
 def x_sigmoid_loss(predictions, targets, reduction="mean"):
+    """
+    Computes a custom X-Sigmoid loss.
+
+    Args:
+        predictions: Predicted values.
+        targets: Ground truth values.
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
+
+    Returns:
+        torch.Tensor: The computed loss.
+    """
     # Compute at float64
     differences = predictions - targets
     sigmoid_differences = 2 * differences * torch.sigmoid(differences) - differences
@@ -191,20 +283,18 @@ def x_sigmoid_loss(predictions, targets, reduction="mean"):
 
 def stable_pseudo_huber_loss(predictions, targets, delta=1.0, reduction="mean", eps: float = 1e-37):
     """
-    Compute the Pseudo-Huber loss between true values and predictions.
+    Compute the Pseudo-Huber loss between true values and predictions with numerical stability.
 
-    Parameters:
-    y_true : array_like
-        The ground truth (correct) target values.
-    y_pred : array_like
-        The predicted target values.
-    delta : float, default=1.0
-        The parameter delta controls the transition point between the quadratic
-        and linear regions of the loss function.
+    Args:
+        predictions: The predicted target values.
+        targets: The ground truth (correct) target values.
+        delta (float, optional): The parameter delta controls the transition point between the quadratic
+            and linear regions of the loss function. Defaults to 1.0.
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
+        eps (float, optional): Small constant to prevent numerical instability. Defaults to 1e-37.
 
     Returns:
-    loss : array_like
-        The Pseudo-Huber loss values for each element.
+        torch.Tensor: The Pseudo-Huber loss.
     """
     differences = predictions.to(torch.float64) - targets.to(torch.float64)
 
@@ -230,6 +320,19 @@ def scaled_quadratic_loss(
         reduction: str = 'mean',
         eps: float = 1e-37,
 ) -> torch.Tensor:
+    """
+    Computes a scaled quadratic loss.
+
+    Args:
+        predictions (torch.Tensor): Predicted values.
+        targets (torch.Tensor): Ground truth values.
+        delta (float, optional): Scaling parameter. Defaults to 1.0.
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
+        eps (float, optional): Small constant to prevent numerical instability. Defaults to 1e-37.
+
+    Returns:
+        torch.Tensor: The computed loss.
+    """
     r = predictions.to(torch.float64) - targets.to(torch.float64)
     loss = (r / delta) ** 2
 
@@ -258,8 +361,9 @@ def standard_deviation_loss(
     Args:
         predictions (torch.Tensor): Predicted values
         targets (torch.Tensor): True values
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
         eps (float): Small constant to prevent numerical instability
-                    when taking square root
+                    when taking square root. Defaults to 1e-30.
 
     Returns:
         torch.Tensor: The standard deviation loss
@@ -295,6 +399,7 @@ def smooth_l2_log_loss(
         targets: Target values of shape (*), same shape as predictions
         delta: Transition point between L2 and logarithmic behavior
         reduction: Reduction to apply to batch: 'none' | 'mean' | 'sum'
+        eps: Small constant to prevent numerical instability. Defaults to 1e-37.
 
     Returns:
         Loss tensor of shape () if reduction is 'mean' or 'sum',
@@ -318,12 +423,14 @@ def smooth_l2_log_loss(
 
 def stable_smooth_l1_loss(predictions, targets, reduction: str = 'mean', beta=1.0, eps=1e-37):
     """
-    Custom implementation of Smooth L1 Loss
+    Custom implementation of Smooth L1 Loss with numerical stability.
 
     Args:
         predictions: Tensor of predictions
         targets: Tensor of target values
+        reduction: Reduction to apply to batch: 'none' | 'mean' | 'sum'
         beta: The threshold parameter that determines the switch point (default: 1.0)
+        eps: Small constant to prevent numerical instability. Defaults to 1e-37.
 
     Returns:
         The computed Smooth L1 Loss
@@ -355,6 +462,19 @@ def stable_smooth_l1_loss(predictions, targets, reduction: str = 'mean', beta=1.
 
 
 def stable_huber_loss(predictions, targets, reduction: str = 'mean', delta=1.0, eps=1e-37):
+    """
+    Computes the Huber loss with numerical stability improvements.
+
+    Args:
+        predictions: Predicted values.
+        targets: Ground truth values.
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
+        delta (float, optional): The parameter delta controls the transition point between the quadratic and linear regions. Defaults to 1.0.
+        eps (float, optional): Small constant to prevent numerical instability. Defaults to 1e-37.
+
+    Returns:
+        torch.Tensor: The computed Huber loss.
+    """
     diff = torch.abs(predictions.to(torch.float64) - targets.to(torch.float64))
     abs_error = torch.abs(diff)
 
@@ -380,6 +500,18 @@ def stable_huber_loss(predictions, targets, reduction: str = 'mean', delta=1.0, 
 
 
 def stable_l1_loss(predictions, targets, reduction: str = 'mean', eps=1e-37):
+    """
+    Computes the L1 loss with numerical stability improvements.
+
+    Args:
+        predictions: Predicted values.
+        targets: Ground truth values.
+        reduction (str, optional): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'. Defaults to "mean".
+        eps (float, optional): Small constant to prevent numerical instability. Defaults to 1e-37.
+
+    Returns:
+        torch.Tensor: The computed L1 loss.
+    """
     loss = torch.abs(predictions.to(torch.float64) - targets.to(torch.float64))
 
     loss = loss.add(eps)
@@ -404,7 +536,26 @@ def conditional_loss(
         huber_c: Optional[torch.Tensor] = None,
         eps: float = None,
         scale: float = 1.0,
-):  # TODO: Expected type 'float', got 'Tensor | None' instead  on a bunch
+):
+    """
+    Computes the loss based on the specified loss type.
+
+    Args:
+        model_pred (torch.Tensor): Predicted values from the model.
+        target (torch.Tensor): Ground truth values.
+        loss_type (str): The type of loss to compute.
+        reduction (str): Specifies the reduction to apply to the output: 'mean', 'sum', or 'none'.
+        huber_c (Optional[torch.Tensor], optional): Parameter for Huber-like losses. Defaults to None.
+        eps (float, optional): Small constant to prevent numerical instability. Defaults to None.
+        scale (float, optional): Scaling factor for certain losses. Defaults to 1.0.
+
+    Returns:
+        torch.Tensor: The computed loss.
+
+    Raises:
+        NotImplementedError: If the specified loss type is not supported.
+    """
+    # TODO: Expected type 'float', got 'Tensor | None' instead  on a bunch
     if eps is None or eps <= 0.0:
         eps = torch.finfo(torch.float32).tiny
 

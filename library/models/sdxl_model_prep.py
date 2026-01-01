@@ -28,16 +28,16 @@ def load_target_model(
 ):
     """
     Load SDXL model components.
-    
+
     Args:
-        model_config: Model configuration (pretrained path, VAE, etc.)
-        memory_config: Memory configuration (lowram, etc.)
-        caching_config: Caching configuration (disable_mmap, etc.)
-        precision_config: Precision configuration (mixed_precision, etc.)
+        model_config (ModelConfig): Model configuration (pretrained path, VAE, etc.)
+        memory_config (MemoryConfig): Memory configuration (lowram, etc.)
+        caching_config (CachingConfig): Caching configuration (disable_mmap, etc.)
+        precision_config (PrecisionConfig): Precision configuration (mixed_precision, etc.)
         accelerator: Accelerator instance
-        model_version: Model version string
+        model_version (str): Model version string
         weight_dtype: Weight data type
-    
+
     Returns:
         Tuple of (load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info)
     """
@@ -90,17 +90,17 @@ def _load_target_model(
 ):
     """
     Internal function to load SDXL model from checkpoint or diffusers.
-    
+
     Args:
-        model_config: Model configuration (for vae_conv2d_padding_mode)
-        name_or_path: Path to model checkpoint or HuggingFace model name
-        vae_path: Optional path to separate VAE
-        model_version: Model version string
+        model_config (ModelConfig): Model configuration (for vae_conv2d_padding_mode)
+        name_or_path (str): Path to model checkpoint or HuggingFace model name
+        vae_path (Optional[str]): Optional path to separate VAE
+        model_version (str): Model version string
         weight_dtype: Weight data type
-        device: Device to load model to
+        device (str, optional): Device to load model to. Defaults to "cpu".
         model_dtype: Model data type
-        disable_mmap: Whether to disable memory mapping for safetensors
-    
+        disable_mmap (bool, optional): Whether to disable memory mapping for safetensors. Defaults to False.
+
     Returns:
         Tuple of (load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info)
     """

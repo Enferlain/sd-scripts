@@ -2,14 +2,41 @@ import torch
 
 
 class TemperedAdaptiveSampler:
-    def __init__(self, noise_scheduler, num_bins: int = 64,
-                 ema_beta: float = 0.95, temperature: float = 0.5,
-                 prior_weight: float = 0.2, min_prob: float = 1e-4,
-                 warmup_steps: int = 2000):
+    """
+    Adaptive timestep sampler (v1) that balances loss-based sampling with a uniform prior.
+
+    This version uses a uniform prior for all bins, unlike the newer version which supports
+    biased priors. It maintains a running history of loss statistics for different log-SNR bins
+    and uses these statistics to prioritize sampling from bins with higher loss.
+    """
+
+    def __init__(
+        self,
+        noise_scheduler,
+        num_bins: int = 64,
+        ema_beta: float = 0.95,
+        temperature: float = 0.5,
+        prior_weight: float = 0.2,
+        min_prob: float = 1e-4,
+        warmup_steps: int = 2000,
+    ):
+        """
+        Initialize the TemperedAdaptiveSampler (v1).
+
+        Args:
+            noise_scheduler: Diffusers noise scheduler (e.g. DDPMScheduler).
+            num_bins (int): Number of bins for the log-SNR space.
+            ema_beta (float): Decay factor for the exponential moving average of bin losses.
+            temperature (float): Temperature for the softmax distribution of sampling probabilities.
+            prior_weight (float): Weight given to the uniform prior distribution relative to the learned loss distribution.
+            min_prob (float): Minimum probability for any bin to avoid starvation.
+            warmup_steps (int): Number of steps to use the uniform prior exclusively before mixing in loss-based sampling.
+        """
         print(
-            f"TemperedAdaptiveSampler initialized with: num_bins={num_bins}, ema_beta={ema_beta}, temperature={temperature}, prior_weight={prior_weight}, min_prob={min_prob}, warmup_steps={warmup_steps}")
-        a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1. - 1e-12)
-        snr = a2 / (1. - a2)
+            f"TemperedAdaptiveSampler initialized with: num_bins={num_bins}, ema_beta={ema_beta}, temperature={temperature}, prior_weight={prior_weight}, min_prob={min_prob}, warmup_steps={warmup_steps}"
+        )
+        a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1.0 - 1e-12)
+        snr = a2 / (1.0 - a2)
         log_snr = torch.log(snr.clamp(min=1e-20))  # [T], typically descending in t
 
         # Sort to ascending for searchsorted (store both original and sorted)
@@ -19,7 +46,7 @@ class TemperedAdaptiveSampler:
         self.T = noise_scheduler.config.num_train_timesteps
 
         # Bins over original log_snr distribution
-        q = torch.linspace(0., 1., int(num_bins) + 1, dtype=torch.float32)
+        q = torch.linspace(0.0, 1.0, int(num_bins) + 1, dtype=torch.float32)
         self.bin_edges = torch.quantile(log_snr, q).to(torch.float32)
         self.num_bins = int(num_bins)
 
@@ -34,10 +61,19 @@ class TemperedAdaptiveSampler:
         self.ema_sq = torch.ones(self.num_bins, dtype=torch.float32)
         self.counts = torch.zeros(self.num_bins, dtype=torch.float32)
 
-        self.prior_probs = torch.full((self.num_bins,), 1.0 / self.num_bins, dtype=torch.float32)
+        self.prior_probs = torch.full(
+            (self.num_bins,), 1.0 / self.num_bins, dtype=torch.float32
+        )
 
     @torch.no_grad()
     def update(self, timesteps: torch.Tensor, per_sample_losses: torch.Tensor):
+        """
+        Update the sampler state with observed losses.
+
+        Args:
+            timesteps (torch.Tensor): The timesteps used for the batch.
+            per_sample_losses (torch.Tensor): The loss for each sample in the batch.
+        """
         # Map t -> bin via log-SNR
         device = timesteps.device
         log_snr_t = self.log_snr_original.to(device)[timesteps]
@@ -64,14 +100,35 @@ class TemperedAdaptiveSampler:
         self.counts = self.counts.to(device) + bin_cnt
 
     @torch.no_grad()
-    def sample(self, bsz: int, device, global_step: int, max_steps: int,
-               sigmoid_scale: float = 1.0, discrete_flow_shift: float = 0.9):
+    def sample(
+        self,
+        bsz: int,
+        device: torch.device,
+        global_step: int,
+        max_steps: int,
+        sigmoid_scale: float = 1.0,
+        discrete_flow_shift: float = 0.9,
+    ) -> torch.Tensor:
+        """
+        Sample timesteps for a batch.
+
+        Args:
+            bsz (int): Batch size.
+            device (torch.device): Device to put the sampled timesteps on.
+            global_step (int): Current global step.
+            max_steps (int): Total training steps (unused).
+            sigmoid_scale (float): Scale for sigmoid (unused).
+            discrete_flow_shift (float): Shift for discrete flow (unused).
+
+        Returns:
+            torch.Tensor: A tensor of sampled timesteps with shape (bsz,).
+        """
         # Warm-up: exploration only
         if global_step < self.warmup_steps:
             mixed = self.prior_probs.to(device)
         else:
             ema = self.ema_loss.to(device).clamp(min=1e-8)
-            var = (self.ema_sq.to(device) - ema * ema).clamp(min=0.)
+            var = (self.ema_sq.to(device) - ema * ema).clamp(min=0.0)
             score = ema / (torch.sqrt(var + 1e-6) + 1e-6)
 
             # Log-domain tempering with clamp for stability
@@ -79,8 +136,10 @@ class TemperedAdaptiveSampler:
             logits = logits.clamp(min=-12.0, max=12.0)
             loss_probs = torch.softmax(logits, dim=0)
 
-            mixed = (1 - self.prior_weight) * loss_probs + self.prior_weight * self.prior_probs.to(device)
-            mixed = (mixed + self.min_prob)
+            mixed = (
+                1 - self.prior_weight
+            ) * loss_probs + self.prior_weight * self.prior_probs.to(device)
+            mixed = mixed + self.min_prob
             mixed = mixed / mixed.sum()
 
         # Sample bins
@@ -93,7 +152,9 @@ class TemperedAdaptiveSampler:
 
         # Invert: find index in sorted ascending log_snr
         sorted_lsnr = self.log_snr_sorted.to(device)
-        idx_in_sorted = torch.searchsorted(sorted_lsnr, target_lsnr).clamp(0, self.T - 1)
+        idx_in_sorted = torch.searchsorted(sorted_lsnr, target_lsnr).clamp(
+            0, self.T - 1
+        )
 
         # Map back to original t indices
         t_local = self.sort_indices.to(device)[idx_in_sorted]

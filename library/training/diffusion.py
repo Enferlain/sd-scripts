@@ -9,6 +9,18 @@ from library.config.dataclasses.training import TrainingConfig
 
 
 def get_timesteps(min_timestep: int, max_timestep: int, b_size: int, device: torch.device) -> torch.Tensor:
+    """
+    Generates a batch of timesteps for diffusion training.
+
+    Args:
+        min_timestep (int): The minimum timestep index (inclusive).
+        max_timestep (int): The maximum timestep index (exclusive).
+        b_size (int): The batch size (number of timesteps to generate).
+        device (torch.device): The device to place the resulting tensor on.
+
+    Returns:
+        torch.Tensor: A tensor of shape (b_size,) containing the generated timesteps.
+    """
     if min_timestep < max_timestep:
         timesteps = torch.randint(min_timestep, max_timestep, (b_size,), device="cpu")
     else:
@@ -33,25 +45,26 @@ def get_noise_noisy_latents_and_timesteps(
 ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.IntTensor]:
     """
     Generate noise, noisy latents, and timesteps for diffusion training.
-    
+
     Args:
-        regularization_config: Config for noise offset, multires noise, etc.
-        timestep_config: Config for timestep sampling parameters.
-        training_config: Config for training settings.
+        regularization_config (RegularizationConfig): Config for noise offset, multires noise, etc.
+        timestep_config (TimestepConfig): Config for timestep sampling parameters.
+        training_config (TrainingConfig): Config for training settings.
         noise_scheduler: The diffusion noise scheduler.
-        latents: Input latents tensor.
-        la_sampler: Optional custom timestep sampler.
-        global_step: Current training step (for adaptive sampling).
-        fixed_timesteps: Optional fixed timesteps to use.
-        is_train: Whether in training mode (affects noise augmentation).
-        min_timestep_override: Override minimum timestep.
-        max_timestep_override: Override maximum timestep.
-        output_dtype: If provided, cast noisy_latents to this dtype before returning.
-                      Useful because noise_scheduler.add_noise() may return float32
-                      even when inputs are float16/bfloat16 for numerical stability.
-    
+        latents (torch.FloatTensor): Input latents tensor.
+        la_sampler (Optional): Optional custom timestep sampler.
+        global_step (int, optional): Current training step (for adaptive sampling). Defaults to 0.
+        fixed_timesteps (Optional): Optional fixed timesteps to use.
+        is_train (bool, optional): Whether in training mode (affects noise augmentation). Defaults to True.
+        min_timestep_override (Optional[int]): Override minimum timestep.
+        max_timestep_override (Optional[int]): Override maximum timestep.
+        output_dtype (Optional[torch.dtype]): If provided, cast noisy_latents to this dtype before returning.
+            Useful because noise_scheduler.add_noise() may return float32
+            even when inputs are float16/bfloat16 for numerical stability.
+
     Returns:
-        Tuple of (noise, noisy_latents, timesteps)
+        Tuple[torch.FloatTensor, torch.FloatTensor, torch.IntTensor]: A tuple containing
+        (noise, noisy_latents, timesteps).
     """
     # --- 1. Determine Timestep Range ---
     # This part handles the dynamic timestep schedule!

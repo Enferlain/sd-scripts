@@ -35,14 +35,17 @@ def prepare_accelerator(
 ):
     """
     Prepare accelerator with optional deepspeed plugin.
-    
+
     Args:
-        precision_config: Precision settings (mixed_precision)
-        compilation_config: Torch compile settings
-        distributed_config: DDP settings (gradient_as_bucket_view, static_graph)
-        deepspeed_config: DeepSpeed settings
-        logging_config: Optional logging settings (logging_dir, log_with, wandb settings)
-        training_config: Optional training settings (gradient_accumulation_steps)
+        precision_config: Precision settings (mixed_precision).
+        compilation_config: Torch compile settings.
+        distributed_config: DDP settings (gradient_as_bucket_view, static_graph).
+        deepspeed_config: DeepSpeed settings.
+        logging_config: Optional logging settings (logging_dir, log_with, wandb settings).
+        training_config: Optional training settings (gradient_accumulation_steps).
+
+    Returns:
+        Accelerator: The prepared accelerator object.
     """
 
     # Handle logging directory
@@ -130,14 +133,17 @@ def calculate_val_loss_check(
     train_dataloader,
 ) -> bool:
     """Check if validation should be run at this step.
-    
+
     Args:
-        validation_config: ValidationConfig object with validation settings
-        training_config: TrainingConfig object for max_train_steps
-        global_step: Current global training step
-        epoch_step: Current step within the epoch
-        val_dataloader: Validation dataloader (if None, returns False)
-        train_dataloader: Training dataloader for epoch length check
+        validation_config: ValidationConfig object with validation settings.
+        training_config: TrainingConfig object for max_train_steps.
+        global_step: Current global training step.
+        epoch_step: Current step within the epoch.
+        val_dataloader: Validation dataloader (if None, returns False).
+        train_dataloader: Training dataloader for epoch length check.
+
+    Returns:
+        bool: True if validation should be run, False otherwise.
     """
     if val_dataloader is None:
         return False
@@ -153,6 +159,15 @@ def calculate_val_loss_check(
 
 
 def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):
+    """
+    Append learning rate to logs.
+
+    Args:
+        logs: The logs to append to.
+        lr_scheduler: The learning rate scheduler.
+        optimizer_type: The optimizer type.
+        including_unet: Whether to include UNet learning rate.
+    """
     names = []
     if including_unet:
         names.append("unet")
@@ -162,7 +177,22 @@ def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):
     append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
 
 
-def determine_grad_sync_context(precision_config: Optional[PrecisionConfig], accelerator, sync_gradients, training_model, edm2_model=None):
+def determine_grad_sync_context(
+    precision_config: Optional[PrecisionConfig], accelerator, sync_gradients, training_model, edm2_model=None
+):
+    """
+    Determine the gradient synchronization context.
+
+    Args:
+        precision_config: Precision configuration (not currently used).
+        accelerator: The accelerator object.
+        sync_gradients: Whether to sync gradients (not currently used).
+        training_model: The training model.
+        edm2_model: Optional EDM2 model.
+
+    Returns:
+        ContextManager: The gradient synchronization context.
+    """
     # TODO: Investigate why this was considered and update signature maybe?
     # if precision_config and precision_config.full_bf16:
     #    if not sync_gradients and accelerator.num_processes > 1:

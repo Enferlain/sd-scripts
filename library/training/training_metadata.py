@@ -24,6 +24,22 @@ def create_training_metadata(
     """
     Create training metadata dict for model saving.
 
+    Args:
+        cfg: Configuration object.
+        session_id: Session ID.
+        training_started_at: Timestamp when training started.
+        model_version: Version of the base model.
+        train_dataset_group: Group of training datasets.
+        val_dataset_group: Group of validation datasets.
+        num_train_epochs: Number of training epochs.
+        optimizer_name: Name of the optimizer.
+        optimizer_args: Arguments for the optimizer.
+        net_kwargs: Network keyword arguments (e.g., for LoRA).
+        train_dataloader: Training dataloader.
+        total_batch_size: Total batch size.
+        use_user_config: Whether user config is used for dataset.
+        use_dreambooth_method: Whether DreamBooth method is used.
+
     Returns:
         tuple: (metadata dict, minimum_metadata dict)
     """

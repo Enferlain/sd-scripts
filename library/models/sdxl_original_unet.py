@@ -1,5 +1,5 @@
-# Diffusersのコードをベースとした sd_xl_baseのU-Net
-# state dictの形式をSDXLに合わせてある
+# SDXL base U-Net based on Diffusers code.
+# The state dict format is adapted to match SDXL.
 
 """
       target: sgm.modules.diffusionmodules.openaimodel.UNetModel
@@ -52,16 +52,36 @@ USE_REENTRANT = True
 
 
 # region memory efficient attention
-# FlashAtentionを使うCrossAttention
+# CrossAttention using FlashAttention
 # based on https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/memory_efficient_attention_pytorch/flash_attention.py
 # LICENSE MIT https://github.com/lucidrains/memory-efficient-attention-pytorch/blob/main/LICENSE
 # flash attention forwards and backwards
 # https://arxiv.org/abs/2205.14135
 class FlashAttentionFunction(torch.autograd.Function):
+    """
+    Custom implementation of FlashAttention for memory efficient attention.
+    Based on https://github.com/lucidrains/memory-efficient-attention-pytorch
+    """
+
     @staticmethod
     @torch.no_grad()
     def forward(ctx, q, k, v, mask, causal, q_bucket_size, k_bucket_size):
-        """Algorithm 2 in the paper"""
+        """
+        Forward pass of FlashAttention (Algorithm 2 in the paper).
+
+        Args:
+            ctx: Context object to save tensors for backward pass.
+            q (torch.Tensor): Query tensor.
+            k (torch.Tensor): Key tensor.
+            v (torch.Tensor): Value tensor.
+            mask (torch.Tensor): Attention mask.
+            causal (bool): Whether to use causal masking.
+            q_bucket_size (int): Bucket size for queries.
+            k_bucket_size (int): Bucket size for keys.
+
+        Returns:
+            torch.Tensor: Output of attention mechanism.
+        """
 
         device = q.device
         dtype = q.dtype
@@ -142,7 +162,16 @@ class FlashAttentionFunction(torch.autograd.Function):
     @staticmethod
     @torch.no_grad()
     def backward(ctx, do):
-        """Algorithm 4 in the paper"""
+        """
+        Backward pass of FlashAttention (Algorithm 4 in the paper).
+
+        Args:
+            ctx: Context object containing saved tensors.
+            do (torch.Tensor): Gradient of the output.
+
+        Returns:
+            tuple: Gradients for q, k, v, and placeholders for other arguments.
+        """
 
         causal, scale, mask, q_bucket_size, k_bucket_size = ctx.args
         q, k, v, o, l, m = ctx.saved_tensors
@@ -211,10 +240,28 @@ class FlashAttentionFunction(torch.autograd.Function):
 
 
 def get_parameter_dtype(parameter: torch.nn.Module):
+    """
+    Get the data type of the first parameter of a module.
+
+    Args:
+        parameter (torch.nn.Module): The module to inspect.
+
+    Returns:
+        torch.dtype: The data type of the module's parameters.
+    """
     return next(parameter.parameters()).dtype
 
 
 def get_parameter_device(parameter: torch.nn.Module):
+    """
+    Get the device of the first parameter of a module.
+
+    Args:
+        parameter (torch.nn.Module): The module to inspect.
+
+    Returns:
+        torch.device: The device of the module's parameters.
+    """
     return next(parameter.parameters()).device
 
 
@@ -228,10 +275,15 @@ def get_timestep_embedding(
     """
     This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timestep embeddings.
 
-    :param timesteps: a 1-D Tensor of N indices, one per batch element.
-                      These may be fractional.
-    :param embedding_dim: the dimension of the output. :param max_period: controls the minimum frequency of the
-    embeddings. :return: an [N x dim] Tensor of positional embeddings.
+    Args:
+        timesteps (torch.Tensor): A 1-D Tensor of N indices, one per batch element. These may be fractional.
+        embedding_dim (int): The dimension of the output.
+        downscale_freq_shift (float, optional): Factor to downscale the frequency shift. Defaults to 1.
+        scale (float, optional): Scaling factor for the embeddings. Defaults to 1.
+        max_period (int, optional): Controls the minimum frequency of the embeddings. Defaults to 10000.
+
+    Returns:
+        torch.Tensor: An [N x dim] Tensor of positional embeddings.
     """
     assert len(timesteps.shape) == 1, "Timesteps should be a 1d-array"
 
@@ -256,6 +308,18 @@ def get_timestep_embedding(
 
 # Deep Shrink: We do not common this function, because minimize dependencies.
 def resize_like(x, target, mode="bicubic", align_corners=False):
+    """
+    Resizes the input tensor `x` to match the spatial dimensions of the `target` tensor.
+
+    Args:
+        x (torch.Tensor): Input tensor to be resized.
+        target (torch.Tensor): Target tensor whose spatial dimensions will be matched.
+        mode (str, optional): Interpolation mode. Defaults to "bicubic".
+        align_corners (bool, optional): Whether to align corners during interpolation. Defaults to False.
+
+    Returns:
+        torch.Tensor: Resized tensor.
+    """
     org_dtype = x.dtype
     if org_dtype == torch.bfloat16:
         x = x.to(torch.float32)
@@ -272,6 +336,9 @@ def resize_like(x, target, mode="bicubic", align_corners=False):
 
 
 class GroupNorm32(nn.GroupNorm):
+    """
+    GroupNorm with float32 casting for mixed precision training compatibility.
+    """
     def forward(self, x):
         if self.weight.dtype != torch.float32:
             return super().forward(x)
@@ -279,6 +346,9 @@ class GroupNorm32(nn.GroupNorm):
 
 
 class ResnetBlock2D(nn.Module):
+    """
+    A 2D ResNet block used in the U-Net architecture.
+    """
     def __init__(
             self,
             in_channels,
@@ -337,6 +407,9 @@ class ResnetBlock2D(nn.Module):
 
 
 class Downsample2D(nn.Module):
+    """
+    A downsampling layer.
+    """
     def __init__(self, channels, out_channels):
         super().__init__()
 
@@ -373,6 +446,9 @@ class Downsample2D(nn.Module):
 
 
 class CrossAttention(nn.Module):
+    """
+    Cross-attention module.
+    """
     def __init__(
             self,
             query_dim: int,
@@ -487,7 +563,7 @@ class CrossAttention(nn.Module):
         q = q.contiguous()
         k = k.contiguous()
         v = v.contiguous()
-        out = xformers.ops.memory_efficient_attention(q, k, v, attn_bias=None)  # 最適なのを選んでくれる
+        out = xformers.ops.memory_efficient_attention(q, k, v, attn_bias=None)  # Automatically selects the optimal implementation
         del q, k, v
 
         out = rearrange(out, "b n h d -> b n (h d)", h=h)
@@ -542,9 +618,9 @@ class GEGLU(nn.Module):
     r"""
     A variant of the gated linear unit activation function from https://arxiv.org/abs/2002.05202.
 
-    Parameters:
-        dim_in (`int`): The number of channels in the input.
-        dim_out (`int`): The number of channels in the output.
+    Args:
+        dim_in (int): The number of channels in the input.
+        dim_out (int): The number of channels in the output.
     """
 
     def __init__(self, dim_in: int, dim_out: int):
@@ -563,6 +639,9 @@ class GEGLU(nn.Module):
 
 
 class FeedForward(nn.Module):
+    """
+    Feed-forward block.
+    """
     def __init__(
             self,
             dim: int,
@@ -585,6 +664,16 @@ class FeedForward(nn.Module):
 
 
 class BasicTransformerBlock(nn.Module):
+    """
+    Basic transformer block comprising self-attention, cross-attention, and feed-forward layers.
+
+    Args:
+        dim (int): The number of channels in the input and output.
+        num_attention_heads (int): The number of heads to use for multi-head attention.
+        attention_head_dim (int): The number of channels in each attention head.
+        cross_attention_dim (int): The number of channels in the encoder_hidden_states (if used).
+        upcast_attention (bool, optional): Whether to upcast attention to float32. Defaults to False.
+    """
     def __init__(
             self, dim: int, num_attention_heads: int, attention_head_dim: int, cross_attention_dim: int,
             upcast_attention: bool = False
@@ -661,6 +750,18 @@ class BasicTransformerBlock(nn.Module):
 
 
 class Transformer2DModel(nn.Module):
+    """
+    Transformer model for 2D data, consisting of a series of BasicTransformerBlocks.
+
+    Args:
+        num_attention_heads (int, optional): The number of heads to use for multi-head attention. Defaults to 16.
+        attention_head_dim (int, optional): The number of channels in each attention head. Defaults to 88.
+        in_channels (int, optional): The number of channels in the input and output.
+        cross_attention_dim (int, optional): The number of channels in the encoder_hidden_states (if used).
+        use_linear_projection (bool, optional): Whether to use linear projection for input/output. Defaults to False.
+        upcast_attention (bool, optional): Whether to upcast attention to float32. Defaults to False.
+        num_transformer_layers (int, optional): The number of transformer layers to use. Defaults to 1.
+    """
     def __init__(
             self,
             num_attention_heads: int = 16,
@@ -748,6 +849,9 @@ class Transformer2DModel(nn.Module):
 
 
 class Upsample2D(nn.Module):
+    """
+    An upsampling layer.
+    """
     def __init__(self, channels, out_channels):
         super().__init__()
         self.channels = channels
@@ -804,6 +908,13 @@ class Upsample2D(nn.Module):
 
 
 class SdxlUNet2DConditionModel(nn.Module):
+    """
+    The SDXL U-Net model.
+
+    This class implements the U-Net architecture for Stable Diffusion XL.
+    It consists of a series of input blocks, a middle block, and output blocks.
+    The model processes the input latents and conditions to predict noise residuals.
+    """
     _supports_gradient_checkpointing = True
 
     def __init__(
@@ -1101,6 +1212,9 @@ class SdxlUNet2DConditionModel(nn.Module):
 
 
 class InferSdxlUNet2DConditionModel:
+    """
+    Inference wrapper for SdxlUNet2DConditionModel, adding support for Deep Shrink.
+    """
     def __init__(self, original_unet: SdxlUNet2DConditionModel, **kwargs):
         self.delegate = original_unet
 
@@ -1232,7 +1346,7 @@ if __name__ == "__main__":
     unet.set_gradient_checkpointing(True)
     unet.train()
 
-    # 使用メモリ量確認用の疑似学習ループ
+    # Pseudo training loop for checking memory usage
     logger.info("preparing optimizer")
 
     # optimizer = torch.optim.SGD(unet.parameters(), lr=1e-3, nesterov=True, momentum=0.9) # not working

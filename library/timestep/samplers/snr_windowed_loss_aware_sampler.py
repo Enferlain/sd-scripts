@@ -1,5 +1,6 @@
 # snr_windowed_loss_aware_sampler.py
-import math, torch
+import math
+import torch
 
 from typing import Optional
 
@@ -7,7 +8,12 @@ from typing import Optional
 class SNRWindowedLossAwareSampler:
     """
     Loss-aware sampler restricted to a sliding window in log-SNR.
+
+    This sampler focuses on a specific window of log-SNR values that can shift and widen over time.
+    It combines a loss-aware distribution within the window with a mechanism to dynamically
+    adjust the maximum timestep cap based on boundary saturation.
     """
+
     def __init__(
         self,
         noise_scheduler,
@@ -18,41 +24,75 @@ class SNRWindowedLossAwareSampler:
         entropy_floor_ratio: float = 0.8,
         uniform_mix_when_low_entropy: float = 0.1,
         # Window in log-SNR:
-        center_mu: float = 0.0,            # start center in log-SNR
-        half_width: float = 1.0,           # initial half-width in log-SNR
-        widen_to: float = 2.5,             # target half-width
-        total_widen_steps: int = 2000,     # steps to widen
+        center_mu: float = 0.0,  # start center in log-SNR
+        half_width: float = 1.0,  # initial half-width in log-SNR
+        widen_to: float = 2.5,  # target half-width
+        total_widen_steps: int = 2000,  # steps to widen
         # Optional cap on top timesteps early in training:
         cap_max_t: Optional[int] = None,
         # new hyperparams:
-        cap_target_t: Optional[int] = 950,       # default: T-1
+        cap_target_t: Optional[int] = 950,  # default: T-1
         cap_ema_beta: float = 0.9,
-        cap_saturation_thresh: float = 0.20,      # fraction of samples hitting boundary
-        cap_step_min: int = 5,                    # min increment when moving cap
-        cap_step_max_frac: float = 0.10,          # at most this fraction of remaining range
+        cap_saturation_thresh: float = 0.20,  # fraction of samples hitting boundary
+        cap_step_min: int = 5,  # min increment when moving cap
+        cap_step_max_frac: float = 0.10,  # at most this fraction of remaining range
     ):
+        """
+        Initialize the SNRWindowedLossAwareSampler.
+
+        Args:
+            noise_scheduler: Diffusers noise scheduler (e.g. DDPMScheduler).
+            num_bins (int): Number of bins for the log-SNR space.
+            ema_beta (float): Decay factor for the exponential moving average of bin losses.
+            temperature (float): Temperature for the softmax distribution of sampling probabilities.
+            min_prob (float): Minimum probability for any bin to avoid starvation.
+            entropy_floor_ratio (float): Minimum entropy ratio relative to uniform distribution.
+            uniform_mix_when_low_entropy (float): Mixing factor for uniform distribution when entropy is low.
+            center_mu (float): Initial center of the sampling window in log-SNR space.
+            half_width (float): Initial half-width of the sampling window in log-SNR space.
+            widen_to (float): Target half-width of the sampling window.
+            total_widen_steps (int): Number of steps to widen the window from `half_width` to `widen_to`.
+            cap_max_t (int, optional): Initial maximum timestep cap.
+            cap_target_t (int, optional): Target maximum timestep cap (default: T-1).
+            cap_ema_beta (float): Decay factor for the EMA of boundary saturation.
+            cap_saturation_thresh (float): Threshold of boundary saturation to trigger cap relaxation.
+            cap_step_min (int): Minimum step size for relaxing the cap.
+            cap_step_max_frac (float): Maximum fraction of the remaining range to relax the cap in one step.
+        """
         self.T = int(noise_scheduler.config.num_train_timesteps)
-        a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1. - 1e-12)
-        snr = a2 / (1. - a2)
+        a2 = noise_scheduler.alphas_cumprod.float().clamp(1e-12, 1.0 - 1e-12)
+        snr = a2 / (1.0 - a2)
         log_snr = torch.log(snr.clamp(min=1e-20))
         self.log_snr_original = log_snr.contiguous()
         self.log_snr_sorted, self.sort_indices = torch.sort(log_snr)
-        edges = torch.linspace(0, self.T - 1, steps=num_bins + 1, device=log_snr.device)
+        edges = torch.linspace(
+            0, self.T - 1, steps=num_bins + 1, device=log_snr.device
+        )
         edges = edges.round().long().clamp(0, self.T - 1)
         self.bin_left, self.bin_right = edges[:-1], edges[1:].clamp(min=1)
         centers_idx = ((self.bin_left + self.bin_right) // 2).long()
         self.bin_centers_log_snr = self.log_snr_sorted[centers_idx]
-        self.num_bins, self.temperature, self.ema_beta = int(num_bins), float(temperature), float(ema_beta)
-        self.entropy_floor_ratio, self.uniform_mix_when_low_entropy = float(entropy_floor_ratio), float(uniform_mix_when_low_entropy)
+        self.num_bins, self.temperature, self.ema_beta = (
+            int(num_bins),
+            float(temperature),
+            float(ema_beta),
+        )
+        self.entropy_floor_ratio, self.uniform_mix_when_low_entropy = (
+            float(entropy_floor_ratio),
+            float(uniform_mix_when_low_entropy),
+        )
         self.min_prob = float(min_prob)
-        self.center_mu0, self.half_width0, self.widen_to = float(center_mu), float(half_width), float(widen_to)
+        self.center_mu0, self.half_width0, self.widen_to = (
+            float(center_mu),
+            float(half_width),
+            float(widen_to),
+        )
         self.total_widen_steps = int(total_widen_steps)
         self.cap_max_t = None if cap_max_t is None else int(cap_max_t)
         self.global_step = 0
         self.bin_loss_ema = torch.zeros(self.num_bins, device=log_snr.device)
         self.bin_counts = torch.zeros(self.num_bins, device=log_snr.device)
 
-        self.cap_max_t = None if cap_max_t is None else int(cap_max_t)
         self.cap_target_t = (self.T - 1) if cap_target_t is None else int(cap_target_t)
         self.cap_ema_beta = float(cap_ema_beta)
         self.cap_saturation_thresh = float(cap_saturation_thresh)
@@ -60,22 +100,59 @@ class SNRWindowedLossAwareSampler:
         self.cap_step_max_frac = float(cap_step_max_frac)
         self.cap_saturation_ema = 0.0
 
-    def _softmax(self, x, temp):
-        z = (x / max(temp, 1e-6)); z = z - z.max()
-        p = torch.exp(z); return p / (p.sum() + 1e-12)
+    def _softmax(self, x: torch.Tensor, temp: float) -> torch.Tensor:
+        """Compute softmax with temperature scaling."""
+        z = x / max(temp, 1e-6)
+        z = z - z.max()
+        p = torch.exp(z)
+        return p / (p.sum() + 1e-12)
 
-    def _entropy(self, p):
+    def _entropy(self, p: torch.Tensor) -> torch.Tensor:
+        """Compute the entropy of a probability distribution."""
         return -(p * (p + 1e-12).log()).sum()
 
-    def step(self, global_step=None):
-        self.global_step = int(global_step) if global_step is not None else (self.global_step + 1)
+    def step(self, global_step: Optional[int] = None):
+        """
+        Advance the global step counter.
+
+        Args:
+            global_step (int, optional): The current global step. If None, increments by 1.
+        """
+        self.global_step = (
+            int(global_step) if global_step is not None else (self.global_step + 1)
+        )
 
     def _current_window(self):
-        t = min(self.global_step, self.total_widen_steps) / max(self.total_widen_steps, 1)
+        """Calculate the current window center and half-width."""
+        t = min(self.global_step, self.total_widen_steps) / max(
+            self.total_widen_steps, 1
+        )
         half_w = self.half_width0 + t * (self.widen_to - self.half_width0)
         return self.center_mu0, half_w
 
-    def sample(self, batch_size, device, global_step=0, max_train_steps=1000, sigmoid_scale=1.0, discrete_flow_shift=1.0):
+    def sample(
+        self,
+        batch_size: int,
+        device: torch.device,
+        global_step: int = 0,
+        max_train_steps: int = 1000,
+        sigmoid_scale: float = 1.0,
+        discrete_flow_shift: float = 1.0,
+    ) -> torch.Tensor:
+        """
+        Sample timesteps for a batch.
+
+        Args:
+            batch_size (int): Batch size.
+            device (torch.device): Device to put the sampled timesteps on.
+            global_step (int): Current global step.
+            max_train_steps (int): Total number of training steps (unused).
+            sigmoid_scale (float): Scale for sigmoid (unused).
+            discrete_flow_shift (float): Shift for discrete flow (unused).
+
+        Returns:
+            torch.Tensor: A tensor of sampled timesteps with shape (batch_size,).
+        """
         self.step(global_step)
         mu, half_w = self._current_window()
 
@@ -84,7 +161,7 @@ class SNRWindowedLossAwareSampler:
         if not mask.any():
             mask = torch.ones_like(centers, dtype=torch.bool)
 
-        with torch.amp.autocast('cuda', enabled=False):
+        with torch.amp.autocast("cuda", enabled=False):
             # Build logits in fp32
             la_logits = -self.bin_loss_ema.to(device, dtype=torch.float32).clone()
             la_logits[~mask] = -1e9
@@ -103,7 +180,9 @@ class SNRWindowedLossAwareSampler:
             H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
             if H < H_min:
                 u = torch.full_like(probs, 1.0 / self.num_bins)
-                probs = (1.0 - self.uniform_mix_when_low_entropy) * probs + self.uniform_mix_when_low_entropy * u
+                probs = (
+                    1.0 - self.uniform_mix_when_low_entropy
+                ) * probs + self.uniform_mix_when_low_entropy * u
 
             # Unconditional clamp and renormalize for safety
             probs = torch.nan_to_num(probs, nan=0.0, posinf=0.0, neginf=0.0)
@@ -117,9 +196,14 @@ class SNRWindowedLossAwareSampler:
             # Sample on GPU; 1D probs → shape [batch_size]
             bin_idx = torch.multinomial(probs, num_samples=batch_size, replacement=True)
 
-        left, right = self.bin_left.to(device)[bin_idx], self.bin_right.to(device)[bin_idx]
+        left, right = (
+            self.bin_left.to(device)[bin_idx],
+            self.bin_right.to(device)[bin_idx],
+        )
         u = torch.rand(batch_size, device=device)
-        sorted_idx = (left + (u * (right - left + 1).clamp_min(1)).floor().long()).clamp(0, self.T - 1)
+        sorted_idx = (
+            left + (u * (right - left + 1).clamp_min(1)).floor().long()
+        ).clamp(0, self.T - 1)
         timesteps = self.sort_indices.to(device)[sorted_idx]
 
         if self.cap_max_t is not None:
@@ -144,7 +228,9 @@ class SNRWindowedLossAwareSampler:
                         self.cap_step_min,
                         int(self.cap_step_max_frac * remaining),
                     )
-                    step = max(self.cap_step_min, int(self.cap_saturation_ema * max_step))
+                    step = max(
+                        self.cap_step_min, int(self.cap_saturation_ema * max_step)
+                    )
                     self.cap_max_t = min(self.cap_max_t + step, self.cap_target_t)
                     # optional: partially reset EMA so the cap does not run too fast
                     self.cap_saturation_ema *= 0.5
@@ -154,18 +240,29 @@ class SNRWindowedLossAwareSampler:
         return timesteps.long()
 
     @torch.no_grad()
-    def update(self, timesteps, per_sample_loss):
+    def update(self, timesteps: torch.Tensor, per_sample_loss: torch.Tensor):
+        """
+        Update the sampler state with observed losses.
+
+        Args:
+            timesteps (torch.Tensor): The timesteps used for the batch.
+            per_sample_loss (torch.Tensor): The loss for each sample in the batch.
+        """
         device = timesteps.device
         log_snr_t = self.log_snr_original.to(device)[timesteps.long()]
         sorted_pos = torch.searchsorted(self.log_snr_sorted.to(device), log_snr_t)
         right_edges = self.bin_right.to(device)
-        bin_idx = torch.bucketize(sorted_pos.clamp_max(self.T - 1), right_edges, right=True).clamp_max(self.num_bins - 1)
-        
+        bin_idx = torch.bucketize(
+            sorted_pos.clamp_max(self.T - 1), right_edges, right=True
+        ).clamp_max(self.num_bins - 1)
+
         beta = self.ema_beta
         for k in bin_idx.unique():
-            mask = (bin_idx == k)
+            mask = bin_idx == k
             if mask.any():
                 loss_k = per_sample_loss[mask].mean().item()
                 k_cpu = k.item()
-                self.bin_loss_ema[k_cpu] = beta * self.bin_loss_ema[k_cpu] + (1.0 - beta) * loss_k
+                self.bin_loss_ema[k_cpu] = (
+                    beta * self.bin_loss_ema[k_cpu] + (1.0 - beta) * loss_k
+                )
                 self.bin_counts[k_cpu] += mask.sum().item()

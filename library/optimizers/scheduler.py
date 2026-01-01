@@ -26,6 +26,16 @@ logger = logging.getLogger(__name__)
 def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: OptimizerConfig, training_config: TrainingConfig, optimizer: Optimizer, num_processes: int):
     """
     Unified API to get any scheduler from its name.
+
+    Args:
+        scheduler_config (SchedulerConfig): Configuration for the scheduler.
+        optimizer_config (OptimizerConfig): Configuration for the optimizer.
+        training_config (TrainingConfig): Configuration for training settings.
+        optimizer (Optimizer): The optimizer instance.
+        num_processes (int): The number of processes (GPUs) used for training.
+
+    Returns:
+        The configured scheduler.
     """
     optimizer_type = optimizer_config.optimizer_type
     # if schedulefree optimizer, return dummy scheduler
@@ -188,6 +198,18 @@ def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: Optim
 
 
 def get_dummy_scheduler(optimizer: Optimizer) -> Any:
+    """
+    Creates a dummy scheduler for schedule-free optimizers.
+
+    This scheduler supports only empty step() and get_last_lr() methods, and is used mainly for logging purposes.
+    It is not intended to be wrapped by accelerator as it is not a subclass of torch.optim.lr_scheduler._LRScheduler.
+
+    Args:
+        optimizer (Optimizer): The optimizer instance.
+
+    Returns:
+        Any: A dummy scheduler instance.
+    """
     # dummy scheduler for schedulefree optimizer. supports only empty step(), get_last_lr() and optimizers.
     # this scheduler is used for logging only.
     # this isn't to be wrapped by accelerator because this class is not a subclass of torch.optim.lr_scheduler._LRScheduler

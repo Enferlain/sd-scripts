@@ -30,12 +30,31 @@ logger = logging.getLogger(__name__)
 
 
 def is_safetensors(path):
+    """
+    Checks if the given path corresponds to a safetensors file.
+
+    Args:
+        path (str): The file path to check.
+
+    Returns:
+        bool: True if the file extension is .safetensors, False otherwise.
+    """
     return os.path.splitext(path)[1].lower() == ".safetensors"
 
 
 def shave_segments(path, n_shave_prefix_segments=1):
     """
-    Removes segments. Positive values shave the first segments, negative shave the last segments.
+    Removes segments from a dot-separated path string.
+    Positive values shave the first segments, negative shave the last segments.
+
+    Args:
+        path (str): The dot-separated path string.
+        n_shave_prefix_segments (int): Number of segments to remove.
+                                       If positive, removes from the beginning.
+                                       If negative, removes from the end.
+
+    Returns:
+        str: The modified path string.
     """
     if n_shave_prefix_segments >= 0:
         return ".".join(path.split(".")[n_shave_prefix_segments:])
@@ -44,6 +63,16 @@ def shave_segments(path, n_shave_prefix_segments=1):
 
 
 def convert_ldm_vae_checkpoint(checkpoint, config):
+    """
+    Converts a Latent Diffusion Model (LDM) VAE checkpoint to a Diffusers VAE checkpoint.
+
+    Args:
+        checkpoint (dict): The LDM VAE state dictionary.
+        config (dict): Configuration for the Diffusers VAE.
+
+    Returns:
+        dict: The converted Diffusers VAE state dictionary.
+    """
     # extract state dict for VAE
     vae_state_dict = {}
     vae_key = "first_stage_model."
@@ -152,7 +181,10 @@ def convert_ldm_vae_checkpoint(checkpoint, config):
 
 def create_vae_diffusers_config():
     """
-    Creates a config for the diffusers based on the config of the LDM model.
+    Creates a configuration dictionary for the Diffusers VAE model.
+
+    Returns:
+        dict: A dictionary containing the configuration parameters for the VAE.
     """
     # vae_params = original_config.model.params.first_stage_config.params.ddconfig
     # _ = original_config.model.params.first_stage_config.params.embed_dim
@@ -181,11 +213,29 @@ def create_vae_diffusers_config():
 
 
 def reshape_weight_for_sd(w):
+    """
+    Reshapes weights for Stable Diffusion format (converting linear weights to conv2d).
+
+    Args:
+        w (torch.Tensor): The weight tensor to reshape.
+
+    Returns:
+        torch.Tensor: The reshaped weight tensor.
+    """
     # convert HF linear weights to SD conv2d weights
     return w.reshape(*w.shape, 1, 1)
 
 
 def convert_vae_state_dict(vae_state_dict):
+    """
+    Converts a VAE state dictionary from Diffusers format to Stable Diffusion format.
+
+    Args:
+        vae_state_dict (dict): The Diffusers VAE state dictionary.
+
+    Returns:
+        dict: The converted Stable Diffusion VAE state dictionary.
+    """
     vae_conversion_map = [
         # (stable-diffusion, HF Diffusers)
         ("nin_shortcut", "conv_shortcut"),
@@ -263,6 +313,16 @@ def convert_vae_state_dict(vae_state_dict):
 
 
 def load_vae(vae_id, dtype):
+    """
+    Loads a VAE model from a file or HuggingFace model ID.
+
+    Args:
+        vae_id (str): The path to the VAE file or the HuggingFace model ID.
+        dtype (torch.dtype): The data type to load the VAE in.
+
+    Returns:
+        AutoencoderKL: The loaded VAE model.
+    """
     logger.info(f"load VAE: {vae_id}")
     if os.path.isdir(vae_id) or not os.path.isfile(vae_id):
         # Diffusers local/remote
@@ -307,6 +367,15 @@ def load_vae(vae_id, dtype):
 
 
 def conv_attn_to_linear(checkpoint):
+    """
+    Converts convolutional attention weights to linear weights in the checkpoint.
+
+    Args:
+        checkpoint (dict): The state dictionary to modify.
+
+    Note:
+        Modifies the checkpoint dictionary in-place.
+    """
     keys = list(checkpoint.keys())
     attn_keys = ["query.weight", "key.weight", "value.weight"]
     for key in keys:
@@ -322,11 +391,18 @@ def assign_to_checkpoint(
         paths, checkpoint, old_checkpoint, attention_paths_to_split=None, additional_replacements=None, config=None
 ):
     """
+    Assigns weights to the new checkpoint, performing necessary conversions and renaming.
     This does the final conversion step: take locally converted weights and apply a global renaming
     to them. It splits attention layers, and takes into account additional replacements
     that may arise.
 
-    Assigns the weights to the new checkpoint.
+    Args:
+        paths (list): A list of dictionaries containing 'old' and 'new' keys for path mapping.
+        checkpoint (dict): The target checkpoint dictionary to assign weights to.
+        old_checkpoint (dict): The source checkpoint dictionary.
+        attention_paths_to_split (dict, optional): Paths related to attention layers that need splitting.
+        additional_replacements (list, optional): Additional replacements for path renaming.
+        config (dict, optional): Configuration dictionary.
     """
     assert isinstance(paths, list), "Paths should be a list of dicts containing 'old' and 'new' keys."
 
@@ -380,7 +456,14 @@ def assign_to_checkpoint(
 
 def renew_vae_attention_paths(old_list, n_shave_prefix_segments=0):
     """
-    Updates paths inside attentions to the new naming scheme (local renaming)
+    Updates paths inside VAE attention layers to the new naming scheme (local renaming).
+
+    Args:
+        old_list (list): List of old paths.
+        n_shave_prefix_segments (int): Number of prefix segments to shave.
+
+    Returns:
+        list: A list of dictionaries mapping old paths to new paths.
     """
     mapping = []
     for old_item in old_list:
@@ -423,7 +506,14 @@ def renew_vae_attention_paths(old_list, n_shave_prefix_segments=0):
 
 def renew_vae_resnet_paths(old_list, n_shave_prefix_segments=0):
     """
-    Updates paths inside resnets to the new naming scheme (local renaming)
+    Updates paths inside VAE resnet layers to the new naming scheme (local renaming).
+
+    Args:
+        old_list (list): List of old paths.
+        n_shave_prefix_segments (int): Number of prefix segments to shave.
+
+    Returns:
+        list: A list of dictionaries mapping old paths to new paths.
     """
     mapping = []
     for old_item in old_list:
@@ -439,7 +529,14 @@ def renew_vae_resnet_paths(old_list, n_shave_prefix_segments=0):
 
 def renew_attention_paths(old_list, n_shave_prefix_segments=0):
     """
-    Updates paths inside attentions to the new naming scheme (local renaming)
+    Updates paths inside attention layers to the new naming scheme (local renaming).
+
+    Args:
+        old_list (list): List of old paths.
+        n_shave_prefix_segments (int): Number of prefix segments to shave.
+
+    Returns:
+        list: A list of dictionaries mapping old paths to new paths.
     """
     mapping = []
     for old_item in old_list:
@@ -460,7 +557,14 @@ def renew_attention_paths(old_list, n_shave_prefix_segments=0):
 
 def renew_resnet_paths(old_list, n_shave_prefix_segments=0):
     """
-    Updates paths inside resnets to the new naming scheme (local renaming)
+    Updates paths inside resnet layers to the new naming scheme (local renaming).
+
+    Args:
+        old_list (list): List of old paths.
+        n_shave_prefix_segments (int): Number of prefix segments to shave.
+
+    Returns:
+        list: A list of dictionaries mapping old paths to new paths.
     """
     mapping = []
     for old_item in old_list:

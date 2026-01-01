@@ -1,4 +1,5 @@
 import random
+from typing import Any
 import torch
 import logging
 
@@ -8,7 +9,18 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def prepare_scheduler_for_custom_training(noise_scheduler, device):
+def prepare_scheduler_for_custom_training(noise_scheduler: Any, device: torch.device) -> None:
+    """
+    Precalculates SNR (Signal-to-Noise Ratio) for the noise scheduler and attaches it.
+
+    This function computes the SNR for all timesteps based on the scheduler's
+    alphas_cumprod and attaches it as `all_snr` to the scheduler object.
+    This is often used for loss weighting or specific training strategies.
+
+    Args:
+        noise_scheduler: The noise scheduler instance (e.g., DDPMScheduler).
+        device (torch.device): The device to move the calculated SNR tensor to.
+    """
     if hasattr(noise_scheduler, "all_snr"):
         return
 
@@ -23,6 +35,18 @@ def prepare_scheduler_for_custom_training(noise_scheduler, device):
 
 
 def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler):
+    """
+    Adjusts the noise scheduler's betas to enforce zero terminal SNR.
+
+    See: https://arxiv.org/abs/2305.08891
+
+    This modifies the scheduler in-place to ensure that the signal-to-noise ratio
+    at the final timestep is effectively zero, which can improve training stability
+    and performance for certain diffusion models.
+
+    Args:
+        noise_scheduler: The noise scheduler instance to modify.
+    """
     # fix beta: zero terminal SNR
     logger.info(f"fix noise scheduler betas: https://arxiv.org/abs/2305.08891")
 
@@ -62,6 +86,20 @@ def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler):
 
 # https://wandb.ai/johnowhitaker/multires_noise/reports/Multi-Resolution-Noise-for-Diffusion-Model-Training--VmlldzozNjYyOTU2
 def pyramid_noise_like(noise, device, iterations=6, discount=0.4) -> torch.FloatTensor:
+    """
+    Generates multi-resolution (pyramid) noise.
+
+    See: https://wandb.ai/johnowhitaker/multires_noise/reports/Multi-Resolution-Noise-for-Diffusion-Model-Training--VmlldzozNjYyOTU2
+
+    Args:
+        noise (torch.FloatTensor): The base noise tensor.
+        device (torch.device): The device for the generated noise.
+        iterations (int, optional): Number of resolution layers. Defaults to 6.
+        discount (float, optional): Discount factor for higher resolution noise. Defaults to 0.4.
+
+    Returns:
+        torch.FloatTensor: The noise tensor augmented with multi-resolution noise, scaled to unit variance.
+    """
     b, c, w, h = noise.shape  # EDIT: w and h get over-written, rename for a different variant!
     u = torch.nn.Upsample(size=(w, h), mode="bilinear").to(device)
     for i in range(iterations):
@@ -75,6 +113,20 @@ def pyramid_noise_like(noise, device, iterations=6, discount=0.4) -> torch.Float
 
 # https://www.crosslabs.org//blog/diffusion-with-offset-noise
 def apply_noise_offset(latents, noise, noise_offset, adaptive_noise_scale) -> torch.FloatTensor:
+    """
+    Applies offset noise to the input noise tensor.
+
+    See: https://www.crosslabs.org//blog/diffusion-with-offset-noise
+
+    Args:
+        latents (torch.FloatTensor): The latents tensor, used for shape and adaptive scaling.
+        noise (torch.FloatTensor): The input noise tensor to be modified.
+        noise_offset (float or None): The magnitude of the noise offset.
+        adaptive_noise_scale (float or None): If provided, scales the offset based on latent mean.
+
+    Returns:
+        torch.FloatTensor: The modified noise tensor with offset applied.
+    """
     if noise_offset is None:
         return noise
     if adaptive_noise_scale is not None:

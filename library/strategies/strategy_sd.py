@@ -15,9 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 class SdTokenizeStrategy(TokenizeStrategy):
+    """
+    Tokenize strategy for SD1.5 and SD2.0.
+    """
     def __init__(self, v2: bool, max_length: Optional[int], tokenizer_cache_dir: Optional[str] = None) -> None:
         """
-        max_length does not include <BOS> and <EOS> (None, 75, 150, 225)
+        Args:
+            v2: Whether to use v2 tokenizer
+            max_length: Max length of tokens. max_length does not include <BOS> and <EOS> (None, 75, 150, 225)
+            tokenizer_cache_dir: Directory to cache the tokenizer
         """
         logger.info(f"Using {'v2' if v2 else 'v1'} tokenizer")
         if v2:
@@ -33,10 +39,28 @@ class SdTokenizeStrategy(TokenizeStrategy):
             self.max_length = max_length + 2
 
     def tokenize(self, text: Union[str, List[str]]) -> List[torch.Tensor]:
+        """
+        Tokenize text.
+
+        Args:
+            text: Text or list of text to tokenize
+
+        Returns:
+            List of token tensors
+        """
         text = [text] if isinstance(text, str) else text
         return [torch.stack([self._get_input_ids(self.tokenizer, t, self.max_length) for t in text], dim=0)]
 
     def tokenize_with_weights(self, text: str | List[str]) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+        """
+        Tokenize text with weights.
+
+        Args:
+            text: Text or list of text to tokenize
+
+        Returns:
+            Tuple of lists of token tensors and weight tensors
+        """
         text = [text] if isinstance(text, str) else text
         tokens_list = []
         weights_list = []
@@ -48,12 +72,26 @@ class SdTokenizeStrategy(TokenizeStrategy):
 
 
 class SdTextEncodingStrategy(TextEncodingStrategy):
+    """
+    Text encoding strategy for SD1.5 and SD2.0.
+    """
     def __init__(self, clip_skip: Optional[int] = None) -> None:
         self.clip_skip = clip_skip
 
     def encode_tokens(
             self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor]
     ) -> List[torch.Tensor]:
+        """
+        Encode tokens.
+
+        Args:
+            tokenize_strategy: TokenizeStrategy instance
+            models: List of models
+            tokens: List of token tensors
+
+        Returns:
+            List of encoded tensors
+        """
         text_encoder = models[0]
         tokens = tokens[0]
         sd_tokenize_strategy = tokenize_strategy
@@ -79,23 +117,23 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         if max_token_length != model_max_length:
             v1 = sd_tokenize_strategy.tokenizer.pad_token_id == sd_tokenize_strategy.tokenizer.eos_token_id  # TODO: Unresolved attribute reference 'tokenizer' for class 'TokenizeStrategy'
             if not v1:
-                # v2: <BOS>...<EOS> <PAD> ... の三連を <BOS>...<EOS> <PAD> ... へ戻す　正直この実装でいいのかわからん
+                # v2: Restore the triplet of <BOS>...<EOS> <PAD> ... to <BOS>...<EOS> <PAD> ...
                 states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
                 for i in range(1, max_token_length, model_max_length):
-                    chunk = encoder_hidden_states[:, i: i + model_max_length - 2]  # <BOS> の後から 最後の前まで
+                    chunk = encoder_hidden_states[:, i: i + model_max_length - 2]  # From after <BOS> to before the last
                     if i > 0:
                         for j in range(len(chunk)):
                             if tokens[j, 1] == sd_tokenize_strategy.tokenizer.eos_token:  # TODO: Unresolved attribute reference 'tokenizer' for class 'TokenizeStrategy'
-                                # 空、つまり <BOS> <EOS> <PAD> ...のパターン
-                                chunk[j, 0] = chunk[j, 1]  # 次の <PAD> の値をコピーする
-                    states_list.append(chunk)  # <BOS> の後から <EOS> の前まで
-                states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # <EOS> か <PAD> のどちらか
+                                # Empty, i.e., <BOS> <EOS> <PAD> ... pattern
+                                chunk[j, 0] = chunk[j, 1]  # Copy the value of the next <PAD>
+                    states_list.append(chunk)  # From after <BOS> to before <EOS>
+                states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # Either <EOS> or <PAD>
                 encoder_hidden_states = torch.cat(states_list, dim=1)
             else:
-                # v1: <BOS>...<EOS> の三連を <BOS>...<EOS> へ戻す
+                # v1: Restore the triplet of <BOS>...<EOS> to <BOS>...<EOS>
                 states_list = [encoder_hidden_states[:, 0].unsqueeze(1)]  # <BOS>
                 for i in range(1, max_token_length, model_max_length):
-                    states_list.append(encoder_hidden_states[:, i: i + model_max_length - 2])  # <BOS> の後から <EOS> の前まで
+                    states_list.append(encoder_hidden_states[:, i: i + model_max_length - 2])  # From after <BOS> to before <EOS>
                 states_list.append(encoder_hidden_states[:, -1].unsqueeze(1))  # <EOS>
                 encoder_hidden_states = torch.cat(states_list, dim=1)
 
@@ -128,6 +166,9 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
 
 
 class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
+    """
+    Latents caching strategy for SD1.5, SD2.0 and SDXL.
+    """
     # sd and sdxl share the same strategy. we can make them separate, but the difference is only the suffix.  ## TODO: what does this mean and why is it here?
     # and we keep the old npz for the backward compatibility.
 
@@ -147,6 +188,16 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
         return self.suffix
 
     def get_latents_npz_path(self, absolute_path: str, image_size: Tuple[int, int]) -> str:
+        """
+        Get path to the cached latents npz file.
+
+        Args:
+            absolute_path: Absolute path to the image file
+            image_size: Image size (width, height)
+
+        Returns:
+            Path to the npz file
+        """
         # support old .npz
         old_npz_file = os.path.splitext(absolute_path)[0] + SdSdxlLatentsCachingStrategy.SD_OLD_LATENTS_NPZ_SUFFIX
         if os.path.exists(old_npz_file):
@@ -155,11 +206,34 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
 
     def is_disk_cached_latents_expected(self, bucket_reso: Tuple[int, int], npz_path: str, flip_aug: bool,
                                         alpha_mask: bool):
+        """
+        Check if the latents are cached in disk.
+
+        Args:
+            bucket_reso: Resolution of the bucket
+            npz_path: Path to the npz file
+            flip_aug: Whether to flip images
+            alpha_mask: Whether to apply alpha mask
+
+        Returns:
+            True if cached, False otherwise
+        """
         return self._default_is_disk_cached_latents_expected(8, bucket_reso, npz_path, flip_aug, alpha_mask)
 
     # TODO remove circular dependency for ImageInfo
     def cache_batch_latents(self, vae, image_infos: List, flip_aug: bool, alpha_mask: bool, random_crop: bool,
                             random_crop_padding_percent: float = 0.05):
+        """
+        Cache batch latents.
+
+        Args:
+            vae: VAE model
+            image_infos: List of ImageInfo
+            flip_aug: Whether to flip images
+            alpha_mask: Whether to apply alpha mask
+            random_crop: Whether to random crop images
+            random_crop_padding_percent: Padding percent for random crop
+        """
         encode_by_vae = lambda img_tensor: vae.encode(img_tensor).latent_dist.sample()
         vae_device = vae.device
         vae_dtype = vae.dtype
