@@ -16,7 +16,15 @@ logger = logging.getLogger(__name__)
 
 
 class SdxlTokenizeStrategy(TokenizeStrategy):
+    """
+    Tokenize strategy for SDXL.
+    """
     def __init__(self, max_length: Optional[int], tokenizer_cache_dir: Optional[str] = None) -> None:
+        """
+        Args:
+            max_length: Max length of tokens
+            tokenizer_cache_dir: Directory to cache the tokenizer
+        """
         self.tokenizer1 = self._load_tokenizer(CLIPTokenizer, TOKENIZER1_PATH, tokenizer_cache_dir=tokenizer_cache_dir)
         self.tokenizer2 = self._load_tokenizer(CLIPTokenizer, TOKENIZER2_PATH, tokenizer_cache_dir=tokenizer_cache_dir)
         self.tokenizer2.pad_token_id = 0  # use 0 as pad token for tokenizer2
@@ -27,6 +35,15 @@ class SdxlTokenizeStrategy(TokenizeStrategy):
             self.max_length = max_length + 2
 
     def tokenize(self, text: Union[str, List[str]]) -> List[torch.Tensor]:
+        """
+        Tokenize text.
+
+        Args:
+            text: Text or list of text to tokenize
+
+        Returns:
+            List of token tensors
+        """
         text = [text] if isinstance(text, str) else text
         return (
             torch.stack([self._get_input_ids(self.tokenizer1, t, self.max_length) for t in text], dim=0),
@@ -34,6 +51,15 @@ class SdxlTokenizeStrategy(TokenizeStrategy):
         )  # TODO: Expected type 'list[Tensor]', got 'tuple[Tensor, Tensor]' instead
 
     def tokenize_with_weights(self, text: str | List[str]) -> Tuple[List[torch.Tensor]]:
+        """
+        Tokenize text with weights.
+
+        Args:
+            text: Text or list of text to tokenize
+
+        Returns:
+            Tuple of lists of token tensors and weight tensors
+        """
         text = [text] if isinstance(text, str) else text
         tokens1_list, tokens2_list = [], []
         weights1_list, weights2_list = [], []
@@ -51,6 +77,9 @@ class SdxlTokenizeStrategy(TokenizeStrategy):
 
 
 class SdxlTextEncodingStrategy(TextEncodingStrategy):
+    """
+    Text encoding strategy for SDXL.
+    """
     def __init__(self) -> None:
         pass
 
@@ -58,7 +87,9 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
             self, text_encoder: CLIPTextModelWithProjection, last_hidden_state: torch.Tensor, input_ids: torch.Tensor,
             eos_token_id: int
     ):
-        """Delegate to shared utility function."""
+        """
+        Delegate to shared utility function.
+        """
         return pool_workaround(text_encoder, last_hidden_state, input_ids, eos_token_id)
 
     def _get_hidden_states_sdxl(
@@ -109,11 +140,16 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
             self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor]
     ) -> List[torch.Tensor]:
         """
+        Encode tokens.
+
         Args:
             tokenize_strategy: TokenizeStrategy
             models: List of models, [text_encoder1, text_encoder2, unwrapped text_encoder2 (optional)].
                 If text_encoder2 is wrapped by accelerate, unwrapped_text_encoder2 is required
             tokens: List of tokens, for text_encoder1 and text_encoder2
+
+        Returns:
+            List of encoded tensors
         """
         if len(models) == 2:
             text_encoder1, text_encoder2 = models
@@ -136,6 +172,18 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
             tokens_list: List[torch.Tensor],
             weights_list: List[torch.Tensor],
     ) -> List[torch.Tensor]:
+        """
+        Encode tokens with weights.
+
+        Args:
+            tokenize_strategy: TokenizeStrategy
+            models: List of models
+            tokens_list: List of token tensors
+            weights_list: List of weight tensors
+
+        Returns:
+            List of encoded tensors
+        """
         hidden_states1, hidden_states2, pool2 = self.encode_tokens(tokenize_strategy, models, tokens_list)
 
         weights_list = [weights.to(hidden_states1.device) for weights in weights_list]
@@ -158,6 +206,9 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
 
 
 class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
+    """
+    Text encoder outputs caching strategy for SDXL.
+    """
     SDXL_TEXT_ENCODER_OUTPUTS_NPZ_SUFFIX = "_te_outputs.npz"
 
     def __init__(
@@ -171,10 +222,28 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
         super().__init__(cache_to_disk, batch_size, skip_disk_cache_validity_check, is_partial, is_weighted)
 
     def get_outputs_npz_path(self, image_abs_path: str) -> str:
+        """
+        Get path to the cached text encoder outputs npz file.
+
+        Args:
+            image_abs_path: Absolute path to the image file
+
+        Returns:
+            Path to the npz file
+        """
         return os.path.splitext(image_abs_path)[
             0] + SdxlTextEncoderOutputsCachingStrategy.SDXL_TEXT_ENCODER_OUTPUTS_NPZ_SUFFIX
 
     def is_disk_cached_outputs_expected(self, npz_path: str):
+        """
+        Check if the text encoder outputs are cached in disk.
+
+        Args:
+            npz_path: Path to the npz file
+
+        Returns:
+            True if cached, False otherwise
+        """
         if not self.cache_to_disk:
             return False
         if not os.path.exists(npz_path):
@@ -193,6 +262,15 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
         return True
 
     def load_outputs_npz(self, npz_path: str) -> List[np.ndarray]:
+        """
+        Load text encoder outputs from npz file.
+
+        Args:
+            npz_path: Path to the npz file
+
+        Returns:
+            List of text encoder outputs
+        """
         data = np.load(npz_path)
         hidden_state1 = data["hidden_state1"]
         hidden_state2 = data["hidden_state2"]
@@ -203,6 +281,15 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
             self, tokenize_strategy: TokenizeStrategy, models: List[Any], text_encoding_strategy: TextEncodingStrategy,
             infos: List
     ):
+        """
+        Cache batch outputs.
+
+        Args:
+            tokenize_strategy: TokenizeStrategy
+            models: List of TextModel
+            text_encoding_strategy: TextEncodingStrategy
+            infos: List of ImageInfo
+        """
         sdxl_text_encoding_strategy = text_encoding_strategy  # TODO: type ok?
         captions = [info.caption for info in infos]
 

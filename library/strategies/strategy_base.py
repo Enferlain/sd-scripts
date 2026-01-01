@@ -37,6 +37,18 @@ class TokenizeStrategy:
             self, model_class: Any, model_id: str, subfolder: Optional[str] = None,
             tokenizer_cache_dir: Optional[str] = None
     ) -> Any:
+        """
+        Load tokenizer from cache or download it.
+
+        Args:
+            model_class: Tokenizer class (e.g. CLIPTokenizer)
+            model_id: Model ID (e.g. "openai/clip-vit-large-patch14")
+            subfolder: Subfolder in the model repo (e.g. "tokenizer")
+            tokenizer_cache_dir: Directory to cache the tokenizer
+
+        Returns:
+            Tokenizer instance
+        """
         tokenizer = None
         if tokenizer_cache_dir:
             local_tokenizer_path = os.path.join(tokenizer_cache_dir, model_id.replace("/", "_"))
@@ -54,11 +66,27 @@ class TokenizeStrategy:
         return tokenizer
 
     def tokenize(self, text: Union[str, List[str]]) -> List[torch.Tensor]:
+        """
+        Tokenize text.
+
+        Args:
+            text: Text or list of text to tokenize
+
+        Returns:
+            List of token tensors
+        """
         raise NotImplementedError
 
     def tokenize_with_weights(self, text: Union[str, List[str]]) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         """
-        returns: [tokens1, tokens2, ...], [weights1, weights2, ...]
+        Tokenize text with weights.
+
+        Args:
+            text: Text or list of text to tokenize
+
+        Returns:
+            Tuple of lists of token tensors and weight tensors
+            ([tokens1, tokens2, ...], [weights1, weights2, ...])
         """
         raise NotImplementedError
 
@@ -66,7 +94,15 @@ class TokenizeStrategy:
             self, tokenizer: CLIPTokenizer, text: str, max_length: Optional[int] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        max_length includes starting and ending tokens.
+        Get weighted input ids.
+
+        Args:
+            tokenizer: Tokenizer instance
+            text: Text to tokenize
+            max_length: Max length of tokens (including starting and ending tokens)
+
+        Returns:
+            Tuple of token tensor and weight tensor
         """
 
         def parse_prompt_attention(text):
@@ -205,8 +241,16 @@ class TokenizeStrategy:
             self, tokenizer: CLIPTokenizer, text: str, max_length: Optional[int] = None, weighted: bool = False
     ) -> torch.Tensor:
         """
-        for SD1.5/2.0/SDXL
-        TODO support batch input
+        Get input ids for SD1.5/2.0/SDXL.
+
+        Args:
+            tokenizer: Tokenizer instance
+            text: Text to tokenize
+            max_length: Max length of tokens
+            weighted: Whether to return weights
+
+        Returns:
+            Input ids tensor (or tuple of input ids and weights if weighted=True)
         """
         if max_length is None:
             max_length = tokenizer.model_max_length - 2
@@ -222,8 +266,8 @@ class TokenizeStrategy:
             iids_list = []
             if tokenizer.pad_token_id == tokenizer.eos_token_id:
                 # v1
-                # 77以上の時は "<BOS> .... <EOS> <EOS> <EOS>" でトータル227とかになっているので、"<BOS>...<EOS>"の三連に変換する
-                # 1111氏のやつは , で区切る、とかしているようだが　とりあえず単純に
+                # When 77 or more, it becomes "<BOS> .... <EOS> <EOS> <EOS>" totaling 227 etc., so convert it to "<BOS>...<EOS>" triplet
+                # 1111 seems to split by comma, but for now simply
                 for i in range(1, max_length - tokenizer.model_max_length + 2,
                                tokenizer.model_max_length - 2):  # (1, 152, 75)
                     ids_chunk = (
@@ -235,7 +279,7 @@ class TokenizeStrategy:
                     iids_list.append(ids_chunk)
             else:
                 # v2 or SDXL
-                # 77以上の時は "<BOS> .... <EOS> <PAD> <PAD>..." でトータル227とかになっているので、"<BOS>...<EOS> <PAD> <PAD> ..."の三連に変換する
+                # When 77 or more, it becomes "<BOS> .... <EOS> <PAD> <PAD>..." totaling 227 etc., so convert it to "<BOS>...<EOS> <PAD> <PAD> ..." triplet
                 for i in range(1, max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2):
                     ids_chunk = (
                         input_ids[0].unsqueeze(0),  # BOS
@@ -244,11 +288,11 @@ class TokenizeStrategy:
                     )  # PAD or EOS
                     ids_chunk = torch.cat(ids_chunk)
 
-                    # 末尾が <EOS> <PAD> または <PAD> <PAD> の場合は、何もしなくてよい
-                    # 末尾が x <PAD/EOS> の場合は末尾を <EOS> に変える（x <EOS> なら結果的に変化なし）
+                    # If the end is <EOS> <PAD> or <PAD> <PAD>, nothing needs to be done
+                    # If the end is x <PAD/EOS>, change the end to <EOS> (if x <EOS>, no change result)
                     if ids_chunk[-2] != tokenizer.eos_token_id and ids_chunk[-2] != tokenizer.pad_token_id:
                         ids_chunk[-1] = tokenizer.eos_token_id
-                    # 先頭が <BOS> <PAD> ... の場合は <BOS> <EOS> <PAD> ... に変える
+                    # If the beginning is <BOS> <PAD> ..., change it to <BOS> <EOS> <PAD> ...
                     if ids_chunk[1] == tokenizer.pad_token_id:
                         ids_chunk[1] = tokenizer.eos_token_id
 
@@ -271,6 +315,9 @@ class TokenizeStrategy:
 
 
 class TextEncodingStrategy:
+    """
+    Base class for text encoding strategy.
+    """
     _strategy = None  # strategy instance: actual strategy class
 
     @classmethod
@@ -288,8 +335,14 @@ class TextEncodingStrategy:
     ) -> List[torch.Tensor]:
         """
         Encode tokens into embeddings and outputs.
-        :param tokens: list of token tensors for each TextModel
-        :return: list of output embeddings for each architecture
+
+        Args:
+            tokenize_strategy: TokenizeStrategy
+            models: List of TextModel
+            tokens: List of token tensors for each TextModel
+
+        Returns:
+            List of output embeddings for each architecture
         """
         raise NotImplementedError
 
@@ -298,15 +351,24 @@ class TextEncodingStrategy:
             weights: List[torch.Tensor]
     ) -> List[torch.Tensor]:
         """
-        Encode tokens into embeddings and outputs.
-        :param tokens: list of token tensors for each TextModel
-        :param weights: list of weight tensors for each TextModel
-        :return: list of output embeddings for each architecture
+        Encode tokens into embeddings and outputs with weights.
+
+        Args:
+            tokenize_strategy: TokenizeStrategy
+            models: List of TextModel
+            tokens: List of token tensors for each TextModel
+            weights: List of weight tensors for each TextModel
+
+        Returns:
+            List of output embeddings for each architecture
         """
         raise NotImplementedError
 
 
 class TextEncoderOutputsCachingStrategy:
+    """
+    Base class for text encoder outputs caching strategy.
+    """
     _strategy = None  # strategy instance: actual strategy class
 
     def __init__(
@@ -350,22 +412,61 @@ class TextEncoderOutputsCachingStrategy:
         return self._is_weighted
 
     def get_outputs_npz_path(self, image_abs_path: str) -> str:
+        """
+        Get path to the cached text encoder outputs npz file.
+
+        Args:
+            image_abs_path: Absolute path to the image file
+
+        Returns:
+            Path to the npz file
+        """
         raise NotImplementedError
 
     def load_outputs_npz(self, npz_path: str) -> List[np.ndarray]:
+        """
+        Load text encoder outputs from npz file.
+
+        Args:
+            npz_path: Path to the npz file
+
+        Returns:
+            List of text encoder outputs
+        """
         raise NotImplementedError
 
     def is_disk_cached_outputs_expected(self, npz_path: str) -> bool:
+        """
+        Check if the text encoder outputs are cached in disk.
+
+        Args:
+            npz_path: Path to the npz file
+
+        Returns:
+            True if cached, False otherwise
+        """
         raise NotImplementedError
 
     def cache_batch_outputs(
             self, tokenize_strategy: TokenizeStrategy, models: List[Any], text_encoding_strategy: TextEncodingStrategy,
             batch: List
     ):
+        """
+        Cache batch outputs.
+
+        Args:
+            tokenize_strategy: TokenizeStrategy
+            models: List of TextModel
+            text_encoding_strategy: TextEncodingStrategy
+            batch: Batch of data
+        """
         raise NotImplementedError
 
 
 class LatentsCachingStrategy:
+    """
+    Base class for latents caching strategy.
+    """
     # TODO commonize utillity functions to this class, such as npz handling etc.
 
     _strategy = None  # strategy instance: actual strategy class
@@ -395,23 +496,69 @@ class LatentsCachingStrategy:
 
     @property
     def cache_suffix(self):
+        """
+        Get the suffix for the cache file.
+        """
         raise NotImplementedError
 
     def get_image_size_from_disk_cache_path(self, absolute_path: str, npz_path: str) -> Tuple[
         Optional[int], Optional[int]]:
+        """
+        Get image size from disk cache path.
+
+        Args:
+            absolute_path: Absolute path to the image file
+            npz_path: Path to the npz file
+
+        Returns:
+            Width and height
+        """
         w, h = os.path.splitext(npz_path)[0].split("_")[-2].split("x")
         return int(w), int(h)
 
     def get_latents_npz_path(self, absolute_path: str, image_size: Tuple[int, int]) -> str:
+        """
+        Get path to the cached latents npz file.
+
+        Args:
+            absolute_path: Absolute path to the image file
+            image_size: Image size (width, height)
+
+        Returns:
+            Path to the npz file
+        """
         raise NotImplementedError
 
     def is_disk_cached_latents_expected(
             self, bucket_reso: Tuple[int, int], npz_path: str, flip_aug: bool, alpha_mask: bool
     ) -> bool:
+        """
+        Check if the latents are cached in disk.
+
+        Args:
+            bucket_reso: Resolution of the bucket
+            npz_path: Path to the npz file
+            flip_aug: Whether to flip images
+            alpha_mask: Whether to apply alpha mask
+
+        Returns:
+            True if cached, False otherwise
+        """
         raise NotImplementedError
 
     def cache_batch_latents(self, model: Any, batch: List, flip_aug: bool, alpha_mask: bool, random_crop: bool,
                             random_crop_padding_percent: float = 0.05):
+        """
+        Cache batch latents.
+
+        Args:
+            model: Model instance (VAE)
+            batch: Batch of data
+            flip_aug: Whether to flip images
+            alpha_mask: Whether to apply alpha mask
+            random_crop: Whether to random crop images
+            random_crop_padding_percent: Padding percent for random crop
+        """
         raise NotImplementedError
 
     def _default_is_disk_cached_latents_expected(
