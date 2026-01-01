@@ -2,6 +2,7 @@
 # SDXL Full Model Fine-tuning
 
 defaults:
+  - sdxl_finetune_schema
   - optimizer: default
   - data: default
   - model: default

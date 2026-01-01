@@ -61,7 +61,7 @@ class TestConfigInstantiation:
         """Test PeftConfig instantiation with defaults."""
         config = PeftConfig()
         assert config is not None
-        assert hasattr(config, 'module')
+        assert hasattr(config, 'adapter_module')
         assert hasattr(config, 'adapter_rank')
         assert hasattr(config, 'adapter_alpha')
         
@@ -156,7 +156,7 @@ class TestConfigDefaults:
         config = PeftConfig()
         assert config.adapter_rank is None  # None by default
         assert config.adapter_alpha == 1.0
-        assert config.module is None  # None by default
+        assert config.adapter_module is None  # None by default
         
     def test_bucketing_config_defaults(self):
         """Test BucketingConfig default values."""

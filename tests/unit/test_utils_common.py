@@ -115,8 +115,8 @@ def test_validate_interpolation_fn():
 
 def test_swap_weight_devices_mock():
     # Mock logic that typically requires CUDA
-    # We patch 'library.utils.torch_utils.torch' since swap_weight_devices is in torch_utils
-    with patch("library.utils.torch_utils.torch") as mock_torch:
+    # We patch 'library.performance.custom_offloading_utils.torch' since swap_weight_devices is there
+    with patch("library.performance.custom_offloading_utils.torch") as mock_torch:
         m1 = MagicMock()
         m2 = MagicMock()
         

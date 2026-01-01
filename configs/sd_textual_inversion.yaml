@@ -2,6 +2,7 @@
 # SD 1.5/2.0 Textual Inversion Training
 
 defaults:
+  - sd_textual_inversion_schema
   - optimizer: default
   - data: default
   - model: default
@@ -11,6 +12,7 @@ defaults:
   - loss: default
   - timestep: default
   - validation: default
+  - _self_
 
 # Textual Inversion specific settings
 textual_inversion:

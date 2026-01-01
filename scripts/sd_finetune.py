@@ -491,6 +491,11 @@ def train(cfg: SDFineTuneConfig):
         logger.info("model saved.")
 
 
+# Register Hydra schema for this script
+from library.config.schemas import register_sd_finetune
+register_sd_finetune()
+
+
 @hydra.main(config_path="../configs", config_name="sd_finetune", version_base=None)
 def main(cfg: SDFineTuneConfig):
     prepare_config(cfg)

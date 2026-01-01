@@ -965,6 +965,10 @@ class TextualInversionTrainer:
 
             logger.info("model saved.")
 
+# Register Hydra schema for this script
+from library.config.schemas import register_sd_textual_inversion
+register_sd_textual_inversion()
+
 
 @hydra.main(
     config_path="../configs", config_name="sd_textual_inversion", version_base=None

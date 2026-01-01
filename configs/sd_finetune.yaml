@@ -5,6 +5,7 @@
 # Set a text encoder learning rate to enable TE training (LR-based control per Schema 1)
 
 defaults:
+  - sd_finetune_schema
   - optimizer: default
   - data: default
   - model: default

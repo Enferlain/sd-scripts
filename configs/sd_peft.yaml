@@ -1,4 +1,5 @@
 defaults:
+  - sd_peft_schema
   - optimizer: default
   - data: default
   - model: default

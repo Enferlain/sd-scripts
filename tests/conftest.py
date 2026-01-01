@@ -25,6 +25,10 @@ from hydra import initialize_config_dir, compose
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import OmegaConf
 
+# Register all Hydra schemas (needed for tests that use compose())
+from library.config.schemas import register_all
+register_all()
+
 # Import all config dataclasses for fixture creation
 from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig
 from library.config.dataclasses.data import DataConfig, SourceConfig, PreprocessingConfig, BucketingConfig

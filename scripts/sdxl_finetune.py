@@ -107,6 +107,11 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
     append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
 
 
+# Register Hydra schema for this script
+from library.config.schemas import register_sdxl_finetune
+register_sdxl_finetune()
+
+
 @hydra.main(version_base=None, config_path="../configs", config_name="sdxl_finetune")
 def train(cfg: SDXLFineTuneConfig):
     prepare_config(cfg)

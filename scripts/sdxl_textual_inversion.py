@@ -129,6 +129,11 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         return [emb_l, emb_g]
 
 
+# Register Hydra schema for this script
+from library.config.schemas import register_sdxl_textual_inversion
+register_sdxl_textual_inversion()
+
+
 @hydra.main(config_path="../configs", config_name="sdxl_textual_inversion", version_base=None)
 def main(config: SDXLTextualInversionConfig):
     prepare_config(config)

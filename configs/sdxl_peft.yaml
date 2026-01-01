@@ -2,6 +2,7 @@
 # SDXL PEFT/LoRA Training
 
 defaults:
+  - sdxl_peft_schema
   - optimizer: default
   - data: default
   - model: default

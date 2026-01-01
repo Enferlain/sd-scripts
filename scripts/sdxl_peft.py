@@ -986,9 +986,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     logger.info("model saved.")
 
 
-# Register the structure config with Hydra
-cs = ConfigStore.instance()
-cs.store(name="sdxl_peft", node=SDXLPeftConfig)
+# Register Hydra schema for this script
+from library.config.schemas import register_sdxl_peft
+register_sdxl_peft()
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="sdxl_peft")

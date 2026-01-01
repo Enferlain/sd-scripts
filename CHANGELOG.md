@@ -17,11 +17,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Moved `is_safetensors()` from `library/models/model_util.py` → `library/utils/safetensors_utils.py`
 
 - **Docstring Additions**
+
   - `model_prep.py`: Added docstrings with Args to most library scripts, utils folder remaining
   - `sdxl_model_util.py`: Added docstrings to 10+ functions including `get_timestep_embedding()`, `load_models_from_sdxl_checkpoint()`, `save_sdxl_checkpoint()`, conversion utilities
   - `training_metadata.py`: Added Args documentation to `create_training_metadata()`
   - `model_prep.py`: Fixed type hint for `padding_mode` parameter using `Literal["zeros", "reflect", "replicate", "circular"]`
-  - All other library modules got docstrings now, and some small fixes like typos 
+  - All other library modules got docstrings now, and some small fixes like typos
+
+- **Hydra 1.2 Schema Migration**
+  - Created `library/config/schemas.py` with explicit `register_*()` functions (no side effects on import)
+  - All 6 training scripts now call their specific register function before `@hydra.main`
+  - Tests call `register_all()` to register all schemas at once
+  - All 6 YAML configs updated to include `*_schema` in defaults list
+  - Added `_self_` to `sd_textual_inversion.yaml` and `sdxl_textual_inversion.yaml` to fix composition order warning
+
+### Fixed
+
+- **Stale Config Fields**
+
+  - Removed `max_data_loader_n_workers` and `persistent_data_loader_workers` from `performance/default.yaml` (moved to `data.loader` previously)
+
+- **Test Fixes**
+  - Updated `test_adapter_config_*` tests to use correct field name `adapter_module` instead of old `module`
+  - Updated `test_swap_weight_devices_mock` mock path to `library.performance.custom_offloading_utils.torch`
+  - Updated `test_sdxl_train_dry_run` config paths to new schema (`model.*`, `data.source.*`, `output.saving.*`)
 
 ## [2025-12-31]
 

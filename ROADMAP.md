@@ -133,25 +133,15 @@ Scripts (contain training loops):     Library Modules:
   - These would serve as defaults that per-prompt overrides (in sample_prompts file) could supersede
   - Also: Add YAML support for `sample_prompts` for consistency with the rest of the config system (currently only .txt, .toml, .json)
 
-- [ ] **Hydra 1.2 Schema Migration** - Fix deprecation warning about automatic schema matching:
+- [x] **Hydra 1.2 Schema Migration** - Fixed deprecation warning about automatic schema matching:
 
-  - Current: Hydra guesses dataclass schema from field names (deprecated in 1.1, removed in 1.2)
-  - Fix: Add `_target_` to each root YAML config file:
+  - Created `library/config/schemas.py` to centralize ConfigStore schema registration
+  - Renamed schemas to `*_schema` suffix (e.g., `sd_peft_schema`) to avoid name collision with YAML files
+  - Updated `sd_peft.yaml` and `sdxl_peft.yaml` to include schema in defaults list
+  - Fixed stale `max_data_loader_n_workers` field in `performance/default.yaml`
 
-    ```yaml
-    # configs/sdxl_peft.yaml
-    _target_: library.config.dataclasses.sdxl_peft.SDXLPeftConfig
-
-    defaults:
-      - optimizer: default
-      # ... rest unchanged
-    ```
-
-  - Files to update: `sd_peft.yaml`, `sdxl_peft.yaml`, `sd_finetune.yaml`, `sdxl_finetune.yaml`, `sd_textual_inversion.yaml`, `sdxl_textual_inversion.yaml`
-  - Dataclasses stay unchanged - this is just a wiring fix
-
-- [ ] **Supporwt for feather** - https://github.com/SuriyaaMM/feather
-  - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support.
+- [ ] **Support for feather** - https://github.com/SuriyaaMM/feather
+  - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support. Currently only considered for inference
 
 ---
 

@@ -36,13 +36,13 @@ def test_sdxl_train_dry_run():
         "--num_processes=1",
         script_path,
         "+training.dry_run=True",
-        f"sd_models.pretrained_model_name_or_path={model_path}",
-        f"dataset.train_data_dir={data_dir}",
-        "dataset.resolution=[256,256]",
+        f"model.pretrained_model_name_or_path={model_path}",
+        f"data.source.train_data_dir={data_dir}",
+        "data.preprocessing.resolution=[256,256]",
         "training.max_train_steps=1",
-            f"saving.output_dir={output_dir}",
-            "saving.output_name=dry_run_test",
-        "dataset.reg_data_dir=tests/assets/reg"
+        f"output.saving.output_dir={output_dir}",
+        "output.saving.output_name=dry_run_test",
+        f"data.source.reg_data_dir=tests/assets/reg"
     ]
 
     env = os.environ.copy()

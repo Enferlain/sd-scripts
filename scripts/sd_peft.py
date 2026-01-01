@@ -987,9 +987,9 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     logger.info("model saved.")
 
 
-# Register the structure config with Hydra
-cs = ConfigStore.instance()
-cs.store(name="sd_peft", node=SDPeftConfig)
+# Register Hydra schema for this script
+from library.config.schemas import register_sd_peft
+register_sd_peft()
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="sd_peft")
