@@ -77,7 +77,15 @@ def calculate_sha256(filename: str) -> str:
 
 
 def model_hash(filename):
-    """Old model hash used by stable-diffusion-webui (partial file, first 8 chars)"""
+    """
+    Old model hash used by stable-diffusion-webui (partial file, first 8 chars).
+
+    Args:
+        filename: Path to the model file.
+
+    Returns:
+        The partial SHA256 hash or error string.
+    """
     try:
         with open(filename, "rb") as file:
             m = hashlib.sha256()
@@ -94,8 +102,17 @@ def model_hash(filename):
 
 
 def precalculate_safetensors_hashes(tensors, metadata):
-    """Precalculate the model hashes needed by sd-webui-additional-adapters to
-    save time on indexing the model later."""
+    """
+    Precalculate the model hashes needed by sd-webui-additional-adapters to
+    save time on indexing the model later.
+
+    Args:
+        tensors: The model tensors.
+        metadata: The model metadata.
+
+    Returns:
+        tuple: (model_hash, legacy_hash)
+    """
 
     # Because writing user metadata to the file can change the result of
     # sd_models.model_hash(), only retain the training metadata for purposes of
@@ -111,7 +128,15 @@ def precalculate_safetensors_hashes(tensors, metadata):
 
 
 def addnet_hash_legacy(b):
-    """Old model hash used by sd-webui-additional-adapters for .safetensors format files"""
+    """
+    Old model hash used by sd-webui-additional-adapters for .safetensors format files.
+
+    Args:
+        b: Bytes buffer of the safetensors file.
+
+    Returns:
+        The partial SHA256 hash.
+    """
     m = hashlib.sha256()
 
     b.seek(0x100000)
@@ -120,7 +145,15 @@ def addnet_hash_legacy(b):
 
 
 def addnet_hash_safetensors(b):
-    """New model hash used by sd-webui-additional-adapters for .safetensors format files"""
+    """
+    New model hash used by sd-webui-additional-adapters for .safetensors format files.
+
+    Args:
+        b: Bytes buffer of the safetensors file.
+
+    Returns:
+        The SHA256 hash.
+    """
     hash_sha256 = hashlib.sha256()
     blksize = 1024 * 1024
 
@@ -137,6 +170,12 @@ def addnet_hash_safetensors(b):
 
 
 def get_git_revision_hash() -> str:
+    """
+    Retrieves the current git revision hash.
+
+    Returns:
+        str: The current git revision hash or "(unknown)" if unavailable.
+    """
     try:
         return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=os.path.dirname(__file__)).decode(
             "ascii").strip()

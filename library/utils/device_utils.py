@@ -28,6 +28,9 @@ except Exception:
 
 
 def clean_memory():
+    """
+    Cleans up memory by collecting garbage and emptying cache on available devices (CUDA, XPU, MPS).
+    """
     gc.collect()
     if HAS_CUDA:
         torch.cuda.empty_cache()
@@ -38,8 +41,13 @@ def clean_memory():
 
 
 def clean_memory_on_device(device: Optional[Union[str, torch.device]]):
-    r"""
-    Clean memory on the specified device, will be called from training scripts.
+    """
+    Cleans memory on the specified device.
+
+    This function collects garbage and empties the cache for the specified device type.
+
+    Args:
+        device: The device to clean memory on. Can be a string or torch.device.
     """
     gc.collect()
     if device is None:
@@ -56,6 +64,12 @@ def clean_memory_on_device(device: Optional[Union[str, torch.device]]):
 
 
 def synchronize_device(device: Optional[Union[str, torch.device]]):
+    """
+    Synchronizes the specified device.
+
+    Args:
+        device: The device to synchronize. Can be a string or torch.device.
+    """
     if device is None:
         return
     if isinstance(device, str):
@@ -70,8 +84,16 @@ def synchronize_device(device: Optional[Union[str, torch.device]]):
 
 @functools.lru_cache(maxsize=None)
 def get_preferred_device() -> torch.device:
-    r"""
-    Do not call this function from training scripts. Use accelerator.device instead.
+    """
+    Gets the preferred device for the current environment.
+
+    Checks for CUDA, XPU, and MPS availability in that order. Returns CPU if none are available.
+
+    Note:
+        Do not call this function from training scripts. Use accelerator.device instead.
+
+    Returns:
+        torch.device: The preferred device.
     """
     if HAS_CUDA:
         device = torch.device("cuda")
