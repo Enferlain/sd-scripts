@@ -1,16 +1,15 @@
 ---
 name: Typos
 
-on: 
+on:
   push:
     branches:
-      - main
-      - dev
+      - dev-upstream
+      - hydra-config-refactor
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
+    branches:
+      - dev-upstream
+      - hydra-config-refactor
 
 # CKV2_GHA_1: "Ensure top-level permissions are not set to write-all"
 permissions: read-all
