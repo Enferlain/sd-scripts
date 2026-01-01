@@ -14,10 +14,8 @@ try:
     from ramtorch.helpers import replace_linear_with_ramtorch
 except ImportError:
     replace_linear_with_ramtorch = None
-    pass
 except AssertionError:
     replace_linear_with_ramtorch = None
-    pass
 
 import library.models.sd_model_util
 from library.strategies import strategy_sd, strategy_base
@@ -63,6 +61,8 @@ class SdPeftStrategy(PeftTrainingStrategy):
         text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance.memory, weight_dtype, accelerator)
 
         if cfg.performance.memory.use_ramtorch:
+            if replace_linear_with_ramtorch is None:
+                raise ImportError("RamTorch is not available. Please install it or set use_ramtorch to False.")
             logger.info("Applying RamTorch to SD UNet, VAE, and Clip-L.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)

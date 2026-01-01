@@ -14,10 +14,8 @@ try:
     from ramtorch.helpers import replace_linear_with_ramtorch
 except ImportError:
     replace_linear_with_ramtorch = None
-    pass
 except AssertionError:
     replace_linear_with_ramtorch = None
-    pass
 
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
 from library.strategies.peft_strategy_base import PeftTrainingStrategy
@@ -91,6 +89,8 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         self.ckpt_info = ckpt_info
         
         if cfg.performance.memory.use_ramtorch:
+            if replace_linear_with_ramtorch is None:
+                raise ImportError("RamTorch is not available. Please install it or set use_ramtorch to False.")
             logger.info("Applying RamTorch to SDXL UNet, VAE, and Text Encoders.")
             if isinstance(unet, torch.nn.Module):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
