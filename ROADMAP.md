@@ -141,7 +141,12 @@ Scripts (contain training loops):     Library Modules:
   - Fixed stale `max_data_loader_n_workers` field in `performance/default.yaml`
 
 - [ ] **Support for feather** - https://github.com/SuriyaaMM/feather
+
   - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support. Currently only considered for inference
+
+- [x] **Evaluate ty for type checking** - https://docs.astral.sh/ty/
+  - ty is a fast Python type checker from Astral (ruff authors)
+  - Could replace/complement basedpyright for CI type checking
 
 ---
 

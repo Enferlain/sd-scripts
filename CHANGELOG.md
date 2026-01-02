@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dependabot Configuration**
+
+  - Added `pip` package ecosystem to `.github/dependabot.yml` for Python dependency monitoring
+  - Both GitHub Actions and pip dependencies now checked monthly
+
+- **ty Type Checker Configuration**
+  - Added `[tool.ty]` configuration to `pyproject.toml`
+  - Set Python version to 3.10 with explicit venv path for type resolution
+  - Excluded legacy directories (`feather`, `tools`, `data_processing`, `upscaling`)
+  - Downgraded noisy rules to warnings for gradual adoption
+
 ## [2026-01-02]
 
 ### Added
