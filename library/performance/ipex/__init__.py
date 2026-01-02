@@ -3,7 +3,7 @@ import sys
 import torch
 
 try:
-    import intel_extension_for_pytorch as ipex  # pylint: disable=import-error, unused-import
+    import intel_extension_for_pytorch as ipex  # pylint: disable=import-error, unused-import # noqa: F401
 
     has_ipex = True
 except Exception:

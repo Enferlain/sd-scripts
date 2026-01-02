@@ -1,15 +1,15 @@
 from dataclasses import dataclass, field
-from .model import ModelConfig
-from .training import TrainingConfig
-from .optimizer import OptimizerConfig
-from .data import DataConfig
-from .peft import PeftConfig
-from .sdxl import SDXLConfig
-from .performance import PerformanceConfig
-from .loss import LossConfig
-from .timestep import TimestepConfig
-from .output import OutputConfig
-from .validation import ValidationConfig
+from library.config.dataclasses.model import ModelConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.config.dataclasses.optimizer import OptimizerConfig
+from library.config.dataclasses.data import DataConfig
+from library.config.dataclasses.peft import PeftConfig
+from library.config.dataclasses.sdxl import SDXLConfig
+from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.loss import LossConfig
+from library.config.dataclasses.timestep import TimestepConfig
+from library.config.dataclasses.output import OutputConfig
+from library.config.dataclasses.validation import ValidationConfig
 
 
 @dataclass
