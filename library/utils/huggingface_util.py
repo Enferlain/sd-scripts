@@ -12,7 +12,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def exists_repo(repo_id: str, repo_type: str, revision: str = "main", token: str = None):
+def exists_repo(repo_id: str, repo_type: str, revision: str = "main", token: str | None = None):
     """
     Checks if a HuggingFace repository exists.
 
@@ -31,19 +31,19 @@ def exists_repo(repo_id: str, repo_type: str, revision: str = "main", token: str
     try:
         api.repo_info(repo_id=repo_id, revision=revision, repo_type=repo_type)
         return True
-    except:
+    except Exception:
         return False
 
 
 def upload(
-        hf_config: HuggingFaceConfig,
-        src: str | Path | bytes | BinaryIO,
-        dest_suffix: str = "",
-        force_sync_upload: bool = False,
+    hf_config: HuggingFaceConfig,
+    src: str | Path | bytes | BinaryIO,
+    dest_suffix: str = "",
+    force_sync_upload: bool = False,
 ):
     """
     Upload a file or folder to HuggingFace Hub.
-    
+
     Args:
         hf_config: HuggingFaceConfig dataclass with repo settings
         src: Source file/folder path or file object
@@ -61,19 +61,23 @@ def upload(
             api.create_repo(repo_id=repo_id, repo_type=repo_type, private=private)
         except Exception as e:
             logger.error("===========================================")
-            logger.error(f"failed to create HuggingFace repo / HuggingFaceのリポジトリの作成に失敗しました : {e}")
+            logger.error(f"failed to create HuggingFace repo: {e}")
             logger.error("===========================================")
 
-    is_folder = (type(src) == str and os.path.isdir(src)) or (isinstance(src, Path) and src.is_dir())
+    is_folder = (isinstance(src, str) and os.path.isdir(src)) or (isinstance(src, Path) and src.is_dir())
 
     def uploader():
+        if not repo_id or not repo_type:
+            logger.error("Missing repo_id or repo_type")
+            return
+        
         try:
-            if is_folder:
+            if (isinstance(src, str) and os.path.isdir(src)) or (isinstance(src, Path) and src.is_dir()):
                 api.upload_folder(
-                    repo_id=repo_id,
+                    repo_id=repo_id,  # ty now knows this is str, not str | None
                     repo_type=repo_type,
                     folder_path=src,
-                    path_in_repo=path_in_repo,
+                    path_in_repo=path_in_repo,  # path_in_repo can still be None, which HF API accepts
                 )
             else:
                 api.upload_file(
@@ -84,7 +88,7 @@ def upload(
                 )
         except Exception as e:
             logger.error("===========================================")
-            logger.error(f"failed to upload to HuggingFace / HuggingFaceへのアップロードに失敗しました : {e}")
+            logger.error(f"failed to upload to HuggingFace: {e}")
             logger.error("===========================================")
 
     if hf_config.async_upload and not force_sync_upload:
@@ -94,11 +98,11 @@ def upload(
 
 
 def list_dir(
-        repo_id: str,
-        subfolder: str,
-        repo_type: str,
-        revision: str = "main",
-        token: str = None,
+    repo_id: str,
+    subfolder: str,
+    repo_type: str,
+    revision: str = "main",
+    token: str | None = None,
 ):
     """
     Lists files in a subdirectory of a HuggingFace repository.
@@ -117,5 +121,5 @@ def list_dir(
         token=token,
     )
     repo_info = api.repo_info(repo_id=repo_id, revision=revision, repo_type=repo_type)
-    file_list = [file for file in repo_info.siblings if file.rfilename.startswith(subfolder)]
+    file_list = [file for file in (repo_info.siblings or []) if file.rfilename.startswith(subfolder)]
     return file_list

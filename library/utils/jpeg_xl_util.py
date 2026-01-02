@@ -31,7 +31,7 @@ class JXLBitstream:
     A stream of bits with methods for easy handling.
     """
 
-    def __init__(self, file, offset: int = 0, offsets: list[list[int]] = None):
+    def __init__(self, file, offset: int = 0, offsets: list[list[int]] | None = None):
         """
         Initialize the JXLBitstream.
 
@@ -69,8 +69,8 @@ class JXLBitstream:
             if self.offsets:
                 # Check availability in current box
                 if self.current_box_index >= len(self.offsets):
-                     # No more boxes, but needed bytes? Stop reading.
-                     break
+                    # No more boxes, but needed bytes? Stop reading.
+                    break
 
                 box_len = self.offsets[self.current_box_index][2]
                 remain_in_box = box_len - self.bytes_read_from_current_box
@@ -101,7 +101,7 @@ class JXLBitstream:
         return bits
 
 
-def decode_codestream(file, offset: int = 0, offsets: list[list[int]] = None) -> tuple[int, int]:
+def decode_codestream(file, offset: int = 0, offsets: list[list[int]] | None = None) -> tuple[int, int]:
     """
     Decodes the actual codestream.
     JXL codestream specification: http://www-internal/2022/18181-1
@@ -122,6 +122,7 @@ def decode_codestream(file, offset: int = 0, offsets: list[list[int]] = None) ->
     codestream.get_bits(16)
 
     # SizeHeader
+    height = 0  # Will be set below
     div8 = codestream.get_bits(1)
     if div8:
         height = 8 * (1 + codestream.get_bits(5))
@@ -136,6 +137,7 @@ def decode_codestream(file, offset: int = 0, offsets: list[list[int]] = None) ->
                 height = 1 + codestream.get_bits(18)
             case 3:
                 height = 1 + codestream.get_bits(30)
+    width = 0  # Will be set below
     ratio = codestream.get_bits(3)
     if div8 and not ratio:
         width = 8 * (1 + codestream.get_bits(5))
@@ -220,9 +222,7 @@ def decode_container(file) -> tuple[int, int]:
     if file.read(12) != bytes.fromhex("0000000C 4A584C20 0D0A870A"):
         raise ValueError("Invalid signature box.")
     # File Type box.
-    if file.read(20) != bytes.fromhex(
-            "00000014 66747970 6A786C20 00000000 6A786C20"
-    ):
+    if file.read(20) != bytes.fromhex("00000014 66747970 6A786C20 00000000 6A786C20"):
         raise ValueError("Invalid file type box.")
 
     offset = 0

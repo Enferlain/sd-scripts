@@ -2,13 +2,12 @@ import functools
 import gc
 import torch
 
+import contextlib
 
-try:
+with contextlib.suppress(Exception):
     # intel gpu support for pytorch older than 2.5
     # ipex is not needed after pytorch 2.5
-    import intel_extension_for_pytorch as ipex  # noqa
-except Exception:
-    pass
+    import intel_extension_for_pytorch as ipex  # noqa: F401
 
 try:
     HAS_CUDA = torch.cuda.is_available()

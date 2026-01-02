@@ -156,12 +156,7 @@ class ModelSpecMetadata:
         return metadata
 
     @classmethod
-    def from_config(
-            cls,
-            metadata_config: MetadataConfig,
-            timestamp: float | None = None,
-            **kwargs
-    ) -> "ModelSpecMetadata":
+    def from_config(cls, metadata_config: MetadataConfig, timestamp: float | None = None, **kwargs) -> "ModelSpecMetadata":
         """
         Create ModelSpecMetadata from MetadataConfig.
 
@@ -183,7 +178,7 @@ class ModelSpecMetadata:
             if config_field.startswith("metadata_"):
                 value = getattr(metadata_config, config_field)
                 if value is not None:
-                     # Remove metadata_ prefix
+                    # Remove metadata_ prefix
                     field_name = config_field[9:]  # len("metadata_") = 9
                     metadata_fields[field_name] = value
 
@@ -195,7 +190,7 @@ class ModelSpecMetadata:
             "license": metadata_fields.pop("license", None),
             "tags": metadata_fields.pop("tags", None),
         }
-        
+
         # Remove None values
         standard_fields = {k: v for k, v in standard_fields.items() if v is not None}
 
@@ -205,20 +200,19 @@ class ModelSpecMetadata:
             all_fields["additional_fields"] = metadata_fields
 
         if "date" not in all_fields:
-             # remove microsecond from time
+            # remove microsecond from time
             int_ts = int(timestamp)
             # time to iso-8601 compliant date
             all_fields["date"] = datetime.datetime.fromtimestamp(int_ts).isoformat()
-        
-        # Ensure we have the required fields or let the constructor/post-init handle defaults? 
+
+        # Ensure we have the required fields or let the constructor/post-init handle defaults?
         # The constructor expects architecture etc, which should be passed in kwargs.
-        
+
         return cls(**all_fields)
 
 
 def determine_architecture(
-        v2: bool, v_parameterization: bool, sdxl: bool, lora: bool, textual_inversion: bool,
-        model_config: dict[str, str] | None = None
+    v2: bool, v_parameterization: bool, sdxl: bool, lora: bool, textual_inversion: bool, model_config: dict[str, str] | None = None
 ) -> str:
     """
     Determine model architecture string from parameters.
@@ -278,11 +272,11 @@ def determine_architecture(
 
 
 def determine_implementation(
-        lora: bool,
-        textual_inversion: bool,
-        sdxl: bool,
-        model_config: dict[str, str] | None = None,
-        is_stable_diffusion_ckpt: bool | None = None,
+    lora: bool,
+    textual_inversion: bool,
+    sdxl: bool,
+    model_config: dict[str, str] | None = None,
+    is_stable_diffusion_ckpt: bool | None = None,
 ) -> str:
     """
     Determine implementation string from parameters.
@@ -374,11 +368,11 @@ def file_to_data_url(file_path: str) -> str:
 
 
 def determine_resolution(
-        reso: int | tuple[int, int] | None = None,
-        sdxl: bool = False,
-        model_config: dict[str, str] | None = None,
-        v2: bool = False,
-        v_parameterization: bool = False,
+    reso: int | tuple[int, int] | None = None,
+    sdxl: bool = False,
+    model_config: dict[str, str] | None = None,
+    v2: bool = False,
+    v_parameterization: bool = False,
 ) -> str:
     """
     Determine resolution string from parameters.
@@ -403,42 +397,43 @@ def determine_resolution(
         # Handle single int
         if isinstance(reso, int):
             reso = (reso, reso)
-        # Handle single-element tuple
-        if len(reso) == 1:
-            reso = (reso[0], reso[0])
+        # Handle single-element tuple - at this point reso is definitely a tuple
+        reso_tuple: tuple[int, int] = reso if len(reso) >= 2 else (reso[0], reso[0])  # type: ignore[arg-type]
     else:
         # Determine default resolution based on model type
         if sdxl or "sd3" in model_config or "flux" in model_config or "lumina" in model_config:
-            reso = (1024, 1024)
+            reso_tuple = (1024, 1024)
         elif v2 and v_parameterization:
-            reso = (768, 768)
+            reso_tuple = (768, 768)
         else:
-            reso = (512, 512)
+            reso_tuple = (512, 512)
 
-    return f"{reso[0]}x{reso[1]}"
+    return f"{reso_tuple[0]}x{reso_tuple[1]}"
+
 
 # removed load_bytes_in_safetensorsw, precalculate_safetensors_hashes and update_hash_sha256 as these were unused
 
+
 def build_metadata_dataclass(
-        state_dict: dict | None,
-        v2: bool,
-        v_parameterization: bool,
-        sdxl: bool,
-        lora: bool,
-        textual_inversion: bool,
-        timestamp: float,
-        title: str | None = None,
-        reso: int | tuple[int, int] | None = None,
-        is_stable_diffusion_ckpt: bool | None = None,
-        author: str | None = None,
-        description: str | None = None,
-        license: str | None = None,
-        tags: str | None = None,
-        merged_from: str | None = None,
-        timesteps: tuple[int, int] | None = None,
-        clip_skip: int | None = None,
-        model_config: dict | None = None,
-        optional_metadata: dict | None = None,
+    state_dict: dict | None,
+    v2: bool,
+    v_parameterization: bool,
+    sdxl: bool,
+    lora: bool,
+    textual_inversion: bool,
+    timestamp: float,
+    title: str | None = None,
+    reso: int | tuple[int, int] | None = None,
+    is_stable_diffusion_ckpt: bool | None = None,
+    author: str | None = None,
+    description: str | None = None,
+    license: str | None = None,
+    tags: str | None = None,
+    merged_from: str | None = None,
+    timesteps: tuple[int, int] | None = None,
+    clip_skip: int | None = None,
+    model_config: dict | None = None,
+    optional_metadata: dict | None = None,
 ) -> ModelSpecMetadata:
     """
     Build ModelSpec 1.0.1 compliant metadata dataclass.
@@ -505,7 +500,7 @@ def build_metadata_dataclass(
     # Handle timesteps
     timestep_range = None
     if timesteps is not None:
-        if isinstance(timesteps, str) or isinstance(timesteps, int):
+        if isinstance(timesteps, (str, int)):
             timesteps = (timesteps, timesteps)
         if len(timesteps) == 1:
             timesteps = (timesteps[0], timesteps[0])
@@ -563,25 +558,25 @@ def build_metadata_dataclass(
 
 
 def build_metadata(
-        state_dict: dict | None,
-        v2: bool,
-        v_parameterization: bool,
-        sdxl: bool,
-        lora: bool,
-        textual_inversion: bool,
-        timestamp: float,
-        title: str | None = None,
-        reso: int | tuple[int, int] | None = None,
-        is_stable_diffusion_ckpt: bool | None = None,
-        author: str | None = None,
-        description: str | None = None,
-        license: str | None = None,
-        tags: str | None = None,
-        merged_from: str | None = None,
-        timesteps: tuple[int, int] | None = None,
-        clip_skip: int | None = None,
-        model_config: dict | None = None,
-        optional_metadata: dict | None = None,
+    state_dict: dict | None,
+    v2: bool,
+    v_parameterization: bool,
+    sdxl: bool,
+    lora: bool,
+    textual_inversion: bool,
+    timestamp: float,
+    title: str | None = None,
+    reso: int | tuple[int, int] | None = None,
+    is_stable_diffusion_ckpt: bool | None = None,
+    author: str | None = None,
+    description: str | None = None,
+    license: str | None = None,
+    tags: str | None = None,
+    merged_from: str | None = None,
+    timesteps: tuple[int, int] | None = None,
+    clip_skip: int | None = None,
+    model_config: dict | None = None,
+    optional_metadata: dict | None = None,
 ) -> dict[str, str]:
     """
     Build ModelSpec 1.0.1 compliant metadata for safetensors models.
@@ -680,6 +675,7 @@ def build_merged_from(models: list[str]) -> str:
     Returns:
         str: A comma-separated string of model titles.
     """
+
     def get_title(model: str):
         metadata = load_metadata_from_safetensors(model)
         title = metadata.get(MODELSPEC_TITLE, None)
@@ -692,22 +688,22 @@ def build_merged_from(models: list[str]) -> str:
 
 
 def get_model_metadata_from_config(
-        state_dict: dict,
-        metadata_config: MetadataConfig,
-        is_sdxl: bool,
-        is_v2: bool,
-        v_parameterization: bool,
-        is_lora: bool,
-        is_textual_inversion: bool,
-        resolution: int | tuple[int, int] = (512, 512),
-        min_timestep: int | None = None,
-        max_timestep: int | None = None,
-        clip_skip: int | None = None,
-        is_stable_diffusion_ckpt: bool | None = None,
-        flux_type: str | None = None,
-        lumina_type: str | None = None,
-        hunyuan_image_type: str | None = None,
-        optional_metadata: dict[str, str] | None = None,
+    state_dict: dict,
+    metadata_config: MetadataConfig,
+    is_sdxl: bool,
+    is_v2: bool,
+    v_parameterization: bool,
+    is_lora: bool,
+    is_textual_inversion: bool,
+    resolution: int | tuple[int, int] = (512, 512),
+    min_timestep: int | None = None,
+    max_timestep: int | None = None,
+    clip_skip: int | None = None,
+    is_stable_diffusion_ckpt: bool | None = None,
+    flux_type: str | None = None,
+    lumina_type: str | None = None,
+    hunyuan_image_type: str | None = None,
+    optional_metadata: dict[str, str] | None = None,
 ) -> dict:
     """
     Get SAI Model Spec using configuration objects directly.
@@ -734,9 +730,9 @@ def get_model_metadata_from_config(
         dict: The metadata dictionary.
     """
     timestamp = time.time()
-    
+
     title = metadata_config.metadata_title
-    
+
     # Timesteps logic
     timesteps = None
     if min_timestep is not None or max_timestep is not None:
@@ -753,14 +749,10 @@ def get_model_metadata_from_config(
     if hunyuan_image_type is not None:
         model_config_dict["hunyuan_image"] = hunyuan_image_type
 
-    # determine_architecture etc need to be called
-    
-    architecture = determine_architecture(is_v2, v_parameterization, is_sdxl, is_lora, is_textual_inversion, model_config_dict)
-    
+    # determine_architecture etc are done inside build_metadata_dataclass
+
     if not is_lora and not is_textual_inversion and is_stable_diffusion_ckpt is None:
         is_stable_diffusion_ckpt = True
-
-    implementation = determine_implementation(is_lora, is_textual_inversion, is_sdxl, model_config_dict, is_stable_diffusion_ckpt)
 
     if title is None:
         if is_lora:
@@ -771,17 +763,15 @@ def get_model_metadata_from_config(
             title = "Checkpoint"
         title += f"@{timestamp}"
 
-    resolution_str = determine_resolution(resolution, is_sdxl, model_config_dict, is_v2, v_parameterization)
-
     # Helper to merge optional metadata and extract from config
     extracted_metadata = {}
     for config_field in asdict(metadata_config):
         if config_field.startswith("metadata_"):
-             value = getattr(metadata_config, config_field)
-             if value is not None:
+            value = getattr(metadata_config, config_field)
+            if value is not None:
                 field_name = config_field[9:]
                 if field_name not in ["title", "author", "description", "license", "tags"]:
-                     extracted_metadata[field_name] = value
+                    extracted_metadata[field_name] = value
 
     all_optional_metadata = {**extracted_metadata}
     if optional_metadata:
@@ -806,7 +796,7 @@ def get_model_metadata_from_config(
         timesteps=timesteps,
         clip_skip=clip_skip,
         model_config=model_config_dict,
-        optional_metadata=all_optional_metadata
+        optional_metadata=all_optional_metadata,
     )
-    
+
     return metadata_obj.to_metadata_dict()

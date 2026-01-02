@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Excluded legacy directories (`feather`, `tools`, `data_processing`, `upscaling`)
   - Downgraded noisy rules to warnings for gradual adoption
 
+- **absolufy-import ran**
+  - Fixed dataclasses, undid vendor aboslute imports
+
+### Fixed
+
+- **Fixed most ty and all ruff errors in library/utils**
+
 ## [2026-01-02]
 
 ### Added
