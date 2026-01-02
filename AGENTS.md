@@ -49,6 +49,21 @@ ruff check . --select F401  # unused imports
 python tools/fix_imports.py <file_path>
 ```
 
+## Type Checking
+
+```powershell
+# Run ty type checker (configured in pyproject.toml)
+uvx ty check
+
+# Check specific directory
+uvx ty check library/
+
+# Check single file
+uvx ty check library/training/checkpointing.py
+```
+
+**Note:** ty is configured to exclude legacy directories (`tools/`, `data_processing/`, `upscaling/`) and downgrade noisy rules to warnings for gradual adoption.
+
 ## Important Files
 
 | File                   | Purpose                                       |

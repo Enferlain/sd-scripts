@@ -11,7 +11,7 @@ from safetensors.torch import load_file
 from library.utils.device_utils import synchronize_device
 
 
-def mem_eff_save_file(tensors: dict[str, torch.Tensor], filename: str, metadata: dict[str, Any] = None):
+def mem_eff_save_file(tensors: dict[str, torch.Tensor], filename: str, metadata: dict[str, Any] | None = None):
     """
     Save a file using a memory-efficient method.
 
@@ -68,7 +68,7 @@ def mem_eff_save_file(tensors: dict[str, torch.Tensor], filename: str, metadata:
         f.write(struct.pack("<Q", len(hjson)))
         f.write(hjson)
 
-        for k, v in tensors.items():
+        for _, v in tensors.items():
             if v.numel() == 0:
                 continue
             if v.is_cuda:
@@ -99,7 +99,7 @@ class MemoryEfficientSafeOpen:
             filename (str): Path to the safetensors file to read.
         """
         self.filename = filename
-        self.file = open(filename, "rb")
+        self.file = open(filename, "rb")  # noqa: SIM115 - closed in __exit__
         self.header, self.header_size = self._read_header()
 
     def __enter__(self):
@@ -116,7 +116,7 @@ class MemoryEfficientSafeOpen:
         Returns:
             list: List of tensor names (excludes metadata).
         """
-        return [k for k in self.header.keys() if k != "__metadata__"]
+        return [k for k in self.header if k != "__metadata__"]
 
     def metadata(self) -> dict[str, str]:
         """Get metadata from the file.
@@ -289,7 +289,7 @@ class MemoryEfficientSafeOpen:
 
 
 def load_safetensors(
-        path: str, device: str | torch.device, disable_mmap: bool = False, dtype: torch.dtype | None = None
+    path: str, device: str | torch.device, disable_mmap: bool = False, dtype: torch.dtype | None = None
 ) -> dict[str, torch.Tensor]:
     """
     Load tensors from a safetensors file.
@@ -310,24 +310,23 @@ def load_safetensors(
         state_dict = {}
         device = torch.device(device) if device is not None else None
         with MemoryEfficientSafeOpen(path) as f:
-            for key in f.keys():
+            for key in f.keys():  # noqa: SIM118 - keys() method is part of the class API
                 state_dict[key] = f.get_tensor(key, device=device, dtype=dtype)
         synchronize_device(device)
         return state_dict
     else:
         try:
-            state_dict = load_file(path, device=device)
-        except:
+            state_dict = load_file(path, device=str(device))
+        except Exception:  # noqa: BLE001 - safetensors raises various errors
             state_dict = load_file(path)  # prevent device invalid Error
         if dtype is not None:
-            for key in state_dict.keys():
-                state_dict[key] = state_dict[key].to(dtype=dtype)
+            for key in state_dict:
+                state_dict[key] = state_dict[key].to(dtype=dtype)  # TODO: ram spike?
         return state_dict
 
 
 def load_split_weights(
-        file_path: str, device: str | torch.device = "cpu", disable_mmap: bool = False,
-        dtype: torch.dtype | None = None
+    file_path: str, device: str | torch.device = "cpu", disable_mmap: bool = False, dtype: torch.dtype | None = None
 ) -> dict[str, torch.Tensor]:
     """
     Load split weights from a file.
@@ -384,7 +383,7 @@ def find_key(safetensors_file: str, starts_with: str | None = None, ends_with: s
         Optional[str]: The first matching key or None if no key matches.
     """
     with MemoryEfficientSafeOpen(safetensors_file) as f:
-        for key in f.keys():
+        for key in f.keys():  # noqa: SIM118 - keys() method is part of the class API
             if (starts_with is None or key.startswith(starts_with)) and (ends_with is None or key.endswith(ends_with)):
                 return key
     return None

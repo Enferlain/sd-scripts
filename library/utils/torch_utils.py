@@ -5,12 +5,12 @@ import logging
 from accelerate.utils import set_seed
 from torch import nn as nn
 
-from ..config.dataclasses.training import TrainingConfig
-from ..config.dataclasses.performance import PrecisionConfig
-from ..config.dataclasses.output import SavingConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.config.dataclasses.performance import PrecisionConfig
+from library.config.dataclasses.output import SavingConfig
 
 from library.utils.common_utils import setup_logging
-from library.utils.device_utils import init_ipex   # TODO: is it needed?
+from library.utils.device_utils import init_ipex  # TODO: is it needed?
 
 init_ipex()  # TODO: is it needed?
 
@@ -18,7 +18,9 @@ setup_logging()  # TODO: is it needed?
 logger = logging.getLogger(__name__)
 
 
-def prepare_dtype(precision_config: PrecisionConfig, saving_config: SavingConfig | None = None) -> tuple[torch.dtype, torch.dtype | None]:  # TODO: why does this handle both saving and training related concerns?
+def prepare_dtype(
+    precision_config: PrecisionConfig, saving_config: SavingConfig | None = None
+) -> tuple[torch.dtype, torch.dtype | None]:  # TODO: why does this handle both saving and training related concerns?
     """
     Prepare weight and save dtypes based on configuration.
 
@@ -80,7 +82,7 @@ def set_seed_from_config(training_config: TrainingConfig):
         training_config (TrainingConfig): The training configuration object containing the seed.
     """
     if training_config.seed is None or training_config.seed == -1:
-        training_config.seed = random.randint(0, 2 ** 32)
+        training_config.seed = random.randint(0, 2**32)
         logger.info(f"As seed provided is -1, randomly selected {training_config.seed} as the seed for this training run.")
     set_seed(int(training_config.seed))
 
@@ -97,14 +99,10 @@ def match_mixed_precision(precision_config: PrecisionConfig, weight_dtype):
         Optional[torch.dtype]: The weight data type if full_fp16 or full_bf16 is enabled, otherwise None.
     """
     if precision_config.full_fp16:
-        assert (
-                weight_dtype == torch.float16
-        ), "full_fp16 requires mixed precision='fp16'"
+        assert weight_dtype == torch.float16, "full_fp16 requires mixed precision='fp16'"
         return weight_dtype
     elif precision_config.full_bf16:
-        assert (
-                weight_dtype == torch.bfloat16
-        ), "full_bf16 requires mixed precision='bf16'"
+        assert weight_dtype == torch.bfloat16, "full_bf16 requires mixed precision='bf16'"
         return weight_dtype
     else:
         return None
@@ -120,7 +118,7 @@ def weights_to_device(layer: nn.Module, device: torch.device):
     """
     for module in layer.modules():
         if hasattr(module, "weight") and module.weight is not None:
-            module.weight.data = module.weight.data.to(device, non_blocking=True)
+            module.weight.data = module.weight.data.to(device, non_blocking=True)  # type: ignore[union-attr]
 
 
 def weighs_to_device(layer: nn.Module, device: torch.device):
@@ -131,7 +129,7 @@ def weighs_to_device(layer: nn.Module, device: torch.device):
     weights_to_device(layer, device)
 
 
-def str_to_dtype(s: str | None, default_dtype: torch.dtype | None = None) -> torch.dtype:
+def str_to_dtype(s: str | None, default_dtype: torch.dtype | None = None) -> torch.dtype | None:
     """
     Convert a string to a torch.dtype
 
