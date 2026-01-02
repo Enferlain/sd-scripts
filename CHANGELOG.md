@@ -21,11 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Downgraded noisy rules to warnings for gradual adoption
 
 - **absolufy-import ran**
-  - Fixed dataclasses, undid vendor aboslute imports
+  - Changed dataclasses to absolute imports, undid vendor absolute imports
 
 ### Fixed
 
-- **Fixed most ty and all ruff errors in library/utils**
+- **Fixed ty and ruff errors**
+  - Library/utils
+  - Library/training/
+  -
 
 ## [2026-01-02]
 

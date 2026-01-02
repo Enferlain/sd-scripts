@@ -14,7 +14,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, loader_config: LoaderConfig = None):
+def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, loader_config: LoaderConfig | None = None):
     """
     Modify training configuration for DeepSpeed if enabled.
 
@@ -26,7 +26,7 @@ def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, loader_config: L
     """
     if not deepspeed_config.deepspeed:
         return
-    
+
     if loader_config is not None:
         loader_config.max_workers = 1
 
@@ -34,7 +34,7 @@ def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, loader_config: L
 def prepare_deepspeed_plugin(
     deepspeed_config: DeepSpeedConfig,
     precision_config: PrecisionConfig,
-    training_config: TrainingConfig = None,
+    training_config: TrainingConfig | None = None,
 ) -> DeepSpeedPlugin | None:
     """
     Creates and configures a DeepSpeedPlugin based on the provided configurations.
@@ -42,7 +42,7 @@ def prepare_deepspeed_plugin(
     This function handles DeepSpeed initialization, including mixed precision settings,
     gradient accumulation, and offloading parameters. It also attempts to build/load
     CPUAdam if optimizer offloading is configured.
-    
+
     Args:
         deepspeed_config (DeepSpeedConfig): DeepSpeed settings (zero_stage, offload options, etc.).
         precision_config (PrecisionConfig): Precision settings (mixed_precision, full_fp16).
@@ -69,7 +69,7 @@ def prepare_deepspeed_plugin(
     # Get values from training config if available, otherwise use defaults
     gradient_accumulation_steps = training_config.gradient_accumulation_steps if training_config else 1
     train_batch_size = training_config.train_batch_size if training_config else 1
-    
+
     # Get max_grad_norm - typically on optimizer config, default to 1.0
     # Note: This may need to be passed in separately
     max_grad_norm = 1.0
@@ -87,7 +87,7 @@ def prepare_deepspeed_plugin(
     )
     deepspeed_plugin.deepspeed_config["train_micro_batch_size_per_gpu"] = train_batch_size
     deepspeed_plugin.deepspeed_config["train_batch_size"] = (
-            train_batch_size * gradient_accumulation_steps * int(os.environ.get("WORLD_SIZE", 1))
+        train_batch_size * gradient_accumulation_steps * int(os.environ.get("WORLD_SIZE", 1))
     )
 
     deepspeed_plugin.set_mixed_precision(precision_config.mixed_precision)
@@ -116,7 +116,7 @@ def prepare_deepspeed_model(precision_config: PrecisionConfig, **models):
 
     This function creates a wrapper module that holds the provided models and handles
     forward passes with `torch.autocast` if mixed precision is enabled.
-    
+
     Args:
         precision_config (PrecisionConfig): Precision configuration containing mixed_precision setting.
         **models (dict): Keyword arguments where keys are model names and values are the model instances
@@ -142,9 +142,7 @@ def prepare_deepspeed_model(precision_config: PrecisionConfig, **models):
                 if wrap_model_forward_with_torch_autocast:
                     model = self.__wrap_model_with_torch_autocast(model)
 
-                assert isinstance(
-                    model, torch.nn.Module
-                ), f"model must be an instance of torch.nn.Module, but got {key} is {type(model)}"
+                assert isinstance(model, torch.nn.Module), f"model must be an instance of torch.nn.Module, but got {key} is {type(model)}"
 
                 self.models.update(torch.nn.ModuleDict({key: model}))
 
@@ -156,7 +154,6 @@ def prepare_deepspeed_model(precision_config: PrecisionConfig, **models):
             return model
 
         def __wrap_model_forward_with_torch_autocast(self, model):
-
             assert hasattr(model, "forward"), "model must have a forward method."
 
             forward_fn = model.forward

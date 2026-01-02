@@ -64,13 +64,11 @@ def upload(
             logger.error(f"failed to create HuggingFace repo: {e}")
             logger.error("===========================================")
 
-    is_folder = (isinstance(src, str) and os.path.isdir(src)) or (isinstance(src, Path) and src.is_dir())
-
     def uploader():
         if not repo_id or not repo_type:
             logger.error("Missing repo_id or repo_type")
             return
-        
+
         try:
             if (isinstance(src, str) and os.path.isdir(src)) or (isinstance(src, Path) and src.is_dir()):
                 api.upload_folder(
@@ -100,8 +98,8 @@ def upload(
 def list_dir(
     repo_id: str,
     subfolder: str,
-    repo_type: str,
-    revision: str = "main",
+    repo_type: str | None = None,
+    revision: str | None = "main",
     token: str | None = None,
 ):
     """

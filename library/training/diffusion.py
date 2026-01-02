@@ -29,19 +29,19 @@ def get_timesteps(min_timestep: int, max_timestep: int, b_size: int, device: tor
 
 
 def get_noise_noisy_latents_and_timesteps(
-        regularization_config: RegularizationConfig,
-        timestep_config: TimestepConfig,
-        training_config: TrainingConfig,
-        noise_scheduler,
-        latents: torch.FloatTensor,
-        la_sampler=None,
-        global_step=0,
-        fixed_timesteps=None,
-        is_train=True,
-        min_timestep_override=None,
-        max_timestep_override=None,
-        output_dtype: torch.dtype = None,
-) -> tuple[torch.FloatTensor, torch.FloatTensor, torch.IntTensor]:
+    regularization_config: RegularizationConfig,
+    timestep_config: TimestepConfig,
+    training_config: TrainingConfig,
+    noise_scheduler,
+    latents: torch.FloatTensor,
+    la_sampler=None,
+    global_step=0,
+    fixed_timesteps=None,
+    is_train=True,
+    min_timestep_override=None,
+    max_timestep_override=None,
+    output_dtype: torch.dtype | None = None,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Generate noise, noisy latents, and timesteps for diffusion training.
 
@@ -80,7 +80,11 @@ def get_noise_noisy_latents_and_timesteps(
     # --- 2. Generate Base Noise ---
     noise = torch.randn_like(latents, device=latents.device)
     if regularization_config.noise_offset and is_train:
-        noise_offset = torch.rand(1, device=latents.device) * regularization_config.noise_offset if regularization_config.noise_offset_random_strength else regularization_config.noise_offset
+        noise_offset = (
+            torch.rand(1, device=latents.device) * regularization_config.noise_offset
+            if regularization_config.noise_offset_random_strength
+            else regularization_config.noise_offset
+        )
         noise = apply_noise_offset(latents, noise, noise_offset, regularization_config.adaptive_noise_scale)
 
     b_size = latents.shape[0]
@@ -89,17 +93,13 @@ def get_noise_noisy_latents_and_timesteps(
     if fixed_timesteps is not None:
         timesteps = fixed_timesteps
     elif is_train and hasattr(noise_scheduler, "edm2_laplace_weights"):
-        timesteps = torch.multinomial(
-            noise_scheduler.edm2_laplace_weights,
-            num_samples=b_size,
-            replacement=True
-        ).to(dtype=torch.long, device=latents.device)
+        timesteps = torch.multinomial(noise_scheduler.edm2_laplace_weights, num_samples=b_size, replacement=True).to(
+            dtype=torch.long, device=latents.device
+        )
     elif is_train and hasattr(noise_scheduler, "laplace_weights"):
-        timesteps = torch.multinomial(
-            noise_scheduler.laplace_weights,
-            num_samples=b_size,
-            replacement=True
-        ).to(dtype=torch.long, device=latents.device)
+        timesteps = torch.multinomial(noise_scheduler.laplace_weights, num_samples=b_size, replacement=True).to(
+            dtype=torch.long, device=latents.device
+        )
     elif is_train and timestep_config.timestep_sampling == "mix_adaptive":  # Todo related to custom timesteps samplers
         # The main script is now responsible for creating the sampler.
         # We just check that it exists and use it.
@@ -128,8 +128,7 @@ def get_noise_noisy_latents_and_timesteps(
         logits_norm = logits_norm * timestep_config.sigmoid_scale
         timesteps = logits_norm.sigmoid()
         timesteps = (timesteps * shift) / (1 + (shift - 1) * timesteps)
-        timesteps = min_timestep + (timesteps * (max_timestep - min_timestep)).to(dtype=torch.long,
-                                                                                  device=latents.device)
+        timesteps = min_timestep + (timesteps * (max_timestep - min_timestep)).to(dtype=torch.long, device=latents.device)
     else:
         # Fallback to default (random) sampling
         timesteps = get_timesteps(min_timestep, max_timestep, b_size, latents.device)
@@ -141,7 +140,11 @@ def get_noise_noisy_latents_and_timesteps(
         )
 
     if regularization_config.ip_noise_gamma and is_train:
-        strength = torch.rand(1, device=latents.device) * regularization_config.ip_noise_gamma if regularization_config.ip_noise_gamma_random_strength else regularization_config.ip_noise_gamma
+        strength = (
+            torch.rand(1, device=latents.device) * regularization_config.ip_noise_gamma
+            if regularization_config.ip_noise_gamma_random_strength
+            else regularization_config.ip_noise_gamma
+        )
         noisy_latents = noise_scheduler.add_noise(latents, noise + strength * torch.randn_like(latents), timesteps)
     else:
         noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)

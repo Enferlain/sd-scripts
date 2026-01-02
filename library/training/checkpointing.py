@@ -32,7 +32,7 @@ from library.constants import (
     STEP_DIFFUSERS_DIR_NAME,
     EPOCH_STATE_NAME,
     STEP_STATE_NAME,
-    LAST_STATE_NAME
+    LAST_STATE_NAME,
 )
 from library.utils.common_utils import setup_logging
 
@@ -64,12 +64,12 @@ def load_metadata_from_safetensors(safetensors_file: str) -> dict[str, str]:
 
 
 def build_minimum_adapter_metadata(
-        v2: str | None,
-        base_model: str | None,
-        adapter_module: str,
-        adapter_rank: str,
-        adapter_alpha: str,
-        adapter_args: dict[str, Any] | None,
+    v2: str | None,
+    base_model: str | None,
+    adapter_module: str,
+    adapter_rank: str,
+    adapter_alpha: str,
+    adapter_args: dict[str, Any] | None,
 ) -> dict[str, str]:
     """
     Builds the minimum metadata required for an adapter (LoRA).
@@ -105,9 +105,7 @@ def build_minimum_adapter_metadata(
 
 
 def resume_from_local_or_hf_if_specified(
-    accelerator: "Accelerator",
-    saving_config: SavingConfig,
-    hf_config: HuggingFaceConfig | None = None
+    accelerator: "Accelerator", saving_config: SavingConfig, hf_config: HuggingFaceConfig | None = None
 ) -> None:
     """
     Resumes training from a local checkpoint or a Hugging Face repository if specified in the configuration.
@@ -160,8 +158,7 @@ def resume_from_local_or_hf_if_specified(
         return await asyncio.get_event_loop().run_in_executor(None, task)
 
     loop = asyncio.get_event_loop()
-    results = loop.run_until_complete(
-        asyncio.gather(*[download(filename=filename.rfilename) for filename in list_files]))
+    results = loop.run_until_complete(asyncio.gather(*[download(filename=filename.rfilename) for filename in list_files]))
     if len(results) == 0:
         raise ValueError(
             "No files found in the specified repo id/path/revision / 指定されたリポジトリID/パス/リビジョンにファイルが見つかりませんでした"
@@ -184,12 +181,7 @@ def default_if_none(value: Any, default: Any) -> Any:
     return default if value is None else value
 
 
-def get_epoch_ckpt_name(
-    saving_config: SavingConfig,
-    ext: str,
-    epoch_no: int,
-    output_name_append: str = ""
-) -> str:
+def get_epoch_ckpt_name(saving_config: SavingConfig, ext: str, epoch_no: int, output_name_append: str = "") -> str:
     """
     Generates the filename for an epoch-based checkpoint.
 
@@ -206,12 +198,7 @@ def get_epoch_ckpt_name(
     return EPOCH_FILE_NAME.format(model_name + output_name_append, epoch_no) + ext
 
 
-def get_step_ckpt_name(
-    saving_config: SavingConfig,
-    ext: str,
-    step_no: int,
-    output_name_append: str = ""
-) -> str:
+def get_step_ckpt_name(saving_config: SavingConfig, ext: str, step_no: int, output_name_append: str = "") -> str:
     """
     Generates the filename for a step-based checkpoint.
 
@@ -228,11 +215,7 @@ def get_step_ckpt_name(
     return STEP_FILE_NAME.format(model_name + output_name_append, step_no) + ext
 
 
-def get_last_ckpt_name(
-    saving_config: SavingConfig,
-    ext: str,
-    output_name_append: str = ""
-) -> str:
+def get_last_ckpt_name(saving_config: SavingConfig, ext: str, output_name_append: str = "") -> str:
     """
     Generates the filename for the last checkpoint.
 
@@ -281,6 +264,8 @@ def get_remove_step_no(saving_config: SavingConfig, step_no: int) -> int | None:
     """
     if saving_config.save_last_n_steps is None:
         return None
+    if saving_config.save_every_n_steps is None:
+        return None
 
     # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
     # save_every_n_steps=10, save_last_n_steps=30の場合、50step目には30step分残し、10step目を削除する
@@ -295,17 +280,17 @@ def get_remove_step_no(saving_config: SavingConfig, step_no: int) -> int | None:
 
 
 def save_sd_model_on_epoch_end_or_stepwise_common(
-        saving_config: SavingConfig,
-        on_epoch_end: bool,
-        accelerator: "Accelerator",
-        save_stable_diffusion_format: bool,
-        use_safetensors: bool,
-        epoch: int,
-        num_train_epochs: int,
-        global_step: int,
-        sd_saver: Callable[[str, int, int], None],
-        diffusers_saver: Callable[[str], None],
-        hf_config: HuggingFaceConfig | None = None,
+    saving_config: SavingConfig,
+    on_epoch_end: bool,
+    accelerator: "Accelerator",
+    save_stable_diffusion_format: bool,
+    use_safetensors: bool,
+    epoch: int,
+    num_train_epochs: int,
+    global_step: int,
+    sd_saver: Callable[[str, int, int], None],
+    diffusers_saver: Callable[[str], None],
+    hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Common logic for saving Stable Diffusion models at the end of an epoch or stepwise.
@@ -402,10 +387,7 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
 
 
 def save_and_remove_state_on_epoch_end(
-    saving_config: SavingConfig,
-    accelerator: "Accelerator",
-    epoch_no: int,
-    hf_config: HuggingFaceConfig | None = None
+    saving_config: SavingConfig, accelerator: "Accelerator", epoch_no: int, hf_config: HuggingFaceConfig | None = None
 ) -> None:
     """
     Saves the training state at the end of an epoch and removes old states if necessary.
@@ -428,7 +410,7 @@ def save_and_remove_state_on_epoch_end(
     # Upload state to HuggingFace if configured
     if hf_config is not None and hf_config.save_state_to_huggingface and hf_config.huggingface_repo_id is not None:
         huggingface_util.upload(hf_config, state_dir, "/" + EPOCH_STATE_NAME.format(model_name, epoch_no))
-    
+
     last_n_epochs = saving_config.save_last_n_epochs_state if saving_config.save_last_n_epochs_state else saving_config.save_last_n_epochs
     if last_n_epochs is not None:
         remove_epoch_no = epoch_no - saving_config.save_every_n_epochs * last_n_epochs
@@ -439,10 +421,7 @@ def save_and_remove_state_on_epoch_end(
 
 
 def save_and_remove_state_stepwise(
-    saving_config: SavingConfig,
-    accelerator: "Accelerator",
-    step_no: int,
-    hf_config: HuggingFaceConfig | None = None
+    saving_config: SavingConfig, accelerator: "Accelerator", step_no: int, hf_config: HuggingFaceConfig | None = None
 ) -> None:
     """
     Saves the training state at a specific step and removes old states if necessary.
@@ -470,7 +449,8 @@ def save_and_remove_state_stepwise(
     if last_n_steps is not None:
         # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
         remove_step_no = step_no - last_n_steps - 1
-        remove_step_no = remove_step_no - (remove_step_no % saving_config.save_every_n_steps)
+        if saving_config.save_every_n_steps is not None:
+            remove_step_no = remove_step_no - (remove_step_no % saving_config.save_every_n_steps)
 
         if remove_step_no > 0:
             state_dir_old = os.path.join(saving_config.output_dir, STEP_STATE_NAME.format(model_name, remove_step_no))
@@ -479,11 +459,7 @@ def save_and_remove_state_stepwise(
                 shutil.rmtree(state_dir_old)
 
 
-def save_state_on_train_end(
-    saving_config: SavingConfig,
-    accelerator: "Accelerator",
-    hf_config: HuggingFaceConfig | None = None
-) -> None:
+def save_state_on_train_end(saving_config: SavingConfig, accelerator: "Accelerator", hf_config: HuggingFaceConfig | None = None) -> None:
     """
     Saves the training state at the end of training.
 
@@ -510,14 +486,14 @@ def save_state_on_train_end(
 
 
 def save_sd_model_on_train_end_common(
-        saving_config: SavingConfig,
-        save_stable_diffusion_format: bool,
-        use_safetensors: bool,
-        epoch: int,
-        global_step: int,
-        sd_saver: Callable[[str, int, int], None],
-        diffusers_saver: Callable[[str], None],
-        hf_config: HuggingFaceConfig | None = None,
+    saving_config: SavingConfig,
+    save_stable_diffusion_format: bool,
+    use_safetensors: bool,
+    epoch: int,
+    global_step: int,
+    sd_saver: Callable[[str, int, int], None],
+    diffusers_saver: Callable[[str], None],
+    hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Common logic for saving Stable Diffusion models at the end of training.
@@ -558,13 +534,7 @@ def save_sd_model_on_train_end_common(
             huggingface_util.upload(hf_config, out_dir, "/" + model_name)
 
 
-def register_adapter_state_hooks(
-    accelerator: "Accelerator",
-    adapter,
-    cfg,
-    current_epoch,
-    current_step
-) -> Callable[[], int | None]:
+def register_adapter_state_hooks(accelerator: "Accelerator", adapter, cfg, current_epoch, current_step) -> Callable[[], int | None]:
     """
     Register save/load hooks for peft-only checkpointing.
 
@@ -599,8 +569,7 @@ def register_adapter_state_hooks(
         # save current epoch and step
         train_state_file = os.path.join(output_dir, "train_state.json")
         # +1 is needed because the state is saved before current_step is set from global_step
-        logger.info(
-            f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
+        logger.info(f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
         with open(train_state_file, "w", encoding="utf-8") as f:
             json.dump({"current_epoch": current_epoch.value, "current_step": current_step.value + 1}, f)
 

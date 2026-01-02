@@ -1,5 +1,6 @@
 import os
 
+import contextlib
 import json
 import toml
 import re
@@ -38,9 +39,9 @@ logger = logging.getLogger(__name__)
 
 
 def get_my_scheduler(
-        *,
-        sample_sampler: str,
-        v_parameterization: bool,
+    *,
+    sample_sampler: str,
+    v_parameterization: bool,
 ):
     """
     Returns a scheduler object based on the provided sampler name and parameterization settings.
@@ -216,9 +217,10 @@ def load_prompts(prompt_file: str) -> list[dict]:
     for i in range(len(prompts)):  # TODO: Local variable 'prompts' might be referenced before assignment
         prompt_dict = prompts[i]
         if isinstance(prompt_dict, str):
-
             prompt_dict = line_to_prompt_dict(prompt_dict)
-            prompts[i] = prompt_dict  # TODO: Unexpected type(s): (int, dict) Possible type(s): (SupportsIndex, str) (slice, Iterable[str]) (SupportsIndex, str) (slice, Iterable[str])
+            prompts[i] = (
+                prompt_dict  # TODO: Unexpected type(s): (int, dict) Possible type(s): (SupportsIndex, str) (slice, Iterable[str]) (SupportsIndex, str) (slice, Iterable[str])
+            )
         assert isinstance(prompt_dict, dict)
 
         # Adds an enumerator to the dict based on prompt position. Used later to name image files. Also cleanup of extra data in original prompt dict.
@@ -257,21 +259,21 @@ def sample_images_check(sampling_config: SamplingConfig, epoch: int | None, step
 
 
 def sample_images_common(
-        pipe_class,
-        accelerator: Accelerator,
-        sampling_config: SamplingConfig,
-        training_config: TrainingConfig,
-        saving_config: SavingConfig,
-        loss_config: LossConfig,
-        epoch: int | None,
-        steps: int,
-        device,
-        vae,
-        tokenizer,
-        text_encoder,
-        unet_wrapped,
-        prompt_replacement: tuple[str, str] | None = None,
-        controlnet=None,
+    pipe_class,
+    accelerator: Accelerator,
+    sampling_config: SamplingConfig,
+    training_config: TrainingConfig,
+    saving_config: SavingConfig,
+    loss_config: LossConfig,
+    epoch: int | None,
+    steps: int,
+    device,
+    vae,
+    tokenizer,
+    text_encoder,
+    unet_wrapped,
+    prompt_replacement: tuple[str, str] | None = None,
+    controlnet=None,
 ):
     """
     Common function for generating sample images during training.
@@ -374,33 +376,50 @@ def sample_images_common(
     # save random state to restore later
     rng_state = torch.get_rng_state()
     cuda_rng_state = None
-    try:
+    with contextlib.suppress(Exception):
         cuda_rng_state = torch.cuda.get_rng_state() if torch.cuda.is_available() else None
-    except Exception:
-        pass
 
     if distributed_state.num_processes <= 1:
         # If only one device is available, just use the original prompt list. We don't need to care about the distribution of prompts.
         with torch.no_grad():
             for prompt_dict in prompts:
                 sample_image_inference(
-                    accelerator, sampling_config, training_config, saving_config, loss_config, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
-                    controlnet=controlnet
+                    accelerator,
+                    sampling_config,
+                    training_config,
+                    saving_config,
+                    loss_config,
+                    pipeline,
+                    save_dir,
+                    prompt_dict,
+                    epoch,
+                    steps,
+                    prompt_replacement,
+                    controlnet=controlnet,
                 )
     else:
         # Creating list with N elements, where each element is a list of prompt_dicts, and N is the number of processes available (number of devices available)
         # prompt_dicts are assigned to lists based on order of processes, to attempt to time the image creation time to match enum order. Probably only works when steps and sampler are identical.
         per_process_prompts = []  # list of lists
         for i in range(distributed_state.num_processes):
-            per_process_prompts.append(prompts[i:: distributed_state.num_processes])
+            per_process_prompts.append(prompts[i :: distributed_state.num_processes])
 
-        with torch.no_grad():
-            with distributed_state.split_between_processes(per_process_prompts) as prompt_dict_lists:
-                for prompt_dict in prompt_dict_lists[0]:
-                    sample_image_inference(
-                        accelerator, sampling_config, training_config, saving_config, loss_config, pipeline, save_dir, prompt_dict, epoch, steps, prompt_replacement,
-                        controlnet=controlnet
-                    )
+        with torch.no_grad(), distributed_state.split_between_processes(per_process_prompts) as prompt_dict_lists:
+            for prompt_dict in prompt_dict_lists[0]:
+                sample_image_inference(
+                    accelerator,
+                    sampling_config,
+                    training_config,
+                    saving_config,
+                    loss_config,
+                    pipeline,
+                    save_dir,
+                    prompt_dict,
+                    epoch,
+                    steps,
+                    prompt_replacement,
+                    controlnet=controlnet,
+                )
 
     # clear pipeline and cache to reduce vram usage
     del pipeline
@@ -411,21 +430,22 @@ def sample_images_common(
     vae.to(org_vae_device)
 
     clean_memory_on_device(accelerator.device)
-    torch.cuda.synchronize() # <--- maybe helps between sample and train resumne
+    torch.cuda.synchronize()  # <--- maybe helps between sample and train resumne
+
 
 def sample_image_inference(
-        accelerator: Accelerator,
-        sampling_config: SamplingConfig,
-        training_config: TrainingConfig,
-        saving_config: SavingConfig,
-        loss_config: LossConfig,
-        pipeline: StableDiffusionLongPromptWeightingPipeline | SdxlStableDiffusionLongPromptWeightingPipeline,
-        save_dir: str,
-        prompt_dict: dict,
-        epoch: int | None,
-        steps: int,
-        prompt_replacement: tuple[str, str] | None,
-        controlnet=None,
+    accelerator: Accelerator,
+    sampling_config: SamplingConfig,
+    training_config: TrainingConfig,
+    saving_config: SavingConfig,
+    loss_config: LossConfig,
+    pipeline: StableDiffusionLongPromptWeightingPipeline | SdxlStableDiffusionLongPromptWeightingPipeline,
+    save_dir: str,
+    prompt_dict: dict,
+    epoch: int | None,
+    steps: int,
+    prompt_replacement: tuple[str, str] | None,
+    controlnet=None,
 ):
     """
     Performs the actual image inference for a single prompt.
@@ -516,7 +536,9 @@ def sample_image_inference(
     num_suffix = f"e{epoch:06d}" if epoch is not None else f"{steps:06d}"
     seed_suffix = "" if seed is None else f"_{seed}"
     i: int = prompt_dict["enum"]
-    img_filename = f"{'' if saving_config.output_name is None else saving_config.output_name + '_'}{num_suffix}_{i:02d}_{ts_str}{seed_suffix}.png"
+    img_filename = (
+        f"{'' if saving_config.output_name is None else saving_config.output_name + '_'}{num_suffix}_{i:02d}_{ts_str}{seed_suffix}.png"
+    )
     image.save(os.path.join(save_dir, img_filename))
 
     # send images to wandb if enabled
@@ -526,5 +548,6 @@ def sample_image_inference(
         import wandb
 
         # not to commit images to avoid inconsistency between training and logging steps
-        wandb_tracker.log({f"sample_{i}": wandb.Image(image, caption=prompt)},
-                          commit=False)  # positive prompt as a caption TODO: Parameter 'step' unfilled
+        wandb_tracker.log(
+            {f"sample_{i}": wandb.Image(image, caption=prompt)}, commit=False
+        )  # positive prompt as a caption TODO: Parameter 'step' unfilled

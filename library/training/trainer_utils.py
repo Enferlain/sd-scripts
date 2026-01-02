@@ -29,8 +29,8 @@ def prepare_accelerator(
     compilation_config: CompilationConfig,
     distributed_config: DistributedConfig,
     deepspeed_config: DeepSpeedConfig,
-    logging_config: LoggingConfig = None,
-    training_config: TrainingConfig = None,
+    logging_config: LoggingConfig | None = None,
+    training_config: TrainingConfig | None = None,
 ):
     """
     Prepare accelerator with optional deepspeed plugin.
@@ -62,16 +62,13 @@ def prepare_accelerator(
             log_with = None
     else:
         log_with = logging_config.log_with
-        if log_with in ["tensorboard", "all"]:
-            if logging_dir is None:
-                raise ValueError(
-                    "logging_dir is required when log_with is tensorboard / Tensorboardを使う場合、logging_dirを指定してください"
-                )
+        if log_with in ["tensorboard", "all"] and logging_dir is None:
+            raise ValueError("logging_dir is required when log_with is tensorboard / Tensorboardを使う場合、logging_dirを指定してください")
         if log_with in ["wandb", "all"]:
             try:
                 import wandb
             except ImportError:
-                raise ImportError("No wandb / wandb がインストールされていないようです")
+                raise ImportError("No wandb / wandb がインストールされていないようです") from None
             if logging_dir is not None:
                 os.makedirs(logging_dir, exist_ok=True)
                 os.environ["WANDB_DIR"] = logging_dir
@@ -81,7 +78,7 @@ def prepare_accelerator(
     # torch.compile options
     if compilation_config.torch_compile:
         dynamo_plugin = TorchDynamoPlugin(
-            backend="inductor",  # TODO: Expected type 'DynamoBackend', got 'str' instead
+            backend="inductor",  # type: ignore[arg-type] - accelerate accepts str at runtime
             mode="default",
             fullgraph=False,
             dynamic=True,
@@ -94,19 +91,16 @@ def prepare_accelerator(
     kwargs_handlers = [
         (
             DistributedDataParallelKwargs(
-                gradient_as_bucket_view=distributed_config.ddp_gradient_as_bucket_view,
-                static_graph=distributed_config.ddp_static_graph
+                gradient_as_bucket_view=distributed_config.ddp_gradient_as_bucket_view, static_graph=distributed_config.ddp_static_graph
             )
             if distributed_config.ddp_gradient_as_bucket_view or distributed_config.ddp_static_graph
             else None
         ),
     ]
     kwargs_handlers = [i for i in kwargs_handlers if i is not None]
-    
+
     # Deepspeed plugin
-    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(
-        deepspeed_config, precision_config, training_config
-    )
+    deepspeed_plugin = deepspeed_utils.prepare_deepspeed_plugin(deepspeed_config, precision_config, training_config)
 
     # Gradient accumulation steps
     gradient_accumulation_steps = training_config.gradient_accumulation_steps if training_config else 1
@@ -176,9 +170,7 @@ def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):
     append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
 
 
-def determine_grad_sync_context(
-    precision_config: PrecisionConfig | None, accelerator, sync_gradients, training_model, edm2_model=None
-):
+def determine_grad_sync_context(precision_config: PrecisionConfig | None, accelerator, sync_gradients, training_model, edm2_model=None):
     """
     Determine the gradient synchronization context.
 
@@ -246,9 +238,9 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
             initial_step = steps_from_state
 
     if initial_step > 0:
-        assert (
-                cfg.training.max_train_steps > initial_step
-        ), f"max_train_steps should be greater than initial step / max_train_stepsは初期ステップより大きい必要があります: {cfg.training.max_train_steps} vs {initial_step}"
+        assert cfg.training.max_train_steps > initial_step, (
+            f"max_train_steps should be greater than initial step / max_train_stepsは初期ステップより大きい必要があります: {cfg.training.max_train_steps} vs {initial_step}"
+        )
 
     epoch_to_start = 0
     if initial_step > 0:
@@ -267,6 +259,5 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
             # if not, only epoch no is skipped for informative purpose
             epoch_to_start = initial_step // math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
             initial_step = 0  # do not skip
-
 
     return initial_step, epoch_to_start

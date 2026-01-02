@@ -1,9 +1,9 @@
 # Output configuration with nested subcategories
 saving:
-  output_dir: null
+  output_dir: outputs
   output_name: null
   save_precision: null
-  save_every_n_epochs: null
+  save_every_n_epochs: 1
   save_every_n_steps: null
   save_n_epoch_ratio: null
   save_last_n_epochs: null

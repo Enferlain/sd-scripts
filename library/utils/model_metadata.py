@@ -688,7 +688,7 @@ def build_merged_from(models: list[str]) -> str:
 
 
 def get_model_metadata_from_config(
-    state_dict: dict,
+    state_dict: dict | None,
     metadata_config: MetadataConfig,
     is_sdxl: bool,
     is_v2: bool,
