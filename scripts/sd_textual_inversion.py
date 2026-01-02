@@ -6,7 +6,7 @@ import torch
 
 from tqdm import tqdm
 from multiprocessing import Value
-from typing import Any, List, Optional, Union
+from typing import Any
 from diffusers import DDPMScheduler
 
 import library.logging.step_logging
@@ -93,8 +93,8 @@ class TextualInversionTrainer:
     def validate_extra_config(
         self,
         config,
-        train_dataset_group: Union[DatasetGroup, MinimalDataset],
-        val_dataset_group: Optional[DatasetGroup],
+        train_dataset_group: DatasetGroup | MinimalDataset,
+        val_dataset_group: DatasetGroup | None,
     ):
         validate_sd_textual_inversion(config, train_dataset_group, val_dataset_group)
 
@@ -120,7 +120,7 @@ class TextualInversionTrainer:
 
     def get_tokenizers(
         self, tokenize_strategy: strategy_sd.SdTokenizeStrategy
-    ) -> List[Any]:
+    ) -> list[Any]:
         return [tokenize_strategy.tokenizer]
 
     def get_latents_caching_strategy(self, cfg):
@@ -132,7 +132,7 @@ class TextualInversionTrainer:
         )
         return latents_caching_strategy
 
-    def assert_token_string(self, token_string, tokenizers: List[Any]):
+    def assert_token_string(self, token_string, tokenizers: list[Any]):
         pass
 
     def get_text_encoding_strategy(self, cfg):
@@ -140,7 +140,7 @@ class TextualInversionTrainer:
 
     def get_models_for_text_encoding(
         self, config, accelerator, text_encoders
-    ) -> List[Any]:
+    ) -> list[Any]:
         return text_encoders
 
     def call_unet(
@@ -221,7 +221,7 @@ class TextualInversionTrainer:
             if "string_to_param" in data:  # textual inversion embeddings
                 data = data["string_to_param"]
                 if hasattr(data, "_parameters"):  # support old PyTorch?
-                    data = getattr(data, "_parameters")
+                    data = data._parameters
 
         emb = next(iter(data.values()))
         if type(emb) != torch.Tensor:
@@ -338,7 +338,7 @@ class TextualInversionTrainer:
             ):
                 for token_id, embedding in zip(token_ids, embeddings):
                     token_embeds[token_id] = embedding
-            accelerator.print(f"weights loaded")
+            accelerator.print("weights loaded")
 
         accelerator.print(
             f"create embeddings for {cfg.textual_inversion.num_vectors_per_token} tokens, for {cfg.textual_inversion.token_string}"

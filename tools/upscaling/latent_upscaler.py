@@ -10,7 +10,6 @@ import numpy as np
 import logging
 
 from diffusers import AutoencoderKL
-from typing import List
 from torch import nn
 from tqdm import tqdm
 from PIL import Image
@@ -198,7 +197,7 @@ class Upscaler(nn.Module):
     def upscale(
         self,
         vae: AutoencoderKL,
-        lowreso_images: List[Image.Image],
+        lowreso_images: list[Image.Image],
         lowreso_latents: torch.Tensor,
         dtype: torch.dtype,
         width: int,

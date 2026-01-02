@@ -1,7 +1,6 @@
 import ast
 import importlib
 import logging
-from typing import Dict
 
 import torch
 import transformers
@@ -13,7 +12,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def get_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRatesConfig, scheduler_config: SchedulerConfig, trainable_params, optimizer_kwargs: Dict = {}) -> tuple[str, str, object]:
+def get_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRatesConfig, scheduler_config: SchedulerConfig, trainable_params, optimizer_kwargs: dict = {}) -> tuple[str, str, object]:
     """
     Creates and returns an optimizer based on the provided configuration.
 
@@ -109,7 +108,7 @@ def get_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRat
             logger.info(f"use 8-bit SGD with Nesterov optimizer | {optimizer_kwargs}")
             if "momentum" not in optimizer_kwargs:
                 logger.warning(
-                    f"8-bit SGD with Nesterov must be with momentum, set momentum to 0.9 / 8-bit SGD with Nesterovはmomentum指定が必須のため0.9に設定します"
+                    "8-bit SGD with Nesterov must be with momentum, set momentum to 0.9 / 8-bit SGD with Nesterovはmomentum指定が必須のため0.9に設定します"
                 )
                 optimizer_kwargs["momentum"] = 0.9
 
@@ -176,7 +175,7 @@ def get_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRat
         logger.info(f"use SGD with Nesterov optimizer | {optimizer_kwargs}")
         if "momentum" not in optimizer_kwargs:
             logger.info(
-                f"SGD with Nesterov must be with momentum, set momentum to 0.9 / SGD with Nesterovはmomentum指定が必須のため0.9に設定します"
+                "SGD with Nesterov must be with momentum, set momentum to 0.9 / SGD with Nesterovはmomentum指定が必須のため0.9に設定します"
             )
             optimizer_kwargs["momentum"] = 0.9
 
@@ -257,16 +256,16 @@ def get_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRat
             optimizer_kwargs["relative_step"] = True  # default
         if not optimizer_kwargs["relative_step"] and optimizer_kwargs.get("warmup_init", False):
             logger.info(
-                f"set relative_step to True because warmup_init is True / warmup_initがTrueのためrelative_stepをTrueにします"
+                "set relative_step to True because warmup_init is True / warmup_initがTrueのためrelative_stepをTrueにします"
             )
             optimizer_kwargs["relative_step"] = True
         logger.info(f"use Adafactor optimizer | {optimizer_kwargs}")
 
         if optimizer_kwargs["relative_step"]:
-            logger.info(f"relative_step is true / relative_stepがtrueです")
+            logger.info("relative_step is true / relative_stepがtrueです")
             if lr != 0.0:
                 logger.warning(
-                    f"learning rate is used as initial_lr / 指定したlearning rateはinitial_lrとして使用されます")
+                    "learning rate is used as initial_lr / 指定したlearning rateはinitial_lrとして使用されます")
             optimizer_config.learning_rates.base = None  # TODO: expected float got none?
 
             # trainable_paramsがgroupだった時の処理：lrを削除する
@@ -278,25 +277,25 @@ def get_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRat
 
                 if has_group_lr:
                     # 一応argsを無効にしておく TODO 依存関係が逆転してるのであまり望ましくない
-                    logger.warning(f"unet_lr and text_encoder_lr are ignored / unet_lrとtext_encoder_lrは無視されます")
+                    logger.warning("unet_lr and text_encoder_lr are ignored / unet_lrとtext_encoder_lrは無視されます")
                     # args.unet_lr = None # cannot modifying config easily here, just ignore
                     # args.text_encoder_lr = None
 
             if scheduler_config.lr_scheduler != "adafactor":
-                logger.info(f"use adafactor_scheduler / スケジューラにadafactor_schedulerを使用します")
+                logger.info("use adafactor_scheduler / スケジューラにadafactor_schedulerを使用します")
             # optimizer_config.scheduler.lr_scheduler = f"adafactor:{lr}"  # Avoiding modification of config
 
             lr = None
         else:
             if optimizer_config.max_grad_norm != 0.0:
                 logger.warning(
-                    f"because max_grad_norm is set, clip_grad_norm is enabled. consider set to 0 / max_grad_normが設定されているためclip_grad_normが有効になります。0に設定して無効にしたほうがいいかもしれません"
+                    "because max_grad_norm is set, clip_grad_norm is enabled. consider set to 0 / max_grad_normが設定されているためclip_grad_normが有効になります。0に設定して無効にしたほうがいいかもしれません"
                 )
             if scheduler_config.lr_scheduler != "constant_with_warmup":
                 logger.warning(
-                    f"constant_with_warmup will be good / スケジューラはconstant_with_warmupが良いかもしれません")
+                    "constant_with_warmup will be good / スケジューラはconstant_with_warmupが良いかもしれません")
             if optimizer_kwargs.get("clip_threshold", 1.0) != 1.0:
-                logger.warning(f"clip_threshold=1.0 will be good / clip_thresholdは1.0が良いかもしれません")
+                logger.warning("clip_threshold=1.0 will be good / clip_thresholdは1.0が良いかもしれません")
 
         optimizer_class = transformers.optimization.Adafactor
         optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
@@ -341,7 +340,7 @@ def get_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRat
 
         # Need to handle base optimizer
         if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower()):
-            case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type", None)
+            case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
             if case_sensitive_full_base_optimizer_name is None:
                 raise ValueError("base_optimizer_type is required in optimizer_args for ScheduleFreeWrapper/snoo_asgd optimizers")
             base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")

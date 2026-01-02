@@ -6,7 +6,6 @@ Tests pure math functions and conversion maps that don't require model loading.
 
 import pytest
 import torch
-import math
 
 from library.models.sdxl_model_util import (
     timestep_embedding,

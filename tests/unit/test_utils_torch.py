@@ -11,11 +11,8 @@ from library.utils.torch_utils import (
     prepare_dtype,
     match_mixed_precision,
 )
-from library.config.dataclasses.performance import PerformanceConfig
 from library.config.dataclasses.output import SavingConfig
-from unittest.mock import patch, MagicMock
-import random
-import numpy as np
+from unittest.mock import patch
 
 
 # =============================================================================

@@ -1,9 +1,8 @@
 import torch
 import pytest
-import cv2
 import numpy as np
 from unittest.mock import MagicMock, patch, PropertyMock
-from library.data.image_utils import pil_resize, resize_image, validate_interpolation_fn
+from library.data.image_utils import resize_image, validate_interpolation_fn
 from library.utils.torch_utils import str_to_dtype
 from library.performance.custom_offloading_utils import swap_weight_devices
 from library.pipelines.gradual_latent import GradualLatent, EulerAncestralDiscreteSchedulerGL

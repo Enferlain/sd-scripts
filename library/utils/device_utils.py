@@ -2,7 +2,6 @@ import functools
 import gc
 import torch
 
-from typing import Optional, Union
 
 try:
     # intel gpu support for pytorch older than 2.5
@@ -40,7 +39,7 @@ def clean_memory():
         torch.mps.empty_cache()
 
 
-def clean_memory_on_device(device: Optional[Union[str, torch.device]]):
+def clean_memory_on_device(device: str | torch.device | None):
     """
     Cleans memory on the specified device.
 
@@ -63,7 +62,7 @@ def clean_memory_on_device(device: Optional[Union[str, torch.device]]):
         torch.mps.empty_cache()
 
 
-def synchronize_device(device: Optional[Union[str, torch.device]]):
+def synchronize_device(device: str | torch.device | None):
     """
     Synchronizes the specified device.
 
@@ -82,7 +81,7 @@ def synchronize_device(device: Optional[Union[str, torch.device]]):
         torch.mps.synchronize()
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def get_preferred_device() -> torch.device:
     """
     Gets the preferred device for the current environment.

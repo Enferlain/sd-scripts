@@ -1,6 +1,5 @@
 import torch
 
-from typing import Tuple
 
 from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
 from library.config.dataclasses.loss import RegularizationConfig
@@ -42,7 +41,7 @@ def get_noise_noisy_latents_and_timesteps(
         min_timestep_override=None,
         max_timestep_override=None,
         output_dtype: torch.dtype = None,
-) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.IntTensor]:
+) -> tuple[torch.FloatTensor, torch.FloatTensor, torch.IntTensor]:
     """
     Generate noise, noisy latents, and timesteps for diffusion training.
 

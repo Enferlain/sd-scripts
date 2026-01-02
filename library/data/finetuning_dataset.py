@@ -10,7 +10,7 @@ import os
 import json
 import logging
 
-from typing import List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 from library.data.dataset import BaseDataset
 from library.data.data_structures import FineTuningSubset, ImageInfo, BucketManager
@@ -34,7 +34,7 @@ class FineTuningDataset(BaseDataset):
             debug_dataset: bool,
             validation_seed: int,
             validation_split: float,
-            resize_interpolation: Optional[str],
+            resize_interpolation: str | None,
     ) -> None:
         super().__init__(resolution, adapter_multiplier, debug_dataset, resize_interpolation)
 
@@ -59,7 +59,7 @@ class FineTuningDataset(BaseDataset):
             # メタデータを読み込む
             if os.path.exists(subset.metadata_file):
                 logger.info(f"loading existing metadata: {subset.metadata_file}")
-                with open(subset.metadata_file, "rt", encoding="utf-8") as f:
+                with open(subset.metadata_file, encoding="utf-8") as f:
                     metadata = json.load(f)
             else:
                 raise ValueError(f"no metadata / メタデータファイルがありません: {subset.metadata_file}")
@@ -162,11 +162,11 @@ class FineTuningDataset(BaseDataset):
             if not npz_any:
                 use_npz_latents = False
                 logger.warning(
-                    f"npz file does not exist. ignore npz files / npzファイルが見つからないためnpzファイルを無視します")
+                    "npz file does not exist. ignore npz files / npzファイルが見つからないためnpzファイルを無視します")
             elif not npz_all:
                 use_npz_latents = False
                 logger.warning(
-                    f"some of npz file does not exist. ignore npz files / いくつかのnpzファイルが見つからないためnpzファイルを無視します"
+                    "some of npz file does not exist. ignore npz files / いくつかのnpzファイルが見つからないためnpzファイルを無視します"
                 )
                 if flip_aug_in_subset:
                     logger.warning("maybe no flipped files / 反転されたnpzファイルがないのかもしれません")
@@ -188,7 +188,7 @@ class FineTuningDataset(BaseDataset):
             if use_npz_latents:
                 use_npz_latents = False
                 logger.warning(
-                    f"npz files exist, but no bucket info in metadata. ignore npz files / メタデータにbucket情報がないためnpzファイルを無視します"
+                    "npz files exist, but no bucket info in metadata. ignore npz files / メタデータにbucket情報がないためnpzファイルを無視します"
                 )
 
             assert (

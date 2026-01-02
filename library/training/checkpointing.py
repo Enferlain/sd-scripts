@@ -5,7 +5,8 @@ import shutil
 import logging
 import safetensors.torch
 
-from typing import Optional, Dict, Any, Callable, List, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
+from collections.abc import Callable
 from huggingface_hub import hf_hub_download
 
 if TYPE_CHECKING:
@@ -39,7 +40,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def load_metadata_from_safetensors(safetensors_file: str) -> Dict[str, str]:
+def load_metadata_from_safetensors(safetensors_file: str) -> dict[str, str]:
     """
     Loads metadata from a SafeTensors file.
 
@@ -63,13 +64,13 @@ def load_metadata_from_safetensors(safetensors_file: str) -> Dict[str, str]:
 
 
 def build_minimum_adapter_metadata(
-        v2: Optional[str],
-        base_model: Optional[str],
+        v2: str | None,
+        base_model: str | None,
         adapter_module: str,
         adapter_rank: str,
         adapter_alpha: str,
-        adapter_args: Optional[Dict[str, Any]],
-) -> Dict[str, str]:
+        adapter_args: dict[str, Any] | None,
+) -> dict[str, str]:
     """
     Builds the minimum metadata required for an adapter (LoRA).
 
@@ -106,7 +107,7 @@ def build_minimum_adapter_metadata(
 def resume_from_local_or_hf_if_specified(
     accelerator: "Accelerator",
     saving_config: SavingConfig,
-    hf_config: Optional[HuggingFaceConfig] = None
+    hf_config: HuggingFaceConfig | None = None
 ) -> None:
     """
     Resumes training from a local checkpoint or a Hugging Face repository if specified in the configuration.
@@ -247,7 +248,7 @@ def get_last_ckpt_name(
     return model_name + output_name_append + ext
 
 
-def get_remove_epoch_no(saving_config: SavingConfig, epoch_no: int) -> Optional[int]:
+def get_remove_epoch_no(saving_config: SavingConfig, epoch_no: int) -> int | None:
     """
     Calculates the epoch number of the checkpoint to remove based on retention settings.
 
@@ -267,7 +268,7 @@ def get_remove_epoch_no(saving_config: SavingConfig, epoch_no: int) -> Optional[
     return remove_epoch_no
 
 
-def get_remove_step_no(saving_config: SavingConfig, step_no: int) -> Optional[int]:
+def get_remove_step_no(saving_config: SavingConfig, step_no: int) -> int | None:
     """
     Calculates the step number of the checkpoint to remove based on retention settings.
 
@@ -304,7 +305,7 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
         global_step: int,
         sd_saver: Callable[[str, int, int], None],
         diffusers_saver: Callable[[str], None],
-        hf_config: Optional[HuggingFaceConfig] = None,
+        hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Common logic for saving Stable Diffusion models at the end of an epoch or stepwise.
@@ -404,7 +405,7 @@ def save_and_remove_state_on_epoch_end(
     saving_config: SavingConfig,
     accelerator: "Accelerator",
     epoch_no: int,
-    hf_config: Optional[HuggingFaceConfig] = None
+    hf_config: HuggingFaceConfig | None = None
 ) -> None:
     """
     Saves the training state at the end of an epoch and removes old states if necessary.
@@ -441,7 +442,7 @@ def save_and_remove_state_stepwise(
     saving_config: SavingConfig,
     accelerator: "Accelerator",
     step_no: int,
-    hf_config: Optional[HuggingFaceConfig] = None
+    hf_config: HuggingFaceConfig | None = None
 ) -> None:
     """
     Saves the training state at a specific step and removes old states if necessary.
@@ -481,7 +482,7 @@ def save_and_remove_state_stepwise(
 def save_state_on_train_end(
     saving_config: SavingConfig,
     accelerator: "Accelerator",
-    hf_config: Optional[HuggingFaceConfig] = None
+    hf_config: HuggingFaceConfig | None = None
 ) -> None:
     """
     Saves the training state at the end of training.
@@ -516,7 +517,7 @@ def save_sd_model_on_train_end_common(
         global_step: int,
         sd_saver: Callable[[str, int, int], None],
         diffusers_saver: Callable[[str], None],
-        hf_config: Optional[HuggingFaceConfig] = None,
+        hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Common logic for saving Stable Diffusion models at the end of training.
@@ -563,7 +564,7 @@ def register_adapter_state_hooks(
     cfg,
     current_epoch,
     current_step
-) -> Callable[[], Optional[int]]:
+) -> Callable[[], int | None]:
     """
     Register save/load hooks for peft-only checkpointing.
 
@@ -615,7 +616,7 @@ def register_adapter_state_hooks(
         # load current epoch and step
         train_state_file = os.path.join(input_dir, "train_state.json")
         if os.path.exists(train_state_file):
-            with open(train_state_file, "r", encoding="utf-8") as f:
+            with open(train_state_file, encoding="utf-8") as f:
                 data = json.load(f)
             state_container["steps_from_state"] = data["current_step"]
             logger.info(f"load train state from {train_state_file}: {data}")

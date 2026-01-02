@@ -93,9 +93,7 @@ def convert_ldm_clip_checkpoint_v2(checkpoint, max_length):
                 raise ValueError(f"unexpected key in SD: {key}")
         elif ".positional_embedding" in key:
             key = key.replace(".positional_embedding", ".embeddings.position_embedding.weight")
-        elif ".text_projection" in key:
-            key = None  # 使われない???
-        elif ".logit_scale" in key:
+        elif ".text_projection" in key or ".logit_scale" in key:
             key = None  # 使われない???
         elif ".token_embedding" in key:
             key = key.replace(".token_embedding.weight", ".embeddings.token_embedding.weight")

@@ -15,7 +15,6 @@ import re
 from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Dict, Tuple
 
 # Folders to scan
 SCAN_FOLDERS = ["configs", "library", "scripts", "tests"]
@@ -39,13 +38,13 @@ class FileAnalysis:
     expected_pattern: str  # 'cfg.*', 'typed_params', 'either'
     config_var_count: int
     cfg_dot_count: int
-    config_var_lines: List[Tuple[int, str]]
-    cfg_dot_lines: List[Tuple[int, str]]
+    config_var_lines: list[tuple[int, str]]
+    cfg_dot_lines: list[tuple[int, str]]
     has_discrepancy: bool
     notes: str
 
 
-def determine_file_type(filepath: str) -> Tuple[str, str, str]:
+def determine_file_type(filepath: str) -> tuple[str, str, str]:
     """Determine file type and expected pattern based on location and content."""
     path = Path(filepath)
     parts = path.parts
@@ -85,7 +84,7 @@ def determine_file_type(filepath: str) -> Tuple[str, str, str]:
 def analyze_file(filepath: str) -> FileAnalysis:
     """Analyze a single Python file for config patterns."""
     try:
-        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+        with open(filepath, encoding="utf-8", errors="ignore") as f:
             content = f.read()
             lines = content.split("\n")
     except Exception as e:
@@ -148,7 +147,7 @@ def analyze_file(filepath: str) -> FileAnalysis:
     )
 
 
-def scan_folders(base_path: str, folders: List[str]) -> List[FileAnalysis]:
+def scan_folders(base_path: str, folders: list[str]) -> list[FileAnalysis]:
     """Scan all Python files in specified folders."""
     results = []
 
@@ -170,7 +169,7 @@ def scan_folders(base_path: str, folders: List[str]) -> List[FileAnalysis]:
     return results
 
 
-def generate_report(results: List[FileAnalysis], output_path: str):
+def generate_report(results: list[FileAnalysis], output_path: str):
     """Generate comprehensive audit report."""
     report = []
 
@@ -233,8 +232,8 @@ def generate_report(results: List[FileAnalysis], output_path: str):
             )
 
             if f.config_var_count > 0 and f.expected_pattern == "cfg.*":
-                report.append(f"  ISSUE: Using config_* when should use cfg.*")
-                report.append(f"  Sample lines with config_*:")
+                report.append("  ISSUE: Using config_* when should use cfg.*")
+                report.append("  Sample lines with config_*:")
                 for line_num, content in f.config_var_lines[:5]:
                     report.append(f"    L{line_num}: {content}")
                 if len(f.config_var_lines) > 5:
@@ -283,7 +282,6 @@ def generate_report(results: List[FileAnalysis], output_path: str):
 
 
 if __name__ == "__main__":
-    import sys
 
     base_path = "."  # Run from project root
     output_path = "config_audit_report.txt"

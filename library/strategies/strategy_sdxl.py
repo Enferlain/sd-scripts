@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import torch
 
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 
 from library.constants import TOKENIZER1_PATH, TOKENIZER2_PATH
@@ -19,7 +19,7 @@ class SdxlTokenizeStrategy(TokenizeStrategy):
     """
     Tokenize strategy for SDXL.
     """
-    def __init__(self, max_length: Optional[int], tokenizer_cache_dir: Optional[str] = None) -> None:
+    def __init__(self, max_length: int | None, tokenizer_cache_dir: str | None = None) -> None:
         """
         Args:
             max_length: Max length of tokens
@@ -34,7 +34,7 @@ class SdxlTokenizeStrategy(TokenizeStrategy):
         else:
             self.max_length = max_length + 2
 
-    def tokenize(self, text: Union[str, List[str]]) -> List[torch.Tensor]:
+    def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
         """
         Tokenize text.
 
@@ -50,7 +50,7 @@ class SdxlTokenizeStrategy(TokenizeStrategy):
             torch.stack([self._get_input_ids(self.tokenizer2, t, self.max_length) for t in text], dim=0),
         )  # TODO: Expected type 'list[Tensor]', got 'tuple[Tensor, Tensor]' instead
 
-    def tokenize_with_weights(self, text: str | List[str]) -> Tuple[List[torch.Tensor]]:
+    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor]]:
         """
         Tokenize text with weights.
 
@@ -98,9 +98,9 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
             input_ids2: torch.Tensor,
             tokenizer1: CLIPTokenizer,
             tokenizer2: CLIPTokenizer,
-            text_encoder1: Union[CLIPTextModel, torch.nn.Module],
-            text_encoder2: Union[CLIPTextModelWithProjection, torch.nn.Module],
-            unwrapped_text_encoder2: Optional[CLIPTextModelWithProjection] = None,
+            text_encoder1: CLIPTextModel | torch.nn.Module,
+            text_encoder2: CLIPTextModelWithProjection | torch.nn.Module,
+            unwrapped_text_encoder2: CLIPTextModelWithProjection | None = None,
     ):
         """
         Wrapper around shared utility that derives max_token_length from input shape.
@@ -137,8 +137,8 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
 
 
     def encode_tokens(
-            self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor]
-    ) -> List[torch.Tensor]:
+            self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor]
+    ) -> list[torch.Tensor]:
         """
         Encode tokens.
 
@@ -168,10 +168,10 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
     def encode_tokens_with_weights(
             self,
             tokenize_strategy: TokenizeStrategy,
-            models: List[Any],
-            tokens_list: List[torch.Tensor],
-            weights_list: List[torch.Tensor],
-    ) -> List[torch.Tensor]:
+            models: list[Any],
+            tokens_list: list[torch.Tensor],
+            weights_list: list[torch.Tensor],
+    ) -> list[torch.Tensor]:
         """
         Encode tokens with weights.
 
@@ -261,7 +261,7 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
 
         return True
 
-    def load_outputs_npz(self, npz_path: str) -> List[np.ndarray]:
+    def load_outputs_npz(self, npz_path: str) -> list[np.ndarray]:
         """
         Load text encoder outputs from npz file.
 
@@ -278,8 +278,8 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
         return [hidden_state1, hidden_state2, pool2]
 
     def cache_batch_outputs(
-            self, tokenize_strategy: TokenizeStrategy, models: List[Any], text_encoding_strategy: TextEncodingStrategy,
-            infos: List
+            self, tokenize_strategy: TokenizeStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy,
+            infos: list
     ):
         """
         Cache batch outputs.

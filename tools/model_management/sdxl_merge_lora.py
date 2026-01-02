@@ -108,7 +108,7 @@ def merge_to_sd_model(text_encoder1, text_encoder2, unet, models, ratios, lbws, 
         logger.info(f"loading: {model}")
         lora_sd, _ = load_state_dict(model, merge_dtype)
 
-        logger.info(f"merging...")
+        logger.info("merging...")
 
         if lbw:
             lbw_weights = [1] * 26
@@ -293,7 +293,7 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
                 if lora_module_name not in base_dims:
                     base_dims[lora_module_name] = dim
 
-        for lora_module_name in dims.keys():
+        for lora_module_name in dims:
             if lora_module_name not in alphas:
                 alpha = dims[lora_module_name]
                 alphas[lora_module_name] = alpha
@@ -303,7 +303,7 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
         logger.info(f"dim: {list(set(dims.values()))}, alpha: {list(set(alphas.values()))}")
 
         # merge
-        logger.info(f"merging...")
+        logger.info("merging...")
         for key in tqdm(lora_sd.keys()):
             if "alpha" in key:
                 continue
@@ -332,7 +332,7 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
             if key in merged_sd:
                 assert (
                     merged_sd[key].size() == lora_sd[key].size() or concat_dim is not None
-                ), f"weights shape mismatch merging v1 and v2, different dims? / 重みのサイズが合いません。v1とv2、または次元数の異なるモデルはマージできません"
+                ), "weights shape mismatch merging v1 and v2, different dims? / 重みのサイズが合いません。v1とv2、または次元数の異なるモデルはマージできません"
                 if concat_dim is not None:
                     merged_sd[key] = torch.cat([merged_sd[key], lora_sd[key] * scale], dim=concat_dim)
                 else:
@@ -380,11 +380,11 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
 def merge(args):
     assert len(args.models) == len(
         args.ratios
-    ), f"number of models must be equal to number of ratios / モデルの数と重みの数は合わせてください"
+    ), "number of models must be equal to number of ratios / モデルの数と重みの数は合わせてください"
     if args.lbws:
         assert len(args.models) == len(
             args.lbws
-        ), f"number of models must be equal to number of ratios / モデルの数と層別適用率の数は合わせてください"
+        ), "number of models must be equal to number of ratios / モデルの数と層別適用率の数は合わせてください"
     else:
         args.lbws = []  # zip_longestで扱えるようにlbws未使用時には空のリストにしておく
 
@@ -438,7 +438,7 @@ def merge(args):
             if type(value) == torch.Tensor and value.dtype.is_floating_point and value.dtype != save_dtype:
                 state_dict[key] = value.to(save_dtype)
 
-        logger.info(f"calculating hashes and creating metadata...")
+        logger.info("calculating hashes and creating metadata...")
 
         model_hash, legacy_hash = precalculate_safetensors_hashes(state_dict, metadata)
         metadata["sshs_model_hash"] = model_hash

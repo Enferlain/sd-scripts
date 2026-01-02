@@ -27,6 +27,28 @@ d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=sho
 
 **Test markers:** `unit`, `integration`, `training`, `config`, `slow`, `requires_gpu`
 
+## Linting and Formatting
+
+```powershell
+# Check for lint errors
+ruff check .
+
+# Fix auto-fixable errors
+ruff check . --fix
+
+# Format code
+ruff format .
+
+# Check specific rules
+ruff check . --select F401  # unused imports
+```
+
+**Note:** isort (I) is disabled. Use custom import sorter instead:
+
+```powershell
+python tools/fix_imports.py <file_path>
+```
+
 ## Important Files
 
 | File                   | Purpose                                       |
@@ -34,7 +56,7 @@ d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=sho
 | `ROADMAP.md`           | Tracks refactoring progress and future plans  |
 | `CHANGELOG.md`         | Document all notable changes here             |
 | `DEVELOPMENT_GUIDE.md` | Architectural principles and coding standards |
-| `pytest.ini`           | Test configuration and markers                |
+| `pyproject.toml`       | Project config: ruff, pytest, coverage        |
 
 Always check DEVELOPMENT_GUIDE.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELOG.md to refresh your memory of the latest work and the current state of the project.
 

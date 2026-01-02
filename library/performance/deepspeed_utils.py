@@ -1,7 +1,6 @@
 import os
 import torch
 import logging
-from typing import Optional
 
 from accelerate import DeepSpeedPlugin
 
@@ -36,7 +35,7 @@ def prepare_deepspeed_plugin(
     deepspeed_config: DeepSpeedConfig,
     precision_config: PrecisionConfig,
     training_config: TrainingConfig = None,
-) -> Optional[DeepSpeedPlugin]:
+) -> DeepSpeedPlugin | None:
     """
     Creates and configures a DeepSpeedPlugin based on the provided configurations.
 
@@ -61,7 +60,7 @@ def prepare_deepspeed_plugin(
 
     try:
         import deepspeed
-    except ImportError as e:
+    except ImportError:
         logger.error(
             "deepspeed is not installed. please install deepspeed in your environment with following command. DS_BUILD_OPS=0 pip install deepspeed"
         )
@@ -158,7 +157,7 @@ def prepare_deepspeed_model(precision_config: PrecisionConfig, **models):
 
         def __wrap_model_forward_with_torch_autocast(self, model):
 
-            assert hasattr(model, "forward"), f"model must have a forward method."
+            assert hasattr(model, "forward"), "model must have a forward method."
 
             forward_fn = model.forward
 

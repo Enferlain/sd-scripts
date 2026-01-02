@@ -9,9 +9,8 @@ import pytest
 import tempfile
 import shutil
 import os
-from pathlib import Path
-from typing import Dict, Any
-from dataclasses import dataclass, field
+from typing import Any
+from dataclasses import dataclass
 
 # Conditional torch import
 try:
@@ -21,9 +20,8 @@ except ImportError:
     TORCH_AVAILABLE = False
     torch = None
 
-from hydra import initialize_config_dir, compose
+from hydra import initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
-from omegaconf import OmegaConf
 
 # Register all Hydra schemas (needed for tests that use compose())
 from library.config.schemas import register_all

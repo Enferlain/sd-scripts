@@ -5,7 +5,7 @@ import logging
 import random
 import typing
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any
 
 import torch
 from torch import nn
@@ -53,7 +53,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
     logit_scale: Any = None
     ckpt_info: Any = None
     
-    def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, List[nn.Module], nn.Module, Optional[nn.Module]]:
+    def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, list[nn.Module], nn.Module, nn.Module | None]:
         """
         Load SDXL model components (dual text encoders, VAE, UNet).
 
@@ -127,7 +127,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         """
         return strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
-    def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy) -> List[Any]:
+    def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy) -> list[Any]:
         """
         Return both tokenizers for SDXL.
 
@@ -165,7 +165,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         """
         return strategy_sdxl.SdxlTextEncodingStrategy()
 
-    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: List[Any]) -> List[Any]:
+    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
         """
         Return text encoders for encoding in SDXL.
         
@@ -182,7 +182,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         """
         return text_encoders + [accelerator.unwrap_model(text_encoders[-1])]
 
-    def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> Optional[Any]:
+    def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> Any | None:
         """
         Return SDXL text encoder outputs caching strategy if enabled.
 
@@ -199,7 +199,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         else:
             return None
 
-    def cache_text_encoder_outputs_if_needed(self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: List[Any], dataset: Any, weight_dtype: torch.dtype) -> None:
+    def cache_text_encoder_outputs_if_needed(self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype) -> None:
         """
         Cache text encoder outputs for SDXL (dual encoders, more complex than SD).
 
@@ -262,7 +262,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         Returns:
             Noise prediction tensor.
         """
-        indices = kwargs.get("indices", None)
+        indices = kwargs.get("indices")
 
         # Get size embeddings
         orig_size = batch["original_sizes_hw"]
@@ -284,7 +284,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         noise_pred = unet(noisy_latents, timesteps, text_embedding, vector_embedding)
         return noise_pred
 
-    def sample_images(self, accelerator: Any, cfg: Any, epoch: int, global_step: int, device: torch.device, vae: Any, tokenizers: List[Any], text_encoder: Any, unet: Any) -> None:
+    def sample_images(self, accelerator: Any, cfg: Any, epoch: int, global_step: int, device: torch.device, vae: Any, tokenizers: list[Any], text_encoder: Any, unet: Any) -> None:
         """
         Generate sample images for SDXL.
 
@@ -349,7 +349,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
     # region SDXL-specific text conditioning
 
-    def _get_text_cond(self, cfg: Any, accelerator: Any, batch: Any, tokenizers: List[Any], text_encoders: List[Any], weight_dtype: torch.dtype) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _get_text_cond(self, cfg: Any, accelerator: Any, batch: Any, tokenizers: list[Any], text_encoders: list[Any], weight_dtype: torch.dtype) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get SDXL text conditioning from batch.
         
@@ -394,9 +394,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
     def get_noise_pred_and_target(
         self, cfg: Any, accelerator: Any, noise_scheduler: Any, latents: torch.Tensor, batch: Any, text_encoder_conds: Any,
-        unet: Any, adapter: Any, weight_dtype: torch.dtype, train_unet: bool, fixed_timesteps: Optional[torch.Tensor] = None, is_train: bool = True,
-        min_timestep_override: Optional[int] = None, max_timestep_override: Optional[int] = None, global_step: int = 0,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+        unet: Any, adapter: Any, weight_dtype: torch.dtype, train_unet: bool, fixed_timesteps: torch.Tensor | None = None, is_train: bool = True,
+        min_timestep_override: int | None = None, max_timestep_override: int | None = None, global_step: int = 0,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
         """
         Sample noise, call UNet, get noise prediction target.
 
@@ -464,11 +464,11 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
 
     def process_batch(
-        self, batch: Any, text_encoders: List[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
+        self, batch: Any, text_encoders: list[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
         accelerator: Any, cfg: Any, text_encoding_strategy: strategy_base.TextEncodingStrategy,
         tokenize_strategy: strategy_base.TokenizeStrategy, is_train: bool = True, train_text_encoder: bool = True,
-        train_unet: bool = True, edm2_model: Optional[Any] = None, min_timestep_override: Optional[int] = None, max_timestep_override: Optional[int] = None, global_step: int = 0,
-    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor], torch.Tensor]:
+        train_unet: bool = True, edm2_model: Any | None = None, min_timestep_override: int | None = None, max_timestep_override: int | None = None, global_step: int = 0,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
         """
         Process a batch for SDXL training.
 
@@ -560,7 +560,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         return loss.mean(), pre_scaling_loss, loss_scaled, timesteps
 
     def process_val_batch(
-        self, batch: Any, text_encoders: List[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
+        self, batch: Any, text_encoders: list[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
         accelerator: Any, cfg: Any, text_encoding_strategy: strategy_base.TextEncodingStrategy,
         tokenize_strategy: strategy_base.TokenizeStrategy, train_text_encoder: bool = True, train_unet: bool = True,
         timesteps_list: list = [50, 350, 500, 650, 950]
@@ -629,9 +629,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
     def calculate_val_loss(
         self, global_step: int, epoch_step: int, train_dataloader: Any, val_loss_recorder: Any, val_dataloader: Any,
-        cyclic_val_dataloader: Any, adapter: Any, tokenize_strategy: Any, text_encoders: List[Any], text_encoding_strategy: Any,
-        unet: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype, accelerator: Any, cfg: Any, epoch: int, batch: Optional[Any] = None, train_text_encoder: bool = True
-    ) -> Tuple[Optional[float], Optional[float], Optional[dict]]:
+        cyclic_val_dataloader: Any, adapter: Any, tokenize_strategy: Any, text_encoders: list[Any], text_encoding_strategy: Any,
+        unet: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype, accelerator: Any, cfg: Any, epoch: int, batch: Any | None = None, train_text_encoder: bool = True
+    ) -> tuple[float | None, float | None, dict | None]:
         """
         Calculate validation loss for SDXL.
 

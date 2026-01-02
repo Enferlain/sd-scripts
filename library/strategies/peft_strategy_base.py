@@ -9,7 +9,7 @@ import torch
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from diffusers import DDPMScheduler
-from typing import Any, List, Tuple, Union, Optional
+from typing import Any
 
 from library.utils.common_utils import setup_logging
 from library.optimizers.optimizer_utils import should_train_text_encoder, should_train_unet
@@ -32,7 +32,7 @@ class ModelLoadingStrategy(ABC):
     """Strategy for loading model components (text encoders, VAE, UNet)."""
     
     @abstractmethod
-    def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> Tuple[str, Any, Any, Any]:
+    def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, Any, Any, Any]:
         """
         Load model components for this architecture.
         
@@ -68,7 +68,7 @@ class TokenizationPeftStrategy(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def get_tokenizers(self, tokenize_strategy: Any) -> Union[List[Any], Any]:
+    def get_tokenizers(self, tokenize_strategy: Any) -> list[Any] | Any:
         """
         Return tokenizer(s) from the strategy.
 
@@ -111,7 +111,7 @@ class CachingPeftStrategy(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> Optional[Any]:
+    def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> Any | None:
         """
         Return the TextEncoderOutputsCachingStrategy.
 
@@ -125,7 +125,7 @@ class CachingPeftStrategy(ABC):
     
     @abstractmethod
     def cache_text_encoder_outputs_if_needed(
-        self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: List[Any], dataset: Any, weight_dtype: torch.dtype
+        self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
     ) -> None:
         """
         Cache text encoder outputs if caching is enabled.
@@ -142,7 +142,7 @@ class CachingPeftStrategy(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: List[Any]) -> List[Any]:
+    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
         """
         Return models to use for text encoding during training.
 
@@ -195,7 +195,7 @@ class SampleGenerationPeftStrategy(ABC):
     @abstractmethod
     def sample_images(
         self, accelerator: Any, cfg: Any, epoch: int, global_step: int,
-        device: torch.device, vae: Any, tokenizers: List[Any], text_encoders: List[Any], unet: Any
+        device: torch.device, vae: Any, tokenizers: list[Any], text_encoders: list[Any], unet: Any
     ) -> None:
         """
         Generate sample images for the current training step.
@@ -354,7 +354,7 @@ class PeftTrainingStrategy(
 
     # --- Additional methods that may need strategy ---
     
-    def get_text_encoders_train_flags(self, cfg: Any, text_encoders: List[Any]) -> List[bool]:
+    def get_text_encoders_train_flags(self, cfg: Any, text_encoders: list[Any]) -> list[bool]:
         """
         Return list of flags for whether each text encoder should be trained.
 
@@ -475,7 +475,7 @@ class PeftTrainingStrategy(
         """
         return accelerator.prepare(unet)
     
-    def post_process_adapter(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: List[Any], unet: Any) -> None:
+    def post_process_adapter(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: list[Any], unet: Any) -> None:
         """
         Post-process adapter after creation. Override for model-specific behavior.
 
@@ -488,7 +488,7 @@ class PeftTrainingStrategy(
         """
         pass
     
-    def on_step_start(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: List[Any], unet: Any, batch: Any, weight_dtype: torch.dtype, is_train: bool = True) -> None:
+    def on_step_start(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: list[Any], unet: Any, batch: Any, weight_dtype: torch.dtype, is_train: bool = True) -> None:
         """
         Hook called at the start of each training step.
 
@@ -504,7 +504,7 @@ class PeftTrainingStrategy(
         """
         pass
 
-    def on_validation_step_end(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: List[Any], unet: Any, batch: Any, weight_dtype: torch.dtype) -> None:
+    def on_validation_step_end(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: list[Any], unet: Any, batch: Any, weight_dtype: torch.dtype) -> None:
         """
         Hook called after each validation step.
 
@@ -519,7 +519,7 @@ class PeftTrainingStrategy(
         """
         pass
 
-    def load_unet_lazily(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any, text_encoders: List[Any]) -> Any:
+    def load_unet_lazily(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any, text_encoders: list[Any]) -> Any:
         """
         Load UNet lazily if not loaded in load_target_model. Not used by SD.
 
@@ -549,7 +549,7 @@ class PeftTrainingStrategy(
             if param.grad is not None:
                 param.grad = accelerator.reduce(param.grad, reduction="mean")
 
-    def switch_rng_state(self, val_seed: int, accelerator: Any) -> Tuple[Any, Any, Any, Any]:
+    def switch_rng_state(self, val_seed: int, accelerator: Any) -> tuple[Any, Any, Any, Any]:
         """
         Store current RNG states and set new seed for validation.
 
@@ -578,7 +578,7 @@ class PeftTrainingStrategy(
 
         return (cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state)
 
-    def restore_rng_state(self, rng_states: Tuple[Any, Any, Any, Any], accelerator: Any) -> None:
+    def restore_rng_state(self, rng_states: tuple[Any, Any, Any, Any], accelerator: Any) -> None:
         """
         Restore RNG states after validation.
 

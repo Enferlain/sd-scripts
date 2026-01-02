@@ -1,8 +1,6 @@
 import types
-import pytest
-from dataclasses import dataclass, field
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from dataclasses import dataclass
+from unittest.mock import patch
 
 from library.config.config_util import (
     BlueprintGenerator,
@@ -263,7 +261,7 @@ class FakeSubsetBase:
         self.is_reg = kwargs.get("is_reg", False)
         self.class_tokens = kwargs.get("class_tokens", "class")
         self.caption_extension = ".txt"
-        self.metadata_file = kwargs.get("metadata_file", None)
+        self.metadata_file = kwargs.get("metadata_file")
 
 class FakeDreamBoothSubset(FakeSubsetBase):
     pass

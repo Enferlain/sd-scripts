@@ -1,8 +1,5 @@
-import argparse
-import pytest
 from unittest.mock import MagicMock, patch
 import json
-import torch
 from diffusers import (
     DDIMScheduler,
     EulerDiscreteScheduler,

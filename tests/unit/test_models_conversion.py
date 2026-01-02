@@ -1,7 +1,6 @@
 
 import pytest
 import torch
-from unittest.mock import patch, MagicMock
 
 from library.models.model_util import (
     reshape_weight_for_sd,

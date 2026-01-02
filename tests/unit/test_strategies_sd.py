@@ -4,11 +4,10 @@ Unit tests for library/strategies/strategy_sd.py
 Tests the SD 1.5/2.0 strategy classes with mocked tokenizers and text encoders.
 """
 
-import os
 import pytest
 import numpy as np
 import torch
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 from library.strategies.strategy_sd import (
     SdTokenizeStrategy,

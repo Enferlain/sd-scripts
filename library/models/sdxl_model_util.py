@@ -3,7 +3,6 @@ import safetensors
 import math
 import logging
 
-from typing import List
 from accelerate import init_empty_weights
 from accelerate.utils.modeling import set_module_tensor_to_device
 from safetensors.torch import load_file, save_file
@@ -189,13 +188,13 @@ def _load_state_dict_on_device(model, state_dict, device, dtype=None):
         return "<All keys matched successfully>"
 
     # error_msgs
-    error_msgs: List[str] = []
+    error_msgs: list[str] = []
     if missing_keys:
         error_msgs.insert(0, "Missing key(s) in state_dict: {}. ".format(
-            ", ".join('"{}"'.format(k) for k in missing_keys)))
+            ", ".join(f'"{k}"' for k in missing_keys)))
     if unexpected_keys:
         error_msgs.insert(0, "Unexpected key(s) in state_dict: {}. ".format(
-            ", ".join('"{}"'.format(k) for k in unexpected_keys)))
+            ", ".join(f'"{k}"' for k in unexpected_keys)))
 
     raise RuntimeError(
         "Error(s) in loading state_dict for {}:\n\t{}".format(model.__class__.__name__, "\n\t".join(error_msgs)))

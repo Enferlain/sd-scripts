@@ -1,14 +1,18 @@
 import logging
 import random
 
-from typing import Dict, List, Optional, Sequence, Tuple, Union, Any, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
+from collections.abc import Sequence
 from pathlib import Path
 from textwrap import dedent, indent
 from dataclasses import asdict, dataclass
 
 from library.config.dataclasses.data import DataConfig
+from library.data.controlnet_dataset import ControlNetDataset
 from library.data.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
-from library.data.dataset import DatasetGroup, DreamBoothDataset, FineTuningDataset, ControlNetDataset
+from library.data.dataset_group import DatasetGroup
+from library.data.dreambooth_dataset import DreamBoothDataset
+from library.data.finetuning_dataset import FineTuningDataset
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -31,36 +35,36 @@ class RootConfig(Protocol):
 
 @dataclass
 class BaseSubsetParams:
-    image_dir: Optional[str] = None
+    image_dir: str | None = None
     num_repeats: int = 1
     shuffle_caption: bool = False
     caption_separator: str = ","
     keep_tokens: int = 0
-    keep_tokens_separator: Optional[str] = None
-    secondary_separator: Optional[str] = None
+    keep_tokens_separator: str | None = None
+    secondary_separator: str | None = None
     enable_wildcard: bool = False
     color_aug: bool = False
     flip_aug: bool = False
-    face_crop_aug_range: Optional[Tuple[float, float]] = None
+    face_crop_aug_range: tuple[float, float] | None = None
     random_crop: bool = False
     random_crop_padding_percent: float = 0.05
-    caption_prefix: Optional[str] = None
-    caption_suffix: Optional[str] = None
+    caption_prefix: str | None = None
+    caption_suffix: str | None = None
     caption_dropout_rate: float = 0.0
     caption_dropout_every_n_epochs: int = 0
     caption_tag_dropout_rate: float = 0.0
     token_warmup_min: int = 1
     token_warmup_step: float = 0
-    custom_attributes: Optional[Dict[str, Any]] = None
+    custom_attributes: dict[str, Any] | None = None
     validation_seed: int = 0
     validation_split: float = 0.0
-    resize_interpolation: Optional[str] = None
+    resize_interpolation: str | None = None
 
 
 @dataclass
 class DreamBoothSubsetParams(BaseSubsetParams):
     is_reg: bool = False
-    class_tokens: Optional[str] = None
+    class_tokens: str | None = None
     caption_extension: str = ".caption"
     cache_info: bool = False
     alpha_mask: bool = False
@@ -68,7 +72,7 @@ class DreamBoothSubsetParams(BaseSubsetParams):
 
 @dataclass
 class FineTuningSubsetParams(BaseSubsetParams):
-    metadata_file: Optional[str] = None
+    metadata_file: str | None = None
     alpha_mask: bool = False
 
 
@@ -81,12 +85,12 @@ class ControlNetSubsetParams(BaseSubsetParams):
 
 @dataclass
 class BaseDatasetParams:
-    resolution: Optional[Union[Tuple[int, int], List[int]]] = None  # Accept list from hydra
+    resolution: tuple[int, int] | list[int] | None = None  # Accept list from hydra
     adapter_multiplier: float = 1.0
     debug_dataset: bool = False
-    validation_seed: Optional[int] = None
+    validation_seed: int | None = None
     validation_split: float = 0.0
-    resize_interpolation: Optional[str] = None
+    resize_interpolation: str | None = None
 
 
 @dataclass
@@ -122,14 +126,14 @@ class ControlNetDatasetParams(BaseDatasetParams):
 
 @dataclass
 class SubsetBlueprint:
-    params: Union[DreamBoothSubsetParams, FineTuningSubsetParams, ControlNetSubsetParams]
+    params: DreamBoothSubsetParams | FineTuningSubsetParams | ControlNetSubsetParams
 
 
 @dataclass
 class DatasetBlueprint:
     is_dreambooth: bool
     is_controlnet: bool
-    params: Union[DreamBoothDatasetParams, FineTuningDatasetParams, ControlNetDatasetParams]
+    params: DreamBoothDatasetParams | FineTuningDatasetParams | ControlNetDatasetParams
     subsets: Sequence[SubsetBlueprint]
 
 
@@ -236,8 +240,8 @@ class BlueprintGenerator:
 
 def generate_dataset_group_by_blueprint(
     dataset_group_blueprint: DatasetGroupBlueprint,
-) -> Tuple[DatasetGroup, Optional[DatasetGroup]]:
-    datasets: List[Union[DreamBoothDataset, FineTuningDataset, ControlNetDataset]] = []
+) -> tuple[DatasetGroup, DatasetGroup | None]:
+    datasets: list[DreamBoothDataset | FineTuningDataset | ControlNetDataset] = []
 
     for dataset_blueprint in dataset_group_blueprint.datasets:
         extra_dataset_params = {}
@@ -257,7 +261,7 @@ def generate_dataset_group_by_blueprint(
         dataset = dataset_klass(subsets=subsets, **asdict(dataset_blueprint.params), **extra_dataset_params)
         datasets.append(dataset)
 
-    val_datasets: List[Union[DreamBoothDataset, FineTuningDataset, ControlNetDataset]] = []
+    val_datasets: list[DreamBoothDataset | FineTuningDataset | ControlNetDataset] = []
     for dataset_blueprint in dataset_group_blueprint.datasets:
         dataset_blueprint.params.validation_split = (
             float(dataset_blueprint.params.validation_split)
@@ -396,19 +400,19 @@ def generate_dataset_group_by_blueprint(
 
 
 def generate_dreambooth_subsets_config_by_subdirs(
-    train_data_dir: Optional[str] = None, reg_data_dir: Optional[str] = None
+    train_data_dir: str | None = None, reg_data_dir: str | None = None
 ):
-    def extract_dreambooth_params(name: str) -> Tuple[int, str]:
+    def extract_dreambooth_params(name: str) -> tuple[int, str]:
         tokens = name.split("_")
         try:
             n_repeats = int(tokens[0])
-        except ValueError as e:
+        except ValueError:
             logger.warning(f"ignore directory without repeats / 繰り返し回数のないディレクトリを無視します: {name}")
             return 0, ""
         caption_by_folder = "_".join(tokens[1:])
         return n_repeats, caption_by_folder
 
-    def generate(base_dir: Optional[str], is_reg: bool):
+    def generate(base_dir: str | None, is_reg: bool):
         if base_dir is None:
             return []
 

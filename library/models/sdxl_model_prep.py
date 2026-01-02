@@ -2,7 +2,6 @@ import os
 import logging
 import torch
 
-from typing import Optional
 from accelerate import init_empty_weights
 
 from library.utils.common_utils import setup_logging
@@ -81,7 +80,7 @@ def load_target_model(
 def _load_target_model(
     model_config: ModelConfig,
     name_or_path: str,
-    vae_path: Optional[str],
+    vae_path: str | None,
     model_version: str,
     weight_dtype,
     device="cpu",
@@ -128,13 +127,13 @@ def _load_target_model(
                 pipe = StableDiffusionXLPipeline.from_pretrained(
                     name_or_path, torch_dtype=model_dtype, variant=variant, tokenizer=None
                 )
-            except EnvironmentError as ex:
+            except OSError as ex:
                 if variant is not None:
                     logger.info("try to load fp32 model")
                     pipe = StableDiffusionXLPipeline.from_pretrained(name_or_path, variant=None, tokenizer=None)
                 else:
                     raise ex
-        except EnvironmentError as ex:
+        except OSError as ex:
             logger.error(
                 f"model is not found as a file or in Hugging Face, perhaps file name is wrong?: {name_or_path}"
             )

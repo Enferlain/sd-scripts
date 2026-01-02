@@ -2,7 +2,7 @@ import hashlib
 import os
 import subprocess
 from io import BytesIO
-from typing import Literal, Optional
+from typing import Literal
 
 import safetensors.torch
 

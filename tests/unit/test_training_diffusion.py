@@ -6,7 +6,6 @@ Tests timesteps generation and noisy latent creation functions.
 
 import pytest
 import torch
-from unittest.mock import Mock, MagicMock
 
 from library.training.diffusion import (
     get_timesteps,

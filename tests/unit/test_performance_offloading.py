@@ -6,7 +6,6 @@ Note: Offloader and ModelOffloader classes are not tested here as they require
 GPU streams and threading which are better suited for integration tests.
 """
 
-import pytest
 import torch
 import torch.nn as nn
 

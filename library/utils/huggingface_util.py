@@ -1,7 +1,7 @@
 import os
 import logging
 
-from typing import Union, BinaryIO
+from typing import BinaryIO
 from huggingface_hub import HfApi
 from pathlib import Path
 
@@ -37,7 +37,7 @@ def exists_repo(repo_id: str, repo_type: str, revision: str = "main", token: str
 
 def upload(
         hf_config: HuggingFaceConfig,
-        src: Union[str, Path, bytes, BinaryIO],
+        src: str | Path | bytes | BinaryIO,
         dest_suffix: str = "",
         force_sync_upload: bool = False,
 ):

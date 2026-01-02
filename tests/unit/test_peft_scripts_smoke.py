@@ -9,7 +9,6 @@ Usage:
     pytest tests/unit/test_peft_scripts_smoke.py -v
 """
 
-import pytest
 import sys
 from pathlib import Path
 

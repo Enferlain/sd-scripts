@@ -5,7 +5,6 @@ Tests for device utility functions using strict mocking to avoid hardware depend
 """
 
 import sys
-import torch
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -185,9 +184,8 @@ def test_init_ipex_calls_ipex_init_when_xpu():
     mock_ipex_module = MagicMock()
     mock_ipex_module.ipex_init.return_value = (True, "")
     
-    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}):
-        with patch("library.utils.device_utils.HAS_XPU", True):
-            init_ipex()
+    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}), patch("library.utils.device_utils.HAS_XPU", True):
+        init_ipex()
             
     mock_ipex_module.ipex_init.assert_called_once()
 
@@ -195,9 +193,8 @@ def test_init_ipex_handles_failure(capsys):
     mock_ipex_module = MagicMock()
     mock_ipex_module.ipex_init.return_value = (False, "some_error")
     
-    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}):
-        with patch("library.utils.device_utils.HAS_XPU", True):
-            init_ipex()
+    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}), patch("library.utils.device_utils.HAS_XPU", True):
+        init_ipex()
     
     captured = capsys.readouterr()
     assert "failed to initialize ipex: some_error" in captured.out
@@ -206,9 +203,8 @@ def test_init_ipex_no_xpu():
     # Even if module exists, it shouldn't be touched if HAS_XPU is False
     mock_ipex_module = MagicMock()
     
-    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}):
-        with patch("library.utils.device_utils.HAS_XPU", False):
-            init_ipex()
+    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}), patch("library.utils.device_utils.HAS_XPU", False):
+        init_ipex()
             
     mock_ipex_module.ipex_init.assert_not_called()
 
@@ -216,9 +212,8 @@ def test_init_ipex_catches_exceptions(capsys):
     mock_ipex_module = MagicMock()
     mock_ipex_module.ipex_init.side_effect = RuntimeError("boom")
     
-    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}):
-        with patch("library.utils.device_utils.HAS_XPU", True):
-            init_ipex()
+    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}), patch("library.utils.device_utils.HAS_XPU", True):
+        init_ipex()
 
     captured = capsys.readouterr()
     assert "failed to initialize ipex:" in captured.out

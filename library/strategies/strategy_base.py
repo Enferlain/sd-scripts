@@ -5,7 +5,8 @@ import numpy as np
 import torch
 import logging
 
-from typing import Any, List, Optional, Tuple, Union, Callable
+from typing import Any, Optional
+from collections.abc import Callable
 from transformers import CLIPTokenizer
 
 from library.constants import re_attention
@@ -34,8 +35,8 @@ class TokenizeStrategy:
         return cls._strategy
 
     def _load_tokenizer(
-            self, model_class: Any, model_id: str, subfolder: Optional[str] = None,
-            tokenizer_cache_dir: Optional[str] = None
+            self, model_class: Any, model_id: str, subfolder: str | None = None,
+            tokenizer_cache_dir: str | None = None
     ) -> Any:
         """
         Load tokenizer from cache or download it.
@@ -65,7 +66,7 @@ class TokenizeStrategy:
 
         return tokenizer
 
-    def tokenize(self, text: Union[str, List[str]]) -> List[torch.Tensor]:
+    def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
         """
         Tokenize text.
 
@@ -77,7 +78,7 @@ class TokenizeStrategy:
         """
         raise NotImplementedError
 
-    def tokenize_with_weights(self, text: Union[str, List[str]]) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         """
         Tokenize text with weights.
 
@@ -91,8 +92,8 @@ class TokenizeStrategy:
         raise NotImplementedError
 
     def _get_weighted_input_ids(
-            self, tokenizer: CLIPTokenizer, text: str, max_length: Optional[int] = None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+            self, tokenizer: CLIPTokenizer, text: str, max_length: int | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Get weighted input ids.
 
@@ -238,7 +239,7 @@ class TokenizeStrategy:
         return torch.tensor(tokens).unsqueeze(0), torch.tensor(weights).unsqueeze(0)
 
     def _get_input_ids(
-            self, tokenizer: CLIPTokenizer, text: str, max_length: Optional[int] = None, weighted: bool = False
+            self, tokenizer: CLIPTokenizer, text: str, max_length: int | None = None, weighted: bool = False
     ) -> torch.Tensor:
         """
         Get input ids for SD1.5/2.0/SDXL.
@@ -331,8 +332,8 @@ class TextEncodingStrategy:
         return cls._strategy
 
     def encode_tokens(
-            self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor]
-    ) -> List[torch.Tensor]:
+            self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor]
+    ) -> list[torch.Tensor]:
         """
         Encode tokens into embeddings and outputs.
 
@@ -347,9 +348,9 @@ class TextEncodingStrategy:
         raise NotImplementedError
 
     def encode_tokens_with_weights(
-            self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor],
-            weights: List[torch.Tensor]
-    ) -> List[torch.Tensor]:
+            self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor],
+            weights: list[torch.Tensor]
+    ) -> list[torch.Tensor]:
         """
         Encode tokens into embeddings and outputs with weights.
 
@@ -374,7 +375,7 @@ class TextEncoderOutputsCachingStrategy:
     def __init__(
             self,
             cache_to_disk: bool,
-            batch_size: Optional[int],
+            batch_size: int | None,
             skip_disk_cache_validity_check: bool,
             is_partial: bool = False,
             is_weighted: bool = False,
@@ -423,7 +424,7 @@ class TextEncoderOutputsCachingStrategy:
         """
         raise NotImplementedError
 
-    def load_outputs_npz(self, npz_path: str) -> List[np.ndarray]:
+    def load_outputs_npz(self, npz_path: str) -> list[np.ndarray]:
         """
         Load text encoder outputs from npz file.
 
@@ -448,8 +449,8 @@ class TextEncoderOutputsCachingStrategy:
         raise NotImplementedError
 
     def cache_batch_outputs(
-            self, tokenize_strategy: TokenizeStrategy, models: List[Any], text_encoding_strategy: TextEncodingStrategy,
-            batch: List
+            self, tokenize_strategy: TokenizeStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy,
+            batch: list
     ):
         """
         Cache batch outputs.
@@ -501,8 +502,8 @@ class LatentsCachingStrategy:
         """
         raise NotImplementedError
 
-    def get_image_size_from_disk_cache_path(self, absolute_path: str, npz_path: str) -> Tuple[
-        Optional[int], Optional[int]]:
+    def get_image_size_from_disk_cache_path(self, absolute_path: str, npz_path: str) -> tuple[
+        int | None, int | None]:
         """
         Get image size from disk cache path.
 
@@ -516,7 +517,7 @@ class LatentsCachingStrategy:
         w, h = os.path.splitext(npz_path)[0].split("_")[-2].split("x")
         return int(w), int(h)
 
-    def get_latents_npz_path(self, absolute_path: str, image_size: Tuple[int, int]) -> str:
+    def get_latents_npz_path(self, absolute_path: str, image_size: tuple[int, int]) -> str:
         """
         Get path to the cached latents npz file.
 
@@ -530,7 +531,7 @@ class LatentsCachingStrategy:
         raise NotImplementedError
 
     def is_disk_cached_latents_expected(
-            self, bucket_reso: Tuple[int, int], npz_path: str, flip_aug: bool, alpha_mask: bool
+            self, bucket_reso: tuple[int, int], npz_path: str, flip_aug: bool, alpha_mask: bool
     ) -> bool:
         """
         Check if the latents are cached in disk.
@@ -546,7 +547,7 @@ class LatentsCachingStrategy:
         """
         raise NotImplementedError
 
-    def cache_batch_latents(self, model: Any, batch: List, flip_aug: bool, alpha_mask: bool, random_crop: bool,
+    def cache_batch_latents(self, model: Any, batch: list, flip_aug: bool, alpha_mask: bool, random_crop: bool,
                             random_crop_padding_percent: float = 0.05):
         """
         Cache batch latents.
@@ -564,7 +565,7 @@ class LatentsCachingStrategy:
     def _default_is_disk_cached_latents_expected(
             self,
             latents_stride: int,
-            bucket_reso: Tuple[int, int],
+            bucket_reso: tuple[int, int],
             npz_path: str,
             flip_aug: bool,
             apply_alpha_mask: bool,
@@ -615,7 +616,7 @@ class LatentsCachingStrategy:
             encode_by_vae: Callable,
             vae_device: torch.device,
             vae_dtype: torch.dtype,
-            image_infos: List,
+            image_infos: list,
             flip_aug: bool,
             apply_alpha_mask: bool,
             random_crop: bool,
@@ -677,9 +678,9 @@ class LatentsCachingStrategy:
                 info.alpha_mask = alpha_mask
 
     def load_latents_from_disk(
-            self, npz_path: str, bucket_reso: Tuple[int, int]
-    ) -> Tuple[
-        Optional[np.ndarray], Optional[List[int]], Optional[List[int]], Optional[np.ndarray], Optional[np.ndarray]]:
+            self, npz_path: str, bucket_reso: tuple[int, int]
+    ) -> tuple[
+        np.ndarray | None, list[int] | None, list[int] | None, np.ndarray | None, np.ndarray | None]:
         """
         for SD/SDXL
 
@@ -699,9 +700,9 @@ class LatentsCachingStrategy:
         return self._default_load_latents_from_disk(None, npz_path, bucket_reso)
 
     def _default_load_latents_from_disk(
-            self, latents_stride: Optional[int], npz_path: str, bucket_reso: Tuple[int, int]
-    ) -> Tuple[
-        Optional[np.ndarray], Optional[List[int]], Optional[List[int]], Optional[np.ndarray], Optional[np.ndarray]]:
+            self, latents_stride: int | None, npz_path: str, bucket_reso: tuple[int, int]
+    ) -> tuple[
+        np.ndarray | None, list[int] | None, list[int] | None, np.ndarray | None, np.ndarray | None]:
         """
         Args:
             latents_stride (Optional[int]): Stride for latents. If None, load all latents.

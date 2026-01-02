@@ -7,7 +7,6 @@ import logging
 import time
 import torch
 
-from typing import Dict, List, Union, Optional, Tuple
 from PIL import Image
 from accelerate import Accelerator
 from accelerate.state import PartialState
@@ -187,7 +186,7 @@ def line_to_prompt_dict(line: str) -> dict:
     return prompt_dict
 
 
-def load_prompts(prompt_file: str) -> List[Dict]:
+def load_prompts(prompt_file: str) -> list[dict]:
     """
     Loads prompts from a file.
 
@@ -202,15 +201,15 @@ def load_prompts(prompt_file: str) -> List[Dict]:
     """
     # read prompts
     if prompt_file.endswith(".txt"):
-        with open(prompt_file, "r", encoding="utf-8") as f:
+        with open(prompt_file, encoding="utf-8") as f:
             lines = f.readlines()
         prompts = [line.strip() for line in lines if len(line.strip()) > 0 and line[0] != "#"]
     elif prompt_file.endswith(".toml"):
-        with open(prompt_file, "r", encoding="utf-8") as f:
+        with open(prompt_file, encoding="utf-8") as f:
             data = toml.load(f)
         prompts = [dict(**data["prompt"], **subset) for subset in data["prompt"]["subset"]]
     elif prompt_file.endswith(".json"):
-        with open(prompt_file, "r", encoding="utf-8") as f:
+        with open(prompt_file, encoding="utf-8") as f:
             prompts = json.load(f)
 
     # preprocess prompts
@@ -229,7 +228,7 @@ def load_prompts(prompt_file: str) -> List[Dict]:
     return prompts
 
 
-def sample_images_check(sampling_config: SamplingConfig, epoch: Optional[int], steps: int) -> bool:
+def sample_images_check(sampling_config: SamplingConfig, epoch: int | None, steps: int) -> bool:
     """
     Checks if sample images should be generated at the current step or epoch.
 
@@ -264,14 +263,14 @@ def sample_images_common(
         training_config: TrainingConfig,
         saving_config: SavingConfig,
         loss_config: LossConfig,
-        epoch: Optional[int],
+        epoch: int | None,
         steps: int,
         device,
         vae,
         tokenizer,
         text_encoder,
         unet_wrapped,
-        prompt_replacement: Optional[Tuple[str, str]] = None,
+        prompt_replacement: tuple[str, str] | None = None,
         controlnet=None,
 ):
     """
@@ -332,15 +331,15 @@ def sample_images_common(
 
     # read prompts
     if sampling_config.sample_prompts.endswith(".txt"):
-        with open(sampling_config.sample_prompts, "r", encoding="utf-8") as f:
+        with open(sampling_config.sample_prompts, encoding="utf-8") as f:
             lines = f.readlines()
         prompts = [line.strip() for line in lines if len(line.strip()) > 0 and line[0] != "#"]
     elif sampling_config.sample_prompts.endswith(".toml"):
-        with open(sampling_config.sample_prompts, "r", encoding="utf-8") as f:
+        with open(sampling_config.sample_prompts, encoding="utf-8") as f:
             data = toml.load(f)
         prompts = [dict(**data["prompt"], **subset) for subset in data["prompt"]["subset"]]
     elif sampling_config.sample_prompts.endswith(".json"):
-        with open(sampling_config.sample_prompts, "r", encoding="utf-8") as f:
+        with open(sampling_config.sample_prompts, encoding="utf-8") as f:
             prompts = json.load(f)
 
     default_scheduler = get_my_scheduler(sample_sampler=sampling_config.sample_sampler, v_parameterization=loss_config.v_parameterization)
@@ -420,12 +419,12 @@ def sample_image_inference(
         training_config: TrainingConfig,
         saving_config: SavingConfig,
         loss_config: LossConfig,
-        pipeline: Union[StableDiffusionLongPromptWeightingPipeline, SdxlStableDiffusionLongPromptWeightingPipeline],
+        pipeline: StableDiffusionLongPromptWeightingPipeline | SdxlStableDiffusionLongPromptWeightingPipeline,
         save_dir: str,
-        prompt_dict: Dict,
-        epoch: Optional[int],
+        prompt_dict: dict,
+        epoch: int | None,
         steps: int,
-        prompt_replacement: Optional[Tuple[str, str]],
+        prompt_replacement: tuple[str, str] | None,
         controlnet=None,
 ):
     """

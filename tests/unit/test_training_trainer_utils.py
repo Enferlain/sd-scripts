@@ -5,7 +5,7 @@ Tests validation check logic and learning rate logging utilities.
 """
 
 import pytest
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock
 
 from library.training.trainer_utils import (
     calculate_val_loss_check,
@@ -274,13 +274,13 @@ class TestAppendLrToLogs:
 # Heavy Mocking Tests - prepare_accelerator
 # =============================================================================
 
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from library.training.trainer_utils import (
     prepare_accelerator,
     determine_grad_sync_context,
 )
 from library.logging.step_logging import init_trackers, append_lr_to_logs_with_names
-from library.config.dataclasses.performance import PerformanceConfig, PrecisionConfig, CompilationConfig, DistributedConfig, DeepSpeedConfig
+from library.config.dataclasses.performance import PrecisionConfig, CompilationConfig, DistributedConfig, DeepSpeedConfig
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig
 

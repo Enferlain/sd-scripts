@@ -182,7 +182,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     train_dataset_group.new_cache_text_encoder_outputs(text_encoders, accelerator)
 
     accelerator.wait_for_everyone()
-    accelerator.print(f"Finished caching text encoder outputs to disk.")
+    accelerator.print("Finished caching text encoder outputs to disk.")
 
 
 def setup_parser() -> argparse.ArgumentParser:

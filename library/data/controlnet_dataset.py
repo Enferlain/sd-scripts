@@ -7,7 +7,8 @@ import os
 import torch
 import logging
 
-from typing import Any, List, Optional, Sequence
+from typing import Any
+from collections.abc import Sequence
 from accelerate import Accelerator
 
 from library.constants import IMAGE_TRANSFORMS
@@ -33,8 +34,8 @@ class ControlNetDataset(BaseDataset):
             bucket_no_upscale: bool,
             debug_dataset: bool,
             validation_split: float,
-            validation_seed: Optional[int],
-            resize_interpolation: Optional[str] = None,
+            validation_seed: int | None,
+            resize_interpolation: str | None = None,
     ) -> None:
         super().__init__(resolution, adapter_multiplier, debug_dataset, resize_interpolation)
 
@@ -157,7 +158,7 @@ class ControlNetDataset(BaseDataset):
     def new_cache_latents(self, model: Any, accelerator: Accelerator):
         return self.dreambooth_dataset_delegate.new_cache_latents(model, accelerator)
 
-    def new_cache_text_encoder_outputs(self, models: List[Any], is_main_process: bool):
+    def new_cache_text_encoder_outputs(self, models: list[Any], is_main_process: bool):
         return self.dreambooth_dataset_delegate.new_cache_text_encoder_outputs(models, is_main_process)
 
     def __len__(self):

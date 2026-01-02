@@ -317,7 +317,7 @@ def load_vae(vae_id, dtype):
         # Diffusers local/remote
         try:
             vae = AutoencoderKL.from_pretrained(vae_id, subfolder=None, torch_dtype=dtype)
-        except EnvironmentError as e:
+        except OSError as e:
             logger.error(f"exception occurs in loading vae: {e}")
             logger.error("retry with subfolder='vae'")
             vae = AutoencoderKL.from_pretrained(vae_id, subfolder="vae", torch_dtype=dtype)

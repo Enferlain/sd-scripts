@@ -1,7 +1,6 @@
 import torch
 import logging
 
-from typing import List, Optional, Union
 
 from library.constants import re_attention
 from library.utils.common_utils import setup_logging
@@ -96,7 +95,7 @@ def parse_prompt_attention(text):
     return res
 
 
-def get_prompts_with_weights(tokenizer, prompt: List[str], max_length: int):
+def get_prompts_with_weights(tokenizer, prompt: list[str], max_length: int):
     r"""
     Tokenize a list of prompts and return its tokens with weights of each token.
 
@@ -164,7 +163,7 @@ def get_unweighted_text_embeddings(
         clip_skip: int,
         eos: int,
         pad: int,
-        no_boseos_middle: Optional[bool] = True,
+        no_boseos_middle: bool | None = True,
 ):
     """
     When the length of tokens is a multiple of the capacity of the text encoder,
@@ -221,10 +220,10 @@ def get_unweighted_text_embeddings(
 def get_weighted_text_embeddings(
         tokenizer,
         text_encoder,
-        prompt: Union[str, List[str]],
+        prompt: str | list[str],
         device,
-        max_embeddings_multiples: Optional[int] = 3,
-        no_boseos_middle: Optional[bool] = False,
+        max_embeddings_multiples: int | None = 3,
+        no_boseos_middle: bool | None = False,
         clip_skip=None,
 ):
     r"""

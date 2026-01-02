@@ -5,12 +5,10 @@ import torch
 import logging
 
 from multiprocessing import Value
-from typing import List
 from tqdm import tqdm
 from diffusers import DDPMScheduler
 
 import library.config.config_util as config_util
-import library.logging.step_logging
 
 from library.constants import SDXL_VAE_LATENT_SCALE
 from library.models.sdxl_model_util import get_size_embeddings
@@ -60,7 +58,7 @@ logger = logging.getLogger(__name__)
 UNET_NUM_BLOCKS_FOR_BLOCK_LR = 23
 
 
-def get_block_params_to_optimize(unet: SdxlUNet2DConditionModel, block_lrs: List[float]) -> List[dict]:
+def get_block_params_to_optimize(unet: SdxlUNet2DConditionModel, block_lrs: list[float]) -> list[dict]:
     block_params = [[] for _ in range(len(block_lrs))]
 
     for i, (name, param) in enumerate(unet.named_parameters()):
@@ -574,7 +572,7 @@ def train(cfg: SDXLFineTuneConfig):
             current_step.value = global_step
 
             if cfg.optimizer.fused_optimizer_groups:
-                optimizer_hooked_count = {i: 0 for i in range(len(optimizers))}
+                optimizer_hooked_count = dict.fromkeys(range(len(optimizers)), 0)
 
             with accelerator.accumulate(*training_models):
                 if "latents" in batch and batch["latents"] is not None:

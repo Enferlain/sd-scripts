@@ -34,6 +34,7 @@ def test_sdxl_train_dry_run():
     command = [
         "accelerate", "launch",
         "--num_processes=1",
+        "--mixed_precision=no",  # Explicit to avoid config file issues
         script_path,
         "+training.dry_run=True",
         f"model.pretrained_model_name_or_path={model_path}",
@@ -42,7 +43,7 @@ def test_sdxl_train_dry_run():
         "training.max_train_steps=1",
         f"output.saving.output_dir={output_dir}",
         "output.saving.output_name=dry_run_test",
-        f"data.source.reg_data_dir=tests/assets/reg"
+        "data.source.reg_data_dir=tests/assets/reg"
     ]
 
     env = os.environ.copy()

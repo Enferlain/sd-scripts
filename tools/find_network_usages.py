@@ -122,7 +122,7 @@ def main():
     
     for filepath in files:
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 lines = f.readlines()
         except Exception as e:
             print(f"Error reading {filepath}: {e}")

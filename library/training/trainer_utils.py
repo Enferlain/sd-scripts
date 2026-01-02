@@ -2,7 +2,6 @@ import logging
 import math
 import time
 import os
-from typing import Optional
 
 from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import TorchDynamoPlugin
@@ -178,7 +177,7 @@ def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):
 
 
 def determine_grad_sync_context(
-    precision_config: Optional[PrecisionConfig], accelerator, sync_gradients, training_model, edm2_model=None
+    precision_config: PrecisionConfig | None, accelerator, sync_gradients, training_model, edm2_model=None
 ):
     """
     Determine the gradient synchronization context.
@@ -257,7 +256,7 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
             # if skip_until_initial_step is specified, load data and discard it to ensure the same data is used
             if not cfg.output.saving.resume:
                 logger.info(
-                    f"initial_step is specified but not resuming. lr scheduler will be started from the beginning / initial_stepが指定されていますがresumeしていないため、lr schedulerは最初から始まります"
+                    "initial_step is specified but not resuming. lr scheduler will be started from the beginning / initial_stepが指定されていますがresumeしていないため、lr schedulerは最初から始まります"
                 )
             logger.info(f"skipping {initial_step} steps / {initial_step}ステップをスキップします")
             initial_step *= cfg.training.gradient_accumulation_steps

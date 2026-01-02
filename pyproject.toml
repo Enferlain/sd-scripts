@@ -33,11 +33,12 @@ exclude = [
 select = [
     "E",      # pycodestyle errors
     "F",      # pyflakes
-    "I",      # isort
+    # "I",    # isort - disabled, using custom import ordering
     "UP",     # pyupgrade
     "B",      # flake8-bugbear
     "SIM",    # flake8-simplify
     "C4",     # flake8-comprehensions
+    "TID252", # ban relative imports
 ]
 
 ignore = [
@@ -55,8 +56,7 @@ unfixable = []
 "tests/*" = ["S101"]  # Allow assert in tests
 "scripts/*" = ["T201"]  # Allow print() in scripts
 
-[tool.ruff.lint.isort]
-known-first-party = ["library", "scripts", "tools"]
+# isort disabled - using custom import ordering script instead
 
 [tool.ruff.format]
 quote-style = "double"

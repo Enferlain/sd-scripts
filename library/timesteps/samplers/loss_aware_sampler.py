@@ -1,7 +1,6 @@
 # loss_aware_sampler.py
 import math
 import torch
-from typing import Optional
 
 
 class LossAwareTimestepSampler:
@@ -23,7 +22,7 @@ class LossAwareTimestepSampler:
         start_p: float = 0.85,
         end_p: float = 0.35,
         anneal: str = "cosine",
-        fixed_p: Optional[float] = None,
+        fixed_p: float | None = None,
     ):
         """
         Initialize the LossAwareTimestepSampler.

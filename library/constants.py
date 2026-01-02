@@ -2,7 +2,6 @@ import re
 import PIL.Image
 
 from packaging import version
-from typing import Tuple
 from torchvision import transforms
 
 
@@ -78,26 +77,23 @@ IMAGE_TRANSFORMS = transforms.Compose(
 IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".bmp", ".PNG", ".JPG", ".JPEG", ".WEBP", ".BMP"]
 
 try:
-    import pillow_avif
-
+    import pillow_avif  # noqa: F401 - Side-effect import, registers AVIF plugin
     IMAGE_EXTENSIONS.extend([".avif", ".AVIF"])
 except:
     pass
 
 # JPEG-XL on Linux
 try:
-    from jxlpy import JXLImagePlugin
-    from library.utils.jpeg_xl_util import get_jxl_size
-
+    from jxlpy import JXLImagePlugin  # noqa: F401 - Side-effect import
+    from library.utils.jpeg_xl_util import get_jxl_size  # noqa: F401
     IMAGE_EXTENSIONS.extend([".jxl", ".JXL"])
 except:
     pass
 
 # JPEG-XL on Linux and Windows
 try:
-    import pillow_jxl
-    from library.utils.jpeg_xl_util import get_jxl_size
-
+    import pillow_jxl  # noqa: F401 - Side-effect import, registers JXL plugin
+    from library.utils.jpeg_xl_util import get_jxl_size  # noqa: F401
     IMAGE_EXTENSIONS.extend([".jxl", ".JXL"])
 except:
     pass
@@ -229,7 +225,7 @@ V2_UNET_PARAMS_CONTEXT_DIM = 1024
 # =============================================================================
 
 # --- library/models/sd_original_unet.py ---
-BLOCK_OUT_CHANNELS: Tuple[int] = (320, 640, 1280, 1280)  # TODO: Expected type 'tuple[int]', got 'tuple[int, int, int, int]' instead
+BLOCK_OUT_CHANNELS: tuple[int] = (320, 640, 1280, 1280)  # TODO: Expected type 'tuple[int]', got 'tuple[int, int, int, int]' instead
 TIMESTEP_INPUT_DIM = BLOCK_OUT_CHANNELS[0]
 TIME_EMBED_DIM = BLOCK_OUT_CHANNELS[0] * 4
 IN_CHANNELS: int = 4

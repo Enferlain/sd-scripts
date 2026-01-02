@@ -5,7 +5,7 @@ import logging
 import types
 import torch
 
-from typing import Tuple, Callable
+from collections.abc import Callable
 from torch.optim import Optimizer
 
 from library.config.dataclasses.optimizer import OptimizerConfig, LearningRatesConfig
@@ -108,7 +108,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
 
         # Need to handle base optimizer
         if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower()):
-            case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type", None)
+            case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
             if case_sensitive_full_base_optimizer_name is None:
                 raise ValueError("base_optimizer_type is required in optimizer_args for ScheduleFreeWrapper/snoo_asgd optimizers")
             base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")  # TODO: Unresolved attribute reference 'split' for class 'None'
@@ -163,7 +163,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
         else:
             trainable_params = results
             lr_descriptions = None
-    except TypeError as e:
+    except TypeError:
         # Fallback for adapters that don't yet support new signature (e.g., LyCORIS)
         raw_te_lr = learning_rates.text_encoders
         if raw_te_lr is None or isinstance(raw_te_lr, (float, int)):
@@ -189,7 +189,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
     return optimizer_name, optimizer_args, optimizer, optimizer_train_fn, optimizer_eval_fn, lr_descriptions
 
 
-def get_optimizer_train_eval_fn(optimizer: Optimizer, optimizer_config: OptimizerConfig) -> Tuple[Callable, Callable]:
+def get_optimizer_train_eval_fn(optimizer: Optimizer, optimizer_config: OptimizerConfig) -> tuple[Callable, Callable]:
     """
     Returns the train and eval functions for the optimizer if it is schedule-free.
 

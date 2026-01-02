@@ -25,7 +25,6 @@ import torch
 import logging
 import hydra
 
-from hydra.core.config_store import ConfigStore
 from tqdm import tqdm
 
 import library.utils.huggingface_util as huggingface_util
@@ -894,7 +893,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     if strategies.live_plotter_process and strategies.live_plotter_process.poll() is None:
                         try:
                             strategies.live_plotter_process.stdin.write(
-                                f"{','.join(map(str, timesteps_np))}\n".encode('utf-8'))
+                                f"{','.join(map(str, timesteps_np))}\n".encode())
                             strategies.live_plotter_process.stdin.flush()
                         except (BrokenPipeError, OSError):
                             logger.error("Live plotter connection lost.")

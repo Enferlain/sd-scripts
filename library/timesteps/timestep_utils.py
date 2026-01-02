@@ -6,7 +6,7 @@ Factory functions for initializing timesteps samplers based on configuration.
 
 import ast
 import logging
-from typing import Optional, Tuple, List, Any
+from typing import Any
 
 from library.config.dataclasses.timestep import TimestepConfig
 from library.timesteps.samplers.loss_aware_sampler import LossAwareTimestepSampler
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def parse_dynamic_timestep_schedule(
     timestep_config: TimestepConfig, noise_scheduler: Any, accelerator: Any
-) -> Tuple[Optional[List[Tuple[int, int]]], int, int]:
+) -> tuple[list[tuple[int, int]] | None, int, int]:
     """
     Parse dynamic timesteps schedule from config.
 

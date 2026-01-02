@@ -4,7 +4,6 @@ import os
 import logging
 
 from pathlib import Path
-from typing import List
 from tqdm import tqdm
 
 from library.data.image_utils import glob_images_pathlib
@@ -20,7 +19,7 @@ def main(args):
     ), "recursive requires full_path / recursiveはfull_pathと同時に指定してください"
 
     train_data_dir_path = Path(args.train_data_dir)
-    image_paths: List[Path] = glob_images_pathlib(train_data_dir_path, args.recursive)
+    image_paths: list[Path] = glob_images_pathlib(train_data_dir_path, args.recursive)
     logger.info(f"found {len(image_paths)} images.")
 
     if args.in_json is None and Path(args.out_json).is_file():

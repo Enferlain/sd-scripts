@@ -1,7 +1,6 @@
 # gaussian_mid_snr_sampler.py
 import math
 import torch
-from typing import Optional
 
 
 class GaussianMidSNRAdaptiveSampler:
@@ -96,7 +95,7 @@ class GaussianMidSNRAdaptiveSampler:
         """Compute the entropy of a probability distribution."""
         return -(p * (p + 1e-12).log()).sum()
 
-    def step(self, global_step: Optional[int] = None):
+    def step(self, global_step: int | None = None):
         """
         Advance the global step counter.
 
@@ -143,7 +142,7 @@ class GaussianMidSNRAdaptiveSampler:
             ) * la_probs + self.prior_weight * prior_probs
         H = self._entropy(mixed)
         H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
-        if H < H_min:
+        if H_min > H:
             u = torch.full_like(mixed, 1.0 / self.num_bins)
             mixed = (
                 1.0 - self.uniform_mix_when_low_entropy

@@ -7,7 +7,7 @@ results = []
 for f in os.listdir(scripts_dir):
     if f.endswith('.py'):
         filepath = os.path.join(scripts_dir, f)
-        with open(filepath, 'r', encoding='utf-8') as file:
+        with open(filepath, encoding='utf-8') as file:
             content = file.read()
         cfg_count = len(re.findall(r'\bcfg\.', content))
         config_count = len(re.findall(r'\bconfig\.', content))

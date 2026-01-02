@@ -1,6 +1,5 @@
 import torch
 import math
-from typing import Optional
 
 
 class TemperedAdaptiveSampler:
@@ -165,7 +164,7 @@ class TemperedAdaptiveSampler:
             # Entropy guard: mix in uniform mass instead of bumping prior_weight
             H = -(mixed * (mixed + 1e-8).log()).sum()
             H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
-            if H < H_min:
+            if H_min > H:
                 uniform = torch.full_like(mixed, 1.0 / self.num_bins)
                 mixed = (
                     1.0 - self.uniform_mix_when_low_entropy

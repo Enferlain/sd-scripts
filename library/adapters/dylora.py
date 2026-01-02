@@ -15,7 +15,6 @@ import os
 import random
 import torch
 
-from typing import List, Optional, Union
 from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
 from torch import nn
@@ -219,10 +218,10 @@ class DyLoRAModule(torch.nn.Module):
 
 def create_adapter(
     multiplier: float,
-    adapter_rank: Optional[int],
-    adapter_alpha: Optional[float],
+    adapter_rank: int | None,
+    adapter_alpha: float | None,
     vae: AutoencoderKL,
-    text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
+    text_encoder: CLIPTextModel | list[CLIPTextModel],
     unet,
     **kwargs,
 ):
@@ -247,9 +246,9 @@ def create_adapter(
         adapter_alpha = 1.0
 
     # extract dim/alpha for conv2d, and block dim
-    conv_dim = kwargs.get("conv_dim", None)
-    conv_alpha = kwargs.get("conv_alpha", None)
-    unit = kwargs.get("unit", None)
+    conv_dim = kwargs.get("conv_dim")
+    conv_alpha = kwargs.get("conv_alpha")
+    unit = kwargs.get("unit")
     if conv_dim is not None:
         conv_dim = int(conv_dim)
         assert conv_dim == adapter_rank, "conv_dim must be same as dim"
@@ -274,9 +273,9 @@ def create_adapter(
         varbose=True,
     )
 
-    loraplus_lr_ratio = kwargs.get("loraplus_lr_ratio", None)
-    loraplus_unet_lr_ratio = kwargs.get("loraplus_unet_lr_ratio", None)
-    loraplus_text_encoder_lr_ratio = kwargs.get("loraplus_text_encoder_lr_ratio", None)
+    loraplus_lr_ratio = kwargs.get("loraplus_lr_ratio")
+    loraplus_unet_lr_ratio = kwargs.get("loraplus_unet_lr_ratio")
+    loraplus_text_encoder_lr_ratio = kwargs.get("loraplus_text_encoder_lr_ratio")
     loraplus_lr_ratio = float(loraplus_lr_ratio) if loraplus_lr_ratio is not None else None
     loraplus_unet_lr_ratio = float(loraplus_unet_lr_ratio) if loraplus_unet_lr_ratio is not None else None
     loraplus_text_encoder_lr_ratio = float(loraplus_text_encoder_lr_ratio) if loraplus_text_encoder_lr_ratio is not None else None
@@ -328,7 +327,7 @@ def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weigh
             # logger.info(f"{lora_name} {value.size()} {dim}")
 
     # support old LoRA without alpha
-    for key in modules_dim.keys():
+    for key in modules_dim:
         if key not in modules_alpha:
             modules_alpha = modules_dim[key]
 
@@ -401,7 +400,7 @@ class DyLoRAAdapter(torch.nn.Module):
                 logger.info("apply LoRA to Conv2d with kernel size (3,3).")
 
         # create module instances
-        def create_modules(is_unet, root_module: torch.nn.Module, target_replace_modules) -> List[DyLoRAModule]:
+        def create_modules(is_unet, root_module: torch.nn.Module, target_replace_modules) -> list[DyLoRAModule]:
             prefix = DyLoRAAdapter.LORA_PREFIX_UNET if is_unet else DyLoRAAdapter.LORA_PREFIX_TEXT_ENCODER
             loras = []
             for name, module in root_module.named_modules():
@@ -599,7 +598,7 @@ class DyLoRAAdapter(torch.nn.Module):
                         param_groups["lora"][f"{lora.lora_name}.{name}"] = param
 
             params = []
-            for key in param_groups.keys():
+            for key in param_groups:
                 param_data = {"params": param_groups[key].values()}
 
                 if len(param_data["params"]) == 0:
@@ -611,7 +610,7 @@ class DyLoRAAdapter(torch.nn.Module):
                     else:
                         param_data["lr"] = lr
 
-                if param_data.get("lr", None) == 0 or param_data.get("lr", None) is None:
+                if param_data.get("lr") == 0 or param_data.get("lr") is None:
                     continue
 
                 params.append(param_data)

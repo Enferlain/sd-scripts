@@ -7,7 +7,6 @@ Tests disk cache validation and text encoder output file I/O functions.
 import pytest
 import numpy as np
 import torch
-from pathlib import Path
 
 from library.data.caching import (
     is_disk_cached_latents_is_expected,
@@ -233,7 +232,7 @@ class TestTextEncoderOutputsIO:
 # Heavy Mocking Tests - load_images_and_masks_for_caching
 # =============================================================================
 
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from library.data.caching import (
     load_images_and_masks_for_caching,
     cache_batch_latents,

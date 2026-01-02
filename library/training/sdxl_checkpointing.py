@@ -12,7 +12,7 @@ from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import HuggingFaceConfig
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from accelerate import Accelerator
@@ -34,7 +34,7 @@ def save_sd_model_on_train_end(
         vae,
         logit_scale,
         ckpt_info,
-        hf_config: Optional[HuggingFaceConfig] = None,
+        hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Saves the SDXL model at the end of training.
@@ -118,7 +118,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         vae,
         logit_scale,
         ckpt_info,
-        hf_config: Optional[HuggingFaceConfig] = None,
+        hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Saves the SDXL model at epoch end or stepwise.

@@ -3,7 +3,6 @@
 
 import os
 
-from typing import List, Tuple
 import io
 
 
@@ -32,7 +31,7 @@ class JXLBitstream:
     A stream of bits with methods for easy handling.
     """
 
-    def __init__(self, file, offset: int = 0, offsets: List[List[int]] = None):
+    def __init__(self, file, offset: int = 0, offsets: list[list[int]] = None):
         """
         Initialize the JXLBitstream.
 
@@ -102,7 +101,7 @@ class JXLBitstream:
         return bits
 
 
-def decode_codestream(file, offset: int = 0, offsets: List[List[int]] = None) -> Tuple[int, int]:
+def decode_codestream(file, offset: int = 0, offsets: list[list[int]] = None) -> tuple[int, int]:
     """
     Decodes the actual codestream.
     JXL codestream specification: http://www-internal/2022/18181-1
@@ -170,7 +169,7 @@ def decode_codestream(file, offset: int = 0, offsets: List[List[int]] = None) ->
     return width, height  # TODO: Local variable 'width' might be referenced before assignment
 
 
-def decode_container(file) -> Tuple[int, int]:
+def decode_container(file) -> tuple[int, int]:
     """
     Parses the ISOBMFF container, extracts the codestream, and decodes it.
     JXL container specification: http://www-internal/2022/18181-2
@@ -252,7 +251,7 @@ def decode_container(file) -> Tuple[int, int]:
     return decode_codestream(file, offset=offset, offsets=offsets)
 
 
-def get_jxl_size(path: str) -> Tuple[int, int]:
+def get_jxl_size(path: str) -> tuple[int, int]:
     """
     Get the dimensions of a JPEG XL image.
 

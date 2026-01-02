@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -49,7 +48,7 @@ class CompilationConfig:
 @dataclass
 class DistributedConfig:
     """DDP/distributed training settings."""
-    ddp_timeout: Optional[int] = field(default=None, metadata={"help": "Distributed training timeout in seconds"})
+    ddp_timeout: int | None = field(default=None, metadata={"help": "Distributed training timeout in seconds"})
     ddp_gradient_as_bucket_view: bool = field(default=False, metadata={"help": "Use gradient as bucket view for DDP memory optimization"})
     ddp_static_graph: bool = field(default=False, metadata={"help": "Enable DDP static graph optimization"})
 
@@ -67,10 +66,10 @@ class DeepSpeedConfig:
     """DeepSpeed training settings."""
     deepspeed: bool = field(default=False, metadata={"help": "Enable DeepSpeed training"})
     zero_stage: int = field(default=2, metadata={"help": "ZeRO optimization stage: 0, 1, 2, or 3"})
-    offload_optimizer_device: Optional[str] = field(default=None, metadata={"help": "Offload optimizer state to: none, cpu, or nvme"})
-    offload_optimizer_nvme_path: Optional[str] = field(default=None, metadata={"help": "NVMe path for optimizer offload (e.g., /nvme)"})
-    offload_param_device: Optional[str] = field(default=None, metadata={"help": "Offload parameters to: none, cpu, or nvme"})
-    offload_param_nvme_path: Optional[str] = field(default=None, metadata={"help": "NVMe path for parameter offload (e.g., /nvme)"})
+    offload_optimizer_device: str | None = field(default=None, metadata={"help": "Offload optimizer state to: none, cpu, or nvme"})
+    offload_optimizer_nvme_path: str | None = field(default=None, metadata={"help": "NVMe path for optimizer offload (e.g., /nvme)"})
+    offload_param_device: str | None = field(default=None, metadata={"help": "Offload parameters to: none, cpu, or nvme"})
+    offload_param_nvme_path: str | None = field(default=None, metadata={"help": "NVMe path for parameter offload (e.g., /nvme)"})
     zero3_init_flag: bool = field(default=False, metadata={"help": "Enable deepspeed.zero.Init for constructing massive models"})
     zero3_save_16bit_model: bool = field(default=False, metadata={"help": "Save 16-bit model weights with ZeRO-3"})
     fp16_master_weights_and_gradients: bool = field(default=False, metadata={"help": "Keep fp16 master weights and gradients (requires compatible optimizer)"})

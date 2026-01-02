@@ -5,7 +5,6 @@ Tests for SNR-based loss weighting functions using lightweight fake schedulers.
 These tests verify correct formulas, clamping behavior, and masking semantics.
 """
 
-import pytest
 import torch
 from types import SimpleNamespace
 

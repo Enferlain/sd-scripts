@@ -165,7 +165,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     train_dataset_group.new_cache_latents(vae, accelerator)
 
     accelerator.wait_for_everyone()
-    accelerator.print(f"Finished caching latents to disk.")
+    accelerator.print("Finished caching latents to disk.")
 
 
 def setup_parser() -> argparse.ArgumentParser:

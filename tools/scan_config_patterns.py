@@ -9,7 +9,7 @@ from collections import defaultdict
 
 
 def scan_config_patterns(filepath):
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         lines = f.readlines()
 
     # Pattern to match cfg. or cfg. followed by attribute access
@@ -35,9 +35,9 @@ def scan_config_patterns(filepath):
         categories[category][key] = occurrences
 
     # Print grouped output
-    print(f"=" * 80)
+    print("=" * 80)
     print(f"Config Access Patterns in: {filepath}")
-    print(f"=" * 80)
+    print("=" * 80)
 
     for category in sorted(categories.keys()):
         print(f"\n### {category.upper()} ###")
@@ -51,9 +51,9 @@ def scan_config_patterns(filepath):
                     content = content[:97] + "..."
                 print(f"    L{line_num:4d}: {content}")
 
-    print(f"\n" + "=" * 80)
+    print("\n" + "=" * 80)
     print(f"Total unique patterns: {len(results)}")
-    print(f"=" * 80)
+    print("=" * 80)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ import logging
 import random
 import typing
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any
 
 import torch
 from torch import nn
@@ -46,7 +46,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
     
     vae_latent_scale: float = SD_VAE_LATENT_SCALE
     
-    def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, nn.Module, nn.Module, Optional[nn.Module]]:
+    def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, nn.Module, nn.Module, nn.Module | None]:
         """
         Load SD1.5/2 model components.
 
@@ -95,7 +95,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         """
         return strategy_sd.SdTokenizeStrategy(cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
-    def get_tokenizers(self, tokenize_strategy: strategy_sd.SdTokenizeStrategy) -> List[Any]:
+    def get_tokenizers(self, tokenize_strategy: strategy_sd.SdTokenizeStrategy) -> list[Any]:
         """
         Return single tokenizer for SD1.5/2.
 
@@ -145,7 +145,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         """
         return None
 
-    def cache_text_encoder_outputs_if_needed(self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: List[Any], dataset: Any, weight_dtype: torch.dtype) -> None:
+    def cache_text_encoder_outputs_if_needed(self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype) -> None:
         """
         Move text encoders to device for SD.
 
@@ -161,7 +161,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         for t_enc in text_encoders:
             t_enc.to(accelerator.device, dtype=weight_dtype)
 
-    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: List[Any]) -> List[Any]:
+    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
         """
         Return text encoders for encoding (SD uses single encoder).
 
@@ -175,7 +175,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         """
         return text_encoders
 
-    def call_unet(self, cfg: Any, accelerator: Any, unet: Any, noisy_latents: torch.Tensor, timesteps: torch.Tensor, text_conds: List[torch.Tensor], batch: Any, weight_dtype: torch.dtype, **kwargs) -> torch.Tensor:
+    def call_unet(self, cfg: Any, accelerator: Any, unet: Any, noisy_latents: torch.Tensor, timesteps: torch.Tensor, text_conds: list[torch.Tensor], batch: Any, weight_dtype: torch.dtype, **kwargs) -> torch.Tensor:
         """
         Call SD UNet with simple signature.
 
@@ -196,7 +196,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         noise_pred = unet(noisy_latents, timesteps, text_conds[0]).sample
         return noise_pred
 
-    def sample_images(self, accelerator: Any, cfg: Any, epoch: int, global_step: int, device: torch.device, vae: Any, tokenizers: List[Any], text_encoder: Any, unet: Any) -> None:
+    def sample_images(self, accelerator: Any, cfg: Any, epoch: int, global_step: int, device: torch.device, vae: Any, tokenizers: list[Any], text_encoder: Any, unet: Any) -> None:
         """
         Generate sample images for SD.
 
@@ -261,10 +261,10 @@ class SdPeftStrategy(PeftTrainingStrategy):
     # region Training batch processing methods
 
     def get_noise_pred_and_target(
-        self, cfg: Any, accelerator: Any, noise_scheduler: Any, latents: torch.Tensor, batch: Any, text_encoder_conds: List[Any],
-        unet: Any, adapter: Any, weight_dtype: torch.dtype, train_unet: bool, fixed_timesteps: Optional[torch.Tensor] = None, is_train: bool = True,
-        min_timestep_override: Optional[int] = None, max_timestep_override: Optional[int] = None, global_step: int = 0,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+        self, cfg: Any, accelerator: Any, noise_scheduler: Any, latents: torch.Tensor, batch: Any, text_encoder_conds: list[Any],
+        unet: Any, adapter: Any, weight_dtype: torch.dtype, train_unet: bool, fixed_timesteps: torch.Tensor | None = None, is_train: bool = True,
+        min_timestep_override: int | None = None, max_timestep_override: int | None = None, global_step: int = 0,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
         """
         Sample noise, call UNet, get noise prediction target.
 
@@ -330,11 +330,11 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
 
     def process_batch(
-        self, batch: Any, text_encoders: List[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
+        self, batch: Any, text_encoders: list[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
         accelerator: Any, cfg: Any, text_encoding_strategy: strategy_base.TextEncodingStrategy,
         tokenize_strategy: strategy_base.TokenizeStrategy, is_train: bool = True, train_text_encoder: bool = True,
-        train_unet: bool = True, edm2_model: Optional[Any] = None, min_timestep_override: Optional[int] = None, max_timestep_override: Optional[int] = None, global_step: int = 0,
-    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor], torch.Tensor]:
+        train_unet: bool = True, edm2_model: Any | None = None, min_timestep_override: int | None = None, max_timestep_override: int | None = None, global_step: int = 0,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
         """
         Process a batch for training.
 
@@ -447,7 +447,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         return loss.mean(), pre_scaling_loss, loss_scaled, timesteps
 
     def process_val_batch(
-        self, batch: Any, text_encoders: List[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
+        self, batch: Any, text_encoders: list[Any], unet: Any, adapter: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype,
         accelerator: Any, cfg: Any, text_encoding_strategy: strategy_base.TextEncodingStrategy,
         tokenize_strategy: strategy_base.TokenizeStrategy, train_text_encoder: bool = True, train_unet: bool = True,
         timesteps_list: list = [50, 350, 500, 650, 950]  # TODO: Default argument value is mutable
@@ -537,9 +537,9 @@ class SdPeftStrategy(PeftTrainingStrategy):
 
     def calculate_val_loss(
         self, global_step: int, epoch_step: int, train_dataloader: Any, val_loss_recorder: Any, val_dataloader: Any,
-        cyclic_val_dataloader: Any, adapter: Any, tokenize_strategy: Any, text_encoders: List[Any], text_encoding_strategy: Any,
-        unet: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype, accelerator: Any, cfg: Any, epoch: int, batch: Optional[Any] = None, train_text_encoder: bool = True
-    ) -> Tuple[Optional[float], Optional[float], Optional[dict]]:
+        cyclic_val_dataloader: Any, adapter: Any, tokenize_strategy: Any, text_encoders: list[Any], text_encoding_strategy: Any,
+        unet: Any, vae: Any, noise_scheduler: Any, vae_dtype: torch.dtype, weight_dtype: torch.dtype, accelerator: Any, cfg: Any, epoch: int, batch: Any | None = None, train_text_encoder: bool = True
+    ) -> tuple[float | None, float | None, dict | None]:
         """
         Calculate validation loss.
 

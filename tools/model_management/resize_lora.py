@@ -11,7 +11,6 @@ from safetensors.torch import load_file, save_file, safe_open
 from tqdm import tqdm
 
 import library.utils.safetensors_utils
-from library.models import model_util
 from library.utils.common_utils import setup_logging
 from library.utils.hash_utils import precalculate_safetensors_hashes
 
@@ -74,7 +73,7 @@ def index_sv_fro(S, target):
 def index_sv_ratio(S, target):
     max_sv = S[0]
     min_sv = max_sv / target
-    index = int(torch.sum(S > min_sv).item())
+    index = int(torch.sum(min_sv < S).item())
     index = max(1, min(index, len(S) - 1))
 
     return index

@@ -13,7 +13,7 @@ from safetensors.torch import save_file
 from tqdm import tqdm
 
 import library.models.sd_model_util
-from library.models import model_util, sdxl_model_util
+from library.models import sdxl_model_util
 from library.adapters import lora
 from library.utils.common_utils import setup_logging
 from library.utils import sai_model_spec
@@ -125,7 +125,7 @@ def svd(
     lora_adapter_t = lora.create_adapter(1.0, dim, dim, None, text_encoders_t, unet_t, **kwargs)
     assert len(lora_adapter_o.text_encoder_loras) == len(
         lora_adapter_t.text_encoder_loras
-    ), f"model version is different (SD1.x vs SD2.x) / それぞれのモデルのバージョンが違います（SD1.xベースとSD2.xベース） "
+    ), "model version is different (SD1.x vs SD2.x) / それぞれのモデルのバージョンが違います（SD1.xベースとSD2.xベース） "
 
     # get diffs
     diffs = {}

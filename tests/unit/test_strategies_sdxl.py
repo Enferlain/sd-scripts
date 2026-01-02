@@ -8,7 +8,7 @@ import os
 import pytest
 import numpy as np
 import torch
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 from library.strategies.strategy_sdxl import (
     SdxlTokenizeStrategy,

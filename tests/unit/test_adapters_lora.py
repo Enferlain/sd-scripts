@@ -6,7 +6,6 @@ and don't require heavy model mocks.
 """
 
 import pytest
-from unittest.mock import patch
 
 # Import the functions and constants we're testing
 from library.adapters.lora import (

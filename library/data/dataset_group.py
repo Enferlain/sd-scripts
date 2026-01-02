@@ -6,7 +6,8 @@ A ConcatDataset wrapper that provides unified access to multiple dataset instanc
 import logging
 import torch
 
-from typing import Any, List, Sequence, Tuple, Union, TYPE_CHECKING
+from typing import Any, Union, TYPE_CHECKING
+from collections.abc import Sequence
 from accelerate import Accelerator
 
 from library.strategies.strategy_base import TextEncoderOutputsCachingStrategy
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 # behave as Dataset mock
 class DatasetGroup(torch.utils.data.ConcatDataset):
     def __init__(self, datasets: Sequence[Union["DreamBoothDataset", "FineTuningDataset"]]):
-        self.datasets: List[Union["DreamBoothDataset", "FineTuningDataset"]]
+        self.datasets: list[DreamBoothDataset | FineTuningDataset]
 
         super().__init__(datasets)
 
@@ -75,7 +76,7 @@ class DatasetGroup(torch.utils.data.ConcatDataset):
             dataset.cache_text_encoder_outputs(tokenizers, text_encoders, device, weight_dtype, cache_to_disk,
                                                is_main_process)
 
-    def new_cache_text_encoder_outputs(self, models: List[Any], accelerator: Accelerator):
+    def new_cache_text_encoder_outputs(self, models: list[Any], accelerator: Accelerator):
         for i, dataset in enumerate(self.datasets):
             logger.info(f"[Dataset {i}]")
             dataset.new_cache_text_encoder_outputs(models, accelerator)
@@ -89,7 +90,7 @@ class DatasetGroup(torch.utils.data.ConcatDataset):
         for dataset in self.datasets:
             dataset.verify_bucket_reso_steps(min_steps)
 
-    def get_resolutions(self) -> List[Tuple[int, int]]:
+    def get_resolutions(self) -> list[tuple[int, int]]:
         return [(dataset.width, dataset.height) for dataset in self.datasets]
 
     def is_latent_cacheable(self) -> bool:

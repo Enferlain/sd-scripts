@@ -109,7 +109,6 @@ from torch import nn
 from torch.nn import functional as F
 from einops import rearrange
 from types import SimpleNamespace
-from typing import Dict, Optional, Tuple, Union
 
 from library.utils.common_utils import setup_logging, exists
 
@@ -618,7 +617,7 @@ class CrossAttention(nn.Module):
     def __init__(
             self,
             query_dim: int,
-            cross_attention_dim: Optional[int] = None,
+            cross_attention_dim: int | None = None,
             heads: int = 8,
             dim_head: int = 64,
             upcast_attention: bool = False,
@@ -799,11 +798,11 @@ class CrossAttention(nn.Module):
 
 def translate_attention_names_from_diffusers(
         hidden_states: torch.FloatTensor,
-        context: Optional[torch.FloatTensor] = None,
-        mask: Optional[torch.FloatTensor] = None,
+        context: torch.FloatTensor | None = None,
+        mask: torch.FloatTensor | None = None,
         # HF naming
-        encoder_hidden_states: Optional[torch.FloatTensor] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
+        encoder_hidden_states: torch.FloatTensor | None = None,
+        attention_mask: torch.FloatTensor | None = None,
 ):
     # translate from hugging face diffusers
     context = context if context is not None else encoder_hidden_states
@@ -931,8 +930,8 @@ class Transformer2DModel(nn.Module):
             self,
             num_attention_heads: int = 16,
             attention_head_dim: int = 88,
-            in_channels: Optional[int] = None,
-            cross_attention_dim: Optional[int] = None,
+            in_channels: int | None = None,
+            cross_attention_dim: int | None = None,
             use_linear_projection: bool = False,
             upcast_attention: bool = False,
     ):
@@ -1488,8 +1487,8 @@ class UNet2DConditionModel(nn.Module):
 
     def __init__(
             self,
-            sample_size: Optional[int] = None,
-            attention_head_dim: Union[int, Tuple[int]] = 8,
+            sample_size: int | None = None,
+            attention_head_dim: int | tuple[int] = 8,
             cross_attention_dim: int = 1280,
             use_linear_projection: bool = False,
             upcast_attention: bool = False,
@@ -1639,13 +1638,13 @@ class UNet2DConditionModel(nn.Module):
     def forward(
             self,
             sample: torch.FloatTensor,
-            timestep: Union[torch.Tensor, float, int],
+            timestep: torch.Tensor | float | int,
             encoder_hidden_states: torch.Tensor,
-            class_labels: Optional[torch.Tensor] = None,
+            class_labels: torch.Tensor | None = None,
             return_dict: bool = True,
-            down_block_additional_residuals: Optional[Tuple[torch.Tensor]] = None,
-            mid_block_additional_residual: Optional[torch.Tensor] = None,
-    ) -> Union[Dict, Tuple]:
+            down_block_additional_residuals: tuple[torch.Tensor] | None = None,
+            mid_block_additional_residual: torch.Tensor | None = None,
+    ) -> dict | tuple:
         r"""
         Args:
             sample (`torch.FloatTensor`): (batch, channel, height, width) noisy inputs tensor
@@ -1893,13 +1892,13 @@ class InferUNet2DConditionModel:
     def forward(
             self,
             sample: torch.FloatTensor,
-            timestep: Union[torch.Tensor, float, int],
+            timestep: torch.Tensor | float | int,
             encoder_hidden_states: torch.Tensor,
-            class_labels: Optional[torch.Tensor] = None,
+            class_labels: torch.Tensor | None = None,
             return_dict: bool = True,
-            down_block_additional_residuals: Optional[Tuple[torch.Tensor]] = None,
-            mid_block_additional_residual: Optional[torch.Tensor] = None,
-    ) -> Union[Dict, Tuple]:
+            down_block_additional_residuals: tuple[torch.Tensor] | None = None,
+            mid_block_additional_residual: torch.Tensor | None = None,
+    ) -> dict | tuple:
         r"""
         current implementation is a copy of `UNet2DConditionModel.forward()` with Deep Shrink.
 

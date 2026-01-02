@@ -2,7 +2,6 @@
 import diffusers.schedulers
 import torch
 
-from typing import Union, Optional, Tuple
 from diffusers import EulerAncestralDiscreteScheduler
 from diffusers.schedulers.scheduling_euler_ancestral_discrete import EulerAncestralDiscreteSchedulerOutput
 from torchvision import transforms
@@ -127,11 +126,11 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
     def step(
             self,
             model_output: torch.FloatTensor,
-            timestep: Union[float, torch.FloatTensor],
+            timestep: float | torch.FloatTensor,
             sample: torch.FloatTensor,
-            generator: Optional[torch.Generator] = None,
+            generator: torch.Generator | None = None,
             return_dict: bool = True,
-    ) -> Union[EulerAncestralDiscreteSchedulerOutput, Tuple]:
+    ) -> EulerAncestralDiscreteSchedulerOutput | tuple:
         """
         Predict the sample from the previous timesteps by reversing the SDE. This function propagates the diffusion
         process from the learned model outputs (most often the predicted noise).

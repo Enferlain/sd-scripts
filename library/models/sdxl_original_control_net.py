@@ -3,7 +3,7 @@ import logging
 import torch
 import torch.utils.checkpoint
 
-from typing import Any, Optional
+from typing import Any
 from torch import nn
 from torch.nn import functional as F
 
@@ -50,7 +50,7 @@ class ControlNetConditioningEmbedding(nn.Module):
 
 
 class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
-    def __init__(self, multiplier: Optional[float] = None, **kwargs):
+    def __init__(self, multiplier: float | None = None, **kwargs):
         super().__init__(**kwargs)
         self.multiplier = multiplier
 
@@ -103,10 +103,10 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
     def forward(
             self,
             x: torch.Tensor,
-            timesteps: Optional[torch.Tensor] = None,
-            context: Optional[torch.Tensor] = None,
-            y: Optional[torch.Tensor] = None,
-            cond_image: Optional[torch.Tensor] = None,
+            timesteps: torch.Tensor | None = None,
+            context: torch.Tensor | None = None,
+            y: torch.Tensor | None = None,
+            cond_image: torch.Tensor | None = None,
             **kwargs,
     ) -> torch.Tensor:
         # broadcast timesteps to batch dimension

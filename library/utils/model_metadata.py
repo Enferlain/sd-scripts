@@ -9,7 +9,6 @@ import subprocess
 import safetensors
 
 from dataclasses import dataclass, field, asdict
-from typing import Union, Optional
 
 from library.utils.common_utils import setup_logging
 from library.config.dataclasses.output import MetadataConfig
@@ -375,7 +374,7 @@ def file_to_data_url(file_path: str) -> str:
 
 
 def determine_resolution(
-        reso: Union[int, tuple[int, int]] | None = None,
+        reso: int | tuple[int, int] | None = None,
         sdxl: bool = False,
         model_config: dict[str, str] | None = None,
         v2: bool = False,
@@ -648,7 +647,7 @@ def get_title(metadata: dict) -> str | None:
     Returns:
         str | None: The title, or None if not found.
     """
-    return metadata.get(MODELSPEC_TITLE, None)
+    return metadata.get(MODELSPEC_TITLE)
 
 
 def load_metadata_from_safetensors(model: str) -> dict:
@@ -700,14 +699,14 @@ def get_model_metadata_from_config(
         v_parameterization: bool,
         is_lora: bool,
         is_textual_inversion: bool,
-        resolution: Union[int, tuple[int, int]] = (512, 512),
-        min_timestep: Optional[int] = None,
-        max_timestep: Optional[int] = None,
-        clip_skip: Optional[int] = None,
-        is_stable_diffusion_ckpt: Optional[bool] = None,
-        flux_type: Optional[str] = None,
-        lumina_type: Optional[str] = None,
-        hunyuan_image_type: Optional[str] = None,
+        resolution: int | tuple[int, int] = (512, 512),
+        min_timestep: int | None = None,
+        max_timestep: int | None = None,
+        clip_skip: int | None = None,
+        is_stable_diffusion_ckpt: bool | None = None,
+        flux_type: str | None = None,
+        lumina_type: str | None = None,
+        hunyuan_image_type: str | None = None,
         optional_metadata: dict[str, str] | None = None,
 ) -> dict:
     """

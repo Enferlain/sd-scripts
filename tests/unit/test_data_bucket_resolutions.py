@@ -1,5 +1,4 @@
 import pytest
-import math
 from library.data.data_structures import make_bucket_resolutions
 
 

@@ -2,7 +2,6 @@ import hydra
 import os
 import torch
 
-from typing import Optional, Union
 
 import sd_textual_inversion
 
@@ -26,8 +25,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         self.vae_latent_scale = SDXL_VAE_LATENT_SCALE
         self.is_sdxl = True
 
-    def validate_extra_config(self, config, train_dataset_group: Union[DatasetGroup, MinimalDataset], val_dataset_group: Optional[
-        DatasetGroup]):
+    def validate_extra_config(self, config, train_dataset_group: DatasetGroup | MinimalDataset, val_dataset_group: DatasetGroup | None):
         validate_sdxl_textual_inversion(config, train_dataset_group, val_dataset_group)
 
     def load_target_model(self, cfg, weight_dtype, accelerator):

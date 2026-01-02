@@ -13,7 +13,7 @@ import glob
 import json
 import logging
 
-from typing import List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 from tqdm import tqdm
 
 from library.data.dataset import BaseDataset
@@ -45,12 +45,12 @@ class DreamBoothDataset(BaseDataset):
             prior_loss_weight: float,
             debug_dataset: bool,
             validation_split: float,
-            validation_seed: Optional[int],
-            resize_interpolation: Optional[str],
+            validation_seed: int | None,
+            resize_interpolation: str | None,
     ) -> None:
         super().__init__(resolution, adapter_multiplier, debug_dataset, resize_interpolation)
 
-        assert resolution is not None, f"resolution is required / resolution（解像度）指定は必須です"
+        assert resolution is not None, "resolution is required / resolution（解像度）指定は必須です"
 
         self.batch_size = batch_size
         self.size = min(self.width, self.height)  # 短いほう
@@ -87,7 +87,7 @@ class DreamBoothDataset(BaseDataset):
             caption = None
             for cap_path in cap_paths:
                 if os.path.isfile(cap_path):
-                    with open(cap_path, "rt", encoding="utf-8") as f:
+                    with open(cap_path, encoding="utf-8") as f:
                         try:
                             lines = f.readlines()
                         except UnicodeDecodeError as e:
@@ -115,22 +115,22 @@ class DreamBoothDataset(BaseDataset):
                 )
                 if not os.path.isfile(info_cache_file):
                     logger.warning(
-                        f"image info file not found. You can ignore this warning if this is the first time to use this subset"
+                        "image info file not found. You can ignore this warning if this is the first time to use this subset"
                         + " / キャッシュファイルが見つかりませんでした。初回実行時はこの警告を無視してください: {metadata_file}"
                     )
                     use_cached_info_for_subset = False
 
             if use_cached_info_for_subset:
                 # json: {`img_path`:{"caption": "caption...", "resolution": [width, height]}, ...}
-                with open(info_cache_file, "r", encoding="utf-8") as f:
+                with open(info_cache_file, encoding="utf-8") as f:
                     metas = json.load(f)
                 img_paths = list(metas.keys())
-                sizes: List[Optional[Tuple[int, int]]] = [meta["resolution"] for meta in metas.values()]
+                sizes: list[tuple[int, int] | None] = [meta["resolution"] for meta in metas.values()]
 
                 # we may need to check image size and existence of image files, but it takes time, so user should check it before training
             else:
                 img_paths = glob_images(subset.image_dir, "*")
-                sizes: List[Optional[Tuple[int, int]]] = [None] * len(img_paths)
+                sizes: list[tuple[int, int] | None] = [None] * len(img_paths)
 
                 # new caching: get image size from cache files
                 strategy = LatentsCachingStrategy.get_strategy()
@@ -247,7 +247,7 @@ class DreamBoothDataset(BaseDataset):
         logger.info("prepare images.")
         num_train_images = 0
         num_reg_images = 0
-        reg_infos: List[Tuple[ImageInfo, DreamBoothSubset]] = []
+        reg_infos: list[tuple[ImageInfo, DreamBoothSubset]] = []
         for subset in subsets:
             num_repeats = subset.num_repeats if self.is_training_dataset else 1
             if num_repeats < 1:

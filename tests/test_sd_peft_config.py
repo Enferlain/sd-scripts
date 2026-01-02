@@ -1,7 +1,5 @@
 import hydra
 from hydra.core.global_hydra import GlobalHydra
-from omegaconf import OmegaConf
-import pytest
 import os
 
 def test_sd_peft_config_loading():

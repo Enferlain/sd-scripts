@@ -7,7 +7,6 @@ import torch
 import torch.nn.functional as F
 import re
 
-from typing import List, Optional, Type, Union
 from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
 
@@ -208,12 +207,12 @@ class OFTInfModule(OFTModule):
 
 def create_adapter(
     multiplier: float,
-    adapter_rank: Optional[int],
-    adapter_alpha: Optional[float],
+    adapter_rank: int | None,
+    adapter_alpha: float | None,
     vae: AutoencoderKL,
-    text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
+    text_encoder: CLIPTextModel | list[CLIPTextModel],
     unet,
-    neuron_dropout: Optional[float] = None,
+    neuron_dropout: float | None = None,
     **kwargs,
 ):
     """
@@ -244,8 +243,8 @@ def create_adapter(
             "alpha is too large (>=1, maybe default value is too large), please consider to set smaller value like 1e-3"
         )
 
-    enable_all_linear = kwargs.get("enable_all_linear", None)
-    enable_conv = kwargs.get("enable_conv", None)
+    enable_all_linear = kwargs.get("enable_all_linear")
+    enable_conv = kwargs.get("enable_conv")
     if enable_all_linear is not None:
         enable_all_linear = bool(enable_all_linear)
     if enable_conv is not None:
@@ -339,15 +338,15 @@ class OFTAdapter(torch.nn.Module):
 
     def __init__(
         self,
-        text_encoder: Union[List[CLIPTextModel], CLIPTextModel],
+        text_encoder: list[CLIPTextModel] | CLIPTextModel,
         unet,
         multiplier: float = 1.0,
         dim: int = 4,
         alpha: float = 1,
-        enable_all_linear: Optional[bool] = False,
-        enable_conv: Optional[bool] = False,
-        module_class: Type[object] = OFTModule,
-        varbose: Optional[bool] = False,
+        enable_all_linear: bool | None = False,
+        enable_conv: bool | None = False,
+        module_class: type[object] = OFTModule,
+        varbose: bool | None = False,
     ) -> None:
         """
         Initialize the OFTAdapter.
@@ -376,8 +375,8 @@ class OFTAdapter(torch.nn.Module):
         # create module instances
         def create_modules(
             root_module: torch.nn.Module,
-            target_replace_modules: List[torch.nn.Module],
-        ) -> List[OFTModule]:
+            target_replace_modules: list[torch.nn.Module],
+        ) -> list[OFTModule]:
             prefix = self.OFT_PREFIX_UNET
             ofts = []
             for name, module in root_module.named_modules():
@@ -410,7 +409,7 @@ class OFTAdapter(torch.nn.Module):
         if enable_conv:
             target_modules += OFTAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
 
-        self.unet_ofts: List[OFTModule] = create_modules(unet, target_modules)
+        self.unet_ofts: list[OFTModule] = create_modules(unet, target_modules)
         logger.info(f"create OFT for U-Net: {len(self.unet_ofts)} modules.")
 
         # assertion
@@ -470,7 +469,7 @@ class OFTAdapter(torch.nn.Module):
             oft.load_state_dict(sd_for_lora, False)
             oft.merge_to()
 
-        logger.info(f"weights are merged")
+        logger.info("weights are merged")
 
     # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
     def prepare_optimizer_params(self, 
@@ -564,7 +563,7 @@ class OFTAdapter(torch.nn.Module):
         """
         Backup original weights before merging.
         """
-        ofts: List[OFTInfModule] = self.unet_ofts
+        ofts: list[OFTInfModule] = self.unet_ofts
         for oft in ofts:
             org_module = oft.org_module[0]
             if not hasattr(org_module, "_lora_org_weight"):
@@ -577,7 +576,7 @@ class OFTAdapter(torch.nn.Module):
         """
         Restore original weights from backup.
         """
-        ofts: List[OFTInfModule] = self.unet_ofts
+        ofts: list[OFTInfModule] = self.unet_ofts
         for oft in ofts:
             org_module = oft.org_module[0]
             if not org_module._lora_restored:
@@ -591,7 +590,7 @@ class OFTAdapter(torch.nn.Module):
         """
         Pre-calculate weights and merge them for efficiency.
         """
-        ofts: List[OFTInfModule] = self.unet_ofts
+        ofts: list[OFTInfModule] = self.unet_ofts
         for oft in ofts:
             org_module = oft.org_module[0]
             oft.merge_to()

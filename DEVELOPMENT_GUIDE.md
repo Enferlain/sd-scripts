@@ -72,10 +72,12 @@ We are transitioning from a "Script-First" to a "Library-First" architecture.
 
 ## 4. Coding Standards
 
-- **Typing:** Use Python type hints (`typing`) everywhere.
+- **Typing:** Use Python type hints (`typing`) everywhere. Prefer modern syntax (`X | None` over `Optional[X]`, `list[int]` over `List[int]`).
 - **Imports:** Absolute imports preferred (e.g., `from library.training import optimizer`).
 - **Docstrings:** Document the _config_ expected by functions.
 - **No Argparse:** Do not import `argparse` in `library/` modules.
+- **Linting:** Use `ruff check .` and `ruff format .` before committing. Configuration is in `pyproject.toml`.
+- **Import Order:** isort is disabled; use `tools/fix_imports.py` for custom ordering if needed.
 
 ## 5. Config Design Principles
 

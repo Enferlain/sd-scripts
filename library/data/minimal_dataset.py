@@ -3,9 +3,7 @@ Minimal Dataset for custom dataset implementations.
 
 A lightweight base for building minimal dataset implementations.
 """
-import torch
 
-from typing import List, Tuple
 
 from library.data.dataset import BaseDataset
 
@@ -73,5 +71,5 @@ class MinimalDataset(BaseDataset):
         """
         raise NotImplementedError
 
-    def get_resolutions(self) -> List[Tuple[int, int]]:
+    def get_resolutions(self) -> list[tuple[int, int]]:
         return []

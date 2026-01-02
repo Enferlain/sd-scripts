@@ -1,9 +1,9 @@
 import types
 import torch
 import pytest
-import importlib
 from unittest.mock import MagicMock
 from library.data import dataset as ds
+from library.data import dataset_utils
 
 # ============================================================================
 # Fixtures & Helpers
@@ -141,7 +141,7 @@ def test_process_caption_replacements(base_ds):
 def test_split_train_val_boundaries(split_ratio, expected_train_len):
     paths = [str(i) for i in range(10)]
     sizes = [None] * 10
-    train_paths, _ = ds.split_train_val(paths, sizes, True, split_ratio, 123)
+    train_paths, _ = dataset_utils.split_train_val(paths, sizes, True, split_ratio, 123)
     assert len(train_paths) == expected_train_len
 
 def test_split_train_val_deterministic():
@@ -149,8 +149,8 @@ def test_split_train_val_deterministic():
     sizes = [None] * 10
     
     # With fixed seed, outputs should be identical
-    a_train, _ = ds.split_train_val(paths, sizes, True, 0.2, 123)
-    b_train, _ = ds.split_train_val(paths, sizes, True, 0.2, 123)
+    a_train, _ = dataset_utils.split_train_val(paths, sizes, True, 0.2, 123)
+    b_train, _ = dataset_utils.split_train_val(paths, sizes, True, 0.2, 123)
     
     assert a_train == b_train
 
@@ -481,7 +481,6 @@ def test_get_image_size_jxl_uppercase(base_ds, monkeypatch):
 
 def test_get_image_size_regular_image(base_ds, monkeypatch):
     """Regular images use imagesize module."""
-    import imagesize
     monkeypatch.setattr(ds.imagesize, "get", lambda p: (512, 512))
     
     result = base_ds.get_image_size("/path/to/image.png")
@@ -506,7 +505,7 @@ def test_get_image_size_pil_fallback(base_ds, monkeypatch, tmp_path):
 # Cache Latents Tests (Heavy Mocking)
 # ============================================================================
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 @patch("library.data.dataset.cache_batch_latents")
 @patch("library.data.dataset.is_disk_cached_latents_is_expected")

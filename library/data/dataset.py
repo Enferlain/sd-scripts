@@ -2,25 +2,20 @@ import os
 import re
 import logging
 import random
-import glob
 import math
-import json
-import importlib
 import torch
 import numpy as np
-import cv2
 import imagesize
 
-from torchvision import transforms
 from PIL import Image
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any
 from tqdm import tqdm
 from accelerate import Accelerator
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from library.constants import TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX, IMAGE_TRANSFORMS
 from library.utils.jpeg_xl_util import get_jxl_size
-from library.data.image_utils import load_image, trim_and_resize_if_required, glob_images, resize_image, \
+from library.data.image_utils import load_image, trim_and_resize_if_required, resize_image, \
     validate_interpolation_fn
 
 from library.strategies.strategy_base import (
@@ -43,8 +38,7 @@ from library.data.data_structures import (
     AugHelper,
     ImageInfo,
     BaseSubset,
-    BucketBatchIndex,
-    ControlNetSubset
+    BucketBatchIndex
 )
 
 logger = logging.getLogger(__name__)
@@ -53,10 +47,10 @@ logger = logging.getLogger(__name__)
 class BaseDataset(torch.utils.data.Dataset):
     def __init__(
             self,
-            resolution: Optional[Tuple[int, int]],
+            resolution: tuple[int, int] | None,
             adapter_multiplier: float,
             debug_dataset: bool,
-            resize_interpolation: Optional[str] = None,
+            resize_interpolation: str | None = None,
     ) -> None:
         super().__init__()
 
@@ -65,7 +59,7 @@ class BaseDataset(torch.utils.data.Dataset):
         self.adapter_multiplier = adapter_multiplier
         self.debug_dataset = debug_dataset
 
-        self.subsets: List[Union[DreamBoothSubset, FineTuningSubset]] = []
+        self.subsets: list[DreamBoothSubset | FineTuningSubset] = []
 
         self.token_padding_disabled = False
         self.tag_frequency = {}
@@ -97,8 +91,8 @@ class BaseDataset(torch.utils.data.Dataset):
             ), f'Resize interpolation "{resize_interpolation}" is not a valid interpolation'
         self.resize_interpolation = resize_interpolation
 
-        self.image_data: Dict[str, ImageInfo] = {}
-        self.image_to_subset: Dict[str, Union[DreamBoothSubset, FineTuningSubset]] = {}
+        self.image_data: dict[str, ImageInfo] = {}
+        self.image_to_subset: dict[str, DreamBoothSubset | FineTuningSubset] = {}
 
         self.replacements = {}
 
@@ -115,8 +109,8 @@ class BaseDataset(torch.utils.data.Dataset):
         self.latents_caching_strategy = LatentsCachingStrategy.get_strategy()
 
     def adjust_min_max_bucket_reso_by_steps(
-            self, resolution: Tuple[int, int], min_bucket_reso: int, max_bucket_reso: int, bucket_reso_steps: int
-    ) -> Tuple[int, int]:
+            self, resolution: tuple[int, int], min_bucket_reso: int, max_bucket_reso: int, bucket_reso_steps: int
+    ) -> tuple[int, int]:
         # make min/max bucket reso to be multiple of bucket_reso_steps
         if min_bucket_reso % bucket_reso_steps != 0:
             adjusted_min_bucket_reso = min_bucket_reso - min_bucket_reso % bucket_reso_steps
@@ -135,10 +129,10 @@ class BaseDataset(torch.utils.data.Dataset):
 
         assert (
                 min(resolution) >= min_bucket_reso
-        ), f"min_bucket_reso must be equal or less than resolution / min_bucket_resoは最小解像度より大きくできません。解像度を大きくするかmin_bucket_resoを小さくしてください"
+        ), "min_bucket_reso must be equal or less than resolution / min_bucket_resoは最小解像度より大きくできません。解像度を大きくするかmin_bucket_resoを小さくしてください"
         assert (
                 max(resolution) <= max_bucket_reso
-        ), f"max_bucket_reso must be equal or greater than resolution / max_bucket_resoは最大解像度より小さくできません。解像度を小さくするかmin_bucket_resoを大きくしてください"
+        ), "max_bucket_reso must be equal or greater than resolution / max_bucket_resoは最大解像度より小さくできません。解像度を小さくするかmin_bucket_resoを大きくしてください"
 
         return min_bucket_reso, max_bucket_reso
 
@@ -151,7 +145,7 @@ class BaseDataset(torch.utils.data.Dataset):
     def set_current_epoch(self, epoch):
         if not self.current_epoch == epoch:  # epochが切り替わったらバケツをシャッフルする
             if epoch > self.current_epoch:
-                logger.info("epoch is incremented. current_epoch: {}, epoch: {}".format(self.current_epoch, epoch))
+                logger.info(f"epoch is incremented. current_epoch: {self.current_epoch}, epoch: {epoch}")
                 num_epochs = epoch - self.current_epoch
                 for _ in range(num_epochs):
                     self.current_epoch += 1
@@ -159,7 +153,7 @@ class BaseDataset(torch.utils.data.Dataset):
                 # self.current_epoch seem to be set to 0 again in the next epoch. it may be caused by skipped_dataloader?
             else:
                 logger.warning(
-                    "epoch is not incremented. current_epoch: {}, epoch: {}".format(self.current_epoch, epoch))
+                    f"epoch is not incremented. current_epoch: {self.current_epoch}, epoch: {epoch}")
                 self.current_epoch = epoch
 
     def set_current_step(self, step):
@@ -449,7 +443,7 @@ class BaseDataset(torch.utils.data.Dataset):
             logger.info(f"mean ar error (without repeats): {mean_img_ar_error}")
 
         # データ参照用indexを作る。このindexはdatasetのshuffleに用いられる
-        self.buckets_indices: List[BucketBatchIndex] = []
+        self.buckets_indices: list[BucketBatchIndex] = []
         for bucket_index, bucket in enumerate(self.bucket_manager.buckets):
             batch_count = int(math.ceil(len(bucket) / self.batch_size))
             for batch_index in range(batch_count):
@@ -517,7 +511,7 @@ class BaseDataset(torch.utils.data.Dataset):
                         and self.random_crop_padding_percent == other.random_crop_padding_percent
                 )
 
-        batch: List[ImageInfo] = []
+        batch: list[ImageInfo] = []
         current_condition = None
 
         # support multiple-gpus
@@ -622,8 +616,8 @@ class BaseDataset(torch.utils.data.Dataset):
                         and self.random_crop_padding_percent == other.random_crop_padding_percent
                 )
 
-        batches: List[Tuple[Condition, List[ImageInfo]]] = []
-        batch: List[ImageInfo] = []
+        batches: list[tuple[Condition, list[ImageInfo]]] = []
+        batch: list[ImageInfo] = []
         current_condition = None
 
         logger.info("checking cache validity...")
@@ -674,7 +668,7 @@ class BaseDataset(torch.utils.data.Dataset):
             cache_batch_latents(vae, cache_to_disk, batch, condition.flip_aug, condition.alpha_mask,
                                 condition.random_crop, condition.random_crop_padding_percent)
 
-    def new_cache_text_encoder_outputs(self, models: List[Any], accelerator: Accelerator):
+    def new_cache_text_encoder_outputs(self, models: list[Any], accelerator: Accelerator):
         r"""
         A brand new method to cache text encoder outputs. This method caches text encoder outputs with caching strategy.
         """
@@ -1255,15 +1249,3 @@ class BaseDataset(torch.utils.data.Dataset):
 # better maintainability. Import them here to preserve backwards compatibility.
 # =============================================================================
 
-from library.data.dreambooth_dataset import DreamBoothDataset
-from library.data.finetuning_dataset import FineTuningDataset
-from library.data.controlnet_dataset import ControlNetDataset
-from library.data.minimal_dataset import MinimalDataset
-from library.data.dataset_group import DatasetGroup
-from library.data.dataset_utils import (
-    ImageLoadingDataset,
-    collator_class,
-    load_arbitrary_dataset,
-    split_train_val,
-    debug_dataset,
-)

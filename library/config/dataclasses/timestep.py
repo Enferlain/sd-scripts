@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -9,7 +8,7 @@ class MixAdaptiveConfig:
     ema_beta: float = field(default=0.9, metadata={"help": "EMA decay factor for loss tracking"})
     start_p: float = field(default=0.85, metadata={"help": "Starting probability for adaptive mixing"})
     end_p: float = field(default=0.35, metadata={"help": "Ending probability for adaptive mixing"})
-    fixed_p: Optional[float] = field(default=None, metadata={"help": "Fixed probability (overrides start_p/end_p if set)"})
+    fixed_p: float | None = field(default=None, metadata={"help": "Fixed probability (overrides start_p/end_p if set)"})
     anneal: str = field(default="cosine", metadata={"help": "Annealing schedule: linear, cosine"})
     small_t_frac: float = field(default=0.15, metadata={"help": "Fraction of bins considered 'small t'"})
     small_t_cap: float = field(default=0.6, metadata={"help": "Cap for small timesteps sampling probability"})
@@ -68,9 +67,9 @@ class TimestepConfig:
     """
     # Core settings
     timestep_sampling: str = field(default="uniform", metadata={"help": "Timestep sampling method"})
-    min_timestep: Optional[int] = field(default=None, metadata={"help": "Minimum timesteps for training"})
-    max_timestep: Optional[int] = field(default=None, metadata={"help": "Maximum timesteps for training"})
-    dynamic_timestep_schedule: Optional[str] = field(default=None, metadata={"help": "Dynamic timesteps schedule string"})
+    min_timestep: int | None = field(default=None, metadata={"help": "Minimum timesteps for training"})
+    max_timestep: int | None = field(default=None, metadata={"help": "Maximum timesteps for training"})
+    dynamic_timestep_schedule: str | None = field(default=None, metadata={"help": "Dynamic timesteps schedule string"})
     sigmoid_scale: float = field(default=1.0, metadata={"help": "Scale for sigmoid sampling"})
     discrete_flow_shift: float = field(default=1.0, metadata={"help": "Shift for discrete flow sampling"})
     

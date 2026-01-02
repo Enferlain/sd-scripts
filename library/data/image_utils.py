@@ -6,7 +6,6 @@ import random
 import cv2
 import numpy as np
 
-from typing import Optional, Tuple
 from PIL import Image
 
 from library.constants import IMAGE_EXTENSIONS
@@ -52,16 +51,16 @@ def load_image(image_path, alpha=False):
                     image = image.convert("RGB")
             img = np.array(image, np.uint8)
             return img
-    except (IOError, OSError) as e:
+    except OSError as e:
         logger.error(f"Error loading file: {image_path}")
         raise e
 
 
 # 画像を読み込む。戻り値はnumpy.ndarray,(original width, original height),(crop left, crop top, crop right, crop bottom)
 def trim_and_resize_if_required(
-        random_crop: bool, image: np.ndarray, reso, resized_size: Tuple[int, int],
-        resize_interpolation: Optional[str] = None, random_crop_padding_percent: float = 0.05
-) -> Tuple[np.ndarray, Tuple[int, int], Tuple[int, int, int, int]]:
+        random_crop: bool, image: np.ndarray, reso, resized_size: tuple[int, int],
+        resize_interpolation: str | None = None, random_crop_padding_percent: float = 0.05
+) -> tuple[np.ndarray, tuple[int, int], tuple[int, int, int, int]]:
     image_height, image_width = image.shape[0:2]
     original_size = (image_width, image_height)  # size before resize
 
@@ -120,7 +119,7 @@ def resize_image(
         height: int,
         resized_width: int,
         resized_height: int,
-        resize_interpolation: Optional[str] = None,
+        resize_interpolation: str | None = None,
 ):
     """
     Resize image with resize interpolation. Default interpolation to AREA if image is smaller, else LANCZOS.
@@ -165,7 +164,7 @@ def resize_image(
     return image
 
 
-def get_cv2_interpolation(interpolation: Optional[str]) -> Optional[int]:
+def get_cv2_interpolation(interpolation: str | None) -> int | None:
     """
     Convert interpolation value to cv2 interpolation integer
 
@@ -186,17 +185,14 @@ def get_cv2_interpolation(interpolation: Optional[str]) -> Optional[int]:
     elif interpolation == "bicubic" or interpolation == "cubic":
         # bicubic interpolation
         return cv2.INTER_CUBIC
-    elif interpolation == "area":
-        # resampling using pixel area relation. It may be a preferred method for image decimation, as it gives moire'-free results. But when the image is zoomed, it is similar to the INTER_NEAREST method.
-        return cv2.INTER_AREA
-    elif interpolation == "box":
+    elif interpolation == "area" or interpolation == "box":
         # resampling using pixel area relation. It may be a preferred method for image decimation, as it gives moire'-free results. But when the image is zoomed, it is similar to the INTER_NEAREST method.
         return cv2.INTER_AREA
     else:
         return None
 
 
-def get_pil_interpolation(interpolation: Optional[str]) -> Optional[Image.Resampling]:
+def get_pil_interpolation(interpolation: str | None) -> Image.Resampling | None:
     """
     Convert interpolation value to PIL interpolation
 

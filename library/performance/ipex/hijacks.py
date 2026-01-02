@@ -314,9 +314,7 @@ def torch_tensor(data, *args, dtype=None, device=None, **kwargs):
         device = return_xpu(device)
     if not device_supports_fp64:
         if check_device_type(device, "xpu"):
-            if dtype == torch.float64:
-                dtype = torch.float32
-            elif dtype is None and (hasattr(data, "dtype") and (data.dtype == torch.float64 or data.dtype == float)):
+            if dtype == torch.float64 or dtype is None and (hasattr(data, "dtype") and (data.dtype == torch.float64 or data.dtype == float)):
                 dtype = torch.float32
     return original_torch_tensor(data, *args, dtype=dtype, device=device, **kwargs)
 

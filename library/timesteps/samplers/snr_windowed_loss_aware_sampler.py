@@ -2,7 +2,6 @@
 import math
 import torch
 
-from typing import Optional
 
 
 class SNRWindowedLossAwareSampler:
@@ -29,9 +28,9 @@ class SNRWindowedLossAwareSampler:
         widen_to: float = 2.5,  # target half-width
         total_widen_steps: int = 2000,  # steps to widen
         # Optional cap on top timesteps early in training:
-        cap_max_t: Optional[int] = None,
+        cap_max_t: int | None = None,
         # new hyperparams:
-        cap_target_t: Optional[int] = 950,  # default: T-1
+        cap_target_t: int | None = 950,  # default: T-1
         cap_ema_beta: float = 0.9,
         cap_saturation_thresh: float = 0.20,  # fraction of samples hitting boundary
         cap_step_min: int = 5,  # min increment when moving cap
@@ -111,7 +110,7 @@ class SNRWindowedLossAwareSampler:
         """Compute the entropy of a probability distribution."""
         return -(p * (p + 1e-12).log()).sum()
 
-    def step(self, global_step: Optional[int] = None):
+    def step(self, global_step: int | None = None):
         """
         Advance the global step counter.
 
@@ -178,7 +177,7 @@ class SNRWindowedLossAwareSampler:
             # Optional entropy floor logic (still in fp32)
             H = -(probs * (probs + 1e-12).log()).sum()
             H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
-            if H < H_min:
+            if H_min > H:
                 u = torch.full_like(probs, 1.0 / self.num_bins)
                 probs = (
                     1.0 - self.uniform_mix_when_low_entropy

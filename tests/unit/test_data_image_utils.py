@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 from PIL import Image
 import numpy as np
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from library.data.image_utils import (
     glob_images,

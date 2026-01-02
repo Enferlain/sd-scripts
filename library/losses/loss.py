@@ -2,7 +2,6 @@ import math
 import kornia
 import torch
 
-from typing import List, Optional
 
 
 class LossRecorder:
@@ -10,7 +9,7 @@ class LossRecorder:
     Records and calculates the moving average of loss values during training.
     """
     def __init__(self):
-        self.loss_list: List[float] = []
+        self.loss_list: list[float] = []
         self.loss_total: float = 0.0
 
     def add(self, *, epoch: int, step: int, loss: float) -> None:
@@ -98,7 +97,7 @@ class EMARecorder:
         return self.ema / correction_factor
 
 
-def get_huber_threshold_if_needed(args, timesteps: torch.Tensor, noise_scheduler) -> Optional[torch.Tensor]:
+def get_huber_threshold_if_needed(args, timesteps: torch.Tensor, noise_scheduler) -> torch.Tensor | None:
     """
     Calculates the Huber loss threshold based on the configured schedule.
 
@@ -533,7 +532,7 @@ def conditional_loss(
         target: torch.Tensor,
         loss_type: str,
         reduction: str,
-        huber_c: Optional[torch.Tensor] = None,
+        huber_c: torch.Tensor | None = None,
         eps: float = None,
         scale: float = 1.0,
 ):

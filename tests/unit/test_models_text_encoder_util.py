@@ -1,7 +1,6 @@
-import pytest
 import torch
 from unittest.mock import MagicMock, patch
-from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
+from transformers import CLIPTextModelWithProjection
 from library.models.text_encoder_util import pool_workaround, get_hidden_states_sdxl
 
 class TestPoolWorkaround:

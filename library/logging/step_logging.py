@@ -1,4 +1,3 @@
-from typing import Optional
 
 import torch
 from accelerate import Accelerator
@@ -26,7 +25,7 @@ def generate_step_logs(
     average_loss_scaled=None,
     current_val_loss=None,
     average_val_loss=None,
-    timesteps: Optional[torch.Tensor] = None,
+    timesteps: torch.Tensor | None = None,
 ):
     """Generate step logs for training progress tracking."""
     logs = {"loss/current": current_loss, "loss/average": avr_loss}

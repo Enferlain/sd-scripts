@@ -18,7 +18,6 @@ import numpy as np
 import cv2
 
 from PIL import Image
-from typing import List, Optional, Tuple
 from torchvision import transforms
 
 from library.data.minimal_dataset import MinimalDataset
@@ -97,12 +96,12 @@ def load_arbitrary_dataset(data_config, max_token_length: int, tokenizer=None):
 
 
 def split_train_val(
-        paths: List[str],
-        sizes: List[Optional[Tuple[int, int]]],
+        paths: list[str],
+        sizes: list[tuple[int, int] | None],
         is_training_dataset: bool,
         validation_split: float,
         validation_seed: int | None,
-) -> Tuple[List[str], List[Optional[Tuple[int, int]]]]:
+) -> tuple[list[str], list[tuple[int, int] | None]]:
     """
     Split the dataset into train and validation
 
@@ -143,7 +142,7 @@ def debug_dataset(train_dataset, show_input_ids=False):
 
     epoch = 1
     while True:
-        logger.info(f"")
+        logger.info("")
         logger.info(f"epoch: {epoch}")
 
         steps = (epoch - 1) * len(train_dataset) + 1

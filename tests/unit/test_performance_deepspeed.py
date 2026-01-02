@@ -413,7 +413,6 @@ class TestPrepareDeepspeedModel:
     
     def test_no_mixed_precision_doesnt_wrap_forward(self):
         """Without mixed precision, forward should not be wrapped."""
-        import torch
         import torch.nn as nn
         
         cfg = MagicMock()

@@ -6,10 +6,9 @@ Tests adaptive loss weighting components from EDM2 paper.
 
 import pytest
 import torch
-import numpy as np
 import tempfile
 import os
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 from diffusers import DDPMScheduler
 
 from library.losses.edm2_loss import (

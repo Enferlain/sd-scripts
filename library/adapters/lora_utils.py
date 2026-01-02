@@ -3,7 +3,6 @@ import re
 import logging
 import torch
 
-from typing import Dict, List, Optional, Union
 from tqdm import tqdm
 
 from library.config.dataclasses.peft import PeftConfig
@@ -17,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 def filter_lora_state_dict(
-        weights_sd: Dict[str, torch.Tensor],
-        include_pattern: Optional[str] = None,
-        exclude_pattern: Optional[str] = None,
-) -> Dict[str, torch.Tensor]:
+        weights_sd: dict[str, torch.Tensor],
+        include_pattern: str | None = None,
+        exclude_pattern: str | None = None,
+) -> dict[str, torch.Tensor]:
     """
     Filter the LoRA state dict by include and exclude patterns.
 
@@ -58,15 +57,15 @@ def filter_lora_state_dict(
 
 
 def load_safetensors_with_lora_and_fp8(
-        model_files: Union[str, List[str]],
-        lora_weights_list: Optional[Dict[str, torch.Tensor]],
-        lora_multipliers: Optional[List[float]],
+        model_files: str | list[str],
+        lora_weights_list: dict[str, torch.Tensor] | None,
+        lora_multipliers: list[float] | None,
         fp8_optimization: bool,
         calc_device: torch.device,
         move_to_device: bool = False,
-        dit_weight_dtype: Optional[torch.dtype] = None,
-        target_keys: Optional[List[str]] = None,
-        exclude_keys: Optional[List[str]] = None,
+        dit_weight_dtype: torch.dtype | None = None,
+        target_keys: list[str] | None = None,
+        exclude_keys: list[str] | None = None,
 ) -> dict[str, torch.Tensor]:
     """
     Load state dict from safetensors files and merge LoRA weights into the state dict with fp8 optimization if needed.
@@ -225,9 +224,9 @@ def load_safetensors_with_fp8_optimization_and_hook(
         fp8_optimization: bool,
         calc_device: torch.device,
         move_to_device: bool = False,
-        dit_weight_dtype: Optional[torch.dtype] = None,
-        target_keys: Optional[List[str]] = None,
-        exclude_keys: Optional[List[str]] = None,
+        dit_weight_dtype: torch.dtype | None = None,
+        target_keys: list[str] | None = None,
+        exclude_keys: list[str] | None = None,
         weight_hook: callable = None,
 ) -> dict[str, torch.Tensor]:
     """

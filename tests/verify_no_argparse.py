@@ -46,7 +46,6 @@ def test_imports():
 
 def test_checkpointing_shim():
     print("\nTesting checkpointing shim...")
-    from library.utils.sai_model_spec import get_sai_model_spec_from_config
     from library.config.dataclasses.output import MetadataConfig
     
     # Create a mock MetadataConfig
@@ -63,7 +62,6 @@ def test_checkpointing_shim():
     # Actually, get_sai_model_spec calls build_metadata, so we need to mock that interaction or provide good inputs.
     # Let's import the module and check annotations.
     
-    import library.utils.sai_model_spec as sai_model_spec
     
     # Check annotations of get_sai_model_spec_from_config
 

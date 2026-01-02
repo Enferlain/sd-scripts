@@ -48,7 +48,7 @@ def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler):
         noise_scheduler: The noise scheduler instance to modify.
     """
     # fix beta: zero terminal SNR
-    logger.info(f"fix noise scheduler betas: https://arxiv.org/abs/2305.08891")
+    logger.info("fix noise scheduler betas: https://arxiv.org/abs/2305.08891")
 
     def enforce_zero_terminal_snr(betas):
         # Convert betas to alphas_bar_sqrt

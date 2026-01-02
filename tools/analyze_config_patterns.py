@@ -10,14 +10,13 @@ Key insight:
 """
 
 import re
-from pathlib import Path
 from collections import defaultdict
 
 
 def analyze_file(filepath: str) -> dict:
     """Analyze a Python file for config usage patterns."""
 
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         content = f.read()
         lines = content.split("\n")
 
@@ -169,7 +168,7 @@ def generate_report(results: dict, output_path: str):
     for var, items in sorted(by_var.items()):
         cfg_path = var_to_cfg.get(var, f"cfg.{var}")
         report.append(f"\n  {var} -> {cfg_path}")
-        report.append(f"  " + "-" * 50)
+        report.append("  " + "-" * 50)
         for item in items:
             report.append(f"    Line {item['line']}: {item['content']}")
     report.append("")
@@ -188,7 +187,7 @@ def generate_report(results: dict, output_path: str):
 
     for method, items in sorted(by_method.items()):
         report.append(f"\n  Method: {method}()")
-        report.append(f"  " + "-" * 50)
+        report.append("  " + "-" * 50)
         for item in items:
             report.append(
                 f"    Line {item['line']} ({item['variable']}): {item['content']}"

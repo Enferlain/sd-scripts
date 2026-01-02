@@ -29,7 +29,6 @@ import torch
 import torch.utils.checkpoint
 
 from types import SimpleNamespace
-from typing import Optional
 from torch import nn
 from torch.nn import functional as F
 from einops import rearrange
@@ -452,7 +451,7 @@ class CrossAttention(nn.Module):
     def __init__(
             self,
             query_dim: int,
-            cross_attention_dim: Optional[int] = None,
+            cross_attention_dim: int | None = None,
             heads: int = 8,
             dim_head: int = 64,
             upcast_attention: bool = False,
@@ -766,8 +765,8 @@ class Transformer2DModel(nn.Module):
             self,
             num_attention_heads: int = 16,
             attention_head_dim: int = 88,
-            in_channels: Optional[int] = None,
-            cross_attention_dim: Optional[int] = None,
+            in_channels: int | None = None,
+            cross_attention_dim: int | None = None,
             use_linear_projection: bool = False,
             upcast_attention: bool = False,
             num_transformer_layers: int = 1,

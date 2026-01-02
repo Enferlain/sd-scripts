@@ -2,7 +2,7 @@ import os
 import torch
 import logging
 
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any
 from transformers import CLIPTokenizer
 
 from library.constants import HIGH_VRAM, V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
@@ -18,7 +18,7 @@ class SdTokenizeStrategy(TokenizeStrategy):
     """
     Tokenize strategy for SD1.5 and SD2.0.
     """
-    def __init__(self, v2: bool, max_length: Optional[int], tokenizer_cache_dir: Optional[str] = None) -> None:
+    def __init__(self, v2: bool, max_length: int | None, tokenizer_cache_dir: str | None = None) -> None:
         """
         Args:
             v2: Whether to use v2 tokenizer
@@ -38,7 +38,7 @@ class SdTokenizeStrategy(TokenizeStrategy):
         else:
             self.max_length = max_length + 2
 
-    def tokenize(self, text: Union[str, List[str]]) -> List[torch.Tensor]:
+    def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
         """
         Tokenize text.
 
@@ -51,7 +51,7 @@ class SdTokenizeStrategy(TokenizeStrategy):
         text = [text] if isinstance(text, str) else text
         return [torch.stack([self._get_input_ids(self.tokenizer, t, self.max_length) for t in text], dim=0)]
 
-    def tokenize_with_weights(self, text: str | List[str]) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         """
         Tokenize text with weights.
 
@@ -75,12 +75,12 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
     """
     Text encoding strategy for SD1.5 and SD2.0.
     """
-    def __init__(self, clip_skip: Optional[int] = None) -> None:
+    def __init__(self, clip_skip: int | None = None) -> None:
         self.clip_skip = clip_skip
 
     def encode_tokens(
-            self, tokenize_strategy: TokenizeStrategy, models: List[Any], tokens: List[torch.Tensor]
-    ) -> List[torch.Tensor]:
+            self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor]
+    ) -> list[torch.Tensor]:
         """
         Encode tokens.
 
@@ -142,10 +142,10 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
     def encode_tokens_with_weights(
             self,
             tokenize_strategy: TokenizeStrategy,
-            models: List[Any],
-            tokens_list: List[torch.Tensor],
-            weights_list: List[torch.Tensor],
-    ) -> List[torch.Tensor]:
+            models: list[Any],
+            tokens_list: list[torch.Tensor],
+            weights_list: list[torch.Tensor],
+    ) -> list[torch.Tensor]:
         encoder_hidden_states = self.encode_tokens(tokenize_strategy, models, tokens_list)[0]
 
         weights = weights_list[0].to(encoder_hidden_states.device)
@@ -187,7 +187,7 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
     def cache_suffix(self) -> str:
         return self.suffix
 
-    def get_latents_npz_path(self, absolute_path: str, image_size: Tuple[int, int]) -> str:
+    def get_latents_npz_path(self, absolute_path: str, image_size: tuple[int, int]) -> str:
         """
         Get path to the cached latents npz file.
 
@@ -204,7 +204,7 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
             return old_npz_file
         return os.path.splitext(absolute_path)[0] + f"_{image_size[0]:04d}x{image_size[1]:04d}" + self.suffix
 
-    def is_disk_cached_latents_expected(self, bucket_reso: Tuple[int, int], npz_path: str, flip_aug: bool,
+    def is_disk_cached_latents_expected(self, bucket_reso: tuple[int, int], npz_path: str, flip_aug: bool,
                                         alpha_mask: bool):
         """
         Check if the latents are cached in disk.
@@ -221,7 +221,7 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
         return self._default_is_disk_cached_latents_expected(8, bucket_reso, npz_path, flip_aug, alpha_mask)
 
     # TODO remove circular dependency for ImageInfo
-    def cache_batch_latents(self, vae, image_infos: List, flip_aug: bool, alpha_mask: bool, random_crop: bool,
+    def cache_batch_latents(self, vae, image_infos: list, flip_aug: bool, alpha_mask: bool, random_crop: bool,
                             random_crop_padding_percent: float = 0.05):
         """
         Cache batch latents.

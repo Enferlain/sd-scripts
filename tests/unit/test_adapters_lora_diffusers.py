@@ -4,7 +4,6 @@ Unit tests for the pure utility functions in library/adapters/lora_diffusers.py.
 Tests the UNet conversion map used to convert between Stability AI and Diffusers layer naming.
 """
 
-import pytest
 
 from library.adapters.lora_diffusers import make_unet_conversion_map, UNET_CONVERSION_MAP
 

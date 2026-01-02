@@ -4,7 +4,6 @@ Unit tests for library/utils/huggingface_util.py.
 Tests HuggingFace Hub API interactions with mocked peft calls.
 """
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from library.utils.huggingface_util import exists_repo, list_dir

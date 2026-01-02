@@ -5,7 +5,7 @@ Tests the SDXL-specific checkpointing functions which wrap the common checkpoint
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 import torch
 
 from library.config.dataclasses.output import SavingConfig

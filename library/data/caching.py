@@ -3,7 +3,6 @@ import logging
 import torch
 import numpy as np
 
-from typing import List, Tuple
 from diffusers import AutoencoderKL
 
 from library.constants import HIGH_VRAM, IMAGE_TRANSFORMS
@@ -51,9 +50,9 @@ def is_disk_cached_latents_is_expected(reso, npz_path: str, flip_aug: bool, alph
 
 # for new_cache_latents
 def load_images_and_masks_for_caching(
-        image_infos: List[ImageInfo], use_alpha_mask: bool, random_crop: bool,
+        image_infos: list[ImageInfo], use_alpha_mask: bool, random_crop: bool,
         random_crop_padding_percent: float = 0.05,
-) -> Tuple[torch.Tensor, List[np.ndarray], List[Tuple[int, int]], List[Tuple[int, int, int, int]]]:
+) -> tuple[torch.Tensor, list[np.ndarray], list[tuple[int, int]], list[tuple[int, int, int, int]]]:
     r"""
     requires image_infos to have: [absolute_path or image], bucket_reso, resized_size
 
@@ -64,10 +63,10 @@ def load_images_and_masks_for_caching(
     original_sizes: List[Tuple[int, int]] = [(W, H), ...]
     crop_ltrbs: List[Tuple[int, int, int, int]] = [(L, T, R, B), ...]
     """
-    images: List[torch.Tensor] = []
-    alpha_masks: List[np.ndarray] = []
-    original_sizes: List[Tuple[int, int]] = []
-    crop_ltrbs: List[Tuple[int, int, int, int]] = []
+    images: list[torch.Tensor] = []
+    alpha_masks: list[np.ndarray] = []
+    original_sizes: list[tuple[int, int]] = []
+    crop_ltrbs: list[tuple[int, int, int, int]] = []
     for info in image_infos:
         image = load_image(info.absolute_path, use_alpha_mask) if info.image is None else np.array(info.image, np.uint8)
         # TODO 画像のメタデータが壊れていて、メタデータから割り当てたbucketと実際の画像サイズが一致しない場合があるのでチェック追加要
@@ -99,7 +98,7 @@ def load_images_and_masks_for_caching(
 
 
 def cache_batch_latents(
-        vae: AutoencoderKL, cache_to_disk: bool, image_infos: List[ImageInfo], flip_aug: bool, use_alpha_mask: bool,
+        vae: AutoencoderKL, cache_to_disk: bool, image_infos: list[ImageInfo], flip_aug: bool, use_alpha_mask: bool,
         random_crop: bool, random_crop_padding_percent: float = 0.05
 ) -> None:
     r"""
@@ -112,7 +111,7 @@ def cache_batch_latents(
     latents_original_size and latents_crop_ltrb are also set
     """
     images = []
-    alpha_masks: List[np.ndarray] = []
+    alpha_masks: list[np.ndarray] = []
     for info in image_infos:
         image = load_image(info.absolute_path, use_alpha_mask) if info.image is None else np.array(info.image, np.uint8)
         # TODO 画像のメタデータが壊れていて、メタデータから割り当てたbucketと実際の画像サイズが一致しない場合があるのでチェック追加要

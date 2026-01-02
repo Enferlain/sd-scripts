@@ -4,10 +4,9 @@ import cv2
 import torch
 import numpy as np
 
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, NamedTuple
 from PIL import Image
 
-from library.models import model_util
 
 
 class ImageInfo:
@@ -17,29 +16,29 @@ class ImageInfo:
         self.caption: str = caption
         self.is_reg: bool = is_reg
         self.absolute_path: str = absolute_path
-        self.image_size: Tuple[int, int] = None
-        self.resized_size: Tuple[int, int] = None
-        self.bucket_reso: Tuple[int, int] = None
-        self.latents: Optional[torch.Tensor] = None
-        self.latents_flipped: Optional[torch.Tensor] = None
-        self.latents_npz: Optional[str] = None  # set in cache_latents
-        self.latents_original_size: Optional[Tuple[int, int]] = None  # original image size, not latents size
-        self.latents_crop_ltrb: Optional[Tuple[int, int]] = (
+        self.image_size: tuple[int, int] = None
+        self.resized_size: tuple[int, int] = None
+        self.bucket_reso: tuple[int, int] = None
+        self.latents: torch.Tensor | None = None
+        self.latents_flipped: torch.Tensor | None = None
+        self.latents_npz: str | None = None  # set in cache_latents
+        self.latents_original_size: tuple[int, int] | None = None  # original image size, not latents size
+        self.latents_crop_ltrb: tuple[int, int] | None = (
             None  # crop left top right bottom in original pixel size, not latents size
         )
-        self.cond_img_path: Optional[str] = None
-        self.image: Optional[Image.Image] = None  # optional, original PIL Image
-        self.text_encoder_outputs_npz: Optional[str] = None  # set in cache_text_encoder_outputs
+        self.cond_img_path: str | None = None
+        self.image: Image.Image | None = None  # optional, original PIL Image
+        self.text_encoder_outputs_npz: str | None = None  # set in cache_text_encoder_outputs
 
         # new
-        self.text_encoder_outputs: Optional[List[torch.Tensor]] = None
+        self.text_encoder_outputs: list[torch.Tensor] | None = None
         # old
-        self.text_encoder_outputs1: Optional[torch.Tensor] = None
-        self.text_encoder_outputs2: Optional[torch.Tensor] = None
-        self.text_encoder_pool2: Optional[torch.Tensor] = None
+        self.text_encoder_outputs1: torch.Tensor | None = None
+        self.text_encoder_outputs2: torch.Tensor | None = None
+        self.text_encoder_pool2: torch.Tensor | None = None
 
-        self.alpha_mask: Optional[torch.Tensor] = None  # alpha mask can be flipped in runtime
-        self.resize_interpolation: Optional[str] = None
+        self.alpha_mask: torch.Tensor | None = None  # alpha mask can be flipped in runtime
+        self.resize_interpolation: str | None = None
 
 
 class BucketManager:
@@ -175,7 +174,7 @@ class BucketManager:
         return reso, resized_size, ar_error
 
     @staticmethod
-    def get_crop_ltrb(bucket_reso: Tuple[int, int], image_size: Tuple[int, int]):
+    def get_crop_ltrb(bucket_reso: tuple[int, int], image_size: tuple[int, int]):
         # Stability AIの前処理に合わせてcrop left/topを計算する。crop rightはflipのaugmentationのために求める
         # Calculate crop left/top according to the preprocessing of Stability AI. Crop right is calculated for flip augmentation.
 
@@ -241,31 +240,31 @@ class AugHelper:
 class BaseSubset:
     def __init__(
             self,
-            image_dir: Optional[str],
-            alpha_mask: Optional[bool],
+            image_dir: str | None,
+            alpha_mask: bool | None,
             num_repeats: int,
             shuffle_caption: bool,
             caption_separator: str,
             keep_tokens: int,
             keep_tokens_separator: str,
-            secondary_separator: Optional[str],
+            secondary_separator: str | None,
             enable_wildcard: bool,
             color_aug: bool,
             flip_aug: bool,
-            face_crop_aug_range: Optional[Tuple[float, float]],
+            face_crop_aug_range: tuple[float, float] | None,
             random_crop: bool,
             random_crop_padding_percent: float,
             caption_dropout_rate: float,
             caption_dropout_every_n_epochs: int,
             caption_tag_dropout_rate: float,
-            caption_prefix: Optional[str],
-            caption_suffix: Optional[str],
+            caption_prefix: str | None,
+            caption_suffix: str | None,
             token_warmup_min: int,
-            token_warmup_step: Union[float, int],
-            custom_attributes: Optional[Dict[str, Any]] = None,
-            validation_seed: Optional[int] = None,
-            validation_split: Optional[float] = 0.0,
-            resize_interpolation: Optional[str] = None,
+            token_warmup_step: float | int,
+            custom_attributes: dict[str, Any] | None = None,
+            validation_seed: int | None = None,
+            validation_split: float | None = 0.0,
+            resize_interpolation: str | None = None,
     ) -> None:
         self.image_dir = image_dir
         self.alpha_mask = alpha_mask if alpha_mask is not None else False
@@ -305,7 +304,7 @@ class DreamBoothSubset(BaseSubset):
             self,
             image_dir: str,
             is_reg: bool,
-            class_tokens: Optional[str],
+            class_tokens: str | None,
             caption_extension: str,
             cache_info: bool,
             alpha_mask: bool,
@@ -328,10 +327,10 @@ class DreamBoothSubset(BaseSubset):
             caption_suffix,
             token_warmup_min,
             token_warmup_step,
-            custom_attributes: Optional[Dict[str, Any]] = None,
-            validation_seed: Optional[int] = None,
-            validation_split: Optional[float] = 0.0,
-            resize_interpolation: Optional[str] = None,
+            custom_attributes: dict[str, Any] | None = None,
+            validation_seed: int | None = None,
+            validation_split: float | None = 0.0,
+            resize_interpolation: str | None = None,
     ) -> None:
         assert image_dir is not None, "image_dir must be specified / image_dirは指定が必須です"
 
@@ -401,10 +400,10 @@ class FineTuningSubset(BaseSubset):
             caption_suffix,
             token_warmup_min,
             token_warmup_step,
-            custom_attributes: Optional[Dict[str, Any]] = None,
-            validation_seed: Optional[int] = None,
-            validation_split: Optional[float] = 0.0,
-            resize_interpolation: Optional[str] = None,
+            custom_attributes: dict[str, Any] | None = None,
+            validation_seed: int | None = None,
+            validation_split: float | None = 0.0,
+            resize_interpolation: str | None = None,
     ) -> None:
         assert metadata_file is not None, "metadata_file must be specified / metadata_fileは指定が必須です"
 
@@ -470,10 +469,10 @@ class ControlNetSubset(BaseSubset):
             caption_suffix,
             token_warmup_min,
             token_warmup_step,
-            custom_attributes: Optional[Dict[str, Any]] = None,
-            validation_seed: Optional[int] = None,
-            validation_split: Optional[float] = 0.0,
-            resize_interpolation: Optional[str] = None,
+            custom_attributes: dict[str, Any] | None = None,
+            validation_seed: int | None = None,
+            validation_split: float | None = 0.0,
+            resize_interpolation: str | None = None,
     ) -> None:
         assert image_dir is not None, "image_dir must be specified / image_dirは指定が必須です"
 

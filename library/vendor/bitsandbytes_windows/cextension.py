@@ -5,7 +5,7 @@ from warnings import warn
 from .cuda_setup.main import evaluate_cuda_setup
 
 
-class CUDALibrary_Singleton(object):
+class CUDALibrary_Singleton:
     _instance = None
 
     def __init__(self):

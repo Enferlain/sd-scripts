@@ -1,7 +1,7 @@
 import ast
 import importlib
 import logging
-from typing import Optional, Any
+from typing import Any
 
 import torch
 import transformers
@@ -49,7 +49,7 @@ def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: Optim
 
     name = scheduler_config.lr_scheduler
     num_training_steps = training_config.max_train_steps * num_processes  # * args.gradient_accumulation_steps
-    num_warmup_steps: Optional[int] = (
+    num_warmup_steps: int | None = (
         int(scheduler_config.lr_warmup_steps * num_training_steps) if isinstance(scheduler_config.lr_warmup_steps,
                                                                      float) else scheduler_config.lr_warmup_steps
     )
@@ -57,7 +57,7 @@ def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: Optim
     temp_lr_decay_steps = parse_string_to_type(
         scheduler_config.lr_decay_steps) if scheduler_config.lr_decay_steps is not None else scheduler_config.lr_decay_steps or 0
 
-    num_decay_steps: Optional[int] = (
+    num_decay_steps: int | None = (
         int(temp_lr_decay_steps * num_training_steps) if isinstance(temp_lr_decay_steps, float) else temp_lr_decay_steps
     )
 
@@ -102,7 +102,7 @@ def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: Optim
     if name.startswith("adafactor"):
         assert (
                 type(optimizer) == transformers.optimization.Adafactor
-        ), f"adafactor scheduler must be used with Adafactor optimizer / adafactor schedulerはAdafactorオプティマイザと同時に使ってください"
+        ), "adafactor scheduler must be used with Adafactor optimizer / adafactor schedulerはAdafactorオプティマイザと同時に使ってください"
         initial_lr = float(name.split(":")[1])
         # logger.info(f"adafactor scheduler init lr {initial_lr}")
         return wrap_check_needless_num_warmup_steps(transformers.optimization.AdafactorSchedule(optimizer, initial_lr))

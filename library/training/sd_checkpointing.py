@@ -1,9 +1,8 @@
 
 import torch
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import library.models.sd_model_util
 from library.utils import model_metadata
-from library.models import model_util
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import (
     SavingConfig,
@@ -33,7 +32,7 @@ def save_sd_model_on_train_end(
         text_encoder,
         unet,
         vae,
-        hf_config: Optional[HuggingFaceConfig] = None,
+        hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Saves the Stable Diffusion (v1.5/v2) model at the end of training.
@@ -96,7 +95,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         text_encoder,
         unet,
         vae,
-        hf_config: Optional[HuggingFaceConfig] = None,
+        hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Saves the Stable Diffusion (v1.5/v2) model at epoch end or stepwise.

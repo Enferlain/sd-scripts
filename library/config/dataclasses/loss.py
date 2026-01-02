@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -13,9 +12,9 @@ class HuberConfig:
 @dataclass
 class SNRConfig:
     """SNR-based loss weighting settings."""
-    min_snr_gamma: Optional[float] = field(default=None, metadata={"help": "Min-SNR gamma for loss weighting (None to disable)"})
+    min_snr_gamma: float | None = field(default=None, metadata={"help": "Min-SNR gamma for loss weighting (None to disable)"})
     scale_v_pred_loss_like_noise_pred: bool = field(default=False, metadata={"help": "Scale v-prediction loss like noise prediction"})
-    v_pred_like_loss: Optional[float] = field(default=None, metadata={"help": "Add v-prediction-like loss term (multiplier, None to disable)"})
+    v_pred_like_loss: float | None = field(default=None, metadata={"help": "Add v-prediction-like loss term (multiplier, None to disable)"})
     debiased_estimation_loss: bool = field(default=False, metadata={"help": "Apply debiased estimation loss weighting"})
 
 
@@ -23,19 +22,19 @@ class SNRConfig:
 class MaskedLossConfig:
     """Masked loss settings."""
     masked_loss: bool = field(default=False, metadata={"help": "Apply mask for calculating loss"})
-    conditioning_data_dir: Optional[str] = field(default=None, metadata={"help": "Directory containing conditioning/mask images"})
+    conditioning_data_dir: str | None = field(default=None, metadata={"help": "Directory containing conditioning/mask images"})
 
 
 @dataclass
 class RegularizationConfig:
     """Noise regularization settings."""
-    noise_offset: Optional[float] = field(default=None, metadata={"help": "Noise offset for improving dark/light image handling"})
+    noise_offset: float | None = field(default=None, metadata={"help": "Noise offset for improving dark/light image handling"})
     noise_offset_random_strength: bool = field(default=False, metadata={"help": "Randomize noise offset strength between 0 and noise_offset"})
-    multires_noise_iterations: Optional[int] = field(default=None, metadata={"help": "Pyramid noise iterations (enables multires noise if set)"})
+    multires_noise_iterations: int | None = field(default=None, metadata={"help": "Pyramid noise iterations (enables multires noise if set)"})
     multires_noise_discount: float = field(default=0.3, metadata={"help": "Discount factor per pyramid level for multires noise"})
-    ip_noise_gamma: Optional[float] = field(default=None, metadata={"help": "Input perturbation noise gamma (None to disable)"})
+    ip_noise_gamma: float | None = field(default=None, metadata={"help": "Input perturbation noise gamma (None to disable)"})
     ip_noise_gamma_random_strength: bool = field(default=False, metadata={"help": "Randomize input perturbation noise strength"})
-    adaptive_noise_scale: Optional[float] = field(default=None, metadata={"help": "Scale noise offset adaptively based on latent statistics"})
+    adaptive_noise_scale: float | None = field(default=None, metadata={"help": "Scale noise offset adaptively based on latent statistics"})
     zero_terminal_snr: bool = field(default=False, metadata={"help": "Use zero terminal SNR noise scheduling"})
 
 
@@ -52,11 +51,11 @@ class EDM2Config:
     edm2_loss_weighting_lr_scheduler_constant_percent: float = field(default=0.1, metadata={"help": "Percent of training steps to maintain constant LR before decay."})
     edm2_loss_weighting_generate_graph: bool = field(default=False, metadata={"help": "Enable generation of graph images that show the loss weighting per timesteps."})
     edm2_loss_weighting_generate_graph_every_x_steps: int = field(default=20, metadata={"help": "Every x steps generate a graph image."})
-    edm2_loss_weighting_generate_graph_output_dir: Optional[str] = field(default=None, metadata={"help": "The parent directory where loss weighting graph images should be stored"})
-    edm2_loss_weighting_generate_graph_y_limit: Optional[int] = field(default=None, metadata={"help": "Set the max limit of the y axis"})
+    edm2_loss_weighting_generate_graph_output_dir: str | None = field(default=None, metadata={"help": "The parent directory where loss weighting graph images should be stored"})
+    edm2_loss_weighting_generate_graph_y_limit: int | None = field(default=None, metadata={"help": "Set the max limit of the y axis"})
     edm2_loss_weighting_generate_graph_y_scale: str = field(default="linear", metadata={"help": "Select between linear or log scaling for the y-axis."})
     edm2_loss_weighting_num_channels: int = field(default=128, metadata={"help": "The number of channels used by for the loss weighting module."})
-    edm2_loss_weighting_initial_weights: Optional[str] = field(default=None, metadata={"help": "The full filepath to initial weights and state of edm2 weighting model to use instead of random."})
+    edm2_loss_weighting_initial_weights: str | None = field(default=None, metadata={"help": "The full filepath to initial weights and state of edm2 weighting model to use instead of random."})
     edm2_loss_weighting_lr_scheduler_decay_scaling: float = field(default=1.0, metadata={"help": "A scaling factor to apply to the decay rate of the edm2_loss_weighting_lr_scheduler"})
     edm2_loss_weighting_importance_weighting: bool = field(default=False, metadata={"help": "If edm2 loss scaling weights are weighted by importance"})
     edm2_loss_weighting_importance_weighting_max: float = field(default=10.0, metadata={"help": "The max loss weighting/scaling to apply when using edm2 importance weighting"})
@@ -70,7 +69,7 @@ class LossConfig:
     # Core loss settings
     loss_type: str = field(default="l2", metadata={"help": "Loss function type: l2, l1, huber, smooth_l1, log_cosh, etc."})
     loss_scale: float = field(default=1.0, metadata={"help": "Multiplier applied to the computed loss"})
-    loss_multiplier: Optional[float] = field(default=None, metadata={"help": "Alternative loss multiplier (deprecated, use loss_scale)"})
+    loss_multiplier: float | None = field(default=None, metadata={"help": "Alternative loss multiplier (deprecated, use loss_scale)"})
     prior_loss_weight: float = field(default=1.0, metadata={"help": "Weight for prior preservation loss in DreamBooth training"})
     v_parameterization: bool = field(default=False, metadata={"help": "Enable v-parameterization training"})
     

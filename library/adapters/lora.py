@@ -9,7 +9,6 @@ import os
 import torch
 import re
 
-from typing import Dict, List, Optional, Type, Union
 from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
 
@@ -467,7 +466,7 @@ class LoRAInfModule(LoRAModule):
         return out
 
 
-def parse_block_lr_kwargs(is_sdxl: bool, nw_kwargs: Dict) -> Optional[List[float]]:
+def parse_block_lr_kwargs(is_sdxl: bool, nw_kwargs: dict) -> list[float] | None:
     """
     Parses block learning rate arguments from kwargs.
 
@@ -478,9 +477,9 @@ def parse_block_lr_kwargs(is_sdxl: bool, nw_kwargs: Dict) -> Optional[List[float
     Returns:
         Optional[List[float]]: List of block learning rate weights, or None if not set.
     """
-    down_lr_weight = nw_kwargs.get("down_lr_weight", None)
-    mid_lr_weight = nw_kwargs.get("mid_lr_weight", None)
-    up_lr_weight = nw_kwargs.get("up_lr_weight", None)
+    down_lr_weight = nw_kwargs.get("down_lr_weight")
+    mid_lr_weight = nw_kwargs.get("mid_lr_weight")
+    up_lr_weight = nw_kwargs.get("up_lr_weight")
 
     # 以上のいずれにも設定がない場合は無効としてNoneを返す
     if down_lr_weight is None and mid_lr_weight is None and up_lr_weight is None:
@@ -506,12 +505,12 @@ def parse_block_lr_kwargs(is_sdxl: bool, nw_kwargs: Dict) -> Optional[List[float
 
 def create_adapter(
     multiplier: float,
-    adapter_rank: Optional[int],
-    adapter_alpha: Optional[float],
+    adapter_rank: int | None,
+    adapter_alpha: float | None,
     vae: AutoencoderKL,
-    text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
+    text_encoder: CLIPTextModel | list[CLIPTextModel],
     unet,
-    neuron_dropout: Optional[float] = None,
+    neuron_dropout: float | None = None,
     **kwargs,
 ):
     """
@@ -539,8 +538,8 @@ def create_adapter(
         adapter_alpha = 1.0
 
     # extract dim/alpha for conv2d, and block dim
-    conv_dim = kwargs.get("conv_dim", None)
-    conv_alpha = kwargs.get("conv_alpha", None)
+    conv_dim = kwargs.get("conv_dim")
+    conv_alpha = kwargs.get("conv_alpha")
     if conv_dim is not None:
         conv_dim = int(conv_dim)
         if conv_alpha is None:
@@ -549,14 +548,14 @@ def create_adapter(
             conv_alpha = float(conv_alpha)
 
     # block dim/alpha/lr
-    block_dims = kwargs.get("block_dims", None)
+    block_dims = kwargs.get("block_dims")
     block_lr_weight = parse_block_lr_kwargs(is_sdxl, kwargs)
 
     # 以上のいずれかに指定があればblockごとのdim(rank)を有効にする
     if block_dims is not None or block_lr_weight is not None:
-        block_alphas = kwargs.get("block_alphas", None)
-        conv_block_dims = kwargs.get("conv_block_dims", None)
-        conv_block_alphas = kwargs.get("conv_block_alphas", None)
+        block_alphas = kwargs.get("block_alphas")
+        conv_block_dims = kwargs.get("conv_block_dims")
+        conv_block_alphas = kwargs.get("conv_block_alphas")
 
         block_dims, block_alphas, conv_block_dims, conv_block_alphas = get_block_dims_and_alphas(
             is_sdxl, block_dims, block_alphas, adapter_rank, adapter_alpha, conv_block_dims, conv_block_alphas, conv_dim, conv_alpha
@@ -573,10 +572,10 @@ def create_adapter(
         conv_block_alphas = None
 
     # rank/module dropout
-    rank_dropout = kwargs.get("rank_dropout", None)
+    rank_dropout = kwargs.get("rank_dropout")
     if rank_dropout is not None:
         rank_dropout = float(rank_dropout)
-    module_dropout = kwargs.get("module_dropout", None)
+    module_dropout = kwargs.get("module_dropout")
     if module_dropout is not None:
         module_dropout = float(module_dropout)
 
@@ -600,9 +599,9 @@ def create_adapter(
         is_sdxl=is_sdxl,
     )
 
-    loraplus_lr_ratio = kwargs.get("loraplus_lr_ratio", None)
-    loraplus_unet_lr_ratio = kwargs.get("loraplus_unet_lr_ratio", None)
-    loraplus_text_encoder_lr_ratio = kwargs.get("loraplus_text_encoder_lr_ratio", None)
+    loraplus_lr_ratio = kwargs.get("loraplus_lr_ratio")
+    loraplus_unet_lr_ratio = kwargs.get("loraplus_unet_lr_ratio")
+    loraplus_text_encoder_lr_ratio = kwargs.get("loraplus_text_encoder_lr_ratio")
     loraplus_lr_ratio = float(loraplus_lr_ratio) if loraplus_lr_ratio is not None else None
     loraplus_unet_lr_ratio = float(loraplus_unet_lr_ratio) if loraplus_unet_lr_ratio is not None else None
     loraplus_text_encoder_lr_ratio = float(loraplus_text_encoder_lr_ratio) if loraplus_text_encoder_lr_ratio is not None else None
@@ -712,11 +711,11 @@ def get_block_dims_and_alphas(
 # 戻り値は block ごとの倍率のリスト
 def get_block_lr_weight(
     is_sdxl,
-    down_lr_weight: Union[str, List[float]],
-    mid_lr_weight: List[float],
-    up_lr_weight: Union[str, List[float]],
+    down_lr_weight: str | list[float],
+    mid_lr_weight: list[float],
+    up_lr_weight: str | list[float],
     zero_threshold: float,
-) -> Optional[List[float]]:
+) -> list[float] | None:
     """
     Get the learning rate weights for each block based on the provided configuration.
 
@@ -741,7 +740,7 @@ def get_block_lr_weight(
         max_len_for_down_or_up = LoRAAdapter.SDXL_NUM_OF_BLOCKS
         max_len_for_mid = LoRAAdapter.SDXL_NUM_OF_MID_BLOCKS
 
-    def get_list(name_with_suffix) -> List[float]:
+    def get_list(name_with_suffix) -> list[float]:
         import math
 
         tokens = name_with_suffix.split("+")
@@ -841,7 +840,7 @@ def get_block_lr_weight(
 
 # lr_weightが0のblockをblock_dimsから除外する、外部から呼び出す可能性を考慮しておく
 def remove_block_dims_and_alphas(
-    is_sdxl, block_dims, block_alphas, conv_block_dims, conv_block_alphas, block_lr_weight: Optional[List[float]]
+    is_sdxl, block_dims, block_alphas, conv_block_dims, conv_block_alphas, block_lr_weight: list[float] | None
 ):
     """
     Remove block dimensions and alphas where learning rate is 0.
@@ -885,9 +884,7 @@ def get_block_index(lora_name: str, is_sdxl: bool = False) -> int:
             g = m.groups()
             i = int(g[1])
             j = int(g[3])
-            if g[2] == "resnets":
-                idx = 3 * i + j
-            elif g[2] == "attentions":
+            if g[2] == "resnets" or g[2] == "attentions":
                 idx = 3 * i + j
             elif g[2] == "upsamplers" or g[2] == "downsamplers":
                 idx = 3 * i + 2
@@ -944,7 +941,7 @@ def convert_diffusers_to_sai_if_needed(weights_sd):
     # # add extra conversion
     # unet_conversion_map["up_blocks_1_upsamplers_0"] = "lora_unet_output_blocks_2_2_conv"
 
-    logger.info(f"Converting LoRA keys from Diffusers to SAI")
+    logger.info("Converting LoRA keys from Diffusers to SAI")
     lora_unet_prefix = "lora_unet_"
     for k in list(weights_sd.keys()):
         if not k.startswith(lora_unet_prefix):
@@ -1017,7 +1014,7 @@ def create_adapter_from_weights(multiplier, file, vae, text_encoder, unet, weigh
             # logger.info(lora_name, value.size(), dim)
 
     # support old LoRA without alpha
-    for key in modules_dim.keys():
+    for key in modules_dim:
         if key not in modules_alpha:
             modules_alpha[key] = modules_dim[key]
 
@@ -1063,25 +1060,25 @@ class LoRAAdapter(torch.nn.Module):
 
     def __init__(
         self,
-        text_encoder: Union[List[CLIPTextModel], CLIPTextModel],
+        text_encoder: list[CLIPTextModel] | CLIPTextModel,
         unet,
         multiplier: float = 1.0,
         lora_dim: int = 4,
         alpha: float = 1,
-        dropout: Optional[float] = None,
-        rank_dropout: Optional[float] = None,
-        module_dropout: Optional[float] = None,
-        conv_lora_dim: Optional[int] = None,
-        conv_alpha: Optional[float] = None,
-        block_dims: Optional[List[int]] = None,
-        block_alphas: Optional[List[float]] = None,
-        conv_block_dims: Optional[List[int]] = None,
-        conv_block_alphas: Optional[List[float]] = None,
-        modules_dim: Optional[Dict[str, int]] = None,
-        modules_alpha: Optional[Dict[str, int]] = None,
-        module_class: Type[object] = LoRAModule,
-        varbose: Optional[bool] = False,
-        is_sdxl: Optional[bool] = False,
+        dropout: float | None = None,
+        rank_dropout: float | None = None,
+        module_dropout: float | None = None,
+        conv_lora_dim: int | None = None,
+        conv_alpha: float | None = None,
+        block_dims: list[int] | None = None,
+        block_alphas: list[float] | None = None,
+        conv_block_dims: list[int] | None = None,
+        conv_block_alphas: list[float] | None = None,
+        modules_dim: dict[str, int] | None = None,
+        modules_alpha: dict[str, int] | None = None,
+        module_class: type[object] = LoRAModule,
+        varbose: bool | None = False,
+        is_sdxl: bool | None = False,
     ) -> None:
         """
         Initialize the LoRAAdapter.
@@ -1131,9 +1128,9 @@ class LoRAAdapter(torch.nn.Module):
         self.loraplus_text_encoder_lr_ratio = None
 
         if modules_dim is not None:
-            logger.info(f"create LoRA peft from weights")
+            logger.info("create LoRA peft from weights")
         elif block_dims is not None:
-            logger.info(f"create LoRA peft from block_dims")
+            logger.info("create LoRA peft from block_dims")
             logger.info(
                 f"neuron dropout: p={self.dropout}, rank dropout: p={self.rank_dropout}, module dropout: p={self.module_dropout}"
             )
@@ -1155,10 +1152,10 @@ class LoRAAdapter(torch.nn.Module):
         # create module instances
         def create_modules(
             is_unet: bool,
-            text_encoder_idx: Optional[int],  # None, 1, 2
+            text_encoder_idx: int | None,  # None, 1, 2
             root_module: torch.nn.Module,
-            target_replace_modules: List[torch.nn.Module],
-        ) -> List[LoRAModule]:
+            target_replace_modules: list[torch.nn.Module],
+        ) -> list[LoRAModule]:
             prefix = (
                 self.LORA_PREFIX_UNET
                 if is_unet
@@ -1238,7 +1235,7 @@ class LoRAAdapter(torch.nn.Module):
                 logger.info(f"create LoRA for Text Encoder {index}:")
             else:
                 index = None
-                logger.info(f"create LoRA for Text Encoder:")
+                logger.info("create LoRA for Text Encoder:")
 
             text_encoder_loras, skipped = create_modules(False, index, text_encoder, LoRAAdapter.TEXT_ENCODER_TARGET_REPLACE_MODULE)
             self.text_encoder_loras.extend(text_encoder_loras)
@@ -1350,10 +1347,10 @@ class LoRAAdapter(torch.nn.Module):
                     sd_for_lora[key[len(lora.lora_name) + 1 :]] = weights_sd[key]
             lora.merge_to(sd_for_lora, dtype, device)
 
-        logger.info(f"weights are merged")
+        logger.info("weights are merged")
 
     # 層別学習率用に層ごとの学習率に対する倍率を定義する　引数の順番が逆だがとりあえず気にしない
-    def set_block_lr_weight(self, block_lr_weight: Optional[List[float]]):
+    def set_block_lr_weight(self, block_lr_weight: list[float] | None):
         """
         Set block learning rate weights.
         """
@@ -1424,7 +1421,7 @@ class LoRAAdapter(torch.nn.Module):
 
             params = []
             descriptions = []
-            for key in param_groups.keys():
+            for key in param_groups:
                 param_data = {"params": param_groups[key].values()}
 
                 if len(param_data["params"]) == 0:
@@ -1436,7 +1433,7 @@ class LoRAAdapter(torch.nn.Module):
                     else:
                         param_data["lr"] = lr
 
-                if param_data.get("lr", None) == 0 or param_data.get("lr", None) is None:
+                if param_data.get("lr") == 0 or param_data.get("lr") is None:
                     logger.info("NO LR skipping!")
                     continue
 
@@ -1606,7 +1603,7 @@ class LoRAAdapter(torch.nn.Module):
         """
         Backup original weights before merging.
         """
-        loras: List[LoRAInfModule] = self.text_encoder_loras + self.unet_loras
+        loras: list[LoRAInfModule] = self.text_encoder_loras + self.unet_loras
         for lora in loras:
             org_module = lora.org_module_ref[0]
             if not hasattr(org_module, "_lora_org_weight"):
@@ -1619,7 +1616,7 @@ class LoRAAdapter(torch.nn.Module):
         """
         Restore original weights from backup.
         """
-        loras: List[LoRAInfModule] = self.text_encoder_loras + self.unet_loras
+        loras: list[LoRAInfModule] = self.text_encoder_loras + self.unet_loras
         for lora in loras:
             org_module = lora.org_module_ref[0]
             if not org_module._lora_restored:
@@ -1633,7 +1630,7 @@ class LoRAAdapter(torch.nn.Module):
         """
         Pre-calculate weights and merge them for efficiency.
         """
-        loras: List[LoRAInfModule] = self.text_encoder_loras + self.unet_loras
+        loras: list[LoRAInfModule] = self.text_encoder_loras + self.unet_loras
         for lora in loras:
             org_module = lora.org_module_ref[0]
             sd = org_module.state_dict()

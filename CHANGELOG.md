@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-02]
+
+### Added
+
+- **CI/CD Pipeline (GitHub Actions)**
+
+  - Expanded Python test matrix: 3.10, 3.11, 3.12, 3.13
+  - Expanded PyTorch test matrix: 2.6.0, 2.9.0
+  - Added dedicated `lint` job using ruff
+  - Added coverage reporting with pytest-cov → Codecov upload
+  - Added `uv` for fast package installation in CI
+  - Updated workflow branches to `dev-upstream` and `hydra-config-refactor`
+
+- **Project Configuration Consolidation**
+
+  - Created `pyproject.toml` with all project metadata:
+    - Ruff linting and formatting configuration
+    - Pytest configuration (migrated from `pytest.ini`)
+    - Coverage settings
+  - Removed `ruff.toml`, `pytest.ini`, `setup.py` (now in `pyproject.toml`)
+
+- **Custom Import Sorting Tool**
+  - Added `tools/fix_imports.py` for custom import ordering:
+    - Standard library imports → from imports
+    - Third-party imports → from imports
+    - First-party imports → from imports → multiline
+  - Disabled isort in ruff (using custom ordering)
+
+### Changed
+
+- **Ruff Modernization (UP rules)**
+  - `Optional[X]` → `X | None` (modern union syntax)
+  - `List[int]` → `list[int]` (builtin generics)
+  - `.get(key, None)` → `.get(key)` (redundant None)
+  - `.encode('utf-8')` → `.encode()` (default encoding)
+  - Various SIM/C4 simplifications
+
+### Fixed
+
+- **Import Fixes After Ruff Cleanup**
+  - Fixed `config_util.py` imports: `DreamBoothDataset`, `FineTuningDataset`, `ControlNetDataset`, `DatasetGroup` now import from correct source modules
+  - Fixed `test_data_dataset.py`: `split_train_val` tests now import from `dataset_utils`
+
 ## [2026-01-01]
 
 ### Changed

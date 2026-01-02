@@ -5,13 +5,13 @@ import torch
 import json
 import struct
 
-from typing import Dict, Any, Union, Optional
+from typing import Any
 from safetensors.torch import load_file
 
 from library.utils.device_utils import synchronize_device
 
 
-def mem_eff_save_file(tensors: Dict[str, torch.Tensor], filename: str, metadata: Dict[str, Any] = None):
+def mem_eff_save_file(tensors: dict[str, torch.Tensor], filename: str, metadata: dict[str, Any] = None):
     """
     Save a file using a memory-efficient method.
 
@@ -37,7 +37,7 @@ def mem_eff_save_file(tensors: Dict[str, torch.Tensor], filename: str, metadata:
     }
     _ALIGN = 256
 
-    def validate_metadata(metadata: Dict[str, Any]) -> Dict[str, str]:
+    def validate_metadata(metadata: dict[str, Any]) -> dict[str, str]:
         validated = {}
         for key, value in metadata.items():
             if not isinstance(key, str):
@@ -118,7 +118,7 @@ class MemoryEfficientSafeOpen:
         """
         return [k for k in self.header.keys() if k != "__metadata__"]
 
-    def metadata(self) -> Dict[str, str]:
+    def metadata(self) -> dict[str, str]:
         """Get metadata from the file.
 
         Returns:
@@ -138,7 +138,7 @@ class MemoryEfficientSafeOpen:
         header_json = self.file.read(header_size).decode("utf-8")
         return json.loads(header_json), header_size
 
-    def get_tensor(self, key: str, device: Optional[torch.device] = None, dtype: Optional[torch.dtype] = None):
+    def get_tensor(self, key: str, device: torch.device | None = None, dtype: torch.dtype | None = None):
         """Load a tensor from the file with memory-efficient strategies.
 
         **Note:**
@@ -213,7 +213,7 @@ class MemoryEfficientSafeOpen:
         # cast to target dtype and move to device
         return deserialized_tensor.to(device=device, dtype=target_dtype, non_blocking=non_blocking)
 
-    def _deserialize_tensor(self, byte_tensor: torch.Tensor, metadata: Dict):
+    def _deserialize_tensor(self, byte_tensor: torch.Tensor, metadata: dict):
         """Deserialize byte tensor to the correct shape and dtype.
 
         Args:
@@ -289,7 +289,7 @@ class MemoryEfficientSafeOpen:
 
 
 def load_safetensors(
-        path: str, device: Union[str, torch.device], disable_mmap: bool = False, dtype: Optional[torch.dtype] = None
+        path: str, device: str | torch.device, disable_mmap: bool = False, dtype: torch.dtype | None = None
 ) -> dict[str, torch.Tensor]:
     """
     Load tensors from a safetensors file.
@@ -326,9 +326,9 @@ def load_safetensors(
 
 
 def load_split_weights(
-        file_path: str, device: Union[str, torch.device] = "cpu", disable_mmap: bool = False,
-        dtype: Optional[torch.dtype] = None
-) -> Dict[str, torch.Tensor]:
+        file_path: str, device: str | torch.device = "cpu", disable_mmap: bool = False,
+        dtype: torch.dtype | None = None
+) -> dict[str, torch.Tensor]:
     """
     Load split weights from a file.
 
@@ -368,8 +368,7 @@ def load_split_weights(
     return state_dict
 
 
-def find_key(safetensors_file: str, starts_with: Optional[str] = None, ends_with: Optional[str] = None) -> Optional[
-    str]:
+def find_key(safetensors_file: str, starts_with: str | None = None, ends_with: str | None = None) -> str | None:
     """
     Find a key in a safetensors file that starts with `starts_with` and ends with `ends_with`.
 

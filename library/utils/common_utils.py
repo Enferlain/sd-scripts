@@ -78,7 +78,6 @@ def setup_logging(args=None, log_level=None, reset=False):
             try:
                 from rich.logging import RichHandler
                 from rich.console import Console
-                from rich.logging import RichHandler
 
                 handler = RichHandler(console=Console(stderr=True))
             except ImportError:

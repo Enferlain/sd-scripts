@@ -12,9 +12,7 @@ from library.losses.loss import (
     stable_log_cosh_loss,
     stable_msle_loss,
     x_sigmoid_loss,
-    scaled_quadratic_loss,
     standard_deviation_loss,
-    smooth_l2_log_loss,
     conditional_loss,
     soft_welsch_loss,
     get_huber_threshold_if_needed

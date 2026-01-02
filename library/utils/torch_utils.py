@@ -1,7 +1,6 @@
 import random
 import torch
 import logging
-from typing import Optional, Tuple
 
 from accelerate.utils import set_seed
 from torch import nn as nn
@@ -19,7 +18,7 @@ setup_logging()  # TODO: is it needed?
 logger = logging.getLogger(__name__)
 
 
-def prepare_dtype(precision_config: PrecisionConfig, saving_config: Optional[SavingConfig] = None) -> Tuple[torch.dtype, Optional[torch.dtype]]:  # TODO: why does this handle both saving and training related concerns?
+def prepare_dtype(precision_config: PrecisionConfig, saving_config: SavingConfig | None = None) -> tuple[torch.dtype, torch.dtype | None]:  # TODO: why does this handle both saving and training related concerns?
     """
     Prepare weight and save dtypes based on configuration.
 
@@ -132,7 +131,7 @@ def weighs_to_device(layer: nn.Module, device: torch.device):
     weights_to_device(layer, device)
 
 
-def str_to_dtype(s: Optional[str], default_dtype: Optional[torch.dtype] = None) -> torch.dtype:
+def str_to_dtype(s: str | None, default_dtype: torch.dtype | None = None) -> torch.dtype:
     """
     Convert a string to a torch.dtype
 

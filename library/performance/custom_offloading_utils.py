@@ -3,10 +3,10 @@ import time
 import torch
 import torch.nn as nn
 
-from typing import Any, Optional, Union, Callable, Tuple
+from typing import Any, Union
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 
-from torch import nn as nn
 
 from library.utils.torch_utils import weights_to_device
 
@@ -57,7 +57,7 @@ def swap_weight_devices_cuda(device: torch.device, layer_to_cpu: nn.Module, laye
     """
     assert layer_to_cpu.__class__ == layer_to_cuda.__class__
 
-    weight_swap_jobs: list[Tuple[nn.Module, nn.Module, torch.Tensor, torch.Tensor]] = []
+    weight_swap_jobs: list[tuple[nn.Module, nn.Module, torch.Tensor, torch.Tensor]] = []
 
     # This is not working for all cases (e.g. SD3), so we need to find the corresponding modules
     # for module_to_cpu, module_to_cuda in zip(layer_to_cpu.modules(), layer_to_cuda.modules()):
@@ -68,7 +68,7 @@ def swap_weight_devices_cuda(device: torch.device, layer_to_cpu: nn.Module, laye
     modules_to_cpu = {k: v for k, v in layer_to_cpu.named_modules()}
     for module_to_cuda_name, module_to_cuda in layer_to_cuda.named_modules():
         if hasattr(module_to_cuda, "weight") and module_to_cuda.weight is not None:
-            module_to_cpu = modules_to_cpu.get(module_to_cuda_name, None)
+            module_to_cpu = modules_to_cpu.get(module_to_cuda_name)
             if module_to_cpu is not None and module_to_cpu.weight.shape == module_to_cuda.weight.shape:
                 weight_swap_jobs.append(
                     (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
@@ -112,7 +112,7 @@ def swap_weight_devices_no_cuda(device: torch.device, layer_to_cpu: nn.Module, l
     """
     assert layer_to_cpu.__class__ == layer_to_cuda.__class__
 
-    weight_swap_jobs: list[Tuple[nn.Module, nn.Module, torch.Tensor, torch.Tensor]] = []
+    weight_swap_jobs: list[tuple[nn.Module, nn.Module, torch.Tensor, torch.Tensor]] = []
     for module_to_cpu, module_to_cuda in zip(layer_to_cpu.modules(), layer_to_cuda.modules()):
         if hasattr(module_to_cpu, "weight") and module_to_cpu.weight is not None:
             weight_swap_jobs.append(
@@ -239,7 +239,7 @@ class ModelOffloader(Offloader):
 
     def __init__(
             self,
-            blocks: Union[list[nn.Module], nn.ModuleList],
+            blocks: list[nn.Module] | nn.ModuleList,
             blocks_to_swap: int,
             device: torch.device,
             supports_backward: bool = True,
@@ -274,8 +274,8 @@ class ModelOffloader(Offloader):
                 handle.remove()
 
     def create_backward_hook(
-            self, blocks: Union[list[nn.Module], nn.ModuleList], block_index: int
-    ) -> Optional[Callable[[nn.Module, _grad_t, _grad_t], Union[None, _grad_t]]]:
+            self, blocks: list[nn.Module] | nn.ModuleList, block_index: int
+    ) -> Callable[[nn.Module, _grad_t, _grad_t], None | _grad_t] | None:
         """
         Creates a backward hook to trigger block swapping during backpropagation.
 
@@ -311,7 +311,7 @@ class ModelOffloader(Offloader):
 
         return backward_hook
 
-    def prepare_block_devices_before_forward(self, blocks: Union[list[nn.Module], nn.ModuleList]):
+    def prepare_block_devices_before_forward(self, blocks: list[nn.Module] | nn.ModuleList):
         """
         Prepares the initial state of blocks on device and CPU before the forward pass.
 
@@ -322,7 +322,7 @@ class ModelOffloader(Offloader):
             return
 
         if self.debug:
-            print(f"Prepare block devices before forward")
+            print("Prepare block devices before forward")
 
         for b in blocks[0: self.num_blocks - self.blocks_to_swap]:
             b.to(self.device)
@@ -347,7 +347,7 @@ class ModelOffloader(Offloader):
             return
         self._wait_blocks_move(block_idx)
 
-    def submit_move_blocks(self, blocks: Union[list[nn.Module], nn.ModuleList], block_idx: int):
+    def submit_move_blocks(self, blocks: list[nn.Module] | nn.ModuleList, block_idx: int):
         """
         Submits a job to move the next required blocks during the forward pass.
 

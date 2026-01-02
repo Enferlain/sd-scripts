@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from tqdm import tqdm
-from typing import List, Optional, Union
 
 from library.utils.device_utils import clean_memory_on_device
 from library.utils.safetensors_utils import MemoryEfficientSafeOpen
@@ -85,14 +84,14 @@ def quantize_fp8(tensor, scale, fp8_dtype, max_value, min_value):
 
 def optimize_state_dict_with_fp8(
         state_dict: dict,
-        calc_device: Union[str, torch.device],
-        target_layer_keys: Optional[list[str]] = None,
-        exclude_layer_keys: Optional[list[str]] = None,
+        calc_device: str | torch.device,
+        target_layer_keys: list[str] | None = None,
+        exclude_layer_keys: list[str] | None = None,
         exp_bits: int = 4,
         mantissa_bits: int = 3,
         move_to_device: bool = False,
         quantization_mode: str = "block",
-        block_size: Optional[int] = 64,
+        block_size: int | None = 64,
 ):
     """
     Optimize Linear layer weights in a model's state dict to FP8 format. The state dict is modified in-place.
@@ -128,7 +127,7 @@ def optimize_state_dict_with_fp8(
 
     # Enumerate tarket keys
     target_state_dict_keys = []
-    for key in state_dict.keys():
+    for key in state_dict:
         # Check if it's a weight key and matches target patterns
         is_target = (target_layer_keys is None or any(
             pattern in key for pattern in target_layer_keys)) and key.endswith(".weight")
@@ -252,8 +251,8 @@ def quantize_weight(
 
 
 def load_safetensors_with_fp8_optimization(
-        model_files: List[str],
-        calc_device: Union[str, torch.device],
+        model_files: list[str],
+        calc_device: str | torch.device,
         target_layer_keys=None,
         exclude_layer_keys=None,
         exp_bits=4,
@@ -261,7 +260,7 @@ def load_safetensors_with_fp8_optimization(
         move_to_device=False,
         weight_hook=None,
         quantization_mode: str = "block",
-        block_size: Optional[int] = 64,
+        block_size: int | None = 64,
 ) -> dict:
     """
     Load weight tensors from safetensors files and merge LoRA weights into the state dict with explicit FP8 optimization.
