@@ -1,25 +1,27 @@
 # These classes were used only for standalone inference scripts, not during training sampling
-import diffusers.schedulers
 import torch
 
 from diffusers import EulerAncestralDiscreteScheduler
-from diffusers.schedulers.scheduling_euler_ancestral_discrete import EulerAncestralDiscreteSchedulerOutput
-from torchvision import transforms
+from diffusers.schedulers.scheduling_euler_ancestral_discrete import (
+    EulerAncestralDiscreteSchedulerOutput,
+    randn_tensor,
+)
+from torchvision.transforms import functional as TF
 
 
 class GradualLatent:
     def __init__(
-            self,
-            ratio,
-            start_timesteps,
-            every_n_steps,
-            ratio_step,
-            s_noise=1.0,
-            gaussian_blur_ksize=None,
-            gaussian_blur_sigma=0.5,
-            gaussian_blur_strength=0.5,
-            unsharp_target_x=True,
-    ):
+        self,
+        ratio: float,
+        start_timesteps: int,
+        every_n_steps: int,
+        ratio_step: float,
+        s_noise: float = 1.0,
+        gaussian_blur_ksize: list[int] | None = None,
+        gaussian_blur_sigma: list[float] | None = None,
+        gaussian_blur_strength: float = 0.5,
+        unsharp_target_x: bool = True,
+    ) -> None:
         """
         Initializes the GradualLatent object.
 
@@ -29,8 +31,8 @@ class GradualLatent:
             every_n_steps (int): The frequency of steps to apply the gradual latent process.
             ratio_step (float): The step size for the ratio change.
             s_noise (float, optional): The noise scale factor. Defaults to 1.0.
-            gaussian_blur_ksize (int, optional): The kernel size for Gaussian blur. Defaults to None.
-            gaussian_blur_sigma (float, optional): The sigma value for Gaussian blur. Defaults to 0.5.
+            gaussian_blur_ksize (list[int], optional): The kernel size for Gaussian blur. Defaults to None.
+            gaussian_blur_sigma (list[float], optional): The sigma value for Gaussian blur. Defaults to None.
             gaussian_blur_strength (float, optional): The strength of the Gaussian blur. Defaults to 0.5.
             unsharp_target_x (bool, optional): Whether to apply unsharp mask to the target x. Defaults to True.
         """
@@ -49,10 +51,10 @@ class GradualLatent:
         Returns a string representation of the GradualLatent object.
         """
         return (
-                f"GradualLatent(ratio={self.ratio}, start_timesteps={self.start_timesteps}, "
-                + f"every_n_steps={self.every_n_steps}, ratio_step={self.ratio_step}, s_noise={self.s_noise}, "
-                + f"gaussian_blur_ksize={self.gaussian_blur_ksize}, gaussian_blur_sigma={self.gaussian_blur_sigma}, gaussian_blur_strength={self.gaussian_blur_strength}, "
-                + f"unsharp_target_x={self.unsharp_target_x})"
+            f"GradualLatent(ratio={self.ratio}, start_timesteps={self.start_timesteps}, "
+            + f"every_n_steps={self.every_n_steps}, ratio_step={self.ratio_step}, s_noise={self.s_noise}, "
+            + f"gaussian_blur_ksize={self.gaussian_blur_ksize}, gaussian_blur_sigma={self.gaussian_blur_sigma}, gaussian_blur_strength={self.gaussian_blur_strength}, "
+            + f"unsharp_target_x={self.unsharp_target_x})"
         )
 
     def apply_unsharp_mask(self, x: torch.Tensor):
@@ -67,7 +69,7 @@ class GradualLatent:
         """
         if self.gaussian_blur_ksize is None:
             return x
-        blurred = transforms.functional.gaussian_blur(x, self.gaussian_blur_ksize, self.gaussian_blur_sigma)  # TODO: Cannot find reference 'functional' in '__init__.py'
+        blurred = TF.gaussian_blur(x, self.gaussian_blur_ksize, self.gaussian_blur_sigma)
         # mask = torch.sigmoid((x - blurred) * self.gaussian_blur_strength)
         mask = (x - blurred) * self.gaussian_blur_strength
         sharpened = x + mask
@@ -89,8 +91,7 @@ class GradualLatent:
         if org_dtype == torch.bfloat16:
             x = x.float()
 
-        x = torch.nn.functional.interpolate(x, size=resized_size, mode="bicubic", align_corners=False).to(
-            dtype=org_dtype)
+        x = torch.nn.functional.interpolate(x, size=resized_size, mode="bicubic", align_corners=False).to(dtype=org_dtype)
 
         # apply unsharp mask / アンシャープマスクを適用する
         if unsharp and self.gaussian_blur_ksize:
@@ -124,12 +125,12 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
         self.gradual_latent = gradual_latent
 
     def step(
-            self,
-            model_output: torch.FloatTensor,
-            timestep: float | torch.FloatTensor,
-            sample: torch.FloatTensor,
-            generator: torch.Generator | None = None,
-            return_dict: bool = True,
+        self,
+        model_output: torch.FloatTensor,
+        timestep: float | torch.FloatTensor,
+        sample: torch.FloatTensor,
+        generator: torch.Generator | None = None,
+        return_dict: bool = True,
     ) -> EulerAncestralDiscreteSchedulerOutput | tuple:
         """
         Predict the sample from the previous timesteps by reversing the SDE. This function propagates the diffusion
@@ -156,7 +157,7 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
 
         """
 
-        if isinstance(timestep, int) or isinstance(timestep, torch.IntTensor) or isinstance(timestep, torch.LongTensor):
+        if isinstance(timestep, (int, torch.IntTensor, torch.LongTensor)):
             raise ValueError(
                 (
                     "Passing integer indices (e.g. from `enumerate(timesteps)`) as timesteps to"
@@ -182,18 +183,16 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
             pred_original_sample = sample - sigma * model_output
         elif self.config.prediction_type == "v_prediction":
             # * c_out + input * c_skip
-            pred_original_sample = model_output * (-sigma / (sigma ** 2 + 1) ** 0.5) + (sample / (sigma ** 2 + 1))
+            pred_original_sample = model_output * (-sigma / (sigma**2 + 1) ** 0.5) + (sample / (sigma**2 + 1))
         elif self.config.prediction_type == "sample":
             raise NotImplementedError("prediction_type not implemented yet: sample")
         else:
-            raise ValueError(
-                f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, or `v_prediction`"
-            )
+            raise ValueError(f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, or `v_prediction`")
 
         sigma_from = self.sigmas[self.step_index]
         sigma_to = self.sigmas[self.step_index + 1]
-        sigma_up = (sigma_to ** 2 * (sigma_from ** 2 - sigma_to ** 2) / sigma_from ** 2) ** 0.5
-        sigma_down = (sigma_to ** 2 - sigma_up ** 2) ** 0.5
+        sigma_up = (sigma_to**2 * (sigma_from**2 - sigma_to**2) / sigma_from**2) ** 0.5
+        sigma_down = (sigma_to**2 - sigma_up**2) ** 0.5
 
         # 2. Convert to an ODE derivative
         derivative = (sample - pred_original_sample) / sigma
@@ -204,13 +203,10 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
         if self.resized_size is None:
             prev_sample = sample + derivative * dt
 
-            noise = diffusers.schedulers.scheduling_euler_ancestral_discrete.randn_tensor(
-                model_output.shape, dtype=model_output.dtype, device=device, generator=generator
-            )
+            noise = randn_tensor(model_output.shape, dtype=model_output.dtype, device=device, generator=generator)
             s_noise = 1.0
         else:
-            print("resized_size", self.resized_size, "model_output.shape", model_output.shape, "sample.shape",
-                  sample.shape)
+            print("resized_size", self.resized_size, "model_output.shape", model_output.shape, "sample.shape", sample.shape)
             s_noise = self.gradual_latent.s_noise
 
             if self.gradual_latent.unsharp_target_x:
@@ -221,7 +217,7 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
                 derivative = self.gradual_latent.interpolate(derivative, self.resized_size, unsharp=False)
                 prev_sample = sample + derivative * dt
 
-            noise = diffusers.schedulers.scheduling_euler_ancestral_discrete.randn_tensor(
+            noise = randn_tensor(
                 (model_output.shape[0], model_output.shape[1], self.resized_size[0], self.resized_size[1]),
                 dtype=model_output.dtype,
                 device=device,

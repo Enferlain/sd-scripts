@@ -144,7 +144,7 @@ def prepare_deepspeed_model(precision_config: PrecisionConfig, **models):
 
                 assert isinstance(model, torch.nn.Module), f"model must be an instance of torch.nn.Module, but got {key} is {type(model)}"
 
-                self.models.update(torch.nn.ModuleDict({key: model}))
+                self.models[key] = model
 
         def __wrap_model_with_torch_autocast(self, model):
             if isinstance(model, torch.nn.ModuleList):

@@ -3,7 +3,7 @@ import time
 import torch
 import torch.nn as nn
 
-from typing import Any, Union
+from typing import Any
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 
@@ -65,13 +65,12 @@ def swap_weight_devices_cuda(device: torch.device, layer_to_cpu: nn.Module, laye
     #     if hasattr(module_to_cpu, "weight") and module_to_cpu.weight is not None:
     #         weight_swap_jobs.append((module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
 
-    modules_to_cpu = {k: v for k, v in layer_to_cpu.named_modules()}
+    modules_to_cpu = dict(layer_to_cpu.named_modules())
     for module_to_cuda_name, module_to_cuda in layer_to_cuda.named_modules():
         if hasattr(module_to_cuda, "weight") and module_to_cuda.weight is not None:
             module_to_cpu = modules_to_cpu.get(module_to_cuda_name)
             if module_to_cpu is not None and module_to_cpu.weight.shape == module_to_cuda.weight.shape:
-                weight_swap_jobs.append(
-                    (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
+                weight_swap_jobs.append((module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
             else:
                 if module_to_cuda.weight.data.device.type != device.type:
                     # print(
@@ -81,17 +80,17 @@ def swap_weight_devices_cuda(device: torch.device, layer_to_cpu: nn.Module, laye
 
     torch.cuda.current_stream().synchronize()  # this prevents the illegal loss value
 
-    stream = torch.Stream(device="cuda")
+    stream = torch.cuda.Stream()
     with torch.cuda.stream(stream):
         # cuda to cpu
-        for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
+        for module_to_cpu, _, cuda_data_view, _ in weight_swap_jobs:
             cuda_data_view.record_stream(stream)
             module_to_cpu.weight.data = cuda_data_view.data.to("cpu", non_blocking=True)
 
         stream.synchronize()
 
         # cpu to cuda
-        for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
+        for _, module_to_cuda, cuda_data_view, _ in weight_swap_jobs:
             cuda_data_view.copy_(module_to_cuda.weight.data, non_blocking=True)
             module_to_cuda.weight.data = cuda_data_view
 
@@ -115,17 +114,16 @@ def swap_weight_devices_no_cuda(device: torch.device, layer_to_cpu: nn.Module, l
     weight_swap_jobs: list[tuple[nn.Module, nn.Module, torch.Tensor, torch.Tensor]] = []
     for module_to_cpu, module_to_cuda in zip(layer_to_cpu.modules(), layer_to_cuda.modules()):
         if hasattr(module_to_cpu, "weight") and module_to_cpu.weight is not None:
-            weight_swap_jobs.append(
-                (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
+            weight_swap_jobs.append((module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
 
     # device to cpu
-    for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
+    for module_to_cpu, _, cuda_data_view, _ in weight_swap_jobs:
         module_to_cpu.weight.data = cuda_data_view.data.to("cpu", non_blocking=True)
 
     _synchronize_device(device)
 
     # cpu to device
-    for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
+    for _, module_to_cuda, cuda_data_view, _ in weight_swap_jobs:
         cuda_data_view.copy_(module_to_cuda.weight.data, non_blocking=True)
         module_to_cuda.weight.data = cuda_data_view
 
@@ -177,16 +175,16 @@ class Offloader:
             block_idx_to_cpu (int): Index of the block to move to CPU.
             block_idx_to_cuda (int): Index of the block to move to the device.
         """
+
         def move_blocks(bidx_to_cpu, block_to_cpu, bidx_to_cuda, block_to_cuda):
+            start_time = time.perf_counter()
             if self.debug:
-                start_time = time.perf_counter()
-                print(
-                    f"Move block {bidx_to_cpu} to CPU and block {bidx_to_cuda} to {'CUDA' if self.cuda_available else 'device'}")
+                print(f"Move block {bidx_to_cpu} to CPU and block {bidx_to_cuda} to {'CUDA' if self.cuda_available else 'device'}")
 
             self.swap_weight_devices(block_to_cpu, block_to_cuda)
 
             if self.debug:
-                print(f"Moved blocks {bidx_to_cpu} and {bidx_to_cuda} in {time.perf_counter() - start_time:.2f}s")  # TODO: Local variable 'start_time' might be referenced before assignment
+                print(f"Moved blocks {bidx_to_cpu} and {bidx_to_cuda} in {time.perf_counter() - start_time:.2f}s")
             return bidx_to_cpu, bidx_to_cuda  # , event
 
         block_to_cpu = blocks[block_idx_to_cpu]
@@ -206,9 +204,9 @@ class Offloader:
         if block_idx not in self.futures:
             return
 
+        start_time = time.perf_counter()
         if self.debug:
             print(f"Wait for block {block_idx}")
-            start_time = time.perf_counter()
 
         future = self.futures.pop(block_idx)
         _, bidx_to_cuda = future.result()
@@ -216,11 +214,11 @@ class Offloader:
         assert block_idx == bidx_to_cuda, f"Block index mismatch: {block_idx} != {bidx_to_cuda}"
 
         if self.debug:
-            print(f"Waited for block {block_idx}: {time.perf_counter() - start_time:.2f}s")  # TODO: Local variable 'start_time' might be referenced before assignment
+            print(f"Waited for block {block_idx}: {time.perf_counter() - start_time:.2f}s")
 
 
 # Gradient tensors
-_grad_t = Union[tuple[torch.Tensor, ...], torch.Tensor]
+_grad_t = tuple[torch.Tensor, ...] | torch.Tensor
 
 
 class ModelOffloader(Offloader):
@@ -238,12 +236,12 @@ class ModelOffloader(Offloader):
     """
 
     def __init__(
-            self,
-            blocks: list[nn.Module] | nn.ModuleList,
-            blocks_to_swap: int,
-            device: torch.device,
-            supports_backward: bool = True,
-            debug: bool = False,
+        self,
+        blocks: list[nn.Module] | nn.ModuleList,
+        blocks_to_swap: int,
+        device: torch.device,
+        supports_backward: bool = True,
+        debug: bool = False,
     ):
         super().__init__(len(blocks), blocks_to_swap, device, debug)
 
@@ -274,7 +272,7 @@ class ModelOffloader(Offloader):
                 handle.remove()
 
     def create_backward_hook(
-            self, blocks: list[nn.Module] | nn.ModuleList, block_index: int
+        self, blocks: list[nn.Module] | nn.ModuleList, block_index: int
     ) -> Callable[[nn.Module, _grad_t, _grad_t], None | _grad_t] | None:
         """
         Creates a backward hook to trigger block swapping during backpropagation.
@@ -324,13 +322,12 @@ class ModelOffloader(Offloader):
         if self.debug:
             print("Prepare block devices before forward")
 
-        for b in blocks[0: self.num_blocks - self.blocks_to_swap]:
+        for b in list(blocks)[0 : self.num_blocks - self.blocks_to_swap]:
             b.to(self.device)
             weights_to_device(b, self.device)  # make sure weights are on device
 
-        for b in blocks[self.num_blocks - self.blocks_to_swap:]:
-            b.to(
-                self.device)  # move block to device first. this makes sure that buffers (non weights) are on the device
+        for b in list(blocks)[self.num_blocks - self.blocks_to_swap :]:
+            b.to(self.device)  # move block to device first. this makes sure that buffers (non weights) are on the device
             weights_to_device(b, torch.device("cpu"))  # make sure weights are on cpu
 
         _synchronize_device(self.device)
@@ -455,22 +452,21 @@ def swap_weight_devices(layer_to_cpu: nn.Module, layer_to_cuda: nn.Module):
     weight_swap_jobs = []
     for module_to_cpu, module_to_cuda in zip(layer_to_cpu.modules(), layer_to_cuda.modules()):
         if hasattr(module_to_cpu, "weight") and module_to_cpu.weight is not None:
-            weight_swap_jobs.append(
-                (module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
+            weight_swap_jobs.append((module_to_cpu, module_to_cuda, module_to_cpu.weight.data, module_to_cuda.weight.data))
 
     torch.cuda.current_stream().synchronize()  # this prevents the illegal loss value
 
     stream = torch.cuda.Stream()
     with torch.cuda.stream(stream):
         # cuda to cpu
-        for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
+        for module_to_cpu, _, cuda_data_view, _ in weight_swap_jobs:
             cuda_data_view.record_stream(stream)
             module_to_cpu.weight.data = cuda_data_view.data.to("cpu", non_blocking=True)
 
         stream.synchronize()
 
         # cpu to cuda
-        for module_to_cpu, module_to_cuda, cuda_data_view, cpu_data_view in weight_swap_jobs:
+        for _, module_to_cuda, cuda_data_view, _ in weight_swap_jobs:
             cuda_data_view.copy_(module_to_cuda.weight.data, non_blocking=True)
             module_to_cuda.weight.data = cuda_data_view
 
