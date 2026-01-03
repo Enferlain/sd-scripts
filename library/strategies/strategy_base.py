@@ -34,10 +34,7 @@ class TokenizeStrategy:
     def get_strategy(cls) -> Optional["TokenizeStrategy"]:
         return cls._strategy
 
-    def _load_tokenizer(
-            self, model_class: Any, model_id: str, subfolder: str | None = None,
-            tokenizer_cache_dir: str | None = None
-    ) -> Any:
+    def _load_tokenizer(self, model_class: Any, model_id: str, subfolder: str | None = None, tokenizer_cache_dir: str | None = None) -> Any:
         """
         Load tokenizer from cache or download it.
 
@@ -51,6 +48,7 @@ class TokenizeStrategy:
             Tokenizer instance
         """
         tokenizer = None
+        local_tokenizer_path: str | None = None
         if tokenizer_cache_dir:
             local_tokenizer_path = os.path.join(tokenizer_cache_dir, model_id.replace("/", "_"))
             if os.path.exists(local_tokenizer_path):
@@ -60,7 +58,7 @@ class TokenizeStrategy:
         if tokenizer is None:
             tokenizer = model_class.from_pretrained(model_id, subfolder=subfolder)
 
-        if tokenizer_cache_dir and not os.path.exists(local_tokenizer_path):  # TODO: Local variable 'local_tokenizer_path' might be referenced before assignment
+        if local_tokenizer_path is not None and not os.path.exists(local_tokenizer_path):
             logger.info(f"save Tokenizer to cache: {local_tokenizer_path}")
             tokenizer.save_pretrained(local_tokenizer_path)
 
@@ -92,7 +90,7 @@ class TokenizeStrategy:
         raise NotImplementedError
 
     def _get_weighted_input_ids(
-            self, tokenizer: CLIPTokenizer, text: str, max_length: int | None = None
+        self, tokenizer: CLIPTokenizer, text: str, max_length: int | None = None
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Get weighted input ids.
@@ -141,7 +139,7 @@ class TokenizeStrategy:
             ['.', 1.1]]
             """
 
-            res = []
+            res: list[list[str | float]] = []
             round_brackets = []
             square_brackets = []
 
@@ -184,7 +182,7 @@ class TokenizeStrategy:
             i = 0
             while i + 1 < len(res):
                 if res[i][1] == res[i + 1][1]:
-                    res[i][0] += res[i + 1][0]
+                    res[i][0] = str(res[i][0]) + str(res[i + 1][0])
                     res.pop(i + 1)
                 else:
                     i += 1
@@ -239,8 +237,8 @@ class TokenizeStrategy:
         return torch.tensor(tokens).unsqueeze(0), torch.tensor(weights).unsqueeze(0)
 
     def _get_input_ids(
-            self, tokenizer: CLIPTokenizer, text: str, max_length: int | None = None, weighted: bool = False
-    ) -> torch.Tensor:
+        self, tokenizer: CLIPTokenizer, text: str, max_length: int | None = None, weighted: bool = False
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         Get input ids for SD1.5/2.0/SDXL.
 
@@ -256,11 +254,11 @@ class TokenizeStrategy:
         if max_length is None:
             max_length = tokenizer.model_max_length - 2
 
+        weights: torch.Tensor | None = None
         if weighted:
             input_ids, weights = self._get_weighted_input_ids(tokenizer, text, max_length)
         else:
-            input_ids = tokenizer(text, padding="max_length", truncation=True, max_length=max_length,
-                                  return_tensors="pt").input_ids
+            input_ids = tokenizer(text, padding="max_length", truncation=True, max_length=max_length, return_tensors="pt").input_ids
 
         if max_length > tokenizer.model_max_length:
             input_ids = input_ids.squeeze(0)
@@ -269,11 +267,10 @@ class TokenizeStrategy:
                 # v1
                 # When 77 or more, it becomes "<BOS> .... <EOS> <EOS> <EOS>" totaling 227 etc., so convert it to "<BOS>...<EOS>" triplet
                 # 1111 seems to split by comma, but for now simply
-                for i in range(1, max_length - tokenizer.model_max_length + 2,
-                               tokenizer.model_max_length - 2):  # (1, 152, 75)
+                for i in range(1, max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2):  # (1, 152, 75)
                     ids_chunk = (
                         input_ids[0].unsqueeze(0),
-                        input_ids[i: i + tokenizer.model_max_length - 2],
+                        input_ids[i : i + tokenizer.model_max_length - 2],
                         input_ids[-1].unsqueeze(0),
                     )
                     ids_chunk = torch.cat(ids_chunk)
@@ -284,7 +281,7 @@ class TokenizeStrategy:
                 for i in range(1, max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2):
                     ids_chunk = (
                         input_ids[0].unsqueeze(0),  # BOS
-                        input_ids[i: i + tokenizer.model_max_length - 2],
+                        input_ids[i : i + tokenizer.model_max_length - 2],
                         input_ids[-1].unsqueeze(0),
                     )  # PAD or EOS
                     ids_chunk = torch.cat(ids_chunk)
@@ -301,17 +298,16 @@ class TokenizeStrategy:
 
             input_ids = torch.stack(iids_list)  # 3,77
 
-            if weighted:
-                weights = weights.squeeze(0)  # TODO: Local variable 'weights' might be referenced before assignment
+            if weighted and weights is not None:
+                weights = weights.squeeze(0)
                 new_weights = torch.ones(input_ids.shape)
                 for i in range(1, max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2):
                     b = i // (tokenizer.model_max_length - 2)
-                    new_weights[b, 1: 1 + tokenizer.model_max_length - 2] = weights[
-                                                                            i: i + tokenizer.model_max_length - 2]
+                    new_weights[b, 1 : 1 + tokenizer.model_max_length - 2] = weights[i : i + tokenizer.model_max_length - 2]
                 weights = new_weights
 
-        if weighted:
-            return input_ids, weights  # TODO: Expected type 'Tensor', got 'tuple[Tensor | Any, Tensor]' instead
+        if weighted and weights is not None:
+            return input_ids, weights
         return input_ids
 
 
@@ -319,6 +315,7 @@ class TextEncodingStrategy:
     """
     Base class for text encoding strategy.
     """
+
     _strategy = None  # strategy instance: actual strategy class
 
     @classmethod
@@ -331,9 +328,7 @@ class TextEncodingStrategy:
     def get_strategy(cls) -> Optional["TextEncodingStrategy"]:
         return cls._strategy
 
-    def encode_tokens(
-            self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor]
-    ) -> list[torch.Tensor]:
+    def encode_tokens(self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
         """
         Encode tokens into embeddings and outputs.
 
@@ -348,8 +343,7 @@ class TextEncodingStrategy:
         raise NotImplementedError
 
     def encode_tokens_with_weights(
-            self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor],
-            weights: list[torch.Tensor]
+        self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor], weights: list[torch.Tensor]
     ) -> list[torch.Tensor]:
         """
         Encode tokens into embeddings and outputs with weights.
@@ -370,15 +364,16 @@ class TextEncoderOutputsCachingStrategy:
     """
     Base class for text encoder outputs caching strategy.
     """
+
     _strategy = None  # strategy instance: actual strategy class
 
     def __init__(
-            self,
-            cache_to_disk: bool,
-            batch_size: int | None,
-            skip_disk_cache_validity_check: bool,
-            is_partial: bool = False,
-            is_weighted: bool = False,
+        self,
+        cache_to_disk: bool,
+        batch_size: int | None,
+        skip_disk_cache_validity_check: bool,
+        is_partial: bool = False,
+        is_weighted: bool = False,
     ) -> None:
         self._cache_to_disk = cache_to_disk
         self._batch_size = batch_size
@@ -449,8 +444,7 @@ class TextEncoderOutputsCachingStrategy:
         raise NotImplementedError
 
     def cache_batch_outputs(
-            self, tokenize_strategy: TokenizeStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy,
-            batch: list
+        self, tokenize_strategy: TokenizeStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy, batch: list
     ):
         """
         Cache batch outputs.
@@ -468,6 +462,7 @@ class LatentsCachingStrategy:
     """
     Base class for latents caching strategy.
     """
+
     # TODO commonize utillity functions to this class, such as npz handling etc.
 
     _strategy = None  # strategy instance: actual strategy class
@@ -502,8 +497,7 @@ class LatentsCachingStrategy:
         """
         raise NotImplementedError
 
-    def get_image_size_from_disk_cache_path(self, absolute_path: str, npz_path: str) -> tuple[
-        int | None, int | None]:
+    def get_image_size_from_disk_cache_path(self, absolute_path: str, npz_path: str) -> tuple[int | None, int | None]:
         """
         Get image size from disk cache path.
 
@@ -530,9 +524,7 @@ class LatentsCachingStrategy:
         """
         raise NotImplementedError
 
-    def is_disk_cached_latents_expected(
-            self, bucket_reso: tuple[int, int], npz_path: str, flip_aug: bool, alpha_mask: bool
-    ) -> bool:
+    def is_disk_cached_latents_expected(self, bucket_reso: tuple[int, int], npz_path: str, flip_aug: bool, alpha_mask: bool) -> bool:
         """
         Check if the latents are cached in disk.
 
@@ -547,8 +539,9 @@ class LatentsCachingStrategy:
         """
         raise NotImplementedError
 
-    def cache_batch_latents(self, model: Any, batch: list, flip_aug: bool, alpha_mask: bool, random_crop: bool,
-                            random_crop_padding_percent: float = 0.05):
+    def cache_batch_latents(
+        self, model: Any, batch: list, flip_aug: bool, alpha_mask: bool, random_crop: bool, random_crop_padding_percent: float = 0.05
+    ):
         """
         Cache batch latents.
 
@@ -563,13 +556,13 @@ class LatentsCachingStrategy:
         raise NotImplementedError
 
     def _default_is_disk_cached_latents_expected(
-            self,
-            latents_stride: int,
-            bucket_reso: tuple[int, int],
-            npz_path: str,
-            flip_aug: bool,
-            apply_alpha_mask: bool,
-            multi_resolution: bool = False,
+        self,
+        latents_stride: int,
+        bucket_reso: tuple[int, int],
+        npz_path: str,
+        flip_aug: bool,
+        apply_alpha_mask: bool,
+        multi_resolution: bool = False,
     ) -> bool:
         """
         Args:
@@ -590,8 +583,7 @@ class LatentsCachingStrategy:
         if self.skip_disk_cache_validity_check:
             return True
 
-        expected_latents_size = (
-        bucket_reso[1] // latents_stride, bucket_reso[0] // latents_stride)  # bucket_reso is (W, H)
+        expected_latents_size = (bucket_reso[1] // latents_stride, bucket_reso[0] // latents_stride)  # bucket_reso is (W, H)
 
         # e.g. "_32x64", HxW
         key_reso_suffix = f"_{expected_latents_size[0]}x{expected_latents_size[1]}" if multi_resolution else ""
@@ -612,16 +604,16 @@ class LatentsCachingStrategy:
 
     # TODO remove circular dependency for ImageInfo
     def _default_cache_batch_latents(
-            self,
-            encode_by_vae: Callable,
-            vae_device: torch.device,
-            vae_dtype: torch.dtype,
-            image_infos: list,
-            flip_aug: bool,
-            apply_alpha_mask: bool,
-            random_crop: bool,
-            multi_resolution: bool = False,
-            random_crop_padding_percent: float = 0.05,
+        self,
+        encode_by_vae: Callable,
+        vae_device: torch.device,
+        vae_dtype: torch.dtype,
+        image_infos: list,
+        flip_aug: bool,
+        apply_alpha_mask: bool,
+        random_crop: bool,
+        multi_resolution: bool = False,
+        random_crop_padding_percent: float = 0.05,
     ):
         """
         Default implementation for cache_batch_latents. Image loading, VAE, flipping, alpha mask handling are common.
@@ -635,8 +627,8 @@ class LatentsCachingStrategy:
             apply_alpha_mask: whether to apply alpha mask
             random_crop: whether to random crop images
             multi_resolution: whether to use multi-resolution latents
-        
-        Returns: 
+
+        Returns:
             None
         """
         img_tensor, alpha_masks, original_sizes, crop_ltrbs = load_images_and_masks_for_caching(
@@ -667,7 +659,13 @@ class LatentsCachingStrategy:
 
             if self.cache_to_disk:
                 self.save_latents_to_disk(
-                    info.latents_npz, latents, original_size, crop_ltrb, flipped_latent, alpha_mask, key_reso_suffix  # TODO: Expected type 'list[int]', got 'tuple[int, int]' instead
+                    info.latents_npz,
+                    latents,
+                    original_size,
+                    crop_ltrb,
+                    flipped_latent,
+                    alpha_mask,
+                    key_reso_suffix,  # TODO: Expected type 'list[int]', got 'tuple[int, int]' instead
                 )
             else:
                 info.latents_original_size = original_size
@@ -678,43 +676,41 @@ class LatentsCachingStrategy:
                 info.alpha_mask = alpha_mask
 
     def load_latents_from_disk(
-            self, npz_path: str, bucket_reso: tuple[int, int]
-    ) -> tuple[
-        np.ndarray | None, list[int] | None, list[int] | None, np.ndarray | None, np.ndarray | None]:
+        self, npz_path: str, bucket_reso: tuple[int, int]
+    ) -> tuple[np.ndarray | None, list[int] | None, list[int] | None, np.ndarray | None, np.ndarray | None]:
         """
         for SD/SDXL
 
         Args:
             npz_path (str): Path to the npz file.
             bucket_reso (Tuple[int, int]): The resolution of the bucket.
-        
+
         Returns:
             Tuple[
-                Optional[np.ndarray], 
-                Optional[List[int]], 
-                Optional[List[int]], 
-                Optional[np.ndarray], 
+                Optional[np.ndarray],
+                Optional[List[int]],
+                Optional[List[int]],
+                Optional[np.ndarray],
                 Optional[np.ndarray]
             ]: Latent np tensors, original size, crop (left top, right bottom), flipped latents, alpha mask
         """
         return self._default_load_latents_from_disk(None, npz_path, bucket_reso)
 
     def _default_load_latents_from_disk(
-            self, latents_stride: int | None, npz_path: str, bucket_reso: tuple[int, int]
-    ) -> tuple[
-        np.ndarray | None, list[int] | None, list[int] | None, np.ndarray | None, np.ndarray | None]:
+        self, latents_stride: int | None, npz_path: str, bucket_reso: tuple[int, int]
+    ) -> tuple[np.ndarray | None, list[int] | None, list[int] | None, np.ndarray | None, np.ndarray | None]:
         """
         Args:
             latents_stride (Optional[int]): Stride for latents. If None, load all latents.
             npz_path (str): Path to the npz file.
             bucket_reso (Tuple[int, int]): The resolution of the bucket.
-       
+
         Returns:
             Tuple[
-                Optional[np.ndarray], 
-                Optional[List[int]], 
-                Optional[List[int]], 
-                Optional[np.ndarray], 
+                Optional[np.ndarray],
+                Optional[List[int]],
+                Optional[List[int]],
+                Optional[np.ndarray],
                 Optional[np.ndarray]
             ]: Latent np tensors, original size, crop (left top, right bottom), flipped latents, alpha mask
         """
@@ -731,20 +727,19 @@ class LatentsCachingStrategy:
         latents = npz["latents" + key_reso_suffix]
         original_size = npz["original_size" + key_reso_suffix].tolist()
         crop_ltrb = npz["crop_ltrb" + key_reso_suffix].tolist()
-        flipped_latents = npz[
-            "latents_flipped" + key_reso_suffix] if "latents_flipped" + key_reso_suffix in npz else None
-        alpha_mask = npz["alpha_mask" + key_reso_suffix] if "alpha_mask" + key_reso_suffix in npz else None
+        flipped_latents = npz.get("latents_flipped" + key_reso_suffix)
+        alpha_mask = npz.get("alpha_mask" + key_reso_suffix)
         return latents, original_size, crop_ltrb, flipped_latents, alpha_mask
 
     def save_latents_to_disk(
-            self,
-            npz_path,
-            latents_tensor,
-            original_size,
-            crop_ltrb,
-            flipped_latents_tensor=None,
-            alpha_mask=None,
-            key_reso_suffix="",
+        self,
+        npz_path,
+        latents_tensor,
+        original_size,
+        crop_ltrb,
+        flipped_latents_tensor=None,
+        alpha_mask=None,
+        key_reso_suffix="",
     ):
         """
         Args:
@@ -772,7 +767,11 @@ class LatentsCachingStrategy:
         kwargs["original_size" + key_reso_suffix] = np.array(original_size)
         kwargs["crop_ltrb" + key_reso_suffix] = np.array(crop_ltrb)
         if flipped_latents_tensor is not None:
-            kwargs["latents_flipped" + key_reso_suffix] = flipped_latents_tensor.float().cpu().numpy()  # TODO: Unresolved attribute reference 'float' for class '_SpecialForm'
+            kwargs["latents_flipped" + key_reso_suffix] = (
+                flipped_latents_tensor.float().cpu().numpy()
+            )  # TODO: Unresolved attribute reference 'float' for class '_SpecialForm'
         if alpha_mask is not None:
-            kwargs["alpha_mask" + key_reso_suffix] = alpha_mask.float().cpu().numpy()  # TODO: Unresolved attribute reference 'float' for class '_SpecialForm'
+            kwargs["alpha_mask" + key_reso_suffix] = (
+                alpha_mask.float().cpu().numpy()
+            )  # TODO: Unresolved attribute reference 'float' for class '_SpecialForm'
         np.savez(npz_path, **kwargs)

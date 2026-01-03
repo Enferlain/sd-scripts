@@ -30,12 +30,12 @@ logger = logging.getLogger(__name__)
 
 class ModelLoadingStrategy(ABC):
     """Strategy for loading model components (text encoders, VAE, UNet)."""
-    
+
     @abstractmethod
     def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, Any, Any, Any]:
         """
         Load model components for this architecture.
-        
+
         Args:
             cfg: Configuration object containing model settings.
             weight_dtype: Data type for model weights (e.g., torch.float16).
@@ -53,7 +53,7 @@ class ModelLoadingStrategy(ABC):
 
 class TokenizationPeftStrategy(ABC):
     """Strategy for tokenization setup in PEFT training."""
-    
+
     @abstractmethod
     def get_tokenize_strategy(self, cfg: Any) -> Any:
         """
@@ -66,7 +66,7 @@ class TokenizationPeftStrategy(ABC):
             A TokenizeStrategy instance suitable for the model architecture.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def get_tokenizers(self, tokenize_strategy: Any) -> list[Any] | Any:
         """
@@ -83,7 +83,7 @@ class TokenizationPeftStrategy(ABC):
 
 class CachingPeftStrategy(ABC):
     """Strategy for latents and text encoder caching."""
-    
+
     @abstractmethod
     def get_latents_caching_strategy(self, cfg: Any) -> Any:
         """
@@ -96,7 +96,7 @@ class CachingPeftStrategy(ABC):
             A LatentsCachingStrategy instance.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def get_text_encoding_strategy(self, cfg: Any) -> Any:
         """
@@ -109,7 +109,7 @@ class CachingPeftStrategy(ABC):
             A TextEncodingStrategy instance.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> Any | None:
         """
@@ -122,7 +122,7 @@ class CachingPeftStrategy(ABC):
             A TextEncoderOutputsCachingStrategy instance, or None if not supported/enabled.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def cache_text_encoder_outputs_if_needed(
         self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
@@ -140,7 +140,7 @@ class CachingPeftStrategy(ABC):
             weight_dtype: Data type for calculations.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
         """
@@ -161,15 +161,23 @@ class CachingPeftStrategy(ABC):
 
 class UNetCallingStrategy(ABC):
     """Strategy for calling UNet during training."""
-    
+
     @abstractmethod
     def call_unet(
-        self, cfg: Any, accelerator: Any, unet: Any, noisy_latents: torch.Tensor, timesteps: torch.Tensor,
-        text_conds: Any, batch: Any, weight_dtype: torch.dtype, **kwargs
+        self,
+        cfg: Any,
+        accelerator: Any,
+        unet: Any,
+        noisy_latents: torch.Tensor,
+        timesteps: torch.Tensor,
+        text_conds: Any,
+        batch: Any,
+        weight_dtype: torch.dtype,
+        **kwargs,
     ) -> torch.Tensor:
         """
         Call UNet with architecture-specific arguments.
-        
+
         SDXL adds added_cond_kwargs for size/crop conditioning.
 
         Args:
@@ -191,11 +199,19 @@ class UNetCallingStrategy(ABC):
 
 class SampleGenerationPeftStrategy(ABC):
     """Strategy for generating sample images during training."""
-    
+
     @abstractmethod
     def sample_images(
-        self, accelerator: Any, cfg: Any, epoch: int, global_step: int,
-        device: torch.device, vae: Any, tokenizers: list[Any], text_encoders: list[Any], unet: Any
+        self,
+        accelerator: Any,
+        cfg: Any,
+        epoch: int,
+        global_step: int,
+        device: torch.device,
+        vae: Any,
+        tokenizers: list[Any],
+        text_encoders: list[Any],
+        unet: Any,
     ) -> None:
         """
         Generate sample images for the current training step.
@@ -216,7 +232,7 @@ class SampleGenerationPeftStrategy(ABC):
 
 class CheckpointingPeftStrategy(ABC):
     """Strategy for model-specific checkpointing and metadata."""
-    
+
     @abstractmethod
     def update_metadata(self, metadata: dict, cfg: Any) -> None:
         """
@@ -227,7 +243,7 @@ class CheckpointingPeftStrategy(ABC):
             cfg: Configuration object.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def get_model_metadata(self, cfg: Any) -> dict:
         """
@@ -244,7 +260,7 @@ class CheckpointingPeftStrategy(ABC):
 
 class ValidationPeftStrategy(ABC):
     """Strategy for model-specific validation."""
-    
+
     @abstractmethod
     def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:
         """
@@ -270,16 +286,16 @@ class PeftTrainingStrategy(
 ):
     """
     Combined interface for all PEFT training strategies.
-    
+
     Implementations inherit from this and provide model-specific implementations.
     """
-    
+
     # Instance state (set during training)
     la_sampler: Any = field(default=None, init=False, repr=False)
     live_plotter_process: Any = field(default=None, init=False, repr=False)
-    
+
     # --- Shared methods (identical across SD/SDXL) ---
-    
+
     def get_noise_scheduler(self, cfg: Any, device: torch.device) -> Any:
         """
         Create noise scheduler. Same for SD and SDXL.
@@ -292,8 +308,7 @@ class PeftTrainingStrategy(
             Initialized DDPMScheduler.
         """
         noise_scheduler = DDPMScheduler(
-            beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", 
-            num_train_timesteps=1000, clip_sample=False
+            beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
         )
 
         if cfg.loss.regularization.zero_terminal_snr:
@@ -329,7 +344,7 @@ class PeftTrainingStrategy(
         """
         return latents * self.vae_latent_scale  # Child class must define vae_latent_scale
 
-    def post_process_loss(self, loss: torch.Tensor, cfg: Any, timesteps: torch.IntTensor, noise_scheduler: Any) -> torch.FloatTensor:
+    def post_process_loss(self, loss: torch.Tensor, cfg: Any, timesteps: torch.Tensor, noise_scheduler: Any) -> torch.Tensor:
         """
         Apply SNR weighting, v-pred scaling, debiased estimation etc.
 
@@ -353,7 +368,7 @@ class PeftTrainingStrategy(
         return loss
 
     # --- Additional methods that may need strategy ---
-    
+
     def get_text_encoders_train_flags(self, cfg: Any, text_encoders: list[Any]) -> list[bool]:
         """
         Return list of flags for whether each text encoder should be trained.
@@ -366,7 +381,7 @@ class PeftTrainingStrategy(
             List of boolean flags indicating training status for each encoder.
         """
         return [True] * len(text_encoders) if self.is_train_text_encoder(cfg) else [False] * len(text_encoders)
-    
+
     def is_train_text_encoder(self, cfg: Any) -> bool:
         """
         Check if text encoder should be trained based on LR config.
@@ -378,7 +393,7 @@ class PeftTrainingStrategy(
             True if text encoder should be trained, False otherwise.
         """
         return should_train_text_encoder(cfg.optimizer)
-    
+
     def is_train_unet(self, cfg: Any) -> bool:
         """
         Check if UNet should be trained based on LR config.
@@ -390,7 +405,7 @@ class PeftTrainingStrategy(
             True if UNet should be trained, False otherwise.
         """
         return should_train_unet(cfg.optimizer)
-    
+
     def cast_text_encoder(self, cfg: Any) -> bool:
         """
         Determine if text encoder should be cast to a specific dtype.
@@ -402,7 +417,7 @@ class PeftTrainingStrategy(
             True (default implementation).
         """
         return True
-    
+
     def cast_vae(self, cfg: Any) -> bool:
         """
         Determine if VAE should be cast to a specific dtype.
@@ -414,7 +429,7 @@ class PeftTrainingStrategy(
             True (default implementation).
         """
         return True
-    
+
     def cast_unet(self, cfg: Any) -> bool:
         """
         Determine if UNet should be cast to a specific dtype.
@@ -426,7 +441,7 @@ class PeftTrainingStrategy(
             True (default implementation).
         """
         return True
-    
+
     def is_text_encoder_not_needed_for_training(self, cfg: Any) -> bool:
         """
         Check if text encoder is unnecessary for training.
@@ -438,7 +453,7 @@ class PeftTrainingStrategy(
             False (default implementation).
         """
         return False
-    
+
     def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
         """
         Set up gradient checkpointing for text encoder.
@@ -448,7 +463,7 @@ class PeftTrainingStrategy(
             text_encoder: The text encoder model.
         """
         text_encoder.text_model.embeddings.requires_grad_(True)
-    
+
     def prepare_text_encoder_fp8(self, index: int, text_encoder: Any, te_weight_dtype: torch.dtype, weight_dtype: torch.dtype) -> None:
         """
         Prepare text encoder for FP8 training.
@@ -460,7 +475,7 @@ class PeftTrainingStrategy(
             weight_dtype: General weight dtype.
         """
         text_encoder.text_model.embeddings.to(dtype=weight_dtype)
-    
+
     def prepare_unet_with_accelerator(self, cfg: Any, accelerator: Any, unet: Any) -> Any:
         """
         Prepare UNet with accelerator.
@@ -474,7 +489,7 @@ class PeftTrainingStrategy(
             Prepared UNet model.
         """
         return accelerator.prepare(unet)
-    
+
     def post_process_adapter(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: list[Any], unet: Any) -> None:
         """
         Post-process adapter after creation. Override for model-specific behavior.
@@ -487,8 +502,18 @@ class PeftTrainingStrategy(
             unet: The UNet model.
         """
         pass
-    
-    def on_step_start(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: list[Any], unet: Any, batch: Any, weight_dtype: torch.dtype, is_train: bool = True) -> None:
+
+    def on_step_start(
+        self,
+        cfg: Any,
+        accelerator: Any,
+        adapter: Any,
+        text_encoders: list[Any],
+        unet: Any,
+        batch: Any,
+        weight_dtype: torch.dtype,
+        is_train: bool = True,
+    ) -> None:
         """
         Hook called at the start of each training step.
 
@@ -504,7 +529,9 @@ class PeftTrainingStrategy(
         """
         pass
 
-    def on_validation_step_end(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: list[Any], unet: Any, batch: Any, weight_dtype: torch.dtype) -> None:
+    def on_validation_step_end(
+        self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: list[Any], unet: Any, batch: Any, weight_dtype: torch.dtype
+    ) -> None:
         """
         Hook called after each validation step.
 
@@ -536,7 +563,7 @@ class PeftTrainingStrategy(
             NotImplementedError: If not implemented by subclass.
         """
         raise NotImplementedError("load_unet_lazily is not implemented for this architecture")
-    
+
     def all_reduce_adapter(self, accelerator: Any, adapter: Any) -> None:
         """
         Sync DDP gradients manually.
@@ -563,7 +590,7 @@ class PeftTrainingStrategy(
         cpu_rng_state = torch.get_rng_state()
         python_rng_state = random.getstate()
         numpy_rng_state = np.random.get_state()
-        
+
         gpu_rng_state = None
         if accelerator.device.type == "cuda":
             gpu_rng_state = torch.cuda.get_rng_state()
@@ -587,11 +614,11 @@ class PeftTrainingStrategy(
             accelerator: Accelerator instance.
         """
         cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state = rng_states
-        
+
         torch.set_rng_state(cpu_rng_state)
         random.setstate(python_rng_state)
         np.random.set_state(numpy_rng_state)
-        
+
         if gpu_rng_state is not None:
             if accelerator.device.type == "cuda":
                 torch.cuda.set_rng_state(gpu_rng_state)

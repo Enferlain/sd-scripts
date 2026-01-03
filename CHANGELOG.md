@@ -7,28 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **Dependabot Configuration**
-
-  - Added `pip` package ecosystem to `.github/dependabot.yml` for Python dependency monitoring
-  - Both GitHub Actions and pip dependencies now checked monthly
-
-- **ty Type Checker Configuration**
-  - Added `[tool.ty]` configuration to `pyproject.toml`
-  - Set Python version to 3.10 with explicit venv path for type resolution
-  - Excluded legacy directories (`feather`, `tools`, `data_processing`, `upscaling`)
-  - Downgraded noisy rules to warnings for gradual adoption
-
-- **absolufy-import ran**
-  - Changed dataclasses to absolute imports, undid vendor absolute imports
+## [2026-01-03]
 
 ### Fixed
 
 - **Fixed ty and ruff errors**
-  - Library/utils
-  - Library/training/
-  -
+  - Library/strategies/
 
 ## [2026-01-02]
 
@@ -58,6 +42,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - First-party imports → from imports → multiline
   - Disabled isort in ruff (using custom ordering)
 
+- **Dependabot Configuration**
+
+  - Added `pip` package ecosystem to `.github/dependabot.yml` for Python dependency monitoring
+  - Both GitHub Actions and pip dependencies now checked monthly
+
+- **ty Type Checker Configuration**
+  - Added `[tool.ty]` configuration to `pyproject.toml`
+  - Set Python version to 3.10 with explicit venv path for type resolution
+  - Excluded legacy directories (`feather`, `tools`, `data_processing`, `upscaling`)
+  - Downgraded noisy rules to warnings for gradual adoption
+
+- **absolufy-import ran**
+  - Changed dataclasses to absolute imports, undid vendor absolute imports
+
 ### Changed
 
 - **Ruff Modernization (UP rules)**
@@ -72,6 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Import Fixes After Ruff Cleanup**
   - Fixed `config_util.py` imports: `DreamBoothDataset`, `FineTuningDataset`, `ControlNetDataset`, `DatasetGroup` now import from correct source modules
   - Fixed `test_data_dataset.py`: `split_train_val` tests now import from `dataset_utils`
+- **Fixed ty and ruff errors**
+  - Library/utils
+  - Library/training/
 
 ## [2026-01-01]
 

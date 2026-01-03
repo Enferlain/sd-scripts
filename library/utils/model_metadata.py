@@ -393,12 +393,14 @@ def determine_resolution(
     if reso is not None:
         # Handle comma separated string
         if isinstance(reso, str):
-            reso = tuple(map(int, reso.split(",")))
+            parts = [int(x) for x in reso.split(",")]
+            reso_tuple: tuple[int, int] = (parts[0], parts[1]) if len(parts) >= 2 else (parts[0], parts[0])
         # Handle single int
-        if isinstance(reso, int):
-            reso = (reso, reso)
-        # Handle single-element tuple - at this point reso is definitely a tuple
-        reso_tuple: tuple[int, int] = reso if len(reso) >= 2 else (reso[0], reso[0])  # type: ignore[arg-type]
+        elif isinstance(reso, int):
+            reso_tuple = (reso, reso)
+        # Handle tuple - ensure we have exactly 2 elements
+        else:
+            reso_tuple = reso if len(reso) >= 2 else (reso[0], reso[0])
     else:
         # Determine default resolution based on model type
         if sdxl or "sd3" in model_config or "flux" in model_config or "lumina" in model_config:
