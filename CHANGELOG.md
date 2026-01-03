@@ -50,7 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Applied ruff save fixes to all files**
 
 - **Updated DATA_PIPELINE_PLAN.md**
+
   - Added Implementation Notes section with suggestions for config dataclass location, legacy folder naming, tokenizer validation, and ImageInfo integration
+
+- **PEFT Strategy Internal Dedup** (`peft_strategy_base.py`)
+  - Extracted `_prepare_latents()` helper to deduplicate latent encoding logic
+  - Updated `process_batch` and `process_val_batch` in SD and SDXL strategies
+  - Removed ~84 lines of duplicate code across 4 methods
 
 ## [2026-01-02]
 

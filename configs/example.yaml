@@ -1,6 +1,9 @@
 # ═══════════════════════════════════════════════════════════════════════════
-# EXAMPLE: SDXL LoRA Training Config (Schema 1 with explicit model_type/method)
+# EXAMPLE: SDXL LoRA/LyCORIS Training Config
 # ═══════════════════════════════════════════════════════════════════════════
+# Usage: python sdxl_peft.py --config-name=sdxl_peft +experiment=this_file
+# The script (sdxl_peft.py) determines the training method - no need for a
+# "method" field. This file shows user overrides on top of defaults.
 
 # ─── MODEL ──────────────────────────────────────────────────────────────────
 model:
@@ -10,7 +13,6 @@ model:
 
 # ─── TRAINING ───────────────────────────────────────────────────────────────
 training:
-  method: peft # peft | finetune | textual_inversion
   max_train_epochs: 10
   train_batch_size: 2
   gradient_accumulation_steps: 4
@@ -23,7 +25,7 @@ data:
   source:
     train_data_dir: "./dataset/my_character"
   preprocessing:
-    resolution: 1024
+    resolution: "1024,1024"
   caption:
     shuffle_caption: false
   bucketing:
@@ -33,11 +35,11 @@ data:
   caching:
     cache_latents: true
 
-# ─── PEFT (only relevant when training.method: peft) ───────────────────────
+# ─── PEFT (adapter configuration) ───────────────────────────────────────────
 peft:
   adapter_rank: 32
   adapter_alpha: 16
-  module: "lycoris.kohya"
+  adapter_module: "lycoris.kohya"
   adapter_args: ["algo=loha", "preset=full"]
   conv_dim: 16
 
@@ -47,10 +49,10 @@ optimizer:
   learning_rates:
     base: 1e-4
     unet: 1e-4
-    text_encoders: [5e-5, 5e-5] # Training for both text encoders SDXL
+    text_encoders: [5e-5, 5e-5] # Training both SDXL text encoders
   scheduler:
     lr_scheduler: "cosine_with_restarts"
-    lr_warmup_steps: 0.05
+    lr_warmup_steps: 100
 
 # ─── PERFORMANCE ────────────────────────────────────────────────────────────
 performance:

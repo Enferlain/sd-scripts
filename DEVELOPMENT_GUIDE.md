@@ -79,6 +79,7 @@ We are transitioning from a "Script-First" to a "Library-First" architecture.
 - **Linting:** Use `ruff check .` and `ruff format .` before committing. Configuration is in `pyproject.toml`.
 - **Type Checking:** Use `uvx ty check` for fast type checking. Configuration is in `pyproject.toml` under `[tool.ty]`.
 - **Import Order:** isort is disabled; use `tools/fix_imports.py` for custom ordering if needed.
+- **Naming Convention:** Folders use **plural** names (`adapters/`, `strategies/`, `models/`), files use **singular** names (`lora.py`, `strategy_base.py`, `model_util.py`) unless it houses various utilities.
 
 ## 5. Config Design Principles
 

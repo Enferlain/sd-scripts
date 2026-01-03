@@ -97,7 +97,7 @@ Scripts (contain training loops):     Library Modules:
 - [x] ~~**PEFT Strategy Deduplication**~~: 4 methods moved to `peft_strategy_base.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`)
 - [x] ~~**Upsample2D PyTorch 2.6+ Modernization**~~: Removed obsolete bfloat16 workaround (PyTorch #86679 fixed in 2.1+), replaced batch-size workaround with numel-based INT_MAX protection from diffusers
 - [x] ~~**Constants Type Hints**~~: Fixed `BLOCK_OUT_CHANNELS` type hint (`tuple[int]` → `tuple[int, ...]`)
-- [ ] **PEFT Strategy Internal Dedup**: `process_batch` and `process_val_batch` share ~45 lines of identical latent/text encoding setup - extract to helper method
+- [x] ~~**PEFT Strategy Internal Dedup**~~: Extracted `_prepare_latents` helper to base class, deduplicated ~84 lines across `process_batch`/`process_val_batch` in SD and SDXL strategies
 - [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`.
 - [x] ~~**ImageInfo Circular Dependency**~~: Fixed - `ImageInfo` already in `data_structures.py`, added proper imports to strategy files
 

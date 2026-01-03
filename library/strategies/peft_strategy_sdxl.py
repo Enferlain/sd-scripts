@@ -3,7 +3,6 @@
 import ast
 import logging
 import random
-import typing
 from dataclasses import dataclass
 from typing import Any
 
@@ -588,28 +587,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
         """
         with torch.no_grad():
-            if "latents" in batch and batch["latents"] is not None:
-                latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
-            else:
-                if cfg.data.caching.vae_batch_size is None or len(batch["images"]) <= cfg.data.caching.vae_batch_size:
-                    latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
-                else:
-                    chunks = [
-                        batch["images"][i : i + cfg.data.caching.vae_batch_size]
-                        for i in range(0, len(batch["images"]), cfg.data.caching.vae_batch_size)
-                    ]
-                    list_latents = []
-                    for chunk in chunks:
-                        with torch.no_grad():
-                            chunk = self.encode_images_to_latents(cfg, vae, chunk.to(accelerator.device, dtype=vae_dtype))
-                            list_latents.append(chunk)
-                    latents = torch.cat(list_latents, dim=0)
-
-                if torch.any(torch.isnan(latents)):
-                    accelerator.print("NaN found in latents, replacing with zeros")
-                    latents = typing.cast(torch.FloatTensor, torch.nan_to_num(latents, 0, out=latents))
-
-            latents = self.shift_scale_latents(cfg, latents)
+            latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
 
         # SDXL text conditioning - use cached outputs or encode on the fly
         tokenizers = self.get_tokenizers(tokenize_strategy)  # type: ignore[arg-type]  # Caller ensures correct strategy type
@@ -712,28 +690,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             timesteps_list = [50, 350, 500, 650, 950]
         total_loss: torch.Tensor = torch.tensor(0.0)
         with torch.autograd.grad_mode.inference_mode(mode=True):
-            if "latents" in batch and batch["latents"] is not None:
-                latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
-            else:
-                if cfg.data.caching.vae_batch_size is None or len(batch["images"]) <= cfg.data.caching.vae_batch_size:
-                    latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
-                else:
-                    chunks = [
-                        batch["images"][i : i + cfg.data.caching.vae_batch_size]
-                        for i in range(0, len(batch["images"]), cfg.data.caching.vae_batch_size)
-                    ]
-                    list_latents = []
-                    for chunk in chunks:
-                        with torch.no_grad():
-                            chunk = self.encode_images_to_latents(cfg, vae, chunk.to(accelerator.device, dtype=vae_dtype))
-                            list_latents.append(chunk)
-                    latents = torch.cat(list_latents, dim=0)
-
-                if torch.any(torch.isnan(latents)):
-                    accelerator.print("NaN found in latents, replacing with zeros")
-                    latents = typing.cast(torch.FloatTensor, torch.nan_to_num(latents, 0, out=latents))
-
-            latents = self.shift_scale_latents(cfg, latents)
+            latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
 
             # SDXL text conditioning
             tokenizers = self.get_tokenizers(tokenize_strategy)  # type: ignore[arg-type]  # Caller ensures correct strategy type

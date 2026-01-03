@@ -367,6 +367,46 @@ class PeftTrainingStrategy(
             loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
         return loss
 
+    def _prepare_latents(self, batch: Any, cfg: Any, accelerator: Any, vae: Any, vae_dtype: torch.dtype) -> torch.Tensor:
+        """
+        Prepare latents from batch - either use cached or encode images.
+
+        This method is shared between process_batch and process_val_batch.
+
+        Args:
+            batch: Batch data containing either cached latents or images.
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            vae: VAE model for encoding images.
+            vae_dtype: Data type for VAE operations.
+
+        Returns:
+            Prepared and scaled latents tensor.
+        """
+        import typing
+
+        if "latents" in batch and batch["latents"] is not None:
+            latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
+        else:
+            vae_batch_size = cfg.data.caching.vae_batch_size
+            if vae_batch_size is None or len(batch["images"]) <= vae_batch_size:
+                latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
+            else:
+                # Chunk encoding for large batches
+                chunks = [batch["images"][i : i + vae_batch_size] for i in range(0, len(batch["images"]), vae_batch_size)]
+                list_latents = []
+                for chunk in chunks:
+                    with torch.no_grad():
+                        chunk_latents = self.encode_images_to_latents(cfg, vae, chunk.to(accelerator.device, dtype=vae_dtype))
+                        list_latents.append(chunk_latents)
+                latents = torch.cat(list_latents, dim=0)
+
+            if torch.any(torch.isnan(latents)):
+                accelerator.print("NaN found in latents, replacing with zeros")
+                latents = typing.cast(torch.FloatTensor, torch.nan_to_num(latents, 0, out=latents))
+
+        return self.shift_scale_latents(cfg, latents)
+
     # --- Additional methods that may need strategy ---
 
     def get_text_encoders_train_flags(self, cfg: Any, text_encoders: list[Any]) -> list[bool]:
