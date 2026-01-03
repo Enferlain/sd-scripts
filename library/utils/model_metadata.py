@@ -513,10 +513,8 @@ def build_metadata_dataclass(
     if clip_skip is not None:
         encoder_layer = f"{clip_skip}"
 
-    # TODO: Implement hash calculation when memory-efficient method is available
-    # hash_sha256 = None
-    # if state_dict is not None:
-    #     hash_sha256 = precalculate_safetensors_hashes(state_dict)
+    # Hash calculation is available in library.utils.hash_utils.precalculate_safetensors_hashes()
+    # but not used here because hash is calculated during file saving, not metadata building
 
     # Process thumbnail - convert file path to data URL if needed
     processed_optional_metadata = optional_metadata.copy() if optional_metadata else {}

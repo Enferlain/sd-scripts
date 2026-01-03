@@ -321,7 +321,7 @@ def load_safetensors(
             state_dict = load_file(path)  # prevent device invalid Error
         if dtype is not None:
             for key in state_dict:
-                state_dict[key] = state_dict[key].to(dtype=dtype)  # TODO: ram spike?
+                state_dict[key] = state_dict[key].to(dtype=dtype)  # WARNING: May cause RAM spike for large models
         return state_dict
 
 

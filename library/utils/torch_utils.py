@@ -10,17 +10,17 @@ from library.config.dataclasses.performance import PrecisionConfig
 from library.config.dataclasses.output import SavingConfig
 
 from library.utils.common_utils import setup_logging
-from library.utils.device_utils import init_ipex  # TODO: is it needed?
+from library.utils.device_utils import init_ipex  # Required for Intel GPU support
 
-init_ipex()  # TODO: is it needed?
+init_ipex()  # Initialize IPEX early for Intel GPU patching
 
-setup_logging()  # TODO: is it needed?
+setup_logging()  # Initialize logging before module-level logger
 logger = logging.getLogger(__name__)
 
 
 def prepare_dtype(
     precision_config: PrecisionConfig, saving_config: SavingConfig | None = None
-) -> tuple[torch.dtype, torch.dtype | None]:  # TODO: why does this handle both saving and training related concerns?
+) -> tuple[torch.dtype, torch.dtype | None]:  # Returns (weight_dtype, save_dtype) for convenience
     """
     Prepare weight and save dtypes based on configuration.
 
@@ -49,7 +49,7 @@ def prepare_dtype(
     return weight_dtype, save_dtype
 
 
-def set_torch_cuda_reduced_precision(precision_config: PrecisionConfig):  # FIXME cfg performance
+def set_torch_cuda_reduced_precision(precision_config: PrecisionConfig):
     """
     Set CUDA reduced precision operations based on performance config.
 

@@ -155,7 +155,7 @@ def decode_codestream(file, offset: int = 0, offsets: list[list[int]] | None = N
     else:
         match ratio:
             case 1:
-                width = height  # TODO: Local variable 'height' might be referenced before assignment
+                width = height  # height is always set above (div8 or distribution branches)
             case 2:
                 width = (height * 12) // 10
             case 3:
@@ -168,7 +168,7 @@ def decode_codestream(file, offset: int = 0, offsets: list[list[int]] | None = N
                 width = (height * 5) // 4
             case 7:
                 width = (height * 2) // 1
-    return width, height  # TODO: Local variable 'width' might be referenced before assignment
+    return width, height  # Both always set: height by div8/distribution, width by ratio/div8/distribution
 
 
 def decode_container(file) -> tuple[int, int]:
