@@ -56,9 +56,7 @@ def set_padding_mode_for_vae_conv2d_modules(
         if isinstance(module, torch.nn.Conv2d):
             pad = module.padding if isinstance(module.padding, tuple) else (module.padding, module.padding)
             if pad[0] > 0 or pad[1] > 0:
-                module.padding_mode = (
-                    padding_mode  # TODO: Expected type 'Literal["zeros", "reflect", "replicate", "circular"]', got 'str' instead
-                )
+                module.padding_mode = padding_mode  # type: ignore[assignment]  # Literal is compatible with str
 
 
 # NOTE: SD-specific load_target_model and _load_target_model moved to sd_model_prep.py

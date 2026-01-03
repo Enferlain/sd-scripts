@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Library/config
   - Library/adapters
 
+- **Fixed TODOs and FIXMEs**
+  - Addressed all todos and fixmes, left ones that were not needing fixes/for later to address
+
 ### Changed
 
 - **Applied ruff save fixes to all files**

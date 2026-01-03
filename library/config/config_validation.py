@@ -150,7 +150,7 @@ def validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group) -> None:
     # Cannot train TE peft while caching TE outputs
     train_te = should_train_text_encoder(cfg.optimizer.learning_rates)
     assert not train_te or not cfg.performance.caching.cache_text_encoder_outputs, (
-        "peft for Text Encoder cannot be trained with caching Text Encoder outputs"  # TODO: improve message
+        "Adapter for Text Encoder cannot be trained with caching Text Encoder outputs"
     )
 
 

@@ -186,8 +186,6 @@ re_attention = re.compile(
     re.X,
 )
 
-# DEFAULT_NOISE_OFFSET = 0.0357  # todo where is this from?
-
 
 # =============================================================================
 # Model Parameters: Stable Diffusion (General / V1 / V2)
@@ -231,7 +229,7 @@ V2_UNET_PARAMS_CONTEXT_DIM = 1024
 # =============================================================================
 
 # --- library/models/sd_original_unet.py ---
-BLOCK_OUT_CHANNELS: tuple[int] = (320, 640, 1280, 1280)  # TODO: Expected type 'tuple[int]', got 'tuple[int, int, int, int]' instead
+BLOCK_OUT_CHANNELS: tuple[int, ...] = (320, 640, 1280, 1280)
 TIMESTEP_INPUT_DIM = BLOCK_OUT_CHANNELS[0]
 TIME_EMBED_DIM = BLOCK_OUT_CHANNELS[0] * 4
 IN_CHANNELS: int = 4

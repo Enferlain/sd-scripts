@@ -95,8 +95,11 @@ Scripts (contain training loops):     Library Modules:
 - [x] ~~Apply config pattern to `sd_textual_inversion.py`~~ (completed)
 - [x] get rid of lazy imports, move to top for transparency
 - [x] ~~**PEFT Strategy Deduplication**~~: 4 methods moved to `peft_strategy_base.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`)
+- [x] ~~**Upsample2D PyTorch 2.6+ Modernization**~~: Removed obsolete bfloat16 workaround (PyTorch #86679 fixed in 2.1+), replaced batch-size workaround with numel-based INT_MAX protection from diffusers
+- [x] ~~**Constants Type Hints**~~: Fixed `BLOCK_OUT_CHANNELS` type hint (`tuple[int]` → `tuple[int, ...]`)
 - [ ] **PEFT Strategy Internal Dedup**: `process_batch` and `process_val_batch` share ~45 lines of identical latent/text encoding setup - extract to helper method
 - [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`.
+- [ ] **ImageInfo Circular Dependency** (from strategies) - Multiple TODOs note circular import with `ImageInfo` type; consider moving to separate file
 
 ---
 
@@ -115,11 +118,11 @@ Scripts (contain training loops):     Library Modules:
 
 ---
 
-## CI/CD Setup (Future)
+## CI/CD Setup
 
-- GitHub Actions workflow for pytest
-- Coverage reporting and tracking
-- Pre-commit hooks for running tests
+- [x] GitHub Actions workflow for pytest (`.github/workflows/tests.yml` - multiple Python/PyTorch versions)
+- [x] Coverage reporting and tracking (pytest-cov + Codecov)
+- [ ] Pre-commit hooks for running tests
 
 ---
 
@@ -133,20 +136,13 @@ Scripts (contain training loops):     Library Modules:
   - These would serve as defaults that per-prompt overrides (in sample_prompts file) could supersede
   - Also: Add YAML support for `sample_prompts` for consistency with the rest of the config system (currently only .txt, .toml, .json)
 
-- [x] **Hydra 1.2 Schema Migration** - Fixed deprecation warning about automatic schema matching:
-
-  - Created `library/config/schemas.py` to centralize ConfigStore schema registration
-  - Renamed schemas to `*_schema` suffix (e.g., `sd_peft_schema`) to avoid name collision with YAML files
-  - Updated `sd_peft.yaml` and `sdxl_peft.yaml` to include schema in defaults list
-  - Fixed stale `max_data_loader_n_workers` field in `performance/default.yaml`
-
 - [ ] **Support for feather** - https://github.com/SuriyaaMM/feather
 
   - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support. Currently only considered for inference
 
-- [x] **Evaluate ty for type checking** - https://docs.astral.sh/ty/
-  - ty is a fast Python type checker from Astral (ruff authors)
-  - Could replace/complement basedpyright for CI type checking
+- [ ] **Investigate 2022-2023 backend code**
+
+  - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line.
 
 ---
 

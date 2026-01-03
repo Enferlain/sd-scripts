@@ -204,28 +204,25 @@ def load_prompts(prompt_file: str) -> list[dict]:
     if prompt_file.endswith(".txt"):
         with open(prompt_file, encoding="utf-8") as f:
             lines = f.readlines()
-        prompts = [line.strip() for line in lines if len(line.strip()) > 0 and line[0] != "#"]
+        raw_prompts: list[str | dict] = [line.strip() for line in lines if len(line.strip()) > 0 and line[0] != "#"]
     elif prompt_file.endswith(".toml"):
         with open(prompt_file, encoding="utf-8") as f:
             data = toml.load(f)
-        prompts = [dict(**data["prompt"], **subset) for subset in data["prompt"]["subset"]]
+        raw_prompts = [dict(**data["prompt"], **subset) for subset in data["prompt"]["subset"]]
     elif prompt_file.endswith(".json"):
         with open(prompt_file, encoding="utf-8") as f:
-            prompts = json.load(f)
+            raw_prompts = json.load(f)
     else:
         raise ValueError(f"Unsupported prompt file format: {prompt_file}. Supported formats: .txt, .toml, .json")
 
-    # preprocess prompts
-    for i in range(len(prompts)):
-        prompt_dict = prompts[i]
-        if isinstance(prompt_dict, str):
-            prompt_dict = line_to_prompt_dict(prompt_dict)
-            prompts[i] = prompt_dict  # Replaces str with parsed dict
+    # Build result list with proper types
+    prompts: list[dict] = []
+    for i, p in enumerate(raw_prompts):
+        prompt_dict = line_to_prompt_dict(p) if isinstance(p, str) else p
         assert isinstance(prompt_dict, dict)
-
-        # Adds an enumerator to the dict based on prompt position. Used later to name image files. Also cleanup of extra data in original prompt dict.
         prompt_dict["enum"] = i
         prompt_dict.pop("subset", None)
+        prompts.append(prompt_dict)
 
     return prompts
 
@@ -335,14 +332,14 @@ def sample_images_common(
     if sampling_config.sample_prompts.endswith(".txt"):
         with open(sampling_config.sample_prompts, encoding="utf-8") as f:
             lines = f.readlines()
-        prompts = [line.strip() for line in lines if len(line.strip()) > 0 and line[0] != "#"]
+        raw_prompts: list[str | dict] = [line.strip() for line in lines if len(line.strip()) > 0 and line[0] != "#"]
     elif sampling_config.sample_prompts.endswith(".toml"):
         with open(sampling_config.sample_prompts, encoding="utf-8") as f:
             data = toml.load(f)
-        prompts = [dict(**data["prompt"], **subset) for subset in data["prompt"]["subset"]]
+        raw_prompts = [dict(**data["prompt"], **subset) for subset in data["prompt"]["subset"]]
     elif sampling_config.sample_prompts.endswith(".json"):
         with open(sampling_config.sample_prompts, encoding="utf-8") as f:
-            prompts = json.load(f)
+            raw_prompts = json.load(f)
     else:
         logger.error(f"Unsupported prompt file format: {sampling_config.sample_prompts}. Supported formats: .txt, .toml, .json")
         return
@@ -364,17 +361,14 @@ def sample_images_common(
     save_dir = saving_config.output_dir + "/sample"
     os.makedirs(save_dir, exist_ok=True)
 
-    # preprocess prompts
-    for i in range(len(prompts)):  # prompts always assigned (txt/toml/json or early return above)
-        prompt_dict = prompts[i]
-        if isinstance(prompt_dict, str):
-            prompt_dict = line_to_prompt_dict(prompt_dict)
-            prompts[i] = prompt_dict  # Replaces str with parsed dict
+    # Build result list with proper types
+    prompts: list[dict] = []
+    for i, p in enumerate(raw_prompts):
+        prompt_dict = line_to_prompt_dict(p) if isinstance(p, str) else p
         assert isinstance(prompt_dict, dict)
-
-        # Adds an enumerator to the dict based on prompt position. Used later to name image files. Also cleanup of extra data in original prompt dict.
         prompt_dict["enum"] = i
         prompt_dict.pop("subset", None)
+        prompts.append(prompt_dict)
 
     # save random state to restore later
     rng_state = torch.get_rng_state()

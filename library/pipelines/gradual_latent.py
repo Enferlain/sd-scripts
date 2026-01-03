@@ -178,7 +178,8 @@ class EulerAncestralDiscreteSchedulerGL(EulerAncestralDiscreteScheduler):
 
         sigma = self.sigmas[self.step_index]
 
-        # 1. compute predicted original sample (x_0) from sigma-scaled predicted noise TODO: Unresolved attribute reference 'prediction_type' for class 'dict'
+        # 1. compute predicted original sample (x_0) from sigma-scaled predicted noise
+        # Note: self.config is a FrozenDict, prediction_type is accessed via __getattr__
         if self.config.prediction_type == "epsilon":
             pred_original_sample = sample - sigma * model_output
         elif self.config.prediction_type == "v_prediction":

@@ -114,9 +114,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
             case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
             if case_sensitive_full_base_optimizer_name is None:
                 raise ValueError("base_optimizer_type is required in optimizer_args for ScheduleFreeWrapper/snoo_asgd optimizers")
-            base_optimizer_values = case_sensitive_full_base_optimizer_name.split(
-                "."
-            )  # TODO: Unresolved attribute reference 'split' for class 'None'
+            base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")  # Not None - line 116 raises if None
             base_optimizer_module = importlib.import_module(".".join(base_optimizer_values[:-1]))
             case_sensitive_base_optimizer_type = base_optimizer_values[-1]
             optimizer_class = getattr(base_optimizer_module, case_sensitive_base_optimizer_type)

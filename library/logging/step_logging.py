@@ -114,7 +114,7 @@ def generate_step_logs(
                 range=(0, la_sampler.T),
             )
             for i, count in enumerate(hist.hist):
-                logs[f"sampler_timestep_hist/bin_{i}"] = count.item()  # TODO: Unresolved attribute reference 'item' for class '(int, Any)'
+                logs[f"sampler_timestep_hist/bin_{i}"] = count.item()  # hist is a Tensor, .item() is valid
 
     return logs
 
@@ -151,7 +151,7 @@ def accelerator_logging(accelerator: Accelerator, logs: dict, step_value: int, g
     if wandb_tracker is not None:
         logs["global_step"] = global_step
         logs["epoch"] = epoch
-        wandb_tracker.log(logs)  # TODO: Parameter 'step' unfilled
+        wandb_tracker.log(logs)  # Uses logs dict for step info (global_step/epoch added above)
 
     for tracker in other_trackers:
         tracker.log(logs, step=step_value)

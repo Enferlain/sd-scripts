@@ -747,13 +747,6 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         with torch.no_grad():
             latents = 1 / SDXL_VAE_LATENT_SCALE * latents
 
-            # print("post_quant_conv dtype:", self.vae.post_quant_conv.weight.dtype)  # torch.float32  # TODO: what was this for?
-            # x = torch.nn.functional.conv2d(latents, self.vae.post_quant_conv.weight.detach(), stride=1, padding=0)
-            # print("latents dtype:", latents.dtype, "x dtype:", x.dtype)  # torch.float32, torch.float16
-            # self.vae.to("cpu")
-            # self.vae.set_use_memory_efficient_attention_xformers(False)
-            # image = self.vae.decode(latents.to("cpu")).sample
-
             image = self.vae.decode(latents.to(self.vae.dtype)).sample
             image = (image / 2 + 0.5).clamp(0, 1)
             # we always cast to float32 as this does not cause significant overhead and is compatible with bfloat16

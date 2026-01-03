@@ -75,7 +75,6 @@ def get_scheduler_fix(
         int(temp_lr_decay_steps * num_training_steps) if isinstance(temp_lr_decay_steps, float) else temp_lr_decay_steps
     )
 
-    # TODO add inputs to UI to support setting decay steps
     if name == SchedulerType.WARMUP_STABLE_DECAY and (num_decay_steps is None or num_decay_steps == 0):
         num_decay_steps = num_warmup_steps
 

@@ -93,7 +93,7 @@ def prepare_edm2_loss_weighting(loss_config, training_config, noise_scheduler, a
                 decay_scaling=float(loss_config.edm2_loss_weighting_lr_scheduler_decay_scaling)
                 if loss_config.edm2_loss_weighting_lr_scheduler_decay_scaling is not None
                 else 1.0,
-            )  # FIXME: CONFIG USAGE
+            )
         else:
             edm2_lr_scheduler = get_dummy_scheduler(edm2_optimizer)
 

@@ -454,9 +454,8 @@ def generate_user_config_from_dataset(cfg) -> dict:
             ]
         }
     else:
-        # For arbitrary dataset, we don't need subsets config in the same way,  # TODO: what does this mean?
-        # but we need to structure it if needed.
-        # However, BlueprintGenerator logic for arbitrary dataset is handled differently (by not calling it or handling it upstream).
+        # For arbitrary dataset, we don't need subsets config in the same way.
+        # BlueprintGenerator logic for arbitrary dataset is handled differently (by not calling it or handling it upstream).
         # If dataset_class is present, BlueprintGenerator might not be used or used differently.
         user_config = {"datasets": []}  # Empty or handled otherwise
 

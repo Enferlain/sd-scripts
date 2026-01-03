@@ -552,7 +552,8 @@ def conditional_loss(
     Raises:
         NotImplementedError: If the specified loss type is not supported.
     """
-    # TODO: Expected type 'float', got 'Tensor | None' instead  on a bunch
+    # NOTE: huber_c is a Tensor (not float) when using timestep-dependent Huber scheduling.
+    # The loss functions accept float but work correctly with broadcast-compatible Tensors.
     if eps is None or eps <= 0.0:
         eps = torch.finfo(torch.float32).tiny
 
