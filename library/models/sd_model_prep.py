@@ -7,6 +7,7 @@ Generic utilities are in model_prep.py.
 
 import os
 import logging
+from typing import Literal, cast
 
 from diffusers import StableDiffusionPipeline
 
@@ -46,29 +47,22 @@ def _load_target_model(
             - load_stable_diffusion_format (bool): Whether the model was loaded from a Stable Diffusion checkpoint.
     """
     name_or_path = model_config.pretrained_model_name_or_path
-    name_or_path = (
-        os.path.realpath(name_or_path) if os.path.islink(name_or_path) else name_or_path
-    )
-    load_stable_diffusion_format = os.path.isfile(
-        name_or_path
-    )  # determine SD or Diffusers
+    assert name_or_path is not None, "pretrained_model_name_or_path must be specified"
+    name_or_path = os.path.realpath(name_or_path) if os.path.islink(name_or_path) else name_or_path
+    load_stable_diffusion_format = os.path.isfile(name_or_path)  # determine SD or Diffusers
     if load_stable_diffusion_format:
         logger.info(f"load StableDiffusion checkpoint: {name_or_path}")
-        text_encoder, vae, unet = (
-            library.models.sd_model_util.load_models_from_stable_diffusion_checkpoint(
-                v2,
-                name_or_path,
-                device,
-                unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2,
-            )
+        text_encoder, vae, unet = library.models.sd_model_util.load_models_from_stable_diffusion_checkpoint(
+            v2,
+            name_or_path,
+            device,
+            unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2,
         )
     else:
         # Diffusers model is loaded to CPU
         logger.info(f"load Diffusers pretrained models: {name_or_path}")
         try:
-            pipe = StableDiffusionPipeline.from_pretrained(
-                name_or_path, tokenizer=None, safety_checker=None
-            )
+            pipe = StableDiffusionPipeline.from_pretrained(name_or_path, tokenizer=None, safety_checker=None)
         except OSError as ex:
             logger.error(
                 f"model is not found as a file or in Hugging Face, perhaps file name is wrong? / 指定したモデル名のファイル、またはHugging Faceのモデルが見つかりません。ファイル名が誤っているかもしれません: {name_or_path}"
@@ -96,22 +90,17 @@ def _load_target_model(
         vae = model_util.load_vae(model_config.vae, weight_dtype)
         logger.info("additional VAE loaded")
 
-    if (
-        model_config.vae_conv2d_padding_mode is not None
-        and model_config.vae_conv2d_padding_mode.lower() != "zeros"
-    ):
-        logger.info(
-            f"Loaded VAE with padding mode: {model_config.vae_conv2d_padding_mode}"
-        )
-        set_padding_mode_for_vae_conv2d_modules(
-            vae, model_config.vae_conv2d_padding_mode
-        )
+    if model_config.vae_conv2d_padding_mode is not None and model_config.vae_conv2d_padding_mode.lower() != "zeros":
+        logger.info(f"Loaded VAE with padding mode: {model_config.vae_conv2d_padding_mode}")
+        padding_mode = cast(Literal["zeros", "reflect", "replicate", "circular"], model_config.vae_conv2d_padding_mode)
+        set_padding_mode_for_vae_conv2d_modules(vae, padding_mode)
 
     return text_encoder, vae, unet, load_stable_diffusion_format
 
 
-def load_target_model(model_config: ModelConfig, memory_config: MemoryConfig, weight_dtype, accelerator,
-                      unet_use_linear_projection_in_v2=False):
+def load_target_model(
+    model_config: ModelConfig, memory_config: MemoryConfig, weight_dtype, accelerator, unet_use_linear_projection_in_v2=False
+):
     """
     Load the target Stable Diffusion model, handling distributed loading and memory configurations.
 
@@ -130,12 +119,16 @@ def load_target_model(model_config: ModelConfig, memory_config: MemoryConfig, we
             - load_stable_diffusion_format (bool): Whether the model was loaded from a Stable Diffusion checkpoint.
     """
     is_v2 = model_config.model_type == "sd2"
+    # Initialize variables before loop to satisfy type checker
+    text_encoder = None
+    vae = None
+    unet = None
+    load_stable_diffusion_format = False
+
     assert accelerator.state.num_processes > 0, "num_processes must be greater than 0"
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
-            logger.info(
-                f"loading model for process {accelerator.state.local_process_index}/{accelerator.state.num_processes}"
-            )
+            logger.info(f"loading model for process {accelerator.state.local_process_index}/{accelerator.state.num_processes}")
 
             text_encoder, vae, unet, load_stable_diffusion_format = _load_target_model(
                 model_config,
@@ -152,4 +145,5 @@ def load_target_model(model_config: ModelConfig, memory_config: MemoryConfig, we
 
             clean_memory_on_device(accelerator.device)
         accelerator.wait_for_everyone()
-    return text_encoder, vae, unet, load_stable_diffusion_format  # TODO: Local variables might be referenced before assignment
+    assert text_encoder is not None and vae is not None and unet is not None, "Model loading failed"
+    return text_encoder, vae, unet, load_stable_diffusion_format

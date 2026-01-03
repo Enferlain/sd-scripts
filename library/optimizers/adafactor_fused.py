@@ -83,7 +83,7 @@ def adafactor_step_param(self, p, group):
     lr = Adafactor._get_lr(group, state)
 
     beta2t = 1.0 - math.pow(state["step"], group["decay_rate"])
-    update = (grad ** 2) + group["eps"][0]
+    update = (grad**2) + group["eps"][0]
     if factored:
         exp_avg_sq_row = state["exp_avg_sq_row"]
         exp_avg_sq_col = state["exp_avg_sq_col"]

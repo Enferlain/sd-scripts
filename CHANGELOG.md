@@ -12,7 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Fixed ty and ruff errors**
+
   - Library/strategies/
+  - Library/models/
 
 ## [2026-01-02]
 
@@ -48,17 +50,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Both GitHub Actions and pip dependencies now checked monthly
 
 - **ty Type Checker Configuration**
+
   - Added `[tool.ty]` configuration to `pyproject.toml`
   - Set Python version to 3.10 with explicit venv path for type resolution
   - Excluded legacy directories (`feather`, `tools`, `data_processing`, `upscaling`)
   - Downgraded noisy rules to warnings for gradual adoption
 
 - **absolufy-import ran**
+
   - Changed dataclasses to absolute imports, undid vendor absolute imports
 
 ### Changed
 
 - **Ruff Modernization (UP rules)**
+
   - `Optional[X]` → `X | None` (modern union syntax)
   - `List[int]` → `list[int]` (builtin generics)
   - `.get(key, None)` → `.get(key)` (redundant None)
@@ -68,9 +73,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Import Fixes After Ruff Cleanup**
+
   - Fixed `config_util.py` imports: `DreamBoothDataset`, `FineTuningDataset`, `ControlNetDataset`, `DatasetGroup` now import from correct source modules
   - Fixed `test_data_dataset.py`: `split_train_val` tests now import from `dataset_utils`
+  
 - **Fixed ty and ruff errors**
+
   - Library/utils
   - Library/training/
 
@@ -92,6 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All other library modules got docstrings now, and some small fixes like typos
 
 - **Hydra 1.2 Schema Migration**
+
   - Created `library/config/schemas.py` with explicit `register_*()` functions (no side effects on import)
   - All 6 training scripts now call their specific register function before `@hydra.main`
   - Tests call `register_all()` to register all schemas at once
@@ -105,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed `max_data_loader_n_workers` and `persistent_data_loader_workers` from `performance/default.yaml` (moved to `data.loader` previously)
 
 - **Test Fixes**
+
   - Updated `test_adapter_config_*` tests to use correct field name `adapter_module` instead of old `module`
   - Updated `test_swap_weight_devices_mock` mock path to `library.performance.custom_offloading_utils.torch`
   - Updated `test_sdxl_train_dry_run` config paths to new schema (`model.*`, `data.source.*`, `output.saving.*`)
@@ -150,6 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed circular import by giving each file its own logger via `setup_logging()` pattern
 
 - **Extracted `create_training_metadata()`**
+
   - Moved from `library/utils/model_metadata.py` → `library/training/training_metadata.py`
   - Training-specific `ss_*` metadata now in dedicated file
 
@@ -171,6 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `prepare_deepspeed_config()` to accept `LoaderConfig` instead of `TrainingConfig`
 
 - **ROADMAP Updates**
+
   - Added detailed explanations for `prepare_accelerator` split and `calculate_val_loss_check` TODOs
   - Marked lazy imports cleanup as complete
 
@@ -305,6 +317,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed incorrect function signature in `sd_textual_inversion.py` (pre-existing bug)
 
 - **Optimizer Wrapper Guard**
+
   - Added guard in `optimizer.py` to raise clear error when `base_optimizer_type` is missing for ScheduleFreeWrapper/snoo_asgd optimizers
 
 ### Changed
@@ -333,6 +346,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Renamed `config` → `cfg` in `resume_from_local_or_hf_if_specified()` for consistency
 
 - **Config Pattern Standardization in Library Utilities**
+
   - Established pattern: library utilities receive the **smallest container** that has what they need
   - `torch_utils.py`: Refactored `prepare_dtype`, `match_mixed_precision`, `set_torch_cuda_reduced_precision` to use `PrecisionConfig` instead of opaque `cfg`
   - `torch_utils.py`: Refactored `set_seed_from_config` to use `training_config: TrainingConfig`
@@ -619,6 +633,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **HuggingFace Upload Bug in Checkpointing**
+
   - The Hydra migration accidentally replaced `if args.huggingface_repo_id is not None` with `if saving_config.resume is not None` (wrong!) and stubbed out upload calls with `pass`
   - Added `hf_config: Optional[HuggingFaceConfig] = None` parameter to 9 functions in `checkpointing.py` and `sdxl_checkpointing.py`
   - Restored proper upload logic for model checkpoints and training state
@@ -627,6 +642,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Test Suite Expansion (897 total tests)**
+
   - `test_optimizations_deepspeed.py` - Unit tests for DeepSpeed config/plugin preparation (17 tests)
   - `test_optimizations_offloading.py` - Unit tests for CPU offloading utilities (42 tests)
   - `test_training_sdxl_checkpointing.py` - Unit tests for SDXL checkpointing wrappers (16 tests)
@@ -646,6 +662,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Centralized Config Validation Module** (`library/config/validation.py`)
+
   - `prepare_config(cfg)` - Auto-fixups: cache flags, optimizer shortcuts, backward compat
   - `validate_config(cfg)` - Cross-config errors: `adaptive_noise_scale`, `v_pred` conflicts, `full_fp16/bf16`, `fp8_base`, SDXL `block_lr`
   - Script-specific validators: `validate_sd_peft`, `validate_sdxl_peft`, `validate_sd_textual_inversion`, `validate_sdxl_textual_inversion`
@@ -733,6 +750,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added missing `no_metadata` field to `SavingConfig` dataclass
 
 - **Dataclass Naming Consistency**
+
   - Renamed `sd_models: ModelConfig` → `model: ModelConfig` in 6 dataclasses to match YAML config naming
 
 ### Changed
@@ -743,6 +761,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated callers in `sd_textual_inversion.py` and `sd_peft.py` to use `config.huggingface`
 
 - **Config Validation Architecture**
+
   - Removed `__post_init__` methods from 5 dataclasses (`DatasetConfig`, `RegularizationConfig`, `SamplingConfig`, `OptimizerConfig`, `SDXLConfig`)
   - Trainer `validate_extra_config` methods now delegate to centralized module
   - All 6 training scripts call `prepare_config()` and `validate_config()` at entry point
@@ -751,6 +770,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **Legacy Argparse Code**
+
   - Removed dead imports of `add_logging_arguments`, `add_prompt_parsing_arguments`, `add_loss_weighting_arguments` from scripts
   - Removed deprecated `add_loss_weighting_arguments()` from `loss_weighting.py`
   - Removed deprecated `add_logging_arguments()` from `common_utils.py`

@@ -23,10 +23,11 @@ logger = logging.getLogger(__name__)
 # LR-based training control helpers
 # =============================================================================
 
+
 def should_train_text_encoder(learning_rates: LearningRatesConfig) -> bool:
     """
     Check if text encoder should be trained based on learning rates.
-    
+
     Returns True if:
     - text_encoders LR is None (will use base LR)
     - text_encoders LR is a positive number
@@ -44,7 +45,7 @@ def should_train_text_encoder(learning_rates: LearningRatesConfig) -> bool:
 def should_train_unet(learning_rates: LearningRatesConfig) -> bool:
     """
     Check if UNet should be trained based on learning rates.
-    
+
     Returns True if:
     - unet LR is None (will use base LR)
     - unet LR is a positive number
@@ -107,11 +108,15 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
             case_sensitive_optimizer_type = values[-1]
 
         # Need to handle base optimizer
-        if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower()):
+        if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or optimizer_config.optimizer_type.lower().endswith(
+            "snoo_asgd".lower()
+        ):
             case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
             if case_sensitive_full_base_optimizer_name is None:
                 raise ValueError("base_optimizer_type is required in optimizer_args for ScheduleFreeWrapper/snoo_asgd optimizers")
-            base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")  # TODO: Unresolved attribute reference 'split' for class 'None'
+            base_optimizer_values = case_sensitive_full_base_optimizer_name.split(
+                "."
+            )  # TODO: Unresolved attribute reference 'split' for class 'None'
             base_optimizer_module = importlib.import_module(".".join(base_optimizer_values[:-1]))
             case_sensitive_base_optimizer_type = base_optimizer_values[-1]
             optimizer_class = getattr(base_optimizer_module, case_sensitive_base_optimizer_type)
@@ -122,14 +127,13 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
 
         optimizer_init_sig_parameters = sig.parameters
     except Exception as e:
-        logger.warning(
-            f"Encountered an error while trying to determine default orthograd from optimizer init signature. {e}")
+        logger.warning(f"Encountered an error while trying to determine default orthograd from optimizer init signature. {e}")
         optimizer_init_sig_parameters = {}
 
-    apply_orthograd = any(optimizer_kwargs.get(key,
-                                               getattr(optimizer_init_sig_parameters.get(key, types.SimpleNamespace()),
-                                                       "default", False)) == True for key in
-                          ['use_orthograd', 'orthograd'])
+    apply_orthograd = any(
+        optimizer_kwargs.get(key, getattr(optimizer_init_sig_parameters.get(key, types.SimpleNamespace()), "default", False)) is True
+        for key in ["use_orthograd", "orthograd"]
+    )
 
     # learning_rates is now passed explicitly as a parameter
 
@@ -149,14 +153,12 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
                 unet_lr=learning_rates.unet,
                 learning_rate=learning_rates.base,
                 apply_orthograd=apply_orthograd,
-                orthograd_targets=orthograd_targets
+                orthograd_targets=orthograd_targets,
             )
         else:
             # New signature: pass LearningRatesConfig directly
             results = adapter.prepare_optimizer_params(
-                learning_rates=learning_rates,
-                apply_orthograd=apply_orthograd,
-                orthograd_targets=orthograd_targets
+                learning_rates=learning_rates, apply_orthograd=apply_orthograd, orthograd_targets=orthograd_targets
             )
         if type(results) is tuple:
             trainable_params, lr_descriptions = results
@@ -175,7 +177,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
             unet_lr=learning_rates.unet,
             learning_rate=learning_rates.base,
             apply_orthograd=apply_orthograd,
-            orthograd_targets=orthograd_targets
+            orthograd_targets=orthograd_targets,
         )
         if type(results) is tuple:
             trainable_params, lr_descriptions = results
@@ -183,8 +185,11 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
             trainable_params = results
             lr_descriptions = None
 
-    optimizer_name, optimizer_args, optimizer = get_optimizer(optimizer_config, learning_rates, optimizer_config.scheduler, trainable_params, optimizer_kwargs)
-    optimizer_train_fn, optimizer_eval_fn = get_optimizer_train_eval_fn(optimizer, optimizer_config)  # TODO: Expected type 'Optimizer', got 'object' instead
+    optimizer_name, optimizer_args, optimizer = get_optimizer(
+        optimizer_config, learning_rates, optimizer_config.scheduler, trainable_params, optimizer_kwargs
+    )
+    # Cast to Optimizer - get_optimizer returns object but we know it's an Optimizer
+    optimizer_train_fn, optimizer_eval_fn = get_optimizer_train_eval_fn(optimizer, optimizer_config)  # type: ignore[arg-type]
 
     return optimizer_name, optimizer_args, optimizer, optimizer_train_fn, optimizer_eval_fn, lr_descriptions
 
@@ -205,9 +210,9 @@ def get_optimizer_train_eval_fn(optimizer: Optimizer, optimizer_config: Optimize
         # return dummy func
         return lambda: None, lambda: None
 
-    # get train and eval functions from optimizer
-    train_fn = optimizer.train  # TODO: unresolved attribute?
-    eval_fn = optimizer.eval  # TODO: unresolved attribute?
+    # get train and eval functions from optimizer (schedule-free optimizers have these)
+    train_fn = getattr(optimizer, "train", lambda: None)
+    eval_fn = getattr(optimizer, "eval", lambda: None)
 
     return train_fn, eval_fn
 
@@ -224,7 +229,8 @@ def is_schedulefree_optimizer(optimizer: Optimizer, optimizer_config: OptimizerC
         bool: True if the optimizer is schedule-free, False otherwise.
     """
     return optimizer_config.optimizer_type.lower().endswith("schedulefree".lower()) or optimizer_config.optimizer_type.lower().endswith(
-        "schedulefreewrapper".lower())
+        "schedulefreewrapper".lower()
+    )
 
 
 def is_wrapper_optimizer(optimizer_config: OptimizerConfig) -> bool:
@@ -237,7 +243,9 @@ def is_wrapper_optimizer(optimizer_config: OptimizerConfig) -> bool:
     Returns:
         bool: True if the optimizer is a wrapper optimizer, False otherwise.
     """
-    return optimizer_config.optimizer_type.lower().endswith("schedulefreewrapper".lower()) or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower())
+    return optimizer_config.optimizer_type.lower().endswith(
+        "schedulefreewrapper".lower()
+    ) or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower())
 
 
 def parse_string_to_type(s):
@@ -251,7 +259,7 @@ def parse_string_to_type(s):
         The parsed value as int, float, or the original string.
     """
     if s is not None:
-        if isinstance(s, float) or isinstance(s, int):
+        if isinstance(s, (float, int)):
             return s
         elif float_pattern.match(s):
             return float(s)

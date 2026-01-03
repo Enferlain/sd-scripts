@@ -104,6 +104,7 @@ v2.1
 import logging
 import math
 import torch
+import torch.utils.checkpoint as torch_checkpoint
 
 from torch import nn
 from torch.nn import functional as F
@@ -126,7 +127,8 @@ from library.constants import (
     TIME_EMBED_FREQ_SHIFT,
     TIMESTEP_INPUT_DIM,
     DOWN_BLOCK_TYPES,
-    UP_BLOCK_TYPES, EPSILON
+    UP_BLOCK_TYPES,
+    EPSILON,
 )
 
 setup_logging()
@@ -215,8 +217,7 @@ class FlashAttentionFunction(torch.autograd.Function):
 
                 new_row_sums = exp_row_max_diff * row_sums + exp_block_row_max_diff * block_row_sums
 
-                oc.mul_((row_sums / new_row_sums) * exp_row_max_diff).add_(
-                    (exp_block_row_max_diff / new_row_sums) * exp_values)
+                oc.mul_((row_sums / new_row_sums) * exp_row_max_diff).add_((exp_block_row_max_diff / new_row_sums) * exp_values)
 
                 row_maxes.copy_(new_row_maxes)
                 row_sums.copy_(new_row_sums)
@@ -327,12 +328,12 @@ def get_parameter_device(parameter: torch.nn.Module):
 
 
 def get_timestep_embedding(
-        timesteps: torch.Tensor,
-        embedding_dim: int,
-        flip_sin_to_cos: bool = False,
-        downscale_freq_shift: float = 1,
-        scale: float = 1,
-        max_period: int = 10000,
+    timesteps: torch.Tensor,
+    embedding_dim: int,
+    flip_sin_to_cos: bool = False,
+    downscale_freq_shift: float = 1,
+    scale: float = 1,
+    max_period: int = 10000,
 ):
     """
     This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timesteps embeddings.
@@ -407,6 +408,7 @@ class SampleOutput:
     """
     Simple wrapper for sample output.
     """
+
     def __init__(self, sample):
         self.sample = sample
 
@@ -417,7 +419,8 @@ class TimestepEmbedding(nn.Module):
 
     This module projects timesteps embeddings to a higher dimension.
     """
-    def __init__(self, in_channels: int, time_embed_dim: int, act_fn: str = "silu", out_dim: int = None):
+
+    def __init__(self, in_channels: int, time_embed_dim: int, act_fn: str = "silu", out_dim: int | None = None):
         super().__init__()
 
         self.linear_1 = nn.Linear(in_channels, time_embed_dim)
@@ -449,6 +452,7 @@ class Timesteps(nn.Module):
 
     This module generates sinusoidal timesteps embeddings.
     """
+
     def __init__(self, num_channels: int, flip_sin_to_cos: bool, downscale_freq_shift: float):
         super().__init__()
         self.num_channels = num_channels
@@ -471,10 +475,11 @@ class ResnetBlock2D(nn.Module):
 
     A residual block with GroupNorm, SiLU activation, and optional time embedding projection.
     """
+
     def __init__(
-            self,
-            in_channels,
-            out_channels,
+        self,
+        in_channels,
+        out_channels,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -526,11 +531,12 @@ class DownBlock2D(nn.Module):
     """
     DownBlock2D consisting of ResNet blocks and optional downsampling.
     """
+
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            add_downsample=True,
+        self,
+        in_channels: int,
+        out_channels: int,
+        add_downsample=True,
     ):
         super().__init__()
 
@@ -572,9 +578,7 @@ class DownBlock2D(nn.Module):
 
                     return custom_forward
 
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(resnet), hidden_states, temb, use_reentrant=False
-                )
+                hidden_states = torch_checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb, use_reentrant=False)
             else:
                 hidden_states = resnet(hidden_states, temb)
 
@@ -595,6 +599,7 @@ class Downsample2D(nn.Module):
 
     Reduces the spatial dimensions of the input tensor.
     """
+
     def __init__(self, channels, out_channels):
         super().__init__()
 
@@ -614,20 +619,21 @@ class CrossAttention(nn.Module):
     """
     CrossAttention layer.
     """
+
     def __init__(
-            self,
-            query_dim: int,
-            cross_attention_dim: int | None = None,
-            heads: int = 8,
-            dim_head: int = 64,
-            upcast_attention: bool = False,
+        self,
+        query_dim: int,
+        cross_attention_dim: int | None = None,
+        heads: int = 8,
+        dim_head: int = 64,
+        upcast_attention: bool = False,
     ):
         super().__init__()
         inner_dim = dim_head * heads
         cross_attention_dim = cross_attention_dim if cross_attention_dim is not None else query_dim
         self.upcast_attention = upcast_attention
 
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.heads = heads
 
         self.to_q = nn.Linear(query_dim, inner_dim, bias=False)
@@ -678,11 +684,8 @@ class CrossAttention(nn.Module):
                 hidden_states,
                 encoder_hidden_states,
                 attention_mask,
-            ) = translate_attention_names_from_diffusers(hidden_states=hidden_states, context=context, mask=mask,
-                                                         **kwargs)
-            return self.processor(
-                attn=self, hidden_states=hidden_states, encoder_hidden_states=context, attention_mask=mask, **kwargs
-            )
+            ) = translate_attention_names_from_diffusers(hidden_states=hidden_states, context=context, mask=mask, **kwargs)
+            return self.processor(attn=self, hidden_states=hidden_states, encoder_hidden_states=context, attention_mask=mask, **kwargs)
         if self.use_memory_efficient_attention_xformers:
             return self.forward_memory_efficient_xformers(hidden_states, context, mask)
         if self.use_memory_efficient_attention_mem_eff:
@@ -741,7 +744,7 @@ class CrossAttention(nn.Module):
         k_in = self.to_k(context)
         v_in = self.to_v(context)
 
-        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b n h d", h=h), (q_in, k_in, v_in))
+        q, k, v = (rearrange(t, "b n (h d) -> b n h d", h=h) for t in (q_in, k_in, v_in))
         del q_in, k_in, v_in
 
         q = q.contiguous()
@@ -768,7 +771,7 @@ class CrossAttention(nn.Module):
         v = self.to_v(context)
         del context, x
 
-        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=h), (q, k, v))
+        q, k, v = (rearrange(t, "b n (h d) -> b h n d", h=h) for t in (q, k, v))
 
         out = flash_func.apply(q, k, v, mask, False, q_bucket_size, k_bucket_size)
 
@@ -785,7 +788,7 @@ class CrossAttention(nn.Module):
         k_in = self.to_k(context)
         v_in = self.to_v(context)
 
-        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=h), (q_in, k_in, v_in))
+        q, k, v = (rearrange(t, "b n (h d) -> b h n d", h=h) for t in (q_in, k_in, v_in))
         del q_in, k_in, v_in
 
         out = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, dropout_p=0.0, is_causal=False)
@@ -797,12 +800,12 @@ class CrossAttention(nn.Module):
 
 
 def translate_attention_names_from_diffusers(
-        hidden_states: torch.FloatTensor,
-        context: torch.FloatTensor | None = None,
-        mask: torch.FloatTensor | None = None,
-        # HF naming
-        encoder_hidden_states: torch.FloatTensor | None = None,
-        attention_mask: torch.FloatTensor | None = None,
+    hidden_states: torch.FloatTensor,
+    context: torch.FloatTensor | None = None,
+    mask: torch.FloatTensor | None = None,
+    # HF naming
+    encoder_hidden_states: torch.FloatTensor | None = None,
+    attention_mask: torch.FloatTensor | None = None,
 ):
     # translate from hugging face diffusers
     context = context if context is not None else encoder_hidden_states
@@ -842,9 +845,10 @@ class FeedForward(nn.Module):
     """
     FeedForward layer.
     """
+
     def __init__(
-            self,
-            dim: int,
+        self,
+        dim: int,
     ):
         super().__init__()
         inner_dim = int(dim * 4)  # mult is always 4
@@ -867,9 +871,9 @@ class BasicTransformerBlock(nn.Module):
     """
     Basic Transformer block.
     """
+
     def __init__(
-            self, dim: int, num_attention_heads: int, attention_head_dim: int, cross_attention_dim: int,
-            upcast_attention: bool = False
+        self, dim: int, num_attention_heads: int, attention_head_dim: int, cross_attention_dim: int, upcast_attention: bool = False
     ):
         super().__init__()
 
@@ -926,14 +930,15 @@ class Transformer2DModel(nn.Module):
     """
     Transformer2DModel used in UNet.
     """
+
     def __init__(
-            self,
-            num_attention_heads: int = 16,
-            attention_head_dim: int = 88,
-            in_channels: int | None = None,
-            cross_attention_dim: int | None = None,
-            use_linear_projection: bool = False,
-            upcast_attention: bool = False,
+        self,
+        num_attention_heads: int = 16,
+        attention_head_dim: int = 88,
+        in_channels: int | None = None,
+        cross_attention_dim: int | None = None,
+        use_linear_projection: bool = False,
+        upcast_attention: bool = False,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -942,8 +947,7 @@ class Transformer2DModel(nn.Module):
         inner_dim = num_attention_heads * attention_head_dim
         self.use_linear_projection = use_linear_projection
 
-        self.norm = torch.nn.GroupNorm(num_groups=TRANSFORMER_NORM_NUM_GROUPS, num_channels=in_channels, eps=1e-6,
-                                       affine=True)
+        self.norm = torch.nn.GroupNorm(num_groups=TRANSFORMER_NORM_NUM_GROUPS, num_channels=in_channels, eps=1e-6, affine=True)
 
         if use_linear_projection:
             self.proj_in = nn.Linear(in_channels, inner_dim)
@@ -1016,15 +1020,16 @@ class CrossAttnDownBlock2D(nn.Module):
 
     Downsampling block with cross-attention and ResNet layers.
     """
+
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            add_downsample=True,
-            cross_attention_dim=1280,
-            attn_num_head_channels=1,
-            use_linear_projection=False,
-            upcast_attention=False,
+        self,
+        in_channels: int,
+        out_channels: int,
+        add_downsample=True,
+        cross_attention_dim=1280,
+        attn_num_head_channels=1,
+        use_linear_projection=False,
+        upcast_attention=False,
     ):
         super().__init__()
         self.has_cross_attention = True
@@ -1080,12 +1085,9 @@ class CrossAttnDownBlock2D(nn.Module):
 
                     return custom_forward
 
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(resnet), hidden_states, temb, use_reentrant=False
-                )
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(attn, return_dict=False), hidden_states, encoder_hidden_states,
-                    use_reentrant=False
+                hidden_states = torch_checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb, use_reentrant=False)
+                hidden_states = torch_checkpoint.checkpoint(
+                    create_custom_forward(attn, return_dict=False), hidden_states, encoder_hidden_states, use_reentrant=False
                 )[0]
             else:
                 hidden_states = resnet(hidden_states, temb)
@@ -1108,12 +1110,13 @@ class UNetMidBlock2DCrossAttn(nn.Module):
 
     Middle block with cross-attention and ResNet layers.
     """
+
     def __init__(
-            self,
-            in_channels: int,
-            attn_num_head_channels=1,
-            cross_attention_dim=1280,
-            use_linear_projection=False,
+        self,
+        in_channels: int,
+        attn_num_head_channels=1,
+        cross_attention_dim=1280,
+        use_linear_projection=False,
     ):
         super().__init__()
 
@@ -1170,14 +1173,11 @@ class UNetMidBlock2DCrossAttn(nn.Module):
                     return custom_forward
 
                 if attn is not None:
-                    hidden_states = torch.utils.checkpoint.checkpoint(
-                        create_custom_forward(attn, return_dict=False), hidden_states, encoder_hidden_states,
-                        use_reentrant=False
+                    hidden_states = torch_checkpoint.checkpoint(
+                        create_custom_forward(attn, return_dict=False), hidden_states, encoder_hidden_states, use_reentrant=False
                     )[0]
 
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(resnet), hidden_states, temb, use_reentrant=False
-                )
+                hidden_states = torch_checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb, use_reentrant=False)
             else:
                 if attn is not None:
                     hidden_states = attn(hidden_states, encoder_hidden_states).sample
@@ -1192,6 +1192,7 @@ class Upsample2D(nn.Module):
 
     Upsampling layer.
     """
+
     def __init__(self, channels, out_channels):
         super().__init__()
         self.channels = channels
@@ -1233,12 +1234,13 @@ class UpBlock2D(nn.Module):
 
     Upsampling block with ResNet layers.
     """
+
     def __init__(
-            self,
-            in_channels: int,
-            prev_output_channel: int,
-            out_channels: int,
-            add_upsample=True,
+        self,
+        in_channels: int,
+        prev_output_channel: int,
+        out_channels: int,
+        add_upsample=True,
     ):
         super().__init__()
 
@@ -1287,9 +1289,7 @@ class UpBlock2D(nn.Module):
 
                     return custom_forward
 
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(resnet), hidden_states, temb, use_reentrant=False
-                )
+                hidden_states = torch_checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb, use_reentrant=False)
             else:
                 hidden_states = resnet(hidden_states, temb)
 
@@ -1306,16 +1306,17 @@ class CrossAttnUpBlock2D(nn.Module):
 
     Upsampling block with cross-attention and ResNet layers.
     """
+
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            prev_output_channel: int,
-            attn_num_head_channels=1,
-            cross_attention_dim=1280,
-            add_upsample=True,
-            use_linear_projection=False,
-            upcast_attention=False,
+        self,
+        in_channels: int,
+        out_channels: int,
+        prev_output_channel: int,
+        attn_num_head_channels=1,
+        cross_attention_dim=1280,
+        add_upsample=True,
+        use_linear_projection=False,
+        upcast_attention=False,
     ):
         super().__init__()
         resnets = []
@@ -1364,12 +1365,12 @@ class CrossAttnUpBlock2D(nn.Module):
             attn.set_use_sdpa(sdpa)
 
     def forward(
-            self,
-            hidden_states,
-            res_hidden_states_tuple,
-            temb=None,
-            encoder_hidden_states=None,
-            upsample_size=None,
+        self,
+        hidden_states,
+        res_hidden_states_tuple,
+        temb=None,
+        encoder_hidden_states=None,
+        upsample_size=None,
     ):
         for resnet, attn in zip(self.resnets, self.attentions):
             # pop res hidden states
@@ -1389,12 +1390,9 @@ class CrossAttnUpBlock2D(nn.Module):
 
                     return custom_forward
 
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(resnet), hidden_states, temb, use_reentrant=False
-                )
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(attn, return_dict=False), hidden_states, encoder_hidden_states,
-                    use_reentrant=False
+                hidden_states = torch_checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb, use_reentrant=False)
+                hidden_states = torch_checkpoint.checkpoint(
+                    create_custom_forward(attn, return_dict=False), hidden_states, encoder_hidden_states, use_reentrant=False
                 )[0]
             else:
                 hidden_states = resnet(hidden_states, temb)
@@ -1408,14 +1406,14 @@ class CrossAttnUpBlock2D(nn.Module):
 
 
 def get_down_block(
-        down_block_type,
-        in_channels,
-        out_channels,
-        add_downsample,
-        attn_num_head_channels,
-        cross_attention_dim,
-        use_linear_projection,
-        upcast_attention,
+    down_block_type,
+    in_channels,
+    out_channels,
+    add_downsample,
+    attn_num_head_channels,
+    cross_attention_dim,
+    use_linear_projection,
+    upcast_attention,
 ):
     """
     Get down block.
@@ -1441,15 +1439,15 @@ def get_down_block(
 
 
 def get_up_block(
-        up_block_type,
-        in_channels,
-        out_channels,
-        prev_output_channel,
-        add_upsample,
-        attn_num_head_channels,
-        cross_attention_dim=None,
-        use_linear_projection=False,
-        upcast_attention=False,
+    up_block_type,
+    in_channels,
+    out_channels,
+    prev_output_channel,
+    add_upsample,
+    attn_num_head_channels,
+    cross_attention_dim=None,
+    use_linear_projection=False,
+    upcast_attention=False,
 ):
     """
     Get up block.
@@ -1483,16 +1481,17 @@ class UNet2DConditionModel(nn.Module):
     UNet model for conditional image generation in Stable Diffusion.
     Supports cross-attention conditioning and optional ControlNet integration.
     """
+
     _supports_gradient_checkpointing = True
 
     def __init__(
-            self,
-            sample_size: int | None = None,
-            attention_head_dim: int | tuple[int] = 8,
-            cross_attention_dim: int = 1280,
-            use_linear_projection: bool = False,
-            upcast_attention: bool = False,
-            **kwargs,
+        self,
+        sample_size: int | None = None,
+        attention_head_dim: int | tuple[int] = 8,
+        cross_attention_dim: int = 1280,
+        use_linear_projection: bool = False,
+        upcast_attention: bool = False,
+        **kwargs,
     ):
         super().__init__()
         assert sample_size is not None, "sample_size must be specified"
@@ -1636,14 +1635,14 @@ class UNet2DConditionModel(nn.Module):
     # endregion
 
     def forward(
-            self,
-            sample: torch.FloatTensor,
-            timestep: torch.Tensor | float | int,
-            encoder_hidden_states: torch.Tensor,
-            class_labels: torch.Tensor | None = None,
-            return_dict: bool = True,
-            down_block_additional_residuals: tuple[torch.Tensor] | None = None,
-            mid_block_additional_residual: torch.Tensor | None = None,
+        self,
+        sample: torch.FloatTensor,
+        timestep: torch.Tensor | float | int,
+        encoder_hidden_states: torch.Tensor,
+        class_labels: torch.Tensor | None = None,
+        return_dict: bool = True,
+        down_block_additional_residuals: tuple[torch.Tensor] | None = None,
+        mid_block_additional_residual: torch.Tensor | None = None,
     ) -> dict | tuple:
         r"""
         Args:
@@ -1662,7 +1661,7 @@ class UNet2DConditionModel(nn.Module):
         # However, the upsampling interpolation output size can be forced to fit any upsampling size
         # on the fly if necessary.
         # It is recommended to keep it divisible by 64 as image quality might degrade.
-        default_overall_up_factor = 2 ** self.num_upsamplers
+        default_overall_up_factor = 2**self.num_upsamplers
 
         # upsample size should be forwarded when sample is not a multiple of `default_overall_up_factor`
         # Forward upsample size to upsampler when not divisible by 64
@@ -1724,7 +1723,7 @@ class UNet2DConditionModel(nn.Module):
         for i, upsample_block in enumerate(self.up_blocks):
             is_final_block = i == len(self.up_blocks) - 1
 
-            res_samples = down_block_res_samples[-len(upsample_block.resnets):]
+            res_samples = down_block_res_samples[-len(upsample_block.resnets) :]
             down_block_res_samples = down_block_res_samples[: -len(upsample_block.resnets)]  # skip connection
 
             # if we have not reached the final block and need to forward the upsample size, we do it here
@@ -1741,9 +1740,7 @@ class UNet2DConditionModel(nn.Module):
                     upsample_size=upsample_size,
                 )
             else:
-                sample = upsample_block(
-                    hidden_states=sample, temb=emb, res_hidden_states_tuple=res_samples, upsample_size=upsample_size
-                )
+                sample = upsample_block(hidden_states=sample, temb=emb, res_hidden_states_tuple=res_samples, upsample_size=upsample_size)
 
         # 6. post-process
         sample = self.conv_norm_out(sample)
@@ -1781,6 +1778,7 @@ class InferUNet2DConditionModel:
     """
     Wrapper for UNet2DConditionModel to support Deep Shrink.
     """
+
     def __init__(self, original_unet: UNet2DConditionModel):
         self.delegate = original_unet
 
@@ -1862,13 +1860,13 @@ class InferUNet2DConditionModel:
         return hidden_states
 
     def cross_attn_up_block_forward(
-            self,
-            _self,
-            hidden_states,
-            res_hidden_states_tuple,
-            temb=None,
-            encoder_hidden_states=None,
-            upsample_size=None,
+        self,
+        _self,
+        hidden_states,
+        res_hidden_states_tuple,
+        temb=None,
+        encoder_hidden_states=None,
+        upsample_size=None,
     ):
         for resnet, attn in zip(_self.resnets, _self.attentions):
             # pop res hidden states
@@ -1890,14 +1888,14 @@ class InferUNet2DConditionModel:
         return hidden_states
 
     def forward(
-            self,
-            sample: torch.FloatTensor,
-            timestep: torch.Tensor | float | int,
-            encoder_hidden_states: torch.Tensor,
-            class_labels: torch.Tensor | None = None,
-            return_dict: bool = True,
-            down_block_additional_residuals: tuple[torch.Tensor] | None = None,
-            mid_block_additional_residual: torch.Tensor | None = None,
+        self,
+        sample: torch.FloatTensor,
+        timestep: torch.Tensor | float | int,
+        encoder_hidden_states: torch.Tensor,
+        class_labels: torch.Tensor | None = None,
+        return_dict: bool = True,
+        down_block_additional_residuals: tuple[torch.Tensor] | None = None,
+        mid_block_additional_residual: torch.Tensor | None = None,
     ) -> dict | tuple:
         r"""
         current implementation is a copy of `UNet2DConditionModel.forward()` with Deep Shrink.
@@ -1921,7 +1919,7 @@ class InferUNet2DConditionModel:
         # However, the upsampling interpolation output size can be forced to fit any upsampling size
         # on the fly if necessary.
         # It is recommended to keep it divisible by 64 as image quality might degrade.
-        default_overall_up_factor = 2 ** _self.num_upsamplers
+        default_overall_up_factor = 2**_self.num_upsamplers
 
         # upsample size should be forwarded when sample is not a multiple of `default_overall_up_factor`
         # Forward upsample size to upsampler when not divisible by 64
@@ -1953,18 +1951,19 @@ class InferUNet2DConditionModel:
         down_block_res_samples = (sample,)
         for depth, downsample_block in enumerate(_self.down_blocks):
             # Deep Shrink
-            if self.ds_depth_1 is not None:
-                if (depth == self.ds_depth_1 and timesteps[0] >= self.ds_timesteps_1) or (
-                        self.ds_depth_2 is not None
-                        and depth == self.ds_depth_2
-                        and timesteps[0] < self.ds_timesteps_1
-                        and timesteps[0] >= self.ds_timesteps_2
-                ):
-                    org_dtype = sample.dtype
-                    if org_dtype == torch.bfloat16:
-                        sample = sample.to(torch.float32)
-                    sample = F.interpolate(sample, scale_factor=self.ds_ratio, mode="bicubic", align_corners=False).to(
-                        org_dtype)
+            if self.ds_depth_1 is not None and (
+                (depth == self.ds_depth_1 and timesteps[0] >= self.ds_timesteps_1)
+                or (
+                    self.ds_depth_2 is not None
+                    and depth == self.ds_depth_2
+                    and timesteps[0] < self.ds_timesteps_1
+                    and timesteps[0] >= self.ds_timesteps_2
+                )
+            ):
+                org_dtype = sample.dtype
+                if org_dtype == torch.bfloat16:
+                    sample = sample.to(torch.float32)
+                sample = F.interpolate(sample, scale_factor=self.ds_ratio, mode="bicubic", align_corners=False).to(org_dtype)
 
             # It might be good to ensure downblock always receives encoder_hidden_states in forward,
             # but this might be easier to understand.
@@ -1997,7 +1996,7 @@ class InferUNet2DConditionModel:
         for i, upsample_block in enumerate(_self.up_blocks):
             is_final_block = i == len(_self.up_blocks) - 1
 
-            res_samples = down_block_res_samples[-len(upsample_block.resnets):]
+            res_samples = down_block_res_samples[-len(upsample_block.resnets) :]
             down_block_res_samples = down_block_res_samples[: -len(upsample_block.resnets)]  # skip connection
 
             # if we have not reached the final block and need to forward the upsample size, we do it here
@@ -2014,9 +2013,7 @@ class InferUNet2DConditionModel:
                     upsample_size=upsample_size,
                 )
             else:
-                sample = upsample_block(
-                    hidden_states=sample, temb=emb, res_hidden_states_tuple=res_samples, upsample_size=upsample_size
-                )
+                sample = upsample_block(hidden_states=sample, temb=emb, res_hidden_states_tuple=res_samples, upsample_size=upsample_size)
 
         # 6. post-process
         sample = _self.conv_norm_out(sample)

@@ -1,6 +1,7 @@
 import os
 import logging
 import torch
+from typing import Literal, cast
 
 from accelerate import init_empty_weights
 
@@ -41,10 +42,19 @@ def load_target_model(
         Tuple of (load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info)
     """
     model_dtype = match_mixed_precision(precision_config, weight_dtype)
+
+    # Initialize variables before loop to satisfy type checker
+    load_stable_diffusion_format = False
+    text_encoder1 = None
+    text_encoder2 = None
+    vae = None
+    unet = None
+    logit_scale = None
+    ckpt_info = None
+
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
-            logger.info(
-                f"loading model for process {accelerator.state.local_process_index}/{accelerator.state.num_processes}")
+            logger.info(f"loading model for process {accelerator.state.local_process_index}/{accelerator.state.num_processes}")
 
             (
                 load_stable_diffusion_format,
@@ -56,7 +66,7 @@ def load_target_model(
                 ckpt_info,
             ) = _load_target_model(
                 model_config,
-                model_config.pretrained_model_name_or_path,
+                model_config.pretrained_model_name_or_path or "",
                 model_config.vae,
                 model_version,
                 weight_dtype,
@@ -74,6 +84,7 @@ def load_target_model(
             clean_memory_on_device(accelerator.device)
         accelerator.wait_for_everyone()
 
+    assert text_encoder1 is not None and text_encoder2 is not None and vae is not None and unet is not None, "Model loading failed"
     return load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info
 
 
@@ -85,7 +96,7 @@ def _load_target_model(
     weight_dtype,
     device="cpu",
     model_dtype=None,
-    disable_mmap=False
+    disable_mmap=False,
 ):
     """
     Internal function to load SDXL model from checkpoint or diffusers.
@@ -115,8 +126,7 @@ def _load_target_model(
             unet,
             logit_scale,
             ckpt_info,
-        ) = sdxl_model_util.load_models_from_sdxl_checkpoint(model_version, name_or_path, device, model_dtype,
-                                                             disable_mmap)
+        ) = sdxl_model_util.load_models_from_sdxl_checkpoint(model_version, name_or_path, device, model_dtype, disable_mmap)
     else:
         from diffusers import StableDiffusionXLPipeline
 
@@ -124,9 +134,7 @@ def _load_target_model(
         logger.info(f"load Diffusers pretrained models: {name_or_path}, variant={variant}")
         try:
             try:
-                pipe = StableDiffusionXLPipeline.from_pretrained(
-                    name_or_path, torch_dtype=model_dtype, variant=variant, tokenizer=None
-                )
+                pipe = StableDiffusionXLPipeline.from_pretrained(name_or_path, torch_dtype=model_dtype, variant=variant, tokenizer=None)
             except OSError as ex:
                 if variant is not None:
                     logger.info("try to load fp32 model")
@@ -134,9 +142,7 @@ def _load_target_model(
                 else:
                     raise ex
         except OSError as ex:
-            logger.error(
-                f"model is not found as a file or in Hugging Face, perhaps file name is wrong?: {name_or_path}"
-            )
+            logger.error(f"model is not found as a file or in Hugging Face, perhaps file name is wrong?: {name_or_path}")
             raise ex
 
         text_encoder1 = pipe.text_encoder
@@ -164,8 +170,9 @@ def _load_target_model(
         vae = model_util.load_vae(vae_path, weight_dtype)
         logger.info("additional VAE loaded")
 
-    if model_config.vae_conv2d_padding_mode is not None and model_config.vae_conv2d_padding_mode.lower() != 'zeros':
+    if model_config.vae_conv2d_padding_mode is not None and model_config.vae_conv2d_padding_mode.lower() != "zeros":
         logger.info(f"Loading VAE with padding mode: {model_config.vae_conv2d_padding_mode}")
-        set_padding_mode_for_vae_conv2d_modules(vae, model_config.vae_conv2d_padding_mode)
+        padding_mode = cast(Literal["zeros", "reflect", "replicate", "circular"], model_config.vae_conv2d_padding_mode)
+        set_padding_mode_for_vae_conv2d_modules(vae, padding_mode)
 
     return load_stable_diffusion_format, text_encoder1, text_encoder2, vae, unet, logit_scale, ckpt_info

@@ -2,31 +2,31 @@
 # The state dict format is adapted to match SDXL.
 
 """
-      target: sgm.modules.diffusionmodules.openaimodel.UNetModel
-      params:
-        adm_in_channels: 2816
-        num_classes: sequential
-        use_checkpoint: True
-        in_channels: 4
-        out_channels: 4
-        model_channels: 320
-        attention_resolutions: [4, 2]
-        num_res_blocks: 2
-        channel_mult: [1, 2, 4]
-        num_head_channels: 64
-        use_spatial_transformer: True
-        use_linear_in_transformer: True
-        transformer_depth: [1, 2, 10]  # note: the first is unused (due to attn_res starting at 2) 32, 16, 8 --> 64, 32, 16
-        context_dim: 2048
-        spatial_transformer_attn_type: softmax-xformers
-        legacy: False
+target: sgm.modules.diffusionmodules.openaimodel.UNetModel
+params:
+  adm_in_channels: 2816
+  num_classes: sequential
+  use_checkpoint: True
+  in_channels: 4
+  out_channels: 4
+  model_channels: 320
+  attention_resolutions: [4, 2]
+  num_res_blocks: 2
+  channel_mult: [1, 2, 4]
+  num_head_channels: 64
+  use_spatial_transformer: True
+  use_linear_in_transformer: True
+  transformer_depth: [1, 2, 10]  # note: the first is unused (due to attn_res starting at 2) 32, 16, 8 --> 64, 32, 16
+  context_dim: 2048
+  spatial_transformer_attn_type: softmax-xformers
+  legacy: False
 """
 
 import logging
 import math
 
 import torch
-import torch.utils.checkpoint
+import torch.utils.checkpoint as torch_checkpoint
 
 from types import SimpleNamespace
 from torch import nn
@@ -35,14 +35,7 @@ from einops import rearrange
 
 from library.utils.common_utils import setup_logging, exists
 
-from library.constants import (
-    SDXL_TIME_EMBED_DIM,
-    SDXL_IN_CHANNELS,
-    SDXL_OUT_CHANNELS,
-    SDXL_MODEL_CHANNELS,
-    ADM_SDXL_IN_CHANNELS,
-    EPSILON
-)
+from library.constants import SDXL_TIME_EMBED_DIM, SDXL_IN_CHANNELS, SDXL_OUT_CHANNELS, SDXL_MODEL_CHANNELS, ADM_SDXL_IN_CHANNELS, EPSILON
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -147,8 +140,7 @@ class FlashAttentionFunction(torch.autograd.Function):
 
                 new_row_sums = exp_row_max_diff * row_sums + exp_block_row_max_diff * block_row_sums
 
-                oc.mul_((row_sums / new_row_sums) * exp_row_max_diff).add_(
-                    (exp_block_row_max_diff / new_row_sums) * exp_values)
+                oc.mul_((row_sums / new_row_sums) * exp_row_max_diff).add_((exp_block_row_max_diff / new_row_sums) * exp_values)
 
                 row_maxes.copy_(new_row_maxes)
                 row_sums.copy_(new_row_sums)
@@ -265,11 +257,11 @@ def get_parameter_device(parameter: torch.nn.Module):
 
 
 def get_timestep_embedding(
-        timesteps: torch.Tensor,
-        embedding_dim: int,
-        downscale_freq_shift: float = 1,
-        scale: float = 1,
-        max_period: int = 10000,
+    timesteps: torch.Tensor,
+    embedding_dim: int,
+    downscale_freq_shift: float = 1,
+    scale: float = 1,
+    max_period: int = 10000,
 ):
     """
     This matches the implementation in Denoising Diffusion Probabilistic Models: Create sinusoidal timesteps embeddings.
@@ -338,6 +330,7 @@ class GroupNorm32(nn.GroupNorm):
     """
     GroupNorm with float32 casting for mixed precision training compatibility.
     """
+
     def forward(self, x):
         if self.weight.dtype != torch.float32:
             return super().forward(x)
@@ -348,10 +341,11 @@ class ResnetBlock2D(nn.Module):
     """
     A 2D ResNet block used in the U-Net architecture.
     """
+
     def __init__(
-            self,
-            in_channels,
-            out_channels,
+        self,
+        in_channels,
+        out_channels,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -397,8 +391,7 @@ class ResnetBlock2D(nn.Module):
 
                 return custom_forward
 
-            x = torch.utils.checkpoint.checkpoint(create_custom_forward(self.forward_body), x, emb,
-                                                  use_reentrant=USE_REENTRANT)
+            x = torch_checkpoint.checkpoint(create_custom_forward(self.forward_body), x, emb, use_reentrant=USE_REENTRANT)
         else:
             x = self.forward_body(x, emb)
 
@@ -409,6 +402,7 @@ class Downsample2D(nn.Module):
     """
     A downsampling layer.
     """
+
     def __init__(self, channels, out_channels):
         super().__init__()
 
@@ -435,7 +429,7 @@ class Downsample2D(nn.Module):
 
                 return custom_forward
 
-            hidden_states = torch.utils.checkpoint.checkpoint(
+            hidden_states = torch_checkpoint.checkpoint(
                 create_custom_forward(self.forward_body), hidden_states, use_reentrant=USE_REENTRANT
             )
         else:
@@ -448,20 +442,21 @@ class CrossAttention(nn.Module):
     """
     Cross-attention module.
     """
+
     def __init__(
-            self,
-            query_dim: int,
-            cross_attention_dim: int | None = None,
-            heads: int = 8,
-            dim_head: int = 64,
-            upcast_attention: bool = False,
+        self,
+        query_dim: int,
+        cross_attention_dim: int | None = None,
+        heads: int = 8,
+        dim_head: int = 64,
+        upcast_attention: bool = False,
     ):
         super().__init__()
         inner_dim = dim_head * heads
         cross_attention_dim = cross_attention_dim if cross_attention_dim is not None else query_dim
         self.upcast_attention = upcast_attention
 
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.heads = heads
 
         self.to_q = nn.Linear(query_dim, inner_dim, bias=False)
@@ -556,7 +551,7 @@ class CrossAttention(nn.Module):
         k_in = self.to_k(context)
         v_in = self.to_v(context)
 
-        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b n h d", h=h), (q_in, k_in, v_in))
+        q, k, v = (rearrange(t, "b n (h d) -> b n h d", h=h) for t in (q_in, k_in, v_in))
         del q_in, k_in, v_in
 
         q = q.contiguous()
@@ -584,7 +579,7 @@ class CrossAttention(nn.Module):
         v = self.to_v(context)
         del context, x
 
-        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=h), (q, k, v))
+        q, k, v = (rearrange(t, "b n (h d) -> b h n d", h=h) for t in (q, k, v))
 
         out = flash_func.apply(q, k, v, mask, False, q_bucket_size, k_bucket_size)
 
@@ -601,7 +596,7 @@ class CrossAttention(nn.Module):
         k_in = self.to_k(context)
         v_in = self.to_v(context)
 
-        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=h), (q_in, k_in, v_in))
+        q, k, v = (rearrange(t, "b n (h d) -> b h n d", h=h) for t in (q_in, k_in, v_in))
         del q_in, k_in, v_in
 
         out = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, dropout_p=0.0, is_causal=False)
@@ -641,9 +636,10 @@ class FeedForward(nn.Module):
     """
     Feed-forward block.
     """
+
     def __init__(
-            self,
-            dim: int,
+        self,
+        dim: int,
     ):
         super().__init__()
         inner_dim = int(dim * 4)  # mult is always 4
@@ -673,9 +669,9 @@ class BasicTransformerBlock(nn.Module):
         cross_attention_dim (int): The number of channels in the encoder_hidden_states (if used).
         upcast_attention (bool, optional): Whether to upcast attention to float32. Defaults to False.
     """
+
     def __init__(
-            self, dim: int, num_attention_heads: int, attention_head_dim: int, cross_attention_dim: int,
-            upcast_attention: bool = False
+        self, dim: int, num_attention_heads: int, attention_head_dim: int, cross_attention_dim: int, upcast_attention: bool = False
     ):
         super().__init__()
 
@@ -739,7 +735,7 @@ class BasicTransformerBlock(nn.Module):
 
                 return custom_forward
 
-            output = torch.utils.checkpoint.checkpoint(
+            output = torch_checkpoint.checkpoint(
                 create_custom_forward(self.forward_body), hidden_states, context, timestep, use_reentrant=USE_REENTRANT
             )
         else:
@@ -761,15 +757,16 @@ class Transformer2DModel(nn.Module):
         upcast_attention (bool, optional): Whether to upcast attention to float32. Defaults to False.
         num_transformer_layers (int, optional): The number of transformer layers to use. Defaults to 1.
     """
+
     def __init__(
-            self,
-            num_attention_heads: int = 16,
-            attention_head_dim: int = 88,
-            in_channels: int | None = None,
-            cross_attention_dim: int | None = None,
-            use_linear_projection: bool = False,
-            upcast_attention: bool = False,
-            num_transformer_layers: int = 1,
+        self,
+        num_attention_heads: int = 16,
+        attention_head_dim: int = 88,
+        in_channels: int | None = None,
+        cross_attention_dim: int | None = None,
+        use_linear_projection: bool = False,
+        upcast_attention: bool = False,
+        num_transformer_layers: int = 1,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -851,6 +848,7 @@ class Upsample2D(nn.Module):
     """
     An upsampling layer.
     """
+
     def __init__(self, channels, out_channels):
         super().__init__()
         self.channels = channels
@@ -897,7 +895,7 @@ class Upsample2D(nn.Module):
 
                 return custom_forward
 
-            hidden_states = torch.utils.checkpoint.checkpoint(
+            hidden_states = torch_checkpoint.checkpoint(
                 create_custom_forward(self.forward_body), hidden_states, output_size, use_reentrant=USE_REENTRANT
             )
         else:
@@ -914,11 +912,12 @@ class SdxlUNet2DConditionModel(nn.Module):
     It consists of a series of input blocks, a middle block, and output blocks.
     The model processes the input latents and conditions to predict noise residuals.
     """
+
     _supports_gradient_checkpointing = True
 
     def __init__(
-            self,
-            **kwargs,
+        self,
+        **kwargs,
     ):
         super().__init__()
 
@@ -957,7 +956,7 @@ class SdxlUNet2DConditionModel(nn.Module):
         )
 
         # level 0
-        for i in range(2):
+        for _i in range(2):
             layers = [
                 ResnetBlock2D(
                     in_channels=1 * self.model_channels,
@@ -1110,8 +1109,7 @@ class SdxlUNet2DConditionModel(nn.Module):
 
         # output
         self.out = nn.ModuleList(
-            [GroupNorm32(32, self.model_channels), nn.SiLU(),
-             nn.Conv2d(self.model_channels, self.out_channels, 3, padding=1)]
+            [GroupNorm32(32, self.model_channels), nn.SiLU(), nn.Conv2d(self.model_channels, self.out_channels, 3, padding=1)]
         )
 
     # region diffusers compatibility
@@ -1214,6 +1212,7 @@ class InferSdxlUNet2DConditionModel:
     """
     Inference wrapper for SdxlUNet2DConditionModel, adding support for Deep Shrink.
     """
+
     def __init__(self, original_unet: SdxlUNet2DConditionModel, **kwargs):
         self.delegate = original_unet
 
@@ -1289,18 +1288,20 @@ class InferSdxlUNet2DConditionModel:
 
         for depth, module in enumerate(_self.input_blocks):
             # Deep Shrink
-            if self.ds_depth_1 is not None:
-                if (depth == self.ds_depth_1 and timesteps[0] >= self.ds_timesteps_1) or (
-                        self.ds_depth_2 is not None
-                        and depth == self.ds_depth_2
-                        and timesteps[0] < self.ds_timesteps_1
-                        and timesteps[0] >= self.ds_timesteps_2
-                ):
-                    # print("downsample", h.shape, self.ds_ratio)
-                    org_dtype = h.dtype
-                    if org_dtype == torch.bfloat16:
-                        h = h.to(torch.float32)
-                    h = F.interpolate(h, scale_factor=self.ds_ratio, mode="bicubic", align_corners=False).to(org_dtype)
+            if self.ds_depth_1 is not None and (
+                (depth == self.ds_depth_1 and timesteps[0] >= self.ds_timesteps_1)
+                or (
+                    self.ds_depth_2 is not None
+                    and depth == self.ds_depth_2
+                    and timesteps[0] < self.ds_timesteps_1
+                    and timesteps[0] >= self.ds_timesteps_2
+                )
+            ):
+                # print("downsample", h.shape, self.ds_ratio)
+                org_dtype = h.dtype
+                if org_dtype == torch.bfloat16:
+                    h = h.to(torch.float32)
+                h = F.interpolate(h, scale_factor=self.ds_ratio, mode="bicubic", align_corners=False).to(org_dtype)
 
             h = call_module(module, h, emb, context)
             hs.append(h)
@@ -1311,10 +1312,9 @@ class InferSdxlUNet2DConditionModel:
 
         for module in _self.output_blocks:
             # Deep Shrink
-            if self.ds_depth_1 is not None:
-                if hs[-1].shape[-2:] != h.shape[-2:]:
-                    # print("upsample", h.shape, hs[-1].shape)
-                    h = resize_like(h, hs[-1])
+            if self.ds_depth_1 is not None and hs[-1].shape[-2:] != h.shape[-2:]:
+                # print("upsample", h.shape, hs[-1].shape)
+                h = resize_like(h, hs[-1])
 
             resi = hs.pop()
             if input_resi_add is not None:
@@ -1357,8 +1357,7 @@ if __name__ == "__main__":
 
     import transformers
 
-    optimizer = transformers.optimization.Adafactor(unet.parameters(),
-                                                    relative_step=True)  # working at 22.2GB with torch2
+    optimizer = transformers.optimization.Adafactor(unet.parameters(), relative_step=True)  # working at 22.2GB with torch2
 
     scaler = torch.cuda.amp.GradScaler(enabled=True)
 

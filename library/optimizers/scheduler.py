@@ -5,8 +5,10 @@ from typing import Any
 
 import torch
 import transformers
-from diffusers.optimization import SchedulerType as DiffusersSchedulerType, \
-    TYPE_TO_SCHEDULER_FUNCTION as DIFFUSERS_TYPE_TO_SCHEDULER_FUNCTION
+from diffusers.optimization import (
+    SchedulerType as DiffusersSchedulerType,
+    TYPE_TO_SCHEDULER_FUNCTION as DIFFUSERS_TYPE_TO_SCHEDULER_FUNCTION,
+)
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import SchedulerType
@@ -23,7 +25,13 @@ logger = logging.getLogger(__name__)
 
 # Modified version of get_scheduler() function from diffusers.optimizer.get_scheduler
 # Add some checking and features to the original function.
-def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: OptimizerConfig, training_config: TrainingConfig, optimizer: Optimizer, num_processes: int):
+def get_scheduler_fix(
+    scheduler_config: SchedulerConfig,
+    optimizer_config: OptimizerConfig,
+    training_config: TrainingConfig,
+    optimizer: Optimizer,
+    num_processes: int,
+):
     """
     Unified API to get any scheduler from its name.
 
@@ -39,23 +47,29 @@ def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: Optim
     """
     optimizer_type = optimizer_config.optimizer_type
     # if schedulefree optimizer, return dummy scheduler
-    if optimizer_type.lower().split(".")[0] not in {"LoraEasyCustomOptimizer".lower(),
-                                                         "prodigyplus".lower()} and optimizer_type.lower().endswith("schedulefree".lower()):
+    if optimizer_type.lower().split(".")[0] not in {
+        "LoraEasyCustomOptimizer".lower(),
+        "prodigyplus".lower(),
+    } and optimizer_type.lower().endswith("schedulefree".lower()):
         return get_dummy_scheduler(optimizer)
 
     # Need to apply scheduler to base_optimizer
     if optimizer_type.lower().endswith("schedulefreewrapper".lower()) or optimizer_type.lower().endswith("snoo_asgd".lower()):
-        optimizer = optimizer.base_optimizer  # FIXME: UNRESOLVED ATTRIBUTE
+        optimizer = getattr(optimizer, "base_optimizer", optimizer)  # Get wrapped base optimizer
 
     name = scheduler_config.lr_scheduler
     num_training_steps = training_config.max_train_steps * num_processes  # * args.gradient_accumulation_steps
     num_warmup_steps: int | None = (
-        int(scheduler_config.lr_warmup_steps * num_training_steps) if isinstance(scheduler_config.lr_warmup_steps,
-                                                                     float) else scheduler_config.lr_warmup_steps
+        int(scheduler_config.lr_warmup_steps * num_training_steps)
+        if isinstance(scheduler_config.lr_warmup_steps, float)
+        else scheduler_config.lr_warmup_steps
     )
 
-    temp_lr_decay_steps = parse_string_to_type(
-        scheduler_config.lr_decay_steps) if scheduler_config.lr_decay_steps is not None else scheduler_config.lr_decay_steps or 0
+    temp_lr_decay_steps = (
+        parse_string_to_type(scheduler_config.lr_decay_steps)
+        if scheduler_config.lr_decay_steps is not None
+        else scheduler_config.lr_decay_steps or 0
+    )
 
     num_decay_steps: int | None = (
         int(temp_lr_decay_steps * num_training_steps) if isinstance(temp_lr_decay_steps, float) else temp_lr_decay_steps
@@ -100,9 +114,9 @@ def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: Optim
         logger.info(f"use {name} | {lr_scheduler_kwargs} as lr_scheduler")
 
     if name.startswith("adafactor"):
-        assert (
-                type(optimizer) == transformers.optimization.Adafactor
-        ), "adafactor scheduler must be used with Adafactor optimizer / adafactor schedulerはAdafactorオプティマイザと同時に使ってください"
+        assert isinstance(optimizer, transformers.optimization.Adafactor), (
+            "adafactor scheduler must be used with Adafactor optimizer / adafactor schedulerはAdafactorオプティマイザと同時に使ってください"
+        )
         initial_lr = float(name.split(":")[1])
         # logger.info(f"adafactor scheduler init lr {initial_lr}")
         return wrap_check_needless_num_warmup_steps(transformers.optimization.AdafactorSchedule(optimizer, initial_lr))
@@ -112,12 +126,15 @@ def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: Optim
         schedule_func = DIFFUSERS_TYPE_TO_SCHEDULER_FUNCTION[name]
         return schedule_func(optimizer, **lr_scheduler_kwargs)  # step_rules and last_epoch are given as kwargs
 
-    if name.lower() == 'CosineAnnealingLR'.lower():
-        return wrap_check_needless_num_warmup_steps(CosineAnnealingLR(optimizer,
-                                                                      T_max=num_training_steps,
-                                                                      eta_min=lr_scheduler_kwargs.get("min_lr", 1e-8),
-                                                                      last_epoch=lr_scheduler_kwargs.get("last_epoch",
-                                                                                                         -1)))
+    if name.lower() == "CosineAnnealingLR".lower():
+        return wrap_check_needless_num_warmup_steps(
+            CosineAnnealingLR(
+                optimizer,
+                T_max=num_training_steps,
+                eta_min=lr_scheduler_kwargs.get("min_lr", 1e-8),
+                last_epoch=lr_scheduler_kwargs.get("last_epoch", -1),
+            )
+        )
 
     name = SchedulerType(name)
     schedule_func = TYPE_TO_SCHEDULER_FUNCTION[name]
@@ -150,8 +167,7 @@ def get_scheduler_fix(scheduler_config: SchedulerConfig, optimizer_config: Optim
 
     if name == SchedulerType.POLYNOMIAL:
         return schedule_func(
-            optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps, power=power,
-            **lr_scheduler_kwargs
+            optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=num_training_steps, power=power, **lr_scheduler_kwargs
         )
 
     if name == SchedulerType.COSINE_WITH_MIN_LR:
@@ -210,6 +226,7 @@ def get_dummy_scheduler(optimizer: Optimizer) -> Any:
     Returns:
         Any: A dummy scheduler instance.
     """
+
     # dummy scheduler for schedulefree optimizer. supports only empty step(), get_last_lr() and optimizers.
     # this scheduler is used for logging only.
     # this isn't to be wrapped by accelerator because this class is not a subclass of torch.optim.lr_scheduler._LRScheduler

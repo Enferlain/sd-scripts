@@ -21,7 +21,7 @@ from library.constants import (
     VAE_PARAMS_OUT_CH,
     VAE_PARAMS_Z_CHANNELS,
     VAE_PARAMS_NUM_RES_BLOCKS,
-    VAE_PREFIX
+    VAE_PREFIX,
 )
 
 
@@ -96,13 +96,11 @@ def convert_ldm_vae_checkpoint(checkpoint, config):
 
     # Retrieves the keys for the encoder down blocks only
     num_down_blocks = len({".".join(layer.split(".")[:3]) for layer in vae_state_dict if "encoder.down" in layer})
-    down_blocks = {layer_id: [key for key in vae_state_dict if f"down.{layer_id}" in key] for layer_id in
-                   range(num_down_blocks)}
+    down_blocks = {layer_id: [key for key in vae_state_dict if f"down.{layer_id}" in key] for layer_id in range(num_down_blocks)}
 
     # Retrieves the keys for the decoder up blocks only
     num_up_blocks = len({".".join(layer.split(".")[:3]) for layer in vae_state_dict if "decoder.up" in layer})
-    up_blocks = {layer_id: [key for key in vae_state_dict if f"up.{layer_id}" in key] for layer_id in
-                 range(num_up_blocks)}
+    up_blocks = {layer_id: [key for key in vae_state_dict if f"up.{layer_id}" in key] for layer_id in range(num_up_blocks)}
 
     for i in range(num_down_blocks):
         resnets = [key for key in down_blocks[i] if f"down.{i}" in key and f"down.{i}.downsample" not in key]
@@ -136,16 +134,13 @@ def convert_ldm_vae_checkpoint(checkpoint, config):
 
     for i in range(num_up_blocks):
         block_id = num_up_blocks - 1 - i
-        resnets = [key for key in up_blocks[block_id] if
-                   f"up.{block_id}" in key and f"up.{block_id}.upsample" not in key]
+        resnets = [key for key in up_blocks[block_id] if f"up.{block_id}" in key and f"up.{block_id}.upsample" not in key]
 
         if f"decoder.up.{block_id}.upsample.conv.weight" in vae_state_dict:
             new_checkpoint[f"decoder.up_blocks.{i}.upsamplers.0.conv.weight"] = vae_state_dict[
                 f"decoder.up.{block_id}.upsample.conv.weight"
             ]
-            new_checkpoint[f"decoder.up_blocks.{i}.upsamplers.0.conv.bias"] = vae_state_dict[
-                f"decoder.up.{block_id}.upsample.conv.bias"
-            ]
+            new_checkpoint[f"decoder.up_blocks.{i}.upsamplers.0.conv.bias"] = vae_state_dict[f"decoder.up.{block_id}.upsample.conv.bias"]
 
         paths = renew_vae_resnet_paths(resnets)
         meta_path = {"old": f"up.{block_id}.block", "new": f"up_blocks.{i}.resnets"}
@@ -181,16 +176,16 @@ def create_vae_diffusers_config():
     down_block_types = ["DownEncoderBlock2D"] * len(block_out_channels)
     up_block_types = ["UpDecoderBlock2D"] * len(block_out_channels)
 
-    config = dict(
-        sample_size=VAE_PARAMS_RESOLUTION,
-        in_channels=VAE_PARAMS_IN_CHANNELS,
-        out_channels=VAE_PARAMS_OUT_CH,
-        down_block_types=tuple(down_block_types),
-        up_block_types=tuple(up_block_types),
-        block_out_channels=tuple(block_out_channels),
-        latent_channels=VAE_PARAMS_Z_CHANNELS,
-        layers_per_block=VAE_PARAMS_NUM_RES_BLOCKS,
-    )
+    config = {
+        "sample_size": VAE_PARAMS_RESOLUTION,
+        "in_channels": VAE_PARAMS_IN_CHANNELS,
+        "out_channels": VAE_PARAMS_OUT_CH,
+        "down_block_types": tuple(down_block_types),
+        "up_block_types": tuple(up_block_types),
+        "block_out_channels": tuple(block_out_channels),
+        "latent_channels": VAE_PARAMS_Z_CHANNELS,
+        "layers_per_block": VAE_PARAMS_NUM_RES_BLOCKS,
+    }
     return config
 
 
@@ -280,7 +275,7 @@ def convert_vae_state_dict(vae_state_dict):
             ("proj_out.", "to_out.0."),
         ]
 
-    mapping = {k: k for k in vae_state_dict.keys()}
+    mapping = {k: k for k in vae_state_dict}
     for k, v in mapping.items():
         for sd_part, hf_part in vae_conversion_map:
             v = v.replace(hf_part, sd_part)
@@ -332,7 +327,8 @@ def load_vae(vae_id, dtype):
     else:
         # StableDiffusion
         vae_model = load_file(vae_id, "cpu") if is_safetensors(vae_id) else torch.load(vae_id, map_location="cpu")
-        vae_sd = vae_model["state_dict"] if "state_dict" in vae_model else vae_model
+        vae_sd = vae_model.get("state_dict", vae_model)
+        assert isinstance(vae_sd, dict), "vae_sd must be a dict"
 
         # vae only or full model
         full_model = False
@@ -341,9 +337,9 @@ def load_vae(vae_id, dtype):
                 full_model = True
                 break
         if not full_model:
-            sd = {}
+            sd: dict[str, object] = {}
             for key, value in vae_sd.items():
-                sd[VAE_PREFIX + key] = value
+                sd[VAE_PREFIX + str(key)] = value
             vae_sd = sd
             del sd
 
@@ -351,7 +347,7 @@ def load_vae(vae_id, dtype):
         converted_vae_checkpoint = convert_ldm_vae_checkpoint(vae_sd, vae_config)
 
     vae = AutoencoderKL(**vae_config)
-    vae.load_state_dict(converted_vae_checkpoint)
+    vae.load_state_dict(converted_vae_checkpoint)  # type: ignore[union-attr]
     return vae
 
 
@@ -371,14 +367,11 @@ def conv_attn_to_linear(checkpoint):
         if ".".join(key.split(".")[-2:]) in attn_keys:
             if checkpoint[key].ndim > 2:
                 checkpoint[key] = checkpoint[key][:, :, 0, 0]
-        elif "proj_attn.weight" in key:
-            if checkpoint[key].ndim > 2:
-                checkpoint[key] = checkpoint[key][:, :, 0]
+        elif "proj_attn.weight" in key and checkpoint[key].ndim > 2:
+            checkpoint[key] = checkpoint[key][:, :, 0]
 
 
-def assign_to_checkpoint(
-        paths, checkpoint, old_checkpoint, attention_paths_to_split=None, additional_replacements=None, config=None
-):
+def assign_to_checkpoint(paths, checkpoint, old_checkpoint, attention_paths_to_split=None, additional_replacements=None, config=None):
     """
     Assigns weights to the new checkpoint, performing necessary conversions and renaming.
     This does the final conversion step: take locally converted weights and apply a global renaming
@@ -394,6 +387,8 @@ def assign_to_checkpoint(
         config (dict, optional): Configuration dictionary.
     """
     assert isinstance(paths, list), "Paths should be a list of dicts containing 'old' and 'new' keys."
+    if attention_paths_to_split is not None:
+        assert config is not None, "config is required when attention_paths_to_split is provided"
 
     # Splits the attention layers into three variables.
     if attention_paths_to_split is not None:
@@ -403,7 +398,7 @@ def assign_to_checkpoint(
 
             target_shape = (-1, channels) if len(old_tensor.shape) == 3 else (-1)
 
-            num_heads = old_tensor.shape[0] // config["num_head_channels"] // 3
+            num_heads = old_tensor.shape[0] // config["num_head_channels"] // 3  # type: ignore[index]
 
             old_tensor = old_tensor.reshape((num_heads, 3 * channels // num_heads) + old_tensor.shape[1:])
             query, key, value = old_tensor.split(channels // num_heads, dim=1)

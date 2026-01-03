@@ -28,9 +28,7 @@ def timestep_embedding(timesteps, dim, max_period=10000):
     :return: an [N x dim] Tensor of positional embeddings.
     """
     half = dim // 2
-    freqs = torch.exp(-math.log(max_period) * torch.arange(start=0, end=half, dtype=torch.float32) / half).to(
-        device=timesteps.device
-    )
+    freqs = torch.exp(-math.log(max_period) * torch.arange(start=0, end=half, dtype=torch.float32) / half).to(device=timesteps.device)
     args = timesteps[:, None].float() * freqs[None]
     embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
     if dim % 2:
@@ -88,6 +86,7 @@ def convert_sdxl_text_encoder_2_checkpoint(checkpoint, max_length):
     Returns:
         tuple: A tuple containing the converted state dictionary and the logit scale.
     """
+
     # SD2のと、基本的には同じ。logit_scaleを後で使うので、それを追加で返す
     # logit_scaleはcheckpointの保存時に使用する
     def convert_key(key):
@@ -152,8 +151,7 @@ def convert_sdxl_text_encoder_2_checkpoint(checkpoint, max_length):
 
     # temporary workaround for text_projection.weight.weight for Playground-v2
     if "text_projection.weight.weight" in new_sd:
-        logger.info(
-            "convert_sdxl_text_encoder_2_checkpoint: convert text_projection.weight.weight to text_projection.weight")
+        logger.info("convert_sdxl_text_encoder_2_checkpoint: convert text_projection.weight.weight to text_projection.weight")
         new_sd["text_projection.weight"] = new_sd["text_projection.weight.weight"]
         del new_sd["text_projection.weight.weight"]
 
@@ -190,14 +188,11 @@ def _load_state_dict_on_device(model, state_dict, device, dtype=None):
     # error_msgs
     error_msgs: list[str] = []
     if missing_keys:
-        error_msgs.insert(0, "Missing key(s) in state_dict: {}. ".format(
-            ", ".join(f'"{k}"' for k in missing_keys)))
+        error_msgs.insert(0, "Missing key(s) in state_dict: {}. ".format(", ".join(f'"{k}"' for k in missing_keys)))
     if unexpected_keys:
-        error_msgs.insert(0, "Unexpected key(s) in state_dict: {}. ".format(
-            ", ".join(f'"{k}"' for k in unexpected_keys)))
+        error_msgs.insert(0, "Unexpected key(s) in state_dict: {}. ".format(", ".join(f'"{k}"' for k in unexpected_keys)))
 
-    raise RuntimeError(
-        "Error(s) in loading state_dict for {}:\n\t{}".format(model.__class__.__name__, "\n\t".join(error_msgs)))
+    raise RuntimeError("Error(s) in loading state_dict for {}:\n\t{}".format(model.__class__.__name__, "\n\t".join(error_msgs)))
 
 
 def load_models_from_sdxl_checkpoint(model_version, ckpt_path, map_location, dtype=None, disable_mmap=False):
@@ -221,11 +216,12 @@ def load_models_from_sdxl_checkpoint(model_version, ckpt_path, map_location, dty
     if library.utils.safetensors_utils.is_safetensors(ckpt_path):
         checkpoint = None
         if disable_mmap:
-            state_dict = safetensors.torch.load(open(ckpt_path, "rb").read())
+            with open(ckpt_path, "rb") as f:
+                state_dict = safetensors.torch.load(f.read())  # type: ignore[possibly-missing-attribute]
         else:
             try:
                 state_dict = load_file(ckpt_path, device=map_location)
-            except:
+            except Exception:
                 state_dict = load_file(ckpt_path)  # prevent device invalid Error
         epoch = None
         global_step = None
@@ -468,7 +464,7 @@ def convert_unet_state_dict(src_sd, conversion_map):
             src_key_prefix = ".".join(src_key_fragments) + "."
             if src_key_prefix in conversion_map:
                 converted_prefix = conversion_map[src_key_prefix]
-                converted_key = converted_prefix + src_key[len(src_key_prefix):]
+                converted_key = converted_prefix + src_key[len(src_key_prefix) :]
                 converted_sd[converted_key] = value
                 break
             src_key_fragments.pop(-1)
@@ -489,7 +485,7 @@ def convert_sdxl_unet_state_dict_to_diffusers(sd):
     """
     unet_conversion_map = make_unet_conversion_map()
 
-    conversion_dict = {sd: hf for sd, hf in unet_conversion_map}
+    conversion_dict = dict(unet_conversion_map)
     return convert_unet_state_dict(sd, conversion_dict)
 
 
@@ -504,6 +500,7 @@ def convert_text_encoder_2_state_dict_to_sdxl(checkpoint, logit_scale):
     Returns:
         dict: The converted SDXL state dictionary.
     """
+
     def convert_key(key):
         # position_idsの除去
         if ".position_ids" in key:
@@ -568,17 +565,17 @@ def convert_text_encoder_2_state_dict_to_sdxl(checkpoint, logit_scale):
 
 
 def save_stable_diffusion_checkpoint(
-        output_file,
-        text_encoder1,
-        text_encoder2,
-        unet,
-        epochs,
-        steps,
-        ckpt_info,
-        vae,
-        logit_scale,
-        metadata,
-        save_dtype=None,
+    output_file,
+    text_encoder1,
+    text_encoder2,
+    unet,
+    epochs,
+    steps,
+    ckpt_info,
+    vae,
+    logit_scale,
+    metadata,
+    save_dtype=None,
 ):
     """
     Saves an SDXL Stable Diffusion checkpoint.
@@ -642,8 +639,7 @@ def save_stable_diffusion_checkpoint(
 
 
 def save_diffusers_checkpoint(
-        output_dir, text_encoder1, text_encoder2, unet, pretrained_model_name_or_path, vae=None, use_safetensors=False,
-        save_dtype=None
+    output_dir, text_encoder1, text_encoder2, unet, pretrained_model_name_or_path, vae=None, use_safetensors=False, save_dtype=None
 ):
     """
     Saves an SDXL Diffusers checkpoint.
@@ -666,8 +662,8 @@ def save_diffusers_checkpoint(
 
     diffusers_unet = UNet2DConditionModel(**DIFFUSERS_SDXL_UNET_CONFIG)
     if save_dtype is not None:
-        diffusers_unet.to(save_dtype)
-    diffusers_unet.load_state_dict(du_unet_sd)
+        diffusers_unet.to(save_dtype)  # type: ignore[union-attr]
+    diffusers_unet.load_state_dict(du_unet_sd)  # type: ignore[union-attr]
 
     # create pipeline to save
     if pretrained_model_name_or_path is None:
@@ -703,5 +699,5 @@ def save_diffusers_checkpoint(
         tokenizer_2=tokenizer2,
     )
     if save_dtype is not None:
-        pipeline.to(None, save_dtype)
-    pipeline.save_pretrained(output_dir, safe_serialization=use_safetensors)
+        pipeline.to(None, save_dtype)  # type: ignore[union-attr]
+    pipeline.save_pretrained(output_dir, safe_serialization=use_safetensors)  # type: ignore[union-attr]

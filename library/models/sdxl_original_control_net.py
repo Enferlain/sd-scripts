@@ -11,10 +11,7 @@ from library.constants import ADM_SDXL_IN_CHANNELS
 from library.utils.common_utils import setup_logging
 from library.models import sdxl_original_unet
 
-from library.models.sdxl_model_util import (
-    convert_sdxl_unet_state_dict_to_diffusers,
-    convert_diffusers_unet_state_dict_to_sdxl
-)
+from library.models.sdxl_model_util import convert_sdxl_unet_state_dict_to_diffusers, convert_diffusers_unet_state_dict_to_sdxl
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -36,8 +33,8 @@ class ControlNetConditioningEmbedding(nn.Module):
             self.blocks.append(nn.Conv2d(channel_in, channel_out, kernel_size=3, padding=1, stride=2))
 
         self.conv_out = nn.Conv2d(dims[-1], 320, kernel_size=3, padding=1)
-        nn.init.zeros_(self.conv_out.weight)  # zero module weight
-        nn.init.zeros_(self.conv_out.bias)  # zero module bias
+        nn.init.zeros_(self.conv_out.weight)  # type: ignore[arg-type]  # zero module weight
+        nn.init.zeros_(self.conv_out.bias)  # type: ignore[arg-type]  # zero module bias
 
     def forward(self, x):
         x = self.conv_in(x)
@@ -52,7 +49,7 @@ class ControlNetConditioningEmbedding(nn.Module):
 class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
     def __init__(self, multiplier: float | None = None, **kwargs):
         super().__init__(**kwargs)
-        self.multiplier = multiplier
+        self.multiplier: float | None = multiplier
 
         # remove unet layers
         self.output_blocks = nn.ModuleList([])
@@ -64,12 +61,12 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         self.controlnet_down_blocks = nn.ModuleList([])
         for dim in dims:
             self.controlnet_down_blocks.append(nn.Conv2d(dim, dim, kernel_size=1))
-            nn.init.zeros_(self.controlnet_down_blocks[-1].weight)  # zero module weight
-            nn.init.zeros_(self.controlnet_down_blocks[-1].bias)  # zero module bias
+            nn.init.zeros_(self.controlnet_down_blocks[-1].weight)  # type: ignore[arg-type]  # zero module weight
+            nn.init.zeros_(self.controlnet_down_blocks[-1].bias)  # type: ignore[arg-type]  # zero module bias
 
         self.controlnet_mid_block = nn.Conv2d(1280, 1280, kernel_size=1)
-        nn.init.zeros_(self.controlnet_mid_block.weight)  # zero module weight
-        nn.init.zeros_(self.controlnet_mid_block.bias)  # zero module bias
+        nn.init.zeros_(self.controlnet_mid_block.weight)  # type: ignore[arg-type]  # zero module weight
+        nn.init.zeros_(self.controlnet_mid_block.bias)  # type: ignore[arg-type]  # zero module bias
 
     def init_from_unet(self, unet: sdxl_original_unet.SdxlUNet2DConditionModel):
         unet_sd = unet.state_dict()
@@ -79,7 +76,7 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         info = super().load_state_dict(sd, strict=True, assign=True)
         return info
 
-    def load_state_dict(self, state_dict: dict, strict: bool = True, assign: bool = True) -> Any:
+    def load_state_dict(self, state_dict: dict, strict: bool = True, assign: bool = True) -> Any:  # type: ignore[override]
         # convert state_dict to SAI format
         unet_sd = {}
         for k in list(state_dict.keys()):
@@ -89,7 +86,7 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         state_dict.update(unet_sd)
         super().load_state_dict(state_dict, strict=strict, assign=assign)
 
-    def state_dict(self, destination=None, prefix="", keep_vars=False):
+    def state_dict(self, destination=None, prefix="", keep_vars=False):  # type: ignore[override]
         # convert state_dict to Diffusers format
         state_dict = super().state_dict(destination, prefix, keep_vars)
         control_net_sd = {}
@@ -101,14 +98,17 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         return state_dict
 
     def forward(
-            self,
-            x: torch.Tensor,
-            timesteps: torch.Tensor | None = None,
-            context: torch.Tensor | None = None,
-            y: torch.Tensor | None = None,
-            cond_image: torch.Tensor | None = None,
-            **kwargs,
-    ) -> torch.Tensor:
+        self,
+        x: torch.Tensor,
+        timesteps: torch.Tensor | None = None,
+        context: torch.Tensor | None = None,
+        y: torch.Tensor | None = None,
+        cond_image: torch.Tensor | None = None,
+        **kwargs,
+    ) -> tuple[list[torch.Tensor], torch.Tensor]:
+        assert timesteps is not None, "timesteps is required"
+        assert y is not None, "y is required"
+        assert cond_image is not None, "cond_image is required"
         # broadcast timesteps to batch dimension
         timesteps = timesteps.expand(x.shape[0])
 
@@ -155,6 +155,10 @@ class SdxlControlledUNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         super().__init__(**kwargs)
 
     def forward(self, x, timesteps=None, context=None, y=None, input_resi_add=None, mid_add=None, **kwargs):
+        assert timesteps is not None, "timesteps is required"
+        assert y is not None, "y is required"
+        assert input_resi_add is not None, "input_resi_add is required"
+        assert mid_add is not None, "mid_add is required"
         # broadcast timesteps to batch dimension
         timesteps = timesteps.expand(x.shape[0])
 
