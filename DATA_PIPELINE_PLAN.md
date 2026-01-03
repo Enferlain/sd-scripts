@@ -513,6 +513,16 @@ sd-scripts/
 │       └── default_loading.yaml
 ```
 
+### Implementation Notes
+
+1. **Config Dataclass Location**: Consider adding `library/config/dataclasses/data_pipeline.py` for Hydra integration of caching/loading configs. This keeps config schema separate from implementation.
+
+2. **Legacy Folder Naming**: Rather than `library/data/legacy/`, consider `library/data/_deprecated/` or keeping old files with `_v1` suffix. The underscore convention signals "don't import this directly."
+
+3. **Tokenizer Validation**: When storing `input_ids` in epoch manifests (Phase 3), consider storing a tokenizer hash for validation. This catches issues if someone changes tokenizers between runs.
+
+4. **ImageInfo Integration**: The `ImageInfo` class in `library/data/data_structures.py` is a good foundation for manifest entries. Consider evolving it or creating a new `ManifestEntry` dataclass that maps cleanly to the JSON schema.
+
 ---
 
 ## Migration Path

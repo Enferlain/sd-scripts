@@ -21,11 +21,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Library/adapters
 
 - **Fixed TODOs and FIXMEs**
+
   - Addressed all todos and fixmes, left ones that were not needing fixes/for later to address
+
+- **Fixed ImageInfo Circular Dependency**
+
+  - Removed stale TODOs from `strategy_base.py`, `strategy_sd.py` referencing old `train_util.py` location
+  - Added proper `from library.data.data_structures import ImageInfo` imports to strategy files
+  - Added proper type hints for `batch` parameters (`list[ImageInfo]`) in caching methods
+
+- **Fixed ImageInfo Type Hints** (`library/data/data_structures.py`)
+
+  - `image_size`, `resized_size`, `bucket_reso`: Added `| None` (were initialized to `None` but typed without it)
+  - `latents_crop_ltrb`: Fixed from `tuple[int, int]` to `tuple[int, int, int, int]` (LTRB = 4 values)
+  - `alpha_mask`: Added `| npt.NDArray` (can be numpy array from image loading)
+
+- **Fixed `get_hidden_states_sdxl` Signature** (`library/models/text_encoder_util.py`)
+
+  - `max_token_length`: Changed `int` to `int | None` (function already handles `None` internally)
+  - `text_encoder1`, `text_encoder2`: Added `| torch.nn.Module` for accelerator-wrapped models
+  - `pool_workaround`: Added `| torch.nn.Module` parameter type for consistency
+
+- **Fixed `np.savez` Type Warning** (`library/strategies/strategy_sdxl.py`)
+  - Added assert for `text_encoder_outputs_npz is not None` before saving
 
 ### Changed
 
 - **Applied ruff save fixes to all files**
+
+- **Updated DATA_PIPELINE_PLAN.md**
+  - Added Implementation Notes section with suggestions for config dataclass location, legacy folder naming, tokenizer validation, and ImageInfo integration
 
 ## [2026-01-02]
 
@@ -49,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed `ruff.toml`, `pytest.ini`, `setup.py` (now in `pyproject.toml`)
 
 - **Custom Import Sorting Tool**
+
   - Added `tools/fix_imports.py` for custom import ordering:
     - Standard library imports → from imports
     - Third-party imports → from imports
@@ -87,7 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   - Fixed `config_util.py` imports: `DreamBoothDataset`, `FineTuningDataset`, `ControlNetDataset`, `DatasetGroup` now import from correct source modules
   - Fixed `test_data_dataset.py`: `split_train_val` tests now import from `dataset_utils`
-  
+
 - **Fixed ty and ruff errors**
 
   - Library/utils

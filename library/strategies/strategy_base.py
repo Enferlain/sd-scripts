@@ -12,8 +12,7 @@ from transformers import CLIPTokenizer
 from library.constants import re_attention
 from library.utils.common_utils import setup_logging
 from library.data.caching import load_images_and_masks_for_caching
-# TODO remove circular import by moving ImageInfo to a separate file
-# from library.train_util import ImageInfo
+from library.data.data_structures import ImageInfo
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -602,13 +601,12 @@ class LatentsCachingStrategy:
 
         return True
 
-    # TODO remove circular dependency for ImageInfo
     def _default_cache_batch_latents(
         self,
         encode_by_vae: Callable,
         vae_device: torch.device,
         vae_dtype: torch.dtype,
-        image_infos: list,
+        image_infos: list[ImageInfo],
         flip_aug: bool,
         apply_alpha_mask: bool,
         random_crop: bool,

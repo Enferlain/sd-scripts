@@ -3,10 +3,10 @@ import random
 import cv2
 import torch
 import numpy as np
+import numpy.typing as npt
 
 from typing import Any, NamedTuple
 from PIL import Image
-
 
 
 class ImageInfo:
@@ -16,14 +16,14 @@ class ImageInfo:
         self.caption: str = caption
         self.is_reg: bool = is_reg
         self.absolute_path: str = absolute_path
-        self.image_size: tuple[int, int] = None
-        self.resized_size: tuple[int, int] = None
-        self.bucket_reso: tuple[int, int] = None
+        self.image_size: tuple[int, int] | None = None
+        self.resized_size: tuple[int, int] | None = None
+        self.bucket_reso: tuple[int, int] | None = None
         self.latents: torch.Tensor | None = None
         self.latents_flipped: torch.Tensor | None = None
         self.latents_npz: str | None = None  # set in cache_latents
         self.latents_original_size: tuple[int, int] | None = None  # original image size, not latents size
-        self.latents_crop_ltrb: tuple[int, int] | None = (
+        self.latents_crop_ltrb: tuple[int, int, int, int] | None = (
             None  # crop left top right bottom in original pixel size, not latents size
         )
         self.cond_img_path: str | None = None
@@ -37,7 +37,7 @@ class ImageInfo:
         self.text_encoder_outputs2: torch.Tensor | None = None
         self.text_encoder_pool2: torch.Tensor | None = None
 
-        self.alpha_mask: torch.Tensor | None = None  # alpha mask can be flipped in runtime
+        self.alpha_mask: torch.Tensor | npt.NDArray | None = None  # alpha mask can be flipped in runtime
         self.resize_interpolation: str | None = None
 
 
@@ -229,7 +229,7 @@ class AugHelper:
             else:
                 # random gamma
                 gamma = random.uniform(0.95, 1.05)
-                image = np.clip(image ** gamma, 0, 255).astype(np.uint8)
+                image = np.clip(image**gamma, 0, 255).astype(np.uint8)
 
         return {"image": image}
 
@@ -239,32 +239,32 @@ class AugHelper:
 
 class BaseSubset:
     def __init__(
-            self,
-            image_dir: str | None,
-            alpha_mask: bool | None,
-            num_repeats: int,
-            shuffle_caption: bool,
-            caption_separator: str,
-            keep_tokens: int,
-            keep_tokens_separator: str,
-            secondary_separator: str | None,
-            enable_wildcard: bool,
-            color_aug: bool,
-            flip_aug: bool,
-            face_crop_aug_range: tuple[float, float] | None,
-            random_crop: bool,
-            random_crop_padding_percent: float,
-            caption_dropout_rate: float,
-            caption_dropout_every_n_epochs: int,
-            caption_tag_dropout_rate: float,
-            caption_prefix: str | None,
-            caption_suffix: str | None,
-            token_warmup_min: int,
-            token_warmup_step: float | int,
-            custom_attributes: dict[str, Any] | None = None,
-            validation_seed: int | None = None,
-            validation_split: float | None = 0.0,
-            resize_interpolation: str | None = None,
+        self,
+        image_dir: str | None,
+        alpha_mask: bool | None,
+        num_repeats: int,
+        shuffle_caption: bool,
+        caption_separator: str,
+        keep_tokens: int,
+        keep_tokens_separator: str,
+        secondary_separator: str | None,
+        enable_wildcard: bool,
+        color_aug: bool,
+        flip_aug: bool,
+        face_crop_aug_range: tuple[float, float] | None,
+        random_crop: bool,
+        random_crop_padding_percent: float,
+        caption_dropout_rate: float,
+        caption_dropout_every_n_epochs: int,
+        caption_tag_dropout_rate: float,
+        caption_prefix: str | None,
+        caption_suffix: str | None,
+        token_warmup_min: int,
+        token_warmup_step: float | int,
+        custom_attributes: dict[str, Any] | None = None,
+        validation_seed: int | None = None,
+        validation_split: float | None = 0.0,
+        resize_interpolation: str | None = None,
     ) -> None:
         self.image_dir = image_dir
         self.alpha_mask = alpha_mask if alpha_mask is not None else False
@@ -301,36 +301,36 @@ class BaseSubset:
 
 class DreamBoothSubset(BaseSubset):
     def __init__(
-            self,
-            image_dir: str,
-            is_reg: bool,
-            class_tokens: str | None,
-            caption_extension: str,
-            cache_info: bool,
-            alpha_mask: bool,
-            num_repeats,
-            shuffle_caption,
-            caption_separator: str,
-            keep_tokens,
-            keep_tokens_separator,
-            secondary_separator,
-            enable_wildcard,
-            color_aug,
-            flip_aug,
-            face_crop_aug_range,
-            random_crop,
-            random_crop_padding_percent,
-            caption_dropout_rate,
-            caption_dropout_every_n_epochs,
-            caption_tag_dropout_rate,
-            caption_prefix,
-            caption_suffix,
-            token_warmup_min,
-            token_warmup_step,
-            custom_attributes: dict[str, Any] | None = None,
-            validation_seed: int | None = None,
-            validation_split: float | None = 0.0,
-            resize_interpolation: str | None = None,
+        self,
+        image_dir: str,
+        is_reg: bool,
+        class_tokens: str | None,
+        caption_extension: str,
+        cache_info: bool,
+        alpha_mask: bool,
+        num_repeats,
+        shuffle_caption,
+        caption_separator: str,
+        keep_tokens,
+        keep_tokens_separator,
+        secondary_separator,
+        enable_wildcard,
+        color_aug,
+        flip_aug,
+        face_crop_aug_range,
+        random_crop,
+        random_crop_padding_percent,
+        caption_dropout_rate,
+        caption_dropout_every_n_epochs,
+        caption_tag_dropout_rate,
+        caption_prefix,
+        caption_suffix,
+        token_warmup_min,
+        token_warmup_step,
+        custom_attributes: dict[str, Any] | None = None,
+        validation_seed: int | None = None,
+        validation_split: float | None = 0.0,
+        resize_interpolation: str | None = None,
     ) -> None:
         assert image_dir is not None, "image_dir must be specified / image_dirは指定が必須です"
 
@@ -377,33 +377,33 @@ class DreamBoothSubset(BaseSubset):
 
 class FineTuningSubset(BaseSubset):
     def __init__(
-            self,
-            image_dir,
-            metadata_file: str,
-            alpha_mask: bool,
-            num_repeats,
-            shuffle_caption,
-            caption_separator,
-            keep_tokens,
-            keep_tokens_separator,
-            secondary_separator,
-            enable_wildcard,
-            color_aug,
-            flip_aug,
-            face_crop_aug_range,
-            random_crop,
-            random_crop_padding_percent,
-            caption_dropout_rate,
-            caption_dropout_every_n_epochs,
-            caption_tag_dropout_rate,
-            caption_prefix,
-            caption_suffix,
-            token_warmup_min,
-            token_warmup_step,
-            custom_attributes: dict[str, Any] | None = None,
-            validation_seed: int | None = None,
-            validation_split: float | None = 0.0,
-            resize_interpolation: str | None = None,
+        self,
+        image_dir,
+        metadata_file: str,
+        alpha_mask: bool,
+        num_repeats,
+        shuffle_caption,
+        caption_separator,
+        keep_tokens,
+        keep_tokens_separator,
+        secondary_separator,
+        enable_wildcard,
+        color_aug,
+        flip_aug,
+        face_crop_aug_range,
+        random_crop,
+        random_crop_padding_percent,
+        caption_dropout_rate,
+        caption_dropout_every_n_epochs,
+        caption_tag_dropout_rate,
+        caption_prefix,
+        caption_suffix,
+        token_warmup_min,
+        token_warmup_step,
+        custom_attributes: dict[str, Any] | None = None,
+        validation_seed: int | None = None,
+        validation_split: float | None = 0.0,
+        resize_interpolation: str | None = None,
     ) -> None:
         assert metadata_file is not None, "metadata_file must be specified / metadata_fileは指定が必須です"
 
@@ -445,34 +445,34 @@ class FineTuningSubset(BaseSubset):
 
 class ControlNetSubset(BaseSubset):
     def __init__(
-            self,
-            image_dir: str,
-            conditioning_data_dir: str,
-            caption_extension: str,
-            cache_info: bool,
-            num_repeats,
-            shuffle_caption,
-            caption_separator,
-            keep_tokens,
-            keep_tokens_separator,
-            secondary_separator,
-            enable_wildcard,
-            color_aug,
-            flip_aug,
-            face_crop_aug_range,
-            random_crop,
-            random_crop_padding_percent,
-            caption_dropout_rate,
-            caption_dropout_every_n_epochs,
-            caption_tag_dropout_rate,
-            caption_prefix,
-            caption_suffix,
-            token_warmup_min,
-            token_warmup_step,
-            custom_attributes: dict[str, Any] | None = None,
-            validation_seed: int | None = None,
-            validation_split: float | None = 0.0,
-            resize_interpolation: str | None = None,
+        self,
+        image_dir: str,
+        conditioning_data_dir: str,
+        caption_extension: str,
+        cache_info: bool,
+        num_repeats,
+        shuffle_caption,
+        caption_separator,
+        keep_tokens,
+        keep_tokens_separator,
+        secondary_separator,
+        enable_wildcard,
+        color_aug,
+        flip_aug,
+        face_crop_aug_range,
+        random_crop,
+        random_crop_padding_percent,
+        caption_dropout_rate,
+        caption_dropout_every_n_epochs,
+        caption_tag_dropout_rate,
+        caption_prefix,
+        caption_suffix,
+        token_warmup_min,
+        token_warmup_step,
+        custom_attributes: dict[str, Any] | None = None,
+        validation_seed: int | None = None,
+        validation_split: float | None = 0.0,
+        resize_interpolation: str | None = None,
     ) -> None:
         assert image_dir is not None, "image_dir must be specified / image_dirは指定が必須です"
 

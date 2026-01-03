@@ -7,6 +7,7 @@ from transformers import CLIPTokenizer
 
 from library.constants import HIGH_VRAM, V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
 from library.strategies.strategy_base import LatentsCachingStrategy, TokenizeStrategy, TextEncodingStrategy
+from library.data.data_structures import ImageInfo
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 
@@ -220,9 +221,14 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
         """
         return self._default_is_disk_cached_latents_expected(8, bucket_reso, npz_path, flip_aug, alpha_mask)
 
-    # TODO remove circular dependency for ImageInfo
     def cache_batch_latents(
-        self, model: Any, batch: list, flip_aug: bool, alpha_mask: bool, random_crop: bool, random_crop_padding_percent: float = 0.05
+        self,
+        model: Any,
+        batch: list[ImageInfo],
+        flip_aug: bool,
+        alpha_mask: bool,
+        random_crop: bool,
+        random_crop_padding_percent: float = 0.05,
     ) -> None:
         """
         Cache batch latents.

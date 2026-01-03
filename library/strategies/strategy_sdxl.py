@@ -9,6 +9,7 @@ from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjecti
 from library.constants import TOKENIZER1_PATH, TOKENIZER2_PATH
 from library.models.text_encoder_util import pool_workaround, get_hidden_states_sdxl
 from library.strategies.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
+from library.data.data_structures import ImageInfo
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -277,7 +278,7 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
         return [hidden_state1, hidden_state2, pool2]
 
     def cache_batch_outputs(
-        self, tokenize_strategy: TokenizeStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy, batch: list
+        self, tokenize_strategy: TokenizeStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy, batch: list[ImageInfo]
     ) -> None:
         """
         Cache batch outputs.
@@ -323,6 +324,7 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
             pool2_i = pool2[i]
 
             if self.cache_to_disk:
+                assert info.text_encoder_outputs_npz is not None, "text_encoder_outputs_npz must be set when cache_to_disk is True"
                 np.savez(
                     info.text_encoder_outputs_npz,
                     hidden_state1=hidden_state1_i,

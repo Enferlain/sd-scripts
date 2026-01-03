@@ -99,7 +99,7 @@ Scripts (contain training loops):     Library Modules:
 - [x] ~~**Constants Type Hints**~~: Fixed `BLOCK_OUT_CHANNELS` type hint (`tuple[int]` → `tuple[int, ...]`)
 - [ ] **PEFT Strategy Internal Dedup**: `process_batch` and `process_val_batch` share ~45 lines of identical latent/text encoding setup - extract to helper method
 - [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`.
-- [ ] **ImageInfo Circular Dependency** (from strategies) - Multiple TODOs note circular import with `ImageInfo` type; consider moving to separate file
+- [x] ~~**ImageInfo Circular Dependency**~~: Fixed - `ImageInfo` already in `data_structures.py`, added proper imports to strategy files
 
 ---
 

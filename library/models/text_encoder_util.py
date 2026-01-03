@@ -6,7 +6,7 @@ from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjecti
 
 
 def pool_workaround(
-    text_encoder: CLIPTextModelWithProjection, last_hidden_state: torch.Tensor, input_ids: torch.Tensor, eos_token_id: int
+    text_encoder: CLIPTextModelWithProjection | torch.nn.Module, last_hidden_state: torch.Tensor, input_ids: torch.Tensor, eos_token_id: int
 ) -> torch.Tensor:
     """
     Workaround for CLIP's pooling bug.
@@ -49,13 +49,13 @@ def pool_workaround(
 
 
 def get_hidden_states_sdxl(
-    max_token_length: int,
+    max_token_length: int | None,
     input_ids1: torch.Tensor,
     input_ids2: torch.Tensor,
     tokenizer1: CLIPTokenizer,
     tokenizer2: CLIPTokenizer,
-    text_encoder1: CLIPTextModel,
-    text_encoder2: CLIPTextModelWithProjection,
+    text_encoder1: CLIPTextModel | torch.nn.Module,
+    text_encoder2: CLIPTextModelWithProjection | torch.nn.Module,
     weight_dtype: torch.dtype | None = None,
     accelerator: Accelerator | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
