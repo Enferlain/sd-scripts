@@ -317,7 +317,7 @@ class PeftTrainingStrategy(
         prepare_scheduler_for_custom_training(noise_scheduler, device)
         return noise_scheduler
 
-    def encode_images_to_latents(self, cfg: Any, vae: Any, images: torch.FloatTensor) -> torch.FloatTensor:
+    def encode_images_to_latents(self, cfg: Any, vae: Any, images: torch.Tensor) -> torch.Tensor:
         """
         Encode images to latents using VAE.
 
@@ -331,7 +331,7 @@ class PeftTrainingStrategy(
         """
         return vae.encode(images).latent_dist.sample()
 
-    def shift_scale_latents(self, cfg: Any, latents: torch.FloatTensor) -> torch.FloatTensor:
+    def shift_scale_latents(self, cfg: Any, latents: torch.Tensor) -> torch.Tensor:
         """
         Apply VAE scale factor to latents. Uses self.vae_latent_scale from child class.
 
@@ -342,7 +342,7 @@ class PeftTrainingStrategy(
         Returns:
             Scaled latents.
         """
-        return latents * self.vae_latent_scale  # Child class must define vae_latent_scale
+        return latents * self.vae_latent_scale  # Defined in subclasses (SdPeftStrategy, SdxlPeftStrategy)
 
     def post_process_loss(self, loss: torch.Tensor, cfg: Any, timesteps: torch.Tensor, noise_scheduler: Any) -> torch.Tensor:
         """

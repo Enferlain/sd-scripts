@@ -363,7 +363,7 @@ def fp8_linear_forward_patch(self: nn.Linear, x, use_scaled_mm=False, max_value=
         torch.Tensor: Result of linear transformation
     """
     # Access dynamically registered buffer (added via register_buffer in apply_fp8_monkey_patch)
-    scale_weight: torch.Tensor = getattr(self, "scale_weight")  # noqa: B009
+    scale_weight: torch.Tensor = self.scale_weight
 
     if use_scaled_mm:
         # **not tested**

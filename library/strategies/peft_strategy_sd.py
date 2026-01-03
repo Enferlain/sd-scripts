@@ -69,7 +69,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
                 unet = replace_linear_with_ramtorch(unet, accelerator.device)
                 logger.info("RamTorch applied to SD unet.")
 
-            if isinstance(text_encoder, torch.nn.Module):  # TODO: text_encoder vs text_encoders?
+            if isinstance(text_encoder, torch.nn.Module):  # SD uses single text_encoder, SDXL uses list
                 text_encoder = replace_linear_with_ramtorch(text_encoder, accelerator.device)
                 logger.info("RamTorch applied to SD Clip-L.")
 
@@ -290,7 +290,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
             Metadata dictionary.
         """
         return get_model_metadata_from_config(
-            state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
+            state_dict=None,  # Valid: function signature accepts dict | None
             metadata_config=cfg.output.metadata,
             is_sdxl=False,  # SD strategy is never used for SDXL
             is_v2=cfg.model.model_type == "sd2",

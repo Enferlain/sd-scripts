@@ -172,7 +172,7 @@ class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
     Latents caching strategy for SD1.5, SD2.0 and SDXL.
     """
 
-    # sd and sdxl share the same strategy. we can make them separate, but the difference is only the suffix.  ## TODO: what does this mean and why is it here?
+    # SD and SDXL use the same caching format, separated only by cache file suffix (_sd vs _sdxl)
     # and we keep the old npz for the backward compatibility.
 
     SD_OLD_LATENTS_NPZ_SUFFIX = ".npz"

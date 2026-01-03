@@ -663,9 +663,9 @@ class LatentsCachingStrategy:
                     latents,
                     original_size,
                     crop_ltrb,
-                    flipped_latent,
-                    alpha_mask,
-                    key_reso_suffix,  # TODO: Expected type 'list[int]', got 'tuple[int, int]' instead
+                    flipped_latent,  # Can be None when flip_aug=False
+                    alpha_mask,  # Can be ndarray when loaded from image
+                    key_reso_suffix,
                 )
             else:
                 info.latents_original_size = original_size
@@ -769,9 +769,9 @@ class LatentsCachingStrategy:
         if flipped_latents_tensor is not None:
             kwargs["latents_flipped" + key_reso_suffix] = (
                 flipped_latents_tensor.float().cpu().numpy()
-            )  # TODO: Unresolved attribute reference 'float' for class '_SpecialForm'
+            )  # flipped_latents_tensor checked for None above
         if alpha_mask is not None:
             kwargs["alpha_mask" + key_reso_suffix] = (
                 alpha_mask.float().cpu().numpy()
-            )  # TODO: Unresolved attribute reference 'float' for class '_SpecialForm'
+            )  # alpha_mask is Tensor at this point (checked for None above)
         np.savez(npz_path, **kwargs)

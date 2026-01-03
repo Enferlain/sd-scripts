@@ -198,9 +198,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         if cfg.performance.caching.cache_text_encoder_outputs:
             return strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
                 cfg.performance.caching.cache_text_encoder_outputs_to_disk,
-                None,
+                None,  # batch_size: not used for text encoder outputs caching
                 cfg.data.caching.skip_cache_check,
-                is_weighted=cfg.data.caption.weighted_captions,  # TODO: Expected type 'int', got 'None' instead
+                is_weighted=cfg.data.caption.weighted_captions,
             )
         else:
             return None
@@ -243,8 +243,8 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
             if not cfg.performance.memory.lowram:
                 logger.info("move vae and unet back to original device")
-                vae.to(org_vae_device)  # TODO: Local variable 'org_vae_device' might be referenced before assignment
-                unet.to(org_unet_device)  # TODO: Local variable 'org_unet_device' might be referenced before assignment
+                vae.to(org_vae_device)  # Defined above in this same `if not lowram` block
+                unet.to(org_unet_device)  # Defined above in this same `if not lowram` block
         else:
             # Get text encoder outputs at each training step, so keep on GPU
             text_encoders[0].to(accelerator.device, dtype=weight_dtype)
@@ -377,7 +377,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             Metadata dictionary.
         """
         return get_model_metadata_from_config(
-            state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
+            state_dict=None,  # Valid: function signature accepts dict | None
             metadata_config=cfg.output.metadata,
             is_sdxl=True,  # SDXL strategy is always SDXL
             is_v2=False,  # SDXL is not v2
@@ -612,7 +612,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             latents = self.shift_scale_latents(cfg, latents)
 
         # SDXL text conditioning - use cached outputs or encode on the fly
-        tokenizers = self.get_tokenizers(tokenize_strategy)  #  TODO: Expected type 'SdxlTokenizeStrategy', got 'TokenizeStrategy' instead
+        tokenizers = self.get_tokenizers(tokenize_strategy)  # type: ignore[arg-type]  # Caller ensures correct strategy type
         text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, tokenizers, text_encoders, weight_dtype)
 
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
@@ -736,9 +736,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             latents = self.shift_scale_latents(cfg, latents)
 
             # SDXL text conditioning
-            tokenizers = self.get_tokenizers(
-                tokenize_strategy
-            )  # TODO: Expected type 'SdxlTokenizeStrategy', got 'TokenizeStrategy' instead
+            tokenizers = self.get_tokenizers(tokenize_strategy)  # type: ignore[arg-type]  # Caller ensures correct strategy type
             text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, tokenizers, text_encoders, weight_dtype)
 
             batch_size = latents.shape[0]

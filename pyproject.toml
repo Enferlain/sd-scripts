@@ -26,7 +26,8 @@ exclude = [
     "venv",
     "__pycache__",
     "*.egg-info",
-    "feather",  # Vendored library
+    "feather",                  # Vendored library
+    "library/performance/ipex", # Intel GPU support (specialized hijacks)
 ]
 
 [tool.ruff.lint]

@@ -33,7 +33,7 @@ def get_noise_noisy_latents_and_timesteps(
     timestep_config: TimestepConfig,
     training_config: TrainingConfig,
     noise_scheduler,
-    latents: torch.FloatTensor,
+    latents: torch.Tensor,
     la_sampler=None,
     global_step=0,
     fixed_timesteps=None,
@@ -50,7 +50,7 @@ def get_noise_noisy_latents_and_timesteps(
         timestep_config (TimestepConfig): Config for timesteps sampling parameters.
         training_config (TrainingConfig): Config for training settings.
         noise_scheduler: The diffusion noise scheduler.
-        latents (torch.FloatTensor): Input latents tensor.
+        latents (torch.Tensor): Input latents tensor.
         la_sampler (Optional): Optional custom timesteps sampler.
         global_step (int, optional): Current training step (for adaptive sampling). Defaults to 0.
         fixed_timesteps (Optional): Optional fixed timesteps to use.
@@ -62,7 +62,7 @@ def get_noise_noisy_latents_and_timesteps(
             even when inputs are float16/bfloat16 for numerical stability.
 
     Returns:
-        Tuple[torch.FloatTensor, torch.FloatTensor, torch.IntTensor]: A tuple containing
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing
         (noise, noisy_latents, timesteps).
     """
     # --- 1. Determine Timestep Range ---

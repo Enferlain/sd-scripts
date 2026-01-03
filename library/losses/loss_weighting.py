@@ -4,13 +4,13 @@ from torch.types import Number
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 
 
-def apply_snr_weight(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler, gamma: Number, v_prediction=False):
+def apply_snr_weight(loss: torch.Tensor, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler, gamma: Number, v_prediction=False):
     """
     Applies Signal-to-Noise Ratio (SNR) weighting to the loss.
 
     Args:
         loss (torch.Tensor): The original loss tensor.
-        timesteps (torch.IntTensor): The timesteps corresponding to the loss.
+        timesteps (torch.Tensor): The timesteps corresponding to the loss.
         noise_scheduler (DDPMScheduler): The noise scheduler used.
         gamma (Number): The gamma parameter for Min-SNR weighting.
         v_prediction (bool, optional): Whether v-prediction is being used. Defaults to False.
@@ -28,13 +28,13 @@ def apply_snr_weight(loss: torch.Tensor, timesteps: torch.IntTensor, noise_sched
     return loss
 
 
-def scale_v_prediction_loss_like_noise_prediction(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler):
+def scale_v_prediction_loss_like_noise_prediction(loss: torch.Tensor, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler):
     """
     Scales the v-prediction loss to behave like noise prediction loss.
 
     Args:
         loss (torch.Tensor): The original loss tensor.
-        timesteps (torch.IntTensor): The timesteps corresponding to the loss.
+        timesteps (torch.Tensor): The timesteps corresponding to the loss.
         noise_scheduler (DDPMScheduler): The noise scheduler used.
 
     Returns:
@@ -45,12 +45,12 @@ def scale_v_prediction_loss_like_noise_prediction(loss: torch.Tensor, timesteps:
     return loss
 
 
-def get_snr_scale(timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler):
+def get_snr_scale(timesteps: torch.Tensor, noise_scheduler: DDPMScheduler):
     """
     Calculates the SNR scale factor based on timesteps.
 
     Args:
-        timesteps (torch.IntTensor): The timesteps.
+        timesteps (torch.Tensor): The timesteps.
         noise_scheduler (DDPMScheduler): The noise scheduler.
 
     Returns:
@@ -64,15 +64,13 @@ def get_snr_scale(timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler):
     return scale
 
 
-def add_v_prediction_like_loss(
-    loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler, v_pred_like_loss: torch.Tensor
-):
+def add_v_prediction_like_loss(loss: torch.Tensor, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler, v_pred_like_loss: torch.Tensor):
     """
     Adds a v-prediction-like loss component to the original loss.
 
     Args:
         loss (torch.Tensor): The original loss.
-        timesteps (torch.IntTensor): The timesteps.
+        timesteps (torch.Tensor): The timesteps.
         noise_scheduler (DDPMScheduler): The noise scheduler.
         v_pred_like_loss (torch.Tensor): The v-prediction-like loss to add.
 
@@ -85,13 +83,13 @@ def add_v_prediction_like_loss(
     return loss
 
 
-def apply_debiased_estimation(loss: torch.Tensor, timesteps: torch.IntTensor, noise_scheduler: DDPMScheduler, v_prediction=False):
+def apply_debiased_estimation(loss: torch.Tensor, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler, v_prediction=False):
     """
     Applies debiased estimation weighting to the loss.
 
     Args:
         loss (torch.Tensor): The original loss.
-        timesteps (torch.IntTensor): The timesteps.
+        timesteps (torch.Tensor): The timesteps.
         noise_scheduler (DDPMScheduler): The noise scheduler.
         v_prediction (bool, optional): Whether v-prediction is used. Defaults to False.
 
