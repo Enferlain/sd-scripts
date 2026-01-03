@@ -7,14 +7,16 @@ import torch
 import math
 
 import matplotlib
-matplotlib.use('Agg')  # Set the backend to 'Agg', non-interactive backend
+
+matplotlib.use("Agg")  # Set the backend to 'Agg', non-interactive backend
 
 import matplotlib.pyplot as plt
+
 plt.ioff()  # Explicitly turn off interactive mode
 
-from library.utils.common_utils import setup_logging
-from library.optimizers.scheduler import get_dummy_scheduler
-from library.losses import edm2_loss
+from library.utils.common_utils import setup_logging  # noqa: E402
+from library.optimizers.scheduler import get_dummy_scheduler  # noqa: E402
+from library.losses import edm2_loss  # noqa: E402
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -41,47 +43,56 @@ def prepare_edm2_loss_weighting(loss_config, training_config, noise_scheduler, a
         opti_args = ast.literal_eval(loss_config.edm2_loss_weighting_optimizer_args)
         opti_lr = float(loss_config.edm2_loss_weighting_optimizer_lr) if loss_config.edm2_loss_weighting_optimizer_lr else 2e-2
 
-        edm2_model, edm2_optimizer = edm2_loss.create_weight_MLP(noise_scheduler,
-                                                                 logvar_channels=int(
-                                                                     loss_config.edm2_loss_weighting_num_channels) if loss_config.edm2_loss_weighting_num_channels else 128,
-                                                                 optimizer=getattr(optimizer_module,
-                                                                                   case_sensitive_optimizer_type),
-                                                                 lr=opti_lr,
-                                                                 optimizer_args=opti_args,
-                                                                 device=accelerator.device,
-                                                                 dtype=torch.float32,
-                                                                 use_importance_weights=loss_config.edm2_loss_weighting_importance_weighting,
-                                                                 importance_weights_max_weight=float(
-                                                                     loss_config.edm2_loss_weighting_importance_weighting_max) if loss_config.edm2_loss_weighting_importance_weighting_max is not None else 10.0,
-                                                                 importance_weights_min_snr_gamma=float(
-                                                                     loss_config.edm2_loss_weighting_importance_min_snr_gamma) if loss_config.edm2_loss_weighting_importance_min_snr_gamma is not None else 1.0)
+        edm2_model, edm2_optimizer = edm2_loss.create_weight_MLP(
+            noise_scheduler,
+            logvar_channels=int(loss_config.edm2_loss_weighting_num_channels) if loss_config.edm2_loss_weighting_num_channels else 128,
+            optimizer=getattr(optimizer_module, case_sensitive_optimizer_type),
+            lr=opti_lr,
+            optimizer_args=opti_args,
+            device=accelerator.device,
+            dtype=torch.float32,
+            use_importance_weights=loss_config.edm2_loss_weighting_importance_weighting,
+            importance_weights_max_weight=float(loss_config.edm2_loss_weighting_importance_weighting_max)
+            if loss_config.edm2_loss_weighting_importance_weighting_max is not None
+            else 10.0,
+            importance_weights_min_snr_gamma=float(loss_config.edm2_loss_weighting_importance_min_snr_gamma)
+            if loss_config.edm2_loss_weighting_importance_min_snr_gamma is not None
+            else 1.0,
+        )
         if loss_config.edm2_loss_weighting_initial_weights:
             edm2_model.load_weights(loss_config.edm2_loss_weighting_initial_weights)
 
         if loss_config.edm2_loss_weighting_lr_scheduler:
+
             def InverseSqrt(
-                    wrap_optimizer: torch.optim.Optimizer,
-                    warmup_steps: int = 0,
-                    constant_steps: int = 0,
-                    decay_scaling: float = 1.0,
+                wrap_optimizer: torch.optim.Optimizer,
+                warmup_steps: int = 0,
+                constant_steps: int = 0,
+                decay_scaling: float = 1.0,
             ):
                 def lr_lambda(current_step: int):
                     if current_step <= warmup_steps:
                         return current_step / max(1, warmup_steps)
                     else:
-                        return 1 / math.sqrt(
-                            max(current_step / max(constant_steps + warmup_steps, 1), 1) ** decay_scaling)
+                        return 1 / math.sqrt(max(current_step / max(constant_steps + warmup_steps, 1), 1) ** decay_scaling)
 
                 return torch.optim.lr_scheduler.LambdaLR(optimizer=wrap_optimizer, lr_lambda=lr_lambda)
 
             edm2_lr_scheduler = InverseSqrt(
                 edm2_optimizer,
-                warmup_steps=training_config.max_train_steps * float(
-                    loss_config.edm2_loss_weighting_lr_scheduler_warmup_percent) if loss_config.edm2_loss_weighting_lr_scheduler_warmup_percent is not None else 0.05,
-                constant_steps=training_config.max_train_steps * float(
-                    loss_config.edm2_loss_weighting_lr_scheduler_constant_percent) if loss_config.edm2_loss_weighting_lr_scheduler_constant_percent is not None else 0.15,
-                decay_scaling=float(
-                    loss_config.edm2_loss_weighting_lr_scheduler_decay_scaling) if loss_config.edm2_loss_weighting_lr_scheduler_decay_scaling is not None else 1.0,
+                warmup_steps=int(
+                    training_config.max_train_steps * float(loss_config.edm2_loss_weighting_lr_scheduler_warmup_percent)
+                    if loss_config.edm2_loss_weighting_lr_scheduler_warmup_percent is not None
+                    else 0.05
+                ),
+                constant_steps=int(
+                    training_config.max_train_steps * float(loss_config.edm2_loss_weighting_lr_scheduler_constant_percent)
+                    if loss_config.edm2_loss_weighting_lr_scheduler_constant_percent is not None
+                    else 0.15
+                ),
+                decay_scaling=float(loss_config.edm2_loss_weighting_lr_scheduler_decay_scaling)
+                if loss_config.edm2_loss_weighting_lr_scheduler_decay_scaling is not None
+                else 1.0,
             )  # FIXME: CONFIG USAGE
         else:
             edm2_lr_scheduler = get_dummy_scheduler(edm2_optimizer)
@@ -108,8 +119,11 @@ def handle_conflicting_configuration(loss_config):
         loss_config: Configuration object containing loss settings.
     """
     # Check for the critical conflicting settings
-    if loss_config.edm2_loss_weighting and loss_config.edm2_loss_weighting_importance_weighting and not loss_config.edm2_loss_weighting_importance_weighting_safety_override:
-
+    if (
+        loss_config.edm2_loss_weighting
+        and loss_config.edm2_loss_weighting_importance_weighting
+        and not loss_config.edm2_loss_weighting_importance_weighting_safety_override
+    ):
         # --- Debiased Estimation Check ---
         if loss_config.debiased_estimation_loss:
             loss_config.debiased_estimation_loss = False
@@ -143,8 +157,20 @@ def plot_edm2_loss_weighting_check(loss_config, training_config, global_step):
     Returns:
         bool: True if the graph should be plotted, False otherwise.
     """
-    return loss_config.edm2_loss_weighting and loss_config.edm2_loss_weighting_generate_graph and (global_step % (
-        int(loss_config.edm2_loss_weighting_generate_graph_every_x_steps) if loss_config.edm2_loss_weighting_generate_graph_every_x_steps else 20) == 0 or global_step >= training_config.max_train_steps)
+    return (
+        loss_config.edm2_loss_weighting
+        and loss_config.edm2_loss_weighting_generate_graph
+        and (
+            global_step
+            % (
+                int(loss_config.edm2_loss_weighting_generate_graph_every_x_steps)
+                if loss_config.edm2_loss_weighting_generate_graph_every_x_steps
+                else 20
+            )
+            == 0
+            or global_step >= training_config.max_train_steps
+        )
+    )
 
 
 def plot_edm2_loss_weighting(loss_config, output_name, step: int, model, num_timesteps: int = 1000, device="cpu"):
@@ -169,11 +195,10 @@ def plot_edm2_loss_weighting(loss_config, output_name, step: int, model, num_tim
 
         # Plot the dynamic loss weights over time
         plt.figure(figsize=(10, 6))
-        plt.plot(timesteps.cpu().numpy(), learnedweights,
-                 label=f'Dynamic Loss Weight\nStep: {step}')
-        plt.xlabel('Timesteps')
-        plt.ylabel('Weight')
-        plt.title('Dynamic Loss Weighting vs Timesteps')
+        plt.plot(timesteps.cpu().numpy(), learnedweights, label=f"Dynamic Loss Weight\nStep: {step}")
+        plt.xlabel("Timesteps")
+        plt.ylabel("Weight")
+        plt.title("Dynamic Loss Weighting vs Timesteps")
         plt.legend()
         plt.grid(True)
         plt.ylim(bottom=0)

@@ -17,14 +17,12 @@ from library.timesteps.samplers.tempered_adaptive_sampler import TemperedAdaptiv
 try:
     import matplotlib.pyplot as plt
 except ImportError:
-    plt = None
+    plt = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
 
-def save_timestep_distribution_plot(
-    cfg, global_step: int, timestep_counts: np.ndarray, settings_dict: dict = None
-):
+def save_timestep_distribution_plot(cfg, global_step: int, timestep_counts: np.ndarray, settings_dict: dict | None = None):
     """
     Save the timesteps distribution plot to disk.
 
@@ -35,9 +33,7 @@ def save_timestep_distribution_plot(
         settings_dict: A dictionary of settings to display on the plot.
     """
     if plt is None:
-        logger.warning(
-            "Matplotlib is not installed. Cannot save timesteps distribution plot."
-        )
+        logger.warning("Matplotlib is not installed. Cannot save timesteps distribution plot.")
         return
 
     output_dir = os.path.join(cfg.output.saving.output_dir, "timestep_plots")
@@ -48,14 +44,21 @@ def save_timestep_distribution_plot(
     plt.title(f"Timestep Distribution at Step {global_step}")
     plt.xlabel("Timestep")
     plt.ylabel("Accumulated Count")
-    plt.grid(True, axis='y', linestyle='--', alpha=0.6)
+    plt.grid(True, axis="y", linestyle="--", alpha=0.6)
 
     if settings_dict:
         settings_text = "\n".join([f"{key}: {value}" for key, value in settings_dict.items() if value is not None])
-        plt.figtext(0.01, 0.01, settings_text, wrap=True, horizontalalignment='left', fontsize=8,
-                    bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.1))
+        plt.figtext(
+            0.01,
+            0.01,
+            settings_text,
+            wrap=True,
+            horizontalalignment="left",
+            fontsize=8,
+            bbox={"boxstyle": "round,pad=0.5", "fc": "yellow", "alpha": 0.1},
+        )
 
-    plt.tight_layout(rect=[0, 0.1, 1, 1])  # TODO: Expected type 'tuple[float, float, float, float] | None', got 'list[int | float]' instead
+    plt.tight_layout(rect=(0, 0.1, 1, 1))
     filename = os.path.join(output_dir, f"step_{global_step:06d}.png")
     plt.savefig(filename)
     plt.close()
@@ -111,60 +114,70 @@ def get_plotter_settings(cfg, la_sampler) -> dict:
     # Add sampler-specific settings
     if sampler_type == "mix_adaptive":
         mc = cfg.timestep.mix_adaptive
-        plotter_settings.update({
-            "Anneal": mc.anneal,
-            "Start/End P": f"{mc.start_p} -> {mc.end_p}",
-            "Fixed P": mc.fixed_p,
-            "Num Bins": mc.bins,
-            "EMA Beta": mc.ema_beta,
-            "Small T Frac/Cap": f"{mc.small_t_frac} / {mc.small_t_cap}",
-        })
+        plotter_settings.update(
+            {
+                "Anneal": mc.anneal,
+                "Start/End P": f"{mc.start_p} -> {mc.end_p}",
+                "Fixed P": mc.fixed_p,
+                "Num Bins": mc.bins,
+                "EMA Beta": mc.ema_beta,
+                "Small T Frac/Cap": f"{mc.small_t_frac} / {mc.small_t_cap}",
+            }
+        )
     elif sampler_type == "tempered_adaptive":
         tc = cfg.timestep.tempered_adaptive
-        plotter_settings.update({
-            "Num Bins": tc.bins,
-            "EMA Beta": tc.ema_beta,
-            "Temperature": tc.temperature,
-            "Prior Weight": tc.prior_weight,
-            "Min Prob": tc.min_prob,
-            "Warmup Steps": tc.warmup_steps,
-            "Prior Bias": tc.prior_bias,
-            "Entropy Floor": tc.entropy_floor,
-        })
+        plotter_settings.update(
+            {
+                "Num Bins": tc.bins,
+                "EMA Beta": tc.ema_beta,
+                "Temperature": tc.temperature,
+                "Prior Weight": tc.prior_weight,
+                "Min Prob": tc.min_prob,
+                "Warmup Steps": tc.warmup_steps,
+                "Prior Bias": tc.prior_bias,
+                "Entropy Floor": tc.entropy_floor,
+            }
+        )
     elif sampler_type == "gaussian_mid_snr":
         gc = cfg.timestep.gaussian_mid_snr
-        plotter_settings.update({
-            "Num Bins": gc.bins,
-            "EMA Beta": gc.ema_beta,
-            "Temperature": gc.temperature,
-            "Min Prob": gc.min_prob,
-            "Entropy Floor": gc.entropy_floor,
-            "Uniform Mix When Low Entropy": gc.uniform_mix_when_low_entropy,
-            "Prior_Mu": gc.prior_mu,
-            "Prior Sigma": gc.prior_sigma,
-            "Prior Weight": gc.prior_weight,
-            "Warmup Steps": gc.warmup_steps,
-        })
+        plotter_settings.update(
+            {
+                "Num Bins": gc.bins,
+                "EMA Beta": gc.ema_beta,
+                "Temperature": gc.temperature,
+                "Min Prob": gc.min_prob,
+                "Entropy Floor": gc.entropy_floor,
+                "Uniform Mix When Low Entropy": gc.uniform_mix_when_low_entropy,
+                "Prior_Mu": gc.prior_mu,
+                "Prior Sigma": gc.prior_sigma,
+                "Prior Weight": gc.prior_weight,
+                "Warmup Steps": gc.warmup_steps,
+            }
+        )
     elif sampler_type == "snr_windowed":
         sc = cfg.timestep.snr_windowed
-        plotter_settings.update({
-            "Num Bins": sc.bins,
-            "EMA Beta": sc.ema_beta,
-            "Temperature": sc.temperature,
-            "Min Prob": sc.min_prob,
-            "Entropy Floor": sc.entropy_floor,
-            "Uniform Mix": sc.uniform_mix_when_low_entropy,
-            "Center Mu": sc.center_mu,
-            "Half Width": sc.half_width,
-            "Widen To": sc.widen_to,
-            "Total Widen Steps": sc.max_train_steps,
-            "Cap Max T": sc.cap_max_t,
-        })
+        plotter_settings.update(
+            {
+                "Num Bins": sc.bins,
+                "EMA Beta": sc.ema_beta,
+                "Temperature": sc.temperature,
+                "Min Prob": sc.min_prob,
+                "Entropy Floor": sc.entropy_floor,
+                "Uniform Mix": sc.uniform_mix_when_low_entropy,
+                "Center Mu": sc.center_mu,
+                "Half Width": sc.half_width,
+                "Widen To": sc.widen_to,
+                "Total Widen Steps": sc.max_train_steps,
+                "Cap Max T": sc.cap_max_t,
+            }
+        )
     elif sampler_type not in ["uniform", "log_snr_uniform"]:
-        plotter_settings.update({
-            "Shift": cfg.timestep.discrete_flow_shift,
-            "Sigmoid Scale": cfg.timestep.sigmoid_scale,
-        })
+        plotter_settings.update(
+            {
+                "Shift": cfg.timestep.discrete_flow_shift,
+                "Sigmoid Scale": cfg.timestep.sigmoid_scale,
+            }
+        )
 
     return plotter_settings
 
@@ -189,12 +202,10 @@ def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
 
     # Get plotter settings
     plotter_settings = get_plotter_settings(cfg, la_sampler)
-    
+
     # Setup for the live interactive plotter
     if cfg.output.logging.live_plot_port is not None:
-        plotter_script_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "live_plotter", "server.py"
-        )
+        plotter_script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_plotter", "server.py")
 
         if not os.path.exists(plotter_script_path):
             logger.error(f"server.py not found at {plotter_script_path}. Live plotter disabled.")
@@ -213,9 +224,9 @@ def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
             settings_str = f"SETTINGS::{json.dumps(plotter_settings)}\n"
 
             try:
-                strategy.live_plotter_process.stdin.write(reset_str.encode('utf-8'))
-                strategy.live_plotter_process.stdin.write(schedule_str.encode('utf-8'))
-                strategy.live_plotter_process.stdin.write(settings_str.encode('utf-8'))
+                strategy.live_plotter_process.stdin.write(reset_str.encode("utf-8"))
+                strategy.live_plotter_process.stdin.write(schedule_str.encode("utf-8"))
+                strategy.live_plotter_process.stdin.write(settings_str.encode("utf-8"))
                 strategy.live_plotter_process.stdin.flush()
             except (BrokenPipeError, OSError):
                 logger.error("Failed to send data to live plotter. It may have crashed.")

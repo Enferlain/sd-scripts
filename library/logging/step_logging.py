@@ -1,4 +1,3 @@
-
 import torch
 from accelerate import Accelerator
 from omegaconf import OmegaConf
@@ -82,7 +81,10 @@ def generate_step_logs(
 
         for i in range(idx, len(lrs)):
             logs[f"lr/group{i}"] = float(lrs[i])
-            if cfg.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower():
+            if (
+                cfg.optimizer.optimizer_type.lower().startswith("DAdapt".lower())
+                or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower()
+            ):
                 logs[f"lr/d*lr/group{i}"] = (
                     lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
                 )
@@ -155,9 +157,7 @@ def accelerator_logging(accelerator: Accelerator, logs: dict, step_value: int, g
         tracker.log(logs, step=step_value)
 
 
-def init_trackers(
-    accelerator: Accelerator, logging_config: LoggingConfig, default_tracker_name: str
-):
+def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, default_tracker_name: str):
     """
     Initialize experiment trackers with tracker specific behaviors.
 
@@ -170,24 +170,30 @@ def init_trackers(
     """
     if accelerator.is_main_process:
         init_kwargs = {}
-        if hasattr(logging_config, 'wandb_run_name') and logging_config.wandb_run_name:
+        if hasattr(logging_config, "wandb_run_name") and logging_config.wandb_run_name:
             init_kwargs["wandb"] = {"name": logging_config.wandb_run_name}
-        if hasattr(logging_config, 'log_tracker_config') and logging_config.log_tracker_config is not None:
+        if hasattr(logging_config, "log_tracker_config") and logging_config.log_tracker_config is not None:
             init_kwargs = logging_config.log_tracker_config
 
         # sanitize config for logging - convert to dict if needed
-        if hasattr(logging_config, '__dataclass_fields__'):
+        if hasattr(logging_config, "__dataclass_fields__"):
             from dataclasses import asdict
+
             config_to_log = asdict(logging_config)
         else:
             config_to_log = OmegaConf.to_container(logging_config, resolve=True)
 
         sensitive_keys = ["wandb_api_key", "huggingface_token"]
-        for key in sensitive_keys:
-            if key in config_to_log:
-                config_to_log[key] = "*****"
+        if isinstance(config_to_log, dict):
+            for key in sensitive_keys:
+                if key in config_to_log:
+                    config_to_log[key] = "*****"
 
-        tracker_name = logging_config.log_tracker_name if hasattr(logging_config, 'log_tracker_name') and logging_config.log_tracker_name else default_tracker_name
+        tracker_name = (
+            logging_config.log_tracker_name
+            if hasattr(logging_config, "log_tracker_name") and logging_config.log_tracker_name
+            else default_tracker_name
+        )
         accelerator.init_trackers(
             tracker_name,
             config=config_to_log,
@@ -195,9 +201,7 @@ def init_trackers(
         )
 
 
-def append_lr_to_logs_with_names(
-    logs: dict, lr_scheduler, optimizer_type: str, names: list[str]
-):
+def append_lr_to_logs_with_names(logs: dict, lr_scheduler, optimizer_type: str, names: list[str]):
     """
     Append learning rate information to the logs with specific parameter group names.
 
@@ -221,6 +225,5 @@ def append_lr_to_logs_with_names(
 
         if optimizer_type.lower().startswith("DAdapt".lower()) or optimizer_type.lower() == "Prodigy".lower():
             logs["lr/d*lr/" + name] = (
-                    lr_scheduler.optimizers[-1].param_groups[lr_index]["d"] *
-                    lr_scheduler.optimizers[-1].param_groups[lr_index]["lr"]
+                lr_scheduler.optimizers[-1].param_groups[lr_index]["d"] * lr_scheduler.optimizers[-1].param_groups[lr_index]["lr"]
             )

@@ -3,11 +3,11 @@ import kornia
 import torch
 
 
-
 class LossRecorder:
     """
     Records and calculates the moving average of loss values during training.
     """
+
     def __init__(self):
         self.loss_list: list[float] = []
         self.loss_total: float = 0.0
@@ -43,6 +43,7 @@ class LossRecorder:
             return 0
         return self.loss_total / losses
 
+
 class EMARecorder:
     """
     Calculates a bias-corrected Exponential Moving Average (EMA).
@@ -51,6 +52,7 @@ class EMARecorder:
     such as mini-batch losses during model training. It gives more weight
     to recent values, making it responsive to trends.
     """
+
     def __init__(self, smoothing: float = 0.1):
         """
         Initializes the EMA recorder.
@@ -93,7 +95,7 @@ class EMARecorder:
 
         # Bias correction warms up the average faster
         # As num_updates -> infinity, the correction factor -> 1
-        correction_factor = 1 - (self.beta ** self.num_updates)
+        correction_factor = 1 - (self.beta**self.num_updates)
         return self.ema / correction_factor
 
 
@@ -112,8 +114,16 @@ def get_huber_threshold_if_needed(args, timesteps: torch.Tensor, noise_scheduler
     Raises:
         NotImplementedError: If the specified Huber schedule is not supported.
     """
-    if args.loss_type not in {"huber", "smooth_l1", "standard_pseudo_huber", "standard_huber", "standard_smooth_l1",
-                              "soft_welsch", "scaled_quadratic", "smooth_l2_log"}:
+    if args.loss_type not in {
+        "huber",
+        "smooth_l1",
+        "standard_pseudo_huber",
+        "standard_huber",
+        "standard_smooth_l1",
+        "soft_welsch",
+        "scaled_quadratic",
+        "smooth_l2_log",
+    }:
         return None
 
     if args.huber_schedule == "constant":
@@ -134,11 +144,7 @@ def get_huber_threshold_if_needed(args, timesteps: torch.Tensor, noise_scheduler
     return result
 
 
-def soft_welsch_loss(predictions: torch.Tensor,
-                     targets: torch.Tensor,
-                     reduction: str = "mean",
-                     scale: float = 1.0,
-                     delta: float = 1.0):
+def soft_welsch_loss(predictions: torch.Tensor, targets: torch.Tensor, reduction: str = "mean", scale: float = 1.0, delta: float = 1.0):
     """
     Computes the Soft Welsch loss.
 
@@ -153,7 +159,7 @@ def soft_welsch_loss(predictions: torch.Tensor,
         torch.Tensor: The computed loss.
     """
     differences = predictions - targets
-    loss = torch.arcsinh(4 * (scale * differences ** 2) / delta) * delta / 4
+    loss = torch.arcsinh(4 * (scale * differences**2) / delta) * delta / 4
     if reduction == "mean":
         loss = torch.mean(loss)
     elif reduction == "sum":
@@ -180,7 +186,7 @@ def stable_mse_loss(predictions, targets, reduction="mean", eps=1e-37):
         torch.Tensor: The computed loss.
     """
     differences = predictions.to(torch.float64) - targets.to(torch.float64)
-    squared_differences = differences ** 2
+    squared_differences = differences**2
 
     # Add eps to address underflows due to squaring
     squared_differences = squared_differences.add(eps)
@@ -196,7 +202,7 @@ def stable_mse_loss(predictions, targets, reduction="mean", eps=1e-37):
     return loss
 
 
-def stable_log_cosh_loss(predictions, targets, reduction='mean'):
+def stable_log_cosh_loss(predictions, targets, reduction="mean"):
     """
     Computes the Log-Cosh loss with numerical stability improvements.
 
@@ -229,7 +235,7 @@ def stable_log_cosh_loss(predictions, targets, reduction='mean'):
     return loss
 
 
-def stable_msle_loss(predictions, targets, reduction='mean'):
+def stable_msle_loss(predictions, targets, reduction="mean"):
     """
     Computes the Mean Squared Logarithmic Error (MSLE) loss.
 
@@ -298,7 +304,7 @@ def stable_pseudo_huber_loss(predictions, targets, delta=1.0, reduction="mean", 
     differences = predictions.to(torch.float64) - targets.to(torch.float64)
 
     # Compute the loss
-    loss = delta ** 2 * (torch.sqrt(1 + (differences / delta) ** 2 + eps) - 1)
+    loss = delta**2 * (torch.sqrt(1 + (differences / delta) ** 2 + eps) - 1)
 
     # Apply the specified reduction method
     if reduction == "mean":
@@ -313,11 +319,11 @@ def stable_pseudo_huber_loss(predictions, targets, delta=1.0, reduction="mean", 
 
 
 def scaled_quadratic_loss(
-        predictions: torch.Tensor,
-        targets: torch.Tensor,
-        delta: float = 1.0,
-        reduction: str = 'mean',
-        eps: float = 1e-37,
+    predictions: torch.Tensor,
+    targets: torch.Tensor,
+    delta: float = 1.0,
+    reduction: str = "mean",
+    eps: float = 1e-37,
 ) -> torch.Tensor:
     """
     Computes a scaled quadratic loss.
@@ -349,11 +355,7 @@ def scaled_quadratic_loss(
     return loss
 
 
-def standard_deviation_loss(
-        predictions: torch.Tensor,
-        targets: torch.Tensor,
-        reduction: str = 'mean',
-        eps: float = 1e-30) -> torch.Tensor:
+def standard_deviation_loss(predictions: torch.Tensor, targets: torch.Tensor, reduction: str = "mean", eps: float = 1e-30) -> torch.Tensor:
     """
     Calculate standard deviation loss between predicted and true values.
 
@@ -384,11 +386,7 @@ def standard_deviation_loss(
 
 
 def smooth_l2_log_loss(
-        predictions: torch.Tensor,
-        targets: torch.Tensor,
-        delta: float = 1.0,
-        reduction: str = 'mean',
-        eps=1e-37
+    predictions: torch.Tensor, targets: torch.Tensor, delta: float = 1.0, reduction: str = "mean", eps: float = 1e-37
 ) -> torch.Tensor:
     """
     Functional version of the smooth l2->log loss.
@@ -405,9 +403,9 @@ def smooth_l2_log_loss(
         or same shape as inputs if reduction is 'none'
     """
     r = predictions - targets
-    delta_squared = delta ** 2
+    delta_squared = delta**2
     delta_squared = delta_squared + eps
-    loss = 0.5 * delta_squared * torch.log1p(r ** 2 / delta_squared)
+    loss = 0.5 * delta_squared * torch.log1p(r**2 / delta_squared)
 
     if reduction == "mean":
         loss = torch.mean(loss)
@@ -420,7 +418,7 @@ def smooth_l2_log_loss(
     return loss
 
 
-def stable_smooth_l1_loss(predictions, targets, reduction: str = 'mean', beta=1.0, eps=1e-37):
+def stable_smooth_l1_loss(predictions, targets, reduction: str = "mean", beta=1.0, eps=1e-37):
     """
     Custom implementation of Smooth L1 Loss with numerical stability.
 
@@ -460,7 +458,7 @@ def stable_smooth_l1_loss(predictions, targets, reduction: str = 'mean', beta=1.
     return loss
 
 
-def stable_huber_loss(predictions, targets, reduction: str = 'mean', delta=1.0, eps=1e-37):
+def stable_huber_loss(predictions, targets, reduction: str = "mean", delta=1.0, eps=1e-37):
     """
     Computes the Huber loss with numerical stability improvements.
 
@@ -498,7 +496,7 @@ def stable_huber_loss(predictions, targets, reduction: str = 'mean', delta=1.0, 
     return loss
 
 
-def stable_l1_loss(predictions, targets, reduction: str = 'mean', eps=1e-37):
+def stable_l1_loss(predictions, targets, reduction: str = "mean", eps=1e-37):
     """
     Computes the L1 loss with numerical stability improvements.
 
@@ -528,13 +526,13 @@ def stable_l1_loss(predictions, targets, reduction: str = 'mean', eps=1e-37):
 
 
 def conditional_loss(
-        model_pred: torch.Tensor,
-        target: torch.Tensor,
-        loss_type: str,
-        reduction: str,
-        huber_c: torch.Tensor | None = None,
-        eps: float = None,
-        scale: float = 1.0,
+    model_pred: torch.Tensor,
+    target: torch.Tensor,
+    loss_type: str,
+    reduction: str,
+    huber_c: torch.Tensor | None = None,
+    eps: float | None = None,
+    scale: float = 1.0,
 ):
     """
     Computes the loss based on the specified loss type.
@@ -571,16 +569,15 @@ def conditional_loss(
     elif loss_type == "l1":
         loss = stable_l1_loss(model_pred, target, reduction="none", eps=eps)
     elif loss_type == "standard_pseudo_huber":
-        loss = stable_pseudo_huber_loss(model_pred, target, delta=huber_c_reshaped, reduction="none", eps=eps)
+        loss = stable_pseudo_huber_loss(model_pred, target, delta=huber_c_reshaped, reduction="none", eps=eps)  # type: ignore[arg-type]
     elif loss_type == "standard_huber":
-        loss = stable_huber_loss(model_pred, target, reduction="none", delta=huber_c_reshaped, eps=eps)
+        loss = stable_huber_loss(model_pred, target, reduction="none", delta=huber_c_reshaped, eps=eps)  # type: ignore[arg-type]
     elif loss_type == "standard_smooth_l1":
-        loss = stable_smooth_l1_loss(model_pred, target, reduction="none", beta=huber_c_reshaped, eps=eps)
+        loss = stable_smooth_l1_loss(model_pred, target, reduction="none", beta=huber_c_reshaped, eps=eps)  # type: ignore[arg-type]
     elif loss_type == "huber":
-        loss = 2 * huber_c_reshaped * (
-                torch.sqrt(((model_pred - target) ** 2 + eps) + huber_c_reshaped ** 2) - huber_c_reshaped)
+        loss = 2 * huber_c_reshaped * (torch.sqrt(((model_pred - target) ** 2 + eps) + huber_c_reshaped**2) - huber_c_reshaped)  # type: ignore[operator]
     elif loss_type == "smooth_l1":
-        loss = 2 * (torch.sqrt(((model_pred - target) ** 2 + eps) + huber_c_reshaped ** 2) - huber_c_reshaped)
+        loss = 2 * (torch.sqrt(((model_pred - target) ** 2 + eps) + huber_c_reshaped**2) - huber_c_reshaped)  # type: ignore[operator]
     elif loss_type == "x_sigmoid":
         loss = x_sigmoid_loss(model_pred, target, reduction="none").add(eps)
     elif loss_type == "log_cosh":
@@ -588,9 +585,9 @@ def conditional_loss(
     elif loss_type == "squared_logarithmic":
         loss = stable_msle_loss(model_pred, target, reduction="none").add(eps)
     elif loss_type == "soft_welsch":
-        loss = soft_welsch_loss(model_pred, target, reduction="none", delta=huber_c_reshaped, scale=scale)
+        loss = soft_welsch_loss(model_pred, target, reduction="none", delta=huber_c_reshaped, scale=scale)  # type: ignore[arg-type]
     elif loss_type == "scaled_quadratic":
-        loss = scaled_quadratic_loss(model_pred, target, reduction="none", delta=huber_c_reshaped, eps=eps)
+        loss = scaled_quadratic_loss(model_pred, target, reduction="none", delta=huber_c_reshaped, eps=eps)  # type: ignore[arg-type]
     elif loss_type == "standard_deviation_loss":
         loss = standard_deviation_loss(model_pred, target, reduction="none", eps=eps)
     elif loss_type == "psnr_loss":
@@ -598,7 +595,7 @@ def conditional_loss(
     elif loss_type == "geman_mcclure_loss":
         loss = kornia.losses.geman_mcclure_loss(model_pred, target).add(eps)
     elif loss_type == "smooth_l2_log":
-        loss = smooth_l2_log_loss(model_pred, target, reduction="none", delta=huber_c_reshaped, eps=eps)
+        loss = smooth_l2_log_loss(model_pred, target, reduction="none", delta=huber_c_reshaped, eps=eps)  # type: ignore[arg-type]
     else:
         raise NotImplementedError(f"Unsupported Loss Type: {loss_type}")
 
