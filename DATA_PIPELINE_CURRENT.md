@@ -159,7 +159,7 @@ Augmentations are applied in `__getitem__` if caching is disabled.
     *   `__getitem__` can be a bottleneck with heavy on-the-fly augmentation.
 2.  **Complexity**:
     *   `ImageInfo` acts as a "god object" for image state, with unclear lifecycle management.
-    *   `BlueprintGenerator` logic is hard to follow and modify.
+    *   `BlueprintGenerator` logic is challenging to follow and modify.
     *   Duplicate logic exists between `DreamBoothSubset` and `FineTuningSubset`.
 3.  **Caching**:
     *   Multi-GPU caching relies on file system synchronization which can be fragile.
