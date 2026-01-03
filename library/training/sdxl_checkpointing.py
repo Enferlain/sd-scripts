@@ -1,13 +1,9 @@
-
 import torch
 
 from library.utils import model_metadata
 from library.models import sdxl_model_util
 
-from library.training.checkpointing import (
-    save_sd_model_on_train_end_common,
-    save_sd_model_on_epoch_end_or_stepwise_common
-)
+from library.training.checkpointing import save_sd_model_on_train_end_common, save_sd_model_on_epoch_end_or_stepwise_common
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
@@ -19,22 +15,22 @@ if TYPE_CHECKING:
 
 
 def save_sd_model_on_train_end(
-        saving_config: SavingConfig,
-        metadata_config: MetadataConfig,
-        loss_config: LossConfig,
-        src_path: str,
-        save_stable_diffusion_format: bool,
-        use_safetensors: bool,
-        save_dtype: torch.dtype,
-        epoch: int,
-        global_step: int,
-        text_encoder1,
-        text_encoder2,
-        unet,
-        vae,
-        logit_scale,
-        ckpt_info,
-        hf_config: HuggingFaceConfig | None = None,
+    saving_config: SavingConfig,
+    metadata_config: MetadataConfig,
+    loss_config: LossConfig,
+    src_path: str,
+    save_stable_diffusion_format: bool,
+    use_safetensors: bool,
+    save_dtype: torch.dtype,
+    epoch: int,
+    global_step: int,
+    text_encoder1,
+    text_encoder2,
+    unet,
+    vae,
+    logit_scale,
+    ckpt_info,
+    hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Saves the SDXL model at the end of training.
@@ -57,12 +53,13 @@ def save_sd_model_on_train_end(
         ckpt_info: Additional checkpoint information.
         hf_config: Configuration for Hugging Face integration.
     """
+
     def sd_saver(ckpt_file, epoch_no, global_step):
         modelspec_metadata = model_metadata.get_model_metadata_from_config(
             state_dict=None,
             metadata_config=metadata_config,
             is_sdxl=True,
-            is_v2=False, # SDXL is not v2
+            is_v2=False,  # SDXL is not v2
             v_parameterization=loss_config.v_parameterization,
             is_lora=False,
             is_textual_inversion=False,
@@ -100,25 +97,25 @@ def save_sd_model_on_train_end(
 
 
 def save_sd_model_on_epoch_end_or_stepwise(
-        saving_config: SavingConfig,
-        metadata_config: MetadataConfig,
-        loss_config: LossConfig,
-        on_epoch_end: bool,
-        accelerator: "Accelerator",
-        src_path,
-        save_stable_diffusion_format: bool,
-        use_safetensors: bool,
-        save_dtype: torch.dtype,
-        epoch: int,
-        num_train_epochs: int,
-        global_step: int,
-        text_encoder1,
-        text_encoder2,
-        unet,
-        vae,
-        logit_scale,
-        ckpt_info,
-        hf_config: HuggingFaceConfig | None = None,
+    saving_config: SavingConfig,
+    metadata_config: MetadataConfig,
+    loss_config: LossConfig,
+    on_epoch_end: bool,
+    accelerator: "Accelerator",
+    src_path,
+    save_stable_diffusion_format: bool,
+    use_safetensors: bool,
+    save_dtype: torch.dtype,
+    epoch: int,
+    num_train_epochs: int,
+    global_step: int,
+    text_encoder1,
+    text_encoder2,
+    unet,
+    vae,
+    logit_scale,
+    ckpt_info,
+    hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Saves the SDXL model at epoch end or stepwise.
@@ -147,6 +144,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         ckpt_info: Additional checkpoint information.
         hf_config: Configuration for Hugging Face integration.
     """
+
     def sd_saver(ckpt_file, epoch_no, global_step):
         modelspec_metadata = model_metadata.get_model_metadata_from_config(
             state_dict=None,

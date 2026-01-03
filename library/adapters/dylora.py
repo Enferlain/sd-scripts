@@ -59,7 +59,7 @@ class DyLoRAModule(torch.nn.Module):
             in_dim = org_module.in_features
             out_dim = org_module.out_features
 
-        if type(alpha) == torch.Tensor:
+        if isinstance(alpha, torch.Tensor):
             alpha = alpha.detach().float().numpy()  # without casting, bf16 causes error
         alpha = self.lora_dim if alpha is None or alpha == 0 else alpha
         self.scale = alpha / self.lora_dim
@@ -433,7 +433,7 @@ class DyLoRAAdapter(torch.nn.Module):
                             loras.append(lora)
             return loras
 
-        text_encoders = text_encoder if type(text_encoder) == list else [text_encoder]
+        text_encoders = text_encoder if isinstance(text_encoder, list) else [text_encoder]
 
         self.text_encoder_loras = []
         for i, text_encoder in enumerate(text_encoders):
@@ -559,10 +559,7 @@ class DyLoRAAdapter(torch.nn.Module):
     """
 
     # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
-    def prepare_optimizer_params(self, 
-                                 learning_rates: LearningRatesConfig, 
-                                 apply_orthograd: bool, 
-                                 orthograd_targets: list[str]):
+    def prepare_optimizer_params(self, learning_rates: LearningRatesConfig, apply_orthograd: bool, orthograd_targets: list[str]):
         """
         Prepares optimizer parameters for training.
 

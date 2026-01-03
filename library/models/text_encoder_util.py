@@ -6,10 +6,7 @@ from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjecti
 
 
 def pool_workaround(
-    text_encoder: CLIPTextModelWithProjection,
-    last_hidden_state: torch.Tensor,
-    input_ids: torch.Tensor,
-    eos_token_id: int
+    text_encoder: CLIPTextModelWithProjection, last_hidden_state: torch.Tensor, input_ids: torch.Tensor, eos_token_id: int
 ) -> torch.Tensor:
     """
     Workaround for CLIP's pooling bug.
@@ -42,8 +39,7 @@ def pool_workaround(
     eos_token_index = eos_token_index.to(device=last_hidden_state.device)
 
     # get hidden states for EOS token
-    pooled_output = last_hidden_state[
-        torch.arange(last_hidden_state.shape[0], device=last_hidden_state.device), eos_token_index]
+    pooled_output = last_hidden_state[torch.arange(last_hidden_state.shape[0], device=last_hidden_state.device), eos_token_index]
 
     # apply projection: projection may be of different dtype than last_hidden_state
     pooled_output = text_encoder.text_projection(pooled_output.to(text_encoder.text_projection.weight.dtype))
@@ -110,7 +106,7 @@ def get_hidden_states_sdxl(
         # encoder1: restore <BOS>...<EOS> from three consecutive <BOS>...<EOS>
         states_list = [hidden_states1[:, 0].unsqueeze(1)]  # <BOS>
         for i in range(1, max_token_length, tokenizer1.model_max_length):
-            states_list.append(hidden_states1[:, i: i + tokenizer1.model_max_length - 2])  # From after <BOS> to before <EOS>
+            states_list.append(hidden_states1[:, i : i + tokenizer1.model_max_length - 2])  # From after <BOS> to before <EOS>
         states_list.append(hidden_states1[:, -1].unsqueeze(1))  # <EOS>
         hidden_states1 = torch.cat(states_list, dim=1)
 
@@ -118,7 +114,7 @@ def get_hidden_states_sdxl(
         # Honestly, I am not sure if this implementation is correct.
         states_list = [hidden_states2[:, 0].unsqueeze(1)]  # <BOS>
         for i in range(1, max_token_length, tokenizer2.model_max_length):
-            chunk = hidden_states2[:, i: i + tokenizer2.model_max_length - 2]  # From after <BOS> to before the last one
+            chunk = hidden_states2[:, i : i + tokenizer2.model_max_length - 2]  # From after <BOS> to before the last one
             # this causes an error:
             # RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation
             # if i > 1:

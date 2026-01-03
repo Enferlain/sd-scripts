@@ -3,7 +3,6 @@ import math
 import torch
 
 
-
 class SNRWindowedLossAwareSampler:
     """
     Loss-aware sampler restricted to a sliding window in log-SNR.
@@ -64,9 +63,7 @@ class SNRWindowedLossAwareSampler:
         log_snr = torch.log(snr.clamp(min=1e-20))
         self.log_snr_original = log_snr.contiguous()
         self.log_snr_sorted, self.sort_indices = torch.sort(log_snr)
-        edges = torch.linspace(
-            0, self.T - 1, steps=num_bins + 1, device=log_snr.device
-        )
+        edges = torch.linspace(0, self.T - 1, steps=num_bins + 1, device=log_snr.device)
         edges = edges.round().long().clamp(0, self.T - 1)
         self.bin_left, self.bin_right = edges[:-1], edges[1:].clamp(min=1)
         centers_idx = ((self.bin_left + self.bin_right) // 2).long()
@@ -117,15 +114,11 @@ class SNRWindowedLossAwareSampler:
         Args:
             global_step (int, optional): The current global step. If None, increments by 1.
         """
-        self.global_step = (
-            int(global_step) if global_step is not None else (self.global_step + 1)
-        )
+        self.global_step = int(global_step) if global_step is not None else (self.global_step + 1)
 
     def _current_window(self):
         """Calculate the current window center and half-width."""
-        t = min(self.global_step, self.total_widen_steps) / max(
-            self.total_widen_steps, 1
-        )
+        t = min(self.global_step, self.total_widen_steps) / max(self.total_widen_steps, 1)
         half_w = self.half_width0 + t * (self.widen_to - self.half_width0)
         return self.center_mu0, half_w
 
@@ -179,9 +172,7 @@ class SNRWindowedLossAwareSampler:
             H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
             if H_min > H:
                 u = torch.full_like(probs, 1.0 / self.num_bins)
-                probs = (
-                    1.0 - self.uniform_mix_when_low_entropy
-                ) * probs + self.uniform_mix_when_low_entropy * u
+                probs = (1.0 - self.uniform_mix_when_low_entropy) * probs + self.uniform_mix_when_low_entropy * u
 
             # Unconditional clamp and renormalize for safety
             probs = torch.nan_to_num(probs, nan=0.0, posinf=0.0, neginf=0.0)
@@ -200,9 +191,7 @@ class SNRWindowedLossAwareSampler:
             self.bin_right.to(device)[bin_idx],
         )
         u = torch.rand(batch_size, device=device)
-        sorted_idx = (
-            left + (u * (right - left + 1).clamp_min(1)).floor().long()
-        ).clamp(0, self.T - 1)
+        sorted_idx = (left + (u * (right - left + 1).clamp_min(1)).floor().long()).clamp(0, self.T - 1)
         timesteps = self.sort_indices.to(device)[sorted_idx]
 
         if self.cap_max_t is not None:
@@ -211,25 +200,17 @@ class SNRWindowedLossAwareSampler:
             if over_mask.any():
                 frac_over = over_mask.float().mean().item()
                 # EMA of boundary saturation
-                self.cap_saturation_ema = (
-                    self.cap_ema_beta * self.cap_saturation_ema
-                    + (1.0 - self.cap_ema_beta) * frac_over
-                )
+                self.cap_saturation_ema = self.cap_ema_beta * self.cap_saturation_ema + (1.0 - self.cap_ema_beta) * frac_over
 
                 # if boundary is consistently hit, relax the cap a bit
-                if (
-                    self.cap_saturation_ema > self.cap_saturation_thresh
-                    and self.cap_max_t < self.cap_target_t
-                ):
+                if self.cap_saturation_ema > self.cap_saturation_thresh and self.cap_max_t < self.cap_target_t:
                     remaining = self.cap_target_t - self.cap_max_t
                     # limit step size to avoid large jumps
                     max_step = max(
                         self.cap_step_min,
                         int(self.cap_step_max_frac * remaining),
                     )
-                    step = max(
-                        self.cap_step_min, int(self.cap_saturation_ema * max_step)
-                    )
+                    step = max(self.cap_step_min, int(self.cap_saturation_ema * max_step))
                     self.cap_max_t = min(self.cap_max_t + step, self.cap_target_t)
                     # optional: partially reset EMA so the cap does not run too fast
                     self.cap_saturation_ema *= 0.5
@@ -251,9 +232,7 @@ class SNRWindowedLossAwareSampler:
         log_snr_t = self.log_snr_original.to(device)[timesteps.long()]
         sorted_pos = torch.searchsorted(self.log_snr_sorted.to(device), log_snr_t)
         right_edges = self.bin_right.to(device)
-        bin_idx = torch.bucketize(
-            sorted_pos.clamp_max(self.T - 1), right_edges, right=True
-        ).clamp_max(self.num_bins - 1)
+        bin_idx = torch.bucketize(sorted_pos.clamp_max(self.T - 1), right_edges, right=True).clamp_max(self.num_bins - 1)
 
         beta = self.ema_beta
         for k in bin_idx.unique():
@@ -261,7 +240,5 @@ class SNRWindowedLossAwareSampler:
             if mask.any():
                 loss_k = per_sample_loss[mask].mean().item()
                 k_cpu = k.item()
-                self.bin_loss_ema[k_cpu] = (
-                    beta * self.bin_loss_ema[k_cpu] + (1.0 - beta) * loss_k
-                )
+                self.bin_loss_ema[k_cpu] = beta * self.bin_loss_ema[k_cpu] + (1.0 - beta) * loss_k
                 self.bin_counts[k_cpu] += mask.sum().item()

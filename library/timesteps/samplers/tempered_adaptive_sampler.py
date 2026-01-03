@@ -166,9 +166,7 @@ class TemperedAdaptiveSampler:
             H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
             if H_min > H:
                 uniform = torch.full_like(mixed, 1.0 / self.num_bins)
-                mixed = (
-                    1.0 - self.uniform_mix_when_low_entropy
-                ) * mixed + self.uniform_mix_when_low_entropy * uniform
+                mixed = (1.0 - self.uniform_mix_when_low_entropy) * mixed + self.uniform_mix_when_low_entropy * uniform
 
             mixed = mixed + self.min_prob
             mixed = mixed / mixed.sum()
@@ -180,9 +178,7 @@ class TemperedAdaptiveSampler:
         span = (right - left).clamp_min(1e-8)
         target_lsnr = left + torch.rand(bsz, device=device) * span
         sorted_lsnr = self.log_snr_sorted.to(device)
-        idx_in_sorted = torch.searchsorted(sorted_lsnr, target_lsnr).clamp(
-            1, self.T - 1
-        )
+        idx_in_sorted = torch.searchsorted(sorted_lsnr, target_lsnr).clamp(1, self.T - 1)
         j = idx_in_sorted - 1
         l0 = sorted_lsnr[j]
         l1 = sorted_lsnr[idx_in_sorted]

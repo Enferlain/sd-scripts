@@ -37,36 +37,36 @@ def make_unet_conversion_map() -> dict[str, str]:
         for j in range(2):
             # loop over resnets/attentions for downblocks
             hf_down_res_prefix = f"down_blocks.{i}.resnets.{j}."
-            sd_down_res_prefix = f"input_blocks.{3*i + j + 1}.0."
+            sd_down_res_prefix = f"input_blocks.{3 * i + j + 1}.0."
             unet_conversion_map_layer.append((sd_down_res_prefix, hf_down_res_prefix))
 
             if i < 3:
                 # no attention layers in down_blocks.3
                 hf_down_atn_prefix = f"down_blocks.{i}.attentions.{j}."
-                sd_down_atn_prefix = f"input_blocks.{3*i + j + 1}.1."
+                sd_down_atn_prefix = f"input_blocks.{3 * i + j + 1}.1."
                 unet_conversion_map_layer.append((sd_down_atn_prefix, hf_down_atn_prefix))
 
         for j in range(3):
             # loop over resnets/attentions for upblocks
             hf_up_res_prefix = f"up_blocks.{i}.resnets.{j}."
-            sd_up_res_prefix = f"output_blocks.{3*i + j}.0."
+            sd_up_res_prefix = f"output_blocks.{3 * i + j}.0."
             unet_conversion_map_layer.append((sd_up_res_prefix, hf_up_res_prefix))
 
             # if i > 0: commentout for sdxl
             # no attention layers in up_blocks.0
             hf_up_atn_prefix = f"up_blocks.{i}.attentions.{j}."
-            sd_up_atn_prefix = f"output_blocks.{3*i + j}.1."
+            sd_up_atn_prefix = f"output_blocks.{3 * i + j}.1."
             unet_conversion_map_layer.append((sd_up_atn_prefix, hf_up_atn_prefix))
 
         if i < 3:
             # no downsample in down_blocks.3
             hf_downsample_prefix = f"down_blocks.{i}.downsamplers.0.conv."
-            sd_downsample_prefix = f"input_blocks.{3*(i+1)}.0.op."
+            sd_downsample_prefix = f"input_blocks.{3 * (i + 1)}.0.op."
             unet_conversion_map_layer.append((sd_downsample_prefix, hf_downsample_prefix))
 
             # no upsample in up_blocks.3
             hf_upsample_prefix = f"up_blocks.{i}.upsamplers.0."
-            sd_upsample_prefix = f"output_blocks.{3*i + 2}.{2}."  # change for sdxl
+            sd_upsample_prefix = f"output_blocks.{3 * i + 2}.{2}."  # change for sdxl
             unet_conversion_map_layer.append((sd_upsample_prefix, hf_upsample_prefix))
 
     hf_mid_atn_prefix = "mid_block.attentions.0."
@@ -75,7 +75,7 @@ def make_unet_conversion_map() -> dict[str, str]:
 
     for j in range(2):
         hf_mid_res_prefix = f"mid_block.resnets.{j}."
-        sd_mid_res_prefix = f"middle_block.{2*j}."
+        sd_mid_res_prefix = f"middle_block.{2 * j}."
         unet_conversion_map_layer.append((sd_mid_res_prefix, hf_mid_res_prefix))
 
     unet_conversion_map_resnet = [
@@ -97,13 +97,13 @@ def make_unet_conversion_map() -> dict[str, str]:
             unet_conversion_map.append((sd, hf))
 
     for j in range(2):
-        hf_time_embed_prefix = f"time_embedding.linear_{j+1}."
-        sd_time_embed_prefix = f"time_embed.{j*2}."
+        hf_time_embed_prefix = f"time_embedding.linear_{j + 1}."
+        sd_time_embed_prefix = f"time_embed.{j * 2}."
         unet_conversion_map.append((sd_time_embed_prefix, hf_time_embed_prefix))
 
     for j in range(2):
-        hf_label_embed_prefix = f"add_embedding.linear_{j+1}."
-        sd_label_embed_prefix = f"label_emb.0.{j*2}."
+        hf_label_embed_prefix = f"add_embedding.linear_{j + 1}."
+        sd_label_embed_prefix = f"label_emb.0.{j * 2}."
         unet_conversion_map.append((sd_label_embed_prefix, hf_label_embed_prefix))
 
     unet_conversion_map.append(("input_blocks.0.0.", "conv_in."))
@@ -164,7 +164,7 @@ class LoRAModule(torch.nn.Module):
             self.lora_down = torch.nn.Linear(in_dim, self.lora_dim, bias=False)
             self.lora_up = torch.nn.Linear(self.lora_dim, out_dim, bias=False)
 
-        if type(alpha) == torch.Tensor:
+        if isinstance(alpha, torch.Tensor):
             alpha = alpha.detach().float().numpy()  # without casting, bf16 causes error
         alpha = self.lora_dim if alpha is None or alpha == 0 else alpha
         self.scale = alpha / self.lora_dim
@@ -426,12 +426,8 @@ class LoRAAdapter(torch.nn.Module):
             for name, module in root_module.named_modules():
                 if module.__class__.__name__ in target_replace_modules:
                     for child_name, child_module in module.named_modules():
-                        is_linear = (
-                            child_module.__class__.__name__ == "Linear" or child_module.__class__.__name__ == "LoRACompatibleLinear"
-                        )
-                        is_conv2d = (
-                            child_module.__class__.__name__ == "Conv2d" or child_module.__class__.__name__ == "LoRACompatibleConv"
-                        )
+                        is_linear = child_module.__class__.__name__ == "Linear" or child_module.__class__.__name__ == "LoRACompatibleLinear"
+                        is_conv2d = child_module.__class__.__name__ == "Conv2d" or child_module.__class__.__name__ == "LoRACompatibleConv"
 
                         if is_linear or is_conv2d:
                             lora_name = prefix + "." + name + "." + child_name
@@ -454,7 +450,7 @@ class LoRAAdapter(torch.nn.Module):
                             loras.append(lora)
             return loras, skipped
 
-        text_encoders = text_encoder if type(text_encoder) == list else [text_encoder]
+        text_encoders = text_encoder if isinstance(text_encoder, list) else [text_encoder]
 
         # create LoRA for text encoder
         # 毎回すべてのモジュールを作るのは無駄なので要検討 / it is wasteful to create all modules every time, need to consider
@@ -486,7 +482,7 @@ class LoRAAdapter(torch.nn.Module):
         names = set()
         for lora in self.text_encoder_loras + self.unet_loras:
             names.add(lora.lora_name)
-        for lora_name in modules_dim.keys():
+        for lora_name in modules_dim:
             assert lora_name in names, f"{lora_name} is not found in created LoRA modules."
 
         # make to work load_state_dict
@@ -525,9 +521,9 @@ class LoRAAdapter(torch.nn.Module):
                     converted_count += 1
                 else:
                     not_converted_count += 1
-        assert (
-            converted_count == 0 or not_converted_count == 0
-        ), f"some modules are not converted: {converted_count} converted, {not_converted_count} not converted"
+        assert converted_count == 0 or not_converted_count == 0, (
+            f"some modules are not converted: {converted_count} converted, {not_converted_count} not converted"
+        )
         return converted_count
 
     def set_multiplier(self, multiplier):
@@ -607,7 +603,7 @@ class LoRAAdapter(torch.nn.Module):
         # in case of V2, some weights have different shape, so we need to convert them
         # because V2 LoRA is based on U-Net created by use_linear_projection=False
         my_state_dict = self.state_dict()
-        for key in state_dict.keys():
+        for key in state_dict:
             if state_dict[key].size() != my_state_dict[key].size():
                 # logger.info(f"convert {key} from {state_dict[key].size()} to {my_state_dict[key].size()}")
                 state_dict[key] = state_dict[key].view(my_state_dict[key].size())

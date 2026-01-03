@@ -17,10 +17,7 @@ from library.adapters import lora, oft
 from library.utils.common_utils import setup_logging
 from library.utils import sai_model_spec
 
-from library.training.checkpointing import (
-    load_metadata_from_safetensors,
-    build_minimum_adapter_metadata
-)
+from library.training.checkpointing import load_metadata_from_safetensors, build_minimum_adapter_metadata
 from library.utils.hash_utils import precalculate_safetensors_hashes
 
 setup_logging()
@@ -87,13 +84,13 @@ def merge_to_sd_model(text_encoder1, text_encoder2, unet, models, ratios, lbws, 
             else:
                 prefix = lora.LoRAAdapter.LORA_PREFIX_UNET
                 target_replace_modules = (
-                        lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE + lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+                    lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE + lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
                 )
         elif method == "OFT":
             prefix = oft.OFTAdapter.OFT_PREFIX_UNET
             # ALL_LINEAR includes ATTN_ONLY, so we don't need to specify ATTN_ONLY
             target_replace_modules = (
-                    oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR + oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+                oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR + oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
             )
 
         for name, module in root_module.named_modules():
@@ -166,7 +163,6 @@ def merge_to_sd_model(text_encoder1, text_encoder2, unet, models, ratios, lbws, 
                     module.weight = torch.nn.Parameter(weight)
 
         elif method == "OFT":
-
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
             for key in tqdm(lora_sd.keys()):
@@ -248,9 +244,7 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
     # detect the method: OFT or LoRA_module
     method = detect_method_from_training_model(models, merge_dtype)
     if method == "OFT":
-        raise ValueError(
-            "OFT model is not supported for merging OFT models. / OFTモデルはOFTモデル同士のマージには対応していません"
-        )
+        raise ValueError("OFT model is not supported for merging OFT models. / OFTモデルはOFTモデル同士のマージには対応していません")
 
     if lbws:
         lbws, _, LBW_TARGET_IDX = format_lbws(lbws)
@@ -330,9 +324,9 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
                     scale *= lbw_weights[index]  # keyがlbwの対象であれば、lbwの重みを掛ける
 
             if key in merged_sd:
-                assert (
-                    merged_sd[key].size() == lora_sd[key].size() or concat_dim is not None
-                ), "weights shape mismatch merging v1 and v2, different dims? / 重みのサイズが合いません。v1とv2、または次元数の異なるモデルはマージできません"
+                assert merged_sd[key].size() == lora_sd[key].size() or concat_dim is not None, (
+                    "weights shape mismatch merging v1 and v2, different dims? / 重みのサイズが合いません。v1とv2、または次元数の異なるモデルはマージできません"
+                )
                 if concat_dim is not None:
                     merged_sd[key] = torch.cat([merged_sd[key], lora_sd[key] * scale], dim=concat_dim)
                 else:
@@ -378,13 +372,13 @@ def merge_lora_models(models, ratios, lbws, merge_dtype, concat=False, shuffle=F
 
 
 def merge(args):
-    assert len(args.models) == len(
-        args.ratios
-    ), "number of models must be equal to number of ratios / モデルの数と重みの数は合わせてください"
+    assert len(args.models) == len(args.ratios), (
+        "number of models must be equal to number of ratios / モデルの数と重みの数は合わせてください"
+    )
     if args.lbws:
-        assert len(args.models) == len(
-            args.lbws
-        ), "number of models must be equal to number of ratios / モデルの数と層別適用率の数は合わせてください"
+        assert len(args.models) == len(args.lbws), (
+            "number of models must be equal to number of ratios / モデルの数と層別適用率の数は合わせてください"
+        )
     else:
         args.lbws = []  # zip_longestで扱えるようにlbws未使用時には空のリストにしておく
 

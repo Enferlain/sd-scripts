@@ -78,24 +78,27 @@ IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".bmp", ".PNG", ".JPG", ".
 
 try:
     import pillow_avif  # noqa: F401 - Side-effect import, registers AVIF plugin
+
     IMAGE_EXTENSIONS.extend([".avif", ".AVIF"])
-except:
+except ImportError:
     pass
 
 # JPEG-XL on Linux
 try:
     from jxlpy import JXLImagePlugin  # noqa: F401 - Side-effect import
     from library.utils.jpeg_xl_util import get_jxl_size  # noqa: F401
+
     IMAGE_EXTENSIONS.extend([".jxl", ".JXL"])
-except:
+except ImportError:
     pass
 
 # JPEG-XL on Linux and Windows
 try:
     import pillow_jxl  # noqa: F401 - Side-effect import, registers JXL plugin
     from library.utils.jpeg_xl_util import get_jxl_size  # noqa: F401
+
     IMAGE_EXTENSIONS.extend([".jxl", ".JXL"])
-except:
+except ImportError:
     pass
 
 # --- lpw_stable_diffusion.py, sdxl_lpw_stable_diffusion.py ---
@@ -153,12 +156,15 @@ SCHEDULER_SCHEDULE = "scaled_linear"
 
 # --- optimizer_utils.py ---
 # Compile the regular expression patterns for float and integer
-float_pattern = re.compile(r'''^[+-]?(
+float_pattern = re.compile(
+    r"""^[+-]?(
     ( (\d+\.\d*) | (\.\d+) ) ([eE][+-]?\d+)?   # Decimal numbers with optional exponent
     | \d+[eE][+-]?\d+                          # Integers with exponent
-)$''', re.VERBOSE)
+)$""",
+    re.VERBOSE,
+)
 
-int_pattern = re.compile(r'^[+-]?\d+$')
+int_pattern = re.compile(r"^[+-]?\d+$")
 
 # --- lpw_stable_diffusion.py, sdxl_lpw_stable_diffusion.py, prompt_utils.py, strategy_base.py ---
 re_attention = re.compile(

@@ -35,9 +35,7 @@ def parse_dynamic_timestep_schedule(
     """
     # Parse the schedule from the config string
     dynamic_timestep_schedule = (
-        ast.literal_eval(timestep_config.dynamic_timestep_schedule)
-        if timestep_config.dynamic_timestep_schedule
-        else None
+        ast.literal_eval(timestep_config.dynamic_timestep_schedule) if timestep_config.dynamic_timestep_schedule else None
     )
     if dynamic_timestep_schedule:
         # Sort the schedule by step number to be safe
@@ -45,21 +43,15 @@ def parse_dynamic_timestep_schedule(
         accelerator.print(f"Using dynamic timesteps schedule: {dynamic_timestep_schedule}")
 
     # Initialize the current range with the defaults
-    current_min_timestep = (
-        0 if timestep_config.min_timestep is None else timestep_config.min_timestep
-    )
+    current_min_timestep = 0 if timestep_config.min_timestep is None else timestep_config.min_timestep
     current_max_timestep = (
-        noise_scheduler.config.num_train_timesteps
-        if timestep_config.max_timestep is None
-        else timestep_config.max_timestep
+        noise_scheduler.config.num_train_timesteps if timestep_config.max_timestep is None else timestep_config.max_timestep
     )
 
     return dynamic_timestep_schedule, current_min_timestep, current_max_timestep
 
 
-def init_timestep_sampler(
-    timestep_config: TimestepConfig, noise_scheduler: Any, accelerator: Any
-) -> Any:
+def init_timestep_sampler(timestep_config: TimestepConfig, noise_scheduler: Any, accelerator: Any) -> Any:
     """
     Initialize the appropriate timesteps sampler based on config.
 
@@ -82,9 +74,7 @@ def init_timestep_sampler(
 
     if sampling_type == "log_snr_uniform":
         accelerator.print("Initializing LogSNRUniformSampler.")
-        la_sampler = LogSNRUniformSampler(
-            noise_scheduler, noise_scheduler.config.num_train_timesteps
-        )
+        la_sampler = LogSNRUniformSampler(noise_scheduler, noise_scheduler.config.num_train_timesteps)
         timestep_config.timestep_sampling = "mix_adaptive"
 
     elif sampling_type == "tempered_adaptive":

@@ -45,10 +45,7 @@ from library.losses.loss_weighting import (
     apply_snr_weight,
 )
 
-from library.training.noise_utils import (
-    fix_noise_scheduler_betas_for_zero_terminal_snr,
-    prepare_scheduler_for_custom_training
-)
+from library.training.noise_utils import fix_noise_scheduler_betas_for_zero_terminal_snr, prepare_scheduler_for_custom_training
 
 init_ipex()
 
@@ -107,6 +104,7 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
 
 # Register Hydra schema for this script
 from library.config.schemas import register_sdxl_finetune
+
 register_sdxl_finetune()
 
 
@@ -114,7 +112,7 @@ register_sdxl_finetune()
 def train(cfg: SDXLFineTuneConfig):
     prepare_config(cfg)
     validate_config(cfg)
-    
+
     if cfg.training.dry_run:
         print("Dry run completed successfully.")
         return
@@ -146,9 +144,7 @@ def train(cfg: SDXLFineTuneConfig):
     if cfg.data.source.dataset_class is None:
         blueprint_generator = BlueprintGenerator()
         blueprint = blueprint_generator.generate(cfg)
-        train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(
-            blueprint.dataset_group
-        )
+        train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
     else:
         train_dataset_group = load_arbitrary_dataset(cfg.data, cfg.training.max_token_length)
         val_dataset_group = None
@@ -164,20 +160,16 @@ def train(cfg: SDXLFineTuneConfig):
         debug_dataset(train_dataset_group, True)
         return
     if len(train_dataset_group) == 0:
-        logger.error(
-            "No data found. Please verify the metadata file and train_data_dir option."
-        )
+        logger.error("No data found. Please verify the metadata file and train_data_dir option.")
         return
 
     if cache_latents:
-        assert (
-            train_dataset_group.is_latent_cacheable()
-        ), "when caching latents, either color_aug or random_crop cannot be used"
+        assert train_dataset_group.is_latent_cacheable(), "when caching latents, either color_aug or random_crop cannot be used"
 
     if cfg.performance.caching.cache_text_encoder_outputs:
-        assert (
-            train_dataset_group.is_text_encoder_output_cacheable()
-        ), "when caching text encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used"
+        assert train_dataset_group.is_text_encoder_output_cacheable(), (
+            "when caching text encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used"
+        )
 
     logger.info("prepare accelerator")
     accelerator = prepare_accelerator(
@@ -208,7 +200,6 @@ def train(cfg: SDXLFineTuneConfig):
         weight_dtype,
     )
 
-
     if load_stable_diffusion_format:
         src_stable_diffusion_ckpt = cfg.model.pretrained_model_name_or_path
         src_diffusers_model_path = None
@@ -220,7 +211,9 @@ def train(cfg: SDXLFineTuneConfig):
         save_stable_diffusion_format = load_stable_diffusion_format
         use_safetensors = cfg.output.saving.use_safetensors
     else:
-        save_stable_diffusion_format = cfg.output.saving.save_model_as.lower() == "ckpt" or cfg.output.saving.save_model_as.lower() == "safetensors"
+        save_stable_diffusion_format = (
+            cfg.output.saving.save_model_as.lower() == "ckpt" or cfg.output.saving.save_model_as.lower() == "safetensors"
+        )
         use_safetensors = cfg.output.saving.use_safetensors or ("safetensors" in cfg.output.saving.save_model_as.lower())
 
     def set_diffusers_xformers_flag(model, valid):
@@ -238,7 +231,9 @@ def train(cfg: SDXLFineTuneConfig):
         set_diffusers_xformers_flag(vae, True)
     else:
         accelerator.print("Disable Diffusers' xformers")
-        replace_unet_modules(unet, cfg.performance.attention.mem_eff_attn, cfg.performance.attention.xformers, cfg.performance.attention.sdpa)
+        replace_unet_modules(
+            unet, cfg.performance.attention.mem_eff_attn, cfg.performance.attention.xformers, cfg.performance.attention.sdpa
+        )
         if torch.__version__ >= "2.0.0":
             vae.set_use_memory_efficient_attention_xformers(cfg.performance.attention.xformers)
 
@@ -265,13 +260,14 @@ def train(cfg: SDXLFineTuneConfig):
 
     # Train text encoder if TE LR > 0 (based on LR-based training control)
     from library.optimizers.optimizer_utils import should_train_text_encoder
+
     train_te_based_on_lr = should_train_text_encoder(cfg.optimizer.learning_rates)
     if train_te_based_on_lr:
         accelerator.print("enable text encoder training")
         if cfg.performance.memory.gradient_checkpointing:
             text_encoder1.gradient_checkpointing_enable()
             text_encoder2.gradient_checkpointing_enable()
-        
+
         # Schema 1: Resolve TE LRs from optimizer.learning_rates.text_encoders
         # It can be a list [lr_te1, lr_te2] or a single scalar (applied to both)
         lr_te_schema = cfg.optimizer.learning_rates.text_encoders
@@ -287,7 +283,7 @@ def train(cfg: SDXLFineTuneConfig):
             # No TE-specific LR, use base LR
             lr_te1 = cfg.optimizer.learning_rates.base
             lr_te2 = cfg.optimizer.learning_rates.base
-        
+
         train_text_encoder1 = lr_te1 != 0
         train_text_encoder2 = lr_te2 != 0
 
@@ -334,16 +330,22 @@ def train(cfg: SDXLFineTuneConfig):
     if train_unet:
         training_models.append(unet)
         if block_lrs is None:
-            params_to_optimize.append({"params": list(unet.parameters()), "lr": cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rates.base})
+            params_to_optimize.append(
+                {"params": list(unet.parameters()), "lr": cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rates.base}
+            )
         else:
             params_to_optimize.extend(get_block_params_to_optimize(unet, block_lrs))
 
     if train_text_encoder1:
         training_models.append(text_encoder1)
-        params_to_optimize.append({"params": list(text_encoder1.parameters()), "lr": lr_te1})  # TODO: Local variable 'lr_te1' might be referenced before assignment
+        params_to_optimize.append(
+            {"params": list(text_encoder1.parameters()), "lr": lr_te1}
+        )  # TODO: Local variable 'lr_te1' might be referenced before assignment
     if train_text_encoder2:
         training_models.append(text_encoder2)
-        params_to_optimize.append({"params": list(text_encoder2.parameters()), "lr": lr_te2})  # TODO: Local variable 'lr_te2' might be referenced before assignment
+        params_to_optimize.append(
+            {"params": list(text_encoder2.parameters()), "lr": lr_te2}
+        )  # TODO: Local variable 'lr_te2' might be referenced before assignment
 
     n_params = 0
     for group in params_to_optimize:
@@ -391,7 +393,9 @@ def train(cfg: SDXLFineTuneConfig):
         logger.info(f"using {len(optimizers)} optimizers for fused optimizer groups")
 
     else:
-        _, _, optimizer = get_optimizer(cfg.optimizer, cfg.optimizer.learning_rates, cfg.optimizer.scheduler, trainable_params=params_to_optimize)
+        _, _, optimizer = get_optimizer(
+            cfg.optimizer, cfg.optimizer.learning_rates, cfg.optimizer.scheduler, trainable_params=params_to_optimize
+        )
 
     train_dataset_group.set_current_strategies()
 
@@ -416,7 +420,10 @@ def train(cfg: SDXLFineTuneConfig):
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
     if cfg.optimizer.fused_optimizer_groups:
-        lr_schedulers = [get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes) for optimizer in optimizers]
+        lr_schedulers = [
+            get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes)
+            for optimizer in optimizers
+        ]
         lr_scheduler = lr_schedulers[0]
     else:
         lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes)
@@ -437,12 +444,13 @@ def train(cfg: SDXLFineTuneConfig):
         text_encoder1.text_model.final_layer_norm.requires_grad_(False)
 
     if cfg.performance.deepspeed:
-        ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, unet=unet if train_unet else None,
-                                                           text_encoder1=text_encoder1 if train_text_encoder1 else None,
-                                                           text_encoder2=text_encoder2 if train_text_encoder2 else None)
-        ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            ds_model, optimizer, train_dataloader, lr_scheduler
+        ds_model = deepspeed_utils.prepare_deepspeed_model(
+            cfg.performance.precision,
+            unet=unet if train_unet else None,
+            text_encoder1=text_encoder1 if train_text_encoder1 else None,
+            text_encoder2=text_encoder2 if train_text_encoder2 else None,
         )
+        ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(ds_model, optimizer, train_dataloader, lr_scheduler)
         training_models = [ds_model]
 
     else:
@@ -524,9 +532,7 @@ def train(cfg: SDXLFineTuneConfig):
     accelerator.print(f"  num examples / サンプル数: {train_dataset_group.num_train_images}")
     accelerator.print(f"  num batches per epoch / 1epochのバッチ数: {len(train_dataloader)}")
     accelerator.print(f"  num epochs / epoch数: {num_train_epochs}")
-    accelerator.print(
-        f"  batch size per device / バッチサイズ: {', '.join([str(d.batch_size) for d in train_dataset_group.datasets])}"
-    )
+    accelerator.print(f"  batch size per device / バッチサイズ: {', '.join([str(d.batch_size) for d in train_dataset_group.datasets])}")
     accelerator.print(f"  gradient accumulation steps / 勾配を合計するステップ数 = {cfg.training.gradient_accumulation_steps}")
     accelerator.print(f"  total optimization steps / 学習ステップ数: {cfg.training.max_train_steps}")
 
@@ -554,7 +560,18 @@ def train(cfg: SDXLFineTuneConfig):
         )  # TODO: Parameter 'logging_config' unfilled, Parameter 'default_tracker_name' unfilled
 
     sample_images(
-        accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, 0, global_step, accelerator.device, vae, tokenizers, [text_encoder1, text_encoder2], unet
+        accelerator,
+        cfg.output.sampling,
+        cfg.training,
+        cfg.output.saving,
+        cfg.loss,
+        0,
+        global_step,
+        accelerator.device,
+        vae,
+        tokenizers,
+        [text_encoder1, text_encoder2],
+        unet,
     )
     if len(accelerator.trackers) > 0:
         accelerator.log({}, step=0)
@@ -562,7 +579,7 @@ def train(cfg: SDXLFineTuneConfig):
     loss_recorder = LossRecorder()
     epoch = 0  # Initialize before loop to handle edge case of 0 epochs
     for epoch in range(num_train_epochs):
-        accelerator.print(f"\nepoch {epoch+1}/{num_train_epochs}")
+        accelerator.print(f"\nepoch {epoch + 1}/{num_train_epochs}")
         current_epoch.value = epoch + 1
 
         for m in training_models:
@@ -596,14 +613,14 @@ def train(cfg: SDXLFineTuneConfig):
                     input_ids1, input_ids2 = batch["input_ids_list"]
                     with torch.set_grad_enabled(train_te_based_on_lr):
                         if cfg.data.caption.weighted_captions:
-                            input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])  #  TODO: Need more values to unpack
-                            encoder_hidden_states1, encoder_hidden_states2, pool2 = (
-                                text_encoding_strategy.encode_tokens_with_weights(
-                                    tokenize_strategy,
-                                    [text_encoder1, text_encoder2, accelerator.unwrap_model(text_encoder2)],
-                                    input_ids_list,
-                                    weights_list,
-                                )
+                            input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(
+                                batch["captions"]
+                            )  #  TODO: Need more values to unpack
+                            encoder_hidden_states1, encoder_hidden_states2, pool2 = text_encoding_strategy.encode_tokens_with_weights(
+                                tokenize_strategy,
+                                [text_encoder1, text_encoder2, accelerator.unwrap_model(text_encoder2)],
+                                input_ids_list,
+                                weights_list,
                             )
                         else:
                             input_ids1 = input_ids1.to(accelerator.device)
@@ -626,7 +643,9 @@ def train(cfg: SDXLFineTuneConfig):
                 vector_embedding = torch.cat([pool2, embs], dim=1).to(weight_dtype)
                 text_embedding = torch.cat([encoder_hidden_states1, encoder_hidden_states2], dim=2).to(weight_dtype)
 
-                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, noise_scheduler, latents, output_dtype=weight_dtype)  # TODO: Parameter 'noise_scheduler' unfilled, Parameter 'latents' unfilled
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
+                    cfg.loss.regularization, noise_scheduler, latents, output_dtype=weight_dtype
+                )  # TODO: Parameter 'noise_scheduler' unfilled, Parameter 'latents' unfilled
 
                 with accelerator.autocast():
                     noise_pred = unet(noisy_latents, timesteps, text_embedding, vector_embedding)
@@ -644,7 +663,9 @@ def train(cfg: SDXLFineTuneConfig):
                     or cfg.loss.snr.debiased_estimation_loss
                     or cfg.loss.masked
                 ):
-                    loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale))
+                    loss = conditional_loss(
+                        noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale)
+                    )
                     if cfg.loss.masked or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                         loss = apply_masked_loss(loss, batch)
                     loss = loss.mean([1, 2, 3])
@@ -654,13 +675,17 @@ def train(cfg: SDXLFineTuneConfig):
                     if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
                         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
                     if cfg.loss.snr.v_pred_like_loss:
-                        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)  # TODO: Expected type 'Tensor', got 'float' instead
+                        loss = add_v_prediction_like_loss(
+                            loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss
+                        )  # TODO: Expected type 'Tensor', got 'float' instead
                     if cfg.loss.snr.debiased_estimation_loss:
                         loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
 
                     loss = loss.mean()
                 else:
-                    loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "mean", huber_c, scale=float(cfg.loss.loss_scale))
+                    loss = conditional_loss(
+                        noise_pred.float(), target.float(), cfg.loss.loss_type, "mean", huber_c, scale=float(cfg.loss.loss_scale)
+                    )
 
                 accelerator.backward(loss)
 
@@ -819,6 +844,7 @@ def train(cfg: SDXLFineTuneConfig):
             ckpt_info,
         )
         logger.info("model saved.")
+
 
 if __name__ == "__main__":
     train()

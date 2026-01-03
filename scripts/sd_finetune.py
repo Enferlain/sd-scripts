@@ -32,15 +32,9 @@ from library.training.checkpointing import (
     save_state_on_train_end,
 )
 
-from library.training.sd_checkpointing import (
-    save_sd_model_on_epoch_end_or_stepwise,
-    save_sd_model_on_train_end
-)
+from library.training.sd_checkpointing import save_sd_model_on_epoch_end_or_stepwise, save_sd_model_on_train_end
 
-from library.training.noise_utils import (
-    fix_noise_scheduler_betas_for_zero_terminal_snr,
-    prepare_scheduler_for_custom_training
-)
+from library.training.noise_utils import fix_noise_scheduler_betas_for_zero_terminal_snr, prepare_scheduler_for_custom_training
 
 from library.losses.loss_weighting import (
     apply_snr_weight,
@@ -55,7 +49,6 @@ logger = logging.getLogger(__name__)
 
 
 def train(cfg: SDFineTuneConfig):
-
     setup_logging(cfg.output.logging, reset=True)
     set_torch_cuda_reduced_precision(cfg.performance.precision)
     deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed)
@@ -64,7 +57,9 @@ def train(cfg: SDFineTuneConfig):
 
     set_seed_from_config(cfg.training)
 
-    tokenize_strategy = strategy_sd.SdTokenizeStrategy(cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
+    tokenize_strategy = strategy_sd.SdTokenizeStrategy(
+        cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir
+    )
     strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
 
     if cache_latents:
@@ -97,9 +92,7 @@ def train(cfg: SDFineTuneConfig):
         return
 
     if cache_latents:
-        assert (
-            train_dataset_group.is_latent_cacheable()
-        ), "when caching latents, either color_aug or random_crop cannot be used"
+        assert train_dataset_group.is_latent_cacheable(), "when caching latents, either color_aug or random_crop cannot be used"
 
     logger.info("prepare accelerator")
     accelerator = prepare_accelerator(
@@ -112,8 +105,7 @@ def train(cfg: SDFineTuneConfig):
     weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
     vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
 
-    text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(cfg.model, cfg.performance.memory, weight_dtype,
-                                                                              accelerator)
+    text_encoder, vae, unet, load_stable_diffusion_format = load_target_model(cfg.model, cfg.performance.memory, weight_dtype, accelerator)
 
     if load_stable_diffusion_format:
         src_stable_diffusion_ckpt = cfg.model.pretrained_model_name_or_path
@@ -126,7 +118,9 @@ def train(cfg: SDFineTuneConfig):
         save_stable_diffusion_format = load_stable_diffusion_format
         use_safetensors = cfg.output.saving.use_safetensors
     else:
-        save_stable_diffusion_format = cfg.output.saving.save_model_as.lower() == "ckpt" or cfg.output.saving.save_model_as.lower() == "safetensors"
+        save_stable_diffusion_format = (
+            cfg.output.saving.save_model_as.lower() == "ckpt" or cfg.output.saving.save_model_as.lower() == "safetensors"
+        )
         use_safetensors = cfg.output.saving.use_safetensors or ("safetensors" in cfg.output.saving.save_model_as.lower())
 
     def set_diffusers_xformers_flag(model, valid):
@@ -145,7 +139,9 @@ def train(cfg: SDFineTuneConfig):
     else:
         accelerator.print("Disable Diffusers' xformers")
         set_diffusers_xformers_flag(unet, False)
-        replace_unet_modules(unet, cfg.performance.attention.mem_eff_attn, cfg.performance.attention.xformers, cfg.performance.attention.sdpa)
+        replace_unet_modules(
+            unet, cfg.performance.attention.mem_eff_attn, cfg.performance.attention.xformers, cfg.performance.attention.sdpa
+        )
 
     if cache_latents:
         vae.to(accelerator.device, dtype=vae_dtype)
@@ -193,7 +189,7 @@ def train(cfg: SDFineTuneConfig):
         m.requires_grad_(True)
 
     trainable_params = []
-    
+
     # Resolve Learning Rates (Schema 1)
     lr_unet = cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rates.base
     lr_te = cfg.optimizer.learning_rates.text_encoders
@@ -205,7 +201,7 @@ def train(cfg: SDFineTuneConfig):
         # If lr_te is a list, we only support one TE for SD1.5/2.0, so take the first element
         if isinstance(lr_te, list):
             lr_te = lr_te[0]
-            
+
         trainable_params = [
             {"params": list(unet.parameters()), "lr": lr_unet},
             {"params": list(text_encoder.parameters()), "lr": lr_te},
@@ -230,13 +226,13 @@ def train(cfg: SDFineTuneConfig):
         cfg.training.max_train_steps = cfg.training.max_train_epochs * math.ceil(
             len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
         )
-        accelerator.print(
-            f"override steps. steps for {cfg.training.max_train_epochs} epochs is: {cfg.training.max_train_steps}"
-        )
+        accelerator.print(f"override steps. steps for {cfg.training.max_train_epochs} epochs is: {cfg.training.max_train_steps}")
 
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
-    lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes)  # TODO: Expected type 'Optimizer', got 'object' instead
+    lr_scheduler = get_scheduler_fix(
+        cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes
+    )  # TODO: Expected type 'Optimizer', got 'object' instead
 
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
@@ -248,9 +244,7 @@ def train(cfg: SDFineTuneConfig):
             ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, unet=unet, text_encoder=text_encoder)
         else:
             ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, unet=unet)
-        ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            ds_model, optimizer, train_dataloader, lr_scheduler
-        )
+        ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(ds_model, optimizer, train_dataloader, lr_scheduler)
         training_models = [ds_model]
     else:
         if train_text_encoder:
@@ -276,9 +270,7 @@ def train(cfg: SDFineTuneConfig):
     accelerator.print(f"  num batches per epoch: {len(train_dataloader)}")
     accelerator.print(f"  num epochs: {num_train_epochs}")
     accelerator.print(f"  batch size per device: {cfg.training.train_batch_size}")
-    accelerator.print(
-        f"  total train batch size (with parallel & distributed & accumulation): {total_batch_size}"
-    )
+    accelerator.print(f"  total train batch size (with parallel & distributed & accumulation): {total_batch_size}")
     accelerator.print(f"  gradient accumulation steps = {cfg.training.gradient_accumulation_steps}")
     accelerator.print(f"  total optimization steps: {cfg.training.max_train_steps}")
 
@@ -306,7 +298,18 @@ def train(cfg: SDFineTuneConfig):
         )  # TODO Parameter 'logging_config' unfilled, Parameter 'default_tracker_name' unfilled
 
     sample_images(
-        accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, 0, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
+        accelerator,
+        cfg.output.sampling,
+        cfg.training,
+        cfg.output.saving,
+        cfg.loss,
+        0,
+        global_step,
+        accelerator.device,
+        vae,
+        tokenize_strategy.tokenizer,
+        text_encoder,
+        unet,
     )
     if len(accelerator.trackers) > 0:
         accelerator.log({}, step=0)
@@ -314,7 +317,7 @@ def train(cfg: SDFineTuneConfig):
     loss_recorder = LossRecorder()
     epoch = 0  # Initialize before loop to handle edge case of 0 epochs
     for epoch in range(num_train_epochs):
-        accelerator.print(f"\nepoch {epoch+1}/{num_train_epochs}")
+        accelerator.print(f"\nepoch {epoch + 1}/{num_train_epochs}")
         current_epoch.value = epoch + 1
 
         for m in training_models:
@@ -339,13 +342,13 @@ def train(cfg: SDFineTuneConfig):
                         )[0]
                     else:
                         input_ids = batch["input_ids_list"][0].to(accelerator.device)
-                        encoder_hidden_states = text_encoding_strategy.encode_tokens(
-                            tokenize_strategy, [text_encoder], [input_ids]
-                        )[0]
+                        encoder_hidden_states = text_encoding_strategy.encode_tokens(tokenize_strategy, [text_encoder], [input_ids])[0]
                     if cfg.performance.precision.full_fp16:
                         encoder_hidden_states = encoder_hidden_states.to(weight_dtype)
 
-                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(cfg.loss.regularization, cfg.timestep, cfg.training, noise_scheduler, latents, output_dtype=weight_dtype)
+                noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
+                    cfg.loss.regularization, cfg.timestep, cfg.training, noise_scheduler, latents, output_dtype=weight_dtype
+                )
 
                 with accelerator.autocast():
                     noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
@@ -357,7 +360,9 @@ def train(cfg: SDFineTuneConfig):
 
                 huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
                 if cfg.loss.snr.min_snr_gamma or cfg.loss.snr.scale_v_pred_loss_like_noise_pred or cfg.loss.snr.debiased_estimation_loss:
-                    loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale))
+                    loss = conditional_loss(
+                        noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale)
+                    )
                     loss = loss.mean([1, 2, 3])
 
                     if cfg.loss.snr.min_snr_gamma:
@@ -369,7 +374,9 @@ def train(cfg: SDFineTuneConfig):
 
                     loss = loss.mean()
                 else:
-                    loss = conditional_loss(noise_pred.float(), target.float(), cfg.loss.loss_type, "mean", huber_c, scale=float(cfg.loss.loss_scale))
+                    loss = conditional_loss(
+                        noise_pred.float(), target.float(), cfg.loss.loss_type, "mean", huber_c, scale=float(cfg.loss.loss_scale)
+                    )
 
                 accelerator.backward(loss)
                 if accelerator.sync_gradients and cfg.optimizer.max_grad_norm != 0.0:
@@ -387,7 +394,18 @@ def train(cfg: SDFineTuneConfig):
                 global_step += 1
 
                 sample_images(
-                    accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, None, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
+                    accelerator,
+                    cfg.output.sampling,
+                    cfg.training,
+                    cfg.output.saving,
+                    cfg.loss,
+                    None,
+                    global_step,
+                    accelerator.device,
+                    vae,
+                    tokenize_strategy.tokenizer,
+                    text_encoder,
+                    unet,
                 )
 
                 if cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0:
@@ -456,7 +474,18 @@ def train(cfg: SDFineTuneConfig):
                 )
 
         sample_images(
-            accelerator, cfg.output.sampling, cfg.training, cfg.output.saving, cfg.loss, epoch + 1, global_step, accelerator.device, vae, tokenize_strategy.tokenizer, text_encoder, unet
+            accelerator,
+            cfg.output.sampling,
+            cfg.training,
+            cfg.output.saving,
+            cfg.loss,
+            epoch + 1,
+            global_step,
+            accelerator.device,
+            vae,
+            tokenize_strategy.tokenizer,
+            text_encoder,
+            unet,
         )
 
     is_main_process = accelerator.is_main_process
@@ -493,6 +522,7 @@ def train(cfg: SDFineTuneConfig):
 
 # Register Hydra schema for this script
 from library.config.schemas import register_sd_finetune
+
 register_sd_finetune()
 
 

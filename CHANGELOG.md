@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Library/models/
   - Library/losses
   - Library/logging
+  - Library/config
+  - Library/adapters
+
+### Changed
+
+- **Applied ruff save fixes to all files**
 
 ## [2026-01-02]
 

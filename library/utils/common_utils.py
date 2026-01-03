@@ -99,6 +99,7 @@ def setup_logging(args=None, log_level=None, reset=False):
         logger = logging.getLogger(__name__)
         logger.info(msg_init)
 
+
 # Module-level logger
 setup_logging()
 logger = logging.getLogger(__name__)

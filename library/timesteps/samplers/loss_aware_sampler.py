@@ -44,9 +44,7 @@ class LossAwareTimestepSampler:
         self.T = int(num_train_timesteps)
         self.num_bins = int(num_bins)
         self.ema_beta = float(ema_beta)
-        self.small_t_frac = float(
-            small_t_frac
-        )  # define "small t" region as lowest X% of steps
+        self.small_t_frac = float(small_t_frac)  # define "small t" region as lowest X% of steps
         self.small_t_cap = float(small_t_cap)  # max batch fraction from small t
         self.eps = 1e-8
 
@@ -71,23 +69,15 @@ class LossAwareTimestepSampler:
             per_sample_losses (torch.Tensor): The loss for each sample in the batch.
         """
         # expects 1D tensors on same device
-        bins = (
-            torch.bucketize(timesteps.float(), self.bin_edges.to(timesteps.device)) - 1
-        )
+        bins = torch.bucketize(timesteps.float(), self.bin_edges.to(timesteps.device)) - 1
         bins = bins.clamp(0, self.num_bins - 1)
 
         # EMA update in float32
         update_dtype = torch.float32
-        bin_loss = torch.zeros(
-            self.num_bins, device=timesteps.device, dtype=update_dtype
-        )
-        bin_cnt = torch.zeros(
-            self.num_bins, device=timesteps.device, dtype=update_dtype
-        )
+        bin_loss = torch.zeros(self.num_bins, device=timesteps.device, dtype=update_dtype)
+        bin_cnt = torch.zeros(self.num_bins, device=timesteps.device, dtype=update_dtype)
         bin_loss.index_add_(0, bins, per_sample_losses.detach().to(dtype=update_dtype))
-        bin_cnt.index_add_(
-            0, bins, torch.ones_like(per_sample_losses, dtype=update_dtype)
-        )
+        bin_cnt.index_add_(0, bins, torch.ones_like(per_sample_losses, dtype=update_dtype))
 
         mask = bin_cnt > 0
         ema_loss_device = self.ema_loss.to(device=timesteps.device, dtype=update_dtype)
@@ -157,9 +147,7 @@ class LossAwareTimestepSampler:
         bin_ids = cat.sample((bsz,))
         left = self.bin_edges[:-1].to(device)[bin_ids]
         right = self.bin_edges[1:].to(device)[bin_ids]
-        t_bin = (
-            left + torch.rand(bsz, device=device) * (right - left - 1).clamp(min=1.0)
-        )
+        t_bin = left + torch.rand(bsz, device=device) * (right - left - 1).clamp(min=1.0)
         t_bin = t_bin.round().clamp(0, self.T - 1).long()
 
         # Blend prior index with loss-aware index (lean more loss-aware as mix_p decays)

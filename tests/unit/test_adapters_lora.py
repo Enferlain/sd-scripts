@@ -57,10 +57,7 @@ class TestParseBlockLrKwargs:
 
     def test_uses_zero_threshold_from_kwargs(self):
         """Should apply block_lr_zero_threshold from kwargs."""
-        kwargs = {
-            "down_lr_weight": "0.01,0.5,1.0",
-            "block_lr_zero_threshold": "0.05"
-        }
+        kwargs = {"down_lr_weight": "0.01,0.5,1.0", "block_lr_zero_threshold": "0.05"}
         result = parse_block_lr_kwargs(is_sdxl=False, nw_kwargs=kwargs)
         assert result is not None
         # Values below threshold should become 0
@@ -95,7 +92,7 @@ class TestGetBlockDimsAndAlphas:
             conv_dim=None,
             conv_alpha=None,
         )
-        
+
         num_blocks = LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS  # 25
         assert len(block_dims) == num_blocks
         assert all(d == adapter_rank for d in block_dims)
@@ -109,7 +106,7 @@ class TestGetBlockDimsAndAlphas:
         num_blocks = LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS
         block_dims_str = ",".join(str(i) for i in range(num_blocks))
         block_alphas_str = ",".join(str(float(i)) for i in range(num_blocks))
-        
+
         block_dims, block_alphas, _, _ = get_block_dims_and_alphas(
             is_sdxl=False,
             block_dims=block_dims_str,
@@ -121,7 +118,7 @@ class TestGetBlockDimsAndAlphas:
             conv_dim=None,
             conv_alpha=None,
         )
-        
+
         assert block_dims == list(range(num_blocks))
         assert block_alphas == [float(i) for i in range(num_blocks)]
 
@@ -129,7 +126,7 @@ class TestGetBlockDimsAndAlphas:
         """SDXL should have 23 blocks."""
         adapter_rank = 8
         adapter_alpha = 4.0
-        
+
         block_dims, block_alphas, _, _ = get_block_dims_and_alphas(
             is_sdxl=True,
             block_dims=None,
@@ -141,7 +138,7 @@ class TestGetBlockDimsAndAlphas:
             conv_dim=None,
             conv_alpha=None,
         )
-        
+
         expected_num_blocks = 1 + LoRAAdapter.SDXL_NUM_OF_BLOCKS * 2 + LoRAAdapter.SDXL_NUM_OF_MID_BLOCKS + 1
         assert len(block_dims) == expected_num_blocks
 
@@ -149,7 +146,7 @@ class TestGetBlockDimsAndAlphas:
         """When conv_dim is provided but no conv_block_dims, should fill with conv_dim."""
         conv_dim = 32
         conv_alpha = 16.0
-        
+
         block_dims, block_alphas, conv_block_dims, conv_block_alphas = get_block_dims_and_alphas(
             is_sdxl=False,
             block_dims=None,
@@ -161,7 +158,7 @@ class TestGetBlockDimsAndAlphas:
             conv_dim=conv_dim,
             conv_alpha=conv_alpha,
         )
-        
+
         num_blocks = LoRAAdapter.NUM_OF_BLOCKS * 2 + LoRAAdapter.NUM_OF_MID_BLOCKS
         assert len(conv_block_dims) == num_blocks
         assert all(d == conv_dim for d in conv_block_dims)
@@ -208,7 +205,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
+        down_portion = result[: LoRAAdapter.NUM_OF_BLOCKS]
         # Cosine starts from 1.0 (at block 0), decreasing towards 0
         assert down_portion[0] > down_portion[-1]
 
@@ -222,7 +219,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
+        down_portion = result[: LoRAAdapter.NUM_OF_BLOCKS]
         # Sine starts from 0.0 (at block 0), increasing towards 1
         assert down_portion[0] < down_portion[-1]
 
@@ -236,7 +233,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
+        down_portion = result[: LoRAAdapter.NUM_OF_BLOCKS]
         # First value ~ 0, last value = 1.0
         assert down_portion[0] == pytest.approx(0.0, abs=0.01)
         assert down_portion[-1] == pytest.approx(1.0, abs=0.01)
@@ -251,7 +248,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
+        down_portion = result[: LoRAAdapter.NUM_OF_BLOCKS]
         # First value = 1.0, last value ~ 0
         assert down_portion[0] == pytest.approx(1.0, abs=0.01)
         assert down_portion[-1] == pytest.approx(0.0, abs=0.01)
@@ -266,7 +263,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
+        down_portion = result[: LoRAAdapter.NUM_OF_BLOCKS]
         assert all(v == 0.0 for v in down_portion)
 
     def test_base_lr_addition(self):
@@ -279,7 +276,7 @@ class TestGetBlockLrWeight:
             zero_threshold=0.0,
         )
         assert result is not None
-        down_portion = result[:LoRAAdapter.NUM_OF_BLOCKS]
+        down_portion = result[: LoRAAdapter.NUM_OF_BLOCKS]
         assert all(v == 0.5 for v in down_portion)
 
     def test_list_input_for_weights(self):
@@ -336,7 +333,7 @@ class TestGetBlockLrWeight:
         # First 3 should be 0.5, rest should be 1.0
         assert result[0:3] == [0.5, 0.5, 0.5]
         # Entries 3-11 (rest of down) should be 1.0
-        assert all(v == 1.0 for v in result[3:LoRAAdapter.NUM_OF_BLOCKS])
+        assert all(v == 1.0 for v in result[3 : LoRAAdapter.NUM_OF_BLOCKS])
 
 
 class TestRemoveBlockDimsAndAlphas:
@@ -346,7 +343,7 @@ class TestRemoveBlockDimsAndAlphas:
         """Should return dims unchanged when block_lr_weight is None."""
         block_dims = [4, 8, 16]
         block_alphas = [1.0, 2.0, 4.0]
-        
+
         result = remove_block_dims_and_alphas(
             is_sdxl=False,
             block_dims=block_dims,
@@ -355,7 +352,7 @@ class TestRemoveBlockDimsAndAlphas:
             conv_block_alphas=None,
             block_lr_weight=None,
         )
-        
+
         assert result[0] == [4, 8, 16]
         assert result[1] == [1.0, 2.0, 4.0]
 
@@ -364,7 +361,7 @@ class TestRemoveBlockDimsAndAlphas:
         block_dims = [4, 8, 16]
         block_alphas = [1.0, 2.0, 4.0]
         block_lr_weight = [1.0, 0.0, 1.0]  # Middle block has 0 LR
-        
+
         result = remove_block_dims_and_alphas(
             is_sdxl=False,
             block_dims=block_dims,
@@ -373,7 +370,7 @@ class TestRemoveBlockDimsAndAlphas:
             conv_block_alphas=None,
             block_lr_weight=block_lr_weight,
         )
-        
+
         assert result[0] == [4, 0, 16]  # Middle dim zeroed
         assert result[1] == [1.0, 2.0, 4.0]  # Alphas unchanged
 
@@ -384,7 +381,7 @@ class TestRemoveBlockDimsAndAlphas:
         conv_block_dims = [2, 4, 8]
         conv_block_alphas = [0.5, 1.0, 2.0]
         block_lr_weight = [1.0, 0.0, 1.0]
-        
+
         result = remove_block_dims_and_alphas(
             is_sdxl=False,
             block_dims=block_dims,
@@ -393,7 +390,7 @@ class TestRemoveBlockDimsAndAlphas:
             conv_block_alphas=conv_block_alphas,
             block_lr_weight=block_lr_weight,
         )
-        
+
         assert result[0] == [4, 0, 16]
         assert result[2] == [2, 0, 8]  # Conv dims also zeroed
 
@@ -426,7 +423,7 @@ class TestGetBlockIndex:
         """SDXL input_blocks should map to 1-9."""
         result = get_block_index("lora_unet_input_blocks_0_something", is_sdxl=True)
         assert result == 1
-        
+
         result = get_block_index("lora_unet_input_blocks_5_something", is_sdxl=True)
         assert result == 6
 
@@ -434,7 +431,7 @@ class TestGetBlockIndex:
         """SDXL middle_blocks should map to 10-12."""
         result = get_block_index("lora_unet_middle_block_0_something", is_sdxl=True)
         assert result == 10
-        
+
         result = get_block_index("lora_unet_middle_block_2_something", is_sdxl=True)
         assert result == 12
 
@@ -442,7 +439,7 @@ class TestGetBlockIndex:
         """SDXL output_blocks should map to 13-21."""
         result = get_block_index("lora_unet_output_blocks_0_something", is_sdxl=True)
         assert result == 13
-        
+
         result = get_block_index("lora_unet_output_blocks_8_something", is_sdxl=True)
         assert result == 21
 

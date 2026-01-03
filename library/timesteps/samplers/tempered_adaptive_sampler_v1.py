@@ -61,9 +61,7 @@ class TemperedAdaptiveSampler:
         self.ema_sq = torch.ones(self.num_bins, dtype=torch.float32)
         self.counts = torch.zeros(self.num_bins, dtype=torch.float32)
 
-        self.prior_probs = torch.full(
-            (self.num_bins,), 1.0 / self.num_bins, dtype=torch.float32
-        )
+        self.prior_probs = torch.full((self.num_bins,), 1.0 / self.num_bins, dtype=torch.float32)
 
     @torch.no_grad()
     def update(self, timesteps: torch.Tensor, per_sample_losses: torch.Tensor):
@@ -136,9 +134,7 @@ class TemperedAdaptiveSampler:
             logits = logits.clamp(min=-12.0, max=12.0)
             loss_probs = torch.softmax(logits, dim=0)
 
-            mixed = (
-                1 - self.prior_weight
-            ) * loss_probs + self.prior_weight * self.prior_probs.to(device)
+            mixed = (1 - self.prior_weight) * loss_probs + self.prior_weight * self.prior_probs.to(device)
             mixed = mixed + self.min_prob
             mixed = mixed / mixed.sum()
 
@@ -152,9 +148,7 @@ class TemperedAdaptiveSampler:
 
         # Invert: find index in sorted ascending log_snr
         sorted_lsnr = self.log_snr_sorted.to(device)
-        idx_in_sorted = torch.searchsorted(sorted_lsnr, target_lsnr).clamp(
-            0, self.T - 1
-        )
+        idx_in_sorted = torch.searchsorted(sorted_lsnr, target_lsnr).clamp(0, self.T - 1)
 
         # Map back to original t indices
         t_local = self.sort_indices.to(device)[idx_in_sorted]

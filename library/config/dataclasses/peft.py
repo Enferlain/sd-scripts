@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+
 @dataclass
 class PeftConfig:
     """PEFT/LoRA adapter configuration."""
+
     adapter_rank: int | None = field(default=None, metadata={"help": "Adapter rank/dimensions (higher = more capacity, more VRAM)"})
     adapter_alpha: float = field(default=1.0, metadata={"help": "Alpha for LoRA weight scaling (1 = same as rank)"})
     neuron_dropout: float | None = field(default=None, metadata={"help": "Dropout rate for neurons during training (0-1, None to disable)"})
@@ -11,7 +13,9 @@ class PeftConfig:
     adapter_module: str | None = field(default=None, metadata={"help": "Python module path for adapter (e.g., library.adapters.lora)"})
     adapter_args: list[str] | None = field(default=None, metadata={"help": "Additional adapter arguments as key=value pairs"})
     adapter_rank_from_weights: bool = field(default=False, metadata={"help": "Automatically determine rank from loaded weights"})
-    scale_weight_norms: float | None = field(default=None, metadata={"help": "Scale weight norms to prevent exploding gradients (1.0 recommended)"})
+    scale_weight_norms: float | None = field(
+        default=None, metadata={"help": "Scale weight norms to prevent exploding gradients (1.0 recommended)"}
+    )
     base_weights: list[str] | None = field(default=None, metadata={"help": "Adapter weights to merge into model before training"})
     base_weights_multiplier: list[float] | None = field(default=None, metadata={"help": "Multipliers for base_weights when merging"})
     training_comment: str | None = field(default=None, metadata={"help": "Arbitrary comment stored in model metadata"})

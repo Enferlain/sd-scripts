@@ -15,6 +15,7 @@ from dataclasses import dataclass
 # Conditional torch import
 try:
     import torch
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -25,6 +26,7 @@ from hydra.core.global_hydra import GlobalHydra
 
 # Register all Hydra schemas (needed for tests that use compose())
 from library.config.schemas import register_all
+
 register_all()
 
 # Import all config dataclasses for fixture creation
@@ -41,6 +43,7 @@ from library.config.dataclasses.output import MetadataConfig
 # ============================================================================
 # Hydra Fixtures
 # ============================================================================
+
 
 @pytest.fixture(autouse=True)
 def cleanup_hydra():
@@ -69,6 +72,7 @@ def hydra_ctx(config_path):
 # Temporary Directory Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def tmp_output_dir():
     """Create a temporary output directory for tests."""
@@ -84,17 +88,18 @@ def tmp_dataset_dir(tmp_output_dir):
     """Create a temporary dataset directory with basic structure."""
     dataset_dir = os.path.join(tmp_output_dir, "dataset")
     os.makedirs(dataset_dir, exist_ok=True)
-    
+
     # Create a simple subdirectory structure
     train_dir = os.path.join(dataset_dir, "train")
     os.makedirs(train_dir, exist_ok=True)
-    
+
     yield dataset_dir
 
 
 # ============================================================================
 # Mock Config Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_optimizer_config():
@@ -176,19 +181,20 @@ def mock_metadata_config():
 # Mock Model/Tensor Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_model_parameters():
     """Create mock model parameters for optimizer testing."""
     if not TORCH_AVAILABLE:
         pytest.skip("PyTorch not available")
-    
+
     # Create a simple module with parameters
     class MockModel(torch.nn.Module):
         def __init__(self):
             super().__init__()
             self.layer1 = torch.nn.Linear(10, 10)
             self.layer2 = torch.nn.Linear(10, 10)
-    
+
     model = MockModel()
     return list(model.parameters())
 
@@ -196,20 +202,21 @@ def mock_model_parameters():
 @pytest.fixture
 def mock_accelerator():
     """Create a mock Accelerator object for testing."""
+
     class MockAccelerator:
         def __init__(self):
-            self.state = type('obj', (object,), {'num_processes': 1})()
+            self.state = type("obj", (object,), {"num_processes": 1})()
             self.num_processes = 1
-            
+
         def wait_for_everyone(self):
             pass
-            
+
         def save_state(self, output_dir):
             pass
-            
+
         def unwrap_model(self, model):
             return model
-    
+
     return MockAccelerator()
 
 
@@ -218,15 +225,15 @@ def mock_tokenizer():
     """Create a mock tokenizer for testing."""
     if not TORCH_AVAILABLE:
         pytest.skip("PyTorch not available")
-    
+
     class MockTokenizer:
         def __init__(self):
             self.model_max_length = 77
-            
+
         def __call__(self, text, **kwargs):
             # Return mock input_ids
             return {"input_ids": torch.randint(0, 1000, (1, 77))}
-    
+
     return MockTokenizer()
 
 
@@ -234,12 +241,13 @@ def mock_tokenizer():
 # Sample Data Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def sample_image_tensor():
     """Create a sample image tensor for testing."""
     if not TORCH_AVAILABLE:
         pytest.skip("PyTorch not available")
-    
+
     # Create a 512x512 RGB image tensor
     return torch.randn(3, 512, 512)
 
@@ -249,7 +257,7 @@ def sample_latent_tensor():
     """Create a sample latent tensor for testing."""
     if not TORCH_AVAILABLE:
         pytest.skip("PyTorch not available")
-    
+
     # Create a 64x64 latent (typical for 512x512 image with VAE)
     return torch.randn(4, 64, 64)
 
@@ -264,10 +272,11 @@ def sample_caption():
 # Utility Functions
 # ============================================================================
 
+
 def assert_config_valid(config: Any):
     """
     Helper function to validate that a config object is properly instantiated.
-    
+
     Args:
         config: Any dataclass config object
     """

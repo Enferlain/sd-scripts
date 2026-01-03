@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 @dataclass
 class MixAdaptiveConfig:
     """Configuration for the original loss-aware timesteps sampler."""
+
     bins: int = field(default=32, metadata={"help": "Number of bins for adaptive sampling"})
     ema_beta: float = field(default=0.9, metadata={"help": "EMA decay factor for loss tracking"})
     start_p: float = field(default=0.85, metadata={"help": "Starting probability for adaptive mixing"})
@@ -17,6 +18,7 @@ class MixAdaptiveConfig:
 @dataclass
 class TemperedAdaptiveConfig:
     """Configuration for tempered adaptive timesteps sampler."""
+
     bins: int = field(default=32, metadata={"help": "Number of bins for adaptive sampling"})
     ema_beta: float = field(default=0.9, metadata={"help": "EMA decay factor for loss tracking"})
     temperature: float = field(default=0.5, metadata={"help": "Temperature for softmax distribution"})
@@ -30,6 +32,7 @@ class TemperedAdaptiveConfig:
 @dataclass
 class GaussianMidSNRConfig:
     """Configuration for Gaussian mid-SNR adaptive timesteps sampler."""
+
     bins: int = field(default=32, metadata={"help": "Number of bins for adaptive sampling"})
     ema_beta: float = field(default=0.9, metadata={"help": "EMA decay factor for loss tracking"})
     temperature: float = field(default=0.5, metadata={"help": "Temperature for softmax distribution"})
@@ -45,6 +48,7 @@ class GaussianMidSNRConfig:
 @dataclass
 class SNRWindowedConfig:
     """Configuration for SNR-windowed loss-aware timesteps sampler."""
+
     bins: int = field(default=32, metadata={"help": "Number of bins for adaptive sampling"})
     ema_beta: float = field(default=0.9, metadata={"help": "EMA decay factor for loss tracking"})
     temperature: float = field(default=0.5, metadata={"help": "Temperature for softmax distribution"})
@@ -62,9 +66,10 @@ class SNRWindowedConfig:
 class TimestepConfig:
     """
     Timestep sampling configuration.
-    
+
     timestep_sampling values: uniform, shift, mix_adaptive, tempered_adaptive, gaussian_mid_snr, snr_windowed, log_snr_uniform
     """
+
     # Core settings
     timestep_sampling: str = field(default="uniform", metadata={"help": "Timestep sampling method"})
     min_timestep: int | None = field(default=None, metadata={"help": "Minimum timesteps for training"})
@@ -72,9 +77,13 @@ class TimestepConfig:
     dynamic_timestep_schedule: str | None = field(default=None, metadata={"help": "Dynamic timesteps schedule string"})
     sigmoid_scale: float = field(default=1.0, metadata={"help": "Scale for sigmoid sampling"})
     discrete_flow_shift: float = field(default=1.0, metadata={"help": "Shift for discrete flow sampling"})
-    
+
     # Per-sampler configurations
     mix_adaptive: MixAdaptiveConfig = field(default_factory=MixAdaptiveConfig, metadata={"help": "Mix adaptive sampler settings"})
-    tempered_adaptive: TemperedAdaptiveConfig = field(default_factory=TemperedAdaptiveConfig, metadata={"help": "Tempered adaptive sampler settings"})
-    gaussian_mid_snr: GaussianMidSNRConfig = field(default_factory=GaussianMidSNRConfig, metadata={"help": "Gaussian mid-SNR sampler settings"})
+    tempered_adaptive: TemperedAdaptiveConfig = field(
+        default_factory=TemperedAdaptiveConfig, metadata={"help": "Tempered adaptive sampler settings"}
+    )
+    gaussian_mid_snr: GaussianMidSNRConfig = field(
+        default_factory=GaussianMidSNRConfig, metadata={"help": "Gaussian mid-SNR sampler settings"}
+    )
     snr_windowed: SNRWindowedConfig = field(default_factory=SNRWindowedConfig, metadata={"help": "SNR windowed sampler settings"})

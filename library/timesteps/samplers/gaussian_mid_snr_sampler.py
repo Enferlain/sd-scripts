@@ -102,9 +102,7 @@ class GaussianMidSNRAdaptiveSampler:
         Args:
             global_step (int, optional): The current global step. If None, increments by 1.
         """
-        self.global_step = (
-            int(global_step) if global_step is not None else (self.global_step + 1)
-        )
+        self.global_step = int(global_step) if global_step is not None else (self.global_step + 1)
         self._update_prior_logits()
 
     def sample(
@@ -137,16 +135,12 @@ class GaussianMidSNRAdaptiveSampler:
         else:
             la_logits = -self.bin_loss_ema.to(device).clone()
             la_probs = self._softmax(la_logits, temp=self.temperature)
-            mixed = (
-                1.0 - self.prior_weight
-            ) * la_probs + self.prior_weight * prior_probs
+            mixed = (1.0 - self.prior_weight) * la_probs + self.prior_weight * prior_probs
         H = self._entropy(mixed)
         H_min = self.entropy_floor_ratio * math.log(self.num_bins + 1e-8)
         if H_min > H:
             u = torch.full_like(mixed, 1.0 / self.num_bins)
-            mixed = (
-                1.0 - self.uniform_mix_when_low_entropy
-            ) * mixed + self.uniform_mix_when_low_entropy * u
+            mixed = (1.0 - self.uniform_mix_when_low_entropy) * mixed + self.uniform_mix_when_low_entropy * u
         mixed = mixed.clamp_min(self.min_prob)
         mixed = mixed / (mixed.sum() + 1e-12)
         bin_idx = torch.multinomial(mixed, num_samples=batch_size, replacement=True)
@@ -155,9 +149,7 @@ class GaussianMidSNRAdaptiveSampler:
             self.bin_right.to(device)[bin_idx],
         )
         u = torch.rand(batch_size, device=device)
-        sorted_idx = (
-            left + (u * (right - left + 1).clamp_min(1)).floor().long()
-        ).clamp(0, self.T - 1)
+        sorted_idx = (left + (u * (right - left + 1).clamp_min(1)).floor().long()).clamp(0, self.T - 1)
         timesteps = self.sort_indices.to(device)[sorted_idx]
         return timesteps.long()
 
@@ -174,9 +166,7 @@ class GaussianMidSNRAdaptiveSampler:
         log_snr_t = self.log_snr_original.to(device)[timesteps.long()]
         sorted_pos = torch.searchsorted(self.log_snr_sorted.to(device), log_snr_t)
         right_edges = self.bin_right.to(device)
-        bin_idx = torch.bucketize(
-            sorted_pos.clamp_max(self.T - 1), right_edges, right=True
-        ).clamp_max(self.num_bins - 1)
+        bin_idx = torch.bucketize(sorted_pos.clamp_max(self.T - 1), right_edges, right=True).clamp_max(self.num_bins - 1)
 
         beta = self.ema_beta
         for k in bin_idx.unique():
@@ -184,7 +174,5 @@ class GaussianMidSNRAdaptiveSampler:
             if mask.any():
                 loss_k = per_sample_loss[mask].mean().item()
                 k_cpu = k.item()
-                self.bin_loss_ema[k_cpu] = (
-                    beta * self.bin_loss_ema[k_cpu] + (1.0 - beta) * loss_k
-                )
+                self.bin_loss_ema[k_cpu] = beta * self.bin_loss_ema[k_cpu] + (1.0 - beta) * loss_k
                 self.bin_counts[k_cpu] += mask.sum().item()

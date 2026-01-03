@@ -123,9 +123,9 @@ def svd(
 
     lora_adapter_o = lora.create_adapter(1.0, dim, dim, None, text_encoders_o, unet_o, **kwargs)
     lora_adapter_t = lora.create_adapter(1.0, dim, dim, None, text_encoders_t, unet_t, **kwargs)
-    assert len(lora_adapter_o.text_encoder_loras) == len(
-        lora_adapter_t.text_encoder_loras
-    ), "model version is different (SD1.x vs SD2.x) / それぞれのモデルのバージョンが違います（SD1.xベースとSD2.xベース） "
+    assert len(lora_adapter_o.text_encoder_loras) == len(lora_adapter_t.text_encoder_loras), (
+        "model version is different (SD1.x vs SD2.x) / それぞれのモデルのバージョンが違います（SD1.xベースとSD2.xベース） "
+    )
 
     # get diffs
     diffs = {}
@@ -285,7 +285,7 @@ def setup_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         choices=[None, "float", "fp16", "bf16"],
-        help="precision in loading, model default if omitted / 読み込み時に精度を変更して読み込む、省略時はモデルファイルによる"
+        help="precision in loading, model default if omitted / 読み込み時に精度を変更して読み込む、省略時はモデルファイルによる",
     )
     parser.add_argument(
         "--save_precision",

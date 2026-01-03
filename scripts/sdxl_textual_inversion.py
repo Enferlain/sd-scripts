@@ -87,10 +87,35 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         return noise_pred
 
     def sample_images(
-        self, accelerator, sampling_config, training_config, saving_config, loss_config, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
+        self,
+        accelerator,
+        sampling_config,
+        training_config,
+        saving_config,
+        loss_config,
+        epoch,
+        global_step,
+        device,
+        vae,
+        tokenizers,
+        text_encoders,
+        unet,
+        prompt_replacement,
     ):
         sample_images(
-            accelerator, sampling_config, training_config, saving_config, loss_config, epoch, global_step, device, vae, tokenizers, text_encoders, unet, prompt_replacement
+            accelerator,
+            sampling_config,
+            training_config,
+            saving_config,
+            loss_config,
+            epoch,
+            global_step,
+            device,
+            vae,
+            tokenizers,
+            text_encoders,
+            unet,
+            prompt_replacement,
         )
 
     def save_weights(self, file, updated_embs, save_dtype, metadata):
@@ -120,15 +145,16 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         emb_l = data.get("clip_l", None)  # ViT-L text encoder 1
         emb_g = data.get("clip_g", None)  # BiG-G text encoder 2
 
-        assert (
-            emb_l is not None or emb_g is not None
-        ), f"weight file does not contains weights for text encoder 1 or 2 / 重みファイルにテキストエンコーダー1または2の重みが含まれていません: {file}"
+        assert emb_l is not None or emb_g is not None, (
+            f"weight file does not contains weights for text encoder 1 or 2 / 重みファイルにテキストエンコーダー1または2の重みが含まれていません: {file}"
+        )
 
         return [emb_l, emb_g]
 
 
 # Register Hydra schema for this script
 from library.config.schemas import register_sdxl_textual_inversion
+
 register_sdxl_textual_inversion()
 
 

@@ -14,9 +14,10 @@ from library.config.dataclasses.validation import ValidationConfig
 @dataclass
 class SDXLFineTuneConfig:
     """Root configuration for SDXL fine-tuning training.
-    
+
     This is the main config used by scripts/sdxl_finetune.py.
     """
+
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     data: DataConfig = field(default_factory=DataConfig)

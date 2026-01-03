@@ -7,11 +7,11 @@ from contextlib import nullcontext
 
 torch_version = float(torch.__version__[:3])
 current_xpu_device = f"xpu:{torch.xpu.current_device()}"
-device_supports_fp64 = torch.xpu.has_fp64_dtype() if hasattr(torch.xpu,
-                                                             "has_fp64_dtype") else torch.xpu.get_device_properties(
-    current_xpu_device).has_fp64
+device_supports_fp64 = (
+    torch.xpu.has_fp64_dtype() if hasattr(torch.xpu, "has_fp64_dtype") else torch.xpu.get_device_properties(current_xpu_device).has_fp64
+)
 
-if os.environ.get('IPEX_FORCE_ATTENTION_SLICE', '0') == '0':
+if os.environ.get("IPEX_FORCE_ATTENTION_SLICE", "0") == "0":
     if (torch.xpu.get_device_properties(current_xpu_device).total_memory / 1024 / 1024 / 1024) > 4.1:
         try:
             x = torch.ones((33000, 33000), dtype=torch.float32, device=current_xpu_device)
@@ -23,13 +23,13 @@ if os.environ.get('IPEX_FORCE_ATTENTION_SLICE', '0') == '0':
     else:
         use_dynamic_attention = True
 else:
-    use_dynamic_attention = bool(os.environ.get('IPEX_FORCE_ATTENTION_SLICE', '0') == '1')
+    use_dynamic_attention = bool(os.environ.get("IPEX_FORCE_ATTENTION_SLICE", "0") == "1")
 
 
 # pylint: disable=protected-access, missing-function-docstring, line-too-long, unnecessary-lambda, no-else-return
 
-class DummyDataParallel(
-    torch.nn.Module):  # pylint: disable=missing-class-docstring, unused-argument, too-few-public-methods
+
+class DummyDataParallel(torch.nn.Module):  # pylint: disable=missing-class-docstring, unused-argument, too-few-public-methods
     def __new__(cls, module, device_ids=None, output_device=None, dim=0):  # pylint: disable=unused-argument
         if isinstance(device_ids, list) and len(device_ids) > 1:
             print("IPEX backend doesn't support DataParallel on multiple XPU devices")
@@ -57,9 +57,17 @@ def check_cuda(device) -> bool:
 
 
 def return_xpu(device):  # keep the device instance type, aka return string if the input is string
-    return f"xpu:{torch.xpu.current_device()}" if device is None else f"xpu:{device.split(':')[-1]}" if isinstance(
-        device, str) and ":" in device else f"xpu:{device}" if isinstance(device, int) else torch.device(
-        f"xpu:{device.index}" if device.index is not None else "xpu") if isinstance(device, torch.device) else "xpu"
+    return (
+        f"xpu:{torch.xpu.current_device()}"
+        if device is None
+        else f"xpu:{device.split(':')[-1]}"
+        if isinstance(device, str) and ":" in device
+        else f"xpu:{device}"
+        if isinstance(device, int)
+        else torch.device(f"xpu:{device.index}" if device.index is not None else "xpu")
+        if isinstance(device, torch.device)
+        else "xpu"
+    )
 
 
 # Autocast
@@ -69,27 +77,44 @@ original_autocast_init = torch.amp.autocast_mode.autocast.__init__
 @wraps(torch.amp.autocast_mode.autocast.__init__)
 def autocast_init(self, device_type=None, dtype=None, enabled=True, cache_enabled=None):
     if device_type is None or check_cuda(device_type):
-        return original_autocast_init(self, device_type="xpu", dtype=dtype, enabled=enabled,
-                                      cache_enabled=cache_enabled)
+        return original_autocast_init(self, device_type="xpu", dtype=dtype, enabled=enabled, cache_enabled=cache_enabled)
     else:
-        return original_autocast_init(self, device_type=device_type, dtype=dtype, enabled=enabled,
-                                      cache_enabled=cache_enabled)
+        return original_autocast_init(self, device_type=device_type, dtype=dtype, enabled=enabled, cache_enabled=cache_enabled)
 
 
 original_grad_scaler_init = torch.amp.grad_scaler.GradScaler.__init__
 
 
 @wraps(torch.amp.grad_scaler.GradScaler.__init__)
-def GradScaler_init(self, device: str = None, init_scale: float = 2.0 ** 16, growth_factor: float = 2.0,
-                    backoff_factor: float = 0.5, growth_interval: int = 2000, enabled: bool = True):
+def GradScaler_init(
+    self,
+    device: str = None,
+    init_scale: float = 2.0**16,
+    growth_factor: float = 2.0,
+    backoff_factor: float = 0.5,
+    growth_interval: int = 2000,
+    enabled: bool = True,
+):
     if device is None or check_cuda(device):
-        return original_grad_scaler_init(self, device=return_xpu(device), init_scale=init_scale,
-                                         growth_factor=growth_factor, backoff_factor=backoff_factor,
-                                         growth_interval=growth_interval, enabled=enabled)
+        return original_grad_scaler_init(
+            self,
+            device=return_xpu(device),
+            init_scale=init_scale,
+            growth_factor=growth_factor,
+            backoff_factor=backoff_factor,
+            growth_interval=growth_interval,
+            enabled=enabled,
+        )
     else:
-        return original_grad_scaler_init(self, device=device, init_scale=init_scale, growth_factor=growth_factor,
-                                         backoff_factor=backoff_factor, growth_interval=growth_interval,
-                                         enabled=enabled)
+        return original_grad_scaler_init(
+            self,
+            device=device,
+            init_scale=init_scale,
+            growth_factor=growth_factor,
+            backoff_factor=backoff_factor,
+            growth_interval=growth_interval,
+            enabled=enabled,
+        )
 
 
 original_is_autocast_enabled = torch.is_autocast_enabled
@@ -120,19 +145,29 @@ original_interpolate = torch.nn.functional.interpolate
 
 
 @wraps(torch.nn.functional.interpolate)
-def interpolate(tensor, size=None, scale_factor=None, mode='nearest', align_corners=None, recompute_scale_factor=None,
-                antialias=False):  # pylint: disable=too-many-arguments
-    if mode in {'bicubic', 'bilinear'}:
+def interpolate(tensor, size=None, scale_factor=None, mode="nearest", align_corners=None, recompute_scale_factor=None, antialias=False):  # pylint: disable=too-many-arguments
+    if mode in {"bicubic", "bilinear"}:
         return_device = tensor.device
         return_dtype = tensor.dtype
-        return original_interpolate(tensor.to("cpu", dtype=torch.float32), size=size, scale_factor=scale_factor,
-                                    mode=mode,
-                                    align_corners=align_corners, recompute_scale_factor=recompute_scale_factor,
-                                    antialias=antialias).to(return_device, dtype=return_dtype)
+        return original_interpolate(
+            tensor.to("cpu", dtype=torch.float32),
+            size=size,
+            scale_factor=scale_factor,
+            mode=mode,
+            align_corners=align_corners,
+            recompute_scale_factor=recompute_scale_factor,
+            antialias=antialias,
+        ).to(return_device, dtype=return_dtype)
     else:
-        return original_interpolate(tensor, size=size, scale_factor=scale_factor, mode=mode,
-                                    align_corners=align_corners, recompute_scale_factor=recompute_scale_factor,
-                                    antialias=antialias)
+        return original_interpolate(
+            tensor,
+            size=size,
+            scale_factor=scale_factor,
+            mode=mode,
+            align_corners=align_corners,
+            recompute_scale_factor=recompute_scale_factor,
+            antialias=antialias,
+        )
 
 
 # Diffusers Float64 (Alchemist GPUs doesn't support 64 bit):
@@ -178,8 +213,7 @@ def scaled_dot_product_attention(query, key, value, attn_mask=None, dropout_p=0.
         value = value.to(dtype=query.dtype)
     if attn_mask is not None and query.dtype != attn_mask.dtype:
         attn_mask = attn_mask.to(dtype=query.dtype)
-    return original_scaled_dot_product_attention(query, key, value, attn_mask=attn_mask, dropout_p=dropout_p,
-                                                 is_causal=is_causal, **kwargs)
+    return original_scaled_dot_product_attention(query, key, value, attn_mask=attn_mask, dropout_p=dropout_p, is_causal=is_causal, **kwargs)
 
 
 # Data Type Errors:
@@ -261,8 +295,7 @@ def functional_conv1d(input, weight, bias=None, stride=1, padding=0, dilation=1,
         input = input.to(dtype=weight.data.dtype)
     if bias is not None and bias.data.dtype != weight.data.dtype:
         bias.data = bias.data.to(dtype=weight.data.dtype)
-    return original_functional_conv1d(input, weight, bias=bias, stride=stride, padding=padding, dilation=dilation,
-                                      groups=groups)
+    return original_functional_conv1d(input, weight, bias=bias, stride=stride, padding=padding, dilation=dilation, groups=groups)
 
 
 original_functional_conv2d = torch.nn.functional.conv2d
@@ -274,8 +307,7 @@ def functional_conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1,
         input = input.to(dtype=weight.data.dtype)
     if bias is not None and bias.data.dtype != weight.data.dtype:
         bias.data = bias.data.to(dtype=weight.data.dtype)
-    return original_functional_conv2d(input, weight, bias=bias, stride=stride, padding=padding, dilation=dilation,
-                                      groups=groups)
+    return original_functional_conv2d(input, weight, bias=bias, stride=stride, padding=padding, dilation=dilation, groups=groups)
 
 
 # LTX Video
@@ -288,8 +320,7 @@ def functional_conv3d(input, weight, bias=None, stride=1, padding=0, dilation=1,
         input = input.to(dtype=weight.data.dtype)
     if bias is not None and bias.data.dtype != weight.data.dtype:
         bias.data = bias.data.to(dtype=weight.data.dtype)
-    return original_functional_conv3d(input, weight, bias=bias, stride=stride, padding=padding, dilation=dilation,
-                                      groups=groups)
+    return original_functional_conv3d(input, weight, bias=bias, stride=stride, padding=padding, dilation=dilation, groups=groups)
 
 
 # SwinIR BF16:
@@ -297,8 +328,8 @@ original_functional_pad = torch.nn.functional.pad
 
 
 @wraps(torch.nn.functional.pad)
-def functional_pad(input, pad, mode='constant', value=None):
-    if mode == 'reflect' and input.dtype == torch.bfloat16:
+def functional_pad(input, pad, mode="constant", value=None):
+    if mode == "reflect" and input.dtype == torch.bfloat16:
         return original_functional_pad(input.to(torch.float32), pad, mode=mode, value=value).to(dtype=torch.bfloat16)
     else:
         return original_functional_pad(input, pad, mode=mode, value=value)
@@ -314,7 +345,11 @@ def torch_tensor(data, *args, dtype=None, device=None, **kwargs):
         device = return_xpu(device)
     if not device_supports_fp64:
         if check_device_type(device, "xpu"):
-            if dtype == torch.float64 or dtype is None and (hasattr(data, "dtype") and (data.dtype == torch.float64 or data.dtype == float)):
+            if (
+                dtype == torch.float64
+                or dtype is None
+                and (hasattr(data, "dtype") and (data.dtype == torch.float64 or data.dtype == float))
+            ):
                 dtype = torch.float32
     return original_torch_tensor(data, *args, dtype=dtype, device=device, **kwargs)
 
@@ -366,7 +401,6 @@ def UntypedStorage_init(*args, device=None, **kwargs):
 if torch_version >= 2.4:
     original_UntypedStorage_to = torch.UntypedStorage.to
 
-
     @wraps(torch.UntypedStorage.to)
     def UntypedStorage_to(self, *args, device=None, **kwargs):
         if check_cuda(device):
@@ -374,9 +408,7 @@ if torch_version >= 2.4:
         else:
             return original_UntypedStorage_to(self, *args, device=device, **kwargs)
 
-
     original_UntypedStorage_cuda = torch.UntypedStorage.cuda
-
 
     @wraps(torch.UntypedStorage.cuda)
     def UntypedStorage_cuda(self, device=None, non_blocking=False, **kwargs):
@@ -384,6 +416,7 @@ if torch_version >= 2.4:
             return self.to(device=return_xpu(device), non_blocking=non_blocking, **kwargs)
         else:
             return original_UntypedStorage_cuda(self, device=device, non_blocking=non_blocking, **kwargs)
+
 
 original_torch_empty = torch.empty
 

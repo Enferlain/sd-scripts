@@ -19,15 +19,11 @@ class LogSNRUniformSampler:
             noise_scheduler: Diffusers noise scheduler (e.g. DDPMScheduler).
             num_train_timesteps (int): Total number of training timesteps.
         """
-        print(
-            f"LogSNRUniformSampler initialized with: num_train_timesteps={num_train_timesteps}"
-        )
+        print(f"LogSNRUniformSampler initialized with: num_train_timesteps={num_train_timesteps}")
         T = int(num_train_timesteps)
         with torch.no_grad():
             # Precompute SNR(t) = alpha^2 / (1 - alpha^2)
-            a2 = noise_scheduler.alphas_cumprod.float().clamp(
-                min=1e-12, max=1.0 - 1e-12
-            )  # [T]
+            a2 = noise_scheduler.alphas_cumprod.float().clamp(min=1e-12, max=1.0 - 1e-12)  # [T]
             snr = a2 / (1.0 - a2)
             self.log_snr = torch.log(snr.clamp(min=1e-20))  # [T]
         self.T = T

@@ -15,6 +15,7 @@ from library.config.config_util import (
 # Mocks & Fakes
 # ============================================================================
 
+
 @dataclass
 class FakeSubsetCfg:
     image_dir: str = "train"
@@ -25,7 +26,7 @@ class FakeSubsetCfg:
     shuffle_caption: bool = False
     keep_tokens: int = 0
     caption_dropout_rate: float = 0.0
-    caption_dropout_every_n_epochs: int = 0 
+    caption_dropout_every_n_epochs: int = 0
     caption_tag_dropout_rate: float = 0.0
     caption_prefix: str | None = None
     caption_suffix: str | None = None
@@ -39,17 +40,21 @@ class FakeSubsetCfg:
     resize_interpolation: str | None = None
     custom_attributes: str | None = None
 
+
 @dataclass
 class FakeSourceConfig:
     """Fake source config for testing."""
+
     subsets: list
     dataset_class: str | None = None
     train_data_dir: str | None = None
     reg_data_dir: str | None = None
 
+
 @dataclass
 class FakePreprocessingConfig:
     """Fake preprocessing config for testing."""
+
     resolution: list[int] | None = None
     debug_dataset: bool = False
     resize_interpolation: str | None = None
@@ -60,9 +65,11 @@ class FakePreprocessingConfig:
     alpha_mask: bool = False
     cache_info: bool = False
 
+
 @dataclass
 class FakeCaptionConfig:
     """Fake caption config for testing."""
+
     shuffle_caption: bool = False
     keep_tokens: int = 0
     caption_separator: str = ","
@@ -78,30 +85,34 @@ class FakeCaptionConfig:
     token_warmup_step: float = 0.0
     caption_extension: str = ".caption"
 
+
 @dataclass
 class FakeBucketingConfig:
     """Fake bucketing config for testing."""
+
     enable_bucket: bool = False
     min_bucket_reso: int = 256
     max_bucket_reso: int = 1024
     bucket_reso_steps: int = 64
     bucket_no_upscale: bool = False
 
+
 @dataclass
 class FakeDataConfig:
     """Fake DataConfig with nested subcategories for testing."""
+
     source: FakeSourceConfig
     preprocessing: FakePreprocessingConfig = None
     caption: FakeCaptionConfig = None
     bucketing: FakeBucketingConfig = None
-    
+
     # Legacy fields needed by BaseDatasetParams
     adapter_multiplier: float = 1.0
     validation_seed: int | None = None
     validation_split: float = 0.0
     prior_loss_weight: float = 1.0
     batch_size: int = 1
-    
+
     def __post_init__(self):
         if self.preprocessing is None:
             self.preprocessing = FakePreprocessingConfig()
@@ -109,6 +120,7 @@ class FakeDataConfig:
             self.caption = FakeCaptionConfig()
         if self.bucketing is None:
             self.bucketing = FakeBucketingConfig()
+
 
 def make_root_cfg(source_cfg, preprocessing_cfg=None, bucketing_cfg=None):
     root = types.SimpleNamespace()
@@ -120,9 +132,11 @@ def make_root_cfg(source_cfg, preprocessing_cfg=None, bucketing_cfg=None):
     root.data = data
     return root
 
+
 # ============================================================================
 # BlueprintGenerator Tests
 # ============================================================================
+
 
 def test_blueprint_dreambooth_type():
     subset = FakeSubsetCfg(image_dir="db", num_repeats=2)
@@ -144,6 +158,7 @@ def test_blueprint_dreambooth_type():
     assert sp.image_dir == "db"
     assert sp.num_repeats == 2
 
+
 def test_blueprint_finetune_type():
     subset = FakeSubsetCfg(image_dir="ft", num_repeats=1, metadata_file="meta.json")
     source_cfg = FakeSourceConfig(subsets=[subset])
@@ -159,12 +174,14 @@ def test_blueprint_finetune_type():
     assert type(db.params).__name__ == "FineTuningDatasetParams"
     assert db.subsets[0].params.metadata_file == "meta.json"
 
+
 @dataclass
 class FakeControlNetSubsetCfg:
     image_dir: str
     conditioning_data_dir: str
     num_repeats: int = 1
-    
+
+
 def test_blueprint_controlnet_type():
     subset = FakeControlNetSubsetCfg(image_dir="cn", conditioning_data_dir="conds")
     source_cfg = FakeSourceConfig(subsets=[subset])
@@ -179,6 +196,7 @@ def test_blueprint_controlnet_type():
     assert type(db.params).__name__ == "ControlNetDatasetParams"
     assert db.subsets[0].params.conditioning_data_dir == "conds"
 
+
 def test_blueprint_uses_buckets_defaults():
     subset = FakeSubsetCfg(image_dir="db")
     source_cfg = FakeSourceConfig(subsets=[subset])
@@ -189,13 +207,15 @@ def test_blueprint_uses_buckets_defaults():
     bg = BlueprintGenerator()
     bp = bg.generate(root)
     db = bp.dataset_group.datasets[0]
-    
+
     # Takes resolution from preprocessing config
     assert db.params.resolution == (256, 384)
+
 
 # ============================================================================
 # generate_dataset_group_by_blueprint Tests
 # ============================================================================
+
 
 class FakeDatasetBase:
     def __init__(self, subsets=None, **kwargs):
@@ -215,24 +235,28 @@ class FakeDatasetBase:
         self.image_to_subset = {}
         self.num_train_images = 0
         self.num_reg_images = 0
-        
+
     def make_buckets(self):
         pass
-    
+
     def set_seed(self, seed):
         pass
 
     def __len__(self):
         return 1
 
+
 class FakeDreamBoothDataset(FakeDatasetBase):
     pass
+
 
 class FakeFineTuningDataset(FakeDatasetBase):
     pass
 
+
 class FakeControlNetDataset(FakeDatasetBase):
     pass
+
 
 class FakeSubsetBase:
     def __init__(self, **kwargs):
@@ -263,14 +287,18 @@ class FakeSubsetBase:
         self.caption_extension = ".txt"
         self.metadata_file = kwargs.get("metadata_file")
 
+
 class FakeDreamBoothSubset(FakeSubsetBase):
     pass
-    
+
+
 class FakeFineTuningSubset(FakeSubsetBase):
     pass
 
+
 class FakeControlNetSubset(FakeSubsetBase):
     pass
+
 
 @patch("library.config.config_util.DreamBoothDataset", new=FakeDreamBoothDataset)
 @patch("library.config.config_util.FineTuningDataset", new=FakeFineTuningDataset)
@@ -295,18 +323,19 @@ def test_generate_dataset_group_dreambooth():
 
     assert dg is not None
     assert val_dg is None
-    
+
     # Verify dataset type and content
     ds = dg.datasets[0]
     assert isinstance(ds, FakeDreamBoothDataset)
     assert ds.batch_size == 3
     assert ds.kwargs.get("is_training_dataset") is True
-    
+
     # Verify subset
     assert len(ds.subsets) == 1
     sub = ds.subsets[0]
     assert isinstance(sub, FakeDreamBoothSubset)
     assert sub.num_repeats == 2
+
 
 @patch("library.config.config_util.DreamBoothDataset", new=FakeDreamBoothDataset)
 @patch("library.config.config_util.DreamBoothSubset", new=FakeDreamBoothSubset)
@@ -327,16 +356,17 @@ def test_generate_dataset_group_validation_split():
 
     assert dg is not None
     assert val_dg is not None
-    
+
     # Train dataset
     train_ds = dg.datasets[0]
     assert isinstance(train_ds, FakeDreamBoothDataset)
     assert train_ds.kwargs.get("is_training_dataset") is True
-    
+
     # Val dataset
     val_ds = val_dg.datasets[0]
     assert isinstance(val_ds, FakeDreamBoothDataset)
     assert val_ds.kwargs.get("is_training_dataset") is False
+
 
 @patch("library.config.config_util.DreamBoothDataset", new=FakeDreamBoothDataset)
 @patch("library.config.config_util.DreamBoothSubset", new=FakeDreamBoothSubset)
@@ -358,6 +388,7 @@ def test_generate_dataset_group_validation_split_zero():
 
     assert dg is not None
     assert val_dg is None  # No validation dataset when split is 0.0
+
 
 @patch("library.config.config_util.DreamBoothDataset", new=FakeDreamBoothDataset)
 @patch("library.config.config_util.DreamBoothSubset", new=FakeDreamBoothSubset)
@@ -383,12 +414,14 @@ def test_generate_dataset_group_validation_split_invalid(caplog):
     assert val_dg is None  # Invalid split should skip validation dataset
     assert "not a valid number" in caplog.text
 
+
 # Track seed calls for verification
 class SeedTrackingDataset(FakeDatasetBase):
     seeds_received = []
-    
+
     def set_seed(self, seed):
         SeedTrackingDataset.seeds_received.append(seed)
+
 
 @patch("library.config.config_util.random.randint", return_value=42)
 @patch("library.config.config_util.DreamBoothDataset", new=SeedTrackingDataset)
@@ -396,9 +429,9 @@ class SeedTrackingDataset(FakeDatasetBase):
 def test_dataset_group_seed_consistency(mock_randint):
     """All datasets should receive the same random seed for reproducibility."""
     from library.config.config_util import DreamBoothDatasetParams, DreamBoothSubsetParams, SubsetBlueprint
-    
+
     SeedTrackingDataset.seeds_received = []  # Reset tracking
-    
+
     bp1 = DatasetBlueprint(
         is_dreambooth=True,
         is_controlnet=False,
@@ -412,20 +445,22 @@ def test_dataset_group_seed_consistency(mock_randint):
         subsets=[SubsetBlueprint(params=DreamBoothSubsetParams(image_dir="ds2"))],
     )
     group_bp = DatasetGroupBlueprint(datasets=[bp1, bp2])
-    
+
     dg, _ = generate_dataset_group_by_blueprint(group_bp)
-    
+
     # random.randint should be called exactly once
     mock_randint.assert_called_once()
-    
+
     # Both datasets should have received the same seed (42)
     assert len(SeedTrackingDataset.seeds_received) == 2
     assert SeedTrackingDataset.seeds_received[0] == 42
     assert SeedTrackingDataset.seeds_received[1] == 42
 
+
 # ============================================================================
 # generate_dreambooth_subsets_config_by_subdirs Tests
 # ============================================================================
+
 
 def test_generate_dreambooth_subdirs_basic(tmp_path):
     (tmp_path / "10_cat").mkdir()
@@ -440,7 +475,7 @@ def test_generate_dreambooth_subdirs_basic(tmp_path):
     assert len(configs) == 2
     reps = {c["image_dir"]: c["num_repeats"] for c in configs}
     classes = {c["image_dir"]: c["class_tokens"] for c in configs}
-    
+
     # Verify parsing
     # Note: image_dir path will be absolute string
     assert any(str(tmp_path / "10_cat") in k and v == 10 for k, v in reps.items())
@@ -448,33 +483,33 @@ def test_generate_dreambooth_subdirs_basic(tmp_path):
     assert any("cat" in v for v in classes.values())
     assert all(c["is_reg"] is False for c in configs)
 
+
 def test_generate_dreambooth_subdirs_with_reg(tmp_path):
     train_dir = tmp_path / "train"
     train_dir.mkdir()
     (train_dir / "1_person").mkdir()
-    
+
     reg_dir = tmp_path / "reg"
     reg_dir.mkdir()
     (reg_dir / "1_man").mkdir()
-    
-    configs = generate_dreambooth_subsets_config_by_subdirs(
-        train_data_dir=str(train_dir),
-        reg_data_dir=str(reg_dir)
-    )
-    
+
+    configs = generate_dreambooth_subsets_config_by_subdirs(train_data_dir=str(train_dir), reg_data_dir=str(reg_dir))
+
     assert len(configs) == 2
     reg_configs = [c for c in configs if c["is_reg"]]
     train_configs = [c for c in configs if not c["is_reg"]]
-    
+
     assert len(reg_configs) == 1
     assert "man" in reg_configs[0]["class_tokens"]
-    
+
     assert len(train_configs) == 1
     assert "person" in train_configs[0]["class_tokens"]
+
 
 # ============================================================================
 # generate_user_config_from_dataset Tests
 # ============================================================================
+
 
 @patch("library.config.config_util.generate_dreambooth_subsets_config_by_subdirs")
 def test_generate_user_config_from_dataset_dreambooth(mock_gen):
@@ -492,6 +527,7 @@ def test_generate_user_config_from_dataset_dreambooth(mock_gen):
     assert "datasets" in user_cfg
     assert user_cfg["datasets"][0]["subsets"] == mock_gen.return_value
 
+
 def test_generate_user_config_from_dataset_arbitrary():
     source_cfg = FakeSourceConfig(
         subsets=[],
@@ -499,7 +535,7 @@ def test_generate_user_config_from_dataset_arbitrary():
     )
     root = make_root_cfg(source_cfg)
     user_cfg = generate_user_config_from_dataset(root)
-    
+
     # Arbitrary dataset class usage returns empty datasets list structure
     # logic: if source_config.dataset_class is None: ... else: user_config = {"datasets": []}
     assert user_cfg == {"datasets": []}

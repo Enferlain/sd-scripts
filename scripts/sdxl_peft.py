@@ -60,25 +60,24 @@ from library.logging.training_plots import (
 from library.training.checkpointing import (
     resume_from_local_or_hf_if_specified,
     get_step_ckpt_name,
-    save_and_remove_state_stepwise, get_remove_step_no,
+    save_and_remove_state_stepwise,
+    get_remove_step_no,
     get_epoch_ckpt_name,
     get_remove_epoch_no,
     save_and_remove_state_on_epoch_end,
     get_last_ckpt_name,
-    save_state_on_train_end, register_adapter_state_hooks
+    save_state_on_train_end,
+    register_adapter_state_hooks,
 )
 
 from library.training.trainer_utils import (
     calculate_val_loss_check,
     prepare_accelerator,
-    determine_grad_sync_context, calculate_initial_step
+    determine_grad_sync_context,
+    calculate_initial_step,
 )
 
-from library.losses.edm2_loss_utils import (
-    prepare_edm2_loss_weighting,
-    plot_edm2_loss_weighting_check,
-    plot_edm2_loss_weighting
-)
+from library.losses.edm2_loss_utils import prepare_edm2_loss_weighting, plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
 
 try:
     import matplotlib.pyplot as plt
@@ -94,7 +93,7 @@ logger = logging.getLogger(__name__)
 def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     strategies.la_sampler = None
 
-    session_id = random.randint(0, 2 ** 32)
+    session_id = random.randint(0, 2**32)
     training_started_at = time.time()
 
     set_torch_cuda_reduced_precision(cfg.performance.precision)
@@ -170,11 +169,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     text_encoder_outputs_caching_strategy = strategies.get_text_encoder_outputs_caching_strategy(cfg)
     if text_encoder_outputs_caching_strategy is not None:
         strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_outputs_caching_strategy)
-    strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, train_dataset_group,
-                                              weight_dtype)
+    strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, train_dataset_group, weight_dtype)
     if val_dataset_group is not None:
-        strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, val_dataset_group,
-                                                  weight_dtype)
+        strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, val_dataset_group, weight_dtype)
 
     if unet is None:
         # lazy load unet if needed. text encoders may be freed or replaced with dummy models for saving memory
@@ -198,8 +195,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             module, weights_sd = adapter_module.create_adapter_from_weights(
                 multiplier, weight_path, vae, text_encoder, unet, for_inference=True
             )
-            module.merge_to(text_encoder, unet, weights_sd, weight_dtype,
-                            accelerator.device if cfg.performance.memory.lowram else "cpu")
+            module.merge_to(text_encoder, unet, weights_sd, weight_dtype, accelerator.device if cfg.performance.memory.lowram else "cpu")
 
         accelerator.print(f"all weights merged: {', '.join(cfg.peft.base_weights)}")
 
@@ -215,8 +211,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
     # if a new peft is added in future, add if ~ then blocks for each peft (;'∀')
     if cfg.peft.adapter_rank_from_weights:
-        adapter, _ = adapter_module.create_adapter_from_weights(1, cfg.peft.adapter_weights, vae, text_encoder, unet,
-                                                                **net_kwargs)
+        adapter, _ = adapter_module.create_adapter_from_weights(1, cfg.peft.adapter_weights, vae, text_encoder, unet, **net_kwargs)
     else:
         if "dropout" not in net_kwargs:
             # workaround for LyCORIS (;^ω^)
@@ -384,14 +379,14 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     # acceleratorがなんかよろしくやってくれるらしい / accelerator will do something good
     if cfg.performance.deepspeed:
         flags = strategies.get_text_encoders_train_flags(cfg, text_encoders)
-        ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, unet=unet if train_unet else None,
-                                                           text_encoder1=text_encoders[0] if flags[0] else None,
-                                                           text_encoder2=(
-                                                               text_encoders[1] if flags[1] else None) if len(
-                                                               text_encoders) > 1 else None, adapter=adapter)
-        ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            ds_model, optimizer, train_dataloader, lr_scheduler
+        ds_model = deepspeed_utils.prepare_deepspeed_model(
+            cfg.performance.precision,
+            unet=unet if train_unet else None,
+            text_encoder1=text_encoders[0] if flags[0] else None,
+            text_encoder2=(text_encoders[1] if flags[1] else None) if len(text_encoders) > 1 else None,
+            adapter=adapter,
         )
+        ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(ds_model, optimizer, train_dataloader, lr_scheduler)
         training_model = ds_model
     else:
         if train_unet:
@@ -412,9 +407,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         else:
             pass  # if text_encoder is not trained, no need to prepare. and device and dtype are already set
 
-        adapter, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            adapter, optimizer, train_dataloader, lr_scheduler
-        )
+        adapter, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(adapter, optimizer, train_dataloader, lr_scheduler)
         training_model = adapter
 
     if val_dataset_group is not None:
@@ -452,9 +445,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         patch_accelerator_for_fp16_training(accelerator)
 
     # before resuming make hook for saving/loading to save/load the peft weights only
-    get_steps_from_state = register_adapter_state_hooks(
-        accelerator, adapter, cfg, current_epoch, current_step
-    )
+    get_steps_from_state = register_adapter_state_hooks(accelerator, adapter, cfg, current_epoch, current_step)
 
     # resumeする
     resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving, cfg.output.huggingface)
@@ -514,12 +505,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     timestep_counts = None
     plotter_settings = None
     if is_main_process:
-        timestep_counts, plotter_settings = setup_live_plotter(
-            cfg, noise_scheduler, strategies.la_sampler, strategies
-        )
+        timestep_counts, plotter_settings = setup_live_plotter(cfg, noise_scheduler, strategies.la_sampler, strategies)
 
-    edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss, cfg.training, noise_scheduler,
-                                                                                accelerator)
+    edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss, cfg.training, noise_scheduler, accelerator)
 
     init_trackers(accelerator, cfg.output.logging, "adapter_train")
 
@@ -585,18 +573,36 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     accumulation_counter = 0
 
     # For --sample_at_first
-    if sample_images_check(cfg.output.sampling, 0, global_step) or calculate_val_loss_check(cfg.validation, cfg.training, global_step, 0,
-                                                                                     val_dataloader, train_dataloader):
+    if sample_images_check(cfg.output.sampling, 0, global_step) or calculate_val_loss_check(
+        cfg.validation, cfg.training, global_step, 0, val_dataloader, train_dataloader
+    ):
         # Switch peft to eval mode
         accelerator.unwrap_model(adapter).eval()
         optimizer_eval_fn()
         strategies.sample_images(accelerator, cfg, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
         if calculate_val_loss_check(cfg.validation, cfg.training, global_step, 0, val_dataloader, train_dataloader):
             current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(
-                global_step, 0, train_dataloader, val_loss_recorder, val_dataloader,
-                cyclic_val_dataloader, adapter, tokenize_strategy,
-                text_encoders, text_encoding_strategy, unet, vae, noise_scheduler,
-                vae_dtype, weight_dtype, accelerator, cfg, 0, None, train_text_encoder)
+                global_step,
+                0,
+                train_dataloader,
+                val_loss_recorder,
+                val_dataloader,
+                cyclic_val_dataloader,
+                adapter,
+                tokenize_strategy,
+                text_encoders,
+                text_encoding_strategy,
+                unet,
+                vae,
+                noise_scheduler,
+                vae_dtype,
+                weight_dtype,
+                accelerator,
+                cfg,
+                0,
+                None,
+                train_text_encoder,
+            )
         # Switch peft to train mode
         optimizer_train_fn()
         accelerator.unwrap_model(adapter).train()
@@ -623,7 +629,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             current_loss_scaled=current_global_step_loss_scaled,
             average_loss_scaled=average_loss_scaled,
             current_val_loss=current_val_loss,
-            average_val_loss=average_val_loss
+            average_val_loss=average_val_loss,
         )
         # log empty object to commit the sample images to wandb
         accelerator.log(logs, step=0)
@@ -645,15 +651,14 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         logger.info(f"text_encoder [{i}] dtype: {param_3rd.dtype}, device: {t_enc.device}")
 
     # --- Dynamic Timestep Schedule ---
-    dynamic_timestep_schedule, current_min_timestep, current_max_timestep = parse_dynamic_timestep_schedule(cfg,
-                                                                                                            noise_scheduler,
-                                                                                                            accelerator)
+    dynamic_timestep_schedule, current_min_timestep, current_max_timestep = parse_dynamic_timestep_schedule(
+        cfg, noise_scheduler, accelerator
+    )
 
     clean_memory_on_device(accelerator.device)
 
     progress_bar = tqdm(
-        range(cfg.training.max_train_steps - initial_step), smoothing=0, disable=not accelerator.is_local_main_process,
-        desc="steps"
+        range(cfg.training.max_train_steps - initial_step), smoothing=0, disable=not accelerator.is_local_main_process, desc="steps"
     )
 
     for epoch in range(epoch_to_start, num_train_epochs):
@@ -674,8 +679,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             current_step.value = global_step
 
             # --- Add this block to update the timesteps range ---
-            if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= \
-                    dynamic_timestep_schedule[0][0]:
+            if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= dynamic_timestep_schedule[0][0]:
                 # Get the next schedule stage and remove it from the list
                 _, new_min, new_max = dynamic_timestep_schedule.pop(0)
                 current_min_timestep = new_min
@@ -762,36 +766,39 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 progress_bar.update(1)
                 global_step += 1
 
-                if (sample_images_check(cfg.output.sampling, None, global_step) or
-                        calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, train_dataloader) or
-                        cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0):
-
+                if (
+                    sample_images_check(cfg.output.sampling, None, global_step)
+                    or calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, train_dataloader)
+                    or cfg.output.saving.save_every_n_steps is not None
+                    and global_step % cfg.output.saving.save_every_n_steps == 0
+                ):
                     accelerator.unwrap_model(adapter).eval()
                     optimizer_eval_fn()
-                    strategies.sample_images(
-                        accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
-                    )
+                    strategies.sample_images(accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
 
                     if calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, train_dataloader):
-                        current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(global_step, step,
-                                                                                               skipped_dataloader or train_dataloader,
-                                                                                               val_loss_recorder,
-                                                                                               val_dataloader,
-                                                                                               cyclic_val_dataloader,
-                                                                                               adapter,
-                                                                                               tokenize_strategy,
-                                                                                               text_encoders,
-                                                                                               text_encoding_strategy,
-                                                                                               unet,
-                                                                                               vae,
-                                                                                               noise_scheduler,
-                                                                                               vae_dtype,
-                                                                                               weight_dtype,
-                                                                                               accelerator,
-                                                                                               cfg,
-                                                                                               batch,
-                                                                                               current_epoch.value,
-                                                                                               train_text_encoder)
+                        current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(
+                            global_step,
+                            step,
+                            skipped_dataloader or train_dataloader,
+                            val_loss_recorder,
+                            val_dataloader,
+                            cyclic_val_dataloader,
+                            adapter,
+                            tokenize_strategy,
+                            text_encoders,
+                            text_encoding_strategy,
+                            unet,
+                            vae,
+                            noise_scheduler,
+                            vae_dtype,
+                            weight_dtype,
+                            accelerator,
+                            cfg,
+                            batch,
+                            current_epoch.value,
+                            train_text_encoder,
+                        )
                     else:
                         current_val_loss, average_val_loss, val_logs = None, None, None
 
@@ -799,37 +806,39 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     if cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0:
                         accelerator.wait_for_everyone()
                         if accelerator.is_main_process:
-                            ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
-                                                           global_step)
+                            ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, global_step)
                             save_model(ckpt_name, accelerator.unwrap_model(adapter), global_step, epoch)
 
                             if cfg.loss.edm2.edm2_loss_weighting:
-                                loss_weights_ckpt_name = get_step_ckpt_name(cfg.output.saving,
-                                                                            "." + cfg.output.saving.save_model_as,
-                                                                            global_step, "_edm2_loss_weights")
-                                save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step,
-                                           epoch, dtype_override=torch.float32)
+                                loss_weights_ckpt_name = get_step_ckpt_name(
+                                    cfg.output.saving, "." + cfg.output.saving.save_model_as, global_step, "_edm2_loss_weights"
+                                )
+                                save_model(
+                                    loss_weights_ckpt_name,
+                                    accelerator.unwrap_model(edm2_model),
+                                    global_step,
+                                    epoch,
+                                    dtype_override=torch.float32,
+                                )
 
                             if cfg.output.saving.save_state:
                                 save_and_remove_state_stepwise(cfg.output.saving, accelerator, global_step)
 
                             remove_step_no = get_remove_step_no(cfg.output.saving, global_step)
                             if remove_step_no is not None:
-                                remove_ckpt_name = get_step_ckpt_name(cfg.output.saving,
-                                                                      "." + cfg.output.saving.save_model_as,
-                                                                      remove_step_no)
+                                remove_ckpt_name = get_step_ckpt_name(
+                                    cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_step_no
+                                )
                                 remove_model(remove_ckpt_name)
 
                                 if cfg.loss.edm2.edm2_loss_weighting:
-                                    remove_loss_weights_ckpt_name = get_step_ckpt_name(cfg.output.saving,
-                                                                                       "." + cfg.output.saving.save_model_as,
-                                                                                       remove_step_no,
-                                                                                       "_edm2_loss_weights")
+                                    remove_loss_weights_ckpt_name = get_step_ckpt_name(
+                                        cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_step_no, "_edm2_loss_weights"
+                                    )
                                     remove_model(remove_loss_weights_ckpt_name)
 
                     if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
-                        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000,
-                                                 accelerator.device)
+                        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
                     optimizer_train_fn()
                     accelerator.unwrap_model(adapter).train()
 
@@ -848,9 +857,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 progress_bar.set_postfix(**{**max_mean_logs, **logs})
 
                 if is_tracking:
-                    current_global_step_loss = (current_global_step_loss / accumulation_counter)
+                    current_global_step_loss = current_global_step_loss / accumulation_counter
                     if cfg.loss.edm2.edm2_loss_weighting:
-                        current_global_step_loss_scaled = (current_global_step_loss_scaled / accumulation_counter)
+                        current_global_step_loss_scaled = current_global_step_loss_scaled / accumulation_counter
                         average_loss_scaled: float = loss_scaled_recorder.average
                     else:
                         current_global_step_loss_scaled = None
@@ -874,7 +883,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                         average_loss_scaled=average_loss_scaled,
                         current_val_loss=current_val_loss,
                         average_val_loss=average_val_loss,
-                        timesteps=timesteps
+                        timesteps=timesteps,
                     )
                     step_logging(accelerator, logs, global_step, epoch + 1)
 
@@ -892,8 +901,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     # Send data to the live plotter
                     if strategies.live_plotter_process and strategies.live_plotter_process.poll() is None:
                         try:
-                            strategies.live_plotter_process.stdin.write(
-                                f"{','.join(map(str, timesteps_np))}\n".encode())
+                            strategies.live_plotter_process.stdin.write(f"{','.join(map(str, timesteps_np))}\n".encode())
                             strategies.live_plotter_process.stdin.flush()
                         except (BrokenPipeError, OSError):
                             logger.error("Live plotter connection lost.")
@@ -917,43 +925,45 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
         accelerator.wait_for_everyone()
 
-        if (sample_images_check(cfg.output.sampling, current_epoch.value, global_step) or
-                cfg.output.saving.save_every_n_epochs is not None):
-
+        if sample_images_check(cfg.output.sampling, current_epoch.value, global_step) or cfg.output.saving.save_every_n_epochs is not None:
             # 指定エポックごとにモデルを保存
             optimizer_eval_fn()
             accelerator.unwrap_model(adapter).eval()
             if cfg.output.saving.save_every_n_epochs is not None:
                 saving = current_epoch.value % cfg.output.saving.save_every_n_epochs == 0 and current_epoch.value < num_train_epochs
                 if is_main_process and saving:
-                    ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
-                                                    current_epoch.value)
+                    ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, current_epoch.value)
                     save_model(ckpt_name, accelerator.unwrap_model(adapter), global_step, current_epoch.value)
 
                     if cfg.loss.edm2.edm2_loss_weighting:
-                        loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.output.saving,
-                                                                     "." + cfg.output.saving.save_model_as,
-                                                                     current_epoch.value, "_edm2_loss_weights")
-                        save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step,
-                                   current_epoch.value, dtype_override=torch.float32)
+                        loss_weights_ckpt_name = get_epoch_ckpt_name(
+                            cfg.output.saving, "." + cfg.output.saving.save_model_as, current_epoch.value, "_edm2_loss_weights"
+                        )
+                        save_model(
+                            loss_weights_ckpt_name,
+                            accelerator.unwrap_model(edm2_model),
+                            global_step,
+                            current_epoch.value,
+                            dtype_override=torch.float32,
+                        )
 
                     remove_epoch_no = get_remove_epoch_no(cfg.output.saving, current_epoch.value)
                     if remove_epoch_no is not None:
-                        remove_ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
-                                                               remove_epoch_no)
+                        remove_ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_epoch_no)
                         remove_model(remove_ckpt_name)
 
                         if cfg.loss.edm2.edm2_loss_weighting:
-                            remove_loss_weights_ckpt_name = get_epoch_ckpt_name(cfg.output.saving,
-                                                                                "." + cfg.output.saving.save_model_as,
-                                                                                remove_epoch_no, "_edm2_loss_weights")
+                            remove_loss_weights_ckpt_name = get_epoch_ckpt_name(
+                                cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_epoch_no, "_edm2_loss_weights"
+                            )
                             remove_model(remove_loss_weights_ckpt_name)
 
                     if cfg.output.saving.save_state:
                         save_and_remove_state_on_epoch_end(cfg.output.saving, accelerator, current_epoch.value)
 
-            strategies.sample_images(accelerator, cfg, current_epoch.value, global_step, accelerator.device, vae, tokenizers,
-                               text_encoder, unet)
+            strategies.sample_images(
+                accelerator, cfg, current_epoch.value, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
+            )
             progress_bar.unpause()
             optimizer_train_fn()
             accelerator.unwrap_model(adapter).train()
@@ -977,16 +987,22 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         save_model(ckpt_name, adapter, global_step, num_train_epochs, force_sync_upload=True)
 
         if cfg.loss.edm2.edm2_loss_weighting:
-            loss_weights_ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
-                                                        "_edm2_loss_weights")
-            save_model(loss_weights_ckpt_name, accelerator.unwrap_model(edm2_model), global_step, num_train_epochs,
-                       force_sync_upload=True, dtype_override=torch.float32)
+            loss_weights_ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, "_edm2_loss_weights")
+            save_model(
+                loss_weights_ckpt_name,
+                accelerator.unwrap_model(edm2_model),
+                global_step,
+                num_train_epochs,
+                force_sync_upload=True,
+                dtype_override=torch.float32,
+            )
 
     logger.info("model saved.")
 
 
 # Register Hydra schema for this script
 from library.config.schemas import register_sdxl_peft
+
 register_sdxl_peft()
 
 

@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    assert not args.recursive or (
-        args.recursive and args.full_path
-    ), "recursive requires full_path / recursiveはfull_pathと同時に指定してください"
+    assert not args.recursive or (args.recursive and args.full_path), (
+        "recursive requires full_path / recursiveはfull_pathと同時に指定してください"
+    )
 
     train_data_dir_path = Path(args.train_data_dir)
     image_paths: list[Path] = glob_images_pathlib(train_data_dir_path, args.recursive)

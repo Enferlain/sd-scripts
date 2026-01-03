@@ -1,38 +1,30 @@
-
 import torch
 from typing import TYPE_CHECKING
 import library.models.sd_model_util
 from library.utils import model_metadata
 from library.config.dataclasses.loss import LossConfig
-from library.config.dataclasses.output import (
-    SavingConfig,
-    MetadataConfig,
-    HuggingFaceConfig
-)
-from library.training.checkpointing import (
-    save_sd_model_on_train_end_common,
-    save_sd_model_on_epoch_end_or_stepwise_common
-)
+from library.config.dataclasses.output import SavingConfig, MetadataConfig, HuggingFaceConfig
+from library.training.checkpointing import save_sd_model_on_train_end_common, save_sd_model_on_epoch_end_or_stepwise_common
 
 if TYPE_CHECKING:
     from accelerate import Accelerator
 
 
 def save_sd_model_on_train_end(
-        saving_config: SavingConfig,
-        metadata_config: MetadataConfig,
-        loss_config: LossConfig,
-        v2: bool,
-        src_path: str,
-        save_stable_diffusion_format: bool,
-        use_safetensors: bool,
-        save_dtype: torch.dtype,
-        epoch: int,
-        global_step: int,
-        text_encoder,
-        unet,
-        vae,
-        hf_config: HuggingFaceConfig | None = None,
+    saving_config: SavingConfig,
+    metadata_config: MetadataConfig,
+    loss_config: LossConfig,
+    v2: bool,
+    src_path: str,
+    save_stable_diffusion_format: bool,
+    use_safetensors: bool,
+    save_dtype: torch.dtype,
+    epoch: int,
+    global_step: int,
+    text_encoder,
+    unet,
+    vae,
+    hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Saves the Stable Diffusion (v1.5/v2) model at the end of training.
@@ -53,6 +45,7 @@ def save_sd_model_on_train_end(
         vae: VAE model.
         hf_config: Configuration for Hugging Face integration.
     """
+
     def sd_saver(ckpt_file, epoch_no, global_step):
         modelspec_metadata = model_metadata.get_model_metadata_from_config(
             state_dict=None,
@@ -79,23 +72,23 @@ def save_sd_model_on_train_end(
 
 
 def save_sd_model_on_epoch_end_or_stepwise(
-        saving_config: SavingConfig,
-        metadata_config: MetadataConfig,
-        loss_config: LossConfig,
-        v2: bool,
-        on_epoch_end: bool,
-        accelerator: "Accelerator",
-        src_path: str,
-        save_stable_diffusion_format: bool,
-        use_safetensors: bool,
-        save_dtype: torch.dtype,
-        epoch: int,
-        num_train_epochs: int,
-        global_step: int,
-        text_encoder,
-        unet,
-        vae,
-        hf_config: HuggingFaceConfig | None = None,
+    saving_config: SavingConfig,
+    metadata_config: MetadataConfig,
+    loss_config: LossConfig,
+    v2: bool,
+    on_epoch_end: bool,
+    accelerator: "Accelerator",
+    src_path: str,
+    save_stable_diffusion_format: bool,
+    use_safetensors: bool,
+    save_dtype: torch.dtype,
+    epoch: int,
+    num_train_epochs: int,
+    global_step: int,
+    text_encoder,
+    unet,
+    vae,
+    hf_config: HuggingFaceConfig | None = None,
 ) -> None:
     """
     Saves the Stable Diffusion (v1.5/v2) model at epoch end or stepwise.
@@ -122,6 +115,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         vae: VAE model.
         hf_config: Configuration for Hugging Face integration.
     """
+
     def sd_saver(ckpt_file, epoch_no, global_step):
         modelspec_metadata = model_metadata.get_model_metadata_from_config(
             state_dict=None,

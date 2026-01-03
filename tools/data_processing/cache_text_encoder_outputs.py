@@ -23,7 +23,7 @@ from library.config.arguments import (
     add_dataset_arguments,
     add_masked_loss_arguments,
     add_dit_training_arguments,
-    read_config_from_file
+    read_config_from_file,
 )
 
 # TODO add back missing pipes
@@ -54,12 +54,12 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     is_sdxl = args.sdxl
     is_flux = args.flux
 
-    assert (
-        is_sdxl or is_flux
-    ), "Cache text encoder outputs to disk is only supported for SDXL and FLUX models / テキストエンコーダ出力のディスクキャッシュはSDXLまたはFLUXでのみ有効です"
-    assert (
-        is_sdxl or args.weighted_captions is None
-    ), "Weighted captions are only supported for SDXL models / 重み付きキャプションはSDXLモデルでのみ有効です"
+    assert is_sdxl or is_flux, (
+        "Cache text encoder outputs to disk is only supported for SDXL and FLUX models / テキストエンコーダ出力のディスクキャッシュはSDXLまたはFLUXでのみ有効です"
+    )
+    assert is_sdxl or args.weighted_captions is None, (
+        "Weighted captions are only supported for SDXL models / 重み付きキャプションはSDXLモデルでのみ有効です"
+    )
 
     set_tokenize_strategy(is_sd, is_sdxl, is_flux, args)
 
@@ -82,11 +82,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
                 logger.info("Using DreamBooth method.")
                 user_config = {
                     "datasets": [
-                        {
-                            "subsets": config_util.generate_dreambooth_subsets_config_by_subdirs(
-                                args.train_data_dir, args.reg_data_dir
-                            )
-                        }
+                        {"subsets": config_util.generate_dreambooth_subsets_config_by_subdirs(args.train_data_dir, args.reg_data_dir)}
                     ]
                 }
             else:
@@ -123,16 +119,12 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     # モデルを読み込む
     logger.info("load model")
     if is_sdxl:
-        _, text_encoder1, text_encoder2, _, _, _, _ = load_target_model_sdxl(
-            args, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype
-        )
+        _, text_encoder1, text_encoder2, _, _, _, _ = load_target_model_sdxl(args, accelerator, MODEL_VERSION_SDXL_BASE_V1_0, weight_dtype)
         text_encoder1.to(accelerator.device, weight_dtype)
         text_encoder2.to(accelerator.device, weight_dtype)
         text_encoders = [text_encoder1, text_encoder2]
     else:
-        clip_l = flux_utils.load_clip_l(
-            args.clip_l, weight_dtype, accelerator.device, disable_mmap=args.disable_mmap_load_safetensors
-        )
+        clip_l = flux_utils.load_clip_l(args.clip_l, weight_dtype, accelerator.device, disable_mmap=args.disable_mmap_load_safetensors)
 
         t5xxl = flux_utils.load_t5xxl(args.t5xxl, None, accelerator.device, disable_mmap=args.disable_mmap_load_safetensors)
 

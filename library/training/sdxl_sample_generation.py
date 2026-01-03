@@ -1,6 +1,7 @@
 from library.training.sample_generation import sample_images_common
 from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
 
+
 def sample_images(*args, **kwargs):
     """
     Generates sample images using the SDXL pipeline.

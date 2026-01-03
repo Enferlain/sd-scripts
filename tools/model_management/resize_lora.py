@@ -198,9 +198,7 @@ def resize_lora_model(lora_sd, new_rank, new_conv_rank, save_dtype, device, dyna
     fro_list = []
 
     if dynamic_method:
-        logger.info(
-            f"Dynamically determining new alphas and dims based off {dynamic_method}: {dynamic_param}, max rank is {new_rank}"
-        )
+        logger.info(f"Dynamically determining new alphas and dims based off {dynamic_method}: {dynamic_param}, max rank is {new_rank}")
 
     lora_down_weight = None
     lora_up_weight = None
@@ -243,7 +241,6 @@ def resize_lora_model(lora_sd, new_rank, new_conv_rank, save_dtype, device, dyna
             weights_loaded = lora_down_weight is not None and lora_up_weight is not None
 
             if weights_loaded:
-
                 conv2d = len(lora_down_weight.size()) == 4
                 old_rank = lora_down_weight.size()[0]
                 max_old_rank = max(max_old_rank or 0, old_rank)
@@ -268,9 +265,7 @@ def resize_lora_model(lora_sd, new_rank, new_conv_rank, save_dtype, device, dyna
                         fro_list.append(float(fro_retained))
 
                     verbose_str += f"{block_down_name:75} | "
-                    verbose_str += (
-                        f"sum(S) retained: {sum_retained:.1%}, fro retained: {fro_retained:.1%}, max(S) ratio: {max_ratio:0.1f}"
-                    )
+                    verbose_str += f"sum(S) retained: {sum_retained:.1%}, fro retained: {fro_retained:.1%}, max(S) ratio: {max_ratio:0.1f}"
 
                 if verbose and dynamic_method:
                     verbose_str += f", dynamic | dim: {param_dict['new_rank']}, alpha: {param_dict['new_alpha']}\n"
@@ -344,9 +339,7 @@ def resize(args):
         metadata["ss_adapter_rank"] = str(args.new_rank)
         metadata["ss_adapter_alpha"] = str(new_alpha)
     else:
-        metadata["ss_training_comment"] = (
-            f"Dynamic resize with {args.dynamic_method}: {args.dynamic_param} from {old_dim}; {comment}"
-        )
+        metadata["ss_training_comment"] = f"Dynamic resize with {args.dynamic_method}: {args.dynamic_param} from {old_dim}; {comment}"
         metadata["ss_adapter_rank"] = "Dynamic"
         metadata["ss_adapter_alpha"] = "Dynamic"
 
@@ -393,12 +386,8 @@ def setup_parser() -> argparse.ArgumentParser:
         default=None,
         help="LoRA model to resize at to new rank: ckpt or safetensors file / 読み込むLoRAモデル、ckptまたはsafetensors",
     )
-    parser.add_argument(
-        "--device", type=str, default=None, help="device to use, cuda for GPU / 計算を行うデバイス、cuda でGPUを使う"
-    )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Display verbose resizing information / rank変更時の詳細情報を出力する"
-    )
+    parser.add_argument("--device", type=str, default=None, help="device to use, cuda for GPU / 計算を行うデバイス、cuda でGPUを使う")
+    parser.add_argument("--verbose", action="store_true", help="Display verbose resizing information / rank変更時の詳細情報を出力する")
     parser.add_argument(
         "--dynamic_method",
         type=str,

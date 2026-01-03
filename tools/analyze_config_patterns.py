@@ -76,9 +76,7 @@ def analyze_file(filepath: str) -> dict:
         for var in config_vars:
             def_match = re.match(rf"^\s*{var}\s*=\s*cfg\.", line)
             if def_match:
-                results["variable_definitions"].append(
-                    {"line": i, "variable": var, "content": stripped}
-                )
+                results["variable_definitions"].append({"line": i, "variable": var, "content": stripped})
 
         # Detect usages of *_config variables
         for var in config_vars:
@@ -98,9 +96,7 @@ def analyze_file(filepath: str) -> dict:
 
         # Detect direct cfg.* usage
         if "cfg." in line and not any(f"{v} = cfg." in line for v in config_vars):
-            results["cfg_direct_usages"].append(
-                {"line": i, "method": current_method, "content": stripped[:100]}
-            )
+            results["cfg_direct_usages"].append({"line": i, "method": current_method, "content": stripped[:100]})
 
     return results
 
@@ -128,9 +124,7 @@ def generate_report(results: dict, output_path: str):
     # Section 1: Variable definitions (can be deleted after refactoring train())
     report.append("=" * 80)
     report.append("1. VARIABLE DEFINITIONS IN train() - TO DELETE AFTER REFACTORING")
-    report.append(
-        "   These are aliases like 'data_config = cfg.data' that can be removed"
-    )
+    report.append("   These are aliases like 'data_config = cfg.data' that can be removed")
     report.append("=" * 80)
     for item in results["variable_definitions"]:
         report.append(f"  Line {item['line']}: {item['content']}")
@@ -139,26 +133,18 @@ def generate_report(results: dict, output_path: str):
     # Section 2: Method signatures with *_config params
     report.append("=" * 80)
     report.append("2. METHOD SIGNATURES WITH *_config PARAMETERS")
-    report.append(
-        "   These CANNOT use cfg.* as parameter names (invalid Python syntax)"
-    )
-    report.append(
-        "   Keep as-is, OR refactor method to accept cfg and access internally"
-    )
+    report.append("   These CANNOT use cfg.* as parameter names (invalid Python syntax)")
+    report.append("   Keep as-is, OR refactor method to accept cfg and access internally")
     report.append("=" * 80)
     for item in results["method_signatures"]:
-        report.append(
-            f"  Line {item['line']} - {item['method']}(): param '{item['param']}'"
-        )
+        report.append(f"  Line {item['line']} - {item['method']}(): param '{item['param']}'")
         report.append(f"    {item['content']}")
     report.append("")
 
     # Section 3: Usages in train() - could be refactored
     report.append("=" * 80)
     report.append("3. *_config USAGES IN train() - COULD CHANGE TO cfg.*")
-    report.append(
-        "   Since train() has 'cfg' parameter, these could become cfg.* directly"
-    )
+    report.append("   Since train() has 'cfg' parameter, these could become cfg.* directly")
     report.append("=" * 80)
 
     by_var = defaultdict(list)
@@ -176,9 +162,7 @@ def generate_report(results: dict, output_path: str):
     # Section 4: Usages in helper methods - must keep
     report.append("=" * 80)
     report.append("4. *_config USAGES IN HELPER METHODS - MUST KEEP AS-IS")
-    report.append(
-        "   These methods receive configs as parameters, so they MUST use those names"
-    )
+    report.append("   These methods receive configs as parameters, so they MUST use those names")
     report.append("=" * 80)
 
     by_method = defaultdict(list)
@@ -189,9 +173,7 @@ def generate_report(results: dict, output_path: str):
         report.append(f"\n  Method: {method}()")
         report.append("  " + "-" * 50)
         for item in items:
-            report.append(
-                f"    Line {item['line']} ({item['variable']}): {item['content']}"
-            )
+            report.append(f"    Line {item['line']} ({item['variable']}): {item['content']}")
     report.append("")
 
     # Section 5: Already using cfg.* - good!
@@ -213,9 +195,7 @@ def generate_report(results: dict, output_path: str):
     report.append("    - Consistent within the file, but different from other scripts")
     report.append("")
     report.append("  OPTION B: Refactor helper methods to accept cfg")
-    report.append(
-        "    - Change method params to accept 'cfg' instead of individual configs"
-    )
+    report.append("    - Change method params to accept 'cfg' instead of individual configs")
     report.append("    - Inside methods, use cfg.training.*, cfg.output.saving.*, etc.")
     report.append("    - train() can delete the alias variables")
     report.append("    - More consistent with sd_finetune.py pattern")
@@ -245,12 +225,8 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("QUICK SUMMARY:")
     print("=" * 60)
-    print(
-        f"  Variable definitions to potentially remove: {len(results['variable_definitions'])}"
-    )
-    print(
-        f"  Method signatures with *_config params: {len(results['method_signatures'])}"
-    )
+    print(f"  Variable definitions to potentially remove: {len(results['variable_definitions'])}")
+    print(f"  Method signatures with *_config params: {len(results['method_signatures'])}")
     print(f"  Usages in train() (could be cfg.*): {len(results['usages_in_train'])}")
     print(f"  Usages in helpers (must keep): {len(results['usages_in_helpers'])}")
     print(f"  Already using cfg.* pattern: {len(results['cfg_direct_usages'])}")

@@ -15,9 +15,10 @@ from library.config.dataclasses.validation import ValidationConfig
 @dataclass
 class SDXLPeftConfig:
     """Root configuration for SDXL PEFT/LoRA training.
-    
+
     This is the main config used by scripts/sdxl_peft.py.
     """
+
     model: ModelConfig = field(default_factory=ModelConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     peft: PeftConfig = field(default_factory=PeftConfig)

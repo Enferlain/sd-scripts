@@ -84,13 +84,11 @@ def main(args):
 
     # bucketのサイズを計算する
     max_reso = tuple([int(t) for t in args.max_resolution.split(",")])
-    assert (
-        len(max_reso) == 2
-    ), f"illegal resolution (not 'width,height') / 画像サイズに誤りがあります。'幅,高さ'で指定してください: {args.max_resolution}"
-
-    bucket_manager = BucketManager(
-        args.bucket_no_upscale, max_reso, args.min_bucket_reso, args.max_bucket_reso, args.bucket_reso_steps
+    assert len(max_reso) == 2, (
+        f"illegal resolution (not 'width,height') / 画像サイズに誤りがあります。'幅,高さ'で指定してください: {args.max_resolution}"
     )
+
+    bucket_manager = BucketManager(args.bucket_no_upscale, max_reso, args.min_bucket_reso, args.max_bucket_reso, args.bucket_reso_steps)
     if not args.bucket_no_upscale:
         bucket_manager.make_buckets()
     else:
@@ -153,16 +151,14 @@ def main(args):
 
         if not args.bucket_no_upscale:
             # upscaleを行わないときには、resize後のサイズは、bucketのサイズと、縦横どちらかが同じであることを確認する
-            assert (
-                resized_size[0] == reso[0] or resized_size[1] == reso[1]
-            ), f"internal error, resized size not match: {reso}, {resized_size}, {image.width}, {image.height}"
-            assert (
-                resized_size[0] >= reso[0] and resized_size[1] >= reso[1]
-            ), f"internal error, resized size too small: {reso}, {resized_size}, {image.width}, {image.height}"
+            assert resized_size[0] == reso[0] or resized_size[1] == reso[1], (
+                f"internal error, resized size not match: {reso}, {resized_size}, {image.width}, {image.height}"
+            )
+            assert resized_size[0] >= reso[0] and resized_size[1] >= reso[1], (
+                f"internal error, resized size too small: {reso}, {resized_size}, {image.width}, {image.height}"
+            )
 
-        assert (
-            resized_size[0] >= reso[0] and resized_size[1] >= reso[1]
-        ), f"internal error resized size is small: {resized_size}, {reso}"
+        assert resized_size[0] >= reso[0] and resized_size[1] >= reso[1], f"internal error resized size is small: {resized_size}, {reso}"
 
         # 既に存在するファイルがあればshape等を確認して同じならskipする
         npz_file_name = get_npz_filename(args.train_data_dir, image_key, args.full_path, args.recursive)

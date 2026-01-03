@@ -13,11 +13,12 @@ from library.config.dataclasses.validation import ValidationConfig
 @dataclass
 class SDFineTuneConfig:
     """Root configuration for SD fine-tuning training.
-    
+
     Note: train_text_encoder and learning_rate_te have been removed.
     Text encoder training is now controlled via optimizer.learning_rates.text_encoders
     (LR-based control per Schema 1).
     """
+
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     data: DataConfig = field(default_factory=DataConfig)

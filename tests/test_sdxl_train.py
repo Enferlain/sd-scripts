@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 
+
 def test_sdxl_train_dry_run():
     """
     Tests the sdxl_finetune.py script with the dry_run flag to ensure
@@ -32,7 +33,8 @@ def test_sdxl_train_dry_run():
     assert os.path.exists(data_dir), f"Data directory not found at {data_dir}"
 
     command = [
-        "accelerate", "launch",
+        "accelerate",
+        "launch",
         "--num_processes=1",
         "--mixed_precision=no",  # Explicit to avoid config file issues
         script_path,
@@ -43,7 +45,7 @@ def test_sdxl_train_dry_run():
         "training.max_train_steps=1",
         f"output.saving.output_dir={output_dir}",
         "output.saving.output_name=dry_run_test",
-        "data.source.reg_data_dir=tests/assets/reg"
+        "data.source.reg_data_dir=tests/assets/reg",
     ]
 
     env = os.environ.copy()

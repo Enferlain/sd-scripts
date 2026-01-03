@@ -57,13 +57,13 @@ class OFTModule(torch.nn.Module):
         elif "Conv" in org_module.__class__.__name__:
             out_dim = org_module.out_channels
 
-        if type(alpha) == torch.Tensor:
+        if isinstance(alpha, torch.Tensor):
             alpha = alpha.detach().numpy()
-        
+
         # constraint in original paper is alpha * out_dim * out_dim, but we use alpha * out_dim for backward compatibility
         # original alpha is 1e-5, so we use 1e-2 or 1e-4 for alpha
-        self.constraint = alpha * out_dim 
-        
+        self.constraint = alpha * out_dim
+
         self.register_buffer("alpha", torch.tensor(alpha))
 
         self.block_size = out_dim // self.num_blocks
@@ -234,14 +234,10 @@ def create_adapter(
     if adapter_rank is None:
         adapter_rank = 4  # default
     if adapter_alpha is None:  # should be set
-        logger.info(
-            "alpha is not set, use default value 1e-3"
-        )
+        logger.info("alpha is not set, use default value 1e-3")
         adapter_alpha = 1e-3
     elif adapter_alpha >= 1:
-        logger.warning(
-            "alpha is too large (>=1, maybe default value is too large), please consider to set smaller value like 1e-3"
-        )
+        logger.warning("alpha is too large (>=1, maybe default value is too large), please consider to set smaller value like 1e-3")
 
     enable_all_linear = kwargs.get("enable_all_linear")
     enable_conv = kwargs.get("enable_conv")
@@ -331,6 +327,7 @@ class OFTAdapter(torch.nn.Module):
     Adapter class for OFT (Orthogonal Finetuning).
     Manages the application and training of OFT modules on U-Net.
     """
+
     UNET_TARGET_REPLACE_MODULE_ATTN_ONLY = ["CrossAttention"]
     UNET_TARGET_REPLACE_MODULE_ALL_LINEAR = ["Transformer2DModel"]
     UNET_TARGET_REPLACE_MODULE_CONV2D_3X3 = ["ResnetBlock2D", "Downsample2D", "Upsample2D"]
@@ -463,7 +460,7 @@ class OFTAdapter(torch.nn.Module):
 
         for oft in self.unet_ofts:
             sd_for_lora = {}
-            for key in weights_sd.keys():
+            for key in weights_sd:
                 if key.startswith(oft.oft_name):
                     sd_for_lora[key[len(oft.oft_name) + 1 :]] = weights_sd[key]
             oft.load_state_dict(sd_for_lora, False)
@@ -472,10 +469,7 @@ class OFTAdapter(torch.nn.Module):
         logger.info("weights are merged")
 
     # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
-    def prepare_optimizer_params(self, 
-                                 learning_rates: LearningRatesConfig, 
-                                 apply_orthograd: bool, 
-                                 orthograd_targets: list[str]):
+    def prepare_optimizer_params(self, learning_rates: LearningRatesConfig, apply_orthograd: bool, orthograd_targets: list[str]):
         """
         Prepare optimizer parameters.
         """

@@ -72,14 +72,10 @@ class TestArchitectureDetection:
 
     def test_adapter_suffixes(self):
         """Test LoRA and textual inversion suffixes."""
-        lora_arch = model_metadata.determine_architecture(
-            v2=False, v_parameterization=False, sdxl=True, lora=True, textual_inversion=False
-        )
+        lora_arch = model_metadata.determine_architecture(v2=False, v_parameterization=False, sdxl=True, lora=True, textual_inversion=False)
         assert lora_arch == "stable-diffusion-xl-v1-base/lora"
 
-        ti_arch = model_metadata.determine_architecture(
-            v2=False, v_parameterization=False, sdxl=False, lora=False, textual_inversion=True
-        )
+        ti_arch = model_metadata.determine_architecture(v2=False, v_parameterization=False, sdxl=False, lora=False, textual_inversion=True)
         assert ti_arch == "stable-diffusion-v1/textual-inversion"
 
 
@@ -323,6 +319,7 @@ class TestBuildMetadataIntegration:
 
 from library.config.dataclasses.output import MetadataConfig
 
+
 class TestGetSaiModelSpecFromConfig:
     """Test get_model_metadata_from_config function."""
 
@@ -333,7 +330,7 @@ class TestGetSaiModelSpecFromConfig:
             metadata_author="Test Author",
         )
         state_dict = {}
-        
+
         spec = model_metadata.get_model_metadata_from_config(
             state_dict=state_dict,
             metadata_config=metadata_config,
@@ -343,7 +340,7 @@ class TestGetSaiModelSpecFromConfig:
             is_lora=False,
             is_textual_inversion=False,
         )
-        
+
         assert spec["modelspec.title"] == "Test Title"
         assert spec["modelspec.author"] == "Test Author"
         assert spec["modelspec.architecture"] == "stable-diffusion-xl-v1-base"
@@ -353,7 +350,7 @@ class TestGetSaiModelSpecFromConfig:
         """Test merging optional metadata dict."""
         metadata_config = MetadataConfig()
         optional = {"custom_tag": "anime"}
-        
+
         spec = model_metadata.get_model_metadata_from_config(
             state_dict={},
             metadata_config=metadata_config,
@@ -362,16 +359,16 @@ class TestGetSaiModelSpecFromConfig:
             v_parameterization=False,
             is_lora=True,
             is_textual_inversion=False,
-            optional_metadata=optional
+            optional_metadata=optional,
         )
-        
+
         assert spec["modelspec.custom_tag"] == "anime"
         assert "lora" in spec["modelspec.architecture"]
 
     def test_resolution_override(self):
         """Test that provided resolution overrides defaults."""
         metadata_config = MetadataConfig()
-        
+
         spec = model_metadata.get_model_metadata_from_config(
             state_dict={},
             metadata_config=metadata_config,
@@ -380,15 +377,15 @@ class TestGetSaiModelSpecFromConfig:
             v_parameterization=False,
             is_lora=False,
             is_textual_inversion=False,
-            resolution=(768, 768)
+            resolution=(768, 768),
         )
-        
+
         assert spec["modelspec.resolution"] == "768x768"
 
     def test_timesteps_handling(self):
         """Test min/max timesteps logic."""
         metadata_config = MetadataConfig()
-        
+
         spec = model_metadata.get_model_metadata_from_config(
             state_dict={},
             metadata_config=metadata_config,
@@ -398,7 +395,7 @@ class TestGetSaiModelSpecFromConfig:
             is_lora=False,
             is_textual_inversion=False,
             min_timestep=100,
-            max_timestep=900
+            max_timestep=900,
         )
-        
-        assert spec["modelspec.timestep_range"] == "100,900" 
+
+        assert spec["modelspec.timestep_range"] == "100,900"

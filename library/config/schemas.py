@@ -14,6 +14,7 @@ from hydra.core.config_store import ConfigStore
 def register_sd_peft():
     """Register SD PEFT config schema."""
     from library.config.dataclasses.sd_peft import SDPeftConfig
+
     cs = ConfigStore.instance()
     cs.store(name="sd_peft_schema", node=SDPeftConfig)
 
@@ -21,6 +22,7 @@ def register_sd_peft():
 def register_sdxl_peft():
     """Register SDXL PEFT config schema."""
     from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
+
     cs = ConfigStore.instance()
     cs.store(name="sdxl_peft_schema", node=SDXLPeftConfig)
 
@@ -28,6 +30,7 @@ def register_sdxl_peft():
 def register_sd_finetune():
     """Register SD FineTune config schema."""
     from library.config.dataclasses.sd_finetune import SDFineTuneConfig
+
     cs = ConfigStore.instance()
     cs.store(name="sd_finetune_schema", node=SDFineTuneConfig)
 
@@ -35,6 +38,7 @@ def register_sd_finetune():
 def register_sdxl_finetune():
     """Register SDXL FineTune config schema."""
     from library.config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
+
     cs = ConfigStore.instance()
     cs.store(name="sdxl_finetune_schema", node=SDXLFineTuneConfig)
 
@@ -42,6 +46,7 @@ def register_sdxl_finetune():
 def register_sd_textual_inversion():
     """Register SD Textual Inversion config schema."""
     from library.config.dataclasses.sd_textual_inversion import TextualInversionConfig
+
     cs = ConfigStore.instance()
     cs.store(name="sd_textual_inversion_schema", node=TextualInversionConfig)
 
@@ -49,6 +54,7 @@ def register_sd_textual_inversion():
 def register_sdxl_textual_inversion():
     """Register SDXL Textual Inversion config schema."""
     from library.config.dataclasses.sdxl_textual_inversion import SDXLTextualInversionConfig
+
     cs = ConfigStore.instance()
     cs.store(name="sdxl_textual_inversion_schema", node=SDXLTextualInversionConfig)
 

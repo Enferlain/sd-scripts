@@ -178,12 +178,8 @@ def generate_report(results: list[FileAnalysis], output_path: str):
     report.append("=" * 100)
     report.append("")
     report.append("Pattern Guide:")
-    report.append(
-        "  - Scripts/Strategies: Should use cfg.* (e.g., cfg.training.max_train_steps)"
-    )
-    report.append(
-        "  - Library utilities: Should use typed params (e.g., training_config: TrainingConfig)"
-    )
+    report.append("  - Scripts/Strategies: Should use cfg.* (e.g., cfg.training.max_train_steps)")
+    report.append("  - Library utilities: Should use typed params (e.g., training_config: TrainingConfig)")
     report.append("")
 
     # Group by file type
@@ -227,9 +223,7 @@ def generate_report(results: list[FileAnalysis], output_path: str):
             rel_path = f.filepath.replace("\\", "/")
             report.append(f"\n  File: {rel_path}")
             report.append(f"  Expected: {f.expected_pattern}")
-            report.append(
-                f"  config_* count: {f.config_var_count}, cfg.* count: {f.cfg_dot_count}"
-            )
+            report.append(f"  config_* count: {f.config_var_count}, cfg.* count: {f.cfg_dot_count}")
 
             if f.config_var_count > 0 and f.expected_pattern == "cfg.*":
                 report.append("  ISSUE: Using config_* when should use cfg.*")
@@ -282,7 +276,6 @@ def generate_report(results: list[FileAnalysis], output_path: str):
 
 
 if __name__ == "__main__":
-
     base_path = "."  # Run from project root
     output_path = "config_audit_report.txt"
 

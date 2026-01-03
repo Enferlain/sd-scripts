@@ -15,6 +15,7 @@ torch_version = float(torch.__version__[:3])
 
 # pylint: disable=protected-access, missing-function-docstring, line-too-long
 
+
 def ipex_init():  # pylint: disable=too-many-statements
     try:
         if hasattr(torch, "cuda") and hasattr(torch.cuda, "is_xpu_hijacked") and torch.cuda.is_xpu_hijacked:
@@ -23,11 +24,12 @@ def ipex_init():  # pylint: disable=too-many-statements
             try:
                 # force xpu device on torch compile and triton
                 # import inductor utils to get around lazy import
-                from torch._inductor import \
-                    utils as torch_inductor_utils  # pylint: disable=import-error, unused-import # noqa: F401
+                from torch._inductor import utils as torch_inductor_utils  # pylint: disable=import-error, unused-import # noqa: F401
+
                 torch._inductor.utils.GPU_TYPES = ["xpu"]
                 torch._inductor.utils.get_gpu_type = lambda *args, **kwargs: "xpu"
                 from triton import backends as triton_backends  # pylint: disable=import-error
+
                 triton_backends.backends["nvidia"].driver.is_active = lambda *args, **kwargs: False
             except Exception:
                 pass
@@ -130,7 +132,7 @@ def ipex_init():  # pylint: disable=too-many-statements
                 torch.cuda.List = torch.xpu.List
 
             # Memory:
-            if 'linux' in sys.platform and "WSL2" in os.popen("uname -a").read():
+            if "linux" in sys.platform and "WSL2" in os.popen("uname -a").read():
                 torch.xpu.empty_cache = lambda: None
             torch.cuda.empty_cache = torch.xpu.empty_cache
 
@@ -180,7 +182,8 @@ def ipex_init():  # pylint: disable=too-many-statements
             # torch.xpu.mem_get_info always returns the total memory as free memory
             torch.xpu.mem_get_info = lambda device=None: [
                 (torch.xpu.get_device_properties(device).total_memory - torch.xpu.memory_reserved(device)),
-                torch.xpu.get_device_properties(device).total_memory]
+                torch.xpu.get_device_properties(device).total_memory,
+            ]
             torch.cuda.mem_get_info = torch.xpu.mem_get_info
             torch._utils._get_available_device_type = lambda: "xpu"
             torch.has_cuda = True
@@ -200,6 +203,7 @@ def ipex_init():  # pylint: disable=too-many-statements
             device_supports_fp64 = ipex_hijacks()
             try:
                 from .diffusers import ipex_diffusers
+
                 ipex_diffusers(device_supports_fp64=device_supports_fp64)
             except Exception:  # pylint: disable=broad-exception-caught
                 pass

@@ -29,7 +29,7 @@ from library.config.arguments import (
     add_dataset_arguments,
     add_masked_loss_arguments,
     add_dit_training_arguments,
-    read_config_from_file
+    read_config_from_file,
 )
 from library.utils.torch_utils import set_seed_from_config, prepare_dtype
 
@@ -105,11 +105,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
                 logger.info("Using DreamBooth method.")
                 user_config = {
                     "datasets": [
-                        {
-                            "subsets": config_util.generate_dreambooth_subsets_config_by_subdirs(
-                                args.train_data_dir, args.reg_data_dir
-                            )
-                        }
+                        {"subsets": config_util.generate_dreambooth_subsets_config_by_subdirs(args.train_data_dir, args.reg_data_dir)}
                     ]
                 }
             else:
@@ -146,7 +142,11 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     # モデルを読み込む
     logger.info("load model")
     if is_sd:
-        _, vae, _, _ = load_target_model(args, weight_dtype, accelerator, )
+        _, vae, _, _ = load_target_model(
+            args,
+            weight_dtype,
+            accelerator,
+        )
     elif is_sdxl:
         (_, _, _, vae, _, _, _) = load_target_model_sdxl(args, accelerator, "sdxl", weight_dtype)
     else:

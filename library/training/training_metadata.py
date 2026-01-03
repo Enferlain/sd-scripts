@@ -116,7 +116,7 @@ def create_training_metadata(
         for dataset in train_dataset_group.datasets:
             # TODO: DATA REFACTOR - Use proper isinstance check once data module circular import is fixed
             # Currently using duck-typing: DreamBooth subsets have 'is_reg' attribute, FineTuning subsets don't
-            is_dreambooth_dataset = len(dataset.subsets) > 0 and hasattr(dataset.subsets[0], 'is_reg')
+            is_dreambooth_dataset = len(dataset.subsets) > 0 and hasattr(dataset.subsets[0], "is_reg")
             dataset_metadata = {
                 "is_dreambooth": is_dreambooth_dataset,
                 "batch_size_per_device": dataset.batch_size,
@@ -193,9 +193,7 @@ def create_training_metadata(
         metadata["ss_tag_frequency"] = json.dumps(tag_frequency)
         metadata["ss_dataset_dirs"] = json.dumps(dataset_dirs_info)
     else:
-        assert (
-            len(train_dataset_group.datasets) == 1
-        ), f"There should be a single dataset but {len(train_dataset_group.datasets)} found."
+        assert len(train_dataset_group.datasets) == 1, f"There should be a single dataset but {len(train_dataset_group.datasets)} found."
 
         dataset = train_dataset_group.datasets[0]
 
@@ -204,10 +202,7 @@ def create_training_metadata(
         if use_dreambooth_method:
             for subset in dataset.subsets:
                 info = reg_dataset_dirs_info if subset.is_reg else dataset_dirs_info
-                info[os.path.basename(subset.image_dir)] = {
-                    "n_repeats": subset.num_repeats,
-                    "img_count": subset.img_count
-                }
+                info[os.path.basename(subset.image_dir)] = {"n_repeats": subset.num_repeats, "img_count": subset.img_count}
         else:
             for subset in dataset.subsets:
                 dataset_dirs_info[os.path.basename(subset.metadata_file)] = {
@@ -215,25 +210,27 @@ def create_training_metadata(
                     "img_count": subset.img_count,
                 }
 
-        metadata.update({
-            "ss_batch_size_per_device": cfg.training.train_batch_size,
-            "ss_total_batch_size": total_batch_size,
-            "ss_resolution": cfg.data.preprocessing.resolution,
-            "ss_color_aug": bool(cfg.data.preprocessing.color_aug),
-            "ss_flip_aug": bool(cfg.data.preprocessing.flip_aug),
-            "ss_random_crop": bool(cfg.data.preprocessing.random_crop),
-            "ss_random_crop_padding_percent": float(getattr(cfg.dataset, "random_crop_padding_percent", 0.05)),
-            "ss_shuffle_caption": bool(cfg.data.caption.shuffle_caption),
-            "ss_enable_bucket": bool(dataset.enable_bucket),
-            "ss_bucket_no_upscale": bool(dataset.bucket_no_upscale),
-            "ss_min_bucket_reso": dataset.min_bucket_reso,
-            "ss_max_bucket_reso": dataset.max_bucket_reso,
-            "ss_keep_tokens": cfg.data.caption.keep_tokens,
-            "ss_dataset_dirs": json.dumps(dataset_dirs_info),
-            "ss_reg_dataset_dirs": json.dumps(reg_dataset_dirs_info),
-            "ss_tag_frequency": json.dumps(dataset.tag_frequency),
-            "ss_bucket_info": json.dumps(dataset.bucket_info),
-        })
+        metadata.update(
+            {
+                "ss_batch_size_per_device": cfg.training.train_batch_size,
+                "ss_total_batch_size": total_batch_size,
+                "ss_resolution": cfg.data.preprocessing.resolution,
+                "ss_color_aug": bool(cfg.data.preprocessing.color_aug),
+                "ss_flip_aug": bool(cfg.data.preprocessing.flip_aug),
+                "ss_random_crop": bool(cfg.data.preprocessing.random_crop),
+                "ss_random_crop_padding_percent": float(getattr(cfg.dataset, "random_crop_padding_percent", 0.05)),
+                "ss_shuffle_caption": bool(cfg.data.caption.shuffle_caption),
+                "ss_enable_bucket": bool(dataset.enable_bucket),
+                "ss_bucket_no_upscale": bool(dataset.bucket_no_upscale),
+                "ss_min_bucket_reso": dataset.min_bucket_reso,
+                "ss_max_bucket_reso": dataset.max_bucket_reso,
+                "ss_keep_tokens": cfg.data.caption.keep_tokens,
+                "ss_dataset_dirs": json.dumps(dataset_dirs_info),
+                "ss_reg_dataset_dirs": json.dumps(reg_dataset_dirs_info),
+                "ss_tag_frequency": json.dumps(dataset.tag_frequency),
+                "ss_bucket_info": json.dumps(dataset.bucket_info),
+            }
+        )
 
     # Adapter args
     if cfg.peft.adapter_args:

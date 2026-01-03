@@ -52,7 +52,7 @@ class TestParsePromptAttention:
         result = parse_prompt_attention("[deemphasized]")
         assert len(result) == 1
         assert result[0][0] == "deemphasized"
-        assert result[0][1] == pytest.approx(1/1.1, abs=0.001)
+        assert result[0][1] == pytest.approx(1 / 1.1, abs=0.001)
 
     def test_nested_round_brackets(self):
         """Nested round brackets should multiply weights."""
@@ -86,25 +86,25 @@ class TestParsePromptAttention:
     def test_complex_nested_example(self):
         """Test complex nested example from docstring."""
         result = parse_prompt_attention("a (((house:1.3)) [on] a (hill:0.5), sun, (((sky))).")
-        
+
         # Find the "house" entry
         house_entry = next((r for r in result if "house" in r[0]), None)
         assert house_entry is not None
         # house:1.3 nested twice more = 1.3 * 1.1 * 1.1 ≈ 1.573
         assert house_entry[1] == pytest.approx(1.573, abs=0.01)
-        
+
         # Find the "on" entry
         on_entry = next((r for r in result if r[0] == "on"), None)
         assert on_entry is not None
         # [on] decreases weight
         assert on_entry[1] == pytest.approx(1.0, abs=0.01)  # Inside () but also []
-        
+
         # Find the "hill" entry
         hill_entry = next((r for r in result if "hill" in r[0]), None)
         assert hill_entry is not None
         # hill:0.5 nested once more = 0.5 * 1.1 = 0.55
         assert hill_entry[1] == pytest.approx(0.55, abs=0.01)
-        
+
         # Find the "sky" entry
         sky_entry = next((r for r in result if "sky" in r[0]), None)
         assert sky_entry is not None
@@ -150,11 +150,9 @@ class TestPadTokensAndWeights:
         weights = [[1.0, 1.0, 1.0]]
         bos, eos = 49406, 49407  # Typical CLIP tokenizer values
         max_length = 77
-        
-        result_tokens, result_weights = pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos
-        )
-        
+
+        result_tokens, result_weights = pad_tokens_and_weights(tokens, weights, max_length, bos, eos)
+
         assert result_tokens[0][0] == bos
         assert len(result_tokens[0]) == max_length
         # All remaining positions should be EOS
@@ -166,11 +164,9 @@ class TestPadTokensAndWeights:
         weights = [[0.5, 1.0, 1.5]]
         bos, eos = 49406, 49407
         max_length = 77
-        
-        result_tokens, result_weights = pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos
-        )
-        
+
+        result_tokens, result_weights = pad_tokens_and_weights(tokens, weights, max_length, bos, eos)
+
         assert len(result_tokens[0]) == len(result_weights[0])
 
     def test_bos_weight_is_one(self):
@@ -179,11 +175,9 @@ class TestPadTokensAndWeights:
         weights = [[0.5, 0.5]]
         bos, eos = 49406, 49407
         max_length = 77
-        
-        _, result_weights = pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos
-        )
-        
+
+        _, result_weights = pad_tokens_and_weights(tokens, weights, max_length, bos, eos)
+
         assert result_weights[0][0] == 1.0
 
     def test_padding_weight_is_one(self):
@@ -192,11 +186,9 @@ class TestPadTokensAndWeights:
         weights = [[0.5, 0.5, 0.5]]
         bos, eos = 49406, 49407
         max_length = 77
-        
-        _, result_weights = pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos
-        )
-        
+
+        _, result_weights = pad_tokens_and_weights(tokens, weights, max_length, bos, eos)
+
         # After BOS and 3 original tokens, rest should be 1.0
         for i in range(4, max_length):
             assert result_weights[0][i] == 1.0
@@ -207,11 +199,9 @@ class TestPadTokensAndWeights:
         weights = [[0.5, 1.0, 1.5]]
         bos, eos = 49406, 49407
         max_length = 77
-        
-        _, result_weights = pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos
-        )
-        
+
+        _, result_weights = pad_tokens_and_weights(tokens, weights, max_length, bos, eos)
+
         # Positions 1, 2, 3 should have original weights
         assert result_weights[0][1] == 0.5
         assert result_weights[0][2] == 1.0
@@ -223,11 +213,9 @@ class TestPadTokensAndWeights:
         weights = [[1.0, 1.0, 1.0], [0.5, 0.5]]
         bos, eos = 49406, 49407
         max_length = 77
-        
-        result_tokens, result_weights = pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos
-        )
-        
+
+        result_tokens, result_weights = pad_tokens_and_weights(tokens, weights, max_length, bos, eos)
+
         assert len(result_tokens) == 2
         assert len(result_weights) == 2
         assert len(result_tokens[0]) == max_length
@@ -239,11 +227,9 @@ class TestPadTokensAndWeights:
         weights = [[]]
         bos, eos = 49406, 49407
         max_length = 77
-        
-        result_tokens, result_weights = pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos
-        )
-        
+
+        result_tokens, result_weights = pad_tokens_and_weights(tokens, weights, max_length, bos, eos)
+
         assert len(result_tokens[0]) == max_length
         assert result_tokens[0][0] == bos
 
@@ -254,11 +240,9 @@ class TestPadTokensAndWeights:
         bos, eos = 49406, 49407
         max_length = 152  # 2 chunks of 77
         chunk_length = 77
-        
-        result_tokens, result_weights = pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos, chunk_length=chunk_length
-        )
-        
+
+        result_tokens, result_weights = pad_tokens_and_weights(tokens, weights, max_length, bos, eos, chunk_length=chunk_length)
+
         assert len(result_tokens[0]) == max_length
 
 
@@ -292,11 +276,9 @@ class TestSdxlCrossValidation:
         weights = [[1.0, 1.0, 1.0]]
         bos, eos, pad = 49406, 49407, 0  # SDXL uses separate pad token
         max_length = 77
-        
-        result_tokens, result_weights = sdxl_pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos, pad
-        )
-        
+
+        result_tokens, result_weights = sdxl_pad_tokens_and_weights(tokens, weights, max_length, bos, eos, pad)
+
         assert result_tokens[0][0] == bos
         assert len(result_tokens[0]) == max_length
         # SDXL has explicit EOS after tokens, then PAD
@@ -308,13 +290,10 @@ class TestSdxlCrossValidation:
         weights = [[0.5, 1.0, 1.5]]
         bos, eos, pad = 49406, 49407, 0
         max_length = 77
-        
-        _, result_weights = sdxl_pad_tokens_and_weights(
-            tokens, weights, max_length, bos, eos, pad
-        )
-        
+
+        _, result_weights = sdxl_pad_tokens_and_weights(tokens, weights, max_length, bos, eos, pad)
+
         # Positions 1, 2, 3 should have original weights
         assert result_weights[0][1] == 0.5
         assert result_weights[0][2] == 1.0
         assert result_weights[0][3] == 1.5
-

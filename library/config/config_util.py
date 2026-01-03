@@ -22,11 +22,13 @@ logger = logging.getLogger(__name__)
 @runtime_checkable
 class RootConfig(Protocol):
     """Protocol defining the expected structure for any training config passed to BlueprintGenerator.
-    
-    All script-specific root configs (SDFineTuneConfig, SDPeftConfig, etc.) 
+
+    All script-specific root configs (SDFineTuneConfig, SDPeftConfig, etc.)
     should satisfy this protocol.
     """
+
     data: DataConfig
+
 
 # --- Dataclass Definitions for Blueprint ---
 # These dataclasses define the structure of the "blueprint" used to build the datasets.
@@ -78,7 +80,7 @@ class FineTuningSubsetParams(BaseSubsetParams):
 
 @dataclass
 class ControlNetSubsetParams(BaseSubsetParams):
-    conditioning_data_dir: str = None
+    conditioning_data_dir: str | None = None
     caption_extension: str = ".caption"
     cache_info: bool = False
 
@@ -159,9 +161,7 @@ class BlueprintGenerator:
 
         # Determine dataset type from the configuration of its subsets
         is_finetuning_type = any(hasattr(s, "metadata_file") and s.metadata_file for s in data_config.source.subsets)
-        is_controlnet_type = any(
-            hasattr(s, "conditioning_data_dir") and s.conditioning_data_dir for s in data_config.source.subsets
-        )
+        is_controlnet_type = any(hasattr(s, "conditioning_data_dir") and s.conditioning_data_dir for s in data_config.source.subsets)
 
         if is_controlnet_type:
             is_dreambooth = False
@@ -180,7 +180,7 @@ class BlueprintGenerator:
             dataset_params_klass = DreamBoothDatasetParams
 
         # Sub-configs to search for field values
-        SUB_CONFIGS = ['preprocessing', 'caption', 'bucketing', 'caching', 'source']
+        SUB_CONFIGS = ["preprocessing", "caption", "bucketing", "caching", "source"]
 
         subset_blueprints = []
         for subset_cfg in data_config.source.subsets:
@@ -199,7 +199,7 @@ class BlueprintGenerator:
             # Overwrite with subset-specific values
             # Convert subset_cfg to dict to iterate
             if hasattr(subset_cfg, "__dataclass_fields__"):
-                subset_cfg_dict = asdict(subset_cfg)
+                subset_cfg_dict = asdict(subset_cfg)  # type: ignore[type-var]
             elif isinstance(subset_cfg, dict):
                 subset_cfg_dict = subset_cfg
             else:
@@ -264,9 +264,7 @@ def generate_dataset_group_by_blueprint(
     val_datasets: list[DreamBoothDataset | FineTuningDataset | ControlNetDataset] = []
     for dataset_blueprint in dataset_group_blueprint.datasets:
         dataset_blueprint.params.validation_split = (
-            float(dataset_blueprint.params.validation_split)
-            if dataset_blueprint.params.validation_split is not None
-            else 0.0
+            float(dataset_blueprint.params.validation_split) if dataset_blueprint.params.validation_split is not None else 0.0
         )
 
         if not (0.0 <= dataset_blueprint.params.validation_split <= 1.0):
@@ -396,12 +394,10 @@ def generate_dataset_group_by_blueprint(
         dataset.make_buckets()
         dataset.set_seed(seed)
 
-    return (DatasetGroup(datasets), DatasetGroup(val_datasets) if val_datasets else None)
+    return (DatasetGroup(datasets), DatasetGroup(val_datasets) if val_datasets else None)  # type: ignore[arg-type]
 
 
-def generate_dreambooth_subsets_config_by_subdirs(
-    train_data_dir: str | None = None, reg_data_dir: str | None = None
-):
+def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: str | None = None, reg_data_dir: str | None = None):
     def extract_dreambooth_params(name: str) -> tuple[int, str]:
         tokens = name.split("_")
         try:
@@ -445,6 +441,7 @@ def generate_dreambooth_subsets_config_by_subdirs(
 
     return subsets_config
 
+
 def generate_user_config_from_dataset(cfg) -> dict:
     """
     Generate user_config from root config for DreamBooth subdirectory parsing.
@@ -453,9 +450,7 @@ def generate_user_config_from_dataset(cfg) -> dict:
     if source_config.dataset_class is None:
         user_config = {
             "datasets": [
-                {
-                    "subsets": generate_dreambooth_subsets_config_by_subdirs(source_config.train_data_dir, source_config.reg_data_dir)
-                }
+                {"subsets": generate_dreambooth_subsets_config_by_subdirs(source_config.train_data_dir, source_config.reg_data_dir)}
             ]
         }
     else:
@@ -463,6 +458,6 @@ def generate_user_config_from_dataset(cfg) -> dict:
         # but we need to structure it if needed.
         # However, BlueprintGenerator logic for arbitrary dataset is handled differently (by not calling it or handling it upstream).
         # If dataset_class is present, BlueprintGenerator might not be used or used differently.
-        user_config = {"datasets": []} # Empty or handled otherwise
+        user_config = {"datasets": []}  # Empty or handled otherwise
 
     return user_config

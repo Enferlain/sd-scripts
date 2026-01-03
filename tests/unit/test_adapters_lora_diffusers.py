@@ -4,7 +4,6 @@ Unit tests for the pure utility functions in library/adapters/lora_diffusers.py.
 Tests the UNet conversion map used to convert between Stability AI and Diffusers layer naming.
 """
 
-
 from library.adapters.lora_diffusers import make_unet_conversion_map, UNET_CONVERSION_MAP
 
 
@@ -79,7 +78,7 @@ class TestMakeUnetConversionMap:
         conv1_mappings = [k for k in result.keys() if "conv1" in result[k]]
         norm2_mappings = [k for k in result.keys() if "norm2" in result[k]]
         conv2_mappings = [k for k in result.keys() if "conv2" in result[k]]
-        
+
         assert len(norm1_mappings) > 0, "Should have norm1 mappings"
         assert len(conv1_mappings) > 0, "Should have conv1 mappings"
         assert len(norm2_mappings) > 0, "Should have norm2 mappings"

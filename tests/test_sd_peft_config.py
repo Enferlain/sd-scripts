@@ -2,6 +2,7 @@ import hydra
 from hydra.core.global_hydra import GlobalHydra
 import os
 
+
 def test_sd_peft_config_loading():
     GlobalHydra.instance().clear()
     # Use absolute path for config

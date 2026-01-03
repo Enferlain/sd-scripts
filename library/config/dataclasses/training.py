@@ -4,9 +4,14 @@ from dataclasses import dataclass, field
 @dataclass
 class TrainingConfig:
     """Core training loop settings."""
+
     train_batch_size: int = field(default=1, metadata={"help": "Number of images per training step per device"})
-    max_token_length: int | None = field(default=None, metadata={"help": "Maximum caption token length (75, 150, or 225; None uses model default)"})
-    max_train_steps: int = field(default=1600, metadata={"help": "Maximum number of training steps (overridden if max_train_epochs is set)"})
+    max_token_length: int | None = field(
+        default=None, metadata={"help": "Maximum caption token length (75, 150, or 225; None uses model default)"}
+    )
+    max_train_steps: int = field(
+        default=1600, metadata={"help": "Maximum number of training steps (overridden if max_train_epochs is set)"}
+    )
     max_train_epochs: int | None = field(default=None, metadata={"help": "Maximum training epochs (overrides max_train_steps if set)"})
     seed: int | None = field(default=None, metadata={"help": "Random seed for reproducibility (None for non-deterministic)"})
     gradient_accumulation_steps: int = field(default=1, metadata={"help": "Accumulate gradients over N steps before optimizer update"})

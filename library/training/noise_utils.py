@@ -65,7 +65,7 @@ def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler):
         alphas_bar_sqrt *= alphas_bar_sqrt_0 / (alphas_bar_sqrt_0 - alphas_bar_sqrt_T)
 
         # Convert alphas_bar_sqrt to betas
-        alphas_bar = alphas_bar_sqrt ** 2
+        alphas_bar = alphas_bar_sqrt**2
         alphas = alphas_bar[1:] / alphas_bar[:-1]
         alphas = torch.cat([alphas_bar[0:1], alphas])
         betas = 1 - alphas
@@ -104,8 +104,8 @@ def pyramid_noise_like(noise, device, iterations=6, discount=0.4) -> torch.Float
     u = torch.nn.Upsample(size=(w, h), mode="bilinear").to(device)
     for i in range(iterations):
         r = random.random() * 2 + 2  # Rather than always going 2x,
-        wn, hn = max(1, int(w / (r ** i))), max(1, int(h / (r ** i)))
-        noise += u(torch.randn(b, c, wn, hn).to(device)) * discount ** i
+        wn, hn = max(1, int(w / (r**i))), max(1, int(h / (r**i)))
+        noise += u(torch.randn(b, c, wn, hn).to(device)) * discount**i
         if wn == 1 or hn == 1:
             break  # Lowest resolution is 1x1
     return noise / noise.std()  # Scaled back to roughly unit variance

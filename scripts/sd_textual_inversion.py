@@ -102,9 +102,7 @@ class TextualInversionTrainer:
         is_v2 = cfg.model.model_type == "sd2"
         text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance.memory, weight_dtype, accelerator)
         return (
-            library.models.sd_model_util.get_model_version_str_for_sd1_sd2(
-                is_v2, cfg.loss.v_parameterization
-            ),
+            library.models.sd_model_util.get_model_version_str_for_sd1_sd2(is_v2, cfg.loss.v_parameterization),
             [text_encoder],
             vae,
             unet,
@@ -118,9 +116,7 @@ class TextualInversionTrainer:
             cfg.model.tokenizer_cache_dir,
         )
 
-    def get_tokenizers(
-        self, tokenize_strategy: strategy_sd.SdTokenizeStrategy
-    ) -> list[Any]:
+    def get_tokenizers(self, tokenize_strategy: strategy_sd.SdTokenizeStrategy) -> list[Any]:
         return [tokenize_strategy.tokenizer]
 
     def get_latents_caching_strategy(self, cfg):
@@ -138,9 +134,7 @@ class TextualInversionTrainer:
     def get_text_encoding_strategy(self, cfg):
         return strategy_sd.SdTextEncodingStrategy(cfg.training.clip_skip)
 
-    def get_models_for_text_encoding(
-        self, config, accelerator, text_encoders
-    ) -> list[Any]:
+    def get_models_for_text_encoding(self, config, accelerator, text_encoders) -> list[Any]:
         return text_encoders
 
     def call_unet(
@@ -214,9 +208,7 @@ class TextualInversionTrainer:
             # compatible to Web UI's file format
             data = torch.load(file, map_location="cpu")
             if type(data) != dict:
-                raise ValueError(
-                    f"weight file is not dict / 重みファイルがdict形式ではありません: {file}"
-                )
+                raise ValueError(f"weight file is not dict / 重みファイルがdict形式ではありません: {file}")
 
             if "string_to_param" in data:  # textual inversion embeddings
                 data = data["string_to_param"]
@@ -225,9 +217,7 @@ class TextualInversionTrainer:
 
         emb = next(iter(data.values()))
         if type(emb) != torch.Tensor:
-            raise ValueError(
-                f"weight file does not contains Tensor / 重みファイルのデータがTensorではありません: {file}"
-            )
+            raise ValueError(f"weight file does not contains Tensor / 重みファイルのデータがTensorではありません: {file}")
 
         if len(emb.size()) == 1:
             emb = emb.unsqueeze(0)
@@ -263,9 +253,7 @@ class TextualInversionTrainer:
         )
 
         weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
-        vae_dtype = (
-            torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
-        )
+        vae_dtype = torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype
 
         model_version, text_encoders, vae, unet = self.load_target_model(
             cfg,
@@ -276,13 +264,8 @@ class TextualInversionTrainer:
         init_token_ids_list = []
         if cfg.textual_inversion.init_word is not None:
             for i, tokenizer in enumerate(tokenizers):
-                init_token_ids = tokenizer.encode(
-                    cfg.textual_inversion.init_word, add_special_tokens=False
-                )
-                if (
-                    len(init_token_ids) > 1
-                    and len(init_token_ids) != cfg.textual_inversion.num_vectors_per_token
-                ):
+                init_token_ids = tokenizer.encode(cfg.textual_inversion.init_word, add_special_tokens=False)
+                if len(init_token_ids) > 1 and len(init_token_ids) != cfg.textual_inversion.num_vectors_per_token:
                     accelerator.print(
                         f"token length for init words is not same to num_vectors_per_token, init words is repeated or truncated: tokenizer {i + 1}, length {len(init_token_ids)}"
                     )
@@ -293,14 +276,11 @@ class TextualInversionTrainer:
         self.assert_token_string(cfg.textual_inversion.token_string, tokenizers)
 
         token_strings = [cfg.textual_inversion.token_string] + [
-            f"{cfg.textual_inversion.token_string}{i + 1}"
-            for i in range(cfg.textual_inversion.num_vectors_per_token - 1)
+            f"{cfg.textual_inversion.token_string}{i + 1}" for i in range(cfg.textual_inversion.num_vectors_per_token - 1)
         ]
         token_ids_list = []
         token_embeds_list = []
-        for i, (tokenizer, text_encoder, init_token_ids) in enumerate(
-            zip(tokenizers, text_encoders, init_token_ids_list)
-        ):
+        for i, (tokenizer, text_encoder, init_token_ids) in enumerate(zip(tokenizers, text_encoders, init_token_ids_list)):
             num_added_tokens = tokenizer.add_tokens(token_strings)
             assert num_added_tokens == cfg.textual_inversion.num_vectors_per_token, (
                 f"tokenizer has same word to token string. please use another one: tokenizer {i + 1}, {cfg.textual_inversion.token_string}"
@@ -308,10 +288,9 @@ class TextualInversionTrainer:
 
             token_ids = tokenizer.convert_tokens_to_ids(token_strings)
             accelerator.print(f"tokens are added for tokenizer {i + 1}: {token_ids}")
-            assert (
-                min(token_ids) == token_ids[0]
-                and token_ids[-1] == token_ids[0] + len(token_ids) - 1
-            ), f"token ids is not ordered : tokenizer {i + 1}, {token_ids}"
+            assert min(token_ids) == token_ids[0] and token_ids[-1] == token_ids[0] + len(token_ids) - 1, (
+                f"token ids is not ordered : tokenizer {i + 1}, {token_ids}"
+            )
             assert len(tokenizer) - 1 == token_ids[-1], (
                 f"token ids is not end of tokenize: tokenizer {i + 1}, {token_ids}, {len(tokenizer)}"
             )
@@ -322,9 +301,7 @@ class TextualInversionTrainer:
             token_embeds = text_encoder.get_input_embeddings().weight.data
             if init_token_ids is not None:
                 for i, token_id in enumerate(token_ids):
-                    token_embeds[token_id] = token_embeds[
-                        init_token_ids[i % len(init_token_ids)]
-                    ]
+                    token_embeds[token_id] = token_embeds[init_token_ids[i % len(init_token_ids)]]
                     # accelerator.print(token_id, token_embeds[token_id].mean(), token_embeds[token_id].min())
             token_embeds_list.append(token_embeds)
 
@@ -333,9 +310,7 @@ class TextualInversionTrainer:
             assert len(token_ids_list[-1]) == len(embeddings_list[0]), (
                 f"num_vectors_per_token is mismatch for weights: {len(embeddings_list[0])}"
             )
-            for token_ids, embeddings, token_embeds in zip(
-                token_ids_list, embeddings_list, token_embeds_list
-            ):
+            for token_ids, embeddings, token_embeds in zip(token_ids_list, embeddings_list, token_embeds_list):
                 for token_id, embedding in zip(token_ids, embeddings):
                     token_embeds[token_id] = embedding
             accelerator.print("weights loaded")
@@ -348,9 +323,7 @@ class TextualInversionTrainer:
             blueprint_generator = BlueprintGenerator()
             # BlueprintGenerator.generate() expects a RootConfig-like object with a .dataset attribute.
             blueprint = blueprint_generator.generate(cfg)
-            train_dataset_group, val_dataset_group = (
-                generate_dataset_group_by_blueprint(blueprint.dataset_group)
-            )
+            train_dataset_group, val_dataset_group = generate_dataset_group_by_blueprint(blueprint.dataset_group)
         else:
             # load_arbitrary_dataset accepts data_config and max_token_length
             train_dataset_group = load_arbitrary_dataset(cfg.data, cfg.training.max_token_length)
@@ -360,22 +333,12 @@ class TextualInversionTrainer:
 
         current_epoch = Value("i", 0)
         current_step = Value("i", 0)
-        ds_for_collator = (
-            train_dataset_group
-            if cfg.data.loader.max_workers == 0
-            else None
-        )
+        ds_for_collator = train_dataset_group if cfg.data.loader.max_workers == 0 else None
         collator = collator_class(current_epoch, current_step, ds_for_collator)
 
         if use_template:
-            accelerator.print(
-                f"use template for training captions. is object: {cfg.textual_inversion.use_object_template}"
-            )
-            templates = (
-                imagenet_templates_small
-                if cfg.textual_inversion.use_object_template
-                else imagenet_style_templates_small
-            )
+            accelerator.print(f"use template for training captions. is object: {cfg.textual_inversion.use_object_template}")
+            templates = imagenet_templates_small if cfg.textual_inversion.use_object_template else imagenet_style_templates_small
             replace_to = " ".join(token_strings)
             captions = []
             for tmpl in templates:
@@ -402,9 +365,7 @@ class TextualInversionTrainer:
             return
 
         if cache_latents:
-            assert train_dataset_group.is_latent_cacheable(), (
-                "when caching latents, either color_aug or random_crop cannot be used"
-            )
+            assert train_dataset_group.is_latent_cacheable(), "when caching latents, either color_aug or random_crop cannot be used"
 
         replace_unet_modules(
             unet,
@@ -413,9 +374,7 @@ class TextualInversionTrainer:
             cfg.performance.attention.sdpa,
         )
         if torch.__version__ >= "2.0.0":
-            vae.set_use_memory_efficient_attention_xformers(
-                cfg.performance.attention.xformers
-            )
+            vae.set_use_memory_efficient_attention_xformers(cfg.performance.attention.xformers)
 
         if cache_latents:
             vae.to(accelerator.device, dtype=vae_dtype)
@@ -436,8 +395,7 @@ class TextualInversionTrainer:
         trainable_params = []
         for text_encoder in text_encoders:
             trainable_params += text_encoder.get_input_embeddings().parameters()
-        _, _, optimizer = get_optimizer(cfg.optimizer, cfg.optimizer.learning_rates, cfg.optimizer.scheduler,
-                                        trainable_params)
+        _, _, optimizer = get_optimizer(cfg.optimizer, cfg.optimizer.learning_rates, cfg.optimizer.scheduler, trainable_params)
 
         train_dataset_group.set_current_strategies()
 
@@ -452,17 +410,10 @@ class TextualInversionTrainer:
         )
 
         if cfg.training.max_train_epochs is not None:
-            (cfg.training).max_train_steps = (
-                    cfg.training.max_train_epochs
-                    * math.ceil(
-                len(train_dataloader)
-                / accelerator.num_processes
-                / cfg.training.gradient_accumulation_steps
+            (cfg.training).max_train_steps = cfg.training.max_train_epochs * math.ceil(
+                len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
             )
-            )
-            accelerator.print(
-                f"override steps. steps for {cfg.training.max_train_epochs} epochs is: {cfg.training.max_train_steps}"
-            )
+            accelerator.print(f"override steps. steps for {cfg.training.max_train_epochs} epochs is: {cfg.training.max_train_steps}")
 
         train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
@@ -474,36 +425,23 @@ class TextualInversionTrainer:
             accelerator.num_processes,
         )
 
-        optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            optimizer, train_dataloader, lr_scheduler
-        )
-        text_encoders = [
-            accelerator.prepare(text_encoder) for text_encoder in text_encoders
-        ]
+        optimizer, train_dataloader, lr_scheduler = accelerator.prepare(optimizer, train_dataloader, lr_scheduler)
+        text_encoders = [accelerator.prepare(text_encoder) for text_encoder in text_encoders]
 
         index_no_updates_list = []
         orig_embeds_params_list = []
-        for tokenizer, token_ids, text_encoder in zip(
-            tokenizers, token_ids_list, text_encoders
-        ):
+        for tokenizer, token_ids, text_encoder in zip(tokenizers, token_ids_list, text_encoders):
             index_no_updates = torch.arange(len(tokenizer)) < token_ids[0]
             index_no_updates_list.append(index_no_updates)
 
-            orig_embeds_params = (
-                accelerator.unwrap_model(text_encoder)
-                .get_input_embeddings()
-                .weight.data.detach()
-                .clone()
-            )
+            orig_embeds_params = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight.data.detach().clone()
             orig_embeds_params_list.append(orig_embeds_params)
 
             text_encoder.requires_grad_(True)
             unwrapped_text_encoder = accelerator.unwrap_model(text_encoder)
             unwrapped_text_encoder.text_model.encoder.requires_grad_(False)
             unwrapped_text_encoder.text_model.final_layer_norm.requires_grad_(False)
-            unwrapped_text_encoder.text_model.embeddings.position_embedding.requires_grad_(
-                False
-            )
+            unwrapped_text_encoder.text_model.embeddings.position_embedding.requires_grad_(False)
 
         unet.requires_grad_(False)
         unet.to(accelerator.device, dtype=weight_dtype)
@@ -531,43 +469,21 @@ class TextualInversionTrainer:
 
         resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving, cfg.output.huggingface)
 
-        num_update_steps_per_epoch = math.ceil(
-            len(train_dataloader) / cfg.training.gradient_accumulation_steps
-        )
-        num_train_epochs = math.ceil(
-            cfg.training.max_train_steps / num_update_steps_per_epoch
-        )
-        if (cfg.output.saving.save_n_epoch_ratio is not None) and (
-                cfg.output.saving.save_n_epoch_ratio > 0
-        ):
-            cfg.output.saving.save_every_n_epochs = (
-                    math.floor(num_train_epochs / cfg.output.saving.save_n_epoch_ratio) or 1
-            )
+        num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
+        num_train_epochs = math.ceil(cfg.training.max_train_steps / num_update_steps_per_epoch)
+        if (cfg.output.saving.save_n_epoch_ratio is not None) and (cfg.output.saving.save_n_epoch_ratio > 0):
+            cfg.output.saving.save_every_n_epochs = math.floor(num_train_epochs / cfg.output.saving.save_n_epoch_ratio) or 1
 
-        total_batch_size = (
-                cfg.training.train_batch_size
-                * accelerator.num_processes
-                * cfg.training.gradient_accumulation_steps
-        )
+        total_batch_size = cfg.training.train_batch_size * accelerator.num_processes * cfg.training.gradient_accumulation_steps
         accelerator.print("running training")
-        accelerator.print(
-            f"  num train images * repeats: {train_dataset_group.num_train_images}"
-        )
+        accelerator.print(f"  num train images * repeats: {train_dataset_group.num_train_images}")
         accelerator.print(f"  num reg images: {train_dataset_group.num_reg_images}")
         accelerator.print(f"  num batches per epoch: {len(train_dataloader)}")
         accelerator.print(f"  num epochs: {num_train_epochs}")
-        accelerator.print(
-            f"  batch size per device: {cfg.training.train_batch_size}"
-        )
-        accelerator.print(
-            f"  total train batch size (with parallel & distributed & accumulation): {total_batch_size}"
-        )
-        accelerator.print(
-            f"  gradient accumulation steps = {cfg.training.gradient_accumulation_steps}"
-        )
-        accelerator.print(
-            f"  total optimization steps: {cfg.training.max_train_steps}"
-        )
+        accelerator.print(f"  batch size per device: {cfg.training.train_batch_size}")
+        accelerator.print(f"  total train batch size (with parallel & distributed & accumulation): {total_batch_size}")
+        accelerator.print(f"  gradient accumulation steps = {cfg.training.gradient_accumulation_steps}")
+        accelerator.print(f"  total optimization steps: {cfg.training.max_train_steps}")
 
         progress_bar = tqdm(
             range(cfg.training.max_train_steps),
@@ -665,44 +581,28 @@ class TextualInversionTrainer:
                 with accelerator.accumulate(text_encoders[0]):
                     with torch.no_grad():
                         if "latents" in batch and batch["latents"] is not None:
-                            latents = (
-                                batch["latents"]
-                                .to(accelerator.device)
-                                .to(dtype=weight_dtype)
-                            )
+                            latents = batch["latents"].to(accelerator.device).to(dtype=weight_dtype)
                         else:
                             # latentに変換
-                            latents = (
-                                vae.encode(batch["images"].to(dtype=vae_dtype))
-                                .latent_dist.sample()
-                                .to(dtype=weight_dtype)
-                            )
+                            latents = vae.encode(batch["images"].to(dtype=vae_dtype)).latent_dist.sample().to(dtype=weight_dtype)
                         latents = latents * self.vae_latent_scale
 
-                    input_ids = [
-                        ids.to(accelerator.device) for ids in batch["input_ids_list"]
-                    ]
+                    input_ids = [ids.to(accelerator.device) for ids in batch["input_ids_list"]]
                     text_encoder_conds = text_encoding_strategy.encode_tokens(
                         tokenize_strategy,
-                        self.get_models_for_text_encoding(
-                            cfg.model, accelerator, text_encoders
-                        ),
+                        self.get_models_for_text_encoding(cfg.model, accelerator, text_encoders),
                         input_ids,
                     )
                     if cfg.performance.precision.full_fp16:
-                        text_encoder_conds = [
-                            c.to(weight_dtype) for c in text_encoder_conds
-                        ]
+                        text_encoder_conds = [c.to(weight_dtype) for c in text_encoder_conds]
 
-                    noise, noisy_latents, timesteps = (
-                        get_noise_noisy_latents_and_timesteps(
-                            cfg.loss.regularization,
-                            cfg.timestep,
-                            cfg.training,
-                            noise_scheduler,
-                            latents,
-                            output_dtype=weight_dtype,
-                        )
+                    noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
+                        cfg.loss.regularization,
+                        cfg.timestep,
+                        cfg.training,
+                        noise_scheduler,
+                        latents,
+                        output_dtype=weight_dtype,
                     )
 
                     with accelerator.autocast():
@@ -722,9 +622,7 @@ class TextualInversionTrainer:
                     else:
                         target = noise
 
-                    huber_c = get_huber_threshold_if_needed(
-                        cfg.loss, timesteps, noise_scheduler
-                    )
+                    huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
                     loss = conditional_loss(
                         noise_pred.float(),
                         target.float(),
@@ -733,9 +631,7 @@ class TextualInversionTrainer:
                         huber_c,
                         scale=float(cfg.loss.loss_scale),
                     )
-                    if cfg.loss.masked.masked_loss or (
-                        "alpha_masks" in batch and batch["alpha_masks"] is not None
-                    ):
+                    if cfg.loss.masked.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                         loss = apply_masked_loss(loss, batch)
                     loss = loss.mean([1, 2, 3])
 
@@ -751,9 +647,7 @@ class TextualInversionTrainer:
                             cfg.loss.v_parameterization,
                         )
                     if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
-                        loss = scale_v_prediction_loss_like_noise_prediction(
-                            loss, timesteps, noise_scheduler
-                        )
+                        loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
                     if cfg.loss.snr.v_pred_like_loss:
                         loss = add_v_prediction_like_loss(
                             loss,
@@ -772,18 +666,15 @@ class TextualInversionTrainer:
                     loss = loss.mean()
 
                     accelerator.backward(loss)
-                    if (
-                            accelerator.sync_gradients
-                            and cfg.optimizer.max_grad_norm != 0.0
-                    ):
+                    if accelerator.sync_gradients and cfg.optimizer.max_grad_norm != 0.0:
                         params_to_clip = (
-                            accelerator.unwrap_model(text_encoder)  # TODO: Local variable 'text_encoder' might be referenced before assignment
+                            accelerator.unwrap_model(
+                                text_encoder
+                            )  # TODO: Local variable 'text_encoder' might be referenced before assignment
                             .get_input_embeddings()
                             .parameters()
                         )
-                        accelerator.clip_grad_norm_(
-                            params_to_clip, cfg.optimizer.max_grad_norm
-                        )
+                        accelerator.clip_grad_norm_(params_to_clip, cfg.optimizer.max_grad_norm)
 
                     optimizer.step()
                     lr_scheduler.step()
@@ -795,16 +686,10 @@ class TextualInversionTrainer:
                             orig_embeds_params_list,
                             index_no_updates_list,
                         ):
-                            input_embeddings_weight = (
-                                accelerator.unwrap_model(text_encoder)
-                                .get_input_embeddings()
-                                .weight
-                            )
-                            input_embeddings_weight[index_no_updates] = (
-                                orig_embeds_params.to(input_embeddings_weight.dtype)[
-                                    index_no_updates
-                                ]
-                            )
+                            input_embeddings_weight = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight
+                            input_embeddings_weight[index_no_updates] = orig_embeds_params.to(input_embeddings_weight.dtype)[
+                                index_no_updates
+                            ]
 
                 if accelerator.sync_gradients:
                     progress_bar.update(1)
@@ -826,27 +711,17 @@ class TextualInversionTrainer:
                         prompt_replacement,
                     )
 
-                    if (
-                            cfg.output.saving.save_every_n_steps is not None
-                            and global_step % cfg.output.saving.save_every_n_steps == 0
-                    ):
+                    if cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0:
                         accelerator.wait_for_everyone()
                         if accelerator.is_main_process:
                             updated_embs_list = []
-                            for text_encoder, token_ids in zip(
-                                    text_encoders, token_ids_list
-                            ):
+                            for text_encoder, token_ids in zip(text_encoders, token_ids_list):
                                 updated_embs = (
-                                    accelerator.unwrap_model(text_encoder)
-                                    .get_input_embeddings()
-                                    .weight[token_ids]
-                                    .data.detach()
-                                    .clone()
+                                    accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[token_ids].data.detach().clone()
                                 )
                                 updated_embs_list.append(updated_embs)
 
-                            ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
-                                                           global_step)
+                            ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, global_step)
                             save_model(ckpt_name, updated_embs_list, global_step, epoch)
 
                             if cfg.output.saving.save_state:
@@ -854,9 +729,9 @@ class TextualInversionTrainer:
 
                             remove_step_no = get_remove_step_no(cfg.output.saving, global_step)
                             if remove_step_no is not None:
-                                remove_ckpt_name = get_step_ckpt_name(cfg.output.saving,
-                                                                      "." + cfg.output.saving.save_model_as,
-                                                                      remove_step_no)
+                                remove_ckpt_name = get_step_ckpt_name(
+                                    cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_step_no
+                                )
                                 remove_model(remove_ckpt_name)
 
                 current_loss = loss.detach().item()
@@ -866,15 +741,10 @@ class TextualInversionTrainer:
                         "lr": float(lr_scheduler.get_last_lr()[0]),
                     }
                     if (
-                            cfg.optimizer.optimizer_type.lower().startswith(
-                                "DAdapt".lower()
-                            )
-                            or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower()
+                        cfg.optimizer.optimizer_type.lower().startswith("DAdapt".lower())
+                        or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower()
                     ):
-                        logs["lr/d*lr"] = (
-                                lr_scheduler.optimizers[0].param_groups[0]["d"]
-                                * lr_scheduler.optimizers[0].param_groups[0]["lr"]
-                        )
+                        logs["lr/d*lr"] = lr_scheduler.optimizers[0].param_groups[0]["d"] * lr_scheduler.optimizers[0].param_groups[0]["lr"]
                     accelerator.log(logs, step=global_step)
 
                 loss_total += current_loss
@@ -893,27 +763,18 @@ class TextualInversionTrainer:
 
             updated_embs_list = []
             for text_encoder, token_ids in zip(text_encoders, token_ids_list):
-                updated_embs = (
-                    accelerator.unwrap_model(text_encoder)
-                    .get_input_embeddings()
-                    .weight[token_ids]
-                    .data.detach()
-                    .clone()
-                )
+                updated_embs = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[token_ids].data.detach().clone()
                 updated_embs_list.append(updated_embs)
 
             if cfg.output.saving.save_every_n_epochs is not None:
-                saving = (epoch + 1) % cfg.output.saving.save_every_n_epochs == 0 and (
-                        epoch + 1
-                ) < num_train_epochs
+                saving = (epoch + 1) % cfg.output.saving.save_every_n_epochs == 0 and (epoch + 1) < num_train_epochs
                 if accelerator.is_main_process and saving:
                     ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, epoch + 1)
                     save_model(ckpt_name, updated_embs_list, epoch + 1, global_step)
 
                     remove_epoch_no = get_remove_epoch_no(cfg.output.saving, epoch + 1)
                     if remove_epoch_no is not None:
-                        remove_ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as,
-                                                               remove_epoch_no)
+                        remove_ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_epoch_no)
                         remove_model(remove_ckpt_name)
 
                     if cfg.output.saving.save_state:
@@ -948,9 +809,7 @@ class TextualInversionTrainer:
 
         accelerator.end_training()
 
-        if is_main_process and (
-                cfg.output.saving.save_state or cfg.output.saving.save_state_on_train_end
-        ):
+        if is_main_process and (cfg.output.saving.save_state or cfg.output.saving.save_state_on_train_end):
             save_state_on_train_end(cfg.output.saving, accelerator)
 
         if is_main_process:
@@ -965,14 +824,14 @@ class TextualInversionTrainer:
 
             logger.info("model saved.")
 
+
 # Register Hydra schema for this script
 from library.config.schemas import register_sd_textual_inversion
+
 register_sd_textual_inversion()
 
 
-@hydra.main(
-    config_path="../configs", config_name="sd_textual_inversion", version_base=None
-)
+@hydra.main(config_path="../configs", config_name="sd_textual_inversion", version_base=None)
 def main(config: TextualInversionConfig):
     prepare_config(config)
     validate_config(config)

@@ -14,10 +14,7 @@ from library.constants import SS_METADATA_KEY_V2, SS_METADATA_KEY_BASE_MODEL_VER
 from library.utils import sai_model_spec
 from library.utils.common_utils import setup_logging
 
-from library.training.checkpointing import (
-    load_metadata_from_safetensors,
-    build_minimum_adapter_metadata
-)
+from library.training.checkpointing import load_metadata_from_safetensors, build_minimum_adapter_metadata
 from library.utils.hash_utils import precalculate_safetensors_hashes
 
 setup_logging()
@@ -237,12 +234,12 @@ def format_lbws(lbws):
         raise ValueError("format of lbws are must be json / 層別適用率はJSON形式で書いてください")
     assert all(isinstance(lbw, list) for lbw in lbws), "lbws are must be list / 層別適用率はリストにしてください"
     assert len(set(len(lbw) for lbw in lbws)) == 1, "all lbws should have the same length  / 層別適用率は同じ長さにしてください"
-    assert all(
-        len(lbw) in ACCEPTABLE for lbw in lbws
-    ), f"length of lbw are must be in {ACCEPTABLE} / 層別適用率の長さは{ACCEPTABLE}のいずれかにしてください"
-    assert all(
-        all(isinstance(weight, (int, float)) for weight in lbw) for lbw in lbws
-    ), "values of lbs are must be numbers / 層別適用率の値はすべて数値にしてください"
+    assert all(len(lbw) in ACCEPTABLE for lbw in lbws), (
+        f"length of lbw are must be in {ACCEPTABLE} / 層別適用率の長さは{ACCEPTABLE}のいずれかにしてください"
+    )
+    assert all(all(isinstance(weight, (int, float)) for weight in lbw) for lbw in lbws), (
+        "values of lbs are must be numbers / 層別適用率の値はすべて数値にしてください"
+    )
 
     layer_num = len(lbws[0])
     is_sdxl = True if layer_num in SDXL_LAYER_NUM else False
@@ -333,10 +330,7 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
                 weight = weight + ratio * (up_weight @ down_weight) * scale
             elif kernel_size == (1, 1):
                 weight = (
-                    weight
-                    + ratio
-                    * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(2).unsqueeze(3)
-                    * scale
+                    weight + ratio * (up_weight.squeeze(3).squeeze(2) @ down_weight.squeeze(3).squeeze(2)).unsqueeze(2).unsqueeze(3) * scale
                 )
             else:
                 conved = torch.nn.functional.conv2d(down_weight.permute(1, 0, 2, 3), up_weight).permute(1, 0, 2, 3)
@@ -405,13 +399,13 @@ def merge_lora_models(models, ratios, lbws, new_rank, new_conv_rank, device, mer
 
 
 def merge(args):
-    assert len(args.models) == len(
-        args.ratios
-    ), "number of models must be equal to number of ratios / モデルの数と重みの数は合わせてください"
+    assert len(args.models) == len(args.ratios), (
+        "number of models must be equal to number of ratios / モデルの数と重みの数は合わせてください"
+    )
     if args.lbws:
-        assert len(args.models) == len(
-            args.lbws
-        ), "number of models must be equal to number of ratios / モデルの数と層別適用率の数は合わせてください"
+        assert len(args.models) == len(args.lbws), (
+            "number of models must be equal to number of ratios / モデルの数と層別適用率の数は合わせてください"
+        )
     else:
         args.lbws = []  # zip_longestで扱えるようにlbws未使用時には空のリストにしておく
 
@@ -501,9 +495,7 @@ def setup_parser() -> argparse.ArgumentParser:
         default=None,
         help="Specify rank of output LoRA for Conv2d 3x3, None for same as new_rank / 出力するConv2D 3x3 LoRAのrank (dim)、Noneでnew_rankと同じ",
     )
-    parser.add_argument(
-        "--device", type=str, default=None, help="device to use, cuda for GPU / 計算を行うデバイス、cuda でGPUを使う"
-    )
+    parser.add_argument("--device", type=str, default=None, help="device to use, cuda for GPU / 計算を行うデバイス、cuda でGPUを使う")
     parser.add_argument(
         "--no_metadata",
         action="store_true",
