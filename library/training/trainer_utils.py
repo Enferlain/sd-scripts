@@ -184,16 +184,7 @@ def determine_grad_sync_context(precision_config: PrecisionConfig | None, accele
     Returns:
         ContextManager: The gradient synchronization context.
     """
-    # TODO: Investigate why this was considered and update signature maybe?
-    # if precision_config and precision_config.full_bf16:
-    #    if not sync_gradients and accelerator.num_processes > 1:
-    #        if edm2_model is not None:
-    #            return accelerator.no_sync(training_model, edm2_model)
-    #        else:
-    #            return accelerator.no_sync(training_model)
-    #    else:
-    #        return contextlib.nullcontext()
-    # else:
+    # Note: Previously considered no_sync for full_bf16, but accumulate() handles this correctly
     if edm2_model is not None:
         return accelerator.accumulate(training_model, edm2_model)
     else:

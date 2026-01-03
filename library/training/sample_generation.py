@@ -140,12 +140,12 @@ def line_to_prompt_dict(line: str) -> dict:
                 prompt_dict["sample_steps"] = max(1, min(1000, int(m.group(1))))
                 continue
 
-            m = re.match(r"l ([\d\.]+)", parg, re.IGNORECASE)  # TODO: Redundant character escape '\.' in RegExp
-            if m:  # scale
+            m = re.match(r"l ([\d.]+)", parg, re.IGNORECASE)  # scale (CFG)
+            if m:
                 prompt_dict["scale"] = float(m.group(1))
                 continue
 
-            m = re.match(r"g ([\d\.]+)", parg, re.IGNORECASE)  # TODO: Redundant character escape '\.' in RegExp
+            m = re.match(r"g ([\d.]+)", parg, re.IGNORECASE)  # guidance scale
             if m:  # guidance scale
                 prompt_dict["guidance_scale"] = float(m.group(1))
                 continue
@@ -212,15 +212,15 @@ def load_prompts(prompt_file: str) -> list[dict]:
     elif prompt_file.endswith(".json"):
         with open(prompt_file, encoding="utf-8") as f:
             prompts = json.load(f)
+    else:
+        raise ValueError(f"Unsupported prompt file format: {prompt_file}. Supported formats: .txt, .toml, .json")
 
     # preprocess prompts
-    for i in range(len(prompts)):  # TODO: Local variable 'prompts' might be referenced before assignment
+    for i in range(len(prompts)):
         prompt_dict = prompts[i]
         if isinstance(prompt_dict, str):
             prompt_dict = line_to_prompt_dict(prompt_dict)
-            prompts[i] = (
-                prompt_dict  # TODO: Unexpected type(s): (int, dict) Possible type(s): (SupportsIndex, str) (slice, Iterable[str]) (SupportsIndex, str) (slice, Iterable[str])
-            )
+            prompts[i] = prompt_dict  # Replaces str with parsed dict
         assert isinstance(prompt_dict, dict)
 
         # Adds an enumerator to the dict based on prompt position. Used later to name image files. Also cleanup of extra data in original prompt dict.
@@ -343,6 +343,9 @@ def sample_images_common(
     elif sampling_config.sample_prompts.endswith(".json"):
         with open(sampling_config.sample_prompts, encoding="utf-8") as f:
             prompts = json.load(f)
+    else:
+        logger.error(f"Unsupported prompt file format: {sampling_config.sample_prompts}. Supported formats: .txt, .toml, .json")
+        return
 
     default_scheduler = get_my_scheduler(sample_sampler=sampling_config.sample_sampler, v_parameterization=loss_config.v_parameterization)
 
@@ -362,11 +365,11 @@ def sample_images_common(
     os.makedirs(save_dir, exist_ok=True)
 
     # preprocess prompts
-    for i in range(len(prompts)):  # TODO: Local variable 'prompts' might be referenced before assignment
+    for i in range(len(prompts)):  # prompts always assigned (txt/toml/json or early return above)
         prompt_dict = prompts[i]
         if isinstance(prompt_dict, str):
             prompt_dict = line_to_prompt_dict(prompt_dict)
-            prompts[i] = prompt_dict  # TODO
+            prompts[i] = prompt_dict  # Replaces str with parsed dict
         assert isinstance(prompt_dict, dict)
 
         # Adds an enumerator to the dict based on prompt position. Used later to name image files. Also cleanup of extra data in original prompt dict.
@@ -498,7 +501,7 @@ def sample_image_inference(
 
     if controlnet_image is not None:
         controlnet_image = Image.open(controlnet_image).convert("RGB")
-        controlnet_image = controlnet_image.resize((width, height), Image.LANCZOS)  # TODO: Cannot find reference 'LANCZOS' in 'Image.py'
+        controlnet_image = controlnet_image.resize((width, height), Image.LANCZOS)  # PIL.Image.Resampling.LANCZOS
 
     height = max(64, height - height % 8)  # round to divisible by 8
     width = max(64, width - width % 8)  # round to divisible by 8
@@ -550,4 +553,4 @@ def sample_image_inference(
         # not to commit images to avoid inconsistency between training and logging steps
         wandb_tracker.log(
             {f"sample_{i}": wandb.Image(image, caption=prompt)}, commit=False
-        )  # positive prompt as a caption TODO: Parameter 'step' unfilled
+        )  # positive prompt as caption, commit=False avoids step mismatch
