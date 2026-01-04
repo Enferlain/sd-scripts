@@ -17,14 +17,14 @@ One known edge case (zero-dimension buckets for tiny images) has been reproduced
 
 The bucket resolution generation and image-to-bucket assignment logic in `dataset_scanner.py` was compared against the legacy `BucketManager`.
 
-*   **Standard Mode (`no_upscale=False`)**:
-    *   The new `select_bucket` implementation produces identical bucket resolutions and resized image dimensions as the legacy code.
-    *   Aspect ratio matching and "nearest bucket" selection logic are preserved.
-    *   Upscaling/downscaling calculations are identical.
+* Standard Mode (`no_upscale=False`):
+  * The new `select_bucket` implementation produces identical bucket resolutions and resized image dimensions as the legacy code.
+  * Aspect ratio matching and "nearest bucket" selection logic are preserved.
+  * Upscaling/downscaling calculations are identical.
 
-*   **No Upscale Mode (`no_upscale=True`)**:
-    *   The logic for creating custom buckets for images smaller than `max_area` is preserved.
-    *   The handling of images larger than `max_area` (downscaling to fit) is identical.
+* No Upscale Mode (`no_upscale=True`):
+  * The logic for creating custom buckets for images smaller than `max_area` is preserved.
+  * The handling of images larger than `max_area` (downscaling to fit) is identical.
 
 ### 2. Edge Case Handling
 
@@ -32,18 +32,18 @@ The bucket resolution generation and image-to-bucket assignment logic in `datase
 
 The audit specifically tested edge cases to ensure consistent behavior:
 
-*   **Small Images (`< min_size`)**:
-    *   **Behavior**: When `no_upscale=True`, images smaller than the minimum bucket size but larger than the step size are assigned to custom small buckets (e.g., `128x128` for a `100x100` image with step 64).
-    *   **Assessment**: This matches legacy behavior and is considered correct for users who explicitly request no upscaling.
+* Small Images (`< min_size`):
+  * **Behavior**: When `no_upscale=True`, images smaller than the minimum bucket size but larger than the step size are assigned to custom small buckets (e.g., `128x128` for a `100x100` image with step 64).
+  * **Assessment**: This matches legacy behavior and is considered correct for users who explicitly request no upscaling.
 
-*   **Large Images (`> max_size`)**:
-    *   **Behavior**: Images larger than the maximum resolution are downscaled to fit within `max_area` while maintaining aspect ratio.
-    *   **Assessment**: Correctly handled in both standard and `no_upscale` modes.
+* Large Images (`> max_size`):
+  * **Behavior**: Images larger than the maximum resolution are downscaled to fit within `max_area` while maintaining aspect ratio.
+  * **Assessment**: Correctly handled in both standard and `no_upscale` modes.
 
-*   **Tiny Images (Zero-Dimension Bug)**:
-    *   **Finding**: Images smaller than `bucket_reso_steps` (e.g., `30x30` with `step=64`) result in a bucket resolution of `(0, 0)` in both legacy and new implementations.
-    *   **Cause**: `bucket_width = resized_size[0] - resized_size[0] % self.reso_steps`. If size < step, result is 0.
-    *   **Recommendation**: This is a low-priority issue inherited from legacy. It should be addressed in a future update by clamping the minimum bucket size to `bucket_reso_steps`.
+* Tiny Images (Zero-Dimension Bug):
+  * **Finding**: Images smaller than `bucket_reso_steps` (e.g., `30x30` with `step=64`) result in a bucket resolution of `(0, 0)` in both legacy and new implementations.
+  * **Cause**: `bucket_width = resized_size[0] - resized_size[0] % self.reso_steps`. If size < step, result is 0.
+  * **Recommendation**: This is a low-priority issue inherited from legacy. It should be addressed in a future update by clamping the minimum bucket size to `bucket_reso_steps`.
 
 ### 3. Batch Formation Isolation
 
@@ -51,14 +51,14 @@ The audit specifically tested edge cases to ensure consistent behavior:
 
 The batch formation logic in `library/data/pipeline/epoch_preparation.py` (`prepare_epoch`) was analyzed for cross-bucket leakage.
 
-*   **Process**:
-    1.  All samples are grouped into a dictionary keyed by bucket resolution (`bucket_keys`).
-    2.  The code iterates strictly over these keys.
-    3.  Batches are constructed *inside* this loop, using only samples from the current bucket list.
-    4.  Completed `BatchInfo` objects (which contain the bucket resolution) are added to a global list.
-    5.  Shuffling happens *after* batches are formed, rearranging the order of batches but never mixing their contents.
+* Process:
+  1. All samples are grouped into a dictionary keyed by bucket resolution (`bucket_keys`).
+  2. The code iterates strictly over these keys.
+  3. Batches are constructed *inside* this loop, using only samples from the current bucket list.
+  4. Completed `BatchInfo` objects (which contain the bucket resolution) are added to a global list.
+  5. Shuffling happens *after* batches are formed, rearranging the order of batches but never mixing their contents.
 
-*   **Conclusion**: It is algorithmically impossible for a single batch to contain images from different buckets, as batches are finalized before any cross-bucket aggregation occurs.
+* Conclusion: It is algorithmically impossible for a single batch to contain images from different buckets, as batches are finalized before any cross-bucket aggregation occurs.
 
 ## Audit Methodology
 
