@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image
 
 from library.constants import IMAGE_EXTENSIONS
-from library.data.data_structures import BucketManager
+from library.data._deprecated.data_structures import BucketManager
 from library.utils.common_utils import logger
 
 logger = logging.getLogger(__name__)

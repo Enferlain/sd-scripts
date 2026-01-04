@@ -11,8 +11,8 @@ from transformers import CLIPTokenizer
 
 from library.constants import re_attention
 from library.utils.common_utils import setup_logging
-from library.data.caching import load_images_and_masks_for_caching
-from library.data.data_structures import ImageInfo
+from library.data._deprecated.caching import load_images_and_masks_for_caching
+from library.data._deprecated.data_structures import ImageInfo
 
 setup_logging()
 logger = logging.getLogger(__name__)

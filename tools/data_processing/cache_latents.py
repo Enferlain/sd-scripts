@@ -8,7 +8,7 @@ import logging
 # from library import flux_train_utils, flux_utils, strategy_flux
 
 
-from library.data.dataset import load_arbitrary_dataset
+from library.data._deprecated.dataset import load_arbitrary_dataset
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
 from library.training.trainer_utils import prepare_accelerator
 from library.utils import config_util

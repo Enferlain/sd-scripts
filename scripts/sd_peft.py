@@ -46,7 +46,7 @@ from library.strategies.peft_strategy_sd import SdPeftStrategy
 from library.adapters.lora_utils import resolve_adapter_kwargs
 from library.training.training_metadata import create_training_metadata
 from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
-from library.data.dataset_setup import prepare_datasets
+from library.data._deprecated.dataset_setup import prepare_datasets
 
 from library.timesteps.timestep_utils import (
     init_timestep_sampler,

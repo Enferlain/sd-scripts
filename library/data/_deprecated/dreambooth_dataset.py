@@ -16,8 +16,8 @@ import logging
 from collections.abc import Sequence
 from tqdm import tqdm
 
-from library.data.dataset import BaseDataset
-from library.data.data_structures import DreamBoothSubset, ImageInfo
+from library.data._deprecated.dataset import BaseDataset
+from library.data._deprecated.data_structures import DreamBoothSubset, ImageInfo
 from library.data.image_utils import glob_images
 from library.strategies.strategy_base import LatentsCachingStrategy
 
@@ -176,7 +176,7 @@ class DreamBoothDataset(BaseDataset):
             # if self.is_training_dataset is True -> training dataset
             # if self.is_training_dataset is False -> validation dataset
             if self.validation_split > 0.0:
-                from library.data.dataset_utils import split_train_val
+                from library.data._deprecated.dataset_utils import split_train_val
                 # For regularization images we do not want to split this dataset.
                 if subset.is_reg is True:
                     # Skip any validation dataset for regularization images

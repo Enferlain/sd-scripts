@@ -18,7 +18,7 @@ from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed
 from library.performance import deepspeed_utils
 from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
-from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
+from library.data._deprecated.dataset import load_arbitrary_dataset, collator_class, debug_dataset
 from library.training.checkpointing import resume_from_local_or_hf_if_specified, save_state_on_train_end
 from library.training.sdxl_checkpointing import save_sd_model_on_epoch_end_or_stepwise, save_sd_model_on_train_end
 from library.models.sdxl_model_prep import load_target_model

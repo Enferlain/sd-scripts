@@ -8,7 +8,7 @@ from diffusers import AutoencoderKL
 from library.constants import HIGH_VRAM, IMAGE_TRANSFORMS
 from library.models.text_encoder_util import get_hidden_states_sdxl
 from library.utils.device_utils import clean_memory_on_device
-from library.data.data_structures import ImageInfo
+from library.data._deprecated.data_structures import ImageInfo
 from library.data.image_utils import load_image, trim_and_resize_if_required
 
 logger = logging.getLogger(__name__)

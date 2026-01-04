@@ -15,7 +15,7 @@ from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.common_utils import setup_logging
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.config.config_util import BlueprintGenerator, generate_dataset_group_by_blueprint
-from library.data.dataset import load_arbitrary_dataset, collator_class, debug_dataset
+from library.data._deprecated.dataset import load_arbitrary_dataset, collator_class, debug_dataset
 from library.models.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
 from library.models.sd_model_prep import load_target_model
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps

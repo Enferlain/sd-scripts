@@ -7,7 +7,7 @@ from transformers import CLIPTokenizer
 
 from library.constants import HIGH_VRAM, V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
 from library.strategies.strategy_base import LatentsCachingStrategy, TokenizeStrategy, TextEncodingStrategy
-from library.data.data_structures import ImageInfo
+from library.data._deprecated.data_structures import ImageInfo
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 

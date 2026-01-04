@@ -20,7 +20,7 @@ import cv2
 from PIL import Image
 from torchvision import transforms
 
-from library.data.minimal_dataset import MinimalDataset
+from library.data._deprecated.minimal_dataset import MinimalDataset
 
 logger = logging.getLogger(__name__)
 

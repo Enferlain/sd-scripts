@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
-from library.data import data_structures as ds
+from library.data._deprecated import data_structures as ds
+
 
 # ============================================================================
 # BucketManager Tests

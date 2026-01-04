@@ -5,7 +5,7 @@ A lightweight base for building minimal dataset implementations.
 """
 
 
-from library.data.dataset import BaseDataset
+from library.data._deprecated.dataset import BaseDataset
 
 
 class MinimalDataset(BaseDataset):

@@ -25,13 +25,13 @@ from library.strategies.strategy_base import (
     TextEncodingStrategy
 )
 
-from library.data.caching import (
+from library.data._deprecated.caching import (
     is_disk_cached_latents_is_expected,
     cache_batch_latents,
     cache_batch_text_encoder_outputs
 )
 
-from library.data.data_structures import (
+from library.data._deprecated.data_structures import (
     DreamBoothSubset,
     FineTuningSubset,
     BucketManager,

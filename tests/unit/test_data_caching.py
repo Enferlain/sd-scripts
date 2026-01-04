@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 import torch
 
-from library.data.caching import (
+from library.data._deprecated.caching import (
     is_disk_cached_latents_is_expected,
     save_text_encoder_outputs_to_disk,
     load_text_encoder_outputs_from_disk,
@@ -219,7 +219,7 @@ class TestTextEncoderOutputsIO:
 # =============================================================================
 
 from unittest.mock import Mock, patch
-from library.data.caching import (
+from library.data._deprecated.caching import (
     load_images_and_masks_for_caching,
     cache_batch_latents,
     cache_batch_text_encoder_outputs,

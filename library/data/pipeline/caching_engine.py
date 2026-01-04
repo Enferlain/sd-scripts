@@ -7,10 +7,14 @@ model-specific encoding to strategy objects from library/strategies/.
 
 import logging
 from abc import ABC, abstractmethod
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
 import torch
+from PIL import Image
+from tqdm import tqdm
 
 from library.data.pipeline.dataclasses import DatasetManifest, CacheEntry
 from library.utils.common_utils import setup_logging
@@ -28,12 +32,13 @@ class CachingStrategy(ABC):
     """
 
     @abstractmethod
-    def get_cache_path(self, entry: CacheEntry) -> str:
+    def get_cache_path(self, entry: CacheEntry, cache_dir: Path) -> Path:
         """
         Get the cache file path for an entry.
 
         Args:
             entry: The cache entry.
+            cache_dir: Base directory for cache files.
 
         Returns:
             Absolute path where cache should be saved.
@@ -46,7 +51,7 @@ class CachingStrategy(ABC):
         images: torch.Tensor,
         model: Any,
         entries: list[CacheEntry],
-    ) -> list[dict[str, torch.Tensor]]:
+    ) -> list[dict[str, Any]]:
         """
         Encode a batch of images to cacheable tensors.
 
@@ -56,12 +61,12 @@ class CachingStrategy(ABC):
             entries: Corresponding CacheEntry objects for metadata.
 
         Returns:
-            List of dicts, each containing tensors to save (e.g., {"latents": tensor}).
+            List of dicts, each containing data to save (e.g., {"latents": tensor}).
         """
         raise NotImplementedError
 
     @abstractmethod
-    def save_cache(self, data: dict[str, torch.Tensor], path: str) -> None:
+    def save_cache(self, data: dict[str, Any], path: Path) -> None:
         """
         Save encoded data to cache file.
 
@@ -72,7 +77,7 @@ class CachingStrategy(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load_cache(self, path: str) -> dict[str, torch.Tensor]:
+    def load_cache(self, path: Path) -> dict[str, torch.Tensor]:
         """
         Load cached data from file.
 
@@ -84,16 +89,50 @@ class CachingStrategy(ABC):
         """
         raise NotImplementedError
 
+    def preprocess_image(
+        self,
+        image: Image.Image,
+        target_size: tuple[int, int],
+    ) -> torch.Tensor:
+        """
+        Preprocess an image for encoding.
+
+        Default implementation resizes and normalizes to [-1, 1].
+        Subclasses can override for model-specific preprocessing.
+
+        Args:
+            image: PIL Image.
+            target_size: (width, height) to resize to.
+
+        Returns:
+            Tensor [C, H, W] ready for batching.
+        """
+        # Resize to target size
+        if image.size != target_size:
+            image = image.resize(target_size, Image.Resampling.LANCZOS)
+
+        # Convert to RGB if needed
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        # Convert to tensor and normalize to [-1, 1]
+        import numpy as np
+
+        arr = np.array(image).astype(np.float32) / 255.0
+        arr = arr * 2.0 - 1.0  # [0, 1] -> [-1, 1]
+        tensor = torch.from_numpy(arr).permute(2, 0, 1)  # [H, W, C] -> [C, H, W]
+        return tensor
+
 
 class CachingEngine:
     """
     High-performance caching engine with multi-GPU coordination.
 
     Handles:
-    - Batch organization and parallel I/O
+    - Batch organization by bucket resolution
+    - Parallel image loading (ThreadPoolExecutor)
+    - Progress tracking (tqdm)
     - Multi-GPU workload distribution
-    - Progress tracking
-    - Error handling and recovery
 
     Delegates model-specific encoding to a CachingStrategy.
     """
@@ -123,6 +162,7 @@ class CachingEngine:
         accelerator: Any,
         cache_dir: str | Path,
         skip_existing: bool = True,
+        show_progress: bool = True,
     ) -> DatasetManifest:
         """
         Cache all entries in a dataset manifest.
@@ -133,6 +173,7 @@ class CachingEngine:
             accelerator: HuggingFace Accelerator for multi-GPU.
             cache_dir: Directory to save cache files.
             skip_existing: Whether to skip already-cached entries.
+            show_progress: Whether to show tqdm progress bar.
 
         Returns:
             Updated manifest with cache paths populated.
@@ -141,7 +182,7 @@ class CachingEngine:
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Get entries that need caching
-        entries_to_cache = self._get_entries_to_cache(manifest, skip_existing)
+        entries_to_cache = self._get_entries_to_cache(manifest, cache_dir, skip_existing)
 
         if not entries_to_cache:
             logger.info("All entries already cached, nothing to do")
@@ -152,17 +193,22 @@ class CachingEngine:
 
         logger.info(f"Caching {len(my_entries)}/{len(entries_to_cache)} entries on GPU {accelerator.process_index}")
 
-        # TODO: Implement actual caching loop with:
-        # - Batched image loading
-        # - Parallel VAE encoding
-        # - Async file saving
-        # - Progress bar
+        # Group entries by bucket for efficient batching
+        batches = self._batch_entries_by_bucket(my_entries)
 
-        # For now, just a placeholder
-        for entry in my_entries:
-            cache_path = self.strategy.get_cache_path(entry)
-            entry.latent_cache_path = cache_path
-            # Actual encoding would happen here
+        # Process batches with progress bar
+        pbar = tqdm(
+            total=len(my_entries),
+            desc=f"Caching (GPU {accelerator.process_index})",
+            disable=not show_progress or accelerator.process_index != 0,
+        )
+
+        for _bucket_key, bucket_entries in batches.items():
+            for batch_entries in bucket_entries:
+                self._cache_batch(batch_entries, model, cache_dir)
+                pbar.update(len(batch_entries))
+
+        pbar.close()
 
         # Sync across GPUs
         accelerator.wait_for_everyone()
@@ -172,14 +218,17 @@ class CachingEngine:
     def _get_entries_to_cache(
         self,
         manifest: DatasetManifest,
+        cache_dir: Path,
         skip_existing: bool,
     ) -> list[CacheEntry]:
         """Get list of entries that need caching."""
         entries = []
         for entry in manifest.entries.values():
-            if skip_existing and entry.latent_cache_path:
-                cache_path = Path(entry.latent_cache_path)
+            if skip_existing:
+                cache_path = self.strategy.get_cache_path(entry, cache_dir)
                 if cache_path.exists():
+                    # Update entry with existing cache path
+                    entry.latent_cache_path = str(cache_path)
                     continue
             entries.append(entry)
         return entries
@@ -191,3 +240,82 @@ class CachingEngine:
     ) -> list[CacheEntry]:
         """Split entries across GPUs using modulo assignment."""
         return [entry for i, entry in enumerate(entries) if i % accelerator.num_processes == accelerator.process_index]
+
+    def _batch_entries_by_bucket(
+        self,
+        entries: list[CacheEntry],
+    ) -> dict[str, list[list[CacheEntry]]]:
+        """
+        Group entries by bucket resolution and split into batches.
+
+        Returns:
+            Dict mapping bucket key -> list of batches (each batch is a list of entries).
+        """
+        # Group by bucket
+        by_bucket: dict[str, list[CacheEntry]] = defaultdict(list)
+        for entry in entries:
+            bucket_key = f"{entry.bucket_reso[0]}x{entry.bucket_reso[1]}"
+            by_bucket[bucket_key].append(entry)
+
+        # Split each bucket into batches
+        batches: dict[str, list[list[CacheEntry]]] = {}
+        for bucket_key, bucket_entries in by_bucket.items():
+            batches[bucket_key] = [bucket_entries[i : i + self.batch_size] for i in range(0, len(bucket_entries), self.batch_size)]
+
+        return batches
+
+    def _load_images(
+        self,
+        entries: list[CacheEntry],
+    ) -> list[Image.Image]:
+        """Load images in parallel using ThreadPoolExecutor."""
+
+        def load_one(entry: CacheEntry) -> Image.Image:
+            return Image.open(entry.image_path)
+
+        with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+            futures = {executor.submit(load_one, e): i for i, e in enumerate(entries)}
+            results: list[Image.Image | None] = [None] * len(entries)
+            for future in as_completed(futures):
+                idx = futures[future]
+                results[idx] = future.result()
+
+        # Filter out None (shouldn't happen, but satisfies type checker)
+        return [img for img in results if img is not None]
+
+    def _cache_batch(
+        self,
+        entries: list[CacheEntry],
+        model: Any,
+        cache_dir: Path,
+    ) -> None:
+        """
+        Load, encode, and save a batch of images.
+
+        Args:
+            entries: List of CacheEntry objects in this batch.
+            model: The encoding model (VAE or text encoder).
+            cache_dir: Directory to save cache files.
+        """
+        # Load images in parallel
+        images = self._load_images(entries)
+
+        # Preprocess and stack into batch tensor
+        target_size = entries[0].bucket_reso  # All entries in batch have same bucket
+        tensors = []
+        for img, _entry in zip(images, entries):
+            tensor = self.strategy.preprocess_image(img, target_size)
+            tensors.append(tensor)
+            img.close()
+
+        batch_tensor = torch.stack(tensors)  # [B, C, H, W]
+
+        # Encode via strategy
+        encoded_list = self.strategy.encode_batch(batch_tensor, model, entries)
+
+        # Save each result
+        for entry, encoded in zip(entries, encoded_list):
+            cache_path = self.strategy.get_cache_path(entry, cache_dir)
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            self.strategy.save_cache(encoded, cache_path)
+            entry.latent_cache_path = str(cache_path)

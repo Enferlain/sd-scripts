@@ -12,9 +12,9 @@ from collections.abc import Sequence
 from accelerate import Accelerator
 
 from library.constants import IMAGE_TRANSFORMS
-from library.data.dataset import BaseDataset
-from library.data.dreambooth_dataset import DreamBoothDataset
-from library.data.data_structures import ControlNetSubset, DreamBoothSubset
+from library.data._deprecated.dataset import BaseDataset
+from library.data._deprecated.dreambooth_dataset import DreamBoothDataset
+from library.data._deprecated.data_structures import ControlNetSubset, DreamBoothSubset
 from library.data.image_utils import glob_images, load_image, resize_image
 
 logger = logging.getLogger(__name__)

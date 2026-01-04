@@ -1,5 +1,5 @@
 import pytest
-from library.data.data_structures import make_bucket_resolutions
+from library.data._deprecated.data_structures import make_bucket_resolutions
 
 
 # =============================================================================

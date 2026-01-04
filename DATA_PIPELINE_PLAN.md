@@ -563,7 +563,7 @@ sd-scripts/
 
 After Phase 4 is stable (2-4 weeks of testing):
 
-- Move old `dataset.py` to `library/data/legacy/`
+- Move old `dataset.py` to `library/data/_deprecated/`
 - Add deprecation warnings
 - Remove in next major version
 
@@ -627,5 +627,5 @@ This preserves the current pattern where strategies define "what/how" while the 
 ## References
 
 - Original issue discussion: "DataLoader is 4it/s, manual caching is 300it/s"
-- Current implementation: `library/data/dataset.py`
+- Current implementation: `DATA_PIPELINE_CURRENT.md`
 - Pipeline architecture inspiration: Producer-consumer patterns, ETL pipelines

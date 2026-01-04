@@ -60,8 +60,8 @@ class OptimizerConfig:
     )
 
     def __post_init__(self):
-        """Handle legacy flags that should set optimizer_type."""
-        # use_8bit_adam and use_lion_optimizer are legacy flags
+        """Handle _deprecated flags that should set optimizer_type."""
+        # use_8bit_adam and use_lion_optimizer are _deprecated flags
         # If set and optimizer_type is not specified, set optimizer_type accordingly
         if self.use_8bit_adam and not self.optimizer_type:
             self.optimizer_type = "AdamW8bit"

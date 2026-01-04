@@ -131,7 +131,7 @@ The codebase follows a **generic + model-specific** pattern:
 # ✅ Good
 def save_model(saving_config: SavingConfig, ...):
 
-# ❌ Bad (legacy pattern)
+# ❌ Bad (_deprecated pattern)
 def save_model(args, ...):
 ```
 

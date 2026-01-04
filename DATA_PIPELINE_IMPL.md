@@ -22,11 +22,11 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
   - [x] `select_bucket()` - Assign image to resolution bucket
   - [x] `create_manifest()` - Generate DatasetManifest from scan results
 
-- [ ] Handle metadata sources
+- [x] Handle metadata sources
 
   - [x] Directory-based (DreamBooth style)
-  - [ ] JSON metadata (FineTuning style)
-  - [ ] Fallback caption generation  # COMMENT: fallback could fetch from source maybe? just food for thought, belongs to advanced features like data streaming and on demand experimental stuff, interesting topic in general. For now we should probably error instead of fallback, or set a threshold under which it's acceptable regularization to not have captions.
+  - [x] JSON metadata (FineTuning style)
+  - [x] Error if captions missing (require_caption=True by default)
 
 - [x] Bucket calculation
   - [x] Port bucket resolution logic from `BucketManager`
@@ -45,24 +45,19 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
 
 - [ ] Implement model-specific strategies (NEW code in `strategy_*.py`)
 
-  - [ ] `SdLatentsCachingAdapter` - SD VAE encoding, scale factor 0.18215
-  - [ ] `SdxlLatentsCachingAdapter` - SDXL VAE encoding, scale factor 0.13025
-  - [ ] `SdxlTextEncoderCachingAdapter` - SDXL dual TE output caching
+  - [ ] `SdLatentsCachingStrategy` - SD VAE encoding, scale factor 0.18215
+  - [ ] `SdxlLatentsCachingStrategy` - SDXL VAE encoding, scale factor 0.13025
+  - [ ] `SdxlTextEncoderCachingStrategy` - SDXL dual TE output caching
 
-If `library/data` requires model specific knowledge (it might do, probably, maybe, whatever) it can be gained from `library/models/` as this houses model implementations. Circular imports are avoided in any case, as `library/strategy` won't talk towards `library/data`, only accept from it, aka
+> [!NOTE] > `library/data` is model-agnostic. Strategies implement `CachingStrategy` and get injected by training scripts.
+> Flow: training script → creates strategy → passes to CachingEngine
 
-```
-library/models → library/data → library/strategies
-       ↘                             ↗
-         ───────────────────────────
-```
+- [x] Implement caching loop
 
-- [ ] Implement caching loop
-
-  - [ ] Batched image loading (async I/O)
-  - [ ] Parallel VAE encoding
-  - [ ] Async file writing
-  - [ ] Progress bar with ETA
+  - [x] Batched image loading (ThreadPoolExecutor)
+  - [x] Batch grouping by bucket resolution
+  - [x] Multi-GPU workload distribution
+  - [x] Progress bar with tqdm
 
 - [ ] Optimize file format
   - [ ] Evaluate safetensors vs npz performance

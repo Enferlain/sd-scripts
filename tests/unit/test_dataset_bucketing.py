@@ -2,7 +2,7 @@ import pytest
 import torch
 import numpy as np
 from unittest.mock import MagicMock, patch
-from library.data.dataset import BaseDataset, ImageInfo
+from library.data._deprecated.dataset import BaseDataset, ImageInfo
 
 
 @pytest.mark.unit

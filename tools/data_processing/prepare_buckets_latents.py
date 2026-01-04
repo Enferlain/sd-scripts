@@ -14,9 +14,9 @@ import library.models.model_util as model_util
 
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, get_preferred_device
-from library.data.caching import cache_batch_latents, is_disk_cached_latents_is_expected
-from library.data.data_structures import BucketManager, ImageInfo
-from library.data.dataset import ImageLoadingDataset
+from library.data._deprecated.caching import cache_batch_latents, is_disk_cached_latents_is_expected
+from library.data._deprecated.data_structures import BucketManager, ImageInfo
+from library.data._deprecated.dataset import ImageLoadingDataset
 from library.data.image_utils import glob_images_pathlib
 
 init_ipex()

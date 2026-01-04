@@ -2,8 +2,8 @@ import types
 import torch
 import pytest
 from unittest.mock import MagicMock
-from library.data import dataset as ds
-from library.data import dataset_utils
+from library.data._deprecated import dataset as ds, dataset_utils
+
 
 # ============================================================================
 # Fixtures & Helpers
@@ -312,7 +312,7 @@ def test_get_input_ids_long_v2_fixups(base_ds):
 
 def test_register_image_populates_dicts(base_ds):
     """Verify register_image populates image_data and image_to_subset."""
-    from library.data.data_structures import ImageInfo
+    from library.data._deprecated.data_structures import ImageInfo
 
     info = ImageInfo(image_key="test_key", num_repeats=1, caption="test caption", is_reg=False, absolute_path="/fake/path/image.png")
     subset = make_subset()
@@ -327,7 +327,7 @@ def test_register_image_populates_dicts(base_ds):
 
 def test_register_image_multiple(base_ds):
     """Verify multiple images can be registered to different subsets."""
-    from library.data.data_structures import ImageInfo
+    from library.data._deprecated.data_structures import ImageInfo
 
     info1 = ImageInfo("key1", 1, "cap1", False, "/path1.png")
     info2 = ImageInfo("key2", 2, "cap2", True, "/path2.png")
@@ -448,7 +448,7 @@ def test_is_text_encoder_output_cacheable_false_tag_dropout(base_ds):
 
 def test_shuffle_buckets_deterministic(base_ds):
     """Shuffle with same seed produces same order."""
-    from library.data.data_structures import BucketManager, BucketBatchIndex
+    from library.data._deprecated.data_structures import BucketManager, BucketBatchIndex
 
     base_ds.seed = 42
     base_ds.current_epoch = 0
@@ -475,7 +475,7 @@ def test_shuffle_buckets_deterministic(base_ds):
 
 def test_shuffle_buckets_different_epochs(base_ds):
     """Shuffle produces different order for different epochs."""
-    from library.data.data_structures import BucketManager, BucketBatchIndex
+    from library.data._deprecated.data_structures import BucketManager, BucketBatchIndex
 
     base_ds.seed = 42
     base_ds.bucket_manager = BucketManager(False, (512, 512), None, None, None)
@@ -555,7 +555,7 @@ from unittest.mock import patch
 @patch("library.data.dataset.is_disk_cached_latents_is_expected")
 def test_cache_latents_groups_by_condition(mock_cache_check, mock_batch_fn, base_ds):
     """Verify images with same conditions are batched together."""
-    from library.data.data_structures import ImageInfo
+    from library.data._deprecated.data_structures import ImageInfo
 
     # Setup dataset with images
     info1 = ImageInfo("key1", 1, "cap1", False, "/path1.png")
@@ -590,7 +590,7 @@ def test_cache_latents_groups_by_condition(mock_cache_check, mock_batch_fn, base
 @patch("library.data.dataset.is_disk_cached_latents_is_expected")
 def test_cache_latents_skips_cached(mock_cache_check, mock_batch_fn, base_ds):
     """Images with valid disk cache are skipped."""
-    from library.data.data_structures import ImageInfo
+    from library.data._deprecated.data_structures import ImageInfo
 
     info = ImageInfo("key1", 1, "cap1", False, "/path1.png")
     info.bucket_reso = (512, 512)
@@ -619,7 +619,7 @@ def test_cache_latents_skips_cached(mock_cache_check, mock_batch_fn, base_ds):
 @patch("library.data.dataset.cache_batch_latents")
 def test_cache_latents_non_main_process_early_exit(mock_batch_fn, base_ds):
     """Non-main process exits early when caching to disk."""
-    from library.data.data_structures import ImageInfo
+    from library.data._deprecated.data_structures import ImageInfo
 
     info = ImageInfo("key1", 1, "cap1", False, "/path1.png")
     info.bucket_reso = (512, 512)
@@ -648,7 +648,7 @@ def test_cache_latents_non_main_process_early_exit(mock_batch_fn, base_ds):
 @patch("library.data.dataset.is_disk_cached_latents_is_expected")
 def test_cache_latents_skips_finetuning_with_npz(mock_cache_check, mock_batch_fn, base_ds):
     """Images that already have latents_npz set (fine-tuning) are skipped."""
-    from library.data.data_structures import ImageInfo
+    from library.data._deprecated.data_structures import ImageInfo
 
     info = ImageInfo("key1", 1, "cap1", False, "/path1.png")
     info.bucket_reso = (512, 512)
@@ -677,7 +677,7 @@ def test_cache_latents_skips_finetuning_with_npz(mock_cache_check, mock_batch_fn
 @patch("library.data.dataset.is_disk_cached_latents_is_expected")
 def test_cache_latents_batches_by_vae_batch_size(mock_cache_check, mock_batch_fn, base_ds):
     """Verify batches respect vae_batch_size parameter."""
-    from library.data.data_structures import ImageInfo
+    from library.data._deprecated.data_structures import ImageInfo
 
     # Create 5 images with same condition
     infos = []

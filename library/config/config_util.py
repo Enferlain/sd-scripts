@@ -8,11 +8,11 @@ from textwrap import dedent, indent
 from dataclasses import asdict, dataclass
 
 from library.config.dataclasses.data import DataConfig
-from library.data.controlnet_dataset import ControlNetDataset
-from library.data.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
-from library.data.dataset_group import DatasetGroup
-from library.data.dreambooth_dataset import DreamBoothDataset
-from library.data.finetuning_dataset import FineTuningDataset
+from library.data._deprecated.controlnet_dataset import ControlNetDataset
+from library.data._deprecated.data_structures import ControlNetSubset, DreamBoothSubset, FineTuningSubset
+from library.data._deprecated.dataset_group import DatasetGroup
+from library.data._deprecated.dreambooth_dataset import DreamBoothDataset
+from library.data._deprecated.finetuning_dataset import FineTuningDataset
 from library.utils.common_utils import setup_logging
 
 setup_logging()

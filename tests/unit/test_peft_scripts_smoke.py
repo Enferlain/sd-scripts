@@ -54,7 +54,7 @@ class TestPeftCommonImports:
 
     def test_peft_common_has_prepare_datasets(self):
         """Verify prepare_datasets function exists."""
-        from library.data.dataset_setup import prepare_datasets
+        from library.data._deprecated.dataset_setup import prepare_datasets
 
         assert callable(prepare_datasets)
 

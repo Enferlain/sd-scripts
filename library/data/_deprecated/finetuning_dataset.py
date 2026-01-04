@@ -12,8 +12,8 @@ import logging
 
 from collections.abc import Sequence
 
-from library.data.dataset import BaseDataset
-from library.data.data_structures import FineTuningSubset, ImageInfo, BucketManager
+from library.data._deprecated.dataset import BaseDataset
+from library.data._deprecated.data_structures import FineTuningSubset, ImageInfo, BucketManager
 from library.data.image_utils import glob_images
 
 logger = logging.getLogger(__name__)

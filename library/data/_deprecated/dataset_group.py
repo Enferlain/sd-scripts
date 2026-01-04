@@ -13,8 +13,8 @@ from accelerate import Accelerator
 from library.strategies.strategy_base import TextEncoderOutputsCachingStrategy
 
 if TYPE_CHECKING:
-    from library.data.dreambooth_dataset import DreamBoothDataset
-    from library.data.finetuning_dataset import FineTuningDataset
+    from library.data._deprecated.dreambooth_dataset import DreamBoothDataset
+    from library.data._deprecated.finetuning_dataset import FineTuningDataset
 
 logger = logging.getLogger(__name__)
 

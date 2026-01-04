@@ -19,7 +19,7 @@ params:
   transformer_depth: [1, 2, 10]  # note: the first is unused (due to attn_res starting at 2) 32, 16, 8 --> 64, 32, 16
   context_dim: 2048
   spatial_transformer_attn_type: softmax-xformers
-  legacy: False
+  _deprecated: False
 """
 
 import logging

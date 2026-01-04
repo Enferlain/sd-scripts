@@ -30,6 +30,7 @@ from library.data.pipeline.epoch_preparation import prepare_epoch, prepare_valid
 from library.data.pipeline.dataset_scanner import (
     ScannedImage,
     scan_directory,
+    scan_metadata_file,
     read_caption,
     make_bucket_resolutions,
     select_bucket,
@@ -60,6 +61,7 @@ __all__ = [
     # Dataset scanner (Phase 1)
     "ScannedImage",
     "scan_directory",
+    "scan_metadata_file",
     "read_caption",
     "make_bucket_resolutions",
     "select_bucket",

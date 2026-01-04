@@ -3,7 +3,7 @@ import logging
 
 from library.config import config_util as config_util
 from library.config.config_util import BlueprintGenerator
-from library.data.dataset_utils import load_arbitrary_dataset, collator_class, debug_dataset
+from library.data._deprecated.dataset_utils import load_arbitrary_dataset, collator_class, debug_dataset
 from library.utils.common_utils import setup_logging
 
 setup_logging()

@@ -18,11 +18,11 @@ from library.strategies import strategy_sd, strategy_base
 from library.utils.torch_utils import prepare_dtype, set_seed_from_config
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
-from library.data.prompt_templates import (
+from library.data._deprecated.prompt_templates import (
     imagenet_templates_small,
     imagenet_style_templates_small,
 )
-from library.data.dataset import (
+from library.data._deprecated.dataset import (
     DatasetGroup,
     MinimalDataset,
     load_arbitrary_dataset,

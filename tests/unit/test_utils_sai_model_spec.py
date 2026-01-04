@@ -298,7 +298,7 @@ class TestBuildMetadataIntegration:
         assert metadata.additional_fields["trigger_phrase"] == "anime style"
 
     def test_legacy_function_compatibility(self):
-        """Test that legacy build_metadata function works correctly."""
+        """Test that _deprecated build_metadata function works correctly."""
         timestamp = time.time()
 
         metadata_dict = model_metadata.build_metadata(

@@ -14,21 +14,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Data Pipeline Phase 1: Dataset Scanner** (`library/data/pipeline/dataset_scanner.py`)
 
   - `scan_directory()` - Parallel directory scanning with ThreadPoolExecutor
+  - `scan_metadata_file()` - JSON metadata support (FineTuning style)
   - `read_caption()` - Caption reading from .txt/.caption files
   - `make_bucket_resolutions()` - Bucket resolution generation (ported from BucketManager)
   - `select_bucket()` - Image-to-bucket assignment (ported from BucketManager)
   - `create_manifest()` - Generate `DatasetManifest` from scanned images
-  - `ScannedImage` dataclass - Intermediate representation during scanning
+  - `require_caption` parameter - Error if captions missing (default: True)
   - Support for webp, jxl, tiff image formats
+
+- **Data Pipeline Phase 2: Caching Engine** (`library/data/pipeline/caching_engine.py`)
+
+  - `CachingStrategy` ABC - Interface for model-specific encoding
+  - `CachingEngine` - High-performance caching orchestrator
+  - Batch grouping by bucket resolution
+  - Parallel image loading with ThreadPoolExecutor
+  - tqdm progress bar with multi-GPU support
+  - Modulo workload distribution across GPUs
 
 - **VAE Dtype Configuration** (`library/data/pipeline/dataclasses.py`)
 
   - Added `latent_dtype` field to `DatasetManifest` ("fp16", "bf16", "fp32")
   - Added `latent_dtype` parameter to `Bucket.memory_per_image()` for accurate memory estimation
-  - Supports "no half VAE" mode for improved training quality at cost of 2x storage
 
-- **Unit Tests** (`tests/unit/test_pipeline_dataset_scanner.py`)
-  - 16 tests covering bucket generation, selection, scanning, manifest creation, roundtrip
+- **Unit Tests**
+
+  - `test_pipeline_dataset_scanner.py` - 22 tests (bucket, scanning, manifest, JSON metadata)
+  - `test_pipeline_caching.py` - 6 tests (batching, multi-GPU split, file creation)
+
+- **Reorganized** `library/data/_deprecated/` - Moved old data scripts for cleaner separation
 
 ### Changed
 
