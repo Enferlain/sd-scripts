@@ -130,13 +130,6 @@ class TrainingDataset(IterableDataset):
             num_workers = worker_info.num_workers
             worker_id = worker_info.id
 
-        # Total number of parallel data streams across all GPUs and workers
-        total_streams = self.world_size * num_workers
-
-        # Unique ID for this specific stream (0 to total_streams-1)
-        # Format: [Rank 0 Worker 0, Rank 0 Worker 1, ..., Rank 1 Worker 0, ...]
-        stream_id = self.rank * num_workers + worker_id
-
         # Token offset for sequential batch slicing
         # Must track all batches (not just this rank's) for correct offset
         token_offset = 0
@@ -144,11 +137,20 @@ class TrainingDataset(IterableDataset):
         for batch_idx, batch_info in enumerate(self.epoch_manifest.batches):
             batch_size = len(batch_info.processed_captions or batch_info.image_ids)
 
-            # Combine distributed sharding and worker sharding
-            # Every batch is assigned to exactly one stream
-            if batch_idx % total_streams == stream_id:
-                batch_data = self._load_batch(batch_info, token_offset, batch_size)
-                yield batch_data
+            # 1. Distributed Sharding (Rank-level)
+            # Ensures consistent batch assignment per Rank, independent of num_workers
+            is_my_rank = (batch_idx % self.world_size == self.rank)
+
+            # 2. Worker Sharding (Process-level)
+            # Distributes the Rank's batches among its workers
+            if is_my_rank:
+                # Map global batch index to a local 0-based index for this rank
+                local_batch_idx = batch_idx // self.world_size
+                is_my_worker = (local_batch_idx % num_workers == worker_id)
+
+                if is_my_worker:
+                    batch_data = self._load_batch(batch_info, token_offset, batch_size)
+                    yield batch_data
 
             # Always advance token offset (to stay aligned with token file)
             token_offset += batch_size
