@@ -1,0 +1,503 @@
+"""
+SDXL caching strategies for the new data pipeline.
+
+These strategies implement the CachingStrategy interface from library/data/pipeline/caching_engine.py
+and are designed to work with CacheEntry dataclasses, not the legacy ImageInfo.
+"""
+
+import logging
+from pathlib import Path
+from typing import Any
+
+import torch
+from PIL import Image
+from safetensors.torch import save_file, load_file
+
+from library.data.pipeline.caching_engine import CachingStrategy
+from library.data.pipeline.dataclasses import CacheEntry
+from library.utils.common_utils import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
+
+# SDXL VAE scale factor (different from SD)
+SDXL_VAE_LATENT_SCALE = 0.13025
+
+
+def get_crop_ltrb(
+    bucket_reso: tuple[int, int],
+    original_size: tuple[int, int],
+) -> tuple[int, int, int, int]:
+    """
+    Calculate crop coordinates for SDXL micro-conditioning.
+
+    When an image is resized to fit a bucket, it may need to be cropped.
+    This computes where the center crop happens in the original image's
+    coordinate space.
+
+    Ported from BucketManager.get_crop_ltrb() for compatibility with
+    Stability AI's training approach.
+
+    Args:
+        bucket_reso: Target bucket resolution (width, height).
+        original_size: Original image size (width, height).
+
+    Returns:
+        Tuple of (crop_left, crop_top, crop_right, crop_bottom) in original
+        image pixel coordinates.
+    """
+    bucket_w, bucket_h = bucket_reso
+    orig_w, orig_h = original_size
+
+    bucket_ar = bucket_w / bucket_h
+    image_ar = orig_w / orig_h
+
+    if bucket_ar > image_ar:
+        # Bucket is wider than image → match height, crop top/bottom
+        resized_width = bucket_h * image_ar
+        resized_height = bucket_h
+    else:
+        # Bucket is taller than image → match width, crop left/right
+        resized_width = bucket_w
+        resized_height = bucket_w / image_ar
+
+    # Center crop offsets
+    crop_left = int((bucket_w - resized_width) // 2)
+    crop_top = int((bucket_h - resized_height) // 2)
+    crop_right = int(crop_left + resized_width)
+    crop_bottom = int(crop_top + resized_height)
+
+    return crop_left, crop_top, crop_right, crop_bottom
+
+
+class SdxlLatentsPipelineStrategy(CachingStrategy):
+    """
+    Latent caching strategy for SDXL.
+
+    Encodes images to VAE latents and saves as .safetensors files.
+    Each cache file contains:
+    - latents: [C, H/8, W/8] tensor
+    - latents_flipped: (optional) horizontally flipped latents for augmentation
+    - Metadata: original_size, crop_ltrb, bucket_reso (used in SDXL conditioning)
+
+    Args:
+        cache_suffix: File suffix for cache files (default: "_sdxl_latents.safetensors")
+        flip_aug: Whether to also cache horizontally flipped latents
+        dtype: Data type for saved latents ("fp16", "bf16", "fp32")
+    """
+
+    def __init__(
+        self,
+        cache_suffix: str = "_sdxl_latents.safetensors",
+        flip_aug: bool = False,
+        dtype: str = "fp16",
+    ) -> None:
+        self.cache_suffix = cache_suffix
+        self.flip_aug = flip_aug
+        self.dtype = dtype
+        self._torch_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[dtype]
+
+    def get_cache_path(self, entry: CacheEntry, cache_dir: Path) -> Path:
+        """
+        Generate cache file path for an entry.
+
+        Format: {cache_dir}/{entry.id}_sdxl_latents.safetensors
+        """
+        return cache_dir / f"{entry.id}{self.cache_suffix}"
+
+    def encode_batch(
+        self,
+        images: torch.Tensor,
+        model: Any,
+        entries: list[CacheEntry],
+    ) -> list[dict[str, Any]]:
+        """
+        Encode a batch of images to VAE latents.
+
+        Args:
+            images: Batch of image tensors [B, C, H, W] in [-1, 1] range.
+            model: VAE model with encode() method.
+            entries: Corresponding CacheEntry objects for metadata.
+
+        Returns:
+            List of dicts with 'latents' tensor and metadata for each image.
+        """
+        vae = model
+        device = vae.device
+        vae_dtype = vae.dtype
+
+        # Move images to VAE device and dtype
+        images = images.to(device=device, dtype=vae_dtype)
+
+        # Encode to latents
+        with torch.no_grad():
+            latent_dist = vae.encode(images).latent_dist
+            latents = latent_dist.sample() * SDXL_VAE_LATENT_SCALE
+
+        # Encode flipped if requested
+        flipped_latents = None
+        if self.flip_aug:
+            images_flipped = torch.flip(images, dims=[3])  # Flip width dimension
+            with torch.no_grad():
+                latent_dist_flipped = vae.encode(images_flipped).latent_dist
+                flipped_latents = latent_dist_flipped.sample() * SDXL_VAE_LATENT_SCALE
+
+        # Convert to target dtype and CPU
+        latents = latents.to(dtype=self._torch_dtype).cpu()
+        if flipped_latents is not None:
+            flipped_latents = flipped_latents.to(dtype=self._torch_dtype).cpu()
+
+        # Build output for each entry
+        results = []
+        for i, entry in enumerate(entries):
+            # Compute crop coordinates for SDXL micro-conditioning
+            crop_l, crop_t, crop_r, crop_b = get_crop_ltrb(entry.bucket_reso, entry.original_size)
+
+            data: dict[str, Any] = {
+                "latents": latents[i],
+                "metadata": {
+                    "original_size": f"{entry.original_size[0]},{entry.original_size[1]}",
+                    "bucket_reso": f"{entry.bucket_reso[0]},{entry.bucket_reso[1]}",
+                    "resized_size": f"{entry.resized_size[0]},{entry.resized_size[1]}",
+                    # Crop coordinates in bucket pixel space (for SDXL conditioning)
+                    "crop_ltrb": f"{crop_l},{crop_t},{crop_r},{crop_b}",
+                },
+            }
+            if flipped_latents is not None:
+                data["latents_flipped"] = flipped_latents[i]
+            results.append(data)
+
+        return results
+
+    def save_cache(self, data: dict[str, Any], path: Path) -> None:
+        """
+        Save encoded latents to a .safetensors file.
+
+        Args:
+            data: Dict with 'latents' tensor and optional 'latents_flipped', plus 'metadata'.
+            path: Output file path.
+        """
+        tensors = {"latents": data["latents"]}
+        if "latents_flipped" in data:
+            tensors["latents_flipped"] = data["latents_flipped"]
+
+        metadata = data.get("metadata", {})
+        save_file(tensors, str(path), metadata=metadata)
+
+    def load_cache(self, path: Path) -> dict[str, torch.Tensor]:
+        """
+        Load cached latents from a .safetensors file.
+
+        Args:
+            path: Cache file path.
+
+        Returns:
+            Dict with 'latents' and optionally 'latents_flipped' tensors.
+        """
+        return load_file(str(path))
+
+    def is_cache_valid(
+        self,
+        path: Path,
+        entry: CacheEntry,
+        flip_aug: bool = False,
+        alpha_mask: bool = False,
+    ) -> bool:
+        """
+        Check if cache file is valid for the given entry and config.
+
+        Validates:
+        - 'latents' key exists
+        - Latent shape matches bucket resolution (H/8, W/8)
+        - 'latents_flipped' present if flip_aug is True
+        - 'alpha_mask' present if alpha_mask is True
+        - Stored bucket_reso matches entry
+
+        Args:
+            path: Cache file path.
+            entry: The CacheEntry to validate against.
+            flip_aug: Whether flipped latents are required.
+            alpha_mask: Whether alpha mask is required.
+
+        Returns:
+            True if cache is valid, False if it needs re-caching.
+        """
+        from safetensors import safe_open
+
+        try:
+            with safe_open(str(path), framework="pt") as f:
+                keys = set(f.keys())
+
+                # Check required key
+                if "latents" not in keys:
+                    logger.debug(f"Cache {path}: missing 'latents' key")
+                    return False
+
+                # Check latent shape
+                latents = f.get_tensor("latents")
+                expected_h = entry.bucket_reso[1] // 8
+                expected_w = entry.bucket_reso[0] // 8
+                if latents.shape != (4, expected_h, expected_w):
+                    logger.debug(f"Cache {path}: shape mismatch. Expected (4, {expected_h}, {expected_w}), got {tuple(latents.shape)}")
+                    return False
+
+                # Check flip_aug if required
+                if flip_aug and "latents_flipped" not in keys:
+                    logger.debug(f"Cache {path}: flip_aug required but 'latents_flipped' missing")
+                    return False
+
+                # Check alpha_mask if required
+                if alpha_mask and "alpha_mask" not in keys:
+                    logger.debug(f"Cache {path}: alpha_mask required but missing")
+                    return False
+
+                # Check metadata matches entry (optional but useful)
+                metadata = f.metadata()
+                if metadata:
+                    stored_bucket = metadata.get("bucket_reso", "")
+                    expected_bucket = f"{entry.bucket_reso[0]},{entry.bucket_reso[1]}"
+                    if stored_bucket and stored_bucket != expected_bucket:
+                        logger.debug(f"Cache {path}: bucket_reso mismatch. Stored '{stored_bucket}', expected '{expected_bucket}'")
+                        return False
+
+            return True
+
+        except Exception as e:
+            logger.debug(f"Cache validation error for {path}: {e}")
+            return False
+
+    def preprocess_image(
+        self,
+        image: Image.Image,
+        target_size: tuple[int, int],
+    ) -> torch.Tensor:
+        """
+        Preprocess an image for VAE encoding.
+
+        Resizes to target size and normalizes to [-1, 1].
+
+        Args:
+            image: PIL Image.
+            target_size: (width, height) to resize to.
+
+        Returns:
+            Tensor [C, H, W] ready for batching.
+        """
+        # Resize to target size if needed
+        if image.size != target_size:
+            image = image.resize(target_size, Image.Resampling.LANCZOS)
+
+        # Convert to RGB if needed
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        # Convert to tensor and normalize to [-1, 1]
+        import numpy as np
+
+        arr = np.array(image, dtype=np.float32) / 255.0
+        arr = arr * 2.0 - 1.0  # [0, 1] -> [-1, 1]
+        tensor = torch.from_numpy(arr).permute(2, 0, 1)  # [H, W, C] -> [C, H, W]
+        return tensor
+
+
+class SdxlTextEncoderPipelineStrategy(CachingStrategy):
+    """
+    Text encoder output caching strategy for SDXL.
+
+    Encodes captions using both CLIP text encoders and saves outputs as .safetensors.
+    Each cache file contains:
+    - hidden_state1: Output from CLIP-L (text_encoder 1)
+    - hidden_state2: Output from CLIP-G (text_encoder 2)
+    - pool2: Pooled output from CLIP-G (used in time embeddings)
+    - Metadata: caption hash, token lengths
+
+    Args:
+        cache_suffix: File suffix for cache files (default: "_sdxl_te.safetensors")
+        max_token_length: Maximum token length (None = 75, or 150, 225 for longer prompts)
+        dtype: Data type for saved embeddings ("fp16", "bf16", "fp32")
+    """
+
+    def __init__(
+        self,
+        cache_suffix: str = "_sdxl_te.safetensors",
+        max_token_length: int | None = None,
+        dtype: str = "fp16",
+    ) -> None:
+        self.cache_suffix = cache_suffix
+        self.max_token_length = max_token_length
+        self.dtype = dtype
+        self._torch_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[dtype]
+
+    def get_cache_path(self, entry: CacheEntry, cache_dir: Path) -> Path:
+        """
+        Generate cache file path for an entry.
+
+        Format: {cache_dir}/{entry.id}_sdxl_te.safetensors
+        """
+        return cache_dir / f"{entry.id}{self.cache_suffix}"
+
+    def encode_batch(
+        self,
+        images: torch.Tensor,
+        model: Any,
+        entries: list[CacheEntry],
+    ) -> list[dict[str, Any]]:
+        """
+        Encode captions using SDXL's dual text encoders.
+
+        Note: For text encoder caching, 'images' tensor is not used.
+        We pull captions from the entries instead.
+
+        Args:
+            images: Unused (text encoding doesn't need images).
+            model: Tuple of (text_encoder1, text_encoder2, tokenizer1, tokenizer2).
+            entries: CacheEntry objects containing captions.
+
+        Returns:
+            List of dicts with 'hidden_state1', 'hidden_state2', 'pool2' for each entry.
+        """
+        text_encoder1, text_encoder2, tokenizer1, tokenizer2 = model
+        device = text_encoder1.device
+
+        captions = [entry.caption for entry in entries]
+
+        # Tokenize with both tokenizers
+        tokens1 = tokenizer1(
+            captions,
+            padding="max_length",
+            truncation=True,
+            max_length=tokenizer1.model_max_length,
+            return_tensors="pt",
+        ).input_ids.to(device)
+
+        tokens2 = tokenizer2(
+            captions,
+            padding="max_length",
+            truncation=True,
+            max_length=tokenizer2.model_max_length,
+            return_tensors="pt",
+        ).input_ids.to(device)
+
+        # Encode with both text encoders
+        with torch.no_grad():
+            # Text encoder 1 (CLIP-L)
+            enc1_out = text_encoder1(tokens1, output_hidden_states=True)
+            hidden_state1 = enc1_out.hidden_states[-2]  # Penultimate layer
+
+            # Text encoder 2 (CLIP-G with projection)
+            enc2_out = text_encoder2(tokens2, output_hidden_states=True)
+            hidden_state2 = enc2_out.hidden_states[-2]  # Penultimate layer
+            pool2 = enc2_out.text_embeds  # Pooled output
+
+        # Convert to target dtype and CPU
+        hidden_state1 = hidden_state1.to(dtype=self._torch_dtype).cpu()
+        hidden_state2 = hidden_state2.to(dtype=self._torch_dtype).cpu()
+        pool2 = pool2.to(dtype=self._torch_dtype).cpu()
+
+        # Build output for each entry
+        results = []
+        for i, entry in enumerate(entries):
+            data: dict[str, Any] = {
+                "hidden_state1": hidden_state1[i],
+                "hidden_state2": hidden_state2[i],
+                "pool2": pool2[i],
+                "metadata": {
+                    "caption_hash": str(hash(entry.caption) & 0xFFFFFFFF),  # For validation
+                },
+            }
+            results.append(data)
+
+        return results
+
+    def save_cache(self, data: dict[str, Any], path: Path) -> None:
+        """
+        Save text encoder outputs to a .safetensors file.
+
+        Args:
+            data: Dict with 'hidden_state1', 'hidden_state2', 'pool2', plus 'metadata'.
+            path: Output file path.
+        """
+        tensors = {
+            "hidden_state1": data["hidden_state1"],
+            "hidden_state2": data["hidden_state2"],
+            "pool2": data["pool2"],
+        }
+
+        metadata = data.get("metadata", {})
+        save_file(tensors, str(path), metadata=metadata)
+
+    def load_cache(self, path: Path) -> dict[str, torch.Tensor]:
+        """
+        Load cached text encoder outputs from a .safetensors file.
+
+        Args:
+            path: Cache file path.
+
+        Returns:
+            Dict with 'hidden_state1', 'hidden_state2', 'pool2' tensors.
+        """
+        return load_file(str(path))
+
+    def is_cache_valid(
+        self,
+        path: Path,
+        entry: CacheEntry,
+        flip_aug: bool = False,
+        alpha_mask: bool = False,
+    ) -> bool:
+        """
+        Check if cache file is valid for the given entry and config.
+
+        Validates:
+        - Required keys exist (hidden_state1, hidden_state2, pool2)
+        - Optionally checks caption_hash matches
+
+        Args:
+            path: Cache file path.
+            entry: The CacheEntry to validate against.
+            flip_aug: Unused for text encoder (no flip augmentation).
+            alpha_mask: Unused for text encoder.
+
+        Returns:
+            True if cache is valid, False if it needs re-caching.
+        """
+        from safetensors import safe_open
+
+        try:
+            with safe_open(str(path), framework="pt") as f:
+                keys = set(f.keys())
+
+                # Check required keys
+                required_keys = {"hidden_state1", "hidden_state2", "pool2"}
+                missing = required_keys - keys
+                if missing:
+                    logger.debug(f"Cache {path}: missing keys {missing}")
+                    return False
+
+                # Optionally check caption hash (detect caption changes)
+                metadata = f.metadata()
+                if metadata and "caption_hash" in metadata:
+                    stored_hash = metadata["caption_hash"]
+                    expected_hash = str(hash(entry.caption) & 0xFFFFFFFF)
+                    if stored_hash != expected_hash:
+                        logger.debug(f"Cache {path}: caption changed. Stored hash '{stored_hash}', expected '{expected_hash}'")
+                        return False
+
+            return True
+
+        except Exception as e:
+            logger.debug(f"Cache validation error for {path}: {e}")
+            return False
+
+    def preprocess_image(
+        self,
+        image: Image.Image,
+        target_size: tuple[int, int],
+    ) -> torch.Tensor:
+        """
+        No-op for text encoder caching (we don't use images).
+
+        Returns a dummy tensor since the interface requires it.
+        """
+        # Return empty tensor - text encoder doesn't use images
+        return torch.empty(0)

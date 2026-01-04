@@ -89,6 +89,34 @@ class CachingStrategy(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def is_cache_valid(
+        self,
+        path: Path,
+        entry: CacheEntry,
+        flip_aug: bool = False,
+        alpha_mask: bool = False,
+    ) -> bool:
+        """
+        Check if a cache file is valid for the given entry and config.
+
+        Validates:
+        - Required keys exist (latents, hidden_states, etc.)
+        - Tensor shapes match expected bucket resolution
+        - Optional data present if needed (flipped latents, alpha mask)
+        - Stored metadata matches entry metadata
+
+        Args:
+            path: Cache file path.
+            entry: The CacheEntry to validate against.
+            flip_aug: Whether flipped latents are required.
+            alpha_mask: Whether alpha mask is required.
+
+        Returns:
+            True if cache is valid, False if it needs re-caching.
+        """
+        raise NotImplementedError
+
     def preprocess_image(
         self,
         image: Image.Image,
@@ -162,6 +190,9 @@ class CachingEngine:
         accelerator: Any,
         cache_dir: str | Path,
         skip_existing: bool = True,
+        skip_validity_check: bool = False,
+        flip_aug: bool = False,
+        alpha_mask: bool = False,
         show_progress: bool = True,
     ) -> DatasetManifest:
         """
@@ -173,6 +204,10 @@ class CachingEngine:
             accelerator: HuggingFace Accelerator for multi-GPU.
             cache_dir: Directory to save cache files.
             skip_existing: Whether to skip already-cached entries.
+            skip_validity_check: If True, only check file exists (faster).
+                If False, validate cache contents match expected config.
+            flip_aug: Whether flipped latents are required.
+            alpha_mask: Whether alpha mask is required.
             show_progress: Whether to show tqdm progress bar.
 
         Returns:
@@ -182,7 +217,7 @@ class CachingEngine:
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Get entries that need caching
-        entries_to_cache = self._get_entries_to_cache(manifest, cache_dir, skip_existing)
+        entries_to_cache = self._get_entries_to_cache(manifest, cache_dir, skip_existing, skip_validity_check, flip_aug, alpha_mask)
 
         if not entries_to_cache:
             logger.info("All entries already cached, nothing to do")
@@ -220,6 +255,9 @@ class CachingEngine:
         manifest: DatasetManifest,
         cache_dir: Path,
         skip_existing: bool,
+        skip_validity_check: bool,
+        flip_aug: bool,
+        alpha_mask: bool,
     ) -> list[CacheEntry]:
         """Get list of entries that need caching."""
         entries = []
@@ -227,9 +265,19 @@ class CachingEngine:
             if skip_existing:
                 cache_path = self.strategy.get_cache_path(entry, cache_dir)
                 if cache_path.exists():
-                    # Update entry with existing cache path
-                    entry.latent_cache_path = str(cache_path)
-                    continue
+                    # Fast path: only check existence
+                    if skip_validity_check:
+                        entry.latent_cache_path = str(cache_path)
+                        continue
+                    # Full validation: check cache contents
+                    try:
+                        if self.strategy.is_cache_valid(cache_path, entry, flip_aug, alpha_mask):
+                            entry.latent_cache_path = str(cache_path)
+                            continue
+                        else:
+                            logger.debug(f"Cache invalid for {entry.id}, will re-cache")
+                    except Exception as e:
+                        logger.warning(f"Cache validation failed for {entry.id}: {e}, will re-cache")
             entries.append(entry)
         return entries
 

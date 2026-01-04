@@ -31,6 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - tqdm progress bar with multi-GPU support
   - Modulo workload distribution across GPUs
 
+- **Data Pipeline Phase 2: Model-Specific Strategies** (`library/strategies/pipeline_*.py`)
+
+  - `SdLatentsPipelineStrategy` - SD 1.5/2.0 VAE latent caching (scale factor 0.18215)
+  - `SdxlLatentsPipelineStrategy` - SDXL VAE latent caching (scale factor 0.13025)
+  - `SdxlTextEncoderPipelineStrategy` - SDXL dual text encoder output caching
+  - All strategies use `.safetensors` format for fast loading and metadata support
+  - Self-contained per-model files (no shared base classes for future flexibility)
+
 - **VAE Dtype Configuration** (`library/data/pipeline/dataclasses.py`)
 
   - Added `latent_dtype` field to `DatasetManifest` ("fp16", "bf16", "fp32")
@@ -40,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   - `test_pipeline_dataset_scanner.py` - 22 tests (bucket, scanning, manifest, JSON metadata)
   - `test_pipeline_caching.py` - 6 tests (batching, multi-GPU split, file creation)
+  - `test_pipeline_strategies.py` - 12 tests (SD/SDXL latent and TE strategies)
+  - `test_pipeline_integration.py` - 6 tests (end-to-end: scan → manifest → cache with real images)
 
 - **Reorganized** `library/data/_deprecated/` - Moved old data scripts for cleaner separation
 

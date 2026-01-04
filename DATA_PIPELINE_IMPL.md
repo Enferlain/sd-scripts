@@ -43,11 +43,11 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
 - [x] Create `CachingStrategy` interface
 - [x] Create `CachingEngine` skeleton
 
-- [ ] Implement model-specific strategies (NEW code in `strategy_*.py`)
+- [x] Implement model-specific strategies (NEW code in `pipeline_*.py`)
 
-  - [ ] `SdLatentsCachingStrategy` - SD VAE encoding, scale factor 0.18215
-  - [ ] `SdxlLatentsCachingStrategy` - SDXL VAE encoding, scale factor 0.13025
-  - [ ] `SdxlTextEncoderCachingStrategy` - SDXL dual TE output caching
+  - [x] `SdLatentsPipelineStrategy` (`library/strategies/pipeline_sd.py`) - SD VAE encoding, scale factor 0.18215
+  - [x] `SdxlLatentsPipelineStrategy` (`library/strategies/pipeline_sdxl.py`) - SDXL VAE encoding, scale factor 0.13025
+  - [x] `SdxlTextEncoderPipelineStrategy` (`library/strategies/pipeline_sdxl.py`) - SDXL dual TE output caching
 
 > [!NOTE] > `library/data` is model-agnostic. Strategies implement `CachingStrategy` and get injected by training scripts.
 > Flow: training script → creates strategy → passes to CachingEngine
@@ -59,9 +59,14 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
   - [x] Multi-GPU workload distribution
   - [x] Progress bar with tqdm
 
-- [ ] Optimize file format
-  - [ ] Evaluate safetensors vs npz performance
-  - [ ] Memory-mapped loading
+- [x] File format: `.safetensors` (memory-mapped, fast GPU transfer, metadata support)
+
+- [x] Cache validation (`is_cache_valid()` on strategies)
+  - [x] Check required keys exist (latents, hidden_states)
+  - [x] Verify tensor shapes match bucket resolution
+  - [x] Check flip_aug/alpha_mask presence if required
+  - [x] Metadata matching (bucket_reso, caption_hash for TE)
+  - [x] `skip_validity_check` option for fast path
 
 ---
 

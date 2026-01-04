@@ -40,6 +40,11 @@ class MockCachingStrategy(CachingStrategy):
     def load_cache(self, path):
         return {"latents": torch.randn(4, 64, 64)}
 
+    def is_cache_valid(self, path, entry, flip_aug=False, alpha_mask=False):
+        # For tests using skip_validity_check=True, this won't be called
+        # For basic testing, just return True if file exists
+        return path.exists()
+
 
 @pytest.fixture
 def mock_accelerator():
