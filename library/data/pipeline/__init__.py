@@ -26,7 +26,12 @@ from library.data.pipeline.manifest import (
 )
 from library.data.pipeline.caching_engine import CachingStrategy, CachingEngine
 from library.data.pipeline.dataloader import TrainingDataset, create_training_dataloader
-from library.data.pipeline.epoch_preparation import prepare_epoch, prepare_validation_epoch
+from library.data.pipeline.epoch_preparation import (
+    prepare_epoch,
+    prepare_validation_epoch,
+    tokenize_epoch_manifest,
+    load_epoch_tokens,
+)
 from library.data.pipeline.dataset_scanner import (
     ScannedImage,
     scan_directory,
@@ -36,6 +41,10 @@ from library.data.pipeline.dataset_scanner import (
     select_bucket,
     create_manifest,
 )
+from library.data.pipeline.caption_processor import (
+    CaptionConfig,
+    process_caption,
+)
 
 __all__ = [
     # Dataclasses
@@ -44,6 +53,9 @@ __all__ = [
     "BatchInfo",
     "EpochManifest",
     "DatasetManifest",
+    # Caption processing
+    "CaptionConfig",
+    "process_caption",
     # Manifest I/O
     "save_dataset_manifest",
     "load_dataset_manifest",
@@ -58,6 +70,8 @@ __all__ = [
     # Epoch preparation
     "prepare_epoch",
     "prepare_validation_epoch",
+    "tokenize_epoch_manifest",
+    "load_epoch_tokens",
     # Dataset scanner (Phase 1)
     "ScannedImage",
     "scan_directory",

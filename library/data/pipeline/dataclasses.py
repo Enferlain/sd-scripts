@@ -122,10 +122,14 @@ class BatchInfo:
     """
 
     image_ids: list[str]
-    """IDs of images in this batch."""
+    """Base image IDs (without repeat suffix). For loading latents."""
 
     bucket_reso: tuple[int, int]
     """Resolution of all images in this batch."""
+
+    # Repeat tracking for per-repeat token/TE caching
+    repeat_indices: list[int] = field(default_factory=list)
+    """Repeat index for each sample (0 for single-repeat images)."""
 
     # Caption data (populated in Phase 3 after processing)
     processed_captions: list[str] = field(default_factory=list)
@@ -143,6 +147,18 @@ class BatchInfo:
     def batch_size(self) -> int:
         """Number of images in this batch."""
         return len(self.image_ids)
+
+    def get_sample_key(self, idx: int) -> str:
+        """Get unique sample key for the given batch index.
+
+        For token/TE caching, this distinguishes between repeats of the same image.
+        Format: "img_id" for repeat 0, or "img_id#repeat_idx" for repeat > 0.
+        """
+        img_id = self.image_ids[idx]
+        if not self.repeat_indices:
+            return img_id
+        repeat_idx = self.repeat_indices[idx]
+        return img_id if repeat_idx == 0 else f"{img_id}#{repeat_idx}"
 
 
 @dataclass

@@ -15,6 +15,31 @@ HashAlgorithm = Literal["md5", "sha1", "sha256", "sha512", "blake3"]
 DEFAULT_HASH_ALGORITHM = "sha256"
 
 
+def stable_string_hash(s: str, bits: int = 64) -> int:
+    """
+    Compute a stable hash for a string, consistent across Python runs.
+
+    Python's built-in hash() is randomized per-run (PYTHONHASHSEED).
+    This uses blake2b for a deterministic hash.
+
+    Args:
+        s: String to hash.
+        bits: Hash size in bits (32, 64, or higher). Default 64.
+
+    Returns:
+        Integer hash value.
+
+    Example:
+        >>> stable_string_hash("my_image#0")  # Same result every run
+        12345678901234567890
+    """
+    digest_size = bits // 8
+    return int.from_bytes(
+        hashlib.blake2b(s.encode("utf-8"), digest_size=digest_size).digest(),
+        "little",
+    )
+
+
 def calculate_hash(filename: str, algorithm: HashAlgorithm = DEFAULT_HASH_ALGORITHM) -> str:
     """
     Calculate file hash with configurable algorithm.

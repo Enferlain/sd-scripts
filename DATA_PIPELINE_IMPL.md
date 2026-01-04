@@ -3,11 +3,14 @@
 This document tracks implementation progress for the data pipeline rework.
 See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy reference.
 
-## Status: 🔄 In Progress
+## Status: ✅ Phase 1-2 Complete, ✅ Phase 3 Complete
 
 **Last Updated:** 2026-01-04
 
----
+- Phase 1 (scanning): Complete ✅
+- Phase 2 (caching): Complete ✅
+- Phase 3 (epoch prep): Complete ✅
+- Phase 4 (dataloader): Pending
 
 ## Phase 1: Dataset Preparation
 
@@ -81,16 +84,32 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
 - [x] Implement warmup ordering (largest resolutions first)
 - [x] Create `BatchInfo` dataclass for structured batch metadata
 
-- [ ] Caption processing (Phase 3 implementation)
+- [x] Caption processing
 
-  - [ ] Caption dropout
-  - [ ] Tag shuffle
-  - [ ] Wildcard resolution
-  - [ ] Token warmup
+  - [x] Create `CaptionConfig` dataclass
+  - [x] Port `process_caption()` from legacy
+  - [x] Tag shuffle
+  - [x] Caption dropout
+  - [x] Tag dropout
+  - [x] Wildcard resolution
+  - [x] Token warmup
+  - [x] Protected tags (immune to dropout)
+  - [x] Keep tokens separator
+  - [x] Unit tests (30 tests)
 
-- [ ] Integration
-  - [ ] Hook into training loop (per-epoch manifest generation)
-  - [ ] Save/load epoch manifests for reproducibility
+- [x] Integrate caption processing into `prepare_epoch()`
+
+- [x] Tokenization integration
+
+  - [x] `tokenize_epoch_manifest()` - batch tokenize to safetensors
+  - [x] `load_epoch_tokens()` - load tokenized captions
+  - [x] Safetensors storage (not JSON) for efficiency
+
+- [x] Reproducibility fixes
+  - [x] `stable_string_hash()` in hash_utils.py (64-bit blake2b)
+  - [x] `BatchInfo.repeat_indices` for per-repeat tracking
+  - [x] `BatchInfo.get_sample_key()` for unique sample identification
+  - [x] Structured (img_id, repeat_idx) instead of string separator
 
 ---
 
@@ -151,6 +170,10 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
 
 ## Notes
 
-- Skeleton uses stub implementations - actual caching/loading logic not yet implemented
-- **New implementations, not wrappers:** The strategies in `strategy_sd.py`/`strategy_sdxl.py` will get NEW classes implementing `CachingStrategy`. We're not wrapping the old `SdSdxlLatentsCachingStrategy` - that code is tightly coupled to `ImageInfo` and the legacy flow. Fresh code fitting our `CacheEntry`-based system.
+- Phase 1 (scanning) and Phase 2 (caching) are fully functional and tested
+- SDXL is the primary focus; SD strategies work but less tested
+- Cache validation detects: missing keys, shape mismatch, missing flip_aug, caption changes
+- Crop coordinates computed for SDXL micro-conditioning (`get_crop_ltrb`)
+- Alpha mask support: validation ready, but encoding/saving not yet implemented
+- Async 4-stage pipeline from plan not yet implemented (current sync impl works)
 - First integration target: `sdxl_peft.py` (most used script)
