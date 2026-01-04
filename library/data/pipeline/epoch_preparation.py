@@ -62,8 +62,10 @@ def prepare_epoch(
     Returns:
         EpochManifest with pre-computed batch order.
     """
-    seed = seed if seed is not None else epoch
-    rng = random.Random(seed)
+    # Mix seed with epoch to ensure different shuffling per epoch
+    # This matches legacy behavior: random.seed(seed + epoch)
+    effective_seed = (seed if seed is not None else 0) + epoch
+    rng = random.Random(effective_seed)
 
     # Collect all sample keys with repeats
     # Each repeat is a unique "sample instance" with key "img_id#repeat_idx"
@@ -127,7 +129,7 @@ def prepare_epoch(
                     if entry is not None:
                         # Use stable 64-bit hash for reproducibility across Python runs
                         # Each sample_key (including repeat index) gets unique randomness
-                        caption_rng = random.Random(seed ^ stable_string_hash(sample_key) ^ epoch)
+                        caption_rng = random.Random(effective_seed ^ stable_string_hash(sample_key))
                         processed = process_caption(
                             entry.caption,
                             caption_config,
@@ -166,7 +168,7 @@ def prepare_epoch(
 
     epoch_manifest = EpochManifest(
         epoch=epoch,
-        seed=seed,
+        seed=effective_seed,
         batches=batches,
     )
 
@@ -299,6 +301,9 @@ def tokenize_epoch_manifest(
             tensor = tensor.long()  # Convert to int64
         tensors[name] = tensor
 
+    # Compute manifest hash for validation (ensures token file matches manifest)
+    manifest_id = f"epoch_{epoch_manifest.epoch}_seed_{epoch_manifest.seed}_batches_{len(epoch_manifest.batches)}"
+
     # Metadata
     metadata = {
         "epoch": str(epoch_manifest.epoch),
@@ -307,6 +312,7 @@ def tokenize_epoch_manifest(
         "num_batches": str(len(batch_sizes)),
         "max_token_length": str(max_token_length),
         "encoder_names": ",".join(encoder_names),
+        "manifest_hash": str(stable_string_hash(manifest_id)),
     }
 
     save_file(tensors, output_path, metadata=metadata)

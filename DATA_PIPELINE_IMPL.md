@@ -3,14 +3,14 @@
 This document tracks implementation progress for the data pipeline rework.
 See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy reference.
 
-## Status: ✅ Phase 1-2 Complete, ✅ Phase 3 Complete
+## Status: ✅ Phase 1-3 Complete, 🔄 Phase 4 In Progress
 
 **Last Updated:** 2026-01-04
 
 - Phase 1 (scanning): Complete ✅
 - Phase 2 (caching): Complete ✅
 - Phase 3 (epoch prep): Complete ✅
-- Phase 4 (dataloader): Pending
+- **Phase 4 (dataloader): In Progress - token loading done**
 
 ## Phase 1: Dataset Preparation
 
@@ -122,11 +122,18 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
 - [x] Create `TrainingDataset` (IterableDataset)
 - [x] Create `create_training_dataloader()` helper
 
-- [ ] Complete implementation
+- [x] Token file loading
 
-  - [ ] Efficient cache file loading
-  - [ ] Prefetching and pinned memory
-  - [ ] Caption processing (shuffle, dropout, warmup)
+  - [x] Add `tokens_path` param to TrainingDataset
+  - [x] Offset-based batch slicing (sequential index mapping)
+  - [x] Manifest hash validation
+  - [ ] Streaming mode (`get_slice()` for memory efficiency)
+
+- [ ] Additional data loading
+
+  - [ ] SDXL metadata (original_size, crop_ltrb)
+  - [ ] Flip augmentation (load `latents_flipped`)
+  - [ ] Loss weights and alpha masks
 
 - [ ] Training script integration
   - [ ] Replace current DataLoader in `sd_peft.py`

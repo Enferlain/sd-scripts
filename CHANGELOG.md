@@ -85,6 +85,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `BatchInfo.get_sample_key()` for unique sample identification
   - Each image repeat now gets independent caption randomness
 
+- **Data Pipeline Phase 4: Token Loading** (`library/data/pipeline/dataloader.py`)
+
+  - `TrainingDataset` now accepts `tokens_path` for epoch token file
+  - Offset-based batch slicing (sequential index mapping)
+  - Manifest hash validation to ensure token file matches epoch
+  - Support for both token file loading and legacy `BatchInfo.input_ids`
+
 ### Changed
 
 - **Flexible Text Encoder Inputs** (`library/data/pipeline/dataclasses.py`)
