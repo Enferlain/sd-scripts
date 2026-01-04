@@ -225,6 +225,8 @@ class TestSdxlTextEncoderSaveLoad:
         """Test that caption hash is stored for change detection."""
         from safetensors import safe_open
 
+        from library.utils.hash_utils import stable_string_hash
+
         strategy = SdxlTextEncoderPipelineStrategy(dtype="fp32")
         cache_path = strategy.get_cache_path(sample_entry, tmp_path)
 
@@ -236,7 +238,7 @@ class TestSdxlTextEncoderSaveLoad:
             metadata = f.metadata()
 
         assert "caption_hash" in metadata
-        expected_hash = str(hash(sample_entry.caption) & 0xFFFFFFFF)
+        expected_hash = str(stable_string_hash(sample_entry.caption))
         assert metadata["caption_hash"] == expected_hash
 
     def test_is_cache_valid_detects_caption_change(self, sample_entry: CacheEntry, mock_text_encoders, tmp_path: Path):

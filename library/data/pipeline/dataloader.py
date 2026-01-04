@@ -113,8 +113,9 @@ class TrainingDataset(IterableDataset):
         """
         Iterate through batches in epoch manifest order.
 
-        For distributed training, only yields batches assigned to this rank
-        (batch_idx % world_size == rank).
+        Handles two levels of sharding:
+        1. Distributed training: rank/world_size (set at init)
+        2. DataLoader workers: worker_id/num_workers (detected at runtime)
 
         Yields:
             Dict containing batch data (on CPU):
@@ -124,15 +125,30 @@ class TrainingDataset(IterableDataset):
             - "text_encoder_outputs": Cached TE outputs (if using TE cache)
             - Other metadata as needed
         """
+        # Get worker info for DataLoader multi-processing
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is not None:
+            worker_id = worker_info.id
+            num_workers = worker_info.num_workers
+        else:
+            worker_id = 0
+            num_workers = 1
+
         # Token offset for sequential batch slicing
-        # Must track all batches (not just this rank's) for correct offset
+        # Must track all batches (not just this rank's/worker's) for correct offset
         token_offset = 0
 
         for batch_idx, batch_info in enumerate(self.epoch_manifest.batches):
             batch_size = len(batch_info.processed_captions or batch_info.image_ids)
 
-            # Distributed sharding: only process batches for this rank
-            if batch_idx % self.world_size == self.rank:
+            # Two-level sharding:
+            # 1. Distributed: batch_idx % world_size == rank
+            # 2. Workers: (batch_idx // world_size) % num_workers == worker_id
+            is_this_rank = (batch_idx % self.world_size) == self.rank
+            rank_local_idx = batch_idx // self.world_size
+            is_this_worker = (rank_local_idx % num_workers) == worker_id
+
+            if is_this_rank and is_this_worker:
                 batch_data = self._load_batch(batch_info, token_offset, batch_size)
                 yield batch_data
 
@@ -140,7 +156,10 @@ class TrainingDataset(IterableDataset):
             token_offset += batch_size
 
     def __len__(self) -> int:
-        """Number of batches in this epoch (for this rank if distributed)."""
+        """Number of batches in this epoch (for this rank if distributed).
+
+        Note: Does not account for num_workers sharding since that's runtime.
+        """
         total = self.epoch_manifest.num_batches
         # Divide by world_size, rounding up for last rank
         return (total + self.world_size - 1) // self.world_size

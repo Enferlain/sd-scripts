@@ -16,6 +16,7 @@ from safetensors.torch import save_file, load_file
 from library.data.pipeline.caching_engine import CachingStrategy
 from library.data.pipeline.dataclasses import CacheEntry
 from library.utils.common_utils import setup_logging
+from library.utils.hash_utils import stable_string_hash
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -402,7 +403,7 @@ class SdxlTextEncoderPipelineStrategy(CachingStrategy):
                 "hidden_state2": hidden_state2[i],
                 "pool2": pool2[i],
                 "metadata": {
-                    "caption_hash": str(hash(entry.caption) & 0xFFFFFFFF),  # For validation
+                    "caption_hash": str(stable_string_hash(entry.caption)),  # For validation
                 },
             }
             results.append(data)
@@ -478,7 +479,7 @@ class SdxlTextEncoderPipelineStrategy(CachingStrategy):
                 metadata = f.metadata()
                 if metadata and "caption_hash" in metadata:
                     stored_hash = metadata["caption_hash"]
-                    expected_hash = str(hash(entry.caption) & 0xFFFFFFFF)
+                    expected_hash = str(stable_string_hash(entry.caption))
                     if stored_hash != expected_hash:
                         logger.debug(f"Cache {path}: caption changed. Stored hash '{stored_hash}', expected '{expected_hash}'")
                         return False
