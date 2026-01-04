@@ -113,17 +113,30 @@ class TrainingDataset(IterableDataset):
         """
         Iterate through batches in epoch manifest order.
 
-        For distributed training, only yields batches assigned to this rank
-        (batch_idx % world_size == rank).
+        Handles both distributed sharding (rank/world_size) and
+        dataloader worker sharding (worker_id/num_workers).
 
         Yields:
-            Dict containing batch data (on CPU):
-            - "latents": Batched latent tensors [B, C, H, W]
-            - "captions": List of caption strings (or processed_captions if available)
-            - "input_ids": Tokenized input (if using token file or BatchInfo.input_ids)
-            - "text_encoder_outputs": Cached TE outputs (if using TE cache)
-            - Other metadata as needed
+            Dict containing batch data (on CPU).
         """
+        worker_info = torch.utils.data.get_worker_info()
+
+        if worker_info is None:
+            # Single-process loading (main process)
+            num_workers = 1
+            worker_id = 0
+        else:
+            # Multi-process loading
+            num_workers = worker_info.num_workers
+            worker_id = worker_info.id
+
+        # Total number of parallel data streams across all GPUs and workers
+        total_streams = self.world_size * num_workers
+
+        # Unique ID for this specific stream (0 to total_streams-1)
+        # Format: [Rank 0 Worker 0, Rank 0 Worker 1, ..., Rank 1 Worker 0, ...]
+        stream_id = self.rank * num_workers + worker_id
+
         # Token offset for sequential batch slicing
         # Must track all batches (not just this rank's) for correct offset
         token_offset = 0
@@ -131,8 +144,9 @@ class TrainingDataset(IterableDataset):
         for batch_idx, batch_info in enumerate(self.epoch_manifest.batches):
             batch_size = len(batch_info.processed_captions or batch_info.image_ids)
 
-            # Distributed sharding: only process batches for this rank
-            if batch_idx % self.world_size == self.rank:
+            # Combine distributed sharding and worker sharding
+            # Every batch is assigned to exactly one stream
+            if batch_idx % total_streams == stream_id:
                 batch_data = self._load_batch(batch_info, token_offset, batch_size)
                 yield batch_data
 
