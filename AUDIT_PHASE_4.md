@@ -69,8 +69,21 @@ The new `_load_batch` method returns a simplified dictionary that lacks fields r
 The `SdxlLatentsPipelineStrategy.load_cache` method uses `safetensors.torch.load_file`, which **does not return metadata**. The `crop_ltrb` (needed for `crop_top_lefts`) and `original_size` are stored in the safetensors metadata but are inaccessible via the current API.
 
 **Recommended Actions:**
-1.  **Update Strategy Interface:** Modify `load_cache` to return a tuple `(tensors, metadata)` or use `safe_open` to retrieve metadata.
-2.  **Populate Fields:** Update `_load_batch` to construct these fields.
+1.  **Update Strategy Implementation:** Replace `safetensors.torch.load_file` with `safetensors.safe_open`.
+    - `load_file` only returns tensors.
+    - `safe_open` allows accessing the file header to read stored metadata (`crop_ltrb`, `original_size`) without loading the full file.
+    - Example implementation:
+      ```python
+      from safetensors import safe_open
+
+      def load_cache(self, path):
+          with safe_open(path, framework="pt") as f:
+              metadata = f.metadata()
+              # Parse crop_ltrb and original_size from metadata
+              tensors = {k: f.get_tensor(k) for k in f.keys()}
+              return tensors, metadata
+      ```
+2.  **Populate Fields:** Update `_load_batch` to construct these fields using the retrieved metadata.
     - `original_sizes_hw`: From cache metadata (preferred) or `CacheEntry`.
     - `crop_top_lefts`: Must come from cache metadata (`crop_ltrb`).
     - `loss_weights`: Derive from `entry.is_reg`.
