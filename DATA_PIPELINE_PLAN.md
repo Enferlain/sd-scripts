@@ -521,7 +521,7 @@ sd-scripts/
 
 3. **Tokenizer Validation**: When storing `input_ids` in epoch manifests (Phase 3), consider storing a tokenizer hash for validation. This catches issues if someone changes tokenizers between runs.
 
-4. **ImageInfo Integration**: The `ImageInfo` class in `library/data/data_structures.py` is a good foundation for manifest entries. Consider evolving it or creating a new `ManifestEntry` dataclass that maps cleanly to the JSON schema.
+4. **CacheEntry vs ImageInfo**: We create a fresh `CacheEntry` dataclass (in `library/data/pipeline/dataclasses.py`) rather than evolving `ImageInfo`. The legacy class mixes static metadata with runtime state (tensors in memory), making it hard to serialize. `CacheEntry` stores **paths** to cache files, not tensors - tensors are loaded on-demand. Once the new pipeline is complete, the old data pipeline (including `ImageInfo`) moves to a legacy folder.
 
 ---
 
@@ -590,6 +590,25 @@ a: Keep modulo approach for caching (simple, works). For training, let accelerat
 5. **Streaming/partial datasets**: Support for datasets that don't fit on disk? Out of scope for initial implementation.
 
 a: Out of scope for v1. Focus on local-disk performance first. Architecture supports future extension (manifest could reference remote URLs).
+
+---
+
+## Strategy Integration
+
+The new pipeline engine lives in `library/data/` but delegates model-specific behavior to existing strategies in `library/strategies/`:
+
+- **Generic engine** (`library/data/pipeline/`): Handles I/O, batching, multi-GPU coordination
+- **Model-specific strategies** (`library/strategies/`): Provide VAE encoding, file formats, scale factors
+
+The engine calls strategy methods as plugins:
+
+```python
+latents_strategy = peft_strategy.get_latents_caching_strategy(cfg)
+engine = CachingEngine(latents_strategy)
+engine.cache_dataset(dataset, vae, accelerator)
+```
+
+This preserves the current pattern where strategies define "what/how" while the new engine provides a faster "infrastructure".
 
 ---
 

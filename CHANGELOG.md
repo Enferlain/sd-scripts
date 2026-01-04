@@ -54,9 +54,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added Implementation Notes section with suggestions for config dataclass location, legacy folder naming, tokenizer validation, and ImageInfo integration
 
 - **PEFT Strategy Internal Dedup** (`peft_strategy_base.py`)
+
   - Extracted `_prepare_latents()` helper to deduplicate latent encoding logic
   - Updated `process_batch` and `process_val_batch` in SD and SDXL strategies
   - Removed ~84 lines of duplicate code across 4 methods
+
+- **Data Pipeline Skeleton** (`library/data/pipeline/`)
+  - Created new pipeline architecture for high-performance data loading
+  - Added `dataclasses.py`: `CacheEntry`, `Bucket`, `EpochManifest`, `DatasetManifest`
+  - Added `manifest.py`: JSON I/O for manifests
+  - Added `caching_engine.py`: `CachingStrategy` interface, `CachingEngine` for multi-GPU
+  - Added `dataloader.py`: `TrainingDataset`, `create_training_dataloader()`
+  - Added `epoch_preparation.py`: `prepare_epoch()`, `prepare_validation_epoch()`
 
 ## [2026-01-02]
 

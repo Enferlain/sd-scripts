@@ -84,16 +84,12 @@ Scripts (contain training loops):     Library Modules:
   - Should extract to dedicated `Edm2LossConfig` sub-dataclass
   - Mutates config directly (`loss_config.debiased_estimation_loss = False`)
 - [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner
-- [x] ~~Dataset and bucketing decouple~~ (dataset.py split into 6 modules)
-- [x] ~~Resolve duplicate `diffusers_xformers`~~ (moved to PerformanceConfig)
 - [x] ~~Config passing pattern~~ (see DEVELOPMENT_GUIDE.md Section 5.D)
   - **Scripts/Strategies**: Use `cfg.*` directly (full root config access)
   - **Library Utilities**: Receive the **smallest container** with what they need:
     - Pass `PrecisionConfig` if only precision fields needed (not full `PerformanceConfig`)
     - Pass `LoggingConfig` if only logging fields needed (not full `OutputConfig`)
     - Different params can be at different depths (e.g., `precision_config, saving_config`)
-- [x] ~~Apply config pattern to `sd_textual_inversion.py`~~ (completed)
-- [x] get rid of lazy imports, move to top for transparency
 - [x] ~~**PEFT Strategy Deduplication**~~: 4 methods moved to `peft_strategy_base.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`)
 - [x] ~~**Upsample2D PyTorch 2.6+ Modernization**~~: Removed obsolete bfloat16 workaround (PyTorch #86679 fixed in 2.1+), replaced batch-size workaround with numel-based INT_MAX protection from diffusers
 - [x] ~~**Constants Type Hints**~~: Fixed `BLOCK_OUT_CHANNELS` type hint (`tuple[int]` → `tuple[int, ...]`)
@@ -205,3 +201,28 @@ library/models/
 - Easier to add new architectures without bloating existing files
 - Consistent structure makes navigation predictable
 - No misleading "shared" folder - VAE/common utilities explicit about their scope
+
+---
+
+## Data Pipeline Rework
+
+**Status:** 🔄 In Progress (skeleton complete)
+
+See `DATA_PIPELINE_PLAN.md` for design, `DATA_PIPELINE_IMPL.md` for implementation checklist.
+
+### Completed
+
+- [x] Created `library/data/pipeline/` package
+- [x] Core dataclasses: `CacheEntry`, `Bucket`, `EpochManifest`, `DatasetManifest`
+- [x] Manifest I/O: `save_dataset_manifest()`, `load_dataset_manifest()`
+- [x] Engine skeleton: `CachingStrategy` interface, `CachingEngine`
+- [x] DataLoader: `TrainingDataset`, `create_training_dataloader()`
+- [x] Epoch prep: `prepare_epoch()`, `prepare_validation_epoch()`
+
+### Next Steps
+
+- [ ] Phase 1: Dataset scanner (populate DatasetManifest from directories)
+- [ ] Phase 2: Connect CachingStrategy to existing strategies
+- [ ] Phase 2: Implement fast caching loop in CachingEngine
+- [ ] Phase 3: Wire epoch preparation to training scripts
+- [ ] Phase 4: Replace current DataLoader with TrainingDataset
