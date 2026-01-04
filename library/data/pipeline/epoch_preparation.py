@@ -4,14 +4,14 @@ Epoch preparation utilities.
 Generates EpochManifest from DatasetManifest with:
 - Shuffling
 - Bucketed batch organization
-- Memory-aware ordering
+- Memory-aware ordering (largest first for warmup)
 - Repeat handling
 """
 
 import logging
 import random
 
-from library.data.pipeline.dataclasses import DatasetManifest, EpochManifest
+from library.data.pipeline.dataclasses import DatasetManifest, EpochManifest, BatchInfo
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -24,7 +24,8 @@ def prepare_epoch(
     seed: int | None = None,
     batch_size: int = 1,
     shuffle: bool = True,
-    memory_order: bool = True,
+    warmup_largest_first: bool = True,
+    warmup_batches: int = 10,
     drop_last: bool = False,
 ) -> EpochManifest:
     """
@@ -39,7 +40,9 @@ def prepare_epoch(
         seed: Random seed for shuffling. If None, uses epoch number.
         batch_size: Target batch size.
         shuffle: Whether to shuffle within buckets.
-        memory_order: Whether to order buckets by memory (smallest first).
+        warmup_largest_first: If True, place largest-resolution batches first
+            to establish CUDA memory allocation upfront, preventing OOMs later.
+        warmup_batches: Number of largest batches to place at start for warmup.
         drop_last: Whether to drop incomplete final batches.
 
     Returns:
@@ -72,31 +75,41 @@ def prepare_epoch(
         for ids in bucket_ids.values():
             rng.shuffle(ids)
 
-    # Create batches per bucket
-    all_batches: list[tuple[int, list[str]]] = []  # (memory_estimate, batch)
+    # Create BatchInfo objects per bucket
+    all_batches: list[tuple[int, BatchInfo]] = []  # (pixel_count, BatchInfo)
 
     for bucket_key, ids in bucket_ids.items():
         parts = bucket_key.split("x")
-        bucket = manifest.get_bucket((int(parts[0]), int(parts[1])))
-        memory_per_batch = bucket.memory_per_image * batch_size if bucket else 0
+        bucket_reso = (int(parts[0]), int(parts[1]))
+        pixel_count = bucket_reso[0] * bucket_reso[1]
 
         for i in range(0, len(ids), batch_size):
-            batch = ids[i : i + batch_size]
-            if drop_last and len(batch) < batch_size:
+            batch_ids = ids[i : i + batch_size]
+            if drop_last and len(batch_ids) < batch_size:
                 continue
-            all_batches.append((memory_per_batch, batch))
+
+            batch_info = BatchInfo(
+                image_ids=batch_ids,
+                bucket_reso=bucket_reso,
+                # processed_captions will be populated later in Phase 3 implementation
+            )
+            all_batches.append((pixel_count, batch_info))
 
     # Order batches
-    if memory_order:
-        # Sort by memory (smallest buckets first) for predictable memory usage
-        all_batches.sort(key=lambda x: x[0])
-    else:
-        # Shuffle batches across buckets
+    if warmup_largest_first:
+        # Sort by resolution (largest first) for warmup
+        all_batches.sort(key=lambda x: -x[0])
+        # Take warmup batches, shuffle the rest
+        warmup = [batch for _, batch in all_batches[:warmup_batches]]
+        remaining = [batch for _, batch in all_batches[warmup_batches:]]
         if shuffle:
-            rng.shuffle(all_batches)
-
-    # Extract just the batch IDs
-    batches = [batch for _, batch in all_batches]
+            rng.shuffle(remaining)
+        batches = warmup + remaining
+    else:
+        # Just shuffle all batches
+        batches = [batch for _, batch in all_batches]
+        if shuffle:
+            rng.shuffle(batches)
 
     epoch_manifest = EpochManifest(
         epoch=epoch,
@@ -125,16 +138,34 @@ def prepare_validation_epoch(
     Returns:
         EpochManifest for validation.
     """
-    # Get validation entries
-    val_ids = [entry.id for entry in manifest.entries.values() if entry.split == "val"]
+    # Get validation entries grouped by bucket for proper batching
+    bucket_entries: dict[str, list[str]] = {}
+    for entry in manifest.entries.values():
+        if entry.split != "val":
+            continue
+        bucket_key = f"{entry.bucket_reso[0]}x{entry.bucket_reso[1]}"
+        if bucket_key not in bucket_entries:
+            bucket_entries[bucket_key] = []
+        bucket_entries[bucket_key].append(entry.id)
 
-    # Sort for deterministic order
-    val_ids.sort()
+    # Sort each bucket for deterministic order
+    for ids in bucket_entries.values():
+        ids.sort()
 
-    # Create batches
+    # Create BatchInfo objects
     batches = []
-    for i in range(0, len(val_ids), batch_size):
-        batches.append(val_ids[i : i + batch_size])
+    for bucket_key, ids in sorted(bucket_entries.items()):
+        parts = bucket_key.split("x")
+        bucket_reso = (int(parts[0]), int(parts[1]))
+
+        for i in range(0, len(ids), batch_size):
+            batch_ids = ids[i : i + batch_size]
+            batches.append(
+                BatchInfo(
+                    image_ids=batch_ids,
+                    bucket_reso=bucket_reso,
+                )
+            )
 
     return EpochManifest(
         epoch=0,  # Validation doesn't have epochs

@@ -9,10 +9,12 @@
 # - caching_engine.py: Fast batch caching with multi-GPU coordination
 # - dataloader.py: TrainingDataLoader for epoch iteration
 # - epoch_preparation.py: Phase 3 batch organization
+# - dataset_scanner.py: Phase 1 directory scanning and manifest creation
 
 from library.data.pipeline.dataclasses import (
     CacheEntry,
     Bucket,
+    BatchInfo,
     EpochManifest,
     DatasetManifest,
 )
@@ -25,11 +27,20 @@ from library.data.pipeline.manifest import (
 from library.data.pipeline.caching_engine import CachingStrategy, CachingEngine
 from library.data.pipeline.dataloader import TrainingDataset, create_training_dataloader
 from library.data.pipeline.epoch_preparation import prepare_epoch, prepare_validation_epoch
+from library.data.pipeline.dataset_scanner import (
+    ScannedImage,
+    scan_directory,
+    read_caption,
+    make_bucket_resolutions,
+    select_bucket,
+    create_manifest,
+)
 
 __all__ = [
     # Dataclasses
     "CacheEntry",
     "Bucket",
+    "BatchInfo",
     "EpochManifest",
     "DatasetManifest",
     # Manifest I/O
@@ -46,4 +57,11 @@ __all__ = [
     # Epoch preparation
     "prepare_epoch",
     "prepare_validation_epoch",
+    # Dataset scanner (Phase 1)
+    "ScannedImage",
+    "scan_directory",
+    "read_caption",
+    "make_bucket_resolutions",
+    "select_bucket",
+    "create_manifest",
 ]

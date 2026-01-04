@@ -15,22 +15,22 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
 
 ### Tasks
 
-- [ ] Create `dataset_scanner.py` module
+- [x] Create `dataset_scanner.py` module
 
-  - [ ] `scan_directory()` - Walk directory tree, find images
-  - [ ] `read_caption()` - Load caption from .txt/.caption files
-  - [ ] `compute_bucket()` - Assign image to resolution bucket
-  - [ ] `create_manifest()` - Generate DatasetManifest from scan results
+  - [x] `scan_directory()` - Walk directory tree, find images
+  - [x] `read_caption()` - Load caption from .txt/.caption files
+  - [x] `select_bucket()` - Assign image to resolution bucket
+  - [x] `create_manifest()` - Generate DatasetManifest from scan results
 
 - [ ] Handle metadata sources
 
-  - [ ] Directory-based (DreamBooth style)
+  - [x] Directory-based (DreamBooth style)
   - [ ] JSON metadata (FineTuning style)
-  - [ ] Fallback caption generation
+  - [ ] Fallback caption generation  # COMMENT: fallback could fetch from source maybe? just food for thought, belongs to advanced features like data streaming and on demand experimental stuff, interesting topic in general. For now we should probably error instead of fallback, or set a threshold under which it's acceptable regularization to not have captions.
 
-- [ ] Bucket calculation
-  - [ ] Port bucket resolution logic from `BucketManager`
-  - [ ] Support configurable bucket parameters
+- [x] Bucket calculation
+  - [x] Port bucket resolution logic from `BucketManager`
+  - [x] Support configurable bucket parameters
 
 ---
 
@@ -48,6 +48,14 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
   - [ ] `SdLatentsCachingAdapter` - SD VAE encoding, scale factor 0.18215
   - [ ] `SdxlLatentsCachingAdapter` - SDXL VAE encoding, scale factor 0.13025
   - [ ] `SdxlTextEncoderCachingAdapter` - SDXL dual TE output caching
+
+If `library/data` requires model specific knowledge (it might do, probably, maybe, whatever) it can be gained from `library/models/` as this houses model implementations. Circular imports are avoided in any case, as `library/strategy` won't talk towards `library/data`, only accept from it, aka
+
+```
+library/models → library/data → library/strategies
+       ↘                             ↗
+         ───────────────────────────
+```
 
 - [ ] Implement caching loop
 
@@ -70,7 +78,15 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
 
 - [x] Create `prepare_epoch()` function
 - [x] Create `prepare_validation_epoch()` function
-- [x] Implement memory-aware bucket ordering
+- [x] Implement warmup ordering (largest resolutions first)
+- [x] Create `BatchInfo` dataclass for structured batch metadata
+
+- [ ] Caption processing (Phase 3 implementation)
+
+  - [ ] Caption dropout
+  - [ ] Tag shuffle
+  - [ ] Wildcard resolution
+  - [ ] Token warmup
 
 - [ ] Integration
   - [ ] Hook into training loop (per-epoch manifest generation)
@@ -102,14 +118,23 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
 
 ## Skeleton Files (Completed)
 
-| File                   | Status | Description                                        |
-| ---------------------- | ------ | -------------------------------------------------- |
-| `__init__.py`          | ✅     | Package exports                                    |
-| `dataclasses.py`       | ✅     | CacheEntry, Bucket, EpochManifest, DatasetManifest |
-| `manifest.py`          | ✅     | JSON I/O for manifests                             |
-| `caching_engine.py`    | ✅     | CachingStrategy interface, CachingEngine           |
-| `dataloader.py`        | ✅     | TrainingDataset, create_training_dataloader        |
-| `epoch_preparation.py` | ✅     | prepare_epoch, prepare_validation_epoch            |
+| File                   | Status | Description                                                   |
+| ---------------------- | ------ | ------------------------------------------------------------- |
+| `__init__.py`          | ✅     | Package exports (all dataclasses and functions)               |
+| `dataclasses.py`       | ✅     | CacheEntry, Bucket, BatchInfo, EpochManifest, DatasetManifest |
+| `manifest.py`          | ✅     | JSON I/O for manifests (dataset and epoch)                    |
+| `caching_engine.py`    | ✅     | CachingStrategy interface, CachingEngine with multi-GPU       |
+| `dataloader.py`        | ✅     | TrainingDataset (IterableDataset), create_training_dataloader |
+| `epoch_preparation.py` | ✅     | prepare_epoch (warmup ordering), prepare_validation_epoch     |
+| `dataset_scanner.py`   | ✅     | Phase 1: scan_directory, create_manifest, bucket logic        |
+
+### Key Design Decisions (Skeleton Phase)
+
+- **`BatchInfo`**: Full batch metadata stored in `EpochManifest.batches` instead of just image IDs
+- **VAE-agnostic**: `DatasetManifest` stores `latent_channels`, `latent_scale_factor`, and `latent_dtype`
+- **Warmup strategy**: Largest resolution batches first to establish CUDA memory allocation
+- **`CacheEntry`**: Stores paths to cache files, not tensors — tensors loaded on-demand
+- **Strategy delegation**: `CachingEngine` delegates model-specific work to `library/strategies/` classes
 
 ---
 

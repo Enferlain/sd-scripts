@@ -9,7 +9,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from library.data.pipeline.dataclasses import DatasetManifest, CacheEntry, Bucket, EpochManifest
+from library.data.pipeline.dataclasses import DatasetManifest, CacheEntry, Bucket, EpochManifest, BatchInfo
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -36,6 +36,9 @@ def save_dataset_manifest(manifest: DatasetManifest, path: str | Path) -> None:
             "bucket_reso_steps": manifest.bucket_reso_steps,
             "min_bucket_reso": manifest.min_bucket_reso,
             "max_bucket_reso": manifest.max_bucket_reso,
+            "latent_channels": manifest.latent_channels,
+            "latent_scale_factor": manifest.latent_scale_factor,
+            "latent_dtype": manifest.latent_dtype,
         },
         "entries": {id: _entry_to_dict(entry) for id, entry in manifest.entries.items()},
         "buckets": {key: _bucket_to_dict(bucket) for key, bucket in manifest.buckets.items()},
@@ -86,6 +89,9 @@ def load_dataset_manifest(path: str | Path) -> DatasetManifest:
         bucket_reso_steps=config.get("bucket_reso_steps", 64),
         min_bucket_reso=config.get("min_bucket_reso", 256),
         max_bucket_reso=config.get("max_bucket_reso", 2048),
+        latent_channels=config.get("latent_channels", 4),
+        latent_scale_factor=config.get("latent_scale_factor", 8),
+        latent_dtype=config.get("latent_dtype", "fp16"),
         entries=entries,
         buckets=buckets,
     )
@@ -108,7 +114,7 @@ def save_epoch_manifest(manifest: EpochManifest, path: str | Path) -> None:
     data = {
         "epoch": manifest.epoch,
         "seed": manifest.seed,
-        "batches": manifest.batches,
+        "batches": [_batch_info_to_dict(batch) for batch in manifest.batches],
     }
 
     with open(path, "w", encoding="utf-8") as f:
@@ -135,7 +141,7 @@ def load_epoch_manifest(path: str | Path) -> EpochManifest:
     return EpochManifest(
         epoch=data["epoch"],
         seed=data["seed"],
-        batches=data["batches"],
+        batches=[_dict_to_batch_info(b) for b in data["batches"]],
     )
 
 
@@ -186,6 +192,7 @@ def _bucket_to_dict(bucket: Bucket) -> dict:
     return {
         "resolution": list(bucket.resolution),
         "image_ids": bucket.image_ids,
+        "recommended_batch_size": bucket.recommended_batch_size,
     }
 
 
@@ -194,4 +201,25 @@ def _dict_to_bucket(data: dict) -> Bucket:
     return Bucket(
         resolution=tuple(data["resolution"]),
         image_ids=data.get("image_ids", []),
+        recommended_batch_size=data.get("recommended_batch_size", 1),
+    )
+
+
+def _batch_info_to_dict(batch: BatchInfo) -> dict:
+    """Convert BatchInfo to JSON-serializable dict."""
+    return {
+        "image_ids": batch.image_ids,
+        "bucket_reso": list(batch.bucket_reso),
+        "processed_captions": batch.processed_captions,
+        "input_ids": batch.input_ids,  # Dict keyed by encoder name
+    }
+
+
+def _dict_to_batch_info(data: dict) -> BatchInfo:
+    """Convert dict to BatchInfo."""
+    return BatchInfo(
+        image_ids=data["image_ids"],
+        bucket_reso=tuple(data["bucket_reso"]),
+        processed_captions=data.get("processed_captions", []),
+        input_ids=data.get("input_ids", {}),
     )

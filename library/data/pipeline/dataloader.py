@@ -5,13 +5,13 @@ Consumes pre-computed EpochManifest to serve batches with minimal overhead.
 """
 
 import logging
-from pathlib import Path
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 import torch
 from torch.utils.data import IterableDataset, DataLoader
 
-from library.data.pipeline.dataclasses import DatasetManifest, EpochManifest, CacheEntry
+from library.data.pipeline.dataclasses import DatasetManifest, EpochManifest, CacheEntry, BatchInfo
 from library.data.pipeline.caching_engine import CachingStrategy
 from library.utils.common_utils import setup_logging
 
@@ -42,7 +42,7 @@ class TrainingDataset(IterableDataset):
             dataset_manifest: Full dataset manifest with entry metadata.
             epoch_manifest: Pre-computed batch order for this epoch.
             latent_strategy: Strategy for loading latent caches.
-            te_strategy: Optional strategy for loading text encoder caches (SDXL).
+            te_strategy: Optional strategy for loading text encoder caches.
             device: Device to load tensors to.
         """
         self.dataset_manifest = dataset_manifest
@@ -58,33 +58,33 @@ class TrainingDataset(IterableDataset):
         Yields:
             Dict containing batch data:
             - "latents": Batched latent tensors [B, C, H, W]
-            - "captions": List of caption strings
+            - "captions": List of caption strings (or processed_captions if available)
             - "input_ids": Tokenized input (if not using TE cache)
             - "text_encoder_outputs": Cached TE outputs (if using TE cache)
             - Other metadata as needed
         """
-        for batch_ids in self.epoch_manifest.batches:
-            yield self._load_batch(batch_ids)
+        for batch_info in self.epoch_manifest.batches:
+            yield self._load_batch(batch_info)
 
     def __len__(self) -> int:
         """Number of batches in this epoch."""
         return self.epoch_manifest.num_batches
 
-    def _load_batch(self, image_ids: list[str]) -> dict[str, Any]:
+    def _load_batch(self, batch_info: BatchInfo) -> dict[str, Any]:
         """
         Load a single batch of cached data.
 
         Args:
-            image_ids: List of image IDs to load.
+            batch_info: BatchInfo with image IDs and metadata.
 
         Returns:
             Dict with batched tensors and metadata.
         """
-        entries = [self.dataset_manifest.get_entry(id) for id in image_ids]
+        entries = [self.dataset_manifest.get_entry(id) for id in batch_info.image_ids]
         entries = [e for e in entries if e is not None]  # Filter missing
 
         if not entries:
-            raise ValueError(f"No valid entries found for batch IDs: {image_ids}")
+            raise ValueError(f"No valid entries found for batch IDs: {batch_info.image_ids}")
 
         # Load latents
         latents_list = []
@@ -100,14 +100,21 @@ class TrainingDataset(IterableDataset):
         if self.device:
             latents = latents.to(self.device)
 
+        # Use processed_captions if available, otherwise fall back to raw captions
+        captions = batch_info.processed_captions if batch_info.processed_captions else [e.caption for e in entries]
+
         # Build batch dict
         batch = {
             "latents": latents,
-            "captions": [e.caption for e in entries],
-            "image_ids": [e.id for e in entries],
-            "bucket_reso": entries[0].bucket_reso,  # All same in a batch
+            "captions": captions,
+            "image_ids": batch_info.image_ids,
+            "bucket_reso": batch_info.bucket_reso,
             # TODO: Add more fields as needed (loss_weights, alpha_masks, etc.)
         }
+
+        # Add tokenized input_ids if available (dict keyed by encoder name)
+        if batch_info.input_ids:
+            batch["input_ids"] = {encoder_name: torch.tensor(tokens) for encoder_name, tokens in batch_info.input_ids.items()}
 
         # Load text encoder outputs if available
         if self.te_strategy and entries[0].te_cache_path:
@@ -129,7 +136,7 @@ class TrainingDataset(IterableDataset):
         # Stack each output type
         result = {}
         if outputs:
-            for key in outputs[0].keys():
+            for key in outputs[0]:
                 tensors = [o[key] for o in outputs]
                 result[key] = torch.stack(tensors, dim=0)
                 if self.device:
@@ -176,5 +183,5 @@ def create_training_dataloader(
         batch_size=None,  # Disable automatic batching
         num_workers=num_workers,
         prefetch_factor=prefetch_factor if num_workers > 0 else None,
-        pin_memory=True if device and device.type == "cuda" else False,
+        pin_memory=device is not None and device.type == "cuda",
     )

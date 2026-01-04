@@ -55,7 +55,7 @@ class CacheEntry:
     """Path to cached VAE latent .safetensors file."""
 
     te_cache_path: str | None = None
-    """Path to cached text encoder output .safetensors file (SDXL only)."""
+    """Path to cached text encoder output .safetensors file (when caching TE outputs)."""
 
     # Augmentation flags (determine if cache is valid)
     has_flipped: bool = False
@@ -79,18 +79,70 @@ class Bucket:
     image_ids: list[str] = field(default_factory=list)
     """IDs of images assigned to this bucket."""
 
+    recommended_batch_size: int = 1
+    """Pre-computed safe batch size for this resolution based on VRAM budget."""
+
     @property
     def count(self) -> int:
         """Number of images in this bucket."""
         return len(self.image_ids)
 
-    @property
-    def memory_per_image(self) -> int:
-        """Estimated memory per latent in this bucket (bytes)."""
+    def memory_per_image(
+        self,
+        latent_channels: int = 4,
+        latent_scale_factor: int = 8,
+        latent_dtype: str = "fp16",
+    ) -> int:
+        """
+        Estimated memory per latent in this bucket (bytes).
+
+        Args:
+            latent_channels: Number of latent channels (4 for SD/SDXL, 16 for Flux 1, 32 for Flux 2).
+            latent_scale_factor: Spatial downscale factor.
+            latent_dtype: Data type for latents ("fp16", "bf16", or "fp32").
+
+        Returns:
+            Memory in bytes.
+        """
+        dtype_bytes = {"fp16": 2, "bf16": 2, "fp32": 4}
+        bytes_per_element = dtype_bytes.get(latent_dtype, 2)
+
         w, h = self.resolution
-        # Latent is 4 channels, 1/8 resolution, fp16
-        latent_w, latent_h = w // 8, h // 8
-        return latent_w * latent_h * 4 * 2  # 4 channels * 2 bytes (fp16)
+        latent_w, latent_h = w // latent_scale_factor, h // latent_scale_factor
+        return latent_w * latent_h * latent_channels * bytes_per_element
+
+
+@dataclass
+class BatchInfo:
+    """
+    Complete information for a single training batch.
+
+    Contains all data needed to load and process the batch without
+    additional lookups during the training loop.
+    """
+
+    image_ids: list[str]
+    """IDs of images in this batch."""
+
+    bucket_reso: tuple[int, int]
+    """Resolution of all images in this batch."""
+
+    # Caption data (populated in Phase 3 after processing)
+    processed_captions: list[str] = field(default_factory=list)
+    """Captions after dropout, tag shuffle, wildcard resolution."""
+
+    # Tokenized inputs (optional - populated if not using TE cache)
+    # Dict keyed by encoder name, e.g. {"clip_l": [...], "clip_g": [...], "t5": [...]}
+    # SD: {"clip"}
+    # SDXL: {"clip_l", "clip_g"}
+    # SD3/Flux: {"clip_l", "clip_g", "t5"}
+    input_ids: dict[str, list[list[int]]] = field(default_factory=dict)
+    """Tokenized captions per text encoder. Key = encoder name, value = batch of token sequences."""
+
+    @property
+    def batch_size(self) -> int:
+        """Number of images in this batch."""
+        return len(self.image_ids)
 
 
 @dataclass
@@ -108,8 +160,8 @@ class EpochManifest:
     seed: int
     """Random seed used to generate this ordering."""
 
-    batches: list[list[str]] = field(default_factory=list)
-    """Ordered list of batches, each batch is a list of image IDs."""
+    batches: list[BatchInfo] = field(default_factory=list)
+    """Ordered list of batches with full metadata."""
 
     @property
     def num_batches(self) -> int:
@@ -119,7 +171,7 @@ class EpochManifest:
     @property
     def num_images(self) -> int:
         """Total number of images across all batches."""
-        return sum(len(batch) for batch in self.batches)
+        return sum(batch.batch_size for batch in self.batches)
 
 
 @dataclass
@@ -141,6 +193,20 @@ class DatasetManifest:
     bucket_reso_steps: int = 64
     min_bucket_reso: int = 256
     max_bucket_reso: int = 2048
+
+    # VAE configuration (affects latent dimensions and storage)
+    latent_channels: int = 4
+    """Number of latent channels (4 for SD/SDXL, 16 for Flux 1, 32 for Flux 2)."""
+
+    latent_scale_factor: int = 8
+    """Spatial downscale factor (8 for most VAEs)."""
+
+    latent_dtype: str = "fp16"
+    """Data type for cached latents: 'fp16', 'bf16', or 'fp32'.
+    Use 'fp32' for 'no half VAE' mode which can improve training quality at the cost of storage."""
+
+    # Note: Flux 2 also uses patch_size [2, 2] which further affects latent dims.
+    # This may need to be extended in the future for full Flux 2 support.
 
     # Data
     entries: dict[str, CacheEntry] = field(default_factory=dict)

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-04]
+
+### Added
+
+- **Data Pipeline Phase 1: Dataset Scanner** (`library/data/pipeline/dataset_scanner.py`)
+
+  - `scan_directory()` - Parallel directory scanning with ThreadPoolExecutor
+  - `read_caption()` - Caption reading from .txt/.caption files
+  - `make_bucket_resolutions()` - Bucket resolution generation (ported from BucketManager)
+  - `select_bucket()` - Image-to-bucket assignment (ported from BucketManager)
+  - `create_manifest()` - Generate `DatasetManifest` from scanned images
+  - `ScannedImage` dataclass - Intermediate representation during scanning
+  - Support for webp, jxl, tiff image formats
+
+- **VAE Dtype Configuration** (`library/data/pipeline/dataclasses.py`)
+
+  - Added `latent_dtype` field to `DatasetManifest` ("fp16", "bf16", "fp32")
+  - Added `latent_dtype` parameter to `Bucket.memory_per_image()` for accurate memory estimation
+  - Supports "no half VAE" mode for improved training quality at cost of 2x storage
+
+- **Unit Tests** (`tests/unit/test_pipeline_dataset_scanner.py`)
+  - 16 tests covering bucket generation, selection, scanning, manifest creation, roundtrip
+
+### Changed
+
+- **Flexible Text Encoder Inputs** (`library/data/pipeline/dataclasses.py`)
+
+  - Changed `BatchInfo.input_ids` from hardcoded `input_ids`/`input_ids_2` to flexible dict keyed by encoder name
+  - Supports models with 1, 2, or 3+ text encoders (SD, SDXL, SD3, Flux)
+
 ## [2026-01-03]
 
 ### Fixed
