@@ -87,8 +87,10 @@ The `TrainingDataset` class has a logic gap when `streaming_tokens=True` is used
 
 ## 4. Recommendations
 
-1.  **Fix Streaming Tokens:** Implement the missing branch in `TrainingDataset._load_batch` to read tokens from `safe_open` slice or memory-map.
-    *   *Note:* `safe_open` does not support random access slicing efficiently on all backends. Consider using `numpy.memmap` or keeping `safe_open` context alive if thread-safe.
+1.  **Prioritize Fixing Streaming Tokens:** This is the most critical actionable item. Implement the missing branch in `TrainingDataset._load_batch` to read tokens from disk on-the-fly.
+    *   *Implementation Guidance:* `safe_open` from the `safetensors` library does not support efficient random access slicing on all backends.
+    *   *Suggested Approach:* Use `numpy.memmap`. Since safetensors headers contain the offset and length of each tensor, you can map the file as a numpy array and slice it directly without loading the entire file. This is zero-copy and OS-managed.
+    *   *Alternative:* If `numpy.memmap` is too complex to integrate with the existing safetensors file structure, consider keeping the `safe_open` context alive (if thread-safe) or opening/closing per batch (though this incurs overhead).
 
 2.  **Optimize ThreadPool Usage:** In `CachingEngine._cache_batch`, a new `ThreadPoolExecutor` is created for *every batch*.
     *   *Recommendation:* Move the executor to `CachingEngine.__init__` to reduce thread creation overhead, though this is a CPU optimization, not memory.
