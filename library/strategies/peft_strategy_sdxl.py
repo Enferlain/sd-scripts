@@ -16,6 +16,7 @@ except (ImportError, AssertionError):
     replace_linear_with_ramtorch = None  # type: ignore[assignment]
 
 from library.strategies import strategy_sdxl, strategy_sd, strategy_base
+from library.strategies.sdxl_caching import SdxlConditioning
 from library.strategies.peft_strategy_base import PeftTrainingStrategy
 from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl_model_util import get_size_embeddings
@@ -34,6 +35,42 @@ from library.losses.loss_weighting import apply_masked_loss
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+
+def tokenize_sdxl_captions(
+    tokenizer1: Any, tokenizer2: Any, captions: list[str], max_token_length: int
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Tokenize captions on-the-fly for SDXL (dual CLIP encoders).
+
+    Args:
+        tokenizer1: CLIP-L tokenizer.
+        tokenizer2: CLIP-G tokenizer.
+        captions: List of caption strings.
+        max_token_length: Maximum token sequence length.
+
+    Returns:
+        Tuple of (clip_l_tokens, clip_g_tokens), each [batch_size, seq_len].
+    """
+    # Use max 77 tokens per encoder (CLIP limit), truncate/pad as needed
+    seq_len = min(max_token_length, 77) if max_token_length else 77
+
+    tokens1 = tokenizer1(
+        captions,
+        padding="max_length",
+        truncation=True,
+        max_length=seq_len,
+        return_tensors="pt",
+    ).input_ids
+
+    tokens2 = tokenizer2(
+        captions,
+        padding="max_length",
+        truncation=True,
+        max_length=seq_len,
+        return_tensors="pt",
+    ).input_ids
+
+    return tokens1, tokens2
 
 
 @dataclass
@@ -282,10 +319,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         """
         indices = kwargs.get("indices")
 
-        # Get size embeddings
-        orig_size = batch["original_sizes_hw"]
-        crop_size = batch["crop_top_lefts"]
-        target_size = batch["target_sizes_hw"]
+        # Get size embeddings from conditioning objects
+        conditionings = batch["conditionings"]
+        orig_size, crop_size, target_size = self._extract_conditioning_tensors(conditionings, accelerator.device, weight_dtype)
         embs = get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
 
         # Concat text embeddings
@@ -389,6 +425,42 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             clip_skip=cfg.training.clip_skip,
         )
 
+    # region SDXL-specific conditioning extraction
+
+    def _extract_conditioning_tensors(
+        self,
+        conditionings: list[SdxlConditioning],
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Extract SDXL micro-conditioning tensors from batch conditionings.
+
+        Args:
+            conditionings: List of SdxlConditioning objects from batch.
+            device: Target device for tensors.
+            dtype: Target dtype for tensors.
+
+        Returns:
+            Tuple of (original_sizes, crop_top_lefts, target_sizes) tensors.
+        """
+        orig_sizes = []
+        crop_top_lefts = []
+        target_sizes = []
+
+        for cond in conditionings:
+            orig_sizes.append(cond.original_size_hw)
+            crop_top_lefts.append(cond.crop_top_left)
+            target_sizes.append(cond.target_size_hw)
+
+        return (
+            torch.tensor(orig_sizes, device=device, dtype=dtype),
+            torch.tensor(crop_top_lefts, device=device, dtype=dtype),
+            torch.tensor(target_sizes, device=device, dtype=dtype),
+        )
+
+    # endregion
+
     # region SDXL-specific text conditioning
 
     def _get_text_cond(
@@ -408,27 +480,44 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         Returns:
             Tuple of (encoder_hidden_states1, encoder_hidden_states2, pool2).
         """
-        if "text_encoder_outputs1_list" not in batch or batch["text_encoder_outputs1_list"] is None:
-            input_ids1 = batch["input_ids"]
-            input_ids2 = batch["input_ids2"]
-            with torch.enable_grad():
-                input_ids1 = input_ids1.to(accelerator.device)
-                input_ids2 = input_ids2.to(accelerator.device)
-                encoder_hidden_states1, encoder_hidden_states2, pool2 = get_hidden_states_sdxl(
-                    cfg.training.max_token_length,
-                    input_ids1,
-                    input_ids2,
-                    tokenizers[0],
-                    tokenizers[1],
-                    text_encoders[0],
-                    text_encoders[1],
-                    None if not cfg.performance.precision.full_fp16 else weight_dtype,
-                    accelerator=accelerator,
-                )
+        # Check for cached TE outputs (new pipeline format)
+        te_outputs = batch.get("text_encoder_outputs")
+        if te_outputs is not None:
+            return (
+                te_outputs["hidden_state1"].to(accelerator.device, dtype=weight_dtype),
+                te_outputs["hidden_state2"].to(accelerator.device, dtype=weight_dtype),
+                te_outputs["pool2"].to(accelerator.device, dtype=weight_dtype),
+            )
+
+        # Encode on-the-fly using tokenized inputs or tokenize from captions
+        input_ids = batch.get("input_ids")
+
+        # Fallback: tokenize captions on-the-fly if no cached tokens
+        if input_ids is None:
+            captions = batch.get("captions", [])
+            if not captions:
+                raise ValueError("Batch has neither 'input_ids' nor 'captions' - cannot encode text")
+
+            # Tokenize using the tokenize_fn if available, otherwise use tokenizers directly
+            input_ids1, input_ids2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], captions, cfg.training.max_token_length)
+            input_ids1 = input_ids1.to(accelerator.device)
+            input_ids2 = input_ids2.to(accelerator.device)
         else:
-            encoder_hidden_states1 = batch["text_encoder_outputs1_list"].to(accelerator.device).to(weight_dtype)
-            encoder_hidden_states2 = batch["text_encoder_outputs2_list"].to(accelerator.device).to(weight_dtype)
-            pool2 = batch["text_encoder_pool2_list"].to(accelerator.device).to(weight_dtype)
+            input_ids1 = input_ids["clip_l"].to(accelerator.device)
+            input_ids2 = input_ids["clip_g"].to(accelerator.device)
+
+        with torch.enable_grad():
+            encoder_hidden_states1, encoder_hidden_states2, pool2 = get_hidden_states_sdxl(
+                cfg.training.max_token_length,
+                input_ids1,
+                input_ids2,
+                tokenizers[0],
+                tokenizers[1],
+                text_encoders[0],
+                text_encoders[1],
+                None if not cfg.performance.precision.full_fp16 else weight_dtype,
+                accelerator=accelerator,
+            )
 
         return encoder_hidden_states1, encoder_hidden_states2, pool2
 

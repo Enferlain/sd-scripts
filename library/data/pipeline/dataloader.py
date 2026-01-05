@@ -43,6 +43,7 @@ class TrainingDataset(IterableDataset):
         tokens_path: str | None = None,
         streaming_tokens: bool = False,
         flip_aug: bool = False,
+        prior_loss_weight: float = 1.0,
         rank: int = 0,
         world_size: int = 1,
     ):
@@ -59,6 +60,7 @@ class TrainingDataset(IterableDataset):
             streaming_tokens: If True, use memory-efficient streaming for tokens.
                 If False, load all tokens into memory at start.
             flip_aug: If True, randomly use flipped latents (50% probability).
+            prior_loss_weight: Loss weight for regularization images (is_reg=True).
             rank: Process rank for distributed training (0-indexed).
             world_size: Total number of processes for distributed training.
         """
@@ -69,6 +71,7 @@ class TrainingDataset(IterableDataset):
         self.tokens_path = tokens_path
         self.streaming_tokens = streaming_tokens
         self.flip_aug = flip_aug
+        self.prior_loss_weight = prior_loss_weight
         self.rank = rank
         self.world_size = world_size
 
@@ -93,6 +96,31 @@ class TrainingDataset(IterableDataset):
                 self._tokens[key] = f.get_tensor(key)
 
         logger.info(f"Loaded epoch tokens: {sum(t.shape[0] for t in self._tokens.values()) // len(self._tokens)} samples")
+
+    def _load_tokens_streaming(self, token_offset: int, batch_size: int) -> dict[str, torch.Tensor]:
+        """Load tokens for a single batch using memory-efficient streaming.
+
+        Uses safetensors get_slice to load only the rows needed for this batch,
+        avoiding loading the entire token file into memory.
+
+        Args:
+            token_offset: Starting row index in the token file.
+            batch_size: Number of rows to load.
+
+        Returns:
+            Dict mapping encoder names to token tensors [batch_size, seq_len].
+        """
+        from safetensors import safe_open
+
+        result = {}
+        with safe_open(self.tokens_path, framework="pt") as f:
+            for key in f.keys():  # noqa: SIM118 - safe_open requires .keys()
+                # get_slice returns a lazy slice object that supports numpy-style indexing
+                tensor_slice = f.get_slice(key)
+                # Load only the rows for this batch
+                result[key] = tensor_slice[token_offset : token_offset + batch_size]
+
+        return result
 
     def _validate_token_metadata(self, metadata: dict[str, str]) -> None:
         """Validate that token file matches the epoch manifest."""
@@ -159,9 +187,13 @@ class TrainingDataset(IterableDataset):
             token_offset += batch_size
 
     def __len__(self) -> int:
-        """Number of batches in this epoch (for this rank if distributed).
+        """Number of batches this rank will yield per epoch.
 
-        Note: Does not account for num_workers sharding since that's runtime.
+        Returns the total batches for this rank across all workers.
+        This is the correct value for training loop progress bars and step counting,
+        since all workers together yield exactly this many batches for the rank.
+
+        Note: Individual workers each yield `len(self) // num_workers` batches.
         """
         total = self.epoch_manifest.num_batches
         # Divide by world_size, rounding up for last rank
@@ -224,8 +256,8 @@ class TrainingDataset(IterableDataset):
 
                 conditionings.append(cache_data.conditioning)
 
-                # Loss weight: 0.0 for regularization images, 1.0 for training images
-                loss_weights.append(0.0 if entry.is_reg else 1.0)
+                # Loss weight: prior_loss_weight for reg images, 1.0 for training
+                loss_weights.append(self.prior_loss_weight if entry.is_reg else 1.0)
             else:
                 raise ValueError(f"Missing latent cache for {entry.id}")
 
@@ -252,7 +284,11 @@ class TrainingDataset(IterableDataset):
 
         # Add tokens from epoch token file (offset-based slicing)
         if self._tokens is not None and batch_size > 0:
+            # Non-streaming mode: slice from pre-loaded tensors
             batch["input_ids"] = {name: tensor[token_offset : token_offset + batch_size] for name, tensor in self._tokens.items()}
+        elif self.streaming_tokens and self.tokens_path and batch_size > 0:
+            # Streaming mode: load only this batch's tokens from disk
+            batch["input_ids"] = self._load_tokens_streaming(token_offset, batch_size)
         # Fall back to BatchInfo.input_ids if available (legacy/inline mode)
         elif batch_info.input_ids:
             batch["input_ids"] = {encoder_name: torch.tensor(tokens) for encoder_name, tokens in batch_info.input_ids.items()}
@@ -294,9 +330,10 @@ def create_training_dataloader(
     tokens_path: str | None = None,
     streaming_tokens: bool = False,
     flip_aug: bool = False,
+    prior_loss_weight: float = 1.0,
     rank: int = 0,
     world_size: int = 1,
-    num_workers: int = 0,
+    num_workers: int = 4,
     prefetch_factor: int = 2,
     pin_memory: bool = True,
 ) -> DataLoader:
@@ -311,9 +348,10 @@ def create_training_dataloader(
         tokens_path: Path to epoch token file (safetensors). For caption augmentation.
         streaming_tokens: If True, use memory-efficient streaming for tokens.
         flip_aug: If True, randomly use flipped latents (50% probability).
+        prior_loss_weight: Loss weight for regularization images (default 1.0).
         rank: Process rank for distributed training (0-indexed).
         world_size: Total number of processes for distributed training.
-        num_workers: Number of data loading workers.
+        num_workers: Number of data loading workers (default 4 to avoid blocking I/O).
         prefetch_factor: Batches to prefetch per worker.
         pin_memory: Whether to use pinned memory for faster GPU transfer.
 
@@ -328,6 +366,7 @@ def create_training_dataloader(
         tokens_path=tokens_path,
         streaming_tokens=streaming_tokens,
         flip_aug=flip_aug,
+        prior_loss_weight=prior_loss_weight,
         rank=rank,
         world_size=world_size,
     )

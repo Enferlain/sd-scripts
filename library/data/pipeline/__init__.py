@@ -40,6 +40,7 @@ from library.data.pipeline.dataset_scanner import (
     make_bucket_resolutions,
     select_bucket,
     create_manifest,
+    create_manifest_from_config,
 )
 from library.data.pipeline.caption_processor import (
     CaptionConfig,
@@ -80,4 +81,5 @@ __all__ = [
     "make_bucket_resolutions",
     "select_bucket",
     "create_manifest",
+    "create_manifest_from_config",
 ]

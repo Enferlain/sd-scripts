@@ -140,6 +140,10 @@ Scripts (contain training loops):     Library Modules:
 
   - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line.
 
+### Future Improvements
+
+- [ ] Fix zero-dimension bucket edge case for images smaller than `bucket_reso_steps`
+
 ---
 
 ## Future Architecture: Per-Model Directory Structure
@@ -226,3 +230,109 @@ See `DATA_PIPELINE_PLAN.md` for design, `DATA_PIPELINE_IMPL.md` for implementati
 - [ ] Phase 2: Implement fast caching loop in CachingEngine
 - [ ] Phase 3: Wire epoch preparation to training scripts
 - [ ] Phase 4: Replace current DataLoader with TrainingDataset
+
+---
+
+## Large Scale Caching Architecture
+
+**Status:** 📋 Design Phase (for 1M+ image datasets)
+
+The current per-image caching approach works well for <100k images but faces challenges at scale:
+
+- **NTFS/filesystem overhead**: Millisecond-level per-file overhead at high file counts
+- **Too many file opens**: Training I/O becomes bottleneck
+
+### Current Architecture (Per-Image)
+
+```
+cache/
+├── img_001_sdxl_latents.safetensors  # Latent + conditioning metadata
+├── img_001_sdxl_te.safetensors       # TE outputs (optional, separate file)
+└── ...
+```
+
+**Pros:** Simple, incremental updates, easy debugging
+**Cons:** Doesn't scale beyond ~100k files on Windows/NTFS
+
+### Proposed Future Architecture (Sharded)
+
+```
+cache/
+├── latents/
+│   └── {config_hash}/              # Bucket settings hash (invalidation namespace)
+│       ├── bucket_1024x1024/
+│       │   ├── shard_0000.safetensors  # ~10k images per shard
+│       │   └── shard_0001.safetensors
+│       └── bucket_768x1024/
+│           └── shard_0000.safetensors
+│
+├── te_outputs/
+│   └── {te_config_hash}/           # Tokenizer + encoder settings hash
+│       ├── shard_0000.safetensors  # Keyed by caption hash (dedup!)
+│       └── shard_0001.safetensors
+│
+└── # Tokens: on-the-fly (default) or epoch-level file (optional)
+```
+
+### Design Principles
+
+1. **Config-Hash Namespacing**
+
+   - Changing bucket settings writes to a _new_ namespace (new hash directory)
+   - No in-place rewriting; old cache remains until explicitly deleted
+   - Same pattern as how per-image caches invalidate when settings change
+
+2. **Caption-Hash Deduplication for TE**
+
+   - TE outputs keyed by caption hash, not image ID
+   - Same caption → same encoding (dedup across images sharing captions)
+   - Hash must include: tokenizer settings, max_length, clip_skip, encoder version
+
+3. **Independent Invalidation**
+
+   - Latent config hash: `bucket_steps`, `base_resolution`, `no_upscale`, etc.
+   - TE config hash: `tokenizer_version`, `max_token_length`, `clip_skip`, etc.
+   - Change buckets → only rebuild latent shards (TE remains valid)
+   - Change captions → only rebuild TE shards (latents remain valid)
+
+4. **Tokens: On-the-Fly Default**
+   - Tokenization is ~0.5ms/sequence (negligible vs GPU time)
+   - Epoch-level token file available as opt-in for specific workflows
+   - Avoids coupling token cache to caption augmentation scheme
+
+### Implementation Plan
+
+1. **Abstract Cache Backend**
+
+   ```python
+   class CacheStore(ABC):
+       def save(self, key: str, data: dict[str, Tensor]) -> None: ...
+       def load(self, key: str) -> dict[str, Tensor]: ...
+       def exists(self, key: str) -> bool: ...
+
+   class PerImageCacheStore(CacheStore):  # Current implementation
+       ...
+
+   class ShardedCacheStore(CacheStore):   # Future implementation
+       ...
+   ```
+
+2. **Training-facing API unchanged**
+
+   - Same `CacheData` contract
+   - Same `CachingStrategy` interface
+   - Backend switch via config (`cache_backend: "per_image" | "sharded"`)
+
+3. **Threshold-based recommendation**
+   - Default: per-image for <100k images
+   - Recommend sharded for 100k+ or Windows/NTFS users
+   - Automatic detection possible (count files, check filesystem)
+
+### Tasks
+
+- [ ] Design config-hash computation for latent namespace
+- [ ] Design caption-hash computation for TE dedup (include all relevant settings)
+- [ ] Implement `ShardedCacheStore` with bucket-based sharding
+- [ ] Implement shard-level `get_slice` for efficient batch loading
+- [ ] Add `cache_backend` config option
+- [ ] Migration utility: per-image → sharded conversion

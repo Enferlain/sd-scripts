@@ -26,10 +26,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `flippeds` list - tracks which samples used flipped latents
   - `target_size_hw` added to `SdxlConditioning`
 
+- **PEFT Strategy Integration**
+
+  - `SdxlPeftStrategy` now uses new pipeline batch format
+  - Added `_extract_conditioning_tensors()` helper for SDXL micro-conditioning
+  - `_get_text_cond()` updated for `batch["text_encoder_outputs"]` and `batch["input_ids"]["clip_l/g"]`
+  - `call_unet()` now extracts conditioning from `batch["conditionings"]`
+
+- **Dataset Scanner Enhancements**
+
+  - `class_tokens` parameter - Fallback caption for images without caption files (DreamBooth reg)
+  - `create_manifest_from_config()` - High-level function handling train_data_dir, reg_data_dir, in_json, subsets
+  - `prior_loss_weight` parameter in `TrainingDataset` and `create_training_dataloader()` - Configurable loss weight for regularization images
+
 ### Changed
 
 - `CachingStrategy.load_cache()` now returns `CacheData` instead of tuple
+- `SdLatentsPipelineStrategy.load_cache()` updated for `CacheData` consistency
 - Architecture notes added to `DATA_PIPELINE_IMPL.md` documenting naming conventions and integration approach
+- Deprecated tests moved to `tests/_deprecated/` and excluded via `pyproject.toml`
+
+### Fixed
+
+- **Streaming Token Loading** - `streaming_tokens=True` now works correctly
+
+  - Added `_load_tokens_streaming()` using `safetensors.get_slice()` for zero-copy batch loading
+  - Memory-efficient: loads only batch tokens instead of entire file (~120MB savings for 100k images)
+
+- **On-the-Fly Tokenization Fallback** - Token caching now optional
+
+  - Added `tokenize_sdxl_captions()` helper for runtime tokenization
+  - `_get_text_cond()` falls back to tokenizing from `batch["captions"]` if no `input_ids`
+
+- **DataLoader num_workers** - Changed default from 0 to 4 to avoid blocking I/O
+  - Clarified `__len__` returns per-rank count (correct for training loops)
 
 ## [2026-01-04]
 

@@ -3,7 +3,7 @@
 This document tracks implementation progress for the data pipeline rework.
 See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy reference.
 
-## Status: ✅ Phase 1-4 Data Loading Complete, 🔄 Training Integration Pending
+## Status: ✅ Phase 1-4 Data Loading Complete, ✅ PEFT Strategy Integration Complete
 
 **Last Updated:** 2026-01-05
 
@@ -11,7 +11,136 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy
 - Phase 2 (caching): Complete ✅
 - Phase 3 (epoch prep): Complete ✅
 - Phase 4 (dataloader): Complete ✅ - all batch fields implemented
-- **Training Integration: Pending** - need to update `peft_strategy_sdxl.py`
+- **PEFT Strategy Integration: Complete ✅** - `peft_strategy_sdxl.py` uses new batch format
+
+---
+
+## Migration Overview: Legacy vs New System
+
+### What's Being Replaced
+
+| Legacy Component     | Location                                     | Replacement                  | Status   |
+| -------------------- | -------------------------------------------- | ---------------------------- | -------- |
+| `BaseDataset`        | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅ Ready |
+| `DreamBoothDataset`  | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅ Ready |
+| `FineTuningDataset`  | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅ Ready |
+| `BucketManager`      | `library/data/_deprecated/bucket_manager.py` | `dataset_scanner.py`         | ✅ Ready |
+| `DatasetGroup`       | `library/data/_deprecated/dataset.py`        | `DatasetManifest`            | ✅ Ready |
+| Legacy caching       | Scattered in training scripts                | `CachingEngine`              | ✅ Ready |
+| On-the-fly bucketing | `BaseDataset.__getitem__()`                  | Pre-computed `EpochManifest` | ✅ Ready |
+
+### Strategy Layer (Retained)
+
+These strategies are **kept** but their usage differs:
+
+| Strategy               | Location                                   | Legacy Usage                 | New Pipeline Usage                                                                                                      |
+| ---------------------- | ------------------------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `SdxlTokenizeStrategy` | `library/strategies/strategy_sdxl.py`      | Called per-sample in dataset | Used by `tokenize_epoch_manifest()` for token caching; **bypassed** by direct `tokenize_sdxl_captions()` for on-the-fly |
+| `TextEncodingStrategy` | `library/strategies/strategy_base.py`      | Encode tokens → embeddings   | Still used when no cached TE outputs                                                                                    |
+| `SdxlPeftStrategy`     | `library/strategies/peft_strategy_sdxl.py` | Training orchestration       | ✅ Updated to consume new batch format                                                                                  |
+
+> **Note:** For on-the-fly tokenization, we call tokenizers directly via `tokenize_sdxl_captions()` rather than going through `SdxlTokenizeStrategy`. This avoids strategy overhead when tokenizers are already available.
+
+### Caching Strategy Layer (New)
+
+These implement `CachingStrategy` for the new pipeline:
+
+| Strategy                          | Location                             | Purpose                         |
+| --------------------------------- | ------------------------------------ | ------------------------------- |
+| `SdxlLatentsPipelineStrategy`     | `library/strategies/sdxl_caching.py` | VAE encoding → latent caching   |
+| `SdxlTextEncoderPipelineStrategy` | `library/strategies/sdxl_caching.py` | TE encoding → embedding caching |
+| `SdLatentsPipelineStrategy`       | `library/strategies/sd_caching.py`   | SD1.5/2 VAE encoding            |
+
+### Data Flow Comparison
+
+```
+LEGACY FLOW:
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. Script creates DatasetGroup with config                      │
+│ 2. DatasetGroup → DreamBoothDataset/FineTuningDataset          │
+│ 3. Dataset.__getitem__() called per sample:                     │
+│    - Load image from disk                                       │
+│    - Resize/bucket on-the-fly                                   │
+│    - VAE encode (if not cached)                                 │
+│    - Tokenize caption                                           │
+│    - Return dict with latents, tokens, metadata                 │
+│ 4. DataLoader batches and collates                              │
+│ 5. Training loop processes batch                                │
+└─────────────────────────────────────────────────────────────────┘
+
+NEW FLOW:
+┌─────────────────────────────────────────────────────────────────┐
+│ PHASE 1: Scan (once, reuse across epochs)                       │
+│   dataset_scanner.py → DatasetManifest (JSON)                   │
+│   - Parallel directory scanning                                 │
+│   - Bucket assignment                                           │
+│   - Caption loading                                             │
+├─────────────────────────────────────────────────────────────────┤
+│ PHASE 2: Cache (once, skip if cached)                           │
+│   CachingEngine + CachingStrategy → .safetensors files          │
+│   - VAE latent encoding                                         │
+│   - TE output encoding (optional)                               │
+│   - Multi-GPU distributed                                       │
+├─────────────────────────────────────────────────────────────────┤
+│ PHASE 3: Epoch Prep (per epoch, fast)                           │
+│   prepare_epoch() → EpochManifest                               │
+│   - Caption augmentation (shuffle, dropout)                     │
+│   - Deterministic shuffle (seed + epoch)                        │
+│   - Warmup ordering (largest batches first)                     │
+│   - Token file generation (optional)                            │
+├─────────────────────────────────────────────────────────────────┤
+│ PHASE 4: Training (per epoch)                                   │
+│   TrainingDataset + DataLoader → batches                        │
+│   - Load from .safetensors (disk → CPU → GPU)                   │
+│   - Tokenize on-the-fly OR load from token file                 │
+│   - Distributed sharding (rank/world_size)                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Batch Format Comparison
+
+| Key                    | Legacy Format                      | New Format                                                               |
+| ---------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| `latents`              | `[B, 4, H, W]`                     | `[B, 4, H, W]` (unchanged)                                               |
+| `input_ids`            | `[B, 77]`                          | `{"clip_l": [B, 77], "clip_g": [B, 77]}` or **None** (on-the-fly)        |
+| `captions`             | `[str, ...]`                       | `[str, ...]` (unchanged)                                                 |
+| `original_sizes`       | `[[H,W], ...]` or missing          | Via `batch["conditionings"][i].original_size_hw`                         |
+| `crop_top_lefts`       | `[[T,L], ...]` or missing          | Via `batch["conditionings"][i].crop_top_left`                            |
+| `target_sizes`         | Missing                            | Via `batch["conditionings"][i].target_size_hw`                           |
+| `text_encoder_outputs` | `encoder_hidden_states1_list` etc. | `{"hidden_state1": [B,...], "hidden_state2": [B,...], "pool2": [B,...]}` |
+| `loss_weights`         | `[float, ...]`                     | `[B]` tensor                                                             |
+| `flippeds`             | Missing                            | `[bool, ...]`                                                            |
+| `alpha_masks`          | Missing                            | `[B, H, W]` or None                                                      |
+
+### Token Handling Modes
+
+| Mode                     | tokens_path | streaming_tokens | Behavior                                                           |
+| ------------------------ | ----------- | ---------------- | ------------------------------------------------------------------ |
+| **On-the-fly (default)** | None        | -                | Tokenize from `batch["captions"]` using `tokenize_sdxl_captions()` |
+| **Cached (upfront)**     | Set         | False            | Load all tokens at TrainingDataset init                            |
+| **Cached (streaming)**   | Set         | True             | Load batch tokens via `get_slice()`                                |
+
+### Remaining Integration Work
+
+- [ ] Wire `TrainingDataset` into `sdxl_peft.py` (replace legacy DataLoader)
+- [ ] Remove `library/data/_deprecated/` after full validation
+- [ ] Benchmark new vs legacy performance
+
+### Completed Config Integration
+
+- [x] `class_tokens` param in `scan_directory()` - Fallback caption for reg images
+- [x] `create_manifest_from_config()` - Handles all source types from `DataConfig`
+- [x] `prior_loss_weight` param in `TrainingDataset` - Configurable reg image loss
+
+### Test Plan
+
+See `DATA_PIPELINE_TEST_PLAN.md` for:
+
+- Unit test specifications (scanner, epoch prep, dataloader)
+- Integration test design
+- Open questions requiring audit
+
+---
 
 ## Phase 1: Dataset Preparation
 
@@ -236,10 +365,12 @@ CacheData (model-agnostic, in dataclasses.py)
              └── target_size_hw
 ```
 
-### TODO: Integration Tasks
+### TODO:
 
 - [x] Add `target_size_hw` to `SdxlConditioning`
 - [x] Extract `alpha_masks` to batch in dataloader
 - [x] Add `flip_aug` parameter and `flippeds` to batch
-- [ ] Update `peft_strategy_sdxl.py` to use `batch["conditionings"]`
-- [ ] Rename `pipeline_sdxl.py` → `sdxl_caching.py` (deferred until broader reorg)
+- [x] Update `peft_strategy_sdxl.py` to use `batch["conditionings"]`
+- [x] Renamed `pipeline_sdxl.py` → `sdxl_caching.py`
+- [ ] ThreadPool per batch - CPU optimization
+- [ ] color_aug, random_crop, face_crop_aug_range - These are on the fly probably

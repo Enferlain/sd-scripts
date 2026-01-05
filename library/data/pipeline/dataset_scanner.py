@@ -15,6 +15,7 @@ from pathlib import Path
 
 from library.constants import IMAGE_EXTENSIONS
 from library.data.pipeline.dataclasses import CacheEntry, Bucket, DatasetManifest
+from library.config.dataclasses.data import DataConfig
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -181,6 +182,7 @@ def scan_directory(
     validation_seed: int | None = None,
     require_caption: bool = True,
     alpha_mask: bool = False,
+    class_tokens: str | None = None,
 ) -> list[ScannedImage]:
     """
     Scan a directory for images and their captions (DreamBooth style).
@@ -195,6 +197,7 @@ def scan_directory(
         validation_seed: Seed for deterministic validation split.
         require_caption: If True, raise error when non-reg images have no caption.
         alpha_mask: If True, check images for alpha channel (slower but enables mask training).
+        class_tokens: Default caption to use when no caption file exists.
 
     Returns:
         List of ScannedImage objects.
@@ -234,6 +237,9 @@ def scan_directory(
         try:
             width, height = get_image_size(path)
             caption = read_caption(path, caption_extension)
+            # Use class_tokens as fallback if no caption file found
+            if not caption and class_tokens:
+                caption = class_tokens
             split = "val" if idx in val_indices else "train"
             has_alpha = check_has_alpha(path) if alpha_mask else False
             return ScannedImage(
@@ -662,3 +668,121 @@ def create_manifest(
     logger.info(f"Created manifest: {len(entries)} entries ({train_count} train, {val_count} val), {len(buckets)} buckets")
 
     return manifest
+
+
+def create_manifest_from_config(
+    data_config: DataConfig,
+    cache_dir: str | Path | None = None,
+    latent_channels: int = 4,
+    latent_scale_factor: int = 8,
+    latent_dtype: str = "fp16",
+) -> DatasetManifest:
+    """
+    Create a DatasetManifest from DataConfig, handling all dataset sources.
+
+    Supports:
+    - train_data_dir: Main training images
+    - reg_data_dir: Regularization images (is_reg=True)
+    - in_json: FineTuning style metadata file
+    - subsets: Multiple directories with individual settings
+
+    Args:
+        data_config: DataConfig containing source, preprocessing, caption, bucketing settings.
+        cache_dir: Directory to store cache files.
+        latent_channels: Number of VAE latent channels.
+        latent_scale_factor: VAE spatial downscale factor.
+        latent_dtype: Data type for cached latents.
+
+    Returns:
+        DatasetManifest ready for caching and training.
+    """
+    all_scanned: list[ScannedImage] = []
+    caption_ext = data_config.caption.caption_extension or ".txt"
+
+    # Handle train_data_dir (simple DreamBooth style)
+    if data_config.source.train_data_dir:
+        logger.info(f"Scanning train_data_dir: {data_config.source.train_data_dir}")
+        scanned = scan_directory(
+            data_config.source.train_data_dir,
+            caption_extension=caption_ext,
+            is_reg=False,
+            num_repeats=data_config.source.dataset_repeats,
+            alpha_mask=data_config.preprocessing.alpha_mask,
+            require_caption=True,
+        )
+        all_scanned.extend(scanned)
+
+    # Handle reg_data_dir (regularization images)
+    if data_config.source.reg_data_dir:
+        logger.info(f"Scanning reg_data_dir: {data_config.source.reg_data_dir}")
+        scanned = scan_directory(
+            data_config.source.reg_data_dir,
+            caption_extension=caption_ext,
+            is_reg=True,
+            num_repeats=1,  # Reg images typically not repeated
+            alpha_mask=data_config.preprocessing.alpha_mask,
+            require_caption=False,  # Reg often uses class_tokens instead
+        )
+        all_scanned.extend(scanned)
+
+    # Handle in_json (FineTuning style metadata)
+    if data_config.source.in_json:
+        logger.info(f"Scanning metadata file: {data_config.source.in_json}")
+        scanned = scan_metadata_file(
+            data_config.source.in_json,
+            image_dir=data_config.source.train_data_dir,  # Use train_data_dir as base
+            num_repeats=data_config.source.dataset_repeats,
+            alpha_mask=data_config.preprocessing.alpha_mask,
+            require_caption=True,
+        )
+        all_scanned.extend(scanned)
+
+    # Handle subsets
+    for subset in data_config.source.subsets:
+        image_dir = subset.get("image_dir")
+        if not image_dir:
+            logger.warning("Subset missing image_dir, skipping")
+            continue
+
+        logger.info(f"Scanning subset: {image_dir}")
+        scanned = scan_directory(
+            image_dir,
+            caption_extension=subset.get("caption_extension", caption_ext),
+            is_reg=subset.get("is_reg", False),
+            num_repeats=subset.get("num_repeats", data_config.source.dataset_repeats),
+            alpha_mask=subset.get("alpha_mask", data_config.preprocessing.alpha_mask),
+            class_tokens=subset.get("class_tokens"),
+            require_caption=not subset.get("is_reg", False),
+        )
+        all_scanned.extend(scanned)
+
+    if not all_scanned:
+        raise ValueError("No images found. Specify at least one of: train_data_dir, reg_data_dir, in_json, or subsets")
+
+    # Parse resolution
+    base_resolution = (1024, 1024)
+    if data_config.preprocessing.resolution:
+        parts = data_config.preprocessing.resolution.replace("x", ",").split(",")
+        if len(parts) == 2:
+            base_resolution = (int(parts[0]), int(parts[1]))
+        else:
+            side = int(parts[0])
+            base_resolution = (side, side)
+
+    # Determine base_dir for ID generation
+    base_dir = None
+    if data_config.source.train_data_dir:
+        base_dir = Path(data_config.source.train_data_dir).parent
+
+    return create_manifest(
+        all_scanned,
+        base_dir=base_dir,
+        base_resolution=base_resolution,
+        bucket_reso_steps=data_config.bucketing.bucket_reso_steps,
+        min_bucket_reso=data_config.bucketing.min_bucket_reso,
+        max_bucket_reso=data_config.bucketing.max_bucket_reso,
+        no_upscale=data_config.bucketing.bucket_no_upscale,
+        latent_channels=latent_channels,
+        latent_scale_factor=latent_scale_factor,
+        latent_dtype=latent_dtype,
+    )
