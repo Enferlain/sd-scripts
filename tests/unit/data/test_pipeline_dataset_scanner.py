@@ -313,3 +313,78 @@ class TestScanMetadataFile:
                 image_dir=temp_metadata_dir,
                 require_caption=True,
             )
+
+
+# =============================================================================
+# class_tokens Tests
+# =============================================================================
+
+
+@pytest.mark.unit
+class TestClassTokens:
+    """Test class_tokens fallback for images without captions."""
+
+    def test_class_tokens_fallback(self, temp_image_dir):
+        """Should use class_tokens as caption when no caption file exists."""
+        from library.data.pipeline.dataset_scanner import scan_directory
+
+        scanned = scan_directory(
+            temp_image_dir,
+            class_tokens="a photo of sks dog",
+            require_caption=False,
+        )
+        # Images without captions should get the class_tokens
+        no_caption_img = next(s for s in scanned if s.path.name == "no_caption.png")
+        assert no_caption_img.caption == "a photo of sks dog"
+
+    def test_class_tokens_does_not_override_existing(self, temp_image_dir):
+        """Should not override existing captions with class_tokens."""
+        from library.data.pipeline.dataset_scanner import scan_directory
+
+        scanned = scan_directory(
+            temp_image_dir,
+            class_tokens="default caption",
+            require_caption=False,
+        )
+        # Images with captions should keep their original
+        img_with_caption = next(s for s in scanned if s.path.stem == "image_000")
+        assert "test caption 0" in img_with_caption.caption
+
+
+# =============================================================================
+# create_manifest_from_config Tests
+# =============================================================================
+
+
+@pytest.mark.unit
+class TestCreateManifestFromConfig:
+    """Test high-level config-driven manifest creation."""
+
+    def test_handles_train_data_dir(self, temp_image_dir):
+        """Should scan train_data_dir from config (only captioned images)."""
+        from library.data.pipeline.dataset_scanner import create_manifest_from_config
+        from library.config.dataclasses.data import DataConfig
+
+        # Add caption for no_caption.png so all images are captioned
+        (temp_image_dir / "no_caption.txt").write_text("added caption")
+
+        config = DataConfig()
+        config.source.train_data_dir = str(temp_image_dir)
+        config.preprocessing.resolution = "512,512"
+        config.caption.caption_extension = ".txt"
+
+        manifest = create_manifest_from_config(config)
+        assert len(manifest.entries) == 5  # All images in temp_image_dir
+
+    def test_handles_reg_data_dir(self, temp_image_dir):
+        """Should scan reg_data_dir as is_reg=True."""
+        from library.data.pipeline.dataset_scanner import create_manifest_from_config
+        from library.config.dataclasses.data import DataConfig
+
+        config = DataConfig()
+        config.source.reg_data_dir = str(temp_image_dir)
+        config.preprocessing.resolution = "512,512"
+
+        manifest = create_manifest_from_config(config)
+        # All should be marked as regularization images
+        assert all(e.is_reg for e in manifest.entries.values())
