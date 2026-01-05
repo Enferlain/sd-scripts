@@ -253,7 +253,7 @@ def temp_metadata_dir():
         metadata = {
             "image_000": {"caption": "first image caption", "train_resolution": [512, 768]},
             "image_001": {"tags": "tag1, tag2, tag3"},  # tags instead of caption
-            "image_002": {"caption": "third image", "tags": "extra, tags"},
+            "image_002": {"caption": "third image", "tags": "aux, tags"},
         }
         (tmpdir / "metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
 

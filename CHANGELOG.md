@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-05]
+
+### Added
+
+- **Data Pipeline: Composition Pattern for Model-Agnostic DataLoader**
+
+  - `ModelConditioning` ABC in `dataclasses.py` - Base class for model-specific conditioning
+  - `CacheData` dataclass - Universal cache container with `latents`, `conditioning`, `aux`
+  - `SdxlConditioning` in `pipeline_sdxl.py` - SDXL micro-conditioning (original_size_hw, crop_top_left, target_size_hw)
+  - Dataloader now model-agnostic - passes `batch["conditionings"]` to training loop
+  - Renamed `extra` → `aux` for TE outputs dict
+
+- **Data Pipeline Phase 4: Complete Batch Fields**
+
+  - `flip_aug` parameter - 50% random flip when enabled
+  - `alpha_masks` extraction from `CacheData.alpha_mask`
+  - `flippeds` list - tracks which samples used flipped latents
+  - `target_size_hw` added to `SdxlConditioning`
+
+### Changed
+
+- `CachingStrategy.load_cache()` now returns `CacheData` instead of tuple
+- Architecture notes added to `DATA_PIPELINE_IMPL.md` documenting naming conventions and integration approach
+
 ## [2026-01-04]
 
 ### Added
@@ -91,6 +115,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Offset-based batch slicing (sequential index mapping)
   - Manifest hash validation to ensure token file matches epoch
   - Support for both token file loading and legacy `BatchInfo.input_ids`
+
+- **Distributed Training Support** (`library/data/pipeline/dataloader.py`)
+
+  - Multi-GPU sharding via `rank`/`world_size` parameters
+  - DataLoader worker sharding via `get_worker_info()`
+  - Tensors yielded on CPU with `pin_memory=True` for efficient GPU transfer
+
+### Fixed
+
+- **Caption Hash Stability** (`library/strategies/pipeline_sdxl.py`)
+
+  - Replaced Python's non-deterministic `hash()` with `stable_string_hash()`
+  - TE cache validation now consistent across Python runs
+
+- **Epoch Shuffle Reproducibility** (`library/data/pipeline/epoch_preparation.py`)
+
+  - Fixed seed calculation to mix `seed + epoch` for per-epoch variation
+  - Matches legacy behavior: same base seed, different shuffle each epoch
 
 ### Changed
 

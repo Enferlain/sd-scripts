@@ -13,14 +13,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from library.constants import IMAGE_EXTENSIONS
 from library.data.pipeline.dataclasses import CacheEntry, Bucket, DatasetManifest
 from library.utils.common_utils import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
-
-# Supported image extensions
-IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".jxl", ".bmp", ".gif", ".tiff", ".tif")
 
 # Caption file extensions to try, in priority order
 CAPTION_EXTENSIONS = (".txt", ".caption")
@@ -51,12 +49,16 @@ class ScannedImage:
     split: str = "train"
     """Dataset split: 'train' or 'val'."""
 
+    has_alpha: bool = False
+    """Whether this image has an alpha channel (RGBA)."""
+
 
 def get_image_size(path: Path) -> tuple[int, int]:
     """
     Get image dimensions without loading the full image.
 
-    Uses imagesize library if available, falls back to PIL.
+    Uses specialized handlers for JXL (fast header parsing),
+    imagesize library if available, otherwise falls back to PIL.
 
     Args:
         path: Path to image file.
@@ -64,6 +66,18 @@ def get_image_size(path: Path) -> tuple[int, int]:
     Returns:
         Tuple of (width, height).
     """
+    suffix = path.suffix.lower()
+
+    # Use specialized JXL parser for up to 200x speedup
+    if suffix == ".jxl":
+        try:
+            from library.utils.jpeg_xl_util import get_jxl_size
+
+            return get_jxl_size(str(path))
+        except Exception:
+            pass  # Fall through to other methods
+
+    # Try imagesize library
     try:
         import imagesize
 
@@ -80,6 +94,27 @@ def get_image_size(path: Path) -> tuple[int, int]:
 
     with Image.open(path) as img:
         return img.size
+
+
+def check_has_alpha(path: Path) -> bool:
+    """
+    Check if an image has an alpha channel.
+
+    Opens the image briefly to check its mode.
+
+    Args:
+        path: Path to image file.
+
+    Returns:
+        True if image has alpha channel (RGBA, LA, PA modes).
+    """
+    from PIL import Image
+
+    try:
+        with Image.open(path) as img:
+            return img.mode in ("RGBA", "LA", "PA")
+    except Exception:
+        return False
 
 
 def read_caption(image_path: Path, caption_extension: str = ".txt") -> str:
@@ -145,6 +180,7 @@ def scan_directory(
     validation_split: float = 0.0,
     validation_seed: int | None = None,
     require_caption: bool = True,
+    alpha_mask: bool = False,
 ) -> list[ScannedImage]:
     """
     Scan a directory for images and their captions (DreamBooth style).
@@ -158,6 +194,7 @@ def scan_directory(
         validation_split: Fraction of images to use for validation (0.0-1.0).
         validation_seed: Seed for deterministic validation split.
         require_caption: If True, raise error when non-reg images have no caption.
+        alpha_mask: If True, check images for alpha channel (slower but enables mask training).
 
     Returns:
         List of ScannedImage objects.
@@ -169,11 +206,12 @@ def scan_directory(
     if not image_dir.exists():
         raise ValueError(f"Directory does not exist: {image_dir}")
 
-    # Find all image files
+    # Find all image files - IMAGE_EXTENSIONS is a list from constants, normalize to lowercase for matching
+    image_extensions_lower = {ext.lower() for ext in IMAGE_EXTENSIONS}
     if recursive:
-        image_files = [f for f in image_dir.rglob("*") if f.suffix.lower() in IMAGE_EXTENSIONS]
+        image_files = [f for f in image_dir.rglob("*") if f.suffix.lower() in image_extensions_lower]
     else:
-        image_files = [f for f in image_dir.iterdir() if f.is_file() and f.suffix.lower() in IMAGE_EXTENSIONS]
+        image_files = [f for f in image_dir.iterdir() if f.is_file() and f.suffix.lower() in image_extensions_lower]
 
     image_files.sort()  # Deterministic ordering
     logger.info(f"Found {len(image_files)} images in {image_dir}")
@@ -197,6 +235,7 @@ def scan_directory(
             width, height = get_image_size(path)
             caption = read_caption(path, caption_extension)
             split = "val" if idx in val_indices else "train"
+            has_alpha = check_has_alpha(path) if alpha_mask else False
             return ScannedImage(
                 path=path,
                 width=width,
@@ -205,9 +244,11 @@ def scan_directory(
                 num_repeats=num_repeats,
                 is_reg=is_reg,
                 split=split,
+                has_alpha=has_alpha,
             )
         except Exception as e:
             logger.warning(f"Failed to process {path}: {e}")
+            return None
             return None
 
     with ThreadPoolExecutor(max_workers=8) as executor:
@@ -241,6 +282,7 @@ def scan_metadata_file(
     validation_split: float = 0.0,
     validation_seed: int | None = None,
     require_caption: bool = True,
+    alpha_mask: bool = False,
 ) -> list[ScannedImage]:
     """
     Scan a JSON metadata file for images and captions (FineTuning style).
@@ -254,6 +296,7 @@ def scan_metadata_file(
         validation_split: Fraction of images to use for validation (0.0-1.0).
         validation_seed: Seed for deterministic validation split.
         require_caption: If True, raise error when images have no caption/tags.
+        alpha_mask: If True, check images for alpha channel (slower but enables mask training).
 
     Returns:
         List of ScannedImage objects.
@@ -314,6 +357,7 @@ def scan_metadata_file(
             width, height = get_image_size(abs_path)
 
         split = "val" if idx in val_indices else "train"
+        has_alpha = check_has_alpha(abs_path) if alpha_mask else False
 
         scanned.append(
             ScannedImage(
@@ -324,6 +368,7 @@ def scan_metadata_file(
                 num_repeats=num_repeats,
                 is_reg=False,
                 split=split,
+                has_alpha=has_alpha,
             )
         )
 
@@ -586,6 +631,7 @@ def create_manifest(
             num_repeats=scanned.num_repeats,
             is_reg=scanned.is_reg,
             split=scanned.split,
+            has_alpha_mask=scanned.has_alpha,
         )
         entries[image_id] = entry
 

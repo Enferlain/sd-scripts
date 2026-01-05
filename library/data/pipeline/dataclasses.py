@@ -4,7 +4,63 @@ Core dataclasses for the new data pipeline.
 These replace the monolithic ImageInfo with focused, single-responsibility structures.
 """
 
+from abc import ABC
 from dataclasses import dataclass, field
+
+import torch
+
+
+# =============================================================================
+# Cache Loading Types (returned by CachingStrategy.load_cache)
+# =============================================================================
+
+
+class ModelConditioning(ABC):  # noqa: B024 - Marker class, no abstract methods
+    """
+    Base class for model-specific conditioning data.
+
+    Each model type (SD1.5, SDXL, Flux, SD3) has different conditioning requirements.
+    This abstract base enables type-safe composition without coupling the dataloader
+    to any specific model.
+
+    The training loop, which IS model-specific, casts this to the concrete type.
+    """
+
+    pass
+
+
+@dataclass
+class CacheData:
+    """
+    Model-agnostic cache data returned by CachingStrategy.load_cache().
+
+    This is the universal container for loaded cache data. The `conditioning`
+    field holds model-specific data via composition, keeping the dataloader
+    agnostic to model details.
+
+    For VAE caching: use `latents`, `latents_flipped`, `alpha_mask`.
+    For TE caching: use `aux` dict with encoder-specific outputs.
+    """
+
+    latents: torch.Tensor | None = None
+    """VAE-encoded latents [C, H, W] (None for TE caching)."""
+
+    latents_flipped: torch.Tensor | None = None
+    """Horizontally flipped latents for augmentation (optional)."""
+
+    alpha_mask: torch.Tensor | None = None
+    """Alpha channel mask for inpainting (optional)."""
+
+    conditioning: ModelConditioning | None = None
+    """Model-specific conditioning data (SDXL crops, etc.)."""
+
+    aux: dict[str, torch.Tensor] = field(default_factory=dict)
+    """Additional tensors (e.g., TE outputs: hidden_state1, hidden_state2, pool2)."""
+
+
+# =============================================================================
+# Manifest Entry Types
+# =============================================================================
 
 
 @dataclass

@@ -16,7 +16,7 @@ import torch
 from PIL import Image
 from tqdm import tqdm
 
-from library.data.pipeline.dataclasses import DatasetManifest, CacheEntry
+from library.data.pipeline.dataclasses import CacheData, CacheEntry, DatasetManifest
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -77,7 +77,7 @@ class CachingStrategy(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load_cache(self, path: Path) -> dict[str, torch.Tensor]:
+    def load_cache(self, path: Path) -> "CacheData":
         """
         Load cached data from file.
 
@@ -85,7 +85,8 @@ class CachingStrategy(ABC):
             path: Cache file path.
 
         Returns:
-            Dict of tensor name -> tensor.
+            CacheData with latents/embeddings and optional model-specific conditioning.
+            The conditioning field contains model-specific data (e.g., SdxlConditioning).
         """
         raise NotImplementedError
 

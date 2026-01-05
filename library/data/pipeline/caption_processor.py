@@ -56,6 +56,8 @@ class CaptionConfig:
     token_warmup_min: int = 0
     token_warmup_step: int = 0
     protected_tags: set[str] = field(default_factory=set)
+    replacements: dict[str, str] = field(default_factory=dict)
+    """String replacements applied before all other processing (for Textual Inversion triggers)."""
 
     def needs_processing(self) -> bool:
         """Check if any processing is needed (determines if TE can be cached)."""
@@ -66,6 +68,7 @@ class CaptionConfig:
             or self.caption_tag_dropout_rate > 0
             or self.enable_wildcard
             or self.token_warmup_step > 0
+            or bool(self.replacements)
         )
 
 
@@ -93,6 +96,11 @@ def process_caption(
     """
     if rng is None:
         rng = random.Random()
+
+    # Apply string replacements first (for Textual Inversion triggers)
+    if config.replacements:
+        for str_from, str_to in config.replacements.items():
+            caption = caption.replace(str_from, str_to)
 
     # Apply prefix/suffix
     if config.prefix:

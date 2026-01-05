@@ -77,11 +77,11 @@ class TestSdxlLatentsSaveLoad:
         assert cache_path.exists()
 
         # Load
-        loaded = strategy.load_cache(cache_path)
+        cache_data = strategy.load_cache(cache_path)
 
         # Verify latents are identical
-        assert "latents" in loaded
-        assert torch.allclose(original_data["latents"], loaded["latents"])
+        assert cache_data.latents is not None
+        assert torch.allclose(original_data["latents"], cache_data.latents)
 
     def test_save_and_load_with_flip_aug(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
         """Test that flipped latents are saved and loaded correctly."""
@@ -97,10 +97,10 @@ class TestSdxlLatentsSaveLoad:
         assert "latents_flipped" in original_data
 
         strategy.save_cache(original_data, cache_path)
-        loaded = strategy.load_cache(cache_path)
+        cache_data = strategy.load_cache(cache_path)
 
-        assert torch.allclose(original_data["latents"], loaded["latents"])
-        assert torch.allclose(original_data["latents_flipped"], loaded["latents_flipped"])
+        assert torch.allclose(original_data["latents"], cache_data.latents)
+        assert torch.allclose(original_data["latents_flipped"], cache_data.latents_flipped)
 
     def test_metadata_is_preserved(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
         """Test that metadata is saved and can be read back."""
@@ -137,10 +137,10 @@ class TestSdxlLatentsSaveLoad:
         assert original_latents.dtype == torch.float16
 
         strategy.save_cache(results[0], cache_path)
-        loaded = strategy.load_cache(cache_path)
+        cache_data = strategy.load_cache(cache_path)
 
-        assert loaded["latents"].dtype == torch.float16
-        assert torch.allclose(original_latents, loaded["latents"])
+        assert cache_data.latents.dtype == torch.float16
+        assert torch.allclose(original_latents, cache_data.latents)
 
     def test_is_cache_valid_returns_true_for_valid_cache(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
         """Test validation passes for properly cached files."""
@@ -215,11 +215,11 @@ class TestSdxlTextEncoderSaveLoad:
 
         # Save and load
         strategy.save_cache(original_data, cache_path)
-        loaded = strategy.load_cache(cache_path)
+        cache_data = strategy.load_cache(cache_path)
 
-        assert torch.allclose(original_data["hidden_state1"], loaded["hidden_state1"])
-        assert torch.allclose(original_data["hidden_state2"], loaded["hidden_state2"])
-        assert torch.allclose(original_data["pool2"], loaded["pool2"])
+        assert torch.allclose(original_data["hidden_state1"], cache_data.aux["hidden_state1"])
+        assert torch.allclose(original_data["hidden_state2"], cache_data.aux["hidden_state2"])
+        assert torch.allclose(original_data["pool2"], cache_data.aux["pool2"])
 
     def test_te_metadata_includes_caption_hash(self, sample_entry: CacheEntry, mock_text_encoders, tmp_path: Path):
         """Test that caption hash is stored for change detection."""

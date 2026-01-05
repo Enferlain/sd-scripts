@@ -6,15 +6,16 @@ and are designed to work with CacheEntry dataclasses, not the legacy ImageInfo.
 """
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import torch
 from PIL import Image
-from safetensors.torch import save_file, load_file
+from safetensors.torch import save_file
 
 from library.data.pipeline.caching_engine import CachingStrategy
-from library.data.pipeline.dataclasses import CacheEntry
+from library.data.pipeline.dataclasses import CacheData, CacheEntry, ModelConditioning
 from library.utils.common_utils import setup_logging
 from library.utils.hash_utils import stable_string_hash
 
@@ -23,6 +24,26 @@ logger = logging.getLogger(__name__)
 
 # SDXL VAE scale factor (different from SD)
 SDXL_VAE_LATENT_SCALE = 0.13025
+
+
+@dataclass
+class SdxlConditioning(ModelConditioning):
+    """
+    SDXL-specific micro-conditioning metadata.
+
+    SDXL uses original image size, crop coordinates, and target size as conditioning
+    inputs to improve generation quality. These are stored in cache metadata and
+    extracted during loading. See SDXL paper section 2.2.
+    """
+
+    original_size_hw: tuple[int, int]
+    """Original image size (height, width) before any processing."""
+
+    crop_top_left: tuple[int, int]
+    """Crop offset (top, left) in bucket pixel space."""
+
+    target_size_hw: tuple[int, int]
+    """Target/bucket resolution (height, width) the image was resized to."""
 
 
 def get_crop_ltrb(
@@ -185,7 +206,7 @@ class SdxlLatentsPipelineStrategy(CachingStrategy):
         metadata = data.get("metadata", {})
         save_file(tensors, str(path), metadata=metadata)
 
-    def load_cache(self, path: Path) -> dict[str, torch.Tensor]:
+    def load_cache(self, path: Path) -> CacheData:
         """
         Load cached latents from a .safetensors file.
 
@@ -193,9 +214,45 @@ class SdxlLatentsPipelineStrategy(CachingStrategy):
             path: Cache file path.
 
         Returns:
-            Dict with 'latents' and optionally 'latents_flipped' tensors.
+            CacheData with latents and SdxlConditioning (parsed from metadata).
         """
-        return load_file(str(path))
+        from safetensors import safe_open
+
+        with safe_open(str(path), framework="pt") as f:
+            metadata = f.metadata() or {}
+            latents = f.get_tensor("latents")
+            latents_flipped = f.get_tensor("latents_flipped") if "latents_flipped" in f.keys() else None  # noqa: SIM118
+            alpha_mask = f.get_tensor("alpha_mask") if "alpha_mask" in f.keys() else None  # noqa: SIM118
+
+        # Parse SDXL conditioning from metadata
+        original_size_hw = (0, 0)
+        crop_top_left = (0, 0)
+        target_size_hw = (0, 0)
+
+        if "original_size" in metadata:
+            w, h = map(int, metadata["original_size"].split(","))
+            original_size_hw = (h, w)  # Convert to HW format
+
+        if "crop_ltrb" in metadata:
+            l, t, _r, _b = map(int, metadata["crop_ltrb"].split(","))
+            crop_top_left = (t, l)  # (top, left) format
+
+        if "bucket_reso" in metadata:
+            w, h = map(int, metadata["bucket_reso"].split(","))
+            target_size_hw = (h, w)  # Convert WH to HW format
+
+        conditioning = SdxlConditioning(
+            original_size_hw=original_size_hw,
+            crop_top_left=crop_top_left,
+            target_size_hw=target_size_hw,
+        )
+
+        return CacheData(
+            latents=latents,
+            latents_flipped=latents_flipped,
+            alpha_mask=alpha_mask,
+            conditioning=conditioning,
+        )
 
     def is_cache_valid(
         self,
@@ -427,7 +484,7 @@ class SdxlTextEncoderPipelineStrategy(CachingStrategy):
         metadata = data.get("metadata", {})
         save_file(tensors, str(path), metadata=metadata)
 
-    def load_cache(self, path: Path) -> dict[str, torch.Tensor]:
+    def load_cache(self, path: Path) -> CacheData:
         """
         Load cached text encoder outputs from a .safetensors file.
 
@@ -435,9 +492,16 @@ class SdxlTextEncoderPipelineStrategy(CachingStrategy):
             path: Cache file path.
 
         Returns:
-            Dict with 'hidden_state1', 'hidden_state2', 'pool2' tensors.
+            CacheData with TE outputs in the `aux` dict.
         """
-        return load_file(str(path))
+        from safetensors import safe_open
+
+        extra = {}
+        with safe_open(str(path), framework="pt") as f:
+            for key in f.keys():  # noqa: SIM118 - safe_open requires .keys()
+                extra[key] = f.get_tensor(key)
+
+        return CacheData(aux=extra)
 
     def is_cache_valid(
         self,

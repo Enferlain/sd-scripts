@@ -42,6 +42,7 @@ class TrainingDataset(IterableDataset):
         te_strategy: CachingStrategy | None = None,
         tokens_path: str | None = None,
         streaming_tokens: bool = False,
+        flip_aug: bool = False,
         rank: int = 0,
         world_size: int = 1,
     ):
@@ -57,6 +58,7 @@ class TrainingDataset(IterableDataset):
                 tokens are loaded from file using offset-based slicing.
             streaming_tokens: If True, use memory-efficient streaming for tokens.
                 If False, load all tokens into memory at start.
+            flip_aug: If True, randomly use flipped latents (50% probability).
             rank: Process rank for distributed training (0-indexed).
             world_size: Total number of processes for distributed training.
         """
@@ -66,6 +68,7 @@ class TrainingDataset(IterableDataset):
         self.te_strategy = te_strategy
         self.tokens_path = tokens_path
         self.streaming_tokens = streaming_tokens
+        self.flip_aug = flip_aug
         self.rank = rank
         self.world_size = world_size
 
@@ -189,12 +192,40 @@ class TrainingDataset(IterableDataset):
         if not entries:
             raise ValueError(f"No valid entries found for batch IDs: {batch_info.image_ids}")
 
-        # Load latents
+        # Load latents and conditioning from cache
         latents_list = []
+        alpha_masks_list = []
+        conditionings = []
+        loss_weights = []
+        flippeds = []
+
         for entry in entries:
             if entry.latent_cache_path:
                 cache_data = self.latent_strategy.load_cache(Path(entry.latent_cache_path))
-                latents_list.append(cache_data.get("latents"))
+                if cache_data.latents is None:
+                    raise ValueError(f"Cache missing latents for {entry.id}")
+
+                # Flip augmentation: 50% chance to use flipped latents if available
+                use_flipped = False
+                if self.flip_aug and cache_data.latents_flipped is not None:
+                    import random
+
+                    use_flipped = random.random() < 0.5
+
+                if use_flipped:
+                    latents_list.append(cache_data.latents_flipped)
+                else:
+                    latents_list.append(cache_data.latents)
+                flippeds.append(use_flipped)
+
+                # Alpha mask (optional)
+                if cache_data.alpha_mask is not None:
+                    alpha_masks_list.append(cache_data.alpha_mask)
+
+                conditionings.append(cache_data.conditioning)
+
+                # Loss weight: 0.0 for regularization images, 1.0 for training images
+                loss_weights.append(0.0 if entry.is_reg else 1.0)
             else:
                 raise ValueError(f"Missing latent cache for {entry.id}")
 
@@ -204,13 +235,19 @@ class TrainingDataset(IterableDataset):
         # Use processed_captions if available, otherwise fall back to raw captions
         captions = batch_info.processed_captions if batch_info.processed_captions else [e.caption for e in entries]
 
-        # Build batch dict
+        # Build batch dict with all required fields
         batch = {
             "latents": latents,
             "captions": captions,
             "image_ids": batch_info.image_ids,
             "bucket_reso": batch_info.bucket_reso,
-            # TODO: Add more fields as needed (loss_weights, alpha_masks, etc.)
+            # Model-specific conditioning (opaque to dataloader, training loop casts to concrete type)
+            "conditionings": conditionings,
+            # Training metadata
+            "loss_weights": torch.tensor(loss_weights, dtype=latents.dtype),
+            "flippeds": flippeds,
+            # Alpha masks (only present if images have alpha channels)
+            "alpha_masks": torch.stack(alpha_masks_list, dim=0) if alpha_masks_list else None,
         }
 
         # Add tokens from epoch token file (offset-based slicing)
@@ -237,14 +274,14 @@ class TrainingDataset(IterableDataset):
         for entry in entries:
             if entry.te_cache_path:
                 cache_data = self.te_strategy.load_cache(Path(entry.te_cache_path))
-                outputs.append(cache_data)
+                outputs.append(cache_data.aux)
 
         # Stack each output type
         result = {}
         if outputs:
             for key in outputs[0]:
-                tensors = [o[key] for o in outputs]
-                result[key] = torch.stack(tensors, dim=0)
+                tensors_list = [o[key] for o in outputs]
+                result[key] = torch.stack(tensors_list, dim=0)
 
         return result
 
@@ -256,6 +293,7 @@ def create_training_dataloader(
     te_strategy: CachingStrategy | None = None,
     tokens_path: str | None = None,
     streaming_tokens: bool = False,
+    flip_aug: bool = False,
     rank: int = 0,
     world_size: int = 1,
     num_workers: int = 0,
@@ -272,6 +310,7 @@ def create_training_dataloader(
         te_strategy: Optional strategy for TE outputs (cached per-image).
         tokens_path: Path to epoch token file (safetensors). For caption augmentation.
         streaming_tokens: If True, use memory-efficient streaming for tokens.
+        flip_aug: If True, randomly use flipped latents (50% probability).
         rank: Process rank for distributed training (0-indexed).
         world_size: Total number of processes for distributed training.
         num_workers: Number of data loading workers.
@@ -288,6 +327,7 @@ def create_training_dataloader(
         te_strategy=te_strategy,
         tokens_path=tokens_path,
         streaming_tokens=streaming_tokens,
+        flip_aug=flip_aug,
         rank=rank,
         world_size=world_size,
     )
