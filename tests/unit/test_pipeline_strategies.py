@@ -11,8 +11,8 @@ import pytest
 import torch
 
 from library.data.pipeline.dataclasses import CacheEntry
-from library.strategies.pipeline_sd import SdLatentsPipelineStrategy, SD_VAE_LATENT_SCALE
-from library.strategies.pipeline_sdxl import (
+from library.strategies.sd_caching import SdLatentsPipelineStrategy, SD_VAE_LATENT_SCALE
+from library.strategies.sdxl_caching import (
     SdxlLatentsPipelineStrategy,
     SdxlTextEncoderPipelineStrategy,
     SDXL_VAE_LATENT_SCALE,
@@ -127,10 +127,10 @@ class TestSdLatentsPipelineStrategy:
         strategy.save_cache(data, cache_path)
         assert cache_path.exists()
 
-        # Load
+        # Load - returns CacheData object now
         loaded = strategy.load_cache(cache_path)
-        assert "latents" in loaded
-        assert loaded["latents"].shape == (4, 72, 128)
+        assert loaded.latents is not None
+        assert loaded.latents.shape == (4, 72, 128)
 
     def test_preprocess_image(self):
         """Test image preprocessing."""
@@ -245,8 +245,8 @@ class TestSdxlTextEncoderPipelineStrategy:
         strategy.save_cache(data, cache_path)
         assert cache_path.exists()
 
-        # Load
+        # Load - returns CacheData object with aux dict
         loaded = strategy.load_cache(cache_path)
-        assert "hidden_state1" in loaded
-        assert "hidden_state2" in loaded
-        assert "pool2" in loaded
+        assert "hidden_state1" in loaded.aux
+        assert "hidden_state2" in loaded.aux
+        assert "pool2" in loaded.aux

@@ -82,6 +82,7 @@ filterwarnings = [
 addopts = [
     "--strict-markers",
     "-ra",
+    "--ignore=tests/_deprecated",
 ]
 
 markers = [

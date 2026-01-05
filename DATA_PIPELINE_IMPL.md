@@ -218,7 +218,7 @@ The existing orchestration strategies (`peft_strategy_sdxl.py`) will be updated 
 
 1. **Accept our new data format** - `batch["conditionings"]` (list of `SdxlConditioning` objects) instead of flat keys
 2. **Extract values for UNet** - Training loop knows it's SDXL, casts `SdxlConditioning` for `get_size_embeddings()`
-3. **Use `CacheData.extra`** for TE outputs instead of `text_encoder_outputs*_list` keys
+3. **Use `CacheData.aux`** for TE outputs instead of `text_encoder_outputs*_list` keys
 
 This keeps data pipeline model-agnostic while letting training strategies handle model-specific extraction.
 

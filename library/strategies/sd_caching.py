@@ -11,7 +11,7 @@ from typing import Any
 
 import torch
 from PIL import Image
-from safetensors.torch import save_file, load_file
+from safetensors.torch import save_file
 
 from library.data.pipeline.caching_engine import CachingStrategy
 from library.data.pipeline.dataclasses import CacheEntry
@@ -135,7 +135,7 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         metadata = data.get("metadata", {})
         save_file(tensors, str(path), metadata=metadata)
 
-    def load_cache(self, path: Path) -> dict[str, torch.Tensor]:
+    def load_cache(self, path: Path) -> "CacheData":
         """
         Load cached latents from a .safetensors file.
 
@@ -143,9 +143,21 @@ class SdLatentsPipelineStrategy(CachingStrategy):
             path: Cache file path.
 
         Returns:
-            Dict with 'latents' and optionally 'latents_flipped' tensors.
+            CacheData with latents (and optionally latents_flipped, alpha_mask).
         """
-        return load_file(str(path))
+        from library.data.pipeline.dataclasses import CacheData
+        from safetensors import safe_open
+
+        with safe_open(str(path), framework="pt") as f:
+            latents = f.get_tensor("latents")
+            latents_flipped = f.get_tensor("latents_flipped") if "latents_flipped" in f.keys() else None  # noqa: SIM118
+            alpha_mask = f.get_tensor("alpha_mask") if "alpha_mask" in f.keys() else None  # noqa: SIM118
+
+        return CacheData(
+            latents=latents,
+            latents_flipped=latents_flipped,
+            alpha_mask=alpha_mask,
+        )
 
     def is_cache_valid(
         self,

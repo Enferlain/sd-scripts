@@ -86,7 +86,7 @@ class CacheEntry:
     bucket_reso: tuple[int, int]
     """Target bucket resolution (width, height) for training."""
 
-    resized_size: tuple[int, int]
+    resized_size: tuple[int, int]  # Is this not target_size?
     """Actual size after resize/crop to fit bucket."""
 
     # Caption data

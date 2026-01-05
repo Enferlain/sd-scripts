@@ -13,8 +13,8 @@ import torch
 from library.data.pipeline.dataset_scanner import scan_directory, create_manifest
 from library.data.pipeline.caching_engine import CachingEngine
 from library.data.pipeline.dataclasses import DatasetManifest
-from library.strategies.pipeline_sd import SdLatentsPipelineStrategy
-from library.strategies.pipeline_sdxl import SdxlLatentsPipelineStrategy
+from library.strategies.sd_caching import SdLatentsPipelineStrategy
+from library.strategies.sdxl_caching import SdxlLatentsPipelineStrategy
 
 
 # Path to test assets
@@ -187,6 +187,6 @@ class TestPipelineIntegration:
             cache_path = strategy.get_cache_path(entry, cache_dir)
             loaded = strategy.load_cache(cache_path)
 
-            assert "latents" in loaded
-            assert loaded["latents"].ndim == 3  # [C, H, W]
-            assert loaded["latents"].shape[0] == 4  # 4 latent channels
+            assert loaded.latents is not None
+            assert loaded.latents.ndim == 3  # [C, H, W]
+            assert loaded.latents.shape[0] == 4  # 4 latent channels

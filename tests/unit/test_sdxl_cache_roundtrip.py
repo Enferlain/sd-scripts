@@ -15,7 +15,7 @@ import pytest
 import torch
 
 from library.data.pipeline.dataclasses import CacheEntry
-from library.strategies.pipeline_sdxl import (
+from library.strategies.sdxl_caching import (
     SdxlLatentsPipelineStrategy,
     SdxlTextEncoderPipelineStrategy,
     get_crop_ltrb,

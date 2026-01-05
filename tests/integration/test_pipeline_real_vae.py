@@ -14,7 +14,7 @@ import torch
 
 from library.data.pipeline.dataset_scanner import scan_directory, create_manifest
 from library.data.pipeline.caching_engine import CachingEngine
-from library.strategies.pipeline_sdxl import SdxlLatentsPipelineStrategy
+from library.strategies.sdxl_caching import SdxlLatentsPipelineStrategy
 
 
 # Paths to test assets
