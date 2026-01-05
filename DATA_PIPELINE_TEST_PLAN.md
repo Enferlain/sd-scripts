@@ -41,14 +41,15 @@
 
 ### 4. Caching Engine (`test_pipeline_caching.py`) - Existing
 
-| Test                               | Status    |
-| ---------------------------------- | --------- |
-| `test_batch_entries_by_bucket`     | ✅ Exists |
-| `test_split_for_single_gpu`        | ✅ Exists |
-| `test_split_for_multi_gpu`         | ✅ Exists |
-| `test_cache_dataset_creates_files` | ✅ Exists |
-| `test_skip_existing_caches`        | ✅ Exists |
-| `test_all_cached_returns_early`    | ✅ Exists |
+| Test                                    | Status    |
+| --------------------------------------- | --------- | --------------------------------------------- |
+| `test_batch_entries_by_bucket`          | ✅ Exists |
+| `test_split_for_single_gpu`             | ✅ Exists |
+| `test_split_for_multi_gpu`              | ✅ Exists |
+| `test_cache_dataset_creates_files`      | ✅ Exists |
+| `test_skip_existing_caches`             | ✅ Exists |
+| `test_all_cached_returns_early`         | ✅ Exists |
+| `test_cache_invalidation_bucket_change` | ❌ Needed | Verify re-caching when bucket settings change |
 
 ---
 
@@ -124,6 +125,16 @@ Move to `tests/unit/` - verifies bucket resolution generation matches legacy
 | Per-epoch dataloader creation overhead?     | ❓ Open     | Needs benchmarking                |
 | Is `prepare_epoch()` fast enough?           | ✅ Designed | Caption processing + shuffle only |
 | ThreadPool per-batch vs persistent workers? | ⚠️ TODO     | In DATA_PIPELINE_IMPL.md          |
+
+### AUDIT 6: Cache Invalidation
+
+**Context:** Legacy behavior only re-buckets changed images but can cause torch stack errors if cached latent res doesn't match new bucket. We are safer - `is_cache_valid()` checks `bucket_reso` mismatch.
+
+| Question                                              | Status      | Notes                                       |
+| ----------------------------------------------------- | ----------- | ------------------------------------------- |
+| Does changing bucket_reso_steps invalidate caches?    | ✅ Designed | `is_cache_valid()` checks bucket_reso       |
+| Config-hash namespacing for separate cache dirs?      | ⚠️ ROADMAP  | Would fully prevent cross-config issues     |
+| What happens if user changes resolution mid-training? | ❓ Open     | Re-caches affected images, not full dataset |
 
 ---
 
