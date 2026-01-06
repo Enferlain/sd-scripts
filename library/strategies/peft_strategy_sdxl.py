@@ -707,6 +707,16 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             if weighting is not None:
                 loss = loss * weighting
             if cfg.loss.masked or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+                # Fail fast if user explicitly requested masked loss but no masks available
+                if cfg.loss.masked:
+                    has_cond = "conditioning_images" in batch
+                    has_alpha = "alpha_masks" in batch and batch["alpha_masks"] is not None
+                    if not has_cond and not has_alpha:
+                        raise ValueError(
+                            "cfg.loss.masked=True but no masks found in batch. "
+                            "Ensure your dataset has alpha channels or conditioning images. "
+                            "Set cfg.loss.masked=False if masking is not intended."
+                        )
                 loss = apply_masked_loss(loss, batch)
         else:
             loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)

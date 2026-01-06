@@ -95,6 +95,7 @@ Scripts (contain training loops):     Library Modules:
 - [x] ~~**Constants Type Hints**~~: Fixed `BLOCK_OUT_CHANNELS` type hint (`tuple[int]` → `tuple[int, ...]`)
 - [x] ~~**PEFT Strategy Internal Dedup**~~: Extracted `_prepare_latents` helper to base class, deduplicated ~84 lines across `process_batch`/`process_val_batch` in SD and SDXL strategies
 - [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`.
+- [ ] **SD Data Pipeline Support** (low priority) - Update `peft_strategy_sd.py` to consume new batch format from `TrainingDataset`. Expects `batch["input_ids_list"]` / `batch["text_encoder_outputs_list"]` but new pipeline uses dict format. See AUDIT/AUDIT_PHASE_2.md.
 - [x] ~~**ImageInfo Circular Dependency**~~: Fixed - `ImageInfo` already in `data_structures.py`, added proper imports to strategy files
 
 ---
@@ -143,6 +144,7 @@ Scripts (contain training loops):     Library Modules:
 ### Future Improvements
 
 - [ ] Fix zero-dimension bucket edge case for images smaller than `bucket_reso_steps`
+- [ ] Config-hash cache namespace - Auto-segregate caches by config hash (`resolution`, `bucket_steps`, `model_version`) to prevent cross-config issues. See `AUDIT/AUDIT_PHASE_6.md`.
 
 ---
 

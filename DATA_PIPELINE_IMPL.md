@@ -140,6 +140,84 @@ See `DATA_PIPELINE_TEST_PLAN.md` for:
 - Integration test design
 - Open questions requiring audit
 
+### Audit Findings (from `AUDIT/AUDIT_PHASE_1.md`)
+
+#### ⚠️ `accelerator.prepare()` Warning
+
+The new `TrainingDataset` implements manual sharding via `rank`/`world_size`. **Do NOT pass the DataLoader to `accelerator.prepare()`** - it may attempt to shard again or fail on IterableDataset.
+
+```python
+# CORRECT - create dataloader directly, don't prepare
+train_dataloader = create_training_dataloader(
+    ..., rank=accelerator.process_index, world_size=accelerator.num_processes
+)
+
+# WRONG - don't do this
+# train_dataloader = accelerator.prepare(train_dataloader)
+```
+
+#### 💡 Resume & Checkpointing (from `AUDIT/AUDIT_PHASE_4.md`)
+
+**Epoch Manifest:** ✅ No need to persist - regenerated deterministically from `seed + epoch`.
+
+**Fast Skip (TODO):** Add `start_batch_index` to `TrainingDataset`:
+
+```python
+def __init__(self, ..., start_batch_index: int = 0):
+    self._start_index = start_batch_index
+    # In __iter__: slice batches[start_batch_index:] - zero I/O for skipped batches
+```
+
+**Token File Reuse (TODO):** Update `tokenize_epoch_manifest` to check existing file:
+
+1. Check if file exists
+2. Validate `manifest_hash` in metadata
+3. Skip tokenization if valid, regenerate if invalid/missing
+
+**Storage Strategy:** Ephemeral + Cleanup
+
+- Generate `epoch_manifest.json` and `tokens.safetensors` at epoch start
+- Delete after epoch completes
+- Regenerated automatically on resume if missing
+
+#### ✅ Epoch/Step Handling
+
+- `current_epoch`/`current_step` are build-time inputs to `prepare_epoch()`, not runtime state
+- Token warmup calculated during manifest generation
+- `set_max_train_steps()` is obsolete
+
+#### ✅ Validation Dataset (from `AUDIT/AUDIT_PHASE_3.md`)
+
+- Use `prepare_validation_epoch()` once at training start
+- Single static manifest, reused every epoch (no shuffling/dropout)
+- Same `TrainingDataset` + `create_training_dataloader` pattern
+
+#### 📊 Benchmarking (from `AUDIT/AUDIT_PHASE_5.md`)
+
+Core benchmarks in `tests/unit/data/test_pipeline_benchmark.py`:
+
+- ✅ `prepare_epoch` timing (1k/10k images)
+- ✅ DataLoader throughput with mocked I/O
+- ✅ First batch latency
+
+**TODO (needs GPU testing):**
+
+- [ ] Streaming tokens vs RAM loading (memory vs latency tradeoff)
+- [ ] `pin_memory=True` effectiveness (requires CUDA device)
+
+#### 🔒 Cache Invalidation (from `AUDIT/AUDIT_PHASE_6.md`)
+
+- ✅ Bucket resolution changes trigger re-caching (`is_cache_valid` checks shape + metadata)
+- ✅ Selective re-caching: only affected images are re-processed
+- ✅ Metadata stored in `.safetensors` header for fast validation
+
+**Future Enhancement (ROADMAP):** Config-hash namespacing
+
+```python
+config_hash = stable_hash(resolution, bucket_steps, model_version)
+actual_cache_dir = user_cache_dir / config_hash
+```
+
 ---
 
 ## Phase 1: Dataset Preparation
@@ -257,7 +335,7 @@ See `DATA_PIPELINE_TEST_PLAN.md` for:
   - [x] Add `tokens_path` param to TrainingDataset
   - [x] Offset-based batch slicing (sequential index mapping)
   - [x] Manifest hash validation
-  - [ ] Streaming mode (`get_slice()` for memory efficiency) - deferred
+  - [x] Streaming mode (`get_slice()` for memory efficiency)
 
 - [x] Distributed training support
 

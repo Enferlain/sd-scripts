@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-06]
+
+### Added
+
+- **Data Pipeline: Comprehensive Audit Completed**
+
+  - 6 audit documents in `AUDIT/` covering integration, batch format, validation, resume, performance, cache invalidation
+  - `test_pipeline_benchmark.py` - Performance tests for `prepare_epoch` timing and DataLoader throughput
+  - `test_pipeline_dataloader.py` - 8 tests for batch format, flip_aug, prior_loss_weight, streaming tokens, sharding
+  - `test_epoch_preparation.py` - 7 tests for shuffle, warmup, repeats, caption processing, tokenization
+
+- **Data Pipeline: Fast Skip Support** (design documented, TODO implementation)
+
+  - `start_batch_index` parameter for O(1) resume without loading skipped batches
+  - Token file reuse with `manifest_hash` validation
+
+### Changed
+
+- Merged `test_dataset_scanner.py` into `test_pipeline_dataset_scanner.py` - now 26 tests
+- Added `TestClassTokens` and `TestCreateManifestFromConfig` test classes
+- Updated `DATA_PIPELINE_IMPL.md` with all audit findings and TODOs
+
+### Fixed
+
+- **Masked Loss Fail-Fast** - `cfg.loss.masked=True` now raises `ValueError` if no masks in batch instead of silently proceeding unmasked
+
 ## [2026-01-05]
 
 ### Added
