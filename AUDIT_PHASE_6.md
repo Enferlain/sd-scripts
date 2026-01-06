@@ -117,6 +117,21 @@ The new pipeline improves on this by:
 1.  **Metadata headers:** Explicitly storing `bucket_reso` in `.safetensors` header allows fast validation without loading the tensor body.
 2.  **Decoupling:** `is_cache_valid` is a pure boolean check separate from the loading logic, allowing for a "dry run" or "scan" phase (Phase 1/2 boundary) before heavy compute begins.
 
+## Verification
+
+The audit claims have been validated through the following means:
+
+1.  **Unit Tests:**
+    *   `tests/unit/data/test_pipeline_caching.py`: Tests the `CachingEngine` orchestration logic, including the `_get_entries_to_cache` filtering based on validity.
+    *   `tests/unit/strategies/test_strategies_sd.py`: Verifies `SdLatentsPipelineStrategy.is_cache_valid` logic for SD1.5/2.
+    *   `tests/unit/strategies/test_strategies_sdxl.py`: Verifies `SdxlLatentsPipelineStrategy.is_cache_valid` logic for SDXL, including metadata parsing.
+
+2.  **Manual Verification:**
+    *   Simulated configuration changes (bucket steps change) in local environment confirmed that `is_cache_valid` returns `False` for mismatched entries.
+
+3.  **Source:**
+    *   These features were introduced and consolidated in the data pipeline refactor PRs associated with Phase 2 (Caching Pipeline) and Phase 6 (Cache Invalidation).
+
 ## Conclusion
 
 The new data pipeline successfully addresses the core cache invalidation issues. By embedding target resolution metadata in the cache files and enforcing a strict check against the current manifest's expectations, it guarantees data integrity during training, even when configuration parameters change.
