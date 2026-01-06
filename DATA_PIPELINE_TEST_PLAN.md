@@ -96,11 +96,12 @@ Move to `tests/unit/` - verifies bucket resolution generation matches legacy
 
 ### AUDIT 2: Batch Format Compatibility
 
-| Question                                                      | Status     | Notes                                       |
-| ------------------------------------------------------------- | ---------- | ------------------------------------------- |
-| Are all strategy methods compatible with new batch?           | ✅ Done    | `peft_strategy_sdxl._get_text_cond` updated |
-| Does `conditional_loss` expect specific batch keys?           | ❓ Open    | Need to verify `alpha_masks` usage          |
-| Are `original_sizes_hw` / `crop_top_lefts` accessed directly? | ⚠️ Partial | Some legacy code may access flat keys       |
+| Question                                                      | Status          | Notes                                                              |
+| ------------------------------------------------------------- | --------------- | ------------------------------------------------------------------ |
+| Are all strategy methods compatible with new batch?           | ✅ Done         | `peft_strategy_sdxl._get_text_cond` updated                        |
+| Is `peft_strategy_sd.py` compatible?                          | ❌ Incompatible | Expects `input_ids_list`, `text_encoder_outputs_list`              |
+| Does `conditional_loss` expect specific batch keys?           | ⚠️ Warning      | `apply_masked_loss` silently falls back if `alpha_masks` missing   |
+| Are `original_sizes_hw` / `crop_top_lefts` accessed directly? | ⚠️ Partial      | SDXL Strategy is safe; legacy datasets/loggers may access flat keys |
 
 ### AUDIT 3: Validation Dataset
 
