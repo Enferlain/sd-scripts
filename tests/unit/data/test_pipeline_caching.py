@@ -230,3 +230,42 @@ class TestCachingEngine:
 
         # No encoding should happen
         assert len(strategy.encode_calls) == 0
+
+    def test_cache_invalidation_bucket_change(self, sample_manifest, mock_accelerator, temp_dataset_dir):
+        """Should re-cache when cache is invalid (e.g. bucket change)."""
+        strategy = MockCachingStrategy()
+
+        # Override is_cache_valid to fail for one entry
+        def side_effect(path, entry, flip_aug=False, alpha_mask=False):
+            if entry.id == "img_000":
+                return False
+            return path.exists()
+
+        strategy.is_cache_valid = Mock(side_effect=side_effect)
+
+        engine = CachingEngine(strategy, batch_size=2)
+
+        cache_dir = temp_dataset_dir / "cache"
+        cache_dir.mkdir()
+        mock_model = Mock()
+
+        # Pre-create cache for all entries
+        for entry in sample_manifest.entries.values():
+            cache_path = strategy.get_cache_path(entry, cache_dir)
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.touch()
+
+        engine.cache_dataset(
+            sample_manifest,
+            mock_model,
+            mock_accelerator,
+            cache_dir,
+            skip_existing=True,
+            skip_validity_check=False,  # Must be False to trigger check
+            show_progress=False,
+        )
+
+        # img_000 should be re-cached (saved again)
+        # Check that save_cache was called exactly once
+        assert len(strategy.save_calls) == 1
+        assert "img_000.safetensors" in str(strategy.save_calls[0])
