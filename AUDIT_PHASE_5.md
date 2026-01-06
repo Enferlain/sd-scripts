@@ -37,9 +37,9 @@ Benchmarks were run on synthetic datasets of varying sizes to measure the overhe
 ### New Pipeline Approach
 - **Architecture:** `TrainingDataset` is an `IterableDataset` that reads from a pre-computed `EpochManifest`.
 - **Heavy Lifting:**
-    - **Image Processing:** Removed from the loop (cached).
-    - **Shuffling/Bucketing:** Moved to `prepare_epoch` (main process, once per epoch).
-    - **Tokenization:** Moved to `prepare_epoch` (cached/processed upfront) or efficient on-the-fly.
+  - **Image Processing:** Removed from the loop (cached).
+  - **Shuffling/Bucketing:** Moved to `prepare_epoch` (main process, once per epoch).
+  - **Tokenization:** Moved to `prepare_epoch` (cached/processed upfront) or efficient on-the-fly.
 - **Worker Duty:** The worker primarily performs file I/O (loading `.safetensors` caches) and tensor stacking.
 
 ### Recommendation: Stick with Standard Workers (for now)

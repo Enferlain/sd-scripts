@@ -1,7 +1,6 @@
 
 import time
 import logging
-import random
 import torch
 from dataclasses import replace
 from pathlib import Path
@@ -21,8 +20,6 @@ class MockCachingStrategy(CachingStrategy):
 
     def __init__(self, latent_dim=(4, 64, 64)):
         self.latent_dim = latent_dim
-        self.batch_size = 1
-        self.cache_to_disk = False
 
     def load_cache(self, path):
         # Return object with .latents, .conditioning, etc.
