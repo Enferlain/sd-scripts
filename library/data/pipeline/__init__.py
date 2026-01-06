@@ -41,6 +41,7 @@ from library.data.pipeline.dataset_scanner import (
     select_bucket,
     create_manifest,
     create_manifest_from_config,
+    compute_tag_frequency,
 )
 from library.data.pipeline.caption_processor import (
     CaptionConfig,
@@ -82,4 +83,5 @@ __all__ = [
     "select_bucket",
     "create_manifest",
     "create_manifest_from_config",
+    "compute_tag_frequency",
 ]

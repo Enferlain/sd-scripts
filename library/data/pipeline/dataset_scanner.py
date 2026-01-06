@@ -676,6 +676,9 @@ def create_manifest_from_config(
     latent_channels: int = 4,
     latent_scale_factor: int = 8,
     latent_dtype: str = "fp16",
+    validation: bool = False,
+    validation_split: float = 0.0,
+    validation_seed: int | None = None,
 ) -> DatasetManifest:
     """
     Create a DatasetManifest from DataConfig, handling all dataset sources.
@@ -683,8 +686,10 @@ def create_manifest_from_config(
     Supports:
     - train_data_dir: Main training images
     - reg_data_dir: Regularization images (is_reg=True)
+    - val_data_dir: Separate validation images (used when validation=True)
     - in_json: FineTuning style metadata file
     - subsets: Multiple directories with individual settings
+    - validation_split: Split training data for validation (if val_data_dir not set)
 
     Args:
         data_config: DataConfig containing source, preprocessing, caption, bucketing settings.
@@ -692,69 +697,101 @@ def create_manifest_from_config(
         latent_channels: Number of VAE latent channels.
         latent_scale_factor: VAE spatial downscale factor.
         latent_dtype: Data type for cached latents.
+        validation: If True, create manifest for validation data only.
+        validation_split: Fraction of training data to use for validation (0.0-1.0).
+        validation_seed: Seed for deterministic validation split.
 
     Returns:
         DatasetManifest ready for caching and training.
+
+    Raises:
+        ValueError: If validation=True but no val_data_dir is configured.
     """
     all_scanned: list[ScannedImage] = []
     caption_ext = data_config.caption.caption_extension or ".txt"
 
-    # Handle train_data_dir (simple DreamBooth style)
-    if data_config.source.train_data_dir:
-        logger.info(f"Scanning train_data_dir: {data_config.source.train_data_dir}")
+    # Validation mode: only scan val_data_dir
+    if validation:
+        if not data_config.source.val_data_dir:
+            raise ValueError("validation=True but val_data_dir is not configured in data_config.source")
+        logger.info(f"Scanning val_data_dir: {data_config.source.val_data_dir}")
         scanned = scan_directory(
-            data_config.source.train_data_dir,
+            data_config.source.val_data_dir,
             caption_extension=caption_ext,
             is_reg=False,
-            num_repeats=data_config.source.dataset_repeats,
+            num_repeats=1,  # Validation images not repeated
             alpha_mask=data_config.preprocessing.alpha_mask,
             require_caption=True,
         )
+        # Mark all as validation split
+        for s in scanned:
+            s.split = "val"
         all_scanned.extend(scanned)
+    else:
+        # Training mode: scan train_data_dir, reg_data_dir, in_json, subsets
 
-    # Handle reg_data_dir (regularization images)
-    if data_config.source.reg_data_dir:
-        logger.info(f"Scanning reg_data_dir: {data_config.source.reg_data_dir}")
-        scanned = scan_directory(
-            data_config.source.reg_data_dir,
-            caption_extension=caption_ext,
-            is_reg=True,
-            num_repeats=1,  # Reg images typically not repeated
-            alpha_mask=data_config.preprocessing.alpha_mask,
-            require_caption=False,  # Reg often uses class_tokens instead
-        )
-        all_scanned.extend(scanned)
+        # Handle train_data_dir (simple DreamBooth style)
+        if data_config.source.train_data_dir:
+            logger.info(f"Scanning train_data_dir: {data_config.source.train_data_dir}")
+            scanned = scan_directory(
+                data_config.source.train_data_dir,
+                caption_extension=caption_ext,
+                is_reg=False,
+                num_repeats=data_config.source.dataset_repeats,
+                alpha_mask=data_config.preprocessing.alpha_mask,
+                require_caption=True,
+                validation_split=validation_split,
+                validation_seed=validation_seed,
+            )
+            all_scanned.extend(scanned)
 
-    # Handle in_json (FineTuning style metadata)
-    if data_config.source.in_json:
-        logger.info(f"Scanning metadata file: {data_config.source.in_json}")
-        scanned = scan_metadata_file(
-            data_config.source.in_json,
-            image_dir=data_config.source.train_data_dir,  # Use train_data_dir as base
-            num_repeats=data_config.source.dataset_repeats,
-            alpha_mask=data_config.preprocessing.alpha_mask,
-            require_caption=True,
-        )
-        all_scanned.extend(scanned)
+        # Handle reg_data_dir (regularization images)
+        if data_config.source.reg_data_dir:
+            logger.info(f"Scanning reg_data_dir: {data_config.source.reg_data_dir}")
+            scanned = scan_directory(
+                data_config.source.reg_data_dir,
+                caption_extension=caption_ext,
+                is_reg=True,
+                num_repeats=1,  # Reg images typically not repeated
+                alpha_mask=data_config.preprocessing.alpha_mask,
+                require_caption=False,  # Reg often uses class_tokens instead
+            )
+            all_scanned.extend(scanned)
 
-    # Handle subsets
-    for subset in data_config.source.subsets:
-        image_dir = subset.get("image_dir")
-        if not image_dir:
-            logger.warning("Subset missing image_dir, skipping")
-            continue
+        # Handle in_json (FineTuning style metadata)
+        if data_config.source.in_json:
+            logger.info(f"Scanning metadata file: {data_config.source.in_json}")
+            scanned = scan_metadata_file(
+                data_config.source.in_json,
+                image_dir=data_config.source.train_data_dir,  # Use train_data_dir as base
+                num_repeats=data_config.source.dataset_repeats,
+                alpha_mask=data_config.preprocessing.alpha_mask,
+                require_caption=True,
+                validation_split=validation_split,
+                validation_seed=validation_seed,
+            )
+            all_scanned.extend(scanned)
 
-        logger.info(f"Scanning subset: {image_dir}")
-        scanned = scan_directory(
-            image_dir,
-            caption_extension=subset.get("caption_extension", caption_ext),
-            is_reg=subset.get("is_reg", False),
-            num_repeats=subset.get("num_repeats", data_config.source.dataset_repeats),
-            alpha_mask=subset.get("alpha_mask", data_config.preprocessing.alpha_mask),
-            class_tokens=subset.get("class_tokens"),
-            require_caption=not subset.get("is_reg", False),
-        )
-        all_scanned.extend(scanned)
+        # Handle subsets
+        for subset in data_config.source.subsets:
+            image_dir = subset.get("image_dir")
+            if not image_dir:
+                logger.warning("Subset missing image_dir, skipping")
+                continue
+
+            logger.info(f"Scanning subset: {image_dir}")
+            scanned = scan_directory(
+                image_dir,
+                caption_extension=subset.get("caption_extension", caption_ext),
+                is_reg=subset.get("is_reg", False),
+                num_repeats=subset.get("num_repeats", data_config.source.dataset_repeats),
+                alpha_mask=subset.get("alpha_mask", data_config.preprocessing.alpha_mask),
+                class_tokens=subset.get("class_tokens"),
+                require_caption=not subset.get("is_reg", False),
+                validation_split=validation_split if not subset.get("is_reg", False) else 0.0,
+                validation_seed=validation_seed,
+            )
+            all_scanned.extend(scanned)
 
     if not all_scanned:
         raise ValueError("No images found. Specify at least one of: train_data_dir, reg_data_dir, in_json, or subsets")
@@ -773,6 +810,8 @@ def create_manifest_from_config(
     base_dir = None
     if data_config.source.train_data_dir:
         base_dir = Path(data_config.source.train_data_dir).parent
+    elif validation and data_config.source.val_data_dir:
+        base_dir = Path(data_config.source.val_data_dir).parent
 
     return create_manifest(
         all_scanned,
@@ -786,3 +825,28 @@ def create_manifest_from_config(
         latent_scale_factor=latent_scale_factor,
         latent_dtype=latent_dtype,
     )
+
+
+def compute_tag_frequency(manifest: DatasetManifest, separator: str = ",") -> dict[str, dict[str, int]]:
+    """
+    Compute tag frequency from manifest entries.
+
+    Groups tags by parent directory name and counts occurrences.
+    Used for training metadata generation.
+
+    Args:
+        manifest: DatasetManifest to analyze.
+        separator: Caption separator (default ",").
+
+    Returns:
+        Dict mapping directory name -> {tag: count}.
+    """
+    freq: dict[str, dict[str, int]] = {}
+    for entry in manifest.entries.values():
+        tags = [t.strip() for t in entry.caption.split(separator) if t.strip()]
+        dir_name = Path(entry.image_path).parent.name
+        if dir_name not in freq:
+            freq[dir_name] = {}
+        for tag in tags:
+            freq[dir_name][tag] = freq[dir_name].get(tag, 0) + 1
+    return freq

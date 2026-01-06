@@ -7,6 +7,7 @@ class SourceConfig:
 
     train_data_dir: str | None = field(default=None, metadata={"help": "directory for train images"})
     reg_data_dir: str | None = field(default=None, metadata={"help": "directory for regularization images"})
+    val_data_dir: str | None = field(default=None, metadata={"help": "directory for validation images"})
     dataset_config: str | None = field(default=None, metadata={"help": "Load dataset config from a file"})
     in_json: str | None = field(default=None, metadata={"help": "json metadata for dataset"})
     dataset_class: str | None = field(default=None, metadata={"help": "dataset class for arbitrary dataset"})
@@ -71,6 +72,7 @@ class BucketingConfig:
 class CachingConfig:
     """Latent caching settings."""
 
+    cache_dir: str | None = field(default=None, metadata={"help": "directory for cache files (latents, TE outputs)"})
     cache_latents: bool = field(default=False, metadata={"help": "cache latents to main memory to reduce VRAM usage"})
     cache_latents_to_disk: bool = field(default=False, metadata={"help": "cache latents to disk to reduce VRAM usage"})
     vae_batch_size: int = field(default=1, metadata={"help": "batch size for caching latents"})
