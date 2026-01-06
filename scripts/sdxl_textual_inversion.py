@@ -40,7 +40,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         ) = load_target_model_sdxl(
             cfg.model,
             cfg.performance.memory,
-            cfg.performance.caching,
+            cfg.data.caching,
             cfg.performance.precision,
             accelerator,
             MODEL_VERSION_SDXL_BASE_V1_0,

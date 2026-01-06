@@ -45,10 +45,10 @@ def prepare_config(cfg) -> None:
     if (
         hasattr(cfg, "performance")
         and cfg.performance is not None
-        and cfg.performance.caching.cache_text_encoder_outputs_to_disk
-        and not cfg.performance.caching.cache_text_encoder_outputs
+        and cfg.data.caching.cache_text_encoder_outputs_to_disk
+        and not cfg.data.caching.cache_text_encoder_outputs
     ):
-        cfg.performance.caching.cache_text_encoder_outputs = True
+        cfg.data.caching.cache_text_encoder_outputs = True
 
     # Optimizer: shortcut flags
     if cfg.optimizer.use_8bit_adam:
@@ -141,7 +141,7 @@ def validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group) -> None:
         val_dataset_group.verify_bucket_reso_steps(32)
 
     # SDXL caching constraints
-    if cfg.performance.caching.cache_text_encoder_outputs:
+    if cfg.data.caching.cache_text_encoder_outputs:
         assert train_dataset_group.is_text_encoder_output_cacheable(), (
             "when caching Text Encoder output, caption_dropout_rate, shuffle_caption, "
             "token_warmup_step, or caption_tag_dropout_rate cannot be used"
@@ -149,7 +149,7 @@ def validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group) -> None:
 
     # Cannot train TE peft while caching TE outputs
     train_te = should_train_text_encoder(cfg.optimizer.learning_rates)
-    assert not train_te or not cfg.performance.caching.cache_text_encoder_outputs, (
+    assert not train_te or not cfg.data.caching.cache_text_encoder_outputs, (
         "Adapter for Text Encoder cannot be trained with caching Text Encoder outputs"
     )
 

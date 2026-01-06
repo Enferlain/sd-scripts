@@ -265,7 +265,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
     # Phase D: Text Encoder caching using new pipeline
     te_strategy = None
-    if getattr(cfg.sdxl, "cache_text_encoder_outputs", False):
+    if cfg.data.caching.cache_text_encoder_outputs:
         te_strategy = SdxlTextEncoderPipelineStrategy(
             max_token_length=cfg.training.max_token_length,
         )
@@ -417,7 +417,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     # Note: Train DataLoader is created per-epoch inside the training loop
     # Val DataLoader can be created once here
 
-    n_workers = min(cfg.data.loader.max_workers, os.cpu_count() or 1)
+    n_workers = min(cfg.data.loader.num_workers, os.cpu_count() or 1)
 
     # Calculate number of batches per epoch for step calculation
     # Count total batched image slots based on manifest
@@ -443,6 +443,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             rank=accelerator.process_index,
             world_size=accelerator.num_processes,
             num_workers=n_workers,
+            prefetch_factor=cfg.data.loader.prefetch_factor,
+            pin_memory=cfg.data.loader.pin_memory,
+            persistent_workers=cfg.data.loader.persistent_workers,
         )
         cyclic_val_dataloader = itertools.cycle(val_dataloader)
 
@@ -657,7 +660,14 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         on_step_start_for_adapter = lambda *args, **kwargs: None
 
     # function for saving/removing
-    def save_model(ckpt_name, unwrapped_nw, steps, epoch_no, force_sync_upload=False, dtype_override=None):
+    def save_model(
+        ckpt_name: str,
+        unwrapped_nw: torch.nn.Module,
+        steps: int,
+        epoch_no: int,
+        force_sync_upload: bool = False,
+        dtype_override: torch.dtype | None = None,
+    ) -> None:
         os.makedirs(cfg.output.saving.output_dir, exist_ok=True)
         ckpt_file = os.path.join(cfg.output.saving.output_dir, ckpt_name)
 
@@ -674,7 +684,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         if cfg.output.huggingface.huggingface_repo_id is not None:
             huggingface_util.upload(cfg.output.huggingface, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
 
-    def remove_model(old_ckpt_name):
+    def remove_model(old_ckpt_name: str) -> None:
         old_ckpt_file = os.path.join(cfg.output.saving.output_dir, old_ckpt_name)
         if os.path.exists(old_ckpt_file):
             accelerator.print(f"removing old checkpoint: {old_ckpt_file}")
@@ -691,7 +701,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         gc.collect()
         clean_memory_on_device(accelerator.device)
 
-    current_val_loss, average_val_loss, val_logs = None, None, {}
+    current_val_loss, average_val_loss = None, None
     keys_scaled, mean_norm, maximum_norm = None, None, None
     mean_grad_norm, mean_combined_norm = None, None
     max_mean_logs = {}
@@ -710,7 +720,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         optimizer_eval_fn()
         strategies.sample_images(accelerator, cfg, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
         if calculate_val_loss_check(cfg.validation, cfg.training, global_step, 0, val_dataloader, num_batches_per_epoch):
-            current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(
+            current_val_loss, average_val_loss = strategies.calculate_val_loss(
                 global_step,
                 0,
                 num_batches_per_epoch,  # Pass batch count instead of dataloader
@@ -828,6 +838,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             rank=accelerator.process_index,
             world_size=accelerator.num_processes,
             num_workers=n_workers,
+            prefetch_factor=cfg.data.loader.prefetch_factor,
+            pin_memory=cfg.data.loader.pin_memory,
+            persistent_workers=cfg.data.loader.persistent_workers,
         )
 
         # TRAINING
@@ -941,7 +954,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     strategies.sample_images(accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
 
                     if calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, num_batches_per_epoch):
-                        current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(
+                        current_val_loss, average_val_loss = strategies.calculate_val_loss(
                             global_step,
                             step,
                             num_batches_per_epoch,  # Pass batch count instead of dataloader
@@ -964,7 +977,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                             train_text_encoder,
                         )
                     else:
-                        current_val_loss, average_val_loss, val_logs = None, None, None
+                        current_val_loss, average_val_loss = None, None
 
                     # 指定ステップごとにモデルを保存
                     if cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0:

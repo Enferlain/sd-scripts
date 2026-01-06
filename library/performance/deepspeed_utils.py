@@ -18,7 +18,7 @@ def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, loader_config: L
     """
     Modify training configuration for DeepSpeed if enabled.
 
-    This function adjusts loader settings (e.g., max_workers) when DeepSpeed is enabled.
+    This function adjusts loader settings (e.g., num_workers) when DeepSpeed is enabled.
 
     Args:
         deepspeed_config (DeepSpeedConfig): The DeepSpeed configuration object.
@@ -28,7 +28,7 @@ def prepare_deepspeed_config(deepspeed_config: DeepSpeedConfig, loader_config: L
         return
 
     if loader_config is not None:
-        loader_config.max_workers = 1
+        loader_config.num_workers = 1
 
 
 def prepare_deepspeed_plugin(

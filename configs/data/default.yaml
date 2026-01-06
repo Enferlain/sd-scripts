@@ -1,10 +1,12 @@
 source:
   train_data_dir: null
   reg_data_dir: null
+  val_data_dir: null
   dataset_config: null
   in_json: null
   dataset_class: null
   dataset_repeats: 1
+  subsets: []
 
 preprocessing:
   resolution: "512,512"
@@ -43,11 +45,17 @@ bucketing:
   bucket_no_upscale: false
 
 caching:
+  cache_dir: null
   cache_latents: false
   cache_latents_to_disk: false
+  cache_text_encoder_outputs: false
+  cache_text_encoder_outputs_to_disk: false
+  disable_mmap_load_safetensors: false
   vae_batch_size: 1
   skip_cache_check: false
 
 loader:
-  max_workers: 8
+  num_workers: 8
   persistent_workers: false
+  prefetch_factor: 2
+  pin_memory: true

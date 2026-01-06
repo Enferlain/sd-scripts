@@ -65,15 +65,6 @@ class DistributedConfig:
 
 
 @dataclass
-class CachingConfig:
-    """Text encoder and model caching settings."""
-
-    cache_text_encoder_outputs: bool = field(default=False, metadata={"help": "Cache text encoder outputs to reduce VRAM usage"})
-    cache_text_encoder_outputs_to_disk: bool = field(default=False, metadata={"help": "Cache text encoder outputs to disk"})
-    disable_mmap_load_safetensors: bool = field(default=False, metadata={"help": "Disable memory-mapped loading for safetensors files"})
-
-
-@dataclass
 class DeepSpeedConfig:
     """DeepSpeed training settings."""
 
@@ -99,5 +90,4 @@ class PerformanceConfig:
     attention: AttentionConfig = field(default_factory=AttentionConfig)
     compilation: CompilationConfig = field(default_factory=CompilationConfig)
     distributed: DistributedConfig = field(default_factory=DistributedConfig)
-    caching: CachingConfig = field(default_factory=CachingConfig)
     deepspeed: DeepSpeedConfig = field(default_factory=DeepSpeedConfig)

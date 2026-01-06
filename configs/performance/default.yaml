@@ -31,11 +31,6 @@ distributed:
   ddp_gradient_as_bucket_view: false
   ddp_static_graph: false
 
-caching:
-  cache_text_encoder_outputs: false
-  cache_text_encoder_outputs_to_disk: false
-  disable_mmap_load_safetensors: false
-
 deepspeed:
   deepspeed: false
   zero_stage: 2

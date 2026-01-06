@@ -6,7 +6,8 @@ import pytest
 # Import the module under test
 import library.models.sdxl_model_prep as sdxl_model_prep
 from library.config.dataclasses.model import ModelConfig
-from library.config.dataclasses.performance import MemoryConfig, CachingConfig, PrecisionConfig
+from library.config.dataclasses.performance import MemoryConfig, PrecisionConfig
+from library.config.dataclasses.data import CachingConfig
 
 
 @pytest.mark.unit

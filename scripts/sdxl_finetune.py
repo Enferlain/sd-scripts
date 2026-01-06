@@ -166,7 +166,7 @@ def train(cfg: SDXLFineTuneConfig):
     if cache_latents:
         assert train_dataset_group.is_latent_cacheable(), "when caching latents, either color_aug or random_crop cannot be used"
 
-    if cfg.performance.caching.cache_text_encoder_outputs:
+    if cfg.data.caching.cache_text_encoder_outputs:
         assert train_dataset_group.is_text_encoder_output_cacheable(), (
             "when caching text encoder output, either caption_dropout_rate, shuffle_caption, token_warmup_step or caption_tag_dropout_rate cannot be used"
         )
@@ -193,7 +193,7 @@ def train(cfg: SDXLFineTuneConfig):
     ) = load_target_model(
         cfg.model,
         cfg.performance.memory,
-        cfg.performance.caching,
+        cfg.data.caching,
         cfg.performance.precision,
         accelerator,
         "sdxl",
@@ -303,9 +303,9 @@ def train(cfg: SDXLFineTuneConfig):
         text_encoder1.eval()
         text_encoder2.eval()
 
-        if cfg.performance.caching.cache_text_encoder_outputs:
+        if cfg.data.caching.cache_text_encoder_outputs:
             text_encoder_output_caching_strategy = strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.performance.caching.cache_text_encoder_outputs_to_disk, None, False, is_weighted=cfg.data.caption.weighted_captions
+                cfg.data.caching.cache_text_encoder_outputs_to_disk, None, False, is_weighted=cfg.data.caption.weighted_captions
             )  # TODO: Expected type 'int', got 'None' instead
             strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_output_caching_strategy)
 
@@ -462,7 +462,7 @@ def train(cfg: SDXLFineTuneConfig):
             text_encoder2 = accelerator.prepare(text_encoder2)
         optimizer, train_dataloader, lr_scheduler = accelerator.prepare(optimizer, train_dataloader, lr_scheduler)
 
-    if cfg.performance.caching.cache_text_encoder_outputs:
+    if cfg.data.caching.cache_text_encoder_outputs:
         text_encoder1.to("cpu", dtype=torch.float32)
         text_encoder2.to("cpu", dtype=torch.float32)
         clean_memory_on_device(accelerator.device)

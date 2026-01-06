@@ -72,14 +72,23 @@ class TestPrepareConfig:
         """SDXL cache_text_encoder_outputs_to_disk enables cache_text_encoder_outputs."""
         cfg = OmegaConf.create(
             {
-                "data": {"caching": {"cache_latents": False, "cache_latents_to_disk": False}, "caption": {"caption_extention": None}},
+                "data": {
+                    "caching": {
+                        "cache_latents": False,
+                        "cache_latents_to_disk": False,
+                        "cache_text_encoder_outputs": False,
+                        "cache_text_encoder_outputs_to_disk": True,
+                    },
+                    "caption": {"caption_extention": None},
+                },
                 "optimizer": {"use_8bit_adam": False, "use_lion_optimizer": False, "optimizer_type": ""},
                 "output": {"sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None}},
-                "performance": {"caching": {"cache_text_encoder_outputs": False, "cache_text_encoder_outputs_to_disk": True}},
+                # performance key required for prepare_config to run TE cache fixup (line 46 guard)
+                "performance": {},
             }
         )
         prepare_config(cfg)
-        assert cfg.performance.caching.cache_text_encoder_outputs is True
+        assert cfg.data.caching.cache_text_encoder_outputs is True
 
     def test_use_8bit_adam_sets_optimizer_type(self):
         """use_8bit_adam should set optimizer_type to AdamW8bit."""
@@ -346,7 +355,7 @@ class TestScriptSpecificValidators:
     def test_validate_sdxl_peft_calls_verify_bucket_reso_32(self):
         """validate_sdxl_peft should verify bucket reso with 32 steps."""
         cfg = MagicMock()
-        cfg.performance.caching.cache_text_encoder_outputs = False
+        cfg.data.caching.cache_text_encoder_outputs = False
         # Set TE LR to 0 (not training TE)
         cfg.optimizer.learning_rates.text_encoders = 0
         train_ds = MagicMock()
@@ -360,7 +369,7 @@ class TestScriptSpecificValidators:
     def test_validate_sdxl_peft_cache_te_requires_cacheable(self):
         """SDXL cache_text_encoder_outputs requires dataset to be cacheable."""
         cfg = MagicMock()
-        cfg.performance.caching.cache_text_encoder_outputs = True
+        cfg.data.caching.cache_text_encoder_outputs = True
         # Set TE LR to 0 (not training TE, so caching is allowed)
         cfg.optimizer.learning_rates.text_encoders = 0
         train_ds = MagicMock()
@@ -372,7 +381,7 @@ class TestScriptSpecificValidators:
     def test_validate_sdxl_peft_cache_te_conflicts_with_te_training(self):
         """Cannot cache TE outputs while training TE peft."""
         cfg = MagicMock()
-        cfg.performance.caching.cache_text_encoder_outputs = True
+        cfg.data.caching.cache_text_encoder_outputs = True
         # TE LR > 0 means training TE, which conflicts with caching
         cfg.optimizer.learning_rates.text_encoders = 1e-5
         train_ds = MagicMock()

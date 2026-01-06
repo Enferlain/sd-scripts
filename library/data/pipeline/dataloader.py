@@ -336,6 +336,7 @@ def create_training_dataloader(
     num_workers: int = 4,
     prefetch_factor: int = 2,
     pin_memory: bool = True,
+    persistent_workers: bool = False,
 ) -> DataLoader:
     """
     Create a DataLoader for training iteration.
@@ -354,6 +355,7 @@ def create_training_dataloader(
         num_workers: Number of data loading workers (default 4 to avoid blocking I/O).
         prefetch_factor: Batches to prefetch per worker.
         pin_memory: Whether to use pinned memory for faster GPU transfer.
+        persistent_workers: Keep workers alive between epochs (saves startup overhead).
 
     Returns:
         DataLoader that yields batch dicts (on CPU, pin_memory enabled).
@@ -378,4 +380,5 @@ def create_training_dataloader(
         num_workers=num_workers,
         prefetch_factor=prefetch_factor if num_workers > 0 else None,
         pin_memory=pin_memory,
+        persistent_workers=persistent_workers and num_workers > 0,
     )

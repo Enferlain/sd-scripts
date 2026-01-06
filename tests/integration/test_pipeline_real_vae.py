@@ -100,7 +100,7 @@ class TestRealVAEIntegration:
         cache_path = strategy.get_cache_path(entry, cache_dir)
         loaded = strategy.load_cache(cache_path)
 
-        latents = loaded["latents"]
+        latents = loaded.latents
 
         # Verify shape: [4, H/8, W/8]
         assert latents.ndim == 3, f"Expected 3D tensor, got {latents.ndim}D"
@@ -147,8 +147,8 @@ class TestRealVAEIntegration:
 
         # Load both latents
         entries = list(manifest.entries.values())
-        latents1 = strategy.load_cache(strategy.get_cache_path(entries[0], cache_dir))["latents"]
-        latents2 = strategy.load_cache(strategy.get_cache_path(entries[1], cache_dir))["latents"]
+        latents1 = strategy.load_cache(strategy.get_cache_path(entries[0], cache_dir)).latents
+        latents2 = strategy.load_cache(strategy.get_cache_path(entries[1], cache_dir)).latents
 
         # They should be different (unless the images happen to be identical)
         # Use a tolerance - they won't be exactly equal even for similar images
@@ -188,8 +188,8 @@ class TestRealVAEIntegration:
 
         # Load and compare
         entry = list(manifest.entries.values())[0]
-        latents1 = strategy.load_cache(strategy.get_cache_path(entry, cache_dir1))["latents"]
-        latents2 = strategy.load_cache(strategy.get_cache_path(entry, cache_dir2))["latents"]
+        latents1 = strategy.load_cache(strategy.get_cache_path(entry, cache_dir1)).latents
+        latents2 = strategy.load_cache(strategy.get_cache_path(entry, cache_dir2)).latents
 
         # VAE sample() is stochastic, so we expect small differences
         # Typical diff is ~0.0003, we allow up to 0.01 (still very similar)

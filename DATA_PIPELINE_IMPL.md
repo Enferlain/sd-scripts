@@ -3,15 +3,16 @@
 This document tracks implementation progress for the data pipeline rework.
 See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy reference.
 
-## Status: ✅ Phase 1-4 Data Loading Complete, ✅ PEFT Strategy Integration Complete
+## Status: ✅ Phase 1-4 Data Loading Complete, ✅ SDXL PEFT Integration Complete
 
-**Last Updated:** 2026-01-05
+**Last Updated:** 2026-01-06
 
 - Phase 1 (scanning): Complete ✅
 - Phase 2 (caching): Complete ✅
 - Phase 3 (epoch prep): Complete ✅
 - Phase 4 (dataloader): Complete ✅ - all batch fields implemented
 - **PEFT Strategy Integration: Complete ✅** - `peft_strategy_sdxl.py` uses new batch format
+- **SDXL PEFT Script Integration: Complete ✅** - `scripts/sdxl_peft.py` fully migrated
 
 ---
 
@@ -120,9 +121,13 @@ NEW FLOW:
 | **Cached (upfront)**     | Set         | False            | Load all tokens at TrainingDataset init                            |
 | **Cached (streaming)**   | Set         | True             | Load batch tokens via `get_slice()`                                |
 
-### Remaining Integration Work
+### Completed Integration
 
-- [ ] Wire `TrainingDataset` into `sdxl_peft.py` (replace legacy DataLoader)
+- [x] Wire `TrainingDataset` into `sdxl_peft.py` (replaced legacy DataLoader)
+- [x] `calculate_val_loss_check` updated to accept int or dataloader
+- [x] Resume support via `itertools.islice` (not `accelerator.skip_first_batches`)
+- [x] `training_metadata.py` refactored for `DatasetManifest`
+- [x] Config consolidation: moved TE caching fields to `DataConfig.caching`
 - [ ] Remove `library/data/_deprecated/` after full validation
 - [ ] Benchmark new vs legacy performance
 
@@ -139,6 +144,26 @@ See `DATA_PIPELINE_TEST_PLAN.md` for:
 - Unit test specifications (scanner, epoch prep, dataloader)
 - Integration test design
 - Open questions requiring audit
+
+**Integration Smoke Tests** (`tests/integration/test_sdxl_peft_smoke.py`): 16 tests covering:
+
+- ✅ Manifest creation from config
+- ✅ Validation split logic
+- ✅ SDXL latent caching + roundtrip verification
+- ✅ Epoch preparation
+- ✅ DataLoader batch format
+- ✅ Training metadata generation
+- ✅ Tag frequency computation
+- ✅ Validation epoch preparation
+- ✅ TE output caching (creates files, roundtrip)
+- ✅ val_data_dir explicit directory
+- ✅ Batch skipping via `itertools.islice`
+- ✅ Config integration (cache_dir respected)
+
+**Not yet tested:**
+
+- Multi-GPU sharding
+- Full training loop
 
 ### Audit Findings (from `AUDIT/AUDIT_PHASE_1.md`)
 
@@ -352,9 +377,9 @@ actual_cache_dir = user_cache_dir / config_hash
   - [x] Alpha masks (from `CacheData.alpha_mask`)
   - [x] `target_size_hw` added to `SdxlConditioning`
 
-- [ ] Training script integration
+- [x] Training script integration
+  - [x] Replace current DataLoader in `sdxl_peft.py`
   - [ ] Replace current DataLoader in `sd_peft.py`
-  - [ ] Replace current DataLoader in `sdxl_peft.py`
   - [ ] Benchmark vs current implementation
 
 ---

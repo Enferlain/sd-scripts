@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Data Pipeline: SDXL PEFT Script Integration Complete**
+
+  - `scripts/sdxl_peft.py` now uses new data pipeline (`DatasetManifest`, `CachingEngine`, per-epoch DataLoader)
+  - `create_manifest_from_config()` supports both `val_data_dir` and `validation_split` for validation data
+  - `compute_tag_frequency()` helper for metadata generation from manifests
+  - `training_metadata.py` refactored to accept `DatasetManifest` instead of `DatasetGroup`
+  - Added `val_data_dir` field to `SourceConfig` for explicit validation directories
+
 - **Data Pipeline: Comprehensive Audit Completed**
 
   - 6 audit documents in `AUDIT/` covering integration, batch format, validation, resume, performance, cache invalidation
@@ -23,15 +31,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `start_batch_index` parameter for O(1) resume without loading skipped batches
   - Token file reuse with `manifest_hash` validation
 
+- **Integration Smoke Tests**: `test_sdxl_peft_smoke.py` - 16 tests covering:
+  - Manifest creation, latent caching, dataloader, metadata, validation pipeline
+  - NEW: Latent cache roundtrip (save → load → verify), TE caching, `val_data_dir`, batch skipping (`islice`), config integration
+
 ### Changed
 
+- **Config Consolidation**: Moved `cache_text_encoder_outputs`, `cache_text_encoder_outputs_to_disk`, `disable_mmap_load_safetensors` from `PerformanceConfig.caching` to `DataConfig.caching`
+- `calculate_val_loss_check()` now accepts either a DataLoader or an int (num_batches_per_epoch)
+- `calculate_val_loss()` return type simplified from 3-tuple to 2-tuple (removed unused `logs` dict)
 - Merged `test_dataset_scanner.py` into `test_pipeline_dataset_scanner.py` - now 26 tests
 - Added `TestClassTokens` and `TestCreateManifestFromConfig` test classes
 - Updated `DATA_PIPELINE_IMPL.md` with all audit findings and TODOs
 
 ### Fixed
 
+- **Batch Skipping for Resume** - Replaced `accelerator.skip_first_batches()` with `itertools.islice()` for unprepared IterableDataset
+- **`n_repeats` Aggregation** - Fixed bug where directories with multiple entries would lose repeat info (now uses `max()`)
+- **`current_epoch`/`current_step` Type Mismatch** - Changed fallback from `torch.tensor(0)` to `types.SimpleNamespace(value=0)`
 - **Masked Loss Fail-Fast** - `cfg.loss.masked=True` now raises `ValueError` if no masks in batch instead of silently proceeding unmasked
+- Added type hints to `save_model()` and `remove_model()` inner functions in `sdxl_peft.py`
+- Moved Hydra schema registration inside `if __name__ == "__main__"` block
+- Removed unused `adapter_has_multiplier` variable
+- **Config Consistency**: Fixed `cfg.sdxl.cache_text_encoder_outputs` → `cfg.data.caching.cache_text_encoder_outputs`
+- **YAML Completeness**: Added `val_data_dir`, `subsets`, `cache_dir` to `configs/data/default.yaml`
+- **LoaderConfig Expansion**: Added `prefetch_factor`, `pin_memory`, renamed `max_workers` → `num_workers`
 
 ## [2026-01-05]
 

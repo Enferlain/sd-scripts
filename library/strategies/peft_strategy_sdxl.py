@@ -113,7 +113,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         ) = load_target_model(
             cfg.model,
             cfg.performance.memory,
-            cfg.performance.caching,
+            cfg.data.caching,
             cfg.performance.precision,
             accelerator,
             MODEL_VERSION_SDXL_BASE_V1_0,
@@ -231,9 +231,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         Returns:
             SdxlTextEncoderOutputsCachingStrategy instance or None.
         """
-        if cfg.performance.caching.cache_text_encoder_outputs:
+        if cfg.data.caching.cache_text_encoder_outputs:
             return strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.performance.caching.cache_text_encoder_outputs_to_disk,
+                cfg.data.caching.cache_text_encoder_outputs_to_disk,
                 None,  # batch_size: not used for text encoder outputs caching
                 cfg.data.caching.skip_cache_check,
                 is_weighted=cfg.data.caption.weighted_captions,
@@ -256,7 +256,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             dataset: Dataset object.
             weight_dtype: Weight data type.
         """
-        if cfg.performance.caching.cache_text_encoder_outputs:
+        if cfg.data.caching.cache_text_encoder_outputs:
             if not cfg.performance.memory.lowram:
                 # Save memory by moving vae and unet to cpu
                 logger.info("move vae and unet to cpu to save memory")
@@ -841,7 +841,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         epoch: int,
         batch: Any | None = None,
         train_text_encoder: bool = True,
-    ) -> tuple[float | None, float | None, dict | None]:
+    ) -> tuple[float | None, float | None]:
         """
         Calculate validation loss for SDXL.
 
@@ -868,10 +868,10 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             train_text_encoder: Train text encoder flag.
 
         Returns:
-            Tuple of (current_val_loss, average_val_loss, logs).
+            Tuple of (current_val_loss, average_val_loss).
         """
         if not calculate_val_loss_check(cfg.validation, cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
-            return None, None, None
+            return None, None
 
         if batch is not None:
             self.on_step_start(cfg, accelerator, adapter, text_encoders, unet, batch, weight_dtype, is_train=False)
@@ -917,10 +917,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             val_loss_recorder.add(current_val_loss)
 
         average_val_loss: float = val_loss_recorder.average
-        logs = {"loss/current_val_loss": current_val_loss, "loss/average_val_loss": average_val_loss}
 
         self.restore_rng_state(rng_states, accelerator)
 
-        return current_val_loss, average_val_loss, logs
+        return current_val_loss, average_val_loss
 
     # endregion

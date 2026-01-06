@@ -75,6 +75,11 @@ class CachingConfig:
     cache_dir: str | None = field(default=None, metadata={"help": "directory for cache files (latents, TE outputs)"})
     cache_latents: bool = field(default=False, metadata={"help": "cache latents to main memory to reduce VRAM usage"})
     cache_latents_to_disk: bool = field(default=False, metadata={"help": "cache latents to disk to reduce VRAM usage"})
+    cache_text_encoder_outputs: bool = field(default=False, metadata={"help": "Cache text encoder outputs to reduce VRAM usage"})
+    cache_text_encoder_outputs_to_disk: bool = field(default=False, metadata={"help": "Cache text encoder outputs to disk"})
+    disable_mmap_load_safetensors: bool = field(
+        default=False, metadata={"help": "Disable memory-mapped loading for safetensors files"}
+    )  # Not data related TODO
     vae_batch_size: int = field(default=1, metadata={"help": "batch size for caching latents"})
     skip_cache_check: bool = field(default=False, metadata={"help": "skip the content validation of cache"})
 
@@ -83,8 +88,10 @@ class CachingConfig:
 class LoaderConfig:
     """DataLoader settings."""
 
-    max_workers: int = field(default=8, metadata={"help": "max number of data loader workers (0 to disable multiprocessing)"})
+    num_workers: int = field(default=8, metadata={"help": "number of data loader workers (0 to disable multiprocessing)"})
     persistent_workers: bool = field(default=False, metadata={"help": "keep data loader workers alive between epochs"})
+    prefetch_factor: int = field(default=2, metadata={"help": "number of batches to prefetch per worker"})
+    pin_memory: bool = field(default=True, metadata={"help": "use pinned memory for faster GPU transfer"})
 
 
 @dataclass

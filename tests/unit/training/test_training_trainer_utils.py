@@ -74,7 +74,7 @@ class TestCalculateValLossCheck:
             global_step=100,
             epoch_step=50,
             val_dataloader=None,
-            train_dataloader=mock_train_dataloader,
+            train_dataloader_or_num_batches=mock_train_dataloader,
         )
 
         assert result is False
@@ -87,7 +87,7 @@ class TestCalculateValLossCheck:
             global_step=0,
             epoch_step=0,
             val_dataloader=mock_val_dataloader,
-            train_dataloader=mock_train_dataloader,
+            train_dataloader_or_num_batches=mock_train_dataloader,
         )
 
         assert result is True
@@ -102,7 +102,7 @@ class TestCalculateValLossCheck:
             global_step=1000,  # at max_train_steps
             epoch_step=50,
             val_dataloader=mock_val_dataloader,
-            train_dataloader=mock_train_dataloader,
+            train_dataloader_or_num_batches=mock_train_dataloader,
         )
 
         assert result is True
@@ -119,7 +119,7 @@ class TestCalculateValLossCheck:
             global_step=200,  # divisible by 100
             epoch_step=50,
             val_dataloader=mock_val_dataloader,
-            train_dataloader=mock_train_dataloader,
+            train_dataloader_or_num_batches=mock_train_dataloader,
         )
 
         assert result is True
@@ -136,7 +136,7 @@ class TestCalculateValLossCheck:
             global_step=150,  # not divisible by 100
             epoch_step=50,
             val_dataloader=mock_val_dataloader,
-            train_dataloader=mock_train_dataloader,
+            train_dataloader_or_num_batches=mock_train_dataloader,
         )
 
         assert result is False
@@ -153,7 +153,7 @@ class TestCalculateValLossCheck:
             global_step=100,
             epoch_step=99,  # last step (dataloader length - 1)
             val_dataloader=mock_val_dataloader,
-            train_dataloader=mock_train_dataloader,
+            train_dataloader_or_num_batches=mock_train_dataloader,
         )
 
         assert result is True
@@ -170,7 +170,7 @@ class TestCalculateValLossCheck:
             global_step=100,
             epoch_step=50,  # not at end of epoch
             val_dataloader=mock_val_dataloader,
-            train_dataloader=mock_train_dataloader,
+            train_dataloader_or_num_batches=mock_train_dataloader,
         )
 
         assert result is False
