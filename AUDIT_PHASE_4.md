@@ -15,6 +15,14 @@ This audit assesses the readiness of the data pipeline for **Resume & Checkpoint
 
 ---
 
+### Definition: Functional Continuation
+
+**Functional Continuation** means:
+- ✅ **Preserved:** Model checkpoint state (weights), Optimizer and Scheduler state, Training epoch and batch counters.
+- ❌ **Not Preserved:** Data ordering within the resumed epoch (may differ from original run), RNG sequences (random states for augmentation/dropout).
+
+---
+
 ## 2. Detailed Findings
 
 ### 2.1 Epoch Manifest Persistence
@@ -92,18 +100,34 @@ Update `epoch_preparation.py` to check for file existence and validate:
 Modify `TrainingDataset` in `library/data/pipeline/dataloader.py`:
 - Add `start_epoch_step` argument to `__init__`.
 - Update `__iter__` to skip `batch_info` entries before the main loop.
-- Ensure `token_offset` is correctly advanced even when skipping (for sequential token file access).
+- **Logic:** This `start_epoch_step` replaces the *data loading* part of `accelerator.skip_first_batches`. The accelerator's method may still be called to fast-forward the scheduler/optimizer, but the dataset will yield instantly for skipped steps.
+- **State:** `token_offset` must be correctly advanced by `sum(batch_size)` of all skipped batches to ensure proper alignment when sequential access resumes.
 
 ### Step 2: Smart Token File Generation
 Modify `tokenize_epoch_manifest` in `library/data/pipeline/epoch_preparation.py`:
-- Use `load_epoch_tokens` (or `safe_open` metadata check) to verify `manifest_hash`.
+- Use `load_epoch_tokens` (existing function) or `safetensors.safe_open` to verify `manifest_hash`.
 - Skip tokenization if hash matches.
+- **Resilience:** If file exists but is corrupt (e.g., `safe_open` fails), catch exception and regenerate.
 
 ### Step 3: Cleanup Logic
 Update `scripts/sdxl_peft.py` (and similar scripts):
-- Add `cleanup_epoch_files(manifest, token_path)` call at the end of the epoch loop.
+- Create a helper `cleanup_epoch_files(epoch_manifest_path, token_path)`.
+- Call this at the **end of the epoch loop** (after validation and saving).
+- **Multi-machine:** If resume happens on a new machine where files don't exist, the standard generation logic (Step 2) will naturally regenerate them.
 
 ### Step 4: Verify `initial_step` Logic
 The `calculate_initial_step` in `trainer_utils.py` logic handles the calculation.
 - Ensure `sdxl_peft.py` passes the calculated `initial_step` (converted to batches) to the `TrainingDataset` or `DataLoader`.
-- **Note:** `accelerator.skip_first_batches` might still be needed for internal scheduler/optimizer state alignment, but the *data loader* should skip internally to avoid I/O.
+- **Clarification:** `accelerator.skip_first_batches` is mainly for aligning the **Learning Rate Scheduler** and **Optimizer** states. The `TrainingDataset` fast-skip is for **Data I/O Efficiency**. Both are needed: accelerator ensures mathematical correctness, dataset ensures performance.
+
+### Open Questions & Edge Cases
+
+1.  **Multi-machine Resume:**
+    - *Scenario:* Machine A crashes after cleaning up epoch N. Machine B resumes from start of epoch N+1.
+    - *Handling:* `prepare_epoch` generates manifest for N+1. `tokenize_epoch_manifest` generates tokens for N+1. Everything works as a fresh epoch.
+    - *Scenario:* Machine A crashes mid-epoch N. Machine B resumes.
+    - *Handling:* Machine B does not have `tokens_epoch_N.safetensors`. `tokenize_epoch_manifest` sees missing file and regenerates it. Resume proceeds.
+
+2.  **Partial Token File Corruption:**
+    - *Scenario:* Process killed while writing `tokens.safetensors`.
+    - *Handling:* `tokenize_epoch_manifest` validation (opening file, checking metadata) will fail. Exception handling should catch this and trigger regeneration.
