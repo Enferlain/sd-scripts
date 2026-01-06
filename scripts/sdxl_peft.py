@@ -137,8 +137,11 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     is_main_process = accelerator.is_main_process
 
     # Track current epoch/step for checkpointing
-    current_epoch = accelerator.state.epoch if hasattr(accelerator.state, "epoch") else torch.tensor(0)
-    current_step = accelerator.state.step if hasattr(accelerator.state, "step") else torch.tensor(0)
+    # Use SimpleNamespace as fallback since the code accesses .value attribute
+    from types import SimpleNamespace
+
+    current_epoch = getattr(accelerator.state, "epoch", None) or SimpleNamespace(value=0)
+    current_step = getattr(accelerator.state, "step", None) or SimpleNamespace(value=0)
 
     # Create dataset manifest using new pipeline (Phase B)
     logger.info("Creating dataset manifest")
@@ -278,14 +281,14 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
         train_manifest = te_caching_engine.cache_dataset(
             manifest=train_manifest,
-            model=(text_encoders[0], text_encoders[1]),  # Pass both SDXL text encoders
+            model=tuple(text_encoders),  # SDXL: (clip_l, clip_g)
             accelerator=accelerator,
             cache_dir=cfg.data.caching.cache_dir,
         )
         if val_manifest is not None:
             val_manifest = te_caching_engine.cache_dataset(
                 manifest=val_manifest,
-                model=(text_encoders[0], text_encoders[1]),
+                model=tuple(text_encoders),
                 accelerator=accelerator,
                 cache_dir=cfg.data.caching.cache_dir,
             )
@@ -352,7 +355,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         )
     if adapter is None:
         return
-    adapter_has_multiplier = hasattr(adapter, "set_multiplier")
+    # Note: adapter_has_multiplier was here but unused - removed
 
     # TODO remove `hasattr` by setting up methods if not defined in the peft like below  (hacky but will work):
     # if not hasattr(peft, "prepare_adapter"):
@@ -828,12 +831,15 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         )
 
         # TRAINING
-        skipped_dataloader = None
+        # Note: Since train_dataloader is not accelerator-prepared (new pipeline handles sharding internally),
+        # we use itertools.islice instead of accelerator.skip_first_batches() for resume support
+        dataloader_iter = iter(train_dataloader)
         if initial_step > 0:
-            skipped_dataloader = accelerator.skip_first_batches(train_dataloader, initial_step - 1)
+            # Skip initial_step - 1 batches for resume
+            dataloader_iter = itertools.islice(dataloader_iter, initial_step - 1, None)
             initial_step = 1
 
-        for step, batch in enumerate(skipped_dataloader or train_dataloader):
+        for step, batch in enumerate(dataloader_iter):
             current_step.value = global_step
 
             # --- Add this block to update the timesteps range ---
@@ -934,11 +940,11 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     optimizer_eval_fn()
                     strategies.sample_images(accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
 
-                    if calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, train_dataloader):
+                    if calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, num_batches_per_epoch):
                         current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(
                             global_step,
                             step,
-                            skipped_dataloader or train_dataloader,
+                            num_batches_per_epoch,  # Pass batch count instead of dataloader
                             val_loss_recorder,
                             val_dataloader,
                             cyclic_val_dataloader,
@@ -1158,12 +1164,6 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     logger.info("model saved.")
 
 
-# Register Hydra schema for this script
-from library.config.schemas import register_sdxl_peft
-
-register_sdxl_peft()
-
-
 @hydra.main(version_base=None, config_path="../configs", config_name="sdxl_peft")
 def main(cfg: SDXLPeftConfig):
     """Main entry point for SDXL PEFT training."""
@@ -1175,4 +1175,8 @@ def main(cfg: SDXLPeftConfig):
 
 
 if __name__ == "__main__":
+    # Register Hydra schema only when running as script
+    from library.config.schemas import register_sdxl_peft
+
+    register_sdxl_peft()
     main()

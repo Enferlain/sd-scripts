@@ -123,7 +123,7 @@ def calculate_val_loss_check(
     global_step: int,
     epoch_step: int,
     val_dataloader,
-    train_dataloader,
+    train_dataloader_or_num_batches: int | object,
 ) -> bool:
     """Check if validation should be run at this step.
 
@@ -133,7 +133,7 @@ def calculate_val_loss_check(
         global_step: Current global training step.
         epoch_step: Current step within the epoch.
         val_dataloader: Validation dataloader (if None, returns False).
-        train_dataloader: Training dataloader for epoch length check.
+        train_dataloader_or_num_batches: Training dataloader or int (num_batches_per_epoch).
 
     Returns:
         bool: True if validation should be run, False otherwise.
@@ -141,12 +141,18 @@ def calculate_val_loss_check(
     if val_dataloader is None:
         return False
 
+    # Support both dataloader (len()) and int (direct value)
+    if isinstance(train_dataloader_or_num_batches, int):
+        num_batches = train_dataloader_or_num_batches
+    else:
+        num_batches = len(train_dataloader_or_num_batches)
+
     if global_step != 0 and global_step < training_config.max_train_steps:
         if validation_config.validate_every_n_steps is not None:
             if global_step % int(validation_config.validate_every_n_steps) != 0:
                 return False
         else:
-            if epoch_step != len(train_dataloader) - 1:
+            if epoch_step != num_batches - 1:
                 return False
     return True
 

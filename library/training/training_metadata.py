@@ -50,13 +50,10 @@ def create_training_metadata(
         tuple: (metadata dict, minimum_metadata dict)
     """
     # Compute stats from manifest
-    train_entries = [e for e in manifest.entries.values() if e.split == "train"]
-    reg_entries = [e for e in manifest.entries.values() if e.is_reg]
-    num_train_images = sum(e.num_repeats for e in train_entries if not e.is_reg)
-    num_reg_images = sum(e.num_repeats for e in reg_entries)
-    num_val_images = 0
-    if val_manifest:
-        num_val_images = sum(e.num_repeats for e in val_manifest.entries.values())
+    # Note: Training images exclude regularization images (is_reg=True)
+    num_train_images = sum(e.num_repeats for e in manifest.entries.values() if not e.is_reg)
+    num_reg_images = sum(e.num_repeats for e in manifest.entries.values() if e.is_reg)
+    num_val_images = sum(e.num_repeats for e in val_manifest.entries.values()) if val_manifest else 0
 
     metadata = {
         "ss_session_id": session_id,
@@ -141,6 +138,9 @@ def create_training_metadata(
         info_dict = reg_dataset_dirs_info if entry.is_reg else dataset_dirs_info
         if dir_name not in info_dict:
             info_dict[dir_name] = {"n_repeats": entry.num_repeats, "img_count": 0}
+        else:
+            # Use max n_repeats if entries in same directory have different values
+            info_dict[dir_name]["n_repeats"] = max(info_dict[dir_name]["n_repeats"], entry.num_repeats)
         info_dict[dir_name]["img_count"] += 1
 
     # Add dataset-level metadata
