@@ -22,3 +22,5 @@ outputs/
 tests/assets/
 custom_optimizer/
 uv.lock
+implementation_plan.md
+walkthrough.md
