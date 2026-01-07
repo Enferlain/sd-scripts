@@ -19,33 +19,36 @@ logger = logging.getLogger(__name__)
 
 
 def compute_config_hash(
+    train_data_dir: str,
     cache_dir: str,
     resolution: tuple[int, int],
     bucket_reso_steps: int,
     max_token_length: int | None,
-    image_count: int,
+    enable_bucket: bool = True,
 ) -> str:
     """
-    Compute a hash of settings that affect cache validity.
+    Compute a hash of settings that affect manifest creation.
 
     If this hash changes, the manifest needs to be rebuilt.
 
     Args:
+        train_data_dir: Source data directory.
         cache_dir: Directory for cache files.
         resolution: Base training resolution.
         bucket_reso_steps: Bucket resolution step size.
         max_token_length: Max token length for TE caching.
-        image_count: Number of images in dataset.
+        enable_bucket: Whether bucketing is enabled.
 
     Returns:
-        Hex string hash.
+        Hex string hash (16 characters).
     """
     relevant = {
+        "train_data_dir": train_data_dir,
         "cache_dir": cache_dir,
         "resolution": resolution,
         "bucket_reso_steps": bucket_reso_steps,
         "max_token_length": max_token_length,
-        "image_count": image_count,
+        "enable_bucket": enable_bucket,
     }
     data = json.dumps(relevant, sort_keys=True)
     return hashlib.sha256(data.encode()).hexdigest()[:16]
@@ -80,21 +83,44 @@ def get_or_create_manifest(
     manifest_path = cache_dir / "dataset_manifest.json"
     val_manifest_path = cache_dir / "val_manifest.json"
 
+    # Compute hash of current config
+    current_hash = compute_config_hash(
+        train_data_dir=str(data_config.source.train_data_dir),
+        cache_dir=str(cache_dir),
+        resolution=(data_config.preprocessing.resolution, data_config.preprocessing.resolution),
+        bucket_reso_steps=data_config.bucketing.bucket_reso_steps,
+        max_token_length=getattr(data_config, "max_token_length", None),
+        enable_bucket=data_config.bucketing.enable_bucket,
+    )
+
     # Try to load existing manifest
     if manifest_path.exists():
         try:
             existing = load_dataset_manifest(manifest_path)
-            # TODO: Compute current hash and compare with existing.config_hash
-            # For now, just load if present (user can delete to force rebuild)
-            logger.info(f"Loaded existing manifest with {len(existing.entries)} entries")
 
-            # Load validation manifest if exists
-            val_manifest = None
-            if val_manifest_path.exists():
-                val_manifest = load_dataset_manifest(val_manifest_path)
-                logger.info(f"Loaded existing validation manifest with {len(val_manifest.entries)} entries")
+            # Check if config hash matches
+            if existing.config_hash and existing.config_hash == current_hash:
+                # Quick check: count images in source dir to detect additions/removals
+                from library.data.pipeline.dataset_scanner import IMAGE_EXTENSIONS
 
-            return existing, val_manifest
+                source_dir = Path(data_config.source.train_data_dir)
+                current_image_count = sum(1 for f in source_dir.rglob("*") if f.suffix.lower() in IMAGE_EXTENSIONS)
+
+                if current_image_count != len(existing.entries):
+                    logger.info(f"Dataset changed ({len(existing.entries)} -> {current_image_count} images), rebuilding manifest")
+                else:
+                    logger.info(f"Loaded existing manifest with {len(existing.entries)} entries (hash: {current_hash[:8]}...)")
+
+                    # Load validation manifest if exists
+                    val_manifest = None
+                    if val_manifest_path.exists():
+                        val_manifest = load_dataset_manifest(val_manifest_path)
+                        logger.info(f"Loaded existing validation manifest with {len(val_manifest.entries)} entries")
+
+                    return existing, val_manifest
+            else:
+                old_hash = existing.config_hash[:8] if existing.config_hash else "none"
+                logger.info(f"Config changed (hash: {old_hash}... -> {current_hash[:8]}...), rebuilding manifest")
         except Exception as e:
             logger.warning(f"Failed to load existing manifest: {e}, will recreate")
 
@@ -108,6 +134,9 @@ def get_or_create_manifest(
         validation_split=validation_split,
         validation_seed=validation_seed,
     )
+
+    # Set config hash for future validation
+    train_manifest.config_hash = current_hash
 
     # Split into train/val if validation_split > 0
     val_manifest = None
@@ -140,6 +169,8 @@ def get_or_create_manifest(
     save_dataset_manifest(train_manifest, manifest_path)
     if val_manifest:
         save_dataset_manifest(val_manifest, val_manifest_path)
+
+    logger.info(f"Created new manifest with {len(train_manifest.entries)} entries (hash: {current_hash[:8]}...)")
 
     return train_manifest, val_manifest
 

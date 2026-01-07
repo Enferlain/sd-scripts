@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `get_or_create_manifest()` for manifest persistence and reuse
   - Added `compute_config_hash()` for config-based cache validation
 - **Manifest Persistence**: Manifests can now be saved/loaded with cache paths preserved
+- **Manifest Hash Validation**: `get_or_create_manifest()` validates config hash and file count before reusing cached manifests
 
 ### Changed
 
@@ -43,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cache Dir Fallback**: `prepare_config()` now sets `cache_dir = train_data_dir` if not specified (with defensive `getattr`)
 - **Test Updates**: `test_losses_loss.py` updated to use `LossConfig`/`HuberConfig` dataclasses instead of mock `args`
 - **Test Fixtures**: Updated all pipeline test fixtures to set `latent_cache_path`/`te_cache_path` on entries
+- **TE Dimension Mismatch Bugs**:
+  - `sdxl_peft.py`: Added `.squeeze(0)` when storing per-entry TE outputs in memory cache (prevented 3D tensors after dataloader stacking)
+  - `strategy_sdxl.py`: Removed premature `reshape()` in `_get_hidden_states_sdxl` that corrupted batch size calculation
+  - `peft_strategy_sdxl.py`: Added `+2` to `max_token_length` in `tokenize_sdxl_captions()` to match legacy `SdxlTokenizeStrategy` chunking behavior
 
 ## [2026-01-06]
 

@@ -62,17 +62,6 @@ Scripts (contain training loops):     Library Modules:
 - [ ] Config Validation Edge Cases: Test `prepare_config()` and `validate_config()` for dataset conflicts
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
 
-### Completed
-
-- **Learning Rate Consolidation**: Unified `unet_lr`, `text_encoder_lr`, `learning_rate_te1/te2`, `block_lr` into `optimizer.learning_rates`.
-- **Config Key Rename**: `cfg.network` → `cfg.peft` across all scripts and library modules
-- **Network → Adapter Rename**: Renamed folder, classes, functions, variables, and config fields from `network` to `adapter` terminology
-- **Legacy Cleanup**: Removed unused `@property` aliases and fallback logic from optimizer.py
-- **Train Text Encoder Options**: Consolidated via `optimizer.learning_rates` usage (implicit vs explicit)
-- **Schema 1 Refactor**: Unified configuration schema for PEFT/Fine-tuning scripts
-- **Data Config Restructuring**: Merged `DatasetConfig` + `BucketsConfig` into `DataConfig` with 5 nested sub-configs (source, preprocessing, caption, bucketing, caching)
-- **`sd_textual_inversion.py` Config Migration** - Completed: uses `cfg.*` pattern, `model_type` handling done via strategy
-
 ---
 
 ## Code Quality TODOs
@@ -84,19 +73,8 @@ Scripts (contain training loops):     Library Modules:
   - Should extract to dedicated `Edm2LossConfig` sub-dataclass
   - Mutates config directly (`loss_config.debiased_estimation_loss = False`)
 - [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner
-- [x] ~~Config passing pattern~~ (see DEVELOPMENT_GUIDE.md Section 5.D)
-  - **Scripts/Strategies**: Use `cfg.*` directly (full root config access)
-  - **Library Utilities**: Receive the **smallest container** with what they need:
-    - Pass `PrecisionConfig` if only precision fields needed (not full `PerformanceConfig`)
-    - Pass `LoggingConfig` if only logging fields needed (not full `OutputConfig`)
-    - Different params can be at different depths (e.g., `precision_config, saving_config`)
-- [x] ~~**PEFT Strategy Deduplication**~~: 4 methods moved to `peft_strategy_base.py` (`get_noise_scheduler`, `encode_images_to_latents`, `shift_scale_latents`, `post_process_loss`)
-- [x] ~~**Upsample2D PyTorch 2.6+ Modernization**~~: Removed obsolete bfloat16 workaround (PyTorch #86679 fixed in 2.1+), replaced batch-size workaround with numel-based INT_MAX protection from diffusers
-- [x] ~~**Constants Type Hints**~~: Fixed `BLOCK_OUT_CHANNELS` type hint (`tuple[int]` → `tuple[int, ...]`)
-- [x] ~~**PEFT Strategy Internal Dedup**~~: Extracted `_prepare_latents` helper to base class, deduplicated ~84 lines across `process_batch`/`process_val_batch` in SD and SDXL strategies
 - [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`.
 - [ ] **SD Data Pipeline Support** (low priority) - Update `peft_strategy_sd.py` to consume new batch format from `TrainingDataset`. Expects `batch["input_ids_list"]` / `batch["text_encoder_outputs_list"]` but new pipeline uses dict format. See AUDIT/AUDIT_PHASE_2.md.
-- [x] ~~**ImageInfo Circular Dependency**~~: Fixed - `ImageInfo` already in `data_structures.py`, added proper imports to strategy files
 
 ---
 
@@ -218,9 +196,9 @@ library/models/
 
 ## Data Pipeline Rework
 
-**Status:** 🔄 In Progress (skeleton complete)
+**Status:** 🔄 In Progress
 
-See `DATA_PIPELINE_PLAN.md` for design, `DATA_PIPELINE_IMPL.md` for implementation checklist.
+See `DATA_PIPELINE_PLAN.md` for design, `DATA_PIPELINE_CURRENT.md` for implementation checklist.
 
 ### Completed
 
@@ -230,14 +208,6 @@ See `DATA_PIPELINE_PLAN.md` for design, `DATA_PIPELINE_IMPL.md` for implementati
 - [x] Engine skeleton: `CachingStrategy` interface, `CachingEngine`
 - [x] DataLoader: `TrainingDataset`, `create_training_dataloader()`
 - [x] Epoch prep: `prepare_epoch()`, `prepare_validation_epoch()`
-
-### Next Steps
-
-- [ ] Phase 1: Dataset scanner (populate DatasetManifest from directories)
-- [ ] Phase 2: Connect CachingStrategy to existing strategies
-- [ ] Phase 2: Implement fast caching loop in CachingEngine
-- [ ] Phase 3: Wire epoch preparation to training scripts
-- [ ] Phase 4: Replace current DataLoader with TrainingDataset
 
 ---
 

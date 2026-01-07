@@ -56,6 +56,8 @@ def tokenize_sdxl_captions(
         - If max_token_length <= 77: shape [batch_size, 77]
         - If max_token_length > 77: shape [batch_size, n_chunks, 77]
     """
+    # Match legacy behavior: SdxlTokenizeStrategy adds +2 for BOS/EOS
+    effective_max_len = max_token_length + 2 if max_token_length is not None else None
 
     def _tokenize_and_chunk(tokenizer: Any, texts: list[str], max_len: int) -> torch.Tensor:
         """Tokenize and optionally chunk into 77-token segments."""
@@ -112,8 +114,8 @@ def tokenize_sdxl_captions(
 
         return torch.stack(batch_chunks)  # [batch, n_chunks, 77]
 
-    tokens1 = _tokenize_and_chunk(tokenizer1, captions, max_token_length)
-    tokens2 = _tokenize_and_chunk(tokenizer2, captions, max_token_length)
+    tokens1 = _tokenize_and_chunk(tokenizer1, captions, effective_max_len)
+    tokens2 = _tokenize_and_chunk(tokenizer2, captions, effective_max_len)
 
     return tokens1, tokens2
 

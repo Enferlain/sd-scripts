@@ -23,6 +23,7 @@ from library.data.pipeline.manifest import (
     load_dataset_manifest,
     save_epoch_manifest,
     load_epoch_manifest,
+    get_or_create_manifest,
 )
 from library.data.pipeline.caching_engine import CachingStrategy, CachingEngine
 from library.data.pipeline.dataloader import TrainingDataset, create_training_dataloader
@@ -63,6 +64,7 @@ __all__ = [
     "load_dataset_manifest",
     "save_epoch_manifest",
     "load_epoch_manifest",
+    "get_or_create_manifest",
     # Caching
     "CachingStrategy",
     "CachingEngine",

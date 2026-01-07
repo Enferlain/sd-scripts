@@ -116,9 +116,7 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
         else:
             max_token_length = input_ids1.size()[1] * input_ids1.size()[2]
 
-        # Flatten and move to device
-        input_ids1 = input_ids1.reshape((-1, tokenizer1.model_max_length))
-        input_ids2 = input_ids2.reshape((-1, tokenizer2.model_max_length))
+        # Move to device (don't reshape here - get_hidden_states_sdxl does it and needs original shape for b_size)
         input_ids1 = input_ids1.to(next(text_encoder1.parameters()).device)
         input_ids2 = input_ids2.to(next(text_encoder2.parameters()).device)
 

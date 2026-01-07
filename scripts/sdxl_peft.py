@@ -53,6 +53,7 @@ from library.data.pipeline import (
     prepare_epoch,
     prepare_validation_epoch,
     create_manifest_from_config,
+    get_or_create_manifest,
     save_dataset_manifest,
 )
 from library.strategies.sdxl_caching import (
@@ -149,39 +150,47 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     current_epoch = getattr(accelerator.state, "epoch", None) or SimpleNamespace(value=0)
     current_step = getattr(accelerator.state, "step", None) or SimpleNamespace(value=0)
 
-    # Create dataset manifest using new pipeline (Phase B)
-    logger.info("Creating dataset manifest")
+    # Create dataset manifest using new pipeline (Phase B) - with persistence/reuse
+    logger.info("Preparing dataset manifest")
     latent_dtype = "fp32" if cfg.performance.precision.no_half_vae else "fp16"
-    train_manifest = create_manifest_from_config(
-        data_config=cfg.data,
-        cache_dir=cfg.data.caching.cache_dir,
-        latent_dtype=latent_dtype,
-        validation_split=cfg.validation.validation_split,
-        validation_seed=cfg.validation.validation_seed,
-    )
+    cache_dir = cfg.data.caching.cache_dir or cfg.data.source.train_data_dir
 
-    # Create validation manifest
-    val_manifest = None
     if cfg.data.source.val_data_dir:
-        # Separate validation directory
+        # Separate validation directory - create train manifest without val split
+        train_manifest = create_manifest_from_config(
+            data_config=cfg.data,
+            cache_dir=cache_dir,
+            latent_dtype=latent_dtype,
+            validation=False,
+        )
         val_manifest = create_manifest_from_config(
             data_config=cfg.data,
-            cache_dir=cfg.data.caching.cache_dir,
+            cache_dir=cache_dir,
             latent_dtype=latent_dtype,
             validation=True,
         )
-    elif cfg.validation.validation_split > 0:
-        # Filter validation entries from training manifest
-        from library.data.pipeline import DatasetManifest, Bucket
+    else:
+        # Use get_or_create_manifest for persistence and validation split
+        train_manifest, val_manifest = get_or_create_manifest(
+            data_config=cfg.data,
+            cache_dir=cache_dir,
+            latent_dtype=latent_dtype,
+            validation_split=cfg.validation.validation_split,
+            validation_seed=cfg.validation.validation_seed,
+        )
 
-        val_entries = {k: v for k, v in train_manifest.entries.items() if v.split == "val"}
-        val_buckets = {}
-        for bucket_key, bucket in train_manifest.buckets.items():
-            val_ids = [img_id for img_id in bucket.image_ids if img_id in val_entries]
-            if val_ids:
-                val_buckets[bucket_key] = Bucket(resolution=bucket.resolution, image_ids=val_ids)
-        if val_entries:
-            val_manifest = DatasetManifest(
+        # If validation split was used, filter train entries
+        if val_manifest is not None:
+            from library.data.pipeline import DatasetManifest, Bucket
+
+            # Filter train manifest to only train entries
+            train_entries = {k: v for k, v in train_manifest.entries.items() if v.split == "train"}
+            train_buckets = {}
+            for bucket_key, bucket in train_manifest.buckets.items():
+                train_ids = [img_id for img_id in bucket.image_ids if img_id in train_entries]
+                if train_ids:
+                    train_buckets[bucket_key] = Bucket(resolution=bucket.resolution, image_ids=train_ids)
+            train_manifest = DatasetManifest(
                 version=train_manifest.version,
                 created_at=train_manifest.created_at,
                 base_resolution=train_manifest.base_resolution,
@@ -191,29 +200,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 latent_channels=train_manifest.latent_channels,
                 latent_scale_factor=train_manifest.latent_scale_factor,
                 latent_dtype=train_manifest.latent_dtype,
-                entries=val_entries,
-                buckets=val_buckets,
+                entries=train_entries,
+                buckets=train_buckets,
             )
-        # Filter train manifest to only train entries
-        train_entries = {k: v for k, v in train_manifest.entries.items() if v.split == "train"}
-        train_buckets = {}
-        for bucket_key, bucket in train_manifest.buckets.items():
-            train_ids = [img_id for img_id in bucket.image_ids if img_id in train_entries]
-            if train_ids:
-                train_buckets[bucket_key] = Bucket(resolution=bucket.resolution, image_ids=train_ids)
-        train_manifest = DatasetManifest(
-            version=train_manifest.version,
-            created_at=train_manifest.created_at,
-            base_resolution=train_manifest.base_resolution,
-            bucket_reso_steps=train_manifest.bucket_reso_steps,
-            min_bucket_reso=train_manifest.min_bucket_reso,
-            max_bucket_reso=train_manifest.max_bucket_reso,
-            latent_channels=train_manifest.latent_channels,
-            latent_scale_factor=train_manifest.latent_scale_factor,
-            latent_dtype=train_manifest.latent_dtype,
-            entries=train_entries,
-            buckets=train_buckets,
-        )
 
     # mixed precisionに対応した型を用意しておき適宜castする
     weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
@@ -245,6 +234,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         latent_caching_engine = CachingEngine(
             strategy=latent_strategy,
             batch_size=cfg.data.caching.vae_batch_size,
+            num_workers=cfg.data.caching.num_workers,
         )
         train_manifest = latent_caching_engine.cache_dataset(
             manifest=train_manifest,
@@ -327,10 +317,11 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                         text_encoders[0],
                         text_encoders[1],
                     )
+                    # Squeeze out the batch dimension (these are computed for single samples)
                     entry.te_outputs = {
-                        "hidden_state1": hidden_state1.cpu(),
-                        "hidden_state2": hidden_state2.cpu(),
-                        "pool2": pool2.cpu(),
+                        "hidden_state1": hidden_state1.squeeze(0).cpu(),
+                        "hidden_state2": hidden_state2.squeeze(0).cpu(),
+                        "pool2": pool2.squeeze(0).cpu(),
                     }
 
             if val_manifest is not None:
@@ -351,10 +342,11 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                             text_encoders[0],
                             text_encoders[1],
                         )
+                        # Squeeze out the batch dimension (these are computed for single samples)
                         entry.te_outputs = {
-                            "hidden_state1": hidden_state1.cpu(),
-                            "hidden_state2": hidden_state2.cpu(),
-                            "pool2": pool2.cpu(),
+                            "hidden_state1": hidden_state1.squeeze(0).cpu(),
+                            "hidden_state2": hidden_state2.squeeze(0).cpu(),
+                            "pool2": pool2.squeeze(0).cpu(),
                         }
 
         # Move text encoders back to CPU to save VRAM

@@ -16,7 +16,7 @@ model:
 # ─── TRAINING ───────────────────────────────────────────────────────────────
 training:
   max_train_steps: 100
-  train_batch_size: 2
+  train_batch_size: 4
   gradient_accumulation_steps: 1
   seed: 218
   max_token_length: 225
@@ -40,7 +40,7 @@ data:
   caching:
     cache_latents: true
     cache_latents_to_disk: true
-    cache_text_encoder_outputs: true
+    cache_text_encoder_outputs: false
     cache_dir: "D:/Projects/sd-scripts/tests/assets/images"
   loader:
     num_workers: 0
@@ -75,7 +75,7 @@ performance:
     mixed_precision: "bf16"
     no_half_vae: true
   memory:
-    gradient_checkpointing: false
+    gradient_checkpointing: true
   attention:
     xformers: true
 
@@ -104,3 +104,10 @@ output:
     save_precision: "fp16"
     save_every_n_steps: 50
     save_every_n_epochs: 0
+  sampling:
+    sample_every_n_steps: 10
+    sample_at_first: false
+    sample_every_n_epochs: null
+    sample_prompts: "D:/Projects/sd-scripts/tests/assets/3prompt.txt"
+    sample_sampler: "k_euler"
+

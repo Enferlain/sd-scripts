@@ -3,7 +3,7 @@
 This document tracks implementation progress for the data pipeline rework.
 See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_OLD.md` for legacy reference.
 
-## Status: ✅ Phase 1-4 Complete, ✅ SDXL Integration Complete, ✅ Cache Path Simplification
+## Status: ✅ Phase 1-4 Complete, ✅ SDXL Integration Complete, ✅ Sample Generation Working
 
 **Last Updated:** 2026-01-07
 
@@ -14,7 +14,8 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_OLD.md` for legacy ref
 - PEFT Strategy Integration: Complete ✅
 - SDXL PEFT Script Integration: Complete ✅
 - **Cache Path Simplification:** Complete ✅ - Paths set at manifest creation, manifest persistence ready
-- **Smoke Test:** Passed (training through epoch 1, 50+ steps)
+- **Smoke Test:** Passed (training + sample generation with weighted prompts)
+- **TE Dimension Bugs:** Fixed (in-memory caching, sample generation, on-the-fly tokenization)
 
 ---
 

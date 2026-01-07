@@ -80,7 +80,8 @@ class CachingConfig:
     disable_mmap_load_safetensors: bool = field(
         default=False, metadata={"help": "Disable memory-mapped loading for safetensors files"}
     )  # Not data related TODO
-    vae_batch_size: int = field(default=1, metadata={"help": "batch size for caching latents"})
+    vae_batch_size: int = field(default=1, metadata={"help": "batch size for VAE encoding during caching"})
+    num_workers: int = field(default=4, metadata={"help": "parallel I/O workers for image loading during caching"})
     skip_cache_check: bool = field(default=False, metadata={"help": "skip the content validation of cache"})
 
 
