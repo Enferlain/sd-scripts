@@ -56,6 +56,23 @@ def prepare_config(cfg) -> None:
     if cfg.optimizer.use_lion_optimizer:
         cfg.optimizer.optimizer_type = "Lion"
 
+    # Learning rates: default unet/text_encoders to base if not set
+    if hasattr(cfg.optimizer, "learning_rates"):
+        lr_cfg = cfg.optimizer.learning_rates
+        if lr_cfg.unet is None:
+            lr_cfg.unet = lr_cfg.base
+        if lr_cfg.text_encoders is None:
+            lr_cfg.text_encoders = lr_cfg.base
+
+    # Data: cache_dir defaults to train_data_dir if not set
+    if (
+        hasattr(cfg.data, "caching")
+        and cfg.data.caching.cache_dir is None
+        and hasattr(cfg.data, "source")
+        and cfg.data.source.train_data_dir
+    ):
+        cfg.data.caching.cache_dir = cfg.data.source.train_data_dir
+
     # Sampling: disable if <= 0
     if cfg.output.sampling.sample_every_n_epochs is not None and cfg.output.sampling.sample_every_n_epochs <= 0:
         logger.warning("sample_every_n_epochs <= 0, disabling")

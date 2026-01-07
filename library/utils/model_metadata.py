@@ -8,7 +8,7 @@ import mimetypes
 import subprocess
 import safetensors
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, is_dataclass
 
 from library.utils.common_utils import setup_logging
 from library.config.dataclasses.output import MetadataConfig
@@ -174,7 +174,13 @@ class ModelSpecMetadata:
         # Extract standard fields from the config
         # We look for fields in MetadataConfig that match "metadata_{name}"
         metadata_fields = {}
-        for config_field in asdict(metadata_config):
+        # Handle both real dataclasses and OmegaConf DictConfig
+        if is_dataclass(metadata_config) and not isinstance(metadata_config, type):
+            config_fields = asdict(metadata_config).keys()
+        else:
+            # OmegaConf DictConfig or dict-like
+            config_fields = metadata_config.keys() if hasattr(metadata_config, "keys") else dir(metadata_config)
+        for config_field in config_fields:
             if config_field.startswith("metadata_"):
                 value = getattr(metadata_config, config_field)
                 if value is not None:
@@ -765,7 +771,13 @@ def get_model_metadata_from_config(
 
     # Helper to merge optional metadata and extract from config
     extracted_metadata = {}
-    for config_field in asdict(metadata_config):
+    # Handle both real dataclasses and OmegaConf DictConfig
+    if is_dataclass(metadata_config) and not isinstance(metadata_config, type):
+        config_fields = asdict(metadata_config).keys()
+    else:
+        # OmegaConf DictConfig or dict-like
+        config_fields = metadata_config.keys() if hasattr(metadata_config, "keys") else dir(metadata_config)
+    for config_field in config_fields:
         if config_field.startswith("metadata_"):
             value = getattr(metadata_config, config_field)
             if value is not None:

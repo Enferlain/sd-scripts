@@ -360,7 +360,8 @@ class TestPlotEdm2LossWeighting:
                 pass
 
             # Real IO test
-            plot_edm2_loss_weighting(loss_config, output_name="test_run", step=100, model=mock_model, device="cpu", num_timesteps=1000)
+            plot_edm2_loss_weighting(loss_config, output_name="test_run", step=100, model=mock_model,
+                                     num_timesteps=1000, device="cpu")
 
             # Check plot was saved
             expected_dir = os.path.join(tmpdir, "test_run")

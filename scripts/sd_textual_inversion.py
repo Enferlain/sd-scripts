@@ -622,7 +622,7 @@ class TextualInversionTrainer:
                     else:
                         target = noise
 
-                    huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
+                    huber_c = get_huber_threshold_if_needed(cfg.loss, cfg.loss.huber, timesteps, noise_scheduler)
                     loss = conditional_loss(
                         noise_pred.float(),
                         target.float(),

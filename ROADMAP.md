@@ -145,6 +145,12 @@ Scripts (contain training loops):     Library Modules:
 
 - [ ] Fix zero-dimension bucket edge case for images smaller than `bucket_reso_steps`
 - [ ] Config-hash cache namespace - Auto-segregate caches by config hash (`resolution`, `bucket_steps`, `model_version`) to prevent cross-config issues. See `AUDIT/AUDIT_PHASE_6.md`.
+- [ ] **Large-scale dataset manifest optimization** - Current JSON manifest grows ~2KB/entry (100k images = ~200MB JSON). Options:
+  - Binary format (msgpack/pickle) for faster I/O
+  - Incremental manifest updates instead of full rewrite
+  - Lazy loading of manifest entries
+  - Sharded manifests by bucket
+  - Skip manifest creation if unchanged from previous run
 
 ---
 

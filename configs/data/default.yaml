@@ -55,7 +55,7 @@ caching:
   skip_cache_check: false
 
 loader:
-  num_workers: 8
+  num_workers: 4
   persistent_workers: false
   prefetch_factor: 2
   pin_memory: true

@@ -3,16 +3,17 @@
 This document tracks implementation progress for the data pipeline rework.
 See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_CURRENT.md` for legacy reference.
 
-## Status: ✅ Phase 1-4 Data Loading Complete, ✅ SDXL PEFT Integration Complete
+## Status: ✅ Phase 1-4 Complete, ✅ SDXL Integration Complete, 🔄 Smoke Testing
 
-**Last Updated:** 2026-01-06
+**Last Updated:** 2026-01-07
 
 - Phase 1 (scanning): Complete ✅
 - Phase 2 (caching): Complete ✅
 - Phase 3 (epoch prep): Complete ✅
-- Phase 4 (dataloader): Complete ✅ - all batch fields implemented
-- **PEFT Strategy Integration: Complete ✅** - `peft_strategy_sdxl.py` uses new batch format
-- **SDXL PEFT Script Integration: Complete ✅** - `scripts/sdxl_peft.py` fully migrated
+- Phase 4 (dataloader): Complete ✅
+- PEFT Strategy Integration: Complete ✅
+- SDXL PEFT Script Integration: Complete ✅
+- **Smoke Test:** In Progress 🔄 - Config issues being resolved
 
 ---
 
@@ -128,8 +129,12 @@ NEW FLOW:
 - [x] Resume support via `itertools.islice` (not `accelerator.skip_first_batches`)
 - [x] `training_metadata.py` refactored for `DatasetManifest`
 - [x] Config consolidation: moved TE caching fields to `DataConfig.caching`
-- [ ] Remove `library/data/_deprecated/` after full validation
+- [x] Centralized config defaults in `prepare_config()` (learning rates, cache_dir)
+- [x] Manifest saved to `cache_dir/dataset_manifest.json` after caching
+- [x] Cache file naming includes resolution: `{id}_{w}x{h}_sdxl_latents.safetensors`
+- [x] Tag parsing respects `keep_tokens_separator` (|||)
 - [ ] Benchmark new vs legacy performance
+- [ ] Remove `library/data/_deprecated/` after full validation
 
 ### Completed Config Integration
 
@@ -163,7 +168,29 @@ See `DATA_PIPELINE_TEST_PLAN.md` for:
 **Not yet tested:**
 
 - Multi-GPU sharding
-- Full training loop
+- Full training loop (in progress with smoke test)
+
+### Recent Smoke Test Fixes (2026-01-07)
+
+**Config Access Fixes:**
+
+- `init_timestep_sampler()`: Pass `cfg.timestep` not full `cfg`
+- `parse_dynamic_timestep_schedule()`: Pass `cfg.timestep` not full `cfg`
+- `prepare_edm2_loss_weighting()`: Pass `cfg.loss.edm2` not `cfg.loss`
+- `get_huber_threshold_if_needed()`: Updated to `(loss_config, huber_config, ...)` signature
+- `cfg.loss.masked` → `cfg.loss.masked.masked_loss` (nested config object)
+- Fixed `is_train_unet`/`is_train_text_encoder` to pass `learning_rates` not full optimizer config
+
+**Other Fixes:**
+
+- `batch["loss_weights"].to(loss.device)` - tensor was on CPU
+- `asdict()` → OmegaConf-compatible iteration in `model_metadata.py`
+- LR defaults in `prepare_config()`: `unet` and `text_encoders` default to `base`
+- `cache_dir` fallback to `train_data_dir` in `prepare_config()`
+- Tag parsing respects `|||` separator
+- `adapter_module` path: `library.adapters.lora`
+
+**Status:** Training loop confirmed working through epoch 1 (50+ steps), checkpoint saving in testing
 
 ### Audit Findings (from `AUDIT/AUDIT_PHASE_1.md`)
 
@@ -242,6 +269,14 @@ Core benchmarks in `tests/unit/data/test_pipeline_benchmark.py`:
 config_hash = stable_hash(resolution, bucket_steps, model_version)
 actual_cache_dir = user_cache_dir / config_hash
 ```
+
+**Large-Scale Dataset Optimization (ROADMAP):** Current JSON manifest grows ~2KB/entry:
+
+- Binary format (msgpack/pickle) for faster I/O
+- Incremental manifest updates instead of full rewrite
+- Lazy loading of manifest entries
+- Sharded manifests by bucket
+- Skip creation if unchanged from previous run
 
 ---
 

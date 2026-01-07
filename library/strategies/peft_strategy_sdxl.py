@@ -42,33 +42,78 @@ def tokenize_sdxl_captions(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Tokenize captions on-the-fly for SDXL (dual CLIP encoders).
 
+    Handles 77+ token sequences by chunking into multiple 77-token segments,
+    matching the legacy TokenizeStrategy._get_input_ids behavior.
+
     Args:
         tokenizer1: CLIP-L tokenizer.
         tokenizer2: CLIP-G tokenizer.
         captions: List of caption strings.
-        max_token_length: Maximum token sequence length.
+        max_token_length: Maximum token sequence length (e.g., 225 for 3 chunks).
 
     Returns:
-        Tuple of (clip_l_tokens, clip_g_tokens), each [batch_size, seq_len].
+        Tuple of (clip_l_tokens, clip_g_tokens):
+        - If max_token_length <= 77: shape [batch_size, 77]
+        - If max_token_length > 77: shape [batch_size, n_chunks, 77]
     """
-    # Use max 77 tokens per encoder (CLIP limit), truncate/pad as needed
-    seq_len = min(max_token_length, 77) if max_token_length else 77
 
-    tokens1 = tokenizer1(
-        captions,
-        padding="max_length",
-        truncation=True,
-        max_length=seq_len,
-        return_tensors="pt",
-    ).input_ids
+    def _tokenize_and_chunk(tokenizer: Any, texts: list[str], max_len: int) -> torch.Tensor:
+        """Tokenize and optionally chunk into 77-token segments."""
+        model_max = tokenizer.model_max_length  # 77 for CLIP
 
-    tokens2 = tokenizer2(
-        captions,
-        padding="max_length",
-        truncation=True,
-        max_length=seq_len,
-        return_tensors="pt",
-    ).input_ids
+        if max_len is None or max_len <= model_max:
+            # Simple case: just tokenize with padding/truncation to 77
+            return tokenizer(
+                texts,
+                padding="max_length",
+                truncation=True,
+                max_length=model_max,
+                return_tensors="pt",
+            ).input_ids
+
+        # Long sequence case: tokenize to full length, then chunk
+        # Request max_len tokens (will be padded/truncated)
+        raw_tokens = tokenizer(
+            texts,
+            padding="max_length",
+            truncation=True,
+            max_length=max_len,
+            return_tensors="pt",
+        ).input_ids  # [batch, max_len]
+
+        # Chunk each sample into [n_chunks, 77] segments
+        batch_chunks = []
+        for input_ids in raw_tokens:
+            # input_ids: [max_len]
+            chunks = []
+            # Step through in increments of 75 (77 - BOS - EOS)
+            for i in range(1, max_len - model_max + 2, model_max - 2):
+                # Build chunk: <BOS> + 75 tokens + <EOS/PAD>
+                chunk = torch.cat(
+                    [
+                        input_ids[0:1],  # BOS
+                        input_ids[i : i + model_max - 2],  # 75 content tokens
+                        input_ids[-1:],  # last token (EOS or PAD)
+                    ]
+                )
+
+                # Fix chunk endings for v2/SDXL tokenizers (pad_token != eos_token)
+                if tokenizer.pad_token_id != tokenizer.eos_token_id:
+                    # If end is "x <non-EOS/PAD>", change last to EOS
+                    if chunk[-2] != tokenizer.eos_token_id and chunk[-2] != tokenizer.pad_token_id:
+                        chunk[-1] = tokenizer.eos_token_id
+                    # If beginning is "<BOS> <PAD> ...", change to "<BOS> <EOS> ..."
+                    if chunk[1] == tokenizer.pad_token_id:
+                        chunk[1] = tokenizer.eos_token_id
+
+                chunks.append(chunk)
+
+            batch_chunks.append(torch.stack(chunks))  # [n_chunks, 77]
+
+        return torch.stack(batch_chunks)  # [batch, n_chunks, 77]
+
+    tokens1 = _tokenize_and_chunk(tokenizer1, captions, max_token_length)
+    tokens2 = _tokenize_and_chunk(tokenizer2, captions, max_token_length)
 
     return tokens1, tokens2
 
@@ -326,6 +371,16 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
         # Concat text embeddings
         encoder_hidden_states1, encoder_hidden_states2, pool2 = text_conds
+
+        # Debug: ensure batch sizes match
+        if pool2.shape[0] != embs.shape[0]:
+            raise RuntimeError(
+                f"Batch size mismatch in call_unet: pool2 has {pool2.shape[0]} samples, "
+                f"but conditionings has {len(conditionings)} items (embs shape: {embs.shape}). "
+                f"batch latents shape: {batch['latents'].shape if 'latents' in batch else 'N/A'}, "
+                f"captions: {len(batch.get('captions', []))}"
+            )
+
         vector_embedding = torch.cat([pool2, embs], dim=1).to(weight_dtype)
         text_embedding = torch.cat([encoder_hidden_states1, encoder_hidden_states2], dim=2).to(weight_dtype)
 
@@ -700,22 +755,22 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         )
 
         if is_train:
-            huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
+            huber_c = get_huber_threshold_if_needed(cfg.loss, cfg.loss.huber, timesteps, noise_scheduler)
             loss = conditional_loss(
                 noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale)
             )
             if weighting is not None:
                 loss = loss * weighting
-            if cfg.loss.masked or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+            if cfg.loss.masked.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
                 # Fail fast if user explicitly requested masked loss but no masks available
-                if cfg.loss.masked:
+                if cfg.loss.masked.masked_loss:
                     has_cond = "conditioning_images" in batch
                     has_alpha = "alpha_masks" in batch and batch["alpha_masks"] is not None
                     if not has_cond and not has_alpha:
                         raise ValueError(
-                            "cfg.loss.masked=True but no masks found in batch. "
+                            "cfg.loss.masked.masked_loss=True but no masks found in batch. "
                             "Ensure your dataset has alpha channels or conditioning images. "
-                            "Set cfg.loss.masked=False if masking is not intended."
+                            "Set cfg.loss.masked.masked_loss=False if masking is not intended."
                         )
                 loss = apply_masked_loss(loss, batch)
         else:
@@ -728,7 +783,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
         loss = per_sample_loss
         if is_train:
-            loss = loss * batch["loss_weights"]
+            loss = loss * batch["loss_weights"].to(loss.device)
             loss = self.post_process_loss(loss, cfg, timesteps, noise_scheduler)
 
         if is_train and cfg.loss.loss_multiplier:

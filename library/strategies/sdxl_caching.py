@@ -123,9 +123,10 @@ class SdxlLatentsPipelineStrategy(CachingStrategy):
         """
         Generate cache file path for an entry.
 
-        Format: {cache_dir}/{entry.id}_sdxl_latents.safetensors
+        Format: {cache_dir}/{entry.id}_{width}x{height}_sdxl_latents.safetensors
         """
-        return cache_dir / f"{entry.id}{self.cache_suffix}"
+        w, h = entry.bucket_reso
+        return cache_dir / f"{entry.id}_{w}x{h}{self.cache_suffix}"
 
     def encode_batch(
         self,

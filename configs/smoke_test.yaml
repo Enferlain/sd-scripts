@@ -1,0 +1,105 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Test Config - Seele v-pred model
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=smoke_test
+
+defaults:
+  - sdxl_peft_schema
+  - _self_
+
+# ─── MODEL ──────────────────────────────────────────────────────────────────
+model:
+  model_type: sdxl
+  pretrained_model_name_or_path: "D:/stable-diffusion-webui-reForge/models/Stable-diffusion/21862-seele_pop3_v-pred.safetensors"
+  vae: null
+
+# ─── TRAINING ───────────────────────────────────────────────────────────────
+training:
+  max_train_steps: 100
+  train_batch_size: 1
+  gradient_accumulation_steps: 8
+  seed: 218
+  max_token_length: 225
+
+# ─── DATA ────────────────────────────────────────────────────────────────────
+data:
+  source:
+    train_data_dir: "D:/Projects/sd-scripts/tests/assets/images"
+    dataset_repeats: 1
+  preprocessing:
+    resolution: "1024,1024"
+  caption:
+    shuffle_caption: true
+    caption_extension: ".txt"
+    keep_tokens_separator: "|||"
+  bucketing:
+    enable_bucket: true
+    min_bucket_reso: 256
+    max_bucket_reso: 1024
+    bucket_reso_steps: 64
+  caching:
+    cache_latents: true
+    cache_latents_to_disk: true
+    cache_dir: "D:/Projects/sd-scripts/tests/assets/images"
+  loader:
+    num_workers: 0
+    persistent_workers: false
+    prefetch_factor: 2
+    pin_memory: true
+
+# ─── PEFT (adapter configuration) ───────────────────────────────────────────
+peft:
+  adapter_module: "library.adapters.lora"
+  adapter_rank: 32
+  adapter_alpha: 16.0
+  adapter_args: ["conv_dim=32", "conv_alpha=16.0"]
+
+# ─── OPTIMIZER ──────────────────────────────────────────────────────────────
+optimizer:
+  optimizer_type: "AdamW8bit"
+  max_grad_norm: 1.0
+  optimizer_args:
+    - "weight_decay=0.01"
+    - "betas=0.9, 0.999"
+  learning_rates:
+    base: 1e-4
+    unet: 1e-5
+    text_encoders: [1e-5, 1e-6]
+  scheduler:
+    lr_scheduler: "constant"
+
+# ─── PERFORMANCE ────────────────────────────────────────────────────────────
+performance:
+  precision:
+    mixed_precision: "bf16"
+    no_half_vae: true
+  memory:
+    gradient_checkpointing: false
+  attention:
+    xformers: true
+
+# ─── LOSS ───────────────────────────────────────────────────────────────────
+loss:
+  v_parameterization: true
+  loss_type: "l2"
+  regularization:
+    zero_terminal_snr: true
+  snr:
+    min_snr_gamma: 5.0
+  prior_loss_weight: 1.0
+
+# ─── TIMESTEP ───────────────────────────────────────────────────────────────
+timestep:
+  timestep_sampling: "uniform"
+  min_timestep: 0
+  max_timestep: 1000
+
+# ─── OUTPUT ─────────────────────────────────────────────────────────────────
+output:
+  saving:
+    output_dir: "D:/stable-diffusion-webui-reForge/models/new_test"
+    output_name: "newtest1"
+    save_model_as: "safetensors"
+    save_precision: "fp16"
+    save_every_n_steps: 50
+    save_every_n_epochs: 0

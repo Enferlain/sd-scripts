@@ -566,6 +566,36 @@ def select_bucket(
     return reso, resized_size
 
 
+def _parse_tags(caption: str, separator: str = ", ", keep_tokens_separator: str = "") -> list[str]:
+    """
+    Parse caption into tags, respecting keep_tokens_separator.
+
+    If keep_tokens_separator is set (e.g. "|||"), the caption is first split on that separator,
+    then each part is split on the regular separator. This ensures fixed tokens are parsed correctly.
+
+    Args:
+        caption: Raw caption text.
+        separator: Tag separator (default ", ").
+        keep_tokens_separator: Separator marking fixed regions (e.g. "|||").
+
+    Returns:
+        List of individual tags.
+    """
+    if not caption:
+        return []
+
+    if keep_tokens_separator and keep_tokens_separator in caption:
+        # Split on keep_tokens_separator first, then on regular separator within each part
+        parts = caption.split(keep_tokens_separator)
+        tags = []
+        for part in parts:
+            tags.extend([t.strip() for t in part.split(separator.strip()) if t.strip()])
+        return tags
+    else:
+        # Simple split on separator
+        return [t.strip() for t in caption.split(separator.strip()) if t.strip()]
+
+
 def create_manifest(
     scanned_images: list[ScannedImage],
     base_dir: Path | None = None,
@@ -577,6 +607,8 @@ def create_manifest(
     latent_channels: int = 4,
     latent_scale_factor: int = 8,
     latent_dtype: str = "fp16",
+    caption_separator: str = ", ",
+    keep_tokens_separator: str = "",
 ) -> DatasetManifest:
     """
     Create a DatasetManifest from scanned images.
@@ -592,6 +624,8 @@ def create_manifest(
         latent_channels: Number of VAE latent channels.
         latent_scale_factor: VAE spatial downscale factor.
         latent_dtype: Data type for cached latents.
+        caption_separator: Separator for splitting caption into tags (default ", ").
+        keep_tokens_separator: Separator marking fixed token regions (e.g. "|||").
 
     Returns:
         DatasetManifest ready to save or use for caching.
@@ -625,6 +659,9 @@ def create_manifest(
         # Generate ID
         image_id = generate_image_id(scanned.path, base_dir)
 
+        # Parse tags respecting keep_tokens_separator
+        tags = _parse_tags(scanned.caption, caption_separator, keep_tokens_separator)
+
         # Create entry
         entry = CacheEntry(
             id=image_id,
@@ -633,7 +670,7 @@ def create_manifest(
             bucket_reso=bucket_reso,
             resized_size=resized_size,
             caption=scanned.caption,
-            tags=[t.strip() for t in scanned.caption.split(",") if t.strip()] if scanned.caption else [],
+            tags=tags,
             num_repeats=scanned.num_repeats,
             is_reg=scanned.is_reg,
             split=scanned.split,
@@ -824,6 +861,8 @@ def create_manifest_from_config(
         latent_channels=latent_channels,
         latent_scale_factor=latent_scale_factor,
         latent_dtype=latent_dtype,
+        caption_separator=data_config.caption.caption_separator,
+        keep_tokens_separator=data_config.caption.keep_tokens_separator,
     )
 
 

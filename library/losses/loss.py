@@ -2,6 +2,8 @@ import math
 import kornia
 import torch
 
+from library.config.dataclasses.loss import HuberConfig, LossConfig
+
 
 class LossRecorder:
     """
@@ -99,12 +101,12 @@ class EMARecorder:
         return self.ema / correction_factor
 
 
-def get_huber_threshold_if_needed(args, timesteps: torch.Tensor, noise_scheduler) -> torch.Tensor | None:
+def get_huber_threshold_if_needed(loss_config: LossConfig, huber_config: HuberConfig, timesteps: torch.Tensor, noise_scheduler) -> torch.Tensor | None:
     """
     Calculates the Huber loss threshold based on the configured schedule.
 
     Args:
-        args: Configuration arguments containing loss settings.
+        huber_config: Configuration arguments containing loss settings.
         timesteps (torch.Tensor): Tensor of current timesteps.
         noise_scheduler: The noise scheduler used during training.
 
@@ -114,7 +116,7 @@ def get_huber_threshold_if_needed(args, timesteps: torch.Tensor, noise_scheduler
     Raises:
         NotImplementedError: If the specified Huber schedule is not supported.
     """
-    if args.loss_type not in {
+    if loss_config.loss_type not in {
         "huber",
         "smooth_l1",
         "standard_pseudo_huber",
@@ -126,20 +128,20 @@ def get_huber_threshold_if_needed(args, timesteps: torch.Tensor, noise_scheduler
     }:
         return None
 
-    if args.huber_schedule == "constant":
-        result = torch.tensor(args.huber_c * float(args.huber_scale), device=timesteps.device)
-    elif args.huber_schedule == "exponential":
-        alpha = -math.log(args.huber_c) / noise_scheduler.config.num_train_timesteps
-        result = torch.exp(-alpha * timesteps) * float(args.huber_scale)
-    elif args.huber_schedule == "snr":
+    if huber_config.huber_schedule == "constant":
+        result = torch.tensor(huber_config.huber_c * float(huber_config.huber_scale), device=timesteps.device)
+    elif huber_config.huber_schedule == "exponential":
+        alpha = -math.log(huber_config.huber_c) / noise_scheduler.config.num_train_timesteps
+        result = torch.exp(-alpha * timesteps) * float(huber_config.huber_scale)
+    elif huber_config.huber_schedule == "snr":
         if not hasattr(noise_scheduler, "alphas_cumprod"):
             raise NotImplementedError("Huber schedule 'snr' is not supported with the current model.")
         alphas_cumprod = torch.index_select(noise_scheduler.alphas_cumprod, 0, timesteps)
         sigmas = ((1.0 - alphas_cumprod) / alphas_cumprod) ** 0.5
-        result = (1 - args.huber_c) / (1 + sigmas) ** 2 + args.huber_c
+        result = (1 - huber_config.huber_c) / (1 + sigmas) ** 2 + huber_config.huber_c
         result = result.to(timesteps.device)
     else:
-        raise NotImplementedError(f"Unknown Huber loss schedule {args.huber_schedule}!")
+        raise NotImplementedError(f"Unknown Huber loss schedule {huber_config.huber_schedule}!")
 
     return result
 

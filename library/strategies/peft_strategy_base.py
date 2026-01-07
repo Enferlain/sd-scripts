@@ -432,7 +432,7 @@ class PeftTrainingStrategy(
         Returns:
             True if text encoder should be trained, False otherwise.
         """
-        return should_train_text_encoder(cfg.optimizer)
+        return should_train_text_encoder(cfg.optimizer.learning_rates)
 
     def is_train_unet(self, cfg: Any) -> bool:
         """
@@ -444,7 +444,7 @@ class PeftTrainingStrategy(
         Returns:
             True if UNet should be trained, False otherwise.
         """
-        return should_train_unet(cfg.optimizer)
+        return should_train_unet(cfg.optimizer.learning_rates)
 
     def cast_text_encoder(self, cfg: Any) -> bool:
         """

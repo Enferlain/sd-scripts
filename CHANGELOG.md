@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-07]
+
+### Added
+
+- **Smoke Test Progress**: Live training confirmed through epoch 1, 50+ steps completed
+- Large-scale dataset manifest optimization notes in `ROADMAP.md`
+
+### Fixed
+
+- **Config Access Fixes** (revealed by smoke test):
+  - `init_timestep_sampler()`: Pass `cfg.timestep` instead of full `cfg`
+  - `parse_dynamic_timestep_schedule()`: Pass `cfg.timestep` instead of full `cfg`
+  - `prepare_edm2_loss_weighting()`: Pass `cfg.loss.edm2` instead of `cfg.loss`
+  - `get_huber_threshold_if_needed()`: Updated signature to `(loss_config, huber_config, ...)` - now accepts `LossConfig` and `HuberConfig` separately
+  - `cfg.loss.masked` → `cfg.loss.masked.masked_loss` (accessing nested config properly)
+- **Device Placement**: `batch["loss_weights"].to(loss.device)` - tensor was on CPU
+- **OmegaConf Compatibility**: Fixed `asdict(metadata_config)` to handle OmegaConf `DictConfig` objects in `model_metadata.py`
+- **Learning Rate Defaults**: Centralized in `prepare_config()` - `unet` and `text_encoders` default to `base` if not set
+- **Cache Dir Fallback**: `prepare_config()` now sets `cache_dir = train_data_dir` if not specified
+- **Test Updates**: `test_losses_loss.py` updated to use `LossConfig`/`HuberConfig` dataclasses instead of mock `args`
+
 ## [2026-01-06]
 
 ### Added

@@ -499,7 +499,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         )
 
         if is_train:
-            huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
+            huber_c = get_huber_threshold_if_needed(cfg.loss, cfg.loss.huber, timesteps, noise_scheduler)
             loss = conditional_loss(
                 noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale)
             )

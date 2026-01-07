@@ -655,7 +655,7 @@ def train(cfg: SDXLFineTuneConfig):
                 else:
                     target = noise
 
-                huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
+                huber_c = get_huber_threshold_if_needed(cfg.loss, cfg.loss.huber, timesteps, noise_scheduler)
                 if (
                     cfg.loss.snr.min_snr_gamma
                     or cfg.loss.snr.scale_v_pred_loss_like_noise_pred

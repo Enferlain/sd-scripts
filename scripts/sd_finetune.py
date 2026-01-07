@@ -358,7 +358,7 @@ def train(cfg: SDFineTuneConfig):
                 else:
                     target = noise
 
-                huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
+                huber_c = get_huber_threshold_if_needed(cfg.loss, cfg.loss.huber, timesteps, noise_scheduler)
                 if cfg.loss.snr.min_snr_gamma or cfg.loss.snr.scale_v_pred_loss_like_noise_pred or cfg.loss.snr.debiased_estimation_loss:
                     loss = conditional_loss(
                         noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale)

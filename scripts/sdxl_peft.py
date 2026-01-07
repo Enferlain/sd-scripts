@@ -16,6 +16,7 @@ import gc
 import importlib
 import math
 import os
+from pathlib import Path
 import sys
 import random
 import time
@@ -52,6 +53,7 @@ from library.data.pipeline import (
     prepare_epoch,
     prepare_validation_epoch,
     create_manifest_from_config,
+    save_dataset_manifest,
 )
 from library.strategies.sdxl_caching import (
     SdxlLatentsPipelineStrategy,
@@ -93,7 +95,7 @@ from library.losses.edm2_loss_utils import prepare_edm2_loss_weighting, plot_edm
 try:
     import matplotlib.pyplot as plt
 except ImportError:
-    plt = None
+    plt = None  # type: ignore[assignment]
 
 init_ipex()
 
@@ -110,6 +112,10 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     set_torch_cuda_reduced_precision(cfg.performance.precision)
     deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed, cfg.data.loader)
     setup_logging(cfg.output.logging, reset=True)
+
+    # Validate required config fields
+    if not cfg.output.saving.save_model_as:
+        raise ValueError("save_model_as must be specified (safetensors, ckpt, or diffusers)")
 
     cache_latents = cfg.data.caching.cache_latents
     use_dreambooth_method = cfg.data.source.in_json is None
@@ -223,6 +229,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     # text_encoder is List[CLIPTextModel] or CLIPTextModel
     text_encoders = text_encoder if isinstance(text_encoder, list) else [text_encoder]
 
+    # Default cache_dir to train_data_dir if not specified
+    cache_dir = cfg.data.caching.cache_dir or cfg.data.source.train_data_dir
+
     # Cache latents using new pipeline (Phase C)
     latent_strategy = SdxlLatentsPipelineStrategy(
         flip_aug=cfg.data.preprocessing.flip_aug,
@@ -241,7 +250,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             manifest=train_manifest,
             model=vae,
             accelerator=accelerator,
-            cache_dir=cfg.data.caching.cache_dir,
+            cache_dir=cache_dir,
             flip_aug=cfg.data.preprocessing.flip_aug,
         )
         if val_manifest is not None:
@@ -249,7 +258,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 manifest=val_manifest,
                 model=vae,
                 accelerator=accelerator,
-                cache_dir=cfg.data.caching.cache_dir,
+                cache_dir=cache_dir,
                 flip_aug=False,  # No flip aug for validation
             )
 
@@ -283,14 +292,14 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             manifest=train_manifest,
             model=tuple(text_encoders),  # SDXL: (clip_l, clip_g)
             accelerator=accelerator,
-            cache_dir=cfg.data.caching.cache_dir,
+            cache_dir=cache_dir,
         )
         if val_manifest is not None:
             val_manifest = te_caching_engine.cache_dataset(
                 manifest=val_manifest,
                 model=tuple(text_encoders),
                 accelerator=accelerator,
-                cache_dir=cfg.data.caching.cache_dir,
+                cache_dir=cache_dir,
             )
 
         # Move text encoders back to CPU to save VRAM
@@ -298,6 +307,14 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             t_enc.to("cpu")
         clean_memory_on_device(accelerator.device)
         accelerator.wait_for_everyone()
+
+    # Save manifests for debugging and resume
+    if accelerator.is_main_process:
+        manifest_path = Path(cache_dir) / "dataset_manifest.json"
+        save_dataset_manifest(train_manifest, manifest_path)
+        if val_manifest is not None:
+            val_manifest_path = Path(cache_dir) / "val_manifest.json"
+            save_dataset_manifest(val_manifest, val_manifest_path)
 
     if unet is None:
         # lazy load unet if needed. text encoders may be freed or replaced with dummy models for saving memory
@@ -389,14 +406,13 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
     if cfg.performance.memory.gradient_checkpointing:
         if cfg.performance.memory.cpu_offload_checkpointing:
-            unet.enable_gradient_checkpointing(cpu_offload=True)
+            unet.enable_gradient_checkpointing(cpu_offload=True)  # type: ignore[misc]
         else:
-            unet.enable_gradient_checkpointing()
+            unet.enable_gradient_checkpointing()  # type: ignore[misc]
 
         for t_enc, flag in zip(text_encoders, strategies.get_text_encoders_train_flags(cfg, text_encoders)):
-            if flag:
-                if t_enc.supports_gradient_checkpointing:
-                    t_enc.gradient_checkpointing_enable()
+            if flag and t_enc.supports_gradient_checkpointing:
+                t_enc.gradient_checkpointing_enable()
         del t_enc
         adapter.enable_gradient_checkpointing()  # may be overwritten by "adapter_multipliers" in the next step
 
@@ -633,7 +649,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     noise_scheduler = strategies.get_noise_scheduler(cfg, accelerator.device)
 
     # --- Custom Timestep Sampler Initialization ---
-    strategies.la_sampler = init_timestep_sampler(cfg, noise_scheduler, accelerator)
+    strategies.la_sampler = init_timestep_sampler(cfg.timestep, noise_scheduler, accelerator)
 
     # --- LIVE PLOTTER & STATIC PLOT SETUP ---
     timestep_counts = None
@@ -641,7 +657,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     if is_main_process:
         timestep_counts, plotter_settings = setup_live_plotter(cfg, noise_scheduler, strategies.la_sampler, strategies)
 
-    edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss, cfg.training, noise_scheduler, accelerator)
+    edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss.edm2, cfg.training, noise_scheduler, accelerator)
 
     init_trackers(accelerator, cfg.output.logging, "adapter_train")
 
@@ -657,7 +673,9 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     if hasattr(accelerator.unwrap_model(adapter), "on_step_start"):
         on_step_start_for_adapter = accelerator.unwrap_model(adapter).on_step_start
     else:
-        on_step_start_for_adapter = lambda *args, **kwargs: None
+
+        def on_step_start_for_adapter(*args, **kwargs) -> None:  # noqa: ARG001
+            pass
 
     # function for saving/removing
     def save_model(
@@ -680,7 +698,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         modelspec_metadata = strategies.get_model_metadata(cfg)
         metadata_to_save.update(modelspec_metadata)
 
-        unwrapped_nw.save_weights(ckpt_file, dtype_override or save_dtype, metadata_to_save)
+        unwrapped_nw.save_weights(ckpt_file, dtype_override or save_dtype, metadata_to_save)  # type: ignore[misc]
         if cfg.output.huggingface.huggingface_repo_id is not None:
             huggingface_util.upload(cfg.output.huggingface, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
 
@@ -746,8 +764,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         optimizer_train_fn()
         accelerator.unwrap_model(adapter).train()
 
-    if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
-        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
+    if plot_edm2_loss_weighting_check(cfg.loss.edm2, cfg.training, global_step):
+        plot_edm2_loss_weighting(cfg.loss.edm2, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
 
     is_tracking = len(accelerator.trackers) > 0
     if is_tracking:
@@ -791,7 +809,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
     # --- Dynamic Timestep Schedule ---
     dynamic_timestep_schedule, current_min_timestep, current_max_timestep = parse_dynamic_timestep_schedule(
-        cfg, noise_scheduler, accelerator
+        cfg.timestep, noise_scheduler, accelerator
     )
 
     clean_memory_on_device(accelerator.device)
@@ -858,7 +876,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             # --- Add this block to update the timesteps range ---
             if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= dynamic_timestep_schedule[0][0]:
                 # Get the next schedule stage and remove it from the list
-                _, new_min, new_max = dynamic_timestep_schedule.pop(0)
+                _, new_min, new_max = dynamic_timestep_schedule.pop(0)  # type: ignore[misc]
                 current_min_timestep = new_min
                 current_max_timestep = new_max
                 accelerator.print(
@@ -1014,13 +1032,16 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                                     )
                                     remove_model(remove_loss_weights_ckpt_name)
 
-                    if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
-                        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
+                    if plot_edm2_loss_weighting_check(cfg.loss.edm2, cfg.training, global_step):
+                        plot_edm2_loss_weighting(
+                            cfg.loss.edm2, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device
+                        )
                     optimizer_train_fn()
                     accelerator.unwrap_model(adapter).train()
 
             current_global_step_loss += loss.detach().item()
             if cfg.loss.edm2.edm2_loss_weighting:
+                assert loss_scaled is not None and current_global_step_loss_scaled is not None
                 current_global_step_loss_scaled += loss_scaled.detach().item()
             else:
                 current_global_step_loss_scaled = None
@@ -1028,6 +1049,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             if accelerator.sync_gradients:
                 loss_recorder.add(current_global_step_loss / accumulation_counter)
                 if cfg.loss.edm2.edm2_loss_weighting:
+                    assert loss_scaled_recorder is not None and current_global_step_loss_scaled is not None
                     loss_scaled_recorder.add(current_global_step_loss_scaled / accumulation_counter)
                 avr_loss: float = loss_recorder.average
                 logs = {"avr_loss": avr_loss}  # , "lr": lr_scheduler.get_last_lr()[0]}
@@ -1036,6 +1058,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 if is_tracking:
                     current_global_step_loss = current_global_step_loss / accumulation_counter
                     if cfg.loss.edm2.edm2_loss_weighting:
+                        assert current_global_step_loss_scaled is not None and loss_scaled_recorder is not None
                         current_global_step_loss_scaled = current_global_step_loss_scaled / accumulation_counter
                         average_loss_scaled: float = loss_scaled_recorder.average
                     else:
@@ -1089,7 +1112,10 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                         unique, counts = np.unique(timesteps_np, return_counts=True)
                         timestep_counts[unique] += counts
 
-                        if global_step % cfg.output.logging.log_timestep_distribution_every_n_steps == 0:
+                        if (
+                            cfg.output.logging.log_timestep_distribution_every_n_steps
+                            and global_step % cfg.output.logging.log_timestep_distribution_every_n_steps == 0
+                        ):
                             save_timestep_distribution_plot(cfg, global_step, timestep_counts, plotter_settings)
 
             if global_step >= cfg.training.max_train_steps:
@@ -1106,7 +1132,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             # 指定エポックごとにモデルを保存
             optimizer_eval_fn()
             accelerator.unwrap_model(adapter).eval()
-            if cfg.output.saving.save_every_n_epochs is not None:
+            if cfg.output.saving.save_every_n_epochs is not None and cfg.output.saving.save_every_n_epochs > 0:
                 saving = current_epoch.value % cfg.output.saving.save_every_n_epochs == 0 and current_epoch.value < num_train_epochs
                 if is_main_process and saving:
                     ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, current_epoch.value)

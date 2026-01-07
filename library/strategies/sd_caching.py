@@ -14,7 +14,7 @@ from PIL import Image
 from safetensors.torch import save_file
 
 from library.data.pipeline.caching_engine import CachingStrategy
-from library.data.pipeline.dataclasses import CacheEntry
+from library.data.pipeline.dataclasses import CacheData, CacheEntry
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -55,9 +55,10 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         """
         Generate cache file path for an entry.
 
-        Format: {cache_dir}/{entry.id}_sd_latents.safetensors
+        Format: {cache_dir}/{entry.id}_{width}x{height}_sd_latents.safetensors
         """
-        return cache_dir / f"{entry.id}{self.cache_suffix}"
+        w, h = entry.bucket_reso
+        return cache_dir / f"{entry.id}_{w}x{h}{self.cache_suffix}"
 
     def encode_batch(
         self,
@@ -135,7 +136,7 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         metadata = data.get("metadata", {})
         save_file(tensors, str(path), metadata=metadata)
 
-    def load_cache(self, path: Path) -> "CacheData":
+    def load_cache(self, path: Path) -> CacheData:
         """
         Load cached latents from a .safetensors file.
 
