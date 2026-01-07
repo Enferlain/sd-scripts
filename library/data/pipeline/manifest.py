@@ -4,16 +4,144 @@ Manifest reading and writing utilities.
 Handles JSON serialization/deserialization of DatasetManifest and EpochManifest.
 """
 
+import hashlib
 import json
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from library.data.pipeline.dataclasses import DatasetManifest, CacheEntry, Bucket, EpochManifest, BatchInfo
 from library.utils.common_utils import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+
+def compute_config_hash(
+    cache_dir: str,
+    resolution: tuple[int, int],
+    bucket_reso_steps: int,
+    max_token_length: int | None,
+    image_count: int,
+) -> str:
+    """
+    Compute a hash of settings that affect cache validity.
+
+    If this hash changes, the manifest needs to be rebuilt.
+
+    Args:
+        cache_dir: Directory for cache files.
+        resolution: Base training resolution.
+        bucket_reso_steps: Bucket resolution step size.
+        max_token_length: Max token length for TE caching.
+        image_count: Number of images in dataset.
+
+    Returns:
+        Hex string hash.
+    """
+    relevant = {
+        "cache_dir": cache_dir,
+        "resolution": resolution,
+        "bucket_reso_steps": bucket_reso_steps,
+        "max_token_length": max_token_length,
+        "image_count": image_count,
+    }
+    data = json.dumps(relevant, sort_keys=True)
+    return hashlib.sha256(data.encode()).hexdigest()[:16]
+
+
+def get_or_create_manifest(
+    data_config: Any,
+    cache_dir: str | Path,
+    latent_dtype: str = "fp16",
+    validation_split: float = 0.0,
+    validation_seed: int | None = None,
+) -> tuple[DatasetManifest, DatasetManifest | None]:
+    """
+    Load existing manifest if config unchanged, otherwise create new.
+
+    This enables fast resume - unchanged runs skip manifest rebuild.
+
+    Args:
+        data_config: DataConfig with source, preprocessing, bucketing settings.
+        cache_dir: Directory for cache files and manifest storage.
+        latent_dtype: Data type for latents.
+        validation_split: Fraction for validation split.
+        validation_seed: Seed for validation split.
+
+    Returns:
+        Tuple of (train_manifest, val_manifest or None).
+    """
+    # Import here to avoid circular dependency
+    from library.data.pipeline.dataset_scanner import create_manifest_from_config
+
+    cache_dir = Path(cache_dir)
+    manifest_path = cache_dir / "dataset_manifest.json"
+    val_manifest_path = cache_dir / "val_manifest.json"
+
+    # Try to load existing manifest
+    if manifest_path.exists():
+        try:
+            existing = load_dataset_manifest(manifest_path)
+            # TODO: Compute current hash and compare with existing.config_hash
+            # For now, just load if present (user can delete to force rebuild)
+            logger.info(f"Loaded existing manifest with {len(existing.entries)} entries")
+
+            # Load validation manifest if exists
+            val_manifest = None
+            if val_manifest_path.exists():
+                val_manifest = load_dataset_manifest(val_manifest_path)
+                logger.info(f"Loaded existing validation manifest with {len(val_manifest.entries)} entries")
+
+            return existing, val_manifest
+        except Exception as e:
+            logger.warning(f"Failed to load existing manifest: {e}, will recreate")
+
+    # Create new manifest
+    logger.info("Creating new dataset manifest...")
+    train_manifest = create_manifest_from_config(
+        data_config=data_config,
+        cache_dir=cache_dir,
+        latent_dtype=latent_dtype,
+        validation=False,
+        validation_split=validation_split,
+        validation_seed=validation_seed,
+    )
+
+    # Split into train/val if validation_split > 0
+    val_manifest = None
+    if validation_split > 0:
+        train_entries = {k: v for k, v in train_manifest.entries.items() if v.split == "train"}
+        val_entries = {k: v for k, v in train_manifest.entries.items() if v.split == "val"}
+
+        if val_entries:
+            # Create separate val manifest
+            val_manifest = DatasetManifest(
+                version=train_manifest.version,
+                created_at=train_manifest.created_at,
+                base_resolution=train_manifest.base_resolution,
+                bucket_reso_steps=train_manifest.bucket_reso_steps,
+                min_bucket_reso=train_manifest.min_bucket_reso,
+                max_bucket_reso=train_manifest.max_bucket_reso,
+                latent_channels=train_manifest.latent_channels,
+                latent_scale_factor=train_manifest.latent_scale_factor,
+                latent_dtype=train_manifest.latent_dtype,
+                cache_dir=train_manifest.cache_dir,
+                entries=val_entries,
+                buckets={},  # Will recompute if needed
+            )
+
+            # Update train manifest to only have train entries
+            train_manifest.entries = train_entries
+
+    # Save manifests
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    save_dataset_manifest(train_manifest, manifest_path)
+    if val_manifest:
+        save_dataset_manifest(val_manifest, val_manifest_path)
+
+    return train_manifest, val_manifest
 
 
 def save_dataset_manifest(manifest: DatasetManifest, path: str | Path) -> None:
@@ -39,6 +167,8 @@ def save_dataset_manifest(manifest: DatasetManifest, path: str | Path) -> None:
             "latent_channels": manifest.latent_channels,
             "latent_scale_factor": manifest.latent_scale_factor,
             "latent_dtype": manifest.latent_dtype,
+            "cache_dir": manifest.cache_dir,
+            "config_hash": manifest.config_hash,
         },
         "entries": {id: _entry_to_dict(entry) for id, entry in manifest.entries.items()},
         "buckets": {key: _bucket_to_dict(bucket) for key, bucket in manifest.buckets.items()},
@@ -92,6 +222,8 @@ def load_dataset_manifest(path: str | Path) -> DatasetManifest:
         latent_channels=config.get("latent_channels", 4),
         latent_scale_factor=config.get("latent_scale_factor", 8),
         latent_dtype=config.get("latent_dtype", "fp16"),
+        cache_dir=config.get("cache_dir", ""),
+        config_hash=config.get("config_hash", ""),
         entries=entries,
         buckets=buckets,
     )

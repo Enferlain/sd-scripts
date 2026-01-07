@@ -51,14 +51,8 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         self.dtype = dtype
         self._torch_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[dtype]
 
-    def get_cache_path(self, entry: CacheEntry, cache_dir: Path) -> Path:
-        """
-        Generate cache file path for an entry.
-
-        Format: {cache_dir}/{entry.id}_{width}x{height}_sd_latents.safetensors
-        """
-        w, h = entry.bucket_reso
-        return cache_dir / f"{entry.id}_{w}x{h}{self.cache_suffix}"
+    # Note: get_entry_cache_path() is inherited from CachingStrategy base class
+    # and returns entry.latent_cache_path by default - no override needed
 
     def encode_batch(
         self,

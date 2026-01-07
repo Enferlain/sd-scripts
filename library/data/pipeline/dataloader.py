@@ -294,14 +294,23 @@ class TrainingDataset(IterableDataset):
             batch["input_ids"] = {encoder_name: torch.tensor(tokens) for encoder_name, tokens in batch_info.input_ids.items()}
 
         # Load text encoder outputs if available
-        if self.te_strategy and entries[0].te_cache_path:
+        # Priority: 1) in-memory (entry.te_outputs), 2) disk cache (entry.te_cache_path)
+        first_entry_te = entries[0].te_outputs
+        if first_entry_te is not None:
+            # In-memory mode: stack from entries
+            te_outputs = {}
+            for key in first_entry_te:
+                te_outputs[key] = torch.stack([e.te_outputs[key] for e in entries if e.te_outputs is not None], dim=0)
+            batch["text_encoder_outputs"] = te_outputs
+        elif self.te_strategy and entries[0].te_cache_path:
+            # Disk mode: load from files
             te_outputs = self._load_te_outputs(entries)
             batch["text_encoder_outputs"] = te_outputs
 
         return batch
 
     def _load_te_outputs(self, entries: list[CacheEntry]) -> dict[str, torch.Tensor]:
-        """Load and batch text encoder outputs."""
+        """Load and batch text encoder outputs from disk cache."""
         from pathlib import Path
 
         assert self.te_strategy is not None

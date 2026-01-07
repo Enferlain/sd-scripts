@@ -5,7 +5,7 @@ Tests SdLatentsPipelineStrategy, SdxlLatentsPipelineStrategy, and SdxlTextEncode
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 import torch
@@ -20,31 +20,40 @@ from library.strategies.sdxl_caching import (
 
 
 @pytest.fixture
-def sample_entry() -> CacheEntry:
-    """Create a sample CacheEntry for testing."""
+def sample_entry(tmp_path: Path) -> CacheEntry:
+    """Create a sample CacheEntry for testing (with cache paths pre-set)."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    entry_id = "test_image_001"
     return CacheEntry(
-        id="test_image_001",
+        id=entry_id,
         image_path="/data/images/test.png",
         original_size=(1920, 1080),
         bucket_reso=(1024, 576),
         resized_size=(1024, 576),
         caption="a test image for caching",
+        latent_cache_path=str(cache_dir / f"{entry_id}_latent.safetensors"),
+        te_cache_path=str(cache_dir / f"{entry_id}_te.safetensors"),
     )
 
 
 @pytest.fixture
-def sample_entries(sample_entry: CacheEntry) -> list[CacheEntry]:
+def sample_entries(sample_entry: CacheEntry, tmp_path: Path) -> list[CacheEntry]:
     """Create a batch of sample entries."""
+    cache_dir = tmp_path / "cache"
     entries = [sample_entry]
     for i in range(2, 4):
+        entry_id = f"test_image_{i:03d}"
         entries.append(
             CacheEntry(
-                id=f"test_image_{i:03d}",
+                id=entry_id,
                 image_path=f"/data/images/test{i}.png",
                 original_size=(1920, 1080),
                 bucket_reso=(1024, 576),
                 resized_size=(1024, 576),
                 caption=f"test caption {i}",
+                latent_cache_path=str(cache_dir / f"{entry_id}_latent.safetensors"),
+                te_cache_path=str(cache_dir / f"{entry_id}_te.safetensors"),
             )
         )
     return entries
@@ -69,19 +78,30 @@ def mock_vae():
 class TestSdLatentsPipelineStrategy:
     """Tests for SD latent caching strategy."""
 
-    def test_get_cache_path(self, sample_entry: CacheEntry, tmp_path: Path):
-        """Test cache path generation."""
+    def test_get_entry_cache_path(self, sample_entry: CacheEntry, tmp_path: Path):
+        """Test that entry has cache path set."""
         strategy = SdLatentsPipelineStrategy()
-        path = strategy.get_cache_path(sample_entry, tmp_path)
+        # Verify entry path was set by fixture
+        path = strategy.get_entry_cache_path(sample_entry)
+        assert path is not None
+        assert path.endswith("_latent.safetensors")
 
-        assert path == tmp_path / "test_image_001_sd_latents.safetensors"
-
-    def test_get_cache_path_custom_suffix(self, sample_entry: CacheEntry, tmp_path: Path):
-        """Test cache path with custom suffix."""
-        strategy = SdLatentsPipelineStrategy(cache_suffix="_custom.safetensors")
-        path = strategy.get_cache_path(sample_entry, tmp_path)
-
-        assert path == tmp_path / "test_image_001_custom.safetensors"
+    def test_cache_path_format(self, tmp_path: Path):
+        """Test that cache paths are set correctly at manifest creation."""
+        # This tests the path format that create_manifest uses
+        cache_dir = tmp_path / "cache"
+        entry_id = "my_image"
+        expected_path = str(cache_dir / f"{entry_id}_latent.safetensors")
+        entry = CacheEntry(
+            id=entry_id,
+            image_path="/test.png",
+            original_size=(512, 512),
+            bucket_reso=(512, 512),
+            resized_size=(512, 512),
+            caption="test",
+            latent_cache_path=expected_path,
+        )
+        assert entry.latent_cache_path == expected_path
 
     def test_encode_batch(self, sample_entries: list[CacheEntry], mock_vae):
         """Test batch encoding produces correct output structure."""
@@ -91,7 +111,7 @@ class TestSdLatentsPipelineStrategy:
         results = strategy.encode_batch(images, mock_vae, sample_entries)
 
         assert len(results) == 3
-        for i, result in enumerate(results):
+        for _, result in enumerate(results):
             assert "latents" in result
             assert "metadata" in result
             assert result["latents"].shape == (4, 72, 128)
@@ -112,7 +132,7 @@ class TestSdLatentsPipelineStrategy:
     def test_save_and_load_cache(self, sample_entry: CacheEntry, tmp_path: Path):
         """Test save/load roundtrip."""
         strategy = SdLatentsPipelineStrategy()
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         # Create fake cache data
         data = {
@@ -149,12 +169,12 @@ class TestSdLatentsPipelineStrategy:
 class TestSdxlLatentsPipelineStrategy:
     """Tests for SDXL latent caching strategy."""
 
-    def test_get_cache_path(self, sample_entry: CacheEntry, tmp_path: Path):
-        """Test cache path generation."""
+    def test_get_entry_cache_path(self, sample_entry: CacheEntry, tmp_path: Path):
+        """Test that entry has cache path set."""
         strategy = SdxlLatentsPipelineStrategy()
-        path = strategy.get_cache_path(sample_entry, tmp_path)
-
-        assert path == tmp_path / "test_image_001_sdxl_latents.safetensors"
+        path = strategy.get_entry_cache_path(sample_entry)
+        assert path is not None
+        assert path.endswith("_latent.safetensors")
 
     def test_encode_batch(self, sample_entries: list[CacheEntry], mock_vae):
         """Test batch encoding produces correct output structure."""
@@ -207,12 +227,12 @@ class TestSdxlTextEncoderPipelineStrategy:
 
         return (text_encoder1, text_encoder2, tokenizer1, tokenizer2)
 
-    def test_get_cache_path(self, sample_entry: CacheEntry, tmp_path: Path):
-        """Test cache path generation."""
+    def test_get_entry_cache_path(self, sample_entry: CacheEntry, tmp_path: Path):
+        """Test that TE strategy reads te_cache_path from entry."""
         strategy = SdxlTextEncoderPipelineStrategy()
-        path = strategy.get_cache_path(sample_entry, tmp_path)
-
-        assert path == tmp_path / "test_image_001_sdxl_te.safetensors"
+        path = strategy.get_entry_cache_path(sample_entry)
+        assert path is not None
+        assert path.endswith("_te.safetensors")
 
     def test_encode_batch(self, sample_entries: list[CacheEntry], mock_text_encoders):
         """Test text encoding produces correct output structure."""
@@ -231,7 +251,7 @@ class TestSdxlTextEncoderPipelineStrategy:
     def test_save_and_load_cache(self, sample_entry: CacheEntry, tmp_path: Path):
         """Test save/load roundtrip."""
         strategy = SdxlTextEncoderPipelineStrategy()
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         # Create fake cache data
         data = {

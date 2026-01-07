@@ -35,7 +35,7 @@ class MockCachingStrategy(CachingStrategy):
         mock_data.aux = {"hidden_state1": torch.randn(1, 77, 768)}
         return mock_data
 
-    def get_cache_path(self, *args, **kwargs):
+    def get_entry_cache_path(self, entry):
         return Path("/tmp/mock")
 
     def is_cache_valid(self, *args, **kwargs):

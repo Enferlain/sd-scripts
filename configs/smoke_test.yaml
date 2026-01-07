@@ -16,8 +16,8 @@ model:
 # ─── TRAINING ───────────────────────────────────────────────────────────────
 training:
   max_train_steps: 100
-  train_batch_size: 1
-  gradient_accumulation_steps: 8
+  train_batch_size: 2
+  gradient_accumulation_steps: 1
   seed: 218
   max_token_length: 225
 
@@ -40,6 +40,7 @@ data:
   caching:
     cache_latents: true
     cache_latents_to_disk: true
+    cache_text_encoder_outputs: true
     cache_dir: "D:/Projects/sd-scripts/tests/assets/images"
   loader:
     num_workers: 0

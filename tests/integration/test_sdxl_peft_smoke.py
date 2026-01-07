@@ -287,7 +287,7 @@ class TestCachingIntegration:
 
             # Load each cache file and verify contents
             for entry in manifest.entries.values():
-                cache_path = strategy.get_cache_path(entry, cache_dir)
+                cache_path = Path(entry.latent_cache_path)
                 assert cache_path.exists(), f"Cache file missing: {cache_path}"
 
                 # Load from disk
@@ -594,7 +594,7 @@ class TestTextEncoderCaching:
 
             # Load each TE cache and verify contents
             for entry in manifest.entries.values():
-                cache_path = strategy.get_cache_path(entry, cache_dir)
+                cache_path = Path(entry.latent_cache_path)
                 assert cache_path.exists(), f"TE cache file missing: {cache_path}"
 
                 # Load from disk

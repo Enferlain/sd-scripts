@@ -275,32 +275,87 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     # Phase D: Text Encoder caching using new pipeline
     te_strategy = None
     if cfg.data.caching.cache_text_encoder_outputs:
-        te_strategy = SdxlTextEncoderPipelineStrategy(
-            max_token_length=cfg.training.max_token_length,
-        )
-        te_caching_engine = CachingEngine(
-            strategy=te_strategy,
-            batch_size=cfg.data.caching.vae_batch_size,
-        )
         # Move text encoders to GPU for caching
         for t_enc in text_encoders:
             t_enc.to(accelerator.device)
             t_enc.requires_grad_(False)
             t_enc.eval()
 
-        train_manifest = te_caching_engine.cache_dataset(
-            manifest=train_manifest,
-            model=tuple(text_encoders),  # SDXL: (clip_l, clip_g)
-            accelerator=accelerator,
-            cache_dir=cache_dir,
-        )
-        if val_manifest is not None:
-            val_manifest = te_caching_engine.cache_dataset(
-                manifest=val_manifest,
-                model=tuple(text_encoders),
+        if cfg.data.caching.cache_text_encoder_outputs_to_disk:
+            # Disk-based TE caching: use CachingEngine
+            te_strategy = SdxlTextEncoderPipelineStrategy(
+                max_token_length=cfg.training.max_token_length,
+            )
+            te_caching_engine = CachingEngine(
+                strategy=te_strategy,
+                batch_size=cfg.data.caching.vae_batch_size,
+            )
+
+            train_manifest = te_caching_engine.cache_dataset(
+                manifest=train_manifest,
+                model=(*text_encoders, *tokenizers),  # SDXL: (clip_l_enc, clip_g_enc, clip_l_tok, clip_g_tok)
                 accelerator=accelerator,
                 cache_dir=cache_dir,
             )
+            if val_manifest is not None:
+                val_manifest = te_caching_engine.cache_dataset(
+                    manifest=val_manifest,
+                    model=(*text_encoders, *tokenizers),
+                    accelerator=accelerator,
+                    cache_dir=cache_dir,
+                )
+        else:
+            # In-memory TE caching: compute and store in entry.te_outputs
+            from library.strategies.peft_strategy_sdxl import tokenize_sdxl_captions
+            from library.models.text_encoder_util import get_hidden_states_sdxl
+
+            logger.info("Computing text encoder outputs in memory...")
+            for entry in tqdm(train_manifest.entries.values(), desc="TE caching (memory)", disable=accelerator.process_index != 0):
+                input_ids1, input_ids2 = tokenize_sdxl_captions(
+                    tokenizers[0], tokenizers[1], [entry.caption], cfg.training.max_token_length
+                )
+                input_ids1 = input_ids1.to(accelerator.device)
+                input_ids2 = input_ids2.to(accelerator.device)
+
+                with torch.no_grad():
+                    hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
+                        cfg.training.max_token_length,
+                        input_ids1,
+                        input_ids2,
+                        tokenizers[0],
+                        tokenizers[1],
+                        text_encoders[0],
+                        text_encoders[1],
+                    )
+                    entry.te_outputs = {
+                        "hidden_state1": hidden_state1.cpu(),
+                        "hidden_state2": hidden_state2.cpu(),
+                        "pool2": pool2.cpu(),
+                    }
+
+            if val_manifest is not None:
+                for entry in val_manifest.entries.values():
+                    input_ids1, input_ids2 = tokenize_sdxl_captions(
+                        tokenizers[0], tokenizers[1], [entry.caption], cfg.training.max_token_length
+                    )
+                    input_ids1 = input_ids1.to(accelerator.device)
+                    input_ids2 = input_ids2.to(accelerator.device)
+
+                    with torch.no_grad():
+                        hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
+                            cfg.training.max_token_length,
+                            input_ids1,
+                            input_ids2,
+                            tokenizers[0],
+                            tokenizers[1],
+                            text_encoders[0],
+                            text_encoders[1],
+                        )
+                        entry.te_outputs = {
+                            "hidden_state1": hidden_state1.cpu(),
+                            "hidden_state2": hidden_state2.cpu(),
+                            "pool2": pool2.cpu(),
+                        }
 
         # Move text encoders back to CPU to save VRAM
         for t_enc in text_encoders:

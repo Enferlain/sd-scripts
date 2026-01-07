@@ -103,7 +103,7 @@ def training_config():
 def loader_config():
     """Basic LoaderConfig for testing."""
     return LoaderConfig(
-        max_workers=8,
+        num_workers=8,
         persistent_workers=False,
     )
 
@@ -118,20 +118,20 @@ class TestPrepareDeepspeedConfig:
 
     def test_disabled_deepspeed_does_nothing(self, deepspeed_config_disabled, loader_config):
         """When deepspeed is disabled, loader_config should not be modified."""
-        original_workers = loader_config.max_workers
+        original_workers = loader_config.num_workers
 
         prepare_deepspeed_config(deepspeed_config_disabled, loader_config)
 
         # Should remain unchanged
-        assert loader_config.max_workers == original_workers
+        assert loader_config.num_workers == original_workers
 
     def test_enabled_deepspeed_sets_workers_to_one(self, deepspeed_config_enabled, loader_config):
-        """When deepspeed is enabled, max_workers should be set to 1."""
-        assert loader_config.max_workers == 8  # Initial value
+        """When deepspeed is enabled, num_workers should be set to 1."""
+        assert loader_config.num_workers == 8  # Initial value
 
         prepare_deepspeed_config(deepspeed_config_enabled, loader_config)
 
-        assert loader_config.max_workers == 1
+        assert loader_config.num_workers == 1
 
     def test_enabled_deepspeed_no_loader_config(self, deepspeed_config_enabled):
         """When loader_config is None, should not raise error."""

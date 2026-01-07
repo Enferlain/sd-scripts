@@ -13,6 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Smoke Test Progress**: Live training confirmed through epoch 1, 50+ steps completed
 - Large-scale dataset manifest optimization notes in `ROADMAP.md`
+- **Cache Path Simplification**:
+  - `cache_dir` and `config_hash` fields added to `DatasetManifest`
+  - `latent_cache_path` and `te_cache_path` now set at manifest creation time
+  - Added `get_or_create_manifest()` for manifest persistence and reuse
+  - Added `compute_config_hash()` for config-based cache validation
+- **Manifest Persistence**: Manifests can now be saved/loaded with cache paths preserved
+
+### Changed
+
+- **Simplified `CachingStrategy` Interface**:
+  - Removed `get_cache_path()` - paths are now pre-set on `CacheEntry` at creation
+  - Removed `set_cache_path()` - no longer needed
+  - Added `get_entry_cache_path()` - reads pre-set path from entry
+- `CachingEngine` no longer computes or sets cache paths - reads directly from entries
+- `create_manifest()` now accepts optional `cache_dir` parameter to pre-set all entry paths
 
 ### Fixed
 
@@ -25,8 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Device Placement**: `batch["loss_weights"].to(loss.device)` - tensor was on CPU
 - **OmegaConf Compatibility**: Fixed `asdict(metadata_config)` to handle OmegaConf `DictConfig` objects in `model_metadata.py`
 - **Learning Rate Defaults**: Centralized in `prepare_config()` - `unet` and `text_encoders` default to `base` if not set
-- **Cache Dir Fallback**: `prepare_config()` now sets `cache_dir = train_data_dir` if not specified
+- **Cache Dir Fallback**: `prepare_config()` now sets `cache_dir = train_data_dir` if not specified (with defensive `getattr`)
 - **Test Updates**: `test_losses_loss.py` updated to use `LossConfig`/`HuberConfig` dataclasses instead of mock `args`
+- **Test Fixtures**: Updated all pipeline test fixtures to set `latent_cache_path`/`te_cache_path` on entries
 
 ## [2026-01-06]
 

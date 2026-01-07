@@ -23,8 +23,9 @@ class MockCachingStrategy(CachingStrategy):
         self.encode_calls = []
         self.save_calls = []
 
-    def get_cache_path(self, entry: CacheEntry, cache_dir: Path) -> Path:
-        return cache_dir / f"{entry.id}.safetensors"
+    def get_entry_cache_path(self, entry: CacheEntry) -> str | None:
+        """Return pre-set latent cache path from entry."""
+        return entry.latent_cache_path
 
     def encode_batch(self, images, model, entries):
         self.encode_calls.append((images.shape, len(entries)))
@@ -74,8 +75,9 @@ def temp_dataset_dir():
 
 @pytest.fixture
 def sample_manifest(temp_dataset_dir):
-    """Create a sample manifest with entries."""
+    """Create a sample manifest with entries (cache paths pre-set)."""
     images_dir = temp_dataset_dir / "images"
+    cache_dir = temp_dataset_dir / "cache"
 
     entries = {}
     for i in range(5):
@@ -86,6 +88,7 @@ def sample_manifest(temp_dataset_dir):
             bucket_reso=(512, 512),
             resized_size=(512, 512),
             caption=f"test caption {i}",
+            latent_cache_path=str(cache_dir / f"img_{i:03d}.safetensors"),
         )
         entries[entry.id] = entry
 
@@ -100,6 +103,7 @@ def sample_manifest(temp_dataset_dir):
         entries=entries,
         buckets=buckets,
         base_resolution=(512, 512),
+        cache_dir=str(cache_dir),
     )
 
 
@@ -187,9 +191,9 @@ class TestCachingEngine:
         cache_dir.mkdir()
         mock_model = Mock()
 
-        # Pre-create cache for first 2 entries
+        # Pre-create cache for first 2 entries (paths already set on entries)
         for entry in list(sample_manifest.entries.values())[:2]:
-            cache_path = strategy.get_cache_path(entry, cache_dir)
+            cache_path = Path(entry.latent_cache_path)
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             cache_path.touch()
 
@@ -214,9 +218,9 @@ class TestCachingEngine:
         cache_dir.mkdir()
         mock_model = Mock()
 
-        # Pre-create cache for all entries
+        # Pre-create cache for all entries (paths already set on entries)
         for entry in sample_manifest.entries.values():
-            cache_path = strategy.get_cache_path(entry, cache_dir)
+            cache_path = Path(entry.latent_cache_path)
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             cache_path.touch()
 
@@ -241,7 +245,7 @@ class TestCachingEngine:
                 return False
             return path.exists()
 
-        strategy.is_cache_valid = Mock(side_effect=side_effect)
+        strategy.is_cache_valid = side_effect  # type: ignore[method-assign]
 
         engine = CachingEngine(strategy, batch_size=2)
 
@@ -249,9 +253,9 @@ class TestCachingEngine:
         cache_dir.mkdir()
         mock_model = Mock()
 
-        # Pre-create cache for all entries
+        # Pre-create cache for all entries (paths already set on entries)
         for entry in sample_manifest.entries.values():
-            cache_path = strategy.get_cache_path(entry, cache_dir)
+            cache_path = Path(entry.latent_cache_path)
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             cache_path.touch()
 

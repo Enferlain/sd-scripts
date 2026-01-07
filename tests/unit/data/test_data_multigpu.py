@@ -204,7 +204,7 @@ class TestPipelineMultiGPU(unittest.TestCase):
         logger.info("Test 4: Checking CachingEngine distribution...")
 
         mock_strategy = MagicMock(spec=CachingStrategy)
-        mock_strategy.get_cache_path.return_value = Path("/tmp/mock.safetensors")
+        mock_strategy.get_entry_cache_path.return_value = Path("/tmp/mock.safetensors")
         mock_strategy.is_cache_valid.return_value = False # Force caching
 
         engine = CachingEngine(mock_strategy, batch_size=1, num_workers=1)

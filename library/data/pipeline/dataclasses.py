@@ -111,7 +111,11 @@ class CacheEntry:
     """Path to cached VAE latent .safetensors file."""
 
     te_cache_path: str | None = None
-    """Path to cached text encoder output .safetensors file (when caching TE outputs)."""
+    """Path to cached text encoder output .safetensors file (when caching TE to disk)."""
+
+    # In-memory TE cache (when caching to memory, not disk)
+    te_outputs: dict[str, torch.Tensor] | None = None
+    """Cached TE outputs in memory: {'hidden_state1': tensor, 'hidden_state2': tensor, 'pool2': tensor}."""
 
     # Augmentation flags (determine if cache is valid)
     has_flipped: bool = False
@@ -279,6 +283,13 @@ class DatasetManifest:
 
     # Note: Flux 2 also uses patch_size [2, 2] which further affects latent dims.
     # This may need to be extended in the future for full Flux 2 support.
+
+    # Cache configuration
+    cache_dir: str = ""
+    """Directory for all cache files (latent, TE). Set once at manifest creation."""
+
+    config_hash: str = ""
+    """Hash of settings that affect cache validity. Used to detect when manifest needs rebuild."""
 
     # Data
     entries: dict[str, CacheEntry] = field(default_factory=dict)

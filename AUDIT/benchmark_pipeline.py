@@ -39,7 +39,7 @@ class MockCachingStrategy(CachingStrategy):
         return mock_data
 
     # Implement abstract methods to satisfy interface
-    def get_cache_path(self, *args, **kwargs): return Path("/tmp/mock")
+    def get_entry_cache_path(self, entry): return Path("/tmp/mock")
     def is_cache_valid(self, *args, **kwargs): return True
     def encode_batch(self, *args, **kwargs): return []
     def save_cache(self, *args, **kwargs): pass

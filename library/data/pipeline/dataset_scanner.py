@@ -609,6 +609,7 @@ def create_manifest(
     latent_dtype: str = "fp16",
     caption_separator: str = ", ",
     keep_tokens_separator: str = "",
+    cache_dir: str | None = None,
 ) -> DatasetManifest:
     """
     Create a DatasetManifest from scanned images.
@@ -626,6 +627,7 @@ def create_manifest(
         latent_dtype: Data type for cached latents.
         caption_separator: Separator for splitting caption into tags (default ", ").
         keep_tokens_separator: Separator marking fixed token regions (e.g. "|||").
+        cache_dir: Directory for cache files. If set, entry paths are computed at creation.
 
     Returns:
         DatasetManifest ready to save or use for caching.
@@ -662,7 +664,7 @@ def create_manifest(
         # Parse tags respecting keep_tokens_separator
         tags = _parse_tags(scanned.caption, caption_separator, keep_tokens_separator)
 
-        # Create entry
+        # Create entry with cache paths if cache_dir provided
         entry = CacheEntry(
             id=image_id,
             image_path=str(scanned.path),
@@ -676,6 +678,12 @@ def create_manifest(
             split=scanned.split,
             has_alpha_mask=scanned.has_alpha,
         )
+
+        # Set cache paths upfront if cache_dir is known
+        if cache_dir:
+            entry.latent_cache_path = f"{cache_dir}/{image_id}_latent.safetensors"
+            entry.te_cache_path = f"{cache_dir}/{image_id}_te.safetensors"
+
         entries[image_id] = entry
 
         # Add to bucket
@@ -695,6 +703,7 @@ def create_manifest(
         latent_channels=latent_channels,
         latent_scale_factor=latent_scale_factor,
         latent_dtype=latent_dtype,
+        cache_dir=cache_dir or "",
         entries=entries,
         buckets=buckets,
     )
@@ -863,6 +872,7 @@ def create_manifest_from_config(
         latent_dtype=latent_dtype,
         caption_separator=data_config.caption.caption_separator,
         keep_tokens_separator=data_config.caption.keep_tokens_separator,
+        cache_dir=str(cache_dir) if cache_dir else None,
     )
 
 

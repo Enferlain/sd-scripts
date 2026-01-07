@@ -23,15 +23,20 @@ from library.strategies.sdxl_caching import (
 
 
 @pytest.fixture
-def sample_entry() -> CacheEntry:
-    """Create a sample cache entry for testing."""
+def sample_entry(tmp_path: Path) -> CacheEntry:
+    """Create a sample cache entry for testing (with cache paths pre-set)."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    entry_id = "test_image_001"
     return CacheEntry(
-        id="test_image_001",
+        id=entry_id,
         image_path="/path/to/image.jpg",
         original_size=(1920, 1080),
         bucket_reso=(1024, 576),
         resized_size=(1024, 576),
         caption="a beautiful landscape with mountains",
+        latent_cache_path=str(cache_dir / f"{entry_id}_latent.safetensors"),
+        te_cache_path=str(cache_dir / f"{entry_id}_te.safetensors"),
     )
 
 
@@ -62,7 +67,7 @@ class TestSdxlLatentsSaveLoad:
     def test_save_and_load_preserves_latents(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
         """Test that saved latents can be loaded back with identical values."""
         strategy = SdxlLatentsPipelineStrategy(dtype="fp32")
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         # Create fake image tensor matching bucket resolution
         images = torch.randn(1, 3, 576, 1024)  # [B, C, H, W]
@@ -86,7 +91,7 @@ class TestSdxlLatentsSaveLoad:
     def test_save_and_load_with_flip_aug(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
         """Test that flipped latents are saved and loaded correctly."""
         strategy = SdxlLatentsPipelineStrategy(dtype="fp32", flip_aug=True)
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         images = torch.randn(1, 3, 576, 1024)
         results = strategy.encode_batch(images, mock_vae, [sample_entry])
@@ -107,7 +112,7 @@ class TestSdxlLatentsSaveLoad:
         from safetensors import safe_open
 
         strategy = SdxlLatentsPipelineStrategy(dtype="fp32")
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         images = torch.randn(1, 3, 576, 1024)
         results = strategy.encode_batch(images, mock_vae, [sample_entry])
@@ -127,7 +132,7 @@ class TestSdxlLatentsSaveLoad:
     def test_dtype_fp16_roundtrip(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
         """Test fp16 latents save/load correctly."""
         strategy = SdxlLatentsPipelineStrategy(dtype="fp16")
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         images = torch.randn(1, 3, 576, 1024)
         results = strategy.encode_batch(images, mock_vae, [sample_entry])
@@ -145,7 +150,7 @@ class TestSdxlLatentsSaveLoad:
     def test_is_cache_valid_returns_true_for_valid_cache(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
         """Test validation passes for properly cached files."""
         strategy = SdxlLatentsPipelineStrategy(dtype="fp32")
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         images = torch.randn(1, 3, 576, 1024)
         results = strategy.encode_batch(images, mock_vae, [sample_entry])
@@ -157,7 +162,7 @@ class TestSdxlLatentsSaveLoad:
     def test_is_cache_valid_returns_false_for_missing_flip(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
         """Test validation fails when flip_aug is required but not cached."""
         strategy = SdxlLatentsPipelineStrategy(dtype="fp32", flip_aug=False)
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         images = torch.randn(1, 3, 576, 1024)
         results = strategy.encode_batch(images, mock_vae, [sample_entry])
@@ -202,7 +207,7 @@ class TestSdxlTextEncoderSaveLoad:
     def test_save_and_load_preserves_embeddings(self, sample_entry: CacheEntry, mock_text_encoders, tmp_path: Path):
         """Test that TE embeddings are saved and loaded correctly."""
         strategy = SdxlTextEncoderPipelineStrategy(dtype="fp32")
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         # Encode (images not used for TE)
         dummy_images = torch.empty(0)
@@ -228,7 +233,7 @@ class TestSdxlTextEncoderSaveLoad:
         from library.utils.hash_utils import stable_string_hash
 
         strategy = SdxlTextEncoderPipelineStrategy(dtype="fp32")
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         dummy_images = torch.empty(0)
         results = strategy.encode_batch(dummy_images, mock_text_encoders, [sample_entry])
@@ -244,7 +249,7 @@ class TestSdxlTextEncoderSaveLoad:
     def test_is_cache_valid_detects_caption_change(self, sample_entry: CacheEntry, mock_text_encoders, tmp_path: Path):
         """Test that validation fails when caption has changed."""
         strategy = SdxlTextEncoderPipelineStrategy(dtype="fp32")
-        cache_path = strategy.get_cache_path(sample_entry, tmp_path)
+        cache_path = Path(sample_entry.latent_cache_path)
 
         dummy_images = torch.empty(0)
         results = strategy.encode_batch(dummy_images, mock_text_encoders, [sample_entry])

@@ -29,21 +29,25 @@ class CachingStrategy(ABC):
 
     Implementations live in library/strategies/ (e.g., SdSdxlLatentsCachingStrategy).
     The CachingEngine calls these methods to delegate model-specific work.
+
+    Cache paths are set on entries at manifest creation time. Strategies just need
+    to know which field to read (latent_cache_path vs te_cache_path).
     """
 
-    @abstractmethod
-    def get_cache_path(self, entry: CacheEntry, cache_dir: Path) -> Path:
+    def get_entry_cache_path(self, entry: CacheEntry) -> str | None:
         """
-        Get the cache file path for an entry.
+        Get the cache path from an entry.
+
+        Override in subclasses to return the appropriate field.
+        Default returns latent_cache_path for VAE caching strategies.
 
         Args:
             entry: The cache entry.
-            cache_dir: Base directory for cache files.
 
         Returns:
-            Absolute path where cache should be saved.
+            Path string or None if not set.
         """
-        raise NotImplementedError
+        return entry.latent_cache_path
 
     @abstractmethod
     def encode_batch(
@@ -263,22 +267,27 @@ class CachingEngine:
         """Get list of entries that need caching."""
         entries = []
         for entry in manifest.entries.values():
-            if skip_existing:
-                cache_path = self.strategy.get_cache_path(entry, cache_dir)
-                if cache_path.exists():
-                    # Fast path: only check existence
-                    if skip_validity_check:
-                        entry.latent_cache_path = str(cache_path)
+            # Get pre-set cache path from entry
+            cache_path_str = self.strategy.get_entry_cache_path(entry)
+            if not cache_path_str:
+                # No cache path set - this entry can't be cached
+                logger.warning(f"No cache path set for {entry.id}, skipping")
+                continue
+
+            cache_path = Path(cache_path_str)
+
+            if skip_existing and cache_path.exists():
+                # Fast path: only check existence
+                if skip_validity_check:
+                    continue
+                # Full validation: check cache contents
+                try:
+                    if self.strategy.is_cache_valid(cache_path, entry, flip_aug, alpha_mask):
                         continue
-                    # Full validation: check cache contents
-                    try:
-                        if self.strategy.is_cache_valid(cache_path, entry, flip_aug, alpha_mask):
-                            entry.latent_cache_path = str(cache_path)
-                            continue
-                        else:
-                            logger.debug(f"Cache invalid for {entry.id}, will re-cache")
-                    except Exception as e:
-                        logger.warning(f"Cache validation failed for {entry.id}: {e}, will re-cache")
+                    else:
+                        logger.debug(f"Cache invalid for {entry.id}, will re-cache")
+                except Exception as e:
+                    logger.warning(f"Cache validation failed for {entry.id}: {e}, will re-cache")
             entries.append(entry)
         return entries
 
@@ -364,7 +373,10 @@ class CachingEngine:
 
         # Save each result
         for entry, encoded in zip(entries, encoded_list):
-            cache_path = self.strategy.get_cache_path(entry, cache_dir)
+            cache_path_str = self.strategy.get_entry_cache_path(entry)
+            if not cache_path_str:
+                logger.warning(f"No cache path for {entry.id}, skipping save")
+                continue
+            cache_path = Path(cache_path_str)
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             self.strategy.save_cache(encoded, cache_path)
-            entry.latent_cache_path = str(cache_path)

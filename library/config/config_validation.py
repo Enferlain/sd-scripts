@@ -67,7 +67,7 @@ def prepare_config(cfg) -> None:
     # Data: cache_dir defaults to train_data_dir if not set
     if (
         hasattr(cfg.data, "caching")
-        and cfg.data.caching.cache_dir is None
+        and getattr(cfg.data.caching, "cache_dir", None) is None
         and hasattr(cfg.data, "source")
         and cfg.data.source.train_data_dir
     ):

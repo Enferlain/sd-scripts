@@ -294,7 +294,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         val_dataset_group.set_current_strategies()
 
     # DataLoaderのプロセス数：0 は persistent_workers が使えないので注意
-    n_workers = min(cfg.data.loader.max_workers, os.cpu_count())  # cpu_count or max_data_loader_n_workers
+    n_workers = min(cfg.data.loader.num_workers, os.cpu_count())  # cpu_count or max_data_loader_n_workers
 
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset_group,
@@ -507,7 +507,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     if is_main_process:
         timestep_counts, plotter_settings = setup_live_plotter(cfg, noise_scheduler, strategies.la_sampler, strategies)
 
-    edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss, cfg.training, noise_scheduler, accelerator)
+    edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss, cfg.training, noise_scheduler,
+                                                                                accelerator)
 
     init_trackers(accelerator, cfg.output.logging, "adapter_train")
 
@@ -608,7 +609,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         accelerator.unwrap_model(adapter).train()
 
     if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
-        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
+        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000,
+                                 accelerator.device)
 
     is_tracking = len(accelerator.trackers) > 0
     if is_tracking:
@@ -838,7 +840,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                                     remove_model(remove_loss_weights_ckpt_name)
 
                     if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
-                        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
+                        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000,
+                                                 accelerator.device)
                     optimizer_train_fn()
                     accelerator.unwrap_model(adapter).train()
 

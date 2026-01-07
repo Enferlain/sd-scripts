@@ -1,185 +1,537 @@
-# Current Data Pipeline Documentation
+# Data Pipeline Implementation Plan
 
-This document describes the state of the data loading and caching system in `library/data/` and related modules as of the current codebase.
+This document tracks implementation progress for the data pipeline rework.
+See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_OLD.md` for legacy reference.
 
-## 1. Core Classes & Data Flow
+## Status: ✅ Phase 1-4 Complete, ✅ SDXL Integration Complete, ✅ Cache Path Simplification
 
-The data pipeline handles image loading, preprocessing, bucketing, and batching.
+**Last Updated:** 2026-01-07
 
-### Class Hierarchy
+- Phase 1 (scanning): Complete ✅
+- Phase 2 (caching): Complete ✅
+- Phase 3 (epoch prep): Complete ✅
+- Phase 4 (dataloader): Complete ✅
+- PEFT Strategy Integration: Complete ✅
+- SDXL PEFT Script Integration: Complete ✅
+- **Cache Path Simplification:** Complete ✅ - Paths set at manifest creation, manifest persistence ready
+- **Smoke Test:** Passed (training through epoch 1, 50+ steps)
 
-```mermaid
-classDiagram
-    class torch_utils_data_Dataset {
-        <<Interface>>
-    }
-    class BaseDataset {
-        +width: int
-        +height: int
-        +bucket_manager: BucketManager
-        +image_data: dict[str, ImageInfo]
-        +__getitem__()
-        +new_cache_latents()
-    }
-    class DreamBoothDataset {
-        +is_reg: bool
-        +load_dreambooth_dir()
-    }
-    class FineTuningDataset {
-        +metadata_file: str
-        +load_metadata()
-    }
-    class ControlNetDataset {
-        +conditioning_data_dir: str
-    }
-    class DatasetGroup {
-        +datasets: list
-        +__getitem__()
-        +new_cache_latents()
-    }
+---
 
-    torch_utils_data_Dataset <|-- BaseDataset
-    BaseDataset <|-- DreamBoothDataset
-    BaseDataset <|-- FineTuningDataset
-    BaseDataset <|-- ControlNetDataset
-    torch_utils_data_Dataset <|-- DatasetGroup
+## Migration Overview: Legacy vs New System
+
+### What's Being Replaced
+
+| Legacy Component     | Location                                     | Replacement                  | Status   |
+| -------------------- | -------------------------------------------- | ---------------------------- | -------- |
+| `BaseDataset`        | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅ Ready |
+| `DreamBoothDataset`  | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅ Ready |
+| `FineTuningDataset`  | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅ Ready |
+| `BucketManager`      | `library/data/_deprecated/bucket_manager.py` | `dataset_scanner.py`         | ✅ Ready |
+| `DatasetGroup`       | `library/data/_deprecated/dataset.py`        | `DatasetManifest`            | ✅ Ready |
+| Legacy caching       | Scattered in training scripts                | `CachingEngine`              | ✅ Ready |
+| On-the-fly bucketing | `BaseDataset.__getitem__()`                  | Pre-computed `EpochManifest` | ✅ Ready |
+
+### Strategy Layer (Retained)
+
+These strategies are **kept** but their usage differs:
+
+| Strategy               | Location                                   | Legacy Usage                 | New Pipeline Usage                                                                                                      |
+| ---------------------- | ------------------------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `SdxlTokenizeStrategy` | `library/strategies/strategy_sdxl.py`      | Called per-sample in dataset | Used by `tokenize_epoch_manifest()` for token caching; **bypassed** by direct `tokenize_sdxl_captions()` for on-the-fly |
+| `TextEncodingStrategy` | `library/strategies/strategy_base.py`      | Encode tokens → embeddings   | Still used when no cached TE outputs                                                                                    |
+| `SdxlPeftStrategy`     | `library/strategies/peft_strategy_sdxl.py` | Training orchestration       | ✅ Updated to consume new batch format                                                                                  |
+
+> **Note:** For on-the-fly tokenization, we call tokenizers directly via `tokenize_sdxl_captions()` rather than going through `SdxlTokenizeStrategy`. This avoids strategy overhead when tokenizers are already available.
+
+### Caching Strategy Layer (New)
+
+These implement `CachingStrategy` for the new pipeline:
+
+| Strategy                          | Location                             | Purpose                         |
+| --------------------------------- | ------------------------------------ | ------------------------------- |
+| `SdxlLatentsPipelineStrategy`     | `library/strategies/sdxl_caching.py` | VAE encoding → latent caching   |
+| `SdxlTextEncoderPipelineStrategy` | `library/strategies/sdxl_caching.py` | TE encoding → embedding caching |
+| `SdLatentsPipelineStrategy`       | `library/strategies/sd_caching.py`   | SD1.5/2 VAE encoding            |
+
+### Data Flow Comparison
+
+```
+LEGACY FLOW:
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. Script creates DatasetGroup with config                      │
+│ 2. DatasetGroup → DreamBoothDataset/FineTuningDataset          │
+│ 3. Dataset.__getitem__() called per sample:                     │
+│    - Load image from disk                                       │
+│    - Resize/bucket on-the-fly                                   │
+│    - VAE encode (if not cached)                                 │
+│    - Tokenize caption                                           │
+│    - Return dict with latents, tokens, metadata                 │
+│ 4. DataLoader batches and collates                              │
+│ 5. Training loop processes batch                                │
+└─────────────────────────────────────────────────────────────────┘
+
+NEW FLOW:
+┌─────────────────────────────────────────────────────────────────┐
+│ PHASE 1: Scan (once, reuse across epochs)                       │
+│   dataset_scanner.py → DatasetManifest (JSON)                   │
+│   - Parallel directory scanning                                 │
+│   - Bucket assignment                                           │
+│   - Caption loading                                             │
+├─────────────────────────────────────────────────────────────────┤
+│ PHASE 2: Cache (once, skip if cached)                           │
+│   CachingEngine + CachingStrategy → .safetensors files          │
+│   - VAE latent encoding                                         │
+│   - TE output encoding (optional)                               │
+│   - Multi-GPU distributed                                       │
+├─────────────────────────────────────────────────────────────────┤
+│ PHASE 3: Epoch Prep (per epoch, fast)                           │
+│   prepare_epoch() → EpochManifest                               │
+│   - Caption augmentation (shuffle, dropout)                     │
+│   - Deterministic shuffle (seed + epoch)                        │
+│   - Warmup ordering (largest batches first)                     │
+│   - Token file generation (optional)                            │
+├─────────────────────────────────────────────────────────────────┤
+│ PHASE 4: Training (per epoch)                                   │
+│   TrainingDataset + DataLoader → batches                        │
+│   - Load from .safetensors (disk → CPU → GPU)                   │
+│   - Tokenize on-the-fly OR load from token file                 │
+│   - Distributed sharding (rank/world_size)                      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Data Flow
+### Batch Format Comparison
 
-1.  **Configuration**: User provides a config (Hydra/TOML) specifying dataset paths and parameters.
-2.  **Blueprint**: `dataset_setup.py` uses `BlueprintGenerator` to convert config into a structural blueprint.
-3.  **Instantiation**: `generate_dataset_group_by_blueprint` creates `DreamBoothDataset` or `FineTuningDataset` instances.
-4.  **Bucketing**: `BucketManager` assigns images to resolution buckets.
-5.  **Training**: `DatasetGroup` (ConcatDataset) serves batches via `DataLoader`.
+| Key                    | Legacy Format                      | New Format                                                               |
+| ---------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| `latents`              | `[B, 4, H, W]`                     | `[B, 4, H, W]` (unchanged)                                               |
+| `input_ids`            | `[B, 77]`                          | `{"clip_l": [B, 77], "clip_g": [B, 77]}` or **None** (on-the-fly)        |
+| `captions`             | `[str, ...]`                       | `[str, ...]` (unchanged)                                                 |
+| `original_sizes`       | `[[H,W], ...]` or missing          | Via `batch["conditionings"][i].original_size_hw`                         |
+| `crop_top_lefts`       | `[[T,L], ...]` or missing          | Via `batch["conditionings"][i].crop_top_left`                            |
+| `target_sizes`         | Missing                            | Via `batch["conditionings"][i].target_size_hw`                           |
+| `text_encoder_outputs` | `encoder_hidden_states1_list` etc. | `{"hidden_state1": [B,...], "hidden_state2": [B,...], "pool2": [B,...]}` |
+| `loss_weights`         | `[float, ...]`                     | `[B]` tensor                                                             |
+| `flippeds`             | Missing                            | `[bool, ...]`                                                            |
+| `alpha_masks`          | Missing                            | `[B, H, W]` or None                                                      |
 
-```mermaid
-flowchart TD
-    Config[Hydra Config] --> Setup[dataset_setup.py]
-    Setup -->|Generates| BP[BlueprintGenerator]
-    BP -->|Produces| Blueprint[DatasetBlueprint]
-    Blueprint -->|Used by| Factory[generate_dataset_group_by_blueprint]
-    Factory -->|Creates| DS[DreamBoothDataset / FineTuningDataset]
-    DS -->|Registers| BM[BucketManager]
-    DS -->|Grouped into| DG[DatasetGroup]
-    DG -->|Wrapped by| DL[DataLoader]
-    DL -->|Yields| Batch[Training Batch]
+### Token Handling Modes
+
+| Mode                     | tokens_path | streaming_tokens | Behavior                                                           |
+| ------------------------ | ----------- | ---------------- | ------------------------------------------------------------------ |
+| **On-the-fly (default)** | None        | -                | Tokenize from `batch["captions"]` using `tokenize_sdxl_captions()` |
+| **Cached (upfront)**     | Set         | False            | Load all tokens at TrainingDataset init                            |
+| **Cached (streaming)**   | Set         | True             | Load batch tokens via `get_slice()`                                |
+
+### Completed Integration
+
+- [x] Wire `TrainingDataset` into `sdxl_peft.py` (replaced legacy DataLoader)
+- [x] `calculate_val_loss_check` updated to accept int or dataloader
+- [x] Resume support via `itertools.islice` (not `accelerator.skip_first_batches`)
+- [x] `training_metadata.py` refactored for `DatasetManifest`
+- [x] Config consolidation: moved TE caching fields to `DataConfig.caching`
+- [x] Centralized config defaults in `prepare_config()` (learning rates, cache_dir)
+- [x] Manifest saved to `cache_dir/dataset_manifest.json` after caching
+- [x] Cache file naming includes resolution: `{id}_{w}x{h}_sdxl_latents.safetensors`
+- [x] Tag parsing respects `keep_tokens_separator` (|||)
+- [ ] Benchmark new vs legacy performance
+- [ ] Remove `library/data/_deprecated/` after full validation
+
+### Completed Config Integration
+
+- [x] `class_tokens` param in `scan_directory()` - Fallback caption for reg images
+- [x] `create_manifest_from_config()` - Handles all source types from `DataConfig`
+- [x] `prior_loss_weight` param in `TrainingDataset` - Configurable reg image loss
+
+### Test Plan
+
+See `DATA_PIPELINE_TEST_PLAN.md` for:
+
+- Unit test specifications (scanner, epoch prep, dataloader)
+- Integration test design
+- Open questions requiring audit
+
+**Integration Smoke Tests** (`tests/integration/test_sdxl_peft_smoke.py`): 16 tests covering:
+
+- ✅ Manifest creation from config
+- ✅ Validation split logic
+- ✅ SDXL latent caching + roundtrip verification
+- ✅ Epoch preparation
+- ✅ DataLoader batch format
+- ✅ Training metadata generation
+- ✅ Tag frequency computation
+- ✅ Validation epoch preparation
+- ✅ TE output caching (creates files, roundtrip)
+- ✅ val_data_dir explicit directory
+- ✅ Batch skipping via `itertools.islice`
+- ✅ Config integration (cache_dir respected)
+
+**Not yet tested:**
+
+- Multi-GPU sharding
+- Full training loop (in progress with smoke test)
+
+### Recent Smoke Test Fixes (2026-01-07)
+
+**Config Access Fixes:**
+
+- `init_timestep_sampler()`: Pass `cfg.timestep` not full `cfg`
+- `parse_dynamic_timestep_schedule()`: Pass `cfg.timestep` not full `cfg`
+- `prepare_edm2_loss_weighting()`: Pass `cfg.loss.edm2` not `cfg.loss`
+- `get_huber_threshold_if_needed()`: Updated to `(loss_config, huber_config, ...)` signature
+- `cfg.loss.masked` → `cfg.loss.masked.masked_loss` (nested config object)
+- Fixed `is_train_unet`/`is_train_text_encoder` to pass `learning_rates` not full optimizer config
+
+**Other Fixes:**
+
+- `batch["loss_weights"].to(loss.device)` - tensor was on CPU
+- `asdict()` → OmegaConf-compatible iteration in `model_metadata.py`
+- LR defaults in `prepare_config()`: `unet` and `text_encoders` default to `base`
+- `cache_dir` fallback to `train_data_dir` in `prepare_config()`
+- Tag parsing respects `|||` separator
+- `adapter_module` path: `library.adapters.lora`
+
+**Status:** Training loop confirmed working through epoch 1 (50+ steps), checkpoint saving in testing
+
+### Audit Findings (from `AUDIT/AUDIT_PHASE_1.md`)
+
+#### ⚠️ `accelerator.prepare()` Warning
+
+The new `TrainingDataset` implements manual sharding via `rank`/`world_size`. **Do NOT pass the DataLoader to `accelerator.prepare()`** - it may attempt to shard again or fail on IterableDataset.
+
+```python
+# CORRECT - create dataloader directly, don't prepare
+train_dataloader = create_training_dataloader(
+    ..., rank=accelerator.process_index, world_size=accelerator.num_processes
+)
+
+# WRONG - don't do this
+# train_dataloader = accelerator.prepare(train_dataloader)
 ```
 
-### Key Classes
+#### 💡 Resume & Checkpointing (from `AUDIT/AUDIT_PHASE_4.md`)
 
-*   **`ImageInfo`**: The atomic unit of metadata for a single image. It holds paths, captions, latent cache data, and bucket info.
-*   **`BucketManager`**: Handles Aspect Ratio Bucketing (ARB). It groups images of similar aspect ratios into buckets of defined resolutions to minimize cropping.
-*   **`DatasetGroup`**: A wrapper around multiple datasets (e.g., training + regularization), acting as a `ConcatDataset`.
+**Epoch Manifest:** ✅ No need to persist - regenerated deterministically from `seed + epoch`.
 
-## 2. Configuration System
+**Fast Skip (TODO):** Add `start_batch_index` to `TrainingDataset`:
 
-The configuration system bridges user input and dataset instantiation.
-
-*   **`config_util.py`**: Contains `BlueprintGenerator` and config dataclasses (`DreamBoothDatasetParams`, `FineTuningDatasetParams`).
-*   **`BlueprintGenerator`**:
-    *   Reads `cfg.data` from Hydra.
-    *   Determines if the dataset is DreamBooth, FineTuning, or ControlNet based on fields like `metadata_file` or `conditioning_data_dir`.
-    *   Merges global settings (from `preprocessing`, `bucketing`) with subset-specific settings.
-
-```mermaid
-flowchart TD
-    Hydra[Hydra Config Node] -->|cfg.data| BG[BlueprintGenerator]
-    BG -->|Determine Type| TypeCheck{Has metadata_file?}
-    TypeCheck -->|Yes| FT[FineTuning Params]
-    TypeCheck -->|No| DB[DreamBooth Params]
-    BG -->|Merge| Subsets[Subset Params]
-    Subsets -->|Combine| Blueprint[Dataset Blueprint]
+```python
+def __init__(self, ..., start_batch_index: int = 0):
+    self._start_index = start_batch_index
+    # In __iter__: slice batches[start_batch_index:] - zero I/O for skipped batches
 ```
 
-## 3. Caching System
+**Token File Reuse (TODO):** Update `tokenize_epoch_manifest` to check existing file:
 
-The system aggressively caches intermediate results to speed up training, specifically VAE latents and Text Encoder outputs.
+1. Check if file exists
+2. Validate `manifest_hash` in metadata
+3. Skip tokenization if valid, regenerate if invalid/missing
 
-### Latents Caching (`LatentsCachingStrategy`)
+**Storage Strategy:** Ephemeral + Cleanup
 
-*   **Logic**: If `color_aug` and `random_crop` are disabled, latents are deterministic and can be cached.
-*   **Storage**: Saved as `.npz` files alongside original images or in memory.
-*   **Format**: `.npz` contains `latents`, `original_size`, `crop_ltrb`, and optionally `latents_flipped`, `alpha_mask`.
-*   **Flow**:
-    1.  `prepare_datasets` calls `train_dataset_group.new_cache_latents`.
-    2.  Images are loaded and passed to VAE.
-    3.  Latents are saved to disk (if configured) or kept in `ImageInfo` memory.
+- Generate `epoch_manifest.json` and `tokens.safetensors` at epoch start
+- Delete after epoch completes
+- Regenerated automatically on resume if missing
 
-### Text Encoder Caching (`TextEncoderOutputsCachingStrategy`)
+#### ✅ Epoch/Step Handling
 
-*   **Logic**: Used for SDXL to cache the output of the two text encoders. Only possible if captions are static (no shuffling/dropout).
-*   **Storage**: `.npz` files (suffix `_te_outputs.npz` or custom).
-*   **Format**: Contains `hidden_state1`, `hidden_state2`, `pool2`.
+- `current_epoch`/`current_step` are build-time inputs to `prepare_epoch()`, not runtime state
+- Token warmup calculated during manifest generation
+- `set_max_train_steps()` is obsolete
 
-```mermaid
-flowchart LR
-    Img[Image File] -->|Load| VAE[VAE Model]
-    VAE -->|Encode| Latent[Latents]
-    Latent -->|Save| NPZ[.npz Cache]
-    NPZ -->|Load during Training| Dataset
-    Dataset -->|Skip VAE| Trainer
+#### ✅ Validation Dataset (from `AUDIT/AUDIT_PHASE_3.md`)
+
+- Use `prepare_validation_epoch()` once at training start
+- Single static manifest, reused every epoch (no shuffling/dropout)
+- Same `TrainingDataset` + `create_training_dataloader` pattern
+
+#### 📊 Benchmarking (from `AUDIT/AUDIT_PHASE_5.md`)
+
+Core benchmarks in `tests/unit/data/test_pipeline_benchmark.py`:
+
+- ✅ `prepare_epoch` timing (1k/10k images)
+- ✅ DataLoader throughput with mocked I/O
+- ✅ First batch latency
+
+**TODO (needs GPU testing):**
+
+- [ ] Streaming tokens vs RAM loading (memory vs latency tradeoff)
+- [ ] `pin_memory=True` effectiveness (requires CUDA device)
+
+#### 🔒 Cache Path Simplification (Complete ✅)
+
+**Design:** Cache paths are set once at manifest creation, not computed dynamically.
+
+| Before (v1)                            | After (v2)                                  |
+| -------------------------------------- | ------------------------------------------- |
+| `strategy.get_cache_path(entry, dir)`  | `entry.latent_cache_path` (pre-set)         |
+| `strategy.set_cache_path(entry, path)` | Paths set in `create_manifest(cache_dir=…)` |
+| Paths computed per-access              | Paths immutable after creation              |
+
+**New Fields:**
+
+- `DatasetManifest.cache_dir` - Directory for all cache files
+- `DatasetManifest.config_hash` - SHA256 hash for validity checking
+- `CacheEntry.latent_cache_path` - Pre-set at manifest creation
+- `CacheEntry.te_cache_path` - Pre-set at manifest creation
+
+**New Functions:**
+
+- `compute_config_hash(cache_dir, resolution, bucket_steps, max_token_length, image_count)` - Generate config hash
+- `get_or_create_manifest(data_config, cache_dir, ...)` - Load existing or create new manifest
+
+**Benefits:**
+
+- Single source of truth for cache paths
+- No path computation during training loop
+- Manifest can be reused across runs if config unchanged
+
+#### 🔒 Cache Invalidation (from `AUDIT/AUDIT_PHASE_6.md`)
+
+- ✅ Bucket resolution changes trigger re-caching (`is_cache_valid` checks shape + metadata)
+- ✅ Selective re-caching: only affected images are re-processed
+- ✅ Metadata stored in `.safetensors` header for fast validation
+- ✅ Config hash validation via `get_or_create_manifest()`
+
+**Large-Scale Dataset Optimization (ROADMAP):** Current JSON manifest grows ~2KB/entry:
+
+- Binary format (msgpack/pickle) for faster I/O
+- Incremental manifest updates instead of full rewrite
+- Lazy loading of manifest entries
+- Sharded manifests by bucket
+- Skip creation if unchanged from previous run
+
+---
+
+## Phase 1: Dataset Preparation
+
+**Goal:** Scan directories, read captions, compute buckets, generate manifest.
+
+### Tasks
+
+- [x] Create `dataset_scanner.py` module
+
+  - [x] `scan_directory()` - Walk directory tree, find images
+  - [x] `read_caption()` - Load caption from .txt/.caption files
+  - [x] `select_bucket()` - Assign image to resolution bucket
+  - [x] `create_manifest()` - Generate DatasetManifest from scan results
+
+- [x] Handle metadata sources
+
+  - [x] Directory-based (DreamBooth style)
+  - [x] JSON metadata (FineTuning style)
+  - [x] Error if captions missing (require_caption=True by default)
+
+- [x] Bucket calculation
+  - [x] Port bucket resolution logic from `BucketManager`
+  - [x] Support configurable bucket parameters
+
+---
+
+## Phase 2: Caching
+
+**Goal:** Fast VAE latent and text encoder output caching.
+
+### Tasks
+
+- [x] Create `CachingStrategy` interface
+- [x] Create `CachingEngine` skeleton
+
+- [x] Implement model-specific strategies (NEW code in `pipeline_*.py`)
+
+  - [x] `SdLatentsPipelineStrategy` (`library/strategies/pipeline_sd.py`) - SD VAE encoding, scale factor 0.18215
+  - [x] `SdxlLatentsPipelineStrategy` (`library/strategies/pipeline_sdxl.py`) - SDXL VAE encoding, scale factor 0.13025
+  - [x] `SdxlTextEncoderPipelineStrategy` (`library/strategies/pipeline_sdxl.py`) - SDXL dual TE output caching
+
+> [!NOTE] > `library/data` is model-agnostic. Strategies implement `CachingStrategy` and get injected by training scripts.
+> Flow: training script → creates strategy → passes to CachingEngine
+
+- [x] Implement caching loop
+
+  - [x] Batched image loading (ThreadPoolExecutor)
+  - [x] Batch grouping by bucket resolution
+  - [x] Multi-GPU workload distribution
+  - [x] Progress bar with tqdm
+
+- [x] File format: `.safetensors` (memory-mapped, fast GPU transfer, metadata support)
+
+- [x] Cache validation (`is_cache_valid()` on strategies)
+  - [x] Check required keys exist (latents, hidden_states)
+  - [x] Verify tensor shapes match bucket resolution
+  - [x] Check flip_aug/alpha_mask presence if required
+  - [x] Metadata matching (bucket_reso, caption_hash for TE)
+  - [x] `skip_validity_check` option for fast path
+
+---
+
+## Phase 3: Epoch Preparation
+
+**Goal:** Generate shuffled, batched epoch manifest.
+
+### Tasks
+
+- [x] Create `prepare_epoch()` function
+- [x] Create `prepare_validation_epoch()` function
+- [x] Implement warmup ordering (largest resolutions first)
+- [x] Create `BatchInfo` dataclass for structured batch metadata
+
+- [x] Caption processing
+
+  - [x] Create `CaptionConfig` dataclass
+  - [x] Port `process_caption()` from legacy
+  - [x] Tag shuffle
+  - [x] Caption dropout
+  - [x] Tag dropout
+  - [x] Wildcard resolution
+  - [x] Token warmup
+  - [x] Protected tags (immune to dropout)
+  - [x] Keep tokens separator
+  - [x] Unit tests (30 tests)
+
+- [x] Integrate caption processing into `prepare_epoch()`
+
+- [x] Tokenization integration
+
+  - [x] `tokenize_epoch_manifest()` - batch tokenize to safetensors
+  - [x] `load_epoch_tokens()` - load tokenized captions
+  - [x] Safetensors storage (not JSON) for efficiency
+
+- [x] Reproducibility fixes
+  - [x] `stable_string_hash()` in hash_utils.py (64-bit blake2b)
+  - [x] `BatchInfo.repeat_indices` for per-repeat tracking
+  - [x] `BatchInfo.get_sample_key()` for unique sample identification
+  - [x] Structured (img_id, repeat_idx) instead of string separator
+
+---
+
+## Phase 4: Training DataLoader
+
+**Goal:** Fast batch iteration from pre-computed manifests.
+
+### Tasks
+
+- [x] Create `TrainingDataset` (IterableDataset)
+- [x] Create `create_training_dataloader()` helper
+
+- [x] Token file loading
+
+  - [x] Add `tokens_path` param to TrainingDataset
+  - [x] Offset-based batch slicing (sequential index mapping)
+  - [x] Manifest hash validation
+  - [x] Streaming mode (`get_slice()` for memory efficiency)
+
+- [x] Distributed training support
+
+  - [x] Multi-GPU sharding (rank/world_size)
+  - [x] Worker-level sharding (worker_id/num_workers)
+  - [x] CPU tensor output with pin_memory
+  - [x] Seed + epoch mixing for per-epoch shuffle variation
+
+- [x] Additional data loading
+
+  - [x] SDXL metadata (via `SdxlConditioning` in `conditionings` list)
+  - [x] Flip augmentation (`flip_aug` param, loads `latents_flipped`)
+  - [x] Loss weights (from `is_reg`)
+  - [x] Alpha masks (from `CacheData.alpha_mask`)
+  - [x] `target_size_hw` added to `SdxlConditioning`
+
+- [x] Training script integration
+  - [x] Replace current DataLoader in `sdxl_peft.py`
+  - [ ] Replace current DataLoader in `sd_peft.py`
+  - [ ] Benchmark vs current implementation
+
+---
+
+## Skeleton Files (Completed)
+
+| File                   | Status | Description                                                   |
+| ---------------------- | ------ | ------------------------------------------------------------- |
+| `__init__.py`          | ✅     | Package exports (all dataclasses and functions)               |
+| `dataclasses.py`       | ✅     | CacheEntry, Bucket, BatchInfo, EpochManifest, DatasetManifest |
+| `manifest.py`          | ✅     | JSON I/O for manifests (dataset and epoch)                    |
+| `caching_engine.py`    | ✅     | CachingStrategy interface, CachingEngine with multi-GPU       |
+| `dataloader.py`        | ✅     | TrainingDataset (IterableDataset), create_training_dataloader |
+| `epoch_preparation.py` | ✅     | prepare_epoch (warmup ordering), prepare_validation_epoch     |
+| `dataset_scanner.py`   | ✅     | Phase 1: scan_directory, create_manifest, bucket logic        |
+
+### Key Design Decisions (Skeleton Phase)
+
+- **`BatchInfo`**: Full batch metadata stored in `EpochManifest.batches` instead of just image IDs
+- **VAE-agnostic**: `DatasetManifest` stores `latent_channels`, `latent_scale_factor`, and `latent_dtype`
+- **Warmup strategy**: Largest resolution batches first to establish CUDA memory allocation
+- **`CacheEntry`**: Stores paths to cache files, not tensors — tensors loaded on-demand
+- **Strategy delegation**: `CachingEngine` delegates model-specific work to `library/strategies/` classes
+
+---
+
+## Performance Targets
+
+| Metric                | Current     | Target         | Status         |
+| --------------------- | ----------- | -------------- | -------------- |
+| Latent caching        | ~4 it/s     | 100+ it/s      | 🔜 Not started |
+| Training data loading | ~4 it/s     | 200+ batches/s | 🔜 Not started |
+| Epoch start time      | ~30s        | <2s            | 🔜 Not started |
+| Memory predictability | Random OOMs | Zero OOMs      | 🔜 Not started |
+
+---
+
+## Notes
+
+- Phase 1 (scanning) and Phase 2 (caching) are fully functional and tested
+- SDXL is the primary focus; SD strategies work but less tested
+- Cache validation detects: missing keys, shape mismatch, missing flip_aug, caption changes
+- Crop coordinates computed for SDXL micro-conditioning (`get_crop_ltrb`)
+- Alpha mask support: validation ready, but encoding/saving not yet implemented
+- Async 4-stage pipeline from plan not yet implemented (current sync impl works)
+- First integration target: `sdxl_peft.py` (most used script)
+
+---
+
+## Architecture Notes: Model-Specific Caching
+
+### Naming Convention
+
+Following the existing pattern for model-specific scripts:
+
+| Component         | Files                                                  | Purpose                   |
+| ----------------- | ------------------------------------------------------ | ------------------------- |
+| Checkpointing     | `sd_checkpointing.py`, `sdxl_checkpointing.py`         | Save/load training state  |
+| Sample generation | `sd_sample_generation.py`, `sdxl_sample_generation.py` | Generate samples          |
+| **Caching**       | `pipeline_sdxl.py` (→ rename to `sdxl_caching.py`)     | Cache latents, TE outputs |
+
+Our caching strategies (`SdxlLatentsPipelineStrategy`, `SdxlTextEncoderPipelineStrategy`) are the data-layer
+equivalent of checkpointing/sampling - model-specific utilities that the training strategy coordinates.
+
+### Integration Approach
+
+The existing orchestration strategies (`peft_strategy_sdxl.py`) will be updated to:
+
+1. **Accept our new data format** - `batch["conditionings"]` (list of `SdxlConditioning` objects) instead of flat keys
+2. **Extract values for UNet** - Training loop knows it's SDXL, casts `SdxlConditioning` for `get_size_embeddings()`
+3. **Use `CacheData.aux`** for TE outputs instead of `text_encoder_outputs*_list` keys
+
+This keeps data pipeline model-agnostic while letting training strategies handle model-specific extraction.
+
+### Composition Pattern (CacheData)
+
+```
+CacheData (model-agnostic, in dataclasses.py)
+├── latents, latents_flipped, alpha_mask
+├── aux: dict[str, Tensor]  # For TE outputs
+└── conditioning: ModelConditioning | None
+         │
+         └── SdxlConditioning (in pipeline_sdxl.py)
+             ├── original_size_hw
+             ├── crop_top_left
+             └── target_size_hw
 ```
 
-## 4. Caption Processing
+### TODO:
 
-Captions are processed in `BaseDataset.process_caption`.
-
-1.  **Loading**: From `.txt` / `.caption` files or JSON metadata.
-2.  **Wildcards**: Supports `{a|b|c}` syntax for random selection.
-3.  **Dropout**:
-    *   `caption_dropout_rate`: Chance to drop entire caption.
-    *   `caption_tag_dropout_rate`: Chance to drop comma-separated tags.
-4.  **Token Warmup**: Gradually increases the number of tokens seen during early training steps.
-5.  **Shuffling**: Randomizes the order of comma-separated tags if enabled.
-
-## 5. Data Augmentation
-
-Augmentations are applied in `__getitem__` if caching is disabled.
-
-*   **Color Augmentation**: Adjusts hue, saturation, brightness (using `AugHelper`).
-*   **Flip**: Horizontal flip (50% probability if enabled).
-*   **Random Crop**:
-    *   Standard random crop.
-    *   **Face Crop**: Detects faces (via filename metadata) and crops around them.
-*   **Alpha Mask**: Loads alpha channel for masking loss (e.g., for transparent images).
-
-## 6. Multi-GPU / Distributed
-
-*   **Dataset Splitting**: `DataLoader` splits the `DatasetGroup` across workers.
-*   **Caching Coordination**:
-    *   `new_cache_latents` and `new_cache_text_encoder_outputs` use `accelerator.process_index` to split the workload.
-    *   Each GPU processes a subset of images `(i % num_processes == process_index)`.
-    *   `accelerator.wait_for_everyone()` ensures all processes finish caching before training starts.
-
-## 7. Known Pain Points
-
-1.  **Performance**:
-    *   Latent caching is slow (~8 it/s vs target 100+ it/s).
-    *   `__getitem__` can be a bottleneck with heavy on-the-fly augmentation.
-2.  **Complexity**:
-    *   `ImageInfo` acts as a "god object" for image state, with unclear lifecycle management.
-    *   `BlueprintGenerator` logic is challenging to follow and modify.
-    *   Duplicate logic exists between `DreamBoothSubset` and `FineTuningSubset`.
-3.  **Caching**:
-    *   Multi-GPU caching relies on file system synchronization which can be fragile.
-    *   Re-validation of cache validity is expensive (loading `.npz` headers).
-
-## Appendix: ImageInfo Field Summary
-
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `image_key` | `str` | Unique identifier (usually path). |
-| `num_repeats` | `int` | Number of times to repeat this image per epoch. |
-| `caption` | `str` | Text prompt associated with the image. |
-| `is_reg` | `bool` | True if this is a regularization image. |
-| `absolute_path` | `str` | Absolute file path. |
-| `image_size` | `tuple` | Original (W, H). |
-| `resized_size` | `tuple` | Size after resizing for bucket. |
-| `bucket_reso` | `tuple` | Resolution of the bucket assigned. |
-| `latents` | `Tensor` | Cached VAE latents (in-memory). |
-| `latents_npz` | `str` | Path to cached latents file. |
-| `text_encoder_outputs` | `list` | Cached TE outputs (in-memory). |
-| `alpha_mask` | `Tensor` | Alpha mask for transparency. |
-| `latents_original_size` | `tuple` | Original image size stored with latents. |
-| `latents_crop_ltrb` | `tuple` | Crop coordinates stored with latents. |
+- [x] Add `target_size_hw` to `SdxlConditioning`
+- [x] Extract `alpha_masks` to batch in dataloader
+- [x] Add `flip_aug` parameter and `flippeds` to batch
+- [x] Update `peft_strategy_sdxl.py` to use `batch["conditionings"]`
+- [x] Renamed `pipeline_sdxl.py` → `sdxl_caching.py`
+- [ ] ThreadPool per batch - CPU optimization
+- [ ] color_aug, random_crop, face_crop_aug_range - These are on the fly probably

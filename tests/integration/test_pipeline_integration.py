@@ -184,7 +184,7 @@ class TestPipelineIntegration:
 
         # Load each cache file
         for entry in manifest.entries.values():
-            cache_path = strategy.get_cache_path(entry, cache_dir)
+            cache_path = Path(entry.latent_cache_path)
             loaded = strategy.load_cache(cache_path)
 
             assert loaded.latents is not None

@@ -95,9 +95,9 @@ class TestRealVAEIntegration:
             show_progress=False,
         )
 
-        # Load the cached latent
+        # Load the cached latent (path was set by caching engine)
         entry = list(manifest.entries.values())[0]
-        cache_path = strategy.get_cache_path(entry, cache_dir)
+        cache_path = Path(entry.latent_cache_path)
         loaded = strategy.load_cache(cache_path)
 
         latents = loaded.latents
@@ -145,10 +145,10 @@ class TestRealVAEIntegration:
         cache_dir = tmp_path / "cache"
         engine.cache_dataset(manifest, real_vae, accelerator, cache_dir, show_progress=False)
 
-        # Load both latents
+        # Load both latents (paths were set by caching engine)
         entries = list(manifest.entries.values())
-        latents1 = strategy.load_cache(strategy.get_cache_path(entries[0], cache_dir)).latents
-        latents2 = strategy.load_cache(strategy.get_cache_path(entries[1], cache_dir)).latents
+        latents1 = strategy.load_cache(Path(entries[0].latent_cache_path)).latents
+        latents2 = strategy.load_cache(Path(entries[1].latent_cache_path)).latents
 
         # They should be different (unless the images happen to be identical)
         # Use a tolerance - they won't be exactly equal even for similar images
@@ -174,22 +174,28 @@ class TestRealVAEIntegration:
         strategy = SdxlLatentsPipelineStrategy(dtype="fp32")
         engine = CachingEngine(strategy, batch_size=1, num_workers=1)
 
-        # First run
+        # First run - set paths for cache_dir1
         cache_dir1 = tmp_path / "cache1"
+        for entry in manifest.entries.values():
+            entry.latent_cache_path = str(cache_dir1 / f"{entry.id}_latent.safetensors")
         engine.cache_dataset(manifest, real_vae, accelerator, cache_dir1, show_progress=False)
 
-        # Reset manifest entry cache paths for second run
-        for entry in manifest.entries.values():
-            entry.latent_cache_path = None
+        # Store first run's latent path
+        entry = list(manifest.entries.values())[0]
+        latent_path1 = Path(entry.latent_cache_path)
 
-        # Second run
+        # Second run - set paths for cache_dir2
         cache_dir2 = tmp_path / "cache2"
+        for entry in manifest.entries.values():
+            entry.latent_cache_path = str(cache_dir2 / f"{entry.id}_latent.safetensors")
         engine.cache_dataset(manifest, real_vae, accelerator, cache_dir2, show_progress=False)
 
         # Load and compare
         entry = list(manifest.entries.values())[0]
-        latents1 = strategy.load_cache(strategy.get_cache_path(entry, cache_dir1)).latents
-        latents2 = strategy.load_cache(strategy.get_cache_path(entry, cache_dir2)).latents
+        latent_path2 = Path(entry.latent_cache_path)
+
+        latents1 = strategy.load_cache(latent_path1).latents
+        latents2 = strategy.load_cache(latent_path2).latents
 
         # VAE sample() is stochastic, so we expect small differences
         # Typical diff is ~0.0003, we allow up to 0.01 (still very similar)

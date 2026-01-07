@@ -19,3 +19,6 @@ outputs/
 *.whl
 *.safetensors
 .coverage
+tests/assets/
+custom_optimizer/
+uv.lock
