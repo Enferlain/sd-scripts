@@ -19,7 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `get_or_create_manifest()` for manifest persistence and reuse
   - Added `compute_config_hash()` for config-based cache validation
 - **Manifest Persistence**: Manifests can now be saved/loaded with cache paths preserved
-- **Manifest Hash Validation**: `get_or_create_manifest()` validates config hash and file count before reusing cached manifests
+- **Manifest Hash Validation**: `get_or_create_manifest()` validates config hash and image count before reusing cached manifests
+- **Manifest Summary Section**: JSON manifest now includes `summary` with `total_images`, `total_captions`, `num_buckets`
+- **Bucket Distribution**: JSON manifest includes `bucket_distribution` array with resolution and count per bucket (sorted by resolution)
+- **Bucket Logging**: Restored legacy-style bucket distribution logging during manifest creation (resolution, count, mean AR error)
 
 ### Changed
 

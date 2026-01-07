@@ -704,6 +704,8 @@ def create_manifest(
         latent_scale_factor=latent_scale_factor,
         latent_dtype=latent_dtype,
         cache_dir=cache_dir or "",
+        total_images=len(entries),
+        total_captions=sum(1 for e in entries.values() if e.caption),
         entries=entries,
         buckets=buckets,
     )
@@ -712,6 +714,23 @@ def create_manifest(
     train_count = sum(1 for e in entries.values() if e.split == "train")
     val_count = sum(1 for e in entries.values() if e.split == "val")
     logger.info(f"Created manifest: {len(entries)} entries ({train_count} train, {val_count} val), {len(buckets)} buckets")
+
+    # Log per-bucket details (like legacy dataset.py)
+    if buckets:
+        logger.info(f"Bucket distribution ({len(buckets)} filled out of {len(bucket_resos)}):")
+        sorted_buckets = sorted(buckets.items(), key=lambda x: (x[1].resolution[0], x[1].resolution[1]))
+        for i, (_, bucket) in enumerate(sorted_buckets):
+            logger.info(f"  bucket {i}: resolution {bucket.resolution}, count: {len(bucket.image_ids)}")
+
+        # Calculate mean aspect ratio error
+        ar_errors = []
+        for entry in entries.values():
+            original_ar = entry.original_size[0] / entry.original_size[1]
+            bucket_ar = entry.bucket_reso[0] / entry.bucket_reso[1]
+            ar_errors.append(abs(original_ar - bucket_ar))
+        if ar_errors:
+            mean_ar_error = sum(ar_errors) / len(ar_errors)
+            logger.info(f"  mean ar error (without repeats): {mean_ar_error:.6f}")
 
     return manifest
 

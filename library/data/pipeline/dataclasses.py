@@ -291,6 +291,14 @@ class DatasetManifest:
     config_hash: str = ""
     """Hash of settings that affect cache validity. Used to detect when manifest needs rebuild."""
 
+    # Summary stats (stored for quick inspection without loading full entries)
+    # These are set during manifest creation and should stay in sync with entries/buckets
+    total_images: int = 0
+    """Total number of images in the dataset."""
+
+    total_captions: int = 0
+    """Number of entries with non-empty captions."""
+
     # Data
     entries: dict[str, CacheEntry] = field(default_factory=dict)
     """Map of image_id -> CacheEntry."""
@@ -306,3 +314,18 @@ class DatasetManifest:
         """Get bucket by resolution."""
         key = f"{resolution[0]}x{resolution[1]}"
         return self.buckets.get(key)
+
+    @property
+    def image_count(self) -> int:
+        """Total number of images in the dataset."""
+        return len(self.entries)
+
+    @property
+    def caption_count(self) -> int:
+        """Number of entries with non-empty captions."""
+        return sum(1 for e in self.entries.values() if e.caption)
+
+    @property
+    def bucket_summary(self) -> dict[str, int]:
+        """Summary of images per bucket resolution."""
+        return {key: len(bucket.image_ids) for key, bucket in self.buckets.items()}

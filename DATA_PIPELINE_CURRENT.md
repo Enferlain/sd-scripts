@@ -3,7 +3,7 @@
 This document tracks implementation progress for the data pipeline rework.
 See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_OLD.md` for legacy reference.
 
-## Status: ✅ Phase 1-4 Complete, ✅ SDXL Integration Complete, ✅ Sample Generation Working
+## Status: ✅ Phase 1-4 Complete, ✅ SDXL Integration Complete, ✅ Production Ready
 
 **Last Updated:** 2026-01-07
 
@@ -13,9 +13,13 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_OLD.md` for legacy ref
 - Phase 4 (dataloader): Complete ✅
 - PEFT Strategy Integration: Complete ✅
 - SDXL PEFT Script Integration: Complete ✅
-- **Cache Path Simplification:** Complete ✅ - Paths set at manifest creation, manifest persistence ready
+- **Cache Path Simplification:** Complete ✅ - Paths set at manifest creation
+- **Manifest Persistence:** Complete ✅ - Hash + file count validation, reuse across runs
 - **Smoke Test:** Passed (training + sample generation with weighted prompts)
-- **TE Dimension Bugs:** Fixed (in-memory caching, sample generation, on-the-fly tokenization)
+- **TE Dimension Bugs:** Fixed:
+  - In-memory TE caching: Added `.squeeze(0)` when storing per-entry outputs
+  - Sample generation: Removed premature `reshape()` in `_get_hidden_states_sdxl`
+  - On-the-fly tokenization: Added `+2` to `max_token_length` in `tokenize_sdxl_captions`
 
 ---
 
@@ -278,8 +282,8 @@ Core benchmarks in `tests/unit/data/test_pipeline_benchmark.py`:
 
 **New Functions:**
 
-- `compute_config_hash(cache_dir, resolution, bucket_steps, max_token_length, image_count)` - Generate config hash
-- `get_or_create_manifest(data_config, cache_dir, ...)` - Load existing or create new manifest
+- `compute_config_hash(train_data_dir, cache_dir, resolution, bucket_steps, max_token_length, enable_bucket)` - Generate config hash
+- `get_or_create_manifest(data_config, cache_dir, ...)` - Load existing or create new manifest (validates hash + file count)
 
 **Benefits:**
 

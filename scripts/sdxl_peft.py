@@ -54,7 +54,6 @@ from library.data.pipeline import (
     prepare_validation_epoch,
     create_manifest_from_config,
     get_or_create_manifest,
-    save_dataset_manifest,
 )
 from library.strategies.sdxl_caching import (
     SdxlLatentsPipelineStrategy,
@@ -355,13 +354,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         clean_memory_on_device(accelerator.device)
         accelerator.wait_for_everyone()
 
-    # Save manifests for debugging and resume
-    if accelerator.is_main_process:
-        manifest_path = Path(cache_dir) / "dataset_manifest.json"
-        save_dataset_manifest(train_manifest, manifest_path)
-        if val_manifest is not None:
-            val_manifest_path = Path(cache_dir) / "val_manifest.json"
-            save_dataset_manifest(val_manifest, val_manifest_path)
+    # Note: Manifest is saved by get_or_create_manifest() when created, no need to save again here
 
     if unet is None:
         # lazy load unet if needed. text encoders may be freed or replaced with dummy models for saving memory

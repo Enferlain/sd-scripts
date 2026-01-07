@@ -101,21 +101,25 @@ def get_or_create_manifest(
             # Check if config hash matches
             if existing.config_hash and existing.config_hash == current_hash:
                 # Quick check: count images in source dir to detect additions/removals
-                from library.data.pipeline.dataset_scanner import IMAGE_EXTENSIONS
+                from library.constants import IMAGE_EXTENSIONS
 
                 source_dir = Path(data_config.source.train_data_dir)
-                current_image_count = sum(1 for f in source_dir.rglob("*") if f.suffix.lower() in IMAGE_EXTENSIONS)
+                current_image_count = sum(1 for f in source_dir.rglob("*") if f.is_file() and f.suffix.lower() in IMAGE_EXTENSIONS)
 
-                if current_image_count != len(existing.entries):
-                    logger.info(f"Dataset changed ({len(existing.entries)} -> {current_image_count} images), rebuilding manifest")
+                if current_image_count != existing.image_count:
+                    logger.info(f"Dataset changed ({existing.image_count} -> {current_image_count} images), rebuilding manifest")
                 else:
-                    logger.info(f"Loaded existing manifest with {len(existing.entries)} entries (hash: {current_hash[:8]}...)")
+                    logger.info(
+                        f"Loaded existing manifest: {existing.image_count} images, "
+                        f"{existing.caption_count} captions, {len(existing.buckets)} buckets "
+                        f"(hash: {current_hash[:8]}...)"
+                    )
 
                     # Load validation manifest if exists
                     val_manifest = None
                     if val_manifest_path.exists():
                         val_manifest = load_dataset_manifest(val_manifest_path)
-                        logger.info(f"Loaded existing validation manifest with {len(val_manifest.entries)} entries")
+                        logger.info(f"Loaded validation manifest: {val_manifest.image_count} images")
 
                     return existing, val_manifest
             else:
@@ -170,7 +174,11 @@ def get_or_create_manifest(
     if val_manifest:
         save_dataset_manifest(val_manifest, val_manifest_path)
 
-    logger.info(f"Created new manifest with {len(train_manifest.entries)} entries (hash: {current_hash[:8]}...)")
+    logger.info(
+        f"Created new manifest: {train_manifest.image_count} images, "
+        f"{train_manifest.caption_count} captions, {len(train_manifest.buckets)} buckets "
+        f"(hash: {current_hash[:8]}...)"
+    )
 
     return train_manifest, val_manifest
 
@@ -187,9 +195,18 @@ def save_dataset_manifest(manifest: DatasetManifest, path: str | Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # Convert dataclasses to dicts
+    # Build bucket distribution summary (sorted by resolution)
+    sorted_buckets = sorted(manifest.buckets.items(), key=lambda x: (x[1].resolution[0], x[1].resolution[1]))
+    bucket_distribution = [{"resolution": list(bucket.resolution), "count": len(bucket.image_ids)} for _, bucket in sorted_buckets]
+
     data = {
         "version": manifest.version,
         "created_at": manifest.created_at or datetime.now().isoformat(),
+        "summary": {
+            "total_images": manifest.total_images or len(manifest.entries),
+            "total_captions": manifest.total_captions or sum(1 for e in manifest.entries.values() if e.caption),
+            "num_buckets": len(manifest.buckets),
+        },
         "config": {
             "base_resolution": list(manifest.base_resolution),
             "bucket_reso_steps": manifest.bucket_reso_steps,
@@ -201,6 +218,7 @@ def save_dataset_manifest(manifest: DatasetManifest, path: str | Path) -> None:
             "cache_dir": manifest.cache_dir,
             "config_hash": manifest.config_hash,
         },
+        "bucket_distribution": bucket_distribution,
         "entries": {id: _entry_to_dict(entry) for id, entry in manifest.entries.items()},
         "buckets": {key: _bucket_to_dict(bucket) for key, bucket in manifest.buckets.items()},
     }
@@ -243,6 +261,9 @@ def load_dataset_manifest(path: str | Path) -> DatasetManifest:
     for key, bucket_data in data.get("buckets", {}).items():
         buckets[key] = _dict_to_bucket(bucket_data)
 
+    # Load summary stats (optional, may not exist in older manifests)
+    summary = data.get("summary", {})
+
     manifest = DatasetManifest(
         version=data.get("version", "2.0"),
         created_at=data.get("created_at", ""),
@@ -255,6 +276,8 @@ def load_dataset_manifest(path: str | Path) -> DatasetManifest:
         latent_dtype=config.get("latent_dtype", "fp16"),
         cache_dir=config.get("cache_dir", ""),
         config_hash=config.get("config_hash", ""),
+        total_images=summary.get("total_images", 0),
+        total_captions=summary.get("total_captions", 0),
         entries=entries,
         buckets=buckets,
     )
