@@ -9,8 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2026-01-07]
 
+## [2026-01-07]
+
 ### Added
 
+- **Epoch Tokenization Option**:
+  - New config `cache_tokens_per_epoch` in `CachingConfig` for pre-tokenizing captions per epoch
+  - When enabled (and TE caching disabled), captions are tokenized once at epoch start to `.safetensors`
+  - Reduces tokenizer overhead when using caption augmentations (shuffle, dropout, wildcards)
+  - Token files are cleaned up after each epoch completes
 - **Smoke Test Progress**: Live training confirmed through epoch 1, 50+ steps completed
 - Large-scale dataset manifest optimization notes in `ROADMAP.md`
 - **Cache Path Simplification**:

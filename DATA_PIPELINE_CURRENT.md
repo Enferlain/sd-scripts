@@ -174,7 +174,12 @@ See `DATA_PIPELINE_TEST_PLAN.md` for:
 **Not yet tested:**
 
 - Multi-GPU sharding
-- Full training loop (in progress with smoke test)
+- Validation
+- Regularization
+- prefetch, dataloaders, full bf16/fp16
+- subsets
+- saving state
+- resuming state
 
 ### Recent Smoke Test Fixes (2026-01-07)
 
@@ -294,7 +299,7 @@ Core benchmarks in `tests/unit/data/test_pipeline_benchmark.py`:
 #### 🔒 Cache Invalidation (from `AUDIT/AUDIT_PHASE_6.md`)
 
 - ✅ Bucket resolution changes trigger re-caching (`is_cache_valid` checks shape + metadata)
-- ✅ Selective re-caching: only affected images are re-processed
+- ✅ Selective re-caching: only affected images are re-processed # TODO CONFIRM IF TRUE
 - ✅ Metadata stored in `.safetensors` header for fast validation
 - ✅ Config hash validation via `get_or_create_manifest()`
 
@@ -540,3 +545,31 @@ CacheData (model-agnostic, in dataclasses.py)
 - [x] Renamed `pipeline_sdxl.py` → `sdxl_caching.py`
 - [ ] ThreadPool per batch - CPU optimization
 - [ ] color_aug, random_crop, face_crop_aug_range - These are on the fly probably
+
+### Future Refactor: `dataset_scanner.py` split (~900 lines)
+
+| New Module        | Contents                                                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| `image_utils.py`  | `get_image_size`, `check_has_alpha`, `read_caption`, `generate_image_id`, future augmentation |
+| `bucket_utils.py` | `make_bucket_resolutions`, `select_bucket` (pure math)                                        |
+| `scanning.py`     | `scan_directory`, `scan_metadata_file`, `ScannedImage`                                        |
+| `dataset.py`      | `create_manifest`, `create_manifest_from_config` (main API)                                   |
+
+Note: Legacy `library/data/image_utils.py` has augmentation code (`trim_and_resize_if_required`, resize helpers) that can inspire our pipeline version.
+
+---
+
+### Future Research: TE Caching + Caption Augmentations
+
+**Problem:** Currently, caption augmentations (shuffle, dropout, wildcards) require on-the-fly tokenization + TE encoding, sacrificing the speed gains of TE caching.
+
+**Potential Solutions:**
+
+1. **Per-Epoch TE Caching**: After `prepare_epoch()` applies augmentations, run TE encoding on the processed captions and cache to epoch-specific files. Clean up after epoch. Trade-off: adds TE encoding overhead at epoch boundaries.
+
+2. **Embedding-Level Augmentations** (Research): Apply augmentations directly to cached TE outputs:
+   - Caption dropout: Select between full TE output vs. empty caption TE output
+   - Token dropout: Zero out specific token embeddings (requires per-token caching)
+   - Shuffle/wildcards: Harder - attention patterns change with sequence order
+
+**Status:** Not implemented. Per-epoch TE caching is more straightforward; embedding augmentations need more research into what's mathematically valid.

@@ -54,6 +54,7 @@ caching:
   vae_batch_size: 1
   num_workers: 4
   skip_cache_check: false
+  cache_tokens_per_epoch: false
 
 loader:
   num_workers: 4

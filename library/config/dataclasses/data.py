@@ -83,6 +83,10 @@ class CachingConfig:
     vae_batch_size: int = field(default=1, metadata={"help": "batch size for VAE encoding during caching"})
     num_workers: int = field(default=4, metadata={"help": "parallel I/O workers for image loading during caching"})
     skip_cache_check: bool = field(default=False, metadata={"help": "skip the content validation of cache"})
+    cache_tokens_per_epoch: bool = field(
+        default=False,
+        metadata={"help": "Pre-tokenize captions per epoch to safetensors (reduces tokenizer overhead when TE caching is disabled)"},
+    )
 
 
 @dataclass

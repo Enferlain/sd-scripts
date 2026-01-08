@@ -298,6 +298,44 @@ Use this template for benchmark reports:
 - Precision: bf16 mixed
 - Optimizer: AdamW8bit
 
+---
+
+### Tokenization & TE Caching Comparison
+
+**Test Configuration:**
+
+- Batch size: 4
+- Gradient accumulation: 1
+- Gradient checkpointing: ✓
+- Latents: Cached to disk
+
+| Configuration         | VRAM Peak | Virtual Mem | Caching Speed | Training Speed   | Notes                  |
+| --------------------- | --------- | ----------- | ------------- | ---------------- | ---------------------- |
+| **TE cache (memory)** | 15.3 GB   | 76.7 GB     | 18-20 it/s    | **2.13 s/it**    | Best balance           |
+| **TE cache (disk)**   | 15.3 GB   | 76.7 GB     | 21.34 it/s    | **2.01 s/it** ✨ | Fastest training       |
+| **Epoch tokens**      | 15.8 GB   | 70-77 GB    | -             | 2.57 s/it        | Tokenizer savings only |
+| **No caching**        | 15.8 GB   | 70-77 GB    | -             | 2.52 s/it        | Baseline               |
+
+**Key Findings:**
+
+- **TE caching to disk is fastest** (2.01 s/it) - TE outputs loaded directly, no encoder forward pass
+- **TE caching in memory is close** (2.13 s/it) - slight CPU→GPU tensor transfer overhead
+- **Epoch tokenization ≈ No caching** (2.57 vs 2.52 s/it) - tokenizer overhead is negligible; TE forward pass dominates
+- **Epoch tokenization adds ~5% overhead** - token file I/O not offset by tokenizer savings on small datasets
+
+**When to Use Each Mode:**
+
+| Mode              | Best For                                                           |
+| ----------------- | ------------------------------------------------------------------ |
+| TE cache (disk)   | Maximum speed, disk space available                                |
+| TE cache (memory) | Maximum speed, limited disk, RAM available                         |
+| Epoch tokens      | Caption augmentations + reproducibility (shuffle/dropout baked in) |
+| No caching        | Quick testing, minimal setup                                       |
+
+---
+
+### Batch Size & Memory Trade-offs
+
 | #   | Batch | GA  | GC  | VRAM    | Virt Mem | s/step | img/s | Status      |
 | --- | ----- | --- | --- | ------- | -------- | ------ | ----- | ----------- |
 | 1   | 1     | 1   | ✓   | 12.5 GB | 76 GB    | 2.65   | 0.38  | ✅          |

@@ -886,6 +886,29 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             batch_size=cfg.training.train_batch_size,
             caption_config=caption_config,
         )
+
+        # Phase G.1: Optional epoch tokenization (when TE caching is disabled)
+        tokens_path = None
+        if cfg.data.caching.cache_tokens_per_epoch and not cfg.data.caching.cache_text_encoder_outputs:
+            from library.data.pipeline import tokenize_epoch_manifest
+            from library.strategies.peft_strategy_sdxl import tokenize_sdxl_captions
+
+            tokens_path = Path(cache_dir) / f"epoch_{epoch}_tokens.safetensors"
+
+            def tokenize_fn(captions: list[str]) -> list[torch.Tensor]:
+                t1, t2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], captions, cfg.training.max_token_length)
+                return [t1, t2]
+
+            if accelerator.is_main_process:
+                tokenize_epoch_manifest(
+                    epoch_manifest,
+                    tokenize_fn,
+                    tokens_path,
+                    encoder_names=["clip_l", "clip_g"],
+                    max_token_length=cfg.training.max_token_length,
+                )
+            accelerator.wait_for_everyone()
+
         train_dataloader = create_training_dataloader(
             dataset_manifest=train_manifest,
             epoch_manifest=epoch_manifest,
@@ -899,6 +922,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             prefetch_factor=cfg.data.loader.prefetch_factor,
             pin_memory=cfg.data.loader.pin_memory,
             persistent_workers=cfg.data.loader.persistent_workers,
+            tokens_path=str(tokens_path) if tokens_path else None,
         )
 
         # TRAINING
@@ -1162,6 +1186,11 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 break
 
         # END OF EPOCH
+        # Cleanup epoch token file if it was created
+        if tokens_path and tokens_path.exists():
+            tokens_path.unlink()
+            logger.debug(f"Cleaned up epoch token file: {tokens_path}")
+
         if is_tracking:
             logs = {"loss/epoch_average": loss_recorder.average}
             accelerator.log(logs, step=global_step)
