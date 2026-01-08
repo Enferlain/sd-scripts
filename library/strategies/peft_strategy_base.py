@@ -484,15 +484,18 @@ class PeftTrainingStrategy(
 
     def is_text_encoder_not_needed_for_training(self, cfg: Any) -> bool:
         """
-        Check if text encoder is unnecessary for training.
+        Check if text encoder is unnecessary for training loop (can be deleted from memory).
+
+        Returns True when TE caching is enabled AND TEs aren't being trained.
+        Note: offload_text_encoders keeps TEs in memory (on CPU), so returns False.
 
         Args:
             cfg: Configuration object.
 
         Returns:
-            False (default implementation).
+            True if TEs can be deleted from memory, False otherwise.
         """
-        return False
+        return cfg.data.caching.cache_text_encoder_outputs and not self.is_train_text_encoder(cfg)
 
     def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
         """

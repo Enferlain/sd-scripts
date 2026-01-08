@@ -121,6 +121,20 @@ def validate_config(cfg) -> None:
         ):
             raise ValueError("fp8_base requires mixed_precision='fp16' or 'bf16'")
 
+        # TE offloading + caching conflict (can't use both)
+        if cfg.performance.memory.offload_text_encoders and cfg.data.caching.cache_text_encoder_outputs:
+            raise ValueError(
+                "Cannot use both offload_text_encoders and cache_text_encoder_outputs. "
+                "Choose one: offloading (allows caption augmentation) or caching (faster, no augmentation)."
+            )
+
+    # TE caching + TE training conflict
+    if cfg.data.caching.cache_text_encoder_outputs:
+        if should_train_text_encoder(cfg.optimizer.learning_rates):
+            raise ValueError(
+                "Cannot train text encoder while caching TE outputs. Set text_encoders LR to 0, or disable cache_text_encoder_outputs."
+            )
+
     # TODO: Revisit when model-agnostic block/layer granular LR is implemented
     # Currently SDXL-specific and assumes 23 blocks - not widely used
     # if hasattr(cfg.optimizer, 'learning_rates') and cfg.optimizer.learning_rates.blocks:

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Text Encoder Offloading**: New `offload_text_encoders` option in `performance.memory` config
+  - Keeps text encoders on CPU between forward passes to save VRAM
+  - Allows caption augmentation (shuffle, dropout) unlike TE caching
+  - TEs are moved to GPU on-demand for encoding, then back to CPU
+  - Compatible with TE training (TEs move back and forth each step)
+  - Mutually exclusive with `cache_text_encoder_outputs` (validation enforced)
+- **Improved `is_text_encoder_not_needed_for_training()`**: Now returns True when TE caching is enabled and TEs aren't being trained, allowing proper memory cleanup
+
 ## [2026-01-07]
 
 ## [2026-01-07]

@@ -354,6 +354,13 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         clean_memory_on_device(accelerator.device)
         accelerator.wait_for_everyone()
 
+    # TE offloading: move TEs to CPU if not caching (on-the-fly encoding)
+    elif cfg.performance.memory.offload_text_encoders:
+        logger.info("Offloading text encoders to CPU (on-the-fly encoding enabled)")
+        for t_enc in text_encoders:
+            t_enc.to("cpu")
+        clean_memory_on_device(accelerator.device)
+
     # Note: Manifest is saved by get_or_create_manifest() when created, no need to save again here
 
     if unet is None:
@@ -547,6 +554,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
     unet.requires_grad_(False)
     if strategies.cast_unet(cfg):
         unet.to(dtype=unet_weight_dtype)
+
     for i, t_enc in enumerate(text_encoders):
         t_enc.requires_grad_(False)
 

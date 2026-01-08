@@ -35,6 +35,7 @@ class MemoryConfig:
     direct_ramtorch: bool = field(
         default=False, metadata={"help": "Train original weights in LyCORIS full module and save diff instead of keeping both"}
     )
+    offload_text_encoders: bool = field(default=False, metadata={"help": "Keep text encoders on CPU between forward passes to save VRAM"})
 
 
 @dataclass
