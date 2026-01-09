@@ -14,36 +14,47 @@ This document audits the current state of the SDXL PEFT data training pipeline, 
 *   **Script**: `scripts/sdxl_peft.py` -> `library/data/manifest.py` (implied)
 *   **Action**: Calls `create_manifest_from_config` or `get_or_create_manifest`.
 *   **Function**:
-    *   Scans the dataset directory.
-    *   **Bucketing**: Calculates `bucket_reso` for each image based on aspect ratios and config constraints (Phase 1 scanning). This resolution is stored in the manifest entry and persists throughout training.
-    *   **Persistence**: If `get_or_create_manifest` is used, the manifest (including bucketing decisions) is saved to disk to allow quick resumption.
-    *   **Validation Split**: A separate `val_manifest` is created or filtered from the main manifest.
+  *   Scans the dataset directory.
+  *   **Bucketing**: Calculates `bucket_reso` for each image based on aspect ratios and config constraints (Phase 1 scanning). This resolution is stored in the manifest entry and persists throughout training.
+  *   **Persistence**: If `get_or_create_manifest` is used, the manifest (including bucketing decisions) is saved to disk to allow quick resumption.
+  *   **Validation Split**: A separate `val_manifest` is created or filtered from the main manifest.
 
 ### Phase C: Latent Caching
 *   **Script**: `scripts/sdxl_peft.py` -> `library/strategies/sdxl_caching.py` -> `library/data/caching_engine.py`
 *   **Strategy**: `SdxlLatentsPipelineStrategy`
 *   **Flow**:
-    1.  **VAE Loading**: VAE is moved to GPU.
-    2.  **Engine Execution**: `CachingEngine.cache_dataset` is called.
-    3.  **Parallel Loading**: Images are loaded in parallel using `ThreadPoolExecutor` (`num_workers`).
-    4.  **Preprocessing**: Images are resized/normalized.
-    5.  **Batching**: Images are grouped by `bucket_reso` to allow efficient VAE batching.
-    6.  **Encoding**: `SdxlLatentsPipelineStrategy.encode_batch` encodes images to latents.
-    7.  **SDXL Conditioning**: The strategy calculates and stores **Micro-Conditioning** metadata for each image:
-        *   `original_size`: The original image dimensions.
-        *   `crop_ltrb`: Left/Top/Right/Bottom crop coordinates (calculated via `get_crop_ltrb` to center-crop the image into the bucket resolution).
-        *   `bucket_reso`: The target resolution (used as `target_size`).
-    8.  **Saving**: Latents and metadata are saved to `.safetensors` files (one per image).
-    9.  **Cleanup**: VAE is moved to CPU/cleared to free VRAM.
+  1.  **VAE Loading**: VAE is moved to GPU.
+  2.  **Engine Execution**: `CachingEngine.cache_dataset` is called.
+  3.  **Parallel Loading**: Images are loaded in parallel using `ThreadPoolExecutor` (`num_workers`).
+  4.  **Preprocessing**: Images are resized/normalized.
+  5.  **Batching**: Images are grouped by `bucket_reso` to allow efficient VAE batching.
+  6.  **Encoding**: `SdxlLatentsPipelineStrategy.encode_batch` encodes images to latents.
+  7.  **SDXL Conditioning**: The strategy calculates and stores **Micro-Conditioning** metadata for each image:
+      *   `original_size`: The original image dimensions.
+      *   `crop_ltrb`: Left/Top/Right/Bottom crop coordinates (calculated via `get_crop_ltrb` to center-crop the image into the bucket resolution).
+      *   `bucket_reso`: The target resolution (used as `target_size`).
+  8.  **Saving**: Latents and metadata are saved to `.safetensors` files (one per image).
+  9.  **Cleanup**: VAE is moved to CPU/cleared to free VRAM.
+
+### SDXL Micro-Conditioning Metadata Format
+Each cached image includes the following SDXL-specific metadata:
+- `original_size`: Tuple (width, height) of the original input image
+- `crop_ltrb`: Tuple (left, top, right, bottom) for center-crop coordinates
+- `target_size`: Resolution tuple matching `bucket_reso` (e.g., (1024, 1024))
+
+Example: An image of 2048×1024 bucketed to 1024×1024 would have:
+- `original_size`: (2048, 1024)
+- `crop_ltrb`: (512, 0, 1536, 1024)
+- `target_size`: (1024, 1024)
 
 ### Phase D: Text Encoder Caching (Optional)
 *   **Script**: `scripts/sdxl_peft.py` -> `library/strategies/sdxl_caching.py`
 *   **Strategy**: `SdxlTextEncoderPipelineStrategy`
 *   **Condition**: Enabled via `cfg.data.caching.cache_text_encoder_outputs`.
 *   **Flow**:
-    *   **Disk-Based**: Uses `CachingEngine` to encode captions with both CLIP-L and CLIP-G. Saves `hidden_state1`, `hidden_state2`, and `pool2` to `.safetensors`.
-    *   **Memory-Based**: (Fallback) Computes outputs and stores them in-memory (`entry.te_outputs`) if disk caching is disabled but caching is requested.
-    *   **On-the-fly**: If caching is disabled entirely, text encoding happens per-step in the training loop.
+  *   **Disk-Based**: Uses `CachingEngine` to encode captions with both CLIP-L and CLIP-G. Saves `hidden_state1`, `hidden_state2`, and `pool2` to `.safetensors`.
+  *   **Memory-Based**: (Fallback) Computes outputs and stores them in-memory (`entry.te_outputs`) if disk caching is disabled but caching is requested.
+  *   **On-the-fly**: If caching is disabled entirely, text encoding happens per-step in the training loop.
 
 ### Phase E: DataLoader Creation
 *   **Validation**: `prepare_validation_epoch` creates a deterministic, sorted `EpochManifest`. `create_training_dataloader` creates a single loader reused across epochs.
@@ -53,26 +64,26 @@ This document audits the current state of the SDXL PEFT data training pipeline, 
 *   **Script**: `scripts/sdxl_peft.py` -> `library/data/epoch_preparation.py`
 *   **Action**: `prepare_epoch` is called at the start of every epoch.
 *   **Flow**:
-    1.  **Grouping**: Entries are grouped by `bucket_reso`.
-    2.  **Shuffling**: Entries within each bucket are shuffled using a seed derived from `seed + epoch`.
-    3.  **Batching**: `BatchInfo` objects are created by chunking the shuffled lists into `batch_size`.
-    4.  **Caption Processing**: Captions are processed (wildcards, shuffle, dropout) and stored in `BatchInfo`.
-    5.  **Warmup Ordering**: Largest resolution batches are optionally placed first (`warmup_largest_first=True`) to initialize CUDA memory allocators safely.
-    6.  **Tokenization (Optional)**: `tokenize_epoch_manifest` can pre-tokenize all captions for the epoch into a single `.safetensors` file, enabling high-speed streaming during training.
+  1.  **Grouping**: Entries are grouped by `bucket_reso`.
+  2.  **Shuffling**: Entries within each bucket are shuffled using a seed derived from `seed + epoch`.
+  3.  **Batching**: `BatchInfo` objects are created by chunking the shuffled lists into `batch_size`.
+  4.  **Caption Processing**: Captions are processed (wildcards, shuffle, dropout) and stored in `BatchInfo`.
+  5.  **Warmup Ordering**: Largest resolution batches are optionally placed first (`warmup_largest_first=True`) to initialize CUDA memory allocators safely.
+  6.  **Tokenization (Optional)**: `tokenize_epoch_manifest` can pre-tokenize all captions for the epoch into a single `.safetensors` file, enabling high-speed streaming during training.
 
 ### Phase H: Data Loading & Training
 *   **Script**: `library/data/dataloader.py` (`TrainingDataset`)
 *   **Flow**:
-    1.  **Iteration**: `TrainingDataset` iterates through the pre-computed `EpochManifest`.
-    2.  **Sharding**:
-        *   **Distributed**: Batches are filtered via `idx % world_size == rank`.
-        *   **Workers**: Batches are filtered via `idx // world_size % num_workers == worker_id`.
-    3.  **Batch Loading**:
-        *   Latents are loaded from `.safetensors` cache.
-        *   **Flip Augmentation**: 50% chance to load `latents_flipped` if enabled.
-        *   **Tokens**: Loaded from the pre-tokenized file (streaming or full load) OR text encoder outputs are loaded from cache.
-        *   **Conditioning**: SDXL `original_size`, `crop_ltrb`, `target_size` are retrieved from cache metadata.
-    4.  **Yielding**: Batches are yielded on CPU. `pin_memory=True` (in DataLoader) speeds up transfer to GPU.
+  1.  **Iteration**: `TrainingDataset` iterates through the pre-computed `EpochManifest`.
+  2.  **Sharding**:
+      *   **Distributed**: Batches are filtered via `idx % world_size == rank`.
+      *   **Workers**: Batches are filtered via `idx // world_size % num_workers == worker_id`.
+  3.  **Batch Loading**:
+      *   Latents are loaded from `.safetensors` cache.
+      *   **Flip Augmentation**: 50% chance to load `latents_flipped` if enabled.
+      *   **Tokens**: Loaded from the pre-tokenized file (streaming or full load) OR text encoder outputs are loaded from cache.
+      *   **Conditioning**: SDXL `original_size`, `crop_ltrb`, `target_size` are retrieved from cache metadata.
+  4.  **Yielding**: Batches are yielded on CPU. `pin_memory=True` (in DataLoader) speeds up transfer to GPU.
 
 ## 3. Key Mechanisms
 
