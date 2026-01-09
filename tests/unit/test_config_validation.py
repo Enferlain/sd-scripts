@@ -176,7 +176,9 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sd1"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None}},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {"caching": {"cache_text_encoder_outputs": False}},
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
         )
         validate_config(cfg)  # Should not raise
@@ -224,7 +226,9 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sd2"},
                 "training": {"clip_skip": 2},
-                "optimizer": {"learning_rates": {"blocks": None}},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {"caching": {"cache_text_encoder_outputs": False}},
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
         )
         with patch("library.config.config_validation.logger") as mock_logger:
@@ -243,7 +247,9 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sd1"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None}},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {"caching": {"cache_text_encoder_outputs": False}},
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
         )
         with patch("library.config.config_validation.logger") as mock_logger:

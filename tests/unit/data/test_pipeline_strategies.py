@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 import torch
 
-from library.data.pipeline.dataclasses import CacheEntry
+from library.data.structures import CacheEntry
 from library.strategies.sd_caching import SdLatentsPipelineStrategy, SD_VAE_LATENT_SCALE
 from library.strategies.sdxl_caching import (
     SdxlLatentsPipelineStrategy,

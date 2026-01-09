@@ -1,7 +1,10 @@
 """
-Manifest reading and writing utilities.
+Manifest creation, reading, and writing utilities.
 
-Handles JSON serialization/deserialization of DatasetManifest and EpochManifest.
+Handles:
+- DatasetManifest and EpochManifest creation from scanned images
+- JSON serialization/deserialization
+- Config hash computation for cache invalidation
 """
 
 import hashlib
@@ -11,11 +14,315 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from library.data.pipeline.dataclasses import DatasetManifest, CacheEntry, Bucket, EpochManifest, BatchInfo
+from library.config.dataclasses.data import DataConfig
+from library.data.bucketing import make_bucket_resolutions, select_bucket
+from library.data.caption_processor import _parse_tags
+from library.data.structures import DatasetManifest, CacheEntry, Bucket, EpochManifest, BatchInfo
+from library.data.image_utils import generate_image_id
+from library.data.scanners import ScannedImage, scan_directory, scan_metadata_file
 from library.utils.common_utils import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+
+def create_manifest(
+    scanned_images: list[ScannedImage],
+    base_dir: Path | None = None,
+    base_resolution: tuple[int, int] = (1024, 1024),
+    bucket_reso_steps: int = 64,
+    min_bucket_reso: int = 256,
+    max_bucket_reso: int = 2048,
+    no_upscale: bool = False,
+    latent_channels: int = 4,
+    latent_scale_factor: int = 8,
+    latent_dtype: str = "fp16",
+    caption_separator: str = ", ",
+    keep_tokens_separator: str = "",
+    cache_dir: str | None = None,
+) -> DatasetManifest:
+    """
+    Create a DatasetManifest from scanned images.
+
+    Args:
+        scanned_images: List of ScannedImage from scan_directory().
+        base_dir: Base directory for relative path calculation in IDs.
+        base_resolution: Base training resolution.
+        bucket_reso_steps: Step size for bucket resolutions.
+        min_bucket_reso: Minimum bucket dimension.
+        max_bucket_reso: Maximum bucket dimension.
+        no_upscale: If True, never upscale images.
+        latent_channels: Number of VAE latent channels.
+        latent_scale_factor: VAE spatial downscale factor.
+        latent_dtype: Data type for cached latents.
+        caption_separator: Separator for splitting caption into tags (default ", ").
+        keep_tokens_separator: Separator marking fixed token regions (e.g. "|||").
+        cache_dir: Directory for cache files. If set, entry paths are computed at creation.
+
+    Returns:
+        DatasetManifest ready to save or use for caching.
+    """
+    # Generate bucket resolutions
+    bucket_resos = make_bucket_resolutions(
+        max_reso=base_resolution,
+        min_size=min_bucket_reso,
+        max_size=max_bucket_reso,
+        divisible=bucket_reso_steps,
+    )
+    max_area = base_resolution[0] * base_resolution[1]
+
+    logger.info(f"Generated {len(bucket_resos)} bucket resolutions")
+
+    # Process images and assign to buckets
+    entries: dict[str, CacheEntry] = {}
+    buckets: dict[str, Bucket] = {}
+
+    for scanned in scanned_images:
+        # Select bucket
+        bucket_reso, resized_size = select_bucket(
+            scanned.width,
+            scanned.height,
+            bucket_resos,
+            no_upscale=no_upscale,
+            max_area=max_area,
+            reso_steps=bucket_reso_steps,
+        )
+
+        # Generate ID
+        image_id = generate_image_id(scanned.path, base_dir)
+
+        # Parse tags respecting keep_tokens_separator
+        tags = _parse_tags(scanned.caption, caption_separator, keep_tokens_separator)
+
+        # Create entry with cache paths if cache_dir provided
+        entry = CacheEntry(
+            id=image_id,
+            image_path=str(scanned.path),
+            original_size=(scanned.width, scanned.height),
+            bucket_reso=bucket_reso,
+            resized_size=resized_size,
+            caption=scanned.caption,
+            tags=tags,
+            num_repeats=scanned.num_repeats,
+            is_reg=scanned.is_reg,
+            split=scanned.split,
+            has_alpha_mask=scanned.has_alpha,
+        )
+
+        # Set cache paths upfront if cache_dir is known
+        if cache_dir:
+            entry.latent_cache_path = f"{cache_dir}/{image_id}_latent.safetensors"
+            entry.te_cache_path = f"{cache_dir}/{image_id}_te.safetensors"
+
+        entries[image_id] = entry
+
+        # Add to bucket
+        bucket_key = f"{bucket_reso[0]}x{bucket_reso[1]}"
+        if bucket_key not in buckets:
+            buckets[bucket_key] = Bucket(resolution=bucket_reso)
+        buckets[bucket_key].image_ids.append(image_id)
+
+    # Create manifest
+    manifest = DatasetManifest(
+        version="2.0",
+        created_at=datetime.now().isoformat(),
+        base_resolution=base_resolution,
+        bucket_reso_steps=bucket_reso_steps,
+        min_bucket_reso=min_bucket_reso,
+        max_bucket_reso=max_bucket_reso,
+        latent_channels=latent_channels,
+        latent_scale_factor=latent_scale_factor,
+        latent_dtype=latent_dtype,
+        cache_dir=cache_dir or "",
+        total_images=len(entries),
+        total_captions=sum(1 for e in entries.values() if e.caption),
+        entries=entries,
+        buckets=buckets,
+    )
+
+    # Log statistics
+    train_count = sum(1 for e in entries.values() if e.split == "train")
+    val_count = sum(1 for e in entries.values() if e.split == "val")
+    logger.info(f"Created manifest: {len(entries)} entries ({train_count} train, {val_count} val), {len(buckets)} buckets")
+
+    # Log per-bucket details (like legacy dataset.py)
+    if buckets:
+        logger.info(f"Bucket distribution ({len(buckets)} filled out of {len(bucket_resos)}):")
+        sorted_buckets = sorted(buckets.items(), key=lambda x: (x[1].resolution[0], x[1].resolution[1]))
+        for i, (_, bucket) in enumerate(sorted_buckets):
+            logger.info(f"  bucket {i}: resolution {bucket.resolution}, count: {len(bucket.image_ids)}")
+
+        # Calculate mean aspect ratio error
+        ar_errors = []
+        for entry in entries.values():
+            original_ar = entry.original_size[0] / entry.original_size[1]
+            bucket_ar = entry.bucket_reso[0] / entry.bucket_reso[1]
+            ar_errors.append(abs(original_ar - bucket_ar))
+        if ar_errors:
+            mean_ar_error = sum(ar_errors) / len(ar_errors)
+            logger.info(f"  mean ar error (without repeats): {mean_ar_error:.6f}")
+
+    return manifest
+
+
+def create_manifest_from_config(
+    data_config: DataConfig,
+    cache_dir: str | Path | None = None,
+    latent_channels: int = 4,
+    latent_scale_factor: int = 8,
+    latent_dtype: str = "fp16",
+    validation: bool = False,
+    validation_split: float = 0.0,
+    validation_seed: int | None = None,
+) -> DatasetManifest:
+    """
+    Create a DatasetManifest from DataConfig, handling all dataset sources.
+
+    Supports:
+    - train_data_dir: Main training images
+    - reg_data_dir: Regularization images (is_reg=True)
+    - val_data_dir: Separate validation images (used when validation=True)
+    - in_json: FineTuning style metadata file
+    - subsets: Multiple directories with individual settings
+    - validation_split: Split training data for validation (if val_data_dir not set)
+
+    Args:
+        data_config: DataConfig containing source, preprocessing, caption, bucketing settings.
+        cache_dir: Directory to store cache files.
+        latent_channels: Number of VAE latent channels.
+        latent_scale_factor: VAE spatial downscale factor.
+        latent_dtype: Data type for cached latents.
+        validation: If True, create manifest for validation data only.
+        validation_split: Fraction of training data to use for validation (0.0-1.0).
+        validation_seed: Seed for deterministic validation split.
+
+    Returns:
+        DatasetManifest ready for caching and training.
+
+    Raises:
+        ValueError: If validation=True but no val_data_dir is configured.
+    """
+    all_scanned: list[ScannedImage] = []
+    caption_ext = data_config.caption.caption_extension or ".txt"
+
+    # Validation mode: only scan val_data_dir
+    if validation:
+        if not data_config.source.val_data_dir:
+            raise ValueError("validation=True but val_data_dir is not configured in data_config.source")
+        logger.info(f"Scanning val_data_dir: {data_config.source.val_data_dir}")
+        scanned = scan_directory(
+            data_config.source.val_data_dir,
+            caption_extension=caption_ext,
+            is_reg=False,
+            num_repeats=1,  # Validation images not repeated
+            alpha_mask=data_config.preprocessing.alpha_mask,
+            require_caption=True,
+        )
+        # Mark all as validation split
+        for s in scanned:
+            s.split = "val"
+        all_scanned.extend(scanned)
+    else:
+        # Training mode: scan train_data_dir, reg_data_dir, in_json, subsets
+
+        # Handle train_data_dir (simple DreamBooth style)
+        if data_config.source.train_data_dir:
+            logger.info(f"Scanning train_data_dir: {data_config.source.train_data_dir}")
+            scanned = scan_directory(
+                data_config.source.train_data_dir,
+                caption_extension=caption_ext,
+                is_reg=False,
+                num_repeats=data_config.source.dataset_repeats,
+                alpha_mask=data_config.preprocessing.alpha_mask,
+                require_caption=True,
+                validation_split=validation_split,
+                validation_seed=validation_seed,
+            )
+            all_scanned.extend(scanned)
+
+        # Handle reg_data_dir (regularization images)
+        if data_config.source.reg_data_dir:
+            logger.info(f"Scanning reg_data_dir: {data_config.source.reg_data_dir}")
+            scanned = scan_directory(
+                data_config.source.reg_data_dir,
+                caption_extension=caption_ext,
+                is_reg=True,
+                num_repeats=1,  # Reg images typically not repeated
+                alpha_mask=data_config.preprocessing.alpha_mask,
+                require_caption=False,  # Reg often uses class_tokens instead
+            )
+            all_scanned.extend(scanned)
+
+        # Handle in_json (FineTuning style metadata)
+        if data_config.source.in_json:
+            logger.info(f"Scanning metadata file: {data_config.source.in_json}")
+            scanned = scan_metadata_file(
+                data_config.source.in_json,
+                image_dir=data_config.source.train_data_dir,  # Use train_data_dir as base
+                num_repeats=data_config.source.dataset_repeats,
+                alpha_mask=data_config.preprocessing.alpha_mask,
+                require_caption=True,
+                validation_split=validation_split,
+                validation_seed=validation_seed,
+            )
+            all_scanned.extend(scanned)
+
+        # Handle subsets
+        for subset in data_config.source.subsets:
+            image_dir = subset.get("image_dir")
+            if not image_dir:
+                logger.warning("Subset missing image_dir, skipping")
+                continue
+
+            logger.info(f"Scanning subset: {image_dir}")
+            scanned = scan_directory(
+                image_dir,
+                caption_extension=subset.get("caption_extension", caption_ext),
+                is_reg=subset.get("is_reg", False),
+                num_repeats=subset.get("num_repeats", data_config.source.dataset_repeats),
+                alpha_mask=subset.get("alpha_mask", data_config.preprocessing.alpha_mask),
+                class_tokens=subset.get("class_tokens"),
+                require_caption=not subset.get("is_reg", False),
+                validation_split=validation_split if not subset.get("is_reg", False) else 0.0,
+                validation_seed=validation_seed,
+            )
+            all_scanned.extend(scanned)
+
+    if not all_scanned:
+        raise ValueError("No images found. Specify at least one of: train_data_dir, reg_data_dir, in_json, or subsets")
+
+    # Parse resolution
+    base_resolution = (1024, 1024)
+    if data_config.preprocessing.resolution:
+        parts = data_config.preprocessing.resolution.replace("x", ",").split(",")
+        if len(parts) == 2:
+            base_resolution = (int(parts[0]), int(parts[1]))
+        else:
+            side = int(parts[0])
+            base_resolution = (side, side)
+
+    # Determine base_dir for ID generation
+    base_dir = None
+    if data_config.source.train_data_dir:
+        base_dir = Path(data_config.source.train_data_dir).parent
+    elif validation and data_config.source.val_data_dir:
+        base_dir = Path(data_config.source.val_data_dir).parent
+
+    return create_manifest(
+        all_scanned,
+        base_dir=base_dir,
+        base_resolution=base_resolution,
+        bucket_reso_steps=data_config.bucketing.bucket_reso_steps,
+        min_bucket_reso=data_config.bucketing.min_bucket_reso,
+        max_bucket_reso=data_config.bucketing.max_bucket_reso,
+        no_upscale=data_config.bucketing.bucket_no_upscale,
+        latent_channels=latent_channels,
+        latent_scale_factor=latent_scale_factor,
+        latent_dtype=latent_dtype,
+        caption_separator=data_config.caption.caption_separator,
+        keep_tokens_separator=data_config.caption.keep_tokens_separator,
+        cache_dir=str(cache_dir) if cache_dir else None,
+    )
 
 
 def compute_config_hash(
@@ -77,7 +384,6 @@ def get_or_create_manifest(
         Tuple of (train_manifest, val_manifest or None).
     """
     # Import here to avoid circular dependency
-    from library.data.pipeline.dataset_scanner import create_manifest_from_config
 
     cache_dir = Path(cache_dir)
     manifest_path = cache_dir / "dataset_manifest.json"

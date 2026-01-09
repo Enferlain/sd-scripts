@@ -271,17 +271,17 @@ class DatasetManifest:
     max_bucket_reso: int = 2048
 
     # VAE configuration (affects latent dimensions and storage)
-    latent_channels: int = 4
+    latent_channels: int = 4  # TODO is this hardcoded?
     """Number of latent channels (4 for SD/SDXL, 16 for Flux 1, 32 for Flux 2)."""
 
-    latent_scale_factor: int = 8
+    latent_scale_factor: int = 8  # TODO is this hardcoded?
     """Spatial downscale factor (8 for most VAEs)."""
 
     latent_dtype: str = "fp16"
     """Data type for cached latents: 'fp16', 'bf16', or 'fp32'.
     Use 'fp32' for 'no half VAE' mode which can improve training quality at the cost of storage."""
 
-    # Note: Flux 2 also uses patch_size [2, 2] which further affects latent dims.
+    # Note: Flux 2 also uses patch_size [2, 2] which further affects latent dims. TODO
     # This may need to be extended in the future for full Flux 2 support.
 
     # Cache configuration

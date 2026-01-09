@@ -549,6 +549,16 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         # Encode on-the-fly using tokenized inputs or tokenize from captions
         input_ids = batch.get("input_ids")
 
+        # Determine device for encoding: use TE device (may be CPU when offloading)
+        te_device = text_encoders[0].device
+
+        # DEBUG: Log TE device placement and training status (remove after testing)
+        te1_training = any(p.requires_grad for p in text_encoders[0].parameters())
+        te2_training = any(p.requires_grad for p in text_encoders[1].parameters())
+        logger.info(
+            f"[DEBUG] _get_text_cond: TE device={te_device}, TE1 trainable={te1_training}, TE2 trainable={te2_training}"
+        )  # DEBUG: remove
+
         # Fallback: tokenize captions on-the-fly if no cached tokens
         if input_ids is None:
             captions = batch.get("captions", [])
@@ -557,11 +567,11 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
             # Tokenize using the tokenize_fn if available, otherwise use tokenizers directly
             input_ids1, input_ids2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], captions, cfg.training.max_token_length)
-            input_ids1 = input_ids1.to(accelerator.device)
-            input_ids2 = input_ids2.to(accelerator.device)
+            input_ids1 = input_ids1.to(te_device)
+            input_ids2 = input_ids2.to(te_device)
         else:
-            input_ids1 = input_ids["clip_l"].to(accelerator.device)
-            input_ids2 = input_ids["clip_g"].to(accelerator.device)
+            input_ids1 = input_ids["clip_l"].to(te_device)
+            input_ids2 = input_ids["clip_g"].to(te_device)
 
         with torch.enable_grad():
             encoder_hidden_states1, encoder_hidden_states2, pool2 = get_hidden_states_sdxl(
@@ -576,7 +586,22 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
                 accelerator=accelerator,
             )
 
-        return encoder_hidden_states1, encoder_hidden_states2, pool2
+        # DEBUG: Log output grad status before device transfer (remove after testing)
+        logger.info(
+            f"[DEBUG] TE outputs: h1.requires_grad={encoder_hidden_states1.requires_grad}, h1.device={encoder_hidden_states1.device}"
+        )  # DEBUG: remove
+
+        # Move outputs to training device (may be different from TE device when offloading)
+        result = (
+            encoder_hidden_states1.to(accelerator.device, dtype=weight_dtype),
+            encoder_hidden_states2.to(accelerator.device, dtype=weight_dtype),
+            pool2.to(accelerator.device, dtype=weight_dtype),
+        )
+
+        # DEBUG: Log output device after transfer (remove after testing)
+        logger.info(f"[DEBUG] After .to(): h1.requires_grad={result[0].requires_grad}, h1.device={result[0].device}")  # DEBUG: remove
+
+        return result
 
     # endregion
 

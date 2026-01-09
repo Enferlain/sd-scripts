@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 import pytest
 import torch
 
-from library.data.pipeline.dataclasses import CacheEntry
+from library.data.structures import CacheEntry
 from library.strategies.sdxl_caching import (
     SdxlLatentsPipelineStrategy,
     SdxlTextEncoderPipelineStrategy,

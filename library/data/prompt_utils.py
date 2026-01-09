@@ -1,3 +1,7 @@
+"""
+Was used for standalone image generation scripts, kept for utility
+"""
+
 import torch
 import logging
 

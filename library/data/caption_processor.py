@@ -15,7 +15,16 @@ Ported from legacy BaseDataset.process_caption() with clean interface.
 
 import random
 import re
+import logging
 from dataclasses import dataclass, field
+from pathlib import Path
+
+from library.data.structures import DatasetManifest
+from library.data.image_utils import CAPTION_EXTENSIONS
+from library.utils.common_utils import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -220,3 +229,88 @@ def _process_tags(
     # Reassemble
     all_tokens = fixed_tokens + flex_tokens + fixed_suffix_tokens
     return sep.join(all_tokens)
+
+
+def _parse_tags(caption: str, separator: str = ", ", keep_tokens_separator: str = "") -> list[str]:
+    """
+    Parse caption into tags, respecting keep_tokens_separator.
+
+    If keep_tokens_separator is set (e.g. "|||"), the caption is first split on that separator,
+    then each part is split on the regular separator. This ensures fixed tokens are parsed correctly.
+
+    Args:
+        caption: Raw caption text.
+        separator: Tag separator (default ", ").
+        keep_tokens_separator: Separator marking fixed regions (e.g. "|||").
+
+    Returns:
+        List of individual tags.
+    """
+    if not caption:
+        return []
+
+    if keep_tokens_separator and keep_tokens_separator in caption:
+        # Split on keep_tokens_separator first, then on regular separator within each part
+        parts = caption.split(keep_tokens_separator)
+        tags = []
+        for part in parts:
+            tags.extend([t.strip() for t in part.split(separator.strip()) if t.strip()])
+        return tags
+    else:
+        # Simple split on separator
+        return [t.strip() for t in caption.split(separator.strip()) if t.strip()]
+
+
+def compute_tag_frequency(manifest: DatasetManifest, separator: str = ",") -> dict[str, dict[str, int]]:
+    """
+    Compute tag frequency from manifest entries.
+
+    Groups tags by parent directory name and counts occurrences.
+    Used for training metadata generation.
+
+    Args:
+        manifest: DatasetManifest to analyze.
+        separator: Caption separator (default ",").
+
+    Returns:
+        Dict mapping directory name -> {tag: count}.
+    """
+    freq: dict[str, dict[str, int]] = {}
+    for entry in manifest.entries.values():
+        tags = [t.strip() for t in entry.caption.split(separator) if t.strip()]
+        dir_name = Path(entry.image_path).parent.name
+        if dir_name not in freq:
+            freq[dir_name] = {}
+        for tag in tags:
+            freq[dir_name][tag] = freq[dir_name].get(tag, 0) + 1
+    return freq
+
+
+def read_caption(image_path: Path, caption_extension: str = ".txt") -> str:
+    """
+    Read caption for an image from associated text file.
+
+    Tries the specified extension first, then falls back to other extensions.
+
+    Args:
+        image_path: Path to the image file.
+        caption_extension: Primary caption file extension to try.
+
+    Returns:
+        Caption text, or empty string if not found.
+    """
+    stem = image_path.stem
+    parent = image_path.parent
+
+    # Try specified extension first
+    extensions_to_try = [caption_extension] + [e for e in CAPTION_EXTENSIONS if e != caption_extension]
+
+    for ext in extensions_to_try:
+        caption_path = parent / f"{stem}{ext}"
+        if caption_path.exists():
+            try:
+                return caption_path.read_text(encoding="utf-8").strip()
+            except Exception as e:
+                logger.warning(f"Failed to read caption {caption_path}: {e}")
+
+    return ""

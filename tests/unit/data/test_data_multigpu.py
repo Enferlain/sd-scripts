@@ -3,10 +3,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from library.data.pipeline.dataclasses import DatasetManifest, CacheEntry, Bucket
-from library.data.pipeline.epoch_preparation import prepare_epoch
-from library.data.pipeline.dataloader import TrainingDataset
-from library.data.pipeline.caching_engine import CachingEngine, CachingStrategy
+from library.data.structures import DatasetManifest, CacheEntry, Bucket
+from library.data.epoch_preparation import prepare_epoch
+from library.data.dataloader import TrainingDataset
+from library.data.caching_engine import CachingEngine, CachingStrategy
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)

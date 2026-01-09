@@ -14,8 +14,8 @@ import torch
 from PIL import Image
 from safetensors.torch import save_file
 
-from library.data.pipeline.caching_engine import CachingStrategy
-from library.data.pipeline.dataclasses import CacheData, CacheEntry, ModelConditioning
+from library.data.caching_engine import CachingStrategy
+from library.data.structures import CacheData, CacheEntry, ModelConditioning
 from library.utils.common_utils import setup_logging
 from library.utils.hash_utils import stable_string_hash
 

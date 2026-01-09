@@ -1,7 +1,7 @@
 """
 Unit tests for library/data/prompt_utils.py
 
-Tests prompt attention parsing and token padding utilities.
+Tests prompt attention parsing and token padding utilities. Used in standalone image generation scripts
 """
 
 import pytest

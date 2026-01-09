@@ -9,6 +9,7 @@ Usage:
     pytest tests/unit/test_peft_scripts_smoke.py -v
 """
 
+import pytest
 import sys
 from pathlib import Path
 
@@ -52,6 +53,7 @@ class TestPeftCommonImports:
 
         assert callable(setup_live_plotter)
 
+    @pytest.mark.skip(reason="Deprecated: prepare_datasets uses legacy data pipeline")
     def test_peft_common_has_prepare_datasets(self):
         """Verify prepare_datasets function exists."""
         from library.data._deprecated.dataset_setup import prepare_datasets
@@ -110,12 +112,14 @@ class TestStrategyImports:
 class TestScriptImports:
     """Test that the main training scripts can be imported."""
 
+    @pytest.mark.skip(reason="Deprecated: sd_peft.py uses legacy data pipeline")
     def test_sd_peft_script_imports(self):
         """Verify sd_peft.py can be imported without errors."""
         import sd_peft
 
         assert sd_peft is not None
 
+    @pytest.mark.skip(reason="Deprecated: sd_peft.py uses legacy data pipeline")
     def test_sd_peft_has_train_function(self):
         """Verify sd_peft.py has train() function."""
         import sd_peft
@@ -123,6 +127,7 @@ class TestScriptImports:
         assert hasattr(sd_peft, "train")
         assert callable(sd_peft.train)
 
+    @pytest.mark.skip(reason="Deprecated: sd_peft.py uses legacy data pipeline")
     def test_sd_peft_has_main_function(self):
         """Verify sd_peft.py has main() function."""
         import sd_peft

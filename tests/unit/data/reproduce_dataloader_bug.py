@@ -1,14 +1,12 @@
 import logging
 import torch
 from pathlib import Path
-from dataclasses import dataclass
 from typing import Any, List
-from torch.utils.data import DataLoader
 
 # Mocks and Imports
-from library.data.pipeline.dataclasses import DatasetManifest, EpochManifest, BatchInfo, CacheEntry
-from library.data.pipeline.dataloader import TrainingDataset, create_training_dataloader
-from library.data.pipeline.caching_engine import CachingStrategy
+from library.data.structures import DatasetManifest, EpochManifest, BatchInfo, CacheEntry
+from library.data.dataloader import create_training_dataloader
+from library.data.caching_engine import CachingStrategy
 
 # Setup simple logging
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +26,7 @@ class MockCachingStrategy(CachingStrategy):
 
     def load_cache(self, path: Path) -> "CacheData":
         # Return fake CacheData
-        from library.data.pipeline.dataclasses import CacheData
+        from library.data.structures import CacheData
 
         return CacheData(latents=torch.zeros((4, 64, 64)))
 

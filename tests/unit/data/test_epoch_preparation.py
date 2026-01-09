@@ -1,13 +1,9 @@
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 import torch
-import random
-from safetensors.torch import save_file
 
-from library.data.pipeline.dataclasses import DatasetManifest, CacheEntry, EpochManifest, BatchInfo
-from library.data.pipeline.epoch_preparation import prepare_epoch, prepare_validation_epoch, tokenize_epoch_manifest, load_epoch_tokens
-from library.data.pipeline.caption_processor import CaptionConfig
+from library.data.structures import DatasetManifest, CacheEntry
+from library.data.epoch_preparation import prepare_epoch, prepare_validation_epoch, tokenize_epoch_manifest, load_epoch_tokens
+from library.data.caption_processor import CaptionConfig
 
 
 @pytest.fixture

@@ -10,15 +10,21 @@ from unittest.mock import MagicMock
 import pytest
 import torch
 
-from library.data.pipeline.dataset_scanner import scan_directory, create_manifest
-from library.data.pipeline.caching_engine import CachingEngine
-from library.data.pipeline.dataclasses import DatasetManifest
+from library.data import scan_directory, create_manifest
+from library.data.caching_engine import CachingEngine
+from library.data.structures import DatasetManifest
 from library.strategies.sd_caching import SdLatentsPipelineStrategy
 from library.strategies.sdxl_caching import SdxlLatentsPipelineStrategy
 
 
 # Path to test assets
 TEST_IMAGES_DIR = Path(__file__).parent.parent / "assets" / "images"
+
+# Count actual image files in test directory
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".jxl"}
+EXPECTED_IMAGE_COUNT = (
+    len([f for f in TEST_IMAGES_DIR.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS]) if TEST_IMAGES_DIR.exists() else 0
+)
 
 
 @pytest.fixture
@@ -58,7 +64,7 @@ class TestPipelineIntegration:
         """Test scanning real test images directory."""
         scanned = scan_directory(str(TEST_IMAGES_DIR))
 
-        assert len(scanned) == 5, f"Expected 5 images, found {len(scanned)}"
+        assert len(scanned) == EXPECTED_IMAGE_COUNT, f"Expected {EXPECTED_IMAGE_COUNT} images, found {len(scanned)}"
 
         for img in scanned:
             assert img.caption, f"Image {img.path} missing caption"
@@ -77,7 +83,7 @@ class TestPipelineIntegration:
         )
 
         assert isinstance(manifest, DatasetManifest)
-        assert len(manifest.entries) == 5
+        assert len(manifest.entries) == EXPECTED_IMAGE_COUNT
         assert len(manifest.buckets) > 0
 
     @pytest.mark.skipif(not TEST_IMAGES_DIR.exists(), reason="Test images not available")
@@ -86,19 +92,18 @@ class TestPipelineIntegration:
         # Step 1: Scan directory
         scanned = scan_directory(str(TEST_IMAGES_DIR))
 
-        # Step 2: Create manifest
+        # Step 2: Create manifest with cache_dir pre-set
+        cache_dir = tmp_path / "cache"
         manifest = create_manifest(
             scanned_images=scanned,
             base_resolution=(1024, 1024),
             bucket_reso_steps=64,
+            cache_dir=str(cache_dir),
         )
 
         # Step 3: Create strategy and engine
         strategy = SdLatentsPipelineStrategy(dtype="fp32")
         engine = CachingEngine(strategy, batch_size=2, num_workers=2)
-
-        # Step 4: Cache the dataset
-        cache_dir = tmp_path / "cache"
         updated_manifest = engine.cache_dataset(
             manifest=manifest,
             model=mock_vae,
@@ -110,7 +115,7 @@ class TestPipelineIntegration:
 
         # Step 5: Verify cache files created
         cache_files = list(cache_dir.glob("*.safetensors"))
-        assert len(cache_files) == 5, f"Expected 5 cache files, found {len(cache_files)}"
+        assert len(cache_files) == EXPECTED_IMAGE_COUNT, f"Expected {EXPECTED_IMAGE_COUNT} cache files, found {len(cache_files)}"
 
         # Verify entries have cache paths
         for entry in updated_manifest.entries.values():
@@ -120,12 +125,14 @@ class TestPipelineIntegration:
     @pytest.mark.skipif(not TEST_IMAGES_DIR.exists(), reason="Test images not available")
     def test_sdxl_caching_integration(self, mock_vae, mock_accelerator, tmp_path):
         """Test full SDXL caching pipeline with real images."""
-        # Step 1: Scan and manifest
+        # Step 1: Scan and manifest with cache_dir
         scanned = scan_directory(str(TEST_IMAGES_DIR))
+        cache_dir = tmp_path / "sdxl_cache"
         manifest = create_manifest(
             scanned_images=scanned,
             base_resolution=(1024, 1024),
             bucket_reso_steps=64,
+            cache_dir=str(cache_dir),
         )
 
         # Step 2: Create SDXL strategy and engine
@@ -133,7 +140,6 @@ class TestPipelineIntegration:
         engine = CachingEngine(strategy, batch_size=2, num_workers=2)
 
         # Step 3: Cache
-        cache_dir = tmp_path / "sdxl_cache"
         engine.cache_dataset(
             manifest=manifest,
             model=mock_vae,
@@ -143,18 +149,18 @@ class TestPipelineIntegration:
         )
 
         # Step 4: Verify
-        cache_files = list(cache_dir.glob("*_sdxl_latents.safetensors"))
-        assert len(cache_files) == 5
+        cache_files = list(cache_dir.glob("*.safetensors"))
+        assert len(cache_files) == EXPECTED_IMAGE_COUNT
 
     @pytest.mark.skipif(not TEST_IMAGES_DIR.exists(), reason="Test images not available")
     def test_skip_existing_caches(self, mock_vae, mock_accelerator, tmp_path):
         """Test that existing cache files are skipped."""
         scanned = scan_directory(str(TEST_IMAGES_DIR))
-        manifest = create_manifest(scanned_images=scanned, base_resolution=(1024, 1024))
+        cache_dir = tmp_path / "cache"
+        manifest = create_manifest(scanned_images=scanned, base_resolution=(1024, 1024), cache_dir=str(cache_dir))
 
         strategy = SdLatentsPipelineStrategy(dtype="fp32")
         engine = CachingEngine(strategy, batch_size=2)
-        cache_dir = tmp_path / "cache"
 
         # First run: create caches
         engine.cache_dataset(manifest, mock_vae, mock_accelerator, cache_dir, show_progress=False)
@@ -174,11 +180,11 @@ class TestPipelineIntegration:
     def test_cache_can_be_loaded(self, mock_vae, mock_accelerator, tmp_path):
         """Test that cached files can be loaded back."""
         scanned = scan_directory(str(TEST_IMAGES_DIR))
-        manifest = create_manifest(scanned_images=scanned, base_resolution=(1024, 1024))
+        cache_dir = tmp_path / "cache"
+        manifest = create_manifest(scanned_images=scanned, base_resolution=(1024, 1024), cache_dir=str(cache_dir))
 
         strategy = SdLatentsPipelineStrategy(dtype="fp32")
         engine = CachingEngine(strategy, batch_size=2)
-        cache_dir = tmp_path / "cache"
 
         engine.cache_dataset(manifest, mock_vae, mock_accelerator, cache_dir, show_progress=False)
 

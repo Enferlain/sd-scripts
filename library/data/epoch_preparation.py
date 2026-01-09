@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import torch
 
-from library.data.pipeline.caption_processor import CaptionConfig, process_caption
-from library.data.pipeline.dataclasses import DatasetManifest, EpochManifest, BatchInfo
+from library.data.caption_processor import CaptionConfig, process_caption
+from library.data.structures import DatasetManifest, EpochManifest, BatchInfo
 from library.utils.common_utils import setup_logging
 from library.utils.hash_utils import stable_string_hash
 
@@ -255,7 +255,7 @@ def tokenize_epoch_manifest(
         Path to the saved safetensors file.
 
     Example:
-        >>> strategy = SdxlTokenizeStrategy(...)
+        >>> strategy = SdxlTokenizeStrategy(...)  # TODO picked up as code in docstrings?
         >>> path = tokenize_epoch_manifest(
         ...     epoch_manifest, strategy.tokenize, "epoch_1_tokens.safetensors"
         ... )

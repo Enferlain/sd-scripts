@@ -546,38 +546,6 @@ CacheData (model-agnostic, in dataclasses.py)
 - [ ] ThreadPool per batch - CPU optimization
 - [ ] color_aug, random_crop, face_crop_aug_range - These are on the fly probably
 
-#### 💡 Text Encoder Offloading (TODO)
-
-`offload_text_encoders` in `MemoryConfig` is partially implemented. Remaining work:
-
-1. **On-demand GPU movement**: When offloading enabled, move TEs to GPU before encoding, back to CPU after:
-
-   ```python
-   # In _get_text_cond or similar
-   if cfg.performance.memory.offload_text_encoders:
-       for te in text_encoders:
-           te.to(accelerator.device)
-   # ... encode ...
-   if cfg.performance.memory.offload_text_encoders:
-       for te in text_encoders:
-           te.to("cpu")
-   ```
-
-2. **Override TE LR-based device placement**: Currently, positive TE LRs cause TEs to be prepared by accelerator (moved to GPU). When `offload_text_encoders=True`, skip this even if LR > 0.
-
-3. **Consider auto-zeroing TE LRs when caching**: Instead of error, log warning and set to 0 automatically (less friction for users).
-
-### Future Refactor: `dataset_scanner.py` split (~900 lines)
-
-| New Module        | Contents                                                                                      |
-| ----------------- | --------------------------------------------------------------------------------------------- |
-| `image_utils.py`  | `get_image_size`, `check_has_alpha`, `read_caption`, `generate_image_id`, future augmentation |
-| `bucket_utils.py` | `make_bucket_resolutions`, `select_bucket` (pure math)                                        |
-| `scanning.py`     | `scan_directory`, `scan_metadata_file`, `ScannedImage`                                        |
-| `dataset.py`      | `create_manifest`, `create_manifest_from_config` (main API)                                   |
-
-Note: Legacy `library/data/image_utils.py` has augmentation code (`trim_and_resize_if_required`, resize helpers) that can inspire our pipeline version.
-
 ---
 
 ### Future Research: TE Caching + Caption Augmentations

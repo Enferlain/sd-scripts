@@ -12,8 +12,8 @@ from unittest.mock import Mock
 import torch
 from PIL import Image
 
-from library.data.pipeline.caching_engine import CachingEngine, CachingStrategy
-from library.data.pipeline.dataclasses import CacheEntry, DatasetManifest, Bucket
+from library.data.caching_engine import CachingEngine, CachingStrategy
+from library.data.structures import CacheEntry, DatasetManifest, Bucket
 
 
 class MockCachingStrategy(CachingStrategy):

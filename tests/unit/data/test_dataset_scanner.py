@@ -10,13 +10,15 @@ from pathlib import Path
 
 from PIL import Image
 
-from library.data.pipeline.dataset_scanner import (
-    scan_directory,
+from library.data import (
     make_bucket_resolutions,
     select_bucket,
+    scan_directory,
+    scan_metadata_file,
     create_manifest,
+    create_manifest_from_config,
 )
-from library.data.pipeline import save_dataset_manifest, load_dataset_manifest
+from library.data import save_dataset_manifest, load_dataset_manifest
 
 
 @pytest.fixture
@@ -266,7 +268,6 @@ class TestScanMetadataFile:
 
     def test_loads_metadata(self, temp_metadata_dir):
         """Should load images from metadata file."""
-        from library.data.pipeline.dataset_scanner import scan_metadata_file
 
         scanned = scan_metadata_file(
             temp_metadata_dir / "metadata.json",
@@ -276,7 +277,7 @@ class TestScanMetadataFile:
 
     def test_reads_caption_and_tags(self, temp_metadata_dir):
         """Should read captions and fall back to tags."""
-        from library.data.pipeline.dataset_scanner import scan_metadata_file
+        from library.data.scanners import scan_metadata_file
 
         scanned = scan_metadata_file(
             temp_metadata_dir / "metadata.json",
@@ -288,7 +289,7 @@ class TestScanMetadataFile:
 
     def test_uses_train_resolution(self, temp_metadata_dir):
         """Should use train_resolution from metadata if present."""
-        from library.data.pipeline.dataset_scanner import scan_metadata_file
+        from library.data.scanners import scan_metadata_file
 
         scanned = scan_metadata_file(
             temp_metadata_dir / "metadata.json",
@@ -301,7 +302,7 @@ class TestScanMetadataFile:
     def test_require_caption_error(self, temp_metadata_dir):
         """Should raise error when require_caption=True and entries are missing captions."""
         import json
-        from library.data.pipeline.dataset_scanner import scan_metadata_file
+        from library.data.scanners import scan_metadata_file
 
         # Create metadata with missing caption
         metadata = {"image_000": {}}  # No caption or tags
@@ -326,7 +327,7 @@ class TestClassTokens:
 
     def test_class_tokens_fallback(self, temp_image_dir):
         """Should use class_tokens as caption when no caption file exists."""
-        from library.data.pipeline.dataset_scanner import scan_directory
+        from library.data.scanners import scan_directory
 
         scanned = scan_directory(
             temp_image_dir,
@@ -339,7 +340,7 @@ class TestClassTokens:
 
     def test_class_tokens_does_not_override_existing(self, temp_image_dir):
         """Should not override existing captions with class_tokens."""
-        from library.data.pipeline.dataset_scanner import scan_directory
+        from library.data.scanners import scan_directory
 
         scanned = scan_directory(
             temp_image_dir,
@@ -362,7 +363,6 @@ class TestCreateManifestFromConfig:
 
     def test_handles_train_data_dir(self, temp_image_dir):
         """Should scan train_data_dir from config (only captioned images)."""
-        from library.data.pipeline.dataset_scanner import create_manifest_from_config
         from library.config.dataclasses.data import DataConfig
 
         # Add caption for no_caption.png so all images are captioned
@@ -378,7 +378,7 @@ class TestCreateManifestFromConfig:
 
     def test_handles_reg_data_dir(self, temp_image_dir):
         """Should scan reg_data_dir as is_reg=True."""
-        from library.data.pipeline.dataset_scanner import create_manifest_from_config
+        from library.data.manifest import create_manifest_from_config
         from library.config.dataclasses.data import DataConfig
 
         config = DataConfig()

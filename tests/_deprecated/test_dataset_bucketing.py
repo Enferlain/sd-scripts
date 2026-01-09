@@ -2,6 +2,8 @@ import pytest
 import torch
 import numpy as np
 from unittest.mock import MagicMock, patch
+
+import library.data.bucketing
 from library.data._deprecated.dataset import BaseDataset, ImageInfo
 
 
@@ -79,7 +81,7 @@ class TestDatasetBucketing:
         with patch("library.data.dataset.BucketManager") as MockBucketManager:
             # Setup BucketManager instance
             bm = MockBucketManager.return_value
-            bm.select_bucket.return_value = ((512, 512), (512, 512), 0.0)
+            library.data.bucketing.select_bucket.return_value = ((512, 512), (512, 512), 0.0)
             bm.buckets = [["img1"]]  # Mock one bucket with one image (list of lists)
             bm.resos = [(512, 512)]
             bm.sort = MagicMock()
@@ -91,7 +93,7 @@ class TestDatasetBucketing:
             # Verifications
             MockBucketManager.assert_called_once()  # Initialized
             bm.make_buckets.assert_called_once()  # Logic called
-            bm.select_bucket.assert_called_with(512, 512)  # Selection called
+            library.data.bucketing.select_bucket.assert_called_with(512, 512)  # Selection called
 
             # Verify bucket_reso update and add_image call
             assert img1.bucket_reso == (512, 512)
@@ -118,7 +120,7 @@ class TestDatasetBucketing:
         with patch("library.data.dataset.BucketManager") as MockBucketManager:
             bm = MockBucketManager.return_value
             # select_bucket still needs to return something
-            bm.select_bucket.return_value = ((512, 512), (512, 512), 0.0)
+            library.data.bucketing.select_bucket.return_value = ((512, 512), (512, 512), 0.0)
             bm.buckets = []
             bm.shuffle = MagicMock()  # Needed for shuffle_buckets
 
@@ -142,7 +144,7 @@ class TestDatasetBucketing:
         with patch("library.data.dataset.BucketManager") as MockBucketManager:
             bm = MockBucketManager.return_value
             # We need to ensure select_bucket doesn't fail return logic
-            bm.select_bucket.return_value = ((320, 320), (300, 300), 0.0)
+            library.data.bucketing.select_bucket.return_value = ((320, 320), (300, 300), 0.0)
             bm.buckets = []
             bm.shuffle = MagicMock()
 
@@ -165,7 +167,7 @@ class TestDatasetBucketing:
         with patch("library.data.dataset.BucketManager") as MockBucketManager:
             bm = MockBucketManager.return_value
             bm.set_predefined_resos = MagicMock()
-            bm.select_bucket.return_value = ((512, 512), (512, 512), 0.0)
+            library.data.bucketing.select_bucket.return_value = ((512, 512), (512, 512), 0.0)
             bm.resos = [(512, 512)]
             bm.buckets = [["img1"]]
             bm.shuffle = MagicMock()

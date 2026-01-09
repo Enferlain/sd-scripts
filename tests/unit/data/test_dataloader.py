@@ -1,10 +1,10 @@
 import pytest
 import torch
-from unittest.mock import MagicMock, patch, mock_open
-from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-from library.data.pipeline.dataloader import TrainingDataset, create_training_dataloader
-from library.data.pipeline.dataclasses import DatasetManifest, EpochManifest, BatchInfo, CacheEntry, CacheData, Bucket
+from library.data.dataloader import TrainingDataset
+from library.data.structures import DatasetManifest, EpochManifest, BatchInfo, CacheEntry, CacheData
+
 
 # -----------------------------------------------------------------------------
 # Fixtures

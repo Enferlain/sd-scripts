@@ -1,43 +1,109 @@
-import os
-import glob
+import hashlib
 import logging
 import random
+from pathlib import Path
 
 import cv2
 import numpy as np
 
 from PIL import Image
 
-from library.constants import IMAGE_EXTENSIONS
 from library.data._deprecated.data_structures import BucketManager
-from library.utils.common_utils import logger
+from library.utils.common_utils import setup_logging
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
-
-def glob_images(directory, base="*"):
-    img_paths = []
-    for ext in IMAGE_EXTENSIONS:
-        if base == "*":
-            img_paths.extend(glob.glob(os.path.join(glob.escape(directory), base + ext)))
-        else:
-            img_paths.extend(glob.glob(glob.escape(os.path.join(directory, base + ext))))
-    img_paths = list(set(img_paths))  # 重複を排除
-    img_paths.sort()
-    return img_paths
+# Caption file extensions to try, in priority order
+CAPTION_EXTENSIONS = (".txt", ".caption")
 
 
-def glob_images_pathlib(dir_path, recursive):
-    image_paths = []
-    if recursive:
-        for ext in IMAGE_EXTENSIONS:
-            image_paths += list(dir_path.rglob("*" + ext))
+def get_image_size(path: Path) -> tuple[int, int]:
+    """
+    Get image dimensions without loading the full image.
+
+    Uses specialized handlers for JXL (fast header parsing),
+    imagesize library if available, otherwise falls back to PIL.
+
+    Args:
+        path: Path to image file.
+
+    Returns:
+        Tuple of (width, height).
+    """
+    suffix = path.suffix.lower()
+
+    # Use specialized JXL parser for up to 200x speedup
+    if suffix == ".jxl":
+        try:
+            from library.utils.jpeg_xl_util import get_jxl_size
+
+            return get_jxl_size(str(path))
+        except Exception:
+            pass  # Fall through to other methods
+
+    # Try imagesize library
+    try:
+        import imagesize
+
+        width, height = imagesize.get(str(path))
+        if width > 0 and height > 0:
+            return width, height
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
+    # Fallback to PIL
+    from PIL import Image
+
+    with Image.open(path) as img:
+        return img.size
+
+
+def check_has_alpha(path: Path) -> bool:
+    """
+    Check if an image has an alpha channel.
+
+    Opens the image briefly to check its mode.
+
+    Args:
+        path: Path to image file.
+
+    Returns:
+        True if image has alpha channel (RGBA, LA, PA modes).
+    """
+    from PIL import Image
+
+    try:
+        with Image.open(path) as img:
+            return img.mode in ("RGBA", "LA", "PA")
+    except Exception:
+        return False
+
+
+def generate_image_id(path: Path, base_dir: Path | None = None) -> str:
+    """
+    Generate a unique ID for an image.
+
+    Uses a short hash of the relative path for uniqueness while keeping IDs readable.
+
+    Args:
+        path: Absolute path to image.
+        base_dir: Base directory for relative path calculation.
+
+    Returns:
+        Unique identifier string.
+    """
+    if base_dir:
+        rel_path = path.relative_to(base_dir)
     else:
-        for ext in IMAGE_EXTENSIONS:
-            image_paths += list(dir_path.glob("*" + ext))
-    image_paths = list(set(image_paths))  # 重複を排除
-    image_paths.sort()
-    return image_paths
+        rel_path = path
+
+    # Create hash from relative path
+    path_hash = hashlib.md5(str(rel_path).encode()).hexdigest()[:8]
+    stem = path.stem[:32]  # Limit stem length
+    return f"{stem}_{path_hash}"
 
 
 def load_image(image_path, alpha=False):
@@ -58,15 +124,21 @@ def load_image(image_path, alpha=False):
 
 # 画像を読み込む。戻り値はnumpy.ndarray,(original width, original height),(crop left, crop top, crop right, crop bottom)
 def trim_and_resize_if_required(
-        random_crop: bool, image: np.ndarray, reso, resized_size: tuple[int, int],
-        resize_interpolation: str | None = None, random_crop_padding_percent: float = 0.05
+    random_crop: bool,
+    image: np.ndarray,
+    reso,
+    resized_size: tuple[int, int],
+    resize_interpolation: str | None = None,
+    random_crop_padding_percent: float = 0.05,
 ) -> tuple[np.ndarray, tuple[int, int], tuple[int, int, int, int]]:
     image_height, image_width = image.shape[0:2]
     original_size = (image_width, image_height)  # size before resize
 
     if random_crop:
-        resized_size = (int(resized_size[0] * (1.0 + random_crop_padding_percent)),
-                        int(resized_size[1] * (1.0 + random_crop_padding_percent)))
+        resized_size = (
+            int(resized_size[0] * (1.0 + random_crop_padding_percent)),
+            int(resized_size[1] * (1.0 + random_crop_padding_percent)),
+        )
 
     if image_width != resized_size[0] or image_height != resized_size[1]:
         image = resize_image(image, image_width, image_height, resized_size[0], resized_size[1], resize_interpolation)
@@ -77,20 +149,19 @@ def trim_and_resize_if_required(
         trim_size = image_width - reso[0]
         p = trim_size // 2 if not random_crop else random.randint(0, trim_size)
         # logger.info(f"w {trim_size} {p}")
-        image = image[:, p: p + reso[0]]
+        image = image[:, p : p + reso[0]]
     if image_height > reso[1]:
         trim_size = image_height - reso[1]
         p = trim_size // 2 if not random_crop else random.randint(0, trim_size)
         # logger.info(f"h {trim_size} {p})
-        image = image[p: p + reso[1]]
+        image = image[p : p + reso[1]]
 
     # random cropの場合のcropされた値をどうcrop left/topに反映するべきか全くアイデアがない
     # I have no idea how to reflect the cropped value in crop left/top in the case of random crop
 
     crop_ltrb = BucketManager.get_crop_ltrb(reso, original_size)
 
-    assert image.shape[0] == reso[1] and image.shape[1] == reso[
-        0], f"internal error, illegal trimmed size: {image.shape}, {reso}"
+    assert image.shape[0] == reso[1] and image.shape[1] == reso[0], f"internal error, illegal trimmed size: {image.shape}, {reso}"
     return image, original_size, crop_ltrb
 
 
@@ -114,12 +185,12 @@ def pil_resize(image, size, interpolation):
 
 
 def resize_image(
-        image: np.ndarray,
-        width: int,
-        height: int,
-        resized_width: int,
-        resized_height: int,
-        resize_interpolation: str | None = None,
+    image: np.ndarray,
+    width: int,
+    height: int,
+    resized_width: int,
+    resized_height: int,
+    resize_interpolation: str | None = None,
 ):
     """
     Resize image with resize interpolation. Default interpolation to AREA if image is smaller, else LANCZOS.

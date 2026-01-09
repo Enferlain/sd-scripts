@@ -7,17 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-08]
+
 ### Added
 
 - **Text Encoder Offloading**: New `offload_text_encoders` option in `performance.memory` config
+
   - Keeps text encoders on CPU between forward passes to save VRAM
   - Allows caption augmentation (shuffle, dropout) unlike TE caching
-  - TEs are moved to GPU on-demand for encoding, then back to CPU
-  - Compatible with TE training (TEs move back and forth each step)
+  - Encoding happens on CPU, outputs moved to GPU for training
   - Mutually exclusive with `cache_text_encoder_outputs` (validation enforced)
-- **Improved `is_text_encoder_not_needed_for_training()`**: Now returns True when TE caching is enabled and TEs aren't being trained, allowing proper memory cleanup
+  - Mutually exclusive with TE training (validation enforced)
 
-## [2026-01-07]
+- **Improved `is_text_encoder_not_needed_for_training()`**: Now returns True when TE caching is enabled and TEs aren't being trained, allowing proper memory cleanup
+- **TE Offloading + Training Validation**: Added validation in `config_validation.py` to prevent training TEs while offloading to CPU (would cause major slowdown)
+- **Granular Offloading TODO**: Added note for potential future per-TE offloading when using granular LRs like `[1e-5, 0]`
+
+### Changed
+
+- **Data Module Refactoring**: Restructured `library/data/` from flat `pipeline/` subfolder
+  - Fixed circular imports in `manifest.py`, `caption_processor.py`, `scanners.py` (use direct module imports)
+  - Merged `manifest_builder.py` into `manifest.py`
+  - Moved `read_caption`, `_parse_tags`, `compute_tag_frequency` to `caption_processor.py`
+  - Updated `__init__.py` to reflect new module structure
+  - Updated all imports from `library.data.pipeline` → `library.data` across 5 files
+
+### Fixed
+
+- **Broken Imports**: Fixed references to deleted `dataset_scanner.py` in test files
+- **Debug Logging**: Added INFO-level debug logs in `_get_text_cond` for TE device placement and trainability (marked for removal after testing)
 
 ## [2026-01-07]
 

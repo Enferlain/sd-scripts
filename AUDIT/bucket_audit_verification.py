@@ -128,8 +128,7 @@ class LegacyBucketManager:
 
 # --- New Implementation Import ---
 try:
-    from library.data.pipeline.dataset_scanner import select_bucket as new_select_bucket
-    from library.data.pipeline.dataset_scanner import make_bucket_resolutions
+    from library.data import make_bucket_resolutions, select_bucket as new_select_bucket
 except ImportError as e:
     print(f"Could not import new implementation: {e}")
     import traceback

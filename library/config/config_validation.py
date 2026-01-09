@@ -128,12 +128,20 @@ def validate_config(cfg) -> None:
                 "Choose one: offloading (allows caption augmentation) or caching (faster, no augmentation)."
             )
 
-    # TE caching + TE training conflict
-    if cfg.data.caching.cache_text_encoder_outputs:
-        if should_train_text_encoder(cfg.optimizer.learning_rates):
+        # TE offloading + TE training conflict
+        # TODO: Could support granular offloading (e.g., [1e-5, 0] trains TE1 on GPU, offloads TE2 to CPU)
+        #       Would require per-TE device placement and mixed-device encoding in _get_text_cond
+        if cfg.performance.memory.offload_text_encoders and should_train_text_encoder(cfg.optimizer.learning_rates):
             raise ValueError(
-                "Cannot train text encoder while caching TE outputs. Set text_encoders LR to 0, or disable cache_text_encoder_outputs."
+                "Cannot train text encoder while offloading to CPU. Text encoder training requires TEs on GPU. "
+                "Either set text_encoders LR to 0, or disable offload_text_encoders."
             )
+
+    # TE caching + TE training conflict
+    if cfg.data.caching.cache_text_encoder_outputs and should_train_text_encoder(cfg.optimizer.learning_rates):
+        raise ValueError(
+            "Cannot train text encoder while caching TE outputs. Set text_encoders LR to 0, or disable cache_text_encoder_outputs."
+        )
 
     # TODO: Revisit when model-agnostic block/layer granular LR is implemented
     # Currently SDXL-specific and assumes 23 blocks - not widely used

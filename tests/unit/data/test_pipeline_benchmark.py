@@ -11,10 +11,10 @@ import torch
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from library.data.pipeline.dataclasses import DatasetManifest, CacheEntry
-from library.data.pipeline.epoch_preparation import prepare_epoch
-from library.data.pipeline.dataloader import create_training_dataloader
-from library.data.pipeline.caching_engine import CachingStrategy
+from library.data.structures import DatasetManifest, CacheEntry
+from library.data.epoch_preparation import prepare_epoch
+from library.data.dataloader import create_training_dataloader
+from library.data.caching_engine import CachingStrategy
 
 
 class MockCachingStrategy(CachingStrategy):

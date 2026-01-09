@@ -13,9 +13,7 @@ Tests all caption augmentation features:
 
 import random
 
-import pytest
-
-from library.data.pipeline.caption_processor import CaptionConfig, process_caption
+from library.data.caption_processor import CaptionConfig, process_caption
 
 
 class TestCaptionProcessorBasic:

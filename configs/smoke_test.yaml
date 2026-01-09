@@ -67,7 +67,7 @@ optimizer:
   learning_rates:
     base: 1e-4
     unet: 1e-5
-    text_encoders: 0
+    text_encoders: [1e-5, 1e-5]
   scheduler:
     lr_scheduler: "constant"
 
@@ -78,7 +78,7 @@ performance:
     no_half_vae: true
   memory:
     gradient_checkpointing: true
-    offload_text_encoders: true # singular name prob better, needs to overwrite device placement that comes from tes having lrs set when enabled 
+    offload_text_encoders: false # singular name prob better, needs to overwrite device placement that comes from tes having lrs set when enabled 
   attention:
     xformers: true
 

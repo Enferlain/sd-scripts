@@ -46,7 +46,7 @@ from library.strategies.peft_strategy_sdxl import SdxlPeftStrategy
 from library.adapters.lora_utils import resolve_adapter_kwargs
 from library.training.training_metadata import create_training_metadata
 from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
-from library.data.pipeline import (
+from library.data import (
     CaptionConfig,
     CachingEngine,
     create_training_dataloader,
@@ -180,7 +180,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
 
         # If validation split was used, filter train entries
         if val_manifest is not None:
-            from library.data.pipeline import DatasetManifest, Bucket
+            from library.data import DatasetManifest, Bucket
 
             # Filter train manifest to only train entries
             train_entries = {k: v for k, v in train_manifest.entries.items() if v.split == "train"}
@@ -898,7 +898,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         # Phase G.1: Optional epoch tokenization (when TE caching is disabled)
         tokens_path = None
         if cfg.data.caching.cache_tokens_per_epoch and not cfg.data.caching.cache_text_encoder_outputs:
-            from library.data.pipeline import tokenize_epoch_manifest
+            from library.data import tokenize_epoch_manifest
             from library.strategies.peft_strategy_sdxl import tokenize_sdxl_captions
 
             tokens_path = Path(cache_dir) / f"epoch_{epoch}_tokens.safetensors"

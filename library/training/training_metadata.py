@@ -9,7 +9,7 @@ import json
 import os
 
 from library.constants import SS_METADATA_MINIMUM_KEYS
-from library.data.pipeline import DatasetManifest, compute_tag_frequency
+from library.data import DatasetManifest, compute_tag_frequency
 from library.utils.hash_utils import get_git_revision_hash, model_hash, calculate_hash
 
 

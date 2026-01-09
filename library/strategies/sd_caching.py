@@ -13,8 +13,8 @@ import torch
 from PIL import Image
 from safetensors.torch import save_file
 
-from library.data.pipeline.caching_engine import CachingStrategy
-from library.data.pipeline.dataclasses import CacheData, CacheEntry
+from library.data.caching_engine import CachingStrategy
+from library.data.structures import CacheData, CacheEntry
 from library.utils.common_utils import setup_logging
 
 setup_logging()
@@ -140,7 +140,7 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         Returns:
             CacheData with latents (and optionally latents_flipped, alpha_mask).
         """
-        from library.data.pipeline.dataclasses import CacheData
+        from library.data.structures import CacheData
         from safetensors import safe_open
 
         with safe_open(str(path), framework="pt") as f:

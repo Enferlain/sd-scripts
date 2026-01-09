@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 import torch
 
-from library.data.pipeline.dataset_scanner import scan_directory, create_manifest
-from library.data.pipeline.caching_engine import CachingEngine
+from library.data import scan_directory, create_manifest
+from library.data.caching_engine import CachingEngine
 from library.strategies.sdxl_caching import SdxlLatentsPipelineStrategy
 
 
@@ -77,16 +77,16 @@ class TestRealVAEIntegration:
         scanned = scan_directory(str(TEST_IMAGES_DIR))
         scanned = scanned[:1]  # Just first image
 
+        cache_dir = tmp_path / "cache"
         manifest = create_manifest(
             scanned_images=scanned,
             base_resolution=(1024, 1024),
             bucket_reso_steps=64,
+            cache_dir=str(cache_dir),
         )
 
         strategy = SdxlLatentsPipelineStrategy(dtype="fp32")
         engine = CachingEngine(strategy, batch_size=1, num_workers=1)
-
-        cache_dir = tmp_path / "cache"
         engine.cache_dataset(
             manifest=manifest,
             model=real_vae,
@@ -133,16 +133,16 @@ class TestRealVAEIntegration:
         scanned = scan_directory(str(TEST_IMAGES_DIR))
         scanned = scanned[:2]  # Two different images
 
+        cache_dir = tmp_path / "cache"
         manifest = create_manifest(
             scanned_images=scanned,
             base_resolution=(1024, 1024),
             bucket_reso_steps=64,
+            cache_dir=str(cache_dir),
         )
 
         strategy = SdxlLatentsPipelineStrategy(dtype="fp32")
         engine = CachingEngine(strategy, batch_size=1, num_workers=1)
-
-        cache_dir = tmp_path / "cache"
         engine.cache_dataset(manifest, real_vae, accelerator, cache_dir, show_progress=False)
 
         # Load both latents (paths were set by caching engine)
