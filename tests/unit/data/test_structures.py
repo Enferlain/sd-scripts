@@ -25,9 +25,20 @@ class TestBucket:
         mem_flux = bucket.memory_per_image(latent_channels=16, latent_scale_factor=8, latent_dtype="fp32")
         assert mem_flux == 128 * 128 * 16 * 4
 
+    def test_bf16_dtype(self):
+        """Test bf16 dtype (also 2 bytes like fp16)."""
+        bucket = Bucket(resolution=(1024, 1024))
+        mem_bf16 = bucket.memory_per_image(latent_channels=4, latent_scale_factor=8, latent_dtype="bf16")
+        assert mem_bf16 == 128 * 128 * 4 * 2
+
     def test_count(self):
         bucket = Bucket(resolution=(512, 512), image_ids=["a", "b", "c"])
         assert bucket.count == 3
+
+    def test_empty_bucket(self):
+        """Test bucket with no images."""
+        bucket = Bucket(resolution=(512, 512))
+        assert bucket.count == 0
 
 
 @pytest.mark.unit
@@ -54,6 +65,15 @@ class TestBatchInfo:
         assert batch.get_sample_key(0) == "img1"          # repeat 0 uses base ID
         assert batch.get_sample_key(1) == "img1#1"        # repeat 1 uses suffix
 
+    def test_get_sample_key_high_repeat(self):
+        """Test sample key with higher repeat indices."""
+        batch = BatchInfo(
+            image_ids=["img1"],
+            bucket_reso=(512, 512),
+            repeat_indices=[5]
+        )
+        assert batch.get_sample_key(0) == "img1#5"
+
 
 @pytest.mark.unit
 class TestEpochManifest:
@@ -71,8 +91,8 @@ class TestEpochManifest:
 class TestDatasetManifest:
     def test_lookup_methods(self):
         entry = CacheEntry(
-            id="img1", image_path="path", original_size=(100,100),
-            bucket_reso=(100,100), resized_size=(100,100), caption="cap"
+            id="img1", image_path="path", original_size=(100, 100),
+            bucket_reso=(100, 100), resized_size=(100, 100), caption="cap"
         )
         bucket = Bucket(resolution=(100, 100), image_ids=["img1"])
 
@@ -89,10 +109,10 @@ class TestDatasetManifest:
 
     def test_counts(self):
         e1 = CacheEntry(
-            id="1", image_path="", original_size=(0,0), bucket_reso=(0,0), resized_size=(0,0), caption="cap1"
+            id="1", image_path="", original_size=(0, 0), bucket_reso=(0, 0), resized_size=(0, 0), caption="cap1"
         )
         e2 = CacheEntry(
-            id="2", image_path="", original_size=(0,0), bucket_reso=(0,0), resized_size=(0,0), caption=""
+            id="2", image_path="", original_size=(0, 0), bucket_reso=(0, 0), resized_size=(0, 0), caption=""
         )
 
         manifest = DatasetManifest(entries={"1": e1, "2": e2})

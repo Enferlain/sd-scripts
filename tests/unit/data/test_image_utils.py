@@ -8,6 +8,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from PIL import Image
+import cv2
 
 from library.data.image_utils import (
     get_image_size,
@@ -94,7 +95,9 @@ class TestGenerateImageId:
         assert img_id.startswith("image_")
         # Relative path is subdir/image.png
         # Hash of "subdir/image.png"
-        expected_hash = hashlib.md5("subdir/image.png".encode()).hexdigest()[:8]
+        # Use Path to get relative path string for cross-platform compatibility
+        rel_path_str = str(Path("subdir") / "image.png")
+        expected_hash = hashlib.md5(rel_path_str.encode()).hexdigest()[:8]
         assert img_id.endswith(expected_hash)
 
     def test_no_base_dir(self):
@@ -162,16 +165,37 @@ class TestTrimAndResize:
 
 @pytest.mark.unit
 class TestInterpolationUtils:
-    def test_validate_interpolation(self):
-        assert validate_interpolation_fn("area")
-        assert validate_interpolation_fn("lanczos")
+
+    @pytest.mark.parametrize("method", ["lanczos", "nearest", "bilinear", "linear", "bicubic", "cubic", "area", "box"])
+    def test_validate_all_interpolations(self, method):
+        assert validate_interpolation_fn(method)
+
+    def test_validate_invalid(self):
         assert not validate_interpolation_fn("invalid")
 
-    def test_get_cv2_interpolation(self):
-        import cv2
-        assert get_cv2_interpolation("area") == cv2.INTER_AREA
-        assert get_cv2_interpolation("linear") == cv2.INTER_LINEAR
+    @pytest.mark.parametrize("method,expected_cv2", [
+        ("area", cv2.INTER_AREA),
+        ("linear", cv2.INTER_LINEAR),
+        ("bilinear", cv2.INTER_LINEAR),
+        ("lanczos", cv2.INTER_LANCZOS4),
+        ("lanczos4", cv2.INTER_LANCZOS4),
+        ("nearest", cv2.INTER_NEAREST_EXACT),
+        ("bicubic", cv2.INTER_CUBIC),
+        ("cubic", cv2.INTER_CUBIC),
+        ("box", cv2.INTER_AREA),
+    ])
+    def test_get_cv2_interpolation_all(self, method, expected_cv2):
+        assert get_cv2_interpolation(method) == expected_cv2
 
-    def test_get_pil_interpolation(self):
-        assert get_pil_interpolation("lanczos") == Image.Resampling.LANCZOS
-        assert get_pil_interpolation("nearest") == Image.Resampling.NEAREST
+    @pytest.mark.parametrize("method,expected_pil", [
+        ("lanczos", Image.Resampling.LANCZOS),
+        ("nearest", Image.Resampling.NEAREST),
+        ("bilinear", Image.Resampling.BILINEAR),
+        ("linear", Image.Resampling.BILINEAR),
+        ("bicubic", Image.Resampling.BICUBIC),
+        ("cubic", Image.Resampling.BICUBIC),
+        ("box", Image.Resampling.BOX),
+        ("area", Image.Resampling.HAMMING),
+    ])
+    def test_get_pil_interpolation_all(self, method, expected_pil):
+        assert get_pil_interpolation(method) == expected_pil
