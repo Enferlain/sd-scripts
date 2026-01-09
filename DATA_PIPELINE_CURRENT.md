@@ -182,8 +182,6 @@ See `DATA_PIPELINE_TEST_PLAN.md` for:
 - subsets
 - saving state
 - resuming state
-- random_crop (preprocessing augmentation)
-- resize+crop behavior (aspect ratio preservation)
 - alpha_mask (detection works, but mask extraction/usage not implemented)
 
 ### Audit Findings (from `AUDIT/AUDIT_PHASE_1.md`)

@@ -10,6 +10,8 @@ This document provides essential context for AI agents working on this repositor
 d:\Projects\sd-scripts\venv\Scripts\python.exe
 ```
 
+Using powershell search over grep search tool is recommended after grep fails to return results due to possible environment issues.
+
 Always use the venv Python for running scripts, tests, and imports.
 
 ## Running Tests
@@ -68,12 +70,13 @@ uvx ty check library/training/checkpointing.py
 
 | File                   | Purpose                                       |
 | ---------------------- | --------------------------------------------- |
+| `AGENTS.md`            | Agent instructions                            |
 | `ROADMAP.md`           | Tracks refactoring progress and future plans  |
 | `CHANGELOG.md`         | Document all notable changes here             |
 | `DEVELOPMENT_GUIDE.md` | Architectural principles and coding standards |
-| `pyproject.toml`       | Project config: ruff, pytest, coverage        |
+| `pyproject.toml`       | Project config: ruff, ty, pytest, coverage    |
 
-Always check DEVELOPMENT_GUIDE.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELOG.md to refresh your memory of the latest work and the current state of the project.
+Always check AGENTS.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELOG.md to refresh your memory of the latest work and the current state of the project.
 
 ## Project Structure
 
@@ -101,7 +104,7 @@ Always check DEVELOPMENT_GUIDE.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELO
 │   ├── utils/             # General utilities (hashing, device, torch)
 │   └── vendor/            # Third-party vendored code
 ├── scripts/               # Thin Hydra entry points (training scripts)
-├── tests/                 # Unit and integration tests
+├── tests/                 # Unit and integration tests, test assets (models, datasets, etc.)
 └── tools/                 # Standalone utilities (still use argparse)
 ```
 
@@ -165,6 +168,5 @@ When completing refactoring work:
 
 ## Known Quirks
 
-- Some optimizer tests have pre-existing failures (SGD betas issue) - unrelated to most work
 - `tools/` contains standalone utilities that still use `argparse` (external compatibility)
 - `v2` flag distinguishes SD2.x from SD1.x; both handled by `sd_*` modules (not SDXL)

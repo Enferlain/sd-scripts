@@ -15,13 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `preprocess_image()` now resizes to `resized_size` (maintains aspect ratio) then crops to `target_size`
   - Affected files: `sdxl_caching.py`, `sd_caching.py`, `caching_engine.py`
   - Previously: 1556x2048 image → bucket 1536x2048 = **squished** (distorted)
-  - Now: 1556x2048 image → bucket 1536x2048 = **cropped 10px per side** (correct)
+- Now: 1556x2048 image → bucket 1536x2048 = **cropped 10px per side** (correct)
 - **Integration Test Failures**: Fixed all 25 integration tests
   - Added `cache_dir` parameter to `create_manifest()` and `create_manifest_from_config()` calls in tests
   - Changed tests to use dynamic `EXPECTED_IMAGE_COUNT` from actual test directory contents
   - Fixed cache file glob patterns from `*_sdxl_latents.safetensors` to generic `*.safetensors`
   - Fixed `test_te_cache_roundtrip` to use `te_cache_path` instead of `latent_cache_path`
   - Fixed `test_val_data_dir_explicit` to use `IMAGE_EXTENSIONS` filter (not just `*.jpg`)
+  - Fixed lint warnings in `peft_strategy_sdxl.py`.
+- **Preprocessing Improvements**:
+  - Implemented correct **resize-then-crop** logic to prevent aspect ratio distortion during caching.
+  - Added `random_crop` (bool) and `random_crop_padding_percent` (float) to `PreprocessingConfig`.
+  - Added `resize_interpolation` config option supporting:
+    - Auto-selection (default): HAMMING for downscaling, LANCZOS for upscaling.
+    - Explicit choices: `area` (cv2.INTER_AREA), `hamming`, `lanczos`, `bicubic`, `bilinear`.
 
 ### Added
 
