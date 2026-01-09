@@ -49,7 +49,7 @@ Scripts (contain training loops):     Library Modules:
 | Category               | Items                                        | Priority |
 | ---------------------- | -------------------------------------------- | -------- |
 | **Checkpoint I/O**     | `load_models_from_*`, `save_*_checkpoint`    | High     |
-| **Network Classes**    | `LoRAAdapter.apply_to()`, `create_adapter()` | Medium   |
+| **Adapter Classes**    | `LoRAAdapter.apply_to()`, `create_adapter()` | Medium   |
 | **Sample Generation**  | `sample_images_common`, inference pipeline   | Medium   |
 | **Full Training Loop** | Config → Trainer → Step                      | High     |
 
@@ -73,7 +73,7 @@ Scripts (contain training loops):     Library Modules:
   - Should extract to dedicated `Edm2LossConfig` sub-dataclass
   - Mutates config directly (`loss_config.debiased_estimation_loss = False`)
 - [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner
-- [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`.
+- [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`. **INIT_IPEX MIGHT BE USELESS POST TORCH 2.6.0**
 - [ ] **SD Data Pipeline Support** (low priority) - Update `peft_strategy_sd.py` to consume new batch format from `TrainingDataset`. Expects `batch["input_ids_list"]` / `batch["text_encoder_outputs_list"]` but new pipeline uses dict format. See AUDIT/AUDIT_PHASE_2.md.
 
 ---
@@ -129,6 +129,7 @@ Scripts (contain training loops):     Library Modules:
   - Lazy loading of manifest entries
   - Sharded manifests by bucket
   - Skip manifest creation if unchanged from previous run
+  - Maybe fp8 for te output storage, needs tests
 
 ---
 
