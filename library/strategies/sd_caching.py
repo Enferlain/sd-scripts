@@ -232,6 +232,7 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         resized_size: tuple[int, int] | None = None,
         random_crop: bool = False,
         random_crop_padding_percent: float = 0.05,
+        resize_interpolation: str | None = None,
     ) -> torch.Tensor:
         """
         Preprocess an image for VAE encoding.
@@ -246,6 +247,9 @@ class SdLatentsPipelineStrategy(CachingStrategy):
                 uses target_size directly (legacy behavior, may cause distortion).
             random_crop: If True, use random crop offset. If False, center crop.
             random_crop_padding_percent: Extra padding when random crop enabled (0.05 = 5%).
+            resize_interpolation: Interpolation method. Supported values:
+                - None: Auto-select (HAMMING for downscale, LANCZOS for upscale)
+                - 'lanczos', 'hamming', 'area', 'bilinear', 'bicubic', 'nearest'
 
         Returns:
             Tensor [C, H, W] ready for batching.
@@ -270,14 +274,32 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         # Resize if needed
         orig_w, orig_h = image.size
         if orig_w != resize_w or orig_h != resize_h:
-            # Auto-select interpolation: AREA for downscale (prevents aliasing), LANCZOS for upscale
-            if orig_w >= resize_w and orig_h >= resize_h:
-                # Downscaling - use HAMMING (PIL's closest to AREA, sharper than BILINEAR)
-                interpolation = Image.Resampling.HAMMING
+            # Determine interpolation method
+            if resize_interpolation is None:
+                # Auto-select: HAMMING for downscale, LANCZOS for upscale
+                if orig_w >= resize_w and orig_h >= resize_h:
+                    pil_interp = Image.Resampling.HAMMING
+                else:
+                    pil_interp = Image.Resampling.LANCZOS
+                image = image.resize((resize_w, resize_h), pil_interp)
+            elif resize_interpolation == "area":
+                # Use cv2 INTER_AREA for true area-based downscaling
+                import cv2
+
+                arr = np.array(image)
+                arr = cv2.resize(arr, (resize_w, resize_h), interpolation=cv2.INTER_AREA)
+                image = Image.fromarray(arr)
             else:
-                # Upscaling or mixed - use LANCZOS
-                interpolation = Image.Resampling.LANCZOS
-            image = image.resize((resize_w, resize_h), interpolation)
+                # Map string to PIL resampling
+                pil_map = {
+                    "lanczos": Image.Resampling.LANCZOS,
+                    "hamming": Image.Resampling.HAMMING,
+                    "bilinear": Image.Resampling.BILINEAR,
+                    "bicubic": Image.Resampling.BICUBIC,
+                    "nearest": Image.Resampling.NEAREST,
+                }
+                pil_interp = pil_map.get(resize_interpolation.lower(), Image.Resampling.LANCZOS)
+                image = image.resize((resize_w, resize_h), pil_interp)
 
         # Crop to target size if needed
         current_w, current_h = image.size

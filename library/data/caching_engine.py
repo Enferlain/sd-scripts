@@ -129,6 +129,7 @@ class CachingStrategy(ABC):
         resized_size: tuple[int, int] | None = None,
         random_crop: bool = False,
         random_crop_padding_percent: float = 0.05,
+        resize_interpolation: str | None = None,
     ) -> torch.Tensor:
         """
         Preprocess an image for encoding.
@@ -143,6 +144,8 @@ class CachingStrategy(ABC):
                 uses target_size directly (may cause distortion).
             random_crop: If True, use random crop offset. If False, center crop.
             random_crop_padding_percent: Extra padding when random crop enabled.
+            resize_interpolation: Interpolation method ('lanczos', 'hamming', 'area', etc.).
+                If None, auto-selects based on scale direction.
 
         Returns:
             Tensor [C, H, W] ready for batching.
@@ -153,7 +156,6 @@ class CachingStrategy(ABC):
 
         if image.mode != "RGB":
             image = image.convert("RGB")
-
 
         arr = np.array(image).astype(np.float32) / 255.0
         arr = arr * 2.0 - 1.0
@@ -181,6 +183,7 @@ class CachingEngine:
         num_workers: int = 4,
         random_crop: bool = False,
         random_crop_padding_percent: float = 0.05,
+        resize_interpolation: str | None = None,
     ):
         """
         Initialize the caching engine.
@@ -191,12 +194,15 @@ class CachingEngine:
             num_workers: Number of parallel I/O workers.
             random_crop: If True, use random crop during preprocessing.
             random_crop_padding_percent: Extra padding for random crop.
+            resize_interpolation: Interpolation method ('lanczos', 'hamming', 'area', etc.).
+                If None, auto-selects based on scale direction.
         """
         self.strategy = strategy
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.random_crop = random_crop
         self.random_crop_padding_percent = random_crop_padding_percent
+        self.resize_interpolation = resize_interpolation
 
     def cache_dataset(
         self,
@@ -378,6 +384,7 @@ class CachingEngine:
                 resized_size=entry.resized_size,
                 random_crop=self.random_crop,
                 random_crop_padding_percent=self.random_crop_padding_percent,
+                resize_interpolation=self.resize_interpolation,
             )
             tensors.append(tensor)
             img.close()

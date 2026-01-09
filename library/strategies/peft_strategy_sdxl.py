@@ -304,11 +304,11 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             weight_dtype: Weight data type.
         """
         if cfg.data.caching.cache_text_encoder_outputs:
+            org_vae_device = vae.device
+            org_unet_device = unet.device
             if not cfg.performance.memory.lowram:
                 # Save memory by moving vae and unet to cpu
                 logger.info("move vae and unet to cpu to save memory")
-                org_vae_device = vae.device
-                org_unet_device = unet.device
                 vae.to("cpu")
                 unet.to("cpu")
                 clean_memory_on_device(accelerator.device)
