@@ -28,9 +28,9 @@ class PreprocessingConfig:
     flip_aug: bool = field(default=False, metadata={"help": "enable horizontal flip augmentation"})
     color_aug: bool = field(default=False, metadata={"help": "enable weak color augmentation"})
     random_crop: bool = field(default=False, metadata={"help": "enable random crop"})
+    random_crop_padding_percent: float = field(default=0.05, metadata={"help": "padding for random crop area (0.05 = 5%)"})
     face_crop_aug_range: str | None = field(default=None, metadata={"help": "enable face-centered crop augmentation and its range"})
     debug_dataset: bool = field(default=False, metadata={"help": "show images for debugging"})
-    cache_info: bool = field(default=False, metadata={"help": "cache meta information for faster dataset loading"})
 
 
 @dataclass

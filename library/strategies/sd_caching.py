@@ -8,7 +8,8 @@ and are designed to work with CacheEntry dataclasses, not the legacy ImageInfo.
 import logging
 from pathlib import Path
 from typing import Any
-
+import random
+import numpy as np
 import torch
 from PIL import Image
 from safetensors.torch import save_file
@@ -228,30 +229,70 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         self,
         image: Image.Image,
         target_size: tuple[int, int],
+        resized_size: tuple[int, int] | None = None,
+        random_crop: bool = False,
+        random_crop_padding_percent: float = 0.05,
     ) -> torch.Tensor:
         """
         Preprocess an image for VAE encoding.
 
-        Resizes to target size and normalizes to [-1, 1].
+        Resizes maintaining aspect ratio to resized_size, then crops to target_size.
+        This prevents distortion when image aspect ratio doesn't exactly match bucket.
 
         Args:
             image: PIL Image.
-            target_size: (width, height) to resize to.
+            target_size: Final bucket resolution (width, height) after cropping.
+            resized_size: Intermediate size before crop (width, height). If None,
+                uses target_size directly (legacy behavior, may cause distortion).
+            random_crop: If True, use random crop offset. If False, center crop.
+            random_crop_padding_percent: Extra padding when random crop enabled (0.05 = 5%).
 
         Returns:
             Tensor [C, H, W] ready for batching.
         """
-        # Resize to target size if needed
-        if image.size != target_size:
-            image = image.resize(target_size, Image.Resampling.LANCZOS)
 
-        # Convert to RGB if needed
+        # Convert to RGB if needed (do this first to simplify later operations)
         if image.mode != "RGB":
             image = image.convert("RGB")
 
-        # Convert to tensor and normalize to [-1, 1]
-        import numpy as np
+        target_w, target_h = target_size
 
+        # Determine resize target
+        if resized_size is None:
+            resize_w, resize_h = target_w, target_h
+        else:
+            resize_w, resize_h = resized_size
+            # Apply random crop padding if enabled
+            if random_crop:
+                resize_w = int(resize_w * (1.0 + random_crop_padding_percent))
+                resize_h = int(resize_h * (1.0 + random_crop_padding_percent))
+
+        # Resize if needed
+        orig_w, orig_h = image.size
+        if orig_w != resize_w or orig_h != resize_h:
+            # Auto-select interpolation: AREA for downscale (prevents aliasing), LANCZOS for upscale
+            if orig_w >= resize_w and orig_h >= resize_h:
+                # Downscaling - use HAMMING (PIL's closest to AREA, sharper than BILINEAR)
+                interpolation = Image.Resampling.HAMMING
+            else:
+                # Upscaling or mixed - use LANCZOS
+                interpolation = Image.Resampling.LANCZOS
+            image = image.resize((resize_w, resize_h), interpolation)
+
+        # Crop to target size if needed
+        current_w, current_h = image.size
+
+        if current_w > target_w:
+            trim = current_w - target_w
+            left = trim // 2 if not random_crop else random.randint(0, trim)
+            image = image.crop((left, 0, left + target_w, current_h))
+
+        if current_h > target_h:
+            trim = current_h - target_h
+            top = trim // 2 if not random_crop else random.randint(0, trim)
+            image = image.crop((0, top, image.size[0], top + target_h))
+
+        # Convert to tensor and normalize to [-1, 1]
         arr = np.array(image, dtype=np.float32) / 255.0
         arr = arr * 2.0 - 1.0  # [0, 1] -> [-1, 1]
         tensor = torch.from_numpy(arr).permute(2, 0, 1)  # [H, W, C] -> [C, H, W]

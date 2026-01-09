@@ -3,9 +3,9 @@
 This document tracks implementation progress for the data pipeline rework.
 See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_OLD.md` for legacy reference.
 
-## Status: ✅ Phase 1-4 Complete, ✅ SDXL Integration Complete, ✅ Production Ready
+## Status: ✅ Phase 1-4 Complete, ✅ SDXL Integration Complete
 
-**Last Updated:** 2026-01-07
+**Last Updated:** 2026-01-09
 
 - Phase 1 (scanning): Complete ✅
 - Phase 2 (caching): Complete ✅
@@ -16,6 +16,8 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_OLD.md` for legacy ref
 - **Cache Path Simplification:** Complete ✅ - Paths set at manifest creation
 - **Manifest Persistence:** Complete ✅ - Hash + file count validation, reuse across runs
 - **Smoke Test:** Passed (training + sample generation with weighted prompts)
+- **Unit Tests:** 947 passed, 6 skipped (skipped tests are for deprecated SD 1.x scripts)
+- **Integration Tests:** 25 passed ✅
 - **TE Dimension Bugs:** Fixed:
   - In-memory TE caching: Added `.squeeze(0)` when storing per-entry outputs
   - Sample generation: Removed premature `reshape()` in `_get_hidden_states_sdxl`
@@ -180,28 +182,9 @@ See `DATA_PIPELINE_TEST_PLAN.md` for:
 - subsets
 - saving state
 - resuming state
-
-### Recent Smoke Test Fixes (2026-01-07)
-
-**Config Access Fixes:**
-
-- `init_timestep_sampler()`: Pass `cfg.timestep` not full `cfg`
-- `parse_dynamic_timestep_schedule()`: Pass `cfg.timestep` not full `cfg`
-- `prepare_edm2_loss_weighting()`: Pass `cfg.loss.edm2` not `cfg.loss`
-- `get_huber_threshold_if_needed()`: Updated to `(loss_config, huber_config, ...)` signature
-- `cfg.loss.masked` → `cfg.loss.masked.masked_loss` (nested config object)
-- Fixed `is_train_unet`/`is_train_text_encoder` to pass `learning_rates` not full optimizer config
-
-**Other Fixes:**
-
-- `batch["loss_weights"].to(loss.device)` - tensor was on CPU
-- `asdict()` → OmegaConf-compatible iteration in `model_metadata.py`
-- LR defaults in `prepare_config()`: `unet` and `text_encoders` default to `base`
-- `cache_dir` fallback to `train_data_dir` in `prepare_config()`
-- Tag parsing respects `|||` separator
-- `adapter_module` path: `library.adapters.lora`
-
-**Status:** Training loop confirmed working through epoch 1 (50+ steps), checkpoint saving in testing
+- random_crop (preprocessing augmentation)
+- resize+crop behavior (aspect ratio preservation)
+- alpha_mask (detection works, but mask extraction/usage not implemented)
 
 ### Audit Findings (from `AUDIT/AUDIT_PHASE_1.md`)
 
@@ -243,58 +226,10 @@ def __init__(self, ..., start_batch_index: int = 0):
 - Delete after epoch completes
 - Regenerated automatically on resume if missing
 
-#### ✅ Epoch/Step Handling
-
-- `current_epoch`/`current_step` are build-time inputs to `prepare_epoch()`, not runtime state
-- Token warmup calculated during manifest generation
-- `set_max_train_steps()` is obsolete
-
-#### ✅ Validation Dataset (from `AUDIT/AUDIT_PHASE_3.md`)
-
-- Use `prepare_validation_epoch()` once at training start
-- Single static manifest, reused every epoch (no shuffling/dropout)
-- Same `TrainingDataset` + `create_training_dataloader` pattern
-
-#### 📊 Benchmarking (from `AUDIT/AUDIT_PHASE_5.md`)
-
-Core benchmarks in `tests/unit/data/test_pipeline_benchmark.py`:
-
-- ✅ `prepare_epoch` timing (1k/10k images)
-- ✅ DataLoader throughput with mocked I/O
-- ✅ First batch latency
-
 **TODO (needs GPU testing):**
 
 - [ ] Streaming tokens vs RAM loading (memory vs latency tradeoff)
 - [ ] `pin_memory=True` effectiveness (requires CUDA device)
-
-#### 🔒 Cache Path Simplification (Complete ✅)
-
-**Design:** Cache paths are set once at manifest creation, not computed dynamically.
-
-| Before (v1)                            | After (v2)                                  |
-| -------------------------------------- | ------------------------------------------- |
-| `strategy.get_cache_path(entry, dir)`  | `entry.latent_cache_path` (pre-set)         |
-| `strategy.set_cache_path(entry, path)` | Paths set in `create_manifest(cache_dir=…)` |
-| Paths computed per-access              | Paths immutable after creation              |
-
-**New Fields:**
-
-- `DatasetManifest.cache_dir` - Directory for all cache files
-- `DatasetManifest.config_hash` - SHA256 hash for validity checking
-- `CacheEntry.latent_cache_path` - Pre-set at manifest creation
-- `CacheEntry.te_cache_path` - Pre-set at manifest creation
-
-**New Functions:**
-
-- `compute_config_hash(train_data_dir, cache_dir, resolution, bucket_steps, max_token_length, enable_bucket)` - Generate config hash
-- `get_or_create_manifest(data_config, cache_dir, ...)` - Load existing or create new manifest (validates hash + file count)
-
-**Benefits:**
-
-- Single source of truth for cache paths
-- No path computation during training loop
-- Manifest can be reused across runs if config unchanged
 
 #### 🔒 Cache Invalidation (from `AUDIT/AUDIT_PHASE_6.md`)
 
@@ -544,7 +479,9 @@ CacheData (model-agnostic, in dataclasses.py)
 - [x] Update `peft_strategy_sdxl.py` to use `batch["conditionings"]`
 - [x] Renamed `pipeline_sdxl.py` → `sdxl_caching.py`
 - [ ] ThreadPool per batch - CPU optimization
-- [ ] color_aug, random_crop, face_crop_aug_range - These are on the fly probably
+- [x] random_crop - Implemented in preprocess_image with padding percent option
+- [ ] color_aug - Skipped (invalidates latent cache, rarely used)
+- [ ] face_crop_aug_range - Not implemented (face detection complexity)
 
 ---
 

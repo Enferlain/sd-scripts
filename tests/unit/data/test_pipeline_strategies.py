@@ -165,6 +165,72 @@ class TestSdLatentsPipelineStrategy:
         assert tensor.min() >= -1.0
         assert tensor.max() <= 1.0
 
+    def test_preprocess_image_resize_then_crop(self):
+        """Test that mismatched AR images are resized then cropped (not squished)."""
+        from PIL import Image
+
+        strategy = SdLatentsPipelineStrategy()
+        # Image with slightly wider AR than bucket (1556/2048 = 0.76 vs 1536/2048 = 0.75)
+        image = Image.new("RGB", (1556, 2048), color=(100, 150, 200))
+
+        # Target bucket is 1536x2048, resized_size calculated by select_bucket would be (1556, 2048)
+        tensor = strategy.preprocess_image(
+            image,
+            target_size=(1536, 2048),  # bucket_reso
+            resized_size=(1556, 2048),  # maintains AR, slightly larger
+        )
+
+        # Output should be exactly bucket size (cropped, not squished)
+        assert tensor.shape == (3, 2048, 1536)  # [C, H, W]
+
+    def test_preprocess_image_random_crop_varies(self):
+        """Test that random_crop produces varied crops."""
+        from PIL import Image
+        import numpy as np
+
+        strategy = SdLatentsPipelineStrategy()
+        # Create image with horizontal gradient so different crop positions differ
+        width, height = 1600, 2048
+        gradient = np.linspace(0, 255, width, dtype=np.uint8)
+        gradient_img = np.tile(gradient, (height, 1))
+        gradient_rgb = np.stack([gradient_img, gradient_img, gradient_img], axis=2)
+        image = Image.fromarray(gradient_rgb, "RGB")
+
+        crops = []
+        for _ in range(10):
+            tensor = strategy.preprocess_image(
+                image,
+                target_size=(1536, 2048),
+                resized_size=(1600, 2048),  # 64px to crop
+                random_crop=True,
+            )
+            # Check the exact values differ (random crop offset)
+            crops.append(tensor[0, 0, 0].item())
+
+        # With random crop on gradient image, we should see variation
+        assert len(set(crops)) > 1, "Random crop should produce varied results"
+
+    def test_preprocess_image_center_crop_consistent(self):
+        """Test that center crop is deterministic."""
+        from PIL import Image
+
+        strategy = SdLatentsPipelineStrategy()
+        image = Image.new("RGB", (1600, 2048), color=(100, 150, 200))
+
+        tensors = [
+            strategy.preprocess_image(
+                image,
+                target_size=(1536, 2048),
+                resized_size=(1600, 2048),
+                random_crop=False,
+            )
+            for _ in range(3)
+        ]
+
+        # Center crop should be identical each time
+        assert torch.allclose(tensors[0], tensors[1])
+        assert torch.allclose(tensors[1], tensors[2])
+
 
 class TestSdxlLatentsPipelineStrategy:
     """Tests for SDXL latent caching strategy."""

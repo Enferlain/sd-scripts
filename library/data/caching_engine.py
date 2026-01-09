@@ -11,7 +11,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
-
+import numpy as np
 import torch
 from PIL import Image
 from tqdm import tqdm
@@ -126,34 +126,38 @@ class CachingStrategy(ABC):
         self,
         image: Image.Image,
         target_size: tuple[int, int],
+        resized_size: tuple[int, int] | None = None,
+        random_crop: bool = False,
+        random_crop_padding_percent: float = 0.05,
     ) -> torch.Tensor:
         """
         Preprocess an image for encoding.
 
-        Default implementation resizes and normalizes to [-1, 1].
-        Subclasses can override for model-specific preprocessing.
+        Resizes maintaining aspect ratio to resized_size, then crops to target_size.
+        Subclasses should override with model-specific implementations.
 
         Args:
             image: PIL Image.
-            target_size: (width, height) to resize to.
+            target_size: Final bucket resolution (width, height) after cropping.
+            resized_size: Intermediate size before crop (width, height). If None,
+                uses target_size directly (may cause distortion).
+            random_crop: If True, use random crop offset. If False, center crop.
+            random_crop_padding_percent: Extra padding when random crop enabled.
 
         Returns:
             Tensor [C, H, W] ready for batching.
         """
-        # Resize to target size
+        # Default implementation - subclasses override with full resize+crop logic
         if image.size != target_size:
             image = image.resize(target_size, Image.Resampling.LANCZOS)
 
-        # Convert to RGB if needed
         if image.mode != "RGB":
             image = image.convert("RGB")
 
-        # Convert to tensor and normalize to [-1, 1]
-        import numpy as np
 
         arr = np.array(image).astype(np.float32) / 255.0
-        arr = arr * 2.0 - 1.0  # [0, 1] -> [-1, 1]
-        tensor = torch.from_numpy(arr).permute(2, 0, 1)  # [H, W, C] -> [C, H, W]
+        arr = arr * 2.0 - 1.0
+        tensor = torch.from_numpy(arr).permute(2, 0, 1)
         return tensor
 
 
@@ -175,6 +179,8 @@ class CachingEngine:
         strategy: CachingStrategy,
         batch_size: int = 4,
         num_workers: int = 4,
+        random_crop: bool = False,
+        random_crop_padding_percent: float = 0.05,
     ):
         """
         Initialize the caching engine.
@@ -183,10 +189,14 @@ class CachingEngine:
             strategy: Model-specific caching strategy.
             batch_size: Number of images to process per batch.
             num_workers: Number of parallel I/O workers.
+            random_crop: If True, use random crop during preprocessing.
+            random_crop_padding_percent: Extra padding for random crop.
         """
         self.strategy = strategy
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.random_crop = random_crop
+        self.random_crop_padding_percent = random_crop_padding_percent
 
     def cache_dataset(
         self,
@@ -361,8 +371,14 @@ class CachingEngine:
         # Preprocess and stack into batch tensor
         target_size = entries[0].bucket_reso  # All entries in batch have same bucket
         tensors = []
-        for img, _entry in zip(images, entries):
-            tensor = self.strategy.preprocess_image(img, target_size)
+        for img, entry in zip(images, entries):
+            tensor = self.strategy.preprocess_image(
+                img,
+                target_size=target_size,
+                resized_size=entry.resized_size,
+                random_crop=self.random_crop,
+                random_crop_padding_percent=self.random_crop_padding_percent,
+            )
             tensors.append(tensor)
             img.close()
 

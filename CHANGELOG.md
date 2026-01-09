@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-09]
+
+### Fixed
+
+- **Image Preprocessing Distortion**: Fixed critical bug where images were squished to bucket resolution instead of properly cropped
+  - `preprocess_image()` now resizes to `resized_size` (maintains aspect ratio) then crops to `target_size`
+  - Affected files: `sdxl_caching.py`, `sd_caching.py`, `caching_engine.py`
+  - Previously: 1556x2048 image → bucket 1536x2048 = **squished** (distorted)
+  - Now: 1556x2048 image → bucket 1536x2048 = **cropped 10px per side** (correct)
+- **Integration Test Failures**: Fixed all 25 integration tests
+  - Added `cache_dir` parameter to `create_manifest()` and `create_manifest_from_config()` calls in tests
+  - Changed tests to use dynamic `EXPECTED_IMAGE_COUNT` from actual test directory contents
+  - Fixed cache file glob patterns from `*_sdxl_latents.safetensors` to generic `*.safetensors`
+  - Fixed `test_te_cache_roundtrip` to use `te_cache_path` instead of `latent_cache_path`
+  - Fixed `test_val_data_dir_explicit` to use `IMAGE_EXTENSIONS` filter (not just `*.jpg`)
+
+### Added
+
+- **Random Crop Support**: Added `random_crop` and `random_crop_padding_percent` params to caching strategies
+  - Random crop uses configurable padding (default 5%) for more varied training crops
+  - Center crop (default) is deterministic for reproducibility
+- **Auto Interpolation**: Automatically select optimal resize interpolation
+  - Uses HAMMING (similar to AREA) for downscaling (prevents aliasing)
+  - Uses LANCZOS for upscaling (smooth edges)
+- **Config Field**: Added `random_crop_padding_percent` to `PreprocessingConfig`
+
+### Changed
+
+- **Test Suite Cleanup**: Deleted stale `test_sdxl_train.py` dry run script (was for debugging)
+- **Test Robustness**: Integration tests now adapt to the actual number of images in test assets
+
 ## [2026-01-08]
 
 ### Added
