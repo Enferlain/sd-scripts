@@ -1,0 +1,23 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Benchmark - Loader Optimized
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=benchmark_sdxl_loader
+#
+# Purpose: Test DataLoader performance with aggressive worker settings.
+# ═══════════════════════════════════════════════════════════════════════════
+
+defaults:
+  - benchmark_sdxl_tunable
+  - _self_
+
+data:
+  loader:
+    # ─── Optimized Loader Settings ───
+    num_workers: 4                   # Parallel workers
+    persistent_workers: true         # Avoid respawning workers
+    prefetch_factor: 4               # Aggressive prefetching
+    pin_memory: true
+
+output:
+  saving:
+    output_name: "benchmark_sdxl_loader"

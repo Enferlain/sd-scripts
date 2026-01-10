@@ -2,14 +2,20 @@
 # Benchmark Runner Script
 # ═══════════════════════════════════════════════════════════════════════════
 # Usage: .\run_benchmark.ps1 -Fresh              # Clear cache, run default config
+#        .\run_benchmark.ps1 -Config tunable     # Run the fully tunable config (edit configs/benchmark_sdxl_tunable.yaml)
+#        .\run_benchmark.ps1 -Config loader      # Run with optimized loader settings
+#        .\run_benchmark.ps1 -Config no_cache    # Run with caching disabled (on-the-fly)
 #        .\run_benchmark.ps1 -Config train_te    # Run with TE training (no TE cache)
 #        .\run_benchmark.ps1 -Config offload     # Run with TE offloading
-#        .\run_benchmark.ps1 -Config workers     # Run with DataLoader workers
+#        .\run_benchmark.ps1 -Config workers     # Run with DataLoader workers (legacy config)
 #        .\run_benchmark.ps1 -Config large       # Run with simulated large dataset
 #        .\run_benchmark.ps1 -Profile            # Enable Python profiling
 #
 # Available configs:
 #   default  - TE cached to disk, TEs frozen, no workers (baseline)
+#   tunable  - Base config with all knobs exposed (edit to test specific settings)
+#   loader   - Optimized DataLoader settings (persistent workers, prefetch)
+#   no_cache - Caching disabled, TE training enabled (on-the-fly processing)
 #   train_te - No TE caching, TEs trained with LR 1e-5
 #   offload  - TEs offloaded to CPU, no caching
 #   workers  - 4 workers, persistent, prefetch=4, more repeats
@@ -27,6 +33,9 @@ param(
 # Map config names to actual config files
 $configMap = @{
     "default"  = "benchmark_sdxl"
+    "tunable"  = "benchmark_sdxl_tunable"
+    "loader"   = "benchmark_sdxl_loader"
+    "no_cache" = "benchmark_sdxl_no_cache"
     "train_te" = "benchmark_sdxl_train_te"
     "offload"  = "benchmark_sdxl_offload"
     "workers"  = "benchmark_sdxl_workers"
