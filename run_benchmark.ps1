@@ -51,15 +51,8 @@ Write-Host "  SDXL PEFT Benchmark (New Data Pipeline)" -ForegroundColor Cyan
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
 
-# Clear cache if requested
-if ($Fresh) {
-    Write-Host "[INFO] Clearing benchmark cache..." -ForegroundColor Yellow
-    $cacheDir = "$projectRoot\benchmark_cache"
-    if (Test-Path $cacheDir) {
-        Remove-Item -Recurse -Force $cacheDir
-        Write-Host "[INFO] Deleted $cacheDir" -ForegroundColor Green
-    }
-}
+# Cache directory
+$cacheDir = "$projectRoot\benchmark_cache"
 
 # Create output directory
 $outputDir = "$projectRoot\benchmark_output"
@@ -83,14 +76,23 @@ Write-Host ""
 # Enable resource tracking
 $env:BENCHMARK_RESOURCES = "1"
 
-# Pre-run memory snapshot
+# Pre-run memory snapshots
 $memBefore = (& nvidia-smi --query-gpu=memory.used --format=csv,noheader 2>$null).Trim()
-Write-Host "[INFO] GPU Memory before: $memBefore" -ForegroundColor Gray
+$cpuRamBefore = [math]::Round((Get-Process -Id $PID).WorkingSet64 / 1MB, 0)
 
 # Run benchmark and capture output
 $totalTimes = @()
+$firstRunOutput = ""  # First run has fresh caching, use for resource data
 $allOutput = ""
 for ($i = 1; $i -le $Runs; $i++) {
+    # Clear cache before each run if -Fresh is specified
+    if ($Fresh) {
+        if (Test-Path $cacheDir) {
+            Remove-Item -Recurse -Force $cacheDir
+            Write-Host "[INFO] Cleared cache for run $i" -ForegroundColor Yellow
+        }
+    }
+    
     Write-Host ""
     Write-Host "─── Run $i of $Runs ────────────────────────────────────────────" -ForegroundColor Cyan
     
@@ -110,25 +112,29 @@ for ($i = 1; $i -le $Runs; $i++) {
     $totalTimes += $elapsed
     $allOutput = Get-Content $logFile -Raw
     
+    # Preserve first run output for resource stats (has fresh caching data)
+    if ($i -eq 1) {
+        $firstRunOutput = $allOutput
+    }
+    
     Write-Host ""
     Write-Host "[RESULT] Run $i completed in $([math]::Round($elapsed, 2))s" -ForegroundColor Green
 }
 
-# Post-run memory snapshot
+# Post-run memory snapshots
 $memAfter = (& nvidia-smi --query-gpu=memory.used --format=csv,noheader 2>$null).Trim()
+$cpuRamAfter = [math]::Round((Get-Process -Id $PID).WorkingSet64 / 1MB, 0)
+
+# Use first run for resource/speed extraction (has fresh caching data)
+$allOutput = $firstRunOutput
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Parse benchmark output
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Extract final 100% lines from progress bars (get the last complete one)
-$latentCachingFinal = [regex]::Matches($allOutput, 'Caching \(GPU 0\): 100%[^\r\n]+') | Select-Object -Last 1
-$teCachingFinal = $null
-$cachingMatches = [regex]::Matches($allOutput, 'Caching \(GPU 0\): 100%[^\r\n]+')
-if ($cachingMatches.Count -ge 2) {
-    $teCachingFinal = $cachingMatches[$cachingMatches.Count - 1]
-    $latentCachingFinal = $cachingMatches[$cachingMatches.Count - 2]
-}
+# Extract final 100% lines from progress bars (now with distinct names)
+$latentCachingFinal = [regex]::Matches($allOutput, 'Latent Caching \(GPU 0\): 100%[^\r\n]+') | Select-Object -Last 1
+$teCachingFinal = [regex]::Matches($allOutput, 'TE Caching \(GPU 0\): 100%[^\r\n]+') | Select-Object -Last 1
 $trainingFinal = [regex]::Matches($allOutput, 'steps: 100%[^\r\n]+avr_loss[^\r\n]+') | Select-Object -Last 1
 
 # Extract speed from final lines
@@ -148,16 +154,22 @@ function Extract-ResourceSummary($text, $header) {
         $lines = @()
         if ($block -match 'Duration:\s*([\d.]+s)') { $lines += "Duration: $($matches[1])" }
         
-        # GPU Memory
+        # GPU Memory (nvidia-smi) - look for the nvidia-smi section
+        if ($block -match 'GPU Memory \(nvidia-smi\):\s*Used:\s*(\d+)\s*.*?\s*(\d+)\s*MB\s*\(peak:\s*(\d+)\s*MB\)') {
+            $lines += "GPU (nvidia-smi): $($matches[1]) → $($matches[2]) MB (peak: $($matches[3]) MB)"
+        }
+        
+        # GPU Memory (PyTorch) - Allocated
         if ($block -match 'Allocated:\s*(\d+)\s*.*?\s*(\d+)\s*MB\s*\(peak:\s*(\d+)\s*MB\)') {
             $lines += "GPU Allocated: $($matches[1]) → $($matches[2]) MB (peak: $($matches[3]) MB)"
         }
+        # GPU Memory (PyTorch) - Reserved
         if ($block -match 'Reserved:\s*(\d+)\s*.*?\s*(\d+)\s*MB\s*\(peak:\s*(\d+)\s*MB\)') {
             $lines += "GPU Reserved: $($matches[1]) → $($matches[2]) MB (peak: $($matches[3]) MB)"
         }
         
-        # CPU RAM
-        if ($block -match 'Used:\s*(\d+)\s*.*?\s*(\d+)\s*MB\s*\(peak:\s*(\d+)\s*MB\)') {
+        # CPU RAM - must be in CPU RAM section (after "CPU RAM:")
+        if ($block -match 'CPU RAM:\s*Used:\s*(\d+)\s*.*?\s*(\d+)\s*MB\s*\(peak:\s*(\d+)\s*MB\)') {
             $lines += "CPU RAM: $($matches[1]) → $($matches[2]) MB (peak: $($matches[3]) MB)"
         }
         
@@ -281,12 +293,34 @@ $trainingResource
 "@
 }
 
+# Add timing stats for multi-run
+$timingSection = ""
+if ($Runs -gt 1) {
+    $avg = [math]::Round(($totalTimes | Measure-Object -Average).Average, 2)
+    $min = [math]::Round(($totalTimes | Measure-Object -Minimum).Minimum, 2)
+    $max = [math]::Round(($totalTimes | Measure-Object -Maximum).Maximum, 2)
+    $timingSection = @"
+
+## Timing ($Runs runs)
+
+| Metric | Value |
+|--------|-------|
+| Average | ${avg}s |
+| Min | ${min}s |
+| Max | ${max}s |
+
+> Note: Resource usage data is from Run 1 (fresh caching). Runs 2+ use cached data.
+"@
+}
+
 $md += @"
+$timingSection
+## Memory (before → after)
 
-## GPU Memory
-
-- **Before:** $memBefore
-- **After:** $memAfter
+| Type | Before | After |
+|------|--------|-------|
+| GPU (nvidia-smi) | $memBefore | $memAfter |
+| CPU RAM | ${cpuRamBefore} MB | ${cpuRamAfter} MB |
 
 ---
 *Generated by run_benchmark.ps1*

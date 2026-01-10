@@ -251,6 +251,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             accelerator=accelerator,
             cache_dir=cache_dir,
             flip_aug=cfg.data.preprocessing.flip_aug,
+            cache_type="Latent Caching",
         )
         if val_manifest is not None:
             val_manifest = latent_caching_engine.cache_dataset(
@@ -259,6 +260,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 accelerator=accelerator,
                 cache_dir=cache_dir,
                 flip_aug=False,  # No flip aug for validation
+                cache_type="Latent Caching",
             )
 
         # RESOURCE TRACKER START
@@ -310,6 +312,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 model=(*text_encoders, *tokenizers),  # SDXL: (clip_l_enc, clip_g_enc, clip_l_tok, clip_g_tok)
                 accelerator=accelerator,
                 cache_dir=cache_dir,
+                cache_type="TE Caching",
             )
             if val_manifest is not None:
                 val_manifest = te_caching_engine.cache_dataset(
@@ -317,6 +320,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     model=(*text_encoders, *tokenizers),
                     accelerator=accelerator,
                     cache_dir=cache_dir,
+                    cache_type="TE Caching",
                 )
 
             # RESOURCE TRACKER START

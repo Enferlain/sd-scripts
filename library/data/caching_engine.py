@@ -216,6 +216,7 @@ class CachingEngine:
         flip_aug: bool = False,
         alpha_mask: bool = False,
         show_progress: bool = True,
+        cache_type: str = "Caching",  # Display name for progress bar (e.g., "Latent Caching", "TE Caching")
     ) -> DatasetManifest:
         """
         Cache all entries in a dataset manifest.
@@ -256,7 +257,7 @@ class CachingEngine:
         # Process batches with progress bar
         pbar = tqdm(
             total=len(my_entries),
-            desc=f"Caching (GPU {accelerator.process_index})",
+            desc=f"{cache_type} (GPU {accelerator.process_index})",
             disable=not show_progress or accelerator.process_index != 0,
         )
 
