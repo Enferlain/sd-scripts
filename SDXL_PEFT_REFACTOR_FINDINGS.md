@@ -74,7 +74,7 @@ There are multiple blocks handling the movement of text encoders:
 
 This logic is scattered and could be centralized in a `manage_text_encoder_device` helper or within the strategy.
 
-## Summary of Proposed Plan
+## Summary of Plan
 
 1.  **Refactor Adapter Setup**: Extract adapter creation/merging logic to `library/adapters/setup.py`.
 2.  **Move Save/Remove Logic**: Move nested `save_model`/`remove_model` to `library/training/checkpointing.py`.
