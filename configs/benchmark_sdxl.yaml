@@ -1,0 +1,121 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Benchmark Config
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=benchmark_sdxl
+#
+# Purpose: Measure training performance with new data pipeline
+# Dataset: 550 real images in tests/assets/training_images
+#          This measures actual caching and loading performance, not just repeats
+
+defaults:
+  - sdxl_peft_schema
+  - _self_
+
+# ─── MODEL ──────────────────────────────────────────────────────────────────
+model:
+  model_type: sdxl
+  pretrained_model_name_or_path: "D:/stable-diffusion-webui-reForge/models/Stable-diffusion/21862-seele_pop3_v-pred.safetensors"
+  vae: null
+
+# ─── TRAINING ───────────────────────────────────────────────────────────────
+training:
+  max_train_steps: 50 # Enough steps for stable timing measurements
+  train_batch_size: 2 # Optimal for 24GB GPU
+  gradient_accumulation_steps: 1
+  seed: 42 # Fixed for reproducibility
+  max_token_length: 225
+
+# ─── DATA ────────────────────────────────────────────────────────────────────
+data:
+  source:
+    train_data_dir: "D:/Projects/sd-scripts/tests/assets/training_images" # 550 images
+    dataset_repeats: 1 # Real images, no artificial repeats
+  preprocessing:
+    resolution: "1024,1024"
+  caption:
+    shuffle_caption: false # Disable for reproducibility
+    caption_extension: ".txt"
+    keep_tokens_separator: "|||"
+  bucketing:
+    enable_bucket: true
+    min_bucket_reso: 256
+    max_bucket_reso: 1024
+    bucket_reso_steps: 64
+  caching:
+    cache_latents: true
+    cache_latents_to_disk: true
+    cache_text_encoder_outputs: true # Benchmark with TE caching
+    cache_text_encoder_outputs_to_disk: true
+    cache_tokens_per_epoch: false
+    cache_dir: "D:/Projects/sd-scripts/benchmark_cache" # Separate from source dir
+    # Caching speed options:
+    vae_batch_size: 2 # Batched VAE encoding (1-4, 4 may OOM on 24GB)
+    num_workers: 4 # Parallel image loading (ThreadPoolExecutor workers)
+  loader:
+    num_workers: 0 # Avoid spawn overhead on Windows for training DataLoader
+    persistent_workers: false
+    prefetch_factor: 2
+    pin_memory: true
+
+# ─── PEFT (adapter configuration) ───────────────────────────────────────────
+peft:
+  adapter_module: "library.adapters.lora"
+  adapter_rank: 32
+  adapter_alpha: 16.0
+  adapter_args: ["conv_dim=32", "conv_alpha=16.0"]
+
+# ─── OPTIMIZER ──────────────────────────────────────────────────────────────
+optimizer:
+  optimizer_type: "AdamW8bit"
+  max_grad_norm: 1.0
+  optimizer_args:
+    - "weight_decay=0.01"
+    - "betas=0.9, 0.999"
+  learning_rates:
+    base: 1e-4
+    unet: 1e-5
+    text_encoders: [0, 0] # Must be 0 when cache_text_encoder_outputs=true
+  scheduler:
+    lr_scheduler: "constant"
+
+# ─── PERFORMANCE ────────────────────────────────────────────────────────────
+performance:
+  precision:
+    mixed_precision: "bf16"
+    no_half_vae: true
+  memory:
+    gradient_checkpointing: true # Standard for 24GB GPU
+    offload_text_encoders: false
+  attention:
+    xformers: true
+
+# ─── LOSS ───────────────────────────────────────────────────────────────────
+loss:
+  v_parameterization: true
+  loss_type: "l2"
+  regularization:
+    zero_terminal_snr: true
+  snr:
+    min_snr_gamma: 5.0
+  prior_loss_weight: 1.0
+
+# ─── TIMESTEP ───────────────────────────────────────────────────────────────
+timestep:
+  timestep_sampling: "uniform"
+  min_timestep: 0
+  max_timestep: 1000
+
+# ─── OUTPUT ─────────────────────────────────────────────────────────────────
+output:
+  saving:
+    output_dir: "D:/Projects/sd-scripts/benchmark_output"
+    output_name: "benchmark_sdxl"
+    save_model_as: "safetensors"
+    save_precision: "fp16"
+    save_every_n_steps: 999999 # Effectively disabled (field requires int)
+    save_every_n_epochs: 999999
+  sampling:
+    sample_every_n_steps: 0 # Disable sampling during benchmark
+    sample_at_first: false
+    sample_every_n_epochs: null
+    sample_prompts: null

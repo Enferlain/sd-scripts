@@ -4,12 +4,12 @@ This guide provides instructions for third-party reviewers to profile and benchm
 
 ## Quick Start
 
-```bash
+```powershell
 # Run smoke test with basic timing
-python scripts/sdxl_peft.py --config-name=smoke_test
+d:\Projects\sd-scripts\venv\Scripts\python.exe scripts/sdxl_peft.py --config-name=smoke_test
 
-# Run with Python profiling
-python -m cProfile -o profile.prof scripts/sdxl_peft.py --config-name=smoke_test
+# Run with Python profiling (dumps to profile.prof for later analysis)
+d:\Projects\sd-scripts\venv\Scripts\python.exe -m cProfile -o profile.prof scripts/sdxl_peft.py --config-name=smoke_test
 ```
 
 ---
@@ -20,16 +20,20 @@ python -m cProfile -o profile.prof scripts/sdxl_peft.py --config-name=smoke_test
 
 **Option A: nvidia-smi (simple)**
 
-```bash
-# Real-time monitoring (1 second interval)
+```powershell
+# Real-time monitoring (1 second interval) - run in separate terminal
+nvidia-smi --query-gpu=timestamp,utilization.gpu,utilization.memory,memory.used,memory.total,power.draw --format=csv -l 1 | Tee-Object -FilePath gpu_log.csv
+
+# Or save silently:
 nvidia-smi --query-gpu=timestamp,utilization.gpu,utilization.memory,memory.used,memory.total,power.draw --format=csv -l 1 > gpu_log.csv
 ```
 
 **Option B: nvitop (recommended)**
 
-```bash
+```powershell
 pip install nvitop
-nvitop --log gpu_metrics.csv
+nvitop  # Interactive monitoring
+# Note: --log flag may not work on Windows; use nvidia-smi for CSV logging
 ```
 
 **Option C: PyTorch built-in**
@@ -59,9 +63,10 @@ print(f"CPU: {psutil.cpu_percent()}%")
 
 ### Disk I/O
 
-```bash
+```powershell
 # Windows: Use Resource Monitor → Disk tab
-# Linux: iostat -x 1
+# Or via PowerShell:
+Get-Counter '\PhysicalDisk(_Total)\Disk Bytes/sec' -Continuous
 ```
 
 ---
@@ -100,14 +105,18 @@ print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=20))
 
 View in TensorBoard:
 
-```bash
+```powershell
 tensorboard --logdir=./profiler_logs
 ```
 
 ### cProfile (Simple Python Profiling)
 
-```bash
-python -m cProfile -s cumtime scripts/sdxl_peft.py --config-name=smoke_test 2>&1 | head -100
+```powershell
+# Run profiling and save to file
+d:\Projects\sd-scripts\venv\Scripts\python.exe -m cProfile -s cumtime -o profile.prof scripts/sdxl_peft.py --config-name=smoke_test
+
+# View top functions afterward
+d:\Projects\sd-scripts\venv\Scripts\python.exe -c "import pstats; p = pstats.Stats('profile.prof'); p.sort_stats('cumtime').print_stats(50)"
 ```
 
 ---
@@ -118,7 +127,7 @@ python -m cProfile -s cumtime scripts/sdxl_peft.py --config-name=smoke_test 2>&1
 
 ```python
 import time
-from library.data.pipeline import create_training_dataloader, TrainingDataset
+from library.data import create_training_dataloader
 
 # Measure batch loading speed
 dataloader = create_training_dataloader(...)
@@ -133,8 +142,8 @@ print(f"Throughput: {100 / elapsed:.1f} batches/sec")
 ### Epoch Preparation Timing
 
 ```python
-from library.data.pipeline import prepare_epoch
 import time
+from library.data import prepare_epoch
 
 start = time.perf_counter()
 epoch_manifest = prepare_epoch(manifest, seed=42, epoch=0, ...)
@@ -153,6 +162,37 @@ start = time.perf_counter()
 for _ in range(100):
     cache_data = strategy.load_cache(cache_path, device="cpu")
 print(f"Cache load: {(time.perf_counter() - start) / 100 * 1000:.2f}ms per file")
+```
+
+### Manifest Creation Timing
+
+```python
+import time
+from library.data import create_manifest_from_config
+from library.config.dataclasses.data import DataConfig
+
+# Measure full manifest creation (scanning + bucketing)
+start = time.perf_counter()
+manifest = create_manifest_from_config(data_config, cache_dir="./cache")
+elapsed = time.perf_counter() - start
+print(f"Manifest creation: {elapsed:.2f}s for {manifest.image_count} images, {len(manifest.buckets)} buckets")
+```
+
+### VAE Caching Benchmark
+
+```python
+import time
+from library.data import CachingEngine
+from library.strategies.sdxl_caching import SdxlLatentsPipelineStrategy
+
+# Measure full dataset caching time
+strategy = SdxlLatentsPipelineStrategy(vae=vae, device=device, dtype=dtype)
+engine = CachingEngine(strategy, accelerator, skip_existing=True)
+
+start = time.perf_counter()
+engine.cache_all(manifest)
+elapsed = time.perf_counter() - start
+print(f"VAE caching: {elapsed:.2f}s ({manifest.image_count / elapsed:.1f} images/sec)")
 ```
 
 ---
@@ -198,21 +238,45 @@ When comparing new pipeline vs legacy:
 - [ ] Same number of workers
 - [ ] Same seed for reproducibility
 - [ ] Fresh cache (delete existing before each run)
+- [ ] Same precision (bf16/fp16/fp32)
+- [ ] Same gradient checkpointing setting
 
-### Legacy Baseline
+### New Pipeline (SDXL)
 
-```bash
-# Run legacy script for comparison
-python sdxl_train_network.py --config_file=legacy_config.toml
+```powershell
+# Clear cache first
+Remove-Item -Recurse -Force ./cache -ErrorAction SilentlyContinue
+
+# Run with timing
+$start = Get-Date
+d:\Projects\sd-scripts\venv\Scripts\python.exe scripts/sdxl_peft.py --config-name=benchmark_test
+$elapsed = (Get-Date) - $start
+Write-Host "Total time: $($elapsed.TotalSeconds)s"
 ```
+
+### Legacy Baseline (SD 1.x - still using old pipeline)
+
+```powershell
+# SD script still uses legacy DatasetGroup
+$start = Get-Date
+d:\Projects\sd-scripts\venv\Scripts\python.exe scripts/sd_peft.py --config-name=sd_benchmark_test
+$elapsed = (Get-Date) - $start
+Write-Host "Total time: $($elapsed.TotalSeconds)s"
+```
+
+> **Note:** `sd_peft.py` still uses the legacy `prepare_datasets()` from `library/data/_deprecated/`.
+> After migrating SD to the new pipeline, this comparison becomes SDXL new vs SDXL old.
 
 ### Metrics to Compare
 
-1. **Startup time** - Time from script start to first training step
-2. **Per-step time** - Average time per optimization step
-3. **Memory usage** - Peak GPU and RAM usage
-4. **Cache generation time** - Time to cache full dataset
-5. **Epoch transition time** - Time between epochs
+| Metric                    | How to Measure                                               |
+| ------------------------- | ------------------------------------------------------------ |
+| **Startup time**          | Time from script start to first training step                |
+| **Per-step time**         | Average time per optimization step (from tqdm)               |
+| **Memory usage**          | Peak GPU (`torch.cuda.max_memory_allocated()`) and RAM usage |
+| **Cache generation time** | Time to cache full dataset (first run only)                  |
+| **Epoch transition time** | Time between epochs (visible in logs)                        |
+| **First batch latency**   | Time to get first batch from DataLoader                      |
 
 ---
 
@@ -220,12 +284,12 @@ python sdxl_train_network.py --config_file=legacy_config.toml
 
 Run existing benchmarks:
 
-```bash
+```powershell
 # Unit benchmarks (mocked I/O)
-pytest tests/unit/data/test_pipeline_benchmark.py -v
+d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/unit/data/test_pipeline_benchmark.py -v
 
 # Integration smoke tests
-pytest tests/integration/test_sdxl_peft_smoke.py -v
+d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/integration/test_sdxl_peft_smoke.py -v
 ```
 
 ---
@@ -285,69 +349,63 @@ Use this template for benchmark reports:
 
 ---
 
-## 9. Benchmark Results
-
-### RTX 3090 · SDXL LoRA · 1024×1024 · Rank 32 · bf16 · xformers
+## 9. Benchmark Results (SDXL New Pipeline)
 
 **Environment:**
 
-- GPU: NVIDIA RTX 3090 (24 GB VRAM)
-- Dataset: 50 images × 1 repeat
-- Resolution: 1024×1024
-- LoRA Rank: 32, Alpha: 16
-- Precision: bf16 mixed
-- Optimizer: AdamW8bit
+- **Script:** `sdxl_peft.py` (New Pipeline)
+- **GPU:** RTX 3090 (24GB)
+- **Dataset:** 550 Real Images (Tests/Assets)
+- **Config:**
+  - Batch Size: 2
+  - Gradient Accumulation: 1
+  - Gradient Checkpointing: True
+  - Precision: bf16 (mixed) + no_half_vae
+  - Optimizer: AdamW8bit
+  - LoRA Rank: 32 / Alpha: 16
 
----
+### Common Configuration
 
-### Tokenization & TE Caching Comparison
+- `cache_latents_to_disk`: True
+- `cache_text_encoder_outputs_to_disk`: True
+- `vae_batch_size`: 2
+- `caching num_workers`: 4
+- `loader num_workers`: 0 (Training)
+- `persistent_workers`: False
+- `prefetch_factor`: 2
+- `pin_memory`: True
+- `offload_text_encoders`: False
+- `xformers`: True
 
-**Test Configuration:**
+### Phase 1: Before VRAM Fix (Memory Fragmentation Bug)
 
-- Batch size: 4
-- Gradient accumulation: 1
-- Gradient checkpointing: ✓
-- Latents: Cached to disk
+| Phase              | Metric   | Value      | Peak/Range     | Notes                             |
+| :----------------- | :------- | :--------- | :------------- | :-------------------------------- |
+| **Latent Caching** | Speed    | 3.68 it/s  | -              | I/O Bound (30MB PNGs)             |
+|                    | GPU Mem  | -          | 6.3 - 13.4 GB  | Memory accumulated across buckets |
+|                    | Phys Mem | -          | 50.6 GB        |                                   |
+|                    | Virt Mem | -          | 76.7 - 84.7 GB | Swapping to shared memory         |
+| **TE Caching**     | Speed    | 34.51 it/s | -              | Fast (Disk Write Bound)           |
+|                    | GPU Mem  | -          | 4.8 GB         |                                   |
+| **Training**       | Speed    | 1.66 s/it  | 0.60 it/s      |                                   |
+|                    | GPU Mem  | -          | 9.6 GB         |                                   |
 
-| Configuration         | VRAM Peak | Virtual Mem | Caching Speed | Training Speed   | Notes                  |
-| --------------------- | --------- | ----------- | ------------- | ---------------- | ---------------------- |
-| **TE cache (memory)** | 15.3 GB   | 76.7 GB     | 18-20 it/s    | **2.13 s/it**    | Best balance           |
-| **TE cache (disk)**   | 15.3 GB   | 76.7 GB     | 21.34 it/s    | **2.01 s/it** ✨ | Fastest training       |
-| **Epoch tokens**      | 15.8 GB   | 70-77 GB    | -             | 2.57 s/it        | Tokenizer savings only |
-| **No caching**        | 15.8 GB   | 70-77 GB    | -             | 2.52 s/it        | Baseline               |
+### Phase 2: After VRAM Fix (torch.cuda.empty_cache between buckets)
 
-**Key Findings:**
+| Phase              | Metric  | Value      | Peak/Range   | Notes                                         |
+| :----------------- | :------ | :--------- | :----------- | :-------------------------------------------- |
+| **Latent Caching** | Speed   | 3.22 it/s  | 2:50 total   | Slightly slower (empty_cache overhead)        |
+|                    | GPU Mem | -          | 4.9 - 7.5 GB | **62% reduction** - bounded by largest bucket |
+| **TE Caching**     | Speed   | 29.32 it/s | 0:18 total   | Fast                                          |
+|                    | GPU Mem | -          | ~4 GB        |                                               |
+| **Training**       | Speed   | 1.91 s/it  | 0.52 it/s    |                                               |
+|                    | GPU Mem | -          | ~9 GB        | Comfortable fit                               |
 
-- **TE caching to disk is fastest** (2.01 s/it) - TE outputs loaded directly, no encoder forward pass
-- **TE caching in memory is close** (2.13 s/it) - slight CPU→GPU tensor transfer overhead
-- **Epoch tokenization ≈ No caching** (2.57 vs 2.52 s/it) - tokenizer overhead is negligible; TE forward pass dominates
-- **Epoch tokenization adds ~5% overhead** - token file I/O not offset by tokenizer savings on small datasets
+**Total Time:** 319.66s (5.3 min)
 
-**When to Use Each Mode:**
+### Key Findings
 
-| Mode              | Best For                                                           |
-| ----------------- | ------------------------------------------------------------------ |
-| TE cache (disk)   | Maximum speed, disk space available                                |
-| TE cache (memory) | Maximum speed, limited disk, RAM available                         |
-| Epoch tokens      | Caption augmentations + reproducibility (shuffle/dropout baked in) |
-| No caching        | Quick testing, minimal setup                                       |
-
----
-
-### Batch Size & Memory Trade-offs
-
-| #   | Batch | GA  | GC  | VRAM    | Virt Mem | s/step | img/s | Status      |
-| --- | ----- | --- | --- | ------- | -------- | ------ | ----- | ----------- |
-| 1   | 1     | 1   | ✓   | 12.5 GB | 76 GB    | 2.65   | 0.38  | ✅          |
-| 2   | 2     | 1   | ✓   | 13.4 GB | 76 GB    | 2.33   | 0.86  | ✅ **Best** |
-| 3   | 1     | 1   | ✗   | 21.4 GB | 89 GB    | 1.79   | 0.56  | ✅          |
-| 4   | 2     | 1   | ✗   | ~29 GB  | -        | -      | -     | ❌ OOM      |
-| 5   | 1     | 8   | ✗   | 21.6 GB | 88.5 GB  | 11.62  | 0.69  | ✅          |
-
-_GA = Gradient Accumulation, GC = Gradient Checkpointing_
-
-**Key Findings:**
-
-- **Optimal for 24GB GPU:** Batch 2 + Gradient Checkpointing gives best throughput (0.86 img/s)
-- **GC trade-off:** Disabling GC saves ~32% time per step but costs +8.9 GB VRAM
-- **GA overhead:** Gradient accumulation 8 has ~17% lower throughput than batch 2 (0.69 vs 0.86 img/s)
+1. **VRAM fix reduced peak memory by 62%** (13.4GB → 7.5GB peak)
+2. **Latent caching still I/O bound** at 3.22 it/s vs target 100+ it/s
+3. **cProfile overhead ~30%** - profiled runs are slower (2.53 s/it vs 1.91 s/it)
+4. **Primary bottleneck:** `.cpu()` calls (90s) - async disk writes would help

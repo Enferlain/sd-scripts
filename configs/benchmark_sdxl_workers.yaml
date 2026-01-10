@@ -1,0 +1,24 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Benchmark: Workers & Prefetch Testing
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=benchmark_sdxl_workers
+#
+# This config tests DataLoader worker/prefetch settings.
+# On Windows, spawn overhead makes num_workers>0 costly for small datasets.
+# For large datasets (1000+ images), workers can significantly speed up loading.
+
+defaults:
+  - benchmark_sdxl # Inherit from base benchmark
+  - _self_
+
+# Override: Test with workers enabled
+data:
+  loader:
+    num_workers: 4 # Test with workers (spawn overhead ~2s/worker on Windows)
+    persistent_workers: true # Keep workers alive across epochs (reduces respawn cost)
+    prefetch_factor: 4 # Prefetch more batches (higher=more RAM, lower latency)
+    pin_memory: true # Use pinned memory for faster CPU→GPU transfer
+
+# With 550 real images, workers should show benefit vs single-threaded loading
+training:
+  max_train_steps: 100 # More steps to amortize worker spawn cost

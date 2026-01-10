@@ -45,6 +45,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test Suite Cleanup**: Deleted stale `test_sdxl_train.py` dry run script (was for debugging)
 - **Test Robustness**: Integration tests now adapt to the actual number of images in test assets
 
+### Added (Benchmarking)
+
+- **Benchmark Infrastructure**: Created comprehensive benchmarking setup for the new data pipeline
+  - `run_benchmark.ps1`: PowerShell script to automate benchmark runs with cache clearing, timing, and GPU stats
+  - `benchmark_sdxl.yaml`: Base config with 550 real images for accurate caching/loading measurements
+  - `benchmark_sdxl_workers.yaml`: Tests DataLoader worker scaling
+  - `benchmark_sdxl_large.yaml`: Extended run for steady-state throughput
+  - `benchmark_sdxl_train_te.yaml`: Benchmarks TE training (no TE cache)
+  - `benchmark_sdxl_offload.yaml`: Benchmarks TE offloading performance
+- **Memory Debug Logging**: Added `DEBUG_CACHING_MEMORY=1` env var for per-batch memory tracking in `CachingEngine`
+- **GPU Memory Profiling Script**: Added `scripts/profile_caching.py` for PyTorch memory snapshot analysis
+- **TODO Tier 6**: Added critical performance section to `TODO_PRIORITIZED.md` documenting async pipeline optimization tasks
+
+### Fixed (Performance)
+
+- **VRAM Memory Fragmentation**: Fixed critical bug where CUDA reserved memory accumulated across bucket sizes during caching
+  - Before: Peak VRAM grew to ~20GB (accumulating all buckets)
+  - After: Peak VRAM bounded to ~7.5GB (largest bucket only)
+  - Added `torch.cuda.empty_cache()` between bucket transitions in `CachingEngine.cache_dataset()`
+  - Reduces peak VRAM by ~62% for multi-resolution datasets
+
 ## [2026-01-08]
 
 ### Added

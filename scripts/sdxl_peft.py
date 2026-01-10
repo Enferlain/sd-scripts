@@ -235,6 +235,16 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             batch_size=cfg.data.caching.vae_batch_size,
             num_workers=cfg.data.caching.num_workers,
         )
+
+        # RESOURCE TRACKER START
+        resource_tracker = None
+        if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
+            from library.utils.resource_tracker import ResourceTracker
+
+            resource_tracker = ResourceTracker("Latent Caching")
+            resource_tracker.start()
+        # RESOURCE TRACKER END
+
         train_manifest = latent_caching_engine.cache_dataset(
             manifest=train_manifest,
             model=vae,
@@ -250,6 +260,12 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 cache_dir=cache_dir,
                 flip_aug=False,  # No flip aug for validation
             )
+
+        # RESOURCE TRACKER START
+        if resource_tracker:
+            stats = resource_tracker.stop()
+            logger.info(f"\n{stats.summary()}")
+        # RESOURCE TRACKER END
 
         vae.to("cpu")
         clean_memory_on_device(accelerator.device)
@@ -280,6 +296,15 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 batch_size=cfg.data.caching.vae_batch_size,
             )
 
+            # RESOURCE TRACKER START
+            te_resource_tracker = None
+            if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
+                from library.utils.resource_tracker import ResourceTracker
+
+                te_resource_tracker = ResourceTracker("TE Caching")
+                te_resource_tracker.start()
+            # RESOURCE TRACKER END
+
             train_manifest = te_caching_engine.cache_dataset(
                 manifest=train_manifest,
                 model=(*text_encoders, *tokenizers),  # SDXL: (clip_l_enc, clip_g_enc, clip_l_tok, clip_g_tok)
@@ -293,6 +318,13 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                     accelerator=accelerator,
                     cache_dir=cache_dir,
                 )
+
+            # RESOURCE TRACKER START
+            if te_resource_tracker:
+                stats = te_resource_tracker.stop()
+                logger.info(f"\n{stats.summary()}")
+            # RESOURCE TRACKER END
+
         else:
             # In-memory TE caching: compute and store in entry.te_outputs
             from library.strategies.peft_strategy_sdxl import tokenize_sdxl_captions
@@ -942,6 +974,15 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             dataloader_iter = itertools.islice(dataloader_iter, initial_step - 1, None)
             initial_step = 1
 
+        # RESOURCE TRACKER START
+        training_resource_tracker = None
+        if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
+            from library.utils.resource_tracker import ResourceTracker
+
+            training_resource_tracker = ResourceTracker("Training")
+            training_resource_tracker.start()
+        # RESOURCE TRACKER END
+
         for step, batch in enumerate(dataloader_iter):
             current_step.value = global_step
 
@@ -1194,6 +1235,13 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
                 break
 
         # END OF EPOCH
+        # RESOURCE TRACKER START
+        if training_resource_tracker:
+            stats = training_resource_tracker.stop()
+            logger.info(f"\n{stats.summary()}")
+            training_resource_tracker = None  # Only log once
+        # RESOURCE TRACKER END
+
         # Cleanup epoch token file if it was created
         if tokens_path and tokens_path.exists():
             tokens_path.unlink()

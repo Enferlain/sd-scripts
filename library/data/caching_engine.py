@@ -5,6 +5,7 @@ This module provides the generic caching infrastructure that delegates
 model-specific encoding to strategy objects from library/strategies/.
 """
 
+import os
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -259,9 +260,39 @@ class CachingEngine:
             disable=not show_progress or accelerator.process_index != 0,
         )
 
+        debug_memory = os.environ.get("DEBUG_CACHING_MEMORY", "").lower() in ("1", "true", "yes")
+        batch_count = 0
+        prev_bucket_key = None
+
         for _bucket_key, bucket_entries in batches.items():
+            # Clear CUDA cache when switching bucket sizes to prevent memory fragmentation
+            if prev_bucket_key is not None and _bucket_key != prev_bucket_key and torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                if debug_memory:
+                    logger.info(f"[MEM] Cleared cache between buckets: {prev_bucket_key} → {_bucket_key}")
+            prev_bucket_key = _bucket_key
+
             for batch_entries in bucket_entries:
+                batch_count += 1
+
+                if debug_memory and torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                    mem_before = torch.cuda.memory_allocated() / 1024**3
+                    reserved_before = torch.cuda.memory_reserved() / 1024**3
+
                 self._cache_batch(batch_entries, model, cache_dir)
+
+                if debug_memory and torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                    mem_after = torch.cuda.memory_allocated() / 1024**3
+                    reserved_after = torch.cuda.memory_reserved() / 1024**3
+                    bucket_reso = batch_entries[0].bucket_reso
+                    logger.info(
+                        f"[MEM] Batch {batch_count}: bucket={bucket_reso}, "
+                        f"alloc={mem_before:.2f}→{mem_after:.2f}GB, "
+                        f"reserved={reserved_before:.2f}→{reserved_after:.2f}GB"
+                    )
+
                 pbar.update(len(batch_entries))
 
         pbar.close()
