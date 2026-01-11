@@ -295,7 +295,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
             )
             te_caching_engine = CachingEngine(
                 strategy=te_strategy,
-                batch_size=cfg.data.caching.vae_batch_size,
+                batch_size=cfg.data.caching.te_batch_size,
             )
 
             # RESOURCE TRACKER START

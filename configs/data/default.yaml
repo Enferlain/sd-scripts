@@ -52,6 +52,7 @@ caching:
   cache_text_encoder_outputs_to_disk: false
   disable_mmap_load_safetensors: false
   vae_batch_size: 1
+  te_batch_size: 4
   num_workers: 4
   skip_cache_check: false
   cache_tokens_per_epoch: false

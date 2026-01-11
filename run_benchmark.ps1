@@ -200,6 +200,7 @@ if (Test-Path $configFile) {
     if ($configContent -match 'cache_text_encoder_outputs:\s*(true|false)') { $configSettings["data.caching.cache_text_encoder_outputs"] = $matches[1] }
     if ($configContent -match 'cache_text_encoder_outputs_to_disk:\s*(true|false)') { $configSettings["data.caching.cache_text_encoder_outputs_to_disk"] = $matches[1] }
     if ($configContent -match 'vae_batch_size:\s*(\d+)') { $configSettings["data.caching.vae_batch_size"] = $matches[1] }
+    if ($configContent -match 'te_batch_size:\s*(\d+)') { $configSettings["data.caching.te_batch_size"] = $matches[1] }
     if ($configContent -match 'num_workers:\s*(\d+)') { $configSettings["data.caching.num_workers"] = $matches[1] }
     
     # Loader settings
@@ -364,4 +365,3 @@ Write-Host "[INFO] Report saved: $reportFile" -ForegroundColor Green
 Write-Host "[TIP] For accurate peak VRAM tracking, use: nvitop --monitor" -ForegroundColor Gray
 Write-Host ""
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-
