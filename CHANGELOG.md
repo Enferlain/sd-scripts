@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-12]
+
+### Changed
+
+- **Model Directory Reorganization (Phase 1)**: Restructured `library/models/` into per-model folders
+  - `library/models/sdxl/` now contains: `unet.py`, `conversion.py`, `loader.py`, `text_encoder.py`, `control_net.py`
+  - `library/models/sd/` now contains: `vae.py` (shared VAE utilities)
+  - Migrated from flat `sdxl_model_util.py`, `sdxl_original_unet.py` structure to organized hierarchy
+  - All 971 unit tests passing after refactor
+
+### Removed
+
+- **Legacy Config Field**: Removed unused `cache_info` from `configs/data/default.yaml` and cleaned up schema mismatch
+
 ## [2026-01-10]
 
 ### Added
