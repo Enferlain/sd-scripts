@@ -10,16 +10,21 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
+import library.strategies.base.encoding
+import library.strategies.base.tokenization
+import library.strategies.sd.caching
+import library.strategies.sd.encoding
+import library.strategies.sd.tokenization
+
 try:
     from ramtorch.helpers import replace_linear_with_ramtorch
 except (ImportError, AssertionError):
     replace_linear_with_ramtorch = None  # type: ignore[assignment]
 
 import library.models.sd.conversion
-from library.strategies import strategy_sd, strategy_base
 from library.constants import SD_VAE_LATENT_SCALE
-from library.strategies.peft_strategy_base import PeftTrainingStrategy
-from library.models.model_prep import replace_unet_modules
+from library.strategies.base.training import TrainingStrategy
+from library.models.runtime_utils import replace_unet_modules
 from library.models.sd.loader import load_target_model
 from library.training.sd_sample_generation import sample_images
 from library.utils.model_metadata import get_model_metadata_from_config
@@ -35,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class SdPeftStrategy(PeftTrainingStrategy):
+class SdTrainingStrategy(TrainingStrategy):
     """
     SD1.5/2 implementation of PEFT training strategy.
 
@@ -100,9 +105,9 @@ class SdPeftStrategy(PeftTrainingStrategy):
         Returns:
             SdTokenizeStrategy instance.
         """
-        return strategy_sd.SdTokenizeStrategy(cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
+        return library.strategies.sd.tokenization.SdTokenizeStrategy(cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
-    def get_tokenizers(self, tokenize_strategy: strategy_sd.SdTokenizeStrategy) -> list[Any]:
+    def get_tokenizers(self, tokenize_strategy: library.strategies.sd.tokenization.SdTokenizeStrategy) -> list[Any]:
         """
         Return single tokenizer for SD1.5/2.
 
@@ -124,7 +129,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         Returns:
             SdSdxlLatentsCachingStrategy instance.
         """
-        return strategy_sd.SdSdxlLatentsCachingStrategy(
+        return library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(
             True, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
         )
 
@@ -138,7 +143,7 @@ class SdPeftStrategy(PeftTrainingStrategy):
         Returns:
             SdTextEncodingStrategy instance.
         """
-        return strategy_sd.SdTextEncodingStrategy(cfg.training.clip_skip)
+        return library.strategies.sd.encoding.SdTextEncodingStrategy(cfg.training.clip_skip)
 
     def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> None:
         """
@@ -414,8 +419,8 @@ class SdPeftStrategy(PeftTrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: strategy_base.TextEncodingStrategy,
-        tokenize_strategy: strategy_base.TokenizeStrategy,
+        text_encoding_strategy: library.strategies.base.encoding.TextEncodingStrategy,
+        tokenize_strategy: library.strategies.base.tokenization.TokenizeStrategy,
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_unet: bool = True,
@@ -545,8 +550,8 @@ class SdPeftStrategy(PeftTrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: strategy_base.TextEncodingStrategy,
-        tokenize_strategy: strategy_base.TokenizeStrategy,
+        text_encoding_strategy: library.strategies.base.encoding.TextEncodingStrategy,
+        tokenize_strategy: library.strategies.base.tokenization.TokenizeStrategy,
         train_text_encoder: bool = True,
         train_unet: bool = True,
         timesteps_list: list[int] | None = None,

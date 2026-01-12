@@ -24,7 +24,7 @@ from library.data import (
     prepare_validation_epoch,
 )
 from library.data import create_manifest_from_config, compute_tag_frequency
-from library.strategies.sdxl_caching import (
+from library.strategies.sdxl.caching import (
     SdxlLatentsPipelineStrategy,
     SdxlTextEncoderPipelineStrategy,
 )

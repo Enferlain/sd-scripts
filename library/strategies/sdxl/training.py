@@ -10,18 +10,25 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
+import library.strategies.base.encoding
+import library.strategies.base.tokenization
+import library.strategies.sd.caching
+import library.strategies.sdxl.caching
+import library.strategies.sdxl.encoding
+import library.strategies.sdxl.tokenization
+
 try:
     from ramtorch.helpers import replace_linear_with_ramtorch
 except (ImportError, AssertionError):
     replace_linear_with_ramtorch = None  # type: ignore[assignment]
 
-from library.strategies import strategy_sdxl, strategy_sd, strategy_base
-from library.strategies.peft_strategy_base import PeftTrainingStrategy
+from library.strategies.sdxl.caching import SdxlConditioning
+from library.strategies.base.training import TrainingStrategy
 from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl.conversion import get_size_embeddings
 from library.models.sdxl.text_encoder import get_hidden_states_sdxl
 from library.models.sdxl.loader import load_target_model
-from library.models.model_prep import replace_unet_modules
+from library.models.runtime_utils import replace_unet_modules
 from library.training.sdxl_sample_generation import sample_images
 from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
@@ -36,8 +43,91 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+def tokenize_sdxl_captions(
+    tokenizer1: Any, tokenizer2: Any, captions: list[str], max_token_length: int
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Tokenize captions on-the-fly for SDXL (dual CLIP encoders).
+
+    Handles 77+ token sequences by chunking into multiple 77-token segments,
+    matching the legacy TokenizeStrategy._get_input_ids behavior.
+
+    Args:
+        tokenizer1: CLIP-L tokenizer.
+        tokenizer2: CLIP-G tokenizer.
+        captions: List of caption strings.
+        max_token_length: Maximum token sequence length (e.g., 225 for 3 chunks).
+
+    Returns:
+        Tuple of (clip_l_tokens, clip_g_tokens):
+        - If max_token_length <= 77: shape [batch_size, 77]
+        - If max_token_length > 77: shape [batch_size, n_chunks, 77]
+    """
+    # Match legacy behavior: SdxlTokenizeStrategy adds +2 for BOS/EOS
+    effective_max_len = max_token_length + 2 if max_token_length is not None else None
+
+    def _tokenize_and_chunk(tokenizer: Any, texts: list[str], max_len: int) -> torch.Tensor:
+        """Tokenize and optionally chunk into 77-token segments."""
+        model_max = tokenizer.model_max_length  # 77 for CLIP
+
+        if max_len is None or max_len <= model_max:
+            # Simple case: just tokenize with padding/truncation to 77
+            return tokenizer(
+                texts,
+                padding="max_length",
+                truncation=True,
+                max_length=model_max,
+                return_tensors="pt",
+            ).input_ids
+
+        # Long sequence case: tokenize to full length, then chunk
+        # Request max_len tokens (will be padded/truncated)
+        raw_tokens = tokenizer(
+            texts,
+            padding="max_length",
+            truncation=True,
+            max_length=max_len,
+            return_tensors="pt",
+        ).input_ids  # [batch, max_len]
+
+        # Chunk each sample into [n_chunks, 77] segments
+        batch_chunks = []
+        for input_ids in raw_tokens:
+            # input_ids: [max_len]
+            chunks = []
+            # Step through in increments of 75 (77 - BOS - EOS)
+            for i in range(1, max_len - model_max + 2, model_max - 2):
+                # Build chunk: <BOS> + 75 tokens + <EOS/PAD>
+                chunk = torch.cat(
+                    [
+                        input_ids[0:1],  # BOS
+                        input_ids[i : i + model_max - 2],  # 75 content tokens
+                        input_ids[-1:],  # last token (EOS or PAD)
+                    ]
+                )
+
+                # Fix chunk endings for v2/SDXL tokenizers (pad_token != eos_token)
+                if tokenizer.pad_token_id != tokenizer.eos_token_id:
+                    # If end is "x <non-EOS/PAD>", change last to EOS
+                    if chunk[-2] != tokenizer.eos_token_id and chunk[-2] != tokenizer.pad_token_id:
+                        chunk[-1] = tokenizer.eos_token_id
+                    # If beginning is "<BOS> <PAD> ...", change to "<BOS> <EOS> ..."
+                    if chunk[1] == tokenizer.pad_token_id:
+                        chunk[1] = tokenizer.eos_token_id
+
+                chunks.append(chunk)
+
+            batch_chunks.append(torch.stack(chunks))  # [n_chunks, 77]
+
+        return torch.stack(batch_chunks)  # [batch, n_chunks, 77]
+
+    tokens1 = _tokenize_and_chunk(tokenizer1, captions, effective_max_len)
+    tokens2 = _tokenize_and_chunk(tokenizer2, captions, effective_max_len)
+
+    return tokens1, tokens2
+
+
 @dataclass
-class SdxlPeftStrategy(PeftTrainingStrategy):
+class SdxlTrainingStrategy(TrainingStrategy):
     """
     SDXL implementation of PEFT training strategy.
 
@@ -76,7 +166,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         ) = load_target_model(
             cfg.model,
             cfg.performance.memory,
-            cfg.performance.caching,
+            cfg.data.caching,
             cfg.performance.precision,
             accelerator,
             MODEL_VERSION_SDXL_BASE_V1_0,
@@ -127,9 +217,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         Returns:
             SdxlTokenizeStrategy instance.
         """
-        return strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
+        return library.strategies.sdxl.tokenization.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
-    def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy) -> list[Any]:
+    def get_tokenizers(self, tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy) -> list[Any]:
         """
         Return both tokenizers for SDXL.
 
@@ -151,7 +241,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         Returns:
             SdSdxlLatentsCachingStrategy instance.
         """
-        return strategy_sd.SdSdxlLatentsCachingStrategy(
+        return library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(
             False, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
         )
 
@@ -165,7 +255,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         Returns:
             SdxlTextEncodingStrategy instance.
         """
-        return strategy_sdxl.SdxlTextEncodingStrategy()
+        return library.strategies.sdxl.encoding.SdxlTextEncodingStrategy()
 
     def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
         """
@@ -194,9 +284,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         Returns:
             SdxlTextEncoderOutputsCachingStrategy instance or None.
         """
-        if cfg.performance.caching.cache_text_encoder_outputs:
-            return strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.performance.caching.cache_text_encoder_outputs_to_disk,
+        if cfg.data.caching.cache_text_encoder_outputs:
+            return library.strategies.sdxl.caching.SdxlTextEncoderOutputsCachingStrategy(
+                cfg.data.caching.cache_text_encoder_outputs_to_disk,
                 None,  # batch_size: not used for text encoder outputs caching
                 cfg.data.caching.skip_cache_check,
                 is_weighted=cfg.data.caption.weighted_captions,
@@ -219,12 +309,12 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             dataset: Dataset object.
             weight_dtype: Weight data type.
         """
-        if cfg.performance.caching.cache_text_encoder_outputs:
+        if cfg.data.caching.cache_text_encoder_outputs:
+            org_vae_device = vae.device
+            org_unet_device = unet.device
             if not cfg.performance.memory.lowram:
                 # Save memory by moving vae and unet to cpu
                 logger.info("move vae and unet to cpu to save memory")
-                org_vae_device = vae.device
-                org_unet_device = unet.device
                 vae.to("cpu")
                 unet.to("cpu")
                 clean_memory_on_device(accelerator.device)
@@ -282,14 +372,23 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         """
         indices = kwargs.get("indices")
 
-        # Get size embeddings
-        orig_size = batch["original_sizes_hw"]
-        crop_size = batch["crop_top_lefts"]
-        target_size = batch["target_sizes_hw"]
+        # Get size embeddings from conditioning objects
+        conditionings = batch["conditionings"]
+        orig_size, crop_size, target_size = self._extract_conditioning_tensors(conditionings, accelerator.device, weight_dtype)
         embs = get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
 
         # Concat text embeddings
         encoder_hidden_states1, encoder_hidden_states2, pool2 = text_conds
+
+        # Debug: ensure batch sizes match
+        if pool2.shape[0] != embs.shape[0]:
+            raise RuntimeError(
+                f"Batch size mismatch in call_unet: pool2 has {pool2.shape[0]} samples, "
+                f"but conditionings has {len(conditionings)} items (embs shape: {embs.shape}). "
+                f"batch latents shape: {batch['latents'].shape if 'latents' in batch else 'N/A'}, "
+                f"captions: {len(batch.get('captions', []))}"
+            )
+
         vector_embedding = torch.cat([pool2, embs], dim=1).to(weight_dtype)
         text_embedding = torch.cat([encoder_hidden_states1, encoder_hidden_states2], dim=2).to(weight_dtype)
 
@@ -389,6 +488,42 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             clip_skip=cfg.training.clip_skip,
         )
 
+    # region SDXL-specific conditioning extraction
+
+    def _extract_conditioning_tensors(
+        self,
+        conditionings: list[SdxlConditioning],
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Extract SDXL micro-conditioning tensors from batch conditionings.
+
+        Args:
+            conditionings: List of SdxlConditioning objects from batch.
+            device: Target device for tensors.
+            dtype: Target dtype for tensors.
+
+        Returns:
+            Tuple of (original_sizes, crop_top_lefts, target_sizes) tensors.
+        """
+        orig_sizes = []
+        crop_top_lefts = []
+        target_sizes = []
+
+        for cond in conditionings:
+            orig_sizes.append(cond.original_size_hw)
+            crop_top_lefts.append(cond.crop_top_left)
+            target_sizes.append(cond.target_size_hw)
+
+        return (
+            torch.tensor(orig_sizes, device=device, dtype=dtype),
+            torch.tensor(crop_top_lefts, device=device, dtype=dtype),
+            torch.tensor(target_sizes, device=device, dtype=dtype),
+        )
+
+    # endregion
+
     # region SDXL-specific text conditioning
 
     def _get_text_cond(
@@ -408,29 +543,71 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         Returns:
             Tuple of (encoder_hidden_states1, encoder_hidden_states2, pool2).
         """
-        if "text_encoder_outputs1_list" not in batch or batch["text_encoder_outputs1_list"] is None:
-            input_ids1 = batch["input_ids"]
-            input_ids2 = batch["input_ids2"]
-            with torch.enable_grad():
-                input_ids1 = input_ids1.to(accelerator.device)
-                input_ids2 = input_ids2.to(accelerator.device)
-                encoder_hidden_states1, encoder_hidden_states2, pool2 = get_hidden_states_sdxl(
-                    cfg.training.max_token_length,
-                    input_ids1,
-                    input_ids2,
-                    tokenizers[0],
-                    tokenizers[1],
-                    text_encoders[0],
-                    text_encoders[1],
-                    None if not cfg.performance.precision.full_fp16 else weight_dtype,
-                    accelerator=accelerator,
-                )
-        else:
-            encoder_hidden_states1 = batch["text_encoder_outputs1_list"].to(accelerator.device).to(weight_dtype)
-            encoder_hidden_states2 = batch["text_encoder_outputs2_list"].to(accelerator.device).to(weight_dtype)
-            pool2 = batch["text_encoder_pool2_list"].to(accelerator.device).to(weight_dtype)
+        # Check for cached TE outputs (new pipeline format)
+        te_outputs = batch.get("text_encoder_outputs")
+        if te_outputs is not None:
+            return (
+                te_outputs["hidden_state1"].to(accelerator.device, dtype=weight_dtype),
+                te_outputs["hidden_state2"].to(accelerator.device, dtype=weight_dtype),
+                te_outputs["pool2"].to(accelerator.device, dtype=weight_dtype),
+            )
 
-        return encoder_hidden_states1, encoder_hidden_states2, pool2
+        # Encode on-the-fly using tokenized inputs or tokenize from captions
+        input_ids = batch.get("input_ids")
+
+        # Determine device for encoding: use TE device (may be CPU when offloading)
+        te_device = text_encoders[0].device
+
+        # DEBUG: Log TE device placement and training status (remove after testing)
+        te1_training = any(p.requires_grad for p in text_encoders[0].parameters())
+        te2_training = any(p.requires_grad for p in text_encoders[1].parameters())
+        logger.info(
+            f"[DEBUG] _get_text_cond: TE device={te_device}, TE1 trainable={te1_training}, TE2 trainable={te2_training}"
+        )  # DEBUG: remove
+
+        # Fallback: tokenize captions on-the-fly if no cached tokens
+        if input_ids is None:
+            captions = batch.get("captions", [])
+            if not captions:
+                raise ValueError("Batch has neither 'input_ids' nor 'captions' - cannot encode text")
+
+            # Tokenize using the tokenize_fn if available, otherwise use tokenizers directly
+            input_ids1, input_ids2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], captions, cfg.training.max_token_length)
+            input_ids1 = input_ids1.to(te_device)
+            input_ids2 = input_ids2.to(te_device)
+        else:
+            input_ids1 = input_ids["clip_l"].to(te_device)
+            input_ids2 = input_ids["clip_g"].to(te_device)
+
+        with torch.enable_grad():
+            encoder_hidden_states1, encoder_hidden_states2, pool2 = get_hidden_states_sdxl(
+                cfg.training.max_token_length,
+                input_ids1,
+                input_ids2,
+                tokenizers[0],
+                tokenizers[1],
+                text_encoders[0],
+                text_encoders[1],
+                None if not cfg.performance.precision.full_fp16 else weight_dtype,
+                accelerator=accelerator,
+            )
+
+        # DEBUG: Log output grad status before device transfer (remove after testing)
+        logger.info(
+            f"[DEBUG] TE outputs: h1.requires_grad={encoder_hidden_states1.requires_grad}, h1.device={encoder_hidden_states1.device}"
+        )  # DEBUG: remove
+
+        # Move outputs to training device (may be different from TE device when offloading)
+        result = (
+            encoder_hidden_states1.to(accelerator.device, dtype=weight_dtype),
+            encoder_hidden_states2.to(accelerator.device, dtype=weight_dtype),
+            pool2.to(accelerator.device, dtype=weight_dtype),
+        )
+
+        # DEBUG: Log output device after transfer (remove after testing)
+        logger.info(f"[DEBUG] After .to(): h1.requires_grad={result[0].requires_grad}, h1.device={result[0].device}")  # DEBUG: remove
+
+        return result
 
     # endregion
 
@@ -549,8 +726,8 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: strategy_base.TextEncodingStrategy,
-        tokenize_strategy: strategy_base.TokenizeStrategy,
+        text_encoding_strategy: library.strategies.base.encoding.TextEncodingStrategy,
+        tokenize_strategy: library.strategies.base.tokenization.TokenizeStrategy,
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_unet: bool = True,
@@ -611,13 +788,23 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         )
 
         if is_train:
-            huber_c = get_huber_threshold_if_needed(cfg.loss, timesteps, noise_scheduler)
+            huber_c = get_huber_threshold_if_needed(cfg.loss, cfg.loss.huber, timesteps, noise_scheduler)
             loss = conditional_loss(
                 noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale)
             )
             if weighting is not None:
                 loss = loss * weighting
-            if cfg.loss.masked or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+            if cfg.loss.masked.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
+                # Fail fast if user explicitly requested masked loss but no masks available
+                if cfg.loss.masked.masked_loss:
+                    has_cond = "conditioning_images" in batch
+                    has_alpha = "alpha_masks" in batch and batch["alpha_masks"] is not None
+                    if not has_cond and not has_alpha:
+                        raise ValueError(
+                            "cfg.loss.masked.masked_loss=True but no masks found in batch. "
+                            "Ensure your dataset has alpha channels or conditioning images. "
+                            "Set cfg.loss.masked.masked_loss=False if masking is not intended."
+                        )
                 loss = apply_masked_loss(loss, batch)
         else:
             loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
@@ -629,7 +816,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
 
         loss = per_sample_loss
         if is_train:
-            loss = loss * batch["loss_weights"]
+            loss = loss * batch["loss_weights"].to(loss.device)
             loss = self.post_process_loss(loss, cfg, timesteps, noise_scheduler)
 
         if is_train and cfg.loss.loss_multiplier:
@@ -657,8 +844,8 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: strategy_base.TextEncodingStrategy,
-        tokenize_strategy: strategy_base.TokenizeStrategy,
+        text_encoding_strategy: library.strategies.base.encoding.TextEncodingStrategy,
+        tokenize_strategy: library.strategies.base.tokenization.TokenizeStrategy,
         train_text_encoder: bool = True,
         train_unet: bool = True,
         timesteps_list: list[int] | None = None,
@@ -742,7 +929,7 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
         epoch: int,
         batch: Any | None = None,
         train_text_encoder: bool = True,
-    ) -> tuple[float | None, float | None, dict | None]:
+    ) -> tuple[float | None, float | None]:
         """
         Calculate validation loss for SDXL.
 
@@ -769,10 +956,10 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             train_text_encoder: Train text encoder flag.
 
         Returns:
-            Tuple of (current_val_loss, average_val_loss, logs).
+            Tuple of (current_val_loss, average_val_loss).
         """
         if not calculate_val_loss_check(cfg.validation, cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
-            return None, None, None
+            return None, None
 
         if batch is not None:
             self.on_step_start(cfg, accelerator, adapter, text_encoders, unet, batch, weight_dtype, is_train=False)
@@ -818,10 +1005,9 @@ class SdxlPeftStrategy(PeftTrainingStrategy):
             val_loss_recorder.add(current_val_loss)
 
         average_val_loss: float = val_loss_recorder.average
-        logs = {"loss/current_val_loss": current_val_loss, "loss/average_val_loss": average_val_loss}
 
         self.restore_rng_state(rng_states, accelerator)
 
-        return current_val_loss, average_val_loss, logs
+        return current_val_loss, average_val_loss
 
     # endregion

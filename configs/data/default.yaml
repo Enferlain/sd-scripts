@@ -17,7 +17,6 @@ preprocessing:
   random_crop: false
   face_crop_aug_range: null
   debug_dataset: false
-  cache_info: false
 
 caption:
   caption_extension: ".caption"

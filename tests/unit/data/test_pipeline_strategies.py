@@ -11,8 +11,8 @@ import pytest
 import torch
 
 from library.data.structures import CacheEntry
-from library.strategies.sd_caching import SdLatentsPipelineStrategy, SD_VAE_LATENT_SCALE
-from library.strategies.sdxl_caching import (
+from library.strategies.sd.caching import SdLatentsPipelineStrategy, SD_VAE_LATENT_SCALE
+from library.strategies.sdxl.caching import (
     SdxlLatentsPipelineStrategy,
     SdxlTextEncoderPipelineStrategy,
     SDXL_VAE_LATENT_SCALE,

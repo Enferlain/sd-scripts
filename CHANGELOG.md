@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Migrated from flat `sdxl_model_util.py`, `sdxl_original_unet.py` structure to organized hierarchy
   - All 971 unit tests passing after refactor
 
+- **Strategy Consolidation (Phase 2)**: Restructured `library/strategies/` into per-model folders
+  - Created `base/`, `sd/`, `sdxl/` subfolders with split modules (tokenization, encoding, caching, training)
+  - Renamed `*PeftStrategy` → `*TrainingStrategy` (e.g., `SdxlPeftStrategy` → `SdxlTrainingStrategy`)
+  - Deleted legacy `*_old.py` backup files
+  - Deprecated `SdSdxlLatentsCachingStrategy` (legacy npz format) — new pipeline uses safetensors
+
 ### Removed
 
 - **Legacy Config Field**: Removed unused `cache_info` from `configs/data/default.yaml` and cleaned up schema mismatch
@@ -72,6 +78,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `resize_interpolation` config option supporting:
     - Auto-selection (default): HAMMING for downscaling, LANCZOS for upscaling.
     - Explicit choices: `area` (cv2.INTER_AREA), `hamming`, `lanczos`, `bicubic`, `bilinear`.
+- **VRAM Memory Fragmentation**: Fixed critical bug where CUDA reserved memory accumulated across bucket sizes during caching
+  - Before: Peak VRAM grew to ~20GB (accumulating all buckets)
+  - After: Peak VRAM bounded to ~7.5GB (largest bucket only)
+  - Added `torch.cuda.empty_cache()` between bucket transitions in `CachingEngine.cache_dataset()`
+  - Reduces peak VRAM by ~62% for multi-resolution datasets
 
 ### Added
 
@@ -82,14 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Uses HAMMING (similar to AREA) for downscaling (prevents aliasing)
   - Uses LANCZOS for upscaling (smooth edges)
 - **Config Field**: Added `random_crop_padding_percent` to `PreprocessingConfig`
-
-### Changed
-
-- **Test Suite Cleanup**: Deleted stale `test_sdxl_train.py` dry run script (was for debugging)
-- **Test Robustness**: Integration tests now adapt to the actual number of images in test assets
-
-### Added (Benchmarking)
-
 - **Benchmark Infrastructure**: Created comprehensive benchmarking setup for the new data pipeline
   - `run_benchmark.ps1`: PowerShell script to automate benchmark runs with cache clearing, timing, and GPU stats
   - `benchmark_sdxl.yaml`: Base config with 550 real images for accurate caching/loading measurements
@@ -101,13 +104,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GPU Memory Profiling Script**: Added `scripts/profile_caching.py` for PyTorch memory snapshot analysis
 - **TODO Tier 6**: Added critical performance section to `TODO_PRIORITIZED.md` documenting async pipeline optimization tasks
 
-### Fixed (Performance)
+### Changed
 
-- **VRAM Memory Fragmentation**: Fixed critical bug where CUDA reserved memory accumulated across bucket sizes during caching
-  - Before: Peak VRAM grew to ~20GB (accumulating all buckets)
-  - After: Peak VRAM bounded to ~7.5GB (largest bucket only)
-  - Added `torch.cuda.empty_cache()` between bucket transitions in `CachingEngine.cache_dataset()`
-  - Reduces peak VRAM by ~62% for multi-resolution datasets
+- **Test Suite Cleanup**: Deleted stale `test_sdxl_train.py` dry run script (was for debugging)
+- **Test Robustness**: Integration tests now adapt to the actual number of images in test assets
 
 ## [2026-01-08]
 
@@ -260,7 +260,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **PEFT Strategy Integration**
 
-  - `SdxlPeftStrategy` now uses new pipeline batch format
+  - `SdxlTrainingStrategy` now uses new pipeline batch format
   - Added `_extract_conditioning_tensors()` helper for SDXL micro-conditioning
   - `_get_text_cond()` updated for `batch["text_encoder_outputs"]` and `batch["input_ids"]["clip_l/g"]`
   - `call_unet()` now extracts conditioning from `batch["conditionings"]`

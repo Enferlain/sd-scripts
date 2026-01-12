@@ -10,11 +10,9 @@ import numpy as np
 import torch
 from unittest.mock import Mock, patch
 
-from library.strategies.strategy_sdxl import (
-    SdxlTokenizeStrategy,
-    SdxlTextEncodingStrategy,
-    SdxlTextEncoderOutputsCachingStrategy,
-)
+from library.strategies.sdxl.caching import SdxlTextEncoderOutputsCachingStrategy
+from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
+from library.strategies.sdxl.tokenization import SdxlTokenizeStrategy
 
 
 # =============================================================================

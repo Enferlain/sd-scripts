@@ -51,7 +51,7 @@ class ModelLoadingStrategy(ABC):
         raise NotImplementedError
 
 
-class TokenizationPeftStrategy(ABC):
+class TokenizationStrategy(ABC):
     """Strategy for tokenization setup in PEFT training."""
 
     @abstractmethod
@@ -81,7 +81,7 @@ class TokenizationPeftStrategy(ABC):
         raise NotImplementedError
 
 
-class CachingPeftStrategy(ABC):
+class CachingStrategy(ABC):
     """Strategy for latents and text encoder caching."""
 
     @abstractmethod
@@ -197,7 +197,7 @@ class UNetCallingStrategy(ABC):
         raise NotImplementedError
 
 
-class SampleGenerationPeftStrategy(ABC):
+class SampleGenerationStrategy(ABC):
     """Strategy for generating sample images during training."""
 
     @abstractmethod
@@ -230,7 +230,7 @@ class SampleGenerationPeftStrategy(ABC):
         raise NotImplementedError
 
 
-class CheckpointingPeftStrategy(ABC):
+class CheckpointingStrategy(ABC):
     """Strategy for model-specific checkpointing and metadata."""
 
     @abstractmethod
@@ -258,7 +258,7 @@ class CheckpointingPeftStrategy(ABC):
         raise NotImplementedError
 
 
-class ValidationPeftStrategy(ABC):
+class ValidationStrategy(ABC):
     """Strategy for model-specific validation."""
 
     @abstractmethod
@@ -275,14 +275,14 @@ class ValidationPeftStrategy(ABC):
 
 
 @dataclass
-class PeftTrainingStrategy(
+class TrainingStrategy(
     ModelLoadingStrategy,
-    TokenizationPeftStrategy,
-    CachingPeftStrategy,
+    TokenizationStrategy,
+    CachingStrategy,
     UNetCallingStrategy,
-    SampleGenerationPeftStrategy,
-    CheckpointingPeftStrategy,
-    ValidationPeftStrategy,
+    SampleGenerationStrategy,
+    CheckpointingStrategy,
+    ValidationStrategy,
 ):
     """
     Combined interface for all PEFT training strategies.
@@ -342,7 +342,7 @@ class PeftTrainingStrategy(
         Returns:
             Scaled latents.
         """
-        return latents * self.vae_latent_scale  # Defined in subclasses (SdPeftStrategy, SdxlPeftStrategy)
+        return latents * self.vae_latent_scale  # Defined in subclasses (SdTrainingStrategy, SdxlTrainingStrategy)
 
     def post_process_loss(self, loss: torch.Tensor, cfg: Any, timesteps: torch.Tensor, noise_scheduler: Any) -> torch.Tensor:
         """

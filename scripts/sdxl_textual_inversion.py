@@ -2,13 +2,16 @@ import hydra
 import os
 import torch
 
-
+import library.strategies.sd.caching
+import library.strategies.sdxl.encoding
+import library.strategies.sdxl.tokenization
 import sd_textual_inversion
 
 from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl.conversion import get_size_embeddings
 from library.utils.device_utils import init_ipex
-from library.strategies import strategy_sdxl, strategy_sd
+from library.strategies.sdxl import strategy_sdxl
+from library.strategies.sd import strategy_sd
 from library.data._deprecated.dataset import DatasetGroup, MinimalDataset
 from library.training.sdxl_sample_generation import sample_images
 from library.models.sdxl.loader import load_target_model as load_target_model_sdxl
@@ -54,13 +57,13 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
     def get_tokenize_strategy(self, cfg):
-        return strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
+        return library.strategies.sdxl.tokenization.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
 
-    def get_tokenizers(self, tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy):
+    def get_tokenizers(self, tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy):
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
     def get_latents_caching_strategy(self, cfg):
-        latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
+        latents_caching_strategy = library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(
             False,
             cfg.data.caching.cache_latents_to_disk,
             cfg.data.caching.vae_batch_size,
@@ -69,7 +72,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         return latents_caching_strategy
 
     def get_text_encoding_strategy(self, cfg):
-        return strategy_sdxl.SdxlTextEncodingStrategy()
+        return library.strategies.sdxl.encoding.SdxlTextEncodingStrategy()
 
     def call_unet(self, config, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype):
         # get size embeddings

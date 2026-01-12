@@ -4,12 +4,17 @@ import argparse
 import torch
 import logging
 
+import library.strategies.base.caching
+import library.strategies.base.tokenization
+import library.strategies.sd.caching
+import library.strategies.sd.tokenization
+import library.strategies.sdxl.tokenization
 # TODO add back missing pipes
 # from library import flux_train_utils, flux_utils, strategy_flux
 
 
 from library.data._deprecated.dataset import load_arbitrary_dataset
-from library.strategies import strategy_sdxl, strategy_sd, strategy_base
+from library.strategies.sd import strategy_sd
 from library.training.trainer_utils import prepare_accelerator
 from library.utils import config_util
 from library.utils.common_utils import setup_logging, add_logging_arguments
@@ -44,9 +49,9 @@ def set_tokenize_strategy(is_sd: bool, is_sdxl: bool, is_flux: bool, args: argpa
         is_schnell = False
 
     if is_sd:
-        tokenize_strategy = strategy_sd.SdTokenizeStrategy(args.v2, args.max_token_length, args.tokenizer_cache_dir)
+        tokenize_strategy = library.strategies.sd.tokenization.SdTokenizeStrategy(args.v2, args.max_token_length, args.tokenizer_cache_dir)
     elif is_sdxl:
-        tokenize_strategy = strategy_sdxl.SdxlTokenizeStrategy(args.max_token_length, args.tokenizer_cache_dir)
+        tokenize_strategy = library.strategies.sdxl.tokenization.SdxlTokenizeStrategy(args.max_token_length, args.tokenizer_cache_dir)
     else:
         if args.t5xxl_max_token_length is None:
             if is_schnell:
@@ -58,7 +63,7 @@ def set_tokenize_strategy(is_sd: bool, is_sdxl: bool, is_flux: bool, args: argpa
 
         logger.info(f"t5xxl_max_token_length: {t5xxl_max_token_length}")
         tokenize_strategy = strategy_flux.FluxTokenizeStrategy(t5xxl_max_token_length, args.tokenizer_cache_dir)
-    strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
+    library.strategies.base.tokenization.TokenizeStrategy.set_strategy(tokenize_strategy)
 
 
 def cache_to_disk(args: argparse.Namespace) -> None:
@@ -81,10 +86,10 @@ def cache_to_disk(args: argparse.Namespace) -> None:
     set_tokenize_strategy(is_sd, is_sdxl, is_flux, args)
 
     if is_sd or is_sdxl:
-        latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(is_sd, True, args.vae_batch_size, args.skip_cache_check)
+        latents_caching_strategy = library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(is_sd, True, args.vae_batch_size, args.skip_cache_check)
     else:
         latents_caching_strategy = strategy_flux.FluxLatentsCachingStrategy(True, args.vae_batch_size, args.skip_cache_check)
-    strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
+    library.strategies.base.caching.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
     # データセットを準備する
     use_user_config = args.dataset_config is not None

@@ -83,29 +83,29 @@ class TestStrategyImports:
     """Test that strategy classes can be imported."""
 
     def test_sd_peft_strategy_imports(self):
-        """Verify SdPeftStrategy can be imported."""
-        from library.strategies.peft_strategy_sd import SdPeftStrategy
+        """Verify SdTrainingStrategy can be imported."""
+        from library.strategies.sd.training import SdTrainingStrategy
 
-        assert SdPeftStrategy is not None
+        assert SdTrainingStrategy is not None
 
     def test_sdxl_peft_strategy_imports(self):
-        """Verify SdxlPeftStrategy can be imported."""
-        from library.strategies.peft_strategy_sdxl import SdxlPeftStrategy
+        """Verify SdxlTrainingStrategy can be imported."""
+        from library.strategies.sdxl.training import SdxlTrainingStrategy
 
-        assert SdxlPeftStrategy is not None
+        assert SdxlTrainingStrategy is not None
 
     def test_sd_strategy_instantiation(self):
-        """Verify SdPeftStrategy can be instantiated."""
-        from library.strategies.peft_strategy_sd import SdPeftStrategy
+        """Verify SdTrainingStrategy can be instantiated."""
+        from library.strategies.sd.training import SdTrainingStrategy
 
-        strategy = SdPeftStrategy()
+        strategy = SdTrainingStrategy()
         assert strategy is not None
 
     def test_sdxl_strategy_instantiation(self):
-        """Verify SdxlPeftStrategy can be instantiated."""
-        from library.strategies.peft_strategy_sdxl import SdxlPeftStrategy
+        """Verify SdxlTrainingStrategy can be instantiated."""
+        from library.strategies.sdxl.training import SdxlTrainingStrategy
 
-        strategy = SdxlPeftStrategy()
+        strategy = SdxlTrainingStrategy()
         assert strategy is not None
 
 

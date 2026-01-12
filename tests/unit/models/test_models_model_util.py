@@ -12,7 +12,7 @@ from library.models.sd.vae import (
     conv_attn_to_linear,
     renew_vae_resnet_paths,
 )
-from library.models.common import shave_segments, renew_attention_paths, renew_resnet_paths
+from library.models.conversion_utils import shave_segments, renew_attention_paths, renew_resnet_paths
 from library.utils.safetensors_utils import is_safetensors
 from library.models.sd.conversion import (
     controlnet_conversion_map,

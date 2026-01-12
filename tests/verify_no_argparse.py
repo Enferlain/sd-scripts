@@ -16,7 +16,7 @@ def test_imports():
         return False
 
     try:
-        import library.models.model_prep
+        import library.models.runtime_utils
 
         print("✅ library.training.model_prep imported successfully")
     except ImportError as e:

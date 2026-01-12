@@ -4,10 +4,13 @@ import argparse
 import torch
 import logging
 
+import library.strategies.base.caching
+import library.strategies.base.encoding
+import library.strategies.sdxl.caching
+import library.strategies.sdxl.encoding
 from library.constants import MODEL_VERSION_SDXL_BASE_V1_0
 from library.training.trainer_utils import prepare_accelerator
 from tools.data_processing.cache_latents import set_tokenize_strategy
-from library.strategies import strategy_sdxl, strategy_base
 from library.utils.torch_utils import set_seed_from_config, prepare_dtype, str_to_dtype
 from library.utils import config_util
 from library.utils.config_util import ConfigSanitizer, BlueprintGenerator
@@ -150,7 +153,7 @@ def cache_to_disk(args: argparse.Namespace) -> None:
 
     # build text encoder outputs caching strategy
     if is_sdxl:
-        text_encoder_outputs_caching_strategy = strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
+        text_encoder_outputs_caching_strategy = library.strategies.sdxl.caching.SdxlTextEncoderOutputsCachingStrategy(
             args.cache_text_encoder_outputs_to_disk, None, args.skip_cache_check, is_weighted=args.weighted_captions
         )
     else:
@@ -161,14 +164,14 @@ def cache_to_disk(args: argparse.Namespace) -> None:
             is_partial=False,
             apply_t5_attn_mask=args.apply_t5_attn_mask,
         )
-    strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_outputs_caching_strategy)
+    library.strategies.base.caching.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_outputs_caching_strategy)
 
     # build text encoding strategy
     if is_sdxl:
-        text_encoding_strategy = strategy_sdxl.SdxlTextEncodingStrategy()
+        text_encoding_strategy = library.strategies.sdxl.encoding.SdxlTextEncodingStrategy()
     else:
         text_encoding_strategy = strategy_flux.FluxTextEncodingStrategy(args.apply_t5_attn_mask)
-    strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
+    library.strategies.base.encoding.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
     # cache text encoder outputs
     train_dataset_group.new_cache_text_encoder_outputs(text_encoders, accelerator)

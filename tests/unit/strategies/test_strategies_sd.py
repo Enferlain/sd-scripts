@@ -9,11 +9,9 @@ import numpy as np
 import torch
 from unittest.mock import Mock, patch
 
-from library.strategies.strategy_sd import (
-    SdTokenizeStrategy,
-    SdTextEncodingStrategy,
-    SdSdxlLatentsCachingStrategy,
-)
+from library.strategies.sd.caching import SdSdxlLatentsCachingStrategy
+from library.strategies.sd.encoding import SdTextEncodingStrategy
+from library.strategies.sd.tokenization import SdTokenizeStrategy
 
 
 # =============================================================================
@@ -309,7 +307,7 @@ class TestSdSdxlLatentsCachingStrategy:
         mock_info.bucket_reso = (512, 512)
         mock_info.latents_npz = "/path/to/image_sd.npz"
 
-        with patch("library.strategies.strategy_sd.clean_memory_on_device"):
+        with patch("library.utils.device_utils.clean_memory_on_device"):
             with patch.object(strategy, "_default_cache_batch_latents") as mock_cache:
                 strategy.cache_batch_latents(mock_vae, [mock_info], flip_aug=False, alpha_mask=False, random_crop=False)
 

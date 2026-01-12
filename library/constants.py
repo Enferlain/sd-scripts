@@ -17,9 +17,9 @@ EPSILON = 1e-6
 # Files / Logging / Checkpointing
 # =============================================================================
 
-# --- caching.py, strategy_base.py, strategy_sd.py ---
+# --- library/strategies/caching.py ---
 # Note: highvram is currently unused - the HIGH_VRAM constant is never set from config.
-HIGH_VRAM = False
+HIGH_VRAM = False  # TODO check if we can use in data or if not relevant anymore
 
 # --- checkpointing.py ---
 EPOCH_STATE_NAME = "{}-{:06d}-state"
@@ -166,7 +166,7 @@ float_pattern = re.compile(
 
 int_pattern = re.compile(r"^[+-]?\d+$")
 
-# --- lpw_stable_diffusion.py, sdxl_lpw_stable_diffusion.py, prompt_utils.py, strategy_base.py ---
+# --- lpw_stable_diffusion.py, sdxl_lpw_stable_diffusion.py, prompt_utils.py, library/strategies/tokenization.py ---
 re_attention = re.compile(
     r"""
 \\\(|

@@ -30,7 +30,7 @@ from library.models.sd.vae import (
     convert_vae_state_dict,
     assign_to_checkpoint,
 )
-from library.models.common import shave_segments, renew_attention_paths, renew_resnet_paths
+from library.models.conversion_utils import shave_segments, renew_attention_paths, renew_resnet_paths
 from library.utils.safetensors_utils import is_safetensors
 
 setup_logging()

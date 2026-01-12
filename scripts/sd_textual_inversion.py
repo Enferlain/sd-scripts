@@ -11,10 +11,15 @@ from diffusers import DDPMScheduler
 
 import library.logging.step_logging
 import library.models.sd.conversion
+import library.strategies.base.caching
+import library.strategies.base.encoding
+import library.strategies.base.tokenization
+import library.strategies.sd.caching
+import library.strategies.sd.encoding
+import library.strategies.sd.tokenization
 import library.utils.huggingface_util as huggingface_util
 
 from library.utils import model_metadata
-from library.strategies import strategy_sd, strategy_base
 from library.utils.torch_utils import prepare_dtype, set_seed_from_config
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
@@ -31,7 +36,7 @@ from library.data._deprecated.dataset import (
 )
 from library.config.dataclasses.sd_textual_inversion import TextualInversionConfig
 
-from library.models.model_prep import (
+from library.models.runtime_utils import (
     replace_unet_modules,
     patch_accelerator_for_fp16_training,
 )
@@ -110,17 +115,17 @@ class TextualInversionTrainer:
 
     def get_tokenize_strategy(self, cfg):
         is_v2 = cfg.model.model_type == "sd2"
-        return strategy_sd.SdTokenizeStrategy(
+        return library.strategies.sd.tokenization.SdTokenizeStrategy(
             is_v2,
             cfg.training.max_token_length,
             cfg.model.tokenizer_cache_dir,
         )
 
-    def get_tokenizers(self, tokenize_strategy: strategy_sd.SdTokenizeStrategy) -> list[Any]:
+    def get_tokenizers(self, tokenize_strategy: library.strategies.sd.tokenization.SdTokenizeStrategy) -> list[Any]:
         return [tokenize_strategy.tokenizer]
 
     def get_latents_caching_strategy(self, cfg):
-        latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
+        latents_caching_strategy = library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(
             True,
             cfg.data.caching.cache_latents_to_disk,
             cfg.data.caching.vae_batch_size,
@@ -132,7 +137,7 @@ class TextualInversionTrainer:
         pass
 
     def get_text_encoding_strategy(self, cfg):
-        return strategy_sd.SdTextEncodingStrategy(cfg.training.clip_skip)
+        return library.strategies.sd.encoding.SdTextEncodingStrategy(cfg.training.clip_skip)
 
     def get_models_for_text_encoding(self, config, accelerator, text_encoders) -> list[Any]:
         return text_encoders
@@ -236,11 +241,11 @@ class TextualInversionTrainer:
         set_seed_from_config(cfg.training)
 
         tokenize_strategy = self.get_tokenize_strategy(cfg)
-        strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
+        library.strategies.base.tokenization.TokenizeStrategy.set_strategy(tokenize_strategy)
         tokenizers = self.get_tokenizers(tokenize_strategy)
 
         latents_caching_strategy = self.get_latents_caching_strategy(cfg)
-        strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
+        library.strategies.base.caching.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
         logger.info("prepare accelerator")
         accelerator = prepare_accelerator(
@@ -451,7 +456,7 @@ class TextualInversionTrainer:
             unet.eval()
 
         text_encoding_strategy = self.get_text_encoding_strategy(cfg)
-        strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
+        library.strategies.base.encoding.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
         if not cache_latents:
             vae.requires_grad_(False)

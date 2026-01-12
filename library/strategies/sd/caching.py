@@ -6,6 +6,7 @@ and are designed to work with CacheEntry dataclasses, not the legacy ImageInfo.
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 import random
@@ -14,9 +15,14 @@ import torch
 from PIL import Image
 from safetensors.torch import save_file
 
+from library.constants import HIGH_VRAM
+from library.data._deprecated.data_structures import ImageInfo
+
 from library.data.caching_engine import CachingStrategy
 from library.data.structures import CacheData, CacheEntry
+from library.strategies.base.caching import LatentsCachingStrategy
 from library.utils.common_utils import setup_logging
+from library.utils.device_utils import clean_memory_on_device
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -319,3 +325,101 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         arr = arr * 2.0 - 1.0  # [0, 1] -> [-1, 1]
         tensor = torch.from_numpy(arr).permute(2, 0, 1)  # [H, W, C] -> [C, H, W]
         return tensor
+
+
+# TODO LEGACY SCRIPT, PENDING UPDATE OF NON SDXL_PEFT TRAINING SCRIPTS AND STRATEGY
+class SdSdxlLatentsCachingStrategy(LatentsCachingStrategy):
+    """
+    Latents caching strategy for SD1.5, SD2.0 and SDXL.
+    """
+
+    # SD and SDXL use the same caching format, separated only by cache file suffix (_sd vs _sdxl)
+    # and we keep the old npz for the backward compatibility.
+
+    SD_OLD_LATENTS_NPZ_SUFFIX = ".npz"
+    SD_LATENTS_NPZ_SUFFIX = "_sd.npz"
+    SDXL_LATENTS_NPZ_SUFFIX = "_sdxl.npz"
+
+    def __init__(self, sd: bool, cache_to_disk: bool, batch_size: int, skip_disk_cache_validity_check: bool) -> None:
+        super().__init__(cache_to_disk, batch_size, skip_disk_cache_validity_check)
+        self.sd = sd
+        self.suffix = SdSdxlLatentsCachingStrategy.SD_LATENTS_NPZ_SUFFIX if sd else SdSdxlLatentsCachingStrategy.SDXL_LATENTS_NPZ_SUFFIX
+
+    @property
+    def cache_suffix(self) -> str:
+        return self.suffix
+
+    def get_latents_npz_path(self, absolute_path: str, image_size: tuple[int, int]) -> str:
+        """
+        Get path to the cached latents npz file.
+
+        Args:
+            absolute_path: Absolute path to the image file
+            image_size: Image size (width, height)
+
+        Returns:
+            Path to the npz file
+        """
+        # support old .npz
+        old_npz_file = os.path.splitext(absolute_path)[0] + SdSdxlLatentsCachingStrategy.SD_OLD_LATENTS_NPZ_SUFFIX
+        if os.path.exists(old_npz_file):
+            return old_npz_file
+        return os.path.splitext(absolute_path)[0] + f"_{image_size[0]:04d}x{image_size[1]:04d}" + self.suffix
+
+    def is_disk_cached_latents_expected(self, bucket_reso: tuple[int, int], npz_path: str, flip_aug: bool, alpha_mask: bool):
+        """
+        Check if the latents are cached in disk.
+
+        Args:
+            bucket_reso: Resolution of the bucket
+            npz_path: Path to the npz file
+            flip_aug: Whether to flip images
+            alpha_mask: Whether to apply alpha mask
+
+        Returns:
+            True if cached, False otherwise
+        """
+        return self._default_is_disk_cached_latents_expected(8, bucket_reso, npz_path, flip_aug, alpha_mask)
+
+    def cache_batch_latents(
+        self,
+        model: Any,
+        batch: list[ImageInfo],
+        flip_aug: bool,
+        alpha_mask: bool,
+        random_crop: bool,
+        random_crop_padding_percent: float = 0.05,
+    ) -> None:
+        """
+        Cache batch latents.
+
+        Args:
+            model: VAE model
+            batch: List of ImageInfo
+            flip_aug: Whether to flip images
+            alpha_mask: Whether to apply alpha mask
+            random_crop: Whether to random crop images
+            random_crop_padding_percent: Padding percent for random crop
+        """
+        vae = model
+        image_infos = batch
+
+        def encode_by_vae(img_tensor: torch.Tensor) -> torch.Tensor:
+            return vae.encode(img_tensor).latent_dist.sample()
+
+        vae_device = vae.device
+        vae_dtype = vae.dtype
+
+        self._default_cache_batch_latents(
+            encode_by_vae,
+            vae_device,
+            vae_dtype,
+            image_infos,
+            flip_aug,
+            alpha_mask,
+            random_crop,
+            random_crop_padding_percent=random_crop_padding_percent,
+        )
+
+        if not HIGH_VRAM:
+            clean_memory_on_device(vae.device)

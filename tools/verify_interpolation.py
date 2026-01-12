@@ -1,9 +1,7 @@
 import os
-import cv2
 import numpy as np
-import torch
 from PIL import Image, ImageDraw, ImageFont
-from library.strategies.sdxl_caching import SdxlLatentsPipelineStrategy
+from library.strategies.sdxl.caching import SdxlLatentsPipelineStrategy
 
 
 def compare_interpolations():

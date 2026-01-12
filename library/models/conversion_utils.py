@@ -1,3 +1,8 @@
+"""
+Common model utilities
+"""
+
+
 def shave_segments(path, n_shave_prefix_segments=1):
     """
     Removes segments from a dot-separated path string.

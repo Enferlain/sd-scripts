@@ -60,7 +60,8 @@ else:
   - Imports and uses `library.strategies.strategy_sdxl` and `library.strategies.strategy_base`.
   - In `__call__`, it retrieves the active strategy:
     ```python
-    tokenize_strategy = strategy_base.TokenizeStrategy.get_strategy()
+import library.strategies.base.tokenization
+    tokenize_strategy = library.strategies.base.tokenization.TokenizeStrategy.get_strategy()
     encoding_strategy = strategy_base.TextEncodingStrategy.get_strategy()
     ```
   - It delegates the actual tokenization and weighting to these strategy classes.

@@ -13,12 +13,9 @@ import numpy as np
 import torch
 from unittest.mock import Mock
 
-from library.strategies.strategy_base import (
-    TokenizeStrategy,
-    TextEncodingStrategy,
-    TextEncoderOutputsCachingStrategy,
-    LatentsCachingStrategy,
-)
+from library.strategies.base.caching import TextEncoderOutputsCachingStrategy, LatentsCachingStrategy
+from library.strategies.base.encoding import TextEncodingStrategy
+from library.strategies.base.tokenization import TokenizeStrategy
 
 
 # =============================================================================

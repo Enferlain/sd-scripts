@@ -18,12 +18,9 @@ from library.utils.jpeg_xl_util import get_jxl_size
 from library.data.image_utils import load_image, trim_and_resize_if_required, resize_image, \
     validate_interpolation_fn
 
-from library.strategies.strategy_base import (
-    LatentsCachingStrategy,
-    TokenizeStrategy,
-    TextEncoderOutputsCachingStrategy,
-    TextEncodingStrategy
-)
+from library.strategies.base.caching import TextEncoderOutputsCachingStrategy, LatentsCachingStrategy
+from library.strategies.base.encoding import TextEncodingStrategy
+from library.strategies.base.tokenization import TokenizeStrategy
 
 from library.data._deprecated.caching import (
     is_disk_cached_latents_is_expected,

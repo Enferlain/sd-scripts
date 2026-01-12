@@ -9,7 +9,7 @@ Structure:
 - Hydra entry point: Loads config and calls train()
 
 Model-specific operations are delegated to:
-- library/strategies/peft_strategy_sd.py (strategy pattern)
+- library/strategies/training.py (strategy pattern)
 - library/training/*.py, library/logging/*.py, library/data/*.py (shared utilities)
 """
 
@@ -28,21 +28,23 @@ import hydra
 
 from tqdm import tqdm
 
+import library.strategies.base.caching
+import library.strategies.base.encoding
+import library.strategies.base.tokenization
 import library.utils.huggingface_util as huggingface_util
 
 from library.config.config_validation import prepare_config, validate_config
-from library.strategies import strategy_base
 from library.performance import deepspeed_utils
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
-from library.models.model_prep import patch_accelerator_for_fp16_training
+from library.models.runtime_utils import patch_accelerator_for_fp16_training
 from library.optimizers.optimizer_utils import prepare_optimizer
 from library.optimizers.scheduler import get_scheduler_fix
 from library.training.sample_generation import sample_images_check
 from library.losses.loss import EMARecorder
 from library.config.dataclasses.sd_peft import SDPeftConfig
-from library.strategies.peft_strategy_sd import SdPeftStrategy
+from library.strategies.sd.training import SdTrainingStrategy
 from library.adapters.lora_utils import resolve_adapter_kwargs
 from library.training.training_metadata import create_training_metadata
 from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
@@ -91,7 +93,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
+def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     strategies.la_sampler = None
 
     session_id = random.randint(0, 2**32)
@@ -108,12 +110,12 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     set_seed_from_config(cfg.training)
 
     tokenize_strategy = strategies.get_tokenize_strategy(cfg)
-    strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
+    library.strategies.base.tokenization.TokenizeStrategy.set_strategy(tokenize_strategy)
     tokenizers = strategies.get_tokenizers(tokenize_strategy)  # will be removed after sample_image is refactored
 
     # prepare caching strategy: this must be set before preparing dataset. because dataset may use this strategy for initialization.
     latents_caching_strategy = strategies.get_latents_caching_strategy(cfg)
-    strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
+    library.strategies.base.caching.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
     # Prepare datasets
     dataset_result = prepare_datasets(cfg, strategies)
@@ -165,11 +167,11 @@ def train(cfg: SDPeftConfig, strategies: "SdPeftStrategy"):
     # 必要ならテキストエンコーダーの出力をキャッシュする: Text Encoderはcpuまたはgpuへ移される
     # cache text encoder outputs if needed: Text Encoder is moved to cpu or gpu
     text_encoding_strategy = strategies.get_text_encoding_strategy(cfg)
-    strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
+    library.strategies.base.encoding.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
     text_encoder_outputs_caching_strategy = strategies.get_text_encoder_outputs_caching_strategy(cfg)
     if text_encoder_outputs_caching_strategy is not None:
-        strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_outputs_caching_strategy)
+        library.strategies.base.caching.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_outputs_caching_strategy)
     strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, train_dataset_group, weight_dtype)
     if val_dataset_group is not None:
         strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, val_dataset_group, weight_dtype)
@@ -1020,7 +1022,7 @@ def main(cfg: SDPeftConfig):
     prepare_config(cfg)
     validate_config(cfg)
 
-    strategies = SdPeftStrategy()
+    strategies = SdTrainingStrategy()
     train(cfg, strategies)
 
 

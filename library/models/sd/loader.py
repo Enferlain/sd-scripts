@@ -2,7 +2,7 @@
 SD1.5/2 Model Loading Functions
 
 This module contains SD1.5/2-specific model loading functions.
-Generic utilities are in model_prep.py.
+Generic utilities are in runtime_utils.py.
 """
 
 import os
@@ -16,7 +16,7 @@ from library.models.sd.unet import UNet2DConditionModel
 from library.utils.device_utils import clean_memory_on_device
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import MemoryConfig
-from library.models.model_prep import set_padding_mode_for_vae_conv2d_modules
+from library.models.runtime_utils import set_padding_mode_for_vae_conv2d_modules
 
 logger = logging.getLogger(__name__)
 

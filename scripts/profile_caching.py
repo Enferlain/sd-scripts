@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from library.data.caching_engine import CachingEngine
 from library.data.manifest import create_manifest_from_config
-from library.strategies.sdxl_caching import SdxlLatentsPipelineStrategy
+from library.strategies.sdxl.caching import SdxlLatentsPipelineStrategy
 from library.config.dataclasses.data import DataConfig, SourceConfig, PreprocessingConfig, CachingConfig, BucketingConfig, CaptionConfig
 
 logging.basicConfig(level=logging.INFO)

@@ -9,14 +9,19 @@ from multiprocessing import Value
 from diffusers import DDPMScheduler
 
 import library.logging.step_logging
+import library.strategies.base.caching
+import library.strategies.base.encoding
+import library.strategies.base.tokenization
+import library.strategies.sd.caching
+import library.strategies.sd.encoding
+import library.strategies.sd.tokenization
 from library.performance import deepspeed_utils
-from library.strategies import strategy_sd, strategy_base
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.common_utils import setup_logging
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.config.config_util import BlueprintGenerator, generate_dataset_group_by_blueprint
 from library.data._deprecated.dataset import load_arbitrary_dataset, collator_class, debug_dataset
-from library.models.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
+from library.models.runtime_utils import replace_unet_modules, patch_accelerator_for_fp16_training
 from library.models.sd.loader import load_target_model
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.optimizers.scheduler import get_scheduler_fix
@@ -57,16 +62,16 @@ def train(cfg: SDFineTuneConfig):
 
     set_seed_from_config(cfg.training)
 
-    tokenize_strategy = strategy_sd.SdTokenizeStrategy(
+    tokenize_strategy = library.strategies.sd.tokenization.SdTokenizeStrategy(
         cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir
     )
-    strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
+    library.strategies.base.tokenization.TokenizeStrategy.set_strategy(tokenize_strategy)
 
     if cache_latents:
-        latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
+        latents_caching_strategy = library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(
             False, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
         )
-        strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
+        library.strategies.base.caching.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
     if cfg.data.source.dataset_class is None:
         blueprint_generator = BlueprintGenerator()
@@ -177,8 +182,8 @@ def train(cfg: SDFineTuneConfig):
         else:
             text_encoder.eval()
 
-    text_encoding_strategy = strategy_sd.SdTextEncodingStrategy(cfg.training.clip_skip)
-    strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
+    text_encoding_strategy = library.strategies.sd.encoding.SdTextEncodingStrategy(cfg.training.clip_skip)
+    library.strategies.base.encoding.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
     if not cache_latents:
         vae.requires_grad_(False)

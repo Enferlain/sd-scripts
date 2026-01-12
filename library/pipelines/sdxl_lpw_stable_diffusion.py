@@ -16,12 +16,15 @@ from diffusers.models import AutoencoderKL
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from diffusers.utils import logging, PIL_INTERPOLATION
 
+import library.strategies.base.encoding
+import library.strategies.base.tokenization
+import library.strategies.sdxl.encoding
+import library.strategies.sdxl.tokenization
 from library.constants import re_attention, SDXL_VAE_LATENT_SCALE
 from library.models.sdxl.conversion import get_size_embeddings
 from library.models.sdxl.text_encoder import pool_workaround
 from library.models.sdxl import unet as sdxl_original_unet
 from library.models.sdxl import control_net as sdxl_original_control_net
-from library.strategies import strategy_sdxl, strategy_base
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -972,8 +975,8 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         do_classifier_free_guidance = guidance_scale > 1.0
 
         # 3. Encode input prompt
-        tokenize_strategy: strategy_sdxl.SdxlTokenizeStrategy = strategy_base.TokenizeStrategy.get_strategy()
-        encoding_strategy: strategy_sdxl.SdxlTextEncodingStrategy = strategy_base.TextEncodingStrategy.get_strategy()
+        tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy = library.strategies.base.tokenization.TokenizeStrategy.get_strategy()
+        encoding_strategy: library.strategies.sdxl.encoding.SdxlTextEncodingStrategy = library.strategies.base.encoding.TextEncodingStrategy.get_strategy()
 
         text_input_ids, text_weights = tokenize_strategy.tokenize_with_weights(prompt)
         hidden_states_1, hidden_states_2, text_pool = encoding_strategy.encode_tokens_with_weights(

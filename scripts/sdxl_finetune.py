@@ -9,6 +9,10 @@ from tqdm import tqdm
 from diffusers import DDPMScheduler
 
 import library.config.config_util as config_util
+import library.strategies.base.caching
+import library.strategies.base.encoding
+import library.strategies.base.tokenization
+import library.strategies.sd.caching
 
 from library.constants import SDXL_VAE_LATENT_SCALE
 from library.models.sdxl.conversion import get_size_embeddings
@@ -17,14 +21,13 @@ from library.utils.common_utils import setup_logging
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.performance import deepspeed_utils
 from library.models.sdxl.unet import SdxlUNet2DConditionModel
-from library.strategies import strategy_sdxl, strategy_sd, strategy_base
 from library.data._deprecated.dataset import load_arbitrary_dataset, collator_class, debug_dataset
 from library.training.checkpointing import resume_from_local_or_hf_if_specified, save_state_on_train_end
 from library.training.sdxl_checkpointing import save_sd_model_on_epoch_end_or_stepwise, save_sd_model_on_train_end
 from library.models.sdxl.loader import load_target_model
 from library.training.sdxl_sample_generation import sample_images
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.models.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
+from library.models.runtime_utils import replace_unet_modules, patch_accelerator_for_fp16_training
 from library.optimizers.scheduler import get_scheduler_fix
 from library.optimizers.optimizer_factory import get_optimizer
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
@@ -131,15 +134,15 @@ def train(cfg: SDXLFineTuneConfig):
 
     set_seed_from_config(cfg.training)
 
-    tokenize_strategy = strategy_sdxl.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
-    strategy_base.TokenizeStrategy.set_strategy(tokenize_strategy)
+    tokenize_strategy = library.strategies.sdxl.tokenization.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
+    library.strategies.base.tokenization.TokenizeStrategy.set_strategy(tokenize_strategy)
     tokenizers = [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
     if cfg.data.caching.cache_latents:
-        latents_caching_strategy = strategy_sd.SdSdxlLatentsCachingStrategy(
+        latents_caching_strategy = library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(
             False, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
         )
-        strategy_base.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
+        library.strategies.base.caching.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
     if cfg.data.source.dataset_class is None:
         blueprint_generator = BlueprintGenerator()
@@ -255,8 +258,8 @@ def train(cfg: SDXLFineTuneConfig):
     train_text_encoder1 = False
     train_text_encoder2 = False
 
-    text_encoding_strategy = strategy_sdxl.SdxlTextEncodingStrategy()
-    strategy_base.TextEncodingStrategy.set_strategy(text_encoding_strategy)
+    text_encoding_strategy = library.strategies.sdxl.encoding.SdxlTextEncodingStrategy()
+    library.strategies.base.encoding.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
     # Train text encoder if TE LR > 0 (based on LR-based training control)
     from library.optimizers.optimizer_utils import should_train_text_encoder
@@ -304,10 +307,10 @@ def train(cfg: SDXLFineTuneConfig):
         text_encoder2.eval()
 
         if cfg.data.caching.cache_text_encoder_outputs:
-            text_encoder_output_caching_strategy = strategy_sdxl.SdxlTextEncoderOutputsCachingStrategy(
+            text_encoder_output_caching_strategy = library.strategies.sdxl.caching.SdxlTextEncoderOutputsCachingStrategy(
                 cfg.data.caching.cache_text_encoder_outputs_to_disk, None, False, is_weighted=cfg.data.caption.weighted_captions
             )  # TODO: Expected type 'int', got 'None' instead
-            strategy_base.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_output_caching_strategy)
+            library.strategies.base.caching.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_output_caching_strategy)
 
             text_encoder1.to(accelerator.device)
             text_encoder2.to(accelerator.device)

@@ -19,7 +19,7 @@ from tqdm import tqdm
 from library.data._deprecated.dataset import BaseDataset
 from library.data._deprecated.data_structures import DreamBoothSubset, ImageInfo
 from library.data.image_utils import glob_images
-from library.strategies.strategy_base import LatentsCachingStrategy
+from library.strategies.base.caching import LatentsCachingStrategy
 
 logger = logging.getLogger(__name__)
 
