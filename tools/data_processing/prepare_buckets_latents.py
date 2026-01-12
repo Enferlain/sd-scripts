@@ -10,7 +10,7 @@ from tqdm import tqdm
 from PIL import Image
 from torchvision import transforms
 
-import library.models.model_util as model_util
+import library.models.sd.vae as model_util
 
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, get_preferred_device

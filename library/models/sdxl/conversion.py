@@ -12,7 +12,8 @@ from diffusers import AutoencoderKL, EulerDiscreteScheduler, UNet2DConditionMode
 import library.utils.safetensors_utils
 from library.constants import SDXL_KEY_PREFIX, DIFFUSERS_SDXL_UNET_CONFIG, DIFFUSERS_REF_MODEL_ID_SDXL
 from library.utils.common_utils import setup_logging
-from library.models import sdxl_original_unet, model_util
+from library.models.sdxl import unet as sdxl_unet
+from library.models.sd import vae as vae_util
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -240,7 +241,7 @@ def load_models_from_sdxl_checkpoint(model_version, ckpt_path, map_location, dty
     # U-Net
     logger.info("building U-Net")
     with init_empty_weights():
-        unet = sdxl_original_unet.SdxlUNet2DConditionModel()
+        unet = sdxl_unet.SdxlUNet2DConditionModel()
 
     logger.info("loading U-Net from checkpoint")
     unet_sd = {}
@@ -326,12 +327,12 @@ def load_models_from_sdxl_checkpoint(model_version, ckpt_path, map_location, dty
 
     # prepare vae
     logger.info("building VAE")
-    vae_config = model_util.create_vae_diffusers_config()
+    vae_config = vae_util.create_vae_diffusers_config()
     with init_empty_weights():
         vae = AutoencoderKL(**vae_config)
 
     logger.info("loading VAE from checkpoint")
-    converted_vae_checkpoint = model_util.convert_ldm_vae_checkpoint(state_dict, vae_config)
+    converted_vae_checkpoint = vae_util.convert_ldm_vae_checkpoint(state_dict, vae_config)
     info = _load_state_dict_on_device(vae, converted_vae_checkpoint, device=map_location, dtype=dtype)
     logger.info(f"VAE: {info}")
 
@@ -615,7 +616,7 @@ def save_stable_diffusion_checkpoint(
     update_sd("conditioner.embedders.1.model.", text_enc2_dict)
 
     # Convert the VAE
-    vae_dict = model_util.convert_vae_state_dict(vae.state_dict())
+    vae_dict = vae_util.convert_vae_state_dict(vae.state_dict())
     update_sd("first_stage_model.", vae_dict)
 
     # Put together new checkpoint

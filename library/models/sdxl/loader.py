@@ -8,8 +8,9 @@ from accelerate import init_empty_weights
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 from library.utils.torch_utils import match_mixed_precision
-from library.models import sdxl_original_unet, model_util, sdxl_model_util
 from library.models.model_prep import set_padding_mode_for_vae_conv2d_modules
+from library.models.sdxl import conversion, unet as sdxl_unet
+from library.models.sd import vae as vae_util
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import MemoryConfig, PrecisionConfig
 from library.config.dataclasses.data import CachingConfig
@@ -127,7 +128,7 @@ def _load_target_model(
             unet,
             logit_scale,
             ckpt_info,
-        ) = sdxl_model_util.load_models_from_sdxl_checkpoint(model_version, name_or_path, device, model_dtype, disable_mmap)
+        ) = conversion.load_models_from_sdxl_checkpoint(model_version, name_or_path, device, model_dtype, disable_mmap)
     else:
         from diffusers import StableDiffusionXLPipeline
 
@@ -158,17 +159,17 @@ def _load_target_model(
         unet = pipe.unet
         del pipe
 
-        state_dict = sdxl_model_util.convert_diffusers_unet_state_dict_to_sdxl(unet.state_dict())
+        state_dict = conversion.convert_diffusers_unet_state_dict_to_sdxl(unet.state_dict())
         with init_empty_weights():
-            unet = sdxl_original_unet.SdxlUNet2DConditionModel()
-        sdxl_model_util._load_state_dict_on_device(unet, state_dict, device=device, dtype=model_dtype)
+            unet = sdxl_unet.SdxlUNet2DConditionModel()
+        conversion._load_state_dict_on_device(unet, state_dict, device=device, dtype=model_dtype)
         logger.info("U-Net converted to original U-Net")
 
         logit_scale = None
         ckpt_info = None
 
     if vae_path is not None:
-        vae = model_util.load_vae(vae_path, weight_dtype)
+        vae = vae_util.load_vae(vae_path, weight_dtype)
         logger.info("additional VAE loaded")
 
     if model_config.vae_conv2d_padding_mode is not None and model_config.vae_conv2d_padding_mode.lower() != "zeros":

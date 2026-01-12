@@ -2,15 +2,15 @@
 Generic Model Preparation Utilities
 
 This module contains model preparation utilities that are used by both SD1.5/2 and SDXL.
-SD-specific model loading is in sd_model_prep.py.
-SDXL-specific model loading is in sdxl_model_prep.py.
+SD-specific model loading is in loader.py.
+SDXL-specific model loading is in loader.py.
 """
 
 import logging
 import torch
 from typing import Literal
 
-from library.models.sd_original_unet import UNet2DConditionModel
+from library.models.sd.unet import UNet2DConditionModel
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ def set_padding_mode_for_vae_conv2d_modules(
                 module.padding_mode = padding_mode  # type: ignore[assignment]  # Literal is compatible with str
 
 
-# NOTE: SD-specific load_target_model and _load_target_model moved to sd_model_prep.py
+# NOTE: SD-specific load_target_model and _load_target_model moved to loader.py
 
 
 def patch_accelerator_for_fp16_training(accelerator):

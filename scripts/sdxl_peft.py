@@ -332,7 +332,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlPeftStrategy"):
         else:
             # In-memory TE caching: compute and store in entry.te_outputs
             from library.strategies.peft_strategy_sdxl import tokenize_sdxl_captions
-            from library.models.text_encoder_util import get_hidden_states_sdxl
+            from library.models.sdxl.text_encoder import get_hidden_states_sdxl
 
             logger.info("Computing text encoder outputs in memory...")
             for entry in tqdm(train_manifest.entries.values(), desc="TE caching (memory)", disable=accelerator.process_index != 0):

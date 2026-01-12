@@ -9,9 +9,9 @@ from torch.nn import functional as F
 
 from library.constants import ADM_SDXL_IN_CHANNELS
 from library.utils.common_utils import setup_logging
-from library.models import sdxl_original_unet
+from library.models.sdxl import unet
 
-from library.models.sdxl_model_util import convert_sdxl_unet_state_dict_to_diffusers, convert_diffusers_unet_state_dict_to_sdxl
+from library.models.sdxl.conversion import convert_sdxl_unet_state_dict_to_diffusers, convert_diffusers_unet_state_dict_to_sdxl
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class ControlNetConditioningEmbedding(nn.Module):
         return x
 
 
-class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
+class SdxlControlNet(unet.SdxlUNet2DConditionModel):
     def __init__(self, multiplier: float | None = None, **kwargs):
         super().__init__(**kwargs)
         self.multiplier: float | None = multiplier
@@ -68,7 +68,7 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         nn.init.zeros_(self.controlnet_mid_block.weight)  # type: ignore[arg-type]  # zero module weight
         nn.init.zeros_(self.controlnet_mid_block.bias)  # type: ignore[arg-type]  # zero module bias
 
-    def init_from_unet(self, unet: sdxl_original_unet.SdxlUNet2DConditionModel):
+    def init_from_unet(self, unet: unet.SdxlUNet2DConditionModel):
         unet_sd = unet.state_dict()
         unet_sd = {k: v for k, v in unet_sd.items() if not k.startswith("out")}
         sd = super().state_dict()
@@ -112,7 +112,7 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         # broadcast timesteps to batch dimension
         timesteps = timesteps.expand(x.shape[0])
 
-        t_emb = sdxl_original_unet.get_timestep_embedding(timesteps, self.model_channels, downscale_freq_shift=0)
+        t_emb = unet.get_timestep_embedding(timesteps, self.model_channels, downscale_freq_shift=0)
         t_emb = t_emb.to(x.dtype)
         emb = self.time_embed(t_emb)
 
@@ -123,9 +123,9 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         def call_module(module, h, emb, context):
             x = h
             for layer in module:
-                if isinstance(layer, sdxl_original_unet.ResnetBlock2D):
+                if isinstance(layer, unet.ResnetBlock2D):
                     x = layer(x, emb)
-                elif isinstance(layer, sdxl_original_unet.Transformer2DModel):
+                elif isinstance(layer, unet.Transformer2DModel):
                     x = layer(x, context)
                 else:
                     x = layer(x)
@@ -146,7 +146,7 @@ class SdxlControlNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         return hs, h
 
 
-class SdxlControlledUNet(sdxl_original_unet.SdxlUNet2DConditionModel):
+class SdxlControlledUNet(unet.SdxlUNet2DConditionModel):
     """
     This class is for training purpose only.
     """
@@ -163,7 +163,7 @@ class SdxlControlledUNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         timesteps = timesteps.expand(x.shape[0])
 
         hs = []
-        t_emb = sdxl_original_unet.get_timestep_embedding(timesteps, self.model_channels, downscale_freq_shift=0)
+        t_emb = unet.get_timestep_embedding(timesteps, self.model_channels, downscale_freq_shift=0)
         t_emb = t_emb.to(x.dtype)
         emb = self.time_embed(t_emb)
 
@@ -174,9 +174,9 @@ class SdxlControlledUNet(sdxl_original_unet.SdxlUNet2DConditionModel):
         def call_module(module, h, emb, context):
             x = h
             for layer in module:
-                if isinstance(layer, sdxl_original_unet.ResnetBlock2D):
+                if isinstance(layer, unet.ResnetBlock2D):
                     x = layer(x, emb)
-                elif isinstance(layer, sdxl_original_unet.Transformer2DModel):
+                elif isinstance(layer, unet.Transformer2DModel):
                     x = layer(x, context)
                 else:
                     x = layer(x)

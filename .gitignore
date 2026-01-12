@@ -24,3 +24,9 @@ custom_optimizer/
 uv.lock
 implementation_plan.md
 walkthrough.md
+*.log
+*.pstat
+*.pickle
+benchmark_output/
+benchmark_cache/
+memory_trace.html

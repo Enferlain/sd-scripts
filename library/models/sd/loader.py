@@ -11,9 +11,8 @@ from typing import Literal, cast
 
 from diffusers import StableDiffusionPipeline
 
-import library.models.sd_model_util
-from library.models import model_util
-from library.models.sd_original_unet import UNet2DConditionModel
+import library.models.sd.conversion
+from library.models.sd.unet import UNet2DConditionModel
 from library.utils.device_utils import clean_memory_on_device
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import MemoryConfig
@@ -52,7 +51,7 @@ def _load_target_model(
     load_stable_diffusion_format = os.path.isfile(name_or_path)  # determine SD or Diffusers
     if load_stable_diffusion_format:
         logger.info(f"load StableDiffusion checkpoint: {name_or_path}")
-        text_encoder, vae, unet = library.models.sd_model_util.load_models_from_stable_diffusion_checkpoint(
+        text_encoder, vae, unet = library.models.sd.conversion.load_models_from_stable_diffusion_checkpoint(
             v2,
             name_or_path,
             device,
@@ -87,7 +86,7 @@ def _load_target_model(
 
     # VAEを読み込む
     if model_config.vae is not None:
-        vae = model_util.load_vae(model_config.vae, weight_dtype)
+        vae = vae.load_vae(model_config.vae, weight_dtype)
         logger.info("additional VAE loaded")
 
     if model_config.vae_conv2d_padding_mode is not None and model_config.vae_conv2d_padding_mode.lower() != "zeros":

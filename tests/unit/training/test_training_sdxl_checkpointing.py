@@ -77,7 +77,7 @@ class TestSaveSDModelOnTrainEnd:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_calls_common_function(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models
     ):
@@ -107,7 +107,7 @@ class TestSaveSDModelOnTrainEnd:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_sd_saver_callback_calls_sdxl_util(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models
     ):
@@ -136,7 +136,7 @@ class TestSaveSDModelOnTrainEnd:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_sd_saver_gets_sai_metadata(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models
     ):
@@ -169,7 +169,7 @@ class TestSaveSDModelOnTrainEnd:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_diffusers_saver_callback_calls_sdxl_util(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models
     ):
@@ -198,7 +198,7 @@ class TestSaveSDModelOnTrainEnd:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_diffusers_saver_passes_models_and_config(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models
     ):
@@ -238,7 +238,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_calls_common_function(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models, mock_accelerator
     ):
@@ -263,7 +263,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_passes_on_epoch_end_flag(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models, mock_accelerator
     ):
@@ -289,7 +289,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_passes_accelerator(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models, mock_accelerator
     ):
@@ -315,7 +315,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_passes_epochs_and_steps(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models, mock_accelerator
     ):
@@ -343,7 +343,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_sd_saver_callback_saves_checkpoint(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models, mock_accelerator
     ):
@@ -372,7 +372,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_diffusers_saver_callback_saves_checkpoint(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models, mock_accelerator
     ):
@@ -401,7 +401,7 @@ class TestSaveSDModelOnEpochEndOrStepwise:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_epoch_end_or_stepwise_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_v_parameterization_passed_to_metadata(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, mock_models, mock_accelerator
     ):
@@ -441,7 +441,7 @@ class TestCommonParameters:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_train_end_is_sdxl_true(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models
     ):
@@ -470,7 +470,7 @@ class TestCommonParameters:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_save_dtype_passed_to_checkpoint(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models
     ):
@@ -497,7 +497,7 @@ class TestCommonParameters:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_use_safetensors_passed_to_diffusers(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, loss_config, mock_models
     ):
@@ -523,7 +523,7 @@ class TestCommonParameters:
 
     @patch("library.training.sdxl_checkpointing.save_sd_model_on_train_end_common")
     @patch("library.training.sdxl_checkpointing.model_metadata")
-    @patch("library.training.sdxl_checkpointing.sdxl_model_util")
+    @patch("library.training.sdxl_checkpointing.conversion")
     def test_v_parameterization_from_loss_config(
         self, mock_sdxl_util, mock_sai_spec, mock_common, saving_config, metadata_config, mock_models
     ):

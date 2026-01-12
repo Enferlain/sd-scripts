@@ -17,9 +17,10 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from diffusers.utils import logging, PIL_INTERPOLATION
 
 from library.constants import re_attention, SDXL_VAE_LATENT_SCALE
-from library.models.sdxl_model_util import get_size_embeddings
-from library.models.text_encoder_util import pool_workaround
-from library.models import sdxl_original_unet, sdxl_original_control_net
+from library.models.sdxl.conversion import get_size_embeddings
+from library.models.sdxl.text_encoder import pool_workaround
+from library.models.sdxl import unet as sdxl_original_unet
+from library.models.sdxl import control_net as sdxl_original_control_net
 from library.strategies import strategy_sdxl, strategy_base
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name

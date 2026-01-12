@@ -17,7 +17,7 @@ from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed
 from library.config.config_util import BlueprintGenerator, generate_dataset_group_by_blueprint
 from library.data._deprecated.dataset import load_arbitrary_dataset, collator_class, debug_dataset
 from library.models.model_prep import replace_unet_modules, patch_accelerator_for_fp16_training
-from library.models.sd_model_prep import load_target_model
+from library.models.sd.loader import load_target_model
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.optimizers.scheduler import get_scheduler_fix
 from library.optimizers.optimizer_factory import get_optimizer

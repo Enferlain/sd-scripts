@@ -7,7 +7,7 @@ from typing import Any, cast
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 
 from library.constants import TOKENIZER1_PATH, TOKENIZER2_PATH
-from library.models.text_encoder_util import pool_workaround, get_hidden_states_sdxl
+from library.models.sdxl.text_encoder import pool_workaround, get_hidden_states_sdxl
 from library.strategies.strategy_base import TokenizeStrategy, TextEncodingStrategy, TextEncoderOutputsCachingStrategy
 from library.data._deprecated.data_structures import ImageInfo
 from library.utils.common_utils import setup_logging

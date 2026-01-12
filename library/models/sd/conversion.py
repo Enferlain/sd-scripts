@@ -7,7 +7,7 @@ from safetensors.torch import load_file, save_file
 from transformers import CLIPTextConfig, CLIPTextModel, CLIPTokenizer
 
 from library.utils.common_utils import setup_logging
-from library.models.sd_original_unet import UNet2DConditionModel
+from library.models.sd.unet import UNet2DConditionModel
 from library.constants import (
     DIFFUSERS_REF_MODEL_ID_V2,
     DIFFUSERS_REF_MODEL_ID_V1,
@@ -24,15 +24,13 @@ from library.constants import (
     V2_UNET_PARAMS_ATTENTION_HEAD_DIM,
 )
 
-from library.models.model_util import (
+from library.models.sd.vae import (
     create_vae_diffusers_config,
     convert_ldm_vae_checkpoint,
     convert_vae_state_dict,
     assign_to_checkpoint,
-    renew_attention_paths,
-    renew_resnet_paths,
-    shave_segments,
 )
+from library.models.common import shave_segments, renew_attention_paths, renew_resnet_paths
 from library.utils.safetensors_utils import is_safetensors
 
 setup_logging()

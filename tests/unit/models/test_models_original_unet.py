@@ -1,5 +1,5 @@
 """
-Unit tests for library/models/sd_original_unet.py and sdxl_original_unet.py
+Unit tests for library/models/unet.py and unet.py
 
 Tests pure utility functions that don't require full model instantiation.
 """
@@ -8,7 +8,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from library.models.sd_original_unet import (
+from library.models.sd.unet import (
     get_timestep_embedding,
     get_parameter_dtype,
     get_parameter_device,

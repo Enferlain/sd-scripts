@@ -1,7 +1,7 @@
 import torch
 
 from library.utils import model_metadata
-from library.models import sdxl_model_util
+from library.models.sdxl import conversion
 
 from library.training.checkpointing import save_sd_model_on_train_end_common, save_sd_model_on_epoch_end_or_stepwise_common
 from library.config.dataclasses.output import SavingConfig
@@ -65,7 +65,7 @@ def save_sd_model_on_train_end(
             is_textual_inversion=False,
             is_stable_diffusion_ckpt=True,
         )
-        sdxl_model_util.save_stable_diffusion_checkpoint(
+        conversion.save_stable_diffusion_checkpoint(
             ckpt_file,
             text_encoder1,
             text_encoder2,
@@ -80,7 +80,7 @@ def save_sd_model_on_train_end(
         )
 
     def diffusers_saver(out_dir):
-        sdxl_model_util.save_diffusers_checkpoint(
+        conversion.save_diffusers_checkpoint(
             out_dir,
             text_encoder1,
             text_encoder2,
@@ -156,7 +156,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
             is_textual_inversion=False,
             is_stable_diffusion_ckpt=True,
         )
-        sdxl_model_util.save_stable_diffusion_checkpoint(
+        conversion.save_stable_diffusion_checkpoint(
             ckpt_file,
             text_encoder1,
             text_encoder2,
@@ -171,7 +171,7 @@ def save_sd_model_on_epoch_end_or_stepwise(
         )
 
     def diffusers_saver(out_dir):
-        sdxl_model_util.save_diffusers_checkpoint(
+        conversion.save_diffusers_checkpoint(
             out_dir,
             text_encoder1,
             text_encoder2,

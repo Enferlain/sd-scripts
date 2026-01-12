@@ -6,12 +6,12 @@ import torch
 import sd_textual_inversion
 
 from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
-from library.models.sdxl_model_util import get_size_embeddings
+from library.models.sdxl.conversion import get_size_embeddings
 from library.utils.device_utils import init_ipex
 from library.strategies import strategy_sdxl, strategy_sd
 from library.data._deprecated.dataset import DatasetGroup, MinimalDataset
 from library.training.sdxl_sample_generation import sample_images
-from library.models.sdxl_model_prep import load_target_model as load_target_model_sdxl
+from library.models.sdxl.loader import load_target_model as load_target_model_sdxl
 from library.config.dataclasses.sdxl_textual_inversion import SDXLTextualInversionConfig
 from library.config.config_validation import prepare_config, validate_config, validate_sdxl_textual_inversion
 

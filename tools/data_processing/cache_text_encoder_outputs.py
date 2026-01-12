@@ -13,7 +13,7 @@ from library.utils import config_util
 from library.utils.config_util import ConfigSanitizer, BlueprintGenerator
 from library.utils.common_utils import setup_logging, add_logging_arguments
 from library.data._deprecated.dataset import load_arbitrary_dataset
-from library.models.sdxl_model_prep import load_target_model as load_target_model_sdxl
+from library.models.sdxl.loader import load_target_model as load_target_model_sdxl
 
 from library.config.arguments import (
     prepare_dataset_args,

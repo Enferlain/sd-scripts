@@ -10,7 +10,7 @@ from typing import Any
 from diffusers import DDPMScheduler
 
 import library.logging.step_logging
-import library.models.sd_model_util
+import library.models.sd.conversion
 import library.utils.huggingface_util as huggingface_util
 
 from library.utils import model_metadata
@@ -35,7 +35,7 @@ from library.models.model_prep import (
     replace_unet_modules,
     patch_accelerator_for_fp16_training,
 )
-from library.models.sd_model_prep import load_target_model
+from library.models.sd.loader import load_target_model
 from library.training.trainer_utils import prepare_accelerator
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.optimizers.scheduler import get_scheduler_fix

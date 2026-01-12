@@ -29,8 +29,10 @@ class PreprocessingConfig:
     color_aug: bool = field(default=False, metadata={"help": "enable weak color augmentation"})
     random_crop: bool = field(default=False, metadata={"help": "enable random crop"})
     random_crop_padding_percent: float = field(default=0.05, metadata={"help": "padding for random crop area (0.05 = 5%)"})
-    face_crop_aug_range: str | None = field(default=None, metadata={"help": "enable face-centered crop augmentation and its range"})  # won't be implemented
-    debug_dataset: bool = field(default=False, metadata={"help": "show images for debugging"})  # not implemented yet 
+    face_crop_aug_range: str | None = field(
+        default=None, metadata={"help": "enable face-centered crop augmentation and its range"}
+    )  # won't be implemented
+    debug_dataset: bool = field(default=False, metadata={"help": "show images for debugging"})  # not implemented yet
 
 
 @dataclass

@@ -14,7 +14,7 @@ from transformers import CLIPTextModel
 
 from library.config.dataclasses.optimizer import LearningRatesConfig
 from library.utils.common_utils import setup_logging
-from library.models.sdxl_original_unet import SdxlUNet2DConditionModel
+from library.models.sdxl.unet import SdxlUNet2DConditionModel
 from library.utils.hash_utils import precalculate_safetensors_hashes
 
 setup_logging()
@@ -920,7 +920,7 @@ def convert_diffusers_to_sai_if_needed(weights_sd):
     if not found_up_down_blocks:
         return
 
-    from library.models.sdxl_model_util import make_unet_conversion_map
+    from library.models.sdxl.conversion import make_unet_conversion_map
 
     unet_conversion_map = make_unet_conversion_map()
     unet_conversion_map = {hf.replace(".", "_")[:-1]: sd.replace(".", "_")[:-1] for sd, hf in unet_conversion_map}

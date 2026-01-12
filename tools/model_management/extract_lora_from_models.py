@@ -12,8 +12,7 @@ import logging
 from safetensors.torch import save_file
 from tqdm import tqdm
 
-import library.models.sd_model_util
-from library.models import sdxl_model_util
+import library.models.sd.conversion
 from library.adapters import lora
 from library.utils.common_utils import setup_logging
 from library.utils import sai_model_spec

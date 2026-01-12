@@ -9,7 +9,7 @@ from torchvision import transforms
 # General / Math
 # =============================================================================
 
-# --- sd_original_unet.py, sdxl_original_unet.py, model_metadata.py ---
+# --- unet.py, unet.py, model_metadata.py ---
 EPSILON = 1e-6
 
 
@@ -128,11 +128,11 @@ except ImportError:
 # HuggingFace / Diffusers / Tokenizers
 # =============================================================================
 
-# --- library/models/model_util.py ---
+# --- library/models/vae.py ---
 DIFFUSERS_REF_MODEL_ID_V1 = "runwayml/stable-diffusion-v1-5"
 DIFFUSERS_REF_MODEL_ID_V2 = "stabilityai/stable-diffusion-2-1"
 
-# --- library/models/sdxl_model_util.py ---
+# --- library/models/conversion.py ---
 DIFFUSERS_REF_MODEL_ID_SDXL = "stabilityai/stable-diffusion-xl-base-1.0"
 
 # --- strategy_sdxl.py, sdxl_data_utils.py ---
@@ -191,7 +191,7 @@ re_attention = re.compile(
 # Model Parameters: Stable Diffusion (General / V1 / V2)
 # =============================================================================
 
-# --- library/models/model_util.py ---
+# --- library/models/vae.py ---
 # Model Parameters for Diffusers Stable Diffusion
 # Note: NUM_TRAIN_TIMESTEPS, BETA_START, BETA_END appear unused in codebase but preserved here.
 NUM_TRAIN_TIMESTEPS = 1000
@@ -228,7 +228,7 @@ V2_UNET_PARAMS_CONTEXT_DIM = 1024
 # Model Parameters: SD Original UNet Implementation
 # =============================================================================
 
-# --- library/models/sd_original_unet.py ---
+# --- library/models/unet.py ---
 BLOCK_OUT_CHANNELS: tuple[int, ...] = (320, 640, 1280, 1280)
 TIMESTEP_INPUT_DIM = BLOCK_OUT_CHANNELS[0]
 TIME_EMBED_DIM = BLOCK_OUT_CHANNELS[0] * 4
@@ -250,7 +250,7 @@ UP_BLOCK_TYPES = ["UpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "Cros
 # Model Parameters: SDXL
 # =============================================================================
 
-# --- library/models/sdxl_model_util.py ---
+# --- library/models/conversion.py ---
 SDXL_KEY_PREFIX = "conditioner.embedders.1.model."
 
 # --- strategy_sd.py, sd_textual_inversion.py ---
@@ -262,7 +262,7 @@ SDXL_VAE_LATENT_SCALE = 0.13025
 # --- strategy_sdxl.py, cache_text_encoder_outputs.py, sdxl_merge_lora.py, extract_lora_from_models.py, sdxl_textual_inversion.py ---
 MODEL_VERSION_SDXL_BASE_V1_0 = "sdxl_base_v1-0"
 
-# --- library/models/sdxl_model_util.py ---
+# --- library/models/conversion.py ---
 DIFFUSERS_SDXL_UNET_CONFIG = {
     "act_fn": "silu",
     "addition_embed_type": "text_time",
@@ -311,7 +311,7 @@ DIFFUSERS_SDXL_UNET_CONFIG = {
     "use_linear_projection": True,
 }
 
-# --- library/models/sdxl_original_unet.py ---
+# --- library/models/unet.py ---
 SDXL_IN_CHANNELS: int = 4
 SDXL_OUT_CHANNELS: int = 4
 ADM_SDXL_IN_CHANNELS: int = 2816

@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from svd_merge_lora import format_lbws, get_lbw_block_index, LAYER26
 from library.constants import SS_METADATA_KEY_V2, SS_METADATA_KEY_BASE_MODEL_VERSION
-from library.models import sdxl_model_util
+from library.models.sdxl import conversion
 from library.adapters import lora, oft
 from library.utils.common_utils import setup_logging
 from library.utils import sai_model_spec
@@ -406,7 +406,7 @@ def merge(args):
             unet,
             logit_scale,
             ckpt_info,
-        ) = sdxl_model_util.load_models_from_sdxl_checkpoint(sdxl_model_util.MODEL_VERSION_SDXL_BASE_V1_0, args.sd_model, "cpu")
+        ) = conversion.load_models_from_sdxl_checkpoint(conversion.MODEL_VERSION_SDXL_BASE_V1_0, args.sd_model, "cpu")
 
         merge_to_sd_model(text_model1, text_model2, unet, args.models, args.ratios, args.lbws, merge_dtype)
 
@@ -420,7 +420,7 @@ def merge(args):
             )
 
         logger.info(f"saving SD model to: {args.save_to}")
-        sdxl_model_util.save_stable_diffusion_checkpoint(
+        conversion.save_stable_diffusion_checkpoint(
             args.save_to, text_model1, text_model2, unet, 0, 0, ckpt_info, vae, logit_scale, sai_metadata, save_dtype
         )
     else:

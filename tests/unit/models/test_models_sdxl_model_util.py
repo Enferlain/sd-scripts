@@ -1,5 +1,5 @@
 """
-Unit tests for library/models/sdxl_model_util.py
+Unit tests for library/models/conversion.py
 
 Tests pure math functions and conversion maps that don't require model loading.
 """
@@ -7,7 +7,7 @@ Tests pure math functions and conversion maps that don't require model loading.
 import pytest
 import torch
 
-from library.models.sdxl_model_util import (
+from library.models.sdxl.conversion import (
     timestep_embedding,
     get_timestep_embedding,
     get_size_embeddings,

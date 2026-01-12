@@ -1,6 +1,6 @@
 import torch
 from typing import TYPE_CHECKING
-import library.models.sd_model_util
+import library.models.sd.conversion
 from library.utils import model_metadata
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import SavingConfig, MetadataConfig, HuggingFaceConfig
