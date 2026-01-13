@@ -51,7 +51,7 @@ def convert_ldm_vae_checkpoint(checkpoint, config):
         if key.startswith(vae_key):
             vae_state_dict[key.replace(vae_key, "")] = checkpoint.get(key)
     # if len(vae_state_dict) == 0:
-    #   # 渡されたcheckpointは.ckptから読み込んだcheckpointではなくvaeのstate_dict
+    #   # The passed checkpoint is not a checkpoint loaded from .ckpt but the state_dict of vae
     #   vae_state_dict = checkpoint
 
     new_checkpoint = {}

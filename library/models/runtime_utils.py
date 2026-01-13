@@ -33,7 +33,7 @@ def replace_unet_modules(unet: UNet2DConditionModel, mem_eff_attn, xformers, sdp
         try:
             import xformers.ops
         except ImportError as err:
-            raise ImportError("No xformers / xformersがインストールされていないようです") from err
+            raise ImportError("xformers is not installed") from err
 
         unet.set_use_memory_efficient_attention(True, False)
     elif sdpa:
