@@ -114,7 +114,7 @@ def get_scheduler_fix(
 
     if name.startswith("adafactor"):
         assert isinstance(optimizer, transformers.optimization.Adafactor), (
-            "adafactor scheduler must be used with Adafactor optimizer / adafactor schedulerはAdafactorオプティマイザと同時に使ってください"
+            "adafactor scheduler must be used with Adafactor optimizer"
         )
         initial_lr = float(name.split(":")[1])
         # logger.info(f"adafactor scheduler init lr {initial_lr}")
