@@ -490,8 +490,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
             clip_skip=cfg.training.clip_skip,
         )
 
-    # region SDXL-specific conditioning extraction
-
     def _extract_conditioning_tensors(
         self,
         conditionings: list[SdxlConditioning],
@@ -523,10 +521,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
             torch.tensor(crop_top_lefts, device=device, dtype=dtype),
             torch.tensor(target_sizes, device=device, dtype=dtype),
         )
-
-    # endregion
-
-    # region SDXL-specific text conditioning
 
     def _get_text_cond(
         self, cfg: Any, accelerator: Any, batch: Any, tokenizers: list[Any], text_encoders: list[Any], weight_dtype: torch.dtype
@@ -610,10 +604,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
         logger.info(f"[DEBUG] After .to(): h1.requires_grad={result[0].requires_grad}, h1.device={result[0].device}")  # DEBUG: remove
 
         return result
-
-    # endregion
-
-    # region Training batch processing methods
 
     def get_noise_pred_and_target(
         self,
@@ -1011,5 +1001,3 @@ class SdxlTrainingStrategy(TrainingStrategy):
         self.restore_rng_state(rng_states, accelerator)
 
         return current_val_loss, average_val_loss
-
-    # endregion

@@ -311,8 +311,6 @@ class SdTrainingStrategy(TrainingStrategy):
             clip_skip=cfg.training.clip_skip,
         )
 
-    # region Training batch processing methods
-
     def get_noise_pred_and_target(
         self,
         cfg: Any,
@@ -746,5 +744,3 @@ class SdTrainingStrategy(TrainingStrategy):
         self.restore_rng_state(rng_states, accelerator)
 
         return current_val_loss, average_val_loss, logs
-
-    # endregion
