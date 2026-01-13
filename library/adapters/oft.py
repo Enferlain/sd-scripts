@@ -74,7 +74,7 @@ class OFTModule(torch.nn.Module):
         self.shape = org_module.weight.shape
 
         self.multiplier = multiplier
-        self.org_module = [org_module]  # moduleにならないようにlistに入れる
+        self.org_module = [org_module]  # put in list to avoid being a module
 
     def apply_to(self):
         """
@@ -331,7 +331,7 @@ class OFTAdapter(torch.nn.Module):
     UNET_TARGET_REPLACE_MODULE_ATTN_ONLY = ["CrossAttention"]
     UNET_TARGET_REPLACE_MODULE_ALL_LINEAR = ["Transformer2DModel"]
     UNET_TARGET_REPLACE_MODULE_CONV2D_3X3 = ["ResnetBlock2D", "Downsample2D", "Upsample2D"]
-    OFT_PREFIX_UNET = "oft_unet"  # これ変えないほうがいいかな
+    OFT_PREFIX_UNET = "oft_unet"  # better not change this
 
     def __init__(
         self,
@@ -447,7 +447,7 @@ class OFTAdapter(torch.nn.Module):
             oft.apply_to()
             self.add_module(oft.oft_name, oft)
 
-    # マージできるかどうかを返す
+    # returns whether it can be merged
     def is_mergeable(self):
         return True
 
@@ -468,7 +468,7 @@ class OFTAdapter(torch.nn.Module):
 
         logger.info("weights are merged")
 
-    # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
+    # might be good to allow setting different learning rates for two Text Encoders
     def prepare_optimizer_params(self, learning_rates: LearningRatesConfig, apply_orthograd: bool, orthograd_targets: list[str]):
         """
         Prepare optimizer parameters.
@@ -553,7 +553,7 @@ class OFTAdapter(torch.nn.Module):
             torch.save(state_dict, file)
 
     def backup_weights(self):
-        # 重みのバックアップを行う
+        # backup weights
         """
         Backup original weights before merging.
         """
@@ -566,7 +566,7 @@ class OFTAdapter(torch.nn.Module):
                 org_module._lora_restored = True
 
     def restore_weights(self):
-        # 重みのリストアを行う
+        # restore weights
         """
         Restore original weights from backup.
         """
@@ -580,7 +580,7 @@ class OFTAdapter(torch.nn.Module):
                 org_module._lora_restored = True
 
     def pre_calculation(self):
-        # 事前計算を行う
+        # pre-calculate
         """
         Pre-calculate weights and merge them for efficiency.
         """

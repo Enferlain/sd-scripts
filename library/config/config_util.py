@@ -407,7 +407,7 @@ def generate_dreambooth_subsets_config_by_subdirs(train_data_dir: str | None = N
         try:
             n_repeats = int(tokens[0])
         except ValueError:
-            logger.warning(f"ignore directory without repeats / 繰り返し回数のないディレクトリを無視します: {name}")
+            logger.warning(f"ignore directory without repeats: {name}")
             return 0, ""
         caption_by_folder = "_".join(tokens[1:])
         return n_repeats, caption_by_folder
