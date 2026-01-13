@@ -8,25 +8,29 @@ The codebase follows a strategy pattern where training loops live in scripts and
 Scripts (contain training loops):     Library Modules:
 ┌─────────────────┐                   ┌─────────────────────────────┐
 │   sd_peft.py    │                   │ library/strategies/         │
-│   (~860 lines)  │ ───imports───────►│   peft_strategy_base.py     │
-└─────────────────┘                   │   peft_strategy_sd.py       │
-┌─────────────────┐                   │   peft_strategy_sdxl.py     │
+│   (~860 lines)  │ ───imports───────►│   base/training.py          │
+└─────────────────┘                   │   sd/training.py            │
+┌─────────────────┐                   │   sdxl/training.py          │
 │  sdxl_peft.py   │ ───imports───────►└─────────────┬───────────────┘
-│   (~860 lines)  │                                 │ uses
+│  (~1300 lines)  │                                 │ uses
 └─────────────────┘                   ┌─────────────┴───────────────┐
                                       │ library/training/           │
                                       │   trainer_utils.py          │
                                       │   checkpointing.py          │
-                                      │   sd/sdxl_checkpointing.py  │
+                                      │   sample_generation.py      │
+                                      │   sd_checkpointing.py (*)   │
+                                      │   sdxl_checkpointing.py (*) │
                                       └─────────────────────────────┘
+                                      (*) Legacy wrappers, used by finetune scripts
 ```
 
-**Module Separation:**
+**Module Separation (Post-Refactor):**
 
-- `checkpointing.py` - Generic utilities, `sd_checkpointing.py` - SD-specific
-- `model_prep.py` - Generic, `sd_model_prep.py` / `sdxl_model_prep.py` - Model-specific
-- `sample_generation.py` - Generic, `sd_sample_generation.py` / `sdxl_sample_generation.py`
-- `strategy_sd.py` - SD1.5/2.0 (uses `v2: bool`), `strategy_sdxl.py` - SDXL
+- `library/strategies/base/` - ABCs and shared logic (TrainingStrategy, TokenizeStrategy, etc.)
+- `library/strategies/sd/` - SD1.5/2 implementations (SdTrainingStrategy, SdTokenizeStrategy)
+- `library/strategies/sdxl/` - SDXL implementations (SdxlTrainingStrategy, SdxlTokenizeStrategy)
+- `library/training/` - Model-agnostic utilities (checkpointing.py, sample_generation.py)
+- `library/training/sd_*.py, sdxl_*.py` - Legacy wrappers for finetune scripts (kept for backward compat)
 
 ---
 
@@ -74,7 +78,13 @@ Scripts (contain training loops):     Library Modules:
   - Mutates config directly (`loss_config.debiased_estimation_loss = False`)
 - [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner
 - [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`. **INIT_IPEX MIGHT BE USELESS POST TORCH 2.6.0**
-- [ ] **SD Data Pipeline Support** (low priority) - Update `peft_strategy_sd.py` to consume new batch format from `TrainingDataset`. Expects `batch["input_ids_list"]` / `batch["text_encoder_outputs_list"]` but new pipeline uses dict format. See AUDIT/AUDIT_PHASE_2.md.
+- [ ] **SD Data Pipeline Support** (low priority) - Update `sd/training.py` to consume new batch format from `TrainingDataset`. Expects `batch["input_ids_list"]` / `batch["text_encoder_outputs_list"]` but new pipeline uses dict format. See AUDIT/AUDIT_PHASE_2.md.
+- [ ] **Delete legacy training wrappers** (after legacy script deprecation) - Once `*_finetune.py` and `*_textual_inversion.py` scripts are migrated to new data pipeline, delete:
+  - `library/training/sd_sample_generation.py`
+  - `library/training/sdxl_sample_generation.py`
+  - `library/training/sd_checkpointing.py`
+  - `library/training/sdxl_checkpointing.py`
+  - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 
 ---
 
@@ -130,6 +140,7 @@ Scripts (contain training loops):     Library Modules:
   - Sharded manifests by bucket
   - Skip manifest creation if unchanged from previous run
   - Maybe fp8 for te output storage, needs tests
+  -
 
 ---
 

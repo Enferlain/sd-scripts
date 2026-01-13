@@ -26,7 +26,8 @@ from library.constants import SD_VAE_LATENT_SCALE
 from library.strategies.base.training import TrainingStrategy
 from library.models.runtime_utils import replace_unet_modules
 from library.models.sd.loader import load_target_model
-from library.training.sd_sample_generation import sample_images
+from library.training.sample_generation import sample_images_common
+from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.trainer_utils import calculate_val_loss_check
@@ -105,7 +106,9 @@ class SdTrainingStrategy(TrainingStrategy):
         Returns:
             SdTokenizeStrategy instance.
         """
-        return library.strategies.sd.tokenization.SdTokenizeStrategy(cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
+        return library.strategies.sd.tokenization.SdTokenizeStrategy(
+            cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir
+        )
 
     def get_tokenizers(self, tokenize_strategy: library.strategies.sd.tokenization.SdTokenizeStrategy) -> list[Any]:
         """
@@ -247,7 +250,8 @@ class SdTrainingStrategy(TrainingStrategy):
             text_encoders: List of text encoder models.
             unet: UNet model.
         """
-        sample_images(
+        sample_images_common(
+            StableDiffusionLongPromptWeightingPipeline,
             accelerator,
             cfg.output.sampling,
             cfg.training,

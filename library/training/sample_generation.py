@@ -547,4 +547,4 @@ def sample_image_inference(
         # not to commit images to avoid inconsistency between training and logging steps
         wandb_tracker.log(
             {f"sample_{i}": wandb.Image(image, caption=prompt)}, commit=False
-        )  # positive prompt as caption, commit=False avoids step mismatch
+        )  # positive prompt as caption, commit=False avoids step mismatch TODO: Parameter 'step' unfilled

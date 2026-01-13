@@ -29,26 +29,26 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_OLD.md` for legacy ref
 
 ### What's Being Replaced
 
-| Legacy Component            | Location                                     | Replacement                  | Status   |
-| --------------------------- | -------------------------------------------- | ---------------------------- | -------- |
-| `BaseDataset`               | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅ |
-| `DreamBoothDataset`         | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅ |
-| `FineTuningDataset`         | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅ |
-| **VAE Dtype Configuration** | `library/data/structures.py`                 | `TrainingDataset`            | ✅ |
-| `BucketManager`             | `library/data/_deprecated/bucket_manager.py` | `dataset_scanner.py`         | ✅ |
-| `DatasetGroup`              | `library/data/_deprecated/dataset.py`        | `DatasetManifest`            | ✅ |
-| Legacy caching              | Scattered in training scripts                | `CachingEngine`              | ✅ |
-| On-the-fly bucketing        | `BaseDataset.__getitem__()`                  | Pre-computed `EpochManifest` | ✅ |
+| Legacy Component            | Location                                     | Replacement                  | Status |
+| --------------------------- | -------------------------------------------- | ---------------------------- | ------ |
+| `BaseDataset`               | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅     |
+| `DreamBoothDataset`         | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅     |
+| `FineTuningDataset`         | `library/data/_deprecated/dataset.py`        | `TrainingDataset`            | ✅     |
+| **VAE Dtype Configuration** | `library/data/structures.py`                 | `TrainingDataset`            | ✅     |
+| `BucketManager`             | `library/data/_deprecated/bucket_manager.py` | `dataset_scanner.py`         | ✅     |
+| `DatasetGroup`              | `library/data/_deprecated/dataset.py`        | `DatasetManifest`            | ✅     |
+| Legacy caching              | Scattered in training scripts                | `CachingEngine`              | ✅     |
+| On-the-fly bucketing        | `BaseDataset.__getitem__()`                  | Pre-computed `EpochManifest` | ✅     |
 
 ### Strategy Layer (Retained)
 
 These strategies are **kept** but their usage differs:
 
-| Strategy               | Location                                   | Legacy Usage                 | New Pipeline Usage                                                                                                      |
-| ---------------------- | ------------------------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `SdxlTokenizeStrategy` | `library/strategies/strategy_sdxl.py`      | Called per-sample in dataset | Used by `tokenize_epoch_manifest()` for token caching; **bypassed** by direct `tokenize_sdxl_captions()` for on-the-fly |
-| `TextEncodingStrategy` | `library/strategies/strategy_base.py`      | Encode tokens → embeddings   | Still used when no cached TE outputs                                                                                    |
-| `SdxlPeftStrategy`     | `library/strategies/peft_strategy_sdxl.py` | Training orchestration       | ✅ Updated to consume new batch format                                                                                  |
+| Strategy               | Location                                  | Legacy Usage                 | New Pipeline Usage                                                                                                      |
+| ---------------------- | ----------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `SdxlTokenizeStrategy` | `library/strategies/sdxl/tokenization.py` | Called per-sample in dataset | Used by `tokenize_epoch_manifest()` for token caching; **bypassed** by direct `tokenize_sdxl_captions()` for on-the-fly |
+| `TextEncodingStrategy` | `library/strategies/base/encoding.py`     | Encode tokens → embeddings   | Still used when no cached TE outputs                                                                                    |
+| `SdxlTrainingStrategy` | `library/strategies/sdxl/training.py`     | Training orchestration       | ✅ Updated to consume new batch format                                                                                  |
 
 > **Note:** For on-the-fly tokenization, we call tokenizers directly via `tokenize_sdxl_captions()` rather than going through `SdxlTokenizeStrategy`. This avoids strategy overhead when tokenizers are already available.
 
@@ -58,9 +58,9 @@ These implement `CachingStrategy` for the new pipeline:
 
 | Strategy                          | Location                             | Purpose                         |
 | --------------------------------- | ------------------------------------ | ------------------------------- |
-| `SdxlLatentsPipelineStrategy`     | `library/strategies/sdxl_caching.py` | VAE encoding → latent caching   |
-| `SdxlTextEncoderPipelineStrategy` | `library/strategies/sdxl_caching.py` | TE encoding → embedding caching |
-| `SdLatentsPipelineStrategy`       | `library/strategies/sd_caching.py`   | SD1.5/2 VAE encoding            |
+| `SdxlLatentsPipelineStrategy`     | `library/strategies/sdxl/caching.py` | VAE encoding → latent caching   |
+| `SdxlTextEncoderPipelineStrategy` | `library/strategies/sdxl/caching.py` | TE encoding → embedding caching |
+| `SdLatentsPipelineStrategy`       | `library/strategies/sd/caching.py`   | SD1.5/2 VAE encoding            |
 
 ### Data Flow Comparison
 
@@ -324,20 +324,20 @@ def __init__(self, ..., start_batch_index: int = 0):
 
 ### Naming Convention
 
-Following the existing pattern for model-specific scripts:
+Following the per-model folder pattern established in Phase 1-2 refactoring:
 
-| Component         | Files                                                  | Purpose                   |
-| ----------------- | ------------------------------------------------------ | ------------------------- |
-| Checkpointing     | `sd_checkpointing.py`, `sdxl_checkpointing.py`         | Save/load training state  |
-| Sample generation | `sd_sample_generation.py`, `sdxl_sample_generation.py` | Generate samples          |
-| **Caching**       | `pipeline_sdxl.py` (→ rename to `sdxl_caching.py`)     | Cache latents, TE outputs |
+| Component         | Files                                                                     | Purpose                           |
+| ----------------- | ------------------------------------------------------------------------- | --------------------------------- |
+| Checkpointing     | `training/sd_checkpointing.py`, `training/sdxl_checkpointing.py` (legacy) | Save/load training state          |
+| Sample generation | `training/sample_generation.py` (generic)                                 | Generate samples                  |
+| **Caching**       | `strategies/sd/caching.py`, `strategies/sdxl/caching.py`                  | Cache latents, TE outputs         |
+| **Training**      | `strategies/sd/training.py`, `strategies/sdxl/training.py`                | Training orchestration (strategy) |
 
-Our caching strategies (`SdxlLatentsPipelineStrategy`, `SdxlTextEncoderPipelineStrategy`) are the data-layer
-equivalent of checkpointing/sampling - model-specific utilities that the training strategy coordinates.
+> **Note:** `sample_images` is now inlined into strategy classes (`SdTrainingStrategy.sample_images()`, etc.) which call `sample_images_common()` directly. The wrapper files (`sd_sample_generation.py`, `sdxl_sample_generation.py`) are kept only for backward compatibility with legacy `*_finetune.py` scripts.
 
 ### Integration Approach
 
-The existing orchestration strategies (`peft_strategy_sdxl.py`) will be updated to:
+The orchestration strategies (`sdxl/training.py`) have been updated to:
 
 1.  **Accept our new data format** - `batch["conditionings"]` (list of `SdxlConditioning` objects) instead of flat keys
 2.  **Extract values for UNet** - Training loop knows it's SDXL, casts `SdxlConditioning` for `get_size_embeddings()`

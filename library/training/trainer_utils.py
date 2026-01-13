@@ -145,7 +145,7 @@ def calculate_val_loss_check(
     if isinstance(train_dataloader_or_num_batches, int):
         num_batches = train_dataloader_or_num_batches
     else:
-        num_batches = len(train_dataloader_or_num_batches)
+        num_batches = len(train_dataloader_or_num_batches)  # TODO: Expected type 'Sized', got 'object' instead
 
     if global_step != 0 and global_step < training_config.max_train_steps:
         if validation_config.validate_every_n_steps is not None:

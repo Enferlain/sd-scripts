@@ -26,7 +26,7 @@ def create_training_metadata(
     net_kwargs: dict,
     num_batches_per_epoch: int,
     total_batch_size: int,
-    use_dreambooth_method: bool,
+    use_dreambooth_method: bool,  # TODO Parameter 'use_dreambooth_method' value is not used
 ) -> tuple:
     """
     Create training metadata dict for model saving.

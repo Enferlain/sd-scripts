@@ -29,7 +29,8 @@ from library.models.sdxl.conversion import get_size_embeddings
 from library.models.sdxl.text_encoder import get_hidden_states_sdxl
 from library.models.sdxl.loader import load_target_model
 from library.models.runtime_utils import replace_unet_modules
-from library.training.sdxl_sample_generation import sample_images
+from library.training.sample_generation import sample_images_common
+from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
 from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.trainer_utils import calculate_val_loss_check
@@ -427,7 +428,8 @@ class SdxlTrainingStrategy(TrainingStrategy):
             text_encoders: List of text encoder models.
             unet: UNet model.
         """
-        sample_images(
+        sample_images_common(
+            SdxlStableDiffusionLongPromptWeightingPipeline,
             accelerator,
             cfg.output.sampling,
             cfg.training,

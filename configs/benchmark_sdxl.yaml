@@ -49,14 +49,14 @@ data:
     cache_tokens_per_epoch: false
     cache_dir: "D:/Projects/sd-scripts/benchmark_cache" # Separate from source dir
     # Caching speed options:
-    vae_batch_size: 1 # Batched VAE encoding (1-4, 4 may OOM on 24GB)
+    vae_batch_size: 2 # Batched VAE encoding (1-4, 4 may OOM on 24GB)
     te_batch_size: 8 # Batched TE encoding (can be higher than VAE, uses less VRAM)
     num_workers: 4 # Parallel image loading (ThreadPoolExecutor workers)
   loader:
     num_workers: 0 # Avoid spawn overhead on Windows for training DataLoader
     persistent_workers: true
     prefetch_factor: 2
-    pin_memory: false
+    pin_memory: true
 
 # ─── PEFT (adapter configuration) ───────────────────────────────────────────
 peft:
