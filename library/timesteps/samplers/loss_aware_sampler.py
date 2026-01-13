@@ -125,11 +125,11 @@ class LossAwareTimestepSampler:
         mix_p = self._sched(global_step, max_steps)
         self.last_mix_p = mix_p
 
-        # Sigmoid branch (mid/high‑t)
+        # Sigmoid branch (mid/high-t)
         z = torch.randn(bsz, device=device) * sigmoid_scale
         t_sig = z.sigmoid()  # in [0,1]
 
-        # Clean‑t branch via “shifted” mapping
+        # Clean-t branch via "shifted" mapping
         u = torch.rand(bsz, device=device)
         s = max(1.0e-6, float(discrete_flow_shift))
         t_low = (u * s) / (1 + (s - 1) * u)  # in [0,1], biased toward small t
@@ -154,7 +154,7 @@ class LossAwareTimestepSampler:
         t_final = (mix_p * t_idx.float() + (1 - mix_p) * t_bin.float()).round().long()
         t_final = t_final.clamp(0, self.T - 1)
 
-        # Enforce cap on “small t” fraction
+        # Enforce cap on "small t" fraction
         low_cut = int(self.small_t_frac * self.T)
         low_mask = t_final < low_cut
         frac_low = low_mask.float().mean()

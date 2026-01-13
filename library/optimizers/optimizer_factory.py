@@ -37,16 +37,16 @@ def get_optimizer(
     optimizer_type = optimizer_config.optimizer_type
     if optimizer_config.use_8bit_adam:
         assert not optimizer_config.use_lion_optimizer, (
-            "both option use_8bit_adam and use_lion_optimizer are specified / use_8bit_adamとuse_lion_optimizerの両方のオプションが指定されています"
+            "both option use_8bit_adam and use_lion_optimizer are specified"
         )
         assert optimizer_type is None or optimizer_type == "", (
-            "both option use_8bit_adam and optimizer_type are specified / use_8bit_adamとoptimizer_typeの両方のオプションが指定されています"
+            "both option use_8bit_adam and optimizer_type are specified"
         )
         optimizer_type = "AdamW8bit"
 
     elif optimizer_config.use_lion_optimizer:
         assert optimizer_type is None or optimizer_type == "", (
-            "both option use_lion_optimizer and optimizer_type are specified / use_lion_optimizerとoptimizer_typeの両方のオプションが指定されています"
+            "both option use_lion_optimizer and optimizer_type are specified"
         )
         optimizer_type = "Lion"
 
@@ -56,14 +56,14 @@ def get_optimizer(
 
     if optimizer_config.fused_backward_pass:
         assert optimizer_type == "Adafactor".lower(), (
-            "fused_backward_pass currently only works with optimizer_type Adafactor / fused_backward_passは現在optimizer_type Adafactorでのみ機能します"
+            "fused_backward_pass currently only works with optimizer_type Adafactor"
         )
         assert (
             # args.gradient_accumulation_steps == 1 # This should be checked elsewhere or passed efficiently, ignoring for now as it's validation logic which should be in config
             True
         ), "fused_backward_pass validation skipped for now during refactor"
 
-    # 引数を分解する
+    # Break down arguments
     if optimizer_kwargs is None:
         optimizer_kwargs = {}
     if not optimizer_kwargs and optimizer_config.optimizer_args is not None and len(optimizer_config.optimizer_args) > 0:
@@ -96,7 +96,7 @@ def get_optimizer(
         try:
             import lion_pytorch
         except ImportError as err:
-            raise ImportError("No lion_pytorch / lion_pytorch がインストールされていないようです") from err
+            raise ImportError("No lion_pytorch") from err
         logger.info(f"use Lion optimizer | {optimizer_kwargs}")
         optimizer_class = lion_pytorch.Lion
         optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
@@ -105,7 +105,7 @@ def get_optimizer(
         try:
             import bitsandbytes as bnb
         except ImportError as err:
-            raise ImportError("No bitsandbytes / bitsandbytesがインストールされていないようです") from err
+            raise ImportError("No bitsandbytes") from err
 
         if optimizer_type == "AdamW8bit".lower():
             logger.info(f"use 8-bit AdamW optimizer | {optimizer_kwargs}")
@@ -116,7 +116,7 @@ def get_optimizer(
             logger.info(f"use 8-bit SGD with Nesterov optimizer | {optimizer_kwargs}")
             if "momentum" not in optimizer_kwargs:
                 logger.warning(
-                    "8-bit SGD with Nesterov must be with momentum, set momentum to 0.9 / 8-bit SGD with Nesterovはmomentum指定が必須のため0.9に設定します"
+                    "8-bit SGD with Nesterov must be with momentum, set momentum to 0.9"
                 )
                 optimizer_kwargs["momentum"] = 0.9
 
@@ -129,7 +129,7 @@ def get_optimizer(
                 optimizer_class = bnb.optim.Lion8bit
             except AttributeError as err:
                 raise AttributeError(
-                    "No Lion8bit. The version of bitsandbytes installed seems to be old. Please install 0.38.0 or later. / Lion8bitが定義されていません。インストールされているbitsandbytesのバージョンが古いようです。0.38.0以上をインストールしてください"
+                    "No Lion8bit. The version of bitsandbytes installed seems to be old. Please install 0.38.0 or later."
                 ) from err
         elif optimizer_type == "PagedAdamW8bit".lower():
             logger.info(f"use 8-bit PagedAdamW optimizer | {optimizer_kwargs}")
@@ -137,7 +137,7 @@ def get_optimizer(
                 optimizer_class = bnb.optim.PagedAdamW8bit
             except AttributeError as err:
                 raise AttributeError(
-                    "No PagedAdamW8bit. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later. / PagedAdamW8bitが定義されていません。インストールされているbitsandbytesのバージョンが古いようです。0.39.0以上をインストールしてください"
+                    "No PagedAdamW8bit. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later."
                 ) from err
         elif optimizer_type == "PagedLion8bit".lower():
             logger.info(f"use 8-bit Paged Lion optimizer | {optimizer_kwargs}")
@@ -145,7 +145,7 @@ def get_optimizer(
                 optimizer_class = bnb.optim.PagedLion8bit
             except AttributeError as err:
                 raise AttributeError(
-                    "No PagedLion8bit. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later. / PagedLion8bitが定義されていません。インストールされているbitsandbytesのバージョンが古いようです。0.39.0以上をインストールしてください"
+                    "No PagedLion8bit. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later."
                 ) from err
 
         if optimizer_class is not None:
@@ -156,12 +156,12 @@ def get_optimizer(
         try:
             import bitsandbytes as bnb
         except ImportError as err:
-            raise ImportError("No bitsandbytes / bitsandbytesがインストールされていないようです") from err
+            raise ImportError("No bitsandbytes") from err
         try:
             optimizer_class = bnb.optim.PagedAdamW
         except AttributeError as err:
             raise AttributeError(
-                "No PagedAdamW. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later. / PagedAdamWが定義されていません。インストールされているbitsandbytesのバージョンが古いようです。0.39.0以上をインストールしてください"
+                "No PagedAdamW. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later."
             ) from err
         optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
@@ -170,12 +170,12 @@ def get_optimizer(
         try:
             import bitsandbytes as bnb
         except ImportError as err:
-            raise ImportError("No bitsandbytes / bitsandbytesがインストールされていないようです") from err
+            raise ImportError("No bitsandbytes") from err
         try:
             optimizer_class = bnb.optim.PagedAdamW32bit
         except AttributeError as err:
             raise AttributeError(
-                "No PagedAdamW32bit. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later. / PagedAdamW32bitが定義されていません。インストールされているbitsandbytesのバージョンが古いようです。0.39.0以上をインストールしてください"
+                "No PagedAdamW32bit. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later."
             ) from err
         optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
@@ -183,7 +183,7 @@ def get_optimizer(
         logger.info(f"use SGD with Nesterov optimizer | {optimizer_kwargs}")
         if "momentum" not in optimizer_kwargs:
             logger.info(
-                "SGD with Nesterov must be with momentum, set momentum to 0.9 / SGD with Nesterovはmomentum指定が必須のため0.9に設定します"
+                "SGD with Nesterov must be with momentum, set momentum to 0.9"
             )
             optimizer_kwargs["momentum"] = 0.9
 
@@ -203,12 +203,12 @@ def get_optimizer(
 
         if actual_lr <= 0.1:
             logger.warning(
-                f"learning rate is too low. If using D-Adaptation or Prodigy, set learning rate around 1.0 / 学習率が低すぎるようです。D-AdaptationまたはProdigyの使用時は1.0前後の値を指定してください: lr={actual_lr}"
+                f"learning rate is too low. If using D-Adaptation or Prodigy, set learning rate around 1.0: lr={actual_lr}"
             )
-            logger.warning("recommend option: lr=1.0 / 推奨は1.0です")
+            logger.warning("recommend option: lr=1.0")
         if lr_count > 1:
             logger.warning(
-                f"when multiple learning rates are specified with dadaptation (e.g. for Text Encoder and U-Net), only the first one will take effect / D-AdaptationまたはProdigyで複数の学習率を指定した場合（Text EncoderとU-Netなど）、最初の学習率のみが有効になります: lr={actual_lr}"
+                f"when multiple learning rates are specified with dadaptation (e.g. for Text Encoder and U-Net), only the first one will take effect: lr={actual_lr}"
             )
 
         if optimizer_type.startswith("DAdapt".lower()):
@@ -218,7 +218,7 @@ def get_optimizer(
                 import dadaptation
                 import dadaptation.experimental as experimental
             except ImportError as err:
-                raise ImportError("No dadaptation / dadaptation がインストールされていないようです") from err
+                raise ImportError("No dadaptation") from err
 
             # set optimizer
             if optimizer_type == "DAdaptation".lower() or optimizer_type == "DAdaptAdamPreprint".lower():
@@ -252,28 +252,28 @@ def get_optimizer(
             try:
                 import prodigyopt
             except ImportError as err:
-                raise ImportError("No Prodigy / Prodigy がインストールされていないようです") from err
+                raise ImportError("No Prodigy") from err
 
             logger.info(f"use Prodigy optimizer | {optimizer_kwargs}")
             optimizer_class = prodigyopt.Prodigy
             optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
     elif optimizer_type == "Adafactor".lower():
-        # 引数を確認して適宜補正する
+        # Check arguments and correct as appropriate
         if "relative_step" not in optimizer_kwargs:
             optimizer_kwargs["relative_step"] = True  # default
         if not optimizer_kwargs["relative_step"] and optimizer_kwargs.get("warmup_init", False):
-            logger.info("set relative_step to True because warmup_init is True / warmup_initがTrueのためrelative_stepをTrueにします")
+            logger.info("set relative_step to True because warmup_init is True")
             optimizer_kwargs["relative_step"] = True
         logger.info(f"use Adafactor optimizer | {optimizer_kwargs}")
 
         if optimizer_kwargs["relative_step"]:
-            logger.info("relative_step is true / relative_stepがtrueです")
+            logger.info("relative_step is true")
             if lr != 0.0:
-                logger.warning("learning rate is used as initial_lr / 指定したlearning rateはinitial_lrとして使用されます")
+                logger.warning("learning rate is used as initial_lr")
             optimizer_config.learning_rates.base = 0.0  # Sentinel: Adafactor uses relative_step, lr computed internally
 
-            # trainable_paramsがgroupだった時の処理：lrを削除する
+            # Process when trainable_params is a group: remove lr
             if isinstance(trainable_params, list) and isinstance(trainable_params[0], dict):
                 has_group_lr = False
                 for group in trainable_params:
@@ -281,25 +281,25 @@ def get_optimizer(
                     has_group_lr = has_group_lr or (p is not None)
 
                 if has_group_lr:
-                    # 一応argsを無効にしておく TODO 依存関係が逆転してるのであまり望ましくない
-                    logger.warning("unet_lr and text_encoder_lr are ignored / unet_lrとtext_encoder_lrは無視されます")
+                    # Disable args for now TODO It is not desirable because the dependency is reversed
+                    logger.warning("unet_lr and text_encoder_lr are ignored")
                     # args.unet_lr = None # cannot modifying config easily here, just ignore
                     # args.text_encoder_lr = None
 
             if scheduler_config.lr_scheduler != "adafactor":
-                logger.info("use adafactor_scheduler / スケジューラにadafactor_schedulerを使用します")
+                logger.info("use adafactor_scheduler")
             # optimizer_config.scheduler.lr_scheduler = f"adafactor:{lr}"  # Avoiding modification of config
 
             lr = None
         else:
             if optimizer_config.max_grad_norm != 0.0:
                 logger.warning(
-                    "because max_grad_norm is set, clip_grad_norm is enabled. consider set to 0 / max_grad_normが設定されているためclip_grad_normが有効になります。0に設定して無効にしたほうがいいかもしれません"
+                    "because max_grad_norm is set, clip_grad_norm is enabled. consider set to 0"
                 )
             if scheduler_config.lr_scheduler != "constant_with_warmup":
-                logger.warning("constant_with_warmup will be good / スケジューラはconstant_with_warmupが良いかもしれません")
+                logger.warning("constant_with_warmup will be good")
             if optimizer_kwargs.get("clip_threshold", 1.0) != 1.0:
-                logger.warning("clip_threshold=1.0 will be good / clip_thresholdは1.0が良いかもしれません")
+                logger.warning("clip_threshold=1.0 will be good")
 
         optimizer_class = transformers.optimization.Adafactor
         optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
@@ -313,7 +313,7 @@ def get_optimizer(
         try:
             import schedulefree as sf
         except ImportError as err:
-            raise ImportError("No schedulefree / schedulefreeがインストールされていないようです") from err
+            raise ImportError("No schedulefree") from err
 
         if optimizer_type == "RAdamScheduleFree".lower():
             optimizer_class = sf.RAdamScheduleFree
@@ -331,7 +331,7 @@ def get_optimizer(
             optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
     if optimizer is None:
-        # 任意のoptimizerを使う
+        # Use arbitrary optimizer
         case_sensitive_optimizer_type = optimizer_config.optimizer_type  # not lower
         logger.info(f"use {case_sensitive_optimizer_type} | {optimizer_kwargs}")
 
@@ -366,7 +366,7 @@ def get_optimizer(
         try:
             import schedulefree as sf
         except ImportError:
-            raise ImportError("No schedulefree / schedulefreeがインストールされていないようです")
+            raise ImportError("No schedulefree")
 
         schedulefree_wrapper_kwargs = {}
         if optimizer_config.schedulefree_wrapper_args is not None and len(optimizer_config.schedulefree_wrapper_args) > 0:
@@ -432,7 +432,7 @@ def get_optimizer(
             def eval(self):
                 self._sf_wrapper.eval()
 
-            # isinstance チェックをパスするためのメソッド
+            # Method to pass isinstance check
             def __instancecheck__(self, instance):
                 return isinstance(instance, (type(self), Optimizer))
 
