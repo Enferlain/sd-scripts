@@ -63,12 +63,12 @@ def prepare_accelerator(
     else:
         log_with = logging_config.log_with
         if log_with in ["tensorboard", "all"] and logging_dir is None:
-            raise ValueError("logging_dir is required when log_with is tensorboard / Tensorboardを使う場合、logging_dirを指定してください")
+            raise ValueError("logging_dir is required when log_with is tensorboard")
         if log_with in ["wandb", "all"]:
             try:
                 import wandb
             except ImportError:
-                raise ImportError("No wandb / wandb がインストールされていないようです") from None
+                raise ImportError("No wandb") from None
             if logging_dir is not None:
                 os.makedirs(logging_dir, exist_ok=True)
                 os.environ["WANDB_DIR"] = logging_dir
@@ -220,7 +220,7 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
         # if initial_epoch or initial_step is specified, steps_from_state is ignored even when resuming
         if steps_from_state is not None:
             logger.warning(
-                "steps from the state is ignored because initial_step is specified / initial_stepが指定されているため、stateからのステップ数は無視されます"
+                "steps from the state is ignored because initial_step is specified"
             )
         if cfg.training.initial_step is not None:
             initial_step = cfg.training.initial_step
@@ -236,7 +236,7 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
 
     if initial_step > 0:
         assert cfg.training.max_train_steps > initial_step, (
-            f"max_train_steps should be greater than initial step / max_train_stepsは初期ステップより大きい必要があります: {cfg.training.max_train_steps} vs {initial_step}"
+            f"max_train_steps should be greater than initial step: {cfg.training.max_train_steps} vs {initial_step}"
         )
 
     epoch_to_start = 0
@@ -245,9 +245,9 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
             # if skip_until_initial_step is specified, load data and discard it to ensure the same data is used
             if not cfg.output.saving.resume:
                 logger.info(
-                    "initial_step is specified but not resuming. lr scheduler will be started from the beginning / initial_stepが指定されていますがresumeしていないため、lr schedulerは最初から始まります"
+                    "initial_step is specified but not resuming. lr scheduler will be started from the beginning"
                 )
-            logger.info(f"skipping {initial_step} steps / {initial_step}ステップをスキップします")
+            logger.info(f"skipping {initial_step} steps")
             initial_step *= cfg.training.gradient_accumulation_steps
 
             # set epoch to start to make initial_step less than len(train_dataloader)

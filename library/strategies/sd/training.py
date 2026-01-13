@@ -702,7 +702,7 @@ class SdTrainingStrategy(TrainingStrategy):
         timesteps_list = ast.literal_eval(cfg.validation.validation_timesteps)
 
         accelerator.print("")
-        accelerator.print("Validating バリデーション処理...")
+        accelerator.print("Validating...")
         total_loss = 0.0
         with torch.no_grad():
             validation_steps = (
