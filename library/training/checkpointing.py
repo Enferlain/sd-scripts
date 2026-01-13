@@ -161,7 +161,7 @@ def resume_from_local_or_hf_if_specified(
     results = loop.run_until_complete(asyncio.gather(*[download(filename=filename.rfilename) for filename in list_files]))
     if len(results) == 0:
         raise ValueError(
-            "No files found in the specified repo id/path/revision / 指定されたリポジトリID/パス/リビジョンにファイルが見つかりませんでした"
+            "No files found in the specified repo id/path/revision"
         )
     dirname = os.path.dirname(results[0])
     accelerator.load_state(dirname)
@@ -267,8 +267,8 @@ def get_remove_step_no(saving_config: SavingConfig, step_no: int) -> int | None:
     if saving_config.save_every_n_steps is None:
         return None
 
-    # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
-    # save_every_n_steps=10, save_last_n_steps=30の場合、50step目には30step分残し、10step目を削除する
+    # Calculate step_no to remove: step_no - last_n_steps, aligned to multiples of save_every_n_steps
+    # e.g., if save_every_n_steps=10, save_last_n_steps=30, at step 50, keep 30 steps and remove step 10
     remove_step_no = step_no - saving_config.save_last_n_steps - 1
     remove_step_no = remove_step_no - (remove_step_no % saving_config.save_every_n_steps)
     if remove_step_no < 0:
@@ -317,11 +317,10 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
         model_name = default_if_none(saving_config.output_name, DEFAULT_EPOCH_NAME)
         remove_no = get_remove_epoch_no(saving_config, epoch_no)
     else:
-        # 保存するか否かは呼び出し側で判断済み
         # Decision to save is made by the caller
 
         model_name = default_if_none(saving_config.output_name, DEFAULT_STEP_NAME)
-        epoch_no = epoch  # 例: 最初のepochの途中で保存したら0になる、SDモデルに保存される
+        epoch_no = epoch  # e.g., if saved in the middle of the first epoch, it becomes 0, saved to SD model
         remove_no = get_remove_step_no(saving_config, global_step)
 
     os.makedirs(saving_config.output_dir, exist_ok=True)
@@ -447,7 +446,7 @@ def save_and_remove_state_stepwise(
 
     last_n_steps = saving_config.save_last_n_steps_state if saving_config.save_last_n_steps_state else saving_config.save_last_n_steps
     if last_n_steps is not None:
-        # last_n_steps前のstep_noから、save_every_n_stepsの倍数のstep_noを計算して削除する
+        # Calculate step_no to remove: step_no - last_n_steps, aligned to multiples of save_every_n_steps
         remove_step_no = step_no - last_n_steps - 1
         if saving_config.save_every_n_steps is not None:
             remove_step_no = remove_step_no - (remove_step_no % saving_config.save_every_n_steps)
