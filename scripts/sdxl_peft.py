@@ -17,8 +17,8 @@ import importlib
 import math
 import os
 from pathlib import Path
-import sys
 import random
+import sys
 import time
 import numpy as np
 import itertools
@@ -42,6 +42,7 @@ from library.models.runtime_utils import patch_accelerator_for_fp16_training
 from library.optimizers.optimizer_utils import prepare_optimizer
 from library.optimizers.scheduler import get_scheduler_fix
 from library.training.sample_generation import sample_images_check
+from library.training.trainer_utils import prepare_accelerator
 from library.losses.loss import EMARecorder
 from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 from library.strategies.sdxl.training import SdxlTrainingStrategy
@@ -87,7 +88,6 @@ from library.training.checkpointing import (
 
 from library.training.trainer_utils import (
     calculate_val_loss_check,
-    prepare_accelerator,
     determine_grad_sync_context,
     # calculate_initial_step - replaced by inline logic for per-epoch DataLoader
 )

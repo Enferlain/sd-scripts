@@ -1,0 +1,14 @@
+# Training Phases Module
+"""Extracted phase functions for training setup."""
+
+from library.training.phases.caching import run_latent_caching, run_te_caching
+from library.training.phases.model_prep import create_adapter, configure_precision
+from library.training.phases.optimizer import setup_optimizer_and_scheduler
+
+__all__ = [
+    "run_latent_caching",
+    "run_te_caching",
+    "create_adapter",
+    "configure_precision",
+    "setup_optimizer_and_scheduler",
+]

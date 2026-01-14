@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-14]
+
+### Added
+
+- **Trainer Class Architecture (Phase 1 & 2)**:
+  - Created `library/training/trainers/peft_trainer.py` with `PeftTrainer` class
+  - Extracted setup logic (accelerator, manifests, models) from `sdxl_peft.py` into `PeftTrainer.setup()`
+  - Created `StepOutput` dataclass for modular training loop data flow
+  - Implemented internal event hook system (`_emit`) for future extensibility
+  - Restored original inline code in `sdxl_peft.py` to maintain functionality during staged migration
+
 ## [2026-01-12]
 
 ### Changed

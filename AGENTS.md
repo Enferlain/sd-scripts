@@ -12,7 +12,34 @@ d:\Projects\sd-scripts\venv\Scripts\python.exe
 
 Always use the venv Python for running scripts, tests, and imports.
 
-Using powershell search over grep search tool is recommended after grep fails to return results due to possible environment issues
+Using powershell search over grep search tool is recommended after grep fails to return results due to possible environment issues.
+
+## Standard Agent Tools
+
+You have access to specialized tools via MCP (Model Context Protocol). Use them to enhance your workflow:
+
+### Code Review (`review-mcp`)
+
+**Tool:** `mcp_review_with_context`
+
+Use this tool **after completing a significant chunk of work** (e.g., refactoring a module, implementing a feature) but **before** asking the user to verify. It acts as a senior engineer peer review.
+
+- **When to use:** After implementing changes, before final user handoff.
+- **How to use:** Provide the `diff_target` (usually 'HEAD') and a `task_description`.
+- **Benefit:** Catches architectural issues, typos, and best-practice violations that linters miss.
+
+### Web Search & Research
+
+**Tools:** `search_web`, `webSearchPrime`, `browser_subagent`
+
+- **`search_web` / `webSearchPrime`:** Use for quick fact-checking, library documentation lookup, or error message researching.
+- **`browser_subagent`:** Use for deep dives, navigating complex documentation sets, or when you need to "see" a page or interact with a UI.
+
+### Web Reading (`web-reader`)
+
+**Tool:** `webReader`
+Use to extract full content from a specific URL found during search (e.g., a specific documentation page).
+
 
 ## Running Tests
 
