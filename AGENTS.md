@@ -10,9 +10,9 @@ This document provides essential context for AI agents working on this repositor
 d:\Projects\sd-scripts\venv\Scripts\python.exe
 ```
 
-Using powershell search over grep search tool is recommended after grep fails to return results due to possible environment issues.
-
 Always use the venv Python for running scripts, tests, and imports.
+
+Using powershell search over grep search tool is recommended after grep fails to return results due to possible environment issues
 
 ## Running Tests
 
@@ -90,37 +90,57 @@ Always check AGENTS.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELOG.md to ref
 ├── configs/               # YAML configuration files for Hydra
 ├── docs/                  # Additional documentation
 ├── library/               # Core library modules
+│   ├── adapters/          # LoRA and network adapter implementations
 │   ├── config/            # Hydra dataclasses (source of truth for config)
-│   ├── data/              # Dataset loading, bucketing, caching
+│   ├── data/              # Data pipeline: scanning, caching, bucketing, dataloaders
+│   ├── logging/           # Training logging and plotting utilities
 │   ├── losses/            # Loss functions and weighting utilities
-│   ├── models/            # Model definitions (UNet, VAE, text encoders)
-│   ├── networks/          # LoRA/network implementations
-│   ├── performance/       # DeepSpeed and memory, various optimizations
+│   ├── models/            # Model definitions (per-model subfolders)
+│   │   ├── sd/            # SD1.5/2 UNet, conversion, loader, VAE
+│   │   └── sdxl/          # SDXL UNet, conversion, loader, text encoder, control net
 │   ├── optimizers/        # Custom optimizer implementations
+│   ├── performance/       # Memory optimization, gradient checkpointing
 │   ├── pipelines/         # Inference pipelines (LPW, etc.)
-│   ├── strategies/        # Model-specific training strategies
-│   ├── timestep_samplers/ # Timestep sampling strategies
-│   ├── training/          # Checkpointing, model prep, sample generation
+│   ├── strategies/        # Model-specific strategies (per-model subfolders)
+│   │   ├── base/          # ABCs: TrainingStrategy, TokenizeStrategy, CachingStrategy
+│   │   ├── sd/            # SD1.5/2: training, tokenization, encoding, caching
+│   │   └── sdxl/          # SDXL: training, tokenization, encoding, caching
+│   ├── timesteps/         # Timestep sampling strategies
+│   ├── training/          # Checkpointing, sample generation, trainer utilities
 │   ├── utils/             # General utilities (hashing, device, torch)
 │   └── vendor/            # Third-party vendored code
 ├── scripts/               # Thin Hydra entry points (training scripts)
-├── tests/                 # Unit and integration tests, test assets (models, datasets, etc.)
+├── tests/                 # Unit and integration tests, test assets
 └── tools/                 # Standalone utilities (still use argparse)
 ```
 
 ## Module Naming Convention
 
-The codebase follows a **generic + model-specific** pattern:
+### Models (`library/models/`)
 
-| Generic (shared)       | SD1.5/2-specific          | SDXL-specific               |
-| ---------------------- | ------------------------- | --------------------------- |
-| `checkpointing.py`     | `sd_checkpointing.py`     | `sdxl_checkpointing.py`     |
-| `model_prep.py`        | `sd_model_prep.py`        | `sdxl_model_prep.py`        |
-| `sample_generation.py` | `sd_sample_generation.py` | `sdxl_sample_generation.py` |
+| Folder  | Contents                                                                     |
+| ------- | ---------------------------------------------------------------------------- |
+| `sd/`   | `unet.py`, `conversion.py`, `loader.py`, `vae.py`                            |
+| `sdxl/` | `unet.py`, `conversion.py`, `loader.py`, `text_encoder.py`, `control_net.py` |
 
-- **Generic modules** contain utilities used by both SD and SDXL
-- **`sd_*` modules** contain SD1.5/2-specific wrappers
-- **`sdxl_*` modules** contain SDXL-specific wrappers
+Shared utilities: `conversion_utils.py`, `runtime_utils.py` (at root level)
+
+### Strategies (`library/strategies/`)
+
+| Folder  | Contents                                                            |
+| ------- | ------------------------------------------------------------------- |
+| `base/` | ABCs: `training.py`, `tokenization.py`, `encoding.py`, `caching.py` |
+| `sd/`   | `SdTrainingStrategy`, `SdTokenizeStrategy`, etc.                    |
+| `sdxl/` | `SdxlTrainingStrategy`, `SdxlTokenizeStrategy`, etc.                |
+
+### Training (`library/training/`)
+
+| File                   | Purpose                                     |
+| ---------------------- | ------------------------------------------- |
+| `checkpointing.py`     | Generic checkpoint utilities                |
+| `sample_generation.py` | `sample_images_common()` for all models     |
+| `trainer_utils.py`     | Training loop utilities                     |
+| `sd_*.py`, `sdxl_*.py` | Legacy wrappers (kept for finetune scripts) |
 
 ## Configuration System
 

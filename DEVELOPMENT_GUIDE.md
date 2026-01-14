@@ -51,29 +51,10 @@ Scripts are thin entry points (Consumers) of the library.
   4.  Run the main loop.
 - **No Business Logic:** Complex logic (like "how to save a model" or "how to build a dataset") belongs in `library/`, not in the script script.
 
-## 3. Migration Strategy
-
-We are transitioning from a "Script-First" to a "Library-First" architecture.
-
-1.  **Refactor Library Modules (Bottom-Up):**
-
-    - Identify a "concern" (e.g., Checkpointing, Model Loading).
-    - Refactor its functions to accept `Config` objects instead of `args`.
-    - _Note:_ This might temporarily break legacy scripts. We accept this cost or handle it via temporary wrappers, but the _new_ code must be pure.
-
-2.  **Migrate Scripts (Top-Down):**
-
-    - Once the underlying library modules are ready, rewrite the main script (e.g., `train_network.py`) to use Hydra.
-    - Remove `argparse` entirely from the script.
-
-3.  **Eliminate Adapters:**
-    - `ArgsAdapter` is a temporary bridge. It is **technical debt**.
-    - The goal is `0` usage of `ArgsAdapter`.
-
-## 4. Coding Standards
+## 3. Coding Standards
 
 - **Typing:** Use Python type hints (`typing`) everywhere. Prefer modern syntax (`X | None` over `Optional[X]`, `list[int]` over `List[int]`).
-- **Imports:** Absolute imports preferred (e.g., `from library.training import optimizer`).
+- **Imports:** Absolute imports preferred (e.g., `from library.training import optimizer`). Lazy imports should be avoided unless it brings proven performance benefits. Circular imports should be fixed, not worked around.
 - **Docstrings:** Document the _config_ expected by functions.
 - **No Argparse:** Do not import `argparse` in `library/` modules.
 - **Linting:** Use `ruff check .` and `ruff format .` before committing. Configuration is in `pyproject.toml`.
@@ -81,7 +62,7 @@ We are transitioning from a "Script-First" to a "Library-First" architecture.
 - **Import Order:** isort is disabled; use `tools/fix_imports.py` for custom ordering if needed.
 - **Naming Convention:** Folders use **plural** names (`adapters/`, `strategies/`, `models/`), files use **singular** names (`lora.py`, `strategy_base.py`, `model_util.py`) unless it houses various utilities.
 
-## 5. Config Design Principles
+## 4. Config Design Principles
 
 ### A. Schema Enforces Validity
 
@@ -96,8 +77,8 @@ Each script's root config (e.g., `SDPeftConfig`, `SDXLFineTuneConfig`) defines w
 | ---------------------------------------------------------------------- | ------------------- |
 | Performance/memory (xformers, gradient_checkpointing, mixed_precision) | `PerformanceConfig` |
 | Learning rates (optimizer LR, scheduler)                               | `OptimizerConfig`   |
-| Model-specific (SDXL cache_text_encoder_outputs)                       | `SDXLConfig`        |
-| Network/LoRA settings                                                  | `PeftConfig`        |
+| Model-specific (in the future)                                         | `ModelnameConfig`   |
+| Adapter/LoRA settings                                                  | `PeftConfig`        |
 
 ### C. Code Style in Scripts and Strategies
 
