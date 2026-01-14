@@ -65,7 +65,7 @@ BASE_METADATA = {
     "modelspec.vae_dtype": None,
 }
 
-# 別に使うやつだけ定義
+# Define only what is used separately
 MODELSPEC_TITLE = "modelspec.title"
 
 ARCH_SD_V1 = "stable-diffusion-v1"

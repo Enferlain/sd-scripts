@@ -63,7 +63,7 @@ class DyLoRAModule(torch.nn.Module):
             alpha = alpha.detach().float().numpy()  # without casting, bf16 causes error
         alpha = self.lora_dim if alpha is None or alpha == 0 else alpha
         self.scale = alpha / self.lora_dim
-        self.register_buffer("alpha", torch.tensor(alpha))  # 定数として扱える
+        self.register_buffer("alpha", torch.tensor(alpha))  # can be treated as a constant
 
         self.is_conv2d = org_module.__class__.__name__ == "Conv2d"
         self.is_conv2d_3x3 = self.is_conv2d and org_module.kernel_size == (3, 3)
@@ -112,7 +112,7 @@ class DyLoRAModule(torch.nn.Module):
         trainable_rank = random.randint(0, self.lora_dim - 1)
         trainable_rank = trainable_rank - trainable_rank % self.unit  # make sure the rank is a multiple of unit
 
-        # 一部のパラメータを固定して、残りのパラメータを学習する
+        # freeze some parameters and train the rest
         for i in range(0, trainable_rank):
             self.lora_A[i].requires_grad = False
             self.lora_B[i].requires_grad = False
@@ -141,10 +141,10 @@ class DyLoRAModule(torch.nn.Module):
             if self.is_conv2d:
                 ab = ab.transpose(1, 2).reshape(ab.size(0), -1, *x.size()[2:])  # (N, H*W, C) -> (N, C, H, W)
 
-        # 最後の項は、低rankをより大きくするためのスケーリング（じゃないかな）
+        # last term is scaling to make low rank larger (probably)
         result = result + ab * self.scale * math.sqrt(self.lora_dim / (trainable_rank + self.unit))
 
-        # NOTE weightに加算してからlinear/conv2dを呼んだほうが速いかも
+        # NOTE might be faster to add to weight before calling linear/conv2d
         return result
 
     def state_dict(self, destination=None, prefix="", keep_vars=False):
@@ -160,8 +160,8 @@ class DyLoRAModule(torch.nn.Module):
         Returns:
             dict: The state dictionary.
         """
-        # state dictを通常のLoRAと同じにする:
-        # nn.ParameterListは `.lora_A.0` みたいな名前になるので、forwardと同様にcatして入れ替える
+        # make state dict same as normal LoRA:
+        # nn.ParameterList becomes like .lora_A.0, so cat and replace like in forward
         sd = super().state_dict(destination=destination, prefix=prefix, keep_vars=keep_vars)
 
         lora_A_weight = torch.cat(tuple(self.lora_A), dim=0)
@@ -192,7 +192,7 @@ class DyLoRAModule(torch.nn.Module):
         Loads the module state from a state dictionary.
         Compatible with standard LoRA state dicts.
         """
-        # 通常のLoRAと同じstate dictを読み込めるようにする：この方法はchatGPTに聞いた
+        # make it possible to load the same state dict as normal LoRA: asked chatGPT for this method
         lora_A_weight = state_dict.pop(self.lora_name + ".lora_down.weight", None)
         lora_B_weight = state_dict.pop(self.lora_name + ".lora_up.weight", None)
 
@@ -558,7 +558,7 @@ class DyLoRAAdapter(torch.nn.Module):
         logger.info(f"weights are merged")
     """
 
-    # 二つのText Encoderに別々の学習率を設定できるようにするといいかも
+    # might be good to allow setting different learning rates for two Text Encoders
     def prepare_optimizer_params(self, learning_rates: LearningRatesConfig, apply_orthograd: bool, orthograd_targets: list[str]):
         """
         Prepares optimizer parameters for training.

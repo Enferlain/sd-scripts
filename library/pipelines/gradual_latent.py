@@ -93,7 +93,7 @@ class GradualLatent:
 
         x = torch.nn.functional.interpolate(x, size=resized_size, mode="bicubic", align_corners=False).to(dtype=org_dtype)
 
-        # apply unsharp mask / アンシャープマスクを適用する
+        # apply unsharp mask
         if unsharp and self.gaussian_blur_ksize:
             x = self.apply_unsharp_mask(x)
 

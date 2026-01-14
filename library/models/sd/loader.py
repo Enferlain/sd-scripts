@@ -64,7 +64,7 @@ def _load_target_model(
             pipe = StableDiffusionPipeline.from_pretrained(name_or_path, tokenizer=None, safety_checker=None)
         except OSError as ex:
             logger.error(
-                f"model is not found as a file or in Hugging Face, perhaps file name is wrong? / 指定したモデル名のファイル、またはHugging Faceのモデルが見つかりません。ファイル名が誤っているかもしれません: {name_or_path}"
+                f"model is not found as a file or in Hugging Face, perhaps file name is wrong? : {name_or_path}"
             )
             raise ex
         text_encoder = pipe.text_encoder
@@ -84,7 +84,7 @@ def _load_target_model(
         unet = original_unet
         logger.info("U-Net converted to original U-Net")
 
-    # VAEを読み込む
+    # Load VAE
     if model_config.vae is not None:
         vae = vae.load_vae(model_config.vae, weight_dtype)
         logger.info("additional VAE loaded")

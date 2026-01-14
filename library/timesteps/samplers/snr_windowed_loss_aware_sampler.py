@@ -183,7 +183,7 @@ class SNRWindowedLossAwareSampler:
             if not torch.isfinite(probs).all() or probs.sum() <= 0:
                 probs = torch.full_like(probs, 1.0 / self.num_bins)
 
-            # Sample on GPU; 1D probs → shape [batch_size]
+            # Sample on GPU; 1D probs -> shape [batch_size]
             bin_idx = torch.multinomial(probs, num_samples=batch_size, replacement=True)
 
         left, right = (
