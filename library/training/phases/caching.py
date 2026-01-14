@@ -121,7 +121,7 @@ def run_te_caching(
     max_token_length: int | None,
     te_batch_size: int | None,
     cache_to_disk: bool,
-) -> tuple[DatasetManifest, DatasetManifest | None, Any]:
+) -> tuple[DatasetManifest, DatasetManifest | None, SdxlTextEncoderPipelineStrategy | None]:
     """
     Cache text encoder outputs for the dataset.
 
