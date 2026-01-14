@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from library.strategies.base.training import TrainingStrategy
 
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 

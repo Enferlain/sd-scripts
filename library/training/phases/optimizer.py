@@ -10,10 +10,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from library.utils.common_utils import setup_logging
+
 if TYPE_CHECKING:
     from accelerate import Accelerator
     from torch import nn
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 

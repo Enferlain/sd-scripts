@@ -13,9 +13,12 @@ from typing import TYPE_CHECKING, Any
 import torch
 from torch import nn
 
+from library.utils.common_utils import setup_logging
+
 if TYPE_CHECKING:
     from accelerate import Accelerator
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
