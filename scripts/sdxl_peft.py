@@ -35,6 +35,7 @@ import library.utils.huggingface_util as huggingface_util
 
 from library.config.config_validation import prepare_config, validate_config
 from library.performance import deepspeed_utils
+from library.training.phases.caching import run_latent_caching, run_te_caching
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
@@ -51,17 +52,13 @@ from library.training.training_metadata import create_training_metadata
 from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
 from library.data import (
     CaptionConfig,
-    CachingEngine,
     create_training_dataloader,
     prepare_epoch,
     prepare_validation_epoch,
     create_manifest_from_config,
     get_or_create_manifest,
 )
-from library.strategies.sdxl.caching import (
-    SdxlLatentsPipelineStrategy,
-    SdxlTextEncoderPipelineStrategy,
-)
+# SdxlTextEncoderPipelineStrategy now used in phases/caching.py
 
 from library.timesteps.timestep_utils import (
     init_timestep_sampler,
@@ -219,178 +216,40 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
     # text_encoder is List[CLIPTextModel] or CLIPTextModel
     text_encoders = text_encoder if isinstance(text_encoder, list) else [text_encoder]
 
-    # Default cache_dir to train_data_dir if not specified
-    cache_dir = cfg.data.caching.cache_dir or cfg.data.source.train_data_dir
-
-    # Cache latents using new pipeline (Phase C)
-    latent_strategy = SdxlLatentsPipelineStrategy(
-        flip_aug=cfg.data.preprocessing.flip_aug,
-        dtype=latent_dtype,
-    )
+    # Cache latents using phases/caching.py
+    latent_strategy = None
     if cache_latents:
-        vae.to(accelerator.device, dtype=vae_dtype)
-        vae.requires_grad_(False)
-        vae.eval()
-
-        latent_caching_engine = CachingEngine(
-            strategy=latent_strategy,
-            batch_size=cfg.data.caching.vae_batch_size,
-            num_workers=cfg.data.caching.num_workers,
-        )
-
-        # RESOURCE TRACKER START
-        resource_tracker = None
-        if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
-            from library.utils.resource_tracker import ResourceTracker
-
-            resource_tracker = ResourceTracker("Latent Caching")
-            resource_tracker.start()
-        # RESOURCE TRACKER END
-
-        train_manifest = latent_caching_engine.cache_dataset(
-            manifest=train_manifest,
-            model=vae,
+        train_manifest, val_manifest, latent_strategy = run_latent_caching(
+            train_manifest=train_manifest,
+            val_manifest=val_manifest,
+            vae=vae,
             accelerator=accelerator,
             cache_dir=cache_dir,
             flip_aug=cfg.data.preprocessing.flip_aug,
-            cache_type="Latent Caching",
+            vae_batch_size=cfg.data.caching.vae_batch_size,
+            num_workers=cfg.data.caching.num_workers,
+            latent_dtype=latent_dtype,
+            vae_dtype=vae_dtype,
         )
-        if val_manifest is not None:
-            val_manifest = latent_caching_engine.cache_dataset(
-                manifest=val_manifest,
-                model=vae,
-                accelerator=accelerator,
-                cache_dir=cache_dir,
-                flip_aug=False,  # No flip aug for validation
-                cache_type="Latent Caching",
-            )
 
-        # RESOURCE TRACKER START
-        if resource_tracker:
-            stats = resource_tracker.stop()
-            logger.info(f"\n{stats.summary()}")
-        # RESOURCE TRACKER END
-
-        vae.to("cpu")
-        clean_memory_on_device(accelerator.device)
-
-        accelerator.wait_for_everyone()
-
-    # 必要ならテキストエンコーダーの出力をキャッシュする: Text Encoderはcpuまたはgpuへ移される
-    # cache text encoder outputs if needed: Text Encoder is moved to cpu or gpu
+    # Set text encoding strategy (global)
     text_encoding_strategy = strategies.get_text_encoding_strategy(cfg)
     library.strategies.base.encoding.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
-    # Phase D: Text Encoder caching using new pipeline
+    # Cache TE outputs using phases/caching.py
     te_strategy = None
     if cfg.data.caching.cache_text_encoder_outputs:
-        # Move text encoders to GPU for caching
-        for t_enc in text_encoders:
-            t_enc.to(accelerator.device)
-            t_enc.requires_grad_(False)
-            t_enc.eval()
-
-        if cfg.data.caching.cache_text_encoder_outputs_to_disk:
-            # Disk-based TE caching: use CachingEngine
-            te_strategy = SdxlTextEncoderPipelineStrategy(
-                max_token_length=cfg.training.max_token_length,
-            )
-            te_caching_engine = CachingEngine(
-                strategy=te_strategy,
-                batch_size=cfg.data.caching.te_batch_size,
-            )
-
-            # RESOURCE TRACKER START
-            te_resource_tracker = None
-            if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
-                from library.utils.resource_tracker import ResourceTracker
-
-                te_resource_tracker = ResourceTracker("TE Caching")
-                te_resource_tracker.start()
-            # RESOURCE TRACKER END
-
-            train_manifest = te_caching_engine.cache_dataset(
-                manifest=train_manifest,
-                model=(*text_encoders, *tokenizers),  # SDXL: (clip_l_enc, clip_g_enc, clip_l_tok, clip_g_tok)
-                accelerator=accelerator,
-                cache_dir=cache_dir,
-                cache_type="TE Caching",
-            )
-            if val_manifest is not None:
-                val_manifest = te_caching_engine.cache_dataset(
-                    manifest=val_manifest,
-                    model=(*text_encoders, *tokenizers),
-                    accelerator=accelerator,
-                    cache_dir=cache_dir,
-                    cache_type="TE Caching",
-                )
-
-            # RESOURCE TRACKER START
-            if te_resource_tracker:
-                stats = te_resource_tracker.stop()
-                logger.info(f"\n{stats.summary()}")
-            # RESOURCE TRACKER END
-
-        else:
-            # In-memory TE caching: compute and store in entry.te_outputs
-            from library.strategies.sdxl.training import tokenize_sdxl_captions
-            from library.models.sdxl.text_encoder import get_hidden_states_sdxl
-
-            logger.info("Computing text encoder outputs in memory...")
-            for entry in tqdm(train_manifest.entries.values(), desc="TE caching (memory)", disable=accelerator.process_index != 0):
-                input_ids1, input_ids2 = tokenize_sdxl_captions(
-                    tokenizers[0], tokenizers[1], [entry.caption], cfg.training.max_token_length
-                )
-                input_ids1 = input_ids1.to(accelerator.device)
-                input_ids2 = input_ids2.to(accelerator.device)
-
-                with torch.no_grad():
-                    hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
-                        cfg.training.max_token_length,
-                        input_ids1,
-                        input_ids2,
-                        tokenizers[0],
-                        tokenizers[1],
-                        text_encoders[0],
-                        text_encoders[1],
-                    )
-                    # Squeeze out the batch dimension (these are computed for single samples)
-                    entry.te_outputs = {
-                        "hidden_state1": hidden_state1.squeeze(0).cpu(),
-                        "hidden_state2": hidden_state2.squeeze(0).cpu(),
-                        "pool2": pool2.squeeze(0).cpu(),
-                    }
-
-            if val_manifest is not None:
-                for entry in val_manifest.entries.values():
-                    input_ids1, input_ids2 = tokenize_sdxl_captions(
-                        tokenizers[0], tokenizers[1], [entry.caption], cfg.training.max_token_length
-                    )
-                    input_ids1 = input_ids1.to(accelerator.device)
-                    input_ids2 = input_ids2.to(accelerator.device)
-
-                    with torch.no_grad():
-                        hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
-                            cfg.training.max_token_length,
-                            input_ids1,
-                            input_ids2,
-                            tokenizers[0],
-                            tokenizers[1],
-                            text_encoders[0],
-                            text_encoders[1],
-                        )
-                        # Squeeze out the batch dimension (these are computed for single samples)
-                        entry.te_outputs = {
-                            "hidden_state1": hidden_state1.squeeze(0).cpu(),
-                            "hidden_state2": hidden_state2.squeeze(0).cpu(),
-                            "pool2": pool2.squeeze(0).cpu(),
-                        }
-
-        # Move text encoders back to CPU to save VRAM
-        for t_enc in text_encoders:
-            t_enc.to("cpu")
-        clean_memory_on_device(accelerator.device)
-        accelerator.wait_for_everyone()
+        train_manifest, val_manifest, te_strategy = run_te_caching(
+            train_manifest=train_manifest,
+            val_manifest=val_manifest,
+            text_encoders=text_encoders,
+            tokenizers=tokenizers,
+            accelerator=accelerator,
+            cache_dir=cache_dir,
+            max_token_length=cfg.training.max_token_length,
+            te_batch_size=cfg.data.caching.te_batch_size,
+            cache_to_disk=cfg.data.caching.cache_text_encoder_outputs_to_disk,
+        )
 
     # TE offloading: move TEs to CPU if not caching (on-the-fly encoding)
     elif cfg.performance.memory.offload_text_encoders:
