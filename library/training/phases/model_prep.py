@@ -52,7 +52,7 @@ def create_adapter(
         Tuple of (adapter, net_kwargs), or (None, {}) if creation failed
     """
     # Import adapter module dynamically
-    sys.path.append(os.path.dirname(__file__))
+    sys.path.append(os.path.dirname(__file__))  # TODO: Maybe leftover from different location adapters, idk investigate
     accelerator.print("import peft module:", cfg.peft.adapter_module)
     adapter_module = importlib.import_module(cfg.peft.adapter_module)
 
@@ -103,6 +103,7 @@ def create_adapter(
         )
 
     if adapter is None:
+        logger.warning("Adapter creation returned None - check adapter module configuration")
         return None, {}
 
     # Prepare adapter if method exists
