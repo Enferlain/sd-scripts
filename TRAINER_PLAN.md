@@ -516,7 +516,6 @@ class TrainingStrategy(Protocol):
 ## Open Questions
 
 1. **Generic base vs SDXL-specific?**
-
    - Start with `PeftTrainer` that works for SDXL
    - Generalize when adding SD/Flux support
 
@@ -569,9 +568,8 @@ class TrainingStrategy(Protocol):
 
 ### Phase 5: Extract Optimizer Setup
 
-- [ ] Create `phases/optimizer.py`
-- [ ] Extract step calculation logic
-- [ ] Wire into trainer's `prepare_optimizer()` method
+- [x] Create `phases/optimizer.py` with `calculate_max_train_steps()`
+- [x] Wire into `sdxl_peft.py`
 
 ### Phase 6: Extract Training Loop
 

@@ -8,35 +8,28 @@ and training step calculations.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+import math
 
-from library.utils.common_utils import setup_logging
 
-if TYPE_CHECKING:
-    from accelerate import Accelerator
-    from torch import nn
-
-setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def setup_optimizer_and_scheduler(
-    cfg: Any,
-    adapter: nn.Module,
-    accelerator: Accelerator,
+def calculate_max_train_steps(
+    max_train_epochs: int,
     num_batches_per_epoch: int,
-) -> tuple[Any, Any, Any, Any, list[str]]:
+    num_processes: int,
+    gradient_accumulation_steps: int,
+) -> int:
     """
-    Create optimizer and LR scheduler for training.
+    Calculate the total number of training steps from epoch count.
 
     Args:
-        cfg: Config object with optimizer settings
-        adapter: Adapter module to optimize
-        accelerator: Accelerator instance
-        num_batches_per_epoch: Number of batches per epoch (for step calculation)
+        max_train_epochs: Number of epochs to train
+        num_batches_per_epoch: Batches per epoch (based on dataset size / batch_size)
+        num_processes: Number of distributed processes (accelerator.num_processes)
+        gradient_accumulation_steps: Gradient accumulation steps
 
     Returns:
-        Tuple of (optimizer, lr_scheduler, optimizer_train_fn, optimizer_eval_fn, lr_descriptions)
+        Total number of optimization steps
     """
-    # TODO: Extract from sdxl_peft.py lines ~505-565
-    raise NotImplementedError("setup_optimizer_and_scheduler() not yet implemented")
+    return max_train_epochs * math.ceil(num_batches_per_epoch / num_processes / gradient_accumulation_steps)

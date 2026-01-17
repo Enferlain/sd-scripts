@@ -3,12 +3,12 @@
 
 from library.training.phases.caching import run_latent_caching, run_te_caching
 from library.training.phases.model_prep import create_adapter, configure_precision
-from library.training.phases.optimizer import setup_optimizer_and_scheduler
+from library.training.phases.optimizer import calculate_max_train_steps
 
 __all__ = [
     "run_latent_caching",
     "run_te_caching",
     "create_adapter",
     "configure_precision",
-    "setup_optimizer_and_scheduler",
+    "calculate_max_train_steps",
 ]

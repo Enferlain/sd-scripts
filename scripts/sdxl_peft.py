@@ -35,6 +35,7 @@ from library.config.config_validation import prepare_config, validate_config
 from library.performance import deepspeed_utils
 from library.training.phases.model_prep import create_adapter, configure_precision
 from library.training.phases.caching import run_latent_caching, run_te_caching
+from library.training.phases.optimizer import calculate_max_train_steps
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
@@ -347,10 +348,13 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
         )
         cyclic_val_dataloader = itertools.cycle(val_dataloader)
 
-    # 学習ステップ数を計算する
+    # Calculate total training steps from epochs
     if cfg.training.max_train_epochs is not None:
-        cfg.training.max_train_steps = cfg.training.max_train_epochs * math.ceil(
-            num_batches_per_epoch / accelerator.num_processes / cfg.training.gradient_accumulation_steps
+        cfg.training.max_train_steps = calculate_max_train_steps(
+            max_train_epochs=cfg.training.max_train_epochs,
+            num_batches_per_epoch=num_batches_per_epoch,
+            num_processes=accelerator.num_processes,
+            gradient_accumulation_steps=cfg.training.gradient_accumulation_steps,
         )
         accelerator.print(
             f"override steps. steps for {cfg.training.max_train_epochs} epochs is / 指定エポックまでのステップ数: {cfg.training.max_train_steps}"

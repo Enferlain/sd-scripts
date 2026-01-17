@@ -11,12 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Trainer Class Architecture (Phase 1, 2, 3 & 4)**:
+- **Trainer Class Architecture (Phase 1-5)**:
   - Created `library/training/trainers/peft_trainer.py` with `PeftTrainer` class
   - Extracted setup logic from `sdxl_peft.py` into `PeftTrainer.setup()`
   - Created `StepOutput` dataclass for modular training loop data flow
   - **Phase 3**: Implemented `run_latent_caching()` and `run_te_caching()` in `library/training/phases/caching.py`
   - **Phase 4**: Implemented `create_adapter()` and `configure_precision()` in `library/training/phases/model_prep.py`
+  - **Phase 5**: Added `calculate_max_train_steps()` in `library/training/phases/optimizer.py`
   - Updated `sdxl_peft.py` to use extracted phase functions
 
 ## [2026-01-12]
@@ -24,7 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Model Directory Reorganization (Phase 1)**: Restructured `library/models/` into per-model folders
-
   - `library/models/sdxl/` now contains: `unet.py`, `conversion.py`, `loader.py`, `text_encoder.py`, `control_net.py`
   - `library/models/sd/` now contains: `vae.py` (shared VAE utilities)
   - Migrated from flat `sdxl_model_util.py`, `sdxl_original_unet.py` structure to organized hierarchy
@@ -46,7 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Resource Tracking**: New `ResourceTracker` utility for comprehensive GPU/CPU monitoring during training
-
   - Tracks PyTorch memory (allocated/reserved) with peak detection
   - **nvidia-smi integration**: Background thread polls every 500ms for true GPU memory peaks (matches nvitop)
   - CPU RAM tracking with before/after/peak values
