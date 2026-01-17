@@ -557,15 +557,15 @@ class TrainingStrategy(Protocol):
 
 ### Phase 3: Extract Caching Phase
 
-- [ ] Create `phases/caching.py` with `run_latent_caching()`
-- [ ] Add `run_te_caching()` function
-- [ ] Wire into trainer's `run_caching()` method
+- [x] Create `phases/caching.py` with `run_latent_caching()`
+- [x] Add `run_te_caching()` function
+- [x] Wire into `sdxl_peft.py` (trainer wiring deferred to Phase 7)
 
 ### Phase 4: Extract Model Prep
 
-- [ ] Create `phases/model_prep.py` with adapter creation logic
-- [ ] Extract precision configuration
-- [ ] Wire into trainer's `prepare_models()` method
+- [x] Create `phases/model_prep.py` with `create_adapter()` function
+- [x] Extract `configure_precision()` function
+- [x] Wire into `sdxl_peft.py` (trainer wiring deferred to Phase 7)
 
 ### Phase 5: Extract Optimizer Setup
 
