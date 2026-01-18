@@ -179,6 +179,9 @@ def __init__(self, cfg: PeftConfig, strategies: TrainingStrategy):
 ### `train()` - Main Entry Point
 
 ```python
+import library.training.phases.training_loop
+
+
 def train(self):
     """Main training entry point. Orchestrates all phases."""
     self.setup()
@@ -189,7 +192,7 @@ def train(self):
     self._log_training_info()
     self._maybe_sample_at_start()
 
-    self.run_training_loop()
+    library.training.phases.training_loop.run_training_loop()
 
     self._finalize_training()
 ```
@@ -538,6 +541,51 @@ class TrainingStrategy(Protocol):
 
 ---
 
+## Design Pivot (2026-01-18)
+
+After implementing Phase 3-6, we identified an issue: the `PeftTrainer` wrapper methods were becoming verbose parameter-passing boilerplate (e.g., `run_caching()` extracting 10+ fields from `self.cfg` to pass to phase functions).
+
+### Old Pattern (Verbose Wrappers)
+
+```python
+# PeftTrainer method - 40 lines of parameter extraction
+def run_caching(self) -> None:
+    run_latent_caching(
+        train_manifest=self.train_manifest,
+        val_manifest=self.val_manifest,
+        vae=self.vae,
+        accelerator=self.accelerator,
+        cache_dir=self.cfg.data.caching.cache_dir,
+        flip_aug=self.cfg.data.preprocessing.flip_aug,
+        # ... 10+ more params
+    )
+```
+
+### New Pattern (Trainer as Container)
+
+```python
+# PeftTrainer method - 2 lines
+def run_caching(self) -> None:
+    from library.training.phases.caching import run_caching
+    run_caching(self)
+
+# Phase function accesses what it needs
+def run_caching(trainer: PeftTrainer) -> None:
+    if not trainer.cfg.data.caching.cache_latents:
+        return
+    # Access trainer.vae, trainer.accelerator, etc.
+```
+
+This follows the same principle as `data_config: DataConfig` - pass the container, let the function extract what it needs.
+
+### Decisions
+
+- **Top-level imports** in phase functions (no lazy imports)
+- **Direct mutation**: phase functions update `trainer.*` directly
+- **Tests will mock trainer** when needed
+
+---
+
 ## Implementation Progress
 
 ### Phase 1: Create Base Structure
@@ -559,28 +607,35 @@ class TrainingStrategy(Protocol):
 - [x] Create `phases/caching.py` with `run_latent_caching()`
 - [x] Add `run_te_caching()` function
 - [x] Wire into `sdxl_peft.py` (trainer wiring deferred to Phase 7)
+- [x] **Refactor**: Change signature to `run_caching(trainer: PeftTrainer)`
 
 ### Phase 4: Extract Model Prep
 
 - [x] Create `phases/model_prep.py` with `create_adapter()` function
 - [x] Extract `configure_precision()` function
 - [x] Wire into `sdxl_peft.py` (trainer wiring deferred to Phase 7)
+- [x] **Refactor**: Change signature to `prepare_models(trainer: PeftTrainer)`
 
 ### Phase 5: Extract Optimizer Setup
 
 - [x] Create `phases/optimizer.py` with `calculate_max_train_steps()`
 - [x] Wire into `sdxl_peft.py`
+- [x] **Refactor**: Change signature to `prepare_optimizer(trainer: PeftTrainer)`
 
 ### Phase 6: Extract Training Loop
 
-- [ ] Create `run_training_loop()` method
-- [ ] Create `train_step()` returning `StepOutput`
-- [ ] Convert `save_model` closure to `save_checkpoint()` method
-- [ ] Add `_emit()` hook points
+- [x] Convert `save_model` closure to `save_checkpoint()` method
+- [x] Convert `remove_model` closure to `remove_checkpoint()` method
+- [x] Create `run_training_loop()` skeleton with documented structure
+- [x] **Refactor**: Move loop logic with trainer container pattern
 
-### Phase 7: Cleanup & Verify
+### Phase 7: Simplify PeftTrainer + Wire Up
 
-- [ ] Update `scripts/sdxl_peft.py` to use new trainer
-- [ ] Run unit tests
+- [x] Simplify `PeftTrainer` methods to one-liner delegations
+- [x] Remove verbose parameter-passing wrapper code
+- [x] Fix `run_training_loop()` to delegate to phase function
+- [x] Run unit tests (971 passed, 6 skipped)
+- [x] Update `scripts/sdxl_peft.py` to instantiate and call `trainer.train()` (~780 lines → ~50 lines)
+- [x] Implement `_log_training_info()`, `_maybe_sample_at_start()`, `_finalize_training()` helper methods
 - [ ] Run integration smoke test
 - [ ] Update CHANGELOG.md

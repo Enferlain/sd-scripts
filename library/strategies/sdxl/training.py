@@ -288,7 +288,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         if cfg.data.caching.cache_text_encoder_outputs:
             return library.strategies.sdxl.caching.SdxlTextEncoderOutputsCachingStrategy(
                 cfg.data.caching.cache_text_encoder_outputs_to_disk,
-                None,  # batch_size: not used for text encoder outputs caching
+                None,  # batch_size: not used for text encoder outputs caching TODO: why not? there is te_batch_size?
                 cfg.data.caching.skip_cache_check,
                 is_weighted=cfg.data.caption.weighted_captions,
             )

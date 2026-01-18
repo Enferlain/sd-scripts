@@ -7,17 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026-01-18]
+
+### Changed
+
+- **Training Loop Extraction (Phase 6-7)**: Completed trainer-as-container refactor
+  - **`sdxl_peft.py` simplified from ~780 lines to ~50 lines** — now just instantiates `PeftTrainer` and calls `trainer.train()`
+  - Extracted training loop to `library/training/phases/training_loop.py` with signature `run_training_loop(trainer: PeftTrainer)`
+  - Extended `phases/optimizer.py` with: val dataloader creation, `accelerator.prepare()`, gradient checkpointing, resume hooks
+  - Added `PeftTrainer` helper methods: `_log_training_info()`, `_maybe_sample_at_start()`, `_finalize_training()`
+  - Trainer now handles full lifecycle: setup → caching → model_prep → optimizer → training_loop → finalize
+  - All 971 unit tests passing
+
 ## [2026-01-14]
 
 ### Added
 
-- **Trainer Class Architecture (Phase 1-5)**:
+- **Trainer Class Architecture (Phase 1-7)**:
   - Created `library/training/trainers/peft_trainer.py` with `PeftTrainer` class
   - Extracted setup logic from `sdxl_peft.py` into `PeftTrainer.setup()`
   - Created `StepOutput` dataclass for modular training loop data flow
   - **Phase 3**: Implemented `run_latent_caching()` and `run_te_caching()` in `library/training/phases/caching.py`
   - **Phase 4**: Implemented `create_adapter()` and `configure_precision()` in `library/training/phases/model_prep.py`
   - **Phase 5**: Added `calculate_max_train_steps()` in `library/training/phases/optimizer.py`
+  - **Phase 6**: Added `save_checkpoint()` and `remove_checkpoint()` methods to `PeftTrainer`
+  - **Phase 7**: Wired `PeftTrainer` methods to call phase functions with explicit params
   - Updated `sdxl_peft.py` to use extracted phase functions
 
 ## [2026-01-12]

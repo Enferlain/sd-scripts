@@ -18,7 +18,6 @@ from types import SimpleNamespace
 
 import torch
 from torch import nn, Tensor
-from tqdm import tqdm
 
 import library.strategies.base.tokenization
 import library.strategies.base.caching
@@ -31,9 +30,8 @@ from library.data import create_manifest_from_config, get_or_create_manifest, Da
 
 if TYPE_CHECKING:
     from accelerate import Accelerator
-    from library.data import DatasetManifest, EpochManifest
     from library.strategies.base.training import TrainingStrategy
-
+    from library.strategies.sdxl.caching import SdxlLatentsPipelineStrategy, SdxlTextEncoderPipelineStrategy
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -89,18 +87,30 @@ class PeftTrainer:
         self.train_manifest: DatasetManifest | None = None
         self.val_manifest: DatasetManifest | None = None
 
-        # Will be set during prepare_models()
+        # Will be set during model loading (in setup)
         self.unet: nn.Module | None = None
         self.vae: nn.Module | None = None
         self.text_encoders: list[nn.Module] = []
+        self._text_encoder: Any = None  # Original reference for adapter API compatibility
+
+        # Will be set during prepare_models()
         self.adapter: nn.Module | None = None
-        self.noise_scheduler: Any = None
+        self.net_kwargs: dict = {}
+        self.unet_weight_dtype: torch.dtype | None = None
+        self.te_weight_dtype: torch.dtype | None = None
+
+        # Will be set during run_caching()
+        self.latent_strategy: SdxlLatentsPipelineStrategy | None = None
+        self.te_strategy: SdxlTextEncoderPipelineStrategy | None = None
 
         # Will be set during prepare_optimizer()
         self.optimizer: Any = None
-        self.lr_scheduler: Any = None
+        self.optimizer_name: str = ""
+        self.optimizer_args: dict = {}
         self.optimizer_train_fn: Any = None
         self.optimizer_eval_fn: Any = None
+        self.lr_descriptions: list = []
+        self.lr_scheduler: Any = None
 
         # Training state
         self.global_step: int = 0
@@ -108,10 +118,67 @@ class PeftTrainer:
         self.max_train_steps: int = 0
         self.num_train_epochs: int = 0
         self.epoch_to_start: int = 0
+        self.num_batches_per_epoch: int = 0
 
         # Session info
         self.session_id: int = random.randint(0, 2**32)
         self.training_started_at: float = time.time()
+
+        # Metadata for checkpoints (set during setup)
+        self._metadata: dict = {}
+        self._minimum_metadata: dict = {}
+
+        # Internal state
+        self._model_version: str = ""
+        self._cache_latents: bool = False
+        self._use_dreambooth_method: bool = False
+        self._tokenize_strategy: Any = None
+        self._text_encoding_strategy: Any = None
+        self._cache_dir: str | None = None
+        self._latent_dtype: str = "fp16"
+        self._n_workers: int = 0
+        self._initial_step: int = 0
+
+        # Training loop state (set before run_training_loop)
+        self.noise_scheduler: Any = None
+        self._progress_bar: Any = None
+        self._loss_recorder: Any = None
+        self._loss_scaled_recorder: Any = None
+        self._val_loss_recorder: Any = None
+        self._is_tracking: bool = False
+        self._accumulation_counter: int = 0
+        self._current_global_step_loss: float = 0.0
+        self._current_global_step_loss_scaled: float | None = 0.0
+        self._current_val_loss: float | None = None
+        self._average_val_loss: float | None = None
+
+        # Validation state
+        self._val_dataloader: Any = None
+        self._cyclic_val_dataloader: Any = None
+        self._train_text_encoder: bool = False
+        self._train_unet: bool = True
+        self._training_model: Any = None
+
+        # EDM2 state
+        self._edm2_model: Any = None
+        self._edm2_optimizer: Any = None
+        self._edm2_lr_scheduler: Any = None
+
+        # Dynamic timestep schedule
+        self._dynamic_timestep_schedule: list | None = None
+        self._current_min_timestep: int | None = None
+        self._current_max_timestep: int | None = None
+
+        # Live plotter state
+        self._timestep_counts: Any = None
+        self._plotter_settings: Any = None
+
+        # Adapter callback
+        self._on_step_start_for_adapter: Any = None
+
+        # SimpleNamespace state containers for cross-function state sharing
+        self._current_epoch_state: SimpleNamespace = SimpleNamespace(value=0)
+        self._current_step_state: SimpleNamespace = SimpleNamespace(value=0)
 
     def train(self) -> None:
         """Main training entry point. Orchestrates all phases."""
@@ -128,7 +195,7 @@ class PeftTrainer:
         self._finalize_training()
 
     # =========================================================================
-    # Phase Methods - Override in subclasses if needed
+    # Phase Methods - Delegate to phase functions
     # =========================================================================
 
     def setup(self) -> None:
@@ -225,6 +292,10 @@ class PeftTrainer:
                     buckets=train_buckets,
                 )
 
+        # Calculate batches per epoch for step calculations
+        train_image_count = sum(e.num_repeats for e in self.train_manifest.entries.values() if not e.is_reg)
+        self.num_batches_per_epoch = math.ceil(train_image_count / self.cfg.training.train_batch_size)
+
         # Prepare dtypes
         self.weight_dtype, self.save_dtype = prepare_dtype(self.cfg.performance.precision, self.cfg.output.saving)
         self.vae_dtype = (
@@ -248,28 +319,27 @@ class PeftTrainer:
 
     def run_caching(self) -> None:
         """Phase 2: Cache latents and optionally text encoder outputs."""
-        # TODO: Extract from sdxl_peft.py lines ~220-400
-        raise NotImplementedError("run_caching() not yet implemented - extract from sdxl_peft.py")
+        from library.training.phases.caching import run_caching
+
+        run_caching(self)
 
     def prepare_models(self) -> None:
-        """Phase 3: Load UNet, VAE, text encoders and adapter. Configure for training."""
-        # TODO: Extract from sdxl_peft.py lines ~400-660
-        raise NotImplementedError("prepare_models() not yet implemented - extract from sdxl_peft.py")
+        """Phase 3: Create adapter and configure precision."""
+        from library.training.phases.model_prep import prepare_models
+
+        prepare_models(self)
 
     def prepare_optimizer(self) -> None:
         """Phase 4: Create optimizer, LR scheduler, and calculate training steps."""
-        # TODO: Extract from sdxl_peft.py lines ~500-680
-        raise NotImplementedError("prepare_optimizer() not yet implemented - extract from sdxl_peft.py")
+        from library.training.phases.optimizer import prepare_optimizer
+
+        prepare_optimizer(self)
 
     def run_training_loop(self) -> None:
-        """Phase 5: Execute the main training loop."""
-        # TODO: Extract from sdxl_peft.py lines ~900-1240
-        raise NotImplementedError("run_training_loop() not yet implemented - extract from sdxl_peft.py")
+        """Execute the main training loop."""
+        from library.training.phases.training_loop import run_training_loop
 
-    def train_step(self, batch: dict, step: int) -> StepOutput:
-        """Execute a single training step. Returns StepOutput for loop decisions."""
-        # TODO: Extract core step logic from sdxl_peft.py
-        raise NotImplementedError("train_step() not yet implemented - extract from sdxl_peft.py")
+        run_training_loop(self)
 
     # =========================================================================
     # Lifecycle Hooks
@@ -285,11 +355,44 @@ class PeftTrainer:
         """Called at the end of each epoch."""
         self._emit("on_epoch_end", epoch=epoch)
 
-    def save_checkpoint(self, step: int, epoch: int, final: bool = False) -> None:
+    def save_checkpoint(
+        self,
+        ckpt_name: str,
+        unwrapped_adapter: nn.Module,
+        step: int,
+        epoch: int,
+        force_sync_upload: bool = False,
+        dtype_override: torch.dtype | None = None,
+    ) -> None:
         """Save model checkpoint."""
-        # TODO: Extract save_model closure from sdxl_peft.py
-        self._emit("on_checkpoint", step=step, epoch=epoch, final=final)
-        raise NotImplementedError("save_checkpoint() not yet implemented")
+        os.makedirs(self.cfg.output.saving.output_dir, exist_ok=True)
+        ckpt_file = os.path.join(self.cfg.output.saving.output_dir, ckpt_name)
+
+        self.accelerator.print(f"\nsaving checkpoint: {ckpt_file}")
+        self._metadata["ss_training_finished_at"] = str(time.time())
+        self._metadata["ss_steps"] = str(step)
+        self._metadata["ss_epoch"] = str(epoch)
+
+        metadata_to_save = self._minimum_metadata if self.cfg.output.saving.no_metadata else self._metadata
+        modelspec_metadata = self.strategies.get_model_metadata(self.cfg)
+        metadata_to_save.update(modelspec_metadata)
+
+        save_dtype = dtype_override or self.save_dtype
+        unwrapped_adapter.save_weights(ckpt_file, save_dtype, metadata_to_save)
+
+        if self.cfg.output.huggingface.huggingface_repo_id is not None:
+            from library.utils import huggingface_util
+
+            huggingface_util.upload(self.cfg.output.huggingface, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
+
+        self._emit("on_checkpoint", step=step, epoch=epoch)
+
+    def remove_checkpoint(self, old_ckpt_name: str) -> None:
+        """Remove old checkpoint file."""
+        old_ckpt_file = os.path.join(self.cfg.output.saving.output_dir, old_ckpt_name)
+        if os.path.exists(old_ckpt_file):
+            self.accelerator.print(f"removing old checkpoint: {old_ckpt_file}")
+            os.remove(old_ckpt_file)
 
     # =========================================================================
     # Event System (for future callback extensibility)
@@ -304,24 +407,206 @@ class PeftTrainer:
     # =========================================================================
 
     def _log_training_info(self) -> None:
-        """Log training configuration summary."""
-        # TODO: Extract logging from sdxl_peft.py lines ~690-705
-        pass
+        """Log training configuration, create metadata, init noise scheduler, and loss recorders."""
+        from tqdm import tqdm
+
+        from library.losses.edm2_loss_utils import prepare_edm2_loss_weighting
+        from library.losses.loss import EMARecorder
+        from library.logging.step_logging import init_trackers
+        from library.logging.training_plots import setup_live_plotter
+        from library.timesteps.timestep_utils import init_timestep_sampler, parse_dynamic_timestep_schedule
+        from library.training.training_metadata import create_training_metadata
+        from library.utils.device_utils import clean_memory_on_device
+
+        cfg = self.cfg
+
+        # Calculate total batch size
+        total_batch_size = cfg.training.train_batch_size * self.accelerator.num_processes * cfg.training.gradient_accumulation_steps
+
+        # Calculate stats from manifest
+        num_train_images = sum(e.num_repeats for e in self.train_manifest.entries.values() if not e.is_reg)
+        num_reg_images = sum(e.num_repeats for e in self.train_manifest.entries.values() if e.is_reg)
+        num_val_images = sum(e.num_repeats for e in self.val_manifest.entries.values()) if self.val_manifest else 0
+
+        # Log training stats
+        self.accelerator.print("running training")
+        self.accelerator.print(f"  num train images * repeats: {num_train_images}")
+        self.accelerator.print(f"  num validation images * repeats: {num_val_images}")
+        self.accelerator.print(f"  num reg images: {num_reg_images}")
+        self.accelerator.print(f"  num batches per epoch: {self.num_batches_per_epoch}")
+        self.accelerator.print(f"  num epochs: {self.num_train_epochs}")
+        self.accelerator.print(f"  batch size per device: {cfg.training.train_batch_size}")
+        self.accelerator.print(f"  gradient accumulation steps: {cfg.training.gradient_accumulation_steps}")
+        self.accelerator.print(f"  total optimization steps: {self.max_train_steps}")
+
+        # Create training metadata
+        self._metadata, self._minimum_metadata = create_training_metadata(
+            cfg=cfg,
+            manifest=self.train_manifest,
+            val_manifest=self.val_manifest,
+            session_id=self.session_id,
+            training_started_at=self.training_started_at,
+            model_version=self._model_version,
+            num_train_epochs=self.num_train_epochs,
+            optimizer_name=self.optimizer_name,
+            optimizer_args=self.optimizer_args,
+            net_kwargs=self.net_kwargs,
+            num_batches_per_epoch=self.num_batches_per_epoch,
+            total_batch_size=total_batch_size,
+            use_dreambooth_method=self._use_dreambooth_method,
+        )
+        self.strategies.update_metadata(self._metadata, cfg)
+
+        # Noise scheduler
+        self.noise_scheduler = self.strategies.get_noise_scheduler(cfg, self.accelerator.device)
+
+        # Timestep sampler
+        self.strategies.la_sampler = init_timestep_sampler(cfg.timestep, self.noise_scheduler, self.accelerator)
+
+        # Live plotter setup
+        self._timestep_counts = None
+        self._plotter_settings = None
+        if self.is_main_process:
+            self._timestep_counts, self._plotter_settings = setup_live_plotter(
+                cfg, self.noise_scheduler, self.strategies.la_sampler, self.strategies
+            )
+
+        # EDM2 loss weighting
+        self._edm2_model, self._edm2_optimizer, self._edm2_lr_scheduler = prepare_edm2_loss_weighting(
+            cfg.loss.edm2, cfg.training, self.noise_scheduler, self.accelerator
+        )
+
+        # Init trackers
+        init_trackers(self.accelerator, cfg.output.logging, "adapter_train")
+
+        # Loss recorders
+        self._loss_recorder = EMARecorder()
+        self._val_loss_recorder = EMARecorder()
+        self._loss_scaled_recorder = EMARecorder() if cfg.loss.edm2.edm2_loss_weighting else None
+
+        # Adapter step callback
+        if hasattr(self.accelerator.unwrap_model(self.adapter), "on_step_start"):
+            self._on_step_start_for_adapter = self.accelerator.unwrap_model(self.adapter).on_step_start
+        else:
+            self._on_step_start_for_adapter = lambda *args, **kwargs: None
+
+        # Init loss tracking state
+        self._current_global_step_loss = 0.0
+        self._current_global_step_loss_scaled = 0.0 if cfg.loss.edm2.edm2_loss_weighting else None
+        self._current_val_loss = None
+        self._average_val_loss = None
+        self._accumulation_counter = 0
+        self._is_tracking = len(self.accelerator.trackers) > 0
+
+        # Dynamic timestep schedule
+        self._dynamic_timestep_schedule, self._current_min_timestep, self._current_max_timestep = parse_dynamic_timestep_schedule(
+            cfg.timestep, self.noise_scheduler, self.accelerator
+        )
+
+        clean_memory_on_device(self.accelerator.device)
+
+        # Progress bar
+        self._progress_bar = tqdm(
+            range(self.max_train_steps - self._initial_step), smoothing=0, disable=not self.accelerator.is_local_main_process, desc="steps"
+        )
 
     def _maybe_sample_at_start(self) -> None:
         """Handle --sample_at_first if configured."""
-        # TODO: Extract from sdxl_peft.py lines ~819-851
-        pass
+        from library.training.sample_generation import sample_images_check
+        from library.training.trainer_utils import calculate_val_loss_check
+
+        cfg = self.cfg
+
+        if sample_images_check(cfg.output.sampling, 0, self.global_step) or calculate_val_loss_check(
+            cfg.validation, cfg.training, self.global_step, 0, self._val_dataloader, self.num_batches_per_epoch
+        ):
+            # Switch to eval mode
+            self.accelerator.unwrap_model(self.adapter).eval()
+            self.optimizer_eval_fn()
+
+            # Sample images
+            self.strategies.sample_images(
+                self.accelerator,
+                cfg,
+                0,
+                self.global_step,
+                self.accelerator.device,
+                self.vae,
+                self.tokenizers,
+                self._text_encoder,
+                self.unet,
+            )
+
+            # Calculate val loss if needed
+            if calculate_val_loss_check(
+                cfg.validation, cfg.training, self.global_step, 0, self._val_dataloader, self.num_batches_per_epoch
+            ):
+                self._current_val_loss, self._average_val_loss = self.strategies.calculate_val_loss(
+                    self.global_step,
+                    0,
+                    self.num_batches_per_epoch,
+                    self._val_loss_recorder,
+                    self._val_dataloader,
+                    self._cyclic_val_dataloader,
+                    self.adapter,
+                    self._tokenize_strategy,
+                    self.text_encoders,
+                    self._text_encoding_strategy,
+                    self.unet,
+                    self.vae,
+                    self.noise_scheduler,
+                    self.vae_dtype,
+                    self.weight_dtype,
+                    self.accelerator,
+                    cfg,
+                    0,
+                    None,
+                    self._train_text_encoder,
+                )
+
+            # Switch back to train mode
+            self.optimizer_train_fn()
+            self.accelerator.unwrap_model(self.adapter).train()
 
     def _finalize_training(self) -> None:
         """Cleanup and final save after training completes."""
-        # TODO: Extract from sdxl_peft.py lines ~1307-1334
-        pass
+        from library.training.checkpointing import get_last_ckpt_name, save_state_on_train_end
 
-    def _create_epoch_dataloader(self, epoch: int) -> Any:
-        """Create DataLoader for a specific epoch."""
-        # TODO: Extract from sdxl_peft.py epoch manifest + dataloader creation
-        raise NotImplementedError("_create_epoch_dataloader() not yet implemented")
+        cfg = self.cfg
+
+        # Update metadata
+        self._metadata["ss_training_finished_at"] = str(time.time())
+
+        # Unwrap adapter on main process
+        if self.is_main_process:
+            self.adapter = self.accelerator.unwrap_model(self.adapter)
+
+        self.accelerator.end_training()
+        self.optimizer_eval_fn()
+
+        # Save state if configured
+        if self.is_main_process and (cfg.output.saving.save_state or cfg.output.saving.save_state_on_train_end):
+            save_state_on_train_end(cfg.output.saving, self.accelerator)
+
+        # Save final checkpoint
+        if self.is_main_process:
+            import torch
+
+            ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as)
+            self.save_checkpoint(ckpt_name, self.adapter, self.global_step, self.num_train_epochs, force_sync_upload=True)
+
+            if cfg.loss.edm2.edm2_loss_weighting:
+                loss_weights_ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, "_edm2_loss_weights")
+                self.save_checkpoint(
+                    loss_weights_ckpt_name,
+                    self.accelerator.unwrap_model(self._edm2_model),
+                    self.global_step,
+                    self.num_train_epochs,
+                    force_sync_upload=True,
+                    dtype_override=torch.float32,
+                )
+
+        logger.info("model saved.")
 
     @property
     def is_main_process(self) -> bool:
