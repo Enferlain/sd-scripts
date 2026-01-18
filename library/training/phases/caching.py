@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import torch
 from tqdm import tqdm
@@ -20,56 +20,50 @@ from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 
 if TYPE_CHECKING:
-    from accelerate import Accelerator
-    from library.data import DatasetManifest
+    from library.training.trainers.peft_trainer import PeftTrainer
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def run_latent_caching(
-    train_manifest: DatasetManifest,
-    val_manifest: DatasetManifest | None,
-    vae: Any,
-    accelerator: Accelerator,
-    cache_dir: str | None,
-    flip_aug: bool,
-    vae_batch_size: int,
-    num_workers: int,
-    latent_dtype: str,
-    vae_dtype: torch.dtype,
-) -> tuple[DatasetManifest, DatasetManifest | None, SdxlLatentsPipelineStrategy]:
-    """
-    Cache VAE latents for the dataset.
+def run_caching(trainer: PeftTrainer) -> None:
+    """Phase 2: Cache latents and optionally text encoder outputs.
 
     Args:
-        train_manifest: Training dataset manifest to cache
-        val_manifest: Validation dataset manifest (or None)
-        vae: VAE model for encoding
-        accelerator: Accelerator instance
-        cache_dir: Directory to store cache files
-        flip_aug: Whether to cache flipped augmentations
-        vae_batch_size: Batch size for VAE encoding
-        num_workers: Number of worker threads
-        latent_dtype: Data type for latents ("fp16" or "fp32")
-        vae_dtype: Torch dtype for VAE computation
-
-    Returns:
-        Tuple of (train_manifest, val_manifest, latent_strategy)
+        trainer: PeftTrainer instance containing cfg, vae, accelerator, manifests, etc.
     """
-    latent_strategy = SdxlLatentsPipelineStrategy(
-        flip_aug=flip_aug,
+    run_latent_caching(trainer)
+    run_te_caching(trainer)
+
+
+def run_latent_caching(trainer: PeftTrainer) -> None:
+    """Cache VAE latents for the dataset.
+
+    Updates trainer.train_manifest, trainer.val_manifest, and trainer.latent_strategy.
+
+    Args:
+        trainer: PeftTrainer instance
+    """
+    if not trainer.cfg.data.caching.cache_latents:
+        return
+
+    # Extract config values
+    cache_dir = trainer.cfg.data.caching.cache_dir or trainer.cfg.data.source.train_data_dir
+    latent_dtype = "fp32" if trainer.cfg.performance.precision.no_half_vae else "fp16"
+
+    trainer.latent_strategy = SdxlLatentsPipelineStrategy(
+        flip_aug=trainer.cfg.data.preprocessing.flip_aug,
         dtype=latent_dtype,
     )
 
-    vae.to(accelerator.device, dtype=vae_dtype)
-    vae.requires_grad_(False)
-    vae.eval()
+    trainer.vae.to(trainer.accelerator.device, dtype=trainer.vae_dtype)
+    trainer.vae.requires_grad_(False)
+    trainer.vae.eval()
 
     latent_caching_engine = CachingEngine(
-        strategy=latent_strategy,
-        batch_size=vae_batch_size,
-        num_workers=num_workers,
+        strategy=trainer.latent_strategy,
+        batch_size=trainer.cfg.data.caching.vae_batch_size,
+        num_workers=trainer.cfg.data.caching.num_workers,
     )
 
     # RESOURCE TRACKER START
@@ -81,19 +75,19 @@ def run_latent_caching(
         resource_tracker.start()
     # RESOURCE TRACKER END
 
-    train_manifest = latent_caching_engine.cache_dataset(
-        manifest=train_manifest,
-        model=vae,
-        accelerator=accelerator,
+    trainer.train_manifest = latent_caching_engine.cache_dataset(
+        manifest=trainer.train_manifest,
+        model=trainer.vae,
+        accelerator=trainer.accelerator,
         cache_dir=cache_dir,
-        flip_aug=flip_aug,
+        flip_aug=trainer.cfg.data.preprocessing.flip_aug,
         cache_type="Latent Caching",
     )
-    if val_manifest is not None:
-        val_manifest = latent_caching_engine.cache_dataset(
-            manifest=val_manifest,
-            model=vae,
-            accelerator=accelerator,
+    if trainer.val_manifest is not None:
+        trainer.val_manifest = latent_caching_engine.cache_dataset(
+            manifest=trainer.val_manifest,
+            model=trainer.vae,
+            accelerator=trainer.accelerator,
             cache_dir=cache_dir,
             flip_aug=False,  # No flip aug for validation
             cache_type="Latent Caching",
@@ -104,57 +98,38 @@ def run_latent_caching(
         stats = resource_tracker.stop()
         logger.info(f"\n{stats.summary()}")
 
-    vae.to("cpu")
-    clean_memory_on_device(accelerator.device)
-    accelerator.wait_for_everyone()
-
-    return train_manifest, val_manifest, latent_strategy
+    trainer.vae.to("cpu")
+    clean_memory_on_device(trainer.accelerator.device)
+    trainer.accelerator.wait_for_everyone()
 
 
-def run_te_caching(
-    train_manifest: DatasetManifest,
-    val_manifest: DatasetManifest | None,
-    text_encoders: list[Any],
-    tokenizers: list[Any],
-    accelerator: Accelerator,
-    cache_dir: str | None,
-    max_token_length: int | None,
-    te_batch_size: int | None,
-    cache_to_disk: bool,
-) -> tuple[DatasetManifest, DatasetManifest | None, SdxlTextEncoderPipelineStrategy | None]:
-    """
-    Cache text encoder outputs for the dataset.
+def run_te_caching(trainer: PeftTrainer) -> None:
+    """Cache text encoder outputs for the dataset.
+
+    Updates trainer.train_manifest, trainer.val_manifest, and trainer.te_strategy.
 
     Args:
-        train_manifest: Training dataset manifest to cache
-        val_manifest: Validation dataset manifest (or None)
-        text_encoders: List of text encoder models
-        tokenizers: List of tokenizer instances
-        accelerator: Accelerator instance
-        cache_dir: Directory to store cache files
-        max_token_length: Maximum token length
-        te_batch_size: Batch size for TE encoding
-        cache_to_disk: If True, save to disk; if False, store in memory
-
-    Returns:
-        Tuple of (train_manifest, val_manifest, te_strategy)
+        trainer: PeftTrainer instance
     """
+    if not trainer.cfg.data.caching.cache_text_encoder_outputs:
+        return
+
+    cache_dir = trainer.cfg.data.caching.cache_dir or trainer.cfg.data.source.train_data_dir
+
     # Move text encoders to GPU for caching
-    for t_enc in text_encoders:
-        t_enc.to(accelerator.device)
+    for t_enc in trainer.text_encoders:
+        t_enc.to(trainer.accelerator.device)
         t_enc.requires_grad_(False)
         t_enc.eval()
 
-    te_strategy = None
-
-    if cache_to_disk:
+    if trainer.cfg.data.caching.cache_text_encoder_outputs_to_disk:
         # Disk-based TE caching: use CachingEngine
-        te_strategy = SdxlTextEncoderPipelineStrategy(
-            max_token_length=max_token_length,
+        trainer.te_strategy = SdxlTextEncoderPipelineStrategy(
+            max_token_length=trainer.cfg.training.max_token_length,
         )
         te_caching_engine = CachingEngine(
-            strategy=te_strategy,
-            batch_size=te_batch_size,
+            strategy=trainer.te_strategy,
+            batch_size=trainer.cfg.data.caching.te_batch_size,
         )
 
         # RESOURCE TRACKER START
@@ -166,18 +141,18 @@ def run_te_caching(
             te_resource_tracker.start()
         # RESOURCE TRACKER END
 
-        train_manifest = te_caching_engine.cache_dataset(
-            manifest=train_manifest,
-            model=(*text_encoders, *tokenizers),  # SDXL: (clip_l_enc, clip_g_enc, clip_l_tok, clip_g_tok)
-            accelerator=accelerator,
+        trainer.train_manifest = te_caching_engine.cache_dataset(
+            manifest=trainer.train_manifest,
+            model=(*trainer.text_encoders, *trainer.tokenizers),  # SDXL: (clip_l_enc, clip_g_enc, clip_l_tok, clip_g_tok)
+            accelerator=trainer.accelerator,
             cache_dir=cache_dir,
             cache_type="TE Caching",
         )
-        if val_manifest is not None:
-            val_manifest = te_caching_engine.cache_dataset(
-                manifest=val_manifest,
-                model=(*text_encoders, *tokenizers),
-                accelerator=accelerator,
+        if trainer.val_manifest is not None:
+            trainer.val_manifest = te_caching_engine.cache_dataset(
+                manifest=trainer.val_manifest,
+                model=(*trainer.text_encoders, *trainer.tokenizers),
+                accelerator=trainer.accelerator,
                 cache_dir=cache_dir,
                 cache_type="TE Caching",
             )
@@ -192,26 +167,28 @@ def run_te_caching(
         from library.strategies.sdxl.training import tokenize_sdxl_captions
         from library.models.sdxl.text_encoder import get_hidden_states_sdxl
 
-        def _cache_te_in_memory(manifest: DatasetManifest, desc: str) -> None:
+        def _cache_te_in_memory(manifest, desc: str) -> None:
             """Cache TE outputs in memory for a manifest."""
             for entry in tqdm(
                 manifest.entries.values(),
                 desc=desc,
-                disable=accelerator.process_index != 0,
+                disable=trainer.accelerator.process_index != 0,
             ):
-                input_ids1, input_ids2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], [entry.caption], max_token_length)
-                input_ids1 = input_ids1.to(accelerator.device)
-                input_ids2 = input_ids2.to(accelerator.device)
+                input_ids1, input_ids2 = tokenize_sdxl_captions(
+                    trainer.tokenizers[0], trainer.tokenizers[1], [entry.caption], trainer.cfg.training.max_token_length
+                )
+                input_ids1 = input_ids1.to(trainer.accelerator.device)
+                input_ids2 = input_ids2.to(trainer.accelerator.device)
 
                 with torch.no_grad():
                     hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
-                        max_token_length,
+                        trainer.cfg.training.max_token_length,
                         input_ids1,
                         input_ids2,
-                        tokenizers[0],
-                        tokenizers[1],
-                        text_encoders[0],
-                        text_encoders[1],
+                        trainer.tokenizers[0],
+                        trainer.tokenizers[1],
+                        trainer.text_encoders[0],
+                        trainer.text_encoders[1],
                     )
                     entry.te_outputs = {
                         "hidden_state1": hidden_state1.squeeze(0).cpu(),
@@ -220,14 +197,12 @@ def run_te_caching(
                     }
 
         logger.info("Computing text encoder outputs in memory...")
-        _cache_te_in_memory(train_manifest, "TE caching (memory)")
-        if val_manifest is not None:
-            _cache_te_in_memory(val_manifest, "TE caching val (memory)")
+        _cache_te_in_memory(trainer.train_manifest, "TE caching (memory)")
+        if trainer.val_manifest is not None:
+            _cache_te_in_memory(trainer.val_manifest, "TE caching val (memory)")
 
     # Move text encoders back to CPU to save VRAM
-    for t_enc in text_encoders:
+    for t_enc in trainer.text_encoders:
         t_enc.to("cpu")
-    clean_memory_on_device(accelerator.device)
-    accelerator.wait_for_everyone()
-
-    return train_manifest, val_manifest, te_strategy
+    clean_memory_on_device(trainer.accelerator.device)
+    trainer.accelerator.wait_for_everyone()

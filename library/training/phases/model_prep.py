@@ -11,7 +11,7 @@ import importlib
 import logging
 import os
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import torch
 from torch import nn
@@ -19,38 +19,43 @@ from torch import nn
 from library.adapters.lora_utils import resolve_adapter_kwargs
 
 if TYPE_CHECKING:
-    from accelerate import Accelerator
-    from library.strategies.base.training import TrainingStrategy
+    from library.training.trainers.peft_trainer import PeftTrainer
 
+from library.utils.common_utils import setup_logging
+
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def create_adapter(
-    cfg: Any,
-    vae: nn.Module,
-    text_encoder: Any,  # TODO: Migrate adapter APIs to use text_encoders list instead
-    unet: nn.Module,
-    accelerator: Accelerator,
-    strategies: TrainingStrategy,
-    text_encoders: list[nn.Module],
-    weight_dtype: torch.dtype,
-) -> tuple[nn.Module | None, dict]:
-    """
-    Create and configure the adapter (LoRA/LyCORIS) for training.
+def prepare_models(trainer: PeftTrainer) -> None:
+    """Phase 3: Create adapter and configure precision.
+
+    Updates trainer.adapter, trainer.net_kwargs, trainer.unet_weight_dtype,
+    and trainer.te_weight_dtype.
 
     Args:
-        cfg: Config object with PEFT settings
-        vae: VAE model
-        text_encoder: Text encoder(s) - original reference
-        unet: UNet model
-        accelerator: Accelerator instance
-        strategies: Training strategy for post-processing
-        text_encoders: List of text encoders
-        weight_dtype: Weight dtype for merging
-
-    Returns:
-        Tuple of (adapter, net_kwargs), or (None, {}) if creation failed
+        trainer: PeftTrainer instance
     """
+    create_adapter(trainer)
+    configure_precision(trainer)
+
+
+def create_adapter(trainer: PeftTrainer) -> None:
+    """Create and configure the adapter (LoRA/LyCORIS) for training.
+
+    Updates trainer.adapter and trainer.net_kwargs.
+
+    Args:
+        trainer: PeftTrainer instance
+    """
+    cfg = trainer.cfg
+    accelerator = trainer.accelerator
+    vae = trainer.vae
+    unet = trainer.unet
+    text_encoder = trainer._text_encoder  # TODO: Original reference for adapter API
+    text_encoders = trainer.text_encoders
+    weight_dtype = trainer.weight_dtype
+
     # Import adapter module dynamically
     sys.path.append(os.path.dirname(__file__))  # TODO: Maybe leftover from different location adapters, idk investigate
     accelerator.print("import peft module:", cfg.peft.adapter_module)
@@ -103,8 +108,7 @@ def create_adapter(
         )
 
     if adapter is None:
-        logger.warning("Adapter creation returned None - check adapter module configuration")
-        return None, {}
+        raise RuntimeError("Adapter creation returned None - check adapter module configuration")
 
     # Prepare adapter if method exists
     if hasattr(adapter, "prepare_adapter"):
@@ -114,11 +118,11 @@ def create_adapter(
         logger.warning("warning: scale_weight_norms is specified but the peft does not support it")
         cfg.peft.scale_weight_norms = False
 
-    strategies.post_process_adapter(cfg, accelerator, adapter, text_encoders, unet)
+    trainer.strategies.post_process_adapter(cfg, accelerator, adapter, text_encoders, unet)
 
     # Apply adapter to unet and text_encoder
-    train_unet = strategies.is_train_unet(cfg)
-    train_text_encoder = strategies.is_train_text_encoder(cfg)
+    train_unet = trainer.strategies.is_train_unet(cfg)
+    train_text_encoder = trainer.strategies.is_train_text_encoder(cfg)
     adapter.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 
     # Load weights if specified
@@ -126,35 +130,26 @@ def create_adapter(
         info = adapter.load_weights(cfg.peft.adapter_weights)
         accelerator.print(f"load peft weights from {cfg.peft.adapter_weights}: {info}")
 
-    return adapter, net_kwargs
+    trainer.adapter = adapter
+    trainer.net_kwargs = net_kwargs
 
 
-def configure_precision(
-    cfg: Any,
-    unet: nn.Module,
-    text_encoders: list[nn.Module],
-    adapter: nn.Module,
-    weight_dtype: torch.dtype,
-    accelerator: Accelerator,
-    strategies: TrainingStrategy,
-) -> tuple[torch.dtype, torch.dtype]:
-    """
-    Configure precision settings for UNet, text encoders, and adapter.
+def configure_precision(trainer: PeftTrainer) -> None:
+    """Configure precision settings for UNet, text encoders, and adapter.
 
-    Handles fp8, fp16, bf16 precision configurations.
+    Updates trainer.unet_weight_dtype and trainer.te_weight_dtype.
 
     Args:
-        cfg: Config object with precision settings
-        unet: UNet model
-        text_encoders: List of text encoder models
-        adapter: Adapter module
-        weight_dtype: Base weight dtype
-        accelerator: Accelerator instance
-        strategies: Training strategy
-
-    Returns:
-        Tuple of (unet_weight_dtype, te_weight_dtype)
+        trainer: PeftTrainer instance
     """
+    cfg = trainer.cfg
+    unet = trainer.unet
+    text_encoders = trainer.text_encoders
+    adapter = trainer.adapter
+    weight_dtype = trainer.weight_dtype
+    accelerator = trainer.accelerator
+    strategies = trainer.strategies
+
     # Full fp16/bf16 training - cast entire adapter
     if cfg.performance.precision.full_fp16:
         accelerator.print("enable full fp16 training.")
@@ -194,4 +189,5 @@ def configure_precision(
             if te_weight_dtype != weight_dtype:
                 strategies.prepare_text_encoder_fp8(i, t_enc, te_weight_dtype, weight_dtype)
 
-    return unet_weight_dtype, te_weight_dtype
+    trainer.unet_weight_dtype = unet_weight_dtype
+    trainer.te_weight_dtype = te_weight_dtype
