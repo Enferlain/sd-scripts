@@ -76,7 +76,7 @@ class PeftTrainer:
         self.strategies = strategies
 
         # Will be set during setup()
-        self.accelerator: Accelerator | None = None
+        self._accelerator: Accelerator | None = None
         self.device: torch.device | None = None
         self.weight_dtype: torch.dtype | None = None
         self.save_dtype: torch.dtype | None = None
@@ -194,6 +194,12 @@ class PeftTrainer:
 
         self._finalize_training()
 
+    @property
+    def accelerator(self) -> Accelerator:
+        if self._accelerator is None:
+            raise RuntimeError("Accelerator not initialized. Call setup() first.")
+        return self._accelerator
+
     # =========================================================================
     # Phase Methods - Delegate to phase functions
     # =========================================================================
@@ -227,7 +233,7 @@ class PeftTrainer:
 
         # Prepare accelerator first (needed for distributed caching)
         logger.info("preparing accelerator")
-        self.accelerator = prepare_accelerator(
+        self._accelerator = prepare_accelerator(
             self.cfg.performance.precision,
             self.cfg.performance.compilation,
             self.cfg.performance.distributed,
@@ -611,4 +617,4 @@ class PeftTrainer:
     @property
     def is_main_process(self) -> bool:
         """Check if this is the main process."""
-        return self.accelerator.is_main_process if self.accelerator else True
+        return self.accelerator.is_main_process if self._accelerator else True
