@@ -16,8 +16,8 @@ The refactor has improved the stability of the training loop by removing the agg
 *   **Legacy Behavior:** The script aggressively deleted Text Encoder instances if `is_text_encoder_not_needed_for_training(cfg)` returned true.
 *   **Refactored Behavior:** The Text Encoders are retained but moved to CPU.
 *   **Analysis:** The legacy behavior was a "footgun." Deleting the Text Encoders caused runtime crashes if the user enabled features that require them, specifically:
-    *   Validation Loop (`calculate_val_loss`)
-    *   Sample Image Generation (`sample_images`)
+  *   Validation Loop (`calculate_val_loss`)
+  *   Sample Image Generation (`sample_images`)
 *   **Conclusion:** The new behavior is safer and prevents valid configurations from crashing. The slight increase in system RAM usage is an acceptable trade-off for stability.
 
 ### 2. Text Encoder Offloading
@@ -40,9 +40,9 @@ The refactor has improved the stability of the training loop by removing the agg
 **Status:** ⚠️ **Mostly Correct (Affected by Regression)**
 
 *   **Analysis:** `clean_memory_on_device()` is correctly called:
-    *   After Latent Caching (`phases/caching.py`)
-    *   After TE Caching (`phases/caching.py`)
-    *   Before the main training loop starts (`peft_trainer.py`)
+  *   After Latent Caching (`phases/caching.py`)
+  *   After TE Caching (`phases/caching.py`)
+  *   Before the main training loop starts (`peft_trainer.py`)
 *   **Missing Call:** The legacy script had a specific `clean_memory_on_device()` call inside the `offload_text_encoders` block. Since that block is missing (see item #2), this specific memory cleanup is also missing.
 
 ### 4. Unwrap Sequence
@@ -50,13 +50,13 @@ The refactor has improved the stability of the training loop by removing the agg
 
 *   **Concern:** Ensure adapter is unwrapped before `accelerator.end_training()`.
 *   **Verification:**
-    *   **Legacy:**
+  *   **Legacy:**
         ```python
         if is_main_process:
             adapter = accelerator.unwrap_model(adapter)
         accelerator.end_training()
         ```
-    *   **Refactor (`peft_trainer.py`):**
+  *   **Refactor (`peft_trainer.py`):**
         ```python
         def _finalize_training(self) -> None:
             # ...
