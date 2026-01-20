@@ -149,6 +149,8 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
         trainer.epoch_to_start = trainer._initial_step // trainer.num_batches_per_epoch
 
     trainer.global_step = 0
+    if trainer._initial_step > 0:
+        trainer.global_step = trainer._initial_step
 
 
 def _prepare_with_accelerator(trainer: PeftTrainer) -> None:
