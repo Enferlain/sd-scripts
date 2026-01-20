@@ -35,6 +35,14 @@ def run_caching(trainer: PeftTrainer) -> None:
     run_latent_caching(trainer)
     run_te_caching(trainer)
 
+    # Handle TE offloading for on-the-fly encoding (when TE outputs are NOT cached)
+    # If TE caching was done, TEs are already moved to CPU in run_te_caching()
+    if not trainer.cfg.data.caching.cache_text_encoder_outputs and trainer.cfg.performance.memory.offload_text_encoders:
+        logger.info("Offloading text encoders to CPU (on-the-fly encoding enabled)")
+        for t_enc in trainer.text_encoders:
+            t_enc.to("cpu")
+        clean_memory_on_device(trainer.accelerator.device)
+
 
 def run_latent_caching(trainer: PeftTrainer) -> None:
     """Cache VAE latents for the dataset.

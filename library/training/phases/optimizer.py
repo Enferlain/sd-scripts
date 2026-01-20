@@ -56,9 +56,8 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
         trainer.adapter,
     )
 
-    # Get training flags
-    trainer._train_unet = trainer.strategies.is_train_unet(cfg)
-    trainer._train_text_encoder = trainer.strategies.is_train_text_encoder(cfg)
+    # NOTE: trainer._train_unet and trainer._train_text_encoder are set in
+    # prepare_models() -> create_adapter() as single source of truth
 
     # Create validation dataloader (once, deterministic)
     trainer._n_workers = min(cfg.data.loader.num_workers, os.cpu_count() or 1)
@@ -110,15 +109,14 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
         trainer.accelerator.num_processes,
     )
 
-    # Configure precision (from model_prep phase, but needs to happen after optimizer)
-    from library.training.phases.model_prep import configure_precision as _configure_precision
-
-    _configure_precision(trainer)
-
     # Accelerator.prepare - handles distributed training setup
     _prepare_with_accelerator(trainer)
 
     # Gradient checkpointing setup
+    # NOTE: This happens AFTER accelerator.prepare(), matching legacy behavior.
+    # Risk: DDP with cpu_offload_checkpointing=True may have issues if hooks
+    # are registered after wrapping. Requires manual verification in distributed
+    # environments. See AUDIT/1_phase_ordering_dependencies.md for details.
     _setup_gradient_checkpointing(trainer)
 
     # Calculate number of epochs and setup epoch-related config
@@ -144,11 +142,11 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
     # Calculate initial step for resuming
     trainer._initial_step = 0
     trainer.epoch_to_start = 0
+    trainer.global_step = 0
     if steps_from_state is not None:
         trainer._initial_step = steps_from_state
         trainer.epoch_to_start = trainer._initial_step // trainer.num_batches_per_epoch
-
-    trainer.global_step = 0
+        trainer.global_step = steps_from_state  # Restore global_step for correct logging/checkpointing
 
 
 def _prepare_with_accelerator(trainer: PeftTrainer) -> None:

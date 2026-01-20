@@ -14,7 +14,6 @@ import sys
 from typing import TYPE_CHECKING
 
 import torch
-from torch import nn
 
 from library.adapters.lora_utils import resolve_adapter_kwargs
 
@@ -36,6 +35,18 @@ def prepare_models(trainer: PeftTrainer) -> None:
     Args:
         trainer: PeftTrainer instance
     """
+    # Lazy load UNet if it was deferred during setup (memory optimization)
+    # This allows VAE/TE caching to complete before loading the large UNet
+    if trainer.unet is None:
+        trainer.unet, trainer.text_encoders = trainer.strategies.load_unet_lazily(
+            trainer.cfg, trainer.weight_dtype, trainer.accelerator, trainer.text_encoders
+        )
+        # Update _text_encoder reference for adapter API compatibility
+        if len(trainer.text_encoders) > 1:
+            trainer._text_encoder = trainer.text_encoders
+        else:
+            trainer._text_encoder = trainer.text_encoders[0] if trainer.text_encoders else None
+
     create_adapter(trainer)
     configure_precision(trainer)
 
@@ -57,7 +68,10 @@ def create_adapter(trainer: PeftTrainer) -> None:
     weight_dtype = trainer.weight_dtype
 
     # Import adapter module dynamically
-    sys.path.append(os.path.dirname(__file__))  # TODO: Maybe leftover from different location adapters, idk investigate
+    # NOTE: This adds library/training/phases/ to sys.path (legacy added scripts/).
+    # Custom adapter modules should be placed in library/ or have proper PYTHONPATH.
+    # See AUDIT/3_DeepSpeed_Integration.md for context.
+    sys.path.append(os.path.dirname(__file__))
     accelerator.print("import peft module:", cfg.peft.adapter_module)
     adapter_module = importlib.import_module(cfg.peft.adapter_module)
 
@@ -121,9 +135,10 @@ def create_adapter(trainer: PeftTrainer) -> None:
     trainer.strategies.post_process_adapter(cfg, accelerator, adapter, text_encoders, unet)
 
     # Apply adapter to unet and text_encoder
-    train_unet = trainer.strategies.is_train_unet(cfg)
-    train_text_encoder = trainer.strategies.is_train_text_encoder(cfg)
-    adapter.apply_to(text_encoder, unet, train_text_encoder, train_unet)
+    # Set training flags here as single source of truth (used by optimizer phase too)
+    trainer._train_unet = trainer.strategies.is_train_unet(cfg)
+    trainer._train_text_encoder = trainer.strategies.is_train_text_encoder(cfg)
+    adapter.apply_to(text_encoder, unet, trainer._train_text_encoder, trainer._train_unet)
 
     # Load weights if specified
     if cfg.peft.adapter_weights is not None:

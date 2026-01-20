@@ -85,13 +85,13 @@ Scripts (contain training loops):     Library Modules:
   - `library/training/sd_checkpointing.py`
   - `library/training/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
+- [ ] **Refactor `register_adapter_state_hooks`** (low priority) - Return a structured object `{"epoch": int, "step": int}` instead of closure + side-effects for cleaner data flow. See AUDIT/2_AUDIT_RESUME_BEHAVIOR.md recommendation #3.
 
 ---
 
 ## Testability Improvements
 
 - [ ] **Split `prepare_accelerator`** - Separate config computation from side effects
-
   - Currently mixes pure computation (logging_dir, log_with, plugins) with side effects (`os.makedirs`, `os.environ["WANDB_DIR"]`, `wandb.login`)
   - Suggested: Split into `compute_accelerator_config() -> AcceleratorConfig` (pure) and `prepare_accelerator(config)` (side effects)
   - Benefits: Easier to test config logic without network calls or filesystem changes
@@ -100,6 +100,18 @@ Scripts (contain training loops):     Library Modules:
   - Current logic: `if global_step != 0 and ...` skips the check at step 0, implicitly returning `True`
   - This means validation always runs at step 0, but it's easy to miss in the code
   - Suggested: Add explicit early return `if global_step == 0: return True` with comment, or add `validate_at_start` config flag
+
+---
+
+## Validation Refactoring
+
+See `AUDIT/5_Strategy_Pattern_Boundaries.md` for full context.
+
+- [ ] **Move validation loop to Trainer** - `SdxlTrainingStrategy.calculate_val_loss()` currently owns the entire validation loop (dataloader iteration, tqdm, RNG state). This is orchestration that belongs in the Trainer.
+  - Refactor: Extract loop to `PeftTrainer` (or `phases/validation.py`)
+  - Reduce strategy method to `process_val_batch(batch)` for single-batch loss computation
+- [ ] **Add missing ABC definitions** - `TrainingStrategy` ABC is missing `process_batch` and `calculate_val_loss`/`process_val_batch`. Trainer calls them dynamically, bypassing type safety.
+- [ ] **Rename `_log_training_info`** - Currently initializes noise scheduler, plotters, trackers (setup concerns), not just logging. Rename to `_finalize_setup` or move initialization to proper phase.
 
 ---
 
@@ -114,7 +126,6 @@ Scripts (contain training loops):     Library Modules:
 ## Future Ideas
 
 - [ ] **Sample Generation Config Defaults** - Add global defaults to `SamplingConfig` for common sampling parameters:
-
   - `sample_width`, `sample_height` (default dimensions)
   - `sample_steps`, `sample_cfg_scale` (default inference settings)
   - `sample_negative_prompt` (global negative prompt)
@@ -122,11 +133,9 @@ Scripts (contain training loops):     Library Modules:
   - Also: Add YAML support for `sample_prompts` for consistency with the rest of the config system (currently only .txt, .toml, .json)
 
 - [ ] **Support for feather** - https://github.com/SuriyaaMM/feather
-
   - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support. Currently only considered for inference
 
 - [ ] **Investigate 2022-2023 backend code**
-
   - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line.
 
 ### Future Improvements
@@ -267,19 +276,16 @@ cache/
 ### Design Principles
 
 1. **Config-Hash Namespacing**
-
    - Changing bucket settings writes to a _new_ namespace (new hash directory)
    - No in-place rewriting; old cache remains until explicitly deleted
    - Same pattern as how per-image caches invalidate when settings change
 
 2. **Caption-Hash Deduplication for TE**
-
    - TE outputs keyed by caption hash, not image ID
    - Same caption → same encoding (dedup across images sharing captions)
    - Hash must include: tokenizer settings, max_length, clip_skip, encoder version
 
 3. **Independent Invalidation**
-
    - Latent config hash: `bucket_steps`, `base_resolution`, `no_upscale`, etc.
    - TE config hash: `tokenizer_version`, `max_token_length`, `clip_skip`, etc.
    - Change buckets → only rebuild latent shards (TE remains valid)
@@ -308,7 +314,6 @@ cache/
    ```
 
 2. **Training-facing API unchanged**
-
    - Same `CacheData` contract
    - Same `CachingStrategy` interface
    - Backend switch via config (`cache_backend: "per_image" | "sharded"`)

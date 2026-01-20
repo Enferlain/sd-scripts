@@ -12,12 +12,11 @@ import math
 import os
 import time
 import random
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 from types import SimpleNamespace
 
 import torch
-from torch import nn, Tensor
+from torch import nn
 
 import library.strategies.base.tokenization
 import library.strategies.base.caching
@@ -37,18 +36,18 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class StepOutput:
-    """Output from a single training step.
+# @dataclass
+# class StepOutput:
+#     """Output from a single training step.
 
-    Separates model math from loop policy - the trainer returns this
-    and the loop decides what to do with it (checkpoint, log, etc.)
-    """
+#     Separates model math from loop policy - the trainer returns this
+#     and the loop decides what to do with it (checkpoint, log, etc.)
+#     """
 
-    loss: float  # Pre-scaling loss value for logging
-    timesteps: Tensor  # Timesteps used in this batch
-    did_sync: bool  # True if gradients synced (global_step increments)
-    metrics: dict = field(default_factory=dict)  # Optional extra metrics
+#     loss: float  # Pre-scaling loss value for logging
+#     timesteps: Tensor  # Timesteps used in this batch
+#     did_sync: bool  # True if gradients synced (global_step increments)
+#     metrics: dict = field(default_factory=dict)  # Optional extra metrics
 
 
 class PeftTrainer:
@@ -76,7 +75,7 @@ class PeftTrainer:
         self.strategies = strategies
 
         # Will be set during setup()
-        self.accelerator: Accelerator | None = None
+        self._accelerator: Accelerator | None = None
         self.device: torch.device | None = None
         self.weight_dtype: torch.dtype | None = None
         self.save_dtype: torch.dtype | None = None
@@ -227,7 +226,7 @@ class PeftTrainer:
 
         # Prepare accelerator first (needed for distributed caching)
         logger.info("preparing accelerator")
-        self.accelerator = prepare_accelerator(
+        self._accelerator = prepare_accelerator(
             self.cfg.performance.precision,
             self.cfg.performance.compilation,
             self.cfg.performance.distributed,
@@ -609,6 +608,13 @@ class PeftTrainer:
         logger.info("model saved.")
 
     @property
+    def accelerator(self) -> Accelerator:
+        """Get accelerator, asserting it was initialized via setup()."""
+        if self._accelerator is None:
+            raise RuntimeError("Accelerator not initialized. Call setup() first.")
+        return self._accelerator
+
+    @property
     def is_main_process(self) -> bool:
         """Check if this is the main process."""
-        return self.accelerator.is_main_process if self.accelerator else True
+        return self._accelerator.is_main_process if self._accelerator else True

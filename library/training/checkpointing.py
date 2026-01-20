@@ -160,9 +160,7 @@ def resume_from_local_or_hf_if_specified(
     loop = asyncio.get_event_loop()
     results = loop.run_until_complete(asyncio.gather(*[download(filename=filename.rfilename) for filename in list_files]))
     if len(results) == 0:
-        raise ValueError(
-            "No files found in the specified repo id/path/revision"
-        )
+        raise ValueError("No files found in the specified repo id/path/revision")
     dirname = os.path.dirname(results[0])
     accelerator.load_state(dirname)
 
@@ -587,6 +585,9 @@ def register_adapter_state_hooks(accelerator: "Accelerator", adapter, cfg, curre
             with open(train_state_file, encoding="utf-8") as f:
                 data = json.load(f)
             state_container["steps_from_state"] = data["current_step"]
+            # Also update the SimpleNamespace objects so trainer state is immediately correct
+            current_epoch.value = data["current_epoch"]
+            current_step.value = data["current_step"]
             logger.info(f"load train state from {train_state_file}: {data}")
 
     accelerator.register_save_state_pre_hook(save_model_hook)
