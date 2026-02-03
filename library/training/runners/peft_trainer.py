@@ -26,7 +26,6 @@ from library.utils.common_utils import setup_logging
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.data import create_manifest_from_config, get_or_create_manifest, DatasetManifest, Bucket
 
-
 if TYPE_CHECKING:
     from accelerate import Accelerator
     from library.strategies.base.training import TrainingStrategy
@@ -377,7 +376,7 @@ class PeftTrainer:
         metadata_to_save.update(modelspec_metadata)
 
         save_dtype = dtype_override or self.save_dtype
-        unwrapped_adapter.save_weights(ckpt_file, save_dtype, metadata_to_save)
+        unwrapped_adapter.save_weights(ckpt_file, save_dtype, metadata_to_save)  # type: ignore[union-attr]
 
         if self.cfg.output.huggingface.huggingface_repo_id is not None:
             from library.utils import huggingface_util
@@ -423,6 +422,7 @@ class PeftTrainer:
         total_batch_size = cfg.training.train_batch_size * self.accelerator.num_processes * cfg.training.gradient_accumulation_steps
 
         # Calculate stats from manifest
+        assert self.train_manifest is not None, "train_manifest must be set before _log_training_info"
         num_train_images = sum(e.num_repeats for e in self.train_manifest.entries.values() if not e.is_reg)
         num_reg_images = sum(e.num_repeats for e in self.train_manifest.entries.values() if e.is_reg)
         num_val_images = sum(e.num_repeats for e in self.val_manifest.entries.values()) if self.val_manifest else 0
@@ -439,6 +439,8 @@ class PeftTrainer:
         self.accelerator.print(f"  total optimization steps: {self.max_train_steps}")
 
         # Create training metadata
+        # Convert optimizer_args dict to a formatted string for metadata
+        optimizer_args_str = ", ".join(f"{k}={v}" for k, v in self.optimizer_args.items())
         self._metadata, self._minimum_metadata = create_training_metadata(
             cfg=cfg,
             manifest=self.train_manifest,
@@ -448,7 +450,7 @@ class PeftTrainer:
             model_version=self._model_version,
             num_train_epochs=self.num_train_epochs,
             optimizer_name=self.optimizer_name,
-            optimizer_args=self.optimizer_args,
+            optimizer_args=optimizer_args_str,
             net_kwargs=self.net_kwargs,
             num_batches_per_epoch=self.num_batches_per_epoch,
             total_batch_size=total_batch_size,
@@ -540,6 +542,8 @@ class PeftTrainer:
             if calculate_val_loss_check(
                 cfg.validation, cfg.training, self.global_step, 0, self._val_dataloader, self.num_batches_per_epoch
             ):
+                assert self.vae_dtype is not None, "vae_dtype must be set"
+                assert self.weight_dtype is not None, "weight_dtype must be set"
                 self._current_val_loss, self._average_val_loss = self.strategies.calculate_val_loss(
                     self.global_step,
                     0,
@@ -591,6 +595,7 @@ class PeftTrainer:
         if self.is_main_process:
             import torch
 
+            assert self.adapter is not None, "adapter must be set before finalizing"
             ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as)
             self.save_checkpoint(ckpt_name, self.adapter, self.global_step, self.num_train_epochs, force_sync_upload=True)
 

@@ -1,3 +1,4 @@
+# todo: organize
 logs
 __pycache__
 wd14_tagger_model
@@ -10,7 +11,7 @@ CLAUDE.md
 GEMINI.md
 .claude
 .gemini
-.agent
+!.agent
 .idea
 .mypy_cache
 .pytest_cache

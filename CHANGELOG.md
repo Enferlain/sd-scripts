@@ -5,7 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2026-02-03]
+
+### Added
+
+- **Phase Function Unit Tests**: Added unit test suite for extracted training phases
+  - Created `tests/unit/training/phases/` with 35 tests covering `caching.py`, `model_prep.py`, `optimizer.py`, and `training_loop.py`
+  - Shared fixtures in `conftest.py` with deeply mocked `PeftTrainer` for isolated testing
+- **INTEGRATION_TESTING.md**: Created comprehensive integration testing checklist for manual verification of trainer features (checkpointing, sampling, validation, etc.)
+- **Abstract Base Methods**: Added missing `process_batch` and `calculate_val_loss` abstract methods to `TrainingStrategy` base class for better type safety
+
+### Changed
+
+- **training loop**: Renamed `training/trainers` → `training/runners`
+
+### Fixed
+
+- **Type warnings in PeftTrainer**: Added assertions for optional types (`train_manifest`, `vae_dtype`, `weight_dtype`, `adapter`) and fixed `optimizer_args` dict→str conversion
+- **Linting**: Ran `ruff check --fix` to auto-fix 66 issues across codebase
 
 ## [2026-01-20]
 

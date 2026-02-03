@@ -10,8 +10,6 @@ import sd_textual_inversion
 from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl.conversion import get_size_embeddings
 from library.utils.device_utils import init_ipex
-from library.strategies.sdxl import strategy_sdxl
-from library.strategies.sd import strategy_sd
 from library.data._deprecated.dataset import DatasetGroup, MinimalDataset
 from library.training.sdxl_sample_generation import sample_images
 from library.models.sdxl.loader import load_target_model as load_target_model_sdxl

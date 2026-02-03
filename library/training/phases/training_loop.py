@@ -33,7 +33,7 @@ from library.training.trainer_utils import determine_grad_sync_context, calculat
 from library.utils.common_utils import setup_logging
 
 if TYPE_CHECKING:
-    from library.training.trainers.peft_trainer import PeftTrainer
+    from library.training.runners.peft_trainer import PeftTrainer
 
 setup_logging()
 logger = logging.getLogger(__name__)

@@ -1,7 +1,6 @@
 import unittest
-from unittest.mock import MagicMock, patch
-import torch
-from library.training.trainers.peft_trainer import PeftTrainer
+from unittest.mock import MagicMock
+from library.training.runners.peft_trainer import PeftTrainer
 
 
 class TestPeftTrainer(unittest.TestCase):

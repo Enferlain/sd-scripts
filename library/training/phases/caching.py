@@ -20,7 +20,7 @@ from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 
 if TYPE_CHECKING:
-    from library.training.trainers.peft_trainer import PeftTrainer
+    from library.training.runners.peft_trainer import PeftTrainer
 
 setup_logging()
 logger = logging.getLogger(__name__)

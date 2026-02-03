@@ -21,7 +21,7 @@ from library.performance import deepspeed_utils
 from library.training.checkpointing import register_adapter_state_hooks, resume_from_local_or_hf_if_specified
 
 if TYPE_CHECKING:
-    from library.training.trainers.peft_trainer import PeftTrainer
+    from library.training.runners.peft_trainer import PeftTrainer
 
 from library.utils.common_utils import setup_logging
 

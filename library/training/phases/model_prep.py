@@ -18,7 +18,7 @@ import torch
 from library.adapters.lora_utils import resolve_adapter_kwargs
 
 if TYPE_CHECKING:
-    from library.training.trainers.peft_trainer import PeftTrainer
+    from library.training.runners.peft_trainer import PeftTrainer
 
 from library.utils.common_utils import setup_logging
 

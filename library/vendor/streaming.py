@@ -13,15 +13,15 @@ import numpy
 import torch
 import warnings
 from collections import OrderedDict
-from typing import Optional, Mapping, Iterator, Iterable, Tuple
+from collections.abc import Mapping, Iterator, Iterable
 from tqdm import tqdm
 from .typing_ import WriteOnlyMapping
 
 
 @dataclasses.dataclass
 class TensorMetadata:
-    shape: Optional[torch.Size]
-    dtype: Optional[torch.dtype]
+    shape: torch.Size | None
+    dtype: torch.dtype | None
 
     def __post_init__(self):
         if isinstance(self.shape, list):
@@ -64,7 +64,7 @@ class SafetensorsMapping(Mapping[str, torch.Tensor], abc.ABC):
         ...
 
     @abc.abstractmethod
-    def metadata(self) -> Iterable[Tuple[str, TensorMetadata]]:
+    def metadata(self) -> Iterable[tuple[str, TensorMetadata]]:
         ...
 
     @abc.abstractmethod
@@ -72,7 +72,7 @@ class SafetensorsMapping(Mapping[str, torch.Tensor], abc.ABC):
         ...
 
     @abc.abstractmethod
-    def items(self) -> Iterable[Tuple[str, torch.Tensor]]:
+    def items(self) -> Iterable[tuple[str, torch.Tensor]]:
         ...
 
 
@@ -117,7 +117,7 @@ class InSafetensorsDict(SafetensorsMapping):
             if key != "__metadata__"
         )
 
-    def metadata(self) -> Iterable[Tuple[str, TensorMetadata]]:
+    def metadata(self) -> Iterable[tuple[str, TensorMetadata]]:
         for key in self.keys():
             yield key, TensorMetadata(self.header[key]["shape"],  DTYPE_MAPPING[self.header[key]["dtype"]][0])
 
@@ -125,7 +125,7 @@ class InSafetensorsDict(SafetensorsMapping):
         for key in self.keys():
             yield self[key]
 
-    def items(self) -> Iterable[Tuple[str, torch.Tensor]]:
+    def items(self) -> Iterable[tuple[str, torch.Tensor]]:
         for key in self.keys():
             yield key, self[key]
 
@@ -190,7 +190,7 @@ class OutSafetensorsDict(WriteOnlyMapping[str, torch.Tensor]):
         self,
         file_path: pathlib.Path,
         header: Mapping[str, TensorMetadata],
-        mecha_recipe: Optional[str],
+        mecha_recipe: str | None,
         minimum_buffer_size: int,
     ):
         self.thread_states = {}
@@ -258,7 +258,7 @@ class OutSafetensorsDict(WriteOnlyMapping[str, torch.Tensor]):
         self.file.seek(8 + max_header_size)  # Reserve space for the header
         return max_header_size
 
-    def _flush_buffer(self, state: OutSafetensorsDictThreadState, next_tensor_size: Optional[int] = None, close: bool = False):
+    def _flush_buffer(self, state: OutSafetensorsDictThreadState, next_tensor_size: int | None = None, close: bool = False):
         if not close:
             lock = self.lock
         else:

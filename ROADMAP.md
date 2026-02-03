@@ -168,7 +168,7 @@ See `AUDIT/5_Strategy_Pattern_Boundaries.md` for full context.
 - No truly "universal" shared folder makes sense - different model families have different architectures
 - Truly generic utilities (e.g., `is_safetensors()`) can stay in a `common.py` or move to `utils/`
 
-Currently:
+Old:
 
 ```
 library/models/
@@ -184,7 +184,7 @@ library/models/
 └── ...
 ```
 
-Proposed future structure:
+New structure:
 
 ```
 library/models/

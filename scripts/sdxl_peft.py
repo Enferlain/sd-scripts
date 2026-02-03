@@ -6,7 +6,7 @@ All training logic is now in PeftTrainer and its phase functions.
 
 Model-specific operations are delegated to:
 - library/strategies/sdxl/training.py (strategy pattern)
-- library/training/trainers/peft_trainer.py (trainer orchestration)
+- library/training/runners/peft_trainer.py (trainer orchestration)
 - library/training/phases/*.py (phase-specific logic)
 """
 
@@ -16,7 +16,7 @@ import hydra
 from library.config.config_validation import prepare_config, validate_config
 from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 from library.strategies.sdxl.training import SdxlTrainingStrategy
-from library.training.trainers.peft_trainer import PeftTrainer
+from library.training.runners.peft_trainer import PeftTrainer
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex
 

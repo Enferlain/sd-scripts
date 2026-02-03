@@ -1,6 +1,7 @@
 import logging
 import os
-from typing import Optional, Any, Callable
+from typing import Optional, Any
+from collections.abc import Callable
 
 import numpy as np
 import torch

@@ -3,12 +3,10 @@ Unit tests for library/data/image_utils.py
 """
 
 import hashlib
-import numpy as np
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from PIL import Image
-import cv2
 
 from library.data.image_utils import (
     get_image_size,

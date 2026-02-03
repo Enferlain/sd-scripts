@@ -589,6 +589,112 @@ class TrainingStrategy(
         """
         pass
 
+    @abstractmethod
+    def calculate_val_loss(
+        self,
+        global_step: int,
+        epoch_step: int,
+        train_dataloader: Any,
+        val_loss_recorder: Any,
+        val_dataloader: Any,
+        cyclic_val_dataloader: Any,
+        adapter: Any,
+        tokenize_strategy: Any,
+        text_encoders: list[Any],
+        text_encoding_strategy: Any,
+        unet: Any,
+        vae: Any,
+        noise_scheduler: Any,
+        vae_dtype: torch.dtype,
+        weight_dtype: torch.dtype,
+        accelerator: Any,
+        cfg: Any,
+        epoch: int,
+        batch: Any | None = None,
+        train_text_encoder: bool = True,
+    ) -> tuple[float | None, float | None]:
+        """
+        Calculate validation loss.
+
+        Args:
+            global_step: Global step.
+            epoch_step: Epoch step.
+            train_dataloader: Training dataloader.
+            val_loss_recorder: Validation loss recorder.
+            val_dataloader: Validation dataloader.
+            cyclic_val_dataloader: Cyclic validation dataloader.
+            adapter: Adapter model.
+            tokenize_strategy: Tokenize strategy.
+            text_encoders: List of text encoders.
+            text_encoding_strategy: Text encoding strategy.
+            unet: UNet model.
+            vae: VAE model.
+            noise_scheduler: Noise scheduler.
+            vae_dtype: VAE data type.
+            weight_dtype: Weight data type.
+            accelerator: Accelerator instance.
+            cfg: Configuration object.
+            epoch: Current epoch.
+            batch: Optional batch.
+            train_text_encoder: Train text encoder flag.
+
+        Returns:
+            Tuple of (current_val_loss, average_val_loss).
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def process_batch(
+        self,
+        batch: Any,
+        text_encoders: list[Any],
+        unet: Any,
+        adapter: Any,
+        vae: Any,
+        noise_scheduler: Any,
+        vae_dtype: torch.dtype,
+        weight_dtype: torch.dtype,
+        accelerator: Any,
+        cfg: Any,
+        text_encoding_strategy: Any,
+        tokenize_strategy: Any,
+        is_train: bool = True,
+        train_text_encoder: bool = True,
+        train_unet: bool = True,
+        edm2_model: Any | None = None,
+        min_timestep_override: int | None = None,
+        max_timestep_override: int | None = None,
+        global_step: int = 0,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
+        """
+        Process a batch for training or validation.
+
+        Args:
+            batch: Batch data containing images, captions, latents etc.
+            text_encoders: List of text encoders.
+            unet: UNet model.
+            adapter: Adapter/LoRA model.
+            vae: VAE model.
+            noise_scheduler: Noise scheduler.
+            vae_dtype: VAE data type.
+            weight_dtype: Weight data type.
+            accelerator: Accelerator instance.
+            cfg: Configuration object.
+            text_encoding_strategy: Text encoding strategy.
+            tokenize_strategy: Tokenize strategy.
+            is_train: Training mode flag.
+            train_text_encoder: Train text encoder flag.
+            train_unet: Train UNet flag.
+            edm2_model: EDM2 model (optional).
+            min_timestep_override: Minimum timestep override.
+            max_timestep_override: Maximum timestep override.
+            global_step: Global step.
+
+        Returns:
+            Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
+        """
+        raise NotImplementedError
+
     def load_unet_lazily(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any, text_encoders: list[Any]) -> Any:
         """
         Load UNet lazily if not loaded in load_target_model. Not used by SD.

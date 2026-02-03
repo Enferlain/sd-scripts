@@ -14,7 +14,6 @@ import library.strategies.sdxl.tokenization
 
 
 from library.data._deprecated.dataset import load_arbitrary_dataset
-from library.strategies.sd import strategy_sd
 from library.training.trainer_utils import prepare_accelerator
 from library.utils import config_util
 from library.utils.common_utils import setup_logging, add_logging_arguments
