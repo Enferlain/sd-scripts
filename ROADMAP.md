@@ -65,6 +65,7 @@ Scripts (contain training loops):     Library Modules:
 
 - [ ] Config Validation Edge Cases: Test `prepare_config()` and `validate_config()` for dataset conflicts
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
+- [ ] **Sampling config error**: Add error in `config_validation.py` when both `sample_every_n_steps` and `sample_every_n_epochs` are set (epoch-based takes precedence, step-based silently ignored)
 
 ---
 

@@ -1,0 +1,18 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Integration Test: Memory Optimization
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=test_memory_optim
+
+defaults:
+  - test_core
+  - _self_
+
+data:
+  caching:
+    cache_latents: false # Live encode to test memory offloading logic
+    cache_text_encoder_outputs: false
+
+performance:
+  memory:
+    offload_text_encoders: true
+    gradient_checkpointing: true

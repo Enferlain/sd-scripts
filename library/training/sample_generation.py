@@ -1,4 +1,5 @@
 import os
+import gc
 
 import contextlib
 import json
@@ -240,19 +241,25 @@ def sample_images_check(sampling_config: SamplingConfig, epoch: int | None, step
         bool: True if images should be generated, False otherwise.
     """
     if steps == 0:
-        if not sampling_config.sample_at_first:
-            return False
-    else:
-        if sampling_config.sample_every_n_steps is None and sampling_config.sample_every_n_epochs is None:
-            return False
-        if sampling_config.sample_every_n_epochs is not None:
-            # sample_every_n_steps is ignored
-            if epoch is None or epoch % sampling_config.sample_every_n_epochs != 0:
-                return False
-        else:
-            if steps % sampling_config.sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
-                return False
-    return True
+        return sampling_config.sample_at_first
+
+    # Check if neither sampling mode is configured
+    if sampling_config.sample_every_n_steps is None and sampling_config.sample_every_n_epochs is None:
+        return False
+
+    # Epoch-based sampling takes precedence when configured
+    if sampling_config.sample_every_n_epochs is not None:
+        # At end of epoch (epoch is not None), check epoch divisibility
+        if epoch is not None and epoch % sampling_config.sample_every_n_epochs == 0:
+            return True
+        # Not at end of epoch, don't sample (step-based is ignored when epoch-based is configured)
+        return False
+
+    # Step-based sampling (only when epoch-based is not configured)
+    # Skip at epoch boundaries (epoch is not None) to avoid double-sampling
+    if epoch is not None:
+        return False
+    return steps % sampling_config.sample_every_n_steps == 0
 
 
 def sample_images_common(
@@ -296,19 +303,8 @@ def sample_images_common(
         controlnet: ControlNet model (optional).
     """
 
-    if steps == 0:
-        if not sampling_config.sample_at_first:
-            return
-    else:
-        if sampling_config.sample_every_n_steps is None and sampling_config.sample_every_n_epochs is None:
-            return
-        if sampling_config.sample_every_n_epochs is not None:
-            # sample_every_n_steps is ignored
-            if epoch is None or epoch % sampling_config.sample_every_n_epochs != 0:
-                return
-        else:
-            if steps % sampling_config.sample_every_n_steps != 0 or epoch is not None:  # steps is not divisible or end of epoch
-                return
+    if not sample_images_check(sampling_config, epoch, steps):
+        return
 
     logger.info("")
     logger.info(f"generating sample images at step: {steps}")
@@ -318,15 +314,33 @@ def sample_images_common(
 
     distributed_state = PartialState()  # for multi gpu distributed inference. this is a singleton, so it's safe to use it here
 
-    org_vae_device = vae.device  # Should be on CPU
-    vae.to(distributed_state.device)  # distributed_state.device is same as accelerator.device
+    # Save original devices for all models (they may be on CPU for memory efficiency)
+    org_vae_device = vae.device
 
-    # unwrap unet and text_encoder(s)
+    # unwrap unet and text_encoder(s), saving their original devices
     unet = accelerator.unwrap_model(unet_wrapped)
+    org_unet_device = unet.device
+
     if isinstance(text_encoder, (list, tuple)):
         text_encoder = [accelerator.unwrap_model(te) for te in text_encoder]
+        org_te_devices = [te.device for te in text_encoder]
     else:
         text_encoder = accelerator.unwrap_model(text_encoder)
+        org_te_devices = [text_encoder.device]
+
+    # Save original VAE dtype for restoration after sampling
+    org_vae_dtype = vae.dtype
+
+    # Apply sample_vae_dtype if specified (allows fp16 VAE for sampling even if training uses fp32)
+    if sampling_config.sample_vae_dtype is not None:
+        sample_dtype_map = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}
+        sample_vae_dtype = sample_dtype_map.get(sampling_config.sample_vae_dtype)
+        if sample_vae_dtype is not None and sample_vae_dtype != org_vae_dtype:
+            logger.info(f"Casting VAE from {org_vae_dtype} to {sample_vae_dtype} for sampling")
+            vae.to(dtype=sample_vae_dtype)
+
+    # Move VAE to device (text encoders and unet will be moved by pipeline.to())
+    vae.to(distributed_state.device)
 
     # read prompts
     if sampling_config.sample_prompts.endswith(".txt"):
@@ -394,6 +408,12 @@ def sample_images_common(
                     prompt_replacement,
                     controlnet=controlnet,
                 )
+                # Per-prompt cleanup: free GPU memory between prompts to prevent accumulation
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+
     else:
         # Creating list with N elements, where each element is a list of prompt_dicts, and N is the number of processes available (number of devices available)
         # prompt_dicts are assigned to lists based on order of processes, to attempt to time the image creation time to match enum order. Probably only works when steps and sampler are identical.
@@ -420,14 +440,30 @@ def sample_images_common(
 
     # clear pipeline and cache to reduce vram usage
     del pipeline
+    del default_scheduler
 
     torch.set_rng_state(rng_state)
     if torch.cuda.is_available() and cuda_rng_state is not None:
         torch.cuda.set_rng_state(cuda_rng_state)
-    vae.to(org_vae_device)
 
+    # Restore all models to their original devices and dtypes (critical for training)
+    # This matches the pattern used in caching code (SdxlTrainingStrategy.cache_text_encoder_outputs_if_needed)
+    vae.to(device=org_vae_device, dtype=org_vae_dtype)
+    unet.to(org_unet_device)
+
+    # Restore text encoders - handle both single and list cases
+    if isinstance(text_encoder, (list, tuple)):
+        for te, org_device in zip(text_encoder, org_te_devices):
+            te.to(org_device)
+    else:
+        text_encoder.to(org_te_devices[0])
+
+    # Aggressive cleanup to prevent VRAM accumulation between sampling runs
+    gc.collect()
     clean_memory_on_device(accelerator.device)
-    torch.cuda.synchronize()  # <--- maybe helps between sample and train resumne
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
 
 
 def sample_image_inference(
@@ -508,6 +544,7 @@ def sample_image_inference(
     logger.info(f"sample_sampler: {sampler_name}")
     if seed is not None:
         logger.info(f"seed: {seed}")
+
     with accelerator.autocast(), torch.no_grad():
         latents = pipeline(
             prompt=prompt,
@@ -520,11 +557,12 @@ def sample_image_inference(
             controlnet_image=controlnet_image,
         )
 
-    if torch.cuda.is_available():
-        with torch.cuda.device(torch.cuda.current_device()):
-            torch.cuda.empty_cache()
+    # VAE decode - convert latents to image
+    with torch.no_grad():
+        image = pipeline.latents_to_image(latents)[0]
 
-    image = pipeline.latents_to_image(latents)[0]
+    # Free latents immediately after decode
+    del latents
 
     # adding accelerator.wait_for_everyone() here should sync up and ensure that sample images are saved in the same order as the original prompt list
     # but adding 'enum' to the filename should be enough
@@ -548,3 +586,6 @@ def sample_image_inference(
         wandb_tracker.log(
             {f"sample_{i}": wandb.Image(image, caption=prompt)}, commit=False
         )  # positive prompt as caption, commit=False avoids step mismatch TODO: Parameter 'step' unfilled
+
+    # Cleanup per-inference tensors to prevent accumulation
+    del image, scheduler

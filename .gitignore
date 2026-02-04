@@ -37,3 +37,6 @@ benchmark_output/
 benchmark_cache/
 memory_trace.html
 tmp_output/
+tests/test_logs/
+tests/test_output/
+tests/test_cache/

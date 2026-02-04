@@ -31,6 +31,15 @@ $configMap = @{
     "offload"  = "benchmark_sdxl_offload"
     "workers"  = "benchmark_sdxl_workers"
     "large"    = "benchmark_sdxl_large"
+    "test_core"         = "test_core"
+    "test_checkpoint"   = "test_checkpoint"
+    "test_resume"       = "test_resume"
+    "test_sampling"     = "test_sampling"
+    "test_validation"   = "test_validation"
+    "test_text_encoder" = "test_text_encoder"
+    "test_memory_optim" = "test_memory_optim"
+    "test_advanced"     = "test_advanced"
+    "test_logging"      = "test_logging"
 }
 
 $ErrorActionPreference = "Stop"

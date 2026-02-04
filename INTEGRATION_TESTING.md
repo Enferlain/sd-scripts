@@ -17,7 +17,7 @@ Manual integration testing for the new trainer (`PeftTrainer`) and data pipeline
 | [x]    | Basic training runs        | Loss values appear in progress bar                    |
 | [ ]    | Loss decreases over time   | Run 50+ steps, verify `avr_loss` trending down        |
 | [ ]    | Loss matches legacy script | Compare loss curves with `sd_peft.py` (legacy)        |
-| [ ]    | Output file created        | Check `output_dir/` for `.safetensors` after training |
+| [x]    | Output file created        | Check `output_dir/` for `.safetensors` after training |
 
 ---
 
@@ -25,9 +25,9 @@ Manual integration testing for the new trainer (`PeftTrainer`) and data pipeline
 
 | Status | Feature                 | Config Key               | How to Verify                           |
 | ------ | ----------------------- | ------------------------ | --------------------------------------- |
-| [ ]    | Save every N steps      | `save_every_n_steps: 10` | Files created at step 10, 20, 30...     |
+| [x]    | Save every N steps      | `save_every_n_steps: 10` | Files created at step 10, 20, 30...     |
 | [ ]    | Save every N epochs     | `save_every_n_epochs: 1` | Files created at epoch end              |
-| [ ]    | Save state              | `save_state: true`       | `output_dir/` contains accelerate state |
+| [x]    | Save state              | `save_state: true`       | `output_dir/` contains accelerate state |
 | [ ]    | Keep only N checkpoints | `save_n_epoch_ratio: 2`  | Old checkpoints deleted                 |
 | [ ]    | No metadata             | `no_metadata: true`      | Checkpoint has minimal metadata         |
 
@@ -38,9 +38,9 @@ Manual integration testing for the new trainer (`PeftTrainer`) and data pipeline
 | Status | Feature                      | How to Verify                                    |
 | ------ | ---------------------------- | ------------------------------------------------ |
 | [ ]    | Resume from final checkpoint | Run, stop, run again - `global_step` continues   |
-| [ ]    | Resume optimizer state       | Loss curve is continuous (no spike after resume) |
-| [ ]    | Resume LR scheduler          | Learning rate continues from where it left off   |
-| [ ]    | Resume epoch correctly       | Epoch counter continues correctly                |
+| [x]    | Resume optimizer state       | Loss curve is continuous (no spike after resume) |
+| [x]    | Resume LR scheduler          | Learning rate continues from where it left off   |
+| [x]    | Resume epoch correctly       | Epoch counter continues correctly                |
 
 ---
 
@@ -49,10 +49,10 @@ Manual integration testing for the new trainer (`PeftTrainer`) and data pipeline
 | Status | Feature                | Config Key                    | How to Verify                 |
 | ------ | ---------------------- | ----------------------------- | ----------------------------- |
 | [ ]    | Sample at first        | `sample_at_first: true`       | Image generated before step 1 |
-| [ ]    | Sample every N steps   | `sample_every_n_steps: 10`    | Images at step 10, 20, 30...  |
+| [x]    | Sample every N steps   | `sample_every_n_steps: 10`    | Images at step 10, 20, 30...  |
 | [ ]    | Sample every N epochs  | `sample_every_n_epochs: 1`    | Images at epoch end           |
-| [ ]    | Sample prompts file    | `sample_prompts: prompts.txt` | Uses prompts from file        |
-| [ ]    | Sample output location | Check `output_dir/sample/`    | Images saved correctly        |
+| [x]    | Sample prompts file    | `sample_prompts: prompts.txt` | Uses prompts from file        |
+| [x]    | Sample output location | Check `output_dir/sample/`    | Images saved correctly        |
 
 ---
 
@@ -85,8 +85,8 @@ Manual integration testing for the new trainer (`PeftTrainer`) and data pipeline
 | ------ | ---------------------- | ---------------------------------- | ------------------------------------ |
 | [ ]    | Gradient checkpointing | `gradient_checkpointing: true`     | Lower VRAM usage                     |
 | [ ]    | Offload text encoders  | `offload_text_encoders: true`      | TEs move to CPU during training      |
-| [ ]    | Cache latents          | `cache_latents: true`              | Latent cache created before training |
-| [ ]    | Cache TE outputs       | `cache_text_encoder_outputs: true` | TE cache created                     |
+| [x]    | Cache latents          | `cache_latents: true`              | Latent cache created before training |
+| [x]    | Cache TE outputs       | `cache_text_encoder_outputs: true` | TE cache created                     |
 | [ ]    | No cache (live encode) | `cache_latents: false`             | Encodes images each step             |
 
 ---

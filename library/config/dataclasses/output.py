@@ -70,6 +70,9 @@ class SamplingConfig:
     sample_every_n_epochs: int | None = field(default=None, metadata={"help": "Generate sample images every N epochs"})
     sample_prompts: str | None = field(default=None, metadata={"help": "Path to prompts file (.txt, .toml, or .json)"})
     sample_sampler: str = field(default="ddim", metadata={"help": "Default sampler: ddim, euler, euler_a, dpmsolver, etc."})
+    sample_vae_dtype: str | None = field(
+        default=None, metadata={"help": "VAE dtype for sampling: fp16, bf16, or fp32. If None, uses training VAE dtype."}
+    )
 
 
 @dataclass

@@ -20,6 +20,7 @@ from torch import nn
 
 import library.strategies.base.tokenization
 import library.strategies.base.caching
+import library.strategies.base.encoding
 from library.performance import deepspeed_utils
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging
@@ -218,6 +219,11 @@ class PeftTrainer:
         library.strategies.base.tokenization.TokenizeStrategy.set_strategy(tokenize_strategy)
         self.tokenizers = self.strategies.get_tokenizers(tokenize_strategy)
         self._tokenize_strategy = tokenize_strategy
+
+        # Set text encoding strategy (used by sampling pipeline)
+        text_encoding_strategy = self.strategies.get_text_encoding_strategy(self.cfg)
+        library.strategies.base.encoding.TextEncodingStrategy.set_strategy(text_encoding_strategy)
+        self._text_encoding_strategy = text_encoding_strategy
 
         # prepare caching strategy: this must be set before preparing dataset
         latents_caching_strategy = self.strategies.get_latents_caching_strategy(self.cfg)
@@ -439,8 +445,11 @@ class PeftTrainer:
         self.accelerator.print(f"  total optimization steps: {self.max_train_steps}")
 
         # Create training metadata
-        # Convert optimizer_args dict to a formatted string for metadata
-        optimizer_args_str = ", ".join(f"{k}={v}" for k, v in self.optimizer_args.items())
+        # Convert optimizer_args to a formatted string for metadata (may already be str)
+        if isinstance(self.optimizer_args, dict):
+            optimizer_args_str = ", ".join(f"{k}={v}" for k, v in self.optimizer_args.items())
+        else:
+            optimizer_args_str = str(self.optimizer_args) if self.optimizer_args else ""
         self._metadata, self._minimum_metadata = create_training_metadata(
             cfg=cfg,
             manifest=self.train_manifest,
@@ -570,6 +579,14 @@ class PeftTrainer:
             # Switch back to train mode
             self.optimizer_train_fn()
             self.accelerator.unwrap_model(self.adapter).train()
+
+            # Ensure VRAM is clean before resuming training
+            import gc
+
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
 
     def _finalize_training(self) -> None:
         """Cleanup and final save after training completes."""

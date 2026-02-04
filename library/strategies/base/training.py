@@ -386,8 +386,11 @@ class TrainingStrategy(
         import typing
 
         if "latents" in batch and batch["latents"] is not None:
+            # Cached latents are already scaled by VAE_LATENT_SCALE during caching
+            # Do NOT scale again - just move to device
             latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
         else:
+            # Encoding on-the-fly - need to scale
             vae_batch_size = cfg.data.caching.vae_batch_size
             if vae_batch_size is None or len(batch["images"]) <= vae_batch_size:
                 latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
@@ -405,7 +408,10 @@ class TrainingStrategy(
                 accelerator.print("NaN found in latents, replacing with zeros")
                 latents = typing.cast(torch.FloatTensor, torch.nan_to_num(latents, 0, out=latents))
 
-        return self.shift_scale_latents(cfg, latents)
+            # Only scale when encoding on-the-fly (cached latents are pre-scaled)
+            latents = self.shift_scale_latents(cfg, latents)
+
+        return latents
 
     # --- Additional methods that may need strategy ---
 

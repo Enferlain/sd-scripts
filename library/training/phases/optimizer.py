@@ -94,9 +94,7 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
             num_processes=trainer.accelerator.num_processes,
             gradient_accumulation_steps=cfg.training.gradient_accumulation_steps,
         )
-        trainer.accelerator.print(
-            f"override steps. steps for {cfg.training.max_train_epochs} epochs is / ステップ数: {trainer.max_train_steps}"
-        )
+        trainer.accelerator.print(f"override steps. steps for {cfg.training.max_train_epochs} epochs is: {trainer.max_train_steps}")
     else:
         trainer.max_train_steps = cfg.training.max_train_steps
 

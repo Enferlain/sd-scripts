@@ -975,8 +975,12 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         do_classifier_free_guidance = guidance_scale > 1.0
 
         # 3. Encode input prompt
-        tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy = library.strategies.base.tokenization.TokenizeStrategy.get_strategy()
-        encoding_strategy: library.strategies.sdxl.encoding.SdxlTextEncodingStrategy = library.strategies.base.encoding.TextEncodingStrategy.get_strategy()
+        tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy = (
+            library.strategies.base.tokenization.TokenizeStrategy.get_strategy()
+        )
+        encoding_strategy: library.strategies.sdxl.encoding.SdxlTextEncodingStrategy = (
+            library.strategies.base.encoding.TextEncodingStrategy.get_strategy()
+        )
 
         text_input_ids, text_weights = tokenize_strategy.tokenize_with_weights(prompt)
         hidden_states_1, hidden_states_2, text_pool = encoding_strategy.encode_tokens_with_weights(

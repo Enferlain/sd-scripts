@@ -50,7 +50,7 @@ def generate_step_logs(
     lrs = lr_scheduler.get_last_lr()
 
     # Check if TE is being trained (LR-based)
-    train_te = should_train_text_encoder(cfg.optimizer)
+    train_te = should_train_text_encoder(cfg.optimizer.learning_rates)
 
     for i, lr in enumerate(lrs):
         if lr_descriptions is not None:
@@ -194,6 +194,28 @@ def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, defau
             if hasattr(logging_config, "log_tracker_name") and logging_config.log_tracker_name
             else default_tracker_name
         )
+
+        # Sanitize config values for TensorBoard hparams (only accepts int, float, str, bool, Tensor)
+        # Need to flatten nested dicts to dot-notation keys
+        def flatten_for_hparams(obj, prefix=""):
+            items = {}
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    new_key = f"{prefix}.{k}" if prefix else k
+                    if isinstance(v, dict):
+                        items.update(flatten_for_hparams(v, new_key))
+                    elif isinstance(v, (list, tuple)):
+                        items[new_key] = str(v)
+                    elif v is None:
+                        items[new_key] = "None"
+                    elif isinstance(v, (int, float, str, bool)):
+                        items[new_key] = v
+                    else:
+                        items[new_key] = str(v)
+            return items
+
+        config_to_log = flatten_for_hparams(config_to_log)
+
         accelerator.init_trackers(
             tracker_name,
             config=config_to_log,

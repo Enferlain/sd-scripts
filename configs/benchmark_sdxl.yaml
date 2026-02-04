@@ -116,6 +116,7 @@ output:
     save_every_n_steps: 999999 # Effectively disabled (field requires int)
     save_every_n_epochs: 999999
   sampling:
+    sample_vae_dtype: fp16
     sample_every_n_steps: 0 # Disable sampling during benchmark
     sample_at_first: false
     sample_every_n_epochs: null
