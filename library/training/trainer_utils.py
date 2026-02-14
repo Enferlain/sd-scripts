@@ -141,6 +141,10 @@ def calculate_val_loss_check(
     if val_dataloader is None:
         return False
 
+    # Explicit check for step 0 (validation always runs at start)
+    if global_step == 0:
+        return True
+
     # Support both dataloader (len()) and int (direct value)
     if isinstance(train_dataloader_or_num_batches, int):
         num_batches = train_dataloader_or_num_batches

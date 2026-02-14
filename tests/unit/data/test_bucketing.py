@@ -78,3 +78,16 @@ class TestSelectBucket:
         # Bucket should be <= original size (rounded to steps)
         assert bucket[0] <= 256
         assert bucket[1] <= 256
+
+    def test_tiny_image_no_upscale(self):
+        """Tiny image smaller than reso_steps should get min bucket size (reso_steps)."""
+        resos = make_bucket_resolutions((1024, 1024), divisible=64)
+        # Image smaller than 64x64
+        bucket, resized = select_bucket(32, 32, resos, no_upscale=True, reso_steps=64)
+
+        # Should not return (0, 0), but (64, 64)
+        assert bucket[0] >= 64
+        assert bucket[1] >= 64
+        # Resized should also be valid (>= 64)
+        assert resized[0] >= 64
+        assert resized[1] >= 64
