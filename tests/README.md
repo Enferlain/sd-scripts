@@ -3,7 +3,7 @@
 ## Install
 
 ```
-pip install pytest
+uv sync
 ```
 
 ## Usage
@@ -25,7 +25,7 @@ def test_x():
 
 ## Resources
 
-### pytest 
+### pytest
 
 - https://docs.pytest.org/en/stable/index.html
 - https://docs.pytest.org/en/stable/how-to/assert.html
@@ -38,4 +38,3 @@ def test_x():
 - https://github.com/pytorch/pytorch/wiki/Running-and-writing-tests
 - https://github.com/huggingface/pytorch-image-models/tree/main/tests
 - https://github.com/pytorch/pytorch/tree/main/test
-

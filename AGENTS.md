@@ -7,12 +7,14 @@ This document provides essential context for AI agents working on this repositor
 **Python Virtual Environment:**
 
 ```powershell
-d:\Projects\sd-scripts\venv\Scripts\python.exe
+uv run python
 ```
 
-Always use the venv Python for running scripts, tests, and imports.
+Using `rg` (ripgrep) is highly recommended for searching the codebase. It is significantly faster than the default tools and respects `.gitignore` by default.
 
-Using powershell search over grep search tool is recommended after grep fails to return results due to possible environment issues.
+```powershell
+rg "search_term"
+```
 
 ## Standard Agent Tools
 
@@ -40,18 +42,17 @@ Use this tool **after completing a significant chunk of work** (e.g., refactorin
 **Tool:** `webReader`
 Use to extract full content from a specific URL found during search (e.g., a specific documentation page).
 
-
 ## Running Tests
 
 ```powershell
 # All tests
-d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/unit/ -v
+uv run pytest tests/unit/ -v
 
 # Specific test file
-d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/unit/test_training_checkpointing.py -v
+uv run pytest tests/unit/test_training_checkpointing.py -v
 
 # With short traceback
-d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=short
+uv run pytest tests/unit/ -v --tb=short
 ```
 
 **Test markers:** `unit`, `integration`, `training`, `config`, `slow`, `requires_gpu`
@@ -60,22 +61,22 @@ d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=sho
 
 ```powershell
 # Check for lint errors
-ruff check .
+uv run ruff check .
 
 # Fix auto-fixable errors
-ruff check . --fix
+uv run ruff check . --fix
 
 # Format code
-ruff format .
+uv run ruff format .
 
 # Check specific rules
-ruff check . --select F401  # unused imports
+uv run ruff check . --select F401  # unused imports
 ```
 
 **Note:** isort (I) is disabled. Use custom import sorter instead:
 
 ```powershell
-python tools/fix_imports.py <file_path>
+uv run python tools/fix_imports.py <file_path>
 ```
 
 ## Type Checking
@@ -190,19 +191,19 @@ def save_model(args, ...):
 ### Verifying imports work
 
 ```powershell
-d:\Projects\sd-scripts\venv\Scripts\python.exe -c "from library.training.checkpointing import model_hash; print('OK')"
+uv run python -c "from library.training.checkpointing import model_hash; print('OK')"
 ```
 
 ### Running a specific script (example)
 
 ```powershell
-d:\Projects\sd-scripts\venv\Scripts\python.exe scripts/sd_finetune.py --config-name=sd_finetune
+uv run python scripts/sd_finetune.py --config-name=sd_finetune
 ```
 
 ### Checking for import errors in a module
 
 ```powershell
-d:\Projects\sd-scripts\venv\Scripts\python.exe -c "from scripts.sd_finetune import train; print('OK')"
+uv run python -c "from scripts.sd_finetune import train; print('OK')"
 ```
 
 ## Documentation Updates

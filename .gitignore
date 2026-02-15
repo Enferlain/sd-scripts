@@ -1,42 +1,61 @@
-# todo: organize
-logs
-__pycache__
-wd14_tagger_model
-venv
-*.egg-info
-build
-.vscode
-wandb
+# Environment & Dependencies
+__pycache__/
+venv/
+.venv/
+.uv-cache/
+*.egg-info/
+build/
+dist/
+
+# Tooling Caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+wandb/
+
+# IDEs
+.idea/
+.vscode/
+
+# Agent & Workspace
 CLAUDE.md
 GEMINI.md
-.claude
-.gemini
-!.agent
-.idea
-.mypy_cache
-.pytest_cache
-.ruff_cache
-MagicMock
-*7z
-.idea
+.claude/
+.gemini/
+!.agent/
+
+# Project Data & Outputs
+logs/
 outputs/
+tmp_output/
+wd14_tagger_model/
+custom_optimizer/
+custom_optimizer_*/
+
+# Benchmarks & Profiles
+benchmark_cache/
+benchmark_output/
+*.log
+*.pstat
+*.pickle
+memory_trace.html
+
+# File Types (Binary/Temporary)
 *.txt
 *.latent
 *.whl
 *.safetensors
-.coverage
+*7z
+MagicMock
+
+# Tests
 tests/assets/
-custom_optimizer/
-uv.lock
-implementation_plan.md
-walkthrough.md
-*.log
-*.pstat
-*.pickle
-benchmark_output/
-benchmark_cache/
-memory_trace.html
-tmp_output/
 tests/test_logs/
 tests/test_output/
 tests/test_cache/
+
+# Artifacts & Other
+implementation_plan.md
+walkthrough.md

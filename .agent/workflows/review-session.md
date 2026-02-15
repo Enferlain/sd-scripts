@@ -49,13 +49,13 @@ Check these files for recent updates:
 
 ```powershell
 # Unit tests (fast, ~20s)
-.\venv\Scripts\python.exe -m pytest tests/unit/ -q --tb=no
+uv run pytest tests/unit/ -q --tb=no
 
 # Integration tests (slower, requires test data)
-.\venv\Scripts\python.exe -m pytest tests/integration/ -q --tb=no
+uv run pytest tests/integration/ -q --tb=no
 
 # Lint check
-.\venv\Scripts\python.exe -m ruff check library/ scripts/
+uv run ruff check library/ scripts/
 ```
 
 ## 5. Run Smoke Test (Optional)

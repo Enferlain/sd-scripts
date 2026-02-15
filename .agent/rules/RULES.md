@@ -9,7 +9,15 @@ trigger: always_on
 Always use the venv Python for all commands:
 
 ```
-d:\Projects\sd-scripts\venv\Scripts\python.exe
+uv run python
+```
+
+## Searching
+
+Always use `rg` (ripgrep) for searching the codebase. It respects `.gitignore` and is significantly faster than other tools.
+
+```powershell
+rg "search_term"
 ```
 
 ## Session Start
@@ -24,13 +32,13 @@ Read these files to understand current project state:
 ## Testing
 
 ```powershell
-.\venv\Scripts\python.exe -m pytest tests/unit/ -q --tb=short
+uv run pytest tests/unit/ -q --tb=short
 ```
 
 ## Linting
 
 ```powershell
-ruff check library/ scripts/
+uv run ruff check library/ scripts/
 ```
 
 ```powershell

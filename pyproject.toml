@@ -6,18 +6,140 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+dependencies = [
+    "accelerate~=1.11.0",
+    "transformers~=4.54.1",
+    "diffusers~=0.35.2",
+    "ftfy~=6.3.1",
+    "opencv-python~=4.12.0.88",
+    "einops~=0.8.1",
+    "bitsandbytes~=0.48.2",
+    "lion-pytorch~=0.2.3",
+    "schedulefree~=1.4.1",
+    "pytorch_optimizer==3.8.2",
+    "prodigy-plus-schedule-free~=2.0.1",
+    "prodigyopt~=1.1.2",
+    "dadaptation~=3.2",
+    "came-pytorch~=0.1.3",
+    "torchastic~=0.1.2",
+    "torch-optimi~=0.3.2",
+    "adv_optm~=1.2.3",
+    "customized-optimizers",
+    "kornia~=0.8.2",
+    "tensorboard~=2.20.0",
+    "safetensors~=0.6.2",
+    "wandb~=0.22.3",
+    "toml~=0.10.2",
+    "voluptuous~=0.15.2",
+    "huggingface-hub[hf_xet]~=0.36.0",
+    "hf-xet~=1.2.0",
+    "matplotlib~=3.10.7",
+    "scipy~=1.16.2",
+    "RamTorch~=0.2.2",
+    "PyWavelets~=1.9.0",
+    "imagesize~=1.4.1",
+    "numpy~=2.2.6",
+    "hydra-core",
+    "blake3",
+    "rich~=14.2.0",
+    "sentencepiece~=0.2.1",
+    "torch>=2.9,<2.11",
+    "torchvision",
+    "xformers",
+]
 
-[tool.setuptools.packages.find]
-include = ["library*", "scripts*", "tools*"]
+# Torch profiles. Pick exactly one for your machine.
+[project.optional-dependencies]
+torch-cu128 = ["torch", "torchvision"]
+torch-cu129 = ["torch", "torchvision"]
+torch-cu130 = ["torch", "torchvision"]
+
+# Torch version profiles. Pick exactly one.
+torch-v29 = [
+    "torch>=2.9,<2.10",
+    "triton-windows>=3.5,<3.6; platform_system == 'Windows'",
+]
+torch-v210 = [
+    "torch>=2.10,<2.11",
+    "triton-windows>=3.6,<3.7; platform_system == 'Windows'",
+]
+
+onnx-cpu = ["onnxruntime>=1.20"]
+onnx-gpu = ["onnxruntime-gpu>=1.20"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.6.0",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev"]
+index-strategy = "unsafe-best-match"
+conflicts = [
+    [
+        { extra = "torch-cu128" },
+        { extra = "torch-cu129" },
+        { extra = "torch-cu130" },
+    ],
+    [
+        { extra = "torch-v29" },
+        { extra = "torch-v210" },
+    ],
+    [
+        { extra = "onnx-cpu" },
+        { extra = "onnx-gpu" },
+    ],
+    [
+        { extra = "torch-cu129" },
+        { extra = "torch-v29" },
+        { extra = "torch-v210" },
+    ],
+    [
+        { extra = "torch-cu128" },
+        { extra = "torch-v210" },
+    ],
+    [
+        { extra = "torch-cu130" },
+        { extra = "torch-v29" },
+    ],
+]
+
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu128", extra = "torch-cu128" },
+    { index = "pytorch-cu129", extra = "torch-cu129" },
+    { index = "pytorch-cu130", extra = "torch-cu130" },
+]
+torchvision = [
+    { index = "pytorch-cu128", extra = "torch-cu128" },
+    { index = "pytorch-cu129", extra = "torch-cu129" },
+    { index = "pytorch-cu130", extra = "torch-cu130" },
+]
+customized-optimizers = { git = "https://github.com/67372a/customized-optimizers" }
 
 # =============================================================================
 # Ruff - Linting and Formatting
 # =============================================================================
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 140
 
 exclude = [
@@ -123,8 +245,8 @@ directory = "htmlcov"
 # ty - Type Checking
 # =============================================================================
 [tool.ty.environment]
-python-version = "3.10"
-python = "./venv"
+python-version = "3.11"
+python = "./.venv"
 
 [tool.ty.src]
 # Exclude vendored/_deprecated code from type checking

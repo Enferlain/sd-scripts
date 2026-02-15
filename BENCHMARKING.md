@@ -6,10 +6,10 @@ This guide provides instructions for third-party reviewers to profile and benchm
 
 ```powershell
 # Run smoke test with basic timing
-d:\Projects\sd-scripts\venv\Scripts\python.exe scripts/sdxl_peft.py --config-name=smoke_test
+uv run scripts/sdxl_peft.py --config-name=smoke_test
 
 # Run with Python profiling (dumps to profile.prof for later analysis)
-d:\Projects\sd-scripts\venv\Scripts\python.exe -m cProfile -o profile.prof scripts/sdxl_peft.py --config-name=smoke_test
+uv run python -m cProfile -o profile.prof scripts/sdxl_peft.py --config-name=smoke_test
 ```
 
 ---
@@ -113,10 +113,10 @@ tensorboard --logdir=./profiler_logs
 
 ```powershell
 # Run profiling and save to file
-d:\Projects\sd-scripts\venv\Scripts\python.exe -m cProfile -s cumtime -o profile.prof scripts/sdxl_peft.py --config-name=smoke_test
+uv run python -m cProfile -s cumtime -o profile.prof scripts/sdxl_peft.py --config-name=smoke_test
 
 # View top functions afterward
-d:\Projects\sd-scripts\venv\Scripts\python.exe -c "import pstats; p = pstats.Stats('profile.prof'); p.sort_stats('cumtime').print_stats(50)"
+uv run python -c "import pstats; p = pstats.Stats('profile.prof'); p.sort_stats('cumtime').print_stats(50)"
 ```
 
 ---
@@ -249,7 +249,7 @@ Remove-Item -Recurse -Force ./cache -ErrorAction SilentlyContinue
 
 # Run with timing
 $start = Get-Date
-d:\Projects\sd-scripts\venv\Scripts\python.exe scripts/sdxl_peft.py --config-name=benchmark_test
+uv run scripts/sdxl_peft.py --config-name=benchmark_test
 $elapsed = (Get-Date) - $start
 Write-Host "Total time: $($elapsed.TotalSeconds)s"
 ```
@@ -259,7 +259,7 @@ Write-Host "Total time: $($elapsed.TotalSeconds)s"
 ```powershell
 # SD script still uses legacy DatasetGroup
 $start = Get-Date
-d:\Projects\sd-scripts\venv\Scripts\python.exe scripts/sd_peft.py --config-name=sd_benchmark_test
+uv run scripts/sd_peft.py --config-name=sd_benchmark_test
 $elapsed = (Get-Date) - $start
 Write-Host "Total time: $($elapsed.TotalSeconds)s"
 ```
@@ -286,10 +286,10 @@ Run existing benchmarks:
 
 ```powershell
 # Unit benchmarks (mocked I/O)
-d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/unit/data/test_pipeline_benchmark.py -v
+uv run pytest tests/unit/data/test_pipeline_benchmark.py -v
 
 # Integration smoke tests
-d:\Projects\sd-scripts\venv\Scripts\python.exe -m pytest tests/integration/test_sdxl_peft_smoke.py -v
+uv run pytest tests/integration/test_sdxl_peft_smoke.py -v
 ```
 
 ---

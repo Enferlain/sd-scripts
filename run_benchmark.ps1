@@ -43,7 +43,7 @@ $configMap = @{
 }
 
 $ErrorActionPreference = "Stop"
-$venv = "d:\Projects\sd-scripts\venv\Scripts\python.exe"
+$venv = "d:\Projects\sd-scripts\.venv\Scripts\python.exe"
 $projectRoot = "d:\Projects\sd-scripts"
 
 # Resolve config name

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-02-15]
+
+### Changed
+
+- **Dependency Management Migration**: Migrated from `pip` + `requirements.txt` to `pyproject.toml` + `uv`
+  - All runtime dependencies now declared in `project.dependencies` including `torch>=2.9,<2.11`, `torchvision`, and `xformers`
+  - Default torch resolves from `pytorch-cu130` index (non-explicit fallback)
+  - Torch CUDA extras: `torch-cu128`, `torch-cu129`, `torch-cu130` with per-index resolution
+  - Dropped `torch-cu124` (incompatible with torch ≥2.9)
+  - Torch version extras: `torch-v29`, `torch-v210` with matching `triton-windows` versions
+  - ONNX extras: `onnx-cpu`, `onnx-gpu`
+  - Dev dependency group: `pytest`, `pytest-asyncio`, `ruff`
+  - `customized-optimizers` sourced from git via `tool.uv.sources`
+  - Removed `[build-system]` and `[tool.setuptools]` sections (`package = false`)
+  - Deleted `requirements.txt`
+- **Developer Experience**:
+  - Updated `AGENTS.md`, `RULES.md`, `DEVELOPMENT_GUIDE.md`, and benchmarks to use `uv run` and `uvx`
+  - Recommended `rg` (ripgrep) for searching throughout the codebase for performance and reliability
+
 ## [2026-02-04]
 
 ### Fixed
