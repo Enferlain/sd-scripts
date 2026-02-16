@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels=None, kernel_size=3, stride=1, padding=1):
-        super(ResidualBlock, self).__init__()
+        super().__init__()
 
         if out_channels is None:
             out_channels = in_channels
@@ -74,7 +74,7 @@ class ResidualBlock(nn.Module):
 
 class Upscaler(nn.Module):
     def __init__(self):
-        super(Upscaler, self).__init__()
+        super().__init__()
 
         # define layers
         # latent has 4 channels

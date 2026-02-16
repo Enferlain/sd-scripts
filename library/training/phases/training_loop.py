@@ -60,6 +60,9 @@ def run_training_loop(trainer: PeftTrainer) -> None:
     strategies = trainer.strategies
 
     for epoch in range(trainer.epoch_to_start, trainer.num_train_epochs):
+        if trainer.global_step >= cfg.training.max_train_steps:
+            break
+
         trainer._current_epoch_state.value = epoch + 1
         accelerator.print(f"Epoch {trainer._current_epoch_state.value}/{trainer.num_train_epochs}")
 

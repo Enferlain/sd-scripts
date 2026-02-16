@@ -119,6 +119,15 @@ def select_bucket(
         else:
             resized_size = (image_width, image_height)
 
+        # Ensure minimal dimensions to avoid 0x0 buckets for tiny images.
+        # Scale proportionally to preserve aspect ratio.
+        if resized_size[0] < reso_steps or resized_size[1] < reso_steps:
+            scale = max(reso_steps / resized_size[0], reso_steps / resized_size[1])
+            resized_size = (
+                int(resized_size[0] * scale + 0.5),
+                int(resized_size[1] * scale + 0.5),
+            )
+
         # Bucket size is resized size rounded down to reso_steps
         bucket_width = resized_size[0] - resized_size[0] % reso_steps
         bucket_height = resized_size[1] - resized_size[1] % reso_steps

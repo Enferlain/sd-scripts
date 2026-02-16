@@ -78,3 +78,28 @@ class TestSelectBucket:
         # Bucket should be <= original size (rounded to steps)
         assert bucket[0] <= 256
         assert bucket[1] <= 256
+
+    def test_tiny_image_no_upscale(self):
+        """Tiny image smaller than reso_steps should get min bucket size, not 0x0."""
+        resos = make_bucket_resolutions((1024, 1024), divisible=64)
+        bucket, resized = select_bucket(32, 32, resos, no_upscale=True, reso_steps=64)
+
+        assert bucket[0] >= 64
+        assert bucket[1] >= 64
+        assert resized[0] >= 64
+        assert resized[1] >= 64
+
+    def test_tiny_nonsquare_preserves_aspect_ratio(self):
+        """Tiny non-square image should scale proportionally, not clamp independently."""
+        resos = make_bucket_resolutions((1024, 1024), divisible=64)
+        bucket, resized = select_bucket(32, 128, resos, no_upscale=True, reso_steps=64)
+
+        # Both dimensions should meet minimum
+        assert resized[0] >= 64
+        assert resized[1] >= 64
+        # Aspect ratio should be preserved (original is 1:4)
+        original_ar = 32 / 128
+        resized_ar = resized[0] / resized[1]
+        assert abs(resized_ar - original_ar) < 0.1, (
+            f"Aspect ratio distorted: original={original_ar:.2f}, resized={resized_ar:.2f}"
+        )

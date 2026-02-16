@@ -50,12 +50,12 @@ Scripts (contain training loops):     Library Modules:
 
 ### Integration Tests (Remaining)
 
-| Category               | Items                                        | Priority |
-| ---------------------- | -------------------------------------------- | -------- |
-| **Checkpoint I/O**     | `load_models_from_*`, `save_*_checkpoint`    | High     |
-| **Adapter Classes**    | `LoRAAdapter.apply_to()`, `create_adapter()` | Medium   |
-| **Sample Generation**  | `sample_images_common`, inference pipeline   | Medium   |
-| **Full Training Loop** | Config → Trainer → Step                      | High     |
+| Category                   | Items                                         | Priority    |
+| -------------------------- | --------------------------------------------- | ----------- |
+| ~~**Checkpoint I/O**~~     | ~~`load_models_from_*`, `save_*_checkpoint`~~ | ~~High~~ ✅ |
+| **Adapter Classes**        | `LoRAAdapter.apply_to()`, `create_adapter()`  | Medium      |
+| **Sample Generation**      | `sample_images_common`, inference pipeline    | Medium      |
+| ~~**Full Training Loop**~~ | ~~Config → Trainer → Step~~                   | ~~High~~ ✅ |
 
 ---
 
@@ -87,6 +87,51 @@ Scripts (contain training loops):     Library Modules:
   - `library/training/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 - [ ] **Refactor `register_adapter_state_hooks`** (low priority) - Return a structured object `{"epoch": int, "step": int}` instead of closure + side-effects for cleaner data flow. See AUDIT/2_AUDIT_RESUME_BEHAVIOR.md recommendation #3.
+
+---
+
+## Training Mode Extensibility
+
+### Problem
+
+All phase functions in `library/training/phases/` are typed as `trainer: PeftTrainer`. Currently PEFT is the only mode using the new phases architecture, but full fine-tuning support will need the same phases.
+
+### What Actually Differs (PEFT vs Full Fine-Tuning)
+
+| Concern                     | PEFT (LoRA/Adapter)                          | Full Fine-Tuning                     |
+| --------------------------- | -------------------------------------------- | ------------------------------------ |
+| **Trainable params**        | `adapter.parameters()` + optionally TE       | `unet.parameters()` + optionally TE  |
+| **Model prep**              | Create adapter, `apply_to()`, freeze base    | `requires_grad_(True)` on base model |
+| **Checkpoint save**         | Adapter state dict                           | Full model state dict                |
+| **`accelerator.prepare()`** | Wraps adapter                                | Wraps UNet directly                  |
+| **Caching**                 | Identical                                    | Identical                            |
+| **Training loop**           | Identical (strategy handles `process_batch`) | Identical                            |
+
+### Phase Reusability
+
+- `caching.py` — **100% shareable**
+- `training_loop.py` — **~95% shareable** (checkpoint calls go through `trainer.save_checkpoint()`)
+- `optimizer.py` — **~80% shareable** (param groups and `accelerator.prepare()` wrapping differ)
+- `model_prep.py` — **PEFT-specific** (adapter creation is inherently a PEFT concept)
+
+### Design Options (Open)
+
+**Option A: One Trainer + `TrainingMode` plugin** (Lightning/Transformers style)
+
+- Rename `PeftTrainer` → `Trainer`, add `trainer.mode: TrainingMode`
+- `TrainingMode` protocol has ~4 methods: `prepare_models`, `trainable_params`, `prepare_with_accelerator`, `save_checkpoint`
+- Phases call `trainer.mode.*` for divergent operations
+- Two axes: `strategies` = model family (SDXL/SD/Flux), `mode` = training mode (PEFT/fine-tune)
+- Pro: One class to understand, config-driven. Con: Extra indirection through `mode.*`
+
+**Option B: Multiple trainer classes + `TrainerProtocol`**
+
+- Keep `PeftTrainer`, add `FineTuneTrainer`, both satisfy a shared protocol
+- Phases type against the protocol
+- Pro: Each trainer is self-contained. Con: Large protocol surface, potential duplication
+
+> [!IMPORTANT]
+> Key constraint: this repo prioritizes readability and ease of modification over abstraction. Whatever pattern is chosen must feel intuitive when adding new features. Decision deferred until full fine-tuning support is actively being built.
 
 ---
 
@@ -131,7 +176,7 @@ See `AUDIT/5_Strategy_Pattern_Boundaries.md` for full context.
   - `sample_steps`, `sample_cfg_scale` (default inference settings)
   - `sample_negative_prompt` (global negative prompt)
   - These would serve as defaults that per-prompt overrides (in sample_prompts file) could supersede
-  - Also: Add YAML support for `sample_prompts` for consistency with the rest of the config system (currently only .txt, .toml, .json)
+  - Also: Add YAML support for `sample_prompts` for consistency with the rest of the config system (currently only txt, .toml, .json)
 
 - [ ] **Support for feather** - https://github.com/SuriyaaMM/feather
   - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support. Currently only considered for inference
@@ -150,7 +195,7 @@ See `AUDIT/5_Strategy_Pattern_Boundaries.md` for full context.
   - Sharded manifests by bucket
   - Skip manifest creation if unchanged from previous run
   - Maybe fp8 for te output storage, needs tests
-  -
+- [ ] **Smarter resource tracking/management** - This helps with training and also with inference, for example falling back to tiled vae when it would hit resource contraints and such.
 
 ---
 
