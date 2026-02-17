@@ -68,7 +68,7 @@ def run_training_loop(trainer: PeftTrainer) -> None:
 
         trainer._metadata["ss_epoch"] = str(trainer._current_epoch_state.value)
 
-        accelerator.unwrap_model(trainer.adapter).on_epoch_start(trainer._text_encoder, trainer.unet)
+        trainer.mode.on_epoch_start(trainer)
 
         # Phase G: Create per-epoch DataLoader with fresh epoch manifest
         caption_config = CaptionConfig(
@@ -214,11 +214,11 @@ def run_training_loop(trainer: PeftTrainer) -> None:
                     trainer._edm2_lr_scheduler.step()
                     trainer._edm2_optimizer.zero_grad(set_to_none=True)
 
-            if cfg.peft.scale_weight_norms and accelerator.sync_gradients:
-                keys_scaled, mean_norm, maximum_norm = accelerator.unwrap_model(trainer.adapter).apply_max_norm_regularization(
-                    cfg.peft.scale_weight_norms, accelerator.device
-                )
-                max_mean_logs = {"Keys Scaled": keys_scaled, "Average key norm": mean_norm}
+            if accelerator.sync_gradients:
+                max_mean_logs = trainer.mode.on_step_end(trainer)
+                keys_scaled = max_mean_logs.get("Keys Scaled")
+                mean_norm = max_mean_logs.get("Average key norm")
+                maximum_norm = None
             else:
                 keys_scaled, mean_norm, maximum_norm = None, None, None
                 max_mean_logs = {}

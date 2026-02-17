@@ -143,6 +143,19 @@ Removed all direct SDXL imports from `caching.py` and `training_loop.py`. Phase 
 - [x] Remove SDXL imports from `caching.py` and `training_loop.py`
 - [ ] **Future:** Implement SD strategy methods when SD is migrated to new CachingEngine pipeline
 
+### Phase 1: TrainingMode Extraction (✅ Complete)
+
+Refactored `PeftTrainer` and phase files to use a pluggable `TrainingMode` protocol. Extracted PEFT-specific logic into `PeftMode`.
+
+- [x] Define `TrainingMode` protocol
+- [x] Extract `PeftMode` implementation
+- [x] Update phases to delegate to mode hooks
+- [ ] **Follow-up (Code Review Updates):**
+  - [ ] Clarify `PeftMode.build_optimizer_params` docstring regarding `_prepare_optimizer_util` module move
+  - [ ] Verify if `sys.path.append` in `PeftMode.prepare_trainables` is necessary or can be removed
+  - [ ] Document/Align `save_checkpoint` parameter naming between protocol and trainer
+  - [ ] Update `PeftMode` docstring to clarify it is stateless (no init params)
+
 ---
 
 ## Testability Improvements

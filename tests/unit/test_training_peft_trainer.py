@@ -7,7 +7,8 @@ class TestPeftTrainer(unittest.TestCase):
     def setUp(self):
         self.cfg = MagicMock()
         self.strategies = MagicMock()
-        self.trainer = PeftTrainer(self.cfg, self.strategies)
+        self.mode = MagicMock()
+        self.trainer = PeftTrainer(self.cfg, self.strategies, self.mode)
 
     def test_accelerator_access_before_init_raises_error(self):
         """Test that accessing accelerator before setup raises RuntimeError."""

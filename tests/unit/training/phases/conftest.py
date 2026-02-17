@@ -235,6 +235,12 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer.adapter.train = MagicMock()
     trainer.net_kwargs = {}
 
+    # Training mode (TrainingMode protocol)
+    trainer.mode = MagicMock()
+    trainer.mode.on_epoch_start = MagicMock()
+    trainer.mode.on_step_end = MagicMock(return_value={})
+    trainer.mode.save_checkpoint = MagicMock()
+
     # Training flags
     trainer._train_unet = True
     trainer._train_text_encoder = False

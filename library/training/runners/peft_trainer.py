@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from accelerate import Accelerator
     from library.strategies.base.training import TrainingStrategy
     from library.strategies.sdxl.caching import SdxlLatentsPipelineStrategy, SdxlTextEncoderPipelineStrategy
+    from library.training.modes.base import TrainingMode
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -63,16 +64,18 @@ class PeftTrainer:
         trainer.train()
     """
 
-    def __init__(self, cfg: Any, strategies: TrainingStrategy):
+    def __init__(self, cfg: Any, strategies: TrainingStrategy, mode: TrainingMode):
         """
         Initialize the trainer.
 
         Args:
             cfg: Hydra config object (e.g., SDXLPeftConfig)
             strategies: Model-specific training strategy
+            mode: Training mode plugin (e.g., PeftMode)
         """
         self.cfg = cfg
         self.strategies = strategies
+        self.mode = mode
 
         # Will be set during setup()
         self._accelerator: Accelerator | None = None
@@ -368,26 +371,20 @@ class PeftTrainer:
         force_sync_upload: bool = False,
         dtype_override: torch.dtype | None = None,
     ) -> None:
-        """Save model checkpoint."""
-        os.makedirs(self.cfg.output.saving.output_dir, exist_ok=True)
-        ckpt_file = os.path.join(self.cfg.output.saving.output_dir, ckpt_name)
-
-        self.accelerator.print(f"\nsaving checkpoint: {ckpt_file}")
-        self._metadata["ss_training_finished_at"] = str(time.time())
-        self._metadata["ss_steps"] = str(step)
-        self._metadata["ss_epoch"] = str(epoch)
-
-        metadata_to_save = self._minimum_metadata if self.cfg.output.saving.no_metadata else self._metadata
+        """Save model checkpoint by delegating to the training mode."""
+        metadata_to_save = self._minimum_metadata.copy() if self.cfg.output.saving.no_metadata else self._metadata.copy()
         modelspec_metadata = self.strategies.get_model_metadata(self.cfg)
         metadata_to_save.update(modelspec_metadata)
 
-        save_dtype = dtype_override or self.save_dtype
-        unwrapped_adapter.save_weights(ckpt_file, save_dtype, metadata_to_save)  # type: ignore[union-attr]
-
-        if self.cfg.output.huggingface.huggingface_repo_id is not None:
-            from library.utils import huggingface_util
-
-            huggingface_util.upload(self.cfg.output.huggingface, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
+        self.mode.save_checkpoint(
+            self,
+            ckpt_name=ckpt_name,
+            step=step,
+            epoch=epoch,
+            metadata=metadata_to_save,
+            force_sync_upload=force_sync_upload,
+            dtype_override=dtype_override,
+        )
 
         self._emit("on_checkpoint", step=step, epoch=epoch)
 

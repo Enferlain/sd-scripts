@@ -12,9 +12,9 @@ from library.training.checkpointing import (
     get_last_ckpt_name,
     get_remove_epoch_no,
     get_remove_step_no,
-    build_minimum_adapter_metadata,
     default_if_none,
 )
+from library.utils.model_metadata import build_minimum_adapter_metadata
 from library.config.dataclasses.output import SavingConfig
 
 

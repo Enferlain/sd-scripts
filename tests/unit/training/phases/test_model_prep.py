@@ -2,6 +2,8 @@
 Unit tests for library/training/phases/model_prep.py
 
 Tests the model preparation phase functions with mocked trainer state.
+After the TrainingMode refactor, create_adapter logic moved to PeftMode.prepare_trainables()
+and adapter-specific precision logic moved to PeftMode.configure_trainable_precision().
 """
 
 import pytest
@@ -21,7 +23,7 @@ class TestPrepareModels:
         mock_text_encoders = [MagicMock()]
         mock_trainer.strategies.load_unet_lazily.return_value = (mock_unet, mock_text_encoders)
 
-        with patch("library.training.phases.model_prep.create_adapter"), patch("library.training.phases.model_prep.configure_precision"):
+        with patch("library.training.phases.model_prep.configure_precision"):
             from library.training.phases.model_prep import prepare_models
 
             prepare_models(mock_trainer)
@@ -33,7 +35,7 @@ class TestPrepareModels:
         """Test that lazy load is skipped when UNet already present."""
         original_unet = mock_trainer.unet
 
-        with patch("library.training.phases.model_prep.create_adapter"), patch("library.training.phases.model_prep.configure_precision"):
+        with patch("library.training.phases.model_prep.configure_precision"):
             from library.training.phases.model_prep import prepare_models
 
             prepare_models(mock_trainer)
@@ -41,127 +43,29 @@ class TestPrepareModels:
             mock_trainer.strategies.load_unet_lazily.assert_not_called()
             assert mock_trainer.unet is original_unet
 
-    def test_calls_create_adapter_and_configure_precision(self, mock_trainer):
-        """Test that both sub-functions are called."""
-        with (
-            patch("library.training.phases.model_prep.create_adapter") as mock_create,
-            patch("library.training.phases.model_prep.configure_precision") as mock_config,
-        ):
+    def test_calls_mode_hooks_and_configure_precision(self, mock_trainer):
+        """Test that mode.prepare_trainables, configure_precision, and mode.configure_trainable_precision are called."""
+        with patch("library.training.phases.model_prep.configure_precision") as mock_config:
             from library.training.phases.model_prep import prepare_models
 
             prepare_models(mock_trainer)
 
-            mock_create.assert_called_once_with(mock_trainer)
+            mock_trainer.mode.prepare_trainables.assert_called_once_with(mock_trainer)
             mock_config.assert_called_once_with(mock_trainer)
-
-
-@pytest.mark.training
-@pytest.mark.unit
-class TestCreateAdapter:
-    """Test create_adapter function."""
-
-    def test_imports_adapter_module(self, mock_trainer):
-        """Test that adapter module is dynamically imported."""
-        mock_adapter = MagicMock()
-        mock_module = MagicMock()
-        mock_module.create_adapter.return_value = mock_adapter
-
-        with (
-            patch("library.training.phases.model_prep.importlib.import_module", return_value=mock_module),
-            patch("library.training.phases.model_prep.resolve_adapter_kwargs"),
-        ):
-            from library.training.phases.model_prep import create_adapter
-
-            create_adapter(mock_trainer)
-
-            assert mock_trainer.adapter is mock_adapter
-
-    def test_applies_adapter_to_models(self, mock_trainer):
-        """Test that adapter.apply_to is called with training flags."""
-        mock_adapter = MagicMock()
-        mock_module = MagicMock()
-        mock_module.create_adapter.return_value = mock_adapter
-
-        with (
-            patch("library.training.phases.model_prep.importlib.import_module", return_value=mock_module),
-            patch("library.training.phases.model_prep.resolve_adapter_kwargs"),
-        ):
-            from library.training.phases.model_prep import create_adapter
-
-            create_adapter(mock_trainer)
-
-            mock_adapter.apply_to.assert_called_once()
-            # Verify training flags were set
-            assert hasattr(mock_trainer, "_train_unet")
-            assert hasattr(mock_trainer, "_train_text_encoder")
-
-    def test_loads_weights_when_specified(self, mock_trainer):
-        """Test that adapter weights are loaded when path specified."""
-        mock_trainer.cfg.peft.adapter_weights = "/path/to/weights.safetensors"
-        mock_adapter = MagicMock()
-        mock_adapter.load_weights.return_value = "loaded"
-        mock_module = MagicMock()
-        mock_module.create_adapter.return_value = mock_adapter
-
-        with (
-            patch("library.training.phases.model_prep.importlib.import_module", return_value=mock_module),
-            patch("library.training.phases.model_prep.resolve_adapter_kwargs"),
-        ):
-            from library.training.phases.model_prep import create_adapter
-
-            create_adapter(mock_trainer)
-
-            mock_adapter.load_weights.assert_called_once_with("/path/to/weights.safetensors")
-
-    def test_merges_base_weights(self, mock_trainer):
-        """Test base weights merging when specified."""
-        mock_trainer.cfg.peft.base_weights = ["/path/to/base.safetensors"]
-        mock_trainer.cfg.peft.base_weights_multiplier = [0.5]
-        mock_adapter = MagicMock()
-        mock_merge_module = MagicMock()
-        mock_merge_module.merge_to = MagicMock()
-        mock_module = MagicMock()
-        mock_module.create_adapter.return_value = mock_adapter
-        mock_module.create_adapter_from_weights.return_value = (mock_merge_module, {})
-
-        with (
-            patch("library.training.phases.model_prep.importlib.import_module", return_value=mock_module),
-            patch("library.training.phases.model_prep.resolve_adapter_kwargs"),
-        ):
-            from library.training.phases.model_prep import create_adapter
-
-            create_adapter(mock_trainer)
-
-            mock_module.create_adapter_from_weights.assert_called()
-            mock_merge_module.merge_to.assert_called_once()
+            mock_trainer.mode.configure_trainable_precision.assert_called_once_with(mock_trainer)
 
 
 @pytest.mark.training
 @pytest.mark.unit
 class TestConfigurePrecision:
-    """Test configure_precision function."""
+    """Test configure_precision function (shared concerns only).
 
-    def test_full_fp16_casts_adapter(self, mock_trainer):
-        """Test adapter is cast to weight_dtype when full_fp16=True."""
-        mock_trainer.cfg.performance.precision.full_fp16 = True
-        mock_trainer.weight_dtype = torch.float16
-
-        from library.training.phases.model_prep import configure_precision
-
-        configure_precision(mock_trainer)
-
-        mock_trainer.adapter.to.assert_called_with(torch.float16)
-
-    def test_full_bf16_casts_adapter(self, mock_trainer):
-        """Test adapter is cast to weight_dtype when full_bf16=True."""
-        mock_trainer.cfg.performance.precision.full_bf16 = True
-        mock_trainer.weight_dtype = torch.bfloat16
-
-        from library.training.phases.model_prep import configure_precision
-
-        configure_precision(mock_trainer)
-
-        mock_trainer.adapter.to.assert_called_with(torch.bfloat16)
+    After the TrainingMode refactor, configure_precision only handles:
+    - UNet/TE/VAE dtype casting
+    - fp8_base setup
+    - Text encoder fp8 preparation
+    Adapter-specific casting and gradient disabling moved to mode.configure_trainable_precision().
+    """
 
     def test_fp8_base_sets_unet_dtype(self, mock_trainer):
         """Test fp8_base sets unet_weight_dtype to float8."""
@@ -173,19 +77,38 @@ class TestConfigurePrecision:
 
         assert mock_trainer.unet_weight_dtype == torch.float8_e4m3fn
 
-    def test_disables_unet_gradients(self, mock_trainer):
-        """Test that UNet gradients are disabled."""
+    def test_unet_cast_when_strategy_says(self, mock_trainer):
+        """Test UNet is cast to unet_weight_dtype when strategy says to."""
+        mock_trainer.strategies.cast_unet.return_value = True
+        mock_trainer.unet_weight_dtype = torch.float16
+
         from library.training.phases.model_prep import configure_precision
 
         configure_precision(mock_trainer)
 
-        mock_trainer.unet.requires_grad_.assert_called_with(False)
+        mock_trainer.unet.to.assert_called_with(dtype=torch.float16)
 
-    def test_disables_text_encoder_gradients(self, mock_trainer):
-        """Test that text encoder gradients are disabled."""
+    def test_te_cast_when_strategy_says(self, mock_trainer):
+        """Test text encoders are cast to te_weight_dtype when strategy says to."""
+        mock_trainer.strategies.cast_text_encoder.return_value = True
+        mock_trainer.te_weight_dtype = torch.float16
+
         from library.training.phases.model_prep import configure_precision
 
         configure_precision(mock_trainer)
 
         for te in mock_trainer.text_encoders:
-            te.requires_grad_.assert_called_with(False)
+            te.to.assert_called_with(dtype=torch.float16)
+
+    def test_no_cast_when_strategy_says_no(self, mock_trainer):
+        """Test no casting when strategy returns False."""
+        mock_trainer.strategies.cast_unet.return_value = False
+        mock_trainer.strategies.cast_text_encoder.return_value = False
+
+        from library.training.phases.model_prep import configure_precision
+
+        configure_precision(mock_trainer)
+
+        mock_trainer.unet.to.assert_not_called()
+        for te in mock_trainer.text_encoders:
+            te.to.assert_not_called()

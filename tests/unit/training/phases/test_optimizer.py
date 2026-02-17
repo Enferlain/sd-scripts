@@ -2,6 +2,8 @@
 Unit tests for library/training/phases/optimizer.py
 
 Tests the optimizer phase functions with mocked trainer state.
+After the TrainingMode refactor, optimizer params building, accelerator preparation,
+and gradient setup are delegated to trainer.mode.* hooks.
 """
 
 import pytest
@@ -71,36 +73,39 @@ class TestCalculateMaxTrainSteps:
 @pytest.mark.training
 @pytest.mark.unit
 class TestPrepareOptimizer:
-    """Test prepare_optimizer function."""
+    """Test prepare_optimizer function.
+
+    After the TrainingMode refactor, optimizer params are built via
+    trainer.mode.build_optimizer_params() and accelerator wrapping via
+    trainer.mode.prepare_with_accelerator().
+    """
 
     def test_creates_optimizer(self, mock_trainer):
-        """Test that optimizer is created and assigned."""
+        """Test that optimizer is created via mode and assigned."""
         mock_optimizer = MagicMock()
         mock_scheduler = MagicMock()
 
+        # Configure mode.build_optimizer_params return
+        mock_trainer.mode.build_optimizer_params.return_value = (
+            "AdamW",  # optimizer_name
+            {},  # optimizer_args
+            mock_optimizer,  # optimizer
+            MagicMock(),  # train_fn
+            MagicMock(),  # eval_fn
+            ["unet"],  # lr_descriptions
+        )
+        mock_trainer.mode.register_state_hooks.return_value = MagicMock(return_value=None)
+
         with (
-            patch("library.training.phases.optimizer._prepare_optimizer_util") as mock_prep_opt,
             patch("library.training.phases.optimizer.get_scheduler_fix", return_value=mock_scheduler),
-            patch("library.training.phases.optimizer._prepare_with_accelerator"),
             patch("library.training.phases.optimizer._setup_gradient_checkpointing"),
-            patch("library.training.phases.optimizer.register_adapter_state_hooks") as mock_register,
             patch("library.training.phases.optimizer.resume_from_local_or_hf_if_specified"),
         ):
-            mock_prep_opt.return_value = (
-                "AdamW",  # optimizer_name
-                {},  # optimizer_args
-                mock_optimizer,  # optimizer
-                MagicMock(),  # train_fn
-                MagicMock(),  # eval_fn
-                ["unet"],  # lr_descriptions
-            )
-            mock_register.return_value = MagicMock(return_value=None)
-
             from library.training.phases.optimizer import prepare_optimizer
 
             prepare_optimizer(mock_trainer)
 
-            mock_prep_opt.assert_called_once()
+            mock_trainer.mode.build_optimizer_params.assert_called_once_with(mock_trainer)
             assert mock_trainer.optimizer is mock_optimizer
 
     def test_creates_lr_scheduler(self, mock_trainer):
@@ -108,24 +113,21 @@ class TestPrepareOptimizer:
         mock_optimizer = MagicMock()
         mock_scheduler = MagicMock()
 
+        mock_trainer.mode.build_optimizer_params.return_value = (
+            "AdamW",
+            {},
+            mock_optimizer,
+            MagicMock(),
+            MagicMock(),
+            ["unet"],
+        )
+        mock_trainer.mode.register_state_hooks.return_value = MagicMock(return_value=None)
+
         with (
-            patch("library.training.phases.optimizer._prepare_optimizer_util") as mock_prep_opt,
             patch("library.training.phases.optimizer.get_scheduler_fix", return_value=mock_scheduler) as mock_get_sched,
-            patch("library.training.phases.optimizer._prepare_with_accelerator"),
             patch("library.training.phases.optimizer._setup_gradient_checkpointing"),
-            patch("library.training.phases.optimizer.register_adapter_state_hooks") as mock_register,
             patch("library.training.phases.optimizer.resume_from_local_or_hf_if_specified"),
         ):
-            mock_prep_opt.return_value = (
-                "AdamW",
-                {},
-                mock_optimizer,
-                MagicMock(),
-                MagicMock(),
-                ["unet"],
-            )
-            mock_register.return_value = MagicMock(return_value=None)
-
             from library.training.phases.optimizer import prepare_optimizer
 
             prepare_optimizer(mock_trainer)
@@ -133,25 +135,28 @@ class TestPrepareOptimizer:
             mock_get_sched.assert_called_once()
             assert mock_trainer.lr_scheduler is mock_scheduler
 
+    def test_delegates_accelerator_prepare_to_mode(self, mock_trainer):
+        """Test that accelerator preparation is delegated to mode."""
+        mock_trainer.mode.build_optimizer_params.return_value = (
+            "AdamW",
+            {},
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            ["unet"],
+        )
+        mock_trainer.mode.register_state_hooks.return_value = MagicMock(return_value=None)
 
-@pytest.mark.training
-@pytest.mark.unit
-class TestPrepareWithAccelerator:
-    """Test _prepare_with_accelerator function."""
+        with (
+            patch("library.training.phases.optimizer.get_scheduler_fix", return_value=MagicMock()),
+            patch("library.training.phases.optimizer._setup_gradient_checkpointing"),
+            patch("library.training.phases.optimizer.resume_from_local_or_hf_if_specified"),
+        ):
+            from library.training.phases.optimizer import prepare_optimizer
 
-    def test_calls_accelerator_prepare(self, mock_trainer):
-        """Test that _prepare_with_accelerator calls accelerator.prepare."""
-        # Set up config to take non-deepspeed path
-        mock_trainer.cfg.performance.deepspeed = False
-        mock_trainer._train_unet = False
-        mock_trainer._train_text_encoder = False
+            prepare_optimizer(mock_trainer)
 
-        from library.training.phases.optimizer import _prepare_with_accelerator
-
-        _prepare_with_accelerator(mock_trainer)
-
-        # Should call accelerator.prepare with adapter, optimizer, lr_scheduler
-        mock_trainer.accelerator.prepare.assert_called()
+            mock_trainer.mode.prepare_with_accelerator.assert_called_once_with(mock_trainer)
 
 
 @pytest.mark.training
@@ -178,3 +183,13 @@ class TestSetupGradientCheckpointing:
         _setup_gradient_checkpointing(mock_trainer)
 
         mock_trainer.unet.enable_gradient_checkpointing.assert_not_called()
+
+    def test_delegates_adapter_gradient_to_mode(self, mock_trainer):
+        """Test that adapter-specific gradient setup is delegated to mode."""
+        mock_trainer.cfg.performance.memory.gradient_checkpointing = False
+
+        from library.training.phases.optimizer import _setup_gradient_checkpointing
+
+        _setup_gradient_checkpointing(mock_trainer)
+
+        mock_trainer.mode.setup_gradient_training.assert_called_once_with(mock_trainer)

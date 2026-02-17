@@ -115,7 +115,10 @@ class TestResumeBehavior(unittest.TestCase):
     def test_resume_logic(self):
         # 1. SETUP TRAINER & MOCKING
         strategy = MockStrategy()
-        trainer = PeftTrainer(self.cfg, strategy)
+        mode = MagicMock()
+        # Configure mode mocks for prepare_optimizer
+        mode.build_optimizer_params.return_value = ("AdamW", {}, MagicMock(), MagicMock(), MagicMock(), [])
+        trainer = PeftTrainer(self.cfg, strategy, mode)
         trainer._accelerator = MockAccelerator()  # Use backing field since accelerator is a property
         trainer.adapter = MagicMock()  # Mock adapter
         trainer.val_manifest = None  # No validation for this test
@@ -177,16 +180,18 @@ class TestResumeBehavior(unittest.TestCase):
         trainer.accelerator._load_hooks = []
 
         # Run the prepare_optimizer function (which contains the logic we are testing)
-        # We need to mock _prepare_optimizer_util and get_scheduler_fix since we don't want real optimizers
+        # Configure mode.register_state_hooks to use the real register_adapter_state_hooks
+        from library.training.checkpointing import register_adapter_state_hooks as real_register
+
+        def mock_register_state_hooks(t):
+            return real_register(t.accelerator, t.adapter, self.cfg, t._current_epoch_state, t._current_step_state)
+
+        trainer.mode.register_state_hooks.side_effect = mock_register_state_hooks
 
         with (
-            unittest.mock.patch("library.training.phases.optimizer._prepare_optimizer_util") as mock_opt,
             unittest.mock.patch("library.training.phases.optimizer.get_scheduler_fix") as mock_sched,
-            unittest.mock.patch("library.training.phases.optimizer._prepare_with_accelerator") as mock_prep,
             unittest.mock.patch("library.training.phases.optimizer._setup_gradient_checkpointing") as mock_grad,
         ):
-            mock_opt.return_value = ("AdamW", {}, MagicMock(), MagicMock(), MagicMock(), [])
-
             # This is the function under test!
             prepare_optimizer(trainer)
 

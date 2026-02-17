@@ -17,6 +17,7 @@ from library.config.config_validation import prepare_config, validate_config
 from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 from library.strategies.sdxl.training import SdxlTrainingStrategy
 from library.training.runners.peft_trainer import PeftTrainer
+from library.training.modes import PeftMode
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex
 
@@ -33,7 +34,8 @@ def train(cfg: SDXLPeftConfig, strategies: SdxlTrainingStrategy) -> None:
         cfg: Training configuration
         strategies: SDXL-specific training strategies
     """
-    trainer = PeftTrainer(cfg, strategies)
+    mode = PeftMode()
+    trainer = PeftTrainer(cfg, strategies, mode)
     trainer.train()
 
 

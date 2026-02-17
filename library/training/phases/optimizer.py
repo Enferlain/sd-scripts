@@ -15,10 +15,8 @@ from typing import TYPE_CHECKING
 
 from library.data import create_training_dataloader, prepare_validation_epoch
 from library.models.runtime_utils import patch_accelerator_for_fp16_training
-from library.optimizers.optimizer_utils import prepare_optimizer as _prepare_optimizer_util
 from library.optimizers.scheduler import get_scheduler_fix
-from library.performance import deepspeed_utils
-from library.training.checkpointing import register_adapter_state_hooks, resume_from_local_or_hf_if_specified
+from library.training.checkpointing import resume_from_local_or_hf_if_specified
 
 if TYPE_CHECKING:
     from library.training.runners.peft_trainer import PeftTrainer
@@ -41,7 +39,7 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
     """
     cfg = trainer.cfg
 
-    # Create optimizer
+    # Create optimizer (delegated to mode)
     (
         trainer.optimizer_name,
         trainer.optimizer_args,
@@ -49,12 +47,7 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
         trainer.optimizer_train_fn,
         trainer.optimizer_eval_fn,
         trainer.lr_descriptions,
-    ) = _prepare_optimizer_util(
-        cfg.optimizer,
-        cfg.optimizer.learning_rates,
-        cfg.peft,
-        trainer.adapter,
-    )
+    ) = trainer.mode.build_optimizer_params(trainer)
 
     # NOTE: trainer._train_unet and trainer._train_text_encoder are set in
     # prepare_models() -> create_adapter() as single source of truth
@@ -107,10 +100,10 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
         trainer.accelerator.num_processes,
     )
 
-    # Accelerator.prepare - handles distributed training setup
-    _prepare_with_accelerator(trainer)
+    # Accelerator.prepare - handles distributed training setup (delegated to mode)
+    trainer.mode.prepare_with_accelerator(trainer)
 
-    # Gradient checkpointing setup
+    # Gradient checkpointing setup (shared UNet/TE parts + mode-specific adapter parts)
     # NOTE: This happens AFTER accelerator.prepare(), matching legacy behavior.
     # Risk: DDP with cpu_offload_checkpointing=True may have issues if hooks
     # are registered after wrapping. Requires manual verification in distributed
@@ -128,10 +121,8 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
     if cfg.performance.precision.full_fp16:
         patch_accelerator_for_fp16_training(trainer.accelerator)
 
-    # Register adapter state hooks for checkpointing
-    get_steps_from_state = register_adapter_state_hooks(
-        trainer.accelerator, trainer.adapter, cfg, trainer._current_epoch_state, trainer._current_step_state
-    )
+    # Register state hooks for checkpointing (delegated to mode)
+    get_steps_from_state = trainer.mode.register_state_hooks(trainer)
 
     # Resume from checkpoint if specified
     resume_from_local_or_hf_if_specified(trainer.accelerator, cfg.output.saving, cfg.output.huggingface)
@@ -147,42 +138,8 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
         trainer.global_step = steps_from_state  # Restore global_step for correct logging/checkpointing
 
 
-def _prepare_with_accelerator(trainer: PeftTrainer) -> None:
-    """Handle accelerator.prepare for optimizer, adapter, scheduler, and models."""
-    cfg = trainer.cfg
-
-    if cfg.performance.deepspeed:
-        flags = trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders)
-        ds_model = deepspeed_utils.prepare_deepspeed_model(
-            cfg.performance.precision,
-            unet=trainer.unet if trainer._train_unet else None,
-            text_encoder1=trainer.text_encoders[0] if flags[0] else None,
-            text_encoder2=(trainer.text_encoders[1] if flags[1] else None) if len(trainer.text_encoders) > 1 else None,
-            adapter=trainer.adapter,
-        )
-        ds_model, trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(ds_model, trainer.optimizer, trainer.lr_scheduler)
-        trainer._training_model = ds_model
-    else:
-        if trainer._train_unet:
-            trainer.unet = trainer.strategies.prepare_unet_with_accelerator(cfg, trainer.accelerator, trainer.unet)
-        else:
-            trainer.unet.to(trainer.accelerator.device, dtype=trainer.unet_weight_dtype if trainer.strategies.cast_unet(cfg) else None)
-
-        if trainer._train_text_encoder:
-            trainer.text_encoders = [
-                (trainer.accelerator.prepare(t_enc) if flag else t_enc)
-                for t_enc, flag in zip(trainer.text_encoders, trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders))
-            ]
-            trainer._text_encoder = trainer.text_encoders if len(trainer.text_encoders) > 1 else trainer.text_encoders[0]
-
-        trainer.adapter, trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(
-            trainer.adapter, trainer.optimizer, trainer.lr_scheduler
-        )
-        trainer._training_model = trainer.adapter
-
-
 def _setup_gradient_checkpointing(trainer: PeftTrainer) -> None:
-    """Setup gradient checkpointing for models if enabled."""
+    """Setup gradient checkpointing for shared models + mode-specific adapter."""
     cfg = trainer.cfg
 
     if cfg.performance.memory.gradient_checkpointing:
@@ -194,8 +151,6 @@ def _setup_gradient_checkpointing(trainer: PeftTrainer) -> None:
         for t_enc, flag in zip(trainer.text_encoders, trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders)):
             if flag and t_enc.supports_gradient_checkpointing:
                 t_enc.gradient_checkpointing_enable()
-
-        trainer.adapter.enable_gradient_checkpointing()
 
         # Train mode for gradient checkpointing
         trainer.unet.train()
@@ -210,8 +165,8 @@ def _setup_gradient_checkpointing(trainer: PeftTrainer) -> None:
         for t_enc in trainer.text_encoders:
             t_enc.eval()
 
-    # Prepare grad etc
-    trainer.accelerator.unwrap_model(trainer.adapter).prepare_grad_etc(trainer._text_encoder, trainer.unet)
+    # Mode-specific: adapter gradient checkpointing + prepare_grad_etc
+    trainer.mode.setup_gradient_training(trainer)
 
     # VAE setup if not caching latents
     if not trainer._cache_latents:
