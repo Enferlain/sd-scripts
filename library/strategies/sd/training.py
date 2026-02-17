@@ -160,6 +160,33 @@ class SdTrainingStrategy(TrainingStrategy):
         """
         return None
 
+    # --- New pipeline caching methods ---
+    # SD has not been migrated to the new CachingEngine pipeline yet.
+    # These stubs satisfy the abstract interface; implement when SD is ported.
+
+    def create_latent_caching_strategy(self, cfg: Any) -> Any:
+        """Not yet implemented for SD. SD uses the old pipeline."""
+        raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")
+
+    def create_te_caching_strategy(self, cfg: Any) -> Any:
+        """Not yet implemented for SD. SD uses the old pipeline."""
+        raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")
+
+    def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
+        """Not yet implemented for SD. SD uses the old pipeline."""
+        raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")
+
+    def encode_te_outputs_in_memory(
+        self,
+        text_encoders: list[Any],
+        tokenizers: list[Any],
+        caption: str,
+        max_token_length: int,
+        device: Any,
+    ) -> dict[str, torch.Tensor]:
+        """Not yet implemented for SD. SD uses the old pipeline."""
+        raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")
+
     def cache_text_encoder_outputs_if_needed(
         self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
     ) -> None:

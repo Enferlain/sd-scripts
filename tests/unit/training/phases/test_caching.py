@@ -81,10 +81,12 @@ class TestRunLatentCaching:
         # VAE should not be touched
         mock_trainer.vae.to.assert_not_called()
 
-    def test_creates_latent_strategy(self, mock_trainer):
-        """Test that SdxlLatentsPipelineStrategy is created and assigned."""
+    def test_creates_latent_strategy_via_strategies(self, mock_trainer):
+        """Test that latent strategy is created via trainer.strategies.create_latent_caching_strategy."""
+        mock_strategy = MagicMock()
+        mock_trainer.strategies.create_latent_caching_strategy.return_value = mock_strategy
+
         with (
-            patch("library.training.phases.caching.SdxlLatentsPipelineStrategy") as MockStrategy,
             patch("library.training.phases.caching.CachingEngine") as MockEngine,
             patch("library.training.phases.caching.clean_memory_on_device"),
         ):
@@ -96,13 +98,14 @@ class TestRunLatentCaching:
 
             run_latent_caching(mock_trainer)
 
-            MockStrategy.assert_called_once()
-            assert mock_trainer.latent_strategy is not None
+            mock_trainer.strategies.create_latent_caching_strategy.assert_called_once_with(mock_trainer.cfg)
+            assert mock_trainer.latent_strategy == mock_strategy
 
     def test_moves_vae_to_device_and_back(self, mock_trainer):
         """Test VAE is moved to device for caching, then back to CPU."""
+        mock_trainer.strategies.create_latent_caching_strategy.return_value = MagicMock()
+
         with (
-            patch("library.training.phases.caching.SdxlLatentsPipelineStrategy"),
             patch("library.training.phases.caching.CachingEngine") as MockEngine,
             patch("library.training.phases.caching.clean_memory_on_device"),
         ):
@@ -143,11 +146,12 @@ class TestRunTECaching:
             te.to.assert_not_called()
 
     def test_disk_mode_uses_caching_engine(self, mock_trainer):
-        """Test disk-based TE caching uses CachingEngine."""
+        """Test disk-based TE caching uses CachingEngine via strategy factory."""
         mock_trainer.cfg.data.caching.cache_text_encoder_outputs_to_disk = True
+        mock_te_strategy = MagicMock()
+        mock_trainer.strategies.create_te_caching_strategy.return_value = mock_te_strategy
 
         with (
-            patch("library.training.phases.caching.SdxlTextEncoderPipelineStrategy") as MockStrategy,
             patch("library.training.phases.caching.CachingEngine") as MockEngine,
             patch("library.training.phases.caching.clean_memory_on_device"),
         ):
@@ -159,14 +163,16 @@ class TestRunTECaching:
 
             run_te_caching(mock_trainer)
 
-            MockStrategy.assert_called_once()
+            mock_trainer.strategies.create_te_caching_strategy.assert_called_once_with(mock_trainer.cfg)
             MockEngine.assert_called_once()
             mock_engine.cache_dataset.assert_called()
 
     def test_moves_text_encoders_to_cpu_after(self, mock_trainer):
         """Test text encoders are moved to CPU after caching."""
+        mock_trainer.cfg.data.caching.cache_text_encoder_outputs_to_disk = True
+        mock_trainer.strategies.create_te_caching_strategy.return_value = MagicMock()
+
         with (
-            patch("library.training.phases.caching.SdxlTextEncoderPipelineStrategy"),
             patch("library.training.phases.caching.CachingEngine") as MockEngine,
             patch("library.training.phases.caching.clean_memory_on_device"),
         ):

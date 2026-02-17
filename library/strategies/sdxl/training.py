@@ -295,6 +295,94 @@ class SdxlTrainingStrategy(TrainingStrategy):
         else:
             return None
 
+    # --- New pipeline caching methods ---
+
+    def create_latent_caching_strategy(self, cfg: Any) -> library.strategies.sdxl.caching.SdxlLatentsPipelineStrategy:
+        """
+        Create SDXL latent caching strategy for the new CachingEngine pipeline.
+
+        Args:
+            cfg: Configuration object.
+
+        Returns:
+            SdxlLatentsPipelineStrategy instance.
+        """
+        latent_dtype = "fp32" if cfg.performance.precision.no_half_vae else "fp16"
+        return library.strategies.sdxl.caching.SdxlLatentsPipelineStrategy(
+            flip_aug=cfg.data.preprocessing.flip_aug,
+            dtype=latent_dtype,
+        )
+
+    def create_te_caching_strategy(self, cfg: Any) -> library.strategies.sdxl.caching.SdxlTextEncoderPipelineStrategy:
+        """
+        Create SDXL text encoder caching strategy for the new CachingEngine pipeline.
+
+        Args:
+            cfg: Configuration object.
+
+        Returns:
+            SdxlTextEncoderPipelineStrategy instance.
+        """
+        return library.strategies.sdxl.caching.SdxlTextEncoderPipelineStrategy(
+            max_token_length=cfg.training.max_token_length,
+        )
+
+    def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
+        """
+        Tokenize captions using SDXL dual CLIP tokenizers.
+
+        Args:
+            tokenizers: [clip_l_tokenizer, clip_g_tokenizer].
+            captions: List of caption strings.
+            max_token_length: Maximum token sequence length.
+
+        Returns:
+            List of [clip_l_tokens, clip_g_tokens] tensors.
+        """
+        t1, t2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], captions, max_token_length)
+        return [t1, t2]
+
+    def encode_te_outputs_in_memory(
+        self,
+        text_encoders: list[Any],
+        tokenizers: list[Any],
+        caption: str,
+        max_token_length: int,
+        device: Any,
+    ) -> dict[str, torch.Tensor]:
+        """
+        Compute SDXL text encoder outputs for a single caption (in-memory caching).
+
+        Args:
+            text_encoders: [clip_l_encoder, clip_g_encoder].
+            tokenizers: [clip_l_tokenizer, clip_g_tokenizer].
+            caption: Single caption string.
+            max_token_length: Maximum token sequence length.
+            device: Device to run computation on.
+
+        Returns:
+            Dict with hidden_state1, hidden_state2, pool2 tensors on CPU.
+        """
+        input_ids1, input_ids2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], [caption], max_token_length)
+        input_ids1 = input_ids1.to(device)
+        input_ids2 = input_ids2.to(device)
+
+        with torch.no_grad():
+            hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
+                max_token_length,
+                input_ids1,
+                input_ids2,
+                tokenizers[0],
+                tokenizers[1],
+                text_encoders[0],
+                text_encoders[1],
+            )
+            return {
+                "hidden_state1": hidden_state1.squeeze(0).cpu(),
+                "hidden_state2": hidden_state2.squeeze(0).cpu(),
+                "pool2": pool2.squeeze(0).cpu(),
+            }
+
     def cache_text_encoder_outputs_if_needed(
         self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
     ) -> None:

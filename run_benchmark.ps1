@@ -46,6 +46,9 @@ $ErrorActionPreference = "Stop"
 $venv = "d:\Projects\sd-scripts\.venv\Scripts\python.exe"
 $projectRoot = "d:\Projects\sd-scripts"
 
+# Ensure library/ is importable (package = false in pyproject.toml)
+$env:PYTHONPATH = $projectRoot
+
 # Resolve config name
 if (-not $configMap.ContainsKey($Config)) {
     Write-Host "[ERROR] Unknown config: $Config" -ForegroundColor Red

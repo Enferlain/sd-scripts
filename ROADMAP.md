@@ -133,6 +133,16 @@ All phase functions in `library/training/phases/` are typed as `trainer: PeftTra
 > [!IMPORTANT]
 > Key constraint: this repo prioritizes readability and ease of modification over abstraction. Whatever pattern is chosen must feel intuitive when adding new features. Decision deferred until full fine-tuning support is actively being built.
 
+### Phase 0: SDXL Decoupling (✅ Complete)
+
+Removed all direct SDXL imports from `caching.py` and `training_loop.py`. Phase files now call strategy factory methods (`create_latent_caching_strategy`, `create_te_caching_strategy`, `tokenize_captions`, `encode_te_outputs_in_memory`) on `TrainingStrategy`.
+
+- [x] Add 4 abstract methods to `TrainingStrategy` base class
+- [x] Implement in `SdxlTrainingStrategy`
+- [x] Add `NotImplementedError` stubs in `SdTrainingStrategy` (SD uses old pipeline)
+- [x] Remove SDXL imports from `caching.py` and `training_loop.py`
+- [ ] **Future:** Implement SD strategy methods when SD is migrated to new CachingEngine pipeline
+
 ---
 
 ## Testability Improvements

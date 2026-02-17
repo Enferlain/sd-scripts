@@ -11,11 +11,9 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-import torch
 from tqdm import tqdm
 
 from library.data import CachingEngine
-from library.strategies.sdxl.caching import SdxlLatentsPipelineStrategy, SdxlTextEncoderPipelineStrategy
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 
@@ -57,12 +55,8 @@ def run_latent_caching(trainer: PeftTrainer) -> None:
 
     # Extract config values
     cache_dir = trainer.cfg.data.caching.cache_dir or trainer.cfg.data.source.train_data_dir
-    latent_dtype = "fp32" if trainer.cfg.performance.precision.no_half_vae else "fp16"
 
-    trainer.latent_strategy = SdxlLatentsPipelineStrategy(
-        flip_aug=trainer.cfg.data.preprocessing.flip_aug,
-        dtype=latent_dtype,
-    )
+    trainer.latent_strategy = trainer.strategies.create_latent_caching_strategy(trainer.cfg)
 
     trainer.vae.to(trainer.accelerator.device, dtype=trainer.vae_dtype)
     trainer.vae.requires_grad_(False)
@@ -132,9 +126,7 @@ def run_te_caching(trainer: PeftTrainer) -> None:
 
     if trainer.cfg.data.caching.cache_text_encoder_outputs_to_disk:
         # Disk-based TE caching: use CachingEngine
-        trainer.te_strategy = SdxlTextEncoderPipelineStrategy(
-            max_token_length=trainer.cfg.training.max_token_length,
-        )
+        trainer.te_strategy = trainer.strategies.create_te_caching_strategy(trainer.cfg)
         te_caching_engine = CachingEngine(
             strategy=trainer.te_strategy,
             batch_size=trainer.cfg.data.caching.te_batch_size,
@@ -172,9 +164,6 @@ def run_te_caching(trainer: PeftTrainer) -> None:
 
     else:
         # In-memory TE caching: compute and store in entry.te_outputs
-        from library.strategies.sdxl.training import tokenize_sdxl_captions
-        from library.models.sdxl.text_encoder import get_hidden_states_sdxl
-
         def _cache_te_in_memory(manifest, desc: str) -> None:
             """Cache TE outputs in memory for a manifest."""
             for entry in tqdm(
@@ -182,27 +171,13 @@ def run_te_caching(trainer: PeftTrainer) -> None:
                 desc=desc,
                 disable=trainer.accelerator.process_index != 0,
             ):
-                input_ids1, input_ids2 = tokenize_sdxl_captions(
-                    trainer.tokenizers[0], trainer.tokenizers[1], [entry.caption], trainer.cfg.training.max_token_length
+                entry.te_outputs = trainer.strategies.encode_te_outputs_in_memory(
+                    text_encoders=trainer.text_encoders,
+                    tokenizers=trainer.tokenizers,
+                    caption=entry.caption,
+                    max_token_length=trainer.cfg.training.max_token_length,
+                    device=trainer.accelerator.device,
                 )
-                input_ids1 = input_ids1.to(trainer.accelerator.device)
-                input_ids2 = input_ids2.to(trainer.accelerator.device)
-
-                with torch.no_grad():
-                    hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
-                        trainer.cfg.training.max_token_length,
-                        input_ids1,
-                        input_ids2,
-                        trainer.tokenizers[0],
-                        trainer.tokenizers[1],
-                        trainer.text_encoders[0],
-                        trainer.text_encoders[1],
-                    )
-                    entry.te_outputs = {
-                        "hidden_state1": hidden_state1.squeeze(0).cpu(),
-                        "hidden_state2": hidden_state2.squeeze(0).cpu(),
-                        "pool2": pool2.squeeze(0).cpu(),
-                    }
 
         logger.info("Computing text encoder outputs in memory...")
         _cache_te_in_memory(trainer.train_manifest, "TE caching (memory)")

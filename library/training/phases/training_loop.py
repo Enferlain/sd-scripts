@@ -95,13 +95,11 @@ def run_training_loop(trainer: PeftTrainer) -> None:
         tokens_path = None
         if cfg.data.caching.cache_tokens_per_epoch and not cfg.data.caching.cache_text_encoder_outputs:
             from library.data import tokenize_epoch_manifest
-            from library.strategies.sdxl.training import tokenize_sdxl_captions
 
             tokens_path = Path(trainer._cache_dir) / f"epoch_{epoch}_tokens.safetensors"
 
             def tokenize_fn(captions: list[str]) -> list[torch.Tensor]:
-                t1, t2 = tokenize_sdxl_captions(trainer.tokenizers[0], trainer.tokenizers[1], captions, cfg.training.max_token_length)
-                return [t1, t2]
+                return strategies.tokenize_captions(trainer.tokenizers, captions, cfg.training.max_token_length)
 
             if accelerator.is_main_process:
                 tokenize_epoch_manifest(

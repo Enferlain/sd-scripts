@@ -123,6 +123,83 @@ class CachingStrategy(ABC):
         """
         raise NotImplementedError
 
+    # --- New pipeline caching methods ---
+    # These create strategies for the new CachingEngine pipeline (library/data/caching_engine.py).
+    # The methods above (get_latents_caching_strategy, etc.) are for the old pipeline
+    # and will be removed once SD is migrated.
+
+    @abstractmethod
+    def create_latent_caching_strategy(self, cfg: Any) -> Any:
+        """
+        Create a new-pipeline CachingStrategy for VAE latent caching.
+
+        Returns an instance compatible with library.data.CachingEngine.
+
+        Args:
+            cfg: Configuration object.
+
+        Returns:
+            A CachingStrategy (library.data.caching_engine.CachingStrategy) instance.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def create_te_caching_strategy(self, cfg: Any) -> Any:
+        """
+        Create a new-pipeline CachingStrategy for text encoder output caching.
+
+        Returns an instance compatible with library.data.CachingEngine, or None
+        if disk-based TE caching is not applicable.
+
+        Args:
+            cfg: Configuration object.
+
+        Returns:
+            A CachingStrategy instance, or None.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
+        """
+        Tokenize captions using model-family-specific tokenization.
+
+        Args:
+            tokenizers: List of tokenizer instances for this architecture.
+            captions: List of caption strings to tokenize.
+            max_token_length: Maximum token sequence length.
+
+        Returns:
+            List of token tensors, one per tokenizer.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def encode_te_outputs_in_memory(
+        self,
+        text_encoders: list[Any],
+        tokenizers: list[Any],
+        caption: str,
+        max_token_length: int,
+        device: Any,
+    ) -> dict[str, torch.Tensor]:
+        """
+        Compute text encoder outputs for a single caption (in-memory caching path).
+
+        Used when TE outputs are cached in memory rather than to disk.
+
+        Args:
+            text_encoders: List of text encoder models.
+            tokenizers: List of tokenizer instances.
+            caption: Single caption string.
+            max_token_length: Maximum token sequence length.
+            device: Device to run computation on.
+
+        Returns:
+            Dict of output name -> tensor (CPU), e.g. {"hidden_state1": ..., "pool2": ...}.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def cache_text_encoder_outputs_if_needed(
         self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
