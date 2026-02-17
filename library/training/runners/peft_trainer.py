@@ -56,11 +56,13 @@ class PeftTrainer:
     Trainer for PEFT (LoRA/adapter) training.
 
     Orchestrates the training loop while delegating model-specific
-    operations to the provided TrainingStrategy.
+    operations to the provided TrainingStrategy and mode-specific
+    operations to the provided TrainingMode.
 
     Usage:
         strategies = SdxlTrainingStrategy()
-        trainer = PeftTrainer(cfg, strategies)
+        mode = PeftMode()
+        trainer = PeftTrainer(cfg, strategies, mode)
         trainer.train()
     """
 
@@ -371,7 +373,19 @@ class PeftTrainer:
         force_sync_upload: bool = False,
         dtype_override: torch.dtype | None = None,
     ) -> None:
-        """Save model checkpoint by delegating to the training mode."""
+        """Save model checkpoint by delegating to the training mode.
+
+        Args:
+            ckpt_name: Checkpoint filename.
+            unwrapped_adapter: The model to save. For standard saves this
+                is the adapter; for EDM2 loss weights this is
+                ``_edm2_model``.  Passed through to the mode as
+                ``target_model``.
+            step: Current training step.
+            epoch: Current epoch number.
+            force_sync_upload: Force synchronous HuggingFace upload.
+            dtype_override: Override save dtype (e.g. float32 for EDM2).
+        """
         metadata_to_save = self._minimum_metadata.copy() if self.cfg.output.saving.no_metadata else self._metadata.copy()
         modelspec_metadata = self.strategies.get_model_metadata(self.cfg)
         metadata_to_save.update(modelspec_metadata)
@@ -384,6 +398,7 @@ class PeftTrainer:
             metadata=metadata_to_save,
             force_sync_upload=force_sync_upload,
             dtype_override=dtype_override,
+            target_model=unwrapped_adapter,
         )
 
         self._emit("on_checkpoint", step=step, epoch=epoch)

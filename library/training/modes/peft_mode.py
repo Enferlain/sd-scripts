@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 from collections.abc import Callable
 
 import torch
+from torch import nn
 
 from library.adapters.lora_utils import resolve_adapter_kwargs
 from library.optimizers.optimizer_utils import prepare_optimizer as _prepare_optimizer_util
@@ -291,8 +292,13 @@ class PeftMode:
         metadata: dict[str, str],
         force_sync_upload: bool = False,
         dtype_override: torch.dtype | None = None,
+        target_model: nn.Module | None = None,
     ) -> None:
-        """Save adapter weights as a single ``.safetensors`` file.
+        """Save model weights as a single ``.safetensors`` file.
+
+        When *target_model* is ``None`` (the default), the adapter is
+        unwrapped and saved.  Callers pass an explicit *target_model*
+        for alternate save targets such as EDM2 loss weights.
 
         Extracted from ``peft_trainer.save_checkpoint()`` L384-390.
         """
@@ -308,8 +314,8 @@ class PeftMode:
         metadata.update(modelspec_metadata)
 
         save_dtype = dtype_override or trainer.save_dtype
-        unwrapped = trainer.accelerator.unwrap_model(trainer.adapter)
-        unwrapped.save_weights(ckpt_file, save_dtype, metadata)
+        model_to_save = target_model if target_model is not None else trainer.accelerator.unwrap_model(trainer.adapter)
+        model_to_save.save_weights(ckpt_file, save_dtype, metadata)
 
         if trainer.cfg.output.huggingface is not None and trainer.cfg.output.huggingface.huggingface_repo_id is not None:
             from library.utils import huggingface_util

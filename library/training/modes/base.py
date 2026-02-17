@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 from collections.abc import Callable
 
 import torch
+from torch import nn
 
 if TYPE_CHECKING:
     from library.training.runners.peft_trainer import PeftTrainer
@@ -119,6 +120,7 @@ class TrainingMode(Protocol):
         metadata: dict[str, str],
         force_sync_upload: bool = False,
         dtype_override: torch.dtype | None = None,
+        target_model: nn.Module | None = None,
     ) -> None:
         """Save a mode-specific checkpoint.
 
@@ -126,5 +128,11 @@ class TrainingMode(Protocol):
         mode decides the physical format:
         - PEFT: single ``.safetensors`` file via ``adapter.save_weights``
         - Fine-tune (future): directory with multiple components
+
+        Args:
+            target_model: Model to save. When ``None`` the mode uses its
+                default trainable (adapter for PEFT). Callers pass an
+                explicit model for alternate targets such as EDM2 loss
+                weights.
         """
         ...

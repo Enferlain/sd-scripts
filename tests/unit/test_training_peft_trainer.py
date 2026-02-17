@@ -41,3 +41,54 @@ class TestPeftTrainer(unittest.TestCase):
         mock_accelerator.is_main_process = False
         self.trainer._accelerator = mock_accelerator
         self.assertFalse(self.trainer.is_main_process)
+
+    def test_save_checkpoint_passes_target_model_to_mode(self):
+        """Test that save_checkpoint passes unwrapped_adapter through as target_model.
+
+        Regression test: EDM2 loss weight checkpoints pass a non-adapter
+        model (e.g. _edm2_model).  The mode must receive this as
+        target_model so it saves the correct weights.
+        """
+        mock_accelerator = MagicMock()
+        self.trainer._accelerator = mock_accelerator
+
+        # Set up required trainer state for save_checkpoint
+        self.cfg.output.saving.no_metadata = True
+        self.trainer._minimum_metadata = {"ss_adapter_module": "test"}
+        self.trainer._metadata = {}
+        self.strategies.get_model_metadata.return_value = {}
+
+        edm2_model = MagicMock(name="edm2_loss_weights")
+        self.trainer.save_checkpoint(
+            "edm2_weights.safetensors",
+            edm2_model,
+            step=100,
+            epoch=1,
+            dtype_override=None,
+        )
+
+        # Verify mode.save_checkpoint received the EDM2 model, not the adapter
+        self.mode.save_checkpoint.assert_called_once()
+        call_kwargs = self.mode.save_checkpoint.call_args
+        self.assertIs(call_kwargs.kwargs["target_model"], edm2_model)
+
+    def test_save_checkpoint_passes_adapter_as_target_model(self):
+        """Test that standard adapter checkpoints pass the adapter through."""
+        mock_accelerator = MagicMock()
+        self.trainer._accelerator = mock_accelerator
+
+        self.cfg.output.saving.no_metadata = False
+        self.trainer._minimum_metadata = {}
+        self.trainer._metadata = {"ss_adapter_module": "test"}
+        self.strategies.get_model_metadata.return_value = {}
+
+        mock_adapter = MagicMock(name="adapter")
+        self.trainer.save_checkpoint(
+            "adapter.safetensors",
+            mock_adapter,
+            step=50,
+            epoch=1,
+        )
+
+        call_kwargs = self.mode.save_checkpoint.call_args
+        self.assertIs(call_kwargs.kwargs["target_model"], mock_adapter)
