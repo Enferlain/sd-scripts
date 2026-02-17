@@ -1,5 +1,6 @@
 # based on https://github.com/Stability-AI/ModelSpec
 import os
+import json
 import time
 import datetime
 import base64
@@ -12,6 +13,14 @@ from dataclasses import dataclass, field, asdict, is_dataclass
 
 from library.utils.common_utils import setup_logging
 from library.config.dataclasses.output import MetadataConfig
+from library.constants import (
+    SS_METADATA_KEY_ADAPTER_MODULE,
+    SS_METADATA_KEY_ADAPTER_RANK,
+    SS_METADATA_KEY_ADAPTER_ALPHA,
+    SS_METADATA_KEY_V2,
+    SS_METADATA_KEY_BASE_MODEL_VERSION,
+    SS_METADATA_KEY_ADAPTER_ARGS,
+)
 # Type hints only to avoid circular imports if possible, though these are dataclasses so distinct modules usually fine
 
 setup_logging()
@@ -668,6 +677,43 @@ def load_metadata_from_safetensors(model: str) -> dict:
         metadata = f.metadata()
     if metadata is None:
         metadata = {}
+    return metadata
+
+
+def build_minimum_adapter_metadata(
+    v2: str | None,
+    base_model: str | None,
+    adapter_module: str,
+    adapter_rank: str,
+    adapter_alpha: str,
+    adapter_args: dict[str, str] | None,
+) -> dict[str, str]:
+    """
+    Builds the minimum metadata required for an adapter (LoRA).
+
+    Args:
+        v2: Version 2 flag or string.
+        base_model: Base model version string.
+        adapter_module: Module name for the adapter.
+        adapter_rank: Rank of the adapter.
+        adapter_alpha: Alpha value of the adapter.
+        adapter_args: Additional arguments for the adapter.
+
+    Returns:
+        Dict[str, str]: A dictionary containing the adapter metadata.
+    """
+    # old LoRA doesn't have base_model
+    metadata = {
+        SS_METADATA_KEY_ADAPTER_MODULE: adapter_module,
+        SS_METADATA_KEY_ADAPTER_RANK: adapter_rank,
+        SS_METADATA_KEY_ADAPTER_ALPHA: adapter_alpha,
+    }
+    if v2 is not None:
+        metadata[SS_METADATA_KEY_V2] = v2
+    if base_model is not None:
+        metadata[SS_METADATA_KEY_BASE_MODEL_VERSION] = base_model
+    if adapter_args is not None:
+        metadata[SS_METADATA_KEY_ADAPTER_ARGS] = json.dumps(adapter_args)
     return metadata
 
 

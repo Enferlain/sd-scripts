@@ -11,7 +11,7 @@ import torch
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import MetadataConfig
 from library.config.dataclasses.loss import LossConfig
-from library.training.sdxl_checkpointing import (
+from library.training._deprecated.sdxl_checkpointing import (
     save_sd_model_on_train_end,
     save_sd_model_on_epoch_end_or_stepwise,
 )

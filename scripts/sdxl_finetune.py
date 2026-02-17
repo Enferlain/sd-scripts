@@ -9,10 +9,6 @@ from tqdm import tqdm
 from diffusers import DDPMScheduler
 
 import library.config.config_util as config_util
-import library.strategies.base.caching
-import library.strategies.base.encoding
-import library.strategies.base.tokenization
-import library.strategies.sd.caching
 
 from library.constants import SDXL_VAE_LATENT_SCALE
 from library.models.sdxl.conversion import get_size_embeddings
@@ -23,9 +19,9 @@ from library.performance import deepspeed_utils
 from library.models.sdxl.unet import SdxlUNet2DConditionModel
 from library.data._deprecated.dataset_utils import load_arbitrary_dataset, collator_class, debug_dataset
 from library.training.checkpointing import resume_from_local_or_hf_if_specified, save_state_on_train_end
-from library.training.sdxl_checkpointing import save_sd_model_on_epoch_end_or_stepwise, save_sd_model_on_train_end
+from library.training._deprecated.sdxl_checkpointing import save_sd_model_on_epoch_end_or_stepwise, save_sd_model_on_train_end
 from library.models.sdxl.loader import load_target_model
-from library.training.sdxl_sample_generation import sample_images
+from library.training._deprecated.sdxl_sample_generation import sample_images
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.models.runtime_utils import replace_unet_modules, patch_accelerator_for_fp16_training
 from library.optimizers.scheduler import get_scheduler_fix

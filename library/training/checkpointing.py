@@ -3,7 +3,6 @@ import asyncio
 import json
 import shutil
 import logging
-import safetensors.torch
 
 from typing import Any, TYPE_CHECKING
 from collections.abc import Callable
@@ -17,12 +16,6 @@ from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import HuggingFaceConfig
 
 from library.constants import (
-    SS_METADATA_KEY_ADAPTER_MODULE,
-    SS_METADATA_KEY_ADAPTER_RANK,
-    SS_METADATA_KEY_ADAPTER_ALPHA,
-    SS_METADATA_KEY_V2,
-    SS_METADATA_KEY_BASE_MODEL_VERSION,
-    SS_METADATA_KEY_ADAPTER_ARGS,
     DEFAULT_EPOCH_NAME,
     EPOCH_FILE_NAME,
     DEFAULT_STEP_NAME,
@@ -38,70 +31,6 @@ from library.utils.common_utils import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
-
-
-def load_metadata_from_safetensors(safetensors_file: str) -> dict[str, str]:
-    """
-    Loads metadata from a SafeTensors file.
-
-    This method locks the file. See https://github.com/huggingface/safetensors/issues/164.
-    If the file isn't .safetensors or doesn't have metadata, returns an empty dict.
-
-    Args:
-        safetensors_file: Path to the SafeTensors file.
-
-    Returns:
-        Dict[str, str]: The metadata dictionary from the file, or an empty dict if not found.
-    """
-    if os.path.splitext(safetensors_file)[1] != ".safetensors":
-        return {}
-
-    with safetensors.safe_open(safetensors_file, framework="pt", device="cpu") as f:
-        metadata = f.metadata()
-    if metadata is None:
-        metadata = {}
-    return metadata
-
-
-def build_minimum_adapter_metadata(
-    v2: str | None,
-    base_model: str | None,
-    adapter_module: str,
-    adapter_rank: str,
-    adapter_alpha: str,
-    adapter_args: dict[str, Any] | None,
-) -> dict[str, str]:
-    """
-    Builds the minimum metadata required for an adapter (LoRA).
-
-    Args:
-        v2: Version 2 flag or string.
-        base_model: Base model version string.
-        adapter_module: Module name for the adapter.
-        adapter_rank: Rank of the adapter.
-        adapter_alpha: Alpha value of the adapter.
-        adapter_args: Additional arguments for the adapter.
-
-    Returns:
-        Dict[str, str]: A dictionary containing the adapter metadata.
-    """
-    # old LoRA doesn't have base_model
-    metadata = {
-        SS_METADATA_KEY_ADAPTER_MODULE: adapter_module,
-        SS_METADATA_KEY_ADAPTER_RANK: adapter_rank,
-        SS_METADATA_KEY_ADAPTER_ALPHA: adapter_alpha,
-    }
-    if v2 is not None:
-        metadata[SS_METADATA_KEY_V2] = v2
-    if base_model is not None:
-        metadata[SS_METADATA_KEY_BASE_MODEL_VERSION] = base_model
-    if adapter_args is not None:
-        metadata[SS_METADATA_KEY_ADAPTER_ARGS] = json.dumps(adapter_args)
-    return metadata
-
-
-# NOTE: Legacy get_model_metadata() and get_sai_model_spec_dataclass() removed.
-# Use library.utils.model_metadata.get_model_metadata_from_config() instead.
 
 
 def resume_from_local_or_hf_if_specified(

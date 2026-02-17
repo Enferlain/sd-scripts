@@ -26,7 +26,7 @@ from library.models.sd.loader import load_target_model
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.optimizers.scheduler import get_scheduler_fix
 from library.optimizers.optimizer_factory import get_optimizer
-from library.training.sd_sample_generation import sample_images
+from library.training._deprecated.sd_sample_generation import sample_images
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 from library.config.dataclasses.sd_finetune import SDFineTuneConfig
@@ -37,7 +37,7 @@ from library.training.checkpointing import (
     save_state_on_train_end,
 )
 
-from library.training.sd_checkpointing import save_sd_model_on_epoch_end_or_stepwise, save_sd_model_on_train_end
+from library.training._deprecated.sd_checkpointing import save_sd_model_on_epoch_end_or_stepwise, save_sd_model_on_train_end
 
 from library.training.noise_utils import fix_noise_scheduler_betas_for_zero_terminal_snr, prepare_scheduler_for_custom_training
 

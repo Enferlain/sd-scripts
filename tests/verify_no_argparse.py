@@ -32,7 +32,7 @@ def test_imports():
         return False
 
     try:
-        import library.training.sdxl_checkpointing
+        import library.training._deprecated.sdxl_checkpointing
 
         print("✅ library.training.sdxl_checkpointing imported successfully")
     except ImportError as e:

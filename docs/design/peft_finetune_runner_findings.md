@@ -65,6 +65,93 @@ Document current state of `library/strategies`, `library/training/phases`, and r
 10. There are temporary debug logs in SDXL strategy path.
 - `_get_text_cond` includes explicit debug lines marked "remove": `library/strategies/sdxl/training.py:557`, `library/strategies/sdxl/training.py:592`, `library/strategies/sdxl/training.py:604`.
 
+## Ownership Model: Sampling and Checkpointing
+
+This section clarifies where sampling/checkpointing logic belongs. The key is to split concerns across three axes:
+
+1. Temporal policy axis: "when does this happen?"
+- Owned by trainer/phases.
+- Examples:
+  - sample cadence checks in `library/training/phases/training_loop.py:231`
+  - step checkpoint cadence checks in `library/training/phases/training_loop.py:282`
+  - retention/removal policy using `get_remove_step_no` in `library/training/phases/training_loop.py:306`
+
+2. Model-family axis: "how does SD vs SDXL do this?"
+- Owned by per-model strategy (`library/strategies/sd`, `library/strategies/sdxl`).
+- Sampling example:
+  - SD strategy chooses SD pipeline in `library/strategies/sd/training.py:280`
+  - SDXL strategy chooses SDXL pipeline in `library/strategies/sdxl/training.py:493`
+- Metadata example:
+  - strategy contributes model-family metadata via `get_model_metadata` in `library/strategies/sd/training.py:317`
+
+3. Training-mode axis: "PEFT vs full finetune payload/wrapping?"
+- Should be owned by mode plugin (`PeftMode`, future `FineTuneMode`).
+- Checkpoint payload and hook differences live here:
+  - PEFT currently writes adapter weights in `library/training/runners/peft_trainer.py:385`
+  - PEFT state hooks currently adapter-specific in `library/training/checkpointing.py:534`
+- This is the main reason mode abstraction is needed before full finetune migration.
+
+### What belongs where (operational rules)
+
+Sampling:
+- Phase owns trigger logic and train/eval transitions around sampling.
+- Strategy owns pipeline class, model-family inputs, and sampling call details.
+- Mode usually does not own sampling, unless a mode introduces different sampling-time wrapping behavior.
+
+Checkpointing:
+- Phase/trainer owns trigger cadence, naming policy, retention, and save-state orchestration.
+- Strategy owns model-family metadata fields and model-family save helper selection only if it is model-specific.
+- Mode owns the serialization payload format and state hook registration:
+  - PEFT: adapter-only state dict, adapter-only resume hooks.
+  - Fine-tune: full model state dict, full-model resume hooks.
+
+### Why this split is important
+
+If checkpoint format logic stays in phase/trainer:
+- Phase files become PEFT-specific and block fine-tune rollout.
+- Future modes (fine-tune, textual inversion variants) require repeated edits in orchestration code.
+
+If sampling trigger logic moves into strategy:
+- Scheduling policy duplicates across strategies and becomes inconsistent across model families.
+- Harder to reason about run-level behavior (sample-at-start, every-N-step behavior).
+
+### Current code status vs target boundary
+
+Good:
+- Sampling trigger policy is already phase-owned in `library/training/phases/training_loop.py:231`.
+- Model-family sampling execution is strategy-owned (`sample_images` methods).
+
+Needs refactor:
+- Checkpoint payload writing is still runner-embedded PEFT behavior in `library/training/runners/peft_trainer.py:385`.
+- Adapter-only state hook registration is currently called directly from generic optimizer phase, tied to PEFT-only assumptions.
+
+### Practical implementation guidance for Phase 1
+
+For people implementing Phase 1 (`TrainingMode` + `PeftMode`):
+
+1. Keep sample cadence checks in phases unchanged.
+2. Keep `strategies.sample_images(...)` as the model-family execution boundary.
+3. Move checkpoint payload writing and resume hook wiring behind mode methods.
+4. Leave checkpoint naming/retention helpers (`get_step_ckpt_name`, `get_remove_step_no`, etc.) in generic phase/checkpointing utilities.
+5. Ensure mode API is semantic, not file-format primitive:
+   - pass logical checkpoint intent (name, step, epoch, sync flags),
+   - let mode decide whether it writes single-file adapter weights or full model artifacts.
+
+### Fast decision test for future changes
+
+When adding code, ask:
+
+1. Is this deciding when to do something?  
+Put it in phase/trainer.
+
+2. Is this deciding SD vs SDXL behavior?  
+Put it in strategy.
+
+3. Is this deciding PEFT vs full finetune behavior?  
+Put it in mode.
+
+If a function answers more than one of the above, split it.
+
 ## Suggested Direction
 
 Use one runner lifecycle with a small mode plugin layer.
