@@ -2,7 +2,7 @@
 SD1.5/2 PEFT (LoRA/LyCORIS) Training Script
 
 This script contains the complete training loop for SD1.5/2 PEFT training.
-The training logic was previously in library/training/peft_trainer.py.
+The training logic was previously in library/training/trainer.py.
 
 Structure:
 - train() function: The main training loop

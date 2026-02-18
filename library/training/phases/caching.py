@@ -18,17 +18,17 @@ from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
 
 if TYPE_CHECKING:
-    from library.training.runners.peft_trainer import PeftTrainer
+    from library.training.runners.trainer import Trainer
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def run_caching(trainer: PeftTrainer) -> None:
+def run_caching(trainer: Trainer) -> None:
     """Phase 2: Cache latents and optionally text encoder outputs.
 
     Args:
-        trainer: PeftTrainer instance containing cfg, vae, accelerator, manifests, etc.
+        trainer: Trainer instance containing cfg, vae, accelerator, manifests, etc.
     """
     run_latent_caching(trainer)
     run_te_caching(trainer)
@@ -42,13 +42,13 @@ def run_caching(trainer: PeftTrainer) -> None:
         clean_memory_on_device(trainer.accelerator.device)
 
 
-def run_latent_caching(trainer: PeftTrainer) -> None:
+def run_latent_caching(trainer: Trainer) -> None:
     """Cache VAE latents for the dataset.
 
     Updates trainer.train_manifest, trainer.val_manifest, and trainer.latent_strategy.
 
     Args:
-        trainer: PeftTrainer instance
+        trainer: Trainer instance
     """
     if not trainer.cfg.data.caching.cache_latents:
         return
@@ -105,13 +105,13 @@ def run_latent_caching(trainer: PeftTrainer) -> None:
     trainer.accelerator.wait_for_everyone()
 
 
-def run_te_caching(trainer: PeftTrainer) -> None:
+def run_te_caching(trainer: Trainer) -> None:
     """Cache text encoder outputs for the dataset.
 
     Updates trainer.train_manifest, trainer.val_manifest, and trainer.te_strategy.
 
     Args:
-        trainer: PeftTrainer instance
+        trainer: Trainer instance
     """
     if not trainer.cfg.data.caching.cache_text_encoder_outputs:
         return

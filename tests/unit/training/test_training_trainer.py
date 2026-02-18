@@ -1,14 +1,14 @@
 import unittest
 from unittest.mock import MagicMock
-from library.training.runners.peft_trainer import PeftTrainer
+from library.training.runners.trainer import Trainer
 
 
-class TestPeftTrainer(unittest.TestCase):
+class TestTrainer(unittest.TestCase):
     def setUp(self):
         self.cfg = MagicMock()
         self.strategies = MagicMock()
         self.mode = MagicMock()
-        self.trainer = PeftTrainer(self.cfg, self.strategies, self.mode)
+        self.trainer = Trainer(self.cfg, self.strategies, self.mode)
 
     def test_accelerator_access_before_init_raises_error(self):
         """Test that accessing accelerator before setup raises RuntimeError."""

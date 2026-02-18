@@ -10,7 +10,7 @@ import shutil
 # Add repo root to path
 sys.path.append(os.getcwd())
 
-from library.training.runners.peft_trainer import PeftTrainer
+from library.training.runners.trainer import Trainer
 from library.training.phases.optimizer import prepare_optimizer
 
 
@@ -118,7 +118,7 @@ class TestResumeBehavior(unittest.TestCase):
         mode = MagicMock()
         # Configure mode mocks for prepare_optimizer
         mode.build_optimizer_params.return_value = ("AdamW", {}, MagicMock(), MagicMock(), MagicMock(), [])
-        trainer = PeftTrainer(self.cfg, strategy, mode)
+        trainer = Trainer(self.cfg, strategy, mode)
         trainer._accelerator = MockAccelerator()  # Use backing field since accelerator is a property
         trainer.adapter = MagicMock()  # Mock adapter
         trainer.val_manifest = None  # No validation for this test

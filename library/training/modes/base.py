@@ -17,11 +17,7 @@ import torch
 from torch import nn
 
 if TYPE_CHECKING:
-    from library.training.runners.peft_trainer import PeftTrainer
-
-    # Use a type alias for the trainer to keep the protocol signatures clean.
-    # This will eventually be a generic Trainer base, but today it's PeftTrainer.
-    Trainer = PeftTrainer
+    from library.training.runners.trainer import Trainer
 
 
 @runtime_checkable

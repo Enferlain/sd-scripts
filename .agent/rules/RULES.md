@@ -14,7 +14,7 @@ uv run python
 
 ## Searching
 
-Always use `rg` (ripgrep) for searching the codebase. It respects `.gitignore` and is significantly faster than other tools.
+ALWAYS use `rg` (ripgrep) for searching the codebase. It respects `.gitignore` and is significantly faster than other tools.
 
 ```powershell
 rg "search_term"

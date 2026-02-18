@@ -132,7 +132,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
     """
     SDXL implementation of PEFT training strategy.
 
-    Extracted from SDXLPeftTrainer class methods.
+    Extracted from legacy SDXL training script.
     """
 
     vae_latent_scale: float = SDXL_VAE_LATENT_SCALE

@@ -1,7 +1,7 @@
 """
 Training Loop Phase - Main training loop execution.
 
-This module contains the core training loop that's called by PeftTrainer.
+This module contains the core training loop that's called by Trainer.
 All state is accessed via the trainer instance.
 """
 
@@ -33,13 +33,13 @@ from library.training.trainer_utils import determine_grad_sync_context, calculat
 from library.utils.common_utils import setup_logging
 
 if TYPE_CHECKING:
-    from library.training.runners.peft_trainer import PeftTrainer
+    from library.training.runners.trainer import Trainer
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def run_training_loop(trainer: PeftTrainer) -> None:
+def run_training_loop(trainer: Trainer) -> None:
     """Execute the main training loop.
 
     Iterates over epochs and steps, handling:
@@ -52,7 +52,7 @@ def run_training_loop(trainer: PeftTrainer) -> None:
     Updates trainer.global_step as training progresses.
 
     Args:
-        trainer: PeftTrainer instance containing all training state
+        trainer: Trainer instance containing all training state
     """
     # Unpack frequently used attributes for readability
     cfg = trainer.cfg

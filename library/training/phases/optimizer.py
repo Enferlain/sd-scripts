@@ -19,7 +19,7 @@ from library.optimizers.scheduler import get_scheduler_fix
 from library.training.checkpointing import resume_from_local_or_hf_if_specified
 
 if TYPE_CHECKING:
-    from library.training.runners.peft_trainer import PeftTrainer
+    from library.training.runners.trainer import Trainer
 
 from library.utils.common_utils import setup_logging
 
@@ -27,7 +27,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def prepare_optimizer(trainer: PeftTrainer) -> None:
+def prepare_optimizer(trainer: Trainer) -> None:
     """Phase 4: Create optimizer, LR scheduler, accelerator.prepare, and training state.
 
     Updates trainer.optimizer, trainer.optimizer_train_fn, trainer.optimizer_eval_fn,
@@ -35,7 +35,7 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
     trainer._val_dataloader, trainer._cyclic_val_dataloader, trainer.num_train_epochs, etc.
 
     Args:
-        trainer: PeftTrainer instance
+        trainer: Trainer instance
     """
     cfg = trainer.cfg
 
@@ -138,7 +138,7 @@ def prepare_optimizer(trainer: PeftTrainer) -> None:
         trainer.global_step = steps_from_state  # Restore global_step for correct logging/checkpointing
 
 
-def _setup_gradient_checkpointing(trainer: PeftTrainer) -> None:
+def _setup_gradient_checkpointing(trainer: Trainer) -> None:
     """Setup gradient checkpointing for shared models + mode-specific adapter."""
     cfg = trainer.cfg
 

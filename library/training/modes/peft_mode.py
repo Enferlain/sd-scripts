@@ -25,9 +25,7 @@ from library.performance import deepspeed_utils
 from library.training.checkpointing import register_adapter_state_hooks
 
 if TYPE_CHECKING:
-    from library.training.runners.peft_trainer import PeftTrainer
-
-    Trainer = PeftTrainer
+    from library.training.runners.trainer import Trainer
 
 from library.utils.common_utils import setup_logging
 
@@ -300,7 +298,7 @@ class PeftMode:
         unwrapped and saved.  Callers pass an explicit *target_model*
         for alternate save targets such as EDM2 loss weights.
 
-        Extracted from ``peft_trainer.save_checkpoint()`` L384-390.
+        Extracted from ``trainer.save_checkpoint()`` L384-390.
         """
         os.makedirs(trainer.cfg.output.saving.output_dir, exist_ok=True)
         ckpt_file = os.path.join(trainer.cfg.output.saving.output_dir, ckpt_name)

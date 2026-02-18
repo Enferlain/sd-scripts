@@ -1,7 +1,7 @@
 """
 Shared fixtures for training phase tests.
 
-Provides mock_trainer and mock_cfg fixtures that simulate PeftTrainer state
+Provides mock_trainer and mock_cfg fixtures that simulate Trainer state
 for unit testing phase functions in isolation.
 """
 
@@ -173,7 +173,7 @@ def mock_strategies():
 
 @pytest.fixture
 def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
-    """Create a mock PeftTrainer with all required attributes for phase testing."""
+    """Create a mock Trainer with all required attributes for phase testing."""
     trainer = MagicMock()
 
     # Core config and dependencies

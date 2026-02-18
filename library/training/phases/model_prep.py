@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import torch
 
 if TYPE_CHECKING:
-    from library.training.runners.peft_trainer import PeftTrainer
+    from library.training.runners.trainer import Trainer
 
 from library.utils.common_utils import setup_logging
 
@@ -21,14 +21,14 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def prepare_models(trainer: PeftTrainer) -> None:
+def prepare_models(trainer: Trainer) -> None:
     """Phase 3: Create adapter and configure precision.
 
     Updates trainer.adapter, trainer.net_kwargs, trainer.unet_weight_dtype,
     and trainer.te_weight_dtype.
 
     Args:
-        trainer: PeftTrainer instance
+        trainer: Trainer instance
     """
     # Lazy load UNet if it was deferred during setup (memory optimization)
     # This allows VAE/TE caching to complete before loading the large UNet
@@ -52,7 +52,7 @@ def prepare_models(trainer: PeftTrainer) -> None:
     trainer.mode.configure_trainable_precision(trainer)
 
 
-def configure_precision(trainer: PeftTrainer) -> None:
+def configure_precision(trainer: Trainer) -> None:
     """Configure shared precision settings for UNet and text encoders.
 
     Mode-specific precision (adapter casting, freezing base model) is
@@ -61,7 +61,7 @@ def configure_precision(trainer: PeftTrainer) -> None:
     Updates trainer.unet_weight_dtype and trainer.te_weight_dtype.
 
     Args:
-        trainer: PeftTrainer instance
+        trainer: Trainer instance
     """
     cfg = trainer.cfg
     unet = trainer.unet

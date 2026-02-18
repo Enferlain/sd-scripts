@@ -2,11 +2,11 @@
 SDXL PEFT (LoRA/LyCORIS) Training Script
 
 This script is the entry point for SDXL PEFT training.
-All training logic is now in PeftTrainer and its phase functions.
+All training logic is now in Trainer and its phase functions.
 
 Model-specific operations are delegated to:
 - library/strategies/sdxl/training.py (strategy pattern)
-- library/training/runners/peft_trainer.py (trainer orchestration)
+- library/training/runners/trainer.py (trainer orchestration)
 - library/training/phases/*.py (phase-specific logic)
 """
 
@@ -16,7 +16,7 @@ import hydra
 from library.config.config_validation import prepare_config, validate_config
 from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
 from library.strategies.sdxl.training import SdxlTrainingStrategy
-from library.training.runners.peft_trainer import PeftTrainer
+from library.training.runners.trainer import Trainer
 from library.training.modes import PeftMode
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import init_ipex
@@ -35,7 +35,7 @@ def train(cfg: SDXLPeftConfig, strategies: SdxlTrainingStrategy) -> None:
         strategies: SDXL-specific training strategies
     """
     mode = PeftMode()
-    trainer = PeftTrainer(cfg, strategies, mode)
+    trainer = Trainer(cfg, strategies, mode)
     trainer.train()
 
 

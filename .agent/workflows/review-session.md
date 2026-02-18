@@ -63,7 +63,7 @@ uv run ruff check library/ scripts/
 If changes affect training:
 
 ```powershell
-.\run_benchmark.ps1 -Fresh
+.\run_benchmark.ps1 -Fresh -Config test_core
 ```
 
 This runs a 50-step training loop and generates a report in `benchmark_output/`.

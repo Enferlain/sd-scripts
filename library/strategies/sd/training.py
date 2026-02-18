@@ -45,7 +45,7 @@ class SdTrainingStrategy(TrainingStrategy):
     """
     SD1.5/2 implementation of PEFT training strategy.
 
-    Extracted from SDPeftTrainer class methods.
+    Extracted from legacy SD training script.
     """
 
     vae_latent_scale: float = SD_VAE_LATENT_SCALE

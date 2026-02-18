@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 #     metrics: dict = field(default_factory=dict)  # Optional extra metrics
 
 
-class PeftTrainer:
+class Trainer:
     """
     Trainer for PEFT (LoRA/adapter) training.
 
@@ -62,7 +62,7 @@ class PeftTrainer:
     Usage:
         strategies = SdxlTrainingStrategy()
         mode = PeftMode()
-        trainer = PeftTrainer(cfg, strategies, mode)
+        trainer = Trainer(cfg, strategies, mode)
         trainer.train()
     """
 
@@ -367,7 +367,7 @@ class PeftTrainer:
     def save_checkpoint(
         self,
         ckpt_name: str,
-        unwrapped_adapter: nn.Module,
+        target_model: nn.Module,
         step: int,
         epoch: int,
         force_sync_upload: bool = False,
@@ -377,10 +377,9 @@ class PeftTrainer:
 
         Args:
             ckpt_name: Checkpoint filename.
-            unwrapped_adapter: The model to save. For standard saves this
-                is the adapter; for EDM2 loss weights this is
-                ``_edm2_model``.  Passed through to the mode as
-                ``target_model``.
+            target_model: The model to save. For standard adapter saves
+                this is the unwrapped adapter; for EDM2 loss weights
+                this is ``_edm2_model``.
             step: Current training step.
             epoch: Current epoch number.
             force_sync_upload: Force synchronous HuggingFace upload.
@@ -398,7 +397,7 @@ class PeftTrainer:
             metadata=metadata_to_save,
             force_sync_upload=force_sync_upload,
             dtype_override=dtype_override,
-            target_model=unwrapped_adapter,
+            target_model=target_model,
         )
 
         self._emit("on_checkpoint", step=step, epoch=epoch)
