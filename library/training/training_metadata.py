@@ -72,10 +72,6 @@ def create_training_metadata(
         "ss_max_train_steps": cfg.training.max_train_steps,
         "ss_lr_warmup_steps": cfg.optimizer.scheduler.lr_warmup_steps,
         "ss_lr_scheduler": cfg.optimizer.scheduler.lr_scheduler,
-        "ss_adapter_module": cfg.peft.adapter_module,
-        "ss_adapter_rank": cfg.peft.adapter_rank,
-        "ss_adapter_alpha": cfg.peft.adapter_alpha,
-        "ss_adapter_neuron_dropout": cfg.peft.neuron_dropout,
         "ss_mixed_precision": cfg.performance.precision.mixed_precision,
         "ss_full_fp16": bool(cfg.performance.precision.full_fp16),
         "ss_v2": bool(cfg.model.model_type == "sd2"),
@@ -90,7 +86,6 @@ def create_training_metadata(
         "ss_multires_noise_discount": cfg.loss.regularization.multires_noise_discount,
         "ss_adaptive_noise_scale": cfg.loss.regularization.adaptive_noise_scale,
         "ss_zero_terminal_snr": cfg.loss.regularization.zero_terminal_snr,
-        "ss_training_comment": cfg.peft.training_comment,
         "ss_sd_scripts_commit_hash": get_git_revision_hash(),
         "ss_optimizer": optimizer_name + (f"({optimizer_args})" if len(optimizer_args) > 0 else ""),
         "ss_max_grad_norm": cfg.optimizer.max_grad_norm,
@@ -100,7 +95,6 @@ def create_training_metadata(
         "ss_face_crop_aug_range": cfg.data.preprocessing.face_crop_aug_range,
         "ss_prior_loss_weight": cfg.loss.prior_loss_weight,
         "ss_min_snr_gamma": cfg.loss.snr.min_snr_gamma,
-        "ss_scale_weight_norms": cfg.peft.scale_weight_norms,
         "ss_ip_noise_gamma": cfg.loss.regularization.ip_noise_gamma,
         "ss_debiased_estimation": bool(cfg.loss.snr.debiased_estimation_loss),
         "ss_noise_offset_random_strength": cfg.loss.regularization.noise_offset_random_strength,
@@ -118,6 +112,15 @@ def create_training_metadata(
         "ss_validate_every_n_steps": cfg.validation.validate_every_n_steps,
         "ss_resize_interpolation": cfg.data.preprocessing.resize_interpolation,
     }
+
+    # PEFT-specific metadata (omitted entirely for non-PEFT modes)
+    if hasattr(cfg, "peft") and cfg.peft is not None:
+        metadata["ss_adapter_module"] = cfg.peft.adapter_module
+        metadata["ss_adapter_rank"] = cfg.peft.adapter_rank
+        metadata["ss_adapter_alpha"] = cfg.peft.adapter_alpha
+        metadata["ss_adapter_neuron_dropout"] = cfg.peft.neuron_dropout
+        metadata["ss_training_comment"] = cfg.peft.training_comment
+        metadata["ss_scale_weight_norms"] = cfg.peft.scale_weight_norms
 
     # Compute tag frequency from manifest
     tag_frequency = compute_tag_frequency(manifest, cfg.data.caption.caption_separator)
@@ -165,8 +168,8 @@ def create_training_metadata(
         }
     )
 
-    # Adapter args
-    if cfg.peft.adapter_args:
+    # Adapter args (PEFT only)
+    if hasattr(cfg, "peft") and cfg.peft is not None and cfg.peft.adapter_args:
         metadata["ss_adapter_args"] = json.dumps(net_kwargs)
 
     # Model name and hash

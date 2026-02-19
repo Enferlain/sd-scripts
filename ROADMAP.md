@@ -87,6 +87,7 @@ Scripts (contain training loops):     Library Modules:
   - `library/training/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 - [ ] **Refactor `register_adapter_state_hooks`** (low priority) - Return a structured object `{"epoch": int, "step": int}` instead of closure + side-effects for cleaner data flow. See AUDIT/2_AUDIT_RESUME_BEHAVIOR.md recommendation #3.
+- [ ] **Remove `[DEBUG]` log statements in `sdxl/training.py`** (low priority) - Several `logger.info(f"[DEBUG] ...")` calls left in `_get_text_cond`. Either remove or change to `logger.debug()`.
 
 ---
 
@@ -94,7 +95,7 @@ Scripts (contain training loops):     Library Modules:
 
 ### Problem
 
-All phase functions in `library/training/phases/` are typed as `trainer: PeftTrainer`. Currently PEFT is the only mode using the new phases architecture, but full fine-tuning support will need the same phases.
+All phase functions in `library/training/phases/` are typed as `trainer: Trainer`. The `TrainingMode` protocol and `PeftMode` implementation enable pluggable training modes without changing phase code.
 
 ### What Actually Differs (PEFT vs Full Fine-Tuning)
 
@@ -150,11 +151,25 @@ Refactored `PeftTrainer` and phase files to use a pluggable `TrainingMode` proto
 - [x] Define `TrainingMode` protocol
 - [x] Extract `PeftMode` implementation
 - [x] Update phases to delegate to mode hooks
-- [ ] **Follow-up (Code Review Updates):**
-  - [ ] Clarify `PeftMode.build_optimizer_params` docstring regarding `_prepare_optimizer_util` module move
-  - [ ] Verify if `sys.path.append` in `PeftMode.prepare_trainables` is necessary or can be removed
-  - [ ] Document/Align `save_checkpoint` parameter naming between protocol and trainer
-  - [ ] Update `PeftMode` docstring to clarify it is stateless (no init params)
+
+### Phase 2A: Adapter-Neutral Shared Flow (✅ Complete)
+
+Neutralized all remaining adapter-specific assumptions in shared code.
+
+- [x] `PeftTrainer` → `Trainer` rename (hard cut)
+- [x] 4 new mode hooks (`on_step_start`, `get_trainable_params`, `set_eval`, `set_train`)
+- [x] `_primary_trainable` field + `trainable_model` property (distinct from `_grad_sync_handle` wrapper)
+- [x] Strategy renames: `all_reduce_adapter` → `all_reduce_trainable`, `post_process_adapter` → `post_process_trainable`
+- [x] `adapter` param → `trainable_model` in 6 base strategy methods
+- [x] PEFT metadata guarded (keys omitted when `cfg.peft` absent)
+- [x] `_grad_sync_handle` assertion before training loop
+- [x] Tracker name `adapter_train` → `training`
+
+### Phase 2B: FineTuneMode + SDXL Migration (Future)
+
+- [ ] Create `library/training/modes/finetune_mode.py`
+- [ ] Migrate `scripts/sdxl_finetune.py` to thin entrypoint
+- [ ] Add unit + integration tests
 
 ---
 
@@ -177,8 +192,9 @@ Refactored `PeftTrainer` and phase files to use a pluggable `TrainingMode` proto
 See `AUDIT/5_Strategy_Pattern_Boundaries.md` for full context.
 
 - [ ] **Move validation loop to Trainer** - `SdxlTrainingStrategy.calculate_val_loss()` currently owns the entire validation loop (dataloader iteration, tqdm, RNG state). This is orchestration that belongs in the Trainer.
-  - Refactor: Extract loop to `PeftTrainer` (or `phases/validation.py`)
+  - Refactor: Extract loop to `Trainer` (or `phases/validation.py`)
   - Reduce strategy method to `process_val_batch(batch)` for single-batch loss computation
+- [ ] **Fix `calculate_val_loss` return type mismatch** - SD returns `tuple[float | None, float | None, dict | None]` (3 values) but base ABC declares `tuple[float | None, float | None]` (2 values). Resolve when validation is reworked.
 - [ ] **Add missing ABC definitions** - `TrainingStrategy` ABC is missing `process_batch` and `calculate_val_loss`/`process_val_batch`. Trainer calls them dynamically, bypassing type safety.
 - [ ] **Rename `_log_training_info`** - Currently initializes noise scheduler, plotters, trackers (setup concerns), not just logging. Rename to `_finalize_setup` or move initialization to proper phase.
 

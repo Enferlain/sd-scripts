@@ -146,11 +146,9 @@ def _make_mock_trainer(
 
     # ---- Strategies ----
     strategies = MagicMock()
-    strategies.process_batch = MagicMock(
-        return_value=(torch.tensor(0.5), torch.tensor(0.5), None, torch.tensor([500]))
-    )
+    strategies.process_batch = MagicMock(return_value=(torch.tensor(0.5), torch.tensor(0.5), None, torch.tensor([500])))
     strategies.on_step_start = MagicMock()
-    strategies.all_reduce_adapter = MagicMock()
+    strategies.all_reduce_trainable = MagicMock()
     strategies.sample_images = MagicMock()
     strategies.calculate_val_loss = MagicMock(return_value=(None, None))
     strategies.la_sampler = None
@@ -171,8 +169,20 @@ def _make_mock_trainer(
     adapter.train = MagicMock()
     adapter.eval = MagicMock()
     trainer.adapter = adapter
-    trainer._training_model = adapter
-    trainer._on_step_start_for_adapter = MagicMock()
+    trainer._grad_sync_handle = adapter
+
+    # trainable_model property (returns adapter for PEFT)
+    type(trainer).trainable_model = PropertyMock(return_value=adapter)
+
+    # Training mode (TrainingMode protocol)
+    trainer.mode = MagicMock()
+    trainer.mode.on_epoch_start = MagicMock()
+    trainer.mode.on_step_start = MagicMock()
+    trainer.mode.on_step_end = MagicMock(return_value={})
+    trainer.mode.get_trainable_params = MagicMock(return_value=[torch.nn.Parameter(torch.randn(10))])
+    trainer.mode.set_eval = MagicMock()
+    trainer.mode.set_train = MagicMock()
+    trainer.mode.save_checkpoint = MagicMock()
 
     # ---- Dtypes ----
     trainer.weight_dtype = torch.float32
@@ -355,9 +365,7 @@ class TestCheckpointTriggersOnStep:
         save_calls = trainer.save_checkpoint.call_args_list
         assert len(save_calls) == 1
         ckpt_name = save_calls[0].args[0]  # arg[0] is ckpt_name
-        expected = get_step_ckpt_name(
-            trainer.cfg.output.saving, ".safetensors", 5
-        )
+        expected = get_step_ckpt_name(trainer.cfg.output.saving, ".safetensors", 5)
         assert ckpt_name == expected
 
     def test_no_save_when_not_configured(self):
@@ -424,7 +432,5 @@ class TestCheckpointTriggersOnEpochEnd:
 
         save_calls = trainer.save_checkpoint.call_args_list
         first_ckpt_name = save_calls[0].args[0]
-        expected = get_epoch_ckpt_name(
-            trainer.cfg.output.saving, ".safetensors", 1
-        )
+        expected = get_epoch_ckpt_name(trainer.cfg.output.saving, ".safetensors", 1)
         assert first_ckpt_name == expected

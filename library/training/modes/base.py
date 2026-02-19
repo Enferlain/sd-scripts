@@ -67,7 +67,14 @@ class TrainingMode(Protocol):
 
         For PEFT: wrap adapter + optimizer + dataloader + lr_scheduler.
         For DeepSpeed: wrap via ``prepare_deepspeed_model``.
-        Sets ``trainer._training_model`` to the wrapped trainable.
+
+        **Required contracts** (asserted in ``run_training_loop``):
+
+        - ``trainer._grad_sync_handle``: the object passed to
+          ``accelerator.accumulate()`` for gradient synchronization.
+          DeepSpeed: the composite model. Otherwise: the prepared trainable.
+        - ``trainer._primary_trainable``: the semantic trainable module.
+          Exposed via ``trainer.trainable_model`` and passed to strategies.
         """
         ...
 
@@ -98,10 +105,45 @@ class TrainingMode(Protocol):
         """
         ...
 
+    def on_step_start(self, trainer: Trainer) -> None:
+        """Mode-specific callback before each training step.
+
+        For PEFT: ``adapter.on_step_start(text_encoder, unet)`` if the
+        adapter defines it.
+        For fine-tune: typically a no-op.
+        """
+        ...
+
     def on_step_end(self, trainer: Trainer) -> dict[str, Any]:
         """Post-step operations, e.g. weight-norm regularization.
 
         Returns a dict of extra log entries (can be empty).
+        """
+        ...
+
+    # --- Eval / train transitions ---
+
+    def get_trainable_params(self, trainer: Trainer) -> list:
+        """Return parameters for gradient clipping.
+
+        For PEFT: ``adapter.get_trainable_params()``
+        For fine-tune: UNet (+ optional TE) parameters.
+        """
+        ...
+
+    def set_eval(self, trainer: Trainer) -> None:
+        """Switch primary trainable module(s) to eval mode.
+
+        For PEFT: ``adapter.eval()``
+        For fine-tune: ``unet.eval()`` + optional TE.
+        """
+        ...
+
+    def set_train(self, trainer: Trainer) -> None:
+        """Switch primary trainable module(s) to train mode.
+
+        For PEFT: ``adapter.train()``
+        For fine-tune: ``unet.train()`` + optional TE.
         """
         ...
 

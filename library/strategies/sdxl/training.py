@@ -702,7 +702,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         batch: Any,
         text_encoder_conds: Any,
         unet: Any,
-        adapter: Any,
+        trainable_model: Any,
         weight_dtype: torch.dtype,
         train_unet: bool,
         fixed_timesteps: torch.Tensor | None = None,
@@ -722,7 +722,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             batch: Batch data.
             text_encoder_conds: Text conditioning.
             unet: UNet model.
-            adapter: Adapter model.
+            trainable_model: The trainable model.
             weight_dtype: Weight data type.
             train_unet: Boolean indicating if UNet is trained.
             fixed_timesteps: Optional fixed timesteps.
@@ -776,7 +776,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
                     diff_output_pr_indices.append(i)
 
             if len(diff_output_pr_indices) > 0:
-                adapter.set_multiplier(0.0)
+                trainable_model.set_multiplier(0.0)
                 with torch.no_grad(), accelerator.autocast():
                     noise_pred_prior = self.call_unet(
                         cfg,
@@ -789,7 +789,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
                         weight_dtype,
                         indices=diff_output_pr_indices,
                     )
-                adapter.set_multiplier(1.0)
+                trainable_model.set_multiplier(1.0)
                 target[diff_output_pr_indices] = noise_pred_prior.to(target.dtype)
 
         return noise_pred, target, timesteps, None
@@ -799,7 +799,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         batch: Any,
         text_encoders: list[Any],
         unet: Any,
-        adapter: Any,
+        trainable_model: Any,
         vae: Any,
         noise_scheduler: Any,
         vae_dtype: torch.dtype,
@@ -823,7 +823,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             batch: Batch data.
             text_encoders: List of text encoders.
             unet: UNet model.
-            adapter: Adapter model.
+            trainable_model: The trainable model.
             vae: VAE model.
             noise_scheduler: Noise scheduler.
             vae_dtype: VAE data type.
@@ -858,7 +858,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             batch,
             text_encoder_conds,
             unet,
-            adapter,
+            trainable_model,
             weight_dtype,
             train_unet,
             is_train=is_train,
@@ -917,7 +917,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         batch: Any,
         text_encoders: list[Any],
         unet: Any,
-        adapter: Any,
+        trainable_model: Any,
         vae: Any,
         noise_scheduler: Any,
         vae_dtype: torch.dtype,
@@ -937,7 +937,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             batch: Batch data.
             text_encoders: List of text encoders.
             unet: UNet model.
-            adapter: Adapter model.
+            trainable_model: The trainable model.
             vae: VAE model.
             noise_scheduler: Noise scheduler.
             vae_dtype: VAE data type.
@@ -974,7 +974,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
                     batch,
                     text_encoder_conds,
                     unet,
-                    adapter,
+                    trainable_model,
                     weight_dtype,
                     train_unet,
                     fixed_timesteps,
@@ -995,7 +995,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         val_loss_recorder: Any,
         val_dataloader: Any,
         cyclic_val_dataloader: Any,
-        adapter: Any,
+        trainable_model: Any,
         tokenize_strategy: Any,
         text_encoders: list[Any],
         text_encoding_strategy: Any,
@@ -1020,7 +1020,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             val_loss_recorder: Validation loss recorder.
             val_dataloader: Validation dataloader.
             cyclic_val_dataloader: Cyclic validation dataloader.
-            adapter: Adapter model.
+            trainable_model: The trainable model.
             tokenize_strategy: Tokenize strategy.
             text_encoders: List of text encoders.
             text_encoding_strategy: Text encoding strategy.
@@ -1042,7 +1042,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             return None, None
 
         if batch is not None:
-            self.on_step_start(cfg, accelerator, adapter, text_encoders, unet, batch, weight_dtype, is_train=False)
+            self.on_step_start(cfg, accelerator, trainable_model, text_encoders, unet, batch, weight_dtype, is_train=False)
 
         rng_states = self.switch_rng_state(int(cfg.validation.validation_seed) if cfg.validation.validation_seed else 23, accelerator)
         timesteps_list = ast.literal_eval(cfg.validation.validation_timesteps)
@@ -1068,7 +1068,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
                     batch,
                     text_encoders,
                     unet,
-                    adapter,
+                    trainable_model,
                     vae,
                     noise_scheduler,
                     vae_dtype,

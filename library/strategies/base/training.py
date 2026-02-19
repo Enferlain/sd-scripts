@@ -616,14 +616,14 @@ class TrainingStrategy(
         """
         return accelerator.prepare(unet)
 
-    def post_process_adapter(self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: list[Any], unet: Any) -> None:
+    def post_process_trainable(self, cfg: Any, accelerator: Any, trainable_model: Any, text_encoders: list[Any], unet: Any) -> None:
         """
-        Post-process adapter after creation. Override for model-specific behavior.
+        Post-process trainable model after creation. Override for model-specific behavior.
 
         Args:
             cfg: Configuration object.
             accelerator: Accelerator instance.
-            adapter: The adapter model.
+            trainable_model: The trainable model.
             text_encoders: List of text encoders.
             unet: The UNet model.
         """
@@ -633,7 +633,7 @@ class TrainingStrategy(
         self,
         cfg: Any,
         accelerator: Any,
-        adapter: Any,
+        trainable_model: Any,
         text_encoders: list[Any],
         unet: Any,
         batch: Any,
@@ -646,7 +646,7 @@ class TrainingStrategy(
         Args:
             cfg: Configuration object.
             accelerator: Accelerator instance.
-            adapter: The adapter model.
+            trainable_model: The trainable model.
             text_encoders: List of text encoders.
             unet: The UNet model.
             batch: The current data batch.
@@ -656,7 +656,7 @@ class TrainingStrategy(
         pass
 
     def on_validation_step_end(
-        self, cfg: Any, accelerator: Any, adapter: Any, text_encoders: list[Any], unet: Any, batch: Any, weight_dtype: torch.dtype
+        self, cfg: Any, accelerator: Any, trainable_model: Any, text_encoders: list[Any], unet: Any, batch: Any, weight_dtype: torch.dtype
     ) -> None:
         """
         Hook called after each validation step.
@@ -664,7 +664,7 @@ class TrainingStrategy(
         Args:
             cfg: Configuration object.
             accelerator: Accelerator instance.
-            adapter: The adapter model.
+            trainable_model: The trainable model.
             text_encoders: List of text encoders.
             unet: The UNet model.
             batch: The current data batch.
@@ -681,7 +681,7 @@ class TrainingStrategy(
         val_loss_recorder: Any,
         val_dataloader: Any,
         cyclic_val_dataloader: Any,
-        adapter: Any,
+        trainable_model: Any,
         tokenize_strategy: Any,
         text_encoders: list[Any],
         text_encoding_strategy: Any,
@@ -706,7 +706,7 @@ class TrainingStrategy(
             val_loss_recorder: Validation loss recorder.
             val_dataloader: Validation dataloader.
             cyclic_val_dataloader: Cyclic validation dataloader.
-            adapter: Adapter model.
+            trainable_model: The trainable model.
             tokenize_strategy: Tokenize strategy.
             text_encoders: List of text encoders.
             text_encoding_strategy: Text encoding strategy.
@@ -732,7 +732,7 @@ class TrainingStrategy(
         batch: Any,
         text_encoders: list[Any],
         unet: Any,
-        adapter: Any,
+        trainable_model: Any,
         vae: Any,
         noise_scheduler: Any,
         vae_dtype: torch.dtype,
@@ -756,7 +756,7 @@ class TrainingStrategy(
             batch: Batch data containing images, captions, latents etc.
             text_encoders: List of text encoders.
             unet: UNet model.
-            adapter: Adapter/LoRA model.
+            trainable_model: The trainable model.
             vae: VAE model.
             noise_scheduler: Noise scheduler.
             vae_dtype: VAE data type.
@@ -796,15 +796,15 @@ class TrainingStrategy(
         """
         raise NotImplementedError("load_unet_lazily is not implemented for this architecture")
 
-    def all_reduce_adapter(self, accelerator: Any, adapter: Any) -> None:
+    def all_reduce_trainable(self, accelerator: Any, trainable_model: Any) -> None:
         """
-        Sync DDP gradients manually.
+        Sync DDP gradients manually for the trainable model.
 
         Args:
             accelerator: Accelerator instance.
-            adapter: The adapter model containing parameters to sync.
+            trainable_model: The trainable model containing parameters to sync.
         """
-        for param in adapter.parameters():
+        for param in trainable_model.parameters():
             if param.grad is not None:
                 param.grad = accelerator.reduce(param.grad, reduction="mean")
 

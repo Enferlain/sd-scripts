@@ -123,7 +123,7 @@ class PeftMode:
             logger.warning("warning: scale_weight_norms is specified but the peft does not support it")
             cfg.peft.scale_weight_norms = False
 
-        trainer.strategies.post_process_adapter(cfg, accelerator, adapter, text_encoders, unet)
+        trainer.strategies.post_process_trainable(cfg, accelerator, adapter, text_encoders, unet)
 
         # Apply adapter to unet and text_encoder
         trainer._train_unet = trainer.strategies.is_train_unet(cfg)
@@ -198,7 +198,8 @@ class PeftMode:
             ds_model, trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(
                 ds_model, trainer.optimizer, trainer.lr_scheduler
             )
-            trainer._training_model = ds_model
+            trainer._grad_sync_handle = ds_model
+            trainer._primary_trainable = trainer.adapter
         else:
             if trainer._train_unet:
                 trainer.unet = trainer.strategies.prepare_unet_with_accelerator(cfg, trainer.accelerator, trainer.unet)
@@ -221,7 +222,8 @@ class PeftMode:
             trainer.adapter, trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(
                 trainer.adapter, trainer.optimizer, trainer.lr_scheduler
             )
-            trainer._training_model = trainer.adapter
+            trainer._grad_sync_handle = trainer.adapter
+            trainer._primary_trainable = trainer.adapter
 
     def setup_gradient_training(self, trainer: Trainer) -> None:
         """Adapter-specific gradient checkpointing & ``prepare_grad_etc``.
@@ -261,6 +263,15 @@ class PeftMode:
         """
         trainer.accelerator.unwrap_model(trainer.adapter).on_epoch_start(trainer._text_encoder, trainer.unet)
 
+    def on_step_start(self, trainer: Trainer) -> None:
+        """Call adapter's ``on_step_start`` if it defines one.
+
+        Absorbed from ``trainer._on_step_start_for_adapter`` callback.
+        """
+        unwrapped = trainer.accelerator.unwrap_model(trainer.adapter)
+        if hasattr(unwrapped, "on_step_start"):
+            unwrapped.on_step_start(trainer._text_encoder, trainer.unet)
+
     def on_step_end(self, trainer: Trainer) -> dict[str, Any]:
         """Apply weight-norm regularization if configured.
 
@@ -276,6 +287,22 @@ class PeftMode:
             return {"Keys Scaled": keys_scaled, "Average key norm": mean_norm}
 
         return {}
+
+    # ------------------------------------------------------------------
+    # Eval / train transitions
+    # ------------------------------------------------------------------
+
+    def get_trainable_params(self, trainer: Trainer) -> list:
+        """Return adapter parameters for gradient clipping."""
+        return trainer.accelerator.unwrap_model(trainer.adapter).get_trainable_params()
+
+    def set_eval(self, trainer: Trainer) -> None:
+        """Switch adapter to eval mode."""
+        trainer.accelerator.unwrap_model(trainer.adapter).eval()
+
+    def set_train(self, trainer: Trainer) -> None:
+        """Switch adapter to train mode."""
+        trainer.accelerator.unwrap_model(trainer.adapter).train()
 
     # ------------------------------------------------------------------
     # Checkpoint saving

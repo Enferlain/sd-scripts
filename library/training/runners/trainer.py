@@ -1,8 +1,9 @@
 """
-PEFT Trainer - Orchestrates LoRA/adapter training.
+Trainer - Orchestrates model training.
 
 This trainer handles the training loop structure while delegating
-model-specific operations to TrainingStrategy classes.
+model-specific operations to TrainingStrategy classes and
+mode-specific operations to TrainingMode plugins.
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 class Trainer:
     """
-    Trainer for PEFT (LoRA/adapter) training.
+    Trainer for model training (PEFT, fine-tune, etc.).
 
     Orchestrates the training loop while delegating model-specific
     operations to the provided TrainingStrategy and mode-specific
@@ -161,7 +162,8 @@ class Trainer:
         self._cyclic_val_dataloader: Any = None
         self._train_text_encoder: bool = False
         self._train_unet: bool = True
-        self._training_model: Any = None
+        self._grad_sync_handle: Any = None  # Object passed to accelerator.accumulate() for grad sync
+        self._primary_trainable: nn.Module | None = None  # Semantic trainable model (set by mode)
 
         # EDM2 state
         self._edm2_model: Any = None
@@ -176,9 +178,6 @@ class Trainer:
         # Live plotter state
         self._timestep_counts: Any = None
         self._plotter_settings: Any = None
-
-        # Adapter callback
-        self._on_step_start_for_adapter: Any = None
 
         # SimpleNamespace state containers for cross-function state sharing
         self._current_epoch_state: SimpleNamespace = SimpleNamespace(value=0)
@@ -498,18 +497,12 @@ class Trainer:
         )
 
         # Init trackers
-        init_trackers(self.accelerator, cfg.output.logging, "adapter_train")
+        init_trackers(self.accelerator, cfg.output.logging, "training")
 
         # Loss recorders
         self._loss_recorder = EMARecorder()
         self._val_loss_recorder = EMARecorder()
         self._loss_scaled_recorder = EMARecorder() if cfg.loss.edm2.edm2_loss_weighting else None
-
-        # Adapter step callback
-        if hasattr(self.accelerator.unwrap_model(self.adapter), "on_step_start"):
-            self._on_step_start_for_adapter = self.accelerator.unwrap_model(self.adapter).on_step_start
-        else:
-            self._on_step_start_for_adapter = lambda *args, **kwargs: None
 
         # Init loss tracking state
         self._current_global_step_loss = 0.0
@@ -542,7 +535,7 @@ class Trainer:
             cfg.validation, cfg.training, self.global_step, 0, self._val_dataloader, self.num_batches_per_epoch
         ):
             # Switch to eval mode
-            self.accelerator.unwrap_model(self.adapter).eval()
+            self.mode.set_eval(self)
             self.optimizer_eval_fn()
 
             # Sample images
@@ -571,7 +564,7 @@ class Trainer:
                     self._val_loss_recorder,
                     self._val_dataloader,
                     self._cyclic_val_dataloader,
-                    self.adapter,
+                    self.trainable_model,
                     self._tokenize_strategy,
                     self.text_encoders,
                     self._text_encoding_strategy,
@@ -589,7 +582,7 @@ class Trainer:
 
             # Switch back to train mode
             self.optimizer_train_fn()
-            self.accelerator.unwrap_model(self.adapter).train()
+            self.mode.set_train(self)
 
             # Ensure VRAM is clean before resuming training
             import gc
@@ -608,10 +601,6 @@ class Trainer:
         # Update metadata
         self._metadata["ss_training_finished_at"] = str(time.time())
 
-        # Unwrap adapter on main process
-        if self.is_main_process:
-            self.adapter = self.accelerator.unwrap_model(self.adapter)
-
         self.accelerator.end_training()
         self.optimizer_eval_fn()
 
@@ -623,9 +612,10 @@ class Trainer:
         if self.is_main_process:
             import torch
 
-            assert self.adapter is not None, "adapter must be set before finalizing"
+            assert self.trainable_model is not None, "trainable_model must be set before finalizing"
+            unwrapped = self.accelerator.unwrap_model(self.trainable_model)
             ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as)
-            self.save_checkpoint(ckpt_name, self.adapter, self.global_step, self.num_train_epochs, force_sync_upload=True)
+            self.save_checkpoint(ckpt_name, unwrapped, self.global_step, self.num_train_epochs, force_sync_upload=True)
 
             if cfg.loss.edm2.edm2_loss_weighting:
                 loss_weights_ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, "_edm2_loss_weights")
@@ -639,6 +629,17 @@ class Trainer:
                 )
 
         logger.info("model saved.")
+
+    @property
+    def trainable_model(self) -> nn.Module | None:
+        """The primary semantic trainable model (set by mode).
+
+        For PEFT: the adapter module.
+        For fine-tune: UNet or equivalent.
+
+        Distinct from ``_grad_sync_handle`` which is the grad-sync wrapper
+        """
+        return self._primary_trainable
 
     @property
     def accelerator(self) -> Accelerator:

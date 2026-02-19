@@ -158,12 +158,12 @@ def mock_strategies():
     strategies.is_train_text_encoder = MagicMock(return_value=False)
     strategies.cast_unet = MagicMock(return_value=True)
     strategies.cast_text_encoder = MagicMock(return_value=True)
-    strategies.post_process_adapter = MagicMock()
+    strategies.post_process_trainable = MagicMock()
     strategies.prepare_text_encoder_fp8 = MagicMock()
     strategies.load_unet_lazily = MagicMock(return_value=(MagicMock(), []))
     strategies.on_step_start = MagicMock()
     strategies.process_batch = MagicMock(return_value=(torch.tensor(0.5), torch.tensor(0.5), None, torch.tensor([500])))
-    strategies.all_reduce_adapter = MagicMock()
+    strategies.all_reduce_trainable = MagicMock()
     strategies.sample_images = MagicMock()
     strategies.calculate_val_loss = MagicMock(return_value=(None, None))
     strategies.la_sampler = None
@@ -238,7 +238,11 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     # Training mode (TrainingMode protocol)
     trainer.mode = MagicMock()
     trainer.mode.on_epoch_start = MagicMock()
+    trainer.mode.on_step_start = MagicMock()
     trainer.mode.on_step_end = MagicMock(return_value={})
+    trainer.mode.get_trainable_params = MagicMock(return_value=[torch.nn.Parameter(torch.randn(10))])
+    trainer.mode.set_eval = MagicMock()
+    trainer.mode.set_train = MagicMock()
     trainer.mode.save_checkpoint = MagicMock()
 
     # Training flags
@@ -301,7 +305,9 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer._dynamic_timestep_schedule = []
     trainer._current_min_timestep = 0
     trainer._current_max_timestep = 1000
-    trainer._on_step_start_for_adapter = MagicMock()
+
+    # trainable_model property (returns adapter for PEFT)
+    type(trainer).trainable_model = PropertyMock(return_value=trainer.adapter)
 
     # Noise scheduler
     trainer.noise_scheduler = MagicMock()

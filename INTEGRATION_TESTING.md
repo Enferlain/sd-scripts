@@ -1,6 +1,6 @@
 # Integration Testing Checklist
 
-Manual integration testing for the new trainer (`PeftTrainer`) and data pipeline.
+Manual integration testing for the new trainer (`Trainer`) and data pipeline.
 
 ## Status Legend
 

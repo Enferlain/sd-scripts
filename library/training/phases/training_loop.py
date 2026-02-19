@@ -59,6 +59,15 @@ def run_training_loop(trainer: Trainer) -> None:
     accelerator = trainer.accelerator
     strategies = trainer.strategies
 
+    # Mode must set _grad_sync_handle during prepare_with_accelerator;
+    # if missing, grad-sync context will silently fail.
+    assert trainer._grad_sync_handle is not None, (
+        "trainer._grad_sync_handle must be set by mode.prepare_with_accelerator() before the training loop starts"
+    )
+    assert trainer.trainable_model is not None, (
+        "trainer.trainable_model must be set by mode.prepare_with_accelerator() before the training loop starts"
+    )
+
     for epoch in range(trainer.epoch_to_start, trainer.num_train_epochs):
         if trainer.global_step >= cfg.training.max_train_steps:
             break
@@ -163,21 +172,28 @@ def run_training_loop(trainer: Trainer) -> None:
                 trainer._initial_step -= 1
                 continue
 
-            with determine_grad_sync_context(cfg.performance.precision, accelerator, None, trainer._training_model, trainer._edm2_model):
-                trainer._on_step_start_for_adapter(trainer._text_encoder, trainer.unet)
+            with determine_grad_sync_context(cfg.performance.precision, accelerator, None, trainer._grad_sync_handle, trainer._edm2_model):
+                trainer.mode.on_step_start(trainer)
 
                 trainer._accumulation_counter += 1
 
                 # preprocess batch for each model
                 strategies.on_step_start(
-                    cfg, accelerator, trainer.adapter, trainer.text_encoders, trainer.unet, batch, trainer.weight_dtype, is_train=True
+                    cfg,
+                    accelerator,
+                    trainer.trainable_model,
+                    trainer.text_encoders,
+                    trainer.unet,
+                    batch,
+                    trainer.weight_dtype,
+                    is_train=True,
                 )
 
                 loss, pre_scaling_loss, loss_scaled, timesteps = strategies.process_batch(
                     batch,
                     trainer.text_encoders,
                     trainer.unet,
-                    trainer.adapter,
+                    trainer.trainable_model,
                     trainer.vae,
                     trainer.noise_scheduler,
                     trainer.vae_dtype,
@@ -200,9 +216,9 @@ def run_training_loop(trainer: Trainer) -> None:
                 loss = pre_scaling_loss
 
                 if accelerator.sync_gradients:
-                    strategies.all_reduce_adapter(accelerator, trainer.adapter)
+                    strategies.all_reduce_trainable(accelerator, trainer.trainable_model)
                     if cfg.optimizer.max_grad_norm != 0.0:
-                        params_to_clip = accelerator.unwrap_model(trainer.adapter).get_trainable_params()
+                        params_to_clip = trainer.mode.get_trainable_params(trainer)
                         accelerator.clip_grad_norm_(params_to_clip, cfg.optimizer.max_grad_norm)
 
                 trainer.optimizer.step()
@@ -236,7 +252,7 @@ def run_training_loop(trainer: Trainer) -> None:
                     or cfg.output.saving.save_every_n_steps is not None
                     and trainer.global_step % cfg.output.saving.save_every_n_steps == 0
                 ):
-                    accelerator.unwrap_model(trainer.adapter).eval()
+                    trainer.mode.set_eval(trainer)
                     trainer.optimizer_eval_fn()
                     strategies.sample_images(
                         accelerator,
@@ -260,7 +276,7 @@ def run_training_loop(trainer: Trainer) -> None:
                             trainer._val_loss_recorder,
                             trainer._val_dataloader,
                             trainer._cyclic_val_dataloader,
-                            trainer.adapter,
+                            trainer.trainable_model,
                             trainer._tokenize_strategy,
                             trainer.text_encoders,
                             trainer._text_encoding_strategy,
@@ -283,7 +299,9 @@ def run_training_loop(trainer: Trainer) -> None:
                         accelerator.wait_for_everyone()
                         if accelerator.is_main_process:
                             ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, trainer.global_step)
-                            trainer.save_checkpoint(ckpt_name, accelerator.unwrap_model(trainer.adapter), trainer.global_step, epoch)
+                            trainer.save_checkpoint(
+                                ckpt_name, accelerator.unwrap_model(trainer.trainable_model), trainer.global_step, epoch
+                            )
 
                             if cfg.loss.edm2.edm2_loss_weighting:
                                 loss_weights_ckpt_name = get_step_ckpt_name(
@@ -329,7 +347,7 @@ def run_training_loop(trainer: Trainer) -> None:
                             accelerator.device,
                         )
                     trainer.optimizer_train_fn()
-                    accelerator.unwrap_model(trainer.adapter).train()
+                    trainer.mode.set_train(trainer)
 
             trainer._current_global_step_loss += loss.detach().item()
             if cfg.loss.edm2.edm2_loss_weighting:
@@ -433,7 +451,7 @@ def run_training_loop(trainer: Trainer) -> None:
             or cfg.output.saving.save_every_n_epochs is not None
         ):
             trainer.optimizer_eval_fn()
-            accelerator.unwrap_model(trainer.adapter).eval()
+            trainer.mode.set_eval(trainer)
             if cfg.output.saving.save_every_n_epochs is not None and cfg.output.saving.save_every_n_epochs > 0:
                 saving = (
                     trainer._current_epoch_state.value % cfg.output.saving.save_every_n_epochs == 0
@@ -444,7 +462,10 @@ def run_training_loop(trainer: Trainer) -> None:
                         cfg.output.saving, "." + cfg.output.saving.save_model_as, trainer._current_epoch_state.value
                     )
                     trainer.save_checkpoint(
-                        ckpt_name, accelerator.unwrap_model(trainer.adapter), trainer.global_step, trainer._current_epoch_state.value
+                        ckpt_name,
+                        accelerator.unwrap_model(trainer.trainable_model),
+                        trainer.global_step,
+                        trainer._current_epoch_state.value,
                     )
 
                     if cfg.loss.edm2.edm2_loss_weighting:
@@ -489,6 +510,6 @@ def run_training_loop(trainer: Trainer) -> None:
             )
             trainer._progress_bar.unpause()
             trainer.optimizer_train_fn()
-            accelerator.unwrap_model(trainer.adapter).train()
+            trainer.mode.set_train(trainer)
 
         # end of epoch
