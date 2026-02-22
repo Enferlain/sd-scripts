@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 def prepare_models(trainer: Trainer) -> None:
-    """Phase 3: Create adapter and configure precision.
+    """Phase 3: Create trainable model and configure precision.
 
-    Updates trainer.adapter, trainer.net_kwargs, trainer.unet_weight_dtype,
-    and trainer.te_weight_dtype.
+    Delegates to ``trainer.mode`` for mode-specific setup. Updates
+    trainer.net_kwargs, trainer.unet_weight_dtype, and trainer.te_weight_dtype.
 
     Args:
         trainer: Trainer instance

@@ -38,7 +38,8 @@ class TrainingMode(Protocol):
         UNet/text-encoders, load weights, merge base weights.
         For fine-tune (future): unfreeze UNet layers.
 
-        After this call, ``trainer.adapter`` (or equivalent) must be set.
+        After this call the mode's trainable target must be ready
+        (e.g. ``trainer.adapter`` for PEFT, UNet for fine-tune).
         """
         ...
 

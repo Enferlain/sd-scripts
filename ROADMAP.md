@@ -167,6 +167,7 @@ Neutralized all remaining adapter-specific assumptions in shared code.
 
 ### Phase 2B: FineTuneMode + SDXL Migration (Future)
 
+- [x] **Guard `set_multiplier` in strategies** — `trainable_model.set_multiplier()` in `sdxl/training.py` and `sd/training.py` guarded with `hasattr(trainable_model, "set_multiplier")`. Non-adapter trainables skip differential output preservation silently.
 - [ ] Create `library/training/modes/finetune_mode.py`
 - [ ] Migrate `scripts/sdxl_finetune.py` to thin entrypoint
 - [ ] Add unit + integration tests

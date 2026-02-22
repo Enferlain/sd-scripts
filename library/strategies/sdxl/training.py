@@ -775,7 +775,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
                 if "diff_output_preservation" in custom_attributes and custom_attributes["diff_output_preservation"]:
                     diff_output_pr_indices.append(i)
 
-            if len(diff_output_pr_indices) > 0:
+            if len(diff_output_pr_indices) > 0 and hasattr(trainable_model, "set_multiplier"):
                 trainable_model.set_multiplier(0.0)
                 with torch.no_grad(), accelerator.autocast():
                     noise_pred_prior = self.call_unet(
