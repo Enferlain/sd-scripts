@@ -249,8 +249,10 @@ class TestBuildOptimizerParams:
         mode._te_train_flags = [True, False]
         mock_trainer._train_unet = True
 
-        with patch("library.training.modes.finetune_mode.get_optimizer") as mock_get_opt, \
-             patch("library.training.modes.finetune_mode.get_optimizer_train_eval_fn") as mock_get_fn:
+        with (
+            patch("library.training.modes.finetune_mode.get_optimizer") as mock_get_opt,
+            patch("library.training.modes.finetune_mode.get_optimizer_train_eval_fn") as mock_get_fn,
+        ):
             mock_get_opt.return_value = ("AdamW", {}, MagicMock())
             mock_get_fn.return_value = (lambda: None, lambda: None)
 

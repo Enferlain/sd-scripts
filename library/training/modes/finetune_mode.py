@@ -103,9 +103,7 @@ class FineTuneMode:
 
         # Delegate model-specific post-processing to strategy
         # (e.g. SDXL freezes TE1's last encoder layer + final_layer_norm)
-        strategies.post_process_trainable(
-            cfg, trainer.accelerator, trainer.unet, trainer.text_encoders, trainer.unet
-        )
+        strategies.post_process_trainable(cfg, trainer.accelerator, trainer.unet, trainer.text_encoders, trainer.unet)
 
         # Primary trainable = UNet in fine-tune mode
         trainer._primary_trainable = trainer.unet
@@ -215,9 +213,7 @@ class FineTuneMode:
                     ds_kwargs[f"text_encoder{i + 1}"] = t_enc
             # No adapter for fine-tune
 
-            ds_model = deepspeed_utils.prepare_deepspeed_model(
-                cfg.performance.precision, **ds_kwargs
-            )
+            ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, **ds_kwargs)
             ds_model, trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(
                 ds_model, trainer.optimizer, trainer.lr_scheduler
             )
@@ -237,9 +233,7 @@ class FineTuneMode:
             trainer._text_encoder = trainer.text_encoders if len(trainer.text_encoders) > 1 else trainer.text_encoders[0]
 
             # Prepare optimizer + scheduler
-            trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(
-                trainer.optimizer, trainer.lr_scheduler
-            )
+            trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(trainer.optimizer, trainer.lr_scheduler)
 
             # Grad sync handle = UNet (the largest trainable component)
             trainer._grad_sync_handle = trainer.unet
@@ -270,9 +264,7 @@ class FineTuneMode:
             # We just save training state metadata.
             if accelerator.is_main_process or cfg.performance.deepspeed.deepspeed:
                 train_state_file = os.path.join(output_dir, "train_state.json")
-                logger.info(
-                    f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}"
-                )
+                logger.info(f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
                 with open(train_state_file, "w", encoding="utf-8") as f:
                     json.dump({"current_epoch": current_epoch.value, "current_step": current_step.value + 1}, f)
 
@@ -395,9 +387,7 @@ class FineTuneMode:
             force_sync_upload=force_sync_upload,
         )
 
-    def get_diagnostics_components(
-        self, trainer: Trainer
-    ) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
+    def get_diagnostics_components(self, trainer: Trainer) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
         """Return all backbone components — they're all relevant in fine-tune."""
         components: list[tuple[str, nn.Module]] = []
         if trainer.unet is not None:
@@ -407,4 +397,3 @@ class FineTuneMode:
         if trainer.vae is not None:
             components.append(("vae", trainer.vae))
         return components, None
-

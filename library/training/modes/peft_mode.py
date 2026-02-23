@@ -197,9 +197,7 @@ class PeftMode:
                     ds_kwargs[f"text_encoder{i + 1}"] = t_enc
             ds_kwargs["adapter"] = trainer.adapter
 
-            ds_model = deepspeed_utils.prepare_deepspeed_model(
-                cfg.performance.precision, **ds_kwargs
-            )
+            ds_model = deepspeed_utils.prepare_deepspeed_model(cfg.performance.precision, **ds_kwargs)
             ds_model, trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(
                 ds_model, trainer.optimizer, trainer.lr_scheduler
             )
@@ -357,13 +355,20 @@ class PeftMode:
                 force_sync_upload=force_sync_upload,
             )
 
-    def get_diagnostics_components(
-        self, trainer: Trainer
-    ) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
-        """Return only the adapter — frozen backbone is irrelevant for PEFT diagnostics."""
+    def get_diagnostics_components(self, trainer: Trainer) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
+        """Return adapter diagnostics components.
+
+        If the adapter implements ``get_diagnostics_components()``, use its
+        per-component breakdown (e.g. unet modules vs TE modules).
+        Otherwise fall back to showing the adapter as a single component.
+        """
+        adapter = trainer.adapter
+        if adapter is not None and hasattr(adapter, "get_diagnostics_components"):
+            return adapter.get_diagnostics_components()
+
+        # Fallback: show adapter as a single component
         components: list[tuple[str, nn.Module]] = []
-        if trainer.adapter is not None:
-            components.append(("adapter", trainer.adapter))
+        if adapter is not None:
+            components.append(("adapter", adapter))
         aliases = [("trainable_model", "adapter")]
         return components, aliases
-

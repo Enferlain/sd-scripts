@@ -113,9 +113,7 @@ def get_scheduler_fix(
         logger.info(f"use {name} | {lr_scheduler_kwargs} as lr_scheduler")
 
     if name.startswith("adafactor"):
-        assert isinstance(optimizer, transformers.optimization.Adafactor), (
-            "adafactor scheduler must be used with Adafactor optimizer"
-        )
+        assert isinstance(optimizer, transformers.optimization.Adafactor), "adafactor scheduler must be used with Adafactor optimizer"
         initial_lr = float(name.split(":")[1])
         # logger.info(f"adafactor scheduler init lr {initial_lr}")
         return wrap_check_needless_num_warmup_steps(transformers.optimization.AdafactorSchedule(optimizer, initial_lr))

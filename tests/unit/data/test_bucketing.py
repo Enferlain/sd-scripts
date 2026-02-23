@@ -100,6 +100,4 @@ class TestSelectBucket:
         # Aspect ratio should be preserved (original is 1:4)
         original_ar = 32 / 128
         resized_ar = resized[0] / resized[1]
-        assert abs(resized_ar - original_ar) < 0.1, (
-            f"Aspect ratio distorted: original={original_ar:.2f}, resized={resized_ar:.2f}"
-        )
+        assert abs(resized_ar - original_ar) < 0.1, f"Aspect ratio distorted: original={original_ar:.2f}, resized={resized_ar:.2f}"

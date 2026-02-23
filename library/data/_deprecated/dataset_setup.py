@@ -34,20 +34,18 @@ def prepare_datasets(cfg, strategies):
     # Prepare datasets
     if cfg.data.source.dataset_class is None:
         # Check if we have manually provided subsets via train_data_dir/reg_data_dir
-        if (cfg.data.source.train_data_dir is not None or cfg.data.source.reg_data_dir is not None) and len(
-                cfg.data.source.subsets) == 0:
+        if (cfg.data.source.train_data_dir is not None or cfg.data.source.reg_data_dir is not None) and len(cfg.data.source.subsets) == 0:
             # Generate subsets config from dirs
             user_config = config_util.generate_user_config_from_dataset(cfg)
             # We need to inject this into cfg.data.source.subsets
             # cfg.data.source.subsets is a List[dict] (or ListConfig)
             # user_config['datasets'][0]['subsets'] is the list we want
-            if user_config['datasets']:
-                cfg.data.source.subsets = user_config['datasets'][0]['subsets']
+            if user_config["datasets"]:
+                cfg.data.source.subsets = user_config["datasets"][0]["subsets"]
 
         blueprint_generator = BlueprintGenerator()
         blueprint = blueprint_generator.generate(cfg)
-        train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(
-            blueprint.dataset_group)
+        train_dataset_group, val_dataset_group = config_util.generate_dataset_group_by_blueprint(blueprint.dataset_group)
     else:
         # use arbitrary dataset class
         train_dataset_group = load_arbitrary_dataset(cfg.data, cfg.training.max_token_length)
@@ -74,13 +72,13 @@ def prepare_datasets(cfg, strategies):
         return None  # Signal to caller to exit early
 
     if cache_latents:
-        assert (
-            train_dataset_group.is_latent_cacheable()
-        ), "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
+        assert train_dataset_group.is_latent_cacheable(), (
+            "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
+        )
         if val_dataset_group is not None:
-            assert (
-                val_dataset_group.is_latent_cacheable()
-            ), "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
+            assert val_dataset_group.is_latent_cacheable(), (
+                "when caching latents, either color_aug or random_crop cannot be used / latentをキャッシュするときはcolor_augとrandom_cropは使えません"
+            )
 
     strategies.validate_extra_config(cfg, train_dataset_group, val_dataset_group)
 

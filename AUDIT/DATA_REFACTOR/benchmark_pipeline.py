@@ -1,4 +1,3 @@
-
 import time
 import logging
 import torch
@@ -13,6 +12,7 @@ from library.data.caching_engine import CachingStrategy
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("benchmark")
+
 
 class MockCachingStrategy(CachingStrategy):
     """Mock strategy that returns dummy tensors without disk I/O."""
@@ -38,10 +38,18 @@ class MockCachingStrategy(CachingStrategy):
         return mock_data
 
     # Implement abstract methods to satisfy interface
-    def get_entry_cache_path(self, entry): return Path("/tmp/mock")
-    def is_cache_valid(self, *args, **kwargs): return True
-    def encode_batch(self, *args, **kwargs): return []
-    def save_cache(self, *args, **kwargs): pass
+    def get_entry_cache_path(self, entry):
+        return Path("/tmp/mock")
+
+    def is_cache_valid(self, *args, **kwargs):
+        return True
+
+    def encode_batch(self, *args, **kwargs):
+        return []
+
+    def save_cache(self, *args, **kwargs):
+        pass
+
 
 def generate_manifest(num_images: int) -> DatasetManifest:
     """Generate a synthetic dataset manifest."""
@@ -68,11 +76,12 @@ def generate_manifest(num_images: int) -> DatasetManifest:
             latent_cache_path=f"/tmp/cache/{img_id}.safetensors",
             te_cache_path=f"/tmp/cache/{img_id}_te.safetensors",
             has_flipped=True,
-            has_alpha_mask=False
+            has_alpha_mask=False,
         )
         entries[img_id] = entry
 
     return DatasetManifest(entries=entries)
+
 
 def benchmark_prepare_epoch(manifest: DatasetManifest, batch_size: int = 4):
     """Measure prepare_epoch performance."""
@@ -86,13 +95,14 @@ def benchmark_prepare_epoch(manifest: DatasetManifest, batch_size: int = 4):
         batch_size=batch_size,
         shuffle=True,
         warmup_largest_first=True,
-        caption_config=None # Skip caption processing for basic overhead check
+        caption_config=None,  # Skip caption processing for basic overhead check
     )
     end_time = time.perf_counter()
 
     duration = end_time - start_time
     logger.info(f"prepare_epoch finished in {duration:.4f}s")
     return duration, epoch_manifest
+
 
 def benchmark_dataloader(dataset_manifest: DatasetManifest, epoch_manifest: EpochManifest):
     """Measure DataLoader creation and iteration overhead."""
@@ -112,7 +122,7 @@ def benchmark_dataloader(dataset_manifest: DatasetManifest, epoch_manifest: Epoc
         latent_strategy=latent_strategy,
         te_strategy=te_strategy,
         num_workers=0,
-        prefetch_factor=None # prefetch_factor requires num_workers > 0
+        prefetch_factor=None,  # prefetch_factor requires num_workers > 0
     )
     creation_time = time.perf_counter() - start_time
     logger.info(f"DataLoader creation: {creation_time:.4f}s")
@@ -146,6 +156,7 @@ def benchmark_dataloader(dataset_manifest: DatasetManifest, epoch_manifest: Epoc
 
     return creation_time, first_batch_time, throughput
 
+
 def run_benchmarks():
     # Reduced sizes to prevent timeouts in the sandbox
     sizes = [1_000, 10_000, 50_000]
@@ -165,13 +176,16 @@ def run_benchmarks():
 
         print(f"| {size:<12} | {prep_time:<17.4f} | {dl_create_time:<15.4f} | {first_batch_time:<15.4f} | {throughput:<20.2f} |")
 
-        results.append({
-            "size": size,
-            "prep_time": prep_time,
-            "dl_create_time": dl_create_time,
-            "first_batch_time": first_batch_time,
-            "throughput": throughput
-        })
+        results.append(
+            {
+                "size": size,
+                "prep_time": prep_time,
+                "dl_create_time": dl_create_time,
+                "first_batch_time": first_batch_time,
+                "throughput": throughput,
+            }
+        )
+
 
 if __name__ == "__main__":
     run_benchmarks()

@@ -3,6 +3,7 @@ DatasetGroup for coordinating multiple datasets.
 
 A ConcatDataset wrapper that provides unified access to multiple dataset instances.
 """
+
 import logging
 import torch
 
@@ -68,13 +69,10 @@ class DatasetGroup(torch.utils.data.ConcatDataset):
             dataset.new_cache_latents(model, accelerator)
         accelerator.wait_for_everyone()
 
-    def cache_text_encoder_outputs(
-            self, tokenizers, text_encoders, device, weight_dtype, cache_to_disk=False, is_main_process=True
-    ):
+    def cache_text_encoder_outputs(self, tokenizers, text_encoders, device, weight_dtype, cache_to_disk=False, is_main_process=True):
         for i, dataset in enumerate(self.datasets):
             logger.info(f"[Dataset {i}]")
-            dataset.cache_text_encoder_outputs(tokenizers, text_encoders, device, weight_dtype, cache_to_disk,
-                                               is_main_process)
+            dataset.cache_text_encoder_outputs(tokenizers, text_encoders, device, weight_dtype, cache_to_disk, is_main_process)
 
     def new_cache_text_encoder_outputs(self, models: list[Any], accelerator: Accelerator):
         for i, dataset in enumerate(self.datasets):

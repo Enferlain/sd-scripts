@@ -7,6 +7,7 @@ Tests data class logic and properties.
 import pytest
 from library.data.structures import Bucket, BatchInfo, EpochManifest, DatasetManifest, CacheEntry
 
+
 @pytest.mark.unit
 class TestBucket:
     def test_memory_per_image(self):
@@ -57,21 +58,13 @@ class TestBatchInfo:
     def test_get_sample_key_with_repeats(self):
         """Test sample key generation with repeats."""
         # img1 repeated twice
-        batch = BatchInfo(
-            image_ids=["img1", "img1"],
-            bucket_reso=(512, 512),
-            repeat_indices=[0, 1]
-        )
-        assert batch.get_sample_key(0) == "img1"          # repeat 0 uses base ID
-        assert batch.get_sample_key(1) == "img1#1"        # repeat 1 uses suffix
+        batch = BatchInfo(image_ids=["img1", "img1"], bucket_reso=(512, 512), repeat_indices=[0, 1])
+        assert batch.get_sample_key(0) == "img1"  # repeat 0 uses base ID
+        assert batch.get_sample_key(1) == "img1#1"  # repeat 1 uses suffix
 
     def test_get_sample_key_high_repeat(self):
         """Test sample key with higher repeat indices."""
-        batch = BatchInfo(
-            image_ids=["img1"],
-            bucket_reso=(512, 512),
-            repeat_indices=[5]
-        )
+        batch = BatchInfo(image_ids=["img1"], bucket_reso=(512, 512), repeat_indices=[5])
         assert batch.get_sample_key(0) == "img1#5"
 
 
@@ -91,15 +84,11 @@ class TestEpochManifest:
 class TestDatasetManifest:
     def test_lookup_methods(self):
         entry = CacheEntry(
-            id="img1", image_path="path", original_size=(100, 100),
-            bucket_reso=(100, 100), resized_size=(100, 100), caption="cap"
+            id="img1", image_path="path", original_size=(100, 100), bucket_reso=(100, 100), resized_size=(100, 100), caption="cap"
         )
         bucket = Bucket(resolution=(100, 100), image_ids=["img1"])
 
-        manifest = DatasetManifest(
-            entries={"img1": entry},
-            buckets={"100x100": bucket}
-        )
+        manifest = DatasetManifest(entries={"img1": entry}, buckets={"100x100": bucket})
 
         assert manifest.get_entry("img1") == entry
         assert manifest.get_entry("missing") is None
@@ -108,12 +97,8 @@ class TestDatasetManifest:
         assert manifest.get_bucket((200, 200)) is None
 
     def test_counts(self):
-        e1 = CacheEntry(
-            id="1", image_path="", original_size=(0, 0), bucket_reso=(0, 0), resized_size=(0, 0), caption="cap1"
-        )
-        e2 = CacheEntry(
-            id="2", image_path="", original_size=(0, 0), bucket_reso=(0, 0), resized_size=(0, 0), caption=""
-        )
+        e1 = CacheEntry(id="1", image_path="", original_size=(0, 0), bucket_reso=(0, 0), resized_size=(0, 0), caption="cap1")
+        e2 = CacheEntry(id="2", image_path="", original_size=(0, 0), bucket_reso=(0, 0), resized_size=(0, 0), caption="")
 
         manifest = DatasetManifest(entries={"1": e1, "2": e2})
 

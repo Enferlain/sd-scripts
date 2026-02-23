@@ -8,6 +8,7 @@ Contains:
 - split_train_val: Split dataset into train/val
 - debug_dataset: Interactive dataset debugging
 """
+
 import os
 import math
 import random
@@ -69,15 +70,15 @@ class collator_class:
 
 def load_arbitrary_dataset(data_config, max_token_length: int, tokenizer=None):
     """Load arbitrary dataset class.
-    
+
     Args:
         data_config: DataConfig object with:
             - source.dataset_class: str path to the dataset class
-            - preprocessing.resolution: resolution configuration  
+            - preprocessing.resolution: resolution configuration
             - preprocessing.debug_dataset: bool whether to debug
         max_token_length: Maximum token length for the tokenizer
         tokenizer: Optional tokenizer to pass to the dataset
-    
+
     Returns:
         MinimalDataset: The loaded dataset instance
     """
@@ -87,20 +88,17 @@ def load_arbitrary_dataset(data_config, max_token_length: int, tokenizer=None):
     module = importlib.import_module(module)
     dataset_class = getattr(module, dataset_class)
     train_dataset_group: MinimalDataset = dataset_class(
-        tokenizer,
-        max_token_length,
-        data_config.preprocessing.resolution,
-        data_config.preprocessing.debug_dataset
+        tokenizer, max_token_length, data_config.preprocessing.resolution, data_config.preprocessing.debug_dataset
     )
     return train_dataset_group
 
 
 def split_train_val(
-        paths: list[str],
-        sizes: list[tuple[int, int] | None],
-        is_training_dataset: bool,
-        validation_split: float,
-        validation_seed: int | None,
+    paths: list[str],
+    sizes: list[tuple[int, int] | None],
+    is_training_dataset: bool,
+    validation_split: float,
+    validation_seed: int | None,
 ) -> tuple[list[str], list[tuple[int, int] | None]]:
     """
     Split the dataset into train and validation
@@ -159,16 +157,16 @@ def debug_dataset(train_dataset, show_input_ids=False):
             if example["latents"] is not None:
                 logger.info(f"sample has latents from npz file: {example['latents'].size()}")
             for j, (ik, cap, lw, orgsz, crptl, trgsz, flpdz) in enumerate(
-                    zip(
-                        example["image_keys"],
-                        example["captions"],
-                        example["loss_weights"],
-                        # example["input_ids"],
-                        example["original_sizes_hw"],
-                        example["crop_top_lefts"],
-                        example["target_sizes_hw"],
-                        example["flippeds"],
-                    )
+                zip(
+                    example["image_keys"],
+                    example["captions"],
+                    example["loss_weights"],
+                    # example["input_ids"],
+                    example["original_sizes_hw"],
+                    example["crop_top_lefts"],
+                    example["target_sizes_hw"],
+                    example["flippeds"],
+                )
             ):
                 logger.info(
                     f'{ik}, size: {train_dataset.image_data[ik].image_size}, loss weight: {lw}, caption: "{cap}", original size: {orgsz}, crop top left: {crptl}, target size: {trgsz}, flipped: {flpdz}'

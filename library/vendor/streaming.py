@@ -39,7 +39,7 @@ class TensorMetadata:
         return {
             "shape": list(self.shape),
             "dtype": DTYPE_REVERSE_MAPPING[self.dtype][0],
-            "data_offsets": [data_offset, data_offset + self.get_byte_size()]
+            "data_offsets": [data_offset, data_offset + self.get_byte_size()],
         }
 
     def get_byte_size(self) -> int:
@@ -60,20 +60,16 @@ class TensorMetadata:
 
 class SafetensorsMapping(Mapping[str, torch.Tensor], abc.ABC):
     @abc.abstractmethod
-    def keys(self) -> Iterable[str]:
-        ...
+    def keys(self) -> Iterable[str]: ...
 
     @abc.abstractmethod
-    def metadata(self) -> Iterable[tuple[str, TensorMetadata]]:
-        ...
+    def metadata(self) -> Iterable[tuple[str, TensorMetadata]]: ...
 
     @abc.abstractmethod
-    def values(self) -> Iterable[torch.Tensor]:
-        ...
+    def values(self) -> Iterable[torch.Tensor]: ...
 
     @abc.abstractmethod
-    def items(self) -> Iterable[tuple[str, torch.Tensor]]:
-        ...
+    def items(self) -> Iterable[tuple[str, torch.Tensor]]: ...
 
 
 class InSafetensorsDict(SafetensorsMapping):
@@ -82,7 +78,7 @@ class InSafetensorsDict(SafetensorsMapping):
             raise ValueError(f"Model type not supported: {file_path} (only safetensors are supported)")
 
         self.default_buffer_size = buffer_size
-        self.file = open(file_path, mode='rb', buffering=0)
+        self.file = open(file_path, mode="rb", buffering=0)
         self.file_path = file_path
         self.header_size, self.header = self._read_header()
         self.buffer = bytearray()
@@ -111,15 +107,11 @@ class InSafetensorsDict(SafetensorsMapping):
         self.header = None
 
     def keys(self) -> Iterable[str]:
-        return (
-            key
-            for key in self.header.keys()
-            if key != "__metadata__"
-        )
+        return (key for key in self.header.keys() if key != "__metadata__")
 
     def metadata(self) -> Iterable[tuple[str, TensorMetadata]]:
         for key in self.keys():
-            yield key, TensorMetadata(self.header[key]["shape"],  DTYPE_MAPPING[self.header[key]["dtype"]][0])
+            yield key, TensorMetadata(self.header[key]["shape"], DTYPE_MAPPING[self.header[key]["dtype"]][0])
 
     def values(self) -> Iterable[torch.Tensor]:
         for key in self.keys():
@@ -131,12 +123,12 @@ class InSafetensorsDict(SafetensorsMapping):
 
     def _read_header(self):
         header_size_bytes = self.file.read(8)
-        header_size = struct.unpack('<Q', header_size_bytes)[0]
-        header_json = self.file.read(header_size).decode('utf-8').strip()
+        header_size = struct.unpack("<Q", header_size_bytes)[0]
+        header_json = self.file.read(header_size).decode("utf-8").strip()
         header = json.loads(header_json)
 
         # sort by memory order to reduce seek time
-        sorted_header = OrderedDict(sorted(header.items(), key=lambda item: item[1].get('data_offsets', [0])[0]))
+        sorted_header = OrderedDict(sorted(header.items(), key=lambda item: item[1].get("data_offsets", [0])[0]))
         return header_size, sorted_header
 
     def _ensure_buffer(self, start_pos, length):
@@ -153,9 +145,9 @@ class InSafetensorsDict(SafetensorsMapping):
 
     def _load_tensor(self, tensor_name):
         tensor_info = self.header[tensor_name]
-        offsets = tensor_info['data_offsets']
-        dtype, dtype_bytes = DTYPE_MAPPING[tensor_info['dtype']]
-        shape = tensor_info['shape']
+        offsets = tensor_info["data_offsets"]
+        dtype, dtype_bytes = DTYPE_MAPPING[tensor_info["dtype"]]
+        shape = tensor_info["shape"]
         total_bytes = offsets[1] - offsets[0]
         if total_bytes == 0:
             return torch.tensor([], dtype=dtype).reshape(shape)
@@ -196,9 +188,7 @@ class OutSafetensorsDict(WriteOnlyMapping[str, torch.Tensor]):
         self.thread_states = {}
         self.lock = threading.Lock()
 
-        self.header = {
-            "__metadata__": {"mecha_recipe": mecha_recipe} if mecha_recipe is not None else {}
-        }
+        self.header = {"__metadata__": {"mecha_recipe": mecha_recipe} if mecha_recipe is not None else {}}
         self.file = file_path.open("wb", buffering=0)
         self.file_path = file_path
         self.flushed_size = 0
@@ -225,27 +215,27 @@ class OutSafetensorsDict(WriteOnlyMapping[str, torch.Tensor]):
             self._flush_buffer(state, next_tensor_size=tensor_size)
 
         local_offset = state.memory_used
-        state.buffer[state.memory_used:state.memory_used + tensor_size] = tensor_bytes
+        state.buffer[state.memory_used : state.memory_used + tensor_size] = tensor_bytes
         state.memory_used += tensor_size
 
         state.sub_header[key] = {
             "dtype": DTYPE_REVERSE_MAPPING[tensor.dtype][0],
             "shape": list(tensor.shape),
-            "data_offsets": [local_offset, local_offset + tensor_size]
+            "data_offsets": [local_offset, local_offset + tensor_size],
         }
 
     def __len__(self) -> int:
         return len(self.header)
 
     def _init_buffer(self, header: Mapping[str, TensorMetadata]) -> int:
-        trimmed_header = {
-            k: v for k, v in header.items() if v.shape is not None and v.dtype is not None
-        }
-        worst_case_header = OrderedDict(sorted(
-            trimmed_header.items(),
-            key=lambda item: item[1].get_byte_size(),
-            reverse=True,  # simulate worst case: maximize space taken by order
-        ))
+        trimmed_header = {k: v for k, v in header.items() if v.shape is not None and v.dtype is not None}
+        worst_case_header = OrderedDict(
+            sorted(
+                trimmed_header.items(),
+                key=lambda item: item[1].get_byte_size(),
+                reverse=True,  # simulate worst case: maximize space taken by order
+            )
+        )
 
         data_offset = 0
         dummy_safetensors_header = OrderedDict(self.header)
@@ -253,7 +243,7 @@ class OutSafetensorsDict(WriteOnlyMapping[str, torch.Tensor]):
             dummy_safetensors_header[k] = v.safetensors_header_value(data_offset)
             data_offset += v.get_byte_size()
 
-        header_json = json.dumps(dummy_safetensors_header, separators=(',', ':')).encode('utf-8')
+        header_json = json.dumps(dummy_safetensors_header, separators=(",", ":")).encode("utf-8")
         max_header_size = len(header_json)
         self.file.seek(8 + max_header_size)  # Reserve space for the header
         return max_header_size
@@ -265,7 +255,7 @@ class OutSafetensorsDict(WriteOnlyMapping[str, torch.Tensor]):
             lock = contextlib.nullcontext()
 
         with lock:
-            self.file.write(state.buffer[:state.memory_used])
+            self.file.write(state.buffer[: state.memory_used])
             buffer_offset = self.flushed_size
             self.flushed_size += state.memory_used
             state.memory_used = 0
@@ -278,12 +268,7 @@ class OutSafetensorsDict(WriteOnlyMapping[str, torch.Tensor]):
                 state.buffer = state.buffer[:required_buffer_size]
 
         global_sub_header = {
-            k: {
-                attr: val
-                if attr != "data_offsets"
-                else (val[0] + buffer_offset, val[1] + buffer_offset)
-                for attr, val in v.items()
-            }
+            k: {attr: val if attr != "data_offsets" else (val[0] + buffer_offset, val[1] + buffer_offset) for attr, val in v.items()}
             for k, v in state.sub_header.items()
         }
         self.header.update(global_sub_header)
@@ -296,7 +281,7 @@ class OutSafetensorsDict(WriteOnlyMapping[str, torch.Tensor]):
             for state in self.thread_states.values():
                 self._flush_buffer(state, close=True)
 
-            header_json = json.dumps(self.header, separators=(',', ':')).encode('utf-8')
+            header_json = json.dumps(self.header, separators=(",", ":")).encode("utf-8")
             header_size = len(header_json)
             overhead = self.max_header_size - header_size
 
@@ -328,9 +313,9 @@ class OutSafetensorsDict(WriteOnlyMapping[str, torch.Tensor]):
                 overhead = 0
 
             self.file.seek(0)
-            self.file.write(struct.pack('<Q', max(self.max_header_size, header_size)))
+            self.file.write(struct.pack("<Q", max(self.max_header_size, header_size)))
             self.file.write(header_json)
-            self.file.write(b' ' * overhead)
+            self.file.write(b" " * overhead)
             self.file.close()
 
 

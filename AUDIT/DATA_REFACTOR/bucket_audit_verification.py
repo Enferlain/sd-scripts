@@ -1,14 +1,14 @@
-
 import math
 import logging
 import sys
 import numpy as np
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(message)s')
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 # --- Legacy Implementation (copied from library/data/_deprecated/data_structures.py) ---
+
 
 class LegacyBucketManager:
     def __init__(self, no_upscale, max_reso, min_size, max_size, reso_steps) -> None:
@@ -46,7 +46,7 @@ class LegacyBucketManager:
         return x - x % self.reso_steps
 
     def make_bucket_resolutions(self):
-         # Helper to generate resolutions for testing parity
+        # Helper to generate resolutions for testing parity
         max_width, max_height = self.max_reso
         max_area = max_width * max_height
 
@@ -132,6 +132,7 @@ try:
 except ImportError as e:
     print(f"Could not import new implementation: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
@@ -147,18 +148,18 @@ def run_comparison():
 
     # Test Cases: (width, height)
     test_cases = [
-        (1024, 1024), # Exact match
-        (512, 512),   # Smaller square
-        (2000, 2000), # Larger square
+        (1024, 1024),  # Exact match
+        (512, 512),  # Smaller square
+        (2000, 2000),  # Larger square
         (768, 1024),  # Portrait
         (1024, 768),  # Landscape
-        (100, 100),   # Small image (< min_size)
-        (30, 30),     # Tiny image (< step)
+        (100, 100),  # Small image (< min_size)
+        (30, 30),  # Tiny image (< step)
         (1000, 500),  # 2:1
         (500, 1000),  # 1:2
         (1234, 567),  # Random sizes
-        (1920, 1080), # HD
-        (4096, 4096), # Huge
+        (1920, 1080),  # HD
+        (4096, 4096),  # Huge
     ]
 
     # --- Test 1: no_upscale = False ---
@@ -190,10 +191,9 @@ def run_comparison():
         status = "PASS" if match else "FAIL"
 
         if not match:
-             logger.warning(f"[{status}] Input: {w}x{h}")
-             logger.warning(f"  Legacy: Bucket={l_reso}, Resize={l_resize}")
-             logger.warning(f"  New:    Bucket={n_reso}, Resize={n_resize}")
-
+            logger.warning(f"[{status}] Input: {w}x{h}")
+            logger.warning(f"  Legacy: Bucket={l_reso}, Resize={l_resize}")
+            logger.warning(f"  New:    Bucket={n_reso}, Resize={n_resize}")
 
     # --- Test 2: no_upscale = True ---
     logger.info("\n=== Test Case 2: No Upscale Mode (no_upscale=True) ===")
@@ -212,9 +212,9 @@ def run_comparison():
         status = "PASS" if match else "FAIL"
 
         if not match:
-             logger.warning(f"[{status}] Input: {w}x{h}")
-             logger.warning(f"  Legacy: Bucket={l_reso}, Resize={l_resize}")
-             logger.warning(f"  New:    Bucket={n_reso}, Resize={n_resize}")
+            logger.warning(f"[{status}] Input: {w}x{h}")
+            logger.warning(f"  Legacy: Bucket={l_reso}, Resize={l_resize}")
+            logger.warning(f"  New:    Bucket={n_reso}, Resize={n_resize}")
 
     # --- Test 3: The Zero-Dimension Edge Case ---
     logger.info("\n=== Test Case 3: Zero Dimension Edge Case ===")
@@ -237,6 +237,7 @@ def run_comparison():
         logger.info("New implementation faithfully reproduces this edge case.")
     else:
         logger.warning("New implementation handles this differently.")
+
 
 if __name__ == "__main__":
     run_comparison()

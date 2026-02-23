@@ -3,7 +3,6 @@ This is a dummy file to test fix_imports.py.
 It contains chaotic imports that need sorting.
 """
 
-
 # This comment should stick to requests
 from __future__ import annotations  # This should be hoisted to the VERY TOP!
 
@@ -22,7 +21,6 @@ try:
     import tomllib
 except ImportError:
     pass
-
 
 
 def main():

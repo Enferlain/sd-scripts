@@ -8,6 +8,7 @@ Supports:
 - Caption loading from files
 - Image info caching
 """
+
 import os
 import glob
 import json
@@ -31,22 +32,22 @@ class DreamBoothDataset(BaseDataset):
     # if is_training_dataset is True -> training dataset
     # if is_training_dataset is False -> validation dataset
     def __init__(
-            self,
-            subsets: Sequence[DreamBoothSubset],
-            is_training_dataset: bool,
-            batch_size: int,
-            resolution,
-            adapter_multiplier: float,
-            enable_bucket: bool,
-            min_bucket_reso: int,
-            max_bucket_reso: int,
-            bucket_reso_steps: int,
-            bucket_no_upscale: bool,
-            prior_loss_weight: float,
-            debug_dataset: bool,
-            validation_split: float,
-            validation_seed: int | None,
-            resize_interpolation: str | None,
+        self,
+        subsets: Sequence[DreamBoothSubset],
+        is_training_dataset: bool,
+        batch_size: int,
+        resolution,
+        adapter_multiplier: float,
+        enable_bucket: bool,
+        min_bucket_reso: int,
+        max_bucket_reso: int,
+        bucket_reso_steps: int,
+        bucket_no_upscale: bool,
+        prior_loss_weight: float,
+        debug_dataset: bool,
+        validation_split: float,
+        validation_seed: int | None,
+        resize_interpolation: str | None,
     ) -> None:
         super().__init__(resolution, adapter_multiplier, debug_dataset, resize_interpolation)
 
@@ -91,8 +92,7 @@ class DreamBoothDataset(BaseDataset):
                         try:
                             lines = f.readlines()
                         except UnicodeDecodeError as e:
-                            logger.error(
-                                f"illegal char in file (not UTF-8) / ファイルにUTF-8以外の文字があります: {cap_path}")
+                            logger.error(f"illegal char in file (not UTF-8) / ファイルにUTF-8以外の文字があります: {cap_path}")
                             raise e
                         assert len(lines) > 0, f"caption file is empty / キャプションファイルが空です: {cap_path}"
                         if enable_wildcard:
@@ -139,9 +139,7 @@ class DreamBoothDataset(BaseDataset):
 
                     # make image path to npz path mapping
                     npz_paths = glob.glob(os.path.join(subset.image_dir, "*" + strategy.cache_suffix))
-                    npz_paths.sort(
-                        key=lambda item: item.rsplit("_", maxsplit=2)[0]
-                    )  # sort by name excluding resolution and cache_suffix
+                    npz_paths.sort(key=lambda item: item.rsplit("_", maxsplit=2)[0])  # sort by name excluding resolution and cache_suffix
                     npz_path_index = 0
 
                     size_set_count = 0
@@ -177,6 +175,7 @@ class DreamBoothDataset(BaseDataset):
             # if self.is_training_dataset is False -> validation dataset
             if self.validation_split > 0.0:
                 from library.data._deprecated.dataset_utils import split_train_val
+
                 # For regularization images we do not want to split this dataset.
                 if subset.is_reg is True:
                     # Skip any validation dataset for regularization images
@@ -194,8 +193,7 @@ class DreamBoothDataset(BaseDataset):
 
             if use_cached_info_for_subset:
                 captions = [meta["caption"] for meta in metas.values()]
-                missing_captions = [img_path for img_path, caption in zip(img_paths, captions) if
-                                    caption is None or caption == ""]
+                missing_captions = [img_path for img_path, caption in zip(img_paths, captions) if caption is None or caption == ""]
             else:
                 # 画像ファイルごとにプロンプトを読み込み、もしあればそちらを使う
                 captions = []
@@ -296,8 +294,7 @@ class DreamBoothDataset(BaseDataset):
 
         logger.info(f"{num_reg_images} reg images with repeats.")
         if num_train_images < num_reg_images:
-            logger.warning(
-                "some of reg images are not used / 正則化画像の数が多いので、一部使用されない正則化画像があります")
+            logger.warning("some of reg images are not used / 正則化画像の数が多いので、一部使用されない正則化画像があります")
 
         if num_reg_images == 0:
             logger.warning("no regularization images / 正則化画像が見つかりませんでした")

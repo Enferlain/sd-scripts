@@ -20,9 +20,10 @@ from library.losses.loss_weighting import (
 
 # --- Fixtures ---
 
+
 def make_fake_scheduler(all_snr_vals: list) -> SimpleNamespace:
     """Create a fake scheduler with all_snr as a simple tensor.
-    
+
     This avoids instantiating real DDPMScheduler - the functions only need
     noise_scheduler.all_snr[t] to work.
     """
@@ -32,6 +33,7 @@ def make_fake_scheduler(all_snr_vals: list) -> SimpleNamespace:
 
 
 # --- Tests for apply_snr_weight ---
+
 
 class TestApplySnrWeight:
     """Tests for apply_snr_weight function."""
@@ -95,6 +97,7 @@ class TestApplySnrWeight:
 
 # --- Tests for get_snr_scale ---
 
+
 class TestGetSnrScale:
     """Tests for get_snr_scale function."""
 
@@ -102,7 +105,7 @@ class TestGetSnrScale:
         """Basic SNR scale computation."""
         sch = make_fake_scheduler([0.5, 1.0, 3.0])
         timesteps = torch.tensor([0, 2], dtype=torch.int64)
-        
+
         scale = get_snr_scale(timesteps, sch)
 
         snr = torch.tensor([0.5, 3.0])
@@ -114,7 +117,7 @@ class TestGetSnrScale:
         """Very large SNR (like at t=0) gets clamped to 1000."""
         sch = make_fake_scheduler([1e9])
         timesteps = torch.tensor([0], dtype=torch.int64)
-        
+
         scale = get_snr_scale(timesteps, sch)
 
         # Clamped to 1000
@@ -126,7 +129,7 @@ class TestGetSnrScale:
         """Test with multiple timesteps covering different SNR values."""
         sch = make_fake_scheduler([100.0, 10.0, 1.0, 0.1])
         timesteps = torch.tensor([0, 1, 2, 3], dtype=torch.int64)
-        
+
         scale = get_snr_scale(timesteps, sch)
 
         snr = torch.tensor([100.0, 10.0, 1.0, 0.1])
@@ -135,6 +138,7 @@ class TestGetSnrScale:
 
 
 # --- Tests for scale_v_prediction_loss_like_noise_prediction ---
+
 
 class TestScaleVPredictionLossLikeNoisePrediction:
     """Tests for scale_v_prediction_loss_like_noise_prediction function."""
@@ -146,7 +150,7 @@ class TestScaleVPredictionLossLikeNoisePrediction:
         loss = torch.tensor([2.0, 4.0])
 
         out = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, sch)
-        
+
         scale = get_snr_scale(timesteps, sch)
         expected = loss * scale
         assert torch.allclose(out, expected)
@@ -158,7 +162,7 @@ class TestScaleVPredictionLossLikeNoisePrediction:
         loss = torch.tensor([1.0, 2.0, 3.0, 4.0])
 
         out = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, sch)
-        
+
         snr = torch.tensor([0.5, 1.0, 2.0, 4.0])
         scale = snr / (snr + 1)
         expected = loss * scale
@@ -166,6 +170,7 @@ class TestScaleVPredictionLossLikeNoisePrediction:
 
 
 # --- Tests for add_v_prediction_like_loss ---
+
 
 class TestAddVPredictionLikeLoss:
     """Tests for add_v_prediction_like_loss function."""
@@ -178,7 +183,7 @@ class TestAddVPredictionLikeLoss:
         v_like = torch.tensor([0.5, 1.0])
 
         out = add_v_prediction_like_loss(loss, timesteps, sch, v_like)
-        
+
         scale = get_snr_scale(timesteps, sch)
         expected = loss + loss / scale * v_like
         assert torch.allclose(out, expected)
@@ -191,11 +196,12 @@ class TestAddVPredictionLikeLoss:
         v_like = torch.tensor([0.0, 0.0])
 
         out = add_v_prediction_like_loss(loss, timesteps, sch, v_like)
-        
+
         assert torch.allclose(out, loss)
 
 
 # --- Tests for apply_debiased_estimation ---
+
 
 class TestApplyDebiasedEstimation:
     """Tests for apply_debiased_estimation function."""
@@ -207,7 +213,7 @@ class TestApplyDebiasedEstimation:
         loss = torch.tensor([2.0, 3.0])
 
         out = apply_debiased_estimation(loss, timesteps, sch, v_prediction=False)
-        
+
         snr = torch.tensor([4.0, 9.0])
         weight = 1 / torch.sqrt(snr)  # [0.5, 0.333...]
         expected = weight * loss
@@ -220,7 +226,7 @@ class TestApplyDebiasedEstimation:
         loss = torch.tensor([2.0, 3.0])
 
         out = apply_debiased_estimation(loss, timesteps, sch, v_prediction=True)
-        
+
         snr = torch.tensor([4.0, 9.0])
         weight = 1 / (snr + 1)  # [0.2, 0.1]
         expected = weight * loss
@@ -233,7 +239,7 @@ class TestApplyDebiasedEstimation:
         loss = torch.tensor([1.0])
 
         out = apply_debiased_estimation(loss, timesteps, sch, v_prediction=False)
-        
+
         # SNR clamped to 1000
         weight = 1 / torch.sqrt(torch.tensor([1000.0]))
         expected = weight * loss
@@ -241,6 +247,7 @@ class TestApplyDebiasedEstimation:
 
 
 # --- Tests for apply_masked_loss ---
+
 
 class TestApplyMaskedLoss:
     """Tests for apply_masked_loss function."""
@@ -301,7 +308,7 @@ class TestApplyMaskedLoss:
         """When no mask keys present, return original loss unchanged."""
         loss = torch.ones((1, 1, 4, 4), dtype=torch.float32)
         batch = {}
-        
+
         out = apply_masked_loss(loss, batch)
 
         # Should return the same tensor object
@@ -311,7 +318,7 @@ class TestApplyMaskedLoss:
         """When alpha_masks is None, return original loss unchanged."""
         loss = torch.ones((1, 1, 4, 4), dtype=torch.float32)
         batch = {"alpha_masks": None}
-        
+
         out = apply_masked_loss(loss, batch)
 
         assert out is loss

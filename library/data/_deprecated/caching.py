@@ -50,8 +50,10 @@ def is_disk_cached_latents_is_expected(reso, npz_path: str, flip_aug: bool, alph
 
 # for new_cache_latents
 def load_images_and_masks_for_caching(
-        image_infos: list[ImageInfo], use_alpha_mask: bool, random_crop: bool,
-        random_crop_padding_percent: float = 0.05,
+    image_infos: list[ImageInfo],
+    use_alpha_mask: bool,
+    random_crop: bool,
+    random_crop_padding_percent: float = 0.05,
 ) -> tuple[torch.Tensor, list[np.ndarray], list[tuple[int, int]], list[tuple[int, int, int, int]]]:
     r"""
     requires image_infos to have: [absolute_path or image], bucket_reso, resized_size
@@ -71,8 +73,12 @@ def load_images_and_masks_for_caching(
         image = load_image(info.absolute_path, use_alpha_mask) if info.image is None else np.array(info.image, np.uint8)
         # TODO 画像のメタデータが壊れていて、メタデータから割り当てたbucketと実際の画像サイズが一致しない場合があるのでチェック追加要
         image, original_size, crop_ltrb = trim_and_resize_if_required(
-            random_crop, image, info.bucket_reso, info.resized_size, resize_interpolation=info.resize_interpolation,
-            random_crop_padding_percent=random_crop_padding_percent
+            random_crop,
+            image,
+            info.bucket_reso,
+            info.resized_size,
+            resize_interpolation=info.resize_interpolation,
+            random_crop_padding_percent=random_crop_padding_percent,
         )
 
         original_sizes.append(original_size)
@@ -98,8 +104,13 @@ def load_images_and_masks_for_caching(
 
 
 def cache_batch_latents(
-        vae: AutoencoderKL, cache_to_disk: bool, image_infos: list[ImageInfo], flip_aug: bool, use_alpha_mask: bool,
-        random_crop: bool, random_crop_padding_percent: float = 0.05
+    vae: AutoencoderKL,
+    cache_to_disk: bool,
+    image_infos: list[ImageInfo],
+    flip_aug: bool,
+    use_alpha_mask: bool,
+    random_crop: bool,
+    random_crop_padding_percent: float = 0.05,
 ) -> None:
     r"""
     requires image_infos to have: absolute_path, bucket_reso, resized_size, latents_npz
@@ -116,8 +127,12 @@ def cache_batch_latents(
         image = load_image(info.absolute_path, use_alpha_mask) if info.image is None else np.array(info.image, np.uint8)
         # TODO 画像のメタデータが壊れていて、メタデータから割り当てたbucketと実際の画像サイズが一致しない場合があるのでチェック追加要
         image, original_size, crop_ltrb = trim_and_resize_if_required(
-            random_crop, image, info.bucket_reso, info.resized_size, resize_interpolation=info.resize_interpolation,
-            random_crop_padding_percent=random_crop_padding_percent
+            random_crop,
+            image,
+            info.bucket_reso,
+            info.resized_size,
+            resize_interpolation=info.resize_interpolation,
+            random_crop_padding_percent=random_crop_padding_percent,
         )
 
         info.latents_original_size = original_size
@@ -177,7 +192,7 @@ def cache_batch_latents(
 
 
 def cache_batch_text_encoder_outputs(
-        image_infos, tokenizers, text_encoders, max_token_length, cache_to_disk, input_ids1, input_ids2, dtype
+    image_infos, tokenizers, text_encoders, max_token_length, cache_to_disk, input_ids1, input_ids2, dtype
 ):
     input_ids1 = input_ids1.to(text_encoders[0].device)
     input_ids2 = input_ids2.to(text_encoders[1].device)

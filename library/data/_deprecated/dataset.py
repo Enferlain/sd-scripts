@@ -15,18 +15,13 @@ from concurrent.futures import Future, ThreadPoolExecutor
 
 from library.constants import TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX, IMAGE_TRANSFORMS
 from library.utils.jpeg_xl_util import get_jxl_size
-from library.data.image_utils import load_image, trim_and_resize_if_required, resize_image, \
-    validate_interpolation_fn
+from library.data.image_utils import load_image, trim_and_resize_if_required, resize_image, validate_interpolation_fn
 
 from library.strategies.base.caching import TextEncoderOutputsCachingStrategy, LatentsCachingStrategy
 from library.strategies.base.encoding import TextEncodingStrategy
 from library.strategies.base.tokenization import TokenizeStrategy
 
-from library.data._deprecated.caching import (
-    is_disk_cached_latents_is_expected,
-    cache_batch_latents,
-    cache_batch_text_encoder_outputs
-)
+from library.data._deprecated.caching import is_disk_cached_latents_is_expected, cache_batch_latents, cache_batch_text_encoder_outputs
 
 from library.data._deprecated.data_structures import (
     DreamBoothSubset,
@@ -35,7 +30,7 @@ from library.data._deprecated.data_structures import (
     AugHelper,
     ImageInfo,
     BaseSubset,
-    BucketBatchIndex
+    BucketBatchIndex,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,11 +38,11 @@ logger = logging.getLogger(__name__)
 
 class BaseDataset(torch.utils.data.Dataset):
     def __init__(
-            self,
-            resolution: tuple[int, int] | None,
-            adapter_multiplier: float,
-            debug_dataset: bool,
-            resize_interpolation: str | None = None,
+        self,
+        resolution: tuple[int, int] | None,
+        adapter_multiplier: float,
+        debug_dataset: bool,
+        resize_interpolation: str | None = None,
     ) -> None:
         super().__init__()
 
@@ -83,9 +78,9 @@ class BaseDataset(torch.utils.data.Dataset):
         self.image_transforms = IMAGE_TRANSFORMS
 
         if resize_interpolation is not None:
-            assert validate_interpolation_fn(
-                resize_interpolation
-            ), f'Resize interpolation "{resize_interpolation}" is not a valid interpolation'
+            assert validate_interpolation_fn(resize_interpolation), (
+                f'Resize interpolation "{resize_interpolation}" is not a valid interpolation'
+            )
         self.resize_interpolation = resize_interpolation
 
         self.image_data: dict[str, ImageInfo] = {}
@@ -106,7 +101,7 @@ class BaseDataset(torch.utils.data.Dataset):
         self.latents_caching_strategy = LatentsCachingStrategy.get_strategy()
 
     def adjust_min_max_bucket_reso_by_steps(
-            self, resolution: tuple[int, int], min_bucket_reso: int, max_bucket_reso: int, bucket_reso_steps: int
+        self, resolution: tuple[int, int], min_bucket_reso: int, max_bucket_reso: int, bucket_reso_steps: int
     ) -> tuple[int, int]:
         # make min/max bucket reso to be multiple of bucket_reso_steps
         if min_bucket_reso % bucket_reso_steps != 0:
@@ -124,12 +119,12 @@ class BaseDataset(torch.utils.data.Dataset):
             )
             max_bucket_reso = adjusted_max_bucket_reso
 
-        assert (
-                min(resolution) >= min_bucket_reso
-        ), "min_bucket_reso must be equal or less than resolution / min_bucket_resoは最小解像度より大きくできません。解像度を大きくするかmin_bucket_resoを小さくしてください"
-        assert (
-                max(resolution) <= max_bucket_reso
-        ), "max_bucket_reso must be equal or greater than resolution / max_bucket_resoは最大解像度より小さくできません。解像度を小さくするかmin_bucket_resoを大きくしてください"
+        assert min(resolution) >= min_bucket_reso, (
+            "min_bucket_reso must be equal or less than resolution / min_bucket_resoは最小解像度より大きくできません。解像度を大きくするかmin_bucket_resoを小さくしてください"
+        )
+        assert max(resolution) <= max_bucket_reso, (
+            "max_bucket_reso must be equal or greater than resolution / max_bucket_resoは最大解像度より小さくできません。解像度を小さくするかmin_bucket_resoを大きくしてください"
+        )
 
         return min_bucket_reso, max_bucket_reso
 
@@ -149,8 +144,7 @@ class BaseDataset(torch.utils.data.Dataset):
                     self.shuffle_buckets()
                 # self.current_epoch seem to be set to 0 again in the next epoch. it may be caused by skipped_dataloader?
             else:
-                logger.warning(
-                    f"epoch is not incremented. current_epoch: {self.current_epoch}, epoch: {epoch}")
+                logger.warning(f"epoch is not incremented. current_epoch: {self.current_epoch}, epoch: {epoch}")
                 self.current_epoch = epoch
 
     def set_current_step(self, step):
@@ -190,9 +184,7 @@ class BaseDataset(torch.utils.data.Dataset):
         # dropoutの決定：tag dropがこのメソッド内にあるのでここで行うのが良い
         is_drop_out = subset.caption_dropout_rate > 0 and random.random() < subset.caption_dropout_rate
         is_drop_out = (
-                is_drop_out
-                or subset.caption_dropout_every_n_epochs > 0
-                and self.current_epoch % subset.caption_dropout_every_n_epochs == 0
+            is_drop_out or subset.caption_dropout_every_n_epochs > 0 and self.current_epoch % subset.caption_dropout_every_n_epochs == 0
         )
 
         if is_drop_out:
@@ -230,16 +222,11 @@ class BaseDataset(torch.utils.data.Dataset):
                 fixed_tokens = []
                 flex_tokens = []
                 fixed_suffix_tokens = []
-                if (
-                        hasattr(subset, "keep_tokens_separator")
-                        and subset.keep_tokens_separator
-                        and subset.keep_tokens_separator in caption
-                ):
+                if hasattr(subset, "keep_tokens_separator") and subset.keep_tokens_separator and subset.keep_tokens_separator in caption:
                     fixed_part, flex_part = caption.split(subset.keep_tokens_separator, 1)
                     if subset.keep_tokens_separator in flex_part:
                         flex_part, fixed_suffix_part = flex_part.split(subset.keep_tokens_separator, 1)
-                        fixed_suffix_tokens = [t.strip() for t in fixed_suffix_part.split(subset.caption_separator) if
-                                               t.strip()]
+                        fixed_suffix_tokens = [t.strip() for t in fixed_suffix_part.split(subset.caption_separator) if t.strip()]
 
                     fixed_tokens = [t.strip() for t in fixed_part.split(subset.caption_separator) if t.strip()]
                     flex_tokens = [t.strip() for t in flex_part.split(subset.caption_separator) if t.strip()]
@@ -248,17 +235,14 @@ class BaseDataset(torch.utils.data.Dataset):
                     flex_tokens = tokens[:]
                     if subset.keep_tokens > 0:
                         fixed_tokens = flex_tokens[: subset.keep_tokens]
-                        flex_tokens = tokens[subset.keep_tokens:]
+                        flex_tokens = tokens[subset.keep_tokens :]
 
                 if subset.token_warmup_step < 1:  # 初回に上書きする
                     subset.token_warmup_step = math.floor(subset.token_warmup_step * self.max_train_steps)
                 if subset.token_warmup_step and self.current_step < subset.token_warmup_step:
                     tokens_len = (
-                            math.floor(
-                                (self.current_step) * (
-                                        (len(flex_tokens) - subset.token_warmup_min) / (subset.token_warmup_step))
-                            )
-                            + subset.token_warmup_min
+                        math.floor((self.current_step) * ((len(flex_tokens) - subset.token_warmup_min) / (subset.token_warmup_step)))
+                        + subset.token_warmup_min
                     )
                     flex_tokens = flex_tokens[:tokens_len]
 
@@ -311,11 +295,11 @@ class BaseDataset(torch.utils.data.Dataset):
                 # 77以上の時は "<BOS> .... <EOS> <EOS> <EOS>" でトータル227とかになっているので、"<BOS>...<EOS>"の三連に変換する
                 # 1111氏のやつは , で区切る、とかしているようだが　とりあえず単純に
                 for i in range(
-                        1, self.tokenizer_max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2
+                    1, self.tokenizer_max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2
                 ):  # (1, 152, 75)
                     ids_chunk = (
                         input_ids[0].unsqueeze(0),
-                        input_ids[i: i + tokenizer.model_max_length - 2],
+                        input_ids[i : i + tokenizer.model_max_length - 2],
                         input_ids[-1].unsqueeze(0),
                     )
                     ids_chunk = torch.cat(ids_chunk)
@@ -323,11 +307,10 @@ class BaseDataset(torch.utils.data.Dataset):
             else:
                 # v2 or SDXL
                 # 77以上の時は "<BOS> .... <EOS> <PAD> <PAD>..." でトータル227とかになっているので、"<BOS>...<EOS> <PAD> <PAD> ..."の三連に変換する
-                for i in range(1, self.tokenizer_max_length - tokenizer.model_max_length + 2,
-                               tokenizer.model_max_length - 2):
+                for i in range(1, self.tokenizer_max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2):
                     ids_chunk = (
                         input_ids[0].unsqueeze(0),  # BOS
-                        input_ids[i: i + tokenizer.model_max_length - 2],
+                        input_ids[i : i + tokenizer.model_max_length - 2],
                         input_ids[-1].unsqueeze(0),
                     )  # PAD or EOS
                     ids_chunk = torch.cat(ids_chunk)
@@ -401,9 +384,7 @@ class BaseDataset(torch.utils.data.Dataset):
             img_ar_errors = []
             for image_info in self.image_data.values():
                 image_width, image_height = image_info.image_size
-                image_info.bucket_reso, image_info.resized_size, ar_error = self.bucket_manager.select_bucket(
-                    image_width, image_height
-                )
+                image_info.bucket_reso, image_info.resized_size, ar_error = self.bucket_manager.select_bucket(image_width, image_height)
 
                 # logger.info(image_info.image_key, image_info.bucket_reso)
                 img_ar_errors.append(abs(ar_error))
@@ -414,8 +395,7 @@ class BaseDataset(torch.utils.data.Dataset):
             self.bucket_manager.set_predefined_resos([(self.width, self.height)])  # ひとつの固定サイズbucketのみ
             for image_info in self.image_data.values():
                 image_width, image_height = image_info.image_size
-                image_info.bucket_reso, image_info.resized_size, _ = self.bucket_manager.select_bucket(image_width,
-                                                                                                       image_height)
+                image_info.bucket_reso, image_info.resized_size, _ = self.bucket_manager.select_bucket(image_width, image_height)
 
         for image_info in self.image_data.values():
             for _ in range(image_info.num_repeats):
@@ -458,8 +438,8 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def verify_bucket_reso_steps(self, min_steps: int):
         assert self.bucket_reso_steps is None or self.bucket_reso_steps % min_steps == 0, (
-                f"bucket_reso_steps is {self.bucket_reso_steps}. it must be divisible by {min_steps}.\n"
-                + f"bucket_reso_stepsが{self.bucket_reso_steps}です。{min_steps}で割り切れる必要があります"
+            f"bucket_reso_steps is {self.bucket_reso_steps}. it must be divisible by {min_steps}.\n"
+            + f"bucket_reso_stepsが{self.bucket_reso_steps}です。{min_steps}で割り切れる必要があります"
         )
 
     def is_latent_cacheable(self):
@@ -469,10 +449,10 @@ class BaseDataset(torch.utils.data.Dataset):
         return all(
             [
                 not (
-                        subset.caption_dropout_rate > 0
-                        or subset.shuffle_caption
-                        or subset.token_warmup_step > 0
-                        or subset.caption_tag_dropout_rate > 0
+                    subset.caption_dropout_rate > 0
+                    or subset.shuffle_caption
+                    or subset.token_warmup_step > 0
+                    or subset.caption_tag_dropout_rate > 0
                 )
                 for subset in self.subsets
             ]
@@ -501,11 +481,11 @@ class BaseDataset(torch.utils.data.Dataset):
 
             def __eq__(self, other):
                 return (
-                        self.reso == other.reso
-                        and self.flip_aug == other.flip_aug
-                        and self.alpha_mask == other.alpha_mask
-                        and self.random_crop == other.random_crop
-                        and self.random_crop_padding_percent == other.random_crop_padding_percent
+                    self.reso == other.reso
+                    and self.flip_aug == other.flip_aug
+                    and self.alpha_mask == other.alpha_mask
+                    and self.random_crop == other.random_crop
+                    and self.random_crop_padding_percent == other.random_crop_padding_percent
                 )
 
         batch: list[ImageInfo] = []
@@ -520,8 +500,9 @@ class BaseDataset(torch.utils.data.Dataset):
             for info in batch:
                 if info.image is not None and isinstance(info.image, Future):
                     info.image = info.image.result()  # future to image
-            caching_strategy.cache_batch_latents(model, batch, cond.flip_aug, cond.alpha_mask, cond.random_crop,
-                                                 cond.random_crop_padding_percent)
+            caching_strategy.cache_batch_latents(
+                model, batch, cond.flip_aug, cond.alpha_mask, cond.random_crop, cond.random_crop_padding_percent
+            )
 
             # remove image from memory
             for info in batch:
@@ -561,8 +542,9 @@ class BaseDataset(torch.utils.data.Dataset):
                         continue
 
                 # if batch is not empty and condition is changed, flush the batch. Note that current_condition is not None if batch is not empty
-                condition = Condition(info.bucket_reso, subset.flip_aug, subset.alpha_mask, subset.random_crop,
-                                      subset.random_crop_padding_percent)
+                condition = Condition(
+                    info.bucket_reso, subset.flip_aug, subset.alpha_mask, subset.random_crop, subset.random_crop_padding_percent
+                )
                 if len(batch) > 0 and current_condition != condition:
                     submit_batch(batch, current_condition)
                     batch = []
@@ -606,11 +588,11 @@ class BaseDataset(torch.utils.data.Dataset):
 
             def __eq__(self, other):
                 return (
-                        self.reso == other.reso
-                        and self.flip_aug == other.flip_aug
-                        and self.alpha_mask == other.alpha_mask
-                        and self.random_crop == other.random_crop
-                        and self.random_crop_padding_percent == other.random_crop_padding_percent
+                    self.reso == other.reso
+                    and self.flip_aug == other.flip_aug
+                    and self.alpha_mask == other.alpha_mask
+                    and self.random_crop == other.random_crop
+                    and self.random_crop_padding_percent == other.random_crop_padding_percent
                 )
 
         batches: list[tuple[Condition, list[ImageInfo]]] = []
@@ -630,16 +612,15 @@ class BaseDataset(torch.utils.data.Dataset):
                 if not is_main_process:  # store to info only
                     continue
 
-                cache_available = is_disk_cached_latents_is_expected(
-                    info.bucket_reso, info.latents_npz, subset.flip_aug, subset.alpha_mask
-                )
+                cache_available = is_disk_cached_latents_is_expected(info.bucket_reso, info.latents_npz, subset.flip_aug, subset.alpha_mask)
 
                 if cache_available:  # do not add to batch
                     continue
 
             # if batch is not empty and condition is changed, flush the batch. Note that current_condition is not None if batch is not empty
-            condition = Condition(info.bucket_reso, subset.flip_aug, subset.alpha_mask, subset.random_crop,
-                                  subset.random_crop_padding_percent)
+            condition = Condition(
+                info.bucket_reso, subset.flip_aug, subset.alpha_mask, subset.random_crop, subset.random_crop_padding_percent
+            )
             if len(batch) > 0 and current_condition != condition:
                 batches.append((current_condition, batch))
                 batch = []
@@ -662,8 +643,15 @@ class BaseDataset(torch.utils.data.Dataset):
         # iterate batches: batch doesn't have image, image will be loaded in cache_batch_latents and discarded
         logger.info("caching latents...")
         for condition, batch in tqdm(batches, smoothing=1, total=len(batches)):
-            cache_batch_latents(vae, cache_to_disk, batch, condition.flip_aug, condition.alpha_mask,
-                                condition.random_crop, condition.random_crop_padding_percent)
+            cache_batch_latents(
+                vae,
+                cache_to_disk,
+                batch,
+                condition.flip_aug,
+                condition.alpha_mask,
+                condition.random_crop,
+                condition.random_crop_padding_percent,
+            )
 
     def new_cache_text_encoder_outputs(self, models: list[Any], accelerator: Accelerator):
         r"""
@@ -724,25 +712,23 @@ class BaseDataset(torch.utils.data.Dataset):
     # if weight_dtype is specified, Text Encoder itself and output will be converted to the dtype
     # this method is only for SDXL, but it should be implemented here because it needs to be a method of dataset
     # to support SD1/2, it needs a flag for v2, but it is postponed
-    def cache_text_encoder_outputs(
-            self, tokenizers, text_encoders, device, output_dtype, cache_to_disk=False, is_main_process=True
-    ):
+    def cache_text_encoder_outputs(self, tokenizers, text_encoders, device, output_dtype, cache_to_disk=False, is_main_process=True):
         assert len(tokenizers) == 2, "only support SDXL"
         return self.cache_text_encoder_outputs_common(
             tokenizers, text_encoders, [device, device], output_dtype, [output_dtype], cache_to_disk, is_main_process
         )
 
     def cache_text_encoder_outputs_common(
-            self,
-            tokenizers,
-            text_encoders,
-            devices,
-            output_dtype,
-            te_dtypes,
-            cache_to_disk=False,
-            is_main_process=True,
-            file_suffix=TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX,
-            batch_size=None,
+        self,
+        tokenizers,
+        text_encoders,
+        devices,
+        output_dtype,
+        te_dtypes,
+        cache_to_disk=False,
+        is_main_process=True,
+        file_suffix=TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX,
+        batch_size=None,
     ):
         # latentsのキャッシュと同様に、ディスクへのキャッシュに対応する
         # またマルチGPUには対応していないので、そちらはtools/cache_latents.pyを使うこと
@@ -803,8 +789,7 @@ class BaseDataset(torch.utils.data.Dataset):
             input_ids1 = torch.stack(input_ids1, dim=0)
             input_ids2 = torch.stack(input_ids2, dim=0)
             cache_batch_text_encoder_outputs(
-                infos, tokenizers, text_encoders, self.max_token_length, cache_to_disk, input_ids1, input_ids2,
-                output_dtype
+                infos, tokenizers, text_encoders, self.max_token_length, cache_to_disk, input_ids1, input_ids2, output_dtype
             )
 
     def get_image_size(self, image_path):
@@ -862,8 +847,7 @@ class BaseDataset(torch.utils.data.Dataset):
         height, width = nh, nw
 
         # 顔を中心として448*640とかへ切り出す
-        for axis, (target_size, length, face_p) in enumerate(
-                zip((self.height, self.width), (height, width), (face_cy, face_cx))):
+        for axis, (target_size, length, face_p) in enumerate(zip((self.height, self.width), (height, width), (face_cy, face_cx))):
             p1 = face_p - target_size // 2  # 顔を中心に持ってくるための切り出し位置
 
             if subset.random_crop:
@@ -879,9 +863,9 @@ class BaseDataset(torch.utils.data.Dataset):
             p1 = max(0, min(p1, length - target_size))
 
             if axis == 0:
-                image = image[p1: p1 + target_size, :]
+                image = image[p1 : p1 + target_size, :]
             else:
-                image = image[:, p1: p1 + target_size]
+                image = image[:, p1 : p1 + target_size]
 
         return image
 
@@ -909,7 +893,7 @@ class BaseDataset(torch.utils.data.Dataset):
         text_encoder_outputs_list = []
         custom_attributes = []
 
-        for image_key in bucket[image_index: image_index + bucket_batch_size]:
+        for image_key in bucket[image_index : image_index + bucket_batch_size]:
             image_info = self.image_data[image_key]
             subset = self.image_to_subset[image_key]
 
@@ -933,13 +917,12 @@ class BaseDataset(torch.utils.data.Dataset):
 
                 image = None
             elif image_info.latents_npz is not None:  # FineTuningDatasetまたはcache_latents_to_disk=Trueの場合
-                latents, original_size, crop_ltrb, flipped_latents, alpha_mask = (
-                    self.latents_caching_strategy.load_latents_from_disk(image_info.latents_npz, image_info.bucket_reso)
+                latents, original_size, crop_ltrb, flipped_latents, alpha_mask = self.latents_caching_strategy.load_latents_from_disk(
+                    image_info.latents_npz, image_info.bucket_reso
                 )
                 if flipped:
                     latents = flipped_latents
-                    alpha_mask = None if alpha_mask is None else alpha_mask[:,
-                                                                 ::-1].copy()  # copy to avoid negative stride problem
+                    alpha_mask = None if alpha_mask is None else alpha_mask[:, ::-1].copy()  # copy to avoid negative stride problem
                     del flipped_latents
                 latents = torch.FloatTensor(latents)
                 if alpha_mask is not None:
@@ -948,9 +931,7 @@ class BaseDataset(torch.utils.data.Dataset):
                 image = None
             else:
                 # 画像を読み込み、必要ならcropする
-                img, face_cx, face_cy, face_w, face_h = self.load_image_with_face_info(
-                    subset, image_info.absolute_path, subset.alpha_mask
-                )
+                img, face_cx, face_cy, face_w, face_h = self.load_image_with_face_info(subset, image_info.absolute_path, subset.alpha_mask)
                 im_h, im_w = img.shape[0:2]
 
                 if self.enable_bucket:
@@ -966,20 +947,20 @@ class BaseDataset(torch.utils.data.Dataset):
                     if face_cx > 0:  # 顔位置情報あり
                         img = self.crop_target(subset, img, face_cx, face_cy, face_w, face_h)
                     elif im_h > self.height or im_w > self.width:
-                        assert (
-                            subset.random_crop
-                        ), f"image too large, but cropping and bucketing are disabled / 画像サイズが大きいのでface_crop_aug_rangeかrandom_crop、またはbucketを有効にしてください: {image_info.absolute_path}"
+                        assert subset.random_crop, (
+                            f"image too large, but cropping and bucketing are disabled / 画像サイズが大きいのでface_crop_aug_rangeかrandom_crop、またはbucketを有効にしてください: {image_info.absolute_path}"
+                        )
                         if im_h > self.height:
                             p = random.randint(0, im_h - self.height)
-                            img = img[p: p + self.height]
+                            img = img[p : p + self.height]
                         if im_w > self.width:
                             p = random.randint(0, im_w - self.width)
-                            img = img[:, p: p + self.width]
+                            img = img[:, p : p + self.width]
 
                     im_h, im_w = img.shape[0:2]
-                    assert (
-                            im_h == self.height and im_w == self.width
-                    ), f"image size is small / 画像サイズが小さいようです: {image_info.absolute_path}"
+                    assert im_h == self.height and im_w == self.width, (
+                        f"image size is small / 画像サイズが小さいようです: {image_info.absolute_path}"
+                    )
 
                     original_size = [im_w, im_h]
                     crop_ltrb = (0, 0, 0, 0)
@@ -1015,8 +996,7 @@ class BaseDataset(torch.utils.data.Dataset):
             latents_list.append(latents)
             alpha_mask_list.append(alpha_mask)
 
-            target_size = (image.shape[2], image.shape[1]) if image is not None else (
-                latents.shape[2] * 8, latents.shape[1] * 8)
+            target_size = (image.shape[2], image.shape[1]) if image is not None else (latents.shape[2] * 8, latents.shape[1] * 8)
 
             if not flipped:
                 crop_left_top = (crop_ltrb[0], crop_ltrb[1])
@@ -1033,7 +1013,7 @@ class BaseDataset(torch.utils.data.Dataset):
             caption = image_info.caption  # default
 
             tokenization_required = (
-                    self.text_encoder_output_caching_strategy is None or self.text_encoder_output_caching_strategy.is_partial
+                self.text_encoder_output_caching_strategy is None or self.text_encoder_output_caching_strategy.is_partial
             )
             text_encoder_outputs = None
             input_ids = None
@@ -1043,9 +1023,7 @@ class BaseDataset(torch.utils.data.Dataset):
                 text_encoder_outputs = image_info.text_encoder_outputs
             elif image_info.text_encoder_outputs_npz is not None:
                 # on disk
-                text_encoder_outputs = self.text_encoder_output_caching_strategy.load_outputs_npz(
-                    image_info.text_encoder_outputs_npz
-                )
+                text_encoder_outputs = self.text_encoder_output_caching_strategy.load_outputs_npz(image_info.text_encoder_outputs_npz)
             else:
                 tokenization_required = True
             text_encoder_outputs_list.append(text_encoder_outputs)
@@ -1085,8 +1063,7 @@ class BaseDataset(torch.utils.data.Dataset):
 
         def none_or_stack_elements(tensors_list, converter):
 
-            if len(tensors_list) == 0 or tensors_list[0] == None or len(tensors_list[0]) == 0 or tensors_list[0][
-                0] is None:
+            if len(tensors_list) == 0 or tensors_list[0] == None or len(tensors_list[0]) == 0 or tensors_list[0][0] is None:
                 return None
 
             # old implementation without padding: all elements must have same length
@@ -1112,15 +1089,10 @@ class BaseDataset(torch.utils.data.Dataset):
                     tensors = [converter(x) for x in tensors]
                     if tensors[0].ndim == 1:
                         # input_ids or mask
-                        result.append(
-                            torch.stack([(torch.nn.functional.pad(x, (0, max_len - x.shape[0]))) for x in tensors])
-                        )
+                        result.append(torch.stack([(torch.nn.functional.pad(x, (0, max_len - x.shape[0]))) for x in tensors]))
                     else:
                         # text encoder outputs
-                        result.append(
-                            torch.stack(
-                                [(torch.nn.functional.pad(x, (0, 0, 0, max_len - x.shape[0]))) for x in tensors])
-                        )
+                        result.append(torch.stack([(torch.nn.functional.pad(x, (0, 0, 0, max_len - x.shape[0]))) for x in tensors]))
             return result
 
         # set example
@@ -1140,9 +1112,7 @@ class BaseDataset(torch.utils.data.Dataset):
                     if images[i] is not None:
                         alpha_mask_list[i] = torch.ones((images[i].shape[1], images[i].shape[2]), dtype=torch.float32)
                     else:
-                        alpha_mask_list[i] = torch.ones(
-                            (latents_list[i].shape[1] * 8, latents_list[i].shape[2] * 8), dtype=torch.float32
-                        )
+                        alpha_mask_list[i] = torch.ones((latents_list[i].shape[1] * 8, latents_list[i].shape[2] * 8), dtype=torch.float32)
             example["alpha_masks"] = torch.stack(alpha_mask_list)
         else:
             example["alpha_masks"] = torch.stack(alpha_mask_list)
@@ -1165,7 +1135,7 @@ class BaseDataset(torch.utils.data.Dataset):
         example["adapter_multipliers"] = torch.FloatTensor([self.adapter_multiplier] * len(captions))
 
         if self.debug_dataset:
-            example["image_keys"] = bucket[image_index: image_index + self.batch_size]
+            example["image_keys"] = bucket[image_index : image_index + self.batch_size]
         return example
 
     def get_item_for_caching(self, bucket, bucket_batch_size, image_index):
@@ -1181,7 +1151,7 @@ class BaseDataset(torch.utils.data.Dataset):
         random_crop = None
         random_crop_padding_percent = 0.5
 
-        for image_key in bucket[image_index: image_index + bucket_batch_size]:
+        for image_key in bucket[image_index : image_index + bucket_batch_size]:
             image_info = self.image_data[image_key]
             subset = self.image_to_subset[image_key]
 
@@ -1196,7 +1166,9 @@ class BaseDataset(torch.utils.data.Dataset):
                 assert flip_aug == subset.flip_aug, "flip_aug must be same in a batch"
                 assert alpha_mask == subset.alpha_mask, "alpha_mask must be same in a batch"
                 assert random_crop == subset.random_crop, "random_crop must be same in a batch"
-                assert random_crop_padding_percent == subset.random_crop_padding_percent, "random_crop_padding_percent must be same in a batch"
+                assert random_crop_padding_percent == subset.random_crop_padding_percent, (
+                    "random_crop_padding_percent must be same in a batch"
+                )
                 assert bucket_reso == image_info.bucket_reso, "bucket_reso must be same in a batch"
 
             caption = image_info.caption  # TODO cache some patterns of dropping, shuffling, etc.
@@ -1241,8 +1213,7 @@ class BaseDataset(torch.utils.data.Dataset):
 
 # =============================================================================
 # Backwards-compatible re-exports
-# 
+#
 # These classes and functions have been extracted to separate modules for
 # better maintainability. Import them here to preserve backwards compatibility.
 # =============================================================================
-

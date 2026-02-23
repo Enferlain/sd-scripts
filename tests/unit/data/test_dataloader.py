@@ -10,6 +10,7 @@ from library.data.structures import DatasetManifest, EpochManifest, BatchInfo, C
 # Fixtures
 # -----------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_dataset_manifest():
     manifest = MagicMock(spec=DatasetManifest)
@@ -18,9 +19,11 @@ def mock_dataset_manifest():
     # Setup get_entry
     def get_entry(img_id):
         return manifest.entries.get(img_id)
+
     manifest.get_entry = MagicMock(side_effect=get_entry)
 
     return manifest
+
 
 @pytest.fixture
 def mock_epoch_manifest():
@@ -30,6 +33,7 @@ def mock_epoch_manifest():
     manifest.batches = []
     manifest.num_batches = 0
     return manifest
+
 
 @pytest.fixture
 def mock_latent_strategy():
@@ -44,12 +48,14 @@ def mock_latent_strategy():
     strategy.load_cache.return_value = cache_data
     return strategy
 
+
 @pytest.fixture
 def mock_te_strategy():
     strategy = MagicMock()
     cache_data = CacheData(aux={"encoder_output": torch.randn(2, 77, 768)})
     strategy.load_cache.return_value = cache_data
     return strategy
+
 
 @pytest.fixture
 def sample_entries():
@@ -72,7 +78,7 @@ def sample_entries():
             resized_size=(512, 512),
             caption="caption2",
             latent_cache_path="/tmp/cache/img2.safetensors",
-            is_reg=True, # Regularization image
+            is_reg=True,  # Regularization image
         ),
         "img3": CacheEntry(
             id="img3",
@@ -83,13 +89,15 @@ def sample_entries():
             caption="caption3",
             latent_cache_path="/tmp/cache/img3.safetensors",
             is_reg=False,
-            te_cache_path="/tmp/te_cache/img3.safetensors"
+            te_cache_path="/tmp/te_cache/img3.safetensors",
         ),
     }
+
 
 # -----------------------------------------------------------------------------
 # Tests
 # -----------------------------------------------------------------------------
+
 
 def test_training_dataset_iteration(mock_dataset_manifest, mock_epoch_manifest, mock_latent_strategy, sample_entries):
     """Verify that the dataset yields batches in the correct order."""
@@ -139,10 +147,7 @@ def test_batch_format(mock_dataset_manifest, mock_epoch_manifest, mock_latent_st
 
     batch = next(iter(dataset))
 
-    expected_keys = [
-        "latents", "captions", "image_ids", "bucket_reso",
-        "conditionings", "loss_weights", "flippeds", "alpha_masks"
-    ]
+    expected_keys = ["latents", "captions", "image_ids", "bucket_reso", "conditionings", "loss_weights", "flippeds", "alpha_masks"]
 
     for key in expected_keys:
         assert key in batch, f"Batch missing key: {key}"
@@ -223,7 +228,7 @@ def test_streaming_tokens(mock_dataset_manifest, mock_epoch_manifest, mock_laten
     # Two batches, each size 1
     mock_epoch_manifest.batches = [
         BatchInfo(image_ids=["img1"], bucket_reso=(512, 512), processed_captions=["cap1"]),
-        BatchInfo(image_ids=["img2"], bucket_reso=(512, 512), processed_captions=["cap2"])
+        BatchInfo(image_ids=["img2"], bucket_reso=(512, 512), processed_captions=["cap2"]),
     ]
     mock_epoch_manifest.num_batches = 2
 
@@ -284,19 +289,14 @@ def test_on_the_fly_tokenization(mock_dataset_manifest, mock_epoch_manifest, moc
     #     batch["input_ids"] = {encoder_name: torch.tensor(tokens) ...}
 
     input_ids_dict = {"clip": [[101, 200, 102]]}
-    batch_info = BatchInfo(
-        image_ids=["img1"],
-        bucket_reso=(512, 512),
-        processed_captions=["cap1"],
-        input_ids=input_ids_dict
-    )
+    batch_info = BatchInfo(image_ids=["img1"], bucket_reso=(512, 512), processed_captions=["cap1"], input_ids=input_ids_dict)
     mock_epoch_manifest.batches = [batch_info]
 
     dataset = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
         latent_strategy=mock_latent_strategy,
-        tokens_path=None, # No token file
+        tokens_path=None,  # No token file
     )
 
     batch = next(iter(dataset))
@@ -312,10 +312,10 @@ def test_distributed_sharding(mock_dataset_manifest, mock_epoch_manifest, mock_l
 
     # Create 4 batches
     batches = [
-        BatchInfo(image_ids=["img1"], bucket_reso=(512, 512)), # Rank 0
-        BatchInfo(image_ids=["img2"], bucket_reso=(512, 512)), # Rank 1
-        BatchInfo(image_ids=["img1"], bucket_reso=(512, 512)), # Rank 0
-        BatchInfo(image_ids=["img2"], bucket_reso=(512, 512)), # Rank 1
+        BatchInfo(image_ids=["img1"], bucket_reso=(512, 512)),  # Rank 0
+        BatchInfo(image_ids=["img2"], bucket_reso=(512, 512)),  # Rank 1
+        BatchInfo(image_ids=["img1"], bucket_reso=(512, 512)),  # Rank 0
+        BatchInfo(image_ids=["img2"], bucket_reso=(512, 512)),  # Rank 1
     ]
     mock_epoch_manifest.batches = batches
     mock_epoch_manifest.num_batches = 4
@@ -326,7 +326,7 @@ def test_distributed_sharding(mock_dataset_manifest, mock_epoch_manifest, mock_l
         epoch_manifest=mock_epoch_manifest,
         latent_strategy=mock_latent_strategy,
         rank=0,
-        world_size=2
+        world_size=2,
     )
 
     batches_r0 = list(dataset_r0)
@@ -340,7 +340,7 @@ def test_distributed_sharding(mock_dataset_manifest, mock_epoch_manifest, mock_l
         epoch_manifest=mock_epoch_manifest,
         latent_strategy=mock_latent_strategy,
         rank=1,
-        world_size=2
+        world_size=2,
     )
 
     batches_r1 = list(dataset_r1)

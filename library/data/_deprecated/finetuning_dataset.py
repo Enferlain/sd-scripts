@@ -6,6 +6,7 @@ Supports:
 - Pre-computed bucket info from metadata
 - NPZ latent caching
 """
+
 import os
 import json
 import logging
@@ -21,20 +22,20 @@ logger = logging.getLogger(__name__)
 
 class FineTuningDataset(BaseDataset):
     def __init__(
-            self,
-            subsets: Sequence[FineTuningSubset],
-            batch_size: int,
-            resolution,
-            adapter_multiplier: float,
-            enable_bucket: bool,
-            min_bucket_reso: int,
-            max_bucket_reso: int,
-            bucket_reso_steps: int,
-            bucket_no_upscale: bool,
-            debug_dataset: bool,
-            validation_seed: int,
-            validation_split: float,
-            resize_interpolation: str | None,
+        self,
+        subsets: Sequence[FineTuningSubset],
+        batch_size: int,
+        resolution,
+        adapter_multiplier: float,
+        enable_bucket: bool,
+        min_bucket_reso: int,
+        max_bucket_reso: int,
+        bucket_reso_steps: int,
+        bucket_no_upscale: bool,
+        debug_dataset: bool,
+        validation_seed: int,
+        validation_split: float,
+        resize_interpolation: str | None,
     ) -> None:
         super().__init__(resolution, adapter_multiplier, debug_dataset, resize_interpolation)
 
@@ -109,8 +110,7 @@ class FineTuningDataset(BaseDataset):
                     # add tags to each line of caption
                     if caption is not None and tags is not None:
                         caption = "\n".join(
-                            [f"{line}{subset.caption_separator}{tags}" for line in caption.split("\n") if
-                             line.strip() != ""]
+                            [f"{line}{subset.caption_separator}{tags}" for line in caption.split("\n") if line.strip() != ""]
                         )
                 else:
                     # use as is
@@ -126,8 +126,7 @@ class FineTuningDataset(BaseDataset):
 
                 if not subset.color_aug and not subset.random_crop:
                     # if npz exists, use them
-                    image_info.latents_npz, image_info.latents_npz_flipped = self.image_key_to_npz_file(subset,
-                                                                                                        image_key)
+                    image_info.latents_npz, image_info.latents_npz_flipped = self.image_key_to_npz_file(subset, image_key)
 
                 self.register_image(image_info, subset)
 
@@ -161,8 +160,7 @@ class FineTuningDataset(BaseDataset):
 
             if not npz_any:
                 use_npz_latents = False
-                logger.warning(
-                    "npz file does not exist. ignore npz files / npzファイルが見つからないためnpzファイルを無視します")
+                logger.warning("npz file does not exist. ignore npz files / npzファイルが見つからないためnpzファイルを無視します")
             elif not npz_all:
                 use_npz_latents = False
                 logger.warning(
@@ -191,9 +189,9 @@ class FineTuningDataset(BaseDataset):
                     "npz files exist, but no bucket info in metadata. ignore npz files / メタデータにbucket情報がないためnpzファイルを無視します"
                 )
 
-            assert (
-                    resolution is not None
-            ), "if metadata doesn't have bucket info, resolution is required / メタデータにbucket情報がない場合はresolutionを指定してください"
+            assert resolution is not None, (
+                "if metadata doesn't have bucket info, resolution is required / メタデータにbucket情報がない場合はresolutionを指定してください"
+            )
 
             self.enable_bucket = enable_bucket
             if self.enable_bucket:
@@ -206,14 +204,13 @@ class FineTuningDataset(BaseDataset):
                 self.bucket_no_upscale = bucket_no_upscale
         else:
             if not enable_bucket:
-                logger.info(
-                    "metadata has bucket info, enable bucketing / メタデータにbucket情報があるためbucketを有効にします")
+                logger.info("metadata has bucket info, enable bucketing / メタデータにbucket情報があるためbucketを有効にします")
             logger.info("using bucket info in metadata / メタデータ内のbucket情報を使います")
             self.enable_bucket = True
 
-            assert (
-                not bucket_no_upscale
-            ), "if metadata has bucket info, bucket reso is precalculated, so bucket_no_upscale cannot be used / メタデータ内にbucket情報がある場合はbucketの解像度は計算済みのため、bucket_no_upscaleは使えません"
+            assert not bucket_no_upscale, (
+                "if metadata has bucket info, bucket reso is precalculated, so bucket_no_upscale cannot be used / メタデータ内にbucket情報がある場合はbucketの解像度は計算済みのため、bucket_no_upscaleは使えません"
+            )
 
             # bucket情報を初期化しておく、make_bucketsで再作成しない
             self.bucket_manager = BucketManager(False, None, None, None, None)

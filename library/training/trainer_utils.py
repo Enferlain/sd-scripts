@@ -100,8 +100,7 @@ def log_training_diagnostics(
     grad_accum = cfg.training.gradient_accumulation_steps
     effective_batch = batch_size * accelerator.num_processes * grad_accum
     accelerator.print(
-        f"  batch: per_device={batch_size}  grad_accum={grad_accum}  "
-        f"effective={effective_batch}  max_steps={cfg.training.max_train_steps}"
+        f"  batch: per_device={batch_size}  grad_accum={grad_accum}  effective={effective_batch}  max_steps={cfg.training.max_train_steps}"
     )
 
     # --- Per-component stats ---
@@ -128,11 +127,7 @@ def log_training_diagnostics(
         pct = f"{pt / pl * 100:.1f}%" if pl > 0 else "0.0%"
         status = "frozen" if pt == 0 else pct
 
-        accelerator.print(
-            f"    {name + ':':<20s} "
-            f"modules {mt:>5,}/{ml:>5,} trainable   "
-            f"params {pt:>13,}/{pl:>13,}  ({status})"
-        )
+        accelerator.print(f"    {name + ':':<20s} modules {mt:>5,}/{ml:>5,} trainable   params {pt:>13,}/{pl:>13,}  ({status})")
 
     # Aggregate
     agg_pct = f"{agg_params_train / agg_params * 100:.1f}%" if agg_params > 0 else "0.0%"
@@ -355,9 +350,7 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
     if cfg.training.initial_epoch is not None or cfg.training.initial_step is not None:
         # if initial_epoch or initial_step is specified, steps_from_state is ignored even when resuming
         if steps_from_state is not None:
-            logger.warning(
-                "steps from the state is ignored because initial_step is specified"
-            )
+            logger.warning("steps from the state is ignored because initial_step is specified")
         if cfg.training.initial_step is not None:
             initial_step = cfg.training.initial_step
         else:
@@ -380,9 +373,7 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
         if cfg.training.skip_until_initial_step:
             # if skip_until_initial_step is specified, load data and discard it to ensure the same data is used
             if not cfg.output.saving.resume:
-                logger.info(
-                    "initial_step is specified but not resuming. lr scheduler will be started from the beginning"
-                )
+                logger.info("initial_step is specified but not resuming. lr scheduler will be started from the beginning")
             logger.info(f"skipping {initial_step} steps")
             initial_step *= cfg.training.gradient_accumulation_steps
 

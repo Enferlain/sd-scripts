@@ -101,7 +101,9 @@ class EMARecorder:
         return self.ema / correction_factor
 
 
-def get_huber_threshold_if_needed(loss_config: LossConfig, huber_config: HuberConfig, timesteps: torch.Tensor, noise_scheduler) -> torch.Tensor | None:
+def get_huber_threshold_if_needed(
+    loss_config: LossConfig, huber_config: HuberConfig, timesteps: torch.Tensor, noise_scheduler
+) -> torch.Tensor | None:
     """
     Calculates the Huber loss threshold based on the configured schedule.
 

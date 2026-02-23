@@ -13,28 +13,45 @@ def mock_manifest():
     # Create entries with different resolutions
     entries = {
         "img1": CacheEntry(
-            id="img1", image_path="/tmp/img1.jpg", original_size=(1024, 1024),
-            bucket_reso=(1024, 1024), resized_size=(1024, 1024), caption="caption 1",
-            num_repeats=1
+            id="img1",
+            image_path="/tmp/img1.jpg",
+            original_size=(1024, 1024),
+            bucket_reso=(1024, 1024),
+            resized_size=(1024, 1024),
+            caption="caption 1",
+            num_repeats=1,
         ),
         "img2": CacheEntry(
-            id="img2", image_path="/tmp/img2.jpg", original_size=(512, 512),
-            bucket_reso=(512, 512), resized_size=(512, 512), caption="caption 2",
-            num_repeats=1
+            id="img2",
+            image_path="/tmp/img2.jpg",
+            original_size=(512, 512),
+            bucket_reso=(512, 512),
+            resized_size=(512, 512),
+            caption="caption 2",
+            num_repeats=1,
         ),
         "img3": CacheEntry(
-            id="img3", image_path="/tmp/img3.jpg", original_size=(512, 512),
-            bucket_reso=(512, 512), resized_size=(512, 512), caption="caption 3",
-            num_repeats=1
+            id="img3",
+            image_path="/tmp/img3.jpg",
+            original_size=(512, 512),
+            bucket_reso=(512, 512),
+            resized_size=(512, 512),
+            caption="caption 3",
+            num_repeats=1,
         ),
         "img4": CacheEntry(
-            id="img4", image_path="/tmp/img4.jpg", original_size=(1024, 1024),
-            bucket_reso=(1024, 1024), resized_size=(1024, 1024), caption="caption 4",
-            num_repeats=2
+            id="img4",
+            image_path="/tmp/img4.jpg",
+            original_size=(1024, 1024),
+            bucket_reso=(1024, 1024),
+            resized_size=(1024, 1024),
+            caption="caption 4",
+            num_repeats=2,
         ),
     }
     manifest.entries = entries
     return manifest
+
 
 def test_prepare_epoch_shuffle():
     """Different seed+epoch produces different order"""
@@ -43,9 +60,13 @@ def test_prepare_epoch_shuffle():
     entries = {}
     for i in range(20):
         entries[f"img{i}"] = CacheEntry(
-            id=f"img{i}", image_path=f"/tmp/img{i}.jpg", original_size=(512, 512),
-            bucket_reso=(512, 512), resized_size=(512, 512), caption=f"caption {i}",
-            num_repeats=1
+            id=f"img{i}",
+            image_path=f"/tmp/img{i}.jpg",
+            original_size=(512, 512),
+            bucket_reso=(512, 512),
+            resized_size=(512, 512),
+            caption=f"caption {i}",
+            num_repeats=1,
         )
     manifest.entries = entries
 
@@ -68,6 +89,7 @@ def test_prepare_epoch_shuffle():
     order1_again = [b.image_ids[0] for b in epoch1_again.batches]
     assert order1 == order1_again
 
+
 def test_prepare_epoch_warmup(mock_manifest):
     """Largest buckets first"""
     # mock_manifest has (1024, 1024) and (512, 512) buckets.
@@ -87,6 +109,7 @@ def test_prepare_epoch_warmup(mock_manifest):
 
     # The rest are shuffled, but we can verify that we indeed prioritize largest
 
+
 def test_prepare_epoch_repeats(mock_manifest):
     """num_repeats expands images correctly"""
     # img4 has num_repeats=2
@@ -105,12 +128,13 @@ def test_prepare_epoch_repeats(mock_manifest):
     img1_count = sum(1 for batch in epoch.batches for img_id in batch.image_ids if img_id == "img1")
     assert img1_count == 1
 
+
 def test_caption_processing(mock_manifest):
     """Shuffle, dropout, prefix/suffix applied"""
     caption_config = CaptionConfig(
         caption_dropout_rate=0.0,
         shuffle_caption=True,
-        token_warmup_step=0 # disable warmup for deterministic test
+        token_warmup_step=0,  # disable warmup for deterministic test
     )
 
     # Modify an entry to have comma separated tags
@@ -138,6 +162,7 @@ def test_caption_processing(mock_manifest):
 
     assert found
 
+
 def test_tokenize_epoch_manifest(tmp_path, mock_manifest):
     """Saves tokens to safetensors with correct shapes"""
     epoch = prepare_epoch(mock_manifest, epoch=1, seed=42)
@@ -148,24 +173,17 @@ def test_tokenize_epoch_manifest(tmp_path, mock_manifest):
         num_captions = len(captions)
         # return two tensors: one for clip_l, one for clip_g
         # shape [num_captions, 77]
-        return [
-            torch.zeros((num_captions, 77), dtype=torch.long),
-            torch.ones((num_captions, 77), dtype=torch.long)
-        ]
+        return [torch.zeros((num_captions, 77), dtype=torch.long), torch.ones((num_captions, 77), dtype=torch.long)]
 
     output_path = tmp_path / "tokens.safetensors"
 
-    path = tokenize_epoch_manifest(
-        epoch,
-        mock_tokenize,
-        output_path,
-        encoder_names=["clip_l", "clip_g"]
-    )
+    path = tokenize_epoch_manifest(epoch, mock_tokenize, output_path, encoder_names=["clip_l", "clip_g"])
 
     assert path.exists()
 
     # Verify content using safetensors
     from safetensors.torch import load_file
+
     tensors = load_file(path)
 
     assert "clip_l" in tensors
@@ -177,6 +195,7 @@ def test_tokenize_epoch_manifest(tmp_path, mock_manifest):
 
     # check metadata
     # We can't easily check metadata with load_file, need safe_open or load_epoch_tokens to check that.
+
 
 def test_load_epoch_tokens(tmp_path, mock_manifest):
     """Loads tokens, validates manifest hash"""
@@ -200,18 +219,27 @@ def test_load_epoch_tokens(tmp_path, mock_manifest):
     assert metadata["seed"] == str(epoch.seed)
     assert "manifest_hash" in metadata
 
+
 def test_prepare_validation_epoch(mock_manifest):
     """Verify validation epoch preparation"""
     # Create validation entries
     mock_manifest.entries["val1"] = CacheEntry(
-        id="val1", image_path="/tmp/val1.jpg", original_size=(512, 512),
-        bucket_reso=(512, 512), resized_size=(512, 512), caption="val 1",
-        split="val"
+        id="val1",
+        image_path="/tmp/val1.jpg",
+        original_size=(512, 512),
+        bucket_reso=(512, 512),
+        resized_size=(512, 512),
+        caption="val 1",
+        split="val",
     )
     mock_manifest.entries["val2"] = CacheEntry(
-        id="val2", image_path="/tmp/val2.jpg", original_size=(512, 512),
-        bucket_reso=(512, 512), resized_size=(512, 512), caption="val 2",
-        split="val"
+        id="val2",
+        image_path="/tmp/val2.jpg",
+        original_size=(512, 512),
+        bucket_reso=(512, 512),
+        resized_size=(512, 512),
+        caption="val 2",
+        split="val",
     )
 
     epoch = prepare_validation_epoch(mock_manifest, batch_size=1)

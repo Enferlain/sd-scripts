@@ -612,11 +612,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         assert trainer.unet is not None, "UNet must be set before save_model_checkpoint"
         unet = trainer.accelerator.unwrap_model(trainer.unet)
         text_encoder1 = trainer.accelerator.unwrap_model(trainer.text_encoders[0])
-        text_encoder2 = (
-            trainer.accelerator.unwrap_model(trainer.text_encoders[1])
-            if len(trainer.text_encoders) > 1
-            else None
-        )
+        text_encoder2 = trainer.accelerator.unwrap_model(trainer.text_encoders[1]) if len(trainer.text_encoders) > 1 else None
         vae = trainer.vae
 
         os.makedirs(cfg.output.saving.output_dir, exist_ok=True)
@@ -683,9 +679,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
                 force_sync_upload=force_sync_upload,
             )
 
-    def post_process_trainable(
-        self, cfg: Any, accelerator: Any, trainable_model: Any, text_encoders: list[Any], unet: Any
-    ) -> None:
+    def post_process_trainable(self, cfg: Any, accelerator: Any, trainable_model: Any, text_encoders: list[Any], unet: Any) -> None:
         """SDXL-specific post-processing: freeze TE1 last layer and final_layer_norm.
 
         This prevents training instability in SDXL by freezing the last

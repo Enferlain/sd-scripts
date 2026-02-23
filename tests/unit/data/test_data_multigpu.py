@@ -12,6 +12,7 @@ from library.data.caching_engine import CachingEngine, CachingStrategy
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("test_pipeline_multigpu")
 
+
 class TestPipelineMultiGPU(unittest.TestCase):
     def setUp(self):
         # Create a synthetic dataset manifest
@@ -31,7 +32,7 @@ class TestPipelineMultiGPU(unittest.TestCase):
                 bucket_reso=(512, 512),
                 resized_size=(512, 512),
                 caption=f"caption for {img_id}",
-                latent_cache_path=f"/tmp/{img_id}.safetensors"
+                latent_cache_path=f"/tmp/{img_id}.safetensors",
             )
         self.buckets["512x512"] = bucket_512
 
@@ -47,36 +48,21 @@ class TestPipelineMultiGPU(unittest.TestCase):
                 bucket_reso=(768, 768),
                 resized_size=(768, 768),
                 caption=f"caption for {img_id}",
-                latent_cache_path=f"/tmp/{img_id}.safetensors"
+                latent_cache_path=f"/tmp/{img_id}.safetensors",
             )
         self.buckets["768x768"] = bucket_768
 
-        self.manifest = DatasetManifest(
-            entries=self.entries,
-            buckets=self.buckets
-        )
+        self.manifest = DatasetManifest(entries=self.entries, buckets=self.buckets)
 
     def test_prepare_epoch_determinism(self):
         """Verify prepare_epoch produces identical results for same seed/epoch."""
         logger.info("Test 1: Checking prepare_epoch determinism...")
 
         # Run 1
-        epoch_manifest_1 = prepare_epoch(
-            self.manifest,
-            epoch=1,
-            seed=42,
-            batch_size=2,
-            shuffle=True
-        )
+        epoch_manifest_1 = prepare_epoch(self.manifest, epoch=1, seed=42, batch_size=2, shuffle=True)
 
         # Run 2
-        epoch_manifest_2 = prepare_epoch(
-            self.manifest,
-            epoch=1,
-            seed=42,
-            batch_size=2,
-            shuffle=True
-        )
+        epoch_manifest_2 = prepare_epoch(self.manifest, epoch=1, seed=42, batch_size=2, shuffle=True)
 
         # Assertions
         self.assertEqual(epoch_manifest_1.epoch, epoch_manifest_2.epoch)
@@ -95,22 +81,10 @@ class TestPipelineMultiGPU(unittest.TestCase):
         logger.info("Test 2: Checking shuffling...")
 
         # Run 1
-        manifest_seed_42 = prepare_epoch(
-            self.manifest,
-            epoch=1,
-            seed=42,
-            batch_size=2,
-            shuffle=True
-        )
+        manifest_seed_42 = prepare_epoch(self.manifest, epoch=1, seed=42, batch_size=2, shuffle=True)
 
         # Run 2 (different seed)
-        manifest_seed_43 = prepare_epoch(
-            self.manifest,
-            epoch=1,
-            seed=43,
-            batch_size=2,
-            shuffle=True
-        )
+        manifest_seed_43 = prepare_epoch(self.manifest, epoch=1, seed=43, batch_size=2, shuffle=True)
 
         # Check that batches are NOT identical (highly unlikely to be identical by chance with 20 images)
         # We check the sequence of image IDs across all batches
@@ -120,13 +94,7 @@ class TestPipelineMultiGPU(unittest.TestCase):
         self.assertNotEqual(ids_42, ids_43, "Different seeds produced same order!")
 
         # Also check same seed but different epoch (should also shuffle differently)
-        manifest_epoch_2 = prepare_epoch(
-            self.manifest,
-            epoch=2,
-            seed=42,
-            batch_size=2,
-            shuffle=True
-        )
+        manifest_epoch_2 = prepare_epoch(self.manifest, epoch=2, seed=42, batch_size=2, shuffle=True)
         ids_epoch_2 = [img_id for b in manifest_epoch_2.batches for img_id in b.image_ids]
         self.assertNotEqual(ids_42, ids_epoch_2, "Different epochs produced same order!")
 
@@ -137,13 +105,7 @@ class TestPipelineMultiGPU(unittest.TestCase):
         logger.info("Test 3: Checking sharding logic...")
 
         # Prepare a manifest
-        epoch_manifest = prepare_epoch(
-            self.manifest,
-            epoch=1,
-            seed=42,
-            batch_size=2,
-            shuffle=True
-        )
+        epoch_manifest = prepare_epoch(self.manifest, epoch=1, seed=42, batch_size=2, shuffle=True)
         total_batches = len(epoch_manifest.batches)
         logger.info(f"Total batches in epoch: {total_batches}")
 
@@ -151,17 +113,12 @@ class TestPipelineMultiGPU(unittest.TestCase):
         mock_strategy = MagicMock(spec=CachingStrategy)
         # Mock load_cache to return a dummy tensor
         import torch
+
         mock_strategy.load_cache.return_value = {"latents": torch.zeros((4, 64, 64))}
 
         # Create datasets for Rank 0 and Rank 1 (World Size 2)
-        ds_rank0 = TrainingDataset(
-            self.manifest, epoch_manifest, mock_strategy,
-            rank=0, world_size=2
-        )
-        ds_rank1 = TrainingDataset(
-            self.manifest, epoch_manifest, mock_strategy,
-            rank=1, world_size=2
-        )
+        ds_rank0 = TrainingDataset(self.manifest, epoch_manifest, mock_strategy, rank=0, world_size=2)
+        ds_rank1 = TrainingDataset(self.manifest, epoch_manifest, mock_strategy, rank=1, world_size=2)
 
         # Now verify what the dataset actually yields
         # We need to mock _load_batch to avoid actual file system access
@@ -205,7 +162,7 @@ class TestPipelineMultiGPU(unittest.TestCase):
 
         mock_strategy = MagicMock(spec=CachingStrategy)
         mock_strategy.get_entry_cache_path.return_value = Path("/tmp/mock.safetensors")
-        mock_strategy.is_cache_valid.return_value = False # Force caching
+        mock_strategy.is_cache_valid.return_value = False  # Force caching
 
         engine = CachingEngine(mock_strategy, batch_size=1, num_workers=1)
 
@@ -216,7 +173,10 @@ class TestPipelineMultiGPU(unittest.TestCase):
                 self.num_processes = num_processes
 
         # Create 10 dummy entries
-        entries = [CacheEntry(id=f"{i}", image_path="", original_size=(0,0), bucket_reso=(0,0), resized_size=(0,0), caption="") for i in range(10)]
+        entries = [
+            CacheEntry(id=f"{i}", image_path="", original_size=(0, 0), bucket_reso=(0, 0), resized_size=(0, 0), caption="")
+            for i in range(10)
+        ]
 
         # Test Rank 0 of 2
         acc_0 = MockAccelerator(0, 2)

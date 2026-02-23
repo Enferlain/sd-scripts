@@ -130,7 +130,9 @@ def train(cfg: SDXLFineTuneConfig):
 
     set_seed_from_config(cfg.training)
 
-    tokenize_strategy = library.strategies.sdxl.tokenization.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
+    tokenize_strategy = library.strategies.sdxl.tokenization.SdxlTokenizeStrategy(
+        cfg.training.max_token_length, cfg.model.tokenizer_cache_dir
+    )
     library.strategies.base.tokenization.TokenizeStrategy.set_strategy(tokenize_strategy)
     tokenizers = [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
@@ -412,9 +414,7 @@ def train(cfg: SDXLFineTuneConfig):
         cfg.training.max_train_steps = cfg.training.max_train_epochs * math.ceil(
             len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
         )
-        accelerator.print(
-            f"override steps. steps for {cfg.training.max_train_epochs} epochs is: {cfg.training.max_train_steps}"
-        )
+        accelerator.print(f"override steps. steps for {cfg.training.max_train_epochs} epochs is: {cfg.training.max_train_steps}")
 
     train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 

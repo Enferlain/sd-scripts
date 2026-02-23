@@ -178,9 +178,7 @@ class TrainingMode(Protocol):
 
     # --- Diagnostics ---
 
-    def get_diagnostics_components(
-        self, trainer: Trainer
-    ) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
+    def get_diagnostics_components(self, trainer: Trainer) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
         """Return components relevant for training diagnostics.
 
         Each mode decides what to show:
@@ -193,4 +191,3 @@ class TrainingMode(Protocol):
             (alias_name, target_name) for display.
         """
         ...
-

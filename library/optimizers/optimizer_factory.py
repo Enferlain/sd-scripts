@@ -36,18 +36,12 @@ def get_optimizer(
 
     optimizer_type = optimizer_config.optimizer_type
     if optimizer_config.use_8bit_adam:
-        assert not optimizer_config.use_lion_optimizer, (
-            "both option use_8bit_adam and use_lion_optimizer are specified"
-        )
-        assert optimizer_type is None or optimizer_type == "", (
-            "both option use_8bit_adam and optimizer_type are specified"
-        )
+        assert not optimizer_config.use_lion_optimizer, "both option use_8bit_adam and use_lion_optimizer are specified"
+        assert optimizer_type is None or optimizer_type == "", "both option use_8bit_adam and optimizer_type are specified"
         optimizer_type = "AdamW8bit"
 
     elif optimizer_config.use_lion_optimizer:
-        assert optimizer_type is None or optimizer_type == "", (
-            "both option use_lion_optimizer and optimizer_type are specified"
-        )
+        assert optimizer_type is None or optimizer_type == "", "both option use_lion_optimizer and optimizer_type are specified"
         optimizer_type = "Lion"
 
     if optimizer_type is None or optimizer_type == "":
@@ -55,9 +49,7 @@ def get_optimizer(
     optimizer_type = optimizer_type.lower()
 
     if optimizer_config.fused_backward_pass:
-        assert optimizer_type == "Adafactor".lower(), (
-            "fused_backward_pass currently only works with optimizer_type Adafactor"
-        )
+        assert optimizer_type == "Adafactor".lower(), "fused_backward_pass currently only works with optimizer_type Adafactor"
         assert (
             # args.gradient_accumulation_steps == 1 # This should be checked elsewhere or passed efficiently, ignoring for now as it's validation logic which should be in config
             True
@@ -115,9 +107,7 @@ def get_optimizer(
         elif optimizer_type == "SGDNesterov8bit".lower():
             logger.info(f"use 8-bit SGD with Nesterov optimizer | {optimizer_kwargs}")
             if "momentum" not in optimizer_kwargs:
-                logger.warning(
-                    "8-bit SGD with Nesterov must be with momentum, set momentum to 0.9"
-                )
+                logger.warning("8-bit SGD with Nesterov must be with momentum, set momentum to 0.9")
                 optimizer_kwargs["momentum"] = 0.9
 
             optimizer_class = bnb.optim.SGD8bit
@@ -182,9 +172,7 @@ def get_optimizer(
     elif optimizer_type == "SGDNesterov".lower():
         logger.info(f"use SGD with Nesterov optimizer | {optimizer_kwargs}")
         if "momentum" not in optimizer_kwargs:
-            logger.info(
-                "SGD with Nesterov must be with momentum, set momentum to 0.9"
-            )
+            logger.info("SGD with Nesterov must be with momentum, set momentum to 0.9")
             optimizer_kwargs["momentum"] = 0.9
 
         optimizer_class = torch.optim.SGD
@@ -202,9 +190,7 @@ def get_optimizer(
             lr_count = len(lrs)
 
         if actual_lr <= 0.1:
-            logger.warning(
-                f"learning rate is too low. If using D-Adaptation or Prodigy, set learning rate around 1.0: lr={actual_lr}"
-            )
+            logger.warning(f"learning rate is too low. If using D-Adaptation or Prodigy, set learning rate around 1.0: lr={actual_lr}")
             logger.warning("recommend option: lr=1.0")
         if lr_count > 1:
             logger.warning(
@@ -293,9 +279,7 @@ def get_optimizer(
             lr = None
         else:
             if optimizer_config.max_grad_norm != 0.0:
-                logger.warning(
-                    "because max_grad_norm is set, clip_grad_norm is enabled. consider set to 0"
-                )
+                logger.warning("because max_grad_norm is set, clip_grad_norm is enabled. consider set to 0")
             if scheduler_config.lr_scheduler != "constant_with_warmup":
                 logger.warning("constant_with_warmup will be good")
             if optimizer_kwargs.get("clip_threshold", 1.0) != 1.0:

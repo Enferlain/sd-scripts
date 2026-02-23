@@ -63,9 +63,7 @@ def _load_target_model(
         try:
             pipe = StableDiffusionPipeline.from_pretrained(name_or_path, tokenizer=None, safety_checker=None)
         except OSError as ex:
-            logger.error(
-                f"model is not found as a file or in Hugging Face, perhaps file name is wrong? : {name_or_path}"
-            )
+            logger.error(f"model is not found as a file or in Hugging Face, perhaps file name is wrong? : {name_or_path}")
             raise ex
         text_encoder = pipe.text_encoder
         vae = pipe.vae

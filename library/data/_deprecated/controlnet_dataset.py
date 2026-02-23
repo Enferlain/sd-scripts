@@ -3,6 +3,7 @@ ControlNet Dataset for training with conditioning images.
 
 Wraps DreamBoothDataset and adds conditioning image loading and processing.
 """
+
 import os
 import torch
 import logging
@@ -22,28 +23,28 @@ logger = logging.getLogger(__name__)
 
 class ControlNetDataset(BaseDataset):
     def __init__(
-            self,
-            subsets: Sequence[ControlNetSubset],
-            batch_size: int,
-            resolution,
-            adapter_multiplier: float,
-            enable_bucket: bool,
-            min_bucket_reso: int,
-            max_bucket_reso: int,
-            bucket_reso_steps: int,
-            bucket_no_upscale: bool,
-            debug_dataset: bool,
-            validation_split: float,
-            validation_seed: int | None,
-            resize_interpolation: str | None = None,
+        self,
+        subsets: Sequence[ControlNetSubset],
+        batch_size: int,
+        resolution,
+        adapter_multiplier: float,
+        enable_bucket: bool,
+        min_bucket_reso: int,
+        max_bucket_reso: int,
+        bucket_reso_steps: int,
+        bucket_no_upscale: bool,
+        debug_dataset: bool,
+        validation_split: float,
+        validation_seed: int | None,
+        resize_interpolation: str | None = None,
     ) -> None:
         super().__init__(resolution, adapter_multiplier, debug_dataset, resize_interpolation)
 
         db_subsets = []
         for subset in subsets:
-            assert (
-                not subset.random_crop
-            ), "random_crop is not supported in ControlNetDataset / random_cropはControlNetDatasetではサポートされていません"
+            assert not subset.random_crop, (
+                "random_crop is not supported in ControlNetDataset / random_cropはControlNetDatasetではサポートされていません"
+            )
             db_subset = DreamBoothSubset(
                 subset.image_dir,
                 False,
@@ -126,8 +127,7 @@ class ControlNetDataset(BaseDataset):
             ctrl_img_path = os.path.abspath(ctrl_img_path)  # normalize path
 
             info.cond_img_path = ctrl_img_path
-            cond_imgs_with_pair.add(
-                os.path.splitext(ctrl_img_path)[0])  # remove extension because Windows is case insensitive
+            cond_imgs_with_pair.add(os.path.splitext(ctrl_img_path)[0])  # remove extension because Windows is case insensitive
 
         extra_imgs = []
         for subset in subsets:
@@ -135,12 +135,10 @@ class ControlNetDataset(BaseDataset):
             conditioning_img_paths = [os.path.abspath(p) for p in conditioning_img_paths]  # normalize path
             extra_imgs.extend([p for p in conditioning_img_paths if os.path.splitext(p)[0] not in cond_imgs_with_pair])
 
-        assert (
-                len(missing_imgs) == 0
-        ), f"missing conditioning data for {len(missing_imgs)} images / 制御用画像が見つかりませんでした: {missing_imgs}"
-        assert (
-                len(extra_imgs) == 0
-        ), f"extra conditioning data for {len(extra_imgs)} images / 余分な制御用画像があります: {extra_imgs}"
+        assert len(missing_imgs) == 0, (
+            f"missing conditioning data for {len(missing_imgs)} images / 制御用画像が見つかりませんでした: {missing_imgs}"
+        )
+        assert len(extra_imgs) == 0, f"extra conditioning data for {len(extra_imgs)} images / 余分な制御用画像があります: {extra_imgs}"
 
         self.conditioning_image_transforms = IMAGE_TRANSFORMS
 
@@ -175,7 +173,7 @@ class ControlNetDataset(BaseDataset):
 
         conditioning_images = []
 
-        for i, image_key in enumerate(bucket[image_index: image_index + bucket_batch_size]):
+        for i, image_key in enumerate(bucket[image_index : image_index + bucket_batch_size]):
             image_info = self.dreambooth_dataset_delegate.image_data[image_key]
 
             target_size_hw = example["target_sizes_hw"][i]
@@ -185,9 +183,9 @@ class ControlNetDataset(BaseDataset):
             cond_img = load_image(image_info.cond_img_path)
 
             if self.dreambooth_dataset_delegate.enable_bucket:
-                assert (
-                        cond_img.shape[0] == original_size_hw[0] and cond_img.shape[1] == original_size_hw[1]
-                ), f"size of conditioning image is not match / 画像サイズが合いません: {image_info.absolute_path}"
+                assert cond_img.shape[0] == original_size_hw[0] and cond_img.shape[1] == original_size_hw[1], (
+                    f"size of conditioning image is not match / 画像サイズが合いません: {image_info.absolute_path}"
+                )
 
                 cond_img = resize_image(
                     cond_img,
@@ -203,7 +201,7 @@ class ControlNetDataset(BaseDataset):
                 h, w = target_size_hw
                 ct = (cond_img.shape[0] - h) // 2
                 cl = (cond_img.shape[1] - w) // 2
-                cond_img = cond_img[ct: ct + h, cl: cl + w]
+                cond_img = cond_img[ct : ct + h, cl : cl + w]
             else:
                 # assert (
                 #     cond_img.shape[0] == self.height and cond_img.shape[1] == self.width
@@ -225,7 +223,6 @@ class ControlNetDataset(BaseDataset):
             cond_img = self.conditioning_image_transforms(cond_img)
             conditioning_images.append(cond_img)
 
-        example["conditioning_images"] = torch.stack(conditioning_images).to(
-            memory_format=torch.contiguous_format).float()
+        example["conditioning_images"] = torch.stack(conditioning_images).to(memory_format=torch.contiguous_format).float()
 
         return example

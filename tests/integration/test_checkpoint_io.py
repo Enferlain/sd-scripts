@@ -255,9 +255,7 @@ class TestCheckpointSaveRemoveStep:
 
     def test_old_step_checkpoint_removed(self, tmp_path):
         """When save_last_n_steps is set, old step checkpoints are removed."""
-        cfg = self._make_saving_config(
-            tmp_path, save_every_n_steps=10, save_last_n_steps=30
-        )
+        cfg = self._make_saving_config(tmp_path, save_every_n_steps=10, save_last_n_steps=30)
 
         def sd_saver(path, epoch_no, global_step):
             with open(path, "w") as f:
@@ -347,9 +345,7 @@ class TestStateSaveRemove:
 
     def test_old_step_state_removed(self, tmp_path):
         """Old step state directories removed per save_last_n_steps_state."""
-        cfg = self._make_saving_config(
-            tmp_path, save_every_n_steps=10, save_last_n_steps_state=20
-        )
+        cfg = self._make_saving_config(tmp_path, save_every_n_steps=10, save_last_n_steps_state=20)
         accel = FakeAccelerator()
 
         for step in [10, 20, 30, 40, 50]:

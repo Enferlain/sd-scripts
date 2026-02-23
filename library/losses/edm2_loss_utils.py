@@ -161,9 +161,9 @@ def plot_edm2_loss_weighting_check(edm2_config: EDM2Config, training_config: Tra
         bool: True if the graph should be plotted, False otherwise.
     """
     return (
-            edm2_config.edm2_loss_weighting
-            and edm2_config.edm2_loss_weighting_generate_graph
-            and (
+        edm2_config.edm2_loss_weighting
+        and edm2_config.edm2_loss_weighting_generate_graph
+        and (
             global_step
             % (
                 int(edm2_config.edm2_loss_weighting_generate_graph_every_x_steps)

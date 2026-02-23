@@ -650,46 +650,32 @@ def get_block_dims_and_alphas(
             f"block_dims must have {num_total_blocks} elements but {len(block_dims)} elements are given"
         )
     else:
-        logger.warning(
-            f"block_dims is not specified. all dims are set to {adapter_rank}"
-        )
+        logger.warning(f"block_dims is not specified. all dims are set to {adapter_rank}")
         block_dims = [adapter_rank] * num_total_blocks
 
     if block_alphas is not None:
         block_alphas = parse_floats(block_alphas)
-        assert len(block_alphas) == num_total_blocks, (
-            f"block_alphas must have {num_total_blocks} elements"
-        )
+        assert len(block_alphas) == num_total_blocks, f"block_alphas must have {num_total_blocks} elements"
     else:
-        logger.warning(
-            f"block_alphas is not specified. all alphas are set to {adapter_alpha}"
-        )
+        logger.warning(f"block_alphas is not specified. all alphas are set to {adapter_alpha}")
         block_alphas = [adapter_alpha] * num_total_blocks
 
     # parse conv_block_dims and conv_block_alphas only if specified. otherwise use conv_dim and conv_alpha
     if conv_block_dims is not None:
         conv_block_dims = parse_ints(conv_block_dims)
-        assert len(conv_block_dims) == num_total_blocks, (
-            f"conv_block_dims must have {num_total_blocks} elements"
-        )
+        assert len(conv_block_dims) == num_total_blocks, f"conv_block_dims must have {num_total_blocks} elements"
 
         if conv_block_alphas is not None:
             conv_block_alphas = parse_floats(conv_block_alphas)
-            assert len(conv_block_alphas) == num_total_blocks, (
-                f"conv_block_alphas must have {num_total_blocks} elements"
-            )
+            assert len(conv_block_alphas) == num_total_blocks, f"conv_block_alphas must have {num_total_blocks} elements"
         else:
             if conv_alpha is None:
                 conv_alpha = 1.0
-            logger.warning(
-                f"conv_block_alphas is not specified. all alphas are set to {conv_alpha}"
-            )
+            logger.warning(f"conv_block_alphas is not specified. all alphas are set to {conv_alpha}")
             conv_block_alphas = [conv_alpha] * num_total_blocks
     else:
         if conv_dim is not None:
-            logger.warning(
-                f"conv_dim/alpha for all blocks are set to {conv_dim} and {conv_alpha}"
-            )
+            logger.warning(f"conv_dim/alpha for all blocks are set to {conv_dim} and {conv_alpha}")
             conv_block_dims = [conv_dim] * num_total_blocks
             conv_block_alphas = [conv_alpha] * num_total_blocks
         else:
@@ -750,9 +736,7 @@ def get_block_lr_weight(
         elif name == "zeros":
             return [0.0 + base_lr] * max_len_for_down_or_up
         else:
-            logger.error(
-                f"Unknown lr_weight argument {name} is used. Valid arguments:\n\tcosine, sine, linear, reverse_linear, zeros"
-            )
+            logger.error(f"Unknown lr_weight argument {name} is used. Valid arguments:\n\tcosine, sine, linear, reverse_linear, zeros")
             return None
 
     if isinstance(down_lr_weight, str):
@@ -1229,9 +1213,7 @@ class LoRAAdapter(torch.nn.Module):
 
         skipped = skipped_te + skipped_un
         if varbose and len(skipped) > 0:
-            logger.warning(
-                f"because block_lr_weight is 0 or dim (rank) is 0, {len(skipped)} LoRA modules are skipped:"
-            )
+            logger.warning(f"because block_lr_weight is 0 or dim (rank) is 0, {len(skipped)} LoRA modules are skipped:")
             for name in skipped:
                 logger.info(f"\t{name}")
 

@@ -367,8 +367,7 @@ class CheckpointingStrategy(ABC):
             force_sync_upload: If True, block until HF upload completes.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not implement save_model_checkpoint. "
-            "Full-model saving requires a strategy override."
+            f"{type(self).__name__} does not implement save_model_checkpoint. Full-model saving requires a strategy override."
         )
 
 

@@ -285,4 +285,3 @@ class TestSDXLModelPrep(unittest.TestCase):
 
         with self.assertRaises(OSError):
             sdxl_model_prep._load_target_model(self.model_config, "invalid/path", None, "v1", torch.float32)
-

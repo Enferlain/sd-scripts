@@ -101,6 +101,7 @@ def generate_image_id(path: Path, base_dir: Path | None = None) -> str:
 
 # DEPRECATED HELPERS TO AVOID LEGACY CRASHES
 
+
 def load_image(image_path, alpha=False):
     try:
         with Image.open(image_path) as image:

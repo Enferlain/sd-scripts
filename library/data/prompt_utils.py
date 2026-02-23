@@ -151,7 +151,7 @@ def pad_tokens_and_weights(tokens, weights, max_length, bos, eos, no_boseos_midd
             else:
                 for j in range(max_embeddings_multiples):
                     w.append(1.0)  # weight for starting token in this chunk
-                    w += weights[i][j * (chunk_length - 2): min(len(weights[i]), (j + 1) * (chunk_length - 2))]
+                    w += weights[i][j * (chunk_length - 2) : min(len(weights[i]), (j + 1) * (chunk_length - 2))]
                     w.append(1.0)  # weight for ending token in this chunk
                 w += [1.0] * (weights_length - len(w))
             weights[i] = w[:]
@@ -160,14 +160,14 @@ def pad_tokens_and_weights(tokens, weights, max_length, bos, eos, no_boseos_midd
 
 
 def get_unweighted_text_embeddings(
-        tokenizer,
-        text_encoder,
-        text_input: torch.Tensor,
-        chunk_length: int,
-        clip_skip: int,
-        eos: int,
-        pad: int,
-        no_boseos_middle: bool | None = True,
+    tokenizer,
+    text_encoder,
+    text_input: torch.Tensor,
+    chunk_length: int,
+    clip_skip: int,
+    eos: int,
+    pad: int,
+    no_boseos_middle: bool | None = True,
 ):
     """
     When the length of tokens is a multiple of the capacity of the text encoder,
@@ -178,7 +178,7 @@ def get_unweighted_text_embeddings(
         text_embeddings = []
         for i in range(max_embeddings_multiples):
             # extract the i-th chunk
-            text_input_chunk = text_input[:, i * (chunk_length - 2): (i + 1) * (chunk_length - 2) + 2].clone()
+            text_input_chunk = text_input[:, i * (chunk_length - 2) : (i + 1) * (chunk_length - 2) + 2].clone()
 
             # cover the head and the tail by the starting and the ending tokens
             text_input_chunk[:, 0] = text_input[0, 0]
@@ -222,13 +222,13 @@ def get_unweighted_text_embeddings(
 
 
 def get_weighted_text_embeddings(
-        tokenizer,
-        text_encoder,
-        prompt: str | list[str],
-        device,
-        max_embeddings_multiples: int | None = 3,
-        no_boseos_middle: bool | None = False,
-        clip_skip=None,
+    tokenizer,
+    text_encoder,
+    prompt: str | list[str],
+    device,
+    max_embeddings_multiples: int | None = 3,
+    no_boseos_middle: bool | None = False,
+    clip_skip=None,
 ):
     r"""
     Prompts can be assigned with local weights using brackets. For example,
@@ -301,4 +301,3 @@ def get_weighted_text_embeddings(
     text_embeddings = text_embeddings * (previous_mean / current_mean).unsqueeze(-1).unsqueeze(-1)
 
     return text_embeddings
-
