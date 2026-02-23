@@ -402,11 +402,16 @@ class Trainer:
         self._emit("on_checkpoint", step=step, epoch=epoch)
 
     def remove_checkpoint(self, old_ckpt_name: str) -> None:
-        """Remove old checkpoint file."""
-        old_ckpt_file = os.path.join(self.cfg.output.saving.output_dir, old_ckpt_name)
-        if os.path.exists(old_ckpt_file):
-            self.accelerator.print(f"removing old checkpoint: {old_ckpt_file}")
-            os.remove(old_ckpt_file)
+        """Remove old checkpoint file or directory (diffusers format)."""
+        import shutil
+
+        old_ckpt_path = os.path.join(self.cfg.output.saving.output_dir, old_ckpt_name)
+        if os.path.isdir(old_ckpt_path):
+            self.accelerator.print(f"removing old checkpoint directory: {old_ckpt_path}")
+            shutil.rmtree(old_ckpt_path)
+        elif os.path.isfile(old_ckpt_path):
+            self.accelerator.print(f"removing old checkpoint: {old_ckpt_path}")
+            os.remove(old_ckpt_path)
 
     # =========================================================================
     # Event System (for future callback extensibility)
@@ -453,6 +458,23 @@ class Trainer:
         self.accelerator.print(f"  batch size per device: {cfg.training.train_batch_size}")
         self.accelerator.print(f"  gradient accumulation steps: {cfg.training.gradient_accumulation_steps}")
         self.accelerator.print(f"  total optimization steps: {self.max_train_steps}")
+
+        # --- Training diagnostics block ---
+        from library.training.trainer_utils import log_training_diagnostics
+
+        diag_components, diag_aliases = self.mode.get_diagnostics_components(self)
+
+        log_training_diagnostics(
+            accelerator=self.accelerator,
+            cfg=cfg,
+            mode=self.mode,
+            strategies=self.strategies,
+            components=diag_components,
+            optimizer=self.optimizer,
+            optimizer_name=self.optimizer_name,
+            lr_descriptions=self.lr_descriptions,
+            aliases=diag_aliases,
+        )
 
         # Create training metadata
         # Convert optimizer_args to a formatted string for metadata (may already be str)

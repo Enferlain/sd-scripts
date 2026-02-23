@@ -151,7 +151,10 @@ exclude = [
     "__pycache__",
     "*.egg-info",
     "feather",                  # Vendored library
+    "library/vendor",           # Vendored third-party code
     "library/performance/ipex", # Intel GPU support (specialized hijacks)
+    "_deprecated",              # Deprecated code
+    "scripts"
 ]
 
 [tool.ruff.lint]
@@ -257,6 +260,8 @@ exclude = [
     "tools",             # Standalone scripts (argparse)
     "data_processing",   # Legacy scripts not yet migrated
     "upscaling",         # Legacy scripts not yet migrated
+    "_deprecated",       # Deprecated code
+    "scripts"
 ]
 
 [tool.ty.rules]

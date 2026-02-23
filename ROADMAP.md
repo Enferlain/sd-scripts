@@ -2,26 +2,26 @@
 
 ## Architecture Overview
 
-The codebase follows a strategy pattern where training loops live in scripts and model-specific operations are delegated to strategy classes.
+The codebase follows a Trainer + TrainingMode pattern where scripts are thin entry points, the Trainer orchestrates training phases, TrainingMode plugins handle mode-specific logic (PEFT vs fine-tune), and TrainingStrategy classes handle model-specific operations.
 
 ```
-Scripts (contain training loops):     Library Modules:
+Scripts (thin entry points):          Library Modules:
 ┌─────────────────┐                   ┌─────────────────────────────┐
 │   sd_peft.py    │                   │ library/strategies/         │
-│   (~860 lines)  │ ───imports───────►│   base/training.py          │
+│   (~55 lines)   │ ───imports───────►│   base/training.py          │
 └─────────────────┘                   │   sd/training.py            │
 ┌─────────────────┐                   │   sdxl/training.py          │
 │  sdxl_peft.py   │ ───imports───────►└─────────────┬───────────────┘
-│  (~1300 lines)  │                                 │ uses
+│  (~55 lines)    │                                 │ uses
 └─────────────────┘                   ┌─────────────┴───────────────┐
-                                      │ library/training/           │
-                                      │   trainer_utils.py          │
+┌─────────────────┐                   │ library/training/           │
+│ sdxl_finetune.py│ ───imports───────►│   runners/trainer.py        │
+│  (~55 lines)    │                   │   modes/peft_mode.py        │
+└─────────────────┘                   │   modes/finetune_mode.py    │
+                                      │   phases/*.py               │
                                       │   checkpointing.py          │
                                       │   sample_generation.py      │
-                                      │   sd_checkpointing.py (*)   │
-                                      │   sdxl_checkpointing.py (*) │
                                       └─────────────────────────────┘
-                                      (*) Legacy wrappers, used by finetune scripts
 ```
 
 **Module Separation (Post-Refactor):**
@@ -29,8 +29,10 @@ Scripts (contain training loops):     Library Modules:
 - `library/strategies/base/` - ABCs and shared logic (TrainingStrategy, TokenizeStrategy, etc.)
 - `library/strategies/sd/` - SD1.5/2 implementations (SdTrainingStrategy, SdTokenizeStrategy)
 - `library/strategies/sdxl/` - SDXL implementations (SdxlTrainingStrategy, SdxlTokenizeStrategy)
+- `library/training/runners/` - Trainer orchestration
+- `library/training/modes/` - TrainingMode plugins (PeftMode, FineTuneMode)
+- `library/training/phases/` - Phase functions (setup, caching, model_prep, optimizer, training_loop)
 - `library/training/` - Model-agnostic utilities (checkpointing.py, sample_generation.py)
-- `library/training/sd_*.py, sdxl_*.py` - Legacy wrappers for finetune scripts (kept for backward compat)
 
 ---
 
@@ -46,7 +48,7 @@ Scripts (contain training loops):     Library Modules:
 | **Unit Tests (Mocked)** | ✅ In Progress |
 | **Integration Tests**   | 🔜 Future      |
 
-**Completed:** 897+ unit tests across configuration, training, data, strategies, networks, losses, pipelines.
+**Completed:** 1017+ unit tests across configuration, training, data, strategies, networks, losses, pipelines, training modes.
 
 ### Integration Tests (Remaining)
 
@@ -56,6 +58,20 @@ Scripts (contain training loops):     Library Modules:
 | **Adapter Classes**        | `LoRAAdapter.apply_to()`, `create_adapter()`  | Medium      |
 | **Sample Generation**      | `sample_images_common`, inference pipeline    | Medium      |
 | ~~**Full Training Loop**~~ | ~~Config → Trainer → Step~~                   | ~~High~~ ✅ |
+
+---
+
+## Deferred Training Features
+
+Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Currently fail-fast with `NotImplementedError` in `FineTuneMode.build_optimizer_params()` to prevent silent behavior differences.
+
+- [ ] **Block-level learning rates** — Per-UNet-block LR grouping (legacy `get_block_params_to_optimize()`). Should be implemented as a mode-agnostic optimizer-group feature, not mode-specific.
+- [ ] **Pattern-based optimizer groups** — Regex/glob-based param grouping for fine-grained LR control. Same mode-agnostic approach as block LR.
+- [ ] **Fused optimizer groups** — Multi-optimizer support with `fused_backward_pass` (per-parameter backward hooks). Complex multi-optimizer logic from legacy `sdxl_finetune.py`.
+- [ ] **PEFT module/param breakdown** — Per-component (unet, TE) module and parameter counts in training diagnostics for PEFT mode. Requires an optional adapter protocol method (`get_diagnostics_components()`) that each adapter type implements to report its own per-component allocation. `PeftMode` already has the `hasattr` hook ready — just needs adapter-side implementations. Deferred because adapter internals vary (LoRA, LyCORIS, OFT) and LyCORIS is still external.
+
+> [!IMPORTANT]
+> Keep fused/block/pattern paths explicitly fail-fast (as planned), so they don't silently behave differently. Only remove the guards when proper implementations are added.
 
 ---
 
@@ -277,7 +293,8 @@ library/models/
 ├── sd/
 │   ├── unet.py            # SD UNet architecture (from sd_original_unet.py)
 │   ├── conversion.py      # SD checkpoint conversion (from sd_model_util.py)
-│   └── loader.py          # SD model loading (from sd_model_prep.py)
+│   ├── loader.py          # SD model loading (from sd_model_prep.py)
+│   └── vae.py             # SD/SDXL shared VAE (same 4-ch architecture)
 ├── sdxl/
 │   ├── unet.py            # from sdxl_original_unet.py
 │   ├── conversion.py      # from sdxl_model_util.py
@@ -286,8 +303,8 @@ library/models/
 ├── flux/
 │   ├── dit.py
 │   ├── conversion.py
-│   └── loader.py
-├── vae.py                 # SD/SDXL shared VAE (same 4-ch architecture)
+│   ├── loader.py
+│   └── vae.py
 ├── common.py              # Truly generic: is_safetensors(), shave_segments()
 └── __init__.py
 ```

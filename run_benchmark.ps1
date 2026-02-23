@@ -32,6 +32,7 @@ $configMap = @{
     "workers"  = "benchmark_sdxl_workers"
     "large"    = "benchmark_sdxl_large"
     "test_core"         = "test_core"
+    "test_finetune"     = "test_finetune"
     "test_checkpoint"   = "test_checkpoint"
     "test_resume"       = "test_resume"
     "test_sampling"     = "test_sampling"
@@ -65,14 +66,37 @@ Write-Host ""
 
 # Cache directory
 $cacheDir = "$projectRoot\benchmark_cache"
+$cacheDirsToClear = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$cacheDirsToClear.Add($cacheDir) | Out-Null
+
+# Also clear config-specific cache_dir when present (e.g., test_* configs)
+if (Test-Path $configFile) {
+    $configContent = Get-Content $configFile -Raw
+    $cacheDirMatch = [regex]::Match($configContent, 'cache_dir:\s*["'']?([^"'']+)["'']?')
+    if ($cacheDirMatch.Success) {
+        $configuredCacheDir = $cacheDirMatch.Groups[1].Value.Trim()
+        if (-not [System.IO.Path]::IsPathRooted($configuredCacheDir)) {
+            $configuredCacheDir = Join-Path $projectRoot $configuredCacheDir
+        }
+        $cacheDirsToClear.Add($configuredCacheDir) | Out-Null
+    }
+}
 
 # Create output directory
 $outputDir = "$projectRoot\benchmark_output"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
-$script = "scripts/sdxl_peft.py"
-Write-Host "[INFO] Config: $Config ($configName)" -ForegroundColor Green
-Write-Host "[INFO] Running NEW pipeline (sdxl_peft.py with TrainingDataset)" -ForegroundColor Green
+# Route finetune configs to sdxl_finetune.py, everything else to sdxl_peft.py
+$finetuneConfigs = @("test_finetune", "benchmark_sdxl_finetune")
+if ($finetuneConfigs -contains $configName) {
+    $script = "scripts/sdxl_finetune.py"
+    Write-Host "[INFO] Config: $Config ($configName)" -ForegroundColor Green
+    Write-Host "[INFO] Running FINE-TUNE pipeline (sdxl_finetune.py)" -ForegroundColor Green
+} else {
+    $script = "scripts/sdxl_peft.py"
+    Write-Host "[INFO] Config: $Config ($configName)" -ForegroundColor Green
+    Write-Host "[INFO] Running PEFT pipeline (sdxl_peft.py with TrainingDataset)" -ForegroundColor Green
+}
 
 # Collect system info
 Write-Host ""
@@ -99,9 +123,11 @@ $allOutput = ""
 for ($i = 1; $i -le $Runs; $i++) {
     # Clear cache before each run if -Fresh is specified
     if ($Fresh) {
-        if (Test-Path $cacheDir) {
-            Remove-Item -Recurse -Force $cacheDir
-            Write-Host "[INFO] Cleared cache for run $i" -ForegroundColor Yellow
+        foreach ($dir in $cacheDirsToClear) {
+            if (Test-Path $dir) {
+                Remove-Item -Recurse -Force $dir
+                Write-Host "[INFO] Cleared cache for run ${i}: $dir" -ForegroundColor Yellow
+            }
         }
     }
     

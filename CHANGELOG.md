@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-02-23]
+
+### Added
+
+- **Phase 2B: FineTuneMode (SDXL)** — Implemented `FineTuneMode` for full-model SDXL fine-tuning:
+  - New `library/training/modes/finetune_mode.py` implementing all 13 `TrainingMode` protocol hooks
+  - UNet unfreezing + optional per-TE training with individual learning rates
+  - Full-model checkpoint saving delegated to strategy (no SDXL imports in mode)
+  - EDM2 side-artifact saves via checkpoint name intent detection
+  - Block LR fail-fast guard (deferred to mode-agnostic optimizer phase)
+  - State hooks for epoch/step metadata only (accelerator handles full model state natively)
+  - Exported `FineTuneMode` from `library.training.modes`
+  - Migrated `scripts/sdxl_finetune.py` from 850-line monolith to ~55-line thin entrypoint using `Trainer` + `FineTuneMode`
+  - Hardened `Trainer.remove_checkpoint()` to handle both file and directory (diffusers format) removal
+
+### Changed
+
+- **2B Architectural Correction: Strategy Delegation** — Separated mode lifecycle from model-family specifics:
+  - Added `save_model_checkpoint()` to `CheckpointingStrategy` base class (generic signature, no mode-specific knobs)
+  - Implemented `SdxlTrainingStrategy.save_model_checkpoint()` — moves full-model SD/Diffusers serialization out of mode
+  - Implemented `SdxlTrainingStrategy.post_process_trainable()` — encapsulates TE1 last-layer/final_layer_norm freeze
+  - `FineTuneMode.prepare_trainables()` now uses `strategies.is_train_unet()`/`get_text_encoders_train_flags()` + `post_process_trainable()`
+  - `FineTuneMode.save_checkpoint()` reduced from 80+ lines to ~20 lines of delegation
+  - Removed all `library.models.sdxl.conversion` imports from mode code
+  - Fixed dual-TE DeepSpeed assumption in both `PeftMode` and `FineTuneMode` — dynamic kwargs replace hardcoded `text_encoder1`/`text_encoder2`
+  - 27 unit tests verify strategy delegation, no-SDXL-leak assertions, and variable TE count (tested with 2 and 3 encoders)
+- **Training Diagnostics Block** — centralized, mode-agnostic diagnostics emitted at training start:
+  - Per-component module counts (parameterized leaf modules) and parameter counts with trainable/total breakdown
+  - Modes decide what to show via `get_diagnostics_components()` — FineTuneMode shows all backbone, PeftMode shows adapter (with future hook for per-component breakdown via optional adapter method)
+  - Context line: mode, strategy, precision, gradient checkpointing, xformers, deepspeed
+  - Optimizer group summary: per-group LR and parameter count
+  - New `benchmark_sdxl_finetune.yaml` and `test_finetune.yaml` configs for fine-tune benchmarking
+  - Updated `run_benchmark.ps1` to route fine-tune configs to `scripts/sdxl_finetune.py`
+
+### Fixed
+
+- **DeepSpeed config truthiness** — `cfg.performance.deepspeed` is a `DeepSpeedConfig` dataclass (always truthy), but 4 checks treated it as a bool. Changed to `cfg.performance.deepspeed.deepspeed` in `peft_mode.py`, `finetune_mode.py` (2 spots), and `checkpointing.py`
+
 ## [2026-02-18]
 
 ### Changed

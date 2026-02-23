@@ -334,6 +334,43 @@ class CheckpointingStrategy(ABC):
         """
         raise NotImplementedError
 
+    def save_model_checkpoint(
+        self,
+        trainer: Any,
+        ckpt_name: str,
+        step: int,
+        epoch: int,
+        metadata: dict[str, str],
+        save_dtype: torch.dtype,
+        force_sync_upload: bool = False,
+    ) -> None:
+        """Serialize a full-model checkpoint for this model family.
+
+        Mode decides when to save (lifecycle); this method decides how
+        to serialize using architecture-specific conversion logic.
+
+        The default implementation raises ``NotImplementedError``; model
+        families that support full-model checkpointing (e.g. SDXL)
+        override this with their own conversion/save logic.
+
+        Policy (save cadence, retention, pruning) is not part of this
+        method — that stays in Trainer/phases.
+
+        Args:
+            trainer: The Trainer instance (provides access to models,
+                accelerator, cfg, and any state needed for saving).
+            ckpt_name: Exact checkpoint filename or directory name.
+            step: Current training step.
+            epoch: Current training epoch.
+            metadata: Training metadata dict (ss_* keys, etc.).
+            save_dtype: Data type for saved weights.
+            force_sync_upload: If True, block until HF upload completes.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement save_model_checkpoint. "
+            "Full-model saving requires a strategy override."
+        )
+
 
 class ValidationStrategy(ABC):
     """Strategy for model-specific validation."""

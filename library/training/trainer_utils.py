@@ -2,9 +2,12 @@ import logging
 import math
 import time
 import os
+from typing import Any
 
+import torch
 from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import TorchDynamoPlugin
+from torch import nn
 
 import library.performance.deepspeed_utils as deepspeed_utils
 
@@ -22,6 +25,139 @@ from library.utils.common_utils import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+
+def _iter_parameterized_leaf_modules(module: nn.Module):
+    """Yield leaf modules that own parameters directly (no recursion)."""
+    for child in module.modules():
+        if any(child.children()):
+            continue
+        child_params = list(child.parameters(recurse=False))
+        if child_params:
+            yield child, child_params
+
+
+def summarize_component_trainability(module: nn.Module) -> dict[str, int]:
+    """Summarize module/parameter counts for a model component."""
+    total_modules = 0
+    trainable_modules = 0
+    for _mod, mod_params in _iter_parameterized_leaf_modules(module):
+        total_modules += 1
+        if any(p.requires_grad for p in mod_params):
+            trainable_modules += 1
+
+    total_params = 0
+    trainable_params = 0
+    for param in module.parameters():
+        param_count = param.numel()
+        total_params += param_count
+        if param.requires_grad:
+            trainable_params += param_count
+
+    return {
+        "modules_total": total_modules,
+        "modules_trainable": trainable_modules,
+        "params_total": total_params,
+        "params_trainable": trainable_params,
+    }
+
+
+def log_training_diagnostics(
+    accelerator: Accelerator,
+    cfg: Any,
+    mode: Any,
+    strategies: Any,
+    components: list[tuple[str, nn.Module]],
+    optimizer: Any,
+    optimizer_name: str,
+    lr_descriptions: list[str],
+    aliases: list[tuple[str, str]] | None = None,
+) -> None:
+    """Emit a compact training diagnostics block.
+
+    Prints context line, per-component layer/param stats, optimizer
+    group summary, and a legend. Designed to be mode-agnostic — works
+    identically for PEFT and fine-tune.
+    """
+    if not components:
+        return
+
+    # --- Context line ---
+    mode_name = type(mode).__name__
+    strategy_name = type(strategies).__name__
+    precision = getattr(cfg.performance.precision, "mixed_precision", "fp32")
+    grad_ckpt = getattr(cfg.performance.memory, "gradient_checkpointing", False)
+    xformers = getattr(cfg.performance.attention, "xformers", False)
+    deepspeed = getattr(getattr(cfg.performance, "deepspeed", None), "deepspeed", False)
+
+    accelerator.print("")
+    accelerator.print(
+        f"  mode={mode_name}  strategy={strategy_name}  "
+        f"precision={precision}  grad_ckpt={grad_ckpt}  xformers={xformers}  deepspeed={deepspeed}"
+    )
+
+    batch_size = cfg.training.train_batch_size
+    grad_accum = cfg.training.gradient_accumulation_steps
+    effective_batch = batch_size * accelerator.num_processes * grad_accum
+    accelerator.print(
+        f"  batch: per_device={batch_size}  grad_accum={grad_accum}  "
+        f"effective={effective_batch}  max_steps={cfg.training.max_train_steps}"
+    )
+
+    # --- Per-component stats ---
+    accelerator.print("")
+    accelerator.print("  components:")
+
+    agg_mods = 0
+    agg_mods_train = 0
+    agg_params = 0
+    agg_params_train = 0
+
+    for name, module in components:
+        stats = summarize_component_trainability(module)
+        agg_mods += stats["modules_total"]
+        agg_mods_train += stats["modules_trainable"]
+        agg_params += stats["params_total"]
+        agg_params_train += stats["params_trainable"]
+
+        # Format: right-align numbers for readability
+        mt = stats["modules_trainable"]
+        ml = stats["modules_total"]
+        pt = stats["params_trainable"]
+        pl = stats["params_total"]
+        pct = f"{pt / pl * 100:.1f}%" if pl > 0 else "0.0%"
+        status = "frozen" if pt == 0 else pct
+
+        accelerator.print(
+            f"    {name + ':':<20s} "
+            f"modules {mt:>5,}/{ml:>5,} trainable   "
+            f"params {pt:>13,}/{pl:>13,}  ({status})"
+        )
+
+    # Aggregate
+    agg_pct = f"{agg_params_train / agg_params * 100:.1f}%" if agg_params > 0 else "0.0%"
+    accelerator.print(
+        f"    {'total:':<20s} "
+        f"modules {agg_mods_train:>5,}/{agg_mods:>5,} trainable   "
+        f"params {agg_params_train:>13,}/{agg_params:>13,}  ({agg_pct})"
+    )
+
+    if aliases:
+        alias_text = ", ".join(f"{alias} -> {target}" for alias, target in aliases)
+        accelerator.print(f"    aliases: {alias_text}")
+
+    # --- Optimizer groups ---
+    accelerator.print("")
+    accelerator.print(f"  optimizer: {optimizer_name}")
+    if hasattr(optimizer, "param_groups"):
+        for i, group in enumerate(optimizer.param_groups):
+            group_lr = group.get("lr", "?")
+            param_count = sum(p.numel() for p in group["params"] if isinstance(p, torch.Tensor))
+            # Try to label the group from lr_descriptions
+            label = lr_descriptions[i] if i < len(lr_descriptions) else f"group {i}"
+            accelerator.print(f"    {label}  params={param_count:,}  lr={group_lr}")
+
+    accelerator.print("")
 
 
 def prepare_accelerator(

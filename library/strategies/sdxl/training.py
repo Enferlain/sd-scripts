@@ -578,6 +578,138 @@ class SdxlTrainingStrategy(TrainingStrategy):
             clip_skip=cfg.training.clip_skip,
         )
 
+    def save_model_checkpoint(
+        self,
+        trainer: Any,
+        ckpt_name: str,
+        step: int,
+        epoch: int,
+        metadata: dict[str, str],
+        save_dtype: torch.dtype,
+        force_sync_upload: bool = False,
+    ) -> None:
+        """Serialize an SDXL full-model checkpoint.
+
+        Handles both SD-format (.safetensors/.ckpt) and Diffusers-format saves.
+        Uses strategy-owned state (logit_scale, ckpt_info) set during
+        ``load_target_model``, so mode never needs to know about them.
+        """
+        import os
+
+        from library.models.sdxl.conversion import (
+            save_diffusers_checkpoint,
+            save_stable_diffusion_checkpoint,
+        )
+
+        cfg = trainer.cfg
+
+        # Determine save format from config
+        save_model_as = cfg.output.saving.save_model_as
+        save_stable_diffusion_format = save_model_as in ("safetensors", "ckpt")
+        use_safetensors = save_model_as == "safetensors"
+
+        # Unwrap models from accelerator
+        assert trainer.unet is not None, "UNet must be set before save_model_checkpoint"
+        unet = trainer.accelerator.unwrap_model(trainer.unet)
+        text_encoder1 = trainer.accelerator.unwrap_model(trainer.text_encoders[0])
+        text_encoder2 = (
+            trainer.accelerator.unwrap_model(trainer.text_encoders[1])
+            if len(trainer.text_encoders) > 1
+            else None
+        )
+        vae = trainer.vae
+
+        os.makedirs(cfg.output.saving.output_dir, exist_ok=True)
+        ckpt_file = os.path.join(cfg.output.saving.output_dir, ckpt_name)
+
+        if save_stable_diffusion_format:
+            # Generate SD-format metadata with is_lora=False for full-model
+            modelspec_metadata = get_model_metadata_from_config(
+                state_dict=None,
+                metadata_config=cfg.output.metadata,
+                is_sdxl=True,
+                is_v2=False,
+                v_parameterization=cfg.loss.v_parameterization,
+                is_lora=False,
+                is_textual_inversion=False,
+                is_stable_diffusion_ckpt=True,
+            )
+
+            # Merge runtime metadata (ss_* fields from trainer) with modelspec.
+            # Runtime metadata is the base; modelspec keys overlay on top.
+            merged_metadata = {**metadata, **modelspec_metadata}
+
+            trainer.accelerator.print(f"\nsaving checkpoint: {ckpt_file}")
+            save_stable_diffusion_checkpoint(
+                ckpt_file,
+                text_encoder1,
+                text_encoder2,
+                unet,
+                epoch,
+                step,
+                self.ckpt_info,  # Strategy-owned state from load_target_model
+                vae,
+                self.logit_scale,  # Strategy-owned state from load_target_model
+                merged_metadata,
+                save_dtype,
+            )
+        else:
+            # Diffusers format — ckpt_name is a directory path
+            out_dir = ckpt_file
+            os.makedirs(out_dir, exist_ok=True)
+
+            src_path = cfg.model.pretrained_model_name_or_path
+
+            trainer.accelerator.print(f"\nsaving model: {out_dir}")
+            save_diffusers_checkpoint(
+                out_dir,
+                text_encoder1,
+                text_encoder2,
+                unet,
+                src_path,
+                vae,
+                use_safetensors=use_safetensors,
+                save_dtype=save_dtype,
+            )
+
+        # Upload to HuggingFace if configured
+        if cfg.output.huggingface is not None and cfg.output.huggingface.huggingface_repo_id is not None:
+            from library.utils import huggingface_util
+
+            huggingface_util.upload(
+                cfg.output.huggingface,
+                ckpt_file,  # Works for both formats: file or directory path
+                "/" + ckpt_name,
+                force_sync_upload=force_sync_upload,
+            )
+
+    def post_process_trainable(
+        self, cfg: Any, accelerator: Any, trainable_model: Any, text_encoders: list[Any], unet: Any
+    ) -> None:
+        """SDXL-specific post-processing: freeze TE1 last layer and final_layer_norm.
+
+        This prevents training instability in SDXL by freezing the last
+        encoder layer and the final layer norm of the first text encoder
+        (CLIP-L). Only applies when TE1 is being trained (has grad enabled).
+        """
+        if len(text_encoders) < 1:
+            return
+
+        te1 = text_encoders[0]
+
+        # Only freeze if TE1 is actually being trained
+        if not any(p.requires_grad for p in te1.parameters()):
+            return
+
+        # Freeze TE1's last encoder layer
+        if hasattr(te1, "text_model"):
+            text_model = te1.text_model
+            if hasattr(text_model, "encoder") and hasattr(text_model.encoder, "layers"):
+                last_layer = text_model.encoder.layers[-1]
+                last_layer.requires_grad_(False)
+            if hasattr(text_model, "final_layer_norm"):
+                text_model.final_layer_norm.requires_grad_(False)
+
     def _extract_conditioning_tensors(
         self,
         conditionings: list[SdxlConditioning],

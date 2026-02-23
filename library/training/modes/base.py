@@ -175,3 +175,22 @@ class TrainingMode(Protocol):
                 weights.
         """
         ...
+
+    # --- Diagnostics ---
+
+    def get_diagnostics_components(
+        self, trainer: Trainer
+    ) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
+        """Return components relevant for training diagnostics.
+
+        Each mode decides what to show:
+        - PEFT: adapter only (frozen backbone is noise).
+        - Fine-tune: all backbone components (unet, TEs, vae).
+
+        Returns:
+            (components, aliases) where components is a list of
+            (name, module) tuples and aliases is an optional list of
+            (alias_name, target_name) for display.
+        """
+        ...
+

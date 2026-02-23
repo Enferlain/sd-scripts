@@ -55,6 +55,10 @@ Scripts are thin entry points (Consumers) of the library.
 
 - **Typing:** Use Python type hints (`typing`) everywhere. Prefer modern syntax (`X | None` over `Optional[X]`, `list[int]` over `List[int]`).
 - **Imports:** Absolute imports preferred (e.g., `from library.training import optimizer`). Lazy imports should be avoided unless it brings proven performance benefits. Circular imports should be fixed, not worked around.
+- **Use this rule:**
+  - Top-level imports by default.
+  - Lazy imports only for strict optional dependencies or proven startup/memory bottlenecks.
+  - No lazy imports as a cycle workaround; fix module boundaries instead.
 - **Docstrings:** Document the _config_ expected by functions.
 - **No Argparse:** Do not import `argparse` in `library/` modules.
 - **Linting:** Use `ruff check .` and `ruff format .` before committing. Configuration is in `pyproject.toml`.

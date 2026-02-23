@@ -186,14 +186,19 @@ class PeftMode:
         """
         cfg = trainer.cfg
 
-        if cfg.performance.deepspeed:
+        if cfg.performance.deepspeed.deepspeed:
             flags = trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders)
+            # Build dynamic kwargs — no fixed TE count assumption
+            ds_kwargs: dict[str, Any] = {}
+            if trainer._train_unet:
+                ds_kwargs["unet"] = trainer.unet
+            for i, (t_enc, flag) in enumerate(zip(trainer.text_encoders, flags)):
+                if flag:
+                    ds_kwargs[f"text_encoder{i + 1}"] = t_enc
+            ds_kwargs["adapter"] = trainer.adapter
+
             ds_model = deepspeed_utils.prepare_deepspeed_model(
-                cfg.performance.precision,
-                unet=trainer.unet if trainer._train_unet else None,
-                text_encoder1=trainer.text_encoders[0] if flags[0] else None,
-                text_encoder2=(trainer.text_encoders[1] if flags[1] else None) if len(trainer.text_encoders) > 1 else None,
-                adapter=trainer.adapter,
+                cfg.performance.precision, **ds_kwargs
             )
             ds_model, trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(
                 ds_model, trainer.optimizer, trainer.lr_scheduler
@@ -351,3 +356,14 @@ class PeftMode:
                 "/" + ckpt_name,
                 force_sync_upload=force_sync_upload,
             )
+
+    def get_diagnostics_components(
+        self, trainer: Trainer
+    ) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
+        """Return only the adapter — frozen backbone is irrelevant for PEFT diagnostics."""
+        components: list[tuple[str, nn.Module]] = []
+        if trainer.adapter is not None:
+            components.append(("adapter", trainer.adapter))
+        aliases = [("trainable_model", "adapter")]
+        return components, aliases
+

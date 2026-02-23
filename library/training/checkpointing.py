@@ -483,7 +483,7 @@ def register_adapter_state_hooks(accelerator: "Accelerator", adapter, cfg, curre
     def save_model_hook(models, weights, output_dir):
         # pop weights of other models than peft to save only peft weights
         # only main process or deepspeed https://github.com/huggingface/diffusers/issues/2606
-        if accelerator.is_main_process or cfg.performance.deepspeed:
+        if accelerator.is_main_process or cfg.performance.deepspeed.deepspeed:
             remove_indices = []
             for i, model in enumerate(models):
                 if not isinstance(model, type(accelerator.unwrap_model(adapter))):

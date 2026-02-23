@@ -1,0 +1,19 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL Fine-Tune Integration Test: Core
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_finetune.py --config-name=test_finetune
+
+defaults:
+  - benchmark_sdxl_finetune
+  - _self_
+
+output:
+  saving:
+    output_dir: "D:/Projects/sd-scripts/tests/test_output"
+    output_name: "test_finetune"
+  logging:
+    logging_dir: "D:/Projects/sd-scripts/tests/test_logs"
+
+data:
+  caching:
+    cache_dir: "D:/Projects/sd-scripts/tests/test_cache"
