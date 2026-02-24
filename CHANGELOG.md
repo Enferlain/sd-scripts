@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `run_at_start` and `run_at_end` fields to `ValidationConfig` dataclass and `configs/validation/default.yaml`
 - Added cadence normalization: `validate_every_n_steps <= 0` and `validate_every_n_epochs <= 0` are normalized to `None` with warning
 - Persisted `ss_run_validation_at_start` and `ss_run_validation_at_end` in training metadata
-- 21 new unit tests for scheduler trigger matrix and cadence normalization
+- Print `val_loss` and `avg` to console after each validation run (previously only logged to TensorBoard/W&B)
+- 26 new unit tests (21 scheduler trigger matrix + 5 decoupling assertions)
 
 ### Changed
 
@@ -26,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed internal schedule checks from `SdTrainingStrategy.calculate_val_loss()` and `SdxlTrainingStrategy.calculate_val_loss()` — caller now owns the scheduling decision
 - Deleted `calculate_val_loss_check()` from `trainer_utils.py` — all scheduling now goes through `ValidationScheduler`
 - Typed `Trainer.latent_strategy`/`te_strategy` as generic `CachingStrategy` instead of SDXL-specific concrete classes
+
+### Fixed
+
+- **Manifest cache hash didn't include `validation_split`/`validation_seed`** — switching between configs with different validation splits silently reused the cached manifest, resulting in no validation data
+- **Device mismatch in `process_val_batch`** (SD and SDXL) — `total_loss` was initialized on CPU while loss tensors are on CUDA, causing `RuntimeError` during validation
 
 ## [2026-02-23]
 

@@ -306,6 +306,7 @@ def run_training_loop(trainer: Trainer) -> None:
                             trainer._current_epoch_state.value,
                             trainer._train_text_encoder,
                         )
+                        accelerator.print(f"  val_loss: {trainer._current_val_loss:.4f}  (avg: {trainer._average_val_loss:.4f})")
                     else:
                         trainer._current_val_loss, trainer._average_val_loss = None, None
 

@@ -332,6 +332,8 @@ def compute_config_hash(
     bucket_reso_steps: int,
     max_token_length: int | None,
     enable_bucket: bool = True,
+    validation_split: float = 0.0,
+    validation_seed: int | None = None,
 ) -> str:
     """
     Compute a hash of settings that affect manifest creation.
@@ -345,6 +347,8 @@ def compute_config_hash(
         bucket_reso_steps: Bucket resolution step size.
         max_token_length: Max token length for TE caching.
         enable_bucket: Whether bucketing is enabled.
+        validation_split: Validation split fraction.
+        validation_seed: Seed for deterministic validation split.
 
     Returns:
         Hex string hash (16 characters).
@@ -356,6 +360,8 @@ def compute_config_hash(
         "bucket_reso_steps": bucket_reso_steps,
         "max_token_length": max_token_length,
         "enable_bucket": enable_bucket,
+        "validation_split": validation_split,
+        "validation_seed": validation_seed,
     }
     data = json.dumps(relevant, sort_keys=True)
     return hashlib.sha256(data.encode()).hexdigest()[:16]
@@ -397,6 +403,8 @@ def get_or_create_manifest(
         bucket_reso_steps=data_config.bucketing.bucket_reso_steps,
         max_token_length=getattr(data_config, "max_token_length", None),
         enable_bucket=data_config.bucketing.enable_bucket,
+        validation_split=validation_split,
+        validation_seed=validation_seed,
     )
 
     # Try to load existing manifest

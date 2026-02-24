@@ -11,3 +11,5 @@ validation:
   validation_split: 0.1
   validate_every_n_steps: 10
   validation_seed: 42
+  run_at_start: true
+  run_at_end: true

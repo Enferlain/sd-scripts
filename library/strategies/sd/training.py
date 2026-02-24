@@ -610,9 +610,9 @@ class SdTrainingStrategy(TrainingStrategy):
         """
         if timesteps_list is None:
             timesteps_list = [50, 350, 500, 650, 950]
-        total_loss: torch.Tensor = torch.tensor(0.0)
         with torch.autograd.grad_mode.inference_mode(mode=True):
             latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
+            total_loss = torch.zeros(1, device=latents.device)
 
             text_encoder_conds = []
             text_encoder_outputs_list = batch.get("text_encoder_outputs_list", None)

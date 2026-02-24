@@ -620,6 +620,7 @@ class Trainer:
                     None,
                     self._train_text_encoder,
                 )
+                self.accelerator.print(f"  val_loss: {self._current_val_loss:.4f}  (avg: {self._average_val_loss:.4f})")
 
             # Switch back to train mode
             self.optimizer_train_fn()

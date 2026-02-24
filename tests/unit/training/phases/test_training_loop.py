@@ -219,6 +219,7 @@ class TestValidationSamplingDecoupling:
 
         # Wire scheduler mock
         mock_trainer._validation_scheduler.should_run = MagicMock(return_value=validation_returns)
+        mock_trainer.strategies.calculate_val_loss.return_value = (0.5, 0.5)
 
         with (
             patch("library.training.phases.training_loop.prepare_epoch"),
