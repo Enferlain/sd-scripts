@@ -81,6 +81,15 @@ def prepare_config(cfg) -> None:
         logger.warning("sample_every_n_steps <= 0, disabling")
         cfg.output.sampling.sample_every_n_steps = None
 
+    # Validation: normalize invalid cadence values
+    if hasattr(cfg, "validation") and cfg.validation is not None:
+        if cfg.validation.validate_every_n_steps is not None and cfg.validation.validate_every_n_steps <= 0:
+            logger.warning(f"validate_every_n_steps={cfg.validation.validate_every_n_steps} <= 0, disabling")
+            cfg.validation.validate_every_n_steps = None
+        if cfg.validation.validate_every_n_epochs is not None and cfg.validation.validate_every_n_epochs <= 0:
+            logger.warning(f"validate_every_n_epochs={cfg.validation.validate_every_n_epochs} <= 0, disabling")
+            cfg.validation.validate_every_n_epochs = None
+
 
 # =============================================================================
 # Cross-config validation (errors and warnings)

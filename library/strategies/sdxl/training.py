@@ -33,7 +33,7 @@ from library.training.sample_generation import sample_images_common
 from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
 from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.training.trainer_utils import calculate_val_loss_check
+
 from library.config.config_validation import validate_sdxl_peft
 from library.utils.common_utils import setup_logging
 from library.utils.device_utils import clean_memory_on_device
@@ -1164,9 +1164,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
         Returns:
             Tuple of (current_val_loss, average_val_loss).
         """
-        if not calculate_val_loss_check(cfg.validation, cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
-            return None, None
-
         if batch is not None:
             self.on_step_start(cfg, accelerator, trainable_model, text_encoders, unet, batch, weight_dtype, is_train=False)
 

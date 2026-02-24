@@ -110,6 +110,8 @@ def create_training_metadata(
         "ss_max_validation_steps": cfg.validation.max_validation_steps,
         "ss_validate_every_n_epochs": cfg.validation.validate_every_n_epochs,
         "ss_validate_every_n_steps": cfg.validation.validate_every_n_steps,
+        "ss_run_validation_at_start": cfg.validation.run_at_start,
+        "ss_run_validation_at_end": cfg.validation.run_at_end,
         "ss_resize_interpolation": cfg.data.preprocessing.resize_interpolation,
     }
 

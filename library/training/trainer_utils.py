@@ -19,7 +19,6 @@ from library.config.dataclasses.performance import (
 )
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.config.dataclasses.validation import ValidationConfig
 from library.logging.step_logging import append_lr_to_logs_with_names
 from library.utils.common_utils import setup_logging
 
@@ -246,46 +245,6 @@ def prepare_accelerator(
         deepspeed_plugin=deepspeed_plugin,
     )
     return accelerator
-
-
-def calculate_val_loss_check(
-    validation_config: ValidationConfig,
-    training_config: TrainingConfig,
-    global_step: int,
-    epoch_step: int,
-    val_dataloader,
-    train_dataloader_or_num_batches: int | object,
-) -> bool:
-    """Check if validation should be run at this step.
-
-    Args:
-        validation_config: ValidationConfig object with validation settings.
-        training_config: TrainingConfig object for max_train_steps.
-        global_step: Current global training step.
-        epoch_step: Current step within the epoch.
-        val_dataloader: Validation dataloader (if None, returns False).
-        train_dataloader_or_num_batches: Training dataloader or int (num_batches_per_epoch).
-
-    Returns:
-        bool: True if validation should be run, False otherwise.
-    """
-    if val_dataloader is None:
-        return False
-
-    # Support both dataloader (len()) and int (direct value)
-    if isinstance(train_dataloader_or_num_batches, int):
-        num_batches = train_dataloader_or_num_batches
-    else:
-        num_batches = len(train_dataloader_or_num_batches)  # TODO: Expected type 'Sized', got 'object' instead
-
-    if global_step != 0 and global_step < training_config.max_train_steps:
-        if validation_config.validate_every_n_steps is not None:
-            if global_step % int(validation_config.validate_every_n_steps) != 0:
-                return False
-        else:
-            if epoch_step != num_batches - 1:
-                return False
-    return True
 
 
 def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):

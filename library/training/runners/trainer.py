@@ -30,8 +30,8 @@ from library.data import create_manifest_from_config, get_or_create_manifest, Da
 
 if TYPE_CHECKING:
     from accelerate import Accelerator
+    from library.data.caching_engine import CachingStrategy
     from library.strategies.base.training import TrainingStrategy
-    from library.strategies.sdxl.caching import SdxlLatentsPipelineStrategy, SdxlTextEncoderPipelineStrategy
     from library.training.modes.base import TrainingMode
 
 setup_logging()
@@ -105,8 +105,8 @@ class Trainer:
         self.te_weight_dtype: torch.dtype | None = None
 
         # Will be set during run_caching()
-        self.latent_strategy: SdxlLatentsPipelineStrategy | None = None
-        self.te_strategy: SdxlTextEncoderPipelineStrategy | None = None
+        self.latent_strategy: CachingStrategy | None = None
+        self.te_strategy: CachingStrategy | None = None
 
         # Will be set during prepare_optimizer()
         self.optimizer: Any = None
@@ -156,6 +156,9 @@ class Trainer:
         self._current_global_step_loss_scaled: float | None = 0.0
         self._current_val_loss: float | None = None
         self._average_val_loss: float | None = None
+
+        # Validation scheduler (created during _log_training_info)
+        self._validation_scheduler: Any = None
 
         # Validation state
         self._val_dataloader: Any = None
@@ -546,37 +549,53 @@ class Trainer:
             range(self.max_train_steps - self._initial_step), smoothing=0, disable=not self.accelerator.is_local_main_process, desc="steps"
         )
 
+        # Validation scheduler (single source of truth for trigger decisions)
+        from library.training.phases.validation import ValidationScheduler
+
+        self._validation_scheduler = ValidationScheduler(cfg.validation)
+
     def _maybe_sample_at_start(self) -> None:
-        """Handle --sample_at_first if configured."""
+        """Handle --sample_at_first and run_at_start validation if configured."""
         from library.training.sample_generation import sample_images_check
-        from library.training.trainer_utils import calculate_val_loss_check
+        from library.training.phases.validation import ValidationStepContext
 
         cfg = self.cfg
 
-        if sample_images_check(cfg.output.sampling, 0, self.global_step) or calculate_val_loss_check(
-            cfg.validation, cfg.training, self.global_step, 0, self._val_dataloader, self.num_batches_per_epoch
-        ):
+        assert self._validation_scheduler is not None, "_validation_scheduler must be initialized before _maybe_sample_at_start"
+
+        should_sample = sample_images_check(cfg.output.sampling, 0, self.global_step)
+        val_ctx = ValidationStepContext(
+            global_step=self.global_step,
+            epoch_step=0,
+            current_epoch=0,
+            is_last_step_in_epoch=False,
+            is_training_start=True,
+            is_training_end=False,
+            has_validation_data=self._val_dataloader is not None,
+        )
+        should_validate = self._validation_scheduler.should_run(val_ctx)
+
+        if should_sample or should_validate:
             # Switch to eval mode
             self.mode.set_eval(self)
             self.optimizer_eval_fn()
 
-            # Sample images
-            self.strategies.sample_images(
-                self.accelerator,
-                cfg,
-                0,
-                self.global_step,
-                self.accelerator.device,
-                self.vae,
-                self.tokenizers,
-                self._text_encoder,
-                self.unet,
-            )
+            # Sample images (independent of validation)
+            if should_sample:
+                self.strategies.sample_images(
+                    self.accelerator,
+                    cfg,
+                    0,
+                    self.global_step,
+                    self.accelerator.device,
+                    self.vae,
+                    self.tokenizers,
+                    self._text_encoder,
+                    self.unet,
+                )
 
-            # Calculate val loss if needed
-            if calculate_val_loss_check(
-                cfg.validation, cfg.training, self.global_step, 0, self._val_dataloader, self.num_batches_per_epoch
-            ):
+            # Validate (independent of sampling)
+            if should_validate:
                 assert self.vae_dtype is not None, "vae_dtype must be set"
                 assert self.weight_dtype is not None, "weight_dtype must be set"
                 self._current_val_loss, self._average_val_loss = self.strategies.calculate_val_loss(

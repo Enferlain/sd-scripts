@@ -3,8 +3,12 @@
 validation_split: 0.0
 validation_seed: null
 
-# Validation loop execution
+# Validation scheduling
+run_at_start: true
+run_at_end: true
 validate_every_n_steps: null
 validate_every_n_epochs: null
+
+# Validation loop execution
 max_validation_steps: null
 validation_timesteps: "[50, 350, 500, 650, 950]"

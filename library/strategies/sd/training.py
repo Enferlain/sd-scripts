@@ -30,7 +30,7 @@ from library.training.sample_generation import sample_images_common
 from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.training.trainer_utils import calculate_val_loss_check
+
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
 from library.losses.loss_weighting import apply_masked_loss
 from library.config.config_validation import validate_sd_peft
@@ -719,9 +719,6 @@ class SdTrainingStrategy(TrainingStrategy):
         Returns:
             Tuple of (current_val_loss, average_val_loss, logs).
         """
-        if not calculate_val_loss_check(cfg.validation, cfg.training, global_step, epoch_step, val_dataloader, train_dataloader):
-            return None, None, None
-
         if batch is not None:
             self.on_step_start(cfg, accelerator, trainable_model, text_encoders, unet, batch, weight_dtype, is_train=False)
 

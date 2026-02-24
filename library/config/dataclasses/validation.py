@@ -14,9 +14,13 @@ class ValidationConfig:
         default=None, metadata={"help": "Validation seed for shuffling validation dataset, training seed used otherwise"}
     )
 
-    # Validation loop execution
+    # Validation scheduling
+    run_at_start: bool = field(default=True, metadata={"help": "Run validation at training start (step 0)"})
+    run_at_end: bool = field(default=True, metadata={"help": "Run validation at training end"})
     validate_every_n_steps: int | None = field(default=None, metadata={"help": "Run validation on validation dataset every N steps"})
     validate_every_n_epochs: int | None = field(default=None, metadata={"help": "Run validation on validation dataset every N epochs"})
+
+    # Validation loop execution
     max_validation_steps: int | None = field(default=None, metadata={"help": "Max number of validation dataset items processed"})
     validation_timesteps: str = field(
         default="[50, 350, 500, 650, 950]", metadata={"help": "A list of timesteps to use for each validation step"}

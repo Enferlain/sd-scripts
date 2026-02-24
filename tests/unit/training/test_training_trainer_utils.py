@@ -1,51 +1,15 @@
 """
 Unit tests for library/training/trainer_utils.py
 
-Tests validation check logic and learning rate logging utilities.
+Tests learning rate logging utilities and accelerator preparation.
 """
 
 import pytest
 from unittest.mock import MagicMock
 
 from library.training.trainer_utils import (
-    calculate_val_loss_check,
     append_lr_to_logs,
 )
-
-
-# =============================================================================
-# Fixtures
-# =============================================================================
-
-
-@pytest.fixture
-def mock_training_config():
-    """Create a mock training config."""
-    config = MagicMock()
-    config.max_train_steps = 1000
-    return config
-
-
-@pytest.fixture
-def mock_validation_config():
-    """Create a mock validation config."""
-    config = MagicMock()
-    config.validate_every_n_steps = None
-    return config
-
-
-@pytest.fixture
-def mock_train_dataloader():
-    """Create a mock train dataloader with fixed length."""
-    dataloader = MagicMock()
-    dataloader.__len__ = MagicMock(return_value=100)
-    return dataloader
-
-
-@pytest.fixture
-def mock_val_dataloader():
-    """Create a mock validation dataloader."""
-    return MagicMock()
 
 
 @pytest.fixture
@@ -54,126 +18,6 @@ def mock_lr_scheduler():
     scheduler = MagicMock()
     scheduler.get_last_lr.return_value = [1e-4, 1e-5, 1e-6]
     return scheduler
-
-
-# =============================================================================
-# calculate_val_loss_check Tests
-# =============================================================================
-
-
-@pytest.mark.training
-@pytest.mark.unit
-class TestCalculateValLossCheck:
-    """Test calculate_val_loss_check function."""
-
-    def test_returns_false_when_val_dataloader_is_none(self, mock_validation_config, mock_training_config, mock_train_dataloader):
-        """Test that validation is skipped when val_dataloader is None."""
-        result = calculate_val_loss_check(
-            mock_validation_config,
-            mock_training_config,
-            global_step=100,
-            epoch_step=50,
-            val_dataloader=None,
-            train_dataloader_or_num_batches=mock_train_dataloader,
-        )
-
-        assert result is False
-
-    def test_returns_true_at_step_zero(self, mock_validation_config, mock_training_config, mock_val_dataloader, mock_train_dataloader):
-        """Test that validation runs at step 0."""
-        result = calculate_val_loss_check(
-            mock_validation_config,
-            mock_training_config,
-            global_step=0,
-            epoch_step=0,
-            val_dataloader=mock_val_dataloader,
-            train_dataloader_or_num_batches=mock_train_dataloader,
-        )
-
-        assert result is True
-
-    def test_returns_true_at_max_train_steps(
-        self, mock_validation_config, mock_training_config, mock_val_dataloader, mock_train_dataloader
-    ):
-        """Test that validation runs when reaching max_train_steps."""
-        result = calculate_val_loss_check(
-            mock_validation_config,
-            mock_training_config,
-            global_step=1000,  # at max_train_steps
-            epoch_step=50,
-            val_dataloader=mock_val_dataloader,
-            train_dataloader_or_num_batches=mock_train_dataloader,
-        )
-
-        assert result is True
-
-    def test_returns_true_at_validate_every_n_steps(
-        self, mock_validation_config, mock_training_config, mock_val_dataloader, mock_train_dataloader
-    ):
-        """Test that validation runs at validate_every_n_steps intervals."""
-        mock_validation_config.validate_every_n_steps = 100
-
-        result = calculate_val_loss_check(
-            mock_validation_config,
-            mock_training_config,
-            global_step=200,  # divisible by 100
-            epoch_step=50,
-            val_dataloader=mock_val_dataloader,
-            train_dataloader_or_num_batches=mock_train_dataloader,
-        )
-
-        assert result is True
-
-    def test_returns_false_between_validation_intervals(
-        self, mock_validation_config, mock_training_config, mock_val_dataloader, mock_train_dataloader
-    ):
-        """Test that validation is skipped between intervals."""
-        mock_validation_config.validate_every_n_steps = 100
-
-        result = calculate_val_loss_check(
-            mock_validation_config,
-            mock_training_config,
-            global_step=150,  # not divisible by 100
-            epoch_step=50,
-            val_dataloader=mock_val_dataloader,
-            train_dataloader_or_num_batches=mock_train_dataloader,
-        )
-
-        assert result is False
-
-    def test_returns_true_at_epoch_end_when_no_step_interval(
-        self, mock_validation_config, mock_training_config, mock_val_dataloader, mock_train_dataloader
-    ):
-        """Test that validation runs at end of epoch when validate_every_n_steps is None."""
-        mock_validation_config.validate_every_n_steps = None
-
-        result = calculate_val_loss_check(
-            mock_validation_config,
-            mock_training_config,
-            global_step=100,
-            epoch_step=99,  # last step (dataloader length - 1)
-            val_dataloader=mock_val_dataloader,
-            train_dataloader_or_num_batches=mock_train_dataloader,
-        )
-
-        assert result is True
-
-    def test_returns_false_mid_epoch_when_no_step_interval(
-        self, mock_validation_config, mock_training_config, mock_val_dataloader, mock_train_dataloader
-    ):
-        """Test that validation is skipped mid-epoch when validate_every_n_steps is None."""
-        mock_validation_config.validate_every_n_steps = None
-
-        result = calculate_val_loss_check(
-            mock_validation_config,
-            mock_training_config,
-            global_step=100,
-            epoch_step=50,  # not at end of epoch
-            val_dataloader=mock_val_dataloader,
-            train_dataloader_or_num_batches=mock_train_dataloader,
-        )
-
-        assert result is False
 
 
 # =============================================================================

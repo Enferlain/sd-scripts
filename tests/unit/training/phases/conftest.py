@@ -306,6 +306,10 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer._current_min_timestep = 0
     trainer._current_max_timestep = 1000
 
+    # Validation scheduler (always returns False for should_run by default)
+    trainer._validation_scheduler = MagicMock()
+    trainer._validation_scheduler.should_run = MagicMock(return_value=False)
+
     # trainable_model property (returns adapter for PEFT)
     type(trainer).trainable_model = PropertyMock(return_value=trainer.adapter)
 

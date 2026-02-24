@@ -29,7 +29,8 @@ from library.training.checkpointing import (
     save_and_remove_state_on_epoch_end,
 )
 from library.training.sample_generation import sample_images_check
-from library.training.trainer_utils import determine_grad_sync_context, calculate_val_loss_check
+from library.training.trainer_utils import determine_grad_sync_context
+from library.training.phases.validation import ValidationStepContext
 from library.utils.common_utils import setup_logging
 
 if TYPE_CHECKING:
@@ -67,6 +68,7 @@ def run_training_loop(trainer: Trainer) -> None:
     assert trainer.trainable_model is not None, (
         "trainer.trainable_model must be set by mode.prepare_with_accelerator() before the training loop starts"
     )
+    assert trainer._validation_scheduler is not None, "trainer._validation_scheduler must be initialized before the training loop starts"
 
     for epoch in range(trainer.epoch_to_start, trainer.num_train_epochs):
         if trainer.global_step >= cfg.training.max_train_steps:
@@ -244,31 +246,44 @@ def run_training_loop(trainer: Trainer) -> None:
                 trainer._progress_bar.update(1)
                 trainer.global_step += 1
 
-                if (
-                    sample_images_check(cfg.output.sampling, None, trainer.global_step)
-                    or calculate_val_loss_check(
-                        cfg.validation, cfg.training, trainer.global_step, step, trainer._val_dataloader, train_dataloader
-                    )
-                    or cfg.output.saving.save_every_n_steps is not None
-                    and trainer.global_step % cfg.output.saving.save_every_n_steps == 0
-                ):
+                # Build validation context once per sync step
+                is_last_step = step == len(train_dataloader) - 1
+                is_training_end = trainer.global_step >= cfg.training.max_train_steps
+                val_ctx = ValidationStepContext(
+                    global_step=trainer.global_step,
+                    epoch_step=step,
+                    current_epoch=trainer._current_epoch_state.value,
+                    is_last_step_in_epoch=is_last_step,
+                    is_training_start=False,
+                    is_training_end=is_training_end,
+                    has_validation_data=trainer._val_dataloader is not None,
+                )
+                should_validate = trainer._validation_scheduler.should_run(val_ctx)
+                should_sample = sample_images_check(cfg.output.sampling, None, trainer.global_step)
+                should_save = (
+                    cfg.output.saving.save_every_n_steps is not None and trainer.global_step % cfg.output.saving.save_every_n_steps == 0
+                )
+
+                if should_sample or should_validate or should_save:
                     trainer.mode.set_eval(trainer)
                     trainer.optimizer_eval_fn()
-                    strategies.sample_images(
-                        accelerator,
-                        cfg,
-                        None,
-                        trainer.global_step,
-                        accelerator.device,
-                        trainer.vae,
-                        trainer.tokenizers,
-                        trainer._text_encoder,
-                        trainer.unet,
-                    )
 
-                    if calculate_val_loss_check(
-                        cfg.validation, cfg.training, trainer.global_step, step, trainer._val_dataloader, trainer.num_batches_per_epoch
-                    ):
+                    # Sampling (independent of validation)
+                    if should_sample:
+                        strategies.sample_images(
+                            accelerator,
+                            cfg,
+                            None,
+                            trainer.global_step,
+                            accelerator.device,
+                            trainer.vae,
+                            trainer.tokenizers,
+                            trainer._text_encoder,
+                            trainer.unet,
+                        )
+
+                    # Validation (independent of sampling)
+                    if should_validate:
                         trainer._current_val_loss, trainer._average_val_loss = strategies.calculate_val_loss(
                             trainer.global_step,
                             step,

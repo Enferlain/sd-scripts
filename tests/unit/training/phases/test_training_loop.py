@@ -58,7 +58,6 @@ class TestRunTrainingLoop:
             patch("library.training.phases.training_loop.CaptionConfig"),
             patch("library.training.phases.training_loop.determine_grad_sync_context") as mock_ctx,
             patch("library.training.phases.training_loop.sample_images_check", return_value=False),
-            patch("library.training.phases.training_loop.calculate_val_loss_check", return_value=False),
             patch("library.training.phases.training_loop.generate_step_logs", return_value={}),
         ):
             # Context manager mock
@@ -89,7 +88,6 @@ class TestRunTrainingLoop:
             patch("library.training.phases.training_loop.CaptionConfig"),
             patch("library.training.phases.training_loop.determine_grad_sync_context") as mock_ctx,
             patch("library.training.phases.training_loop.sample_images_check", return_value=False),
-            patch("library.training.phases.training_loop.calculate_val_loss_check", return_value=False),
             patch("library.training.phases.training_loop.generate_step_logs", return_value={}),
         ):
             mock_ctx.return_value.__enter__ = MagicMock()
@@ -119,7 +117,6 @@ class TestRunTrainingLoop:
             patch("library.training.phases.training_loop.CaptionConfig"),
             patch("library.training.phases.training_loop.determine_grad_sync_context") as mock_ctx,
             patch("library.training.phases.training_loop.sample_images_check", return_value=False),
-            patch("library.training.phases.training_loop.calculate_val_loss_check", return_value=False),
             patch("library.training.phases.training_loop.generate_step_logs", return_value={}),
         ):
             mock_ctx.return_value.__enter__ = MagicMock()
@@ -150,7 +147,6 @@ class TestRunTrainingLoop:
             patch("library.training.phases.training_loop.CaptionConfig"),
             patch("library.training.phases.training_loop.determine_grad_sync_context") as mock_ctx,
             patch("library.training.phases.training_loop.sample_images_check", return_value=False),
-            patch("library.training.phases.training_loop.calculate_val_loss_check", return_value=False),
             patch("library.training.phases.training_loop.generate_step_logs", return_value={}),
         ):
             mock_ctx.return_value.__enter__ = MagicMock()
@@ -183,7 +179,6 @@ class TestRunTrainingLoop:
             patch("library.training.phases.training_loop.CaptionConfig"),
             patch("library.training.phases.training_loop.determine_grad_sync_context") as mock_ctx,
             patch("library.training.phases.training_loop.sample_images_check", return_value=False),
-            patch("library.training.phases.training_loop.calculate_val_loss_check", return_value=False),
             patch("library.training.phases.training_loop.generate_step_logs", return_value={}),
         ):
             mock_ctx.return_value.__enter__ = MagicMock()
@@ -195,3 +190,85 @@ class TestRunTrainingLoop:
 
             # Should stop at max_train_steps
             assert mock_trainer.global_step == 2
+
+
+@pytest.mark.training
+@pytest.mark.unit
+class TestValidationSamplingDecoupling:
+    """Assert that validation and sampling triggers are behaviorally independent."""
+
+    def _run_loop_with_triggers(self, mock_trainer, *, validation_returns, sample_returns):
+        """Helper: run one epoch with explicit validation/sampling trigger control.
+
+        Args:
+            mock_trainer: Mock trainer fixture.
+            validation_returns: Value that scheduler.should_run() returns.
+            sample_returns: Value that sample_images_check() returns.
+        """
+        mock_trainer.num_train_epochs = 1
+        mock_trainer.epoch_to_start = 0
+        mock_trainer.global_step = 0
+        mock_trainer.max_train_steps = 10
+
+        # One batch per epoch
+        fake_batches = [{"latent": torch.randn(1, 4, 64, 64)}]
+        mock_dataloader = MagicMock()
+        mock_dataloader.__iter__ = MagicMock(return_value=iter(fake_batches))
+
+        type(mock_trainer.accelerator).sync_gradients = PropertyMock(return_value=True)
+
+        # Wire scheduler mock
+        mock_trainer._validation_scheduler.should_run = MagicMock(return_value=validation_returns)
+
+        with (
+            patch("library.training.phases.training_loop.prepare_epoch"),
+            patch("library.training.phases.training_loop.create_training_dataloader", return_value=mock_dataloader),
+            patch("library.training.phases.training_loop.CaptionConfig"),
+            patch("library.training.phases.training_loop.determine_grad_sync_context") as mock_ctx,
+            patch("library.training.phases.training_loop.sample_images_check", return_value=sample_returns),
+            patch("library.training.phases.training_loop.generate_step_logs", return_value={}),
+        ):
+            mock_ctx.return_value.__enter__ = MagicMock()
+            mock_ctx.return_value.__exit__ = MagicMock()
+
+            from library.training.phases.training_loop import run_training_loop
+
+            run_training_loop(mock_trainer)
+
+    def test_validation_trigger_does_not_force_sampling(self, mock_trainer):
+        """Validation triggering should NOT cause sample_images to be called."""
+        self._run_loop_with_triggers(mock_trainer, validation_returns=True, sample_returns=False)
+
+        # Validation ran
+        mock_trainer.strategies.calculate_val_loss.assert_called()
+        # Sampling did NOT run
+        mock_trainer.strategies.sample_images.assert_not_called()
+
+    def test_sampling_trigger_does_not_force_validation(self, mock_trainer):
+        """Sampling triggering should NOT cause calculate_val_loss to be called."""
+        self._run_loop_with_triggers(mock_trainer, validation_returns=False, sample_returns=True)
+
+        # Sampling ran
+        mock_trainer.strategies.sample_images.assert_called()
+        # Validation did NOT run
+        mock_trainer.strategies.calculate_val_loss.assert_not_called()
+
+    def test_both_triggers_fire_independently(self, mock_trainer):
+        """Both triggers firing should call both actions."""
+        self._run_loop_with_triggers(mock_trainer, validation_returns=True, sample_returns=True)
+
+        mock_trainer.strategies.sample_images.assert_called()
+        mock_trainer.strategies.calculate_val_loss.assert_called()
+
+    def test_eval_mode_entered_when_validation_only(self, mock_trainer):
+        """Eval mode should be entered even if only validation triggers."""
+        self._run_loop_with_triggers(mock_trainer, validation_returns=True, sample_returns=False)
+
+        mock_trainer.mode.set_eval.assert_called()
+        mock_trainer.mode.set_train.assert_called()
+
+    def test_neither_trigger_skips_eval_mode(self, mock_trainer):
+        """Neither trigger firing should NOT enter eval mode."""
+        self._run_loop_with_triggers(mock_trainer, validation_returns=False, sample_returns=False)
+
+        mock_trainer.mode.set_eval.assert_not_called()
