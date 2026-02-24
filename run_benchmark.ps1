@@ -223,33 +223,48 @@ $teResource = Extract-ResourceSummary $allOutput "=== TE Caching ==="
 $trainingResource = Extract-ResourceSummary $allOutput "=== Training ==="
 
 # Parse config for key settings - use actual YAML keys
+# Follow Hydra defaults: chain so inherited settings are picked up
 $configSettings = [ordered]@{}
 if (Test-Path $configFile) {
-    $configContent = Get-Content $configFile -Raw
+    # Build combined content: child first, then parent defaults
+    # PowerShell -match returns the first occurrence, so child overrides win
+    $leafContent = Get-Content $configFile -Raw
+    $combinedContent = $leafContent + "`n"
+    
+    # Extract Hydra defaults list and append parent configs as fallback
+    $defaultsMatches = [regex]::Matches($leafContent, '(?m)^\s*-\s+(\w+)\s*$')
+    foreach ($dm in $defaultsMatches) {
+        $parentName = $dm.Groups[1].Value
+        if ($parentName -eq "_self_") { continue }
+        $parentFile = "$projectRoot\configs\$parentName.yaml"
+        if (Test-Path $parentFile) {
+            $combinedContent += (Get-Content $parentFile -Raw) + "`n"
+        }
+    }
     
     # Training settings
-    if ($configContent -match 'train_batch_size:\s*(\d+)') { $configSettings["training.train_batch_size"] = $matches[1] }
-    if ($configContent -match 'gradient_accumulation_steps:\s*(\d+)') { $configSettings["training.gradient_accumulation_steps"] = $matches[1] }
-    if ($configContent -match 'max_train_steps:\s*(\d+)') { $configSettings["training.max_train_steps"] = $matches[1] }
+    if ($combinedContent -match 'train_batch_size:\s*(\d+)') { $configSettings["training.train_batch_size"] = $matches[1] }
+    if ($combinedContent -match 'gradient_accumulation_steps:\s*(\d+)') { $configSettings["training.gradient_accumulation_steps"] = $matches[1] }
+    if ($combinedContent -match 'max_train_steps:\s*(\d+)') { $configSettings["training.max_train_steps"] = $matches[1] }
     
     # Caching settings (all 4)
-    if ($configContent -match 'cache_latents:\s*(true|false)') { $configSettings["data.caching.cache_latents"] = $matches[1] }
-    if ($configContent -match 'cache_latents_to_disk:\s*(true|false)') { $configSettings["data.caching.cache_latents_to_disk"] = $matches[1] }
-    if ($configContent -match 'cache_text_encoder_outputs:\s*(true|false)') { $configSettings["data.caching.cache_text_encoder_outputs"] = $matches[1] }
-    if ($configContent -match 'cache_text_encoder_outputs_to_disk:\s*(true|false)') { $configSettings["data.caching.cache_text_encoder_outputs_to_disk"] = $matches[1] }
-    if ($configContent -match 'vae_batch_size:\s*(\d+)') { $configSettings["data.caching.vae_batch_size"] = $matches[1] }
-    if ($configContent -match 'te_batch_size:\s*(\d+)') { $configSettings["data.caching.te_batch_size"] = $matches[1] }
-    if ($configContent -match 'num_workers:\s*(\d+)') { $configSettings["data.caching.num_workers"] = $matches[1] }
+    if ($combinedContent -match 'cache_latents:\s*(true|false)') { $configSettings["data.caching.cache_latents"] = $matches[1] }
+    if ($combinedContent -match 'cache_latents_to_disk:\s*(true|false)') { $configSettings["data.caching.cache_latents_to_disk"] = $matches[1] }
+    if ($combinedContent -match 'cache_text_encoder_outputs:\s*(true|false)') { $configSettings["data.caching.cache_text_encoder_outputs"] = $matches[1] }
+    if ($combinedContent -match 'cache_text_encoder_outputs_to_disk:\s*(true|false)') { $configSettings["data.caching.cache_text_encoder_outputs_to_disk"] = $matches[1] }
+    if ($combinedContent -match 'vae_batch_size:\s*(\d+)') { $configSettings["data.caching.vae_batch_size"] = $matches[1] }
+    if ($combinedContent -match 'te_batch_size:\s*(\d+)') { $configSettings["data.caching.te_batch_size"] = $matches[1] }
+    if ($combinedContent -match 'num_workers:\s*(\d+)') { $configSettings["data.caching.num_workers"] = $matches[1] }
     
     # Loader settings
-    if ($configContent -match 'prefetch_factor:\s*(\d+)') { $configSettings["data.loader.prefetch_factor"] = $matches[1] }
-    if ($configContent -match 'persistent_workers:\s*(true|false)') { $configSettings["data.loader.persistent_workers"] = $matches[1] }
-    if ($configContent -match 'pin_memory:\s*(true|false)') { $configSettings["data.loader.pin_memory"] = $matches[1] }
+    if ($combinedContent -match 'prefetch_factor:\s*(\d+)') { $configSettings["data.loader.prefetch_factor"] = $matches[1] }
+    if ($combinedContent -match 'persistent_workers:\s*(true|false)') { $configSettings["data.loader.persistent_workers"] = $matches[1] }
+    if ($combinedContent -match 'pin_memory:\s*(true|false)') { $configSettings["data.loader.pin_memory"] = $matches[1] }
     
     # Performance settings
-    if ($configContent -match 'gradient_checkpointing:\s*(true|false)') { $configSettings["performance.memory.gradient_checkpointing"] = $matches[1] }
-    if ($configContent -match 'offload_text_encoders:\s*(true|false)') { $configSettings["performance.memory.offload_text_encoders"] = $matches[1] }
-    if ($configContent -match 'no_half_vae:\s*(true|false)') { $configSettings["performance.precision.no_half_vae"] = $matches[1] }
+    if ($combinedContent -match 'gradient_checkpointing:\s*(true|false)') { $configSettings["performance.memory.gradient_checkpointing"] = $matches[1] }
+    if ($combinedContent -match 'offload_text_encoders:\s*(true|false)') { $configSettings["performance.memory.offload_text_encoders"] = $matches[1] }
+    if ($combinedContent -match 'no_half_vae:\s*(true|false)') { $configSettings["performance.precision.no_half_vae"] = $matches[1] }
 }
 
 # ═══════════════════════════════════════════════════════════════════════════

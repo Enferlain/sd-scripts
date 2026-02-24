@@ -142,6 +142,7 @@ class ResourceTracker:
         self._baseline_allocated: float = 0.0
         self._baseline_reserved: float = 0.0
         self._nvidia_smi_peak: float = 0.0
+        self._cpu_ram_peak: float = 0.0
         self._polling_active: bool = False
         self._poll_thread: threading.Thread | None = None
 
@@ -174,6 +175,7 @@ class ResourceTracker:
 
         self._start_snapshot = self._take_snapshot()
         self._nvidia_smi_peak = self._start_snapshot.gpu_nvidia_smi_mb
+        self._cpu_ram_peak = self._start_snapshot.cpu_ram_mb
 
         # Start background polling thread for nvidia-smi peak detection
         self._polling_active = True
@@ -183,11 +185,18 @@ class ResourceTracker:
         return self
 
     def _poll_nvidia_smi(self) -> None:
-        """Background thread to poll nvidia-smi for peak memory."""
+        """Background thread to poll nvidia-smi and CPU RAM for peak memory."""
         while self._polling_active:
             current = _get_nvidia_smi_memory()
             if current > self._nvidia_smi_peak:
                 self._nvidia_smi_peak = current
+            # CPU RAM polling is cheap (psutil RSS, no subprocess)
+            try:
+                cpu_mb = self._process.memory_info().rss / 1024 / 1024
+                if cpu_mb > self._cpu_ram_peak:
+                    self._cpu_ram_peak = cpu_mb
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
             time.sleep(0.5)  # Poll every 500ms
 
     def _update_nvidia_smi_peak(self) -> None:
@@ -211,6 +220,8 @@ class ResourceTracker:
         # Check if end is a new peak
         if self._end_snapshot.gpu_nvidia_smi_mb > self._nvidia_smi_peak:
             self._nvidia_smi_peak = self._end_snapshot.gpu_nvidia_smi_mb
+        if self._end_snapshot.cpu_ram_mb > self._cpu_ram_peak:
+            self._cpu_ram_peak = self._end_snapshot.cpu_ram_mb
 
         # Ensure start was called
         assert self._start_snapshot is not None, "Must call start() before stop()"
@@ -239,7 +250,7 @@ class ResourceTracker:
             gpu_nvidia_smi_peak_mb=self._nvidia_smi_peak,
             cpu_ram_start_mb=start.cpu_ram_mb,
             cpu_ram_end_mb=end.cpu_ram_mb,
-            cpu_ram_peak_mb=max(start.cpu_ram_mb, end.cpu_ram_mb),  # Approximate
+            cpu_ram_peak_mb=self._cpu_ram_peak,
         )
 
         return self._stats

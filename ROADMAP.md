@@ -103,7 +103,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - `library/training/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 - [ ] **Refactor `register_adapter_state_hooks`** (low priority) - Return a structured object `{"epoch": int, "step": int}` instead of closure + side-effects for cleaner data flow. See AUDIT/2_AUDIT_RESUME_BEHAVIOR.md recommendation #3.
-- [ ] **Remove `[DEBUG]` log statements in `sdxl/training.py`** (low priority) - Several `logger.info(f"[DEBUG] ...")` calls left in `_get_text_cond`. Either remove or change to `logger.debug()`.
+- [ ] **Remove `[DEBUG]` log statements in `sdxl/training.py`** (low priority) - Several `logger.info(f"[DEBUG] ...")` calls left in `_get_text_cond`. Either remove or change to `logger.debug()`. Alternatively, will work with logging config settings.
 
 ---
 
@@ -184,9 +184,9 @@ Neutralized all remaining adapter-specific assumptions in shared code.
 ### Phase 2B: FineTuneMode + SDXL Migration (Future)
 
 - [x] **Guard `set_multiplier` in strategies** — `trainable_model.set_multiplier()` in `sdxl/training.py` and `sd/training.py` guarded with `hasattr(trainable_model, "set_multiplier")`. Non-adapter trainables skip differential output preservation silently.
-- [ ] Create `library/training/modes/finetune_mode.py`
-- [ ] Migrate `scripts/sdxl_finetune.py` to thin entrypoint
-- [ ] Add unit + integration tests
+- [x] Create `library/training/modes/finetune_mode.py`
+- [x] Migrate `scripts/sdxl_finetune.py` to thin entrypoint
+- [x] Add unit + integration tests
 
 ---
 
@@ -251,70 +251,7 @@ See `AUDIT/5_Strategy_Pattern_Boundaries.md` for full context.
   - Sharded manifests by bucket
   - Skip manifest creation if unchanged from previous run
   - Maybe fp8 for te output storage, needs tests
-- [ ] **Smarter resource tracking/management** - This helps with training and also with inference, for example falling back to tiled vae when it would hit resource contraints and such.
-
----
-
-## Future Architecture: Per-Model Directory Structure
-
-**Goal:** Reorganize `library/models/` from flat files to per-model directories for better maintainability as more architectures are added.
-
-**Recent changes:**
-
-- [x] Moved `model_prep.py`, `sd_model_prep.py`, `sdxl_model_prep.py` from `training/` → `models/` (model loading belongs here)
-
-**Key insights:**
-
-- `text_encoder_util.py` is **SDXL-specific** (dual CLIP encoders) → should move to `sdxl/`
-- `model_util.py` VAE functions are **SD/SDXL shared** (same 4-channel VAE architecture) but not generic for Flux (16-channel)
-- No truly "universal" shared folder makes sense - different model families have different architectures
-- Truly generic utilities (e.g., `is_safetensors()`) can stay in a `common.py` or move to `utils/`
-
-Old:
-
-```
-library/models/
-├── model_util.py          # SD/SDXL VAE utils + is_safetensors
-├── model_prep.py          # Generic module patching
-├── sd_model_util.py       # SD1/2 conversion & loading
-├── sd_model_prep.py       # SD model loading
-├── sdxl_model_util.py     # SDXL conversion & loading
-├── sdxl_model_prep.py     # SDXL model loading
-├── sd_original_unet.py    # SD1/2 UNet architecture
-├── sdxl_original_unet.py  # SDXL UNet architecture
-├── text_encoder_util.py   # SDXL text encoder utils (misnamed!)
-└── ...
-```
-
-New structure:
-
-```
-library/models/
-├── sd/
-│   ├── unet.py            # SD UNet architecture (from sd_original_unet.py)
-│   ├── conversion.py      # SD checkpoint conversion (from sd_model_util.py)
-│   ├── loader.py          # SD model loading (from sd_model_prep.py)
-│   └── vae.py             # SD/SDXL shared VAE (same 4-ch architecture)
-├── sdxl/
-│   ├── unet.py            # from sdxl_original_unet.py
-│   ├── conversion.py      # from sdxl_model_util.py
-│   ├── loader.py          # from sdxl_model_prep.py
-│   └── text_encoder.py    # from text_encoder_util.py (SDXL-specific!)
-├── flux/
-│   ├── dit.py
-│   ├── conversion.py
-│   ├── loader.py
-│   └── vae.py
-├── common.py              # Truly generic: is_safetensors(), shave_segments()
-└── __init__.py
-```
-
-**Benefits:**
-
-- Clear separation of concerns per model type
-- Easier to add new architectures without bloating existing files
-- Consistent structure makes navigation predictable
-- No misleading "shared" folder - VAE/common utilities explicit about their scope
+- [ ] **Smarter resource tracking/management** - This helps with training and also with inference, for example falling back to tiled vae when it would hit resource contraints and such. See `docs_design/resource_monitor_plan.md`
 
 ---
 
