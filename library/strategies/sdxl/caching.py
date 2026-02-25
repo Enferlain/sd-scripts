@@ -23,10 +23,10 @@ from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
 from library.strategies.base.caching import TextEncoderOutputsCachingStrategy
 from library.strategies.base.encoding import TextEncodingStrategy
 from library.strategies.base.tokenization import TokenizeStrategy
-from library.utils.common_utils import setup_logging
+
 from library.utils.hash_utils import stable_string_hash
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 # SDXL VAE scale factor (different from SD)

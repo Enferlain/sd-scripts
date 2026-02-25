@@ -19,10 +19,10 @@ if TYPE_CHECKING:
 
 from library.data.caption_processor import CaptionConfig, process_caption
 from library.data.structures import DatasetManifest, EpochManifest, BatchInfo
-from library.utils.common_utils import setup_logging
+
 from library.utils.hash_utils import stable_string_hash
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

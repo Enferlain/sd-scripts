@@ -27,9 +27,8 @@ from library.constants import (
     STEP_STATE_NAME,
     LAST_STATE_NAME,
 )
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

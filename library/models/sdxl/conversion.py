@@ -11,11 +11,11 @@ from diffusers import AutoencoderKL, EulerDiscreteScheduler, UNet2DConditionMode
 
 import library.utils.safetensors_utils
 from library.constants import SDXL_KEY_PREFIX, DIFFUSERS_SDXL_UNET_CONFIG, DIFFUSERS_REF_MODEL_ID_SDXL
-from library.utils.common_utils import setup_logging
+
 from library.models.sdxl import unet as sdxl_unet
 from library.models.sd import vae as vae_util
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

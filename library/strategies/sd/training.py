@@ -34,9 +34,8 @@ from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
 from library.losses.loss_weighting import apply_masked_loss
 from library.config.config_validation import validate_sd_peft
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

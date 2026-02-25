@@ -101,5 +101,5 @@ def setup_logging(args=None, log_level=None, reset=False):
 
 
 # Module-level logger
-setup_logging()
+
 logger = logging.getLogger(__name__)

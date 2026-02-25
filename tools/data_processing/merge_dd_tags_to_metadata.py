@@ -7,9 +7,8 @@ from pathlib import Path
 from tqdm import tqdm
 
 from library.data.image_utils import glob_images_pathlib
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

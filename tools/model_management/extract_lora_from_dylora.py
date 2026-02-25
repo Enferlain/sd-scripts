@@ -10,10 +10,10 @@ import logging
 from safetensors.torch import load_file, save_file, safe_open
 
 import library.utils.safetensors_utils
-from library.utils.common_utils import setup_logging
+
 from library.utils.hash_utils import precalculate_safetensors_hashes
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

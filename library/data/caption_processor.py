@@ -21,9 +21,8 @@ from pathlib import Path
 
 from library.data.structures import DatasetManifest
 from library.data.image_utils import CAPTION_EXTENSIONS
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

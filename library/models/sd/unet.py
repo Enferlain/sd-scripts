@@ -111,7 +111,7 @@ from torch.nn import functional as F
 from einops import rearrange
 from types import SimpleNamespace
 
-from library.utils.common_utils import setup_logging, exists
+from library.utils.common_utils import exists
 
 from library.constants import (
     NORM_GROUPS,
@@ -131,7 +131,7 @@ from library.constants import (
     EPSILON,
 )
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

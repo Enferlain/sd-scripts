@@ -20,9 +20,8 @@ from library.data.caption_processor import _parse_tags
 from library.data.structures import DatasetManifest, CacheEntry, Bucket, EpochManifest, BatchInfo
 from library.data.image_utils import generate_image_id
 from library.data.scanners import ScannedImage, scan_directory, scan_metadata_file
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 
@@ -429,11 +428,15 @@ def get_or_create_manifest(
                         f"(hash: {current_hash[:8]}...)"
                     )
 
-                    # Load validation manifest if exists
+                    # Load validation manifest only when split is active
                     val_manifest = None
-                    if val_manifest_path.exists():
+                    if validation_split > 0 and val_manifest_path.exists():
                         val_manifest = load_dataset_manifest(val_manifest_path)
                         logger.info(f"Loaded validation manifest: {val_manifest.image_count} images")
+                    elif val_manifest_path.exists():
+                        # Stale val manifest from a previous run with validation enabled — clean up
+                        val_manifest_path.unlink()
+                        logger.info("Removed stale val_manifest.json (validation_split is 0)")
 
                     return existing, val_manifest
             else:

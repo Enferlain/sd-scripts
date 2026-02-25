@@ -6,9 +6,8 @@ import torch
 import transformers
 
 from library.config.dataclasses.optimizer import OptimizerConfig, LearningRatesConfig, SchedulerConfig
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

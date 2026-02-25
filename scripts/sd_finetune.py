@@ -17,7 +17,7 @@ import library.strategies.sd.encoding
 import library.strategies.sd.tokenization
 from library.performance import deepspeed_utils
 from library.utils.device_utils import init_ipex, clean_memory_on_device
-from library.utils.common_utils import setup_logging
+
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.config.config_util import BlueprintGenerator, generate_dataset_group_by_blueprint
 from library.data._deprecated.dataset_utils import load_arbitrary_dataset, collator_class, debug_dataset
@@ -49,7 +49,7 @@ from library.losses.loss_weighting import (
 
 init_ipex()
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

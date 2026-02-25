@@ -31,12 +31,12 @@ from library.training.checkpointing import (
 from library.training.sample_generation import sample_images_check
 from library.training.trainer_utils import determine_grad_sync_context
 from library.training.phases.validation import ValidationStepContext
-from library.utils.common_utils import setup_logging
+
 
 if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

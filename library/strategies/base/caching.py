@@ -11,9 +11,8 @@ from library.data._deprecated.data_structures import ImageInfo
 
 from library.strategies.base.encoding import TextEncodingStrategy
 from library.strategies.base.tokenization import TokenizeStrategy
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

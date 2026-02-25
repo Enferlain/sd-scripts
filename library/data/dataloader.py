@@ -13,9 +13,8 @@ from torch.utils.data import IterableDataset, DataLoader
 
 from library.data.structures import DatasetManifest, EpochManifest, CacheEntry, BatchInfo
 from library.data.caching_engine import CachingStrategy
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

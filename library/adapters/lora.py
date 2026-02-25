@@ -13,11 +13,11 @@ from diffusers import AutoencoderKL
 from transformers import CLIPTextModel
 
 from library.config.dataclasses.optimizer import LearningRatesConfig
-from library.utils.common_utils import setup_logging
+
 from library.models.sdxl.unet import SdxlUNet2DConditionModel
 from library.utils.hash_utils import precalculate_safetensors_hashes
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 RE_UPDOWN = re.compile(r"(up|down)_blocks_(\d+)_(resnets|upsamplers|downsamplers|attentions)_(\d+)_")

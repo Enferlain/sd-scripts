@@ -15,8 +15,8 @@ class ValidationConfig:
     )
 
     # Validation scheduling
-    run_at_start: bool = field(default=True, metadata={"help": "Run validation at training start (step 0)"})
-    run_at_end: bool = field(default=True, metadata={"help": "Run validation at training end"})
+    run_at_start: bool = field(default=False, metadata={"help": "Run validation at training start (step 0)"})
+    run_at_end: bool = field(default=False, metadata={"help": "Run validation at training end"})
     validate_every_n_steps: int | None = field(default=None, metadata={"help": "Run validation on validation dataset every N steps"})
     validate_every_n_epochs: int | None = field(default=None, metadata={"help": "Run validation on validation dataset every N epochs"})
 

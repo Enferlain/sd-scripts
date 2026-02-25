@@ -8,12 +8,12 @@ from torch import nn
 from torch.nn import functional as F
 
 from library.constants import ADM_SDXL_IN_CHANNELS
-from library.utils.common_utils import setup_logging
+
 from library.models.sdxl import unet
 
 from library.models.sdxl.conversion import convert_sdxl_unet_state_dict_to_diffusers, convert_diffusers_unet_state_dict_to_sdxl
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

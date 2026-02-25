@@ -6,9 +6,7 @@ import cv2
 
 from PIL import Image
 
-from library.utils.common_utils import setup_logging
 
-setup_logging()
 logger = logging.getLogger(__name__)
 
 # Caption file extensions to try, in priority order

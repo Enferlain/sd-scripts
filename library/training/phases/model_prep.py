@@ -15,9 +15,7 @@ import torch
 if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
 
-from library.utils.common_utils import setup_logging
 
-setup_logging()
 logger = logging.getLogger(__name__)
 
 

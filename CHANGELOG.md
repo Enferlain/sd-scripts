@@ -20,8 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Persisted `ss_run_validation_at_start` and `ss_run_validation_at_end` in training metadata
 - Print `val_loss` and `avg` to console after each validation run (previously only logged to TensorBoard/W&B)
 - 26 new unit tests (21 scheduler trigger matrix + 5 decoupling assertions)
+- **Logging Phase 0: Correctness Patches** — 12 new unit tests in `tests/unit/logging/test_step_logging.py`:
+  - LR key uniqueness (single group, TE+UNet, multi-TE, custom descriptions)
+  - W&B run name retention through `init_trackers` kwargs merge
 
 ### Changed
+
+- **`generate_step_logs` `lr_descriptions` is now required** — Removed dead fallback naming logic and unused `should_train_text_encoder` import. All callers already provide explicit descriptions
+- **Removed import-time `setup_logging()` from all library modules** — Single bootstrap point now in `Trainer.__init__()` (line 214). Script entrypoints keep their own calls. Modules only declare `logger = logging.getLogger(__name__)`
 
 - **Validation and sampling are now decoupled** — eval-mode block enters once if either trigger fires, but each action executes independently
 - Removed internal schedule checks from `SdTrainingStrategy.calculate_val_loss()` and `SdxlTrainingStrategy.calculate_val_loss()` — caller now owns the scheduling decision
@@ -32,6 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Manifest cache hash didn't include `validation_split`/`validation_seed`** — switching between configs with different validation splits silently reused the cached manifest, resulting in no validation data
 - **Device mismatch in `process_val_batch`** (SD and SDXL) — `total_loss` was initialized on CPU while loss tensors are on CUDA, causing `RuntimeError` during validation
+- **Duplicate LR metric emission** — `generate_step_logs` used a `for...else` construct where the `else` block always executed (nothing `break`s), writing overlapping LR keys to trackers every step. Removed the `else` block
+- **LR index math** — Fallback LR naming gave wrong labels when TE is trained (`textencoder` was never assigned; all groups got `unet`). Fixed index formula to `i - (1 if train_te else 0)` and adjusted group-naming threshold
+- **`init_trackers` `wandb_run_name` overwrite** — `log_tracker_config` replaced `init_kwargs` entirely, dropping `wandb_run_name`. Now deep-merges on top of existing kwargs
+- **Pre-existing test bugs** — 4 `TestInitTrackers` tests in `test_training_trainer_utils.py` passed the wrong type (full config instead of `LoggingConfig`) to `init_trackers`, silently passing due to `hasattr` guards
+- **Validation defaults implied enabled** — `run_at_start` and `run_at_end` defaulted to `True` in both `ValidationConfig` and `configs/validation/default.yaml`, causing validation to execute when stale `val_manifest.json` existed on disk. Changed defaults to `False` (validation is now opt-in)
+- **Stale `val_manifest.json` loading** — `get_or_create_manifest` loaded cached validation manifests even when `validation_split` was `0.0`. Now guards on `validation_split > 0` and cleans up stale files
 
 ## [2026-02-23]
 

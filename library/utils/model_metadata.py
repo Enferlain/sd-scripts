@@ -11,7 +11,7 @@ import safetensors
 
 from dataclasses import dataclass, field, asdict, is_dataclass
 
-from library.utils.common_utils import setup_logging
+
 from library.config.dataclasses.output import MetadataConfig
 from library.constants import (
     SS_METADATA_KEY_ADAPTER_MODULE,
@@ -23,7 +23,7 @@ from library.constants import (
 )
 # Type hints only to avoid circular imports if possible, though these are dataclasses so distinct modules usually fine
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

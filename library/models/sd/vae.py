@@ -10,7 +10,7 @@ from diffusers import AutoencoderKL  # , UNet2DConditionModel
 from safetensors.torch import load_file
 
 from library.models.conversion_utils import shave_segments
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import init_ipex
 from library.utils.safetensors_utils import is_safetensors
 
@@ -28,7 +28,7 @@ from library.constants import (
 
 init_ipex()
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

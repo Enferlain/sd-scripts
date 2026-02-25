@@ -6,7 +6,7 @@ from diffusers import AutoencoderKL, DDIMScheduler, StableDiffusionPipeline
 from safetensors.torch import load_file, save_file
 from transformers import CLIPTextConfig, CLIPTextModel, CLIPTokenizer
 
-from library.utils.common_utils import setup_logging
+
 from library.models.sd.unet import UNet2DConditionModel
 from library.constants import (
     DIFFUSERS_REF_MODEL_ID_V2,
@@ -33,7 +33,7 @@ from library.models.sd.vae import (
 from library.models.conversion_utils import shave_segments, renew_attention_paths, renew_resnet_paths
 from library.utils.safetensors_utils import is_safetensors
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

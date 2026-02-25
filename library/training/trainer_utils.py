@@ -20,9 +20,8 @@ from library.config.dataclasses.performance import (
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.logging.step_logging import append_lr_to_logs_with_names
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

@@ -25,8 +25,8 @@ from library.training.phases.validation import (
 class MockValidationConfig:
     """Minimal stand-in for ValidationConfig with same fields."""
 
-    run_at_start: bool = True
-    run_at_end: bool = True
+    run_at_start: bool = False
+    run_at_end: bool = False
     validate_every_n_steps: int | None = None
     validate_every_n_epochs: int | None = None
     max_validation_steps: int | None = None

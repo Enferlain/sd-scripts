@@ -14,7 +14,7 @@ from tools.data_processing.cache_latents import set_tokenize_strategy
 from library.utils.torch_utils import set_seed_from_config, prepare_dtype, str_to_dtype
 from library.utils import config_util
 from library.utils.config_util import ConfigSanitizer, BlueprintGenerator
-from library.utils.common_utils import setup_logging, add_logging_arguments
+from library.utils.common_utils import add_logging_arguments
 from library.data._deprecated.dataset import load_arbitrary_dataset
 from library.models.sdxl.loader import load_target_model as load_target_model_sdxl
 
@@ -37,7 +37,7 @@ from library.config.arguments import (
 # )
 # import library.utils.sai_model_spec as sai_model_spec
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

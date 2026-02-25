@@ -14,10 +14,10 @@ from tqdm import tqdm
 
 import library.models.sd.conversion
 from library.adapters import lora
-from library.utils.common_utils import setup_logging
+
 from library.utils import sai_model_spec
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 # CLAMP_QUANTILE = 0.99

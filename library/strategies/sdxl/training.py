@@ -35,12 +35,12 @@ from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 
 from library.config.config_validation import validate_sdxl_peft
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import clean_memory_on_device
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
 from library.losses.loss_weighting import apply_masked_loss
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

@@ -33,11 +33,11 @@ from torch import nn
 from torch.nn import functional as F
 from einops import rearrange
 
-from library.utils.common_utils import setup_logging, exists
+from library.utils.common_utils import exists
 
 from library.constants import SDXL_TIME_EMBED_DIM, SDXL_IN_CHANNELS, SDXL_OUT_CHANNELS, SDXL_MODEL_CHANNELS, ADM_SDXL_IN_CHANNELS, EPSILON
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 USE_REENTRANT = True

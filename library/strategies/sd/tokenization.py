@@ -6,9 +6,8 @@ from transformers import CLIPTokenizer
 from library.constants import V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
 from library.strategies.base.tokenization import TokenizeStrategy
 import logging
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

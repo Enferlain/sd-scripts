@@ -6,9 +6,8 @@ from pathlib import Path
 from library.constants import IMAGE_EXTENSIONS
 from library.data.caption_processor import read_caption
 from library.data.image_utils import get_image_size, check_has_alpha
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

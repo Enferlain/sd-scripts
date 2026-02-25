@@ -197,23 +197,37 @@ Neutralized all remaining adapter-specific assumptions in shared code.
   - Suggested: Split into `compute_accelerator_config() -> AcceleratorConfig` (pure) and `prepare_accelerator(config)` (side effects)
   - Benefits: Easier to test config logic without network calls or filesystem changes
 
-- [ ] **Explicit step 0 validation** - Clarify `calculate_val_loss_check` behavior at step 0
-  - Current logic: `if global_step != 0 and ...` skips the check at step 0, implicitly returning `True`
-  - This means validation always runs at step 0, but it's easy to miss in the code
-  - Suggested: Add explicit early return `if global_step == 0: return True` with comment, or add `validate_at_start` config flag
+- [x] **Explicit step 0 validation** — Resolved by `ValidationScheduler` with `run_at_start`/`run_at_end` config flags and `calculate_val_loss_check()` deletion
 
 ---
 
-## Validation Refactoring
+## Logging Improvements
 
-See `AUDIT/5_Strategy_Pattern_Boundaries.md` for full context.
+See `docs_design/log_implementation_plan_v2.md` for full design.
 
-- [ ] **Move validation loop to Trainer** - `SdxlTrainingStrategy.calculate_val_loss()` currently owns the entire validation loop (dataloader iteration, tqdm, RNG state). This is orchestration that belongs in the Trainer.
-  - Refactor: Extract loop to `Trainer` (or `phases/validation.py`)
-  - Reduce strategy method to `process_val_batch(batch)` for single-batch loss computation
-- [ ] **Fix `calculate_val_loss` return type mismatch** - SD returns `tuple[float | None, float | None, dict | None]` (3 values) but base ABC declares `tuple[float | None, float | None]` (2 values). Resolve when validation is reworked.
-- [ ] **Add missing ABC definitions** - `TrainingStrategy` ABC is missing `process_batch` and `calculate_val_loss`/`process_val_batch`. Trainer calls them dynamically, bypassing type safety.
-- [ ] **Rename `_log_training_info`** - Currently initializes noise scheduler, plotters, trackers (setup concerns), not just logging. Rename to `_finalize_setup` or move initialization to proper phase.
+### Phase 0: Correctness Patches (✅ Complete)
+
+- [x] Fix `for...else` duplicate LR metric emission in `generate_step_logs`
+- [x] Fix LR index math for fallback naming (`textencoder` / `unet` / `group{n}`)
+- [x] Fix `init_trackers` kwargs merge — deep-merge `log_tracker_config` instead of replacing
+- [x] Simplify `hasattr` guards (LoggingConfig is a known dataclass)
+- [x] 12 new unit tests (`tests/unit/logging/test_step_logging.py`)
+- [x] Fix 4 pre-existing `TestInitTrackers` tests passing wrong type to `init_trackers`
+
+### Phase 1: Logging Initialization Cleanup (✅ Complete)
+
+- [x] Remove import-time `setup_logging()` calls from 48 library modules
+- [x] Single bootstrap point: `Trainer.__init__()` line 214; script entrypoints keep own calls
+
+### Phase 2: Output Consistency (Future)
+
+- [ ] Rank-aware console helpers for main-process vs all-process messages
+- [ ] Convert key startup messages to consistent style
+
+### Phase 3: Tracker Volume Control (Future)
+
+- [ ] Add `log_every_n_steps` to `LoggingConfig` (default `1`)
+- [ ] Gate tracker emission by interval
 
 ---
 

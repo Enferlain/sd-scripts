@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from diffusers import DDPMScheduler
 from typing import Any
 
-from library.utils.common_utils import setup_logging
+
 from library.optimizers.optimizer_utils import should_train_text_encoder, should_train_unet
 from library.training.noise_utils import (
     prepare_scheduler_for_custom_training,
@@ -24,7 +24,7 @@ from library.losses.loss_weighting import (
     apply_debiased_estimation,
 )
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

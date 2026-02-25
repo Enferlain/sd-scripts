@@ -14,12 +14,12 @@ from torch import nn
 from tqdm import tqdm
 from PIL import Image
 
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import init_ipex, get_preferred_device
 
 init_ipex()
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

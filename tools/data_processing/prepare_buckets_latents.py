@@ -12,7 +12,7 @@ from torchvision import transforms
 
 import library.models.sd.vae as model_util
 
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import init_ipex, get_preferred_device
 from library.data._deprecated.caching import cache_batch_latents, is_disk_cached_latents_is_expected
 from library.data._deprecated.data_structures import BucketManager, ImageInfo
@@ -21,7 +21,7 @@ from library.data.image_utils import glob_images_pathlib
 
 init_ipex()
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 DEVICE = get_preferred_device()

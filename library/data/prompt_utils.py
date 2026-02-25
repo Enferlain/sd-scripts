@@ -7,9 +7,8 @@ import logging
 
 
 from library.constants import re_attention
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

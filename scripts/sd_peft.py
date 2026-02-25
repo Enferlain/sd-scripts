@@ -35,7 +35,7 @@ import library.utils.huggingface_util as huggingface_util
 
 from library.config.config_validation import prepare_config, validate_config
 from library.performance import deepspeed_utils
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.models.runtime_utils import patch_accelerator_for_fp16_training
@@ -89,7 +89,7 @@ except ImportError:
 
 init_ipex()
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

@@ -25,6 +25,7 @@ import library.strategies.base.encoding
 from library.performance import deepspeed_utils
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging
+
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.data import create_manifest_from_config, get_or_create_manifest, DatasetManifest, Bucket
 
@@ -34,7 +35,7 @@ if TYPE_CHECKING:
     from library.strategies.base.training import TrainingStrategy
     from library.training.modes.base import TrainingMode
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

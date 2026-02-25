@@ -11,9 +11,8 @@ from library.config.dataclasses.peft import PeftConfig
 from library.utils.device_utils import synchronize_device
 from library.performance.fp8_optimization_utils import load_safetensors_with_fp8_optimization
 from library.utils.safetensors_utils import MemoryEfficientSafeOpen
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

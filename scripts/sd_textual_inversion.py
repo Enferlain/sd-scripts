@@ -21,7 +21,7 @@ import library.utils.huggingface_util as huggingface_util
 
 from library.utils import model_metadata
 from library.utils.torch_utils import prepare_dtype, set_seed_from_config
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import init_ipex, clean_memory_on_device
 from library.data._deprecated.prompt_templates import (
     imagenet_templates_small,
@@ -86,7 +86,7 @@ from library.losses.loss_weighting import (
 
 init_ipex()
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

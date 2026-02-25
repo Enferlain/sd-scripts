@@ -17,11 +17,11 @@ import matplotlib.pyplot as plt
 
 plt.ioff()  # Explicitly turn off interactive mode
 
-from library.utils.common_utils import setup_logging  # noqa: E402
+# noqa: E402
 from library.optimizers.scheduler import get_dummy_scheduler  # noqa: E402
 from library.losses import edm2_loss  # noqa: E402
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

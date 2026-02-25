@@ -7,10 +7,10 @@ from accelerate import DeepSpeedPlugin
 from library.config.dataclasses.data import LoaderConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.performance import DeepSpeedConfig, PrecisionConfig
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import get_preferred_device
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

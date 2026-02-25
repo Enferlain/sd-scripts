@@ -13,7 +13,7 @@ import library.config.config_util as config_util
 from library.constants import SDXL_VAE_LATENT_SCALE
 from library.models.sdxl.conversion import get_size_embeddings
 from library.utils.device_utils import init_ipex, clean_memory_on_device
-from library.utils.common_utils import setup_logging
+
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.performance import deepspeed_utils
 from library.models.sdxl.unet import SdxlUNet2DConditionModel
@@ -48,7 +48,7 @@ from library.training.noise_utils import fix_noise_scheduler_betas_for_zero_term
 
 init_ipex()
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 UNET_NUM_BLOCKS_FOR_BLOCK_LR = 23

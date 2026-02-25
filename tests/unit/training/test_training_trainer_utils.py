@@ -324,7 +324,7 @@ class TestInitTrackers:
 
     def test_calls_init_trackers_on_main_process(self, mock_accelerator, mock_cfg):
         """Test that init_trackers is called when is_main_process=True."""
-        init_trackers(mock_accelerator, mock_cfg, "test_tracker")
+        init_trackers(mock_accelerator, mock_cfg.logging, "test_tracker")
 
         mock_accelerator.init_trackers.assert_called_once()
 
@@ -332,13 +332,13 @@ class TestInitTrackers:
         """Test that init_trackers is skipped on non-main process."""
         mock_accelerator.is_main_process = False
 
-        init_trackers(mock_accelerator, mock_cfg, "test_tracker")
+        init_trackers(mock_accelerator, mock_cfg.logging, "test_tracker")
 
         mock_accelerator.init_trackers.assert_not_called()
 
     def test_uses_default_tracker_name(self, mock_accelerator, mock_cfg):
         """Test that default tracker name is used when not specified."""
-        init_trackers(mock_accelerator, mock_cfg, "default_name")
+        init_trackers(mock_accelerator, mock_cfg.logging, "default_name")
 
         call_args = mock_accelerator.init_trackers.call_args[0]
         assert call_args[0] == "default_name"
@@ -361,14 +361,10 @@ class TestInitTrackers:
             wandb_run_name: str = None
             log_tracker_config: dict = None
             log_tracker_name: str = None
-
-        @dataclass
-        class MockConfig:
-            logging: MockLogging = None
             wandb_api_key: str = None
             huggingface_token: str = None
 
-        cfg = MockConfig(logging=MockLogging(), wandb_api_key="secret_key", huggingface_token="another_secret")
+        cfg = MockLogging(wandb_api_key="secret_key", huggingface_token="another_secret")
 
         init_trackers(mock_accelerator, cfg, "test")
 

@@ -9,12 +9,12 @@ from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.performance import PrecisionConfig
 from library.config.dataclasses.output import SavingConfig
 
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import init_ipex  # Required for Intel GPU support
 
 init_ipex()  # Initialize IPEX early for Intel GPU patching
 
-setup_logging()  # Initialize logging before module-level logger
+# Initialize logging before module-level logger
 logger = logging.getLogger(__name__)
 
 

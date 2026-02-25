@@ -19,12 +19,12 @@ from library.config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
 from library.strategies.sdxl.training import SdxlTrainingStrategy
 from library.training.runners.trainer import Trainer
 from library.training.modes import FineTuneMode
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import init_ipex
 
 init_ipex()
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

@@ -21,9 +21,8 @@ from torch import nn
 
 from library.config.dataclasses.optimizer import LearningRatesConfig
 from library.utils.hash_utils import precalculate_safetensors_hashes
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

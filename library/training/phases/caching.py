@@ -14,13 +14,13 @@ from typing import TYPE_CHECKING
 from tqdm import tqdm
 
 from library.data import CachingEngine
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import clean_memory_on_device
 
 if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

@@ -14,11 +14,11 @@ from tqdm import tqdm
 from transformers import CLIPTextModel
 
 from library.utils.device_utils import init_ipex, get_preferred_device
-from library.utils.common_utils import setup_logging
+
 
 init_ipex()
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

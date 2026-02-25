@@ -23,12 +23,12 @@ from torch import nn
 from library.optimizers.optimizer_factory import get_optimizer
 from library.optimizers.optimizer_utils import get_optimizer_train_eval_fn
 from library.performance import deepspeed_utils
-from library.utils.common_utils import setup_logging
+
 
 if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

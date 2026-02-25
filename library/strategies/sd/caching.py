@@ -21,10 +21,10 @@ from library.data._deprecated.data_structures import ImageInfo
 from library.data.caching_engine import CachingStrategy
 from library.data.structures import CacheData, CacheEntry
 from library.strategies.base.caching import LatentsCachingStrategy
-from library.utils.common_utils import setup_logging
+
 from library.utils.device_utils import clean_memory_on_device
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 # SD VAE scale factor (used in latent space)

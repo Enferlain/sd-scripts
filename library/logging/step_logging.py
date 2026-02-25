@@ -3,7 +3,6 @@ from accelerate import Accelerator
 from omegaconf import OmegaConf
 
 from library.config.dataclasses.output import LoggingConfig
-from library.optimizers.optimizer_utils import should_train_text_encoder
 
 
 def generate_step_logs(
@@ -11,7 +10,7 @@ def generate_step_logs(
     current_loss,
     avr_loss,
     lr_scheduler,
-    lr_descriptions,
+    lr_descriptions: list[str],
     la_sampler=None,
     optimizer=None,
     keys_scaled=None,
@@ -49,47 +48,17 @@ def generate_step_logs(
 
     lrs = lr_scheduler.get_last_lr()
 
-    # Check if TE is being trained (LR-based)
-    train_te = should_train_text_encoder(cfg.optimizer.learning_rates)
-
     for i, lr in enumerate(lrs):
-        if lr_descriptions is not None:
-            lr_desc = lr_descriptions[i]
-        else:
-            idx = i - (0 if not train_te else -1)
-            if idx == -1:
-                lr_desc = "textencoder"
-            else:
-                if len(lrs) > 2:
-                    lr_desc = f"group{idx}"
-                else:
-                    lr_desc = "unet"
+        lr_desc = lr_descriptions[i]
 
         logs[f"lr/{lr_desc}"] = lr
 
-        if cfg.optimizer.optimizer_type.lower().startswith("DAdapt".lower()) or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower():
+        if cfg.optimizer.optimizer_type.lower().startswith("dadapt") or cfg.optimizer.optimizer_type.lower() == "prodigy":
             logs[f"lr/d*lr/{lr_desc}"] = (
                 lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
             )
-        if cfg.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None:
+        if cfg.optimizer.optimizer_type.lower().endswith("prodigyplusschedulefree") and optimizer is not None:
             logs["lr/d*lr"] = optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
-    else:
-        idx = 0
-        if train_te:
-            logs["lr/textencoder"] = float(lrs[0])
-            idx = 1
-
-        for i in range(idx, len(lrs)):
-            logs[f"lr/group{i}"] = float(lrs[i])
-            if (
-                cfg.optimizer.optimizer_type.lower().startswith("DAdapt".lower())
-                or cfg.optimizer.optimizer_type.lower() == "Prodigy".lower()
-            ):
-                logs[f"lr/d*lr/group{i}"] = (
-                    lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
-                )
-            if cfg.optimizer.optimizer_type.lower().endswith("ProdigyPlusScheduleFree".lower()) and optimizer is not None:
-                logs[f"lr/d*lr/group{i}"] = optimizer.param_groups[i]["d"] * optimizer.param_groups[i]["lr"]
 
     if edm2_lr_scheduler is not None:
         logs["lr/edm2"] = edm2_lr_scheduler.get_last_lr()[0]
@@ -170,10 +139,14 @@ def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, defau
     """
     if accelerator.is_main_process:
         init_kwargs = {}
-        if hasattr(logging_config, "wandb_run_name") and logging_config.wandb_run_name:
-            init_kwargs["wandb"] = {"name": logging_config.wandb_run_name}
-        if hasattr(logging_config, "log_tracker_config") and logging_config.log_tracker_config is not None:
-            init_kwargs = logging_config.log_tracker_config
+        if logging_config.wandb_run_name:
+            init_kwargs.setdefault("wandb", {})["name"] = logging_config.wandb_run_name
+        if logging_config.log_tracker_config:
+            for key, val in logging_config.log_tracker_config.items():
+                if isinstance(val, dict) and isinstance(init_kwargs.get(key), dict):
+                    init_kwargs[key].update(val)
+                else:
+                    init_kwargs[key] = val
 
         # sanitize config for logging - convert to dict if needed
         if hasattr(logging_config, "__dataclass_fields__"):
@@ -189,11 +162,7 @@ def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, defau
                 if key in config_to_log:
                     config_to_log[key] = "*****"
 
-        tracker_name = (
-            logging_config.log_tracker_name
-            if hasattr(logging_config, "log_tracker_name") and logging_config.log_tracker_name
-            else default_tracker_name
-        )
+        tracker_name = logging_config.log_tracker_name if logging_config.log_tracker_name else default_tracker_name
 
         # Sanitize config values for TensorBoard hparams (only accepts int, float, str, bool, Tensor)
         # Need to flatten nested dicts to dot-notation keys

@@ -11,11 +11,11 @@ from torch.optim import Optimizer
 from library.config.dataclasses.optimizer import OptimizerConfig, LearningRatesConfig
 from library.config.dataclasses.peft import PeftConfig
 from library.constants import int_pattern, float_pattern
-from library.utils.common_utils import setup_logging
+
 
 from library.optimizers.optimizer_factory import get_optimizer
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

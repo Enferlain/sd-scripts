@@ -18,9 +18,8 @@ from PIL import Image
 from tqdm import tqdm
 
 from library.data.structures import CacheData, CacheEntry, DatasetManifest
-from library.utils.common_utils import setup_logging
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

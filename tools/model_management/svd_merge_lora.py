@@ -12,12 +12,12 @@ from tqdm import tqdm
 
 from library.constants import SS_METADATA_KEY_V2, SS_METADATA_KEY_BASE_MODEL_VERSION
 from library.utils import sai_model_spec
-from library.utils.common_utils import setup_logging
+
 
 from library.training.checkpointing import load_metadata_from_safetensors, build_minimum_adapter_metadata
 from library.utils.hash_utils import precalculate_safetensors_hashes
 
-setup_logging()
+
 logger = logging.getLogger(__name__)
 
 CLAMP_QUANTILE = 0.99

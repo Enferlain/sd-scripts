@@ -3,9 +3,7 @@ from typing import Any
 import torch
 import logging
 
-from library.utils.common_utils import setup_logging
 
-setup_logging()
 logger = logging.getLogger(__name__)
 
 
