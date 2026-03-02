@@ -81,6 +81,14 @@ def prepare_config(cfg) -> None:
         logger.warning("sample_every_n_steps <= 0, disabling")
         cfg.output.sampling.sample_every_n_steps = None
 
+    # Logging: normalize invalid tracker emission cadence
+    try:
+        if cfg.output.logging.log_every_n_steps <= 0:
+            logger.warning(f"log_every_n_steps={cfg.output.logging.log_every_n_steps} <= 0, defaulting to 1")
+            cfg.output.logging.log_every_n_steps = 1
+    except AttributeError:
+        pass  # Field not present in partial config
+
     # Validation: normalize invalid cadence values
     if hasattr(cfg, "validation") and cfg.validation is not None:
         if cfg.validation.validate_every_n_steps is not None and cfg.validation.validate_every_n_steps <= 0:

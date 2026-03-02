@@ -1,8 +1,7 @@
 """
-SD1.5/2 PEFT (LoRA/LyCORIS) Training Script
+SDXL PEFT (LoRA/LyCORIS) Training Script
 
-This script contains the complete training loop for SD1.5/2 PEFT training.
-The training logic was previously in library/training/trainer.py.
+This script contains the complete training loop for SDXL PEFT training.
 
 Structure:
 - train() function: The main training loop
@@ -17,6 +16,7 @@ import gc
 import importlib
 import math
 import os
+from pathlib import Path
 import sys
 import random
 import time
@@ -43,12 +43,24 @@ from library.optimizers.optimizer_utils import prepare_optimizer
 from library.optimizers.scheduler import get_scheduler_fix
 from library.training.sample_generation import sample_images_check
 from library.losses.loss import EMARecorder
-from library.config.dataclasses.sd_peft import SDPeftConfig
-from library.strategies.sd.training import SdTrainingStrategy
+from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
+from library.strategies.sdxl.training import SdxlTrainingStrategy
 from library.adapters.lora_utils import resolve_adapter_kwargs
 from library.training.training_metadata import create_training_metadata
 from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
-from library.data._deprecated.dataset_setup import prepare_datasets
+from library.data import (
+    CaptionConfig,
+    CachingEngine,
+    create_training_dataloader,
+    prepare_epoch,
+    prepare_validation_epoch,
+    create_manifest_from_config,
+    get_or_create_manifest,
+)
+from library.strategies.sdxl.caching import (
+    SdxlLatentsPipelineStrategy,
+    SdxlTextEncoderPipelineStrategy,
+)
 
 from library.timesteps.timestep_utils import (
     init_timestep_sampler,
@@ -77,7 +89,7 @@ from library.training.trainer_utils import (
     calculate_val_loss_check,
     prepare_accelerator,
     determine_grad_sync_context,
-    calculate_initial_step,
+    # calculate_initial_step - replaced by inline logic for per-epoch DataLoader
 )
 
 from library.losses.edm2_loss_utils import prepare_edm2_loss_weighting, plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
@@ -85,7 +97,7 @@ from library.losses.edm2_loss_utils import prepare_edm2_loss_weighting, plot_edm
 try:
     import matplotlib.pyplot as plt
 except ImportError:
-    plt = None
+    plt = None  # type: ignore[assignment]
 
 init_ipex()
 
@@ -93,7 +105,7 @@ init_ipex()
 logger = logging.getLogger(__name__)
 
 
-def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
+def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
     strategies.la_sampler = None
 
     session_id = random.randint(0, 2**32)
@@ -103,9 +115,12 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed, cfg.data.loader)
     setup_logging(cfg.output.logging, reset=True)
 
+    # Validate required config fields
+    if not cfg.output.saving.save_model_as:
+        raise ValueError("save_model_as must be specified (safetensors, ckpt, or diffusers)")
+
     cache_latents = cfg.data.caching.cache_latents
     use_dreambooth_method = cfg.data.source.in_json is None
-    use_user_config = cfg.data.source.dataset_config is not None
 
     set_seed_from_config(cfg.training)
 
@@ -117,13 +132,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     latents_caching_strategy = strategies.get_latents_caching_strategy(cfg)
     library.strategies.base.caching.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
-    # Prepare datasets
-    dataset_result = prepare_datasets(cfg, strategies)
-    if dataset_result is None:
-        return  # debug_dataset mode or no data found
-    train_dataset_group, val_dataset_group, collator, current_epoch, current_step = dataset_result
-
-    # acceleratorを準備する
+    # Prepare accelerator first (needed for distributed caching)
     logger.info("preparing accelerator")
     accelerator = prepare_accelerator(
         cfg.performance.precision,
@@ -134,6 +143,67 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
         cfg.training,
     )
     is_main_process = accelerator.is_main_process
+
+    # Track current epoch/step for checkpointing
+    # Use SimpleNamespace as fallback since the code accesses .value attribute
+    from types import SimpleNamespace
+
+    current_epoch = getattr(accelerator.state, "epoch", None) or SimpleNamespace(value=0)
+    current_step = getattr(accelerator.state, "step", None) or SimpleNamespace(value=0)
+
+    # Create dataset manifest using new pipeline (Phase B) - with persistence/reuse
+    logger.info("Preparing dataset manifest")
+    latent_dtype = "fp32" if cfg.performance.precision.no_half_vae else "fp16"
+    cache_dir = cfg.data.caching.cache_dir or cfg.data.source.train_data_dir
+
+    if cfg.data.source.val_data_dir:
+        # Separate validation directory - create train manifest without val split
+        train_manifest = create_manifest_from_config(
+            data_config=cfg.data,
+            cache_dir=cache_dir,
+            latent_dtype=latent_dtype,
+            validation=False,
+        )
+        val_manifest = create_manifest_from_config(
+            data_config=cfg.data,
+            cache_dir=cache_dir,
+            latent_dtype=latent_dtype,
+            validation=True,
+        )
+    else:
+        # Use get_or_create_manifest for persistence and validation split
+        train_manifest, val_manifest = get_or_create_manifest(
+            data_config=cfg.data,
+            cache_dir=cache_dir,
+            latent_dtype=latent_dtype,
+            validation_split=cfg.validation.validation_split,
+            validation_seed=cfg.validation.validation_seed,
+        )
+
+        # If validation split was used, filter train entries
+        if val_manifest is not None:
+            from library.data import DatasetManifest, Bucket
+
+            # Filter train manifest to only train entries
+            train_entries = {k: v for k, v in train_manifest.entries.items() if v.split == "train"}
+            train_buckets = {}
+            for bucket_key, bucket in train_manifest.buckets.items():
+                train_ids = [img_id for img_id in bucket.image_ids if img_id in train_entries]
+                if train_ids:
+                    train_buckets[bucket_key] = Bucket(resolution=bucket.resolution, image_ids=train_ids)
+            train_manifest = DatasetManifest(
+                version=train_manifest.version,
+                created_at=train_manifest.created_at,
+                base_resolution=train_manifest.base_resolution,
+                bucket_reso_steps=train_manifest.bucket_reso_steps,
+                min_bucket_reso=train_manifest.min_bucket_reso,
+                max_bucket_reso=train_manifest.max_bucket_reso,
+                latent_channels=train_manifest.latent_channels,
+                latent_scale_factor=train_manifest.latent_scale_factor,
+                latent_dtype=train_manifest.latent_dtype,
+                entries=train_entries,
+                buckets=train_buckets,
+            )
 
     # mixed precisionに対応した型を用意しておき適宜castする
     weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
@@ -149,15 +219,57 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     # text_encoder is List[CLIPTextModel] or CLIPTextModel
     text_encoders = text_encoder if isinstance(text_encoder, list) else [text_encoder]
 
-    # prepare dataset for latents caching if needed
+    # Default cache_dir to train_data_dir if not specified
+    cache_dir = cfg.data.caching.cache_dir or cfg.data.source.train_data_dir
+
+    # Cache latents using new pipeline (Phase C)
+    latent_strategy = SdxlLatentsPipelineStrategy(
+        flip_aug=cfg.data.preprocessing.flip_aug,
+        dtype=latent_dtype,
+    )
     if cache_latents:
         vae.to(accelerator.device, dtype=vae_dtype)
         vae.requires_grad_(False)
         vae.eval()
 
-        train_dataset_group.new_cache_latents(vae, accelerator)
-        if val_dataset_group is not None:
-            val_dataset_group.new_cache_latents(vae, accelerator)
+        latent_caching_engine = CachingEngine(
+            strategy=latent_strategy,
+            batch_size=cfg.data.caching.vae_batch_size,
+            num_workers=cfg.data.caching.num_workers,
+        )
+
+        # RESOURCE TRACKER START
+        resource_tracker = None
+        if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
+            from library.utils.resource_tracker import ResourceTracker
+
+            resource_tracker = ResourceTracker("Latent Caching")
+            resource_tracker.start()
+        # RESOURCE TRACKER END
+
+        train_manifest = latent_caching_engine.cache_dataset(
+            manifest=train_manifest,
+            model=vae,
+            accelerator=accelerator,
+            cache_dir=cache_dir,
+            flip_aug=cfg.data.preprocessing.flip_aug,
+            cache_type="Latent Caching",
+        )
+        if val_manifest is not None:
+            val_manifest = latent_caching_engine.cache_dataset(
+                manifest=val_manifest,
+                model=vae,
+                accelerator=accelerator,
+                cache_dir=cache_dir,
+                flip_aug=False,  # No flip aug for validation
+                cache_type="Latent Caching",
+            )
+
+        # RESOURCE TRACKER START
+        if resource_tracker:
+            stats = resource_tracker.stop()
+            logger.info(f"\n{stats.summary()}")
+        # RESOURCE TRACKER END
 
         vae.to("cpu")
         clean_memory_on_device(accelerator.device)
@@ -169,12 +281,125 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     text_encoding_strategy = strategies.get_text_encoding_strategy(cfg)
     library.strategies.base.encoding.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
-    text_encoder_outputs_caching_strategy = strategies.get_text_encoder_outputs_caching_strategy(cfg)
-    if text_encoder_outputs_caching_strategy is not None:
-        library.strategies.base.caching.TextEncoderOutputsCachingStrategy.set_strategy(text_encoder_outputs_caching_strategy)
-    strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, train_dataset_group, weight_dtype)
-    if val_dataset_group is not None:
-        strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, val_dataset_group, weight_dtype)
+    # Phase D: Text Encoder caching using new pipeline
+    te_strategy = None
+    if cfg.data.caching.cache_text_encoder_outputs:
+        # Move text encoders to GPU for caching
+        for t_enc in text_encoders:
+            t_enc.to(accelerator.device)
+            t_enc.requires_grad_(False)
+            t_enc.eval()
+
+        if cfg.data.caching.cache_text_encoder_outputs_to_disk:
+            # Disk-based TE caching: use CachingEngine
+            te_strategy = SdxlTextEncoderPipelineStrategy(
+                max_token_length=cfg.training.max_token_length,
+            )
+            te_caching_engine = CachingEngine(
+                strategy=te_strategy,
+                batch_size=cfg.data.caching.te_batch_size,
+            )
+
+            # RESOURCE TRACKER START
+            te_resource_tracker = None
+            if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
+                from library.utils.resource_tracker import ResourceTracker
+
+                te_resource_tracker = ResourceTracker("TE Caching")
+                te_resource_tracker.start()
+            # RESOURCE TRACKER END
+
+            train_manifest = te_caching_engine.cache_dataset(
+                manifest=train_manifest,
+                model=(*text_encoders, *tokenizers),  # SDXL: (clip_l_enc, clip_g_enc, clip_l_tok, clip_g_tok)
+                accelerator=accelerator,
+                cache_dir=cache_dir,
+                cache_type="TE Caching",
+            )
+            if val_manifest is not None:
+                val_manifest = te_caching_engine.cache_dataset(
+                    manifest=val_manifest,
+                    model=(*text_encoders, *tokenizers),
+                    accelerator=accelerator,
+                    cache_dir=cache_dir,
+                    cache_type="TE Caching",
+                )
+
+            # RESOURCE TRACKER START
+            if te_resource_tracker:
+                stats = te_resource_tracker.stop()
+                logger.info(f"\n{stats.summary()}")
+            # RESOURCE TRACKER END
+
+        else:
+            # In-memory TE caching: compute and store in entry.te_outputs
+            from library.strategies.sdxl.training import tokenize_sdxl_captions
+            from library.models.sdxl.text_encoder import get_hidden_states_sdxl
+
+            logger.info("Computing text encoder outputs in memory...")
+            for entry in tqdm(train_manifest.entries.values(), desc="TE caching (memory)", disable=accelerator.process_index != 0):
+                input_ids1, input_ids2 = tokenize_sdxl_captions(
+                    tokenizers[0], tokenizers[1], [entry.caption], cfg.training.max_token_length
+                )
+                input_ids1 = input_ids1.to(accelerator.device)
+                input_ids2 = input_ids2.to(accelerator.device)
+
+                with torch.no_grad():
+                    hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
+                        cfg.training.max_token_length,
+                        input_ids1,
+                        input_ids2,
+                        tokenizers[0],
+                        tokenizers[1],
+                        text_encoders[0],
+                        text_encoders[1],
+                    )
+                    # Squeeze out the batch dimension (these are computed for single samples)
+                    entry.te_outputs = {
+                        "hidden_state1": hidden_state1.squeeze(0).cpu(),
+                        "hidden_state2": hidden_state2.squeeze(0).cpu(),
+                        "pool2": pool2.squeeze(0).cpu(),
+                    }
+
+            if val_manifest is not None:
+                for entry in val_manifest.entries.values():
+                    input_ids1, input_ids2 = tokenize_sdxl_captions(
+                        tokenizers[0], tokenizers[1], [entry.caption], cfg.training.max_token_length
+                    )
+                    input_ids1 = input_ids1.to(accelerator.device)
+                    input_ids2 = input_ids2.to(accelerator.device)
+
+                    with torch.no_grad():
+                        hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
+                            cfg.training.max_token_length,
+                            input_ids1,
+                            input_ids2,
+                            tokenizers[0],
+                            tokenizers[1],
+                            text_encoders[0],
+                            text_encoders[1],
+                        )
+                        # Squeeze out the batch dimension (these are computed for single samples)
+                        entry.te_outputs = {
+                            "hidden_state1": hidden_state1.squeeze(0).cpu(),
+                            "hidden_state2": hidden_state2.squeeze(0).cpu(),
+                            "pool2": pool2.squeeze(0).cpu(),
+                        }
+
+        # Move text encoders back to CPU to save VRAM
+        for t_enc in text_encoders:
+            t_enc.to("cpu")
+        clean_memory_on_device(accelerator.device)
+        accelerator.wait_for_everyone()
+
+    # TE offloading: move TEs to CPU if not caching (on-the-fly encoding)
+    elif cfg.performance.memory.offload_text_encoders:
+        logger.info("Offloading text encoders to CPU (on-the-fly encoding enabled)")
+        for t_enc in text_encoders:
+            t_enc.to("cpu")
+        clean_memory_on_device(accelerator.device)
+
+    # Note: Manifest is saved by get_or_create_manifest() when created, no need to save again here
 
     if unet is None:
         # lazy load unet if needed. text encoders may be freed or replaced with dummy models for saving memory
@@ -212,7 +437,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     # Schema 1: Resolve explicit LoRA fields from config to kwargs
     resolve_adapter_kwargs(cfg.peft, net_kwargs)
 
-    # if a new adapter is added in the future, add if ~ then blocks for each adapter (;'∀')
+    # if a new peft is added in future, add if ~ then blocks for each peft (;'∀')
     if cfg.peft.adapter_rank_from_weights:
         adapter, _ = adapter_module.create_adapter_from_weights(1, cfg.peft.adapter_weights, vae, text_encoder, unet, **net_kwargs)
     else:
@@ -232,7 +457,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
         )
     if adapter is None:
         return
-    adapter_has_multiplier = hasattr(adapter, "set_multiplier")
+    # Note: adapter_has_multiplier was here but unused - removed
 
     # TODO remove `hasattr` by setting up methods if not defined in the peft like below  (hacky but will work):
     # if not hasattr(peft, "prepare_adapter"):
@@ -266,14 +491,13 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
 
     if cfg.performance.memory.gradient_checkpointing:
         if cfg.performance.memory.cpu_offload_checkpointing:
-            unet.enable_gradient_checkpointing(cpu_offload=True)
+            unet.enable_gradient_checkpointing(cpu_offload=True)  # type: ignore[misc]
         else:
-            unet.enable_gradient_checkpointing()
+            unet.enable_gradient_checkpointing()  # type: ignore[misc]
 
         for t_enc, flag in zip(text_encoders, strategies.get_text_encoders_train_flags(cfg, text_encoders)):
-            if flag:
-                if t_enc.supports_gradient_checkpointing:
-                    t_enc.gradient_checkpointing_enable()
+            if flag and t_enc.supports_gradient_checkpointing:
+                t_enc.gradient_checkpointing_enable()
         del t_enc
         adapter.enable_gradient_checkpointing()  # may be overwritten by "adapter_multipliers" in the next step
 
@@ -290,50 +514,50 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     ) = prepare_optimizer(cfg.optimizer, cfg.optimizer.learning_rates, cfg.peft, adapter)
 
     # prepare dataloader
-    # strategies are set here because they cannot be referenced in another process. Copy them with the dataset
-    # some strategies can be None
-    train_dataset_group.set_current_strategies()
-    if val_dataset_group is not None:
-        val_dataset_group.set_current_strategies()
+    # Phase E: DataLoader creation using new pipeline
+    # Note: Train DataLoader is created per-epoch inside the training loop
+    # Val DataLoader can be created once here
 
-    # DataLoaderのプロセス数：0 は persistent_workers が使えないので注意
-    n_workers = min(cfg.data.loader.max_workers, os.cpu_count())  # cpu_count or max_data_loader_n_workers
+    n_workers = min(cfg.data.loader.num_workers, os.cpu_count() or 1)
 
-    train_dataloader = torch.utils.data.DataLoader(
-        train_dataset_group,
-        batch_size=1,
-        shuffle=True,
-        collate_fn=collator,
-        num_workers=n_workers,
-        persistent_workers=cfg.data.loader.persistent_workers,
-    )
+    # Calculate number of batches per epoch for step calculation
+    # Count total batched image slots based on manifest
+    train_image_count = sum(e.num_repeats for e in train_manifest.entries.values() if not e.is_reg)
+    num_batches_per_epoch = math.ceil(train_image_count / cfg.training.train_batch_size)
 
-    val_dataloader = torch.utils.data.DataLoader(
-        val_dataset_group if val_dataset_group is not None else [],
-        shuffle=False,
-        batch_size=1,
-        collate_fn=collator,
-        num_workers=n_workers,
-        persistent_workers=cfg.data.loader.persistent_workers,
-    )
-
-    if val_dataset_group is not None:
-        val_dataloader = accelerator.prepare(val_dataloader)
+    # Create validation dataloader once (deterministic)
+    val_dataloader = None
+    cyclic_val_dataloader = None
+    if val_manifest is not None:
+        val_epoch_manifest = prepare_validation_epoch(
+            manifest=val_manifest,
+            batch_size=cfg.training.train_batch_size,
+            seed=cfg.validation.validation_seed,
+        )
+        val_dataloader = create_training_dataloader(
+            dataset_manifest=val_manifest,
+            epoch_manifest=val_epoch_manifest,
+            latent_strategy=latent_strategy,
+            te_strategy=te_strategy,
+            flip_aug=False,  # No flip aug for validation
+            prior_loss_weight=cfg.loss.prior_loss_weight,
+            rank=accelerator.process_index,
+            world_size=accelerator.num_processes,
+            num_workers=n_workers,
+            prefetch_factor=cfg.data.loader.prefetch_factor,
+            pin_memory=cfg.data.loader.pin_memory,
+            persistent_workers=cfg.data.loader.persistent_workers,
+        )
         cyclic_val_dataloader = itertools.cycle(val_dataloader)
-    else:
-        val_dataloader, cyclic_val_dataloader = None, None
 
     # 学習ステップ数を計算する
     if cfg.training.max_train_epochs is not None:
         cfg.training.max_train_steps = cfg.training.max_train_epochs * math.ceil(
-            len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
+            num_batches_per_epoch / accelerator.num_processes / cfg.training.gradient_accumulation_steps
         )
         accelerator.print(
             f"override steps. steps for {cfg.training.max_train_epochs} epochs is / 指定エポックまでのステップ数: {cfg.training.max_train_steps}"
         )
-
-    # データセット側にも学習ステップを送信
-    train_dataset_group.set_max_train_steps(cfg.training.max_train_steps)
 
     # lr schedulerを用意する
     lr_scheduler = get_scheduler_fix(cfg.optimizer.scheduler, cfg.optimizer, cfg.training, optimizer, accelerator.num_processes)
@@ -368,6 +592,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     unet.requires_grad_(False)
     if strategies.cast_unet(cfg):
         unet.to(dtype=unet_weight_dtype)
+
     for i, t_enc in enumerate(text_encoders):
         t_enc.requires_grad_(False)
 
@@ -389,7 +614,9 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
             text_encoder2=(text_encoders[1] if flags[1] else None) if len(text_encoders) > 1 else None,
             adapter=adapter,
         )
-        ds_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(ds_model, optimizer, train_dataloader, lr_scheduler)
+        ds_model, optimizer, lr_scheduler = accelerator.prepare(ds_model, optimizer, lr_scheduler)
+        # Note: train_dataloader is created per-epoch and NOT prepared via accelerator
+        # The new pipeline handles distributed sharding internally via rank/world_size
         training_model = ds_model
     else:
         if train_unet:
@@ -410,14 +637,11 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
         else:
             pass  # if text_encoder is not trained, no need to prepare. and device and dtype are already set
 
-        adapter, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(adapter, optimizer, train_dataloader, lr_scheduler)
+        adapter, optimizer, lr_scheduler = accelerator.prepare(adapter, optimizer, lr_scheduler)
         training_model = adapter
 
-    if val_dataset_group is not None:
-        val_dataloader = accelerator.prepare(val_dataloader)
-        cyclic_val_dataloader = itertools.cycle(val_dataloader)
-    else:
-        val_dataloader, cyclic_val_dataloader = None, None
+    # Note: Do NOT call accelerator.prepare() on train_dataloader - new pipeline handles sharding internally
+    # val_dataloader is already created above and doesn't need accelerator.prepare() either
 
     if cfg.performance.memory.gradient_checkpointing:
         # according to TI example in Diffusers, train is required
@@ -455,7 +679,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     steps_from_state = get_steps_from_state()
 
     # epoch数を計算する
-    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
+    num_update_steps_per_epoch = math.ceil(num_batches_per_epoch / cfg.training.gradient_accumulation_steps)
     num_train_epochs = math.ceil(cfg.training.max_train_steps / num_update_steps_per_epoch)
     if (cfg.output.saving.save_n_epoch_ratio is not None) and (cfg.output.saving.save_n_epoch_ratio > 0):
         cfg.output.saving.save_every_n_epochs = math.floor(num_train_epochs / cfg.output.saving.save_n_epoch_ratio) or 1
@@ -464,38 +688,47 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     # TODO: find a way to handle total batch size when there are multiple datasets
     total_batch_size = cfg.training.train_batch_size * accelerator.num_processes * cfg.training.gradient_accumulation_steps
 
+    # Calculate stats from manifest
+    num_train_images = sum(e.num_repeats for e in train_manifest.entries.values() if not e.is_reg)
+    num_reg_images = sum(e.num_repeats for e in train_manifest.entries.values() if e.is_reg)
+    num_val_images = sum(e.num_repeats for e in val_manifest.entries.values()) if val_manifest else 0
+
     accelerator.print("running training")
-    accelerator.print(f"  num train images * repeats: {train_dataset_group.num_train_images}")
-    accelerator.print(f"  num validation images * repeats: {val_dataset_group.num_train_images if val_dataset_group is not None else 0}")
-    accelerator.print(f"  num reg images: {train_dataset_group.num_reg_images}")
-    accelerator.print(f"  num batches per epoch: {len(train_dataloader)}")
+    accelerator.print(f"  num train images * repeats: {num_train_images}")
+    accelerator.print(f"  num validation images * repeats: {num_val_images}")
+    accelerator.print(f"  num reg images: {num_reg_images}")
+    accelerator.print(f"  num batches per epoch: {num_batches_per_epoch}")
     accelerator.print(f"  num epochs: {num_train_epochs}")
-    accelerator.print(f"  batch size per device: {', '.join([str(d.batch_size) for d in train_dataset_group.datasets])}")
-    # accelerator.print(f"  total train batch size (with parallel & distributed & accumulation) / 総バッチサイズ（並列学習、勾配合計含む）: {total_batch_size}")
+    accelerator.print(f"  batch size per device: {cfg.training.train_batch_size}")
     accelerator.print(f"  gradient accumulation steps: {cfg.training.gradient_accumulation_steps}")
     accelerator.print(f"  total optimization steps: {cfg.training.max_train_steps}")
 
-    # Create training metadata
+    # Create training metadata (using new manifest-based signature)
     metadata, minimum_metadata = create_training_metadata(
         cfg=cfg,
+        manifest=train_manifest,
+        val_manifest=val_manifest,
         session_id=session_id,
         training_started_at=training_started_at,
         model_version=model_version,
-        train_dataset_group=train_dataset_group,
-        val_dataset_group=val_dataset_group,
         num_train_epochs=num_train_epochs,
         optimizer_name=optimizer_name,
         optimizer_args=optimizer_args,
         net_kwargs=net_kwargs,
-        train_dataloader=train_dataloader,
+        num_batches_per_epoch=num_batches_per_epoch,
         total_batch_size=total_batch_size,
-        use_user_config=use_user_config,
         use_dreambooth_method=use_dreambooth_method,
     )
     strategies.update_metadata(metadata, cfg)  # architecture specific metadata
 
     # calculate steps to skip when resuming or starting from a specific step
-    initial_step, epoch_to_start = calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
+    # Note: calculate_initial_step normally uses len(train_dataloader), but with per-epoch DataLoader
+    # we use num_batches_per_epoch instead
+    initial_step = 0
+    epoch_to_start = 0
+    if steps_from_state is not None:
+        initial_step = steps_from_state
+        epoch_to_start = initial_step // num_batches_per_epoch
 
     global_step = 0
 
@@ -510,7 +743,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     if is_main_process:
         timestep_counts, plotter_settings = setup_live_plotter(cfg, noise_scheduler, strategies.la_sampler, strategies)
 
-    edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss, cfg.training, noise_scheduler, accelerator)
+    edm2_model, edm2_optimizer, edm2_lr_scheduler = prepare_edm2_loss_weighting(cfg.loss.edm2, cfg.training, noise_scheduler, accelerator)
 
     init_trackers(accelerator, cfg.output.logging, "adapter_train")
 
@@ -520,18 +753,25 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     if cfg.loss.edm2.edm2_loss_weighting:
         loss_scaled_recorder = EMARecorder()
 
-    del train_dataset_group
-    if val_dataset_group is not None:
-        del val_dataset_group
+    # Note: train_dataloader is created per-epoch inside the training loop below
 
     # callback for step start
     if hasattr(accelerator.unwrap_model(adapter), "on_step_start"):
         on_step_start_for_adapter = accelerator.unwrap_model(adapter).on_step_start
     else:
-        on_step_start_for_adapter = lambda *args, **kwargs: None
+
+        def on_step_start_for_adapter(*args, **kwargs) -> None:  # noqa: ARG001
+            pass
 
     # function for saving/removing
-    def save_model(ckpt_name, unwrapped_nw, steps, epoch_no, force_sync_upload=False, dtype_override=None):
+    def save_model(
+        ckpt_name: str,
+        unwrapped_nw: torch.nn.Module,
+        steps: int,
+        epoch_no: int,
+        force_sync_upload: bool = False,
+        dtype_override: torch.dtype | None = None,
+    ) -> None:
         os.makedirs(cfg.output.saving.output_dir, exist_ok=True)
         ckpt_file = os.path.join(cfg.output.saving.output_dir, ckpt_name)
 
@@ -544,11 +784,11 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
         modelspec_metadata = strategies.get_model_metadata(cfg)
         metadata_to_save.update(modelspec_metadata)
 
-        unwrapped_nw.save_weights(ckpt_file, dtype_override or save_dtype, metadata_to_save)
+        unwrapped_nw.save_weights(ckpt_file, dtype_override or save_dtype, metadata_to_save)  # type: ignore[misc]
         if cfg.output.huggingface.huggingface_repo_id is not None:
             huggingface_util.upload(cfg.output.huggingface, ckpt_file, "/" + ckpt_name, force_sync_upload=force_sync_upload)
 
-    def remove_model(old_ckpt_name):
+    def remove_model(old_ckpt_name: str) -> None:
         old_ckpt_file = os.path.join(cfg.output.saving.output_dir, old_ckpt_name)
         if os.path.exists(old_ckpt_file):
             accelerator.print(f"removing old checkpoint: {old_ckpt_file}")
@@ -565,7 +805,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
         gc.collect()
         clean_memory_on_device(accelerator.device)
 
-    current_val_loss, average_val_loss, val_logs = None, None, {}
+    current_val_loss, average_val_loss = None, None
     keys_scaled, mean_norm, maximum_norm = None, None, None
     mean_grad_norm, mean_combined_norm = None, None
     max_mean_logs = {}
@@ -577,17 +817,17 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
 
     # For --sample_at_first
     if sample_images_check(cfg.output.sampling, 0, global_step) or calculate_val_loss_check(
-        cfg.validation, cfg.training, global_step, 0, val_dataloader, train_dataloader
+        cfg.validation, cfg.training, global_step, 0, val_dataloader, num_batches_per_epoch
     ):
         # Switch peft to eval mode
         accelerator.unwrap_model(adapter).eval()
         optimizer_eval_fn()
         strategies.sample_images(accelerator, cfg, 0, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
-        if calculate_val_loss_check(cfg.validation, cfg.training, global_step, 0, val_dataloader, train_dataloader):
-            current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(
+        if calculate_val_loss_check(cfg.validation, cfg.training, global_step, 0, val_dataloader, num_batches_per_epoch):
+            current_val_loss, average_val_loss = strategies.calculate_val_loss(
                 global_step,
                 0,
-                train_dataloader,
+                num_batches_per_epoch,  # Pass batch count instead of dataloader
                 val_loss_recorder,
                 val_dataloader,
                 cyclic_val_dataloader,
@@ -610,8 +850,8 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
         optimizer_train_fn()
         accelerator.unwrap_model(adapter).train()
 
-    if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
-        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
+    if plot_edm2_loss_weighting_check(cfg.loss.edm2, cfg.training, global_step):
+        plot_edm2_loss_weighting(cfg.loss.edm2, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
 
     is_tracking = len(accelerator.trackers) > 0
     if is_tracking:
@@ -641,7 +881,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     if initial_step > 0:  # only if skip_until_initial_step is specified
         for skip_epoch in range(epoch_to_start):  # skip epochs
             logger.info(f"skipping epoch {skip_epoch + 1} because initial_step (multiplied) is {initial_step}")
-            initial_step -= len(train_dataloader)
+            initial_step -= num_batches_per_epoch
         global_step = initial_step
 
     # log device and dtype for each model
@@ -672,19 +912,90 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
 
         accelerator.unwrap_model(adapter).on_epoch_start(text_encoder, unet)  # peft.train() is called here
 
+        # Phase G: Create per-epoch DataLoader with fresh epoch manifest
+        caption_config = CaptionConfig(
+            shuffle_caption=cfg.data.caption.shuffle_caption,
+            keep_tokens=cfg.data.caption.keep_tokens,
+            caption_dropout_rate=cfg.data.caption.caption_dropout_rate,
+            caption_tag_dropout_rate=cfg.data.caption.caption_tag_dropout_rate,
+            enable_wildcard=cfg.data.caption.enable_wildcard,
+            caption_separator=cfg.data.caption.caption_separator,
+            secondary_separator=cfg.data.caption.secondary_separator,
+            keep_tokens_separator=cfg.data.caption.keep_tokens_separator,
+            token_warmup_min=cfg.data.caption.token_warmup_min,
+            token_warmup_step=cfg.data.caption.token_warmup_step,
+        )
+        epoch_manifest = prepare_epoch(
+            manifest=train_manifest,
+            epoch=epoch,
+            seed=cfg.training.seed,
+            batch_size=cfg.training.train_batch_size,
+            caption_config=caption_config,
+        )
+
+        # Phase G.1: Optional epoch tokenization (when TE caching is disabled)
+        tokens_path = None
+        if cfg.data.caching.cache_tokens_per_epoch and not cfg.data.caching.cache_text_encoder_outputs:
+            from library.data import tokenize_epoch_manifest
+            from library.strategies.sdxl.training import tokenize_sdxl_captions
+
+            tokens_path = Path(cache_dir) / f"epoch_{epoch}_tokens.safetensors"
+
+            def tokenize_fn(captions: list[str]) -> list[torch.Tensor]:
+                t1, t2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], captions, cfg.training.max_token_length)
+                return [t1, t2]
+
+            if accelerator.is_main_process:
+                tokenize_epoch_manifest(
+                    epoch_manifest,
+                    tokenize_fn,
+                    tokens_path,
+                    encoder_names=["clip_l", "clip_g"],
+                    max_token_length=cfg.training.max_token_length,
+                )
+            accelerator.wait_for_everyone()
+
+        train_dataloader = create_training_dataloader(
+            dataset_manifest=train_manifest,
+            epoch_manifest=epoch_manifest,
+            latent_strategy=latent_strategy,
+            te_strategy=te_strategy,
+            flip_aug=cfg.data.preprocessing.flip_aug,
+            prior_loss_weight=cfg.loss.prior_loss_weight,
+            rank=accelerator.process_index,
+            world_size=accelerator.num_processes,
+            num_workers=n_workers,
+            prefetch_factor=cfg.data.loader.prefetch_factor,
+            pin_memory=cfg.data.loader.pin_memory,
+            persistent_workers=cfg.data.loader.persistent_workers,
+            tokens_path=str(tokens_path) if tokens_path else None,
+        )
+
         # TRAINING
-        skipped_dataloader = None
+        # Note: Since train_dataloader is not accelerator-prepared (new pipeline handles sharding internally),
+        # we use itertools.islice instead of accelerator.skip_first_batches() for resume support
+        dataloader_iter = iter(train_dataloader)
         if initial_step > 0:
-            skipped_dataloader = accelerator.skip_first_batches(train_dataloader, initial_step - 1)
+            # Skip initial_step - 1 batches for resume
+            dataloader_iter = itertools.islice(dataloader_iter, initial_step - 1, None)
             initial_step = 1
 
-        for step, batch in enumerate(skipped_dataloader or train_dataloader):
+        # RESOURCE TRACKER START
+        training_resource_tracker = None
+        if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
+            from library.utils.resource_tracker import ResourceTracker
+
+            training_resource_tracker = ResourceTracker("Training")
+            training_resource_tracker.start()
+        # RESOURCE TRACKER END
+
+        for step, batch in enumerate(dataloader_iter):
             current_step.value = global_step
 
             # --- Add this block to update the timesteps range ---
             if dynamic_timestep_schedule and len(dynamic_timestep_schedule) > 0 and global_step >= dynamic_timestep_schedule[0][0]:
                 # Get the next schedule stage and remove it from the list
-                _, new_min, new_max = dynamic_timestep_schedule.pop(0)
+                _, new_min, new_max = dynamic_timestep_schedule.pop(0)  # type: ignore[misc]
                 current_min_timestep = new_min
                 current_max_timestep = new_max
                 accelerator.print(
@@ -777,15 +1088,13 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
                 ):
                     accelerator.unwrap_model(adapter).eval()
                     optimizer_eval_fn()
-                    strategies.sample_images(
-                        accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet
-                    )  # TODO: Expected type 'int', got 'None' instead
+                    strategies.sample_images(accelerator, cfg, None, global_step, accelerator.device, vae, tokenizers, text_encoder, unet)
 
-                    if calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, train_dataloader):
-                        current_val_loss, average_val_loss, val_logs = strategies.calculate_val_loss(
+                    if calculate_val_loss_check(cfg.validation, cfg.training, global_step, step, val_dataloader, num_batches_per_epoch):
+                        current_val_loss, average_val_loss = strategies.calculate_val_loss(
                             global_step,
                             step,
-                            skipped_dataloader or train_dataloader,
+                            num_batches_per_epoch,  # Pass batch count instead of dataloader
                             val_loss_recorder,
                             val_dataloader,
                             cyclic_val_dataloader,
@@ -805,7 +1114,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
                             train_text_encoder,
                         )
                     else:
-                        current_val_loss, average_val_loss, val_logs = None, None, None
+                        current_val_loss, average_val_loss = None, None
 
                     # 指定ステップごとにモデルを保存
                     if cfg.output.saving.save_every_n_steps is not None and global_step % cfg.output.saving.save_every_n_steps == 0:
@@ -842,13 +1151,16 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
                                     )
                                     remove_model(remove_loss_weights_ckpt_name)
 
-                    if plot_edm2_loss_weighting_check(cfg.loss, cfg.training, global_step):
-                        plot_edm2_loss_weighting(cfg.loss, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device)
+                    if plot_edm2_loss_weighting_check(cfg.loss.edm2, cfg.training, global_step):
+                        plot_edm2_loss_weighting(
+                            cfg.loss.edm2, cfg.output.saving.output_name, global_step, edm2_model, 1000, accelerator.device
+                        )
                     optimizer_train_fn()
                     accelerator.unwrap_model(adapter).train()
 
             current_global_step_loss += loss.detach().item()
             if cfg.loss.edm2.edm2_loss_weighting:
+                assert loss_scaled is not None and current_global_step_loss_scaled is not None
                 current_global_step_loss_scaled += loss_scaled.detach().item()
             else:
                 current_global_step_loss_scaled = None
@@ -856,9 +1168,8 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
             if accelerator.sync_gradients:
                 loss_recorder.add(current_global_step_loss / accumulation_counter)
                 if cfg.loss.edm2.edm2_loss_weighting:
-                    loss_scaled_recorder.add(
-                        current_global_step_loss_scaled / accumulation_counter
-                    )  # TODO: Local variable 'loss_scaled_recorder' might be referenced before assignment
+                    assert loss_scaled_recorder is not None and current_global_step_loss_scaled is not None
+                    loss_scaled_recorder.add(current_global_step_loss_scaled / accumulation_counter)
                 avr_loss: float = loss_recorder.average
                 logs = {"avr_loss": avr_loss}  # , "lr": lr_scheduler.get_last_lr()[0]}
                 progress_bar.set_postfix(**{**max_mean_logs, **logs})
@@ -866,11 +1177,12 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
                 if is_tracking:
                     current_global_step_loss = current_global_step_loss / accumulation_counter
                     if cfg.loss.edm2.edm2_loss_weighting:
+                        assert current_global_step_loss_scaled is not None and loss_scaled_recorder is not None
                         current_global_step_loss_scaled = current_global_step_loss_scaled / accumulation_counter
                         average_loss_scaled: float = loss_scaled_recorder.average
                     else:
                         current_global_step_loss_scaled = None
-                        average_loss_scaled = None  # TODO: Expected type 'float', got 'None' instead
+                        average_loss_scaled = None
 
                     logs = generate_step_logs(
                         cfg,
@@ -919,13 +1231,28 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
                         unique, counts = np.unique(timesteps_np, return_counts=True)
                         timestep_counts[unique] += counts
 
-                        if global_step % cfg.output.logging.log_timestep_distribution_every_n_steps == 0:
+                        if (
+                            cfg.output.logging.log_timestep_distribution_every_n_steps
+                            and global_step % cfg.output.logging.log_timestep_distribution_every_n_steps == 0
+                        ):
                             save_timestep_distribution_plot(cfg, global_step, timestep_counts, plotter_settings)
 
             if global_step >= cfg.training.max_train_steps:
                 break
 
         # END OF EPOCH
+        # RESOURCE TRACKER START
+        if training_resource_tracker:
+            stats = training_resource_tracker.stop()
+            logger.info(f"\n{stats.summary()}")
+            training_resource_tracker = None  # Only log once
+        # RESOURCE TRACKER END
+
+        # Cleanup epoch token file if it was created
+        if tokens_path and tokens_path.exists():
+            tokens_path.unlink()
+            logger.debug(f"Cleaned up epoch token file: {tokens_path}")
+
         if is_tracking:
             logs = {"loss/epoch_average": loss_recorder.average}
             accelerator.log(logs, step=global_step)
@@ -936,7 +1263,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
             # 指定エポックごとにモデルを保存
             optimizer_eval_fn()
             accelerator.unwrap_model(adapter).eval()
-            if cfg.output.saving.save_every_n_epochs is not None:
+            if cfg.output.saving.save_every_n_epochs is not None and cfg.output.saving.save_every_n_epochs > 0:
                 saving = current_epoch.value % cfg.output.saving.save_every_n_epochs == 0 and current_epoch.value < num_train_epochs
                 if is_main_process and saving:
                     ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, current_epoch.value)
@@ -1007,21 +1334,19 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     logger.info("model saved.")
 
 
-# Register Hydra schema for this script
-from library.config.schemas import register_sd_peft
-
-register_sd_peft()
-
-
-@hydra.main(version_base=None, config_path="../configs", config_name="sd_peft")
-def main(cfg: SDPeftConfig):
-    """Main entry point for SD PEFT training."""
+@hydra.main(version_base=None, config_path="../../configs", config_name="sdxl_peft")
+def main(cfg: SDXLPeftConfig):
+    """Main entry point for SDXL PEFT training."""
     prepare_config(cfg)
     validate_config(cfg)
 
-    strategies = SdTrainingStrategy()
+    strategies = SdxlTrainingStrategy()
     train(cfg, strategies)
 
 
 if __name__ == "__main__":
+    # Register Hydra schema only when running as script
+    from library.config.schemas import register_sdxl_peft
+
+    register_sdxl_peft()
     main()

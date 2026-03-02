@@ -411,7 +411,9 @@ def run_training_loop(trainer: Trainer) -> None:
                         average_val_loss=trainer._average_val_loss,
                         timesteps=timesteps,
                     )
-                    step_logging(accelerator, logs, trainer.global_step, epoch + 1)
+                    log_every = cfg.output.logging.log_every_n_steps
+                    if trainer.global_step % log_every == 0:
+                        step_logging(accelerator, logs, trainer.global_step, epoch + 1)
 
                 trainer._current_global_step_loss = 0.0
                 if cfg.loss.edm2.edm2_loss_weighting:

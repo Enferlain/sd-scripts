@@ -836,7 +836,7 @@ from library.config.schemas import register_sd_textual_inversion
 register_sd_textual_inversion()
 
 
-@hydra.main(config_path="../configs", config_name="sd_textual_inversion", version_base=None)
+@hydra.main(config_path="../../configs", config_name="sd_textual_inversion", version_base=None)
 def main(config: TextualInversionConfig):
     prepare_config(config)
     validate_config(config)

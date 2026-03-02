@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-02]
+
+### Changed
+
+- **Logging Phase 2: Rank-aware logging** — Non-main processes in DDP now have root log level set to `WARNING` after accelerator init, suppressing duplicate `INFO` lines while preserving error/warning visibility on all ranks
+- **Logging Phase 3: `log_every_n_steps`** — New `LoggingConfig` field to control tracker emission frequency (default: `1` = every step). `step_logging()` gated by interval; progress bar remains every step. Invalid values (`<= 0`) normalized to `1` with warning
+- **Validation defaults now opt-in** — `run_at_start` and `run_at_end` default to `False` in both `ValidationConfig` and `configs/validation/default.yaml`
+
+### Fixed
+
+- **Stale `val_manifest.json` loading** — `get_or_create_manifest` loaded cached validation manifests even when `validation_split` was `0.0`. Now guards on `validation_split > 0` and cleans up stale files
+
 ## [2026-02-24]
 
 ### Added
@@ -42,8 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LR index math** — Fallback LR naming gave wrong labels when TE is trained (`textencoder` was never assigned; all groups got `unet`). Fixed index formula to `i - (1 if train_te else 0)` and adjusted group-naming threshold
 - **`init_trackers` `wandb_run_name` overwrite** — `log_tracker_config` replaced `init_kwargs` entirely, dropping `wandb_run_name`. Now deep-merges on top of existing kwargs
 - **Pre-existing test bugs** — 4 `TestInitTrackers` tests in `test_training_trainer_utils.py` passed the wrong type (full config instead of `LoggingConfig`) to `init_trackers`, silently passing due to `hasattr` guards
-- **Validation defaults implied enabled** — `run_at_start` and `run_at_end` defaulted to `True` in both `ValidationConfig` and `configs/validation/default.yaml`, causing validation to execute when stale `val_manifest.json` existed on disk. Changed defaults to `False` (validation is now opt-in)
-- **Stale `val_manifest.json` loading** — `get_or_create_manifest` loaded cached validation manifests even when `validation_split` was `0.0`. Now guards on `validation_split > 0` and cleans up stale files
 
 ## [2026-02-23]
 

@@ -83,13 +83,13 @@ uv run python tools/fix_imports.py <file_path>
 
 ```powershell
 # Run ty type checker (configured in pyproject.toml)
-uvx ty check
+uv run ty check
 
 # Check specific directory
-uvx ty check library/
+uv run ty check library/
 
 # Check single file
-uvx ty check library/training/checkpointing.py
+uv run ty check library/training/checkpointing.py
 ```
 
 **Note:** ty is configured to exclude legacy directories (`tools/`, `data_processing/`, `upscaling/`) and downgrade noisy rules to warnings for gradual adoption.

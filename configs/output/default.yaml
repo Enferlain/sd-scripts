@@ -30,6 +30,7 @@ logging:
   console_log_level: null
   console_log_file: null
   console_log_simple: false
+  log_every_n_steps: 1
   log_timestep_distribution_every_n_steps: null
   live_plot_port: null
 

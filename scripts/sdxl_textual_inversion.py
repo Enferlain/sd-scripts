@@ -5,7 +5,7 @@ import torch
 import library.strategies.sd.caching
 import library.strategies.sdxl.encoding
 import library.strategies.sdxl.tokenization
-import sd_textual_inversion
+from scripts._deprecated import sd_textual_inversion
 
 from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl.conversion import get_size_embeddings

@@ -24,7 +24,7 @@ import library.strategies.base.caching
 import library.strategies.base.encoding
 from library.performance import deepspeed_utils
 from library.training.trainer_utils import prepare_accelerator
-from library.utils.common_utils import setup_logging
+from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
 
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.data import create_manifest_from_config, get_or_create_manifest, DatasetManifest, Bucket
@@ -248,6 +248,7 @@ class Trainer:
             self.cfg.training,
         )
         self.device = self.accelerator.device
+        suppress_non_main_process_logging(self.accelerator.is_main_process)
 
         # Track current epoch/step for checkpointing
         self._current_epoch_state = getattr(self.accelerator.state, "epoch", None) or SimpleNamespace(value=0)

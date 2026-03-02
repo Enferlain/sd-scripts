@@ -41,6 +41,7 @@ class LoggingConfig:
     console_log_level: str | None = field(default=None, metadata={"help": "Console log level: DEBUG, INFO, WARNING, ERROR"})
     console_log_file: str | None = field(default=None, metadata={"help": "Path to save console output to file"})
     console_log_simple: bool = field(default=False, metadata={"help": "Use simplified console log format"})
+    log_every_n_steps: int = field(default=1, metadata={"help": "Emit metrics to tracker every N steps (1 = every step)"})
     log_timestep_distribution_every_n_steps: int | None = field(
         default=None, metadata={"help": "Save timesteps distribution chart every N steps"}
     )

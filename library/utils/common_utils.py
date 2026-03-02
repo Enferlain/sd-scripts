@@ -100,6 +100,22 @@ def setup_logging(args=None, log_level=None, reset=False):
         logger.info(msg_init)
 
 
+def suppress_non_main_process_logging(is_main_process: bool) -> None:
+    """Suppress INFO-level logging on non-main processes for DDP.
+
+    On non-main ranks, raises the root log level to WARNING so only
+    warnings and errors are visible. This prevents duplicate INFO lines
+    while preserving error visibility on all ranks.
+
+    Must be called after accelerator initialization, when rank is known.
+
+    Args:
+        is_main_process: True on rank 0, False on worker ranks.
+    """
+    if not is_main_process:
+        logging.root.setLevel(logging.WARNING)
+
+
 # Module-level logger
 
 logger = logging.getLogger(__name__)

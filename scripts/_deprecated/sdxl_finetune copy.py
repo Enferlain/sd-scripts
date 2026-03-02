@@ -107,7 +107,7 @@ from library.config.schemas import register_sdxl_finetune
 register_sdxl_finetune()
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="sdxl_finetune")
+@hydra.main(version_base=None, config_path="../../configs", config_name="sdxl_finetune")
 def train(cfg: SDXLFineTuneConfig):
     prepare_config(cfg)
     validate_config(cfg)

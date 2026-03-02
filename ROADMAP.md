@@ -219,15 +219,15 @@ See `docs_design/log_implementation_plan_v2.md` for full design.
 - [x] Remove import-time `setup_logging()` calls from 48 library modules
 - [x] Single bootstrap point: `Trainer.__init__()` line 214; script entrypoints keep own calls
 
-### Phase 2: Output Consistency (Future)
+### Phase 2: Output Consistency (✅ Complete)
 
-- [ ] Rank-aware console helpers for main-process vs all-process messages
-- [ ] Convert key startup messages to consistent style
+- [x] Rank-aware logging: `suppress_non_main_process_logging()` sets root level to `WARNING` on non-main ranks after accelerator init
 
-### Phase 3: Tracker Volume Control (Future)
+### Phase 3: Tracker Volume Control (✅ Complete)
 
-- [ ] Add `log_every_n_steps` to `LoggingConfig` (default `1`)
-- [ ] Gate tracker emission by interval
+- [x] Add `log_every_n_steps` to `LoggingConfig` (default `1`)
+- [x] Gate tracker emission by interval in training loop
+- [x] Normalize invalid values in `config_validation.py`
 
 ---
 

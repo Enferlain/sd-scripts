@@ -42,7 +42,7 @@ uv run ruff check library/ scripts/
 ```
 
 ```powershell
-uvx ty check
+uv run ty check
 ```
 
 ## Key Architecture
