@@ -309,6 +309,7 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     # Validation scheduler (always returns False for should_run by default)
     trainer._validation_scheduler = MagicMock()
     trainer._validation_scheduler.should_run = MagicMock(return_value=False)
+    trainer._resource_monitor = MagicMock()
 
     # trainable_model property (returns adapter for PEFT)
     type(trainer).trainable_model = PropertyMock(return_value=trainer.adapter)

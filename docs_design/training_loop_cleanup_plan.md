@@ -117,7 +117,7 @@ Order matters to reduce risk and rework:
 1. ✅ **Phase 0 complete**: step-checkpoint epoch metadata now uses 1-based `current_epoch_state.value` and is covered by integration assertions.
 2. ✅ **Phase 1 complete**: trigger policy extracted into `library/training/phases/triggers.py` with typed contexts/action objects and dedicated unit tests.
 3. ✅ **Phase 2 complete**: `run_training_loop()` now delegates large side-effect/logging/epoch-finalization branches to focused helpers in `training_loop.py`, reducing branch density while keeping behavior stable.
-4. ⏳ **Phase 3 pending**: env-var resource tracker branches still present in training/caching phases and should be replaced by config-driven monitor hooks.
+4. ✅ **Phase 3 complete (baseline hooks)**: env-var resource tracker branches were removed from training/caching phases and replaced with Trainer-owned, config-driven monitor hooks (`phase_start/end`, `step_end`). Sampled/deep collector fidelity and JSONL streaming are tracked in `resource_monitor_plan.md`.
 
 Reason for this order:
 

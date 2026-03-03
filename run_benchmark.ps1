@@ -41,6 +41,9 @@ $configMap = @{
     "test_memory_optim" = "test_memory_optim"
     "test_advanced"     = "test_advanced"
     "test_logging"      = "test_logging"
+    "peft_validation_run" = "test_peft_validation_run"
+    "peft_resource_basic" = "test_peft_resource_basic"
+    "finetune_resource_basic" = "benchmark_finetune_resource_basic"
 }
 
 $ErrorActionPreference = "Stop"
@@ -87,7 +90,7 @@ $outputDir = "$projectRoot\benchmark_output"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 # Route finetune configs to sdxl_finetune.py, everything else to sdxl_peft.py
-$finetuneConfigs = @("test_finetune", "benchmark_sdxl_finetune")
+$finetuneConfigs = @("test_finetune", "benchmark_sdxl_finetune", "benchmark_finetune_resource_basic")
 if ($finetuneConfigs -contains $configName) {
     $script = "scripts/sdxl_finetune.py"
     Write-Host "[INFO] Config: $Config ($configName)" -ForegroundColor Green
@@ -109,8 +112,14 @@ Write-Host "Python: $pythonVersion"
 Write-Host "PyTorch: $pytorchVersion"
 Write-Host ""
 
-# Enable resource tracking
-$env:BENCHMARK_RESOURCES = "1"
+# Force-enable new config-driven resource monitor for benchmark runs
+$resourceMonitorArgs = @(
+    "output.logging.resource_monitor.enabled=true",
+    "output.logging.resource_monitor.mode=basic",
+    "output.logging.resource_monitor.log_every_n_steps=0",
+    "output.logging.resource_monitor.rank_scope=main"
+)
+Write-Host "[INFO] Resource monitor overrides: $($resourceMonitorArgs -join ' ')" -ForegroundColor Gray
 
 # Pre-run memory snapshots
 $memBefore = (& nvidia-smi --query-gpu=memory.used --format=csv,noheader 2>$null).Trim()
@@ -140,9 +149,15 @@ for ($i = 1; $i -le $Runs; $i++) {
     if ($Profile) {
         $profileFile = "$outputDir\profile_run${i}.prof"
         Write-Host "[INFO] Profiling enabled, output: $profileFile"
-        & $venv -m cProfile -o $profileFile $script --config-name=$configName 2>&1 | Tee-Object -FilePath $logFile
+        & $venv -m cProfile -o $profileFile $script "--config-name=$configName" @resourceMonitorArgs 2>&1 | Tee-Object -FilePath $logFile
     } else {
-        & $venv $script --config-name=$configName 2>&1 | Tee-Object -FilePath $logFile
+        & $venv $script "--config-name=$configName" @resourceMonitorArgs 2>&1 | Tee-Object -FilePath $logFile
+    }
+    $runExitCode = $LASTEXITCODE
+    if ($runExitCode -ne 0) {
+        Write-Host ""
+        Write-Host "[ERROR] Benchmark run $i failed with exit code $runExitCode. See log: $logFile" -ForegroundColor Red
+        exit $runExitCode
     }
     
     $endTime = Get-Date
@@ -180,67 +195,151 @@ $latentSpeed = if ($latentCachingFinal -and $latentCachingFinal.Value -match '(\
 $teSpeed = if ($teCachingFinal -and $teCachingFinal.Value -match '(\d+\.\d+)it/s') { $matches[1] + " it/s" } else { "N/A" }
 $trainSpeed = if ($trainingFinal -and $trainingFinal.Value -match '(\d+\.\d+)s/it') { $matches[1] + " s/it" } else { "N/A" }
 
-# Extract resource tracker summaries - match the full output block
-function Extract-ResourceSummary($text, $header) {
+function Get-CombinedConfigContent {
+    param(
+        [Parameter(Mandatory = $true)][string]$RootConfigFile,
+        [Parameter(Mandatory = $true)][string]$ConfigDir
+    )
+
+    if (-not (Test-Path $RootConfigFile)) {
+        return ""
+    }
+
+    $visited = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $pending = [System.Collections.Generic.Queue[string]]::new()
+    $pending.Enqueue((Resolve-Path $RootConfigFile).Path)
+
+    $combined = ""
+    while ($pending.Count -gt 0) {
+        $current = $pending.Dequeue()
+        if (-not (Test-Path $current)) {
+            continue
+        }
+
+        $resolved = (Resolve-Path $current).Path
+        if ($visited.Contains($resolved)) {
+            continue
+        }
+        $visited.Add($resolved) | Out-Null
+
+        $content = Get-Content $resolved -Raw
+        $combined += $content + "`n"
+
+        $defaultsMatches = [regex]::Matches($content, '(?m)^\s*-\s+([A-Za-z0-9_]+)\s*$')
+        foreach ($dm in $defaultsMatches) {
+            $parentName = $dm.Groups[1].Value
+            if ($parentName -eq "_self_") { continue }
+            $parentFile = Join-Path $ConfigDir ($parentName + ".yaml")
+            if (Test-Path $parentFile) {
+                $pending.Enqueue((Resolve-Path $parentFile).Path)
+            }
+        }
+    }
+
+    return $combined
+}
+
+function Is-NewLogRecordLine($line) {
+    if ($line -match '^\d{4}-\d{2}-\d{2}\s') { return $true }
+    if ($line -match '^\[\d{4}-\d{2}-\d{2}') { return $true }
+    if ($line -match '^\s*(DEBUG|INFO|WARNING|ERROR|CRITICAL)\s') { return $true }
+    if ($line -match '^\s*steps:\s') { return $true }
+    if ($line -match '^\s*Epoch\s+\d+/\d+') { return $true }
+    return $false
+}
+
+function Is-RichRecordLine($line) {
+    if ($line -match '^\d{4}-\d{2}-\d{2}\s') { return $true }
+    if ($line -match '^\[\d{4}-\d{2}-\d{2}') { return $true }
+    if ($line -match '^\s*(DEBUG|INFO|WARNING|ERROR|CRITICAL)\s+.*\.py:\d+') { return $true }
+    return $false
+}
+
+function Extract-LogBlockAtIndex($lines, $startIndex, $allowSimpleBullets = $false, $allowSimpleIndented = $false) {
+    $firstLine = $lines[$startIndex]
+    $isRichRecord = Is-RichRecordLine $firstLine
+    $block = @($lines[$startIndex].TrimEnd())
+
+    # Plain/simple formatter: treat non-startup log entries as one-line records
+    # unless explicitly allowed for known wrapped blocks.
+    if (-not $isRichRecord -and -not $allowSimpleBullets -and -not $allowSimpleIndented) {
+        return ($block -join "`n").Trim()
+    }
+
+    for ($j = $startIndex + 1; $j -lt $lines.Count; $j++) {
+        $line = $lines[$j]
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            break
+        }
+        if (-not $isRichRecord -and $allowSimpleBullets) {
+            if ($line -notmatch '^\s+-\s') {
+                break
+            }
+            $block += $line.TrimEnd()
+            continue
+        }
+        if (-not $isRichRecord -and $allowSimpleIndented) {
+            if ($line -notmatch '^\s+') {
+                break
+            }
+            if (Is-NewLogRecordLine $line) {
+                break
+            }
+            $block += $line.TrimEnd()
+            continue
+        }
+        if (Is-NewLogRecordLine $line) {
+            break
+        }
+        $block += $line.TrimEnd()
+    }
+    return ($block -join "`n").Trim()
+}
+
+function Extract-LatestWrappedLogBlock($text, $anchorPattern, $allowSimpleBullets = $false, $allowSimpleIndented = $false) {
     if (-not $text) { return $null }
-    # Match from header to next header or end, then extract just the stats
-    $pattern = "$header[\s\S]*?Duration:[\s\S]*?CPU RAM:[\s\S]*?peak:[\s\S]*?\)"
-    $match = [regex]::Match($text, $pattern)
-    if ($match.Success) {
-        # Extract just the lines we care about
-        $block = $match.Value
-        $lines = @()
-        if ($block -match 'Duration:\s*([\d.]+s)') { $lines += "Duration: $($matches[1])" }
-        
-        # GPU Memory (nvidia-smi) - look for the nvidia-smi section
-        if ($block -match 'GPU Memory \(nvidia-smi\):\s*Used:\s*(\d+)\s*.*?\s*(\d+)\s*MB\s*\(peak:\s*(\d+)\s*MB\)') {
-            $lines += "GPU (nvidia-smi): $($matches[1]) → $($matches[2]) MB (peak: $($matches[3]) MB)"
-        }
-        
-        # GPU Memory (PyTorch) - Allocated
-        if ($block -match 'Allocated:\s*(\d+)\s*.*?\s*(\d+)\s*MB\s*\(peak:\s*(\d+)\s*MB\)') {
-            $lines += "GPU Allocated: $($matches[1]) → $($matches[2]) MB (peak: $($matches[3]) MB)"
-        }
-        # GPU Memory (PyTorch) - Reserved
-        if ($block -match 'Reserved:\s*(\d+)\s*.*?\s*(\d+)\s*MB\s*\(peak:\s*(\d+)\s*MB\)') {
-            $lines += "GPU Reserved: $($matches[1]) → $($matches[2]) MB (peak: $($matches[3]) MB)"
-        }
-        
-        # CPU RAM - must be in CPU RAM section (after "CPU RAM:")
-        if ($block -match 'CPU RAM:\s*Used:\s*(\d+)\s*.*?\s*(\d+)\s*MB\s*\(peak:\s*(\d+)\s*MB\)') {
-            $lines += "CPU RAM: $($matches[1]) → $($matches[2]) MB (peak: $($matches[3]) MB)"
-        }
-        
-        if ($lines.Count -gt 0) {
-            return $lines -join "`n"
+    $lines = $text -split "`r?`n"
+    for ($i = $lines.Count - 1; $i -ge 0; $i--) {
+        if ($lines[$i] -match $anchorPattern) {
+            return Extract-LogBlockAtIndex $lines $i $allowSimpleBullets $allowSimpleIndented
         }
     }
     return $null
 }
 
-$latentResource = Extract-ResourceSummary $allOutput "=== Latent Caching ==="
-$teResource = Extract-ResourceSummary $allOutput "=== TE Caching ==="
-$trainingResource = Extract-ResourceSummary $allOutput "=== Training ==="
+function Extract-AllWrappedLogBlocks($text, $anchorPattern, $allowSimpleBullets = $false, $allowSimpleIndented = $false) {
+    if (-not $text) { return $null }
+    $lines = $text -split "`r?`n"
+    $blocks = @()
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match $anchorPattern) {
+            $blocks += (Extract-LogBlockAtIndex $lines $i $allowSimpleBullets $allowSimpleIndented)
+        }
+    }
+    if ($blocks.Count -eq 0) { return $null }
+    return $blocks -join "`n`n"
+}
+
+$resourceMonitorStart = Extract-LatestWrappedLogBlock $allOutput 'Resource monitor started:'
+$resourceStartup = Extract-LatestWrappedLogBlock $allOutput 'Resource startup estimates' $true
+$resourceSessionSummary = Extract-LatestWrappedLogBlock $allOutput 'Resource session summary:'
+$resourceSessionSummaryLine = if (-not $resourceSessionSummary) {
+    [regex]::Matches($allOutput, 'Resource session summary:[^\r\n]+') | Select-Object -Last 1
+} else { $null }
+if (-not $resourceSessionSummary -and $resourceSessionSummaryLine) {
+    $resourceSessionSummary = $resourceSessionSummaryLine.Value.Trim()
+}
+$latentResource = Extract-LatestWrappedLogBlock $allOutput 'phase\[latent_caching\]:' $false $true
+$teResource = Extract-LatestWrappedLogBlock $allOutput 'phase\[te_caching\]:' $false $true
+$trainingResource = Extract-AllWrappedLogBlocks $allOutput 'phase\[training_epoch_\d+\]:' $false $true
 
 # Parse config for key settings - use actual YAML keys
 # Follow Hydra defaults: chain so inherited settings are picked up
 $configSettings = [ordered]@{}
 if (Test-Path $configFile) {
-    # Build combined content: child first, then parent defaults
-    # PowerShell -match returns the first occurrence, so child overrides win
-    $leafContent = Get-Content $configFile -Raw
-    $combinedContent = $leafContent + "`n"
-    
-    # Extract Hydra defaults list and append parent configs as fallback
-    $defaultsMatches = [regex]::Matches($leafContent, '(?m)^\s*-\s+(\w+)\s*$')
-    foreach ($dm in $defaultsMatches) {
-        $parentName = $dm.Groups[1].Value
-        if ($parentName -eq "_self_") { continue }
-        $parentFile = "$projectRoot\configs\$parentName.yaml"
-        if (Test-Path $parentFile) {
-            $combinedContent += (Get-Content $parentFile -Raw) + "`n"
-        }
-    }
+    # Build combined content from this config plus all nested defaults.
+    # Child content is visited first; first-match regex behavior preserves overrides.
+    $combinedContent = Get-CombinedConfigContent -RootConfigFile $configFile -ConfigDir "$projectRoot\configs"
     
     # Training settings
     if ($combinedContent -match 'train_batch_size:\s*(\d+)') { $configSettings["training.train_batch_size"] = $matches[1] }
@@ -266,6 +365,12 @@ if (Test-Path $configFile) {
     if ($combinedContent -match 'offload_text_encoders:\s*(true|false)') { $configSettings["performance.memory.offload_text_encoders"] = $matches[1] }
     if ($combinedContent -match 'no_half_vae:\s*(true|false)') { $configSettings["performance.precision.no_half_vae"] = $matches[1] }
 }
+
+# Applied at runtime by this script (Hydra CLI overrides)
+$configSettings["override.output.logging.resource_monitor.enabled"] = "true"
+$configSettings["override.output.logging.resource_monitor.mode"] = "basic"
+$configSettings["override.output.logging.resource_monitor.log_every_n_steps"] = "0"
+$configSettings["override.output.logging.resource_monitor.rank_scope"] = "main"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Generate Markdown Report
@@ -313,7 +418,29 @@ $md += @"
 ## Resource Usage
 "@
 
-# Add resource tracker summaries (clean)
+# Add resource monitor summaries (new config-driven system)
+if ($resourceMonitorStart) {
+    $md += @"
+
+### Monitor Start
+
+``````
+$resourceMonitorStart
+``````
+"@
+}
+
+if ($resourceStartup) {
+    $md += @"
+
+### Startup Estimates
+
+``````
+$resourceStartup
+``````
+"@
+}
+
 if ($latentResource) {
     $md += @"
 
@@ -344,6 +471,24 @@ if ($trainingResource) {
 ``````
 $trainingResource
 ``````
+"@
+}
+
+if ($resourceSessionSummary) {
+    $md += @"
+
+### Session Summary
+
+``````
+$resourceSessionSummary
+``````
+"@
+}
+
+if (-not $resourceMonitorStart -and -not $resourceStartup -and -not $latentResource -and -not $teResource -and -not $trainingResource -and -not $resourceSessionSummary) {
+    $md += @"
+
+_No resource monitor logs were detected in benchmark output._
 "@
 }
 

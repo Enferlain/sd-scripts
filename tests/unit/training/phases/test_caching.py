@@ -123,6 +123,25 @@ class TestRunLatentCaching:
             # Last call should be "cpu"
             assert calls[-1].args[0] == "cpu"
 
+    def test_emits_resource_monitor_phase_hooks(self, mock_trainer):
+        """Latent caching should emit phase_start/phase_end hooks."""
+        mock_trainer.strategies.create_latent_caching_strategy.return_value = MagicMock()
+
+        with (
+            patch("library.training.phases.caching.CachingEngine") as MockEngine,
+            patch("library.training.phases.caching.clean_memory_on_device"),
+        ):
+            mock_engine = MagicMock()
+            mock_engine.cache_dataset = MagicMock(return_value=mock_trainer.train_manifest)
+            MockEngine.return_value = mock_engine
+
+            from library.training.phases.caching import run_latent_caching
+
+            run_latent_caching(mock_trainer)
+
+            mock_trainer._resource_monitor.phase_start.assert_called_once_with("latent_caching")
+            mock_trainer._resource_monitor.phase_end.assert_called_once_with("latent_caching")
+
 
 @pytest.mark.training
 @pytest.mark.unit
@@ -188,3 +207,23 @@ class TestRunTECaching:
             for te in mock_trainer.text_encoders:
                 calls = te.to.call_args_list
                 assert calls[-1].args[0] == "cpu"
+
+    def test_emits_resource_monitor_phase_hooks(self, mock_trainer):
+        """TE caching should emit phase_start/phase_end hooks."""
+        mock_trainer.cfg.data.caching.cache_text_encoder_outputs_to_disk = True
+        mock_trainer.strategies.create_te_caching_strategy.return_value = MagicMock()
+
+        with (
+            patch("library.training.phases.caching.CachingEngine") as MockEngine,
+            patch("library.training.phases.caching.clean_memory_on_device"),
+        ):
+            mock_engine = MagicMock()
+            mock_engine.cache_dataset = MagicMock(return_value=mock_trainer.train_manifest)
+            MockEngine.return_value = mock_engine
+
+            from library.training.phases.caching import run_te_caching
+
+            run_te_caching(mock_trainer)
+
+            mock_trainer._resource_monitor.phase_start.assert_called_with("te_caching")
+            mock_trainer._resource_monitor.phase_end.assert_called_with("te_caching")

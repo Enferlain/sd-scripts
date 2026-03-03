@@ -27,6 +27,28 @@ class SavingConfig:
 
 
 @dataclass
+class ResourceMonitorConfig:
+    """Resource monitor settings."""
+
+    enabled: bool = field(default=False, metadata={"help": "Enable resource monitor hooks"})
+    mode: str = field(default="off", metadata={"help": "Resource monitor mode: off, basic, sampled, deep"})
+    log_every_n_steps: int = field(default=0, metadata={"help": "Emit resource step logs every N steps (0 disables)"})
+    sample_interval_sec: float = field(default=1.0, metadata={"help": "Background sampler interval in seconds (sampled/deep modes)"})
+    rank_scope: str = field(default="main", metadata={"help": "Which ranks emit resource logs: main or all"})
+    device_scope: str = field(default="local", metadata={"help": "Device scope for resource collection: local or all_visible"})
+    output_jsonl: str | None = field(default=None, metadata={"help": "Optional JSONL output path for resource events"})
+    jsonl_flush_mode: str = field(default="auto", metadata={"help": "JSONL flush mode: auto, line, batch"})
+    jsonl_flush_every_n_events: int = field(default=50, metadata={"help": "When batch flush mode is used, flush every N events"})
+    queue_maxsize: int = field(default=1024, metadata={"help": "Max queued sampled events before drop policy applies"})
+    drop_policy: str = field(default="drop_oldest", metadata={"help": "Queue policy: drop_oldest, drop_newest, block"})
+    max_collection_ms: float = field(default=0.0, metadata={"help": "Optional per-collection budget in ms (0 disables enforcement)"})
+    phase_summary: bool = field(default=True, metadata={"help": "Emit phase start/end resource summaries"})
+    component_breakdown: bool = field(default=True, metadata={"help": "Emit startup component memory estimates"})
+    deep_window_steps: int = field(default=0, metadata={"help": "Deep mode active window in steps (0 disables)"})
+    deep_window_seconds: float = field(default=0.0, metadata={"help": "Deep mode active window in seconds (0 disables)"})
+
+
+@dataclass
 class LoggingConfig:
     """Logging and tracking settings."""
 
@@ -46,6 +68,7 @@ class LoggingConfig:
         default=None, metadata={"help": "Save timesteps distribution chart every N steps"}
     )
     live_plot_port: int | None = field(default=None, metadata={"help": "Launch live interactive dashboard server on this port"})
+    resource_monitor: ResourceMonitorConfig = field(default_factory=ResourceMonitorConfig)
 
 
 @dataclass

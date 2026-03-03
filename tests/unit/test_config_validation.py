@@ -138,6 +138,49 @@ class TestPrepareConfig:
         prepare_config(cfg)
         assert cfg.output.sampling.sample_every_n_steps is None
 
+    def test_resource_monitor_disabled_forces_off_mode(self):
+        """resource_monitor.enabled=False should force mode=off."""
+        cfg = OmegaConf.create(
+            {
+                "data": {"caching": {"cache_latents": False, "cache_latents_to_disk": False}, "caption": {"caption_extention": None}},
+                "optimizer": {"use_8bit_adam": False, "use_lion_optimizer": False, "optimizer_type": ""},
+                "output": {
+                    "sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None},
+                    "logging": {"log_every_n_steps": 1, "resource_monitor": {"enabled": False, "mode": "basic"}},
+                },
+            }
+        )
+        prepare_config(cfg)
+        assert cfg.output.logging.resource_monitor.mode == "off"
+
+    def test_resource_monitor_negative_log_steps_clamped_to_zero(self):
+        """resource monitor step cadence below zero should normalize to 0."""
+        cfg = OmegaConf.create(
+            {
+                "data": {"caching": {"cache_latents": False, "cache_latents_to_disk": False}, "caption": {"caption_extention": None}},
+                "optimizer": {"use_8bit_adam": False, "use_lion_optimizer": False, "optimizer_type": ""},
+                "output": {
+                    "sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None},
+                    "logging": {
+                        "log_every_n_steps": 1,
+                        "resource_monitor": {
+                            "enabled": True,
+                            "mode": "basic",
+                            "log_every_n_steps": -3,
+                            "sample_interval_sec": 1.0,
+                            "jsonl_flush_every_n_events": 50,
+                            "queue_maxsize": 1024,
+                            "max_collection_ms": 0.0,
+                            "deep_window_steps": 0,
+                            "deep_window_seconds": 0.0,
+                        },
+                    },
+                },
+            }
+        )
+        prepare_config(cfg)
+        assert cfg.output.logging.resource_monitor.log_every_n_steps == 0
+
 
 # =============================================================================
 # validate_config Tests
@@ -289,6 +332,39 @@ class TestValidateConfig:
             }
         )
         with pytest.raises(ValueError, match="full_bf16 requires mixed_precision='bf16'"):
+            validate_config(cfg)
+
+    def test_invalid_resource_monitor_mode_raises(self):
+        """resource_monitor.mode must be one of off/basic/sampled/deep."""
+        cfg = OmegaConf.create(
+            {
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": "sd1"},
+                "training": {"clip_skip": None},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {"caching": {"cache_text_encoder_outputs": False}},
+                "performance": {
+                    "memory": {"offload_text_encoders": False},
+                    "precision": {"full_fp16": False, "full_bf16": False, "mixed_precision": "fp16"},
+                },
+                "output": {
+                    "logging": {
+                        "resource_monitor": {
+                            "mode": "unknown",
+                            "rank_scope": "main",
+                            "device_scope": "local",
+                            "jsonl_flush_mode": "auto",
+                            "drop_policy": "drop_oldest",
+                        },
+                    }
+                },
+            }
+        )
+        with pytest.raises(ValueError, match="resource_monitor.mode must be one of"):
             validate_config(cfg)
 
     @pytest.mark.skip(reason="Block LR validation is model-specific, currently disabled pending refactor")

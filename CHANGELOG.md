@@ -14,17 +14,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `EpochEndTriggerContext` + `compute_epoch_end_actions()`
   - typed action containers for eval/validation/sampling/save decisions
 - New unit test coverage for trigger policy helpers in `tests/unit/training/phases/test_triggers.py`
+- New config-driven resource monitor module `library/logging/resource_monitor.py`:
+  - `NoOpResourceMonitor` for strict zero-overhead `off` mode
+  - `BasicResourceMonitor` for session/phase summaries and optional periodic step snapshots
+  - `create_resource_monitor(...)` factory for trainer integration
+- New resource monitor unit tests in `tests/unit/logging/test_resource_monitor.py`
+- New benchmark/test scenario configs:
+  - `configs/test_peft_validation_run.yaml`
+  - `configs/test_peft_resource_basic.yaml`
+  - `configs/benchmark_finetune_resource_basic.yaml`
 
 ### Changed
 
 - `training_loop.py` now delegates sampling/checkpoint trigger decisions through typed helper functions (matching the existing validation scheduler direction) while preserving current runtime behavior
 - `training_loop.py` step/epoch orchestration was split into focused internal helpers (`_run_step_side_effects`, `_emit_step_tracking_logs`, `_update_live_timestep_outputs`, `_finalize_epoch`, checkpoint artifact helpers) to reduce branch density in `run_training_loop()` without changing behavior
+- Added typed resource monitor config fields to `LoggingConfig` and `configs/output/default.yaml` (mode, rank scope, cadence, queue/flush/deep settings)
+- Grouped resource monitor settings under nested `output.logging.resource_monitor` via new `ResourceMonitorConfig` dataclass (replacing flat `resource_monitor_*` keys)
+- Added resource monitor config normalization + strict enum validation in `library/config/config_validation.py` (mode/rank/device scope, flush/drop policy, non-negative numeric bounds)
+- Replaced `BENCHMARK_RESOURCES` branches in caching/training phases with monitor hooks:
+  - `run_latent_caching` and `run_te_caching` now emit `phase_start/phase_end`
+  - training loop now emits per-epoch `phase_start/phase_end` and per-optimization-step `step_end`
+- `Trainer.setup()` now creates/starts a monitor instance from config, `_log_training_info()` emits startup component memory estimates, and `_finalize_training()` ends the session
+- `run_benchmark.ps1` now resolves nested Hydra defaults when building config snapshots, captures wrapped resource monitor log blocks more reliably, includes session summary sections in markdown, and adds benchmark aliases for PEFT validation/resource and finetune-resource scenarios
+- Updated `configs/test_core.yaml` and `configs/test_finetune.yaml` to use the shared `D:/Projects/sd-scripts/benchmark_cache` path for benchmark-oriented runs
 
 ### Fixed
 
 - **Step checkpoint epoch semantics are now consistent with epoch-end saves** — step-triggered checkpoint calls in `training_loop.py` now pass `trainer._current_epoch_state.value` (1-based) instead of the loop-local zero-based `epoch` index
 - Added integration assertions in `tests/integration/test_training_loop_integration.py` to verify step checkpoints carry 1-based current epoch values (including across epoch boundaries)
 - Hardened integration test fixture setup by explicitly stubbing `_validation_scheduler.should_run=False` to prevent accidental validation-path activation during checkpoint trigger tests
+- Fixed resource monitor startup estimates crash when diagnostics components are passed as a list (`AttributeError: 'list' object has no attribute 'items'`) by accepting both mappings and iterable `(name, module)` pairs
 
 ## [2026-03-02]
 

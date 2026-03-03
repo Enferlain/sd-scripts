@@ -22,6 +22,7 @@ from torch import nn
 import library.strategies.base.tokenization
 import library.strategies.base.caching
 import library.strategies.base.encoding
+from library.logging.resource_monitor import create_resource_monitor
 from library.performance import deepspeed_utils
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
@@ -160,6 +161,7 @@ class Trainer:
 
         # Validation scheduler (created during _log_training_info)
         self._validation_scheduler: Any = None
+        self._resource_monitor: Any = None
 
         # Validation state
         self._val_dataloader: Any = None
@@ -249,6 +251,12 @@ class Trainer:
         )
         self.device = self.accelerator.device
         suppress_non_main_process_logging(self.accelerator.is_main_process)
+        self._resource_monitor = create_resource_monitor(
+            accelerator=self.accelerator,
+            resource_monitor_config=self.cfg.output.logging.resource_monitor,
+            output_dir=self.cfg.output.saving.output_dir,
+        )
+        self._resource_monitor.start_session()
 
         # Track current epoch/step for checkpointing
         self._current_epoch_state = getattr(self.accelerator.state, "epoch", None) or SimpleNamespace(value=0)
@@ -480,6 +488,7 @@ class Trainer:
             lr_descriptions=self.lr_descriptions,
             aliases=diag_aliases,
         )
+        self._resource_monitor.emit_startup_component_memory(diag_components, self.optimizer_name)
 
         # Create training metadata
         # Convert optimizer_args to a formatted string for metadata (may already be str)
@@ -673,6 +682,8 @@ class Trainer:
                 )
 
         logger.info("model saved.")
+        if self._resource_monitor is not None:
+            self._resource_monitor.end_session()
 
     @property
     def trainable_model(self) -> nn.Module | None:

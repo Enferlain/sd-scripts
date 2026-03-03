@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import itertools
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,6 +16,7 @@ import numpy as np
 import torch
 
 from library.data import CaptionConfig, prepare_epoch, create_training_dataloader
+from library.logging.resource_monitor import NoOpResourceMonitor
 from library.logging.step_logging import generate_step_logs, step_logging
 from library.logging.training_plots import save_timestep_distribution_plot
 from library.losses.edm2_loss_utils import plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
@@ -43,6 +43,12 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+_NOOP_RESOURCE_MONITOR = NoOpResourceMonitor()
+
+
+def _resource_monitor(trainer: Trainer):
+    monitor = getattr(trainer, "_resource_monitor", None)
+    return monitor if monitor is not None else _NOOP_RESOURCE_MONITOR
 
 
 def _save_step_checkpoint_artifacts(trainer: Trainer) -> None:
@@ -308,16 +314,13 @@ def _finalize_epoch(
     trainer: Trainer,
     *,
     tokens_path: Path | None,
-    training_resource_tracker: object | None,
+    phase_name: str,
 ) -> None:
     """Run end-of-epoch cleanup, tracking, and epoch-end side-effects."""
     cfg = trainer.cfg
     accelerator = trainer.accelerator
     strategies = trainer.strategies
-
-    if training_resource_tracker:
-        stats = training_resource_tracker.stop()
-        logger.info(f"\n{stats.summary()}")
+    resource_monitor = _resource_monitor(trainer)
 
     if tokens_path and tokens_path.exists():
         tokens_path.unlink()
@@ -340,29 +343,32 @@ def _finalize_epoch(
         # Keep explicit patch target in training_loop tests.
         sample_images_check_fn=sample_images_check,
     )
-    if not epoch_end_actions.should_enter_eval_mode:
-        return
+    try:
+        if not epoch_end_actions.should_enter_eval_mode:
+            return
 
-    trainer.optimizer_eval_fn()
-    trainer.mode.set_eval(trainer)
-    if trainer.is_main_process and epoch_end_actions.should_save_epoch:
-        _save_epoch_checkpoint_artifacts(trainer)
+        trainer.optimizer_eval_fn()
+        trainer.mode.set_eval(trainer)
+        if trainer.is_main_process and epoch_end_actions.should_save_epoch:
+            _save_epoch_checkpoint_artifacts(trainer)
 
-    # Preserve existing behavior: when entering epoch-end eval mode, sampling runs.
-    strategies.sample_images(
-        accelerator,
-        cfg,
-        trainer._current_epoch_state.value,
-        trainer.global_step,
-        accelerator.device,
-        trainer.vae,
-        trainer.tokenizers,
-        trainer._text_encoder,
-        trainer.unet,
-    )
-    trainer._progress_bar.unpause()
-    trainer.optimizer_train_fn()
-    trainer.mode.set_train(trainer)
+        # Preserve existing behavior: when entering epoch-end eval mode, sampling runs.
+        strategies.sample_images(
+            accelerator,
+            cfg,
+            trainer._current_epoch_state.value,
+            trainer.global_step,
+            accelerator.device,
+            trainer.vae,
+            trainer.tokenizers,
+            trainer._text_encoder,
+            trainer.unet,
+        )
+        trainer._progress_bar.unpause()
+        trainer.optimizer_train_fn()
+        trainer.mode.set_train(trainer)
+    finally:
+        resource_monitor.phase_end(phase_name)
 
 
 def run_training_loop(trainer: Trainer) -> None:
@@ -405,6 +411,9 @@ def run_training_loop(trainer: Trainer) -> None:
         trainer._metadata["ss_epoch"] = str(trainer._current_epoch_state.value)
 
         trainer.mode.on_epoch_start(trainer)
+        epoch_phase_name = f"training_epoch_{trainer._current_epoch_state.value}"
+        resource_monitor = _resource_monitor(trainer)
+        resource_monitor.phase_start(epoch_phase_name)
 
         # Phase G: Create per-epoch DataLoader with fresh epoch manifest
         caption_config = CaptionConfig(
@@ -469,15 +478,6 @@ def run_training_loop(trainer: Trainer) -> None:
         if trainer._initial_step > 0:
             dataloader_iter = itertools.islice(dataloader_iter, trainer._initial_step - 1, None)
             trainer._initial_step = 1
-
-        # RESOURCE TRACKER START
-        training_resource_tracker = None
-        if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
-            from library.utils.resource_tracker import ResourceTracker
-
-            training_resource_tracker = ResourceTracker("Training")
-            training_resource_tracker.start()
-        # RESOURCE TRACKER END
 
         for step, batch in enumerate(dataloader_iter):
             trainer._current_step_state.value = trainer.global_step
@@ -577,6 +577,7 @@ def run_training_loop(trainer: Trainer) -> None:
                     batch=batch,
                     num_steps_in_epoch=num_steps_in_epoch,
                 )
+                resource_monitor.step_end(trainer.global_step, trainer._current_epoch_state.value)
 
             trainer._current_global_step_loss += loss.detach().item()
             if cfg.loss.edm2.edm2_loss_weighting:
@@ -616,7 +617,7 @@ def run_training_loop(trainer: Trainer) -> None:
         _finalize_epoch(
             trainer,
             tokens_path=tokens_path,
-            training_resource_tracker=training_resource_tracker,
+            phase_name=epoch_phase_name,
         )
 
         # end of epoch

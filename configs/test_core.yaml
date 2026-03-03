@@ -16,4 +16,4 @@ output:
 
 data:
   caching:
-    cache_dir: "D:/Projects/sd-scripts/tests/test_cache"
+    cache_dir: "D:/Projects/sd-scripts/benchmark_cache"

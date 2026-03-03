@@ -89,6 +89,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 - [x] **Checkpoint epoch metadata consistency (step vs epoch-end)** — Step-triggered saves now pass 1-based `current_epoch_state.value` (matching epoch-end saves). Added integration assertions for single-epoch and cross-epoch step checkpoint behavior.
 - [x] **Training loop helper extraction (phase orchestration readability)** — Moved step side-effects, tracker log emission, live timestep outputs, and epoch-end finalization into focused helpers while preserving runtime behavior (validation/sampling/checkpoint tests unchanged)
+- [x] **Remove env-var resource tracker branches from training/caching phases** — Replaced `BENCHMARK_RESOURCES` checks with config-driven monitor hooks (`phase_start/end`, `step_end`) wired through Trainer-owned monitor service
 - [ ] Timestep sampling needs proper reimplementation (currently hacked into training scripts)
 - [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
 - [ ] **`edm2_loss_utils.py` Config Cleanup** (low priority, not critical component)
@@ -230,6 +231,25 @@ See `docs_design/log_implementation_plan_v2.md` for full design.
 - [x] Add `log_every_n_steps` to `LoggingConfig` (default `1`)
 - [x] Gate tracker emission by interval in training loop
 - [x] Normalize invalid values in `config_validation.py`
+
+---
+
+## Resource Monitoring
+
+See `docs_design/resource_monitor_plan.md` for full design.
+
+### Phase 0-1: Skeleton + Config-Driven Hook Wiring (✅ Complete)
+
+- [x] Add trainer-owned `ResourceMonitor` service (`off` + `basic` behavior)
+- [x] Add typed resource monitor config fields under `output.logging`
+- [x] Add config normalization + validation for monitor settings
+- [x] Wire monitor lifecycle in trainer (`start_session`, `emit_startup_component_memory`, `end_session`)
+- [x] Remove phase-level `BENCHMARK_RESOURCES` branches and replace with monitor hooks in caching/training loop
+
+### Phase 2-3: Fidelity + Structured Output (Future)
+
+- [ ] Add sampled/deep collectors (background sampling, richer CUDA counters)
+- [ ] Add optional JSONL event stream with flush policy and queue pressure handling
 
 ---
 

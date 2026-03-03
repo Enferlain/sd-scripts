@@ -243,6 +243,7 @@ def _make_mock_trainer(
     trainer.noise_scheduler = MagicMock()
     trainer._validation_scheduler = MagicMock()
     trainer._validation_scheduler.should_run = MagicMock(return_value=False)
+    trainer._resource_monitor = MagicMock()
 
     # ---- train_manifest ----
     trainer.train_manifest = MagicMock()
@@ -329,6 +330,21 @@ class TestTrainingLoopStepAdvancement:
         _run_loop_with_mock_dataloader(trainer, 5)
 
         assert trainer.global_step == 3
+
+    def test_resource_monitor_hooks_fire_for_epochs_and_steps(self):
+        """Resource monitor should receive epoch and optimization-step hooks."""
+        num_epochs = 2
+        batches_per_epoch = 3
+        trainer = _make_mock_trainer(
+            num_epochs=num_epochs,
+            batches_per_epoch=batches_per_epoch,
+        )
+
+        _run_loop_with_mock_dataloader(trainer, batches_per_epoch)
+
+        assert trainer._resource_monitor.phase_start.call_count == num_epochs
+        assert trainer._resource_monitor.phase_end.call_count == num_epochs
+        assert trainer._resource_monitor.step_end.call_count == num_epochs * batches_per_epoch
 
 
 # =============================================================================

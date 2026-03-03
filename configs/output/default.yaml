@@ -33,6 +33,23 @@ logging:
   log_every_n_steps: 1
   log_timestep_distribution_every_n_steps: null
   live_plot_port: null
+  resource_monitor:
+    enabled: false
+    mode: off
+    log_every_n_steps: 0
+    sample_interval_sec: 1.0
+    rank_scope: main
+    device_scope: local
+    output_jsonl: null
+    jsonl_flush_mode: auto
+    jsonl_flush_every_n_events: 50
+    queue_maxsize: 1024
+    drop_policy: drop_oldest
+    max_collection_ms: 0.0
+    phase_summary: true
+    component_breakdown: true
+    deep_window_steps: 0
+    deep_window_seconds: 0.0
 
 huggingface:
   huggingface_repo_id: null
