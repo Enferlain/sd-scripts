@@ -87,6 +87,8 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 ## Code Quality TODOs
 
+- [x] **Checkpoint epoch metadata consistency (step vs epoch-end)** — Step-triggered saves now pass 1-based `current_epoch_state.value` (matching epoch-end saves). Added integration assertions for single-epoch and cross-epoch step checkpoint behavior.
+- [x] **Training loop helper extraction (phase orchestration readability)** — Moved step side-effects, tracker log emission, live timestep outputs, and epoch-end finalization into focused helpers while preserving runtime behavior (validation/sampling/checkpoint tests unchanged)
 - [ ] Timestep sampling needs proper reimplementation (currently hacked into training scripts)
 - [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
 - [ ] **`edm2_loss_utils.py` Config Cleanup** (low priority, not critical component)

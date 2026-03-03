@@ -241,6 +241,8 @@ def _make_mock_trainer(
     trainer._current_min_timestep = 0
     trainer._current_max_timestep = 1000
     trainer.noise_scheduler = MagicMock()
+    trainer._validation_scheduler = MagicMock()
+    trainer._validation_scheduler.should_run = MagicMock(return_value=False)
 
     # ---- train_manifest ----
     trainer.train_manifest = MagicMock()
@@ -351,6 +353,8 @@ class TestCheckpointTriggersOnStep:
         save_calls = trainer.save_checkpoint.call_args_list
         saved_steps = [c.args[2] for c in save_calls]  # arg[2] is step
         assert saved_steps == [3, 6, 9]
+        saved_epochs = [c.args[3] for c in save_calls]  # arg[3] is epoch
+        assert saved_epochs == [1, 1, 1]
 
     def test_step_checkpoint_naming(self):
         """Checkpoint names should use step-based format."""
@@ -367,6 +371,22 @@ class TestCheckpointTriggersOnStep:
         ckpt_name = save_calls[0].args[0]  # arg[0] is ckpt_name
         expected = get_step_ckpt_name(trainer.cfg.output.saving, ".safetensors", 5)
         assert ckpt_name == expected
+
+    def test_step_checkpoint_uses_1_based_current_epoch(self):
+        """Step checkpoint metadata epoch should match 1-based current epoch."""
+        trainer = _make_mock_trainer(
+            num_epochs=2,
+            batches_per_epoch=3,
+            save_every_n_steps=2,
+        )
+
+        _run_loop_with_mock_dataloader(trainer, 3)
+
+        save_calls = trainer.save_checkpoint.call_args_list
+        saved_steps = [c.args[2] for c in save_calls]
+        saved_epochs = [c.args[3] for c in save_calls]
+        assert saved_steps == [2, 4, 6]
+        assert saved_epochs == [1, 2, 2]
 
     def test_no_save_when_not_configured(self):
         """No step checkpoints when save_every_n_steps is None."""
