@@ -246,10 +246,10 @@ See `docs_design/resource_monitor_plan.md` for full design.
 - [x] Wire monitor lifecycle in trainer (`start_session`, `emit_startup_component_memory`, `end_session`)
 - [x] Remove phase-level `BENCHMARK_RESOURCES` branches and replace with monitor hooks in caching/training loop
 
-### Phase 2-3: Fidelity + Structured Output (Future)
+### Phase 2-3: Fidelity + Structured Output (✅ Complete)
 
-- [ ] Add sampled/deep collectors (background sampling, richer CUDA counters)
-- [ ] Add optional JSONL event stream with flush policy and queue pressure handling
+- [x] Add sampled/deep collectors (background sampling, richer CUDA counters)
+- [x] Add optional JSONL event stream with flush policy and queue pressure handling
 
 ---
 

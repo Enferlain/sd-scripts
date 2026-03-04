@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-04]
+
+### Added
+
+- Implemented real `sampled`/`deep` resource monitor mode behavior in `library/logging/resource_monitor.py`:
+  - daemon sampler thread with bounded queue
+  - queue pressure handling via `drop_oldest` / `drop_newest` / `block` policies
+  - sampled GPU-used memory collection (NVML preferred, `torch.cuda.mem_get_info` fallback)
+  - deep-window gated counter collection for `deep` mode using `torch.cuda.memory_stats()`
+- Added JSONL event streaming for monitor events (`session_start`, `phase_start`, `phase_end`, `step_sample`, `session_end`) with:
+  - stable fixed-key schema
+  - configurable flush behavior (`auto`, `line`, `batch`)
+  - forced flush at phase/session boundaries
+  - relative path resolution under output dir for `resource_monitor.output_jsonl`
+- Added resource monitor unit coverage in `tests/unit/logging/test_resource_monitor.py` for:
+  - sampled factory routing and sampler lifecycle
+  - queue drop policy behavior
+  - JSONL schema emission and forced-flush behavior
+- Added sampled resource-monitor presets:
+  - `configs/test_peft_resource_sampled.yaml`
+  - `configs/benchmark_finetune_resource_sampled.yaml`
+- Updated `run_benchmark.ps1` aliases/routing to support sampled resource runs (`peft_resource_sampled`, `finetune_resource_sampled`) and dynamic monitor mode override (`basic` vs `sampled`)
+
+### Changed
+
+- `create_resource_monitor(...)` now returns `SampledResourceMonitor` for `mode=sampled|deep` instead of degrading to basic behavior with a warning
+- Resource monitor event handling is now fault-tolerant by design (internal monitor failures are downgraded to warnings and do not interrupt training flow)
+- Deep mode now emits meaningful allocator diagnostics (`alloc_retries`, `ooms`, `active/reserved/inactive_split` MB) into structured events instead of debug-only console output
+- Deep-window semantics were tightened (step/time bounded from first optimization step) and now emit a one-time deep-window summary block when the window closes or session ends
+
 ## [2026-03-03]
 
 ### Added

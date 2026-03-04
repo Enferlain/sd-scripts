@@ -14,6 +14,8 @@
 #   offload  - TEs offloaded to CPU, no caching
 #   workers  - 4 workers, persistent, prefetch=4, more repeats
 #   large    - 200 repeats (1000 effective images), tests throughput
+#   peft_resource_basic / peft_resource_sampled
+#   finetune_resource_basic / finetune_resource_sampled
 #
 # Results can be compared against results from the old kohya-ss repo separately.
 
@@ -43,7 +45,9 @@ $configMap = @{
     "test_logging"      = "test_logging"
     "peft_validation_run" = "test_peft_validation_run"
     "peft_resource_basic" = "test_peft_resource_basic"
+    "peft_resource_sampled" = "test_peft_resource_sampled"
     "finetune_resource_basic" = "benchmark_finetune_resource_basic"
+    "finetune_resource_sampled" = "benchmark_finetune_resource_sampled"
 }
 
 $ErrorActionPreference = "Stop"
@@ -90,7 +94,7 @@ $outputDir = "$projectRoot\benchmark_output"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 # Route finetune configs to sdxl_finetune.py, everything else to sdxl_peft.py
-$finetuneConfigs = @("test_finetune", "benchmark_sdxl_finetune", "benchmark_finetune_resource_basic")
+$finetuneConfigs = @("test_finetune", "benchmark_sdxl_finetune", "benchmark_finetune_resource_basic", "benchmark_finetune_resource_sampled")
 if ($finetuneConfigs -contains $configName) {
     $script = "scripts/sdxl_finetune.py"
     Write-Host "[INFO] Config: $Config ($configName)" -ForegroundColor Green
@@ -113,9 +117,10 @@ Write-Host "PyTorch: $pytorchVersion"
 Write-Host ""
 
 # Force-enable new config-driven resource monitor for benchmark runs
+$resourceMonitorMode = if ($configName -like "*resource_sampled") { "sampled" } else { "basic" }
 $resourceMonitorArgs = @(
     "output.logging.resource_monitor.enabled=true",
-    "output.logging.resource_monitor.mode=basic",
+    "output.logging.resource_monitor.mode=$resourceMonitorMode",
     "output.logging.resource_monitor.log_every_n_steps=0",
     "output.logging.resource_monitor.rank_scope=main"
 )
@@ -368,7 +373,7 @@ if (Test-Path $configFile) {
 
 # Applied at runtime by this script (Hydra CLI overrides)
 $configSettings["override.output.logging.resource_monitor.enabled"] = "true"
-$configSettings["override.output.logging.resource_monitor.mode"] = "basic"
+$configSettings["override.output.logging.resource_monitor.mode"] = $resourceMonitorMode
 $configSettings["override.output.logging.resource_monitor.log_every_n_steps"] = "0"
 $configSettings["override.output.logging.resource_monitor.rank_scope"] = "main"
 
