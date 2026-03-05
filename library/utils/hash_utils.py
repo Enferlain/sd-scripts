@@ -203,3 +203,23 @@ def get_git_revision_hash() -> str:
         return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=os.path.dirname(__file__)).decode("ascii").strip()
     except Exception:
         return "(unknown)"
+
+
+def get_git_is_dirty() -> bool | None:
+    """
+    Check whether the current repository has tracked file changes.
+
+    Returns:
+        bool | None:
+            - True if tracked files are modified/staged
+            - False if working tree is clean (for tracked files)
+            - None if git state cannot be determined
+    """
+    try:
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=os.path.dirname(__file__),
+        ).decode("utf-8")
+        return bool(status.strip())
+    except Exception:
+        return None

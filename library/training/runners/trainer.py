@@ -26,6 +26,7 @@ from library.logging.resource_monitor import create_resource_monitor
 from library.performance import deepspeed_utils
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
+from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
 
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.data import create_manifest_from_config, get_or_create_manifest, DatasetManifest, Bucket
@@ -255,6 +256,10 @@ class Trainer:
             accelerator=self.accelerator,
             resource_monitor_config=self.cfg.output.logging.resource_monitor,
             output_dir=self.cfg.output.saving.output_dir,
+            run_id=self.session_id,
+            config_name=self.cfg.output.saving.output_name,
+            git_sha=get_git_revision_hash(),
+            git_dirty=get_git_is_dirty(),
         )
         self._resource_monitor.start_session()
 

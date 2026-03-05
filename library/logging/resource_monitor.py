@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING, Any, Protocol, TextIO
 import psutil
 import torch
 
+from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
+
 if TYPE_CHECKING:
     from accelerate import Accelerator
 
@@ -124,6 +126,10 @@ class BasicResourceMonitor:
         accelerator: Accelerator,
         resource_monitor_config: ResourceMonitorConfig,
         output_jsonl_path: Path | None,
+        run_id: str | int | None = None,
+        config_name: str | None = None,
+        git_sha: str | None = None,
+        git_dirty: bool | None = None,
     ):
         self._accelerator = accelerator
         self._resource_monitor_config = resource_monitor_config
@@ -156,7 +162,20 @@ class BasicResourceMonitor:
         self._jsonl_flush_mode = resource_monitor_config.jsonl_flush_mode
         self._jsonl_flush_every_n_events = resource_monitor_config.jsonl_flush_every_n_events
 
+        self._run_id = self._normalize_metadata_value(run_id)
+        self._config_name = self._normalize_metadata_value(config_name)
+        self._git_sha = self._normalize_metadata_value(git_sha)
+        self._git_dirty = git_dirty if isinstance(git_dirty, bool) else None
+
         self._warned_once: set[str] = set()
+
+    def _normalize_metadata_value(self, value: object) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            return stripped if stripped else None
+        return str(value)
 
     def _should_emit_this_rank(self) -> bool:
         if self._rank_scope == "all":
@@ -301,6 +320,10 @@ class BasicResourceMonitor:
             "world_size": self._world_size,
             "mode": self._mode,
             "device_scope": self._device_scope,
+            "run_id": self._run_id,
+            "config_name": self._config_name,
+            "git_sha": self._git_sha,
+            "git_dirty": self._git_dirty,
             "global_step": global_step,
             "epoch": epoch,
             "phase": phase,
@@ -630,11 +653,19 @@ class SampledResourceMonitor(BasicResourceMonitor):
         accelerator: Accelerator,
         resource_monitor_config: ResourceMonitorConfig,
         output_jsonl_path: Path | None,
+        run_id: str | int | None = None,
+        config_name: str | None = None,
+        git_sha: str | None = None,
+        git_dirty: bool | None = None,
     ):
         super().__init__(
             accelerator=accelerator,
             resource_monitor_config=resource_monitor_config,
             output_jsonl_path=output_jsonl_path,
+            run_id=run_id,
+            config_name=config_name,
+            git_sha=git_sha,
+            git_dirty=git_dirty,
         )
 
         self._sample_interval_sec = resource_monitor_config.sample_interval_sec
@@ -1020,6 +1051,10 @@ def create_resource_monitor(
     accelerator: Accelerator,
     resource_monitor_config: ResourceMonitorConfig,
     output_dir: str | Path | None = None,
+    run_id: str | int | None = None,
+    config_name: str | None = None,
+    git_sha: str | None = None,
+    git_dirty: bool | None = None,
 ) -> ResourceMonitor:
     """Create a monitor instance from typed logging config."""
     enabled = getattr(resource_monitor_config, "enabled", False)
@@ -1037,16 +1072,26 @@ def create_resource_monitor(
         return NoOpResourceMonitor()
 
     output_jsonl_path = _resolve_output_jsonl_path(resource_monitor_config, output_dir)
+    resolved_git_sha = git_sha if git_sha is not None else get_git_revision_hash()
+    resolved_git_dirty = git_dirty if isinstance(git_dirty, bool) else get_git_is_dirty()
 
     if mode in {"sampled", "deep"}:
         return SampledResourceMonitor(
             accelerator=accelerator,
             resource_monitor_config=resource_monitor_config,
             output_jsonl_path=output_jsonl_path,
+            run_id=run_id,
+            config_name=config_name,
+            git_sha=resolved_git_sha,
+            git_dirty=resolved_git_dirty,
         )
 
     return BasicResourceMonitor(
         accelerator=accelerator,
         resource_monitor_config=resource_monitor_config,
         output_jsonl_path=output_jsonl_path,
+        run_id=run_id,
+        config_name=config_name,
+        git_sha=resolved_git_sha,
+        git_dirty=resolved_git_dirty,
     )
