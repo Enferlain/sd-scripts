@@ -90,6 +90,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [x] **Checkpoint epoch metadata consistency (step vs epoch-end)** — Step-triggered saves now pass 1-based `current_epoch_state.value` (matching epoch-end saves). Added integration assertions for single-epoch and cross-epoch step checkpoint behavior.
 - [x] **Training loop helper extraction (phase orchestration readability)** — Moved step side-effects, tracker log emission, live timestep outputs, and epoch-end finalization into focused helpers while preserving runtime behavior (validation/sampling/checkpoint tests unchanged)
 - [x] **Remove env-var resource tracker branches from training/caching phases** — Replaced `BENCHMARK_RESOURCES` checks with config-driven monitor hooks (`phase_start/end`, `step_end`) wired through Trainer-owned monitor service
+- [x] **Remove epoch-end compatibility side-effect coupling** — `compute_epoch_end_actions()` now enters eval mode only when a real epoch-end action fires (`should_sample` or `should_save_epoch`), and `_finalize_epoch()` now samples only when `should_sample` is true (no unconditional epoch-end sample call path).
 - [ ] Timestep sampling needs proper reimplementation (currently hacked into training scripts)
 - [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
 - [ ] **`edm2_loss_utils.py` Config Cleanup** (low priority, not critical component)
@@ -250,6 +251,9 @@ See `docs_design/resource_monitor_plan.md` for full design.
 
 - [x] Add sampled/deep collectors (background sampling, richer CUDA counters)
 - [x] Add optional JSONL event stream with flush policy and queue pressure handling
+- [x] Add explicit DeepSpeed/ZeRO partitioning caveat in startup resource estimates (when DeepSpeed is enabled)
+- [x] Add integration smoke coverage for real `BasicResourceMonitor` JSONL event flow in both PEFT-like and fine-tune-like loop setups
+- [x] Add benchmark runner mode override (`-ResourceMonitorMode off|basic|sampled|deep`) to support reproducible off-vs-monitored overhead validation
 
 ---
 

@@ -14,7 +14,6 @@ import safetensors.torch
 
 from library.config.dataclasses.output import SavingConfig
 from library.training.checkpointing import (
-    load_metadata_from_safetensors,
     save_sd_model_on_epoch_end_or_stepwise_common,
     save_and_remove_state_on_epoch_end,
     save_and_remove_state_stepwise,
@@ -23,6 +22,7 @@ from library.training.checkpointing import (
     get_epoch_ckpt_name,
     get_step_ckpt_name,
 )
+from library.utils.model_metadata import load_metadata_from_safetensors
 
 
 # =============================================================================

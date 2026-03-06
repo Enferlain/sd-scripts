@@ -139,6 +139,28 @@ class TestBasicResourceMonitorBehavior:
             monitor.emit_startup_component_memory(components, "AdamW")
             mock_logger.info.assert_called()
 
+    def test_emit_startup_component_memory_includes_deepspeed_partitioning_caveat(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+        )
+
+        components = {"unet": torch.nn.Linear(4, 4)}
+        with patch("library.logging.resource_monitor.logger") as mock_logger:
+            monitor.emit_startup_component_memory(
+                components,
+                "AdamW",
+                deepspeed_enabled=True,
+                deepspeed_zero_stage=2,
+            )
+
+            logged = mock_logger.info.call_args.args[0]
+            assert "DeepSpeed/ZeRO caveat" in logged
+            assert "zero_stage=2" in logged
+
 
 @pytest.mark.unit
 class TestResourceMonitorJsonl:

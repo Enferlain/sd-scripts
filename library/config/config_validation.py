@@ -21,6 +21,11 @@ from library.optimizers.optimizer_utils import should_train_text_encoder
 logger = logging.getLogger(__name__)
 
 
+def _is_non_bool_number(value: object) -> bool:
+    """Return True for int/float values, excluding bool."""
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
 # =============================================================================
 # Auto-fixups (mutate config)
 # =============================================================================
@@ -74,16 +79,16 @@ def prepare_config(cfg) -> None:
         cfg.data.caching.cache_dir = cfg.data.source.train_data_dir
 
     # Sampling: disable if <= 0
-    if cfg.output.sampling.sample_every_n_epochs is not None and cfg.output.sampling.sample_every_n_epochs <= 0:
+    if _is_non_bool_number(cfg.output.sampling.sample_every_n_epochs) and cfg.output.sampling.sample_every_n_epochs <= 0:
         logger.warning("sample_every_n_epochs <= 0, disabling")
         cfg.output.sampling.sample_every_n_epochs = None
-    if cfg.output.sampling.sample_every_n_steps is not None and cfg.output.sampling.sample_every_n_steps <= 0:
+    if _is_non_bool_number(cfg.output.sampling.sample_every_n_steps) and cfg.output.sampling.sample_every_n_steps <= 0:
         logger.warning("sample_every_n_steps <= 0, disabling")
         cfg.output.sampling.sample_every_n_steps = None
 
     # Logging: normalize invalid tracker emission cadence
     try:
-        if cfg.output.logging.log_every_n_steps <= 0:
+        if _is_non_bool_number(cfg.output.logging.log_every_n_steps) and cfg.output.logging.log_every_n_steps <= 0:
             logger.warning(f"log_every_n_steps={cfg.output.logging.log_every_n_steps} <= 0, defaulting to 1")
             cfg.output.logging.log_every_n_steps = 1
     except AttributeError:
@@ -94,41 +99,41 @@ def prepare_config(cfg) -> None:
         logging_cfg = cfg.output.logging
         resource_monitor_cfg = logging_cfg.resource_monitor
 
-        if not resource_monitor_cfg.enabled:
+        if isinstance(resource_monitor_cfg.enabled, bool) and not resource_monitor_cfg.enabled:
             resource_monitor_cfg.mode = "off"
 
-        if resource_monitor_cfg.log_every_n_steps < 0:
+        if _is_non_bool_number(resource_monitor_cfg.log_every_n_steps) and resource_monitor_cfg.log_every_n_steps < 0:
             logger.warning(f"resource_monitor.log_every_n_steps={resource_monitor_cfg.log_every_n_steps} < 0, defaulting to 0")
             resource_monitor_cfg.log_every_n_steps = 0
 
-        if resource_monitor_cfg.sample_interval_sec <= 0:
+        if _is_non_bool_number(resource_monitor_cfg.sample_interval_sec) and resource_monitor_cfg.sample_interval_sec <= 0:
             logger.warning(
                 f"resource_monitor.sample_interval_sec={resource_monitor_cfg.sample_interval_sec} <= 0, defaulting to 1.0"
             )
             resource_monitor_cfg.sample_interval_sec = 1.0
 
-        if resource_monitor_cfg.jsonl_flush_every_n_events < 1:
+        if _is_non_bool_number(resource_monitor_cfg.jsonl_flush_every_n_events) and resource_monitor_cfg.jsonl_flush_every_n_events < 1:
             logger.warning(
                 "resource_monitor.jsonl_flush_every_n_events="
                 f"{resource_monitor_cfg.jsonl_flush_every_n_events} < 1, defaulting to 1"
             )
             resource_monitor_cfg.jsonl_flush_every_n_events = 1
 
-        if resource_monitor_cfg.queue_maxsize < 1:
+        if _is_non_bool_number(resource_monitor_cfg.queue_maxsize) and resource_monitor_cfg.queue_maxsize < 1:
             logger.warning(f"resource_monitor.queue_maxsize={resource_monitor_cfg.queue_maxsize} < 1, defaulting to 1")
             resource_monitor_cfg.queue_maxsize = 1
 
-        if resource_monitor_cfg.max_collection_ms < 0:
+        if _is_non_bool_number(resource_monitor_cfg.max_collection_ms) and resource_monitor_cfg.max_collection_ms < 0:
             logger.warning(
                 f"resource_monitor.max_collection_ms={resource_monitor_cfg.max_collection_ms} < 0, defaulting to 0.0"
             )
             resource_monitor_cfg.max_collection_ms = 0.0
 
-        if resource_monitor_cfg.deep_window_steps < 0:
+        if _is_non_bool_number(resource_monitor_cfg.deep_window_steps) and resource_monitor_cfg.deep_window_steps < 0:
             logger.warning(f"resource_monitor.deep_window_steps={resource_monitor_cfg.deep_window_steps} < 0, defaulting to 0")
             resource_monitor_cfg.deep_window_steps = 0
 
-        if resource_monitor_cfg.deep_window_seconds < 0:
+        if _is_non_bool_number(resource_monitor_cfg.deep_window_seconds) and resource_monitor_cfg.deep_window_seconds < 0:
             logger.warning(
                 "resource_monitor.deep_window_seconds="
                 f"{resource_monitor_cfg.deep_window_seconds} < 0, defaulting to 0.0"
@@ -139,10 +144,10 @@ def prepare_config(cfg) -> None:
 
     # Validation: normalize invalid cadence values
     if hasattr(cfg, "validation") and cfg.validation is not None:
-        if cfg.validation.validate_every_n_steps is not None and cfg.validation.validate_every_n_steps <= 0:
+        if _is_non_bool_number(cfg.validation.validate_every_n_steps) and cfg.validation.validate_every_n_steps <= 0:
             logger.warning(f"validate_every_n_steps={cfg.validation.validate_every_n_steps} <= 0, disabling")
             cfg.validation.validate_every_n_steps = None
-        if cfg.validation.validate_every_n_epochs is not None and cfg.validation.validate_every_n_epochs <= 0:
+        if _is_non_bool_number(cfg.validation.validate_every_n_epochs) and cfg.validation.validate_every_n_epochs <= 0:
             logger.warning(f"validate_every_n_epochs={cfg.validation.validate_every_n_epochs} <= 0, disabling")
             cfg.validation.validate_every_n_epochs = None
 

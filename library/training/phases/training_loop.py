@@ -352,18 +352,18 @@ def _finalize_epoch(
         if trainer.is_main_process and epoch_end_actions.should_save_epoch:
             _save_epoch_checkpoint_artifacts(trainer)
 
-        # Preserve existing behavior: when entering epoch-end eval mode, sampling runs.
-        strategies.sample_images(
-            accelerator,
-            cfg,
-            trainer._current_epoch_state.value,
-            trainer.global_step,
-            accelerator.device,
-            trainer.vae,
-            trainer.tokenizers,
-            trainer._text_encoder,
-            trainer.unet,
-        )
+        if epoch_end_actions.should_sample:
+            strategies.sample_images(
+                accelerator,
+                cfg,
+                trainer._current_epoch_state.value,
+                trainer.global_step,
+                accelerator.device,
+                trainer.vae,
+                trainer.tokenizers,
+                trainer._text_encoder,
+                trainer.unet,
+            )
         trainer._progress_bar.unpause()
         trainer.optimizer_train_fn()
         trainer.mode.set_train(trainer)

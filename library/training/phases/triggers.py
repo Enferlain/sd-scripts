@@ -114,9 +114,8 @@ def compute_epoch_end_actions(
             ctx.current_epoch % saving_config.save_every_n_epochs == 0 and ctx.current_epoch < ctx.num_train_epochs
         )
 
-    # Preserve existing training-loop behavior: entering eval mode at epoch-end
-    # whenever epoch-save config is present, even if no save fires this epoch.
-    should_enter_eval_mode = should_sample or has_epoch_save_config
+    # Enter eval mode only when an epoch-end side effect is actually scheduled.
+    should_enter_eval_mode = should_sample or should_save_epoch
 
     return EpochEndActions(
         should_sample=should_sample,

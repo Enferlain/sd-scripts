@@ -7,6 +7,7 @@
 #        .\run_benchmark.ps1 -Config workers     # Run with DataLoader workers
 #        .\run_benchmark.ps1 -Config large       # Run with simulated large dataset
 #        .\run_benchmark.ps1 -Profile            # Enable Python profiling
+#        .\run_benchmark.ps1 -Config peft_resource_basic -ResourceMonitorMode off  # baseline without monitor
 #
 # Available configs:
 #   default  - TE cached to disk, TEs frozen, no workers (baseline)
@@ -23,7 +24,8 @@ param(
     [switch]$Fresh,       # Clear cache before running
     [switch]$Profile,     # Enable Python profiling
     [string]$Config = "default",  # Benchmark config variant
-    [int]$Runs = 1        # Number of runs for averaging
+    [int]$Runs = 1,       # Number of runs for averaging
+    [string]$ResourceMonitorMode = ""  # "", off, basic, sampled, deep
 )
 
 # Map config names to actual config files
@@ -116,10 +118,27 @@ Write-Host "Python: $pythonVersion"
 Write-Host "PyTorch: $pytorchVersion"
 Write-Host ""
 
-# Force-enable new config-driven resource monitor for benchmark runs
-$resourceMonitorMode = if ($configName -like "*resource_sampled") { "sampled" } else { "basic" }
+# Resource monitor mode selection:
+# - default behavior: sampled for *_resource_sampled configs, basic otherwise
+# - explicit override via -ResourceMonitorMode (supports off for baseline runs)
+$resourceMonitorMode = if (-not [string]::IsNullOrWhiteSpace($ResourceMonitorMode)) {
+    $ResourceMonitorMode.ToLowerInvariant()
+} elseif ($configName -like "*resource_sampled") {
+    "sampled"
+} else {
+    "basic"
+}
+
+$validResourceModes = @("off", "basic", "sampled", "deep")
+if ($resourceMonitorMode -notin $validResourceModes) {
+    Write-Host "[ERROR] Invalid ResourceMonitorMode: $resourceMonitorMode" -ForegroundColor Red
+    Write-Host "Valid values: $($validResourceModes -join ', ')" -ForegroundColor Yellow
+    exit 1
+}
+
+$resourceMonitorEnabled = $resourceMonitorMode -ne "off"
 $resourceMonitorArgs = @(
-    "output.logging.resource_monitor.enabled=true",
+    "output.logging.resource_monitor.enabled=$($resourceMonitorEnabled.ToString().ToLowerInvariant())",
     "output.logging.resource_monitor.mode=$resourceMonitorMode",
     "output.logging.resource_monitor.log_every_n_steps=0",
     "output.logging.resource_monitor.rank_scope=main"
@@ -372,7 +391,7 @@ if (Test-Path $configFile) {
 }
 
 # Applied at runtime by this script (Hydra CLI overrides)
-$configSettings["override.output.logging.resource_monitor.enabled"] = "true"
+$configSettings["override.output.logging.resource_monitor.enabled"] = $resourceMonitorEnabled.ToString().ToLowerInvariant()
 $configSettings["override.output.logging.resource_monitor.mode"] = $resourceMonitorMode
 $configSettings["override.output.logging.resource_monitor.log_every_n_steps"] = "0"
 $configSettings["override.output.logging.resource_monitor.rank_scope"] = "main"

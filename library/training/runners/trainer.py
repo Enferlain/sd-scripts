@@ -493,7 +493,12 @@ class Trainer:
             lr_descriptions=self.lr_descriptions,
             aliases=diag_aliases,
         )
-        self._resource_monitor.emit_startup_component_memory(diag_components, self.optimizer_name)
+        self._resource_monitor.emit_startup_component_memory(
+            diag_components,
+            self.optimizer_name,
+            deepspeed_enabled=cfg.performance.deepspeed.deepspeed,
+            deepspeed_zero_stage=cfg.performance.deepspeed.zero_stage,
+        )
 
         # Create training metadata
         # Convert optimizer_args to a formatted string for metadata (may already be str)

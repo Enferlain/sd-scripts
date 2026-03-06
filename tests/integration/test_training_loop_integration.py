@@ -9,11 +9,13 @@ Exercises the real ``run_training_loop`` function with a mock trainer to verify:
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import torch
 
+from library.logging.resource_monitor import create_resource_monitor
 from library.training.phases.training_loop import run_training_loop
 from library.training.checkpointing import get_step_ckpt_name, get_epoch_ckpt_name
 
@@ -267,6 +269,42 @@ def _run_loop_with_mock_dataloader(trainer, batches_per_epoch: int):
             run_training_loop(trainer)
 
 
+def _make_basic_resource_monitor(trainer, *, tmp_path, config_name: str):
+    """Create a real BasicResourceMonitor instance with JSONL output enabled."""
+    monitor_cfg = SimpleNamespace(
+        enabled=True,
+        mode="basic",
+        rank_scope="main",
+        phase_summary=True,
+        component_breakdown=True,
+        log_every_n_steps=1,
+        device_scope="local",
+        sample_interval_sec=1.0,
+        output_jsonl="resource_monitor.jsonl",
+        jsonl_flush_mode="line",
+        jsonl_flush_every_n_events=50,
+        queue_maxsize=1024,
+        drop_policy="drop_oldest",
+        max_collection_ms=0.0,
+        deep_window_steps=0,
+        deep_window_seconds=0.0,
+    )
+    monitor = create_resource_monitor(
+        accelerator=trainer.accelerator,
+        resource_monitor_config=monitor_cfg,
+        output_dir=tmp_path,
+        run_id="integration-run",
+        config_name=config_name,
+        git_sha="integration-sha",
+        git_dirty=False,
+    )
+    return monitor, tmp_path / "resource_monitor.jsonl"
+
+
+def _read_jsonl_events(path):
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
 # =============================================================================
 # Test 1: Step Advancement
 # =============================================================================
@@ -345,6 +383,66 @@ class TestTrainingLoopStepAdvancement:
         assert trainer._resource_monitor.phase_start.call_count == num_epochs
         assert trainer._resource_monitor.phase_end.call_count == num_epochs
         assert trainer._resource_monitor.step_end.call_count == num_epochs * batches_per_epoch
+
+
+class TestResourceMonitorBasicIntegration:
+    """Exercise real basic monitor JSONL output through training-loop hooks."""
+
+    def test_basic_monitor_jsonl_events_for_peft_like_run(self, tmp_path):
+        trainer = _make_mock_trainer(
+            num_epochs=2,
+            batches_per_epoch=2,
+            save_every_n_steps=None,
+            save_every_n_epochs=None,
+        )
+        monitor, jsonl_path = _make_basic_resource_monitor(
+            trainer,
+            tmp_path=tmp_path,
+            config_name="integration_peft_basic",
+        )
+        trainer._resource_monitor = monitor
+
+        monitor.start_session()
+        _run_loop_with_mock_dataloader(trainer, 2)
+        monitor.end_session()
+
+        assert jsonl_path.exists()
+        events = _read_jsonl_events(jsonl_path)
+        event_names = {event["event"] for event in events}
+        assert {"session_start", "phase_start", "phase_end", "step_sample", "session_end"}.issubset(event_names)
+
+        assert sum(1 for event in events if event["event"] == "phase_start") == 2
+        assert sum(1 for event in events if event["event"] == "phase_end") == 2
+        assert sum(1 for event in events if event["event"] == "step_sample" and event["global_step"] is not None) == 4
+
+    def test_basic_monitor_jsonl_events_for_finetune_like_run(self, tmp_path):
+        trainer = _make_mock_trainer(
+            num_epochs=1,
+            batches_per_epoch=3,
+            save_every_n_steps=None,
+            save_every_n_epochs=None,
+        )
+        trainer._grad_sync_handle = trainer.unet
+        type(trainer).trainable_model = PropertyMock(return_value=trainer.unet)
+
+        monitor, jsonl_path = _make_basic_resource_monitor(
+            trainer,
+            tmp_path=tmp_path,
+            config_name="integration_finetune_basic",
+        )
+        trainer._resource_monitor = monitor
+
+        monitor.start_session()
+        _run_loop_with_mock_dataloader(trainer, 3)
+        monitor.end_session()
+
+        assert jsonl_path.exists()
+        events = _read_jsonl_events(jsonl_path)
+
+        step_events = [event for event in events if event["event"] == "step_sample" and event["global_step"] is not None]
+        assert len(step_events) == 3
+        assert all(event["config_name"] == "integration_finetune_basic" for event in events)
+        assert all(event["mode"] == "basic" for event in events)
 
 
 # =============================================================================

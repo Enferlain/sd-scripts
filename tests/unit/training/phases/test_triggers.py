@@ -101,8 +101,8 @@ class TestEpochEndTriggers:
         )
         assert skip_last_epoch.should_save_epoch is False
 
-    def test_epoch_end_eval_mode_preserves_existing_save_config_behavior(self):
-        """Epoch-end eval mode is entered when epoch save config exists."""
+    def test_epoch_end_no_eval_when_no_action_fires(self):
+        """Epoch-end eval mode is skipped when neither sample nor save fires."""
         sampling = SamplingConfig(sample_every_n_epochs=None)
         saving = SavingConfig(save_every_n_epochs=3)
 
@@ -115,7 +115,7 @@ class TestEpochEndTriggers:
 
         assert actions.should_sample is False
         assert actions.should_save_epoch is False
-        assert actions.should_enter_eval_mode is True
+        assert actions.should_enter_eval_mode is False
 
     def test_epoch_end_no_eval_when_no_sampling_and_no_save_config(self):
         """Epoch-end eval mode is skipped when no sample/save trigger exists."""

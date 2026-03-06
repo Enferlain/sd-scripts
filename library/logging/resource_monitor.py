@@ -89,7 +89,12 @@ class ResourceMonitor(Protocol):
     def step_end(self, global_step: int, epoch: int) -> None: ...
 
     def emit_startup_component_memory(
-        self, components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None, optimizer_name: str
+        self,
+        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None,
+        optimizer_name: str,
+        *,
+        deepspeed_enabled: bool = False,
+        deepspeed_zero_stage: int | None = None,
     ) -> None: ...
 
 
@@ -112,8 +117,14 @@ class NoOpResourceMonitor:
         return
 
     def emit_startup_component_memory(
-        self, components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None, optimizer_name: str
+        self,
+        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None,
+        optimizer_name: str,
+        *,
+        deepspeed_enabled: bool = False,
+        deepspeed_zero_stage: int | None = None,
     ) -> None:
+        _ = deepspeed_enabled, deepspeed_zero_stage
         return
 
 
@@ -600,7 +611,12 @@ class BasicResourceMonitor:
             self._warn_once("step_end", "resource monitor step_end failed (step=%s): %s", global_step, exc)
 
     def emit_startup_component_memory(
-        self, components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None, optimizer_name: str
+        self,
+        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None,
+        optimizer_name: str,
+        *,
+        deepspeed_enabled: bool = False,
+        deepspeed_zero_stage: int | None = None,
     ) -> None:
         try:
             if not self._should_emit_this_rank():
@@ -639,6 +655,12 @@ class BasicResourceMonitor:
                 "  - total (est): "
                 f"{(total_param_bytes + total_trainable_bytes + optimizer_state_bytes) / (1024 * 1024):.1f}MB"
             )
+            if deepspeed_enabled:
+                zero_stage_label = "n/a" if deepspeed_zero_stage is None else str(deepspeed_zero_stage)
+                lines.append(
+                    "  - DeepSpeed/ZeRO caveat: effective per-rank footprint may be lower/higher than these estimates "
+                    f"due to state partitioning/offload (zero_stage={zero_stage_label})."
+                )
             logger.info("\n".join(lines))
         except Exception as exc:  # pragma: no cover - defensive safety net
             self._warn_once("startup_component_memory", "resource monitor startup component estimate failed: %s", exc)
