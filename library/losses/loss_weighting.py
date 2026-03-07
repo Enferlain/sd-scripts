@@ -106,6 +106,30 @@ def apply_debiased_estimation(loss: torch.Tensor, timesteps: torch.Tensor, noise
     return loss
 
 
+def post_process_loss(loss: torch.Tensor, cfg, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler) -> torch.Tensor:
+    """
+    Apply configured loss post-processing in a shared order.
+
+    Args:
+        loss (torch.Tensor): Raw per-sample loss tensor.
+        cfg: Training configuration object containing loss settings.
+        timesteps (torch.Tensor): Timesteps associated with the loss.
+        noise_scheduler (DDPMScheduler): Noise scheduler used for training.
+
+    Returns:
+        torch.Tensor: Post-processed loss tensor.
+    """
+    if cfg.loss.snr.min_snr_gamma:
+        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.snr.min_snr_gamma, cfg.loss.v_parameterization)
+    if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
+        loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
+    if cfg.loss.snr.v_pred_like_loss:
+        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)
+    if cfg.loss.snr.debiased_estimation_loss:
+        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
+    return loss
+
+
 def apply_masked_loss(loss, batch) -> torch.FloatTensor:
     """
     Applies a mask to the loss based on conditioning images or alpha masks in the batch.

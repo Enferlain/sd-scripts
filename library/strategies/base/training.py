@@ -2,27 +2,14 @@
 # Follows the pattern from PEFT_REFACTORING_PLAN.md
 
 import logging
-import random
-import numpy as np
 import torch
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from diffusers import DDPMScheduler
 from typing import Any
 
 
 from library.optimizers.optimizer_utils import should_train_text_encoder, should_train_unet
-from library.training.noise_utils import (
-    prepare_scheduler_for_custom_training,
-    fix_noise_scheduler_betas_for_zero_terminal_snr,
-)
-from library.losses.loss_weighting import (
-    apply_snr_weight,
-    scale_v_prediction_loss_like_noise_prediction,
-    add_v_prediction_like_loss,
-    apply_debiased_estimation,
-)
 
 
 logger = logging.getLogger(__name__)
@@ -44,11 +31,29 @@ class ModelLoadingStrategy(ABC):
         Returns:
             Tuple of (model_version, text_encoder, vae, unet):
             - model_version: String identifier for the model version.
-            - text_encoder: A single text encoder model or a list of text encoders (for SDXL).
+            - text_encoder: A single text encoder model or a list of text encoders.
             - vae: The VAE model.
             - unet: The UNet model, or None if loaded lazily.
         """
         raise NotImplementedError
+
+    def load_unet_lazily(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any, text_encoders: list[Any]) -> Any:
+        """
+        Load UNet lazily if not loaded in ``load_target_model``.
+
+        Args:
+            cfg: Configuration object.
+            weight_dtype: Weight data type.
+            accelerator: Accelerator instance.
+            text_encoders: List of text encoders.
+
+        Returns:
+            Loaded UNet model.
+
+        Raises:
+            NotImplementedError: If not implemented by subclass.
+        """
+        raise NotImplementedError("load_unet_lazily is not implemented for this architecture")
 
 
 class TokenizationStrategy(ABC):
@@ -265,44 +270,6 @@ class CachingStrategy(ABC):
         raise NotImplementedError
 
 
-class UNetCallingStrategy(ABC):
-    """Strategy for calling UNet during training."""
-
-    @abstractmethod
-    def call_unet(
-        self,
-        cfg: Any,
-        accelerator: Any,
-        unet: Any,
-        noisy_latents: torch.Tensor,
-        timesteps: torch.Tensor,
-        text_conds: Any,
-        batch: Any,
-        weight_dtype: torch.dtype,
-        **kwargs,
-    ) -> torch.Tensor:
-        """
-        Call UNet with architecture-specific arguments.
-
-        SDXL adds added_cond_kwargs for size/crop conditioning.
-
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            unet: The UNet model.
-            noisy_latents: Input latents with noise.
-            timesteps: Timesteps for denoising.
-            text_conds: Text conditioning embeddings.
-            batch: The current data batch.
-            weight_dtype: Data type for calculations.
-            **kwargs: Additional architecture-specific arguments.
-
-        Returns:
-            The noise prediction tensor.
-        """
-        raise NotImplementedError
-
-
 class SampleGenerationStrategy(ABC):
     """Strategy for generating sample images during training."""
 
@@ -415,53 +382,45 @@ class ValidationStrategy(ABC):
         """
         raise NotImplementedError
 
-
-@dataclass
-class TrainingStrategy(
-    ModelLoadingStrategy,
-    TokenizationStrategy,
-    CachingStrategy,
-    UNetCallingStrategy,
-    SampleGenerationStrategy,
-    CheckpointingStrategy,
-    ValidationStrategy,
-):
-    """
-    Combined interface for all PEFT training strategies.
-
-    Implementations inherit from this and provide model-specific implementations.
-    """
-
-    # Instance state (set during training)
-    la_sampler: Any = field(default=None, init=False, repr=False)
-    live_plotter_process: Any = field(default=None, init=False, repr=False)
-
-    # --- Shared methods (identical across SD/SDXL) ---
-
-    def get_noise_scheduler(self, cfg: Any, device: torch.device) -> Any:
+    @abstractmethod
+    def calculate_val_loss(
+        self,
+        global_step: int,
+        epoch_step: int,
+        train_dataloader: Any,
+        val_loss_recorder: Any,
+        val_dataloader: Any,
+        cyclic_val_dataloader: Any,
+        trainable_model: Any,
+        tokenize_strategy: Any,
+        text_encoders: list[Any],
+        text_encoding_strategy: Any,
+        unet: Any,
+        vae: Any,
+        noise_scheduler: Any,
+        vae_dtype: torch.dtype,
+        weight_dtype: torch.dtype,
+        accelerator: Any,
+        cfg: Any,
+        epoch: int,
+        batch: Any | None = None,
+        train_text_encoder: bool = True,
+    ) -> tuple[float | None, float | None]:
         """
-        Create noise scheduler. Same for SD and SDXL.
-
-        Args:
-            cfg: Configuration object.
-            device: Device to place the scheduler on.
+        Calculate validation loss.
 
         Returns:
-            Initialized DDPMScheduler.
+            Tuple of (current_val_loss, average_val_loss).
         """
-        noise_scheduler = DDPMScheduler(
-            beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
-        )
+        raise NotImplementedError
 
-        if cfg.loss.regularization.zero_terminal_snr:
-            fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
 
-        prepare_scheduler_for_custom_training(noise_scheduler, device)
-        return noise_scheduler
+class DiffusionTrainingStrategy(ABC):
+    """Strategy for diffusion-specific batch processing behavior."""
 
     def encode_images_to_latents(self, cfg: Any, vae: Any, images: torch.Tensor) -> torch.Tensor:
         """
-        Encode images to latents using VAE.
+        Encode images to latents using the VAE.
 
         Args:
             cfg: Configuration object.
@@ -475,7 +434,7 @@ class TrainingStrategy(
 
     def shift_scale_latents(self, cfg: Any, latents: torch.Tensor) -> torch.Tensor:
         """
-        Apply VAE scale factor to latents. Uses self.vae_latent_scale from child class.
+        Apply the model-family VAE latent scale factor.
 
         Args:
             cfg: Configuration object.
@@ -484,36 +443,13 @@ class TrainingStrategy(
         Returns:
             Scaled latents.
         """
-        return latents * self.vae_latent_scale  # Defined in subclasses (SdTrainingStrategy, SdxlTrainingStrategy)
-
-    def post_process_loss(self, loss: torch.Tensor, cfg: Any, timesteps: torch.Tensor, noise_scheduler: Any) -> torch.Tensor:
-        """
-        Apply SNR weighting, v-pred scaling, debiased estimation etc.
-
-        Args:
-            loss: Raw loss tensor.
-            cfg: Configuration object.
-            timesteps: Timesteps associated with the loss.
-            noise_scheduler: Noise scheduler instance.
-
-        Returns:
-            Processed loss tensor.
-        """
-        if cfg.loss.snr.min_snr_gamma:
-            loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.snr.min_snr_gamma, cfg.loss.v_parameterization)
-        if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
-            loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
-        if cfg.loss.snr.v_pred_like_loss:
-            loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)
-        if cfg.loss.snr.debiased_estimation_loss:
-            loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
-        return loss
+        return latents * self.vae_latent_scale  # Defined in concrete strategies.
 
     def _prepare_latents(self, batch: Any, cfg: Any, accelerator: Any, vae: Any, vae_dtype: torch.dtype) -> torch.Tensor:
         """
-        Prepare latents from batch - either use cached or encode images.
+        Prepare latents from batch data or cached entries.
 
-        This method is shared between process_batch and process_val_batch.
+        Shared between training and validation batch processing.
 
         Args:
             batch: Batch data containing either cached latents or images.
@@ -528,16 +464,12 @@ class TrainingStrategy(
         import typing
 
         if "latents" in batch and batch["latents"] is not None:
-            # Cached latents are already scaled by VAE_LATENT_SCALE during caching
-            # Do NOT scale again - just move to device
             latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
         else:
-            # Encoding on-the-fly - need to scale
             vae_batch_size = cfg.data.caching.vae_batch_size
             if vae_batch_size is None or len(batch["images"]) <= vae_batch_size:
                 latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
             else:
-                # Chunk encoding for large batches
                 chunks = [batch["images"][i : i + vae_batch_size] for i in range(0, len(batch["images"]), vae_batch_size)]
                 list_latents = []
                 for chunk in chunks:
@@ -550,16 +482,86 @@ class TrainingStrategy(
                 accelerator.print("NaN found in latents, replacing with zeros")
                 latents = typing.cast(torch.FloatTensor, torch.nan_to_num(latents, 0, out=latents))
 
-            # Only scale when encoding on-the-fly (cached latents are pre-scaled)
             latents = self.shift_scale_latents(cfg, latents)
 
         return latents
 
-    # --- Additional methods that may need strategy ---
+    @abstractmethod
+    def process_batch(
+        self,
+        batch: Any,
+        text_encoders: list[Any],
+        unet: Any,
+        trainable_model: Any,
+        vae: Any,
+        noise_scheduler: Any,
+        vae_dtype: torch.dtype,
+        weight_dtype: torch.dtype,
+        accelerator: Any,
+        cfg: Any,
+        text_encoding_strategy: Any,
+        tokenize_strategy: Any,
+        is_train: bool = True,
+        train_text_encoder: bool = True,
+        train_unet: bool = True,
+        edm2_model: Any | None = None,
+        min_timestep_override: int | None = None,
+        max_timestep_override: int | None = None,
+        global_step: int = 0,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
+        """
+        Process a batch for training or validation.
+
+        Returns:
+            Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
+        """
+        raise NotImplementedError
+
+
+class UNetCallingStrategy(ABC):
+    """Strategy for calling UNet during training."""
+
+    @abstractmethod
+    def call_unet(
+        self,
+        cfg: Any,
+        accelerator: Any,
+        unet: Any,
+        noisy_latents: torch.Tensor,
+        timesteps: torch.Tensor,
+        text_conds: Any,
+        batch: Any,
+        weight_dtype: torch.dtype,
+        **kwargs,
+    ) -> torch.Tensor:
+        """
+        Call UNet with architecture-specific arguments.
+
+        SDXL adds added_cond_kwargs for size/crop conditioning.
+
+        Args:
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            unet: The UNet model.
+            noisy_latents: Input latents with noise.
+            timesteps: Timesteps for denoising.
+            text_conds: Text conditioning embeddings.
+            batch: The current data batch.
+            weight_dtype: Data type for calculations.
+            **kwargs: Additional architecture-specific arguments.
+
+        Returns:
+            The noise prediction tensor.
+        """
+        raise NotImplementedError
+
+
+class ModelPreparationStrategy:
+    """Strategy hooks used while preparing trainable models and precision."""
 
     def get_text_encoders_train_flags(self, cfg: Any, text_encoders: list[Any]) -> list[bool]:
         """
-        Return list of flags for whether each text encoder should be trained.
+        Return per-text-encoder training flags.
 
         Args:
             cfg: Configuration object.
@@ -602,7 +604,7 @@ class TrainingStrategy(
             cfg: Configuration object.
 
         Returns:
-            True (default implementation).
+            True by default.
         """
         return True
 
@@ -614,7 +616,7 @@ class TrainingStrategy(
             cfg: Configuration object.
 
         Returns:
-            True (default implementation).
+            True by default.
         """
         return True
 
@@ -626,16 +628,17 @@ class TrainingStrategy(
             cfg: Configuration object.
 
         Returns:
-            True (default implementation).
+            True by default.
         """
         return True
 
     def is_text_encoder_not_needed_for_training(self, cfg: Any) -> bool:
         """
-        Check if text encoder is unnecessary for training loop (can be deleted from memory).
+        Check if text encoder is unnecessary for the training loop.
 
-        Returns True when TE caching is enabled AND TEs aren't being trained.
-        Note: offload_text_encoders keeps TEs in memory (on CPU), so returns False.
+        Returns True when TE caching is enabled AND TEs are not being trained.
+        ``offload_text_encoders`` keeps TEs in memory (on CPU), so this returns
+        False in that case.
 
         Args:
             cfg: Configuration object.
@@ -647,7 +650,7 @@ class TrainingStrategy(
 
     def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
         """
-        Set up gradient checkpointing for text encoder.
+        Set up gradient checkpointing for a text encoder.
 
         Args:
             index: Index of the text encoder.
@@ -657,7 +660,7 @@ class TrainingStrategy(
 
     def prepare_text_encoder_fp8(self, index: int, text_encoder: Any, te_weight_dtype: torch.dtype, weight_dtype: torch.dtype) -> None:
         """
-        Prepare text encoder for FP8 training.
+        Prepare text encoder modules for FP8 training.
 
         Args:
             index: Index of the text encoder.
@@ -669,7 +672,7 @@ class TrainingStrategy(
 
     def prepare_unet_with_accelerator(self, cfg: Any, accelerator: Any, unet: Any) -> Any:
         """
-        Prepare UNet with accelerator.
+        Prepare UNet with the accelerator.
 
         Args:
             cfg: Configuration object.
@@ -683,7 +686,7 @@ class TrainingStrategy(
 
     def post_process_trainable(self, cfg: Any, accelerator: Any, trainable_model: Any, text_encoders: list[Any], unet: Any) -> None:
         """
-        Post-process trainable model after creation. Override for model-specific behavior.
+        Post-process the trainable model after creation.
 
         Args:
             cfg: Configuration object.
@@ -692,7 +695,11 @@ class TrainingStrategy(
             text_encoders: List of text encoders.
             unet: The UNet model.
         """
-        pass
+        return None
+
+
+class TrainingRuntimeStrategy:
+    """Strategy hooks used by the shared training loop runtime."""
 
     def on_step_start(
         self,
@@ -706,7 +713,7 @@ class TrainingStrategy(
         is_train: bool = True,
     ) -> None:
         """
-        Hook called at the start of each training step.
+        Hook called at the start of each training or validation step.
 
         Args:
             cfg: Configuration object.
@@ -718,7 +725,7 @@ class TrainingStrategy(
             weight_dtype: Weight data type.
             is_train: Boolean indicating training mode.
         """
-        pass
+        return None
 
     def on_validation_step_end(
         self, cfg: Any, accelerator: Any, trainable_model: Any, text_encoders: list[Any], unet: Any, batch: Any, weight_dtype: torch.dtype
@@ -735,189 +742,28 @@ class TrainingStrategy(
             batch: The current data batch.
             weight_dtype: Weight data type.
         """
-        pass
+        return None
 
-    @abstractmethod
-    def calculate_val_loss(
-        self,
-        global_step: int,
-        epoch_step: int,
-        train_dataloader: Any,
-        val_loss_recorder: Any,
-        val_dataloader: Any,
-        cyclic_val_dataloader: Any,
-        trainable_model: Any,
-        tokenize_strategy: Any,
-        text_encoders: list[Any],
-        text_encoding_strategy: Any,
-        unet: Any,
-        vae: Any,
-        noise_scheduler: Any,
-        vae_dtype: torch.dtype,
-        weight_dtype: torch.dtype,
-        accelerator: Any,
-        cfg: Any,
-        epoch: int,
-        batch: Any | None = None,
-        train_text_encoder: bool = True,
-    ) -> tuple[float | None, float | None]:
-        """
-        Calculate validation loss.
 
-        Args:
-            global_step: Global step.
-            epoch_step: Epoch step.
-            train_dataloader: Training dataloader.
-            val_loss_recorder: Validation loss recorder.
-            val_dataloader: Validation dataloader.
-            cyclic_val_dataloader: Cyclic validation dataloader.
-            trainable_model: The trainable model.
-            tokenize_strategy: Tokenize strategy.
-            text_encoders: List of text encoders.
-            text_encoding_strategy: Text encoding strategy.
-            unet: UNet model.
-            vae: VAE model.
-            noise_scheduler: Noise scheduler.
-            vae_dtype: VAE data type.
-            weight_dtype: Weight data type.
-            accelerator: Accelerator instance.
-            cfg: Configuration object.
-            epoch: Current epoch.
-            batch: Optional batch.
-            train_text_encoder: Train text encoder flag.
+@dataclass
+class TrainingStrategy(
+    ModelLoadingStrategy,
+    TokenizationStrategy,
+    CachingStrategy,
+    SampleGenerationStrategy,
+    CheckpointingStrategy,
+    ValidationStrategy,
+    DiffusionTrainingStrategy,
+    UNetCallingStrategy,
+    ModelPreparationStrategy,
+    TrainingRuntimeStrategy,
+):
+    """
+    Combined interface for all training strategies.
 
-        Returns:
-            Tuple of (current_val_loss, average_val_loss).
-        """
-        raise NotImplementedError
+    Implementations inherit from this and provide model-specific implementations.
+    """
 
-    @abstractmethod
-    def process_batch(
-        self,
-        batch: Any,
-        text_encoders: list[Any],
-        unet: Any,
-        trainable_model: Any,
-        vae: Any,
-        noise_scheduler: Any,
-        vae_dtype: torch.dtype,
-        weight_dtype: torch.dtype,
-        accelerator: Any,
-        cfg: Any,
-        text_encoding_strategy: Any,
-        tokenize_strategy: Any,
-        is_train: bool = True,
-        train_text_encoder: bool = True,
-        train_unet: bool = True,
-        edm2_model: Any | None = None,
-        min_timestep_override: int | None = None,
-        max_timestep_override: int | None = None,
-        global_step: int = 0,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
-        """
-        Process a batch for training or validation.
-
-        Args:
-            batch: Batch data containing images, captions, latents etc.
-            text_encoders: List of text encoders.
-            unet: UNet model.
-            trainable_model: The trainable model.
-            vae: VAE model.
-            noise_scheduler: Noise scheduler.
-            vae_dtype: VAE data type.
-            weight_dtype: Weight data type.
-            accelerator: Accelerator instance.
-            cfg: Configuration object.
-            text_encoding_strategy: Text encoding strategy.
-            tokenize_strategy: Tokenize strategy.
-            is_train: Training mode flag.
-            train_text_encoder: Train text encoder flag.
-            train_unet: Train UNet flag.
-            edm2_model: EDM2 model (optional).
-            min_timestep_override: Minimum timestep override.
-            max_timestep_override: Maximum timestep override.
-            global_step: Global step.
-
-        Returns:
-            Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
-        """
-        raise NotImplementedError
-
-    def load_unet_lazily(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any, text_encoders: list[Any]) -> Any:
-        """
-        Load UNet lazily if not loaded in load_target_model. Not used by SD.
-
-        Args:
-            cfg: Configuration object.
-            weight_dtype: Weight data type.
-            accelerator: Accelerator instance.
-            text_encoders: List of text encoders.
-
-        Returns:
-            Loaded UNet model.
-
-        Raises:
-            NotImplementedError: If not implemented by subclass.
-        """
-        raise NotImplementedError("load_unet_lazily is not implemented for this architecture")
-
-    def all_reduce_trainable(self, accelerator: Any, trainable_model: Any) -> None:
-        """
-        Sync DDP gradients manually for the trainable model.
-
-        Args:
-            accelerator: Accelerator instance.
-            trainable_model: The trainable model containing parameters to sync.
-        """
-        for param in trainable_model.parameters():
-            if param.grad is not None:
-                param.grad = accelerator.reduce(param.grad, reduction="mean")
-
-    def switch_rng_state(self, val_seed: int, accelerator: Any) -> tuple[Any, Any, Any, Any]:
-        """
-        Store current RNG states and set new seed for validation.
-
-        Args:
-            val_seed: Seed to use for validation.
-            accelerator: Accelerator instance.
-
-        Returns:
-            Tuple containing CPU, GPU, Python, and Numpy RNG states.
-        """
-        cpu_rng_state = torch.get_rng_state()
-        python_rng_state = random.getstate()
-        numpy_rng_state = np.random.get_state()
-
-        gpu_rng_state = None
-        if accelerator.device.type == "cuda":
-            gpu_rng_state = torch.cuda.get_rng_state()
-        elif accelerator.device.type == "xpu":
-            gpu_rng_state = torch.xpu.get_rng_state()
-
-        random.seed(val_seed)
-        np.random.seed(val_seed)
-        torch.manual_seed(val_seed)
-        if accelerator.device.type == "cuda":
-            torch.cuda.manual_seed_all(val_seed)
-
-        return (cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state)
-
-    def restore_rng_state(self, rng_states: tuple[Any, Any, Any, Any], accelerator: Any) -> None:
-        """
-        Restore RNG states after validation.
-
-        Args:
-            rng_states: Tuple of RNG states returned by switch_rng_state.
-            accelerator: Accelerator instance.
-        """
-        cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state = rng_states
-
-        torch.set_rng_state(cpu_rng_state)
-        random.setstate(python_rng_state)
-        np.random.set_state(numpy_rng_state)
-
-        if gpu_rng_state is not None:
-            if accelerator.device.type == "cuda":
-                torch.cuda.set_rng_state(gpu_rng_state)
-            elif accelerator.device.type == "xpu":
-                torch.xpu.set_rng_state(gpu_rng_state)
+    # Instance state (set during training)
+    la_sampler: Any = field(default=None, init=False, repr=False)
+    live_plotter_process: Any = field(default=None, init=False, repr=False)

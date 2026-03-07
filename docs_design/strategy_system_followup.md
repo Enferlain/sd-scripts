@@ -12,6 +12,15 @@ The high-level direction is still correct:
 - `TrainingMode` owns training-mode divergence
 - `TrainingStrategy` owns model-family behavior
 
+One important framing clarification from the follow-up discussion:
+
+- everything under `library/strategies/...` is training strategy code
+- `tokenization.py`, `encoding.py`, `caching.py`, and `training.py` are
+  concern-split parts of the same model-family strategy package
+- the problem is not that these files are separate; the problem is making
+  `library/strategies/base/` mean "base contracts + minimal genuinely generic
+  helpers", not "whatever SD and SDXL happen to share today"
+
 This note exists to make the remaining gaps precise enough to implement
 without rediscovering the boundary issues during the work.
 
@@ -22,10 +31,13 @@ but a few items need sharper wording.
 
 What is true:
 
-1. active shared phases still leak SDXL-shaped token / TE assumptions
+1. the active shared-phase SDXL token / TE handoff leak has been removed
 2. the `TrainingStrategy` surface still mixes active, transitional, and legacy
    responsibilities
 3. some shared strategy defaults are CLIP-specific, not model-agnostic
+4. naming in `library/strategies/base/training.py` is overloaded enough to blur
+   trainer-facing facets with the standalone strategy classes in
+   `base/tokenization.py`, `base/encoding.py`, and `base/caching.py`
 
 What needs correction:
 
@@ -50,22 +62,31 @@ Also: deprecated / legacy code in this repo should be treated as reference
 material to replace, not compatibility surface to preserve. The cleanup target
 is migration and deletion, not long-term coexistence.
 
+Another explicit conclusion from the architecture discussion:
+
+- separate strategy files in `library/strategies/base/` are legitimate
+- they should stay in the strategy folder
+- future models cannot be assumed to share current SD / SDXL behavior, so
+  `base/` must be generic by intent, not generic by accident
+
 ## Confirmed Gaps
 
-### 1. Shared phases still hardcode SDXL token / TE shape
+### 1. Shared phases no longer hardcode SDXL token / TE shape
 
-Confirmed active call sites:
+This gap is complete.
 
-- `library/training/phases/training_loop.py:445`
-  - epoch tokenization passes `encoder_names=["clip_l", "clip_g"]`
-- `library/training/phases/caching.py:134`
-  - disk TE caching packs `model=(*trainer.text_encoders, *trainer.tokenizers)`
+Current state:
+
+- `library/training/phases/training_loop.py`
+  - epoch tokenization uses strategy-provided encoder names
+- `library/training/phases/caching.py`
+  - disk TE caching uses a strategy-provided model bundle
 
 Why this matters:
 
-- the shared phase layer still knows SDXL-specific encoder names and cache-pack
-  ordering
-- future model families would still require edits in generic orchestration code
+- the shared phase layer no longer needs SDXL-specific token/TE shape knowledge
+- future model families do not require orchestration edits just to change the
+  token/TE handoff
 
 Important nuance:
 
@@ -104,10 +125,10 @@ That mismatch is real and should be cleaned up.
 
 Confirmed:
 
-- `library/strategies/base/training.py:619`
+- `library/strategies/base/training.py`
   - `prepare_text_encoder_grad_ckpt_workaround()` reaches into
     `text_encoder.text_model.embeddings`
-- `library/strategies/base/training.py:629`
+- `library/strategies/base/training.py`
   - `prepare_text_encoder_fp8()` does the same
 
 Why this matters:
@@ -127,7 +148,7 @@ Confirmed active wiring:
   - `TextEncodingStrategy.set_strategy(...)`
   - `LatentsCachingStrategy.set_strategy(...)`
 - the active SDXL sampling pipeline reads global strategy state:
-  - `library/pipelines/sdxl_lpw_stable_diffusion.py:978`
+  - `library/pipelines/sdxl_lpw_stable_diffusion.py`
 
 Why this matters:
 
@@ -137,6 +158,34 @@ Why this matters:
   about
 
 This is not a correctness emergency, but it is a real boundary leak.
+
+Important nuance from the follow-up trace:
+
+- `base/tokenization.py` and `base/encoding.py` are actively used both as base
+  classes and via singleton lookup in the active SDXL sampling path
+- `base/caching.py` is actively used as a base/helper layer, but most singleton
+  lookup usage for caching appears confined to deprecated data/script paths
+
+### 5. The separate base tokenization / encoding / caching files are not the problem
+
+The architectural problem is not that `library/strategies/base/` contains:
+
+- `tokenization.py`
+- `encoding.py`
+- `caching.py`
+
+Those are valid concern-split pieces of the training strategy package.
+
+The actual issues are narrower:
+
+- `library/strategies/base/training.py` overloads the word "strategy" for
+  trainer-facing facets that are not the same kind of thing as
+  `TokenizeStrategy`, `TextEncodingStrategy`, or
+  `TextEncoderOutputsCachingStrategy`
+- names like `CachingStrategy` now collide across multiple layers
+  (`base/training.py` and `library/data/caching_engine.py`)
+- `base/training.py` still mixes true contracts with shared implementation
+  helpers in a way that is harder to read than the other base files
 
 ## Corrections To The Original Note
 
@@ -157,7 +206,7 @@ It should not be grouped with deprecated-only surface.
 
 ### 3. The LR naming example is lower priority than first stated
 
-`library/training/trainer_utils.py:259` still hardcodes:
+`library/training/trainer_utils.py` still hardcodes:
 
 - `unet`
 - `text_encoder1`
@@ -180,9 +229,9 @@ Document and encode three categories:
 - active transitional hooks
 - legacy compatibility hooks
 
-This can be done either with small sub-protocols/mixins or with explicit
-sectioning plus comments and tests. The important part is that the runtime
-contract becomes honest.
+This should stay within the existing strategy package design. No new conceptual
+layer is needed. The important part is that the runtime contract becomes honest
+and that `base/` only carries genuinely generic behavior.
 
 ### 2. Move token / TE shape ownership fully into strategies
 
@@ -208,6 +257,30 @@ already lives under model-family code (`library/models/sdxl/text_encoder.py`),
 while other behavior still lives in strategy/encoding modules. If CLIP-specific
 logic is extracted further, it should move toward model-family ownership rather
 than back into shared base abstractions.
+
+### 3.5. Use existing shared utility homes instead of growing `base/training.py`
+
+Status: partially complete.
+
+Done for the shared mechanics that are clearly not strategy behavior:
+
+- moved `get_noise_scheduler(...)` to `library/training/noise_utils.py`
+- moved loss post-processing assembly to `library/losses/loss_weighting.py`
+- moved `all_reduce_trainable(...)` to `library/training/trainer_utils.py`
+- moved validation RNG save/restore helpers to `library/training/trainer_utils.py`
+
+The concrete SD / SDXL training strategies now call those shared utilities
+directly, and `Trainer` / `training_loop.py` no longer reach those mechanics
+through `base/training.py`.
+
+Not moved yet:
+
+- `_prepare_latents(...)`
+- `encode_images_to_latents(...)`
+- `shift_scale_latents(...)`
+
+Those still sit on the boundary between generic training flow and
+model-family-owned behavior, so they remain in `base/training.py` for now.
 
 ### 4. Remove active singleton strategy coupling where practical
 
@@ -248,23 +321,18 @@ is actually implemented as `NotImplementedError`.
 
 ### Phase 1: Strategy-owned token / TE cache handoff
 
-Goal: remove the two active SDXL-shaped leaks from shared phases without
-changing architecture.
+Status: complete.
 
-Changes:
+Completed:
 
-- add a strategy hook for epoch-token cache naming
-  - example shape: `get_token_cache_encoder_names() -> list[str]`
-- add a strategy hook for TE-cache model packing
-  - example shape:
-    `build_te_cache_model_bundle(cfg, accelerator, text_encoders, tokenizers) -> Any`
-- update:
-  - `library/training/phases/training_loop.py`
-  - `library/training/phases/caching.py`
-- implement in:
-  - `library/strategies/sdxl/training.py`
-  - `library/strategies/sd/training.py` if needed for future compatibility, or
-    leave clearly transitional if no active caller exists yet
+- added strategy-owned hooks for epoch token-cache encoder names and TE-cache
+  model bundling
+- updated `library/training/phases/training_loop.py` to use
+  strategy-provided encoder names
+- updated `library/training/phases/caching.py` to use a
+  strategy-provided TE cache model bundle
+- implemented the hooks in `library/strategies/sdxl/training.py` and
+  `library/strategies/sd/training.py`
 
 Tests:
 
@@ -275,6 +343,35 @@ Tests:
 ### Phase 2: Split active vs legacy strategy surface
 
 Goal: make the contract honest without redesigning Trainer or TrainingMode.
+
+Implemented so far:
+
+- the shared helper/default blob on `TrainingStrategy` has been split into
+  clearer capability-owned bases in `library/strategies/base/training.py`
+  (`ModelLoadingStrategy`, `ModelPreparationStrategy`,
+  `DiffusionTrainingStrategy`, `TrainingRuntimeStrategy`,
+  `ValidationStrategy`)
+- `TrainingStrategy` composition now matches actual responsibility boundaries
+  more closely instead of owning loading/model-prep/validation-runtime helpers
+  directly
+- clearly generic training mechanics have already been removed from
+  `library/strategies/base/training.py`
+  - scheduler construction
+  - loss post-processing assembly
+  - gradient all-reduce
+  - validation RNG save/restore
+
+Remaining work in this phase:
+
+- reconcile naming/organization inside `library/strategies/base/training.py`
+  so trainer-facing facet names are easier to distinguish from the standalone
+  strategy classes in `base/tokenization.py`, `base/encoding.py`, and
+  `base/caching.py`
+- classify the caching-surface methods into active vs transitional vs legacy
+- demote deprecated/transitional hooks so the primary active contract is
+  visually and structurally distinct
+- keep shrinking `base/training.py` by removing only behavior that is truly
+  generic training machinery, not strategy behavior
 
 Changes:
 
@@ -308,6 +405,8 @@ Tests:
 
 Goal: make the base class generic again.
 
+Status: partially complete.
+
 Changes:
 
 - move:
@@ -320,6 +419,14 @@ Changes:
   genuinely generic
 - audit whether additional TE behavior currently stranded in strategy modules
   should move into `library/models/...` helpers for model-family ownership
+
+Already complete in this direction:
+
+- active text-encoder model logic has already been pushed toward
+  `library/models/sd/` and `library/models/sdxl/`
+- clearly generic shared mechanics are no longer stored in
+  `base/training.py`, which narrows the remaining base cleanup to actual
+  strategy concerns
 
 Files:
 
@@ -335,6 +442,13 @@ Tests:
 - unit tests for SD and SDXL hook behavior
 - negative test that a non-CLIP test double does not depend on hidden
   `.text_model.embeddings` structure in the base class
+
+This phase should be judged by the follow-up rule established in discussion:
+
+- `library/strategies/base/` may contain contracts and minimal genuinely
+  generic helpers
+- it should not contain behavior only because SD and SDXL happen to share it
+  today
 
 ### Phase 4: Remove active singleton strategy dependence
 
@@ -385,17 +499,26 @@ the roadmap. It should not be faked early by leaving
 
 ## Recommended Order
 
+Completed:
+
 1. Phase 1: remove the two active shared-phase leaks
-2. Phase 2: make the contract categories explicit
-3. Phase 3: remove CLIP-specific base defaults
-4. Phase 4: remove active singleton dependence
-5. Phase 5: finish SD alignment when SD pipeline migration is actually ready
+2. Part of Phase 2: split out the obvious shared helper/default blob in
+   `base/training.py`
+3. Part of Phase 3: remove clearly generic shared mechanics from
+   `base/training.py` and keep them in existing shared utility modules
+
+Next:
+
+1. Phase 2: finish the naming/contract cleanup in `base/training.py`
+2. Phase 3: remove the remaining CLIP-specific defaults from the generic base
+3. Phase 4: remove active singleton dependence
+4. Phase 5: finish SD alignment when SD pipeline migration is actually ready
 
 This ordering keeps the cleanup practical:
 
-- first fix the active boundary leak
-- then make the contract truthful
-- then remove hidden generic-base assumptions
+- first remove active shared-path leaks
+- then make the contract truthful and easier to read
+- then finish removing hidden generic-base assumptions
 - then clean up the remaining active global state
 - only after that finalize SD alignment
 
@@ -419,3 +542,11 @@ When this follow-up is done, the result should:
 4. stop the active runtime from depending on hidden global strategy state
 5. keep SD explicitly transitional until its real migration is complete
 6. preserve current SDXL runtime behavior throughout the cleanup
+
+Progress against those criteria:
+
+- item 1 is complete
+- item 2 is in progress
+- item 3 is in progress
+- items 4 and 5 remain open
+- item 6 remains the regression guard for every follow-up change

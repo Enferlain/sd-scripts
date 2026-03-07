@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Text-encoder model-logic extraction cleanup** — SD text-encoder hidden-state logic now lives under `library/models/sd/text_encoder.py`, and SDXL text-encoder helpers now centralize token-ID encoding/weight application more consistently under `library/models/sdxl/text_encoder.py`.
   - `library/strategies/sd/encoding.py` now delegates SD hidden-state extraction and weight application to model helpers.
   - `library/strategies/sdxl/encoding.py` and `library/strategies/sdxl/training.py` now use shared SDXL model helpers for input-ID encoding instead of duplicating that logic in strategy code.
+- **Phase 2 strategy-facet cleanup** — Shared defaults and runtime hooks no longer live as a grab-bag on the composed `TrainingStrategy` class.
+  - Moved lazy UNet loading to `ModelLoadingStrategy`.
+  - Added dedicated `ModelPreparationStrategy`, `DiffusionTrainingStrategy`, and `TrainingRuntimeStrategy` capability mixins for shared defaults used by model prep and the training loop.
+  - Moved validation-loss ownership to `ValidationStrategy`.
+  - Added focused base-strategy unit coverage for facet placement and helper behavior in `tests/unit/strategies/test_strategies_base.py`.
+- **Shared training-mechanics extraction from `base/training.py`** — Generic scheduler/loss/runtime helpers now live in shared utility modules instead of the strategy base contract.
+  - Moved noise-scheduler creation to `library/training/noise_utils.py`.
+  - Moved shared loss post-processing assembly to `library/losses/loss_weighting.py`.
+  - Moved gradient all-reduce and validation RNG save/restore helpers to `library/training/trainer_utils.py`.
+  - Updated `Trainer`, `training_loop.py`, and concrete SD / SDXL strategy code to call the shared utilities directly.
 
 ## [2026-03-06]
 

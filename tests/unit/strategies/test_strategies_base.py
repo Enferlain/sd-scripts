@@ -16,6 +16,16 @@ from unittest.mock import Mock
 from library.strategies.base.caching import TextEncoderOutputsCachingStrategy, LatentsCachingStrategy
 from library.strategies.base.encoding import TextEncodingStrategy
 from library.strategies.base.tokenization import TokenizeStrategy
+from library.strategies.base.training import (
+    DiffusionTrainingStrategy,
+    ModelLoadingStrategy,
+    ModelPreparationStrategy,
+    TrainingRuntimeStrategy,
+    TrainingStrategy,
+    ValidationStrategy,
+)
+from library.training.noise_utils import get_noise_scheduler
+from library.training.trainer_utils import all_reduce_trainable, restore_rng_state, switch_rng_state
 
 
 # =============================================================================
@@ -345,6 +355,119 @@ class TestLatentsCachingSaveLoad:
 
         assert loaded_flipped is not None
         assert loaded_alpha is not None
+
+
+# =============================================================================
+# TrainingStrategy Facets - Phase 2 Boundary Tests
+# =============================================================================
+
+
+class _DummyDiffusionStrategy(DiffusionTrainingStrategy):
+    vae_latent_scale = 2.0
+
+    def process_batch(self, *args, **kwargs):
+        raise NotImplementedError
+
+
+class _DummyLoadingStrategy(ModelLoadingStrategy):
+    def load_target_model(self, cfg, weight_dtype, accelerator):
+        return "dummy", [], None, None
+
+
+class _DummyValidationStrategy(ValidationStrategy):
+    def validate_extra_config(self, cfg, train_dataset_group, val_dataset_group):
+        return None
+
+    def calculate_val_loss(self, *args, **kwargs):
+        return None, None
+
+
+@pytest.mark.unit
+class TestTrainingStrategyPhase2Facets:
+    def test_training_strategy_composes_phase2_facets(self):
+        """TrainingStrategy should compose the new capability facets."""
+        assert issubclass(TrainingStrategy, ModelPreparationStrategy)
+        assert issubclass(TrainingStrategy, DiffusionTrainingStrategy)
+        assert issubclass(TrainingStrategy, TrainingRuntimeStrategy)
+
+    def test_phase2_methods_live_on_facet_classes(self):
+        """Moved shared helpers should live on their facet bases, not TrainingStrategy itself."""
+        assert "load_unet_lazily" in ModelLoadingStrategy.__dict__
+        assert "prepare_unet_with_accelerator" in ModelPreparationStrategy.__dict__
+        assert "calculate_val_loss" in ValidationStrategy.__dict__
+
+        assert "load_unet_lazily" not in TrainingStrategy.__dict__
+        assert "prepare_unet_with_accelerator" not in TrainingStrategy.__dict__
+        assert "calculate_val_loss" not in TrainingStrategy.__dict__
+
+    def test_model_loading_default_lazy_unet_hook_still_raises(self):
+        """Default lazy-load hook remains opt-in for model families that need it."""
+        strategy = _DummyLoadingStrategy()
+        with pytest.raises(NotImplementedError, match="load_unet_lazily"):
+            strategy.load_unet_lazily(cfg=Mock(), weight_dtype=torch.float16, accelerator=Mock(), text_encoders=[])
+
+    def test_diffusion_training_prepare_latents_scales_encoded_latents(self):
+        """Moved diffusion helper should still apply VAE latent scaling."""
+        strategy = _DummyDiffusionStrategy()
+        cfg = Mock()
+        cfg.data.caching.vae_batch_size = None
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+        accelerator.print = Mock()
+        vae = Mock()
+        latent_dist = Mock()
+        latent_dist.sample.return_value = torch.ones((1, 4, 8, 8))
+        vae.encode.return_value.latent_dist = latent_dist
+
+        batch = {"images": torch.ones((1, 3, 64, 64))}
+        latents = strategy._prepare_latents(batch, cfg, accelerator, vae, torch.float32)
+
+        assert torch.equal(latents, torch.full((1, 4, 8, 8), 2.0))
+
+    def test_noise_scheduler_helper_builds_scheduler(self):
+        """Noise scheduler construction now lives in training.noise_utils."""
+        cfg = Mock()
+        cfg.loss.regularization.zero_terminal_snr = False
+        scheduler = get_noise_scheduler(cfg, torch.device("cpu"))
+        assert scheduler.config.num_train_timesteps == 1000
+
+    def test_training_runtime_helper_all_reduce_runs_on_gradients(self):
+        """Gradient all-reduce helper now lives in trainer_utils."""
+        accelerator = Mock()
+        accelerator.reduce.side_effect = lambda grad, reduction="mean": grad
+        module = torch.nn.Linear(2, 2)
+        module.weight.grad = torch.ones_like(module.weight)
+
+        all_reduce_trainable(accelerator, module)
+
+        accelerator.reduce.assert_called()
+
+    def test_rng_helpers_can_round_trip_rng_state(self):
+        """Validation RNG helpers now live in trainer_utils."""
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+
+        torch.manual_seed(123)
+        np.random.seed(123)
+        import random
+
+        random.seed(123)
+        original_torch = torch.rand(3)
+        original_np = np.random.rand(3)
+        original_py = random.random()
+
+        torch.manual_seed(123)
+        np.random.seed(123)
+        random.seed(123)
+        states = switch_rng_state(999, accelerator)
+        _ = torch.rand(3)
+        _ = np.random.rand(3)
+        _ = random.random()
+        restore_rng_state(states, accelerator)
+
+        assert torch.equal(torch.rand(3), original_torch)
+        assert np.allclose(np.random.rand(3), original_np)
+        assert random.random() == original_py
 
 
 # =============================================================================

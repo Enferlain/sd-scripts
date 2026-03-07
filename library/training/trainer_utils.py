@@ -1,9 +1,11 @@
 import logging
 import math
+import random
 import time
 import os
 from typing import Any
 
+import numpy as np
 import torch
 from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.utils import TorchDynamoPlugin
@@ -23,6 +25,49 @@ from library.logging.step_logging import append_lr_to_logs_with_names
 
 
 logger = logging.getLogger(__name__)
+
+
+def all_reduce_trainable(accelerator: Accelerator, trainable_model: nn.Module) -> None:
+    """Synchronize gradients manually for the trainable model."""
+    for param in trainable_model.parameters():
+        if param.grad is not None:
+            param.grad = accelerator.reduce(param.grad, reduction="mean")
+
+
+def switch_rng_state(val_seed: int, accelerator: Accelerator) -> tuple[Any, Any, Any, Any]:
+    """Store current RNG states and set the validation seed."""
+    cpu_rng_state = torch.get_rng_state()
+    python_rng_state = random.getstate()
+    numpy_rng_state = np.random.get_state()
+
+    gpu_rng_state = None
+    if accelerator.device.type == "cuda":
+        gpu_rng_state = torch.cuda.get_rng_state()
+    elif accelerator.device.type == "xpu":
+        gpu_rng_state = torch.xpu.get_rng_state()
+
+    random.seed(val_seed)
+    np.random.seed(val_seed)
+    torch.manual_seed(val_seed)
+    if accelerator.device.type == "cuda":
+        torch.cuda.manual_seed_all(val_seed)
+
+    return (cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state)
+
+
+def restore_rng_state(rng_states: tuple[Any, Any, Any, Any], accelerator: Accelerator) -> None:
+    """Restore RNG states after validation."""
+    cpu_rng_state, gpu_rng_state, python_rng_state, numpy_rng_state = rng_states
+
+    torch.set_rng_state(cpu_rng_state)
+    random.setstate(python_rng_state)
+    np.random.set_state(numpy_rng_state)
+
+    if gpu_rng_state is not None:
+        if accelerator.device.type == "cuda":
+            torch.cuda.set_rng_state(gpu_rng_state)
+        elif accelerator.device.type == "xpu":
+            torch.xpu.set_rng_state(gpu_rng_state)
 
 
 def _iter_parameterized_leaf_modules(module: nn.Module):

@@ -29,7 +29,7 @@ from library.training.checkpointing import (
     save_and_remove_state_on_epoch_end,
 )
 from library.training.sample_generation import sample_images_check
-from library.training.trainer_utils import determine_grad_sync_context
+from library.training.trainer_utils import determine_grad_sync_context, all_reduce_trainable
 from library.training.phases.triggers import (
     StepTriggerContext,
     compute_step_actions,
@@ -564,7 +564,7 @@ def run_training_loop(trainer: Trainer) -> None:
                     loss = pre_scaling_loss
 
                     if accelerator.sync_gradients:
-                        strategies.all_reduce_trainable(accelerator, trainer.trainable_model)
+                        all_reduce_trainable(accelerator, trainer.trainable_model)
                         if cfg.optimizer.max_grad_norm != 0.0:
                             params_to_clip = trainer.mode.get_trainable_params(trainer)
                             accelerator.clip_grad_norm_(params_to_clip, cfg.optimizer.max_grad_norm)
@@ -610,9 +610,7 @@ def run_training_loop(trainer: Trainer) -> None:
                     trainer._loss_recorder.add(trainer._current_global_step_loss / trainer._accumulation_counter)
                     if cfg.loss.edm2.edm2_loss_weighting:
                         assert trainer._loss_scaled_recorder is not None and trainer._current_global_step_loss_scaled is not None
-                        trainer._loss_scaled_recorder.add(
-                            trainer._current_global_step_loss_scaled / trainer._accumulation_counter
-                        )
+                        trainer._loss_scaled_recorder.add(trainer._current_global_step_loss_scaled / trainer._accumulation_counter)
                     avr_loss: float = trainer._loss_recorder.average
                     logs = {"avr_loss": avr_loss}
                     trainer._progress_bar.set_postfix(**{**max_mean_logs, **logs})

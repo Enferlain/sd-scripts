@@ -33,12 +33,13 @@ from library.training.sample_generation import sample_images_common
 from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
 from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
+from library.training.trainer_utils import restore_rng_state, switch_rng_state
 
 from library.config.config_validation import validate_sdxl_peft
 
 from library.utils.device_utils import clean_memory_on_device
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
-from library.losses.loss_weighting import apply_masked_loss
+from library.losses.loss_weighting import apply_masked_loss, post_process_loss
 
 
 logger = logging.getLogger(__name__)
@@ -1029,7 +1030,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         loss = per_sample_loss
         if is_train:
             loss = loss * batch["loss_weights"].to(loss.device)
-            loss = self.post_process_loss(loss, cfg, timesteps, noise_scheduler)
+            loss = post_process_loss(loss, cfg, timesteps, noise_scheduler)
 
         if is_train and cfg.loss.loss_multiplier:
             loss.mul_(float(cfg.loss.loss_multiplier) if cfg.loss.loss_multiplier is not None else 1.0)
@@ -1173,7 +1174,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         if batch is not None:
             self.on_step_start(cfg, accelerator, trainable_model, text_encoders, unet, batch, weight_dtype, is_train=False)
 
-        rng_states = self.switch_rng_state(int(cfg.validation.validation_seed) if cfg.validation.validation_seed else 23, accelerator)
+        rng_states = switch_rng_state(int(cfg.validation.validation_seed) if cfg.validation.validation_seed else 23, accelerator)
         timesteps_list = ast.literal_eval(cfg.validation.validation_timesteps)
 
         accelerator.print("")
@@ -1215,6 +1216,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
 
         average_val_loss: float = val_loss_recorder.average
 
-        self.restore_rng_state(rng_states, accelerator)
+        restore_rng_state(rng_states, accelerator)
 
         return current_val_loss, average_val_loss

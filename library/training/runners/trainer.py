@@ -24,6 +24,7 @@ import library.strategies.base.caching
 import library.strategies.base.encoding
 from library.logging.resource_monitor import create_resource_monitor
 from library.performance import deepspeed_utils
+from library.training.noise_utils import get_noise_scheduler
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
 from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
@@ -528,7 +529,7 @@ class Trainer:
         self.strategies.update_metadata(self._metadata, cfg)
 
         # Noise scheduler
-        self.noise_scheduler = self.strategies.get_noise_scheduler(cfg, self.accelerator.device)
+        self.noise_scheduler = get_noise_scheduler(cfg, self.accelerator.device)
 
         # Timestep sampler
         self.strategies.la_sampler = init_timestep_sampler(cfg.timestep, self.noise_scheduler, self.accelerator)

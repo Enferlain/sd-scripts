@@ -1,10 +1,34 @@
+import logging
 import random
 from typing import Any
+
 import torch
-import logging
+from diffusers import DDPMScheduler
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_noise_scheduler(cfg: Any, device: torch.device) -> DDPMScheduler:
+    """
+    Create the default diffusion noise scheduler used for training.
+
+    Args:
+        cfg: Configuration object.
+        device: Device to place the scheduler on.
+
+    Returns:
+        Initialized DDPMScheduler.
+    """
+    noise_scheduler = DDPMScheduler(
+        beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
+    )
+
+    if cfg.loss.regularization.zero_terminal_snr:
+        fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
+
+    prepare_scheduler_for_custom_training(noise_scheduler, device)
+    return noise_scheduler
 
 
 def prepare_scheduler_for_custom_training(noise_scheduler: Any, device: torch.device) -> None:
