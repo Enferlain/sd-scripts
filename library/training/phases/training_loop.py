@@ -310,6 +310,34 @@ def _save_epoch_checkpoint_artifacts(trainer: Trainer) -> None:
         save_and_remove_state_on_epoch_end(cfg.output.saving, accelerator, trainer._current_epoch_state.value)
 
 
+def _maybe_cache_epoch_tokens(trainer: Trainer, *, epoch: int, epoch_manifest) -> Path | None:
+    """Persist per-epoch token caches when enabled for the current strategy."""
+    cfg = trainer.cfg
+    accelerator = trainer.accelerator
+    strategies = trainer.strategies
+
+    if not cfg.data.caching.cache_tokens_per_epoch or cfg.data.caching.cache_text_encoder_outputs:
+        return None
+
+    from library.data.epoch_preparation import tokenize_epoch_manifest
+
+    tokens_path = Path(trainer._cache_dir) / f"epoch_{epoch}_tokens.safetensors"
+
+    def tokenize_fn(captions: list[str]) -> list[torch.Tensor]:
+        return strategies.tokenize_captions(trainer.tokenizers, captions, cfg.training.max_token_length)
+
+    if accelerator.is_main_process:
+        tokenize_epoch_manifest(
+            epoch_manifest,
+            tokenize_fn,
+            tokens_path,
+            encoder_names=strategies.get_token_cache_encoder_names(),
+            max_token_length=cfg.training.max_token_length,
+        )
+    accelerator.wait_for_everyone()
+    return tokens_path
+
+
 def _finalize_epoch(
     trainer: Trainer,
     *,
@@ -432,24 +460,11 @@ def run_training_loop(trainer: Trainer) -> None:
             )
 
             # Phase G.1: Optional epoch tokenization (when TE caching is disabled)
-            tokens_path = None
-            if cfg.data.caching.cache_tokens_per_epoch and not cfg.data.caching.cache_text_encoder_outputs:
-                from library.data import tokenize_epoch_manifest
-
-                tokens_path = Path(trainer._cache_dir) / f"epoch_{epoch}_tokens.safetensors"
-
-                def tokenize_fn(captions: list[str]) -> list[torch.Tensor]:
-                    return strategies.tokenize_captions(trainer.tokenizers, captions, cfg.training.max_token_length)
-
-                if accelerator.is_main_process:
-                    tokenize_epoch_manifest(
-                        epoch_manifest,
-                        tokenize_fn,
-                        tokens_path,
-                        encoder_names=["clip_l", "clip_g"],
-                        max_token_length=cfg.training.max_token_length,
-                    )
-                accelerator.wait_for_everyone()
+            tokens_path = _maybe_cache_epoch_tokens(
+                trainer,
+                epoch=epoch,
+                epoch_manifest=epoch_manifest,
+            )
 
             train_dataloader = create_training_dataloader(
                 dataset_manifest=trainer.train_manifest,

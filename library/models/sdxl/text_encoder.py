@@ -58,6 +58,7 @@ def get_hidden_states_sdxl(
     text_encoder2: CLIPTextModelWithProjection | torch.nn.Module,
     weight_dtype: torch.dtype | None = None,
     accelerator: Accelerator | None = None,
+    unwrapped_text_encoder2: CLIPTextModelWithProjection | torch.nn.Module | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Get hidden states for SDXL from two text encoders.
@@ -93,8 +94,10 @@ def get_hidden_states_sdxl(
     hidden_states2 = enc_out["hidden_states"][-2]  # penultimate layer
 
     # pool2 = enc_out["text_embeds"]
-    unwrapped_text_encoder2 = text_encoder2 if accelerator is None else accelerator.unwrap_model(text_encoder2)
-    pool2 = pool_workaround(unwrapped_text_encoder2, enc_out["last_hidden_state"], input_ids2, tokenizer2.eos_token_id)
+    pool_encoder2 = unwrapped_text_encoder2
+    if pool_encoder2 is None:
+        pool_encoder2 = text_encoder2 if accelerator is None else accelerator.unwrap_model(text_encoder2)
+    pool2 = pool_workaround(pool_encoder2, enc_out["last_hidden_state"], input_ids2, tokenizer2.eos_token_id)
 
     # b*n, 77, 768 or 1280 -> b, n*77, 768 or 1280
     n_size = 1 if max_token_length is None else max_token_length // 75
@@ -134,3 +137,80 @@ def get_hidden_states_sdxl(
         hidden_states2 = hidden_states2.to(weight_dtype)
 
     return hidden_states1, hidden_states2, pool2
+
+
+def encode_input_ids_sdxl(
+    input_ids1: torch.Tensor,
+    input_ids2: torch.Tensor,
+    tokenizer1: CLIPTokenizer,
+    tokenizer2: CLIPTokenizer,
+    text_encoder1: CLIPTextModel | torch.nn.Module,
+    text_encoder2: CLIPTextModelWithProjection | torch.nn.Module,
+    weight_dtype: torch.dtype | None = None,
+    unwrapped_text_encoder2: CLIPTextModelWithProjection | torch.nn.Module | None = None,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Encode SDXL token tensors into hidden states and pooled output.
+
+    Args:
+        input_ids1: First encoder token tensor shaped ``[batch, n_chunks, 77]``.
+        input_ids2: Second encoder token tensor shaped ``[batch, n_chunks, 77]``.
+        tokenizer1: First tokenizer.
+        tokenizer2: Second tokenizer.
+        text_encoder1: First text encoder.
+        text_encoder2: Second text encoder.
+        weight_dtype: Optional output dtype conversion for hidden states.
+        unwrapped_text_encoder2: Optional unwrapped TE2 used only for pooling.
+
+    Returns:
+        Tuple of ``(hidden_states1, hidden_states2, pool2)``.
+    """
+    max_token_length = None if input_ids1.size(1) == 1 else input_ids1.size(1) * input_ids1.size(2)
+
+    input_ids1 = input_ids1.to(next(text_encoder1.parameters()).device)
+    input_ids2 = input_ids2.to(next(text_encoder2.parameters()).device)
+
+    return get_hidden_states_sdxl(
+        max_token_length,
+        input_ids1,
+        input_ids2,
+        tokenizer1,
+        tokenizer2,
+        text_encoder1,
+        text_encoder2,
+        weight_dtype=weight_dtype,
+        accelerator=None,
+        unwrapped_text_encoder2=unwrapped_text_encoder2,
+    )
+
+
+def apply_hidden_state_weights_sdxl(
+    hidden_states1: torch.Tensor,
+    hidden_states2: torch.Tensor,
+    weights1: torch.Tensor,
+    weights2: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Apply prompt weights to SDXL hidden states.
+
+    Args:
+        hidden_states1: CLIP-L hidden states.
+        hidden_states2: CLIP-G hidden states.
+        weights1: CLIP-L token weights.
+        weights2: CLIP-G token weights.
+
+    Returns:
+        Tuple of weighted hidden states.
+    """
+    weights_tensors = [weights1.to(hidden_states1.device), weights2.to(hidden_states1.device)]
+
+    if weights_tensors[0].shape[1] == 1:
+        hidden_states1 = hidden_states1 * weights_tensors[0].squeeze(1).unsqueeze(2)
+        hidden_states2 = hidden_states2 * weights_tensors[1].squeeze(1).unsqueeze(2)
+        return hidden_states1, hidden_states2
+
+    for weight, hidden_states in zip(weights_tensors, [hidden_states1, hidden_states2]):
+        for i in range(weight.shape[1]):
+            hidden_states[:, i * 75 + 1 : i * 75 + 76] = hidden_states[:, i * 75 + 1 : i * 75 + 76] * weight[:, i, 1:-1].unsqueeze(-1)
+
+    return hidden_states1, hidden_states2

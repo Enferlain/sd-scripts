@@ -26,7 +26,7 @@ from library.strategies.sdxl.caching import SdxlConditioning
 from library.strategies.base.training import TrainingStrategy
 from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.sdxl.conversion import get_size_embeddings
-from library.models.sdxl.text_encoder import get_hidden_states_sdxl
+from library.models.sdxl.text_encoder import encode_input_ids_sdxl
 from library.models.sdxl.loader import load_target_model
 from library.models.runtime_utils import replace_unet_modules
 from library.training.sample_generation import sample_images_common
@@ -327,6 +327,14 @@ class SdxlTrainingStrategy(TrainingStrategy):
             max_token_length=cfg.training.max_token_length,
         )
 
+    def get_token_cache_encoder_names(self) -> list[str]:
+        """Return SDXL token-cache encoder names."""
+        return ["clip_l", "clip_g"]
+
+    def build_te_cache_model_bundle(self, cfg: Any, accelerator: Any, text_encoders: list[Any], tokenizers: list[Any]) -> Any:
+        """Return the TE caching bundle for SDXL text encoding."""
+        return (*text_encoders, *tokenizers)
+
     def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
         """
         Tokenize captions using SDXL dual CLIP tokenizers.
@@ -368,8 +376,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         input_ids2 = input_ids2.to(device)
 
         with torch.no_grad():
-            hidden_state1, hidden_state2, pool2 = get_hidden_states_sdxl(
-                max_token_length,
+            hidden_state1, hidden_state2, pool2 = encode_input_ids_sdxl(
                 input_ids1,
                 input_ids2,
                 tokenizers[0],
@@ -790,16 +797,15 @@ class SdxlTrainingStrategy(TrainingStrategy):
             input_ids2 = input_ids["clip_g"].to(te_device)
 
         with torch.enable_grad():
-            encoder_hidden_states1, encoder_hidden_states2, pool2 = get_hidden_states_sdxl(
-                cfg.training.max_token_length,
+            encoder_hidden_states1, encoder_hidden_states2, pool2 = encode_input_ids_sdxl(
                 input_ids1,
                 input_ids2,
                 tokenizers[0],
                 tokenizers[1],
                 text_encoders[0],
                 text_encoders[1],
-                None if not cfg.performance.precision.full_fp16 else weight_dtype,
-                accelerator=accelerator,
+                weight_dtype=None if not cfg.performance.precision.full_fp16 else weight_dtype,
+                unwrapped_text_encoder2=accelerator.unwrap_model(text_encoders[1]),
             )
 
         # DEBUG: Log output grad status before device transfer (remove after testing)

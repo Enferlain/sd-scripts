@@ -183,8 +183,17 @@ class TestRunTECaching:
             run_te_caching(mock_trainer)
 
             mock_trainer.strategies.create_te_caching_strategy.assert_called_once_with(mock_trainer.cfg)
+            mock_trainer.strategies.build_te_cache_model_bundle.assert_called_once_with(
+                mock_trainer.cfg,
+                mock_trainer.accelerator,
+                mock_trainer.text_encoders,
+                mock_trainer.tokenizers,
+            )
             MockEngine.assert_called_once()
             mock_engine.cache_dataset.assert_called()
+
+            first_call = mock_engine.cache_dataset.call_args_list[0]
+            assert first_call.kwargs["model"] == mock_trainer.strategies.build_te_cache_model_bundle.return_value
 
     def test_moves_text_encoders_to_cpu_after(self, mock_trainer):
         """Test text encoders are moved to CPU after caching."""

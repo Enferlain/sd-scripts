@@ -46,6 +46,10 @@ That means the cleanup goal is not "pretend SD is fully unified already."
 The goal is to make the active SDXL shared path honest and strategy-driven,
 while keeping SD explicitly transitional until its data-path migration is done.
 
+Also: deprecated / legacy code in this repo should be treated as reference
+material to replace, not compatibility surface to preserve. The cleanup target
+is migration and deletion, not long-term coexistence.
+
 ## Confirmed Gaps
 
 ### 1. Shared phases still hardcode SDXL token / TE shape
@@ -196,7 +200,14 @@ The shared base should not contain default behavior that assumes
 `text_encoder.text_model.embeddings`.
 
 Move those implementations into SD / SDXL concrete strategies, or a dedicated
-CLIP-family helper/mixin if duplication becomes annoying.
+CLIP-family helper under model-family-owned code if duplication becomes
+annoying. They should not stay in the generic base.
+
+One follow-up worth auditing during implementation: some text-encoder behavior
+already lives under model-family code (`library/models/sdxl/text_encoder.py`),
+while other behavior still lives in strategy/encoding modules. If CLIP-specific
+logic is extracted further, it should move toward model-family ownership rather
+than back into shared base abstractions.
 
 ### 4. Remove active singleton strategy coupling where practical
 
@@ -208,6 +219,18 @@ The target should be:
 
 Legacy scripts can keep singleton wiring until they are removed, but the active
 shared path should stop depending on it.
+
+This work should include a small pipeline-role audit rather than assuming
+`library/pipelines` is only a passive implementation detail. Current evidence
+shows:
+
+- active runtime usage for sampling through `sample_images_common(...)`
+- a separate `gradual_latent.py` utility module that appears standalone /
+  inference-oriented rather than part of the active training runner
+
+That means the cleanup should verify whether the folder should remain a
+sampling-focused home, be split by responsibility, or simply be treated as a
+sampling dependency boundary.
 
 ### 5. Keep SD explicitly transitional until its pipeline migration is done
 
@@ -264,6 +287,8 @@ Changes:
   - one ABC with clearly separated sections and comments plus tests
 - demote deprecated hooks so they are not presented as part of the primary
   active contract
+- treat deprecated hooks as migration targets to replace and delete, not as API
+  surface to keep supporting indefinitely
 
 Recommended minimum:
 
@@ -289,9 +314,12 @@ Changes:
   - `prepare_text_encoder_grad_ckpt_workaround()`
   - `prepare_text_encoder_fp8()`
   out of generic base defaults
-- implement them in concrete SD / SDXL strategies, or a CLIP-family helper
+- implement them in concrete SD / SDXL strategies, or a CLIP-family helper in
+  model-family-owned code
 - leave the base contract abstract or explicitly no-op only where that is
   genuinely generic
+- audit whether additional TE behavior currently stranded in strategy modules
+  should move into `library/models/...` helpers for model-family ownership
 
 Files:
 
@@ -314,6 +342,8 @@ Goal: make active runtime dependencies explicit.
 
 Changes:
 
+- audit `library/pipelines` usage and define its intended scope before
+  refactoring the sampling boundary
 - trace which active paths still require:
   - `TokenizeStrategy.set_strategy(...)`
   - `TextEncodingStrategy.set_strategy(...)`
@@ -328,6 +358,8 @@ Files likely involved:
 - `library/training/runners/trainer.py`
 - `library/training/sample_generation.py`
 - `library/pipelines/sdxl_lpw_stable_diffusion.py`
+- `library/pipelines/lpw_stable_diffusion.py`
+- `library/pipelines/gradual_latent.py` for scope clarification only
 - possibly tokenization / encoding base modules if helper accessors are changed
 
 Tests:
@@ -373,6 +405,7 @@ This ordering keeps the cleanup practical:
 - no mode-layer redesign
 - no rework of the high-level `Trainer` + `TrainingMode` architecture
 - no premature full unification of SD before its data path is ready
+- no attempt to preserve deprecated reference code as a stable parallel system
 - no performance tuning plan
 
 ## Acceptance Criteria

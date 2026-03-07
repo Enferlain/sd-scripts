@@ -1,7 +1,12 @@
 import torch
 from unittest.mock import MagicMock, patch
 from transformers import CLIPTextModelWithProjection
-from library.models.sdxl.text_encoder import pool_workaround, get_hidden_states_sdxl
+from library.models.sdxl.text_encoder import (
+    pool_workaround,
+    get_hidden_states_sdxl,
+    encode_input_ids_sdxl,
+    apply_hidden_state_weights_sdxl,
+)
 
 
 class TestPoolWorkaround:
@@ -323,3 +328,46 @@ class TestGetHiddenStatesSDXL:
 
         assert h1.dtype == torch.float16
         assert h2.dtype == torch.float16
+
+
+class TestEncodeInputIdsSDXL:
+    def test_infers_single_chunk_max_length(self):
+        tokenizer1 = MagicMock(model_max_length=77, eos_token_id=49407)
+        tokenizer2 = MagicMock(model_max_length=77, eos_token_id=49407)
+
+        text_encoder1 = MagicMock()
+        param1 = MagicMock()
+        param1.device = torch.device("cpu")
+        text_encoder1.parameters.return_value = iter([param1])
+
+        text_encoder2 = MagicMock()
+        param2 = MagicMock()
+        param2.device = torch.device("cpu")
+        text_encoder2.parameters.return_value = iter([param2])
+
+        with patch("library.models.sdxl.text_encoder.get_hidden_states_sdxl") as mock_get_hidden_states:
+            mock_get_hidden_states.return_value = (torch.randn(1, 77, 768), torch.randn(1, 77, 1280), torch.randn(1, 1280))
+
+            encode_input_ids_sdxl(
+                torch.zeros(1, 1, 77, dtype=torch.long),
+                torch.zeros(1, 1, 77, dtype=torch.long),
+                tokenizer1,
+                tokenizer2,
+                text_encoder1,
+                text_encoder2,
+            )
+
+        assert mock_get_hidden_states.call_args.args[0] is None
+
+
+class TestApplyHiddenStateWeightsSDXL:
+    def test_single_chunk_weights(self):
+        hidden_states1 = torch.ones(1, 77, 3)
+        hidden_states2 = torch.ones(1, 77, 5)
+        weights1 = torch.ones(1, 1, 77) * 1.5
+        weights2 = torch.ones(1, 1, 77) * 2.0
+
+        weighted1, weighted2 = apply_hidden_state_weights_sdxl(hidden_states1, hidden_states2, weights1, weights2)
+
+        torch.testing.assert_close(weighted1[:, 0, :], torch.full((1, 3), 1.5))
+        torch.testing.assert_close(weighted2[:, 0, :], torch.full((1, 5), 2.0))

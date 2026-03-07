@@ -123,6 +123,12 @@ def run_te_caching(trainer: Trainer) -> None:
     if trainer.cfg.data.caching.cache_text_encoder_outputs_to_disk:
         # Disk-based TE caching: use CachingEngine
         trainer.te_strategy = trainer.strategies.create_te_caching_strategy(trainer.cfg)
+        te_cache_model_bundle = trainer.strategies.build_te_cache_model_bundle(
+            trainer.cfg,
+            trainer.accelerator,
+            trainer.text_encoders,
+            trainer.tokenizers,
+        )
         te_caching_engine = CachingEngine(
             strategy=trainer.te_strategy,
             batch_size=trainer.cfg.data.caching.te_batch_size,
@@ -133,7 +139,7 @@ def run_te_caching(trainer: Trainer) -> None:
         try:
             trainer.train_manifest = te_caching_engine.cache_dataset(
                 manifest=trainer.train_manifest,
-                model=(*trainer.text_encoders, *trainer.tokenizers),  # SDXL: (clip_l_enc, clip_g_enc, clip_l_tok, clip_g_tok)
+                model=te_cache_model_bundle,
                 accelerator=trainer.accelerator,
                 cache_dir=cache_dir,
                 cache_type="TE Caching",
@@ -141,7 +147,7 @@ def run_te_caching(trainer: Trainer) -> None:
             if trainer.val_manifest is not None:
                 trainer.val_manifest = te_caching_engine.cache_dataset(
                     manifest=trainer.val_manifest,
-                    model=(*trainer.text_encoders, *trainer.tokenizers),
+                    model=te_cache_model_bundle,
                     accelerator=trainer.accelerator,
                     cache_dir=cache_dir,
                     cache_type="TE Caching",

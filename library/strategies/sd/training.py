@@ -171,6 +171,14 @@ class SdTrainingStrategy(TrainingStrategy):
         """Not yet implemented for SD. SD uses the old pipeline."""
         raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")
 
+    def get_token_cache_encoder_names(self) -> list[str]:
+        """Return SD token-cache encoder names."""
+        return ["clip"]
+
+    def build_te_cache_model_bundle(self, cfg: Any, accelerator: Any, text_encoders: list[Any], tokenizers: list[Any]) -> Any:
+        """Return the TE caching bundle for SD-style text encoding."""
+        return (*text_encoders, *tokenizers)
+
     def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
         """Not yet implemented for SD. SD uses the old pipeline."""
         raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")

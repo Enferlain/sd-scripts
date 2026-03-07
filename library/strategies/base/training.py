@@ -159,6 +159,35 @@ class CachingStrategy(ABC):
         """
         raise NotImplementedError
 
+    def get_token_cache_encoder_names(self) -> list[str]:
+        """
+        Return encoder names used when persisting per-epoch token caches.
+
+        Shared phase code should not hardcode model-family token names.
+
+        Returns:
+            Ordered encoder names matching ``tokenize_captions()`` output order.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not define token cache encoder names")
+
+    def build_te_cache_model_bundle(self, cfg: Any, accelerator: Any, text_encoders: list[Any], tokenizers: list[Any]) -> Any:
+        """
+        Return the model bundle passed to the TE caching engine.
+
+        Shared phase code should not know how a model family packs text
+        encoders, tokenizers, or unwrapped helpers for TE caching.
+
+        Args:
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            text_encoders: Text encoder models for the current trainer.
+            tokenizers: Tokenizers for the current trainer.
+
+        Returns:
+            Model-family-specific bundle consumed by the TE caching strategy.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not define a TE cache model bundle")
+
     @abstractmethod
     def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
         """

@@ -161,6 +161,8 @@ def mock_strategies():
     strategies.post_process_trainable = MagicMock()
     strategies.prepare_text_encoder_fp8 = MagicMock()
     strategies.load_unet_lazily = MagicMock(return_value=(MagicMock(), []))
+    strategies.get_token_cache_encoder_names = MagicMock(return_value=["clip_l", "clip_g"])
+    strategies.build_te_cache_model_bundle = MagicMock(return_value=("te1", "te2", "tok1", "tok2"))
     strategies.on_step_start = MagicMock()
     strategies.process_batch = MagicMock(return_value=(torch.tensor(0.5), torch.tensor(0.5), None, torch.tensor([500])))
     strategies.all_reduce_trainable = MagicMock()

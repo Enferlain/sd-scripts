@@ -92,3 +92,28 @@ class TestTrainer(unittest.TestCase):
 
         call_kwargs = self.mode.save_checkpoint.call_args
         self.assertIs(call_kwargs.kwargs["target_model"], mock_adapter)
+
+    def test_train_ends_resource_monitor_session_when_training_fails(self):
+        """Resource monitor session should close even if training aborts mid-run."""
+        mock_monitor = MagicMock()
+
+        self.trainer._resource_monitor = None
+        self.trainer.setup = MagicMock()
+        self.trainer.run_caching = MagicMock()
+        self.trainer.prepare_models = MagicMock()
+        self.trainer.prepare_optimizer = MagicMock()
+        self.trainer._log_training_info = MagicMock()
+        self.trainer._maybe_sample_at_start = MagicMock()
+        self.trainer.run_training_loop = MagicMock(side_effect=RuntimeError("training failed"))
+        self.trainer._finalize_training = MagicMock()
+
+        def assign_monitor():
+            self.trainer._resource_monitor = mock_monitor
+
+        self.trainer.setup.side_effect = assign_monitor
+
+        with self.assertRaisesRegex(RuntimeError, "training failed"):
+            self.trainer.train()
+
+        mock_monitor.end_session.assert_called_once()
+        self.trainer._finalize_training.assert_not_called()

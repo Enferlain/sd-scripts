@@ -203,39 +203,6 @@ class TestSdxlTextEncodingStrategy:
         # No-op init, just verify it doesn't error
         assert strategy is not None
 
-    def test_pool_workaround_finds_eos_token(self, mock_clip_text_encoder2):
-        """Test _pool_workaround extracts hidden state at EOS position."""
-        strategy = SdxlTextEncodingStrategy()
-
-        batch_size = 2
-        seq_len = 77
-        hidden_dim = 1280
-
-        last_hidden_state = torch.randn(batch_size, seq_len, hidden_dim)
-        # EOS token at position 10 for both batch items
-        input_ids = torch.zeros(batch_size, seq_len, dtype=torch.long)
-        input_ids[:, 10] = 49407  # EOS token
-
-        result = strategy._pool_workaround(mock_clip_text_encoder2, last_hidden_state, input_ids, eos_token_id=49407)
-
-        assert result.shape == (batch_size, hidden_dim)
-
-    def test_pool_workaround_handles_no_eos(self, mock_clip_text_encoder2):
-        """Test _pool_workaround defaults to position 0 if no EOS found."""
-        strategy = SdxlTextEncodingStrategy()
-
-        batch_size = 1
-        seq_len = 77
-        hidden_dim = 1280
-
-        last_hidden_state = torch.randn(batch_size, seq_len, hidden_dim)
-        input_ids = torch.zeros(batch_size, seq_len, dtype=torch.long)  # No EOS
-
-        result = strategy._pool_workaround(mock_clip_text_encoder2, last_hidden_state, input_ids, eos_token_id=49407)
-
-        # Should default to position 0
-        assert result.shape == (batch_size, hidden_dim)
-
     @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
     def test_encode_tokens_returns_three_outputs(
         self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2
