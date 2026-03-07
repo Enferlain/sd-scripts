@@ -13,6 +13,7 @@ import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
 import torch
 
 from library.logging.resource_monitor import create_resource_monitor
@@ -568,3 +569,32 @@ class TestCheckpointTriggersOnEpochEnd:
         first_ckpt_name = save_calls[0].args[0]
         expected = get_epoch_ckpt_name(trainer.cfg.output.saving, ".safetensors", 1)
         assert first_ckpt_name == expected
+
+    def test_partial_epoch_from_max_steps_skips_epoch_end_actions(self):
+        """Epoch-end save/sample should not fire when max_train_steps cuts the epoch short."""
+        trainer = _make_mock_trainer(
+            num_epochs=2,
+            batches_per_epoch=5,
+            max_train_steps=3,
+            save_every_n_epochs=1,
+        )
+        trainer.cfg.output.sampling.sample_every_n_epochs = 1
+
+        _run_loop_with_mock_dataloader(trainer, 5)
+
+        trainer.save_checkpoint.assert_not_called()
+        trainer.strategies.sample_images.assert_not_called()
+
+    def test_phase_end_runs_when_epoch_body_raises(self):
+        """Resource monitor phase_end should still fire if an epoch fails before finalization."""
+        trainer = _make_mock_trainer(
+            num_epochs=1,
+            batches_per_epoch=2,
+        )
+        trainer.strategies.process_batch.side_effect = RuntimeError("boom")
+
+        with pytest.raises(RuntimeError, match="boom"):
+            _run_loop_with_mock_dataloader(trainer, 2)
+
+        trainer._resource_monitor.phase_start.assert_called_once_with("training_epoch_1")
+        trainer._resource_monitor.phase_end.assert_called_once_with("training_epoch_1")

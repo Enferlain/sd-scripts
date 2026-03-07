@@ -192,17 +192,21 @@ class Trainer:
 
     def train(self) -> None:
         """Main training entry point. Orchestrates all phases."""
-        self.setup()
-        self.run_caching()
-        self.prepare_models()
-        self.prepare_optimizer()
+        try:
+            self.setup()
+            self.run_caching()
+            self.prepare_models()
+            self.prepare_optimizer()
 
-        self._log_training_info()
-        self._maybe_sample_at_start()
+            self._log_training_info()
+            self._maybe_sample_at_start()
 
-        self.run_training_loop()
+            self.run_training_loop()
 
-        self._finalize_training()
+            self._finalize_training()
+        finally:
+            if self._resource_monitor is not None:
+                self._resource_monitor.end_session()
 
     # =========================================================================
     # Phase Methods - Delegate to phase functions
@@ -692,8 +696,6 @@ class Trainer:
                 )
 
         logger.info("model saved.")
-        if self._resource_monitor is not None:
-            self._resource_monitor.end_session()
 
     @property
     def trainable_model(self) -> nn.Module | None:
