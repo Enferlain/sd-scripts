@@ -25,7 +25,8 @@ CLAUDE.md
 GEMINI.md
 .claude/
 .gemini/
-!.agent/
+.agent/skills
+*code-workspace
 
 # Project Data & Outputs
 logs/

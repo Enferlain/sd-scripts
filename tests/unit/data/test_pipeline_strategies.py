@@ -11,7 +11,7 @@ import pytest
 import torch
 
 from library.data.structures import CacheEntry
-from library.strategies.sd.caching import SdLatentsPipelineStrategy, SD_VAE_LATENT_SCALE
+from library.strategies.sd.caching import SdLatentsPipelineStrategy, SdTextEncoderPipelineStrategy, SD_VAE_LATENT_SCALE
 from library.strategies.sdxl.caching import (
     SdxlLatentsPipelineStrategy,
     SdxlTextEncoderPipelineStrategy,
@@ -230,6 +230,68 @@ class TestSdLatentsPipelineStrategy:
         # Center crop should be identical each time
         assert torch.allclose(tensors[0], tensors[1])
         assert torch.allclose(tensors[1], tensors[2])
+
+
+class TestSdTextEncoderPipelineStrategy:
+    """Tests for SD text encoder caching strategy."""
+
+    @pytest.fixture
+    def mock_text_encoder_bundle(self):
+        """Create a mock SD text encoder and tokenizer."""
+        tokenizer = MagicMock()
+        tokenizer.model_max_length = 77
+        tokenizer.bos_token_id = 49406
+        tokenizer.eos_token_id = 49407
+        tokenizer.pad_token_id = 49407
+        tokenizer.eos_token = 49407
+
+        def tokenizer_call(text, **kwargs):
+            batch_size = len(text) if isinstance(text, list) else 1
+            return MagicMock(input_ids=torch.zeros(batch_size, 77, dtype=torch.long))
+
+        tokenizer.__call__ = tokenizer_call
+        tokenizer.side_effect = tokenizer_call
+
+        text_encoder = MagicMock()
+        text_encoder.device = torch.device("cpu")
+        text_encoder.return_value = (torch.randn(3, 77, 768),)
+
+        return (text_encoder, tokenizer)
+
+    def test_get_entry_cache_path(self, sample_entry: CacheEntry):
+        """Test that TE strategy reads te_cache_path from entry."""
+        strategy = SdTextEncoderPipelineStrategy()
+        path = strategy.get_entry_cache_path(sample_entry)
+        assert path is not None
+        assert path.endswith("_te.safetensors")
+
+    def test_encode_batch(self, sample_entries: list[CacheEntry], mock_text_encoder_bundle):
+        """Test SD text encoding produces the expected output structure."""
+        strategy = SdTextEncoderPipelineStrategy()
+        dummy_images = torch.empty(0)
+
+        results = strategy.encode_batch(dummy_images, mock_text_encoder_bundle, sample_entries)
+
+        assert len(results) == 3
+        for result in results:
+            assert "hidden_state" in result
+            assert "metadata" in result
+
+    def test_save_and_load_cache(self, sample_entry: CacheEntry):
+        """Test SD text encoder save/load roundtrip."""
+        strategy = SdTextEncoderPipelineStrategy()
+        cache_path = Path(sample_entry.te_cache_path)
+
+        data = {
+            "hidden_state": torch.randn(77, 768, dtype=torch.float16),
+            "metadata": {"caption_hash": "12345678"},
+        }
+
+        strategy.save_cache(data, cache_path)
+        assert cache_path.exists()
+
+        loaded = strategy.load_cache(cache_path)
+        assert "hidden_state" in loaded.aux
 
 
 class TestSdxlLatentsPipelineStrategy:

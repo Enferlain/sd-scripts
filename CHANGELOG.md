@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-08]
+
+### Changed
+
+- **Strategy boundary cleanup follow-up** — Shared strategy defaults no longer assume CLIP-specific text-encoder preparation in the generic base training contract.
+  - `ModelPreparationStrategy` now leaves text-encoder grad-checkpoint / FP8 prep to concrete model-family strategies.
+  - SD and SDXL training strategies now own their CLIP-specific text-encoder preparation behavior directly.
+  - Added unit coverage in `tests/unit/strategies/test_strategies_base.py` for the stricter base contract behavior.
+  - Deprecated TE-output caching hooks on the base training strategy now default to optional legacy behavior (`None` / move encoders to device), so active strategies no longer need no-op overrides just to satisfy deprecated SD script paths.
+- **SD new-pipeline strategy support** — SD strategy code now supports the active `CachingEngine` / `TrainingDataset` path instead of relying on “not migrated yet” compatibility stubs.
+  - `SdTrainingStrategy` now creates real new-pipeline latent and text-encoder caching strategies, tokenizes captions for epoch-token caching, and computes in-memory TE outputs for the shared caching phase.
+  - SD training/validation batch processing now accepts new batch keys (`input_ids`, `text_encoder_outputs`) while preserving the live-encoding fallback path.
+  - Added `SdTextEncoderPipelineStrategy` and focused SD pipeline-strategy coverage in `tests/unit/data/test_pipeline_strategies.py` and `tests/unit/strategies/test_strategies_sd.py`.
+
 ## [2026-03-07]
 
 ### Changed

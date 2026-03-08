@@ -26,6 +26,7 @@ from library.constants import SD_VAE_LATENT_SCALE
 from library.strategies.base.training import TrainingStrategy
 from library.models.runtime_utils import replace_unet_modules
 from library.models.sd.loader import load_target_model
+from library.models.sd.text_encoder import get_hidden_states_sd
 from library.training.sample_generation import sample_images_common
 from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 from library.utils.model_metadata import get_model_metadata_from_config
@@ -148,29 +149,21 @@ class SdTrainingStrategy(TrainingStrategy):
         """
         return library.strategies.sd.encoding.SdTextEncodingStrategy(cfg.training.clip_skip)
 
-    def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> None:
-        """
-        SD doesn't cache text encoder outputs by default.
-
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            None.
-        """
-        return None
-
     # --- New pipeline caching methods ---
-    # SD has not been migrated to the new CachingEngine pipeline yet.
-    # These stubs satisfy the abstract interface; implement when SD is ported.
-
     def create_latent_caching_strategy(self, cfg: Any) -> Any:
-        """Not yet implemented for SD. SD uses the old pipeline."""
-        raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")
+        """Create SD latent caching strategy for the new CachingEngine pipeline."""
+        latent_dtype = "fp32" if cfg.performance.precision.no_half_vae else "fp16"
+        return library.strategies.sd.caching.SdLatentsPipelineStrategy(
+            flip_aug=cfg.data.preprocessing.flip_aug,
+            dtype=latent_dtype,
+        )
 
     def create_te_caching_strategy(self, cfg: Any) -> Any:
-        """Not yet implemented for SD. SD uses the old pipeline."""
-        raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")
+        """Create SD text encoder caching strategy for the new CachingEngine pipeline."""
+        return library.strategies.sd.caching.SdTextEncoderPipelineStrategy(
+            clip_skip=cfg.training.clip_skip,
+            max_token_length=cfg.training.max_token_length,
+        )
 
     def get_token_cache_encoder_names(self) -> list[str]:
         """Return SD token-cache encoder names."""
@@ -181,8 +174,8 @@ class SdTrainingStrategy(TrainingStrategy):
         return (*text_encoders, *tokenizers)
 
     def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
-        """Not yet implemented for SD. SD uses the old pipeline."""
-        raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")
+        """Tokenize captions using SD's single CLIP tokenizer."""
+        return [library.strategies.sd.tokenization.tokenize_sd_captions(tokenizers[0], captions, max_token_length)]
 
     def encode_te_outputs_in_memory(
         self,
@@ -192,26 +185,16 @@ class SdTrainingStrategy(TrainingStrategy):
         max_token_length: int,
         device: Any,
     ) -> dict[str, torch.Tensor]:
-        """Not yet implemented for SD. SD uses the old pipeline."""
-        raise NotImplementedError("SD has not been migrated to the new CachingEngine pipeline")
+        """Compute SD text encoder outputs for a single caption (in-memory caching)."""
+        input_ids = library.strategies.sd.tokenization.tokenize_sd_captions(tokenizers[0], [caption], max_token_length).to(device)
 
-    def cache_text_encoder_outputs_if_needed(
-        self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
-    ) -> None:
-        """
-        Move text encoders to device for SD.
-
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            unet: UNet model.
-            vae: VAE model.
-            text_encoders: List of text encoders.
-            dataset: Dataset object.
-            weight_dtype: Weight data type.
-        """
-        for t_enc in text_encoders:
-            t_enc.to(accelerator.device, dtype=weight_dtype)
+        with torch.no_grad():
+            hidden_state = get_hidden_states_sd(
+                input_ids,
+                tokenizers[0],
+                text_encoders[0],
+            )
+            return {"hidden_state": hidden_state.squeeze(0).cpu()}
 
     def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
         """
@@ -226,6 +209,60 @@ class SdTrainingStrategy(TrainingStrategy):
             List of text encoders.
         """
         return text_encoders
+
+    def _get_text_conds(
+        self,
+        batch: Any,
+        text_encoders: list[Any],
+        accelerator: Any,
+        cfg: Any,
+        text_encoding_strategy: library.strategies.base.encoding.TextEncodingStrategy,
+        tokenize_strategy: library.strategies.base.tokenization.TokenizeStrategy,
+        train_text_encoder: bool,
+        is_train: bool,
+        weight_dtype: torch.dtype,
+    ) -> list[torch.Tensor]:
+        """Get SD text conditioning from cached outputs, cached tokens, or live captions."""
+        te_outputs = batch.get("text_encoder_outputs")
+        text_encoder_conds = (
+            [te_outputs["hidden_state"].to(accelerator.device, dtype=weight_dtype)]
+            if te_outputs is not None
+            else []
+        )
+
+        if len(text_encoder_conds) == 0 or text_encoder_conds[0] is None or train_text_encoder:
+            with torch.set_grad_enabled(is_train and train_text_encoder), accelerator.autocast():
+                if cfg.data.caption.weighted_captions:
+                    input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
+                    encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
+                        tokenize_strategy,
+                        self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
+                        input_ids_list,
+                        weights_list,
+                    )
+                else:
+                    input_ids_dict = batch.get("input_ids")
+                    if input_ids_dict is not None:
+                        input_ids = [input_ids_dict["clip"].to(accelerator.device)]
+                    else:
+                        input_ids = [ids.to(accelerator.device) for ids in tokenize_strategy.tokenize(batch["captions"])]
+                    encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
+                        tokenize_strategy,
+                        self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
+                        input_ids,
+                    )
+
+                if cfg.performance.precision.full_fp16:
+                    encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
+
+            if len(text_encoder_conds) == 0:
+                text_encoder_conds = encoded_text_encoder_conds
+            else:
+                for i in range(len(encoded_text_encoder_conds)):
+                    if encoded_text_encoder_conds[i] is not None:
+                        text_encoder_conds[i] = encoded_text_encoder_conds[i]
+
+        return text_encoder_conds
 
     def call_unet(
         self,
@@ -496,32 +533,17 @@ class SdTrainingStrategy(TrainingStrategy):
         with torch.no_grad():
             latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
 
-        text_encoder_conds = []
-        text_encoder_outputs_list = batch.get("text_encoder_outputs_list", None)
-        if text_encoder_outputs_list is not None:
-            text_encoder_conds = text_encoder_outputs_list
-
-        if len(text_encoder_conds) == 0 or text_encoder_conds[0] is None or train_text_encoder:
-            with torch.set_grad_enabled(is_train and train_text_encoder), accelerator.autocast():
-                if cfg.data.caption.weighted_captions:
-                    input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
-                    encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
-                        tokenize_strategy, self.get_models_for_text_encoding(cfg, accelerator, text_encoders), input_ids_list, weights_list
-                    )
-                else:
-                    input_ids = [ids.to(accelerator.device) for ids in batch["input_ids_list"]]
-                    encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
-                        tokenize_strategy, self.get_models_for_text_encoding(cfg, accelerator, text_encoders), input_ids
-                    )
-                if cfg.performance.precision.full_fp16:
-                    encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
-
-            if len(text_encoder_conds) == 0:
-                text_encoder_conds = encoded_text_encoder_conds
-            else:
-                for i in range(len(encoded_text_encoder_conds)):
-                    if encoded_text_encoder_conds[i] is not None:
-                        text_encoder_conds[i] = encoded_text_encoder_conds[i]
+        text_encoder_conds = self._get_text_conds(
+            batch=batch,
+            text_encoders=text_encoders,
+            accelerator=accelerator,
+            cfg=cfg,
+            text_encoding_strategy=text_encoding_strategy,
+            tokenize_strategy=tokenize_strategy,
+            train_text_encoder=train_text_encoder,
+            is_train=is_train,
+            weight_dtype=weight_dtype,
+        )
 
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
             cfg,
@@ -622,35 +644,17 @@ class SdTrainingStrategy(TrainingStrategy):
             latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
             total_loss = torch.zeros(1, device=latents.device)
 
-            text_encoder_conds = []
-            text_encoder_outputs_list = batch.get("text_encoder_outputs_list", None)
-            if text_encoder_outputs_list is not None:
-                text_encoder_conds = text_encoder_outputs_list
-
-            if len(text_encoder_conds) == 0 or text_encoder_conds[0] is None or train_text_encoder:
-                with torch.set_grad_enabled(False), accelerator.autocast():
-                    if cfg.data.caption.weighted_captions:
-                        input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
-                        encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
-                            tokenize_strategy,
-                            self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
-                            input_ids_list,
-                            weights_list,
-                        )
-                    else:
-                        input_ids = [ids.to(accelerator.device) for ids in batch["input_ids_list"]]
-                        encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
-                            tokenize_strategy, self.get_models_for_text_encoding(cfg, accelerator, text_encoders), input_ids
-                        )
-                    if cfg.performance.precision.full_fp16:
-                        encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
-
-                if len(text_encoder_conds) == 0:
-                    text_encoder_conds = encoded_text_encoder_conds
-                else:
-                    for i in range(len(encoded_text_encoder_conds)):
-                        if encoded_text_encoder_conds[i] is not None:
-                            text_encoder_conds[i] = encoded_text_encoder_conds[i]
+            text_encoder_conds = self._get_text_conds(
+                batch=batch,
+                text_encoders=text_encoders,
+                accelerator=accelerator,
+                cfg=cfg,
+                text_encoding_strategy=text_encoding_strategy,
+                tokenize_strategy=tokenize_strategy,
+                train_text_encoder=train_text_encoder,
+                is_train=False,
+                weight_dtype=weight_dtype,
+            )
 
             batch_size = latents.shape[0]
             for fixed_timestep_value in timesteps_list:

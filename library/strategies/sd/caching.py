@@ -21,6 +21,9 @@ from library.data._deprecated.data_structures import ImageInfo
 from library.data.caching_engine import CachingStrategy
 from library.data.structures import CacheData, CacheEntry
 from library.strategies.base.caching import LatentsCachingStrategy
+from library.models.sd.text_encoder import get_hidden_states_sd
+from library.strategies.sd.tokenization import tokenize_sd_captions
+from library.utils.hash_utils import stable_string_hash
 
 from library.utils.device_utils import clean_memory_on_device
 
@@ -325,6 +328,126 @@ class SdLatentsPipelineStrategy(CachingStrategy):
         arr = arr * 2.0 - 1.0  # [0, 1] -> [-1, 1]
         tensor = torch.from_numpy(arr).permute(2, 0, 1)  # [H, W, C] -> [C, H, W]
         return tensor
+
+
+class SdTextEncoderPipelineStrategy(CachingStrategy):
+    """
+    Text encoder output caching strategy for SD 1.5 and SD 2.0.
+
+    Encodes captions with the single CLIP text encoder and stores the resulting
+    hidden states in per-entry safetensors caches for the new data pipeline.
+    """
+
+    def __init__(
+        self,
+        cache_suffix: str = "_sd_te.safetensors",
+        clip_skip: int | None = None,
+        max_token_length: int | None = None,
+        dtype: str = "fp16",
+    ) -> None:
+        self.cache_suffix = cache_suffix
+        self.clip_skip = clip_skip
+        self.max_token_length = max_token_length
+        self.dtype = dtype
+        self._torch_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[dtype]
+
+    def get_entry_cache_path(self, entry: CacheEntry) -> str | None:
+        """Return ``te_cache_path`` instead of the latent cache path."""
+        return entry.te_cache_path
+
+    def encode_batch(
+        self,
+        images: torch.Tensor,
+        model: Any,
+        entries: list[CacheEntry],
+    ) -> list[dict[str, Any]]:
+        """
+        Encode captions using SD's single CLIP text encoder.
+
+        The ``images`` tensor is unused here; ``CachingEngine`` still provides
+        it because the engine interface is shared with latent caching.
+        """
+        text_encoder, tokenizer = model
+        device = text_encoder.device
+        captions = [entry.caption for entry in entries]
+
+        input_ids = tokenize_sd_captions(tokenizer, captions, self.max_token_length).to(device)
+
+        with torch.no_grad():
+            hidden_state = get_hidden_states_sd(
+                input_ids,
+                tokenizer,
+                text_encoder,
+                clip_skip=self.clip_skip,
+            )
+
+        hidden_state = hidden_state.to(dtype=self._torch_dtype).cpu()
+
+        results = []
+        for i, entry in enumerate(entries):
+            results.append(
+                {
+                    "hidden_state": hidden_state[i],
+                    "metadata": {
+                        "caption_hash": str(stable_string_hash(entry.caption)),
+                    },
+                }
+            )
+        return results
+
+    def save_cache(self, data: dict[str, Any], path: Path) -> None:
+        """Save SD text encoder outputs to a safetensors cache file."""
+        save_file({"hidden_state": data["hidden_state"]}, str(path), metadata=data.get("metadata", {}))
+
+    def load_cache(self, path: Path) -> CacheData:
+        """Load cached SD text encoder outputs from disk."""
+        from safetensors import safe_open
+
+        with safe_open(str(path), framework="pt") as f:
+            hidden_state = f.get_tensor("hidden_state")
+
+        return CacheData(aux={"hidden_state": hidden_state})
+
+    def is_cache_valid(
+        self,
+        path: Path,
+        entry: CacheEntry,
+        flip_aug: bool = False,
+        alpha_mask: bool = False,
+    ) -> bool:
+        """Check that the SD TE cache has the expected tensor and caption hash."""
+        from safetensors import safe_open
+
+        try:
+            with safe_open(str(path), framework="pt") as f:
+                if "hidden_state" not in f.keys():  # noqa: SIM118
+                    logger.debug(f"Cache {path}: missing 'hidden_state' key")
+                    return False
+
+                metadata = f.metadata()
+                if metadata and "caption_hash" in metadata:
+                    stored_hash = metadata["caption_hash"]
+                    expected_hash = str(stable_string_hash(entry.caption))
+                    if stored_hash != expected_hash:
+                        logger.debug(f"Cache {path}: caption changed. Stored hash '{stored_hash}', expected '{expected_hash}'")
+                        return False
+
+            return True
+        except Exception as e:
+            logger.debug(f"Cache validation error for {path}: {e}")
+            return False
+
+    def preprocess_image(
+        self,
+        image: Image.Image,
+        target_size: tuple[int, int],
+        resized_size: tuple[int, int] | None = None,
+        random_crop: bool = False,
+        random_crop_padding_percent: float = 0.05,
+        resize_interpolation: str | None = None,
+    ) -> torch.Tensor:
+        """Return a dummy tensor because SD text encoding does not use images."""
+        return torch.empty(0)
 
 
 # TODO LEGACY SCRIPT, PENDING UPDATE OF NON SDXL_PEFT TRAINING SCRIPTS AND STRATEGY

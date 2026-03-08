@@ -115,10 +115,13 @@ class CachingStrategy(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> Any | None:
         """
-        Return the TextEncoderOutputsCachingStrategy.
+        Return the legacy TextEncoderOutputsCachingStrategy.
+
+        This hook exists only for deprecated dataset/script paths that still
+        use the old per-dataset TE caching flow. The active shared runner does
+        not use it, so the default implementation is ``None``.
 
         Args:
             cfg: Configuration object containing caching settings.
@@ -126,12 +129,14 @@ class CachingStrategy(ABC):
         Returns:
             A TextEncoderOutputsCachingStrategy instance, or None if not supported/enabled.
         """
-        raise NotImplementedError
+        return None
 
-    # --- New pipeline caching methods ---
-    # These create strategies for the new CachingEngine pipeline (library/data/caching_engine.py).
-    # The methods above (get_latents_caching_strategy, etc.) are for the old pipeline
-    # and will be removed once SD is migrated.
+    # --- New/shared-pipeline caching methods ---
+    # These create strategies for the CachingEngine pipeline
+    # (library/data/caching_engine.py). The legacy TE-output hooks above are
+    # deprecated-path compatibility surface. `get_latents_caching_strategy()`
+    # remains active transitional surface while the current runner still uses
+    # LatentsCachingStrategy singleton wiring during setup.
 
     @abstractmethod
     def create_latent_caching_strategy(self, cfg: Any) -> Any:
@@ -234,12 +239,16 @@ class CachingStrategy(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def cache_text_encoder_outputs_if_needed(
         self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
     ) -> None:
         """
-        Cache text encoder outputs if caching is enabled.
+        Handle deprecated-path text encoder output caching if needed.
+
+        The active shared runner no longer uses this hook. Legacy SD script
+        paths still call it, so the default behavior is to ensure text
+        encoders are moved to the accelerator for live encoding when no
+        specialized TE-output caching strategy exists.
 
         Args:
             cfg: Configuration object.
@@ -250,7 +259,8 @@ class CachingStrategy(ABC):
             dataset: The dataset to cache outputs for.
             weight_dtype: Data type for calculations.
         """
-        raise NotImplementedError
+        for text_encoder in text_encoders:
+            text_encoder.to(accelerator.device, dtype=weight_dtype)
 
     @abstractmethod
     def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:

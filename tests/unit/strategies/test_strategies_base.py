@@ -17,6 +17,7 @@ from library.strategies.base.caching import TextEncoderOutputsCachingStrategy, L
 from library.strategies.base.encoding import TextEncodingStrategy
 from library.strategies.base.tokenization import TokenizeStrategy
 from library.strategies.base.training import (
+    CachingStrategy,
     DiffusionTrainingStrategy,
     ModelLoadingStrategy,
     ModelPreparationStrategy,
@@ -382,6 +383,29 @@ class _DummyValidationStrategy(ValidationStrategy):
         return None, None
 
 
+class _DummyCachingStrategy(CachingStrategy):
+    def get_latents_caching_strategy(self, cfg):
+        return object()
+
+    def get_text_encoding_strategy(self, cfg):
+        return object()
+
+    def create_latent_caching_strategy(self, cfg):
+        return object()
+
+    def create_te_caching_strategy(self, cfg):
+        return object()
+
+    def tokenize_captions(self, tokenizers, captions, max_token_length):
+        return []
+
+    def encode_te_outputs_in_memory(self, text_encoders, tokenizers, caption, max_token_length, device):
+        return {}
+
+    def get_models_for_text_encoding(self, cfg, accelerator, text_encoders):
+        return text_encoders
+
+
 @pytest.mark.unit
 class TestTrainingStrategyPhase2Facets:
     def test_training_strategy_composes_phase2_facets(self):
@@ -405,6 +429,27 @@ class TestTrainingStrategyPhase2Facets:
         strategy = _DummyLoadingStrategy()
         with pytest.raises(NotImplementedError, match="load_unet_lazily"):
             strategy.load_unet_lazily(cfg=Mock(), weight_dtype=torch.float16, accelerator=Mock(), text_encoders=[])
+
+    def test_legacy_te_caching_hooks_default_to_optional_behavior(self):
+        """Deprecated TE-output hooks should not be mandatory for active strategies."""
+        strategy = _DummyCachingStrategy()
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+        text_encoder = Mock()
+
+        assert strategy.get_text_encoder_outputs_caching_strategy(Mock()) is None
+
+        strategy.cache_text_encoder_outputs_if_needed(
+            cfg=Mock(),
+            accelerator=accelerator,
+            unet=Mock(),
+            vae=Mock(),
+            text_encoders=[text_encoder],
+            dataset=Mock(),
+            weight_dtype=torch.float16,
+        )
+
+        text_encoder.to.assert_called_once_with(accelerator.device, dtype=torch.float16)
 
     def test_diffusion_training_prepare_latents_scales_encoded_latents(self):
         """Moved diffusion helper should still apply VAE latent scaling."""

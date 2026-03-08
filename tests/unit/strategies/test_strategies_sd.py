@@ -4,14 +4,17 @@ Unit tests for library/strategies/strategy_sd.py
 Tests the SD 1.5/2.0 strategy classes with mocked tokenizers and text encoders.
 """
 
+from contextlib import nullcontext
+
 import pytest
 import numpy as np
 import torch
 from unittest.mock import Mock, patch
 
-from library.strategies.sd.caching import SdSdxlLatentsCachingStrategy
+from library.strategies.sd.caching import SdLatentsPipelineStrategy, SdSdxlLatentsCachingStrategy, SdTextEncoderPipelineStrategy
 from library.strategies.sd.encoding import SdTextEncodingStrategy
 from library.strategies.sd.tokenization import SdTokenizeStrategy
+from library.strategies.sd.training import SdTrainingStrategy
 
 
 # =============================================================================
@@ -307,8 +310,160 @@ class TestSdSdxlLatentsCachingStrategy:
         mock_info.bucket_reso = (512, 512)
         mock_info.latents_npz = "/path/to/image_sd.npz"
 
-        with patch("library.utils.device_utils.clean_memory_on_device"):
-            with patch.object(strategy, "_default_cache_batch_latents") as mock_cache:
-                strategy.cache_batch_latents(mock_vae, [mock_info], flip_aug=False, alpha_mask=False, random_crop=False)
+        with patch("library.utils.device_utils.clean_memory_on_device"), patch.object(
+            strategy, "_default_cache_batch_latents"
+        ) as mock_cache:
+            strategy.cache_batch_latents(mock_vae, [mock_info], flip_aug=False, alpha_mask=False, random_crop=False)
 
-                mock_cache.assert_called_once()
+            mock_cache.assert_called_once()
+
+
+@pytest.mark.unit
+class TestSdTrainingStrategyNewPipeline:
+    """Tests for the SD new-pipeline strategy surface."""
+
+    def test_create_latent_caching_strategy_returns_pipeline_strategy(self):
+        strategy = SdTrainingStrategy()
+        cfg = Mock()
+        cfg.performance.precision.no_half_vae = False
+        cfg.data.preprocessing.flip_aug = True
+
+        result = strategy.create_latent_caching_strategy(cfg)
+
+        assert isinstance(result, SdLatentsPipelineStrategy)
+        assert result.flip_aug is True
+        assert result.dtype == "fp16"
+
+    def test_create_te_caching_strategy_returns_pipeline_strategy(self):
+        strategy = SdTrainingStrategy()
+        cfg = Mock()
+        cfg.training.clip_skip = 2
+        cfg.training.max_token_length = 150
+
+        result = strategy.create_te_caching_strategy(cfg)
+
+        assert isinstance(result, SdTextEncoderPipelineStrategy)
+        assert result.clip_skip == 2
+        assert result.max_token_length == 150
+
+    @patch.object(SdTokenizeStrategy, "_load_tokenizer")
+    def test_tokenize_captions_returns_clip_named_tensor(self, mock_load_tokenizer, mock_clip_tokenizer):
+        mock_load_tokenizer.return_value = mock_clip_tokenizer
+        tokenize_strategy = SdTokenizeStrategy(v2=False, max_length=75)
+        strategy = SdTrainingStrategy()
+
+        result = strategy.tokenize_captions([tokenize_strategy.tokenizer], ["caption 1", "caption 2"], 75)
+
+        assert len(result) == 1
+        assert isinstance(result[0], torch.Tensor)
+        assert result[0].shape[0] == 2
+
+    @patch.object(SdTokenizeStrategy, "_load_tokenizer")
+    def test_encode_te_outputs_in_memory_returns_hidden_state(self, mock_load_tokenizer, mock_clip_tokenizer, mock_clip_text_encoder):
+        mock_load_tokenizer.return_value = mock_clip_tokenizer
+        tokenize_strategy = SdTokenizeStrategy(v2=False, max_length=75)
+        strategy = SdTrainingStrategy()
+
+        result = strategy.encode_te_outputs_in_memory(
+            text_encoders=[mock_clip_text_encoder],
+            tokenizers=[tokenize_strategy.tokenizer],
+            caption="a photo of a cat",
+            max_token_length=75,
+            device=torch.device("cpu"),
+        )
+
+        assert "hidden_state" in result
+        assert isinstance(result["hidden_state"], torch.Tensor)
+
+    def test_process_batch_accepts_new_text_encoder_outputs_key(self):
+        strategy = SdTrainingStrategy()
+        batch = {
+            "text_encoder_outputs": {"hidden_state": torch.randn(1, 77, 768)},
+        }
+        cfg = Mock()
+        cfg.data.caption.weighted_captions = False
+        cfg.performance.precision.full_fp16 = False
+        cfg.loss.masked.masked_loss = False
+        cfg.loss.loss_multiplier = None
+        cfg.loss.edm2.edm2_loss_weighting = False
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+
+        with patch.object(strategy, "_prepare_latents", return_value=torch.randn(1, 4, 64, 64)), patch.object(
+            strategy,
+            "get_noise_pred_and_target",
+            return_value=(
+                torch.randn(1, 4, 64, 64),
+                torch.randn(1, 4, 64, 64),
+                torch.tensor([10]),
+                None,
+            ),
+        ) as mock_noise:
+            strategy.process_batch(
+                batch=batch,
+                text_encoders=[Mock()],
+                unet=Mock(),
+                trainable_model=Mock(),
+                vae=Mock(),
+                noise_scheduler=Mock(),
+                vae_dtype=torch.float32,
+                weight_dtype=torch.float32,
+                accelerator=accelerator,
+                cfg=cfg,
+                text_encoding_strategy=Mock(),
+                tokenize_strategy=Mock(),
+                is_train=False,
+                train_text_encoder=False,
+            )
+
+        text_conds = mock_noise.call_args.args[5]
+        assert len(text_conds) == 1
+        assert isinstance(text_conds[0], torch.Tensor)
+
+    def test_process_batch_accepts_new_input_ids_key(self):
+        strategy = SdTrainingStrategy()
+        batch = {
+            "captions": ["a cat"],
+            "input_ids": {"clip": torch.randint(0, 100, (1, 1, 77))},
+        }
+        cfg = Mock()
+        cfg.data.caption.weighted_captions = False
+        cfg.performance.precision.full_fp16 = False
+        cfg.loss.masked.masked_loss = False
+        cfg.loss.loss_multiplier = None
+        cfg.loss.edm2.edm2_loss_weighting = False
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+        accelerator.autocast.return_value = nullcontext()
+
+        text_encoding_strategy = Mock()
+        text_encoding_strategy.encode_tokens.return_value = [torch.randn(1, 77, 768)]
+
+        with patch.object(strategy, "_prepare_latents", return_value=torch.randn(1, 4, 64, 64)), patch.object(
+            strategy,
+            "get_noise_pred_and_target",
+            return_value=(
+                torch.randn(1, 4, 64, 64),
+                torch.randn(1, 4, 64, 64),
+                torch.tensor([10]),
+                None,
+            ),
+        ):
+            strategy.process_batch(
+                batch=batch,
+                text_encoders=[Mock()],
+                unet=Mock(),
+                trainable_model=Mock(),
+                vae=Mock(),
+                noise_scheduler=Mock(),
+                vae_dtype=torch.float32,
+                weight_dtype=torch.float32,
+                accelerator=accelerator,
+                cfg=cfg,
+                text_encoding_strategy=text_encoding_strategy,
+                tokenize_strategy=Mock(),
+                is_train=False,
+                train_text_encoder=False,
+            )
+
+        text_encoding_strategy.encode_tokens.assert_called_once()

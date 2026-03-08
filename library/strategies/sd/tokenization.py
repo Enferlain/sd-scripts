@@ -11,6 +11,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def tokenize_sd_captions(tokenizer: CLIPTokenizer, captions: list[str], max_token_length: int | None) -> torch.Tensor:
+    """Tokenize SD captions from an already-loaded tokenizer instance.
+
+    This mirrors ``SdTokenizeStrategy.tokenize()`` without requiring callers to
+    construct a full strategy object just to reuse ``TokenizeStrategy`` chunking
+    logic for long prompts.
+    """
+    base_strategy = TokenizeStrategy()
+    if max_token_length is None:
+        effective_max_length = tokenizer.model_max_length
+    else:
+        effective_max_length = max_token_length + 2
+
+    input_ids = [cast(torch.Tensor, base_strategy._get_input_ids(tokenizer, caption, effective_max_length)) for caption in captions]
+    return torch.stack(input_ids, dim=0)
+
+
 class SdTokenizeStrategy(TokenizeStrategy):
     """
     Tokenize strategy for SD1.5 and SD2.0.
