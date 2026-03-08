@@ -1,54 +1,34 @@
-from typing import Optional, Any
+"""
+Compatibility shim for the merged text-encoding contract.
+
+The canonical runtime text-encoding contract now lives in
+``library.strategies.base.training.TextEncodingStrategy``.
+"""
+
+from typing import Any
 
 import torch
 
 from library.strategies.base.tokenization import TokenizeStrategy
+from library.strategies.base.training import TextEncodingStrategy as _TextEncodingStrategy
 
 
-class TextEncodingStrategy:
-    """
-    Base class for text encoding strategy.
-    """
-
-    _strategy = None  # strategy instance: actual strategy class
-
+class TextEncodingStrategy(_TextEncodingStrategy):
     @classmethod
     def set_strategy(cls, strategy):
-        if cls._strategy is not None:
-            raise RuntimeError(f"Internal error. {cls.__name__} strategy is already set")
-        cls._strategy = strategy
+        _TextEncodingStrategy.set_strategy(strategy)
 
     @classmethod
-    def get_strategy(cls) -> Optional["TextEncodingStrategy"]:
-        return cls._strategy
+    def get_strategy(cls):
+        return _TextEncodingStrategy.get_strategy()
 
     def encode_tokens(self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
-        """
-        Encode tokens into embeddings and outputs.
-
-        Args:
-            tokenize_strategy: TokenizeStrategy
-            models: List of TextModel
-            tokens: List of token tensors for each TextModel
-
-        Returns:
-            List of output embeddings for each architecture
-        """
         raise NotImplementedError
 
     def encode_tokens_with_weights(
         self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor], weights: list[torch.Tensor]
     ) -> list[torch.Tensor]:
-        """
-        Encode tokens into embeddings and outputs with weights.
-
-        Args:
-            tokenize_strategy: TokenizeStrategy
-            models: List of TextModel
-            tokens: List of token tensors for each TextModel
-            weights: List of weight tensors for each TextModel
-
-        Returns:
-            List of output embeddings for each architecture
-        """
         raise NotImplementedError
+
+
+__all__ = ["TextEncodingStrategy"]

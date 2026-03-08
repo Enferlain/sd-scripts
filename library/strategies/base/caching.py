@@ -9,8 +9,7 @@ import torch
 from library.data._deprecated.caching import load_images_and_masks_for_caching
 from library.data._deprecated.data_structures import ImageInfo
 
-from library.strategies.base.encoding import TextEncodingStrategy
-from library.strategies.base.tokenization import TokenizeStrategy
+from library.strategies.base.training import TextEncodingStrategy, TokenizationStrategy
 
 
 logger = logging.getLogger(__name__)
@@ -418,13 +417,13 @@ class TextEncoderOutputsCachingStrategy:
         raise NotImplementedError
 
     def cache_batch_outputs(
-        self, tokenize_strategy: TokenizeStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy, batch: list
+        self, tokenize_strategy: TokenizationStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy, batch: list
     ):
         """
         Cache batch outputs.
 
         Args:
-            tokenize_strategy: TokenizeStrategy
+            tokenize_strategy: TokenizationStrategy
             models: List of TextModel
             text_encoding_strategy: TextEncodingStrategy
             batch: Batch of data

@@ -10,8 +10,7 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-import library.strategies.base.encoding
-import library.strategies.base.tokenization
+import library.strategies.base.training
 import library.strategies.sd.caching
 import library.strategies.sd.encoding
 import library.strategies.sd.tokenization
@@ -216,8 +215,8 @@ class SdTrainingStrategy(TrainingStrategy):
         text_encoders: list[Any],
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: library.strategies.base.encoding.TextEncodingStrategy,
-        tokenize_strategy: library.strategies.base.tokenization.TokenizeStrategy,
+        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
+        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
         train_text_encoder: bool,
         is_train: bool,
         weight_dtype: torch.dtype,
@@ -493,8 +492,8 @@ class SdTrainingStrategy(TrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: library.strategies.base.encoding.TextEncodingStrategy,
-        tokenize_strategy: library.strategies.base.tokenization.TokenizeStrategy,
+        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
+        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_unet: bool = True,
@@ -609,8 +608,8 @@ class SdTrainingStrategy(TrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: library.strategies.base.encoding.TextEncodingStrategy,
-        tokenize_strategy: library.strategies.base.tokenization.TokenizeStrategy,
+        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
+        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
         train_text_encoder: bool = True,
         train_unet: bool = True,
         timesteps_list: list[int] | None = None,

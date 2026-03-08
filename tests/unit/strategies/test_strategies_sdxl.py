@@ -129,7 +129,7 @@ def mock_clip_text_encoder2():
 class TestSdxlTokenizeStrategy:
     """Test SdxlTokenizeStrategy with mocked dual tokenizers."""
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_init_loads_dual_tokenizers(self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2):
         """Test initialization loads both tokenizers."""
         mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
@@ -140,16 +140,16 @@ class TestSdxlTokenizeStrategy:
         assert strategy.tokenizer2 is mock_clip_tokenizer2
         assert mock_load_tokenizer.call_count == 2
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_init_sets_tokenizer2_pad_to_zero(self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2):
-        """Test that tokenizer2's pad_token_id is set to 0."""
+        """Test that strategy keeps the loader-provided tokenizer2."""
         mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
 
         strategy = SdxlTokenizeStrategy(max_length=None)
 
         assert strategy.tokenizer2.pad_token_id == 0
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_init_custom_max_length(self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2):
         """Test custom max_length adds 2 for BOS/EOS."""
         mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
@@ -158,13 +158,13 @@ class TestSdxlTokenizeStrategy:
 
         assert strategy.max_length == 152
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_tokenize_returns_tuple_of_two_tensors(self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2):
         """Test tokenize returns tuple of two token tensors."""
         mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
         strategy = SdxlTokenizeStrategy(max_length=None)
 
-        with patch.object(strategy, "_get_input_ids") as mock_get_ids:
+        with patch("library.strategies.sdxl.tokenization.get_clip_input_ids") as mock_get_ids:
             mock_get_ids.return_value = torch.randint(0, 1000, (1, 77))
 
             result = strategy.tokenize("a photo of a cat")
@@ -173,13 +173,13 @@ class TestSdxlTokenizeStrategy:
             assert len(result) == 2
             assert mock_get_ids.call_count == 2  # Called for both tokenizers
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_tokenize_with_weights_returns_dual_tokens_and_weights(self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2):
         """Test tokenize_with_weights returns tokens and weights for both tokenizers."""
         mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
         strategy = SdxlTokenizeStrategy(max_length=None)
 
-        with patch.object(strategy, "_get_input_ids") as mock_get_ids:
+        with patch("library.strategies.sdxl.tokenization.get_clip_input_ids") as mock_get_ids:
             mock_get_ids.return_value = (torch.randint(0, 1000, (1, 77)), torch.ones(1, 77))
 
             tokens_list, weights_list = strategy.tokenize_with_weights("(emphasized:1.5)")
@@ -203,7 +203,7 @@ class TestSdxlTextEncodingStrategy:
         # No-op init, just verify it doesn't error
         assert strategy is not None
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_encode_tokens_returns_three_outputs(
         self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2
     ):
@@ -221,7 +221,7 @@ class TestSdxlTextEncodingStrategy:
 
         assert len(result) == 3  # hidden1, hidden2, pool2
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_encode_tokens_with_unwrapped_encoder(
         self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2
     ):
@@ -242,7 +242,7 @@ class TestSdxlTextEncodingStrategy:
 
         assert len(result) == 3
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_encode_tokens_with_weights_applies_dual_weights(
         self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2
     ):
@@ -358,7 +358,7 @@ class TestSdxlTextEncoderOutputsCachingStrategy:
         np.testing.assert_array_almost_equal(result[1], h2)
         np.testing.assert_array_almost_equal(result[2], p2)
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_cache_batch_outputs_saves_to_disk(
         self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2, tmp_path
     ):
@@ -389,7 +389,7 @@ class TestSdxlTextEncoderOutputsCachingStrategy:
         # Check file was created
         assert os.path.exists(mock_info.text_encoder_outputs_npz)
 
-    @patch.object(SdxlTokenizeStrategy, "_load_tokenizer")
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_cache_batch_outputs_stores_in_memory(
         self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2
     ):

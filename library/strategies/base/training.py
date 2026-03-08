@@ -57,31 +57,79 @@ class ModelLoadingStrategy(ABC):
 
 
 class TokenizationStrategy(ABC):
-    """Strategy for tokenization setup in PEFT training."""
+    """Runtime strategy for tokenization behavior."""
+
+    _strategy = None  # strategy instance: actual strategy class
+
+    @classmethod
+    def set_strategy(cls, strategy):
+        if cls._strategy is not None:
+            raise RuntimeError(f"Internal error. {cls.__name__} strategy is already set")
+        cls._strategy = strategy
+
+    @classmethod
+    def get_strategy(cls) -> "TokenizationStrategy | None":
+        return cls._strategy
 
     @abstractmethod
-    def get_tokenize_strategy(self, cfg: Any) -> Any:
+    def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
         """
-        Return the appropriate TokenizeStrategy for this architecture.
+        Tokenize text into model-family token tensors.
 
         Args:
-            cfg: Configuration object containing tokenizer settings.
+            text: Text or list of text to tokenize.
 
         Returns:
-            A TokenizeStrategy instance suitable for the model architecture.
+            List of token tensors.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def get_tokenizers(self, tokenize_strategy: Any) -> list[Any] | Any:
+    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         """
-        Return tokenizer(s) from the strategy.
+        Tokenize text and return prompt weights alongside token tensors.
 
         Args:
-            tokenize_strategy: The strategy object created by `get_tokenize_strategy`.
+            text: Text or list of text to tokenize.
 
         Returns:
-            A single tokenizer or a list/tuple of tokenizers.
+            Tuple of token tensors and weight tensors.
+        """
+        raise NotImplementedError
+
+
+class TextEncodingStrategy(ABC):
+    """Runtime strategy for text-encoding behavior."""
+
+    _strategy = None  # strategy instance: actual strategy class
+
+    @classmethod
+    def set_strategy(cls, strategy):
+        if cls._strategy is not None:
+            raise RuntimeError(f"Internal error. {cls.__name__} strategy is already set")
+        cls._strategy = strategy
+
+    @classmethod
+    def get_strategy(cls) -> "TextEncodingStrategy | None":
+        return cls._strategy
+
+    @abstractmethod
+    def encode_tokens(self, tokenize_strategy: TokenizationStrategy, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
+        """
+        Encode token tensors into model-family text-conditioning outputs.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def encode_tokens_with_weights(
+        self,
+        tokenize_strategy: TokenizationStrategy,
+        models: list[Any],
+        tokens: list[torch.Tensor],
+        weights: list[torch.Tensor],
+    ) -> list[torch.Tensor]:
+        """
+        Encode token tensors with prompt-weight application.
         """
         raise NotImplementedError
 
@@ -99,19 +147,6 @@ class CachingStrategy(ABC):
 
         Returns:
             A LatentsCachingStrategy instance.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_text_encoding_strategy(self, cfg: Any) -> Any:
-        """
-        Return the TextEncodingStrategy for this architecture.
-
-        Args:
-            cfg: Configuration object containing text encoding settings.
-
-        Returns:
-            A TextEncodingStrategy instance.
         """
         raise NotImplementedError
 
@@ -198,47 +233,6 @@ class CachingStrategy(ABC):
         """
         raise NotImplementedError(f"{type(self).__name__} does not define a TE cache model bundle")
 
-    @abstractmethod
-    def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
-        """
-        Tokenize captions using model-family-specific tokenization.
-
-        Args:
-            tokenizers: List of tokenizer instances for this architecture.
-            captions: List of caption strings to tokenize.
-            max_token_length: Maximum token sequence length.
-
-        Returns:
-            List of token tensors, one per tokenizer.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def encode_te_outputs_in_memory(
-        self,
-        text_encoders: list[Any],
-        tokenizers: list[Any],
-        caption: str,
-        max_token_length: int,
-        device: Any,
-    ) -> dict[str, torch.Tensor]:
-        """
-        Compute text encoder outputs for a single caption (in-memory caching path).
-
-        Used when TE outputs are cached in memory rather than to disk.
-
-        Args:
-            text_encoders: List of text encoder models.
-            tokenizers: List of tokenizer instances.
-            caption: Single caption string.
-            max_token_length: Maximum token sequence length.
-            device: Device to run computation on.
-
-        Returns:
-            Dict of output name -> tensor (CPU), e.g. {"hidden_state1": ..., "pool2": ...}.
-        """
-        raise NotImplementedError
-
     def cache_text_encoder_outputs_if_needed(
         self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
     ) -> None:
@@ -261,23 +255,6 @@ class CachingStrategy(ABC):
         """
         for text_encoder in text_encoders:
             text_encoder.to(accelerator.device, dtype=weight_dtype)
-
-    @abstractmethod
-    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
-        """
-        Return models to use for text encoding during training.
-
-        SDXL may return wrapped/unwrapped models differently.
-
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            text_encoders: List of available text encoder models.
-
-        Returns:
-            List of models properly prepared for encoding.
-        """
-        raise NotImplementedError
 
 
 class SampleGenerationStrategy(ABC):
@@ -758,7 +735,6 @@ class TrainingRuntimeStrategy:
 @dataclass
 class TrainingStrategy(
     ModelLoadingStrategy,
-    TokenizationStrategy,
     CachingStrategy,
     SampleGenerationStrategy,
     CheckpointingStrategy,
@@ -773,6 +749,103 @@ class TrainingStrategy(
 
     Implementations inherit from this and provide model-specific implementations.
     """
+
+    @abstractmethod
+    def get_tokenize_strategy(self, cfg: Any) -> TokenizationStrategy:
+        """
+        Return the tokenization runtime strategy for this architecture.
+
+        Args:
+            cfg: Configuration object containing tokenizer settings.
+
+        Returns:
+            Tokenization strategy instance suitable for the model architecture.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_tokenizers(self, tokenize_strategy: TokenizationStrategy) -> list[Any] | Any:
+        """
+        Return tokenizer(s) from the runtime tokenization strategy.
+
+        Args:
+            tokenize_strategy: The strategy object created by `get_tokenize_strategy`.
+
+        Returns:
+            A single tokenizer or a list/tuple of tokenizers.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
+        """
+        Tokenize captions using model-family-specific tokenization.
+
+        Args:
+            tokenizers: List of tokenizer instances for this architecture.
+            captions: List of caption strings to tokenize.
+            max_token_length: Maximum token sequence length.
+
+        Returns:
+            List of token tensors, one per tokenizer.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_text_encoding_strategy(self, cfg: Any) -> TextEncodingStrategy:
+        """
+        Return the TextEncodingStrategy for this architecture.
+
+        Args:
+            cfg: Configuration object containing text encoding settings.
+
+        Returns:
+            A TextEncodingStrategy instance.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def encode_te_outputs_in_memory(
+        self,
+        text_encoders: list[Any],
+        tokenizers: list[Any],
+        caption: str,
+        max_token_length: int,
+        device: Any,
+    ) -> dict[str, torch.Tensor]:
+        """
+        Compute text encoder outputs for a single caption (in-memory caching path).
+
+        Used when TE outputs are cached in memory rather than to disk.
+
+        Args:
+            text_encoders: List of text encoder models.
+            tokenizers: List of tokenizer instances.
+            caption: Single caption string.
+            max_token_length: Maximum token sequence length.
+            device: Device to run computation on.
+
+        Returns:
+            Dict of output name -> tensor (CPU), e.g. {"hidden_state1": ..., "pool2": ...}.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
+        """
+        Return models to use for text encoding during training.
+
+        SDXL may return wrapped/unwrapped models differently.
+
+        Args:
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            text_encoders: List of available text encoder models.
+
+        Returns:
+            List of models properly prepared for encoding.
+        """
+        raise NotImplementedError
 
     # Instance state (set during training)
     la_sampler: Any = field(default=None, init=False, repr=False)

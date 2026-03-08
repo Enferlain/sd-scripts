@@ -3,8 +3,7 @@ from typing import Any
 import torch
 
 from library.models.sd.text_encoder import get_hidden_states_sd, apply_hidden_state_weights_sd
-from library.strategies.base.encoding import TextEncodingStrategy
-from library.strategies.base.tokenization import TokenizeStrategy
+from library.strategies.base.training import TextEncodingStrategy, TokenizationStrategy
 from library.strategies.sd.tokenization import SdTokenizeStrategy
 
 
@@ -16,7 +15,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
     def __init__(self, clip_skip: int | None = None) -> None:
         self.clip_skip = clip_skip
 
-    def encode_tokens(self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
+    def encode_tokens(self, tokenize_strategy: TokenizationStrategy, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
         """
         Encode tokens.
 
@@ -43,7 +42,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
 
     def encode_tokens_with_weights(
         self,
-        tokenize_strategy: TokenizeStrategy,
+        tokenize_strategy: TokenizationStrategy,
         models: list[Any],
         tokens: list[torch.Tensor],
         weights: list[torch.Tensor],

@@ -4,8 +4,7 @@ import torch
 
 from library.models.sdxl.text_encoder import encode_input_ids_sdxl, apply_hidden_state_weights_sdxl
 from library.strategies.sdxl.tokenization import SdxlTokenizeStrategy
-from library.strategies.base.encoding import TextEncodingStrategy
-from library.strategies.base.tokenization import TokenizeStrategy
+from library.strategies.base.training import TextEncodingStrategy, TokenizationStrategy
 
 
 class SdxlTextEncodingStrategy(TextEncodingStrategy):
@@ -16,7 +15,7 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
     def __init__(self) -> None:
         pass
 
-    def encode_tokens(self, tokenize_strategy: TokenizeStrategy, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
+    def encode_tokens(self, tokenize_strategy: TokenizationStrategy, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
         """
         Encode tokens.
 
@@ -52,7 +51,7 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
 
     def encode_tokens_with_weights(
         self,
-        tokenize_strategy: TokenizeStrategy,
+        tokenize_strategy: TokenizationStrategy,
         models: list[Any],
         tokens: list[torch.Tensor],
         weights: list[torch.Tensor],

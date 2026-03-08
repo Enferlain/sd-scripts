@@ -16,8 +16,7 @@ from diffusers.models import AutoencoderKL
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from diffusers.utils import logging, PIL_INTERPOLATION
 
-import library.strategies.base.encoding
-import library.strategies.base.tokenization
+import library.strategies.base.training
 import library.strategies.sdxl.encoding
 import library.strategies.sdxl.tokenization
 from library.constants import re_attention, SDXL_VAE_LATENT_SCALE
@@ -976,10 +975,10 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
 
         # 3. Encode input prompt
         tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy = (
-            library.strategies.base.tokenization.TokenizeStrategy.get_strategy()
+            library.strategies.base.training.TokenizationStrategy.get_strategy()
         )
         encoding_strategy: library.strategies.sdxl.encoding.SdxlTextEncodingStrategy = (
-            library.strategies.base.encoding.TextEncodingStrategy.get_strategy()
+            library.strategies.base.training.TextEncodingStrategy.get_strategy()
         )
 
         text_input_ids, text_weights = tokenize_strategy.tokenize_with_weights(prompt)

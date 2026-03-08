@@ -19,10 +19,9 @@ from safetensors.torch import save_file
 from library.data._deprecated.data_structures import ImageInfo
 from library.data.caching_engine import CachingStrategy
 from library.data.structures import CacheData, CacheEntry, ModelConditioning
+from library.strategies.base.training import TextEncodingStrategy, TokenizationStrategy
 from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
 from library.strategies.base.caching import TextEncoderOutputsCachingStrategy
-from library.strategies.base.encoding import TextEncodingStrategy
-from library.strategies.base.tokenization import TokenizeStrategy
 
 from library.utils.hash_utils import stable_string_hash
 
@@ -106,13 +105,13 @@ class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
         return [hidden_state1, hidden_state2, pool2]
 
     def cache_batch_outputs(
-        self, tokenize_strategy: TokenizeStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy, batch: list[ImageInfo]
+        self, tokenize_strategy: TokenizationStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy, batch: list[ImageInfo]
     ) -> None:
         """
         Cache batch outputs.
 
         Args:
-            tokenize_strategy: TokenizeStrategy
+            tokenize_strategy: TokenizationStrategy
             models: List of TextModel
             text_encoding_strategy: TextEncodingStrategy
             batch: List of ImageInfo

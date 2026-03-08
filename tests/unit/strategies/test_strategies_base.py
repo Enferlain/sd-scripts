@@ -15,12 +15,15 @@ from unittest.mock import Mock
 
 from library.strategies.base.caching import TextEncoderOutputsCachingStrategy, LatentsCachingStrategy
 from library.strategies.base.encoding import TextEncodingStrategy
+from library.models.sd.tokenizer import load_tokenizer
 from library.strategies.base.tokenization import TokenizeStrategy
 from library.strategies.base.training import (
     CachingStrategy,
     DiffusionTrainingStrategy,
     ModelLoadingStrategy,
     ModelPreparationStrategy,
+    TextEncodingStrategy as RuntimeTextEncodingStrategy,
+    TokenizationStrategy,
     TrainingRuntimeStrategy,
     TrainingStrategy,
     ValidationStrategy,
@@ -130,11 +133,11 @@ class TestTokenizeStrategySingleton:
 
     def setup_method(self):
         """Reset singleton before each test."""
-        TokenizeStrategy._strategy = None
+        TokenizationStrategy._strategy = None
 
     def teardown_method(self):
         """Reset singleton after each test."""
-        TokenizeStrategy._strategy = None
+        TokenizationStrategy._strategy = None
 
     def test_get_strategy_returns_none_initially(self):
         """Test that get_strategy returns None when no strategy is set."""
@@ -159,33 +162,29 @@ class TestTokenizeStrategySingleton:
 
 
 # =============================================================================
-# TokenizeStrategy - Load Tokenizer Tests
+# Model Tokenizer Loading Tests
 # =============================================================================
 
 
 @pytest.mark.unit
-class TestTokenizeStrategyLoadTokenizer:
-    """Test the _load_tokenizer method."""
+class TestModelTokenizerLoading:
+    """Test the shared model-layer tokenizer loader."""
 
-    @pytest.fixture
-    def strategy(self):
-        return TokenizeStrategy()
-
-    def test_load_from_hub_when_no_cache(self, strategy, tmp_path):
+    def test_load_from_hub_when_no_cache(self, tmp_path):
         """Test loading tokenizer from HuggingFace hub."""
         mock_model_class = Mock()
         mock_tokenizer = Mock()
         mock_model_class.from_pretrained.return_value = mock_tokenizer
         mock_tokenizer.save_pretrained = Mock()
 
-        result = strategy._load_tokenizer(mock_model_class, "openai/clip-vit-base", subfolder=None, tokenizer_cache_dir=str(tmp_path))
+        result = load_tokenizer(mock_model_class, "openai/clip-vit-base", subfolder=None, tokenizer_cache_dir=str(tmp_path))
 
         assert result is mock_tokenizer
         mock_model_class.from_pretrained.assert_called_once_with("openai/clip-vit-base", subfolder=None)
         # Should save to cache
         mock_tokenizer.save_pretrained.assert_called_once()
 
-    def test_load_from_cache_when_exists(self, strategy, tmp_path):
+    def test_load_from_cache_when_exists(self, tmp_path):
         """Test loading tokenizer from local cache."""
         mock_model_class = Mock()
         mock_tokenizer = Mock()
@@ -195,19 +194,19 @@ class TestTokenizeStrategyLoadTokenizer:
         cache_path = tmp_path / "openai_clip-vit-base"
         cache_path.mkdir()
 
-        result = strategy._load_tokenizer(mock_model_class, "openai/clip-vit-base", tokenizer_cache_dir=str(tmp_path))
+        result = load_tokenizer(mock_model_class, "openai/clip-vit-base", tokenizer_cache_dir=str(tmp_path))
 
         assert result is mock_tokenizer
         # Should load from cache path
         mock_model_class.from_pretrained.assert_called_once_with(str(cache_path))
 
-    def test_load_without_cache_dir(self, strategy):
+    def test_load_without_cache_dir(self):
         """Test loading tokenizer without cache directory."""
         mock_model_class = Mock()
         mock_tokenizer = Mock()
         mock_model_class.from_pretrained.return_value = mock_tokenizer
 
-        result = strategy._load_tokenizer(mock_model_class, "openai/clip-vit-base", subfolder="tokenizer")
+        result = load_tokenizer(mock_model_class, "openai/clip-vit-base", subfolder="tokenizer")
 
         assert result is mock_tokenizer
         mock_model_class.from_pretrained.assert_called_once_with("openai/clip-vit-base", subfolder="tokenizer")
@@ -387,23 +386,11 @@ class _DummyCachingStrategy(CachingStrategy):
     def get_latents_caching_strategy(self, cfg):
         return object()
 
-    def get_text_encoding_strategy(self, cfg):
-        return object()
-
     def create_latent_caching_strategy(self, cfg):
         return object()
 
     def create_te_caching_strategy(self, cfg):
         return object()
-
-    def tokenize_captions(self, tokenizers, captions, max_token_length):
-        return []
-
-    def encode_te_outputs_in_memory(self, text_encoders, tokenizers, caption, max_token_length, device):
-        return {}
-
-    def get_models_for_text_encoding(self, cfg, accelerator, text_encoders):
-        return text_encoders
 
 
 @pytest.mark.unit
@@ -416,11 +403,25 @@ class TestTrainingStrategyPhase2Facets:
 
     def test_phase2_methods_live_on_facet_classes(self):
         """Moved shared helpers should live on their facet bases, not TrainingStrategy itself."""
+        assert "tokenize" in TokenizationStrategy.__dict__
+        assert "tokenize_with_weights" in TokenizationStrategy.__dict__
+        assert "get_tokenize_strategy" in TrainingStrategy.__dict__
+        assert "get_tokenizers" in TrainingStrategy.__dict__
+        assert "tokenize_captions" in TrainingStrategy.__dict__
+        assert "get_text_encoding_strategy" in TrainingStrategy.__dict__
+        assert "get_models_for_text_encoding" in TrainingStrategy.__dict__
+        assert "encode_te_outputs_in_memory" in TrainingStrategy.__dict__
+        assert "create_latent_caching_strategy" in CachingStrategy.__dict__
         assert "load_unet_lazily" in ModelLoadingStrategy.__dict__
         assert "prepare_unet_with_accelerator" in ModelPreparationStrategy.__dict__
         assert "calculate_val_loss" in ValidationStrategy.__dict__
 
         assert "load_unet_lazily" not in TrainingStrategy.__dict__
+        assert "tokenize_captions" not in TokenizationStrategy.__dict__
+        assert "tokenize_captions" not in CachingStrategy.__dict__
+        assert "get_text_encoding_strategy" not in CachingStrategy.__dict__
+        assert "get_models_for_text_encoding" not in CachingStrategy.__dict__
+        assert "encode_te_outputs_in_memory" not in CachingStrategy.__dict__
         assert "prepare_unet_with_accelerator" not in TrainingStrategy.__dict__
         assert "calculate_val_loss" not in TrainingStrategy.__dict__
 
@@ -709,10 +710,10 @@ class TestTextEncodingStrategySingleton:
     """Test the singleton pattern for TextEncodingStrategy."""
 
     def setup_method(self):
-        TextEncodingStrategy._strategy = None
+        RuntimeTextEncodingStrategy._strategy = None
 
     def teardown_method(self):
-        TextEncodingStrategy._strategy = None
+        RuntimeTextEncodingStrategy._strategy = None
 
     def test_get_strategy_returns_none_initially(self):
         assert TextEncodingStrategy.get_strategy() is None
