@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 from library.strategies.sdxl.caching import SdxlTextEncoderOutputsCachingStrategy
 from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
 from library.strategies.sdxl.tokenization import SdxlTokenizeStrategy
+from library.strategies.sdxl.training import SdxlTrainingStrategy
 
 
 # =============================================================================
@@ -418,3 +419,73 @@ class TestSdxlTextEncoderOutputsCachingStrategy:
         # Check info object was updated
         assert mock_info.text_encoder_outputs is not None
         assert len(mock_info.text_encoder_outputs) == 3
+
+
+@pytest.mark.unit
+class TestSdxlTrainingStrategyNewPipeline:
+    """Tests for the SDXL training strategy token/TE helpers."""
+
+    def test_tokenize_captions_returns_dual_chunked_tensors(self, mock_clip_tokenizer1, mock_clip_tokenizer2):
+        strategy = SdxlTrainingStrategy()
+
+        result = strategy.tokenize_captions([mock_clip_tokenizer1, mock_clip_tokenizer2], ["caption 1", "caption 2"], 75)
+
+        assert len(result) == 2
+        assert all(isinstance(tokens, torch.Tensor) for tokens in result)
+        assert all(tokens.shape[0] == 2 for tokens in result)
+        assert all(tokens.ndim == 3 for tokens in result)
+
+    def test_encode_te_outputs_in_memory_returns_cpu_te_outputs(
+        self, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2
+    ):
+        strategy = SdxlTrainingStrategy()
+
+        with patch("library.strategies.sdxl.training.encode_input_ids_sdxl") as mock_encode:
+            mock_encode.return_value = [
+                torch.randn(1, 77, 768),
+                torch.randn(1, 77, 1280),
+                torch.randn(1, 1280),
+            ]
+
+            result = strategy.encode_te_outputs_in_memory(
+                text_encoders=[mock_clip_text_encoder1, mock_clip_text_encoder2],
+                tokenizers=[mock_clip_tokenizer1, mock_clip_tokenizer2],
+                caption="a photo of a cat",
+                max_token_length=75,
+                device=torch.device("cpu"),
+            )
+
+        assert set(result) == {"hidden_state1", "hidden_state2", "pool2"}
+        assert all(t.device.type == "cpu" for t in result.values())
+
+    def test_get_text_cond_fallback_tokenizes_captions_with_strategy_helper(
+        self, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2
+    ):
+        strategy = SdxlTrainingStrategy()
+        cfg = Mock()
+        cfg.training.max_token_length = 75
+        cfg.performance.precision.full_fp16 = False
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+        accelerator.unwrap_model.return_value = mock_clip_text_encoder2
+        batch = {"captions": ["caption 1", "caption 2"]}
+
+        token_tensors = [torch.randint(0, 1000, (2, 1, 77)), torch.randint(0, 1000, (2, 1, 77))]
+        encoded_outputs = [torch.randn(2, 77, 768), torch.randn(2, 77, 1280), torch.randn(2, 1280)]
+
+        with patch.object(strategy, "tokenize_captions", return_value=token_tensors) as mock_tokenize, patch(
+            "library.strategies.sdxl.training.encode_input_ids_sdxl",
+            return_value=encoded_outputs,
+        ) as mock_encode:
+            result = strategy._get_text_cond(
+                cfg=cfg,
+                accelerator=accelerator,
+                batch=batch,
+                tokenizers=[mock_clip_tokenizer1, mock_clip_tokenizer2],
+                text_encoders=[mock_clip_text_encoder1, mock_clip_text_encoder2],
+                weight_dtype=torch.float32,
+            )
+
+        mock_tokenize.assert_called_once_with([mock_clip_tokenizer1, mock_clip_tokenizer2], batch["captions"], 75)
+        mock_encode.assert_called_once()
+        assert len(result) == 3

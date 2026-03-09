@@ -137,46 +137,14 @@ class TextEncodingStrategy(ABC):
 class CachingStrategy(ABC):
     """Strategy for latents and text encoder caching."""
 
-    @abstractmethod
-    def get_latents_caching_strategy(self, cfg: Any) -> Any:
-        """
-        Return the LatentsCachingStrategy for this architecture.
-
-        Args:
-            cfg: Configuration object containing caching settings.
-
-        Returns:
-            A LatentsCachingStrategy instance.
-        """
-        raise NotImplementedError
-
-    def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> Any | None:
-        """
-        Return the legacy TextEncoderOutputsCachingStrategy.
-
-        This hook exists only for deprecated dataset/script paths that still
-        use the old per-dataset TE caching flow. The active shared runner does
-        not use it, so the default implementation is ``None``.
-
-        Args:
-            cfg: Configuration object containing caching settings.
-
-        Returns:
-            A TextEncoderOutputsCachingStrategy instance, or None if not supported/enabled.
-        """
-        return None
-
     # --- New/shared-pipeline caching methods ---
     # These create strategies for the CachingEngine pipeline
-    # (library/data/caching_engine.py). The legacy TE-output hooks above are
-    # deprecated-path compatibility surface. `get_latents_caching_strategy()`
-    # remains active transitional surface while the current runner still uses
-    # LatentsCachingStrategy singleton wiring during setup.
+    # (library/data/caching_engine.py).
 
     @abstractmethod
     def create_latent_caching_strategy(self, cfg: Any) -> Any:
         """
-        Create a new-pipeline CachingStrategy for VAE latent caching.
+        Create a new-pipeline CacheHandler for VAE latent caching.
 
         Returns an instance compatible with library.data.CachingEngine.
 
@@ -184,14 +152,14 @@ class CachingStrategy(ABC):
             cfg: Configuration object.
 
         Returns:
-            A CachingStrategy (library.data.caching_engine.CachingStrategy) instance.
+            A CacheHandler (library.data.caching_engine.CacheHandler) instance.
         """
         raise NotImplementedError
 
     @abstractmethod
     def create_te_caching_strategy(self, cfg: Any) -> Any:
         """
-        Create a new-pipeline CachingStrategy for text encoder output caching.
+        Create a new-pipeline CacheHandler for text encoder output caching.
 
         Returns an instance compatible with library.data.CachingEngine, or None
         if disk-based TE caching is not applicable.
@@ -200,7 +168,7 @@ class CachingStrategy(ABC):
             cfg: Configuration object.
 
         Returns:
-            A CachingStrategy instance, or None.
+            A CacheHandler instance, or None.
         """
         raise NotImplementedError
 
@@ -233,29 +201,6 @@ class CachingStrategy(ABC):
         """
         raise NotImplementedError(f"{type(self).__name__} does not define a TE cache model bundle")
 
-    def cache_text_encoder_outputs_if_needed(
-        self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
-    ) -> None:
-        """
-        Handle deprecated-path text encoder output caching if needed.
-
-        The active shared runner no longer uses this hook. Legacy SD script
-        paths still call it, so the default behavior is to ensure text
-        encoders are moved to the accelerator for live encoding when no
-        specialized TE-output caching strategy exists.
-
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            unet: The UNet model.
-            vae: The VAE model.
-            text_encoders: List of text encoder models.
-            dataset: The dataset to cache outputs for.
-            weight_dtype: Data type for calculations.
-        """
-        for text_encoder in text_encoders:
-            text_encoder.to(accelerator.device, dtype=weight_dtype)
-
 
 class SampleGenerationStrategy(ABC):
     """Strategy for generating sample images during training."""
@@ -272,6 +217,8 @@ class SampleGenerationStrategy(ABC):
         tokenizers: list[Any],
         text_encoders: list[Any],
         unet: Any,
+        tokenize_strategy: TokenizationStrategy,
+        text_encoding_strategy: TextEncodingStrategy,
     ) -> None:
         """
         Generate sample images for the current training step.
@@ -286,6 +233,8 @@ class SampleGenerationStrategy(ABC):
             tokenizers: List of tokenizers.
             text_encoders: List of text encoders.
             unet: The UNet model.
+            tokenize_strategy: Runtime tokenization strategy for this model family.
+            text_encoding_strategy: Runtime text-encoding strategy for this model family.
         """
         raise NotImplementedError
 

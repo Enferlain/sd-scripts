@@ -30,7 +30,7 @@ from library.data.manifest import (
     create_manifest,
     create_manifest_from_config,
 )
-from library.data.caching_engine import CachingStrategy, CachingEngine
+from library.data.caching_engine import CacheHandler, CachingEngine
 from library.data.dataloader import TrainingDataset, create_training_dataloader
 from library.data.epoch_preparation import (
     prepare_epoch,
@@ -64,7 +64,7 @@ __all__ = [
     "load_epoch_manifest",
     "get_or_create_manifest",
     # Caching
-    "CachingStrategy",
+    "CacheHandler",
     "CachingEngine",
     # DataLoader
     "TrainingDataset",

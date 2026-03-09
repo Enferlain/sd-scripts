@@ -251,7 +251,7 @@ class TestCachingIntegration:
                 dtype="fp16",
             )
             engine = CachingEngine(
-                strategy=strategy,
+                handler=strategy,
                 batch_size=mock_cfg.data.caching.vae_batch_size,
             )
 
@@ -283,7 +283,7 @@ class TestCachingIntegration:
 
             # Create caching engine and cache
             strategy = SdxlLatentsPipelineStrategy(flip_aug=False, dtype="fp16")
-            engine = CachingEngine(strategy=strategy, batch_size=2)
+            engine = CachingEngine(handler=strategy, batch_size=2)
             manifest = engine.cache_dataset(manifest, mock_vae, mock_accelerator, cache_dir, show_progress=False)
 
             # Load each cache file and verify contents
@@ -318,7 +318,7 @@ class TestDataLoaderCreation:
             # Create and cache manifest
             manifest = create_manifest_from_config(mock_cfg.data, latent_dtype="fp16", cache_dir=str(cache_dir))
             strategy = SdxlLatentsPipelineStrategy(flip_aug=False, dtype="fp16")
-            engine = CachingEngine(strategy=strategy, batch_size=2)
+            engine = CachingEngine(handler=strategy, batch_size=2)
             manifest = engine.cache_dataset(manifest, mock_vae, mock_accelerator, cache_dir, show_progress=False)
 
             # Prepare epoch
@@ -346,7 +346,7 @@ class TestDataLoaderCreation:
             # Setup
             manifest = create_manifest_from_config(mock_cfg.data, latent_dtype="fp16", cache_dir=str(cache_dir))
             strategy = SdxlLatentsPipelineStrategy(flip_aug=False, dtype="fp16")
-            engine = CachingEngine(strategy=strategy, batch_size=2)
+            engine = CachingEngine(handler=strategy, batch_size=2)
             manifest = engine.cache_dataset(manifest, mock_vae, mock_accelerator, cache_dir, show_progress=False)
 
             caption_config = CaptionConfig()
@@ -434,7 +434,7 @@ class TestValidationPipeline:
                 validation_seed=42,
             )
             strategy = SdxlLatentsPipelineStrategy(flip_aug=False, dtype="fp16")
-            engine = CachingEngine(strategy=strategy, batch_size=2)
+            engine = CachingEngine(handler=strategy, batch_size=2)
             manifest = engine.cache_dataset(manifest, mock_vae, mock_accelerator, cache_dir, show_progress=False)
 
             # Prepare validation epoch
@@ -561,7 +561,7 @@ class TestTextEncoderCaching:
             # Create TE caching strategy
             strategy = SdxlTextEncoderPipelineStrategy(dtype="fp16", max_token_length=77)
 
-            engine = CachingEngine(strategy=strategy, batch_size=2)
+            engine = CachingEngine(handler=strategy, batch_size=2)
 
             # Cache TE outputs - encode_batch expects 4-tuple: (te1, te2, tok1, tok2)
             updated_manifest = engine.cache_dataset(
@@ -591,7 +591,7 @@ class TestTextEncoderCaching:
             manifest = create_manifest_from_config(mock_cfg.data, latent_dtype="fp16", cache_dir=str(cache_dir))
             strategy = SdxlTextEncoderPipelineStrategy(dtype="fp16", max_token_length=77)
 
-            engine = CachingEngine(strategy=strategy, batch_size=2)
+            engine = CachingEngine(handler=strategy, batch_size=2)
             # Pass 4-tuple: (te1, te2, tok1, tok2)
             manifest = engine.cache_dataset(manifest, (te1, te2, tok1, tok2), mock_accelerator, cache_dir, show_progress=False)
 
@@ -630,7 +630,7 @@ class TestResumeSupport:
             # Setup: create manifest and cache
             manifest = create_manifest_from_config(mock_cfg.data, latent_dtype="fp16", cache_dir=str(cache_dir))
             strategy = SdxlLatentsPipelineStrategy(flip_aug=False, dtype="fp16")
-            engine = CachingEngine(strategy=strategy, batch_size=2)
+            engine = CachingEngine(handler=strategy, batch_size=2)
             manifest = engine.cache_dataset(manifest, mock_vae, mock_accelerator, cache_dir, show_progress=False)
 
             # Create epoch with batch_size=1 so we get EXPECTED_IMAGE_COUNT batches
@@ -673,7 +673,7 @@ class TestResumeSupport:
 
             manifest = create_manifest_from_config(mock_cfg.data, latent_dtype="fp16", cache_dir=str(cache_dir))
             strategy = SdxlLatentsPipelineStrategy(flip_aug=False, dtype="fp16")
-            engine = CachingEngine(strategy=strategy, batch_size=2)
+            engine = CachingEngine(handler=strategy, batch_size=2)
             manifest = engine.cache_dataset(manifest, mock_vae, mock_accelerator, cache_dir, show_progress=False)
 
             caption_config = CaptionConfig()
@@ -713,7 +713,7 @@ class TestConfigIntegration:
 
         manifest = create_manifest_from_config(mock_cfg.data, latent_dtype="fp16", cache_dir=str(custom_cache_dir))
         strategy = SdxlLatentsPipelineStrategy(flip_aug=False, dtype="fp16")
-        engine = CachingEngine(strategy=strategy, batch_size=2)
+        engine = CachingEngine(handler=strategy, batch_size=2)
 
         # Use config cache_dir explicitly (as sdxl_peft.py does)
         engine.cache_dataset(

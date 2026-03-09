@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import IterableDataset, DataLoader
 
 from library.data.structures import DatasetManifest, EpochManifest, CacheEntry, BatchInfo
-from library.data.caching_engine import CachingStrategy
+from library.data.caching_engine import CacheHandler
 
 
 logger = logging.getLogger(__name__)
@@ -37,8 +37,8 @@ class TrainingDataset(IterableDataset):
         self,
         dataset_manifest: DatasetManifest,
         epoch_manifest: EpochManifest,
-        latent_strategy: CachingStrategy,
-        te_strategy: CachingStrategy | None = None,
+        latent_strategy: CacheHandler,
+        te_strategy: CacheHandler | None = None,
         tokens_path: str | None = None,
         streaming_tokens: bool = False,
         flip_aug: bool = False,
@@ -333,8 +333,8 @@ class TrainingDataset(IterableDataset):
 def create_training_dataloader(
     dataset_manifest: DatasetManifest,
     epoch_manifest: EpochManifest,
-    latent_strategy: CachingStrategy,
-    te_strategy: CachingStrategy | None = None,
+    latent_strategy: CacheHandler,
+    te_strategy: CacheHandler | None = None,
     tokens_path: str | None = None,
     streaming_tokens: bool = False,
     flip_aug: bool = False,

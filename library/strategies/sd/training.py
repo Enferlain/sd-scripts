@@ -306,6 +306,8 @@ class SdTrainingStrategy(TrainingStrategy):
         tokenizers: list[Any],
         text_encoders: list[Any],
         unet: Any,
+        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
+        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
     ) -> None:
         """
         Generate sample images for SD.
@@ -320,6 +322,8 @@ class SdTrainingStrategy(TrainingStrategy):
             tokenizers: List of tokenizers.
             text_encoders: List of text encoder models.
             unet: UNet model.
+            tokenize_strategy: Runtime tokenization strategy.
+            text_encoding_strategy: Runtime text-encoding strategy.
         """
         sample_images_common(
             StableDiffusionLongPromptWeightingPipeline,
@@ -335,6 +339,8 @@ class SdTrainingStrategy(TrainingStrategy):
             tokenizers[0],
             text_encoders[0],
             unet,
+            tokenize_strategy=tokenize_strategy,
+            text_encoding_strategy=text_encoding_strategy,
         )
 
     def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:

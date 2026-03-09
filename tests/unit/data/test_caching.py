@@ -12,11 +12,11 @@ from unittest.mock import Mock
 import torch
 from PIL import Image
 
-from library.data.caching_engine import CachingEngine, CachingStrategy
+from library.data.caching_engine import CachingEngine, CacheHandler
 from library.data.structures import CacheEntry, DatasetManifest, Bucket
 
 
-class MockCachingStrategy(CachingStrategy):
+class MockCacheHandler(CacheHandler):
     """Mock strategy for testing."""
 
     def __init__(self):
@@ -118,7 +118,7 @@ class TestCachingEngine:
 
     def test_batch_entries_by_bucket(self, sample_manifest):
         """Should group entries by bucket resolution."""
-        strategy = MockCachingStrategy()
+        strategy = MockCacheHandler()
         engine = CachingEngine(strategy, batch_size=2)
 
         entries = list(sample_manifest.entries.values())
@@ -130,7 +130,7 @@ class TestCachingEngine:
 
     def test_split_for_single_gpu(self, sample_manifest, mock_accelerator):
         """Single GPU should get all entries."""
-        strategy = MockCachingStrategy()
+        strategy = MockCacheHandler()
         engine = CachingEngine(strategy)
 
         entries = list(sample_manifest.entries.values())
@@ -140,7 +140,7 @@ class TestCachingEngine:
 
     def test_split_for_multi_gpu(self, sample_manifest):
         """Multi-GPU should split entries by modulo."""
-        strategy = MockCachingStrategy()
+        strategy = MockCacheHandler()
         engine = CachingEngine(strategy)
 
         entries = list(sample_manifest.entries.values())
@@ -159,7 +159,7 @@ class TestCachingEngine:
 
     def test_cache_dataset_creates_files(self, sample_manifest, mock_accelerator, temp_dataset_dir):
         """Should create cache files for all entries."""
-        strategy = MockCachingStrategy()
+        strategy = MockCacheHandler()
         engine = CachingEngine(strategy, batch_size=2)
 
         cache_dir = temp_dataset_dir / "cache"
@@ -184,7 +184,7 @@ class TestCachingEngine:
 
     def test_skip_existing_caches(self, sample_manifest, mock_accelerator, temp_dataset_dir):
         """Should skip entries with existing cache files."""
-        strategy = MockCachingStrategy()
+        strategy = MockCacheHandler()
         engine = CachingEngine(strategy, batch_size=2)
 
         cache_dir = temp_dataset_dir / "cache"
@@ -211,7 +211,7 @@ class TestCachingEngine:
 
     def test_all_cached_returns_early(self, sample_manifest, mock_accelerator, temp_dataset_dir):
         """Should return early if all entries are already cached."""
-        strategy = MockCachingStrategy()
+        strategy = MockCacheHandler()
         engine = CachingEngine(strategy)
 
         cache_dir = temp_dataset_dir / "cache"
@@ -237,7 +237,7 @@ class TestCachingEngine:
 
     def test_cache_invalidation_bucket_change(self, sample_manifest, mock_accelerator, temp_dataset_dir):
         """Should re-cache when cache is invalid (e.g. bucket change)."""
-        strategy = MockCachingStrategy()
+        strategy = MockCacheHandler()
 
         # Override is_cache_valid to fail for one entry
         def side_effect(path, entry, flip_aug=False, alpha_mask=False):

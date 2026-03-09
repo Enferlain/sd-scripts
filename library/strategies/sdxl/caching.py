@@ -1,7 +1,7 @@
 """
 SDXL caching strategies for the new data pipeline.
 
-These strategies implement the CachingStrategy interface from library/data/pipeline/caching_engine.py
+These strategies implement the CacheHandler interface from library/data/pipeline/caching_engine.py
 and are designed to work with CacheEntry dataclasses, not the legacy ImageInfo.
 """
 
@@ -17,7 +17,7 @@ from PIL import Image
 from safetensors.torch import save_file
 
 from library.data._deprecated.data_structures import ImageInfo
-from library.data.caching_engine import CachingStrategy
+from library.data.caching_engine import CacheHandler
 from library.data.structures import CacheData, CacheEntry, ModelConditioning
 from library.strategies.base.training import TextEncodingStrategy, TokenizationStrategy
 from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
@@ -228,7 +228,7 @@ def get_crop_ltrb(
     return crop_left, crop_top, crop_right, crop_bottom
 
 
-class SdxlLatentsPipelineStrategy(CachingStrategy):
+class SdxlLatentsPipelineStrategy(CacheHandler):
     """
     Latent caching strategy for SDXL.
 
@@ -255,7 +255,7 @@ class SdxlLatentsPipelineStrategy(CachingStrategy):
         self.dtype = dtype
         self._torch_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[dtype]
 
-    # Note: get_entry_cache_path() is inherited from CachingStrategy base class
+    # Note: get_entry_cache_path() is inherited from CacheHandler base class
     # and returns entry.latent_cache_path by default - no override needed
 
     def encode_batch(
@@ -555,7 +555,7 @@ class SdxlLatentsPipelineStrategy(CachingStrategy):
         return tensor
 
 
-class SdxlTextEncoderPipelineStrategy(CachingStrategy):
+class SdxlTextEncoderPipelineStrategy(CacheHandler):
     """
     Text encoder output caching strategy for SDXL.
 

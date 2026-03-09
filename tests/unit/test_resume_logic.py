@@ -76,9 +76,6 @@ class MockStrategy:
     def get_tokenizers(self, strategy):
         return []
 
-    def get_latents_caching_strategy(self, cfg):
-        return MagicMock()
-
     def prepare_unet_with_accelerator(self, cfg, accelerator, unet):
         return unet
 
@@ -189,8 +186,8 @@ class TestResumeBehavior(unittest.TestCase):
         trainer.mode.register_state_hooks.side_effect = mock_register_state_hooks
 
         with (
-            unittest.mock.patch("library.training.phases.optimizer.get_scheduler_fix") as mock_sched,
-            unittest.mock.patch("library.training.phases.optimizer._setup_gradient_checkpointing") as mock_grad,
+            unittest.mock.patch("library.training.phases.optimizer.get_scheduler_fix"),
+            unittest.mock.patch("library.training.phases.optimizer._setup_gradient_checkpointing"),
         ):
             # This is the function under test!
             prepare_optimizer(trainer)

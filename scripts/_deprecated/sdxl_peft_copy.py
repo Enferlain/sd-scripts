@@ -233,7 +233,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
         vae.eval()
 
         latent_caching_engine = CachingEngine(
-            strategy=latent_strategy,
+            handler=latent_strategy,
             batch_size=cfg.data.caching.vae_batch_size,
             num_workers=cfg.data.caching.num_workers,
         )
@@ -296,7 +296,7 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
                 max_token_length=cfg.training.max_token_length,
             )
             te_caching_engine = CachingEngine(
-                strategy=te_strategy,
+                handler=te_strategy,
                 batch_size=cfg.data.caching.te_batch_size,
             )
 
@@ -333,14 +333,13 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
 
         else:
             # In-memory TE caching: compute and store in entry.te_outputs
-            from library.strategies.sdxl.training import tokenize_sdxl_captions
+            from library.models.sd.tokenizer import tokenize_clip_captions
             from library.models.sdxl.text_encoder import get_hidden_states_sdxl
 
             logger.info("Computing text encoder outputs in memory...")
             for entry in tqdm(train_manifest.entries.values(), desc="TE caching (memory)", disable=accelerator.process_index != 0):
-                input_ids1, input_ids2 = tokenize_sdxl_captions(
-                    tokenizers[0], tokenizers[1], [entry.caption], cfg.training.max_token_length
-                )
+                input_ids1 = tokenize_clip_captions(tokenizers[0], [entry.caption], cfg.training.max_token_length)
+                input_ids2 = tokenize_clip_captions(tokenizers[1], [entry.caption], cfg.training.max_token_length)
                 input_ids1 = input_ids1.to(accelerator.device)
                 input_ids2 = input_ids2.to(accelerator.device)
 
@@ -363,9 +362,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
 
             if val_manifest is not None:
                 for entry in val_manifest.entries.values():
-                    input_ids1, input_ids2 = tokenize_sdxl_captions(
-                        tokenizers[0], tokenizers[1], [entry.caption], cfg.training.max_token_length
-                    )
+                    input_ids1 = tokenize_clip_captions(tokenizers[0], [entry.caption], cfg.training.max_token_length)
+                    input_ids2 = tokenize_clip_captions(tokenizers[1], [entry.caption], cfg.training.max_token_length)
                     input_ids1 = input_ids1.to(accelerator.device)
                     input_ids2 = input_ids2.to(accelerator.device)
 
@@ -937,13 +935,15 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
         tokens_path = None
         if cfg.data.caching.cache_tokens_per_epoch and not cfg.data.caching.cache_text_encoder_outputs:
             from library.data import tokenize_epoch_manifest
-            from library.strategies.sdxl.training import tokenize_sdxl_captions
+            from library.models.sd.tokenizer import tokenize_clip_captions
 
             tokens_path = Path(cache_dir) / f"epoch_{epoch}_tokens.safetensors"
 
             def tokenize_fn(captions: list[str]) -> list[torch.Tensor]:
-                t1, t2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], captions, cfg.training.max_token_length)
-                return [t1, t2]
+                return [
+                    tokenize_clip_captions(tokenizers[0], captions, cfg.training.max_token_length),
+                    tokenize_clip_captions(tokenizers[1], captions, cfg.training.max_token_length),
+                ]
 
             if accelerator.is_main_process:
                 tokenize_epoch_manifest(

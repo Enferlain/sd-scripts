@@ -93,7 +93,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [x] **Remove epoch-end compatibility side-effect coupling** — `compute_epoch_end_actions()` now enters eval mode only when a real epoch-end action fires (`should_sample` or `should_save_epoch`), and `_finalize_epoch()` now samples only when `should_sample` is true (no unconditional epoch-end sample call path).
 - [x] **Make epoch/session cleanup robust under interruption** — Epoch-end sampling/saving no longer fires for partial epochs truncated by `max_train_steps`, and resource-monitor `phase_end`/`end_session` cleanup now runs through exception paths.
 - [x] **Begin text-encoder boundary cleanup before strategy API shaping** — SD text-encoder hidden-state logic now lives under `library/models/sd/text_encoder.py`, and SDXL strategy/training code now delegates input-ID encoding through shared model helpers in `library/models/sdxl/text_encoder.py` instead of carrying that logic inline.
-- [ ] **Strategy system follow-up** — Phase 1 shared token/TE shape leaks, the base `TrainingStrategy` facet split, the extraction of clearly generic training mechanics out of `base/training.py`, the removal of generic-base CLIP assumptions, the demotion of deprecated TE-output caching hooks to optional defaults, the move of `tokenize_captions()` out of the training-side `CachingStrategy`, the move of CLIP-family token/chunk/loading logic into the shared model-layer helper `library/models/sd/tokenizer.py`, the merge of runtime tokenization/text-encoding contracts into `base/training.py`, and the removal of the temporary `base/tokenization.py` / `base/encoding.py` shims are now done; remaining cleanup is naming/organization in `base/training.py`, broader trimming of legacy/transitional surface, further `base/`-to-`models/` ownership cleanup, and removing active singleton strategy dependence. See `docs_design/strategy_system_followup.md`.
+- [ ] **Strategy system follow-up** — Phase 1 shared token/TE shape leaks, the base `TrainingStrategy` facet split, the extraction of clearly generic training mechanics out of `base/training.py`, the removal of generic-base CLIP assumptions, the removal of singleton-era latent / TE-output caching hooks from the main caching contract, the move of `tokenize_captions()` out of the training-side `CachingStrategy`, the move of CLIP-family token/chunk/loading logic into the shared model-layer helper `library/models/sd/tokenizer.py`, the merge of runtime tokenization/text-encoding contracts into `base/training.py`, the removal of the temporary `base/tokenization.py` / `base/encoding.py` shims, the removal of dead legacy latent-caching registration from `Trainer.setup()`, the removal of active SDXL sampling dependence on tokenization/text-encoding singletons, and the removal of the duplicate SDXL training-local tokenization helper are now done; remaining cleanup is naming/organization in `base/training.py`, broader trimming of legacy/transitional surface, further `base/`-to-`models/` ownership cleanup, and trimming legacy-only singleton usage. See `docs_design/strategy_system_followup.md`.
 - [ ] **Training orchestration hardening follow-up** — Desirable shared-layer cleanup for explicit epoch outcomes, scoped shared lifecycle helpers, and preserving generic runner ownership. Sequence after strategy cleanup. See `docs_design/training_orchestration_followup.md`.
 - [ ] Timestep sampling needs proper reimplementation (currently hacked into training scripts)
 - [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
@@ -111,7 +111,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - `library/training/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 - [ ] **Refactor `register_adapter_state_hooks`** (low priority) - Return a structured object `{"epoch": int, "step": int}` instead of closure + side-effects for cleaner data flow. See AUDIT/2_AUDIT_RESUME_BEHAVIOR.md recommendation #3.
-- [ ] **Remove `[DEBUG]` log statements in `sdxl/training.py`** (low priority) - Several `logger.info(f"[DEBUG] ...")` calls left in `_get_text_cond`. Either remove or change to `logger.debug()`. Alternatively, will work with logging config settings.
+- [x] **Remove `[DEBUG]` log statements in `sdxl/training.py`** — `_get_text_cond()` no longer emits the temporary TE placement / grad-state debug logs after the explicit strategy-wiring cleanup.
 
 ---
 
@@ -310,7 +310,7 @@ See `DATA_PIPELINE_PLAN.md` for design, `DATA_PIPELINE_CURRENT.md` for implement
 - [x] Created `library/data/pipeline/` package
 - [x] Core dataclasses: `CacheEntry`, `Bucket`, `EpochManifest`, `DatasetManifest`
 - [x] Manifest I/O: `save_dataset_manifest()`, `load_dataset_manifest()`
-- [x] Engine skeleton: `CachingStrategy` interface, `CachingEngine`
+- [x] Engine skeleton: `CacheHandler` interface, `CachingEngine`
 - [x] DataLoader: `TrainingDataset`, `create_training_dataloader()`
 - [x] Epoch prep: `prepare_epoch()`, `prepare_validation_epoch()`
 
@@ -399,7 +399,7 @@ cache/
 
 2. **Training-facing API unchanged**
    - Same `CacheData` contract
-   - Same `CachingStrategy` interface
+   - Same `CacheHandler` interface
    - Backend switch via config (`cache_backend: "per_image" | "sharded"`)
 
 3. **Threshold-based recommendation**

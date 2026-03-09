@@ -19,7 +19,6 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
-import library.strategies.base.caching
 import library.strategies.base.training
 from library.logging.resource_monitor import create_resource_monitor
 from library.performance import deepspeed_utils
@@ -33,7 +32,7 @@ from library.data import create_manifest_from_config, get_or_create_manifest, Da
 
 if TYPE_CHECKING:
     from accelerate import Accelerator
-    from library.data.caching_engine import CachingStrategy
+    from library.data.caching_engine import CacheHandler
     from library.strategies.base.training import TrainingStrategy
     from library.training.modes.base import TrainingMode
 
@@ -108,8 +107,8 @@ class Trainer:
         self.te_weight_dtype: torch.dtype | None = None
 
         # Will be set during run_caching()
-        self.latent_strategy: CachingStrategy | None = None
-        self.te_strategy: CachingStrategy | None = None
+        self.latent_strategy: CacheHandler | None = None
+        self.te_strategy: CacheHandler | None = None
 
         # Will be set during prepare_optimizer()
         self.optimizer: Any = None
@@ -231,18 +230,11 @@ class Trainer:
         set_seed_from_config(self.cfg.training)
 
         tokenize_strategy = self.strategies.get_tokenize_strategy(self.cfg)
-        library.strategies.base.training.TokenizationStrategy.set_strategy(tokenize_strategy)
         self.tokenizers = self.strategies.get_tokenizers(tokenize_strategy)
         self._tokenize_strategy = tokenize_strategy
 
-        # Set text encoding strategy (used by sampling pipeline)
         text_encoding_strategy = self.strategies.get_text_encoding_strategy(self.cfg)
-        library.strategies.base.training.TextEncodingStrategy.set_strategy(text_encoding_strategy)
         self._text_encoding_strategy = text_encoding_strategy
-
-        # prepare caching strategy: this must be set before preparing dataset
-        latents_caching_strategy = self.strategies.get_latents_caching_strategy(self.cfg)
-        library.strategies.base.caching.LatentsCachingStrategy.set_strategy(latents_caching_strategy)
 
         # Prepare accelerator first (needed for distributed caching)
         logger.info("preparing accelerator")
@@ -617,6 +609,8 @@ class Trainer:
                     self.tokenizers,
                     self._text_encoder,
                     self.unet,
+                    self._tokenize_strategy,
+                    self._text_encoding_strategy,
                 )
 
             # Validate (independent of sampling)

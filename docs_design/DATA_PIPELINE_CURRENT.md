@@ -21,7 +21,7 @@ See `DATA_PIPELINE_PLAN.md` for design and `DATA_PIPELINE_OLD.md` for legacy ref
 - **TE Dimension Bugs:** Fixed:
   - In-memory TE caching: Added `.squeeze(0)` when storing per-entry outputs
   - Sample generation: Removed premature `reshape()` in `_get_hidden_states_sdxl`
-  - On-the-fly tokenization: Added `+2` to `max_token_length` in `tokenize_sdxl_captions`
+  - On-the-fly tokenization: SDXL training paths now reuse the shared CLIP-family token helper shape rules
 
 ---
 
@@ -46,15 +46,15 @@ These strategies are **kept** but their usage differs:
 
 | Strategy               | Location                                  | Legacy Usage                 | New Pipeline Usage                                                                                                      |
 | ---------------------- | ----------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `SdxlTokenizeStrategy` | `library/strategies/sdxl/tokenization.py` | Called per-sample in dataset | Used by `tokenize_epoch_manifest()` for token caching; **bypassed** by direct `tokenize_sdxl_captions()` for on-the-fly |
-| `TextEncodingStrategy` | `library/strategies/base/encoding.py`     | Encode tokens → embeddings   | Still used when no cached TE outputs                                                                                    |
+| `SdxlTokenizeStrategy` | `library/strategies/sdxl/tokenization.py` | Called per-sample in dataset | Used by `tokenize_epoch_manifest()` for token caching; SDXL training-side fallback now shares the same CLIP-family helper path |
+| `TextEncodingStrategy` | `library/strategies/base/training.py`     | Encode tokens → embeddings   | Still used when no cached TE outputs                                                                                    |
 | `SdxlTrainingStrategy` | `library/strategies/sdxl/training.py`     | Training orchestration       | ✅ Updated to consume new batch format                                                                                  |
 
-> **Note:** For on-the-fly tokenization, we call tokenizers directly via `tokenize_sdxl_captions()` rather than going through `SdxlTokenizeStrategy`. This avoids strategy overhead when tokenizers are already available.
+> **Note:** SDXL still has model-family tokenization concerns, but the active training-side token/chunk construction now reuses the same shared CLIP-family helper path as `SdxlTokenizeStrategy` instead of keeping a second implementation.
 
 ### Caching Strategy Layer (New)
 
-These implement `CachingStrategy` for the new pipeline:
+These implement `CacheHandler` for the new pipeline:
 
 | Strategy                          | Location                             | Purpose                         |
 | --------------------------------- | ------------------------------------ | ------------------------------- |
@@ -88,7 +88,7 @@ NEW FLOW:
 │   - Caption loading                                             │
 ├─────────────────────────────────────────────────────────────────┤
 │ PHASE 2: Cache (once, skip if cached)                           │
-│   CachingEngine + CachingStrategy → .safetensors files          │
+│   CachingEngine + CacheHandler → .safetensors files          │
 │   - VAE latent encoding                                         │
 │   - TE output encoding (optional)                               │
 │   - Multi-GPU distributed                                       │
@@ -127,7 +127,7 @@ NEW FLOW:
 
 | Mode                     | tokens_path | streaming_tokens | Behavior                                                           |
 | ------------------------ | ----------- | ---------------- | ------------------------------------------------------------------ |
-| **On-the-fly (default)** | None        | -                | Tokenize from `batch["captions"]` using `tokenize_sdxl_captions()` |
+| **On-the-fly (default)** | None        | -                | Tokenize from `batch["captions"]` using the shared CLIP-family helper path |
 | **Cached (upfront)**     | Set         | False            | Load all tokens at TrainingDataset init                            |
 | **Cached (streaming)**   | Set         | True             | Load batch tokens via `get_slice()`                                |
 
@@ -255,7 +255,7 @@ def __init__(self, ..., start_batch_index: int = 0):
 
 **Goal:** Fast VAE latent and text encoder output caching.
 
-> [!NOTE] > `library/data` is model-agnostic. Strategies implement `CachingStrategy` and get injected by training scripts.
+> [!NOTE] > `library/data` is model-agnostic. Strategies implement `CacheHandler` and get injected by training scripts.
 > Flow: training script → creates strategy → passes to CachingEngine
 
 ## Phase 3: Epoch Preparation
@@ -282,7 +282,7 @@ def __init__(self, ..., start_batch_index: int = 0):
 | `manifest.py`          | ✅     | JSON I/O, `create_manifest`, config hash validation              |
 | `scanners.py`          | ✅     | `scan_directory` (DreamBooth), `scan_metadata_file` (FineTuning) |
 | `bucketing.py`         | ✅     | `make_bucket_resolutions`, `select_bucket` logic                 |
-| `caching_engine.py`    | ✅     | CachingStrategy interface, CachingEngine with multi-GPU          |
+| `caching_engine.py`    | ✅     | CacheHandler interface, CachingEngine with multi-GPU          |
 | `dataloader.py`        | ✅     | TrainingDataset, create_training_dataloader, distributed support |
 | `epoch_preparation.py` | ✅     | prepare_epoch (warmup, shuffle), prepare_validation_epoch        |
 | `caption_processor.py` | ✅     | Caption augmentation (dropout, shuffle, wildcards)               |

@@ -14,10 +14,10 @@ from unittest.mock import MagicMock
 from library.data.structures import DatasetManifest, CacheEntry
 from library.data.epoch_preparation import prepare_epoch
 from library.data.dataloader import create_training_dataloader
-from library.data.caching_engine import CachingStrategy
+from library.data.caching_engine import CacheHandler
 
 
-class MockCachingStrategy(CachingStrategy):
+class MockCacheHandler(CacheHandler):
     """Mock strategy that returns dummy tensors without disk I/O."""
 
     def __init__(self, latent_dim=(4, 64, 64)):
@@ -114,8 +114,8 @@ class TestPipelineBenchmark:
         """DataLoader should achieve >50 batches/second with mocked I/O."""
         epoch_manifest = prepare_epoch(manifest=manifest_1k, epoch=1, seed=42, batch_size=4)
 
-        latent_strategy = MockCachingStrategy()
-        te_strategy = MockCachingStrategy()
+        latent_strategy = MockCacheHandler()
+        te_strategy = MockCacheHandler()
 
         dataloader = create_training_dataloader(
             dataset_manifest=manifest_1k,
@@ -144,7 +144,7 @@ class TestPipelineBenchmark:
         """First batch should be available in <50ms."""
         epoch_manifest = prepare_epoch(manifest=manifest_1k, epoch=1, seed=42, batch_size=4)
 
-        latent_strategy = MockCachingStrategy()
+        latent_strategy = MockCacheHandler()
         dataloader = create_training_dataloader(
             dataset_manifest=manifest_1k,
             epoch_manifest=epoch_manifest,

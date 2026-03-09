@@ -69,7 +69,7 @@ def run_latent_caching(trainer: Trainer) -> None:
     trainer.vae.eval()
 
     latent_caching_engine = CachingEngine(
-        strategy=trainer.latent_strategy,
+        handler=trainer.latent_strategy,
         batch_size=trainer.cfg.data.caching.vae_batch_size,
         num_workers=trainer.cfg.data.caching.num_workers,
     )
@@ -130,7 +130,7 @@ def run_te_caching(trainer: Trainer) -> None:
             trainer.tokenizers,
         )
         te_caching_engine = CachingEngine(
-            strategy=trainer.te_strategy,
+            handler=trainer.te_strategy,
             batch_size=trainer.cfg.data.caching.te_batch_size,
         )
 

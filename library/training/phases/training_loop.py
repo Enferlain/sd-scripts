@@ -143,6 +143,8 @@ def _run_step_side_effects(
             trainer.tokenizers,
             trainer._text_encoder,
             trainer.unet,
+            trainer._tokenize_strategy,
+            trainer._text_encoding_strategy,
         )
 
     if step_actions.should_validate:
@@ -388,6 +390,8 @@ def _finalize_epoch(
             trainer.tokenizers,
             trainer._text_encoder,
             trainer.unet,
+            trainer._tokenize_strategy,
+            trainer._text_encoding_strategy,
         )
     trainer._progress_bar.unpause()
     trainer.optimizer_train_fn()

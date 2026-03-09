@@ -16,9 +16,6 @@ from diffusers.models import AutoencoderKL
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from diffusers.utils import logging, PIL_INTERPOLATION
 
-import library.strategies.base.training
-import library.strategies.sdxl.encoding
-import library.strategies.sdxl.tokenization
 from library.constants import re_attention, SDXL_VAE_LATENT_SCALE
 from library.models.sdxl.conversion import get_size_embeddings
 from library.models.sdxl.text_encoder import pool_workaround
@@ -617,6 +614,8 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         feature_extractor: CLIPFeatureExtractor,
         requires_safety_checker: bool = True,
         clip_skip: int = 1,
+        tokenize_strategy: Any | None = None,
+        text_encoding_strategy: Any | None = None,
     ):
         # clip skip is ignored currently
         self.tokenizer = tokenizer[0]
@@ -633,6 +632,8 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         self.clip_skip = clip_skip
         self.tokenizers = tokenizer
         self.text_encoders = text_encoder
+        self.tokenize_strategy = tokenize_strategy
+        self.text_encoding_strategy = text_encoding_strategy
 
     #     self.__init__additional__()
 
@@ -974,12 +975,11 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         do_classifier_free_guidance = guidance_scale > 1.0
 
         # 3. Encode input prompt
-        tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy = (
-            library.strategies.base.training.TokenizationStrategy.get_strategy()
-        )
-        encoding_strategy: library.strategies.sdxl.encoding.SdxlTextEncodingStrategy = (
-            library.strategies.base.training.TextEncodingStrategy.get_strategy()
-        )
+        if self.tokenize_strategy is None or self.text_encoding_strategy is None:
+            raise RuntimeError("SDXL sampling pipeline requires explicit tokenize and text-encoding strategies")
+
+        tokenize_strategy = self.tokenize_strategy
+        encoding_strategy = self.text_encoding_strategy
 
         text_input_ids, text_weights = tokenize_strategy.tokenize_with_weights(prompt)
         hidden_states_1, hidden_states_2, text_pool = encoding_strategy.encode_tokens_with_weights(

@@ -24,6 +24,7 @@ except (ImportError, AssertionError):
 from library.strategies.sdxl.caching import SdxlConditioning
 from library.strategies.base.training import TrainingStrategy
 from library.constants import SDXL_VAE_LATENT_SCALE, MODEL_VERSION_SDXL_BASE_V1_0
+from library.models.sd.tokenizer import tokenize_clip_captions
 from library.models.sdxl.conversion import get_size_embeddings
 from library.models.sdxl.text_encoder import encode_input_ids_sdxl
 from library.models.sdxl.loader import load_target_model
@@ -42,90 +43,6 @@ from library.losses.loss_weighting import apply_masked_loss, post_process_loss
 
 
 logger = logging.getLogger(__name__)
-
-
-def tokenize_sdxl_captions(
-    tokenizer1: Any, tokenizer2: Any, captions: list[str], max_token_length: int
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Tokenize captions on-the-fly for SDXL (dual CLIP encoders).
-
-    Handles 77+ token sequences by chunking into multiple 77-token segments,
-    matching the shared CLIP-family chunking behavior used by the strategy
-    layer.
-
-    Args:
-        tokenizer1: CLIP-L tokenizer.
-        tokenizer2: CLIP-G tokenizer.
-        captions: List of caption strings.
-        max_token_length: Maximum token sequence length (e.g., 225 for 3 chunks).
-
-    Returns:
-        Tuple of (clip_l_tokens, clip_g_tokens):
-        - If max_token_length <= 77: shape [batch_size, 77]
-        - If max_token_length > 77: shape [batch_size, n_chunks, 77]
-    """
-    # Match legacy behavior: SdxlTokenizeStrategy adds +2 for BOS/EOS
-    effective_max_len = max_token_length + 2 if max_token_length is not None else None
-
-    def _tokenize_and_chunk(tokenizer: Any, texts: list[str], max_len: int) -> torch.Tensor:
-        """Tokenize and optionally chunk into 77-token segments."""
-        model_max = tokenizer.model_max_length  # 77 for CLIP
-
-        if max_len is None or max_len <= model_max:
-            # Simple case: just tokenize with padding/truncation to 77
-            return tokenizer(
-                texts,
-                padding="max_length",
-                truncation=True,
-                max_length=model_max,
-                return_tensors="pt",
-            ).input_ids
-
-        # Long sequence case: tokenize to full length, then chunk
-        # Request max_len tokens (will be padded/truncated)
-        raw_tokens = tokenizer(
-            texts,
-            padding="max_length",
-            truncation=True,
-            max_length=max_len,
-            return_tensors="pt",
-        ).input_ids  # [batch, max_len]
-
-        # Chunk each sample into [n_chunks, 77] segments
-        batch_chunks = []
-        for input_ids in raw_tokens:
-            # input_ids: [max_len]
-            chunks = []
-            # Step through in increments of 75 (77 - BOS - EOS)
-            for i in range(1, max_len - model_max + 2, model_max - 2):
-                # Build chunk: <BOS> + 75 tokens + <EOS/PAD>
-                chunk = torch.cat(
-                    [
-                        input_ids[0:1],  # BOS
-                        input_ids[i : i + model_max - 2],  # 75 content tokens
-                        input_ids[-1:],  # last token (EOS or PAD)
-                    ]
-                )
-
-                # Fix chunk endings for v2/SDXL tokenizers (pad_token != eos_token)
-                if tokenizer.pad_token_id != tokenizer.eos_token_id:
-                    # If end is "x <non-EOS/PAD>", change last to EOS
-                    if chunk[-2] != tokenizer.eos_token_id and chunk[-2] != tokenizer.pad_token_id:
-                        chunk[-1] = tokenizer.eos_token_id
-                    # If beginning is "<BOS> <PAD> ...", change to "<BOS> <EOS> ..."
-                    if chunk[1] == tokenizer.pad_token_id:
-                        chunk[1] = tokenizer.eos_token_id
-
-                chunks.append(chunk)
-
-            batch_chunks.append(torch.stack(chunks))  # [n_chunks, 77]
-
-        return torch.stack(batch_chunks)  # [batch, n_chunks, 77]
-
-    tokens1 = _tokenize_and_chunk(tokenizer1, captions, effective_max_len)
-    tokens2 = _tokenize_and_chunk(tokenizer2, captions, effective_max_len)
-
-    return tokens1, tokens2
 
 
 @dataclass
@@ -348,8 +265,10 @@ class SdxlTrainingStrategy(TrainingStrategy):
         Returns:
             List of [clip_l_tokens, clip_g_tokens] tensors.
         """
-        t1, t2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], captions, max_token_length)
-        return [t1, t2]
+        return [
+            tokenize_clip_captions(tokenizers[0], captions, max_token_length),
+            tokenize_clip_captions(tokenizers[1], captions, max_token_length),
+        ]
 
     def encode_te_outputs_in_memory(
         self,
@@ -372,7 +291,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         Returns:
             Dict with hidden_state1, hidden_state2, pool2 tensors on CPU.
         """
-        input_ids1, input_ids2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], [caption], max_token_length)
+        input_ids1, input_ids2 = self.tokenize_captions(tokenizers, [caption], max_token_length)
         input_ids1 = input_ids1.to(device)
         input_ids2 = input_ids2.to(device)
 
@@ -509,6 +428,8 @@ class SdxlTrainingStrategy(TrainingStrategy):
         tokenizers: list[Any],
         text_encoders: list[Any],
         unet: Any,
+        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
+        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
     ) -> None:
         """
         Generate sample images for SDXL.
@@ -523,6 +444,8 @@ class SdxlTrainingStrategy(TrainingStrategy):
             tokenizers: List of tokenizers.
             text_encoders: List of text encoder models.
             unet: UNet model.
+            tokenize_strategy: Runtime tokenization strategy.
+            text_encoding_strategy: Runtime text-encoding strategy.
         """
         sample_images_common(
             SdxlStableDiffusionLongPromptWeightingPipeline,
@@ -538,6 +461,8 @@ class SdxlTrainingStrategy(TrainingStrategy):
             tokenizers,
             text_encoders,
             unet,
+            tokenize_strategy=tokenize_strategy,
+            text_encoding_strategy=text_encoding_strategy,
         )
 
     def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:
@@ -776,21 +701,13 @@ class SdxlTrainingStrategy(TrainingStrategy):
         # Determine device for encoding: use TE device (may be CPU when offloading)
         te_device = text_encoders[0].device
 
-        # DEBUG: Log TE device placement and training status (remove after testing)
-        te1_training = any(p.requires_grad for p in text_encoders[0].parameters())
-        te2_training = any(p.requires_grad for p in text_encoders[1].parameters())
-        logger.info(
-            f"[DEBUG] _get_text_cond: TE device={te_device}, TE1 trainable={te1_training}, TE2 trainable={te2_training}"
-        )  # DEBUG: remove
-
         # Fallback: tokenize captions on-the-fly if no cached tokens
         if input_ids is None:
             captions = batch.get("captions", [])
             if not captions:
                 raise ValueError("Batch has neither 'input_ids' nor 'captions' - cannot encode text")
 
-            # Tokenize using the tokenize_fn if available, otherwise use tokenizers directly
-            input_ids1, input_ids2 = tokenize_sdxl_captions(tokenizers[0], tokenizers[1], captions, cfg.training.max_token_length)
+            input_ids1, input_ids2 = self.tokenize_captions(tokenizers, captions, cfg.training.max_token_length)
             input_ids1 = input_ids1.to(te_device)
             input_ids2 = input_ids2.to(te_device)
         else:
@@ -809,22 +726,12 @@ class SdxlTrainingStrategy(TrainingStrategy):
                 unwrapped_text_encoder2=accelerator.unwrap_model(text_encoders[1]),
             )
 
-        # DEBUG: Log output grad status before device transfer (remove after testing)
-        logger.info(
-            f"[DEBUG] TE outputs: h1.requires_grad={encoder_hidden_states1.requires_grad}, h1.device={encoder_hidden_states1.device}"
-        )  # DEBUG: remove
-
         # Move outputs to training device (may be different from TE device when offloading)
-        result = (
+        return (
             encoder_hidden_states1.to(accelerator.device, dtype=weight_dtype),
             encoder_hidden_states2.to(accelerator.device, dtype=weight_dtype),
             pool2.to(accelerator.device, dtype=weight_dtype),
         )
-
-        # DEBUG: Log output device after transfer (remove after testing)
-        logger.info(f"[DEBUG] After .to(): h1.requires_grad={result[0].requires_grad}, h1.device={result[0].device}")  # DEBUG: remove
-
-        return result
 
     def get_noise_pred_and_target(
         self,

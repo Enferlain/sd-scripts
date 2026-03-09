@@ -2,7 +2,7 @@
 Caching engine for fast latent and text encoder output caching.
 
 This module provides the generic caching infrastructure that delegates
-model-specific encoding to strategy objects from library/strategies/.
+model-specific encoding to cache handlers from library/strategies/.
 """
 
 import os
@@ -23,7 +23,7 @@ from library.data.structures import CacheData, CacheEntry, DatasetManifest
 logger = logging.getLogger(__name__)
 
 
-class CachingStrategy(ABC):
+class CacheHandler(ABC):
     """
     Abstract interface for model-specific caching behavior.
 
@@ -173,12 +173,12 @@ class CachingEngine:
     - Progress tracking (tqdm)
     - Multi-GPU workload distribution
 
-    Delegates model-specific encoding to a CachingStrategy.
+    Delegates model-specific encoding to a CacheHandler.
     """
 
     def __init__(
         self,
-        strategy: CachingStrategy,
+        handler: CacheHandler,
         batch_size: int = 4,
         num_workers: int = 4,
         random_crop: bool = False,
@@ -189,7 +189,7 @@ class CachingEngine:
         Initialize the caching engine.
 
         Args:
-            strategy: Model-specific caching strategy.
+            handler: Model-specific cache handler.
             batch_size: Number of images to process per batch.
             num_workers: Number of parallel I/O workers.
             random_crop: If True, use random crop during preprocessing.
@@ -197,7 +197,7 @@ class CachingEngine:
             resize_interpolation: Interpolation method ('lanczos', 'hamming', 'area', etc.).
                 If None, auto-selects based on scale direction.
         """
-        self.strategy = strategy
+        self.handler = handler
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.random_crop = random_crop
@@ -315,7 +315,7 @@ class CachingEngine:
         entries = []
         for entry in manifest.entries.values():
             # Get pre-set cache path from entry
-            cache_path_str = self.strategy.get_entry_cache_path(entry)
+            cache_path_str = self.handler.get_entry_cache_path(entry)
             if not cache_path_str:
                 # No cache path set - this entry can't be cached
                 logger.warning(f"No cache path set for {entry.id}, skipping")
@@ -329,7 +329,7 @@ class CachingEngine:
                     continue
                 # Full validation: check cache contents
                 try:
-                    if self.strategy.is_cache_valid(cache_path, entry, flip_aug, alpha_mask):
+                    if self.handler.is_cache_valid(cache_path, entry, flip_aug, alpha_mask):
                         continue
                     else:
                         logger.debug(f"Cache invalid for {entry.id}, will re-cache")
@@ -409,7 +409,7 @@ class CachingEngine:
         target_size = entries[0].bucket_reso  # All entries in batch have same bucket
         tensors = []
         for img, entry in zip(images, entries):
-            tensor = self.strategy.preprocess_image(
+            tensor = self.handler.preprocess_image(
                 img,
                 target_size=target_size,
                 resized_size=entry.resized_size,
@@ -423,14 +423,14 @@ class CachingEngine:
         batch_tensor = torch.stack(tensors)  # [B, C, H, W]
 
         # Encode via strategy
-        encoded_list = self.strategy.encode_batch(batch_tensor, model, entries)
+        encoded_list = self.handler.encode_batch(batch_tensor, model, entries)
 
         # Save each result
         for entry, encoded in zip(entries, encoded_list):
-            cache_path_str = self.strategy.get_entry_cache_path(entry)
+            cache_path_str = self.handler.get_entry_cache_path(entry)
             if not cache_path_str:
                 logger.warning(f"No cache path for {entry.id}, skipping save")
                 continue
             cache_path = Path(cache_path_str)
             cache_path.parent.mkdir(parents=True, exist_ok=True)
-            self.strategy.save_cache(encoded, cache_path)
+            self.handler.save_cache(encoded, cache_path)

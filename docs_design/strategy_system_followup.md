@@ -47,6 +47,8 @@ encoding, caching, checkpointing, or sampling strategy objects.
 Concern-specific implementation files are fine. Concern-specific runtime
 objects owned directly by `Trainer` are not the goal.
 
+If the rule is “the runner talks to TrainingStrategy,” then doing tokenization/text-encoding explicitly while caching, validation, sampling, and batch processing go through TrainingStrategy is inconsistent. That usually means we are preserving transition structure longer than necessary.
+
 ### 2. Expand for implementation, collapse for runtime
 
 The intended shape is:
@@ -112,6 +114,9 @@ Done:
 
 - epoch token caching uses strategy-provided encoder names
 - TE disk caching uses a strategy-provided model bundle
+- active caching goes through `CachingEngine` + `CacheHandler`, with the
+  training-side caching contract in `base/training.py` supplying the
+  model-family handlers
 
 ### `base/training.py` is the canonical contract home
 
@@ -133,6 +138,15 @@ Current shape:
 The old `base/tokenization.py` and `base/encoding.py` compatibility modules
 have been removed.
 
+The active caching contract now also lives here. In practice that means:
+
+- `CachingStrategy` in `base/training.py` is the model-family training-facing
+  contract
+- `create_latent_caching_strategy()` and `create_te_caching_strategy()` supply
+  `CacheHandler` instances for `CachingEngine`
+- `get_token_cache_encoder_names()` and `build_te_cache_model_bundle()` keep
+  cache-shape and model-packing details out of shared phase code
+
 ### Tokenization behavior moved out of `base/`
 
 Current CLIP-family token/chunk/loading behavior has moved into:
@@ -142,6 +156,11 @@ Current CLIP-family token/chunk/loading behavior has moved into:
 SDXL reuses that shared tokenizer-component helper directly, matching the same
 "one canonical implementation unless behavior really differs" pattern already
 used for VAE code.
+
+The remaining SDXL-specific tokenization concerns still live in SDXL strategy
+code, but the token/chunk construction path now routes through the shared
+CLIP-family helper instead of keeping a second implementation in
+`sdxl/training.py`.
 
 ### Generic training mechanics already moved out
 
@@ -162,10 +181,11 @@ That part of the cleanup is not the current problem anymore.
 The contract in `base/training.py` is cleaner than before, but it still mixes:
 
 - active shared-runner hooks
-- active transitional hooks
-- deprecated / legacy compatibility hooks
+- active transitional hooks that only exist because some legacy paths still
+  exist outside the main contract
 
-The biggest remaining example is caching.
+The biggest remaining example is caching around old support modules and naming,
+not the active runner path itself.
 
 ### 2. `base/caching.py` is not future-facing contract code
 
@@ -175,15 +195,19 @@ It should not define the future mental model for downstream model families.
 The active contract should stay in `base/training.py`; legacy support should
 stay clearly legacy.
 
-### 3. Active singleton strategy dependence still exists
+### 3. Active singleton strategy dependence is now legacy-only
 
-The active runtime still uses global strategy registration in places like:
+The active runner path no longer depends on global tokenization/text-encoding
+singleton lookup.
 
-- `Trainer.setup()`
-- the active SDXL sampling pipeline
+What remains is legacy-only:
 
-This is still a boundary leak and a future cleanup target, but it is not a
-reason to undo the current contract direction.
+- deprecated dataset paths
+- deprecated scripts
+- singleton-focused unit tests
+
+That should keep shrinking, but it is no longer an active-runner boundary
+problem.
 
 ### 4. Some generic-base defaults are still CLIP-specific
 
@@ -192,6 +216,18 @@ CLIP-family text-encoder structure.
 
 Those should keep moving toward concrete SD / SDXL strategy code or
 model-family-owned helpers.
+
+### 5. Shared helpers are still shaped around current model families
+
+Some shared helpers, especially sample generation, still read as SD/SDXL-first
+rather than fully model-agnostic infrastructure.
+
+That is acceptable for now. It should only be generalized when:
+
+- a real third model family needs the same path
+- the strategy boundary becomes clearer by doing so
+
+The repo should avoid speculative abstraction here.
 
 ## Practical Ownership Guide
 
@@ -255,10 +291,13 @@ Priority order:
 1. Clean up the remaining caching boundary
    - keep active contract in `base/training.py`
    - keep `base/caching.py` clearly legacy/transitional
+   - keep `CachingEngine` / `CacheHandler` naming and trainer field names
+     coherent
 2. Continue removing CLIP-specific assumptions from generic base defaults
-3. Reduce active singleton strategy dependence where practical
-4. Keep SD explicitly transitional until its pipeline migration is genuinely
-   complete
+3. Trim remaining legacy-only singleton usage from deprecated dataset/script
+   paths when those paths are touched or removed
+4. Revisit shared helpers like sample generation only when there is real
+   pressure from another model family or a clearer generic boundary
 
 The key principle for future work is:
 

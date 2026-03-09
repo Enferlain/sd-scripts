@@ -101,7 +101,7 @@ def profile_caching():
 
     strategy = SdxlLatentsPipelineStrategy(flip_aug=False, dtype="fp32")
     engine = CachingEngine(
-        strategy=strategy,
+        handler=strategy,
         batch_size=2,  # Match your config
         num_workers=4,
     )

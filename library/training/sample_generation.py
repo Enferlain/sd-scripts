@@ -250,10 +250,7 @@ def sample_images_check(sampling_config: SamplingConfig, epoch: int | None, step
     # Epoch-based sampling takes precedence when configured
     if sampling_config.sample_every_n_epochs is not None:
         # At end of epoch (epoch is not None), check epoch divisibility
-        if epoch is not None and epoch % sampling_config.sample_every_n_epochs == 0:
-            return True
-        # Not at end of epoch, don't sample (step-based is ignored when epoch-based is configured)
-        return False
+        return epoch is not None and epoch % sampling_config.sample_every_n_epochs == 0
 
     # Step-based sampling (only when epoch-based is not configured)
     # Skip at epoch boundaries (epoch is not None) to avoid double-sampling
@@ -278,6 +275,8 @@ def sample_images_common(
     unet_wrapped,
     prompt_replacement: tuple[str, str] | None = None,
     controlnet=None,
+    tokenize_strategy=None,
+    text_encoding_strategy=None,
 ):
     """
     Common function for generating sample images during training.
@@ -301,6 +300,10 @@ def sample_images_common(
         unet_wrapped: The UNet model (wrapped).
         prompt_replacement (tuple, optional): A tuple (target, replacement) to modify prompts.
         controlnet: ControlNet model (optional).
+        tokenize_strategy: Runtime tokenization strategy used by sampling pipelines that
+            need model-family-specific prompt handling.
+        text_encoding_strategy: Runtime text-encoding strategy used by sampling pipelines
+            that need model-family-specific prompt handling.
     """
 
     if not sample_images_check(sampling_config, epoch, steps):
@@ -360,17 +363,22 @@ def sample_images_common(
 
     default_scheduler = get_my_scheduler(sample_sampler=sampling_config.sample_sampler, v_parameterization=loss_config.v_parameterization)
 
-    pipeline = pipe_class(
-        text_encoder=text_encoder,
-        vae=vae,
-        unet=unet,
-        tokenizer=tokenizer,
-        scheduler=default_scheduler,
-        safety_checker=None,
-        feature_extractor=None,
-        requires_safety_checker=False,
-        clip_skip=training_config.clip_skip,
-    )
+    pipe_kwargs = {
+        "text_encoder": text_encoder,
+        "vae": vae,
+        "unet": unet,
+        "tokenizer": tokenizer,
+        "scheduler": default_scheduler,
+        "safety_checker": None,
+        "feature_extractor": None,
+        "requires_safety_checker": False,
+        "clip_skip": training_config.clip_skip,
+    }
+    if pipe_class is SdxlStableDiffusionLongPromptWeightingPipeline:
+        pipe_kwargs["tokenize_strategy"] = tokenize_strategy
+        pipe_kwargs["text_encoding_strategy"] = text_encoding_strategy
+
+    pipeline = pipe_class(**pipe_kwargs)
     pipeline.to(distributed_state.device)
     save_dir = saving_config.output_dir + "/sample"
     os.makedirs(save_dir, exist_ok=True)
