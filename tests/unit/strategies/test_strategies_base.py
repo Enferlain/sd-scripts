@@ -1,28 +1,24 @@
 """
-Unit tests for library/strategies/strategy_base.py
-
-Tests the base strategy classes: TokenizeStrategy, TextEncodingStrategy,
-TextEncoderOutputsCachingStrategy, and LatentsCachingStrategy.
+Unit tests for base strategy contracts and shared helpers.
 
 Focus on pure functions and components testable with light mocking.
 """
 
-import os
-import pytest
-import numpy as np
-import torch
 from unittest.mock import Mock
 
+import numpy as np
+import os
+import pytest
+import torch
+
+from library.models.sd.tokenizer import get_clip_weighted_input_ids, load_tokenizer
 from library.strategies.base.caching import TextEncoderOutputsCachingStrategy, LatentsCachingStrategy
-from library.strategies.base.encoding import TextEncodingStrategy
-from library.models.sd.tokenizer import load_tokenizer
-from library.strategies.base.tokenization import TokenizeStrategy
 from library.strategies.base.training import (
     CachingStrategy,
     DiffusionTrainingStrategy,
     ModelLoadingStrategy,
     ModelPreparationStrategy,
-    TextEncodingStrategy as RuntimeTextEncodingStrategy,
+    TextEncodingStrategy,
     TokenizationStrategy,
     TrainingRuntimeStrategy,
     TrainingStrategy,
@@ -33,18 +29,35 @@ from library.training.trainer_utils import all_reduce_trainable, restore_rng_sta
 
 
 # =============================================================================
-# TokenizeStrategy - Parse Prompt Attention Tests
+# Tokenization helper tests
 # =============================================================================
 
 
-@pytest.mark.unit
-class TestTokenizeStrategyParsePromptAttention:
-    """Test the parse_prompt_attention inner function via _get_weighted_input_ids."""
+class DummyTokenizationStrategy(TokenizationStrategy):
+    def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
+        return []
 
-    @pytest.fixture
-    def strategy(self):
-        """Create a TokenizeStrategy instance for testing."""
-        return TokenizeStrategy()
+    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+        return [], []
+
+
+class DummyTextEncodingStrategy(TextEncodingStrategy):
+    def encode_tokens(self, tokenize_strategy: TokenizationStrategy, models: list[object], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
+        return []
+
+    def encode_tokens_with_weights(
+        self,
+        tokenize_strategy: TokenizationStrategy,
+        models: list[object],
+        tokens: list[torch.Tensor],
+        weights: list[torch.Tensor],
+    ) -> list[torch.Tensor]:
+        return []
+
+
+@pytest.mark.unit
+class TestTokenizationHelpers:
+    """Test CLIP-family weighted token helper behavior."""
 
     @pytest.fixture
     def mock_tokenizer(self):
@@ -69,9 +82,9 @@ class TestTokenizeStrategyParsePromptAttention:
         tokenizer.side_effect = tokenizer_call
         return tokenizer
 
-    def test_normal_text_returns_weight_1(self, strategy, mock_tokenizer):
+    def test_normal_text_returns_weight_1(self, mock_tokenizer):
         """Test that normal text without brackets has weight 1.0."""
-        input_ids, weights = strategy._get_weighted_input_ids(mock_tokenizer, "normal text", max_length=77)
+        _input_ids, weights = get_clip_weighted_input_ids(mock_tokenizer, "normal text", max_length=77)
 
         # Weights for content tokens should be 1.0
         assert weights[0, 0].item() == 1.0  # BOS weight
@@ -79,42 +92,42 @@ class TestTokenizeStrategyParsePromptAttention:
         for i in range(weights.shape[1]):
             assert weights[0, i].item() == 1.0
 
-    def test_single_parentheses_increases_weight(self, strategy, mock_tokenizer):
+    def test_single_parentheses_increases_weight(self, mock_tokenizer):
         """Test that (word) increases weight by 1.1."""
-        input_ids, weights = strategy._get_weighted_input_ids(mock_tokenizer, "(important)", max_length=77)
+        _input_ids, weights = get_clip_weighted_input_ids(mock_tokenizer, "(important)", max_length=77)
 
         # The token for "important" should have weight ~1.1
         # Position 1 is after BOS
         assert weights[0, 1].item() == pytest.approx(1.1, abs=0.001)
 
-    def test_explicit_weight(self, strategy, mock_tokenizer):
+    def test_explicit_weight(self, mock_tokenizer):
         """Test that (word:1.5) sets weight to 1.5."""
-        input_ids, weights = strategy._get_weighted_input_ids(mock_tokenizer, "(emphasized:1.5)", max_length=77)
+        _input_ids, weights = get_clip_weighted_input_ids(mock_tokenizer, "(emphasized:1.5)", max_length=77)
 
         assert weights[0, 1].item() == pytest.approx(1.5, abs=0.001)
 
-    def test_square_brackets_decrease_weight(self, strategy, mock_tokenizer):
+    def test_square_brackets_decrease_weight(self, mock_tokenizer):
         """Test that [word] decreases weight by 1/1.1."""
-        input_ids, weights = strategy._get_weighted_input_ids(mock_tokenizer, "[weak]", max_length=77)
+        _input_ids, weights = get_clip_weighted_input_ids(mock_tokenizer, "[weak]", max_length=77)
 
         assert weights[0, 1].item() == pytest.approx(1 / 1.1, abs=0.001)
 
-    def test_nested_parentheses(self, strategy, mock_tokenizer):
+    def test_nested_parentheses(self, mock_tokenizer):
         """Test that nested parentheses multiply weights."""
-        input_ids, weights = strategy._get_weighted_input_ids(mock_tokenizer, "((double))", max_length=77)
+        _input_ids, weights = get_clip_weighted_input_ids(mock_tokenizer, "((double))", max_length=77)
 
         # 1.1 * 1.1 = 1.21
         assert weights[0, 1].item() == pytest.approx(1.21, abs=0.001)
 
-    def test_zero_weight(self, strategy, mock_tokenizer):
+    def test_zero_weight(self, mock_tokenizer):
         """Test that (word:0) sets weight to 0."""
-        input_ids, weights = strategy._get_weighted_input_ids(mock_tokenizer, "(invisible:0)", max_length=77)
+        _input_ids, weights = get_clip_weighted_input_ids(mock_tokenizer, "(invisible:0)", max_length=77)
 
         assert weights[0, 1].item() == 0.0
 
-    def test_bos_and_eos_weights_are_1(self, strategy, mock_tokenizer):
+    def test_bos_and_eos_weights_are_1(self, mock_tokenizer):
         """Test that BOS and padding weights are 1.0."""
-        input_ids, weights = strategy._get_weighted_input_ids(mock_tokenizer, "(test:2.0)", max_length=77)
+        _input_ids, weights = get_clip_weighted_input_ids(mock_tokenizer, "(test:2.0)", max_length=77)
 
         assert weights[0, 0].item() == 1.0  # BOS
         # All padding should be 1.0
@@ -123,13 +136,13 @@ class TestTokenizeStrategyParsePromptAttention:
 
 
 # =============================================================================
-# TokenizeStrategy - Singleton Pattern Tests
+# TokenizationStrategy - Singleton Pattern Tests
 # =============================================================================
 
 
 @pytest.mark.unit
-class TestTokenizeStrategySingleton:
-    """Test the singleton pattern for TokenizeStrategy."""
+class TestTokenizationStrategySingleton:
+    """Test the singleton pattern for TokenizationStrategy."""
 
     def setup_method(self):
         """Reset singleton before each test."""
@@ -141,24 +154,24 @@ class TestTokenizeStrategySingleton:
 
     def test_get_strategy_returns_none_initially(self):
         """Test that get_strategy returns None when no strategy is set."""
-        assert TokenizeStrategy.get_strategy() is None
+        assert TokenizationStrategy.get_strategy() is None
 
     def test_set_strategy_stores_instance(self):
         """Test that set_strategy stores the strategy instance."""
-        strategy = TokenizeStrategy()
-        TokenizeStrategy.set_strategy(strategy)
+        strategy = DummyTokenizationStrategy()
+        TokenizationStrategy.set_strategy(strategy)
 
-        assert TokenizeStrategy.get_strategy() is strategy
+        assert TokenizationStrategy.get_strategy() is strategy
 
     def test_set_strategy_twice_raises_error(self):
         """Test that setting strategy twice raises RuntimeError."""
-        strategy1 = TokenizeStrategy()
-        strategy2 = TokenizeStrategy()
+        strategy1 = DummyTokenizationStrategy()
+        strategy2 = DummyTokenizationStrategy()
 
-        TokenizeStrategy.set_strategy(strategy1)
+        TokenizationStrategy.set_strategy(strategy1)
 
         with pytest.raises(RuntimeError, match="already set"):
-            TokenizeStrategy.set_strategy(strategy2)
+            TokenizationStrategy.set_strategy(strategy2)
 
 
 # =============================================================================
@@ -710,23 +723,23 @@ class TestTextEncodingStrategySingleton:
     """Test the singleton pattern for TextEncodingStrategy."""
 
     def setup_method(self):
-        RuntimeTextEncodingStrategy._strategy = None
+        TextEncodingStrategy._strategy = None
 
     def teardown_method(self):
-        RuntimeTextEncodingStrategy._strategy = None
+        TextEncodingStrategy._strategy = None
 
     def test_get_strategy_returns_none_initially(self):
         assert TextEncodingStrategy.get_strategy() is None
 
     def test_set_strategy_stores_instance(self):
-        strategy = TextEncodingStrategy()
+        strategy = DummyTextEncodingStrategy()
         TextEncodingStrategy.set_strategy(strategy)
 
         assert TextEncodingStrategy.get_strategy() is strategy
 
     def test_set_strategy_twice_raises_error(self):
-        strategy1 = TextEncodingStrategy()
-        strategy2 = TextEncodingStrategy()
+        strategy1 = DummyTextEncodingStrategy()
+        strategy2 = DummyTextEncodingStrategy()
 
         TextEncodingStrategy.set_strategy(strategy1)
 

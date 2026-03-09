@@ -50,7 +50,8 @@ def tokenize_sdxl_captions(
     """Tokenize captions on-the-fly for SDXL (dual CLIP encoders).
 
     Handles 77+ token sequences by chunking into multiple 77-token segments,
-    matching the legacy TokenizeStrategy._get_input_ids behavior.
+    matching the shared CLIP-family chunking behavior used by the strategy
+    layer.
 
     Args:
         tokenizer1: CLIP-L tokenizer.

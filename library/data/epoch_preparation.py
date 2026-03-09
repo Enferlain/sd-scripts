@@ -245,7 +245,7 @@ def tokenize_epoch_manifest(
     Args:
         epoch_manifest: The epoch manifest to tokenize.
         tokenize_fn: Function that takes list[str] and returns list of token tensors.
-            Should match TokenizeStrategy.tokenize() signature.
+            Should match `TokenizationStrategy.tokenize()` semantics.
         output_path: Path to save the .safetensors file.
         encoder_names: Names for each encoder output. If None, auto-detects
             based on number of outputs (1=["clip"], 2=["clip_l", "clip_g"]).

@@ -18,8 +18,7 @@ from library.utils.jpeg_xl_util import get_jxl_size
 from library.data.image_utils import load_image, trim_and_resize_if_required, resize_image, validate_interpolation_fn
 
 from library.strategies.base.caching import TextEncoderOutputsCachingStrategy, LatentsCachingStrategy
-from library.strategies.base.encoding import TextEncodingStrategy
-from library.strategies.base.tokenization import TokenizeStrategy
+from library.strategies.base.training import TextEncodingStrategy, TokenizationStrategy
 
 from library.data._deprecated.caching import is_disk_cached_latents_is_expected, cache_batch_latents, cache_batch_text_encoder_outputs
 
@@ -96,7 +95,7 @@ class BaseDataset(torch.utils.data.Dataset):
         self.latents_caching_strategy = None
 
     def set_current_strategies(self):
-        self.tokenize_strategy = TokenizeStrategy.get_strategy()
+        self.tokenize_strategy = TokenizationStrategy.get_strategy()
         self.text_encoder_output_caching_strategy = TextEncoderOutputsCachingStrategy.get_strategy()
         self.latents_caching_strategy = LatentsCachingStrategy.get_strategy()
 
@@ -657,7 +656,7 @@ class BaseDataset(torch.utils.data.Dataset):
         r"""
         A brand new method to cache text encoder outputs. This method caches text encoder outputs with caching strategy.
         """
-        tokenize_strategy = TokenizeStrategy.get_strategy()
+        tokenize_strategy = TokenizationStrategy.get_strategy()
         text_encoding_strategy = TextEncodingStrategy.get_strategy()
         caching_strategy = TextEncoderOutputsCachingStrategy.get_strategy()
         batch_size = caching_strategy.batch_size or self.batch_size
@@ -733,8 +732,6 @@ class BaseDataset(torch.utils.data.Dataset):
         # latentsのキャッシュと同様に、ディスクへのキャッシュに対応する
         # またマルチGPUには対応していないので、そちらはtools/cache_latents.pyを使うこと
         logger.info("caching text encoder outputs.")
-
-        tokenize_strategy = TokenizeStrategy.get_strategy()
 
         if batch_size is None:
             batch_size = self.batch_size
