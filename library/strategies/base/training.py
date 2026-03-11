@@ -217,11 +217,13 @@ class SampleGenerationStrategy(ABC):
         tokenizers: list[Any],
         text_encoders: list[Any],
         unet: Any,
-        tokenize_strategy: TokenizationStrategy,
-        text_encoding_strategy: TextEncodingStrategy,
     ) -> None:
         """
         Generate sample images for the current training step.
+
+        Uses ``self._tokenize_strategy`` and ``self._text_encoding_strategy``
+        (set during ``initialize()``) for model-family-specific tokenization
+        and text encoding.
 
         Args:
             accelerator: Accelerator instance.
@@ -233,8 +235,6 @@ class SampleGenerationStrategy(ABC):
             tokenizers: List of tokenizers.
             text_encoders: List of text encoders.
             unet: The UNet model.
-            tokenize_strategy: Runtime tokenization strategy for this model family.
-            text_encoding_strategy: Runtime text-encoding strategy for this model family.
         """
         raise NotImplementedError
 
@@ -328,9 +328,7 @@ class ValidationStrategy(ABC):
         val_dataloader: Any,
         cyclic_val_dataloader: Any,
         trainable_model: Any,
-        tokenize_strategy: Any,
         text_encoders: list[Any],
-        text_encoding_strategy: Any,
         unet: Any,
         vae: Any,
         noise_scheduler: Any,
@@ -344,6 +342,9 @@ class ValidationStrategy(ABC):
     ) -> tuple[float | None, float | None]:
         """
         Calculate validation loss.
+
+        Uses ``self._tokenize_strategy`` and ``self._text_encoding_strategy``
+        internally for any on-the-fly tokenization or encoding.
 
         Returns:
             Tuple of (current_val_loss, average_val_loss).
@@ -435,8 +436,6 @@ class DiffusionTrainingStrategy(ABC):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: Any,
-        tokenize_strategy: Any,
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_unet: bool = True,
@@ -447,6 +446,9 @@ class DiffusionTrainingStrategy(ABC):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
         """
         Process a batch for training or validation.
+
+        Uses ``self._tokenize_strategy`` and ``self._text_encoding_strategy``
+        internally for any on-the-fly tokenization or text encoding.
 
         Returns:
             Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
@@ -697,7 +699,41 @@ class TrainingStrategy(
     Combined interface for all training strategies.
 
     Implementations inherit from this and provide model-specific implementations.
+
+    Lifecycle:
+        1. Instantiate the strategy (no config needed).
+        2. Call ``initialize(cfg)`` once during ``Trainer.setup()`` to set up
+           tokenization and text-encoding internals.
+        3. Runner code accesses ``strategy.tokenizers`` and calls strategy
+           methods; internal ``_tokenize_strategy`` / ``_text_encoding_strategy``
+           are used by the strategy itself and never exposed to runner code.
     """
+
+    # --- Internal state (set by initialize) ---
+    _tokenize_strategy: TokenizationStrategy | None = field(default=None, init=False, repr=False)
+    _text_encoding_strategy: TextEncodingStrategy | None = field(default=None, init=False, repr=False)
+
+    def initialize(self, cfg: Any) -> None:
+        """Initialize strategy internals that require config.
+
+        Called once during ``Trainer.setup()`` after the strategy is created.
+        Sets up internal tokenization and text-encoding state.
+
+        Args:
+            cfg: Hydra configuration object.
+        """
+        self._tokenize_strategy = self.get_tokenize_strategy(cfg)
+        self._text_encoding_strategy = self.get_text_encoding_strategy(cfg)
+
+    @property
+    def tokenizers(self) -> list[Any]:
+        """Return tokenizer(s) from the internal tokenization strategy.
+
+        Requires ``initialize()`` to have been called first.
+        """
+        if self._tokenize_strategy is None:
+            raise RuntimeError("Strategy not initialized. Call initialize(cfg) first.")
+        return self.get_tokenizers(self._tokenize_strategy)
 
     @abstractmethod
     def get_tokenize_strategy(self, cfg: Any) -> TokenizationStrategy:

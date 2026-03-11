@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-11]
+
+### Changed
+
+- **Strategy internal state collapse** — `_tokenize_strategy` and `_text_encoding_strategy` are now owned as instance state by `TrainingStrategy`, no longer stored on `Trainer` or passed through runner code.
+  - Added `TrainingStrategy.initialize(cfg)` lifecycle method and `tokenizers` property.
+  - Removed the two pass-through params from `sample_images()`, `calculate_val_loss()`, and `process_batch()` across base, SD, and SDXL strategies.
+  - `Trainer.setup()` now calls `strategies.initialize(cfg)` instead of manually creating and storing these objects.
+  - Updated tests to set internal strategy state directly instead of passing params.
+
 ## [2026-03-10]
 
 ### Changed

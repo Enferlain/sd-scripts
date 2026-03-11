@@ -143,8 +143,6 @@ def _run_step_side_effects(
             trainer.tokenizers,
             trainer._text_encoder,
             trainer.unet,
-            trainer._tokenize_strategy,
-            trainer._text_encoding_strategy,
         )
 
     if step_actions.should_validate:
@@ -156,9 +154,7 @@ def _run_step_side_effects(
             trainer._val_dataloader,
             trainer._cyclic_val_dataloader,
             trainer.trainable_model,
-            trainer._tokenize_strategy,
             trainer.text_encoders,
-            trainer._text_encoding_strategy,
             trainer.unet,
             trainer.vae,
             trainer.noise_scheduler,
@@ -390,8 +386,6 @@ def _finalize_epoch(
             trainer.tokenizers,
             trainer._text_encoder,
             trainer.unet,
-            trainer._tokenize_strategy,
-            trainer._text_encoding_strategy,
         )
     trainer._progress_bar.unpause()
     trainer.optimizer_train_fn()
@@ -552,8 +546,6 @@ def run_training_loop(trainer: Trainer) -> None:
                         trainer.weight_dtype,
                         accelerator,
                         cfg,
-                        trainer._text_encoding_strategy,
-                        trainer._tokenize_strategy,
                         is_train=True,
                         train_text_encoder=trainer._train_text_encoder,
                         train_unet=trainer._train_unet,

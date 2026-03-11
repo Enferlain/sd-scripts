@@ -138,8 +138,6 @@ class Trainer:
         self._model_version: str = ""
         self._cache_latents: bool = False
         self._use_dreambooth_method: bool = False
-        self._tokenize_strategy: Any = None
-        self._text_encoding_strategy: Any = None
         self._cache_dir: str | None = None
         self._latent_dtype: str = "fp16"
         self._n_workers: int = 0
@@ -228,12 +226,8 @@ class Trainer:
 
         set_seed_from_config(self.cfg.training)
 
-        tokenize_strategy = self.strategies.get_tokenize_strategy(self.cfg)
-        self.tokenizers = self.strategies.get_tokenizers(tokenize_strategy)
-        self._tokenize_strategy = tokenize_strategy
-
-        text_encoding_strategy = self.strategies.get_text_encoding_strategy(self.cfg)
-        self._text_encoding_strategy = text_encoding_strategy
+        self.strategies.initialize(self.cfg)
+        self.tokenizers = self.strategies.tokenizers
 
         # Prepare accelerator first (needed for distributed caching)
         logger.info("preparing accelerator")
@@ -608,8 +602,6 @@ class Trainer:
                     self.tokenizers,
                     self._text_encoder,
                     self.unet,
-                    self._tokenize_strategy,
-                    self._text_encoding_strategy,
                 )
 
             # Validate (independent of sampling)
@@ -624,9 +616,7 @@ class Trainer:
                     self._val_dataloader,
                     self._cyclic_val_dataloader,
                     self.trainable_model,
-                    self._tokenize_strategy,
                     self.text_encoders,
-                    self._text_encoding_strategy,
                     self.unet,
                     self.vae,
                     self.noise_scheduler,

@@ -224,8 +224,7 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     # Strategies (cached versions)
     trainer.latent_cache_handler = None
     trainer.te_cache_handler = None
-    trainer._text_encoding_strategy = MagicMock()
-    trainer._tokenize_strategy = MagicMock()
+    # _tokenize_strategy and _text_encoding_strategy are now internal to TrainingStrategy
 
     # Adapter
     trainer.adapter = MagicMock()

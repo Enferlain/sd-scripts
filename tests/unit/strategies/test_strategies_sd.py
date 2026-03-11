@@ -410,8 +410,6 @@ class TestSdTrainingStrategyNewPipeline:
                 weight_dtype=torch.float32,
                 accelerator=accelerator,
                 cfg=cfg,
-                text_encoding_strategy=Mock(),
-                tokenize_strategy=Mock(),
                 is_train=False,
                 train_text_encoder=False,
             )
@@ -439,6 +437,10 @@ class TestSdTrainingStrategyNewPipeline:
         text_encoding_strategy = Mock()
         text_encoding_strategy.encode_tokens.return_value = [torch.randn(1, 77, 768)]
 
+        # Set internal state on the strategy (these are now owned by the strategy)
+        strategy._tokenize_strategy = Mock()
+        strategy._text_encoding_strategy = text_encoding_strategy
+
         with patch.object(strategy, "_prepare_latents", return_value=torch.randn(1, 4, 64, 64)), patch.object(
             strategy,
             "get_noise_pred_and_target",
@@ -460,8 +462,6 @@ class TestSdTrainingStrategyNewPipeline:
                 weight_dtype=torch.float32,
                 accelerator=accelerator,
                 cfg=cfg,
-                text_encoding_strategy=text_encoding_strategy,
-                tokenize_strategy=Mock(),
                 is_train=False,
                 train_text_encoder=False,
             )

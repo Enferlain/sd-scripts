@@ -215,13 +215,14 @@ class SdTrainingStrategy(TrainingStrategy):
         text_encoders: list[Any],
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
-        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
         train_text_encoder: bool,
         is_train: bool,
         weight_dtype: torch.dtype,
     ) -> list[torch.Tensor]:
         """Get SD text conditioning from cached outputs, cached tokens, or live captions."""
+        tokenize_strategy = self._tokenize_strategy
+        text_encoding_strategy = self._text_encoding_strategy
+
         te_outputs = batch.get("text_encoder_outputs")
         text_encoder_conds = (
             [te_outputs["hidden_state"].to(accelerator.device, dtype=weight_dtype)]
@@ -306,8 +307,6 @@ class SdTrainingStrategy(TrainingStrategy):
         tokenizers: list[Any],
         text_encoders: list[Any],
         unet: Any,
-        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
-        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
     ) -> None:
         """
         Generate sample images for SD.
@@ -322,8 +321,6 @@ class SdTrainingStrategy(TrainingStrategy):
             tokenizers: List of tokenizers.
             text_encoders: List of text encoder models.
             unet: UNet model.
-            tokenize_strategy: Runtime tokenization strategy.
-            text_encoding_strategy: Runtime text-encoding strategy.
         """
         sample_images_common(
             StableDiffusionLongPromptWeightingPipeline,
@@ -339,8 +336,8 @@ class SdTrainingStrategy(TrainingStrategy):
             tokenizers[0],
             text_encoders[0],
             unet,
-            tokenize_strategy=tokenize_strategy,
-            text_encoding_strategy=text_encoding_strategy,
+            tokenize_strategy=self._tokenize_strategy,
+            text_encoding_strategy=self._text_encoding_strategy,
         )
 
     def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:
@@ -498,8 +495,6 @@ class SdTrainingStrategy(TrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
-        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_unet: bool = True,
@@ -522,8 +517,6 @@ class SdTrainingStrategy(TrainingStrategy):
             weight_dtype: Weight data type.
             accelerator: Accelerator instance.
             cfg: Configuration object.
-            text_encoding_strategy: Text encoding strategy.
-            tokenize_strategy: Tokenize strategy.
             is_train: Training mode flag.
             train_text_encoder: Train text encoder flag.
             train_unet: Train UNet flag.
@@ -543,8 +536,6 @@ class SdTrainingStrategy(TrainingStrategy):
             text_encoders=text_encoders,
             accelerator=accelerator,
             cfg=cfg,
-            text_encoding_strategy=text_encoding_strategy,
-            tokenize_strategy=tokenize_strategy,
             train_text_encoder=train_text_encoder,
             is_train=is_train,
             weight_dtype=weight_dtype,
@@ -614,8 +605,6 @@ class SdTrainingStrategy(TrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
-        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
         train_text_encoder: bool = True,
         train_unet: bool = True,
         timesteps_list: list[int] | None = None,
@@ -634,8 +623,6 @@ class SdTrainingStrategy(TrainingStrategy):
             weight_dtype: Weight data type.
             accelerator: Accelerator instance.
             cfg: Configuration object.
-            text_encoding_strategy: Text encoding strategy.
-            tokenize_strategy: Tokenize strategy.
             train_text_encoder: Train text encoder flag.
             train_unet: Train UNet flag.
             timesteps_list: List of timesteps for validation.
@@ -654,8 +641,6 @@ class SdTrainingStrategy(TrainingStrategy):
                 text_encoders=text_encoders,
                 accelerator=accelerator,
                 cfg=cfg,
-                text_encoding_strategy=text_encoding_strategy,
-                tokenize_strategy=tokenize_strategy,
                 train_text_encoder=train_text_encoder,
                 is_train=False,
                 weight_dtype=weight_dtype,
@@ -694,9 +679,7 @@ class SdTrainingStrategy(TrainingStrategy):
         val_dataloader: Any,
         cyclic_val_dataloader: Any,
         trainable_model: Any,
-        tokenize_strategy: Any,
         text_encoders: list[Any],
-        text_encoding_strategy: Any,
         unet: Any,
         vae: Any,
         noise_scheduler: Any,
@@ -719,9 +702,7 @@ class SdTrainingStrategy(TrainingStrategy):
             val_dataloader: Validation dataloader.
             cyclic_val_dataloader: Cyclic validation dataloader.
             trainable_model: The trainable model.
-            tokenize_strategy: Tokenize strategy.
             text_encoders: List of text encoders.
-            text_encoding_strategy: Text encoding strategy.
             unet: UNet model.
             vae: VAE model.
             noise_scheduler: Noise scheduler.
@@ -770,8 +751,6 @@ class SdTrainingStrategy(TrainingStrategy):
                     weight_dtype,
                     accelerator,
                     cfg,
-                    text_encoding_strategy,
-                    tokenize_strategy,
                     train_text_encoder=train_text_encoder,
                     timesteps_list=timesteps_list,
                 )

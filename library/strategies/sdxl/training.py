@@ -428,8 +428,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
         tokenizers: list[Any],
         text_encoders: list[Any],
         unet: Any,
-        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
-        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
     ) -> None:
         """
         Generate sample images for SDXL.
@@ -444,8 +442,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
             tokenizers: List of tokenizers.
             text_encoders: List of text encoder models.
             unet: UNet model.
-            tokenize_strategy: Runtime tokenization strategy.
-            text_encoding_strategy: Runtime text-encoding strategy.
         """
         sample_images_common(
             SdxlStableDiffusionLongPromptWeightingPipeline,
@@ -461,8 +457,8 @@ class SdxlTrainingStrategy(TrainingStrategy):
             tokenizers,
             text_encoders,
             unet,
-            tokenize_strategy=tokenize_strategy,
-            text_encoding_strategy=text_encoding_strategy,
+            tokenize_strategy=self._tokenize_strategy,
+            text_encoding_strategy=self._text_encoding_strategy,
         )
 
     def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:
@@ -846,8 +842,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
-        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_unet: bool = True,
@@ -870,8 +864,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
             weight_dtype: Weight data type.
             accelerator: Accelerator instance.
             cfg: Configuration object.
-            text_encoding_strategy: Text encoding strategy.
-            tokenize_strategy: Tokenize strategy.
             is_train: Training mode flag.
             train_text_encoder: Train text encoder flag.
             train_unet: Train UNet flag.
@@ -887,8 +879,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
 
         # SDXL text conditioning - use cached outputs or encode on the fly
-        tokenizers = self.get_tokenizers(tokenize_strategy)  # type: ignore[arg-type]  # Caller ensures correct strategy type
-        text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, tokenizers, text_encoders, weight_dtype)
+        text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, self.tokenizers, text_encoders, weight_dtype)
 
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
             cfg,
@@ -964,8 +955,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
         weight_dtype: torch.dtype,
         accelerator: Any,
         cfg: Any,
-        text_encoding_strategy: library.strategies.base.training.TextEncodingStrategy,
-        tokenize_strategy: library.strategies.base.training.TokenizationStrategy,
         train_text_encoder: bool = True,
         train_unet: bool = True,
         timesteps_list: list[int] | None = None,
@@ -984,8 +973,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
             weight_dtype: Weight data type.
             accelerator: Accelerator instance.
             cfg: Configuration object.
-            text_encoding_strategy: Text encoding strategy.
-            tokenize_strategy: Tokenize strategy.
             train_text_encoder: Train text encoder flag.
             train_unet: Train UNet flag.
             timesteps_list: List of timesteps for validation.
@@ -1000,8 +987,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             total_loss = torch.zeros(1, device=latents.device)
 
             # SDXL text conditioning
-            tokenizers = self.get_tokenizers(tokenize_strategy)  # type: ignore[arg-type]  # Caller ensures correct strategy type
-            text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, tokenizers, text_encoders, weight_dtype)
+            text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, self.tokenizers, text_encoders, weight_dtype)
 
             batch_size = latents.shape[0]
             for fixed_timestep_value in timesteps_list:
@@ -1036,9 +1022,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         val_dataloader: Any,
         cyclic_val_dataloader: Any,
         trainable_model: Any,
-        tokenize_strategy: Any,
         text_encoders: list[Any],
-        text_encoding_strategy: Any,
         unet: Any,
         vae: Any,
         noise_scheduler: Any,
@@ -1061,9 +1045,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             val_dataloader: Validation dataloader.
             cyclic_val_dataloader: Cyclic validation dataloader.
             trainable_model: The trainable model.
-            tokenize_strategy: Tokenize strategy.
             text_encoders: List of text encoders.
-            text_encoding_strategy: Text encoding strategy.
             unet: UNet model.
             vae: VAE model.
             noise_scheduler: Noise scheduler.
@@ -1112,8 +1094,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
                     weight_dtype,
                     accelerator,
                     cfg,
-                    text_encoding_strategy,
-                    tokenize_strategy,
                     train_text_encoder=train_text_encoder,
                     timesteps_list=timesteps_list,
                 )
