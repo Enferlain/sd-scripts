@@ -81,7 +81,7 @@ class TestRunLatentCaching:
         # VAE should not be touched
         mock_trainer.vae.to.assert_not_called()
 
-    def test_creates_latent_strategy_via_strategies(self, mock_trainer):
+    def test_creates_latent_cache_handler_via_strategies(self, mock_trainer):
         """Test that latent strategy is created via trainer.strategies.create_latent_caching_strategy."""
         mock_strategy = MagicMock()
         mock_trainer.strategies.create_latent_caching_strategy.return_value = mock_strategy
@@ -99,7 +99,7 @@ class TestRunLatentCaching:
             run_latent_caching(mock_trainer)
 
             mock_trainer.strategies.create_latent_caching_strategy.assert_called_once_with(mock_trainer.cfg)
-            assert mock_trainer.latent_strategy == mock_strategy
+            assert mock_trainer.latent_cache_handler == mock_strategy
 
     def test_moves_vae_to_device_and_back(self, mock_trainer):
         """Test VAE is moved to device for caching, then back to CPU."""
@@ -167,8 +167,8 @@ class TestRunTECaching:
     def test_disk_mode_uses_caching_engine(self, mock_trainer):
         """Test disk-based TE caching uses CachingEngine via strategy factory."""
         mock_trainer.cfg.data.caching.cache_text_encoder_outputs_to_disk = True
-        mock_te_strategy = MagicMock()
-        mock_trainer.strategies.create_te_caching_strategy.return_value = mock_te_strategy
+        mock_te_cache_handler = MagicMock()
+        mock_trainer.strategies.create_te_caching_strategy.return_value = mock_te_cache_handler
 
         with (
             patch("library.training.phases.caching.CachingEngine") as MockEngine,

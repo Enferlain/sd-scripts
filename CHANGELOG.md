@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-10]
+
+### Changed
+
+- **Cache handler naming cleanup** — Training and data pipeline code now consistently refer to `CacheHandler` instances as cache handlers rather than “strategies”.
+  - `Trainer` fields are now `latent_cache_handler` / `te_cache_handler`.
+  - Training phases and dataloader constructors use the new names to make the engine boundary clearer.
+  - Integration/unit tests were updated to match the renamed arguments.
+
 ## [2026-03-08]
 
 ### Changed

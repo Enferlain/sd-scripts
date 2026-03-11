@@ -535,8 +535,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
         val_dataloader = create_training_dataloader(
             dataset_manifest=val_manifest,
             epoch_manifest=val_epoch_manifest,
-            latent_strategy=latent_strategy,
-            te_strategy=te_strategy,
+            latent_cache_handler=latent_strategy,
+            te_cache_handler=te_strategy,
             flip_aug=False,  # No flip aug for validation
             prior_loss_weight=cfg.loss.prior_loss_weight,
             rank=accelerator.process_index,
@@ -958,8 +958,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
         train_dataloader = create_training_dataloader(
             dataset_manifest=train_manifest,
             epoch_manifest=epoch_manifest,
-            latent_strategy=latent_strategy,
-            te_strategy=te_strategy,
+            latent_cache_handler=latent_strategy,
+            te_cache_handler=te_strategy,
             flip_aug=cfg.data.preprocessing.flip_aug,
             prior_loss_weight=cfg.loss.prior_loss_weight,
             rank=accelerator.process_index,

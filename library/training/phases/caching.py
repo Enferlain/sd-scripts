@@ -51,7 +51,7 @@ def run_caching(trainer: Trainer) -> None:
 def run_latent_caching(trainer: Trainer) -> None:
     """Cache VAE latents for the dataset.
 
-    Updates trainer.train_manifest, trainer.val_manifest, and trainer.latent_strategy.
+    Updates trainer.train_manifest, trainer.val_manifest, and trainer.latent_cache_handler.
 
     Args:
         trainer: Trainer instance
@@ -62,14 +62,14 @@ def run_latent_caching(trainer: Trainer) -> None:
     # Extract config values
     cache_dir = trainer.cfg.data.caching.cache_dir or trainer.cfg.data.source.train_data_dir
 
-    trainer.latent_strategy = trainer.strategies.create_latent_caching_strategy(trainer.cfg)
+    trainer.latent_cache_handler = trainer.strategies.create_latent_caching_strategy(trainer.cfg)
 
     trainer.vae.to(trainer.accelerator.device, dtype=trainer.vae_dtype)
     trainer.vae.requires_grad_(False)
     trainer.vae.eval()
 
     latent_caching_engine = CachingEngine(
-        handler=trainer.latent_strategy,
+        handler=trainer.latent_cache_handler,
         batch_size=trainer.cfg.data.caching.vae_batch_size,
         num_workers=trainer.cfg.data.caching.num_workers,
     )
@@ -104,7 +104,7 @@ def run_latent_caching(trainer: Trainer) -> None:
 def run_te_caching(trainer: Trainer) -> None:
     """Cache text encoder outputs for the dataset.
 
-    Updates trainer.train_manifest, trainer.val_manifest, and trainer.te_strategy.
+    Updates trainer.train_manifest, trainer.val_manifest, and trainer.te_cache_handler.
 
     Args:
         trainer: Trainer instance
@@ -122,7 +122,7 @@ def run_te_caching(trainer: Trainer) -> None:
 
     if trainer.cfg.data.caching.cache_text_encoder_outputs_to_disk:
         # Disk-based TE caching: use CachingEngine
-        trainer.te_strategy = trainer.strategies.create_te_caching_strategy(trainer.cfg)
+        trainer.te_cache_handler = trainer.strategies.create_te_caching_strategy(trainer.cfg)
         te_cache_model_bundle = trainer.strategies.build_te_cache_model_bundle(
             trainer.cfg,
             trainer.accelerator,
@@ -130,7 +130,7 @@ def run_te_caching(trainer: Trainer) -> None:
             trainer.tokenizers,
         )
         te_caching_engine = CachingEngine(
-            handler=trainer.te_strategy,
+            handler=trainer.te_cache_handler,
             batch_size=trainer.cfg.data.caching.te_batch_size,
         )
 

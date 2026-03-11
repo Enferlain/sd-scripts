@@ -356,7 +356,7 @@ class TestDataLoaderCreation:
             dataloader = create_training_dataloader(
                 dataset_manifest=manifest,
                 epoch_manifest=epoch_manifest,
-                latent_strategy=strategy,
+                latent_cache_handler=strategy,
                 flip_aug=False,
                 prior_loss_weight=1.0,
                 rank=0,
@@ -642,7 +642,7 @@ class TestResumeSupport:
             dataloader = create_training_dataloader(
                 dataset_manifest=manifest,
                 epoch_manifest=epoch_manifest,
-                latent_strategy=strategy,
+                latent_cache_handler=strategy,
                 flip_aug=False,
                 prior_loss_weight=1.0,
                 rank=0,
@@ -683,7 +683,7 @@ class TestResumeSupport:
             dataloader = create_training_dataloader(
                 dataset_manifest=manifest,
                 epoch_manifest=epoch_manifest,
-                latent_strategy=strategy,
+                latent_cache_handler=strategy,
                 flip_aug=False,
                 prior_loss_weight=1.0,
                 rank=0,

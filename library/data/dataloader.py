@@ -37,8 +37,8 @@ class TrainingDataset(IterableDataset):
         self,
         dataset_manifest: DatasetManifest,
         epoch_manifest: EpochManifest,
-        latent_strategy: CacheHandler,
-        te_strategy: CacheHandler | None = None,
+        latent_cache_handler: CacheHandler,
+        te_cache_handler: CacheHandler | None = None,
         tokens_path: str | None = None,
         streaming_tokens: bool = False,
         flip_aug: bool = False,
@@ -52,8 +52,8 @@ class TrainingDataset(IterableDataset):
         Args:
             dataset_manifest: Full dataset manifest with entry metadata.
             epoch_manifest: Pre-computed batch order for this epoch.
-            latent_strategy: Strategy for loading latent caches.
-            te_strategy: Optional strategy for loading text encoder caches.
+            latent_cache_handler: CacheHandler for loading latent caches.
+            te_cache_handler: Optional CacheHandler for loading text encoder caches.
             tokens_path: Path to epoch token file (safetensors). If provided,
                 tokens are loaded from file using offset-based slicing.
             streaming_tokens: If True, use memory-efficient streaming for tokens.
@@ -65,8 +65,8 @@ class TrainingDataset(IterableDataset):
         """
         self.dataset_manifest = dataset_manifest
         self.epoch_manifest = epoch_manifest
-        self.latent_strategy = latent_strategy
-        self.te_strategy = te_strategy
+        self.latent_cache_handler = latent_cache_handler
+        self.te_cache_handler = te_cache_handler
         self.tokens_path = tokens_path
         self.streaming_tokens = streaming_tokens
         self.flip_aug = flip_aug
@@ -232,7 +232,7 @@ class TrainingDataset(IterableDataset):
 
         for entry in entries:
             if entry.latent_cache_path:
-                cache_data = self.latent_strategy.load_cache(Path(entry.latent_cache_path))
+                cache_data = self.latent_cache_handler.load_cache(Path(entry.latent_cache_path))
                 if cache_data.latents is None:
                     raise ValueError(f"Cache missing latents for {entry.id}")
 
@@ -301,7 +301,7 @@ class TrainingDataset(IterableDataset):
             for key in first_entry_te:
                 te_outputs[key] = torch.stack([e.te_outputs[key] for e in entries if e.te_outputs is not None], dim=0)
             batch["text_encoder_outputs"] = te_outputs
-        elif self.te_strategy and entries[0].te_cache_path:
+        elif self.te_cache_handler and entries[0].te_cache_path:
             # Disk mode: load from files
             te_outputs = self._load_te_outputs(entries)
             batch["text_encoder_outputs"] = te_outputs
@@ -312,12 +312,12 @@ class TrainingDataset(IterableDataset):
         """Load and batch text encoder outputs from disk cache."""
         from pathlib import Path
 
-        assert self.te_strategy is not None
+        assert self.te_cache_handler is not None
 
         outputs = []
         for entry in entries:
             if entry.te_cache_path:
-                cache_data = self.te_strategy.load_cache(Path(entry.te_cache_path))
+                cache_data = self.te_cache_handler.load_cache(Path(entry.te_cache_path))
                 outputs.append(cache_data.aux)
 
         # Stack each output type
@@ -333,8 +333,8 @@ class TrainingDataset(IterableDataset):
 def create_training_dataloader(
     dataset_manifest: DatasetManifest,
     epoch_manifest: EpochManifest,
-    latent_strategy: CacheHandler,
-    te_strategy: CacheHandler | None = None,
+    latent_cache_handler: CacheHandler,
+    te_cache_handler: CacheHandler | None = None,
     tokens_path: str | None = None,
     streaming_tokens: bool = False,
     flip_aug: bool = False,
@@ -352,8 +352,8 @@ def create_training_dataloader(
     Args:
         dataset_manifest: Full dataset manifest.
         epoch_manifest: Pre-computed epoch batch order.
-        latent_strategy: Strategy for loading latents.
-        te_strategy: Optional strategy for TE outputs (cached per-image).
+        latent_cache_handler: CacheHandler for loading latents.
+        te_cache_handler: Optional CacheHandler for TE outputs (cached per-image).
         tokens_path: Path to epoch token file (safetensors). For caption augmentation.
         streaming_tokens: If True, use memory-efficient streaming for tokens.
         flip_aug: If True, randomly use flipped latents (50% probability).
@@ -371,8 +371,8 @@ def create_training_dataloader(
     dataset = TrainingDataset(
         dataset_manifest=dataset_manifest,
         epoch_manifest=epoch_manifest,
-        latent_strategy=latent_strategy,
-        te_strategy=te_strategy,
+        latent_cache_handler=latent_cache_handler,
+        te_cache_handler=te_cache_handler,
         tokens_path=tokens_path,
         streaming_tokens=streaming_tokens,
         flip_aug=flip_aug,

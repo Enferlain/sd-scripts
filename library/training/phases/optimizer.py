@@ -64,8 +64,8 @@ def prepare_optimizer(trainer: Trainer) -> None:
         trainer._val_dataloader = create_training_dataloader(
             dataset_manifest=trainer.val_manifest,
             epoch_manifest=val_epoch_manifest,
-            latent_strategy=trainer.latent_strategy,
-            te_strategy=trainer.te_strategy,
+            latent_cache_handler=trainer.latent_cache_handler,
+            te_cache_handler=trainer.te_cache_handler,
             flip_aug=False,  # No flip aug for validation
             prior_loss_weight=cfg.loss.prior_loss_weight,
             rank=trainer.accelerator.process_index,

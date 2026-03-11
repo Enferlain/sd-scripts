@@ -19,7 +19,6 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
-import library.strategies.base.training
 from library.logging.resource_monitor import create_resource_monitor
 from library.performance import deepspeed_utils
 from library.training.noise_utils import get_noise_scheduler
@@ -107,8 +106,8 @@ class Trainer:
         self.te_weight_dtype: torch.dtype | None = None
 
         # Will be set during run_caching()
-        self.latent_strategy: CacheHandler | None = None
-        self.te_strategy: CacheHandler | None = None
+        self.latent_cache_handler: CacheHandler | None = None
+        self.te_cache_handler: CacheHandler | None = None
 
         # Will be set during prepare_optimizer()
         self.optimizer: Any = None

@@ -114,14 +114,14 @@ class TestPipelineBenchmark:
         """DataLoader should achieve >50 batches/second with mocked I/O."""
         epoch_manifest = prepare_epoch(manifest=manifest_1k, epoch=1, seed=42, batch_size=4)
 
-        latent_strategy = MockCacheHandler()
-        te_strategy = MockCacheHandler()
+        latent_cache_handler = MockCacheHandler()
+        te_cache_handler = MockCacheHandler()
 
         dataloader = create_training_dataloader(
             dataset_manifest=manifest_1k,
             epoch_manifest=epoch_manifest,
-            latent_strategy=latent_strategy,
-            te_strategy=te_strategy,
+            latent_cache_handler=latent_cache_handler,
+            te_cache_handler=te_cache_handler,
             num_workers=0,
         )
 
@@ -144,11 +144,11 @@ class TestPipelineBenchmark:
         """First batch should be available in <50ms."""
         epoch_manifest = prepare_epoch(manifest=manifest_1k, epoch=1, seed=42, batch_size=4)
 
-        latent_strategy = MockCacheHandler()
+        latent_cache_handler = MockCacheHandler()
         dataloader = create_training_dataloader(
             dataset_manifest=manifest_1k,
             epoch_manifest=epoch_manifest,
-            latent_strategy=latent_strategy,
+            latent_cache_handler=latent_cache_handler,
             num_workers=0,
         )
 
