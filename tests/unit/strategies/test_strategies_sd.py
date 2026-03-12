@@ -7,11 +7,10 @@ Tests the SD 1.5/2.0 strategy classes with mocked tokenizers and text encoders.
 from contextlib import nullcontext
 
 import pytest
-import numpy as np
 import torch
 from unittest.mock import Mock, patch
 
-from library.strategies.sd.caching import SdLatentsPipelineStrategy, SdSdxlLatentsCachingStrategy, SdTextEncoderPipelineStrategy
+from library.strategies.sd.caching import SdLatentsPipelineStrategy, SdTextEncoderPipelineStrategy
 from library.strategies.sd.encoding import SdTextEncodingStrategy
 from library.strategies.sd.tokenization import SdTokenizeStrategy
 from library.strategies.sd.training import SdTrainingStrategy
@@ -235,87 +234,6 @@ class TestSdTextEncodingStrategy:
         result = encoding_strategy.encode_tokens_with_weights(tokenize_strategy, [mock_clip_text_encoder], tokens, weights)
 
         assert len(result) == 1
-
-
-# =============================================================================
-# SdSdxlLatentsCachingStrategy Tests
-# =============================================================================
-
-
-@pytest.mark.unit
-class TestSdSdxlLatentsCachingStrategy:
-    """Test SdSdxlLatentsCachingStrategy."""
-
-    def test_init_sd_suffix(self):
-        """Test SD suffix selection."""
-        strategy = SdSdxlLatentsCachingStrategy(sd=True, cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        assert strategy.sd is True
-        assert strategy.cache_suffix == "_sd.npz"
-
-    def test_init_sdxl_suffix(self):
-        """Test SDXL suffix selection."""
-        strategy = SdSdxlLatentsCachingStrategy(sd=False, cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        assert strategy.sd is False
-        assert strategy.cache_suffix == "_sdxl.npz"
-
-    def test_get_latents_npz_path_new_format(self, tmp_path):
-        """Test NPZ path generation for new format."""
-        strategy = SdSdxlLatentsCachingStrategy(sd=True, cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        img_path = str(tmp_path / "image.png")
-        npz_path = strategy.get_latents_npz_path(img_path, (512, 512))
-
-        assert npz_path.endswith("_0512x0512_sd.npz")
-        assert "image" in npz_path
-
-    def test_get_latents_npz_path_old_format_exists(self, tmp_path):
-        """Test NPZ path uses old format if it exists."""
-        strategy = SdSdxlLatentsCachingStrategy(sd=True, cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        # Create old-style npz
-        img_path = tmp_path / "image.png"
-        old_npz = tmp_path / "image.npz"
-        old_npz.write_text("")  # Just create the file
-
-        npz_path = strategy.get_latents_npz_path(str(img_path), (512, 512))
-
-        assert npz_path == str(old_npz)
-
-    def test_is_disk_cached_latents_expected_delegates(self, tmp_path):
-        """Test that is_disk_cached_latents_expected delegates to base with stride=8."""
-        strategy = SdSdxlLatentsCachingStrategy(sd=True, cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        npz_path = str(tmp_path / "test.npz")
-        np.savez(npz_path, latents=np.zeros((4, 64, 64)))
-
-        result = strategy.is_disk_cached_latents_expected((512, 512), npz_path, flip_aug=False, alpha_mask=False)
-
-        assert result is True
-
-    def test_cache_batch_latents_calls_vae(self):
-        """Test that cache_batch_latents calls VAE encode."""
-        strategy = SdSdxlLatentsCachingStrategy(sd=True, cache_to_disk=False, batch_size=1, skip_disk_cache_validity_check=False)
-
-        # Mock VAE
-        mock_vae = Mock()
-        mock_vae.device = torch.device("cpu")
-        mock_vae.dtype = torch.float32
-        mock_vae.encode.return_value = Mock(latent_dist=Mock(sample=Mock(return_value=torch.randn(1, 4, 64, 64))))
-
-        # Mock image info
-        mock_info = Mock()
-        mock_info.absolute_path = "/path/to/image.png"
-        mock_info.bucket_reso = (512, 512)
-        mock_info.latents_npz = "/path/to/image_sd.npz"
-
-        with patch("library.utils.device_utils.clean_memory_on_device"), patch.object(
-            strategy, "_default_cache_batch_latents"
-        ) as mock_cache:
-            strategy.cache_batch_latents(mock_vae, [mock_info], flip_aug=False, alpha_mask=False, random_crop=False)
-
-            mock_cache.assert_called_once()
 
 
 @pytest.mark.unit

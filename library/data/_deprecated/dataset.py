@@ -17,7 +17,6 @@ from library.constants import TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX, IMAGE_TRANSFORM
 from library.utils.jpeg_xl_util import get_jxl_size
 from library.data.image_utils import load_image, trim_and_resize_if_required, resize_image, validate_interpolation_fn
 
-from library.strategies.base.caching import TextEncoderOutputsCachingStrategy, LatentsCachingStrategy
 from library.strategies.base.training import TextEncodingStrategy, TokenizationStrategy
 
 from library.data._deprecated.caching import is_disk_cached_latents_is_expected, cache_batch_latents, cache_batch_text_encoder_outputs
@@ -95,9 +94,7 @@ class BaseDataset(torch.utils.data.Dataset):
         self.latents_caching_strategy = None
 
     def set_current_strategies(self):
-        self.tokenize_strategy = TokenizationStrategy.get_strategy()
-        self.text_encoder_output_caching_strategy = TextEncoderOutputsCachingStrategy.get_strategy()
-        self.latents_caching_strategy = LatentsCachingStrategy.get_strategy()
+        pass  # Legacy singleton strategies have been removed
 
     def adjust_min_max_bucket_reso_by_steps(
         self, resolution: tuple[int, int], min_bucket_reso: int, max_bucket_reso: int, bucket_reso_steps: int
@@ -463,7 +460,7 @@ class BaseDataset(torch.utils.data.Dataset):
         normal cache_latents method is used by default, but this method is used when caching strategy is specified.
         """
         logger.info("caching latents with caching strategy.")
-        caching_strategy = LatentsCachingStrategy.get_strategy()
+        caching_strategy = self.latents_caching_strategy
         image_infos = list(self.image_data.values())
 
         # sort by resolution
@@ -656,9 +653,9 @@ class BaseDataset(torch.utils.data.Dataset):
         r"""
         A brand new method to cache text encoder outputs. This method caches text encoder outputs with caching strategy.
         """
-        tokenize_strategy = TokenizationStrategy.get_strategy()
-        text_encoding_strategy = TextEncodingStrategy.get_strategy()
-        caching_strategy = TextEncoderOutputsCachingStrategy.get_strategy()
+        tokenize_strategy = self.tokenize_strategy
+        text_encoding_strategy = TextEncodingStrategy()  # deprecated fallback
+        caching_strategy = self.text_encoder_output_caching_strategy
         batch_size = caching_strategy.batch_size or self.batch_size
 
         logger.info("caching Text Encoder outputs with caching strategy.")

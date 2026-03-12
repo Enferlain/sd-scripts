@@ -122,20 +122,6 @@ class SdTrainingStrategy(TrainingStrategy):
         """
         return [tokenize_strategy.tokenizer]
 
-    def get_latents_caching_strategy(self, cfg: Any) -> Any:
-        """
-        Return SD latents caching strategy.
-
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            SdSdxlLatentsCachingStrategy instance.
-        """
-        return library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(
-            True, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
-        )
-
     def get_text_encoding_strategy(self, cfg: Any) -> Any:
         """
         Return SD text encoding strategy.

@@ -6,7 +6,6 @@ and are designed to work with CacheEntry dataclasses, not the legacy ImageInfo.
 """
 
 import logging
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -16,12 +15,9 @@ import torch
 from PIL import Image
 from safetensors.torch import save_file
 
-from library.data._deprecated.data_structures import ImageInfo
+
 from library.data.caching_engine import CacheHandler
 from library.data.structures import CacheData, CacheEntry, ModelConditioning
-from library.strategies.base.training import TextEncodingStrategy, TokenizationStrategy
-from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
-from library.strategies.base.caching import TextEncoderOutputsCachingStrategy
 
 from library.utils.hash_utils import stable_string_hash
 
@@ -32,134 +28,7 @@ logger = logging.getLogger(__name__)
 SDXL_VAE_LATENT_SCALE = 0.13025
 
 
-class SdxlTextEncoderOutputsCachingStrategy(TextEncoderOutputsCachingStrategy):
-    """
-    Text encoder outputs caching strategy for SDXL.
-    """
 
-    SDXL_TEXT_ENCODER_OUTPUTS_NPZ_SUFFIX = "_te_outputs.npz"
-
-    def __init__(
-        self,
-        cache_to_disk: bool,
-        batch_size: int | None,
-        skip_disk_cache_validity_check: bool,
-        is_partial: bool = False,
-        is_weighted: bool = False,
-    ) -> None:
-        super().__init__(cache_to_disk, batch_size, skip_disk_cache_validity_check, is_partial, is_weighted)
-
-    def get_outputs_npz_path(self, image_abs_path: str) -> str:
-        """
-        Get path to the cached text encoder outputs npz file.
-
-        Args:
-            image_abs_path: Absolute path to the image file
-
-        Returns:
-            Path to the npz file
-        """
-        return os.path.splitext(image_abs_path)[0] + SdxlTextEncoderOutputsCachingStrategy.SDXL_TEXT_ENCODER_OUTPUTS_NPZ_SUFFIX
-
-    def is_disk_cached_outputs_expected(self, npz_path: str):
-        """
-        Check if the text encoder outputs are cached in disk.
-
-        Args:
-            npz_path: Path to the npz file
-
-        Returns:
-            True if cached, False otherwise
-        """
-        if not self.cache_to_disk:
-            return False
-        if not os.path.exists(npz_path):
-            return False
-        if self.skip_disk_cache_validity_check:
-            return True
-
-        try:
-            npz = np.load(npz_path)
-            if "hidden_state1" not in npz or "hidden_state2" not in npz or "pool2" not in npz:
-                return False
-        except Exception as e:
-            logger.error(f"Error loading file: {npz_path}")
-            raise e
-
-        return True
-
-    def load_outputs_npz(self, npz_path: str) -> list[np.ndarray]:
-        """
-        Load text encoder outputs from npz file.
-
-        Args:
-            npz_path: Path to the npz file
-
-        Returns:
-            List of text encoder outputs
-        """
-        data = np.load(npz_path)
-        hidden_state1 = data["hidden_state1"]
-        hidden_state2 = data["hidden_state2"]
-        pool2 = data["pool2"]
-        return [hidden_state1, hidden_state2, pool2]
-
-    def cache_batch_outputs(
-        self, tokenize_strategy: TokenizationStrategy, models: list[Any], text_encoding_strategy: TextEncodingStrategy, batch: list[ImageInfo]
-    ) -> None:
-        """
-        Cache batch outputs.
-
-        Args:
-            tokenize_strategy: TokenizationStrategy
-            models: List of TextModel
-            text_encoding_strategy: TextEncodingStrategy
-            batch: List of ImageInfo
-        """
-        infos = batch
-        assert isinstance(text_encoding_strategy, SdxlTextEncodingStrategy)
-        sdxl_text_encoding_strategy: SdxlTextEncodingStrategy = text_encoding_strategy
-        captions = [info.caption for info in infos]
-
-        if self.is_weighted:
-            tokens_list, weights_list = tokenize_strategy.tokenize_with_weights(captions)
-            with torch.no_grad():
-                hidden_state1, hidden_state2, pool2 = sdxl_text_encoding_strategy.encode_tokens_with_weights(
-                    tokenize_strategy, models, tokens_list, weights_list
-                )
-        else:
-            tokens1, tokens2 = tokenize_strategy.tokenize(captions)
-            with torch.no_grad():
-                hidden_state1, hidden_state2, pool2 = sdxl_text_encoding_strategy.encode_tokens(
-                    tokenize_strategy, models, [tokens1, tokens2]
-                )
-
-        if hidden_state1.dtype == torch.bfloat16:
-            hidden_state1 = hidden_state1.float()
-        if hidden_state2.dtype == torch.bfloat16:
-            hidden_state2 = hidden_state2.float()
-        if pool2.dtype == torch.bfloat16:
-            pool2 = pool2.float()
-
-        hidden_state1 = hidden_state1.cpu().numpy()
-        hidden_state2 = hidden_state2.cpu().numpy()
-        pool2 = pool2.cpu().numpy()
-
-        for i, info in enumerate(infos):
-            hidden_state1_i = hidden_state1[i]
-            hidden_state2_i = hidden_state2[i]
-            pool2_i = pool2[i]
-
-            if self.cache_to_disk:
-                assert info.text_encoder_outputs_npz is not None, "text_encoder_outputs_npz must be set when cache_to_disk is True"
-                np.savez(
-                    info.text_encoder_outputs_npz,
-                    hidden_state1=hidden_state1_i,
-                    hidden_state2=hidden_state2_i,
-                    pool2=pool2_i,
-                )
-            else:
-                info.text_encoder_outputs = [hidden_state1_i, hidden_state2_i, pool2_i]
 
 
 @dataclass

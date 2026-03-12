@@ -59,18 +59,6 @@ class ModelLoadingStrategy(ABC):
 class TokenizationStrategy(ABC):
     """Runtime strategy for tokenization behavior."""
 
-    _strategy = None  # strategy instance: actual strategy class
-
-    @classmethod
-    def set_strategy(cls, strategy):
-        if cls._strategy is not None:
-            raise RuntimeError(f"Internal error. {cls.__name__} strategy is already set")
-        cls._strategy = strategy
-
-    @classmethod
-    def get_strategy(cls) -> "TokenizationStrategy | None":
-        return cls._strategy
-
     @abstractmethod
     def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
         """
@@ -100,18 +88,6 @@ class TokenizationStrategy(ABC):
 
 class TextEncodingStrategy(ABC):
     """Runtime strategy for text-encoding behavior."""
-
-    _strategy = None  # strategy instance: actual strategy class
-
-    @classmethod
-    def set_strategy(cls, strategy):
-        if cls._strategy is not None:
-            raise RuntimeError(f"Internal error. {cls.__name__} strategy is already set")
-        cls._strategy = strategy
-
-    @classmethod
-    def get_strategy(cls) -> "TextEncodingStrategy | None":
-        return cls._strategy
 
     @abstractmethod
     def encode_tokens(self, tokenize_strategy: TokenizationStrategy, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:

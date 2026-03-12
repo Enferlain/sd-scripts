@@ -150,20 +150,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
         """
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
-    def get_latents_caching_strategy(self, cfg: Any) -> Any:
-        """
-        Return SD/SDXL latents caching strategy (shared implementation).
-
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            SdSdxlLatentsCachingStrategy instance.
-        """
-        return library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(
-            False, cfg.data.caching.cache_latents_to_disk, cfg.data.caching.vae_batch_size, cfg.data.caching.skip_cache_check
-        )
-
     def get_text_encoding_strategy(self, cfg: Any) -> Any:
         """
         Return SDXL text encoding strategy.
@@ -192,26 +178,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
             List of models for text encoding.
         """
         return text_encoders + [accelerator.unwrap_model(text_encoders[-1])]
-
-    def get_text_encoder_outputs_caching_strategy(self, cfg: Any) -> Any | None:
-        """
-        Return SDXL text encoder outputs caching strategy if enabled.
-
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            SdxlTextEncoderOutputsCachingStrategy instance or None.
-        """
-        if cfg.data.caching.cache_text_encoder_outputs:
-            return library.strategies.sdxl.caching.SdxlTextEncoderOutputsCachingStrategy(
-                cfg.data.caching.cache_text_encoder_outputs_to_disk,
-                None,  # batch_size: not used for text encoder outputs caching TODO: why not? there is te_batch_size?
-                cfg.data.caching.skip_cache_check,
-                is_weighted=cfg.data.caption.weighted_captions,
-            )
-        else:
-            return None
 
     # --- New pipeline caching methods ---
 

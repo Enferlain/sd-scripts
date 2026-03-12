@@ -60,15 +60,6 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
     def get_tokenizers(self, tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy):
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
-    def get_latents_caching_strategy(self, cfg):
-        latents_caching_strategy = library.strategies.sd.caching.SdSdxlLatentsCachingStrategy(
-            False,
-            cfg.data.caching.cache_latents_to_disk,
-            cfg.data.caching.vae_batch_size,
-            cfg.data.caching.skip_cache_check,
-        )
-        return latents_caching_strategy
-
     def get_text_encoding_strategy(self, cfg):
         return library.strategies.sdxl.encoding.SdxlTextEncodingStrategy()
 

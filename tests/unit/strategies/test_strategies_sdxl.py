@@ -4,13 +4,10 @@ Unit tests for library/strategies/strategy_sdxl.py
 Tests the SDXL strategy classes with mocked dual tokenizers and text encoders.
 """
 
-import os
 import pytest
-import numpy as np
 import torch
 from unittest.mock import Mock, patch
 
-from library.strategies.sdxl.caching import SdxlTextEncoderOutputsCachingStrategy
 from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
 from library.strategies.sdxl.tokenization import SdxlTokenizeStrategy
 from library.strategies.sdxl.training import SdxlTrainingStrategy
@@ -264,161 +261,6 @@ class TestSdxlTextEncodingStrategy:
         assert len(result) == 3
 
 
-# =============================================================================
-# SdxlTextEncoderOutputsCachingStrategy Tests
-# =============================================================================
-
-
-@pytest.mark.unit
-class TestSdxlTextEncoderOutputsCachingStrategy:
-    """Test SdxlTextEncoderOutputsCachingStrategy."""
-
-    def test_init_stores_properties(self):
-        """Test __init__ stores all properties."""
-        strategy = SdxlTextEncoderOutputsCachingStrategy(
-            cache_to_disk=True, batch_size=4, skip_disk_cache_validity_check=True, is_partial=True, is_weighted=True
-        )
-
-        assert strategy.cache_to_disk is True
-        assert strategy.batch_size == 4
-        assert strategy.is_partial is True
-        assert strategy.is_weighted is True
-
-    def test_get_outputs_npz_path(self):
-        """Test NPZ path generation."""
-        strategy = SdxlTextEncoderOutputsCachingStrategy(cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        npz_path = strategy.get_outputs_npz_path("/path/to/image.png")
-
-        assert npz_path == "/path/to/image_te_outputs.npz"
-
-    def test_is_disk_cached_outputs_expected_false_when_no_cache(self, tmp_path):
-        """Test returns False when cache_to_disk is False."""
-        strategy = SdxlTextEncoderOutputsCachingStrategy(cache_to_disk=False, batch_size=1, skip_disk_cache_validity_check=False)
-
-        result = strategy.is_disk_cached_outputs_expected(str(tmp_path / "test.npz"))
-
-        assert result is False
-
-    def test_is_disk_cached_outputs_expected_false_when_file_missing(self, tmp_path):
-        """Test returns False when file doesn't exist."""
-        strategy = SdxlTextEncoderOutputsCachingStrategy(cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        result = strategy.is_disk_cached_outputs_expected(str(tmp_path / "nonexistent.npz"))
-
-        assert result is False
-
-    def test_is_disk_cached_outputs_expected_true_with_skip(self, tmp_path):
-        """Test returns True when skip_disk_cache_validity_check is True."""
-        strategy = SdxlTextEncoderOutputsCachingStrategy(cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=True)
-
-        npz_path = str(tmp_path / "test.npz")
-        np.savez(npz_path)  # Empty file
-
-        result = strategy.is_disk_cached_outputs_expected(npz_path)
-
-        assert result is True
-
-    def test_is_disk_cached_outputs_expected_checks_keys(self, tmp_path):
-        """Test checks for required keys in NPZ."""
-        strategy = SdxlTextEncoderOutputsCachingStrategy(cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        # Missing keys
-        npz_path = str(tmp_path / "test.npz")
-        np.savez(npz_path, hidden_state1=np.zeros((77, 768)))  # Missing state2 and pool2
-
-        result = strategy.is_disk_cached_outputs_expected(npz_path)
-
-        assert result is False
-
-    def test_is_disk_cached_outputs_expected_true_with_all_keys(self, tmp_path):
-        """Test returns True when all required keys present."""
-        strategy = SdxlTextEncoderOutputsCachingStrategy(cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        npz_path = str(tmp_path / "test.npz")
-        np.savez(npz_path, hidden_state1=np.zeros((77, 768)), hidden_state2=np.zeros((77, 1280)), pool2=np.zeros(1280))
-
-        result = strategy.is_disk_cached_outputs_expected(npz_path)
-
-        assert result is True
-
-    def test_load_outputs_npz(self, tmp_path):
-        """Test loading outputs from NPZ."""
-        strategy = SdxlTextEncoderOutputsCachingStrategy(cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False)
-
-        npz_path = str(tmp_path / "test.npz")
-        h1 = np.random.randn(77, 768).astype(np.float32)
-        h2 = np.random.randn(77, 1280).astype(np.float32)
-        p2 = np.random.randn(1280).astype(np.float32)
-        np.savez(npz_path, hidden_state1=h1, hidden_state2=h2, pool2=p2)
-
-        result = strategy.load_outputs_npz(npz_path)
-
-        assert len(result) == 3
-        np.testing.assert_array_almost_equal(result[0], h1)
-        np.testing.assert_array_almost_equal(result[1], h2)
-        np.testing.assert_array_almost_equal(result[2], p2)
-
-    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
-    def test_cache_batch_outputs_saves_to_disk(
-        self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2, tmp_path
-    ):
-        """Test cache_batch_outputs saves to disk when cache_to_disk is True."""
-        mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
-
-        strategy = SdxlTextEncoderOutputsCachingStrategy(
-            cache_to_disk=True, batch_size=1, skip_disk_cache_validity_check=False, is_weighted=False
-        )
-        tokenize_strategy = SdxlTokenizeStrategy(max_length=None)
-        encoding_strategy = SdxlTextEncodingStrategy()
-
-        # Mock info object
-        mock_info = Mock()
-        mock_info.caption = "a test caption"
-        mock_info.text_encoder_outputs_npz = str(tmp_path / "output.npz")
-
-        with patch.object(tokenize_strategy, "tokenize") as mock_tokenize:
-            mock_tokenize.return_value = (torch.randint(0, 1000, (1, 1, 77)), torch.randint(0, 1000, (1, 1, 77)))
-
-            with patch.object(encoding_strategy, "encode_tokens") as mock_encode:
-                mock_encode.return_value = [torch.randn(1, 77, 768), torch.randn(1, 77, 1280), torch.randn(1, 1280)]
-
-                strategy.cache_batch_outputs(
-                    tokenize_strategy, [mock_clip_text_encoder1, mock_clip_text_encoder2], encoding_strategy, [mock_info]
-                )
-
-        # Check file was created
-        assert os.path.exists(mock_info.text_encoder_outputs_npz)
-
-    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
-    def test_cache_batch_outputs_stores_in_memory(
-        self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2
-    ):
-        """Test cache_batch_outputs stores in memory when cache_to_disk is False."""
-        mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
-
-        strategy = SdxlTextEncoderOutputsCachingStrategy(
-            cache_to_disk=False, batch_size=1, skip_disk_cache_validity_check=False, is_weighted=False
-        )
-        tokenize_strategy = SdxlTokenizeStrategy(max_length=None)
-        encoding_strategy = SdxlTextEncodingStrategy()
-
-        mock_info = Mock()
-        mock_info.caption = "a test caption"
-
-        with patch.object(tokenize_strategy, "tokenize") as mock_tokenize:
-            mock_tokenize.return_value = (torch.randint(0, 1000, (1, 1, 77)), torch.randint(0, 1000, (1, 1, 77)))
-
-            with patch.object(encoding_strategy, "encode_tokens") as mock_encode:
-                mock_encode.return_value = [torch.randn(1, 77, 768), torch.randn(1, 77, 1280), torch.randn(1, 1280)]
-
-                strategy.cache_batch_outputs(
-                    tokenize_strategy, [mock_clip_text_encoder1, mock_clip_text_encoder2], encoding_strategy, [mock_info]
-                )
-
-        # Check info object was updated
-        assert mock_info.text_encoder_outputs is not None
-        assert len(mock_info.text_encoder_outputs) == 3
 
 
 @pytest.mark.unit
