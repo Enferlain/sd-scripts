@@ -3,7 +3,6 @@
 import ast
 import logging
 import random
-from dataclasses import dataclass, field
 from typing import Any
 
 import torch
@@ -33,13 +32,9 @@ from library.training.trainer_utils import restore_rng_state, switch_rng_state
 
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
 from library.losses.loss_weighting import apply_masked_loss, post_process_loss
-from library.config.config_validation import validate_sd_peft
-
-
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class SdTrainingStrategy(TrainingStrategy):
     """
     SD1.5/2 implementation of PEFT training strategy.
@@ -48,7 +43,7 @@ class SdTrainingStrategy(TrainingStrategy):
     """
 
     vae_latent_scale: float = SD_VAE_LATENT_SCALE
-    _tokenizers: list[Any] = field(default_factory=list, init=False, repr=False)
+    _tokenizers: list[Any]
 
     def load_target_model(
         self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any
@@ -339,17 +334,6 @@ class SdTrainingStrategy(TrainingStrategy):
             unet,
             strategy=self,
         )
-
-    def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:
-        """
-        Run SD-specific cfg validation.
-
-        Args:
-            cfg: Configuration object.
-            train_dataset_group: Training dataset group.
-            val_dataset_group: Validation dataset group.
-        """
-        validate_sd_peft(cfg, train_dataset_group, val_dataset_group)
 
     def update_metadata(self, metadata: dict, cfg: Any) -> None:
         """

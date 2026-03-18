@@ -201,9 +201,6 @@ class _DummyLoadingStrategy(ModelLoadingStrategy):
 
 
 class _DummyValidationStrategy(ValidationStrategy):
-    def validate_extra_config(self, cfg, train_dataset_group, val_dataset_group):
-        return None
-
     def calculate_val_loss(self, *args, **kwargs):
         return None, None
 

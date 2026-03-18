@@ -1,18 +1,12 @@
-# PEFT Training Strategy interfaces
-# Follows the pattern from PEFT_REFACTORING_PLAN.md
+"""Trainer-facing model-family strategy contracts and minimal shared defaults."""
 
-import logging
 import torch
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Any
 
 
 from library.optimizers.optimizer_utils import should_train_text_encoder, should_train_unet
-
-
-logger = logging.getLogger(__name__)
 
 
 class ModelLoadingStrategy(ABC):
@@ -284,18 +278,6 @@ class ValidationStrategy(ABC):
     """Strategy for model-specific validation."""
 
     @abstractmethod
-    def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:
-        """
-        Perform model-specific config validation.
-
-        Args:
-            cfg: Configuration object.
-            train_dataset_group: Training dataset group configuration.
-            val_dataset_group: Validation dataset group configuration.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def calculate_val_loss(
         self,
         global_step: int,
@@ -541,22 +523,6 @@ class ModelPreparationStrategy:
         """
         return True
 
-    def is_text_encoder_not_needed_for_training(self, cfg: Any) -> bool:
-        """
-        Check if text encoder is unnecessary for the training loop.
-
-        Returns True when TE caching is enabled AND TEs are not being trained.
-        ``offload_text_encoders`` keeps TEs in memory (on CPU), so this returns
-        False in that case.
-
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            True if TEs can be deleted from memory, False otherwise.
-        """
-        return cfg.data.caching.cache_text_encoder_outputs and not self.is_train_text_encoder(cfg)
-
     def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
         """
         Set up gradient checkpointing workaround for a text encoder.
@@ -647,25 +613,7 @@ class TrainingRuntimeStrategy:
         """
         return None
 
-    def on_validation_step_end(
-        self, cfg: Any, accelerator: Any, trainable_model: Any, text_encoders: list[Any], unet: Any, batch: Any, weight_dtype: torch.dtype
-    ) -> None:
-        """
-        Hook called after each validation step.
 
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            trainable_model: The trainable model.
-            text_encoders: List of text encoders.
-            unet: The UNet model.
-            batch: The current data batch.
-            weight_dtype: Weight data type.
-        """
-        return None
-
-
-@dataclass
 class TrainingStrategy(
     ModelLoadingStrategy,
     TokenizationStrategy,

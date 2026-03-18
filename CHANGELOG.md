@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Active strategy contract pruned further** — Removed deprecated-only hooks from the live `TrainingStrategy` contract surface.
+  - Removed the unused `on_validation_step_end()` runtime hook from `TrainingRuntimeStrategy`.
+  - Removed `ValidationStrategy.validate_extra_config()` from the active strategy contract and from the SD / SDXL training strategies.
+  - Removed `ModelPreparationStrategy.is_text_encoder_not_needed_for_training()`, which was only referenced by deprecated script paths.
+  - Removed `SdxlTrainingStrategy.cache_text_encoder_outputs_if_needed()`, which was only referenced by deprecated PEFT script paths.
+  - Removed the now-misleading `@dataclass` decoration from `TrainingStrategy`, `SdTrainingStrategy`, and `SdxlTrainingStrategy`.
 - **TrainingStrategy now owns tokenization/text-encoding behavior directly** — `TrainingStrategy` now inherits the `TokenizationStrategy` and `TextEncodingStrategy` facets, while `SdTrainingStrategy` and `SdxlTrainingStrategy` implement `tokenize()`, `tokenize_with_weights()`, `encode_tokens()`, and `encode_tokens_with_weights()` directly.
   - Removed `_tokenize_strategy` / `_text_encoding_strategy` instance state from `TrainingStrategy`.
   - Removed `get_tokenize_strategy()`, `get_tokenizers()`, and `get_text_encoding_strategy()` from the active strategy contract.

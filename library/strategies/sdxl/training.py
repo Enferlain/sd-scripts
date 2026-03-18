@@ -3,7 +3,6 @@
 import ast
 import logging
 import random
-from dataclasses import dataclass, field
 from typing import Any
 
 import torch
@@ -33,9 +32,6 @@ from library.utils.model_metadata import get_model_metadata_from_config
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.training.trainer_utils import restore_rng_state, switch_rng_state
 
-from library.config.config_validation import validate_sdxl_peft
-
-from library.utils.device_utils import clean_memory_on_device
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
 from library.losses.loss_weighting import apply_masked_loss, post_process_loss
 
@@ -43,7 +39,6 @@ from library.losses.loss_weighting import apply_masked_loss, post_process_loss
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class SdxlTrainingStrategy(TrainingStrategy):
     """
     SDXL implementation of PEFT training strategy.
@@ -54,7 +49,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
     vae_latent_scale: float = SDXL_VAE_LATENT_SCALE
 
     # Instance state set during model loading
-    _tokenizers: list[Any] = field(default_factory=list, init=False, repr=False)
+    _tokenizers: list[Any]
     load_stable_diffusion_format: bool = False
     logit_scale: Any = None
     ckpt_info: Any = None
@@ -296,51 +291,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
                 "pool2": pool2.squeeze(0).cpu(),
             }
 
-    def cache_text_encoder_outputs_if_needed(
-        self, cfg: Any, accelerator: Any, unet: Any, vae: Any, text_encoders: list[Any], dataset: Any, weight_dtype: torch.dtype
-    ) -> None:
-        """
-        Cache text encoder outputs for SDXL (dual encoders, more complex than SD).
-
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            unet: UNet model.
-            vae: VAE model.
-            text_encoders: List of text encoders.
-            dataset: Dataset object.
-            weight_dtype: Weight data type.
-        """
-        if cfg.data.caching.cache_text_encoder_outputs:
-            org_vae_device = vae.device
-            org_unet_device = unet.device
-            if not cfg.performance.memory.lowram:
-                # Save memory by moving vae and unet to cpu
-                logger.info("move vae and unet to cpu to save memory")
-                vae.to("cpu")
-                unet.to("cpu")
-                clean_memory_on_device(accelerator.device)
-
-            # When TE is not be trained, it will not be prepared so we need to use explicit autocast
-            text_encoders[0].to(accelerator.device, dtype=weight_dtype)
-            text_encoders[1].to(accelerator.device, dtype=weight_dtype)
-            with accelerator.autocast():
-                dataset.new_cache_text_encoder_outputs(text_encoders + [accelerator.unwrap_model(text_encoders[-1])], accelerator)
-            accelerator.wait_for_everyone()
-
-            text_encoders[0].to("cpu", dtype=torch.float32)  # Text Encoder doesn't work with fp16 on CPU
-            text_encoders[1].to("cpu", dtype=torch.float32)
-            clean_memory_on_device(accelerator.device)
-
-            if not cfg.performance.memory.lowram:
-                logger.info("move vae and unet back to original device")
-                vae.to(org_vae_device)  # Defined above in this same `if not lowram` block
-                unet.to(org_unet_device)  # Defined above in this same `if not lowram` block
-        else:
-            # Get text encoder outputs at each training step, so keep on GPU
-            text_encoders[0].to(accelerator.device, dtype=weight_dtype)
-            text_encoders[1].to(accelerator.device, dtype=weight_dtype)
-
     def call_unet(
         self,
         cfg: Any,
@@ -445,17 +395,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
             unet,
             strategy=self,
         )
-
-    def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:
-        """
-        Run SDXL-specific config validation.
-
-        Args:
-            cfg: Configuration object.
-            train_dataset_group: Training dataset group.
-            val_dataset_group: Validation dataset group.
-        """
-        validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group)
 
     def update_metadata(self, metadata: dict, cfg: Any) -> None:
         """
