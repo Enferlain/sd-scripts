@@ -8,6 +8,45 @@ from library.models.sd.tokenizer import get_clip_input_ids, load_tokenizer
 from library.strategies.base.training import TokenizationStrategy
 
 
+def build_sdxl_tokenizers(max_length: int | None, tokenizer_cache_dir: str | None = None) -> tuple[list[CLIPTokenizer], int]:
+    """Load the SDXL tokenizer runtime state used by training strategies."""
+    tokenizer1 = load_tokenizer(CLIPTokenizer, TOKENIZER1_PATH, tokenizer_cache_dir=tokenizer_cache_dir)
+    tokenizer2 = load_tokenizer(CLIPTokenizer, TOKENIZER2_PATH, tokenizer_cache_dir=tokenizer_cache_dir)
+    tokenizer2.pad_token_id = 0
+
+    resolved_max_length = tokenizer1.model_max_length if max_length is None else max_length + 2
+    return [tokenizer1, tokenizer2], resolved_max_length
+
+
+def tokenize_sdxl_text(tokenizer1: CLIPTokenizer, tokenizer2: CLIPTokenizer, max_length: int, text: str | list[str]) -> list[torch.Tensor]:
+    """Tokenize SDXL text for training/runtime use without a separate strategy object."""
+    text = [text] if isinstance(text, str) else text
+    return [
+        torch.stack([cast(torch.Tensor, get_clip_input_ids(tokenizer1, t, max_length)) for t in text], dim=0),
+        torch.stack([cast(torch.Tensor, get_clip_input_ids(tokenizer2, t, max_length)) for t in text], dim=0),
+    ]
+
+
+def tokenize_sdxl_text_with_weights(
+    tokenizer1: CLIPTokenizer, tokenizer2: CLIPTokenizer, max_length: int, text: str | list[str]
+) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+    """Tokenize SDXL text and return prompt weights for training/runtime use."""
+    text = [text] if isinstance(text, str) else text
+    tokens1_list, tokens2_list = [], []
+    weights1_list, weights2_list = [], []
+    for t in text:
+        tokens1, weights1 = get_clip_input_ids(tokenizer1, t, max_length, weighted=True)
+        tokens2, weights2 = get_clip_input_ids(tokenizer2, t, max_length, weighted=True)
+        tokens1_list.append(tokens1)
+        tokens2_list.append(tokens2)
+        weights1_list.append(weights1)
+        weights2_list.append(weights2)
+    return [torch.stack(tokens1_list, dim=0), torch.stack(tokens2_list, dim=0)], [
+        torch.stack(weights1_list, dim=0),
+        torch.stack(weights2_list, dim=0),
+    ]
+
+
 class SdxlTokenizeStrategy(TokenizationStrategy):
     """
     Tokenize strategy for SDXL.
@@ -19,14 +58,13 @@ class SdxlTokenizeStrategy(TokenizationStrategy):
             max_length: Max length of tokens
             tokenizer_cache_dir: Directory to cache the tokenizer
         """
-        self.tokenizer1 = load_tokenizer(CLIPTokenizer, TOKENIZER1_PATH, tokenizer_cache_dir=tokenizer_cache_dir)
-        self.tokenizer2 = load_tokenizer(CLIPTokenizer, TOKENIZER2_PATH, tokenizer_cache_dir=tokenizer_cache_dir)
-        self.tokenizer2.pad_token_id = 0
+        tokenizers, self.max_length = build_sdxl_tokenizers(max_length, tokenizer_cache_dir)
+        self.tokenizer1, self.tokenizer2 = tokenizers
 
-        if max_length is None:
-            self.max_length = self.tokenizer1.model_max_length
-        else:
-            self.max_length = max_length + 2
+    @property
+    def tokenizers(self) -> list[CLIPTokenizer]:
+        """Return the tokenizer instances owned by this helper strategy."""
+        return [self.tokenizer1, self.tokenizer2]
 
     def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
         """
@@ -38,11 +76,7 @@ class SdxlTokenizeStrategy(TokenizationStrategy):
         Returns:
             List of token tensors
         """
-        text = [text] if isinstance(text, str) else text
-        return [
-            torch.stack([cast(torch.Tensor, get_clip_input_ids(self.tokenizer1, t, self.max_length)) for t in text], dim=0),
-            torch.stack([cast(torch.Tensor, get_clip_input_ids(self.tokenizer2, t, self.max_length)) for t in text], dim=0),
-        ]
+        return tokenize_sdxl_text(self.tokenizer1, self.tokenizer2, self.max_length, text)
 
     def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         """
@@ -54,17 +88,4 @@ class SdxlTokenizeStrategy(TokenizationStrategy):
         Returns:
             Tuple of lists of token tensors and weight tensors
         """
-        text = [text] if isinstance(text, str) else text
-        tokens1_list, tokens2_list = [], []
-        weights1_list, weights2_list = [], []
-        for t in text:
-            tokens1, weights1 = get_clip_input_ids(self.tokenizer1, t, self.max_length, weighted=True)
-            tokens2, weights2 = get_clip_input_ids(self.tokenizer2, t, self.max_length, weighted=True)
-            tokens1_list.append(tokens1)
-            tokens2_list.append(tokens2)
-            weights1_list.append(weights1)
-            weights2_list.append(weights2)
-        return [torch.stack(tokens1_list, dim=0), torch.stack(tokens2_list, dim=0)], [
-            torch.stack(weights1_list, dim=0),
-            torch.stack(weights2_list, dim=0),
-        ]
+        return tokenize_sdxl_text_with_weights(self.tokenizer1, self.tokenizer2, self.max_length, text)

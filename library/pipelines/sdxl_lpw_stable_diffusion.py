@@ -614,8 +614,7 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         feature_extractor: CLIPFeatureExtractor,
         requires_safety_checker: bool = True,
         clip_skip: int = 1,
-        tokenize_strategy: Any | None = None,
-        text_encoding_strategy: Any | None = None,
+        strategy: Any | None = None,
     ):
         # clip skip is ignored currently
         self.tokenizer = tokenizer[0]
@@ -632,8 +631,7 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         self.clip_skip = clip_skip
         self.tokenizers = tokenizer
         self.text_encoders = text_encoder
-        self.tokenize_strategy = tokenize_strategy
-        self.text_encoding_strategy = text_encoding_strategy
+        self.strategy = strategy
 
     #     self.__init__additional__()
 
@@ -975,22 +973,19 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         do_classifier_free_guidance = guidance_scale > 1.0
 
         # 3. Encode input prompt
-        if self.tokenize_strategy is None or self.text_encoding_strategy is None:
-            raise RuntimeError("SDXL sampling pipeline requires explicit tokenize and text-encoding strategies")
+        if self.strategy is None:
+            raise RuntimeError("SDXL sampling pipeline requires an explicit training strategy")
 
-        tokenize_strategy = self.tokenize_strategy
-        encoding_strategy = self.text_encoding_strategy
-
-        text_input_ids, text_weights = tokenize_strategy.tokenize_with_weights(prompt)
-        hidden_states_1, hidden_states_2, text_pool = encoding_strategy.encode_tokens_with_weights(
-            tokenize_strategy, self.text_encoders, text_input_ids, text_weights
+        text_input_ids, text_weights = self.strategy.tokenize_with_weights(prompt)
+        hidden_states_1, hidden_states_2, text_pool = self.strategy.encode_tokens_with_weights(
+            self.text_encoders, text_input_ids, text_weights
         )
         text_embeddings = torch.cat([hidden_states_1, hidden_states_2], dim=-1)
 
         if do_classifier_free_guidance:
-            input_ids, weights = tokenize_strategy.tokenize_with_weights(negative_prompt or "")
-            hidden_states_1, hidden_states_2, uncond_pool = encoding_strategy.encode_tokens_with_weights(
-                tokenize_strategy, self.text_encoders, input_ids, weights
+            input_ids, weights = self.strategy.tokenize_with_weights(negative_prompt or "")
+            hidden_states_1, hidden_states_2, uncond_pool = self.strategy.encode_tokens_with_weights(
+                self.text_encoders, input_ids, weights
             )
             uncond_embeddings = torch.cat([hidden_states_1, hidden_states_2], dim=-1)
         else:

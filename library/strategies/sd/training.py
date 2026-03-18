@@ -3,17 +3,16 @@
 import ast
 import logging
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import torch
 from torch import nn
 from tqdm import tqdm
 
-import library.strategies.base.training
 import library.strategies.sd.caching
-import library.strategies.sd.encoding
-import library.strategies.sd.tokenization
+from library.strategies.sd.encoding import encode_sd_tokens, encode_sd_tokens_with_weights
+from library.strategies.sd.tokenization import build_sd_tokenizers, tokenize_sd_captions, tokenize_sd_text, tokenize_sd_text_with_weights
 
 try:
     from ramtorch.helpers import replace_linear_with_ramtorch
@@ -49,6 +48,7 @@ class SdTrainingStrategy(TrainingStrategy):
     """
 
     vae_latent_scale: float = SD_VAE_LATENT_SCALE
+    _tokenizers: list[Any] = field(default_factory=list, init=False, repr=False)
 
     def load_target_model(
         self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any
@@ -96,43 +96,34 @@ class SdTrainingStrategy(TrainingStrategy):
             unet,
         )
 
-    def get_tokenize_strategy(self, cfg: Any) -> Any:
-        """
-        Return SD1.5/2 tokenize strategy.
+    # --- ModelPreparationStrategy overrides (CLIP-specific) ---
 
-        Args:
-            cfg: Configuration object.
+    def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
+        """Enable grad on CLIP embeddings so gradient checkpointing works."""
+        text_encoder.text_model.embeddings.requires_grad_(True)
 
-        Returns:
-            SdTokenizeStrategy instance.
-        """
-        return library.strategies.sd.tokenization.SdTokenizeStrategy(
-            cfg.model.model_type == "sd2", cfg.training.max_token_length, cfg.model.tokenizer_cache_dir
+    def prepare_text_encoder_fp8(self, index: int, text_encoder: Any, te_weight_dtype: torch.dtype, weight_dtype: torch.dtype) -> None:
+        """Cast CLIP embeddings back from FP8 — nn.Embedding doesn't support FP8."""
+        text_encoder.text_model.embeddings.to(dtype=weight_dtype)
+
+    max_token_length: int = 0
+    clip_skip: int | None = None
+
+    def __init__(self, cfg: Any):
+        """Construct a fully initialized SD training strategy from config."""
+        self._tokenizers, self.max_token_length = build_sd_tokenizers(
+            cfg.model.model_type == "sd2",
+            cfg.training.max_token_length,
+            cfg.model.tokenizer_cache_dir,
         )
+        self.clip_skip = cfg.training.clip_skip
+        self.la_sampler = None
+        self.live_plotter_process = None
 
-    def get_tokenizers(self, tokenize_strategy: library.strategies.sd.tokenization.SdTokenizeStrategy) -> list[Any]:
-        """
-        Return single tokenizer for SD1.5/2.
-
-        Args:
-            tokenize_strategy: SdTokenizeStrategy instance.
-
-        Returns:
-            List containing the tokenizer.
-        """
-        return [tokenize_strategy.tokenizer]
-
-    def get_text_encoding_strategy(self, cfg: Any) -> Any:
-        """
-        Return SD text encoding strategy.
-
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            SdTextEncodingStrategy instance.
-        """
-        return library.strategies.sd.encoding.SdTextEncodingStrategy(cfg.training.clip_skip)
+    @property
+    def tokenizers(self) -> list[Any]:
+        """Return the tokenizer instances owned by this SD strategy."""
+        return self._tokenizers
 
     # --- New pipeline caching methods ---
     def create_latent_caching_strategy(self, cfg: Any) -> Any:
@@ -160,7 +151,36 @@ class SdTrainingStrategy(TrainingStrategy):
 
     def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
         """Tokenize captions using SD's single CLIP tokenizer."""
-        return [library.strategies.sd.tokenization.tokenize_sd_captions(tokenizers[0], captions, max_token_length)]
+        return [tokenize_sd_captions(tokenizers[0], captions, max_token_length)]
+
+    def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
+        """Tokenize SD prompts using strategy-owned tokenizer state."""
+        if not self._tokenizers:
+            raise RuntimeError("SD strategy has no tokenizers configured.")
+        return tokenize_sd_text(self._tokenizers[0], self.max_token_length, text)
+
+    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+        """Tokenize SD prompts with per-token prompt weights."""
+        if not self._tokenizers:
+            raise RuntimeError("SD strategy has no tokenizers configured.")
+        return tokenize_sd_text_with_weights(self._tokenizers[0], self.max_token_length, text)
+
+    def encode_tokens(self, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
+        """Encode SD tokens using strategy-owned tokenizer/runtime state."""
+        if not self._tokenizers:
+            raise RuntimeError("SD strategy has no tokenizers configured.")
+        return encode_sd_tokens(self._tokenizers[0], self.clip_skip, models, tokens)
+
+    def encode_tokens_with_weights(
+        self,
+        models: list[Any],
+        tokens: list[torch.Tensor],
+        weights: list[torch.Tensor],
+    ) -> list[torch.Tensor]:
+        """Encode SD tokens and apply prompt weights."""
+        if not self._tokenizers:
+            raise RuntimeError("SD strategy has no tokenizers configured.")
+        return encode_sd_tokens_with_weights(self._tokenizers[0], self.clip_skip, models, tokens, weights)
 
     def encode_te_outputs_in_memory(
         self,
@@ -171,7 +191,7 @@ class SdTrainingStrategy(TrainingStrategy):
         device: Any,
     ) -> dict[str, torch.Tensor]:
         """Compute SD text encoder outputs for a single caption (in-memory caching)."""
-        input_ids = library.strategies.sd.tokenization.tokenize_sd_captions(tokenizers[0], [caption], max_token_length).to(device)
+        input_ids = tokenize_sd_captions(tokenizers[0], [caption], max_token_length).to(device)
 
         with torch.no_grad():
             hidden_state = get_hidden_states_sd(
@@ -206,9 +226,6 @@ class SdTrainingStrategy(TrainingStrategy):
         weight_dtype: torch.dtype,
     ) -> list[torch.Tensor]:
         """Get SD text conditioning from cached outputs, cached tokens, or live captions."""
-        tokenize_strategy = self._tokenize_strategy
-        text_encoding_strategy = self._text_encoding_strategy
-
         te_outputs = batch.get("text_encoder_outputs")
         text_encoder_conds = (
             [te_outputs["hidden_state"].to(accelerator.device, dtype=weight_dtype)]
@@ -219,9 +236,8 @@ class SdTrainingStrategy(TrainingStrategy):
         if len(text_encoder_conds) == 0 or text_encoder_conds[0] is None or train_text_encoder:
             with torch.set_grad_enabled(is_train and train_text_encoder), accelerator.autocast():
                 if cfg.data.caption.weighted_captions:
-                    input_ids_list, weights_list = tokenize_strategy.tokenize_with_weights(batch["captions"])
-                    encoded_text_encoder_conds = text_encoding_strategy.encode_tokens_with_weights(
-                        tokenize_strategy,
+                    input_ids_list, weights_list = self.tokenize_with_weights(batch["captions"])
+                    encoded_text_encoder_conds = self.encode_tokens_with_weights(
                         self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
                         input_ids_list,
                         weights_list,
@@ -231,9 +247,8 @@ class SdTrainingStrategy(TrainingStrategy):
                     if input_ids_dict is not None:
                         input_ids = [input_ids_dict["clip"].to(accelerator.device)]
                     else:
-                        input_ids = [ids.to(accelerator.device) for ids in tokenize_strategy.tokenize(batch["captions"])]
-                    encoded_text_encoder_conds = text_encoding_strategy.encode_tokens(
-                        tokenize_strategy,
+                        input_ids = [ids.to(accelerator.device) for ids in self.tokenize(batch["captions"])]
+                    encoded_text_encoder_conds = self.encode_tokens(
                         self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
                         input_ids,
                     )
@@ -322,8 +337,7 @@ class SdTrainingStrategy(TrainingStrategy):
             tokenizers[0],
             text_encoders[0],
             unet,
-            tokenize_strategy=self._tokenize_strategy,
-            text_encoding_strategy=self._text_encoding_strategy,
+            strategy=self,
         )
 
     def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:

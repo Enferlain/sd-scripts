@@ -18,17 +18,12 @@ from safetensors.torch import save_file
 
 from library.data.caching_engine import CacheHandler
 from library.data.structures import CacheData, CacheEntry, ModelConditioning
+from library.constants import SDXL_VAE_LATENT_SCALE
 
 from library.utils.hash_utils import stable_string_hash
 
 
 logger = logging.getLogger(__name__)
-
-# SDXL VAE scale factor (different from SD)
-SDXL_VAE_LATENT_SCALE = 0.13025
-
-
-
 
 
 @dataclass

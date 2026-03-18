@@ -1019,7 +1019,7 @@ def main(cfg: SDPeftConfig):
     prepare_config(cfg)
     validate_config(cfg)
 
-    strategies = SdTrainingStrategy()
+    strategies = SdTrainingStrategy(args)
     train(cfg, strategies)
 
 

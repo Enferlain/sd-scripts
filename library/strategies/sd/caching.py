@@ -21,14 +21,10 @@ from library.data.structures import CacheData, CacheEntry
 from library.models.sd.text_encoder import get_hidden_states_sd
 from library.strategies.sd.tokenization import tokenize_sd_captions
 from library.utils.hash_utils import stable_string_hash
-
-
+from library.constants import SD_VAE_LATENT_SCALE
 
 
 logger = logging.getLogger(__name__)
-
-# SD VAE scale factor (used in latent space)
-SD_VAE_LATENT_SCALE = 0.18215
 
 
 class SdLatentsPipelineStrategy(CacheHandler):
@@ -445,6 +441,4 @@ class SdTextEncoderPipelineStrategy(CacheHandler):
     ) -> torch.Tensor:
         """Return a dummy tensor because SD text encoding does not use images."""
         return torch.empty(0)
-
-
 

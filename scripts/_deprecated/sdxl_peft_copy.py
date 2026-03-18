@@ -1340,7 +1340,7 @@ def main(cfg: SDXLPeftConfig):
     prepare_config(cfg)
     validate_config(cfg)
 
-    strategies = SdxlTrainingStrategy()
+    strategies = SdxlTrainingStrategy(args)
     train(cfg, strategies)
 
 

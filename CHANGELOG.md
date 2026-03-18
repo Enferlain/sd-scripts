@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-18]
+
+### Changed
+
+- **TrainingStrategy now owns tokenization/text-encoding behavior directly** — `TrainingStrategy` now inherits the `TokenizationStrategy` and `TextEncodingStrategy` facets, while `SdTrainingStrategy` and `SdxlTrainingStrategy` implement `tokenize()`, `tokenize_with_weights()`, `encode_tokens()`, and `encode_tokens_with_weights()` directly.
+  - Removed `_tokenize_strategy` / `_text_encoding_strategy` instance state from `TrainingStrategy`.
+  - Removed `get_tokenize_strategy()`, `get_tokenizers()`, and `get_text_encoding_strategy()` from the active strategy contract.
+  - SD and SDXL helper modules (`sd/tokenization.py`, `sd/encoding.py`, `sdxl/tokenization.py`, `sdxl/encoding.py`) now expose direct helper functions that the concrete training strategies call.
+- **Concrete strategies are now born ready** — `SdTrainingStrategy(cfg)` and `SdxlTrainingStrategy(cfg)` now load their tokenizer/runtime state in the concrete strategy constructor instead of relying on a second lifecycle step.
+  - Removed `TrainingStrategy.initialize(cfg)` from the base contract.
+  - `Trainer.setup()` no longer activates strategy internals; it only consumes `strategy.tokenizers`.
+  - Active SDXL scripts now instantiate ready strategy objects before passing them to `Trainer`.
+- **Tokenizer ownership now matches the tokenization facet** — `tokenizers` now lives as a tokenization-facet contract with concrete storage on the SD / SDXL training strategies, instead of as a shared data field on the composed `TrainingStrategy` base.
+- **Sampling now receives the training strategy itself** — `sample_images_common()` and the SDXL LPW sampling pipeline no longer receive separate tokenization/text-encoding runtime objects; SDXL sampling now uses the concrete `TrainingStrategy` instance as the prompt tokenization/encoding surface.
+- **Strategy tests updated for direct facets** — Base, SD, SDXL, and resume-logic tests now exercise the direct strategy-facet API instead of the removed sub-strategy factories/instance state.
+
 ## [2026-03-12]
 
 ### Removed
@@ -15,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Stale singleton calls** — Replaced broken `get_strategy()` calls in deprecated `dataset.py` with instance variables.
 - **Deprecated script methods** — Removed `get_latents_caching_strategy` from `scripts/sdxl_textual_inversion.py`.
 - **Obsolete tests** — Removed ~400 lines of tests for deleted classes and singleton patterns across all three strategy test files.
+
+### Changed
+
+- **CLIP-specific base defaults removed** — `prepare_text_encoder_grad_ckpt_workaround` and `prepare_text_encoder_fp8` no longer have CLIP-specific implementations in the generic `ModelPreparationStrategy` base. Both now raise `NotImplementedError`; SD and SDXL strategies provide the CLIP-specific overrides.
 
 ## [2026-03-11]
 

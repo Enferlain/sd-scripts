@@ -46,7 +46,7 @@ def main(cfg: SDXLFineTuneConfig):
     prepare_config(cfg)
     validate_config(cfg)
 
-    strategies = SdxlTrainingStrategy()
+    strategies = SdxlTrainingStrategy(cfg)
     train(cfg, strategies)
 
 

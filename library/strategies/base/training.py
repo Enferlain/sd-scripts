@@ -5,7 +5,7 @@ import logging
 import torch
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -57,7 +57,13 @@ class ModelLoadingStrategy(ABC):
 
 
 class TokenizationStrategy(ABC):
-    """Runtime strategy for tokenization behavior."""
+    """Facet for model-family tokenization behavior."""
+
+    @property
+    @abstractmethod
+    def tokenizers(self) -> list[Any]:
+        """Return tokenizer instances owned by this strategy."""
+        raise NotImplementedError
 
     @abstractmethod
     def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
@@ -87,10 +93,10 @@ class TokenizationStrategy(ABC):
 
 
 class TextEncodingStrategy(ABC):
-    """Runtime strategy for text-encoding behavior."""
+    """Facet for model-family text-encoding behavior."""
 
     @abstractmethod
-    def encode_tokens(self, tokenize_strategy: TokenizationStrategy, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
+    def encode_tokens(self, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
         """
         Encode token tensors into model-family text-conditioning outputs.
         """
@@ -99,7 +105,6 @@ class TextEncodingStrategy(ABC):
     @abstractmethod
     def encode_tokens_with_weights(
         self,
-        tokenize_strategy: TokenizationStrategy,
         models: list[Any],
         tokens: list[torch.Tensor],
         weights: list[torch.Tensor],
@@ -196,10 +201,6 @@ class SampleGenerationStrategy(ABC):
     ) -> None:
         """
         Generate sample images for the current training step.
-
-        Uses ``self._tokenize_strategy`` and ``self._text_encoding_strategy``
-        (set during ``initialize()``) for model-family-specific tokenization
-        and text encoding.
 
         Args:
             accelerator: Accelerator instance.
@@ -319,9 +320,6 @@ class ValidationStrategy(ABC):
         """
         Calculate validation loss.
 
-        Uses ``self._tokenize_strategy`` and ``self._text_encoding_strategy``
-        internally for any on-the-fly tokenization or encoding.
-
         Returns:
             Tuple of (current_val_loss, average_val_loss).
         """
@@ -422,9 +420,6 @@ class DiffusionTrainingStrategy(ABC):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
         """
         Process a batch for training or validation.
-
-        Uses ``self._tokenize_strategy`` and ``self._text_encoding_strategy``
-        internally for any on-the-fly tokenization or text encoding.
 
         Returns:
             Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
@@ -564,17 +559,26 @@ class ModelPreparationStrategy:
 
     def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
         """
-        Set up gradient checkpointing for a text encoder.
+        Set up gradient checkpointing workaround for a text encoder.
+
+        Model families must override this with architecture-specific logic
+        (e.g. CLIP needs ``text_model.embeddings.requires_grad_(True)``).
 
         Args:
             index: Index of the text encoder.
             text_encoder: The text encoder model.
         """
-        text_encoder.text_model.embeddings.requires_grad_(True)
+        raise NotImplementedError(
+            f"{type(self).__name__} must implement prepare_text_encoder_grad_ckpt_workaround"
+        )
 
     def prepare_text_encoder_fp8(self, index: int, text_encoder: Any, te_weight_dtype: torch.dtype, weight_dtype: torch.dtype) -> None:
         """
-        Prepare text encoder modules for FP8 training.
+        Prepare text encoder embedding modules for FP8 training.
+
+        ``nn.Embedding`` does not support FP8, so model families must cast the
+        embedding layer back to the base weight dtype.  Override with
+        architecture-specific logic.
 
         Args:
             index: Index of the text encoder.
@@ -582,7 +586,9 @@ class ModelPreparationStrategy:
             te_weight_dtype: Target weight dtype for text encoder.
             weight_dtype: General weight dtype.
         """
-        text_encoder.text_model.embeddings.to(dtype=weight_dtype)
+        raise NotImplementedError(
+            f"{type(self).__name__} must implement prepare_text_encoder_fp8"
+        )
 
     def prepare_unet_with_accelerator(self, cfg: Any, accelerator: Any, unet: Any) -> Any:
         """
@@ -662,6 +668,8 @@ class TrainingRuntimeStrategy:
 @dataclass
 class TrainingStrategy(
     ModelLoadingStrategy,
+    TokenizationStrategy,
+    TextEncodingStrategy,
     CachingStrategy,
     SampleGenerationStrategy,
     CheckpointingStrategy,
@@ -676,66 +684,10 @@ class TrainingStrategy(
 
     Implementations inherit from this and provide model-specific implementations.
 
-    Lifecycle:
-        1. Instantiate the strategy (no config needed).
-        2. Call ``initialize(cfg)`` once during ``Trainer.setup()`` to set up
-           tokenization and text-encoding internals.
-        3. Runner code accesses ``strategy.tokenizers`` and calls strategy
-           methods; internal ``_tokenize_strategy`` / ``_text_encoding_strategy``
-           are used by the strategy itself and never exposed to runner code.
+    Concrete strategies are expected to be fully formed when instantiated.
+    Runner code accesses ``strategy.tokenizers`` and calls strategy methods on
+    the strategy itself without a separate initialization phase.
     """
-
-    # --- Internal state (set by initialize) ---
-    _tokenize_strategy: TokenizationStrategy | None = field(default=None, init=False, repr=False)
-    _text_encoding_strategy: TextEncodingStrategy | None = field(default=None, init=False, repr=False)
-
-    def initialize(self, cfg: Any) -> None:
-        """Initialize strategy internals that require config.
-
-        Called once during ``Trainer.setup()`` after the strategy is created.
-        Sets up internal tokenization and text-encoding state.
-
-        Args:
-            cfg: Hydra configuration object.
-        """
-        self._tokenize_strategy = self.get_tokenize_strategy(cfg)
-        self._text_encoding_strategy = self.get_text_encoding_strategy(cfg)
-
-    @property
-    def tokenizers(self) -> list[Any]:
-        """Return tokenizer(s) from the internal tokenization strategy.
-
-        Requires ``initialize()`` to have been called first.
-        """
-        if self._tokenize_strategy is None:
-            raise RuntimeError("Strategy not initialized. Call initialize(cfg) first.")
-        return self.get_tokenizers(self._tokenize_strategy)
-
-    @abstractmethod
-    def get_tokenize_strategy(self, cfg: Any) -> TokenizationStrategy:
-        """
-        Return the tokenization runtime strategy for this architecture.
-
-        Args:
-            cfg: Configuration object containing tokenizer settings.
-
-        Returns:
-            Tokenization strategy instance suitable for the model architecture.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_tokenizers(self, tokenize_strategy: TokenizationStrategy) -> list[Any] | Any:
-        """
-        Return tokenizer(s) from the runtime tokenization strategy.
-
-        Args:
-            tokenize_strategy: The strategy object created by `get_tokenize_strategy`.
-
-        Returns:
-            A single tokenizer or a list/tuple of tokenizers.
-        """
-        raise NotImplementedError
 
     @abstractmethod
     def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
@@ -749,19 +701,6 @@ class TrainingStrategy(
 
         Returns:
             List of token tensors, one per tokenizer.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_text_encoding_strategy(self, cfg: Any) -> TextEncodingStrategy:
-        """
-        Return the TextEncodingStrategy for this architecture.
-
-        Args:
-            cfg: Configuration object containing text encoding settings.
-
-        Returns:
-            A TextEncodingStrategy instance.
         """
         raise NotImplementedError
 
@@ -807,7 +746,3 @@ class TrainingStrategy(
             List of models properly prepared for encoding.
         """
         raise NotImplementedError
-
-    # Instance state (set during training)
-    la_sampler: Any = field(default=None, init=False, repr=False)
-    live_plotter_process: Any = field(default=None, init=False, repr=False)

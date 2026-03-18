@@ -10,13 +10,10 @@ from unittest.mock import MagicMock
 import pytest
 import torch
 
+from library.constants import SD_VAE_LATENT_SCALE, SDXL_VAE_LATENT_SCALE
 from library.data.structures import CacheEntry
-from library.strategies.sd.caching import SdLatentsPipelineStrategy, SdTextEncoderPipelineStrategy, SD_VAE_LATENT_SCALE
-from library.strategies.sdxl.caching import (
-    SdxlLatentsPipelineStrategy,
-    SdxlTextEncoderPipelineStrategy,
-    SDXL_VAE_LATENT_SCALE,
-)
+from library.strategies.sd.caching import SdLatentsPipelineStrategy, SdTextEncoderPipelineStrategy
+from library.strategies.sdxl.caching import SdxlLatentsPipelineStrategy, SdxlTextEncoderPipelineStrategy
 
 
 @pytest.fixture

@@ -3,18 +3,16 @@
 import ast
 import logging
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import torch
 from torch import nn
 from tqdm import tqdm
 
-import library.strategies.base.training
-import library.strategies.sd.caching
 import library.strategies.sdxl.caching
-import library.strategies.sdxl.encoding
-import library.strategies.sdxl.tokenization
+from library.strategies.sdxl.encoding import encode_sdxl_tokens, encode_sdxl_tokens_with_weights
+from library.strategies.sdxl.tokenization import build_sdxl_tokenizers, tokenize_sdxl_text, tokenize_sdxl_text_with_weights
 
 try:
     from ramtorch.helpers import replace_linear_with_ramtorch
@@ -56,9 +54,28 @@ class SdxlTrainingStrategy(TrainingStrategy):
     vae_latent_scale: float = SDXL_VAE_LATENT_SCALE
 
     # Instance state set during model loading
+    _tokenizers: list[Any] = field(default_factory=list, init=False, repr=False)
     load_stable_diffusion_format: bool = False
     logit_scale: Any = None
     ckpt_info: Any = None
+    max_token_length: int = 0
+
+    def __init__(self, cfg: Any):
+        """Construct a fully initialized SDXL training strategy from config."""
+        self._tokenizers, self.max_token_length = build_sdxl_tokenizers(
+            cfg.training.max_token_length,
+            cfg.model.tokenizer_cache_dir,
+        )
+        self.load_stable_diffusion_format = False
+        self.logit_scale = None
+        self.ckpt_info = None
+        self.la_sampler = None
+        self.live_plotter_process = None
+
+    @property
+    def tokenizers(self) -> list[Any]:
+        """Return the tokenizer instances owned by this SDXL strategy."""
+        return self._tokenizers
 
     def load_target_model(
         self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any
@@ -126,41 +143,15 @@ class SdxlTrainingStrategy(TrainingStrategy):
 
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
-    def get_tokenize_strategy(self, cfg: Any) -> Any:
-        """
-        Return SDXL tokenize strategy (dual tokenizers).
+    # --- ModelPreparationStrategy overrides (CLIP-specific) ---
 
-        Args:
-            cfg: Configuration object.
+    def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
+        """Enable grad on CLIP embeddings so gradient checkpointing works."""
+        text_encoder.text_model.embeddings.requires_grad_(True)
 
-        Returns:
-            SdxlTokenizeStrategy instance.
-        """
-        return library.strategies.sdxl.tokenization.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.model.tokenizer_cache_dir)
-
-    def get_tokenizers(self, tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy) -> list[Any]:
-        """
-        Return both tokenizers for SDXL.
-
-        Args:
-            tokenize_strategy: SdxlTokenizeStrategy instance.
-
-        Returns:
-            List containing two tokenizers.
-        """
-        return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
-
-    def get_text_encoding_strategy(self, cfg: Any) -> Any:
-        """
-        Return SDXL text encoding strategy.
-
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            SdxlTextEncodingStrategy instance.
-        """
-        return library.strategies.sdxl.encoding.SdxlTextEncodingStrategy()
+    def prepare_text_encoder_fp8(self, index: int, text_encoder: Any, te_weight_dtype: torch.dtype, weight_dtype: torch.dtype) -> None:
+        """Cast CLIP embeddings back from FP8 — nn.Embedding doesn't support FP8."""
+        text_encoder.text_model.embeddings.to(dtype=weight_dtype)
 
     def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
         """
@@ -235,6 +226,35 @@ class SdxlTrainingStrategy(TrainingStrategy):
             tokenize_clip_captions(tokenizers[0], captions, max_token_length),
             tokenize_clip_captions(tokenizers[1], captions, max_token_length),
         ]
+
+    def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
+        """Tokenize SDXL prompts using strategy-owned tokenizer state."""
+        if len(self._tokenizers) != 2:
+            raise RuntimeError("SDXL strategy has no tokenizers configured.")
+        return tokenize_sdxl_text(self._tokenizers[0], self._tokenizers[1], self.max_token_length, text)
+
+    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+        """Tokenize SDXL prompts with per-token prompt weights."""
+        if len(self._tokenizers) != 2:
+            raise RuntimeError("SDXL strategy has no tokenizers configured.")
+        return tokenize_sdxl_text_with_weights(self._tokenizers[0], self._tokenizers[1], self.max_token_length, text)
+
+    def encode_tokens(self, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
+        """Encode SDXL tokens using strategy-owned tokenizer runtime state."""
+        if len(self._tokenizers) != 2:
+            raise RuntimeError("SDXL strategy has no tokenizers configured.")
+        return encode_sdxl_tokens(self._tokenizers, models, tokens)
+
+    def encode_tokens_with_weights(
+        self,
+        models: list[Any],
+        tokens: list[torch.Tensor],
+        weights: list[torch.Tensor],
+    ) -> list[torch.Tensor]:
+        """Encode SDXL tokens and apply prompt weights."""
+        if len(self._tokenizers) != 2:
+            raise RuntimeError("SDXL strategy has no tokenizers configured.")
+        return encode_sdxl_tokens_with_weights(self._tokenizers, models, tokens, weights)
 
     def encode_te_outputs_in_memory(
         self,
@@ -423,8 +443,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             tokenizers,
             text_encoders,
             unet,
-            tokenize_strategy=self._tokenize_strategy,
-            text_encoding_strategy=self._text_encoding_strategy,
+            strategy=self,
         )
 
     def validate_extra_config(self, cfg: Any, train_dataset_group: Any, val_dataset_group: Any) -> None:
@@ -632,7 +651,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         )
 
     def _get_text_cond(
-        self, cfg: Any, accelerator: Any, batch: Any, tokenizers: list[Any], text_encoders: list[Any], weight_dtype: torch.dtype
+        self, cfg: Any, accelerator: Any, batch: Any, text_encoders: list[Any], weight_dtype: torch.dtype
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get SDXL text conditioning from batch.
@@ -641,7 +660,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
             cfg: Configuration object.
             accelerator: Accelerator instance.
             batch: Batch data.
-            tokenizers: List of tokenizers.
             text_encoders: List of text encoders.
             weight_dtype: Weight data type.
 
@@ -669,7 +687,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             if not captions:
                 raise ValueError("Batch has neither 'input_ids' nor 'captions' - cannot encode text")
 
-            input_ids1, input_ids2 = self.tokenize_captions(tokenizers, captions, cfg.training.max_token_length)
+            input_ids1, input_ids2 = self.tokenize(captions)
             input_ids1 = input_ids1.to(te_device)
             input_ids2 = input_ids2.to(te_device)
         else:
@@ -680,8 +698,8 @@ class SdxlTrainingStrategy(TrainingStrategy):
             encoder_hidden_states1, encoder_hidden_states2, pool2 = encode_input_ids_sdxl(
                 input_ids1,
                 input_ids2,
-                tokenizers[0],
-                tokenizers[1],
+                self._tokenizers[0],
+                self._tokenizers[1],
                 text_encoders[0],
                 text_encoders[1],
                 weight_dtype=None if not cfg.performance.precision.full_fp16 else weight_dtype,
@@ -845,7 +863,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
 
         # SDXL text conditioning - use cached outputs or encode on the fly
-        text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, self.tokenizers, text_encoders, weight_dtype)
+        text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, text_encoders, weight_dtype)
 
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
             cfg,
@@ -953,7 +971,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
             total_loss = torch.zeros(1, device=latents.device)
 
             # SDXL text conditioning
-            text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, self.tokenizers, text_encoders, weight_dtype)
+            text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, text_encoders, weight_dtype)
 
             batch_size = latents.shape[0]
             for fixed_timestep_value in timesteps_list:

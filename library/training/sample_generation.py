@@ -275,8 +275,7 @@ def sample_images_common(
     unet_wrapped,
     prompt_replacement: tuple[str, str] | None = None,
     controlnet=None,
-    tokenize_strategy=None,
-    text_encoding_strategy=None,
+    strategy=None,
 ):
     """
     Common function for generating sample images during training.
@@ -300,10 +299,8 @@ def sample_images_common(
         unet_wrapped: The UNet model (wrapped).
         prompt_replacement (tuple, optional): A tuple (target, replacement) to modify prompts.
         controlnet: ControlNet model (optional).
-        tokenize_strategy: Runtime tokenization strategy used by sampling pipelines that
-            need model-family-specific prompt handling.
-        text_encoding_strategy: Runtime text-encoding strategy used by sampling pipelines
-            that need model-family-specific prompt handling.
+        strategy: TrainingStrategy instance used by sampling pipelines that need
+            model-family-specific prompt handling.
     """
 
     if not sample_images_check(sampling_config, epoch, steps):
@@ -375,8 +372,7 @@ def sample_images_common(
         "clip_skip": training_config.clip_skip,
     }
     if pipe_class is SdxlStableDiffusionLongPromptWeightingPipeline:
-        pipe_kwargs["tokenize_strategy"] = tokenize_strategy
-        pipe_kwargs["text_encoding_strategy"] = text_encoding_strategy
+        pipe_kwargs["strategy"] = strategy
 
     pipeline = pipe_class(**pipe_kwargs)
     pipeline.to(distributed_state.device)

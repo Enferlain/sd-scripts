@@ -25,8 +25,6 @@ The important strategy-layer rule is:
 That means:
 
 - downstream model families should read `base/training.py` first
-- `base/caching.py` is not an equal peer of the main contract just because it
-  exists
 - separate concern files are still fine, but contract definitions should not
   be mixed with helper code, singleton plumbing, or legacy support unless
   there is a strong reason
@@ -176,46 +174,48 @@ That part of the cleanup is not the current problem anymore.
 
 ## What Still Matters
 
-### 1. Active vs transitional vs legacy surface is still mixed
+### 1. Active vs transitional vs legacy surface is still mixed ✅ Resolved
 
-The contract in `base/training.py` is cleaner than before, but it still mixes:
+`base/caching.py` has been deleted. Legacy caching classes
+(`LatentsCachingStrategy`, `TextEncoderOutputsCachingStrategy`,
+`SdSdxlLatentsCachingStrategy`, `SdxlTextEncoderOutputsCachingStrategy`) and
+their singleton `set_strategy`/`get_strategy` methods have been removed.
+Legacy factory methods (`get_latents_caching_strategy`,
+`get_text_encoder_outputs_caching_strategy`) have been removed from SD/SDXL
+strategies.
 
-- active shared-runner hooks
-- active transitional hooks that only exist because some legacy paths still
-  exist outside the main contract
+The active contract in `base/training.py` no longer mixes active hooks with
+legacy caching or singleton plumbing. Deprecated `dataset.py` calls are
+no-ops.
 
-The biggest remaining example is caching around old support modules and naming,
-not the active runner path itself.
+### 2. `base/caching.py` is not future-facing contract code ✅ Resolved
 
-### 2. `base/caching.py` is not future-facing contract code
+`base/caching.py` has been deleted entirely. The active caching contract
+(`CachingStrategy` facet with `create_latent_caching_strategy()` and
+`create_te_caching_strategy()`) lives in `base/training.py` where it belongs.
 
-`base/caching.py` is still largely old-pipeline support and legacy baggage.
+### 3. Active singleton strategy dependence is now legacy-only ✅ Resolved
 
-It should not define the future mental model for downstream model families.
-The active contract should stay in `base/training.py`; legacy support should
-stay clearly legacy.
+Singleton `set_strategy`/`get_strategy` class methods have been removed from
+`TokenizationStrategy` and `TextEncodingStrategy`. The `_strategy` class
+variable and related tests are gone.
 
-### 3. Active singleton strategy dependence is now legacy-only
+What remains is limited to deprecated code paths:
 
-The active runner path no longer depends on global tokenization/text-encoding
-singleton lookup.
+- `set_current_strategies()` in deprecated `dataset.py` is a no-op
+- deprecated scripts no longer import deleted modules
 
-What remains is legacy-only:
+These will disappear when deprecated scripts are deleted.
 
-- deprecated dataset paths
-- deprecated scripts
-- singleton-focused unit tests
+### 4. Some generic-base defaults are still CLIP-specific ✅ Resolved
 
-That should keep shrinking, but it is no longer an active-runner boundary
-problem.
+`prepare_text_encoder_grad_ckpt_workaround` and `prepare_text_encoder_fp8`
+have been moved out of the generic `ModelPreparationStrategy` base. The base
+now raises `NotImplementedError`; SD and SDXL strategies provide CLIP-specific
+overrides.
 
-### 4. Some generic-base defaults are still CLIP-specific
-
-There are still default hooks in the generic training base that assume
-CLIP-family text-encoder structure.
-
-Those should keep moving toward concrete SD / SDXL strategy code or
-model-family-owned helpers.
+No remaining methods in `base/training.py` access CLIP-specific attribute
+paths.
 
 ### 5. Shared helpers are still shaped around current model families
 
@@ -286,18 +286,30 @@ This layer answers:
 
 ## Next Steps
 
-Priority order:
+Items 1–4 are resolved. The sub-strategy architecture is gone, and active
+strategies are now born ready. Remaining:
 
-1. Clean up the remaining caching boundary
-   - keep active contract in `base/training.py`
-   - keep `base/caching.py` clearly legacy/transitional
-   - keep `CachingEngine` / `CacheHandler` naming and trainer field names
-     coherent
-2. Continue removing CLIP-specific assumptions from generic base defaults
-3. Trim remaining legacy-only singleton usage from deprecated dataset/script
-   paths when those paths are touched or removed
-4. Revisit shared helpers like sample generation only when there is real
-   pressure from another model family or a clearer generic boundary
+### 1. Revisit shared helpers like sample generation
+
+Only when there is real pressure from another model family or a clearer
+generic boundary.
+
+### 2. Clean up `base/training.py` organization and surface polish
+
+The main remaining active work is in the contract home itself:
+
+- improve sectioning/readability in `base/training.py`
+- keep sorting active-path logic between contract, concrete strategy wiring, and
+  model-layer helpers
+- avoid reopening architecture questions that are already settled
+
+### 3. Cosmetic follow-up: concrete strategy dataclass cleanup
+
+`SdTrainingStrategy` and `SdxlTrainingStrategy` currently still carry the
+`@dataclass` decorator even though they provide an explicit `__init__(cfg)`.
+That is not harmful, but it is slightly misleading because the dataclass no
+longer provides the constructor shape. This is worth cleaning up later, but it
+is not an architectural issue.
 
 The key principle for future work is:
 
@@ -311,3 +323,5 @@ The key principle for future work is:
 - no new runner architecture
 - no mode-layer redesign
 - no preserving deprecated paths as first-class parallel systems
+- no spending active refactor effort on `_deprecated` modules or `copy` scripts;
+  those are deletion/reference material unless explicitly requested

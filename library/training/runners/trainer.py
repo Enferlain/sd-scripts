@@ -62,7 +62,7 @@ class Trainer:
     operations to the provided TrainingMode.
 
     Usage:
-        strategies = SdxlTrainingStrategy()
+        strategies = SdxlTrainingStrategy(cfg)
         mode = PeftMode()
         trainer = Trainer(cfg, strategies, mode)
         trainer.train()
@@ -226,7 +226,6 @@ class Trainer:
 
         set_seed_from_config(self.cfg.training)
 
-        self.strategies.initialize(self.cfg)
         self.tokenizers = self.strategies.tokenizers
 
         # Prepare accelerator first (needed for distributed caching)

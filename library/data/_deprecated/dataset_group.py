@@ -10,7 +10,6 @@ import torch
 from typing import Any, Union, TYPE_CHECKING
 from collections.abc import Sequence
 from accelerate import Accelerator
-
 from library.strategies.base.caching import TextEncoderOutputsCachingStrategy
 
 if TYPE_CHECKING:

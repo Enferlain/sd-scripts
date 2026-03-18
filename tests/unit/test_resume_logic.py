@@ -49,6 +49,9 @@ class MockAccelerator:
 
 
 class MockStrategy:
+    def __init__(self):
+        self.tokenizers = []
+
     def is_train_unet(self, cfg):
         return True
 
@@ -70,10 +73,16 @@ class MockStrategy:
     def load_target_model(self, *args):
         return "v1", [], MagicMock(), MagicMock()
 
-    def get_tokenize_strategy(self, cfg):
-        return MagicMock()
+    def tokenize(self, text):
+        return []
 
-    def get_tokenizers(self, strategy):
+    def tokenize_with_weights(self, text):
+        return [], []
+
+    def encode_tokens(self, models, tokens):
+        return []
+
+    def encode_tokens_with_weights(self, models, tokens, weights):
         return []
 
     def prepare_unet_with_accelerator(self, cfg, accelerator, unet):

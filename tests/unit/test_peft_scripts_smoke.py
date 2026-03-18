@@ -12,6 +12,7 @@ Usage:
 import pytest
 import sys
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 # Ensure scripts directory is importable
@@ -94,18 +95,32 @@ class TestStrategyImports:
 
         assert SdxlTrainingStrategy is not None
 
-    def test_sd_strategy_instantiation(self):
+    @patch("library.strategies.sd.tokenization.load_tokenizer")
+    def test_sd_strategy_instantiation(self, mock_load_tokenizer):
         """Verify SdTrainingStrategy can be instantiated."""
         from library.strategies.sd.training import SdTrainingStrategy
 
-        strategy = SdTrainingStrategy()
+        mock_load_tokenizer.return_value = Mock(model_max_length=77)
+        cfg = Mock()
+        cfg.model.model_type = "sd1"
+        cfg.model.tokenizer_cache_dir = None
+        cfg.training.max_token_length = 75
+        cfg.training.clip_skip = None
+
+        strategy = SdTrainingStrategy(cfg)
         assert strategy is not None
 
-    def test_sdxl_strategy_instantiation(self):
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
+    def test_sdxl_strategy_instantiation(self, mock_load_tokenizer):
         """Verify SdxlTrainingStrategy can be instantiated."""
         from library.strategies.sdxl.training import SdxlTrainingStrategy
 
-        strategy = SdxlTrainingStrategy()
+        mock_load_tokenizer.side_effect = [Mock(model_max_length=77), Mock(model_max_length=77, pad_token_id=0)]
+        cfg = Mock()
+        cfg.training.max_token_length = 75
+        cfg.model.tokenizer_cache_dir = None
+
+        strategy = SdxlTrainingStrategy(cfg)
         assert strategy is not None
 
 

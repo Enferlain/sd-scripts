@@ -72,6 +72,17 @@ def mock_clip_text_encoder():
     return encoder
 
 
+@pytest.fixture
+def sd_strategy_cfg():
+    """Create a minimal SD strategy config mock."""
+    cfg = Mock()
+    cfg.model.model_type = "sd1"
+    cfg.model.tokenizer_cache_dir = None
+    cfg.training.max_token_length = 75
+    cfg.training.clip_skip = None
+    return cfg
+
+
 # =============================================================================
 # SdTokenizeStrategy Tests
 # =============================================================================
@@ -170,12 +181,12 @@ class TestSdTextEncodingStrategy:
 
     def test_init_stores_clip_skip(self):
         """Test that __init__ stores clip_skip value."""
-        strategy = SdTextEncodingStrategy(clip_skip=2)
+        strategy = SdTextEncodingStrategy(Mock(), clip_skip=2)
         assert strategy.clip_skip == 2
 
     def test_init_default_clip_skip_none(self):
         """Test that default clip_skip is None."""
-        strategy = SdTextEncodingStrategy()
+        strategy = SdTextEncodingStrategy(Mock())
         assert strategy.clip_skip is None
 
     @patch("library.strategies.sd.tokenization.load_tokenizer")
@@ -183,12 +194,12 @@ class TestSdTextEncodingStrategy:
         """Test basic token encoding without clip_skip."""
         mock_load_tokenizer.return_value = mock_clip_tokenizer
         tokenize_strategy = SdTokenizeStrategy(v2=False, max_length=None)
-        encoding_strategy = SdTextEncodingStrategy(clip_skip=None)
+        encoding_strategy = SdTextEncodingStrategy(tokenize_strategy.tokenizer, clip_skip=None)
 
         # Create fake tokens: batch=1, n=1, seq=77
         tokens = [torch.randint(0, 1000, (1, 1, 77))]
 
-        result = encoding_strategy.encode_tokens(tokenize_strategy, [mock_clip_text_encoder], tokens)
+        result = encoding_strategy.encode_tokens([mock_clip_text_encoder], tokens)
 
         assert len(result) == 1
         assert isinstance(result[0], torch.Tensor)
@@ -198,11 +209,11 @@ class TestSdTextEncodingStrategy:
         """Test token encoding with clip_skip."""
         mock_load_tokenizer.return_value = mock_clip_tokenizer
         tokenize_strategy = SdTokenizeStrategy(v2=False, max_length=None)
-        encoding_strategy = SdTextEncodingStrategy(clip_skip=2)
+        encoding_strategy = SdTextEncodingStrategy(tokenize_strategy.tokenizer, clip_skip=2)
 
         tokens = [torch.randint(0, 1000, (1, 1, 77))]
 
-        result = encoding_strategy.encode_tokens(tokenize_strategy, [mock_clip_text_encoder], tokens)
+        result = encoding_strategy.encode_tokens([mock_clip_text_encoder], tokens)
 
         assert len(result) == 1
 
@@ -211,12 +222,12 @@ class TestSdTextEncodingStrategy:
         """Test encoding with multiple token chunks (n > 1)."""
         mock_load_tokenizer.return_value = mock_clip_tokenizer
         tokenize_strategy = SdTokenizeStrategy(v2=False, max_length=None)
-        encoding_strategy = SdTextEncodingStrategy(clip_skip=None)
+        encoding_strategy = SdTextEncodingStrategy(tokenize_strategy.tokenizer, clip_skip=None)
 
         # Multi-chunk tokens: batch=1, n=3, seq=77
         tokens = [torch.randint(0, 1000, (1, 3, 77))]
 
-        result = encoding_strategy.encode_tokens(tokenize_strategy, [mock_clip_text_encoder], tokens)
+        result = encoding_strategy.encode_tokens([mock_clip_text_encoder], tokens)
 
         assert len(result) == 1
         # Output should be reshaped for multi-chunk
@@ -226,12 +237,12 @@ class TestSdTextEncodingStrategy:
         """Test that encode_tokens_with_weights applies weight multiplication."""
         mock_load_tokenizer.return_value = mock_clip_tokenizer
         tokenize_strategy = SdTokenizeStrategy(v2=False, max_length=None)
-        encoding_strategy = SdTextEncodingStrategy(clip_skip=None)
+        encoding_strategy = SdTextEncodingStrategy(tokenize_strategy.tokenizer, clip_skip=None)
 
         tokens = [torch.randint(0, 1000, (1, 1, 77))]
         weights = [torch.ones(1, 1, 77) * 1.5]
 
-        result = encoding_strategy.encode_tokens_with_weights(tokenize_strategy, [mock_clip_text_encoder], tokens, weights)
+        result = encoding_strategy.encode_tokens_with_weights([mock_clip_text_encoder], tokens, weights)
 
         assert len(result) == 1
 
@@ -240,8 +251,10 @@ class TestSdTextEncodingStrategy:
 class TestSdTrainingStrategyNewPipeline:
     """Tests for the SD new-pipeline strategy surface."""
 
-    def test_create_latent_caching_strategy_returns_pipeline_strategy(self):
-        strategy = SdTrainingStrategy()
+    @patch("library.strategies.sd.tokenization.load_tokenizer")
+    def test_create_latent_caching_strategy_returns_pipeline_strategy(self, mock_load_tokenizer, mock_clip_tokenizer, sd_strategy_cfg):
+        mock_load_tokenizer.return_value = mock_clip_tokenizer
+        strategy = SdTrainingStrategy(sd_strategy_cfg)
         cfg = Mock()
         cfg.performance.precision.no_half_vae = False
         cfg.data.preprocessing.flip_aug = True
@@ -252,8 +265,10 @@ class TestSdTrainingStrategyNewPipeline:
         assert result.flip_aug is True
         assert result.dtype == "fp16"
 
-    def test_create_te_caching_strategy_returns_pipeline_strategy(self):
-        strategy = SdTrainingStrategy()
+    @patch("library.strategies.sd.tokenization.load_tokenizer")
+    def test_create_te_caching_strategy_returns_pipeline_strategy(self, mock_load_tokenizer, mock_clip_tokenizer, sd_strategy_cfg):
+        mock_load_tokenizer.return_value = mock_clip_tokenizer
+        strategy = SdTrainingStrategy(sd_strategy_cfg)
         cfg = Mock()
         cfg.training.clip_skip = 2
         cfg.training.max_token_length = 150
@@ -265,10 +280,10 @@ class TestSdTrainingStrategyNewPipeline:
         assert result.max_token_length == 150
 
     @patch("library.strategies.sd.tokenization.load_tokenizer")
-    def test_tokenize_captions_returns_clip_named_tensor(self, mock_load_tokenizer, mock_clip_tokenizer):
+    def test_tokenize_captions_returns_clip_named_tensor(self, mock_load_tokenizer, mock_clip_tokenizer, sd_strategy_cfg):
         mock_load_tokenizer.return_value = mock_clip_tokenizer
         tokenize_strategy = SdTokenizeStrategy(v2=False, max_length=75)
-        strategy = SdTrainingStrategy()
+        strategy = SdTrainingStrategy(sd_strategy_cfg)
 
         result = strategy.tokenize_captions([tokenize_strategy.tokenizer], ["caption 1", "caption 2"], 75)
 
@@ -277,10 +292,12 @@ class TestSdTrainingStrategyNewPipeline:
         assert result[0].shape[0] == 2
 
     @patch("library.strategies.sd.tokenization.load_tokenizer")
-    def test_encode_te_outputs_in_memory_returns_hidden_state(self, mock_load_tokenizer, mock_clip_tokenizer, mock_clip_text_encoder):
+    def test_encode_te_outputs_in_memory_returns_hidden_state(
+        self, mock_load_tokenizer, mock_clip_tokenizer, mock_clip_text_encoder, sd_strategy_cfg
+    ):
         mock_load_tokenizer.return_value = mock_clip_tokenizer
         tokenize_strategy = SdTokenizeStrategy(v2=False, max_length=75)
-        strategy = SdTrainingStrategy()
+        strategy = SdTrainingStrategy(sd_strategy_cfg)
 
         result = strategy.encode_te_outputs_in_memory(
             text_encoders=[mock_clip_text_encoder],
@@ -293,8 +310,10 @@ class TestSdTrainingStrategyNewPipeline:
         assert "hidden_state" in result
         assert isinstance(result["hidden_state"], torch.Tensor)
 
-    def test_process_batch_accepts_new_text_encoder_outputs_key(self):
-        strategy = SdTrainingStrategy()
+    @patch("library.strategies.sd.tokenization.load_tokenizer")
+    def test_process_batch_accepts_new_text_encoder_outputs_key(self, mock_load_tokenizer, mock_clip_tokenizer, sd_strategy_cfg):
+        mock_load_tokenizer.return_value = mock_clip_tokenizer
+        strategy = SdTrainingStrategy(sd_strategy_cfg)
         batch = {
             "text_encoder_outputs": {"hidden_state": torch.randn(1, 77, 768)},
         }
@@ -336,8 +355,10 @@ class TestSdTrainingStrategyNewPipeline:
         assert len(text_conds) == 1
         assert isinstance(text_conds[0], torch.Tensor)
 
-    def test_process_batch_accepts_new_input_ids_key(self):
-        strategy = SdTrainingStrategy()
+    @patch("library.strategies.sd.tokenization.load_tokenizer")
+    def test_process_batch_accepts_new_input_ids_key(self, mock_load_tokenizer, mock_clip_tokenizer, sd_strategy_cfg):
+        mock_load_tokenizer.return_value = mock_clip_tokenizer
+        strategy = SdTrainingStrategy(sd_strategy_cfg)
         batch = {
             "captions": ["a cat"],
             "input_ids": {"clip": torch.randint(0, 100, (1, 1, 77))},
@@ -352,13 +373,6 @@ class TestSdTrainingStrategyNewPipeline:
         accelerator.device = torch.device("cpu")
         accelerator.autocast.return_value = nullcontext()
 
-        text_encoding_strategy = Mock()
-        text_encoding_strategy.encode_tokens.return_value = [torch.randn(1, 77, 768)]
-
-        # Set internal state on the strategy (these are now owned by the strategy)
-        strategy._tokenize_strategy = Mock()
-        strategy._text_encoding_strategy = text_encoding_strategy
-
         with patch.object(strategy, "_prepare_latents", return_value=torch.randn(1, 4, 64, 64)), patch.object(
             strategy,
             "get_noise_pred_and_target",
@@ -368,7 +382,7 @@ class TestSdTrainingStrategyNewPipeline:
                 torch.tensor([10]),
                 None,
             ),
-        ):
+        ), patch.object(strategy, "encode_tokens", return_value=[torch.randn(1, 77, 768)]) as mock_encode_tokens:
             strategy.process_batch(
                 batch=batch,
                 text_encoders=[Mock()],
@@ -384,4 +398,4 @@ class TestSdTrainingStrategyNewPipeline:
                 train_text_encoder=False,
             )
 
-        text_encoding_strategy.encode_tokens.assert_called_once()
+        mock_encode_tokens.assert_called_once()

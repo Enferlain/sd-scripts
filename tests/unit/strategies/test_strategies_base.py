@@ -40,12 +40,11 @@ class DummyTokenizationStrategy(TokenizationStrategy):
 
 
 class DummyTextEncodingStrategy(TextEncodingStrategy):
-    def encode_tokens(self, tokenize_strategy: TokenizationStrategy, models: list[object], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
+    def encode_tokens(self, models: list[object], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
         return []
 
     def encode_tokens_with_weights(
         self,
-        tokenize_strategy: TokenizationStrategy,
         models: list[object],
         tokens: list[torch.Tensor],
         weights: list[torch.Tensor],
@@ -224,15 +223,16 @@ class TestTrainingStrategyPhase2Facets:
         assert issubclass(TrainingStrategy, ModelPreparationStrategy)
         assert issubclass(TrainingStrategy, DiffusionTrainingStrategy)
         assert issubclass(TrainingStrategy, TrainingRuntimeStrategy)
+        assert issubclass(TrainingStrategy, TokenizationStrategy)
+        assert issubclass(TrainingStrategy, TextEncodingStrategy)
 
     def test_phase2_methods_live_on_facet_classes(self):
         """Moved shared helpers should live on their facet bases, not TrainingStrategy itself."""
         assert "tokenize" in TokenizationStrategy.__dict__
         assert "tokenize_with_weights" in TokenizationStrategy.__dict__
-        assert "get_tokenize_strategy" in TrainingStrategy.__dict__
-        assert "get_tokenizers" in TrainingStrategy.__dict__
+        assert "encode_tokens" in TextEncodingStrategy.__dict__
+        assert "encode_tokens_with_weights" in TextEncodingStrategy.__dict__
         assert "tokenize_captions" in TrainingStrategy.__dict__
-        assert "get_text_encoding_strategy" in TrainingStrategy.__dict__
         assert "get_models_for_text_encoding" in TrainingStrategy.__dict__
         assert "encode_te_outputs_in_memory" in TrainingStrategy.__dict__
         assert "create_latent_caching_strategy" in CachingStrategy.__dict__
@@ -243,7 +243,7 @@ class TestTrainingStrategyPhase2Facets:
         assert "load_unet_lazily" not in TrainingStrategy.__dict__
         assert "tokenize_captions" not in TokenizationStrategy.__dict__
         assert "tokenize_captions" not in CachingStrategy.__dict__
-        assert "get_text_encoding_strategy" not in CachingStrategy.__dict__
+        assert "initialize" not in TrainingStrategy.__dict__
         assert "get_models_for_text_encoding" not in CachingStrategy.__dict__
         assert "encode_te_outputs_in_memory" not in CachingStrategy.__dict__
         assert "prepare_unet_with_accelerator" not in TrainingStrategy.__dict__
@@ -317,5 +317,3 @@ class TestTrainingStrategyPhase2Facets:
         assert torch.equal(torch.rand(3), original_torch)
         assert np.allclose(np.random.rand(3), original_np)
         assert random.random() == original_py
-
-
