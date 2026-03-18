@@ -1,7 +1,7 @@
 """
 FineTuneMode – Full-model fine-tuning.
 
-Implements the TrainingMode protocol for training UNet (and optionally
+Implements the TrainingMode protocol for training denoiser (and optionally
 text encoders) directly, as opposed to training a PEFT adapter on top.
 
 All model-family specifics (serialization format, TE freeze behavior)
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class FineTuneMode:
     """Full-model fine-tuning mode.
 
-    Unfreezes UNet and (optionally) text encoders, builds standard
+    Unfreezes denoiser and (optionally) text encoders, builds standard
     per-module optimizer param groups, and delegates checkpoint
     serialization to the strategy.
     """
@@ -47,9 +47,9 @@ class FineTuneMode:
     _te_train_flags: list[bool]
 
     def prepare_trainables(self, trainer: Trainer) -> None:
-        """Unfreeze UNet and optionally text encoders for training.
+        """Unfreeze denoiser and optionally text encoders for training.
 
-        Sets ``trainer._train_unet``, ``trainer._train_text_encoder``,
+        Sets ``trainer._train_denoiser``, ``trainer._train_text_encoder``,
         ``trainer._primary_trainable``, and per-TE training flags on
         the mode instance.
 
@@ -60,17 +60,17 @@ class FineTuneMode:
         strategies = trainer.strategies
 
         # Determine what to train via strategy
-        trainer._train_unet = strategies.is_train_unet(cfg)
+        trainer._train_denoiser = strategies.is_train_denoiser(cfg)
         trainer._train_text_encoder = strategies.is_train_text_encoder(cfg)
 
-        # Unfreeze UNet
-        assert trainer.unet is not None, "UNet must be loaded before prepare_trainables"
-        if trainer._train_unet:
-            trainer.unet.requires_grad_(True)
-            trainer.unet.train()
+        # Unfreeze denoiser
+        assert trainer.denoiser is not None, "denoiser must be loaded before prepare_trainables"
+        if trainer._train_denoiser:
+            trainer.denoiser.requires_grad_(True)
+            trainer.denoiser.train()
         else:
-            trainer.unet.requires_grad_(False)
-            trainer.unet.eval()
+            trainer.denoiser.requires_grad_(False)
+            trainer.denoiser.eval()
 
         # Resolve per-TE training flags
         # Strategy provides base flags; we refine with per-TE LR if configured
@@ -103,28 +103,28 @@ class FineTuneMode:
 
         # Delegate model-specific post-processing to strategy
         # (e.g. SDXL freezes TE1's last encoder layer + final_layer_norm)
-        strategies.post_process_trainable(cfg, trainer.accelerator, trainer.unet, trainer.text_encoders, trainer.unet)
+        strategies.post_process_trainable(cfg, trainer.accelerator, trainer.denoiser, trainer.text_encoders, trainer.denoiser)
 
-        # Primary trainable = UNet in fine-tune mode
-        trainer._primary_trainable = trainer.unet
+        # Primary trainable = denoiser in fine-tune mode
+        trainer._primary_trainable = trainer.denoiser
 
     def configure_trainable_precision(self, trainer: Trainer) -> None:
         """Cast trainable models to weight_dtype for full fp16/bf16 training."""
         cfg = trainer.cfg
         weight_dtype = trainer.weight_dtype
-        assert trainer.unet is not None, "UNet must be loaded before configure_trainable_precision"
+        assert trainer.denoiser is not None, "denoiser must be loaded before configure_trainable_precision"
 
         if cfg.performance.precision.full_fp16:
             trainer.accelerator.print("enable full fp16 training.")
-            if trainer._train_unet:
-                trainer.unet.to(weight_dtype)
+            if trainer._train_denoiser:
+                trainer.denoiser.to(weight_dtype)
             for t_enc, flag in zip(trainer.text_encoders, self._te_train_flags):
                 if flag:
                     t_enc.to(weight_dtype)
         elif cfg.performance.precision.full_bf16:
             trainer.accelerator.print("enable full bf16 training.")
-            if trainer._train_unet:
-                trainer.unet.to(weight_dtype)
+            if trainer._train_denoiser:
+                trainer.denoiser.to(weight_dtype)
             for t_enc, flag in zip(trainer.text_encoders, self._te_train_flags):
                 if flag:
                     t_enc.to(weight_dtype)
@@ -139,7 +139,7 @@ class FineTuneMode:
     # ------------------------------------------------------------------
 
     def build_optimizer_params(self, trainer: Trainer) -> tuple[str, dict, Any, Any, Any, list[str]]:
-        """Build optimizer with standard UNet + TE param groups.
+        """Build optimizer with standard denoiser + TE param groups.
 
         Block-level LR grouping and pattern-based grouping are deferred
         to a later mode-agnostic phase and are not supported in 2B.
@@ -163,11 +163,11 @@ class FineTuneMode:
         trainable_params = []
         lr_descriptions = []
 
-        if trainer._train_unet:
-            assert trainer.unet is not None, "UNet must be loaded before build_optimizer_params"
-            unet_lr = lr.unet if lr.unet is not None else lr.base
-            trainable_params.append({"params": list(trainer.unet.parameters()), "lr": unet_lr})
-            lr_descriptions.append(f"unet lr: {unet_lr}")
+        if trainer._train_denoiser:
+            assert trainer.denoiser is not None, "denoiser must be loaded before build_optimizer_params"
+            denoiser_lr = lr.denoiser if lr.denoiser is not None else lr.base
+            trainable_params.append({"params": list(trainer.denoiser.parameters()), "lr": denoiser_lr})
+            lr_descriptions.append(f"denoiser lr: {denoiser_lr}")
 
         te_lr_raw = lr.text_encoders
         for i, (t_enc, flag) in enumerate(zip(trainer.text_encoders, self._te_train_flags)):
@@ -199,15 +199,15 @@ class FineTuneMode:
         return optimizer_name, optimizer_args, optimizer, optimizer_train_fn, optimizer_eval_fn, lr_descriptions  # type: ignore[return-value]
 
     def prepare_with_accelerator(self, trainer: Trainer) -> None:
-        """Wrap UNet/TEs with ``accelerator.prepare()``."""
+        """Wrap denoiser/TEs with ``accelerator.prepare()``."""
         cfg = trainer.cfg
 
         if cfg.performance.deepspeed.deepspeed:
             # Build dynamic kwargs from flag list — no fixed TE count assumption
             te_flags = self._te_train_flags
             ds_kwargs: dict[str, Any] = {}
-            if trainer._train_unet:
-                ds_kwargs["unet"] = trainer.unet
+            if trainer._train_denoiser:
+                ds_kwargs["denoiser"] = trainer.denoiser
             for i, (t_enc, flag) in enumerate(zip(trainer.text_encoders, te_flags)):
                 if flag:
                     ds_kwargs[f"text_encoder{i + 1}"] = t_enc
@@ -218,11 +218,11 @@ class FineTuneMode:
                 ds_model, trainer.optimizer, trainer.lr_scheduler
             )
             trainer._grad_sync_handle = ds_model
-            trainer._primary_trainable = trainer.unet
+            trainer._primary_trainable = trainer.denoiser
         else:
-            # Prepare UNet
-            if trainer._train_unet:
-                trainer.unet = trainer.strategies.prepare_unet_with_accelerator(cfg, trainer.accelerator, trainer.unet)
+            # Prepare denoiser
+            if trainer._train_denoiser:
+                trainer.denoiser = trainer.strategies.prepare_denoiser_with_accelerator(cfg, trainer.accelerator, trainer.denoiser)
 
             # Prepare trained TEs; move non-trained TEs to device
             for i, (t_enc, flag) in enumerate(zip(trainer.text_encoders, self._te_train_flags)):
@@ -235,15 +235,15 @@ class FineTuneMode:
             # Prepare optimizer + scheduler
             trainer.optimizer, trainer.lr_scheduler = trainer.accelerator.prepare(trainer.optimizer, trainer.lr_scheduler)
 
-            # Grad sync handle = UNet (the largest trainable component)
-            trainer._grad_sync_handle = trainer.unet
-            trainer._primary_trainable = trainer.unet
+            # Grad sync handle = denoiser (the largest trainable component)
+            trainer._grad_sync_handle = trainer.denoiser
+            trainer._primary_trainable = trainer.denoiser
 
     def setup_gradient_training(self, trainer: Trainer) -> None:
         """No-op for fine-tune.
 
         Shared ``_setup_gradient_checkpointing`` in ``optimizer.py``
-        already handles UNet/TE gradient checkpointing and train mode.
+        already handles denoiser/TE gradient checkpointing and train mode.
         """
         pass
 
@@ -293,8 +293,8 @@ class FineTuneMode:
 
     def on_epoch_start(self, trainer: Trainer) -> None:
         """Set all training models to train mode."""
-        if trainer._train_unet and trainer.unet is not None:
-            trainer.unet.train()
+        if trainer._train_denoiser and trainer.denoiser is not None:
+            trainer.denoiser.train()
         for t_enc, flag in zip(trainer.text_encoders, self._te_train_flags):
             if flag:
                 t_enc.train()
@@ -314,25 +314,25 @@ class FineTuneMode:
     def get_trainable_params(self, trainer: Trainer) -> list:
         """Return all trainable parameters for gradient clipping."""
         params: list[nn.Parameter] = []
-        if trainer._train_unet and trainer.unet is not None:
-            params.extend(list(trainer.unet.parameters()))
+        if trainer._train_denoiser and trainer.denoiser is not None:
+            params.extend(list(trainer.denoiser.parameters()))
         for t_enc, flag in zip(trainer.text_encoders, self._te_train_flags):
             if flag:
                 params.extend(list(t_enc.parameters()))
         return params
 
     def set_eval(self, trainer: Trainer) -> None:
-        """Switch UNet + trained TEs to eval mode."""
-        if trainer._train_unet and trainer.unet is not None:
-            trainer.unet.eval()
+        """Switch denoiser + trained TEs to eval mode."""
+        if trainer._train_denoiser and trainer.denoiser is not None:
+            trainer.denoiser.eval()
         for t_enc, flag in zip(trainer.text_encoders, self._te_train_flags):
             if flag:
                 t_enc.eval()
 
     def set_train(self, trainer: Trainer) -> None:
-        """Switch UNet + trained TEs to train mode."""
-        if trainer._train_unet and trainer.unet is not None:
-            trainer.unet.train()
+        """Switch denoiser + trained TEs to train mode."""
+        if trainer._train_denoiser and trainer.denoiser is not None:
+            trainer.denoiser.train()
         for t_enc, flag in zip(trainer.text_encoders, self._te_train_flags):
             if flag:
                 t_enc.train()
@@ -390,8 +390,8 @@ class FineTuneMode:
     def get_diagnostics_components(self, trainer: Trainer) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
         """Return all backbone components — they're all relevant in fine-tune."""
         components: list[tuple[str, nn.Module]] = []
-        if trainer.unet is not None:
-            components.append(("unet", trainer.unet))
+        if trainer.denoiser is not None:
+            components.append(("denoiser", trainer.denoiser))
         for i, te in enumerate(trainer.text_encoders):
             components.append((f"text_encoder{i + 1}", te))
         if trainer.vae is not None:

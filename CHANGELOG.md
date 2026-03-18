@@ -9,8 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Shared training contract naming now uses `denoiser`** — The active trainer/base strategy seam now uses denoiser-oriented terminology where the code is model-family-agnostic.
+  - Renamed the active base hooks and trainer/model-prep state to `denoiser` terminology (`DenoiserCallingStrategy`, `is_train_denoiser`, `cast_denoiser`, `trainer.denoiser`, `trainer.denoiser_weight_dtype`, etc.).
+  - Updated shared helpers like `sample_images_common()` and `append_lr_to_logs()` to use denoiser-oriented params/docs in the active path.
+  - Added a `LearningRatesConfig.denoiser` alias over the existing `learning_rates.unet` field so shared code can move forward without forcing config churn yet.
+  - Left concrete SD / SDXL internals, adapter APIs, and compatibility metadata/config keys on `unet` where they still refer to genuinely UNet-shaped or compatibility-sensitive surfaces.
 - **Active strategy contract pruned further** — Removed deprecated-only hooks from the live `TrainingStrategy` contract surface.
   - Removed the unused `on_validation_step_end()` runtime hook from `TrainingRuntimeStrategy`.
+  - Removed the unused `TrainingRuntimeStrategy.on_step_start()` hook and the shared-loop call site; active step-start behavior now lives on the training mode layer.
   - Removed `ValidationStrategy.validate_extra_config()` from the active strategy contract and from the SD / SDXL training strategies.
   - Removed `ModelPreparationStrategy.is_text_encoder_not_needed_for_training()`, which was only referenced by deprecated script paths.
   - Removed `SdxlTrainingStrategy.cache_text_encoder_outputs_if_needed()`, which was only referenced by deprecated PEFT script paths.

@@ -194,7 +194,7 @@ def _make_mock_trainer(
     # ---- Optimizer / Scheduler ----
     trainer.optimizer = MagicMock()
     trainer.lr_scheduler = MagicMock()
-    trainer.lr_descriptions = ["unet"]
+    trainer.lr_descriptions = ["denoiser"]
     trainer.optimizer_train_fn = MagicMock()
     trainer.optimizer_eval_fn = MagicMock()
 

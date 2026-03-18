@@ -51,7 +51,7 @@ class PeftMode:
         cfg = trainer.cfg
         accelerator = trainer.accelerator
         vae = trainer.vae
-        unet = trainer.unet
+        denoiser = trainer.denoiser
         text_encoder = trainer._text_encoder
         text_encoders = trainer.text_encoders
         weight_dtype = trainer.weight_dtype
@@ -72,11 +72,11 @@ class PeftMode:
                 accelerator.print(f"merging module: {weight_path} with multiplier {multiplier}")
 
                 module, weights_sd = adapter_module.create_adapter_from_weights(
-                    multiplier, weight_path, vae, text_encoder, unet, for_inference=True
+                    multiplier, weight_path, vae, text_encoder, denoiser, for_inference=True
                 )
                 module.merge_to(
                     text_encoder,
-                    unet,
+                    denoiser,
                     weights_sd,
                     weight_dtype,
                     accelerator.device if cfg.performance.memory.lowram else "cpu",
@@ -95,7 +95,7 @@ class PeftMode:
 
         # Create adapter
         if cfg.peft.adapter_rank_from_weights:
-            adapter, _ = adapter_module.create_adapter_from_weights(1, cfg.peft.adapter_weights, vae, text_encoder, unet, **net_kwargs)
+            adapter, _ = adapter_module.create_adapter_from_weights(1, cfg.peft.adapter_weights, vae, text_encoder, denoiser, **net_kwargs)
         else:
             if "dropout" not in net_kwargs:
                 net_kwargs["dropout"] = cfg.peft.neuron_dropout
@@ -106,7 +106,7 @@ class PeftMode:
                 cfg.peft.adapter_alpha,
                 vae,
                 text_encoder,
-                unet,
+                denoiser,
                 neuron_dropout=cfg.peft.neuron_dropout,
                 **net_kwargs,
             )
@@ -121,12 +121,12 @@ class PeftMode:
             logger.warning("warning: scale_weight_norms is specified but the peft does not support it")
             cfg.peft.scale_weight_norms = False
 
-        trainer.strategies.post_process_trainable(cfg, accelerator, adapter, text_encoders, unet)
+        trainer.strategies.post_process_trainable(cfg, accelerator, adapter, text_encoders, denoiser)
 
-        # Apply adapter to unet and text_encoder
-        trainer._train_unet = trainer.strategies.is_train_unet(cfg)
+        # Apply adapter to denoiser and text_encoder
+        trainer._train_denoiser = trainer.strategies.is_train_denoiser(cfg)
         trainer._train_text_encoder = trainer.strategies.is_train_text_encoder(cfg)
-        adapter.apply_to(text_encoder, unet, trainer._train_text_encoder, trainer._train_unet)
+        adapter.apply_to(text_encoder, denoiser, trainer._train_text_encoder, trainer._train_denoiser)
 
         # Load weights if specified
         if cfg.peft.adapter_weights is not None:
@@ -156,7 +156,7 @@ class PeftMode:
             adapter.to(weight_dtype)
 
         # Freeze base model
-        trainer.unet.requires_grad_(False)
+        trainer.denoiser.requires_grad_(False)
         for t_enc in trainer.text_encoders:
             t_enc.requires_grad_(False)
 
@@ -188,8 +188,8 @@ class PeftMode:
             flags = trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders)
             # Build dynamic kwargs — no fixed TE count assumption
             ds_kwargs: dict[str, Any] = {}
-            if trainer._train_unet:
-                ds_kwargs["unet"] = trainer.unet
+            if trainer._train_denoiser:
+                ds_kwargs["denoiser"] = trainer.denoiser
             for i, (t_enc, flag) in enumerate(zip(trainer.text_encoders, flags)):
                 if flag:
                     ds_kwargs[f"text_encoder{i + 1}"] = t_enc
@@ -202,12 +202,12 @@ class PeftMode:
             trainer._grad_sync_handle = ds_model
             trainer._primary_trainable = trainer.adapter
         else:
-            if trainer._train_unet:
-                trainer.unet = trainer.strategies.prepare_unet_with_accelerator(cfg, trainer.accelerator, trainer.unet)
+            if trainer._train_denoiser:
+                trainer.denoiser = trainer.strategies.prepare_denoiser_with_accelerator(cfg, trainer.accelerator, trainer.denoiser)
             else:
-                trainer.unet.to(
+                trainer.denoiser.to(
                     trainer.accelerator.device,
-                    dtype=trainer.unet_weight_dtype if trainer.strategies.cast_unet(cfg) else None,
+                    dtype=trainer.denoiser_weight_dtype if trainer.strategies.cast_denoiser(cfg) else None,
                 )
 
             if trainer._train_text_encoder:
@@ -238,7 +238,7 @@ class PeftMode:
             trainer.adapter.enable_gradient_checkpointing()
 
         # prepare_grad_etc is always called (regardless of gradient_checkpointing flag)
-        trainer.accelerator.unwrap_model(trainer.adapter).prepare_grad_etc(trainer._text_encoder, trainer.unet)
+        trainer.accelerator.unwrap_model(trainer.adapter).prepare_grad_etc(trainer._text_encoder, trainer.denoiser)
 
     def register_state_hooks(self, trainer: Trainer) -> Callable[[], int | None]:
         """Register adapter save/load hooks for checkpointing.
@@ -262,7 +262,7 @@ class PeftMode:
 
         Extracted from ``training_loop.py`` L71.
         """
-        trainer.accelerator.unwrap_model(trainer.adapter).on_epoch_start(trainer._text_encoder, trainer.unet)
+        trainer.accelerator.unwrap_model(trainer.adapter).on_epoch_start(trainer._text_encoder, trainer.denoiser)
 
     def on_step_start(self, trainer: Trainer) -> None:
         """Call adapter's ``on_step_start`` if it defines one.
@@ -271,7 +271,7 @@ class PeftMode:
         """
         unwrapped = trainer.accelerator.unwrap_model(trainer.adapter)
         if hasattr(unwrapped, "on_step_start"):
-            unwrapped.on_step_start(trainer._text_encoder, trainer.unet)
+            unwrapped.on_step_start(trainer._text_encoder, trainer.denoiser)
 
     def on_step_end(self, trainer: Trainer) -> dict[str, Any]:
         """Apply weight-norm regularization if configured.
@@ -357,7 +357,7 @@ class PeftMode:
         """Return adapter diagnostics components.
 
         If the adapter implements ``get_diagnostics_components()``, use its
-        per-component breakdown (e.g. unet modules vs TE modules).
+        per-component breakdown (e.g. denoiser modules vs TE modules).
         Otherwise fall back to showing the adapter as a single component.
         """
         adapter = trainer.adapter

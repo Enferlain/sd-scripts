@@ -64,7 +64,7 @@ def mock_cfg():
     cfg.performance.memory.offload_text_encoders = False
     cfg.performance.memory.lowram = False
     cfg.performance.memory.gradient_checkpointing = False
-    cfg.performance.memory.load_unet_lazily = False
+    cfg.performance.memory.load_denoiser_lazily = False
 
     # training
     cfg.training.seed = 42
@@ -154,16 +154,15 @@ def mock_accelerator():
 def mock_strategies():
     """Create a mock training strategies object."""
     strategies = MagicMock()
-    strategies.is_train_unet = MagicMock(return_value=True)
+    strategies.is_train_denoiser = MagicMock(return_value=True)
     strategies.is_train_text_encoder = MagicMock(return_value=False)
-    strategies.cast_unet = MagicMock(return_value=True)
+    strategies.cast_denoiser = MagicMock(return_value=True)
     strategies.cast_text_encoder = MagicMock(return_value=True)
     strategies.post_process_trainable = MagicMock()
     strategies.prepare_text_encoder_fp8 = MagicMock()
-    strategies.load_unet_lazily = MagicMock(return_value=(MagicMock(), []))
+    strategies.load_denoiser_lazily = MagicMock(return_value=(MagicMock(), []))
     strategies.get_token_cache_encoder_names = MagicMock(return_value=["clip_l", "clip_g"])
     strategies.build_te_cache_model_bundle = MagicMock(return_value=("te1", "te2", "tok1", "tok2"))
-    strategies.on_step_start = MagicMock()
     strategies.process_batch = MagicMock(return_value=(torch.tensor(0.5), torch.tensor(0.5), None, torch.tensor([500])))
     strategies.all_reduce_trainable = MagicMock()
     strategies.sample_images = MagicMock()
@@ -193,10 +192,10 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer.vae.requires_grad_ = MagicMock()
     trainer.vae.eval = MagicMock()
 
-    trainer.unet = MagicMock()
-    trainer.unet.to = MagicMock(return_value=trainer.unet)
-    trainer.unet.requires_grad_ = MagicMock()
-    trainer.unet.enable_gradient_checkpointing = MagicMock()
+    trainer.denoiser = MagicMock()
+    trainer.denoiser.to = MagicMock(return_value=trainer.denoiser)
+    trainer.denoiser.requires_grad_ = MagicMock()
+    trainer.denoiser.enable_gradient_checkpointing = MagicMock()
 
     trainer.text_encoders = [MagicMock(), MagicMock()]
     for te in trainer.text_encoders:
@@ -213,7 +212,7 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     # Dtypes
     trainer.weight_dtype = torch.float16
     trainer.vae_dtype = torch.float32
-    trainer.unet_weight_dtype = torch.float16
+    trainer.denoiser_weight_dtype = torch.float16
     trainer.te_weight_dtype = torch.float16
 
     # Manifests
@@ -247,7 +246,7 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer.mode.save_checkpoint = MagicMock()
 
     # Training flags
-    trainer._train_unet = True
+    trainer._train_denoiser = True
     trainer._train_text_encoder = False
 
     # Optimizer/Scheduler
@@ -256,7 +255,7 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer.optimizer.zero_grad = MagicMock()
     trainer.lr_scheduler = MagicMock()
     trainer.lr_scheduler.step = MagicMock()
-    trainer.lr_descriptions = ["unet"]
+    trainer.lr_descriptions = ["denoiser"]
     trainer.optimizer_train_fn = MagicMock()
     trainer.optimizer_eval_fn = MagicMock()
 

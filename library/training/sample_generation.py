@@ -272,7 +272,7 @@ def sample_images_common(
     vae,
     tokenizer,
     text_encoder,
-    unet_wrapped,
+    denoiser_wrapped,
     prompt_replacement: tuple[str, str] | None = None,
     controlnet=None,
     strategy=None,
@@ -296,7 +296,7 @@ def sample_images_common(
         vae: The VAE model.
         tokenizer: The tokenizer.
         text_encoder: The text encoder model(s).
-        unet_wrapped: The UNet model (wrapped).
+        denoiser_wrapped: The denoiser model (wrapped).
         prompt_replacement (tuple, optional): A tuple (target, replacement) to modify prompts.
         controlnet: ControlNet model (optional).
         strategy: TrainingStrategy instance used by sampling pipelines that need
@@ -317,9 +317,9 @@ def sample_images_common(
     # Save original devices for all models (they may be on CPU for memory efficiency)
     org_vae_device = vae.device
 
-    # unwrap unet and text_encoder(s), saving their original devices
-    unet = accelerator.unwrap_model(unet_wrapped)
-    org_unet_device = unet.device
+    # unwrap denoiser and text_encoder(s), saving their original devices
+    denoiser = accelerator.unwrap_model(denoiser_wrapped)
+    org_denoiser_device = denoiser.device
 
     if isinstance(text_encoder, (list, tuple)):
         text_encoder = [accelerator.unwrap_model(te) for te in text_encoder]
@@ -339,7 +339,7 @@ def sample_images_common(
             logger.info(f"Casting VAE from {org_vae_dtype} to {sample_vae_dtype} for sampling")
             vae.to(dtype=sample_vae_dtype)
 
-    # Move VAE to device (text encoders and unet will be moved by pipeline.to())
+    # Move VAE to device (text encoders and denoiser will be moved by pipeline.to())
     vae.to(distributed_state.device)
 
     # read prompts
@@ -363,7 +363,7 @@ def sample_images_common(
     pipe_kwargs = {
         "text_encoder": text_encoder,
         "vae": vae,
-        "unet": unet,
+        "denoiser": denoiser,
         "tokenizer": tokenizer,
         "scheduler": default_scheduler,
         "safety_checker": None,
@@ -453,7 +453,7 @@ def sample_images_common(
     # Restore all models to their original devices and dtypes (critical for training)
     # This matches the pattern used in caching code (SdxlTrainingStrategy.cache_text_encoder_outputs_if_needed)
     vae.to(device=org_vae_device, dtype=org_vae_dtype)
-    unet.to(org_unet_device)
+    denoiser.to(org_denoiser_device)
 
     # Restore text encoders - handle both single and list cases
     if isinstance(text_encoder, (list, tuple)):

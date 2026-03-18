@@ -94,7 +94,7 @@ class Trainer:
         self.val_manifest: DatasetManifest | None = None
 
         # Will be set during model loading (in setup)
-        self.unet: nn.Module | None = None
+        self.denoiser: nn.Module | None = None
         self.vae: nn.Module | None = None
         self.text_encoders: list[nn.Module] = []
         self._text_encoder: Any = None  # Original reference for adapter API compatibility
@@ -102,7 +102,7 @@ class Trainer:
         # Will be set during prepare_models()
         self.adapter: nn.Module | None = None
         self.net_kwargs: dict = {}
-        self.unet_weight_dtype: torch.dtype | None = None
+        self.denoiser_weight_dtype: torch.dtype | None = None
         self.te_weight_dtype: torch.dtype | None = None
 
         # Will be set during run_caching()
@@ -164,7 +164,7 @@ class Trainer:
         self._val_dataloader: Any = None
         self._cyclic_val_dataloader: Any = None
         self._train_text_encoder: bool = False
-        self._train_unet: bool = True
+        self._train_denoiser: bool = True
         self._grad_sync_handle: Any = None  # Object passed to accelerator.accumulate() for grad sync
         self._primary_trainable: nn.Module | None = None  # Semantic trainable model (set by mode)
 
@@ -318,8 +318,8 @@ class Trainer:
             else None
         )
 
-        # Load target models: unet may be None for lazy loading
-        self._model_version, text_encoder, self.vae, self.unet = self.strategies.load_target_model(
+        # Load target models: denoiser may be None for lazy loading
+        self._model_version, text_encoder, self.vae, self.denoiser = self.strategies.load_target_model(
             self.cfg, self.weight_dtype, self.accelerator
         )
 
@@ -600,7 +600,7 @@ class Trainer:
                     self.vae,
                     self.tokenizers,
                     self._text_encoder,
-                    self.unet,
+                    self.denoiser,
                 )
 
             # Validate (independent of sampling)
@@ -616,7 +616,7 @@ class Trainer:
                     self._cyclic_val_dataloader,
                     self.trainable_model,
                     self.text_encoders,
-                    self.unet,
+                    self.denoiser,
                     self.vae,
                     self.noise_scheduler,
                     self.vae_dtype,
@@ -684,7 +684,7 @@ class Trainer:
         """The primary semantic trainable model (set by mode).
 
         For PEFT: the adapter module.
-        For fine-tune: UNet or equivalent.
+        For fine-tune: the denoiser.
 
         Distinct from ``_grad_sync_handle`` which is the grad-sync wrapper
         """

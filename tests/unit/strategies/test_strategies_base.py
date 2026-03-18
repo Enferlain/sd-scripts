@@ -18,7 +18,6 @@ from library.strategies.base.training import (
     ModelPreparationStrategy,
     TextEncodingStrategy,
     TokenizationStrategy,
-    TrainingRuntimeStrategy,
     TrainingStrategy,
     ValidationStrategy,
 )
@@ -219,7 +218,6 @@ class TestTrainingStrategyPhase2Facets:
         """TrainingStrategy should compose the new capability facets."""
         assert issubclass(TrainingStrategy, ModelPreparationStrategy)
         assert issubclass(TrainingStrategy, DiffusionTrainingStrategy)
-        assert issubclass(TrainingStrategy, TrainingRuntimeStrategy)
         assert issubclass(TrainingStrategy, TokenizationStrategy)
         assert issubclass(TrainingStrategy, TextEncodingStrategy)
 
@@ -233,24 +231,24 @@ class TestTrainingStrategyPhase2Facets:
         assert "get_models_for_text_encoding" in TrainingStrategy.__dict__
         assert "encode_te_outputs_in_memory" in TrainingStrategy.__dict__
         assert "create_latent_caching_strategy" in CachingStrategy.__dict__
-        assert "load_unet_lazily" in ModelLoadingStrategy.__dict__
-        assert "prepare_unet_with_accelerator" in ModelPreparationStrategy.__dict__
+        assert "load_denoiser_lazily" in ModelLoadingStrategy.__dict__
+        assert "prepare_denoiser_with_accelerator" in ModelPreparationStrategy.__dict__
         assert "calculate_val_loss" in ValidationStrategy.__dict__
 
-        assert "load_unet_lazily" not in TrainingStrategy.__dict__
+        assert "load_denoiser_lazily" not in TrainingStrategy.__dict__
         assert "tokenize_captions" not in TokenizationStrategy.__dict__
         assert "tokenize_captions" not in CachingStrategy.__dict__
         assert "initialize" not in TrainingStrategy.__dict__
         assert "get_models_for_text_encoding" not in CachingStrategy.__dict__
         assert "encode_te_outputs_in_memory" not in CachingStrategy.__dict__
-        assert "prepare_unet_with_accelerator" not in TrainingStrategy.__dict__
+        assert "prepare_denoiser_with_accelerator" not in TrainingStrategy.__dict__
         assert "calculate_val_loss" not in TrainingStrategy.__dict__
 
-    def test_model_loading_default_lazy_unet_hook_still_raises(self):
+    def test_model_loading_default_lazy_denoiser_hook_still_raises(self):
         """Default lazy-load hook remains opt-in for model families that need it."""
         strategy = _DummyLoadingStrategy()
-        with pytest.raises(NotImplementedError, match="load_unet_lazily"):
-            strategy.load_unet_lazily(cfg=Mock(), weight_dtype=torch.float16, accelerator=Mock(), text_encoders=[])
+        with pytest.raises(NotImplementedError, match="load_denoiser_lazily"):
+            strategy.load_denoiser_lazily(cfg=Mock(), weight_dtype=torch.float16, accelerator=Mock(), text_encoders=[])
 
     def test_diffusion_training_prepare_latents_scales_encoded_latents(self):
         """Moved diffusion helper should still apply VAE latent scaling."""

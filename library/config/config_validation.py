@@ -61,11 +61,11 @@ def prepare_config(cfg) -> None:
     if cfg.optimizer.use_lion_optimizer:
         cfg.optimizer.optimizer_type = "Lion"
 
-    # Learning rates: default unet/text_encoders to base if not set
+    # Learning rates: default denoiser/text_encoders to base if not set
     if hasattr(cfg.optimizer, "learning_rates"):
         lr_cfg = cfg.optimizer.learning_rates
-        if lr_cfg.unet is None:
-            lr_cfg.unet = lr_cfg.base
+        if lr_cfg.denoiser is None:
+            lr_cfg.denoiser = lr_cfg.base
         if lr_cfg.text_encoders is None:
             lr_cfg.text_encoders = lr_cfg.base
 

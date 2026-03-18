@@ -291,7 +291,7 @@ def prepare_accelerator(
     return accelerator
 
 
-def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):
+def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_denoiser=True):
     """
     Append learning rate to logs.
 
@@ -299,11 +299,11 @@ def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_unet=True):
         logs: The logs to append to.
         lr_scheduler: The learning rate scheduler.
         optimizer_type: The optimizer type.
-        including_unet: Whether to include UNet learning rate.
+        including_denoiser: Whether to include denoiser learning rate.
     """
     names = []
-    if including_unet:
-        names.append("unet")
+    if including_denoiser:
+        names.append("denoiser")
     names.append("text_encoder1")
     names.append("text_encoder2")
 

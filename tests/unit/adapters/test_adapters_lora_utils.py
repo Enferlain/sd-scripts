@@ -14,7 +14,7 @@ class TestLoraUtils:
             "lora_te_text_model_encoder_layers_0_mlp_fc1_alpha": torch.tensor(1.0),
         }
 
-        # Include only unet
+        # Include only unet keys
         filtered = lora_utils.filter_lora_state_dict(state_dict, include_pattern="unet")
         assert len(filtered) == 2
         assert "lora_te_text_model_encoder_layers_0_mlp_fc1_alpha" not in filtered

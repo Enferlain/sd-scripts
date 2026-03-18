@@ -6,7 +6,7 @@ from typing import Any
 class LearningRatesConfig:
     """
     Consolidated learning rates for all components.
-    Component-specific LRs (unet, text_encoders) override base when set.
+    Component-specific LRs (denoiser, text_encoders) override base when set.
     """
 
     base: float = field(default=2.0e-6, metadata={"help": "Base learning rate, used as fallback for all components"})
@@ -16,6 +16,15 @@ class LearningRatesConfig:
     text_encoders: Any | None = field(default=None, metadata={"help": "Text Encoder LR(s) (overrides base if set)"})
     # Block-wise LR weights/values
     blocks: str | None = field(default=None, metadata={"help": "Per-block learning rates/weights"})
+
+    @property
+    def denoiser(self) -> float | None:
+        """Contract-level alias for the denoiser learning rate."""
+        return self.unet
+
+    @denoiser.setter
+    def denoiser(self, value: float | None) -> None:
+        self.unet = value
 
 
 @dataclass

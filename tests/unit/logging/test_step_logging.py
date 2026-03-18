@@ -60,10 +60,10 @@ class TestGenerateStepLogsLrKeys:
             current_loss=0.1,
             avr_loss=0.2,
             lr_scheduler=_make_lr_scheduler([1e-4]),
-            lr_descriptions=["unet"],
+            lr_descriptions=["denoiser"],
         )
         lr_keys = [k for k in logs if k.startswith("lr/")]
-        assert lr_keys == ["lr/unet"]
+        assert lr_keys == ["lr/denoiser"]
 
     def test_two_groups_te_and_unet(self):
         logs = self.generate_step_logs(
@@ -71,10 +71,10 @@ class TestGenerateStepLogsLrKeys:
             current_loss=0.1,
             avr_loss=0.2,
             lr_scheduler=_make_lr_scheduler([5e-5, 1e-4]),
-            lr_descriptions=["textencoder", "unet"],
+            lr_descriptions=["textencoder", "denoiser"],
         )
         lr_keys = [k for k in logs if k.startswith("lr/")]
-        assert lr_keys == ["lr/textencoder", "lr/unet"]
+        assert lr_keys == ["lr/textencoder", "lr/denoiser"]
         assert len(lr_keys) == len(set(lr_keys)), f"Duplicate LR keys: {lr_keys}"
 
     def test_multiple_text_encoders(self):
@@ -84,10 +84,10 @@ class TestGenerateStepLogsLrKeys:
             current_loss=0.1,
             avr_loss=0.2,
             lr_scheduler=_make_lr_scheduler([5e-5, 3e-5, 1e-4]),
-            lr_descriptions=["text_encoder1", "text_encoder2", "unet"],
+            lr_descriptions=["text_encoder1", "text_encoder2", "denoiser"],
         )
         lr_keys = [k for k in logs if k.startswith("lr/")]
-        assert lr_keys == ["lr/text_encoder1", "lr/text_encoder2", "lr/unet"]
+        assert lr_keys == ["lr/text_encoder1", "lr/text_encoder2", "lr/denoiser"]
         assert len(lr_keys) == len(set(lr_keys)), f"Duplicate LR keys: {lr_keys}"
 
     def test_custom_descriptions(self):
@@ -108,7 +108,7 @@ class TestGenerateStepLogsLrKeys:
             current_loss=0.1,
             avr_loss=0.2,
             lr_scheduler=_make_lr_scheduler([3e-4]),
-            lr_descriptions=["unet"],
+            lr_descriptions=["denoiser"],
         )
         lr_keys = [k for k in logs if k.startswith("lr/")]
         assert len(lr_keys) == 1, f"Expected exactly 1 LR key, got {lr_keys}"

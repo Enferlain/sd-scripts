@@ -52,7 +52,7 @@ class MockStrategy:
     def __init__(self):
         self.tokenizers = []
 
-    def is_train_unet(self, cfg):
+    def is_train_denoiser(self, cfg):
         return True
 
     def is_train_text_encoder(self, cfg):
@@ -61,7 +61,7 @@ class MockStrategy:
     def get_text_encoders_train_flags(self, cfg, te):
         return [False] * len(te)
 
-    def cast_unet(self, cfg):
+    def cast_denoiser(self, cfg):
         return False
 
     def cast_vae(self, cfg):
@@ -85,8 +85,8 @@ class MockStrategy:
     def encode_tokens_with_weights(self, models, tokens, weights):
         return []
 
-    def prepare_unet_with_accelerator(self, cfg, accelerator, unet):
-        return unet
+    def prepare_denoiser_with_accelerator(self, cfg, accelerator, denoiser):
+        return denoiser
 
 
 class TestResumeBehavior(unittest.TestCase):
@@ -135,7 +135,7 @@ class TestResumeBehavior(unittest.TestCase):
         trainer.train_manifest.entries = {"img1": MagicMock(num_repeats=1, is_reg=False)}
         trainer.num_batches_per_epoch = 10
         trainer.text_encoders = [MagicMock()]
-        trainer.unet = MagicMock()
+        trainer.denoiser = MagicMock()
         trainer.vae = MagicMock()
 
         # 2. SIMULATE TRAINING STATE (Step 10, Epoch 1)

@@ -260,11 +260,11 @@ class SdTrainingStrategy(TrainingStrategy):
 
         return text_encoder_conds
 
-    def call_unet(
+    def call_denoiser(
         self,
         cfg: Any,
         accelerator: Any,
-        unet: Any,
+        denoiser: Any,
         noisy_latents: torch.Tensor,
         timesteps: torch.Tensor,
         text_conds: list[torch.Tensor],
@@ -278,7 +278,7 @@ class SdTrainingStrategy(TrainingStrategy):
         Args:
             cfg: Configuration object.
             accelerator: Accelerator instance.
-            unet: UNet model.
+            denoiser: Denoiser model.
             noisy_latents: Noisy latents tensor.
             timesteps: Timesteps tensor.
             text_conds: List of text conditioning tensors.
@@ -289,8 +289,33 @@ class SdTrainingStrategy(TrainingStrategy):
         Returns:
             Noise prediction tensor.
         """
-        noise_pred = unet(noisy_latents, timesteps, text_conds[0]).sample
+        noise_pred = denoiser(noisy_latents, timesteps, text_conds[0]).sample
         return noise_pred
+
+    def call_unet(
+        self,
+        cfg: Any,
+        accelerator: Any,
+        unet: Any,
+        noisy_latents: torch.Tensor,
+        timesteps: torch.Tensor,
+        text_conds: list[torch.Tensor],
+        batch: Any,
+        weight_dtype: torch.dtype,
+        **kwargs,
+    ) -> torch.Tensor:
+        """Backward-compatible SD alias for the denoiser call."""
+        return self.call_denoiser(
+            cfg,
+            accelerator,
+            unet,
+            noisy_latents,
+            timesteps,
+            text_conds,
+            batch,
+            weight_dtype,
+            **kwargs,
+        )
 
     def sample_images(
         self,

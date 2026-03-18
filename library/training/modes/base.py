@@ -35,11 +35,11 @@ class TrainingMode(Protocol):
         """Create/configure the trainable model target.
 
         For PEFT: import the adapter module, create an adapter, apply it to
-        UNet/text-encoders, load weights, merge base weights.
-        For fine-tune (future): unfreeze UNet layers.
+        denoiser/text-encoders, load weights, merge base weights.
+        For fine-tune (future): unfreeze denoiser layers.
 
         After this call the mode's trainable target must be ready
-        (e.g. ``trainer.adapter`` for PEFT, UNet for fine-tune).
+        (e.g. ``trainer.adapter`` for PEFT, denoiser for fine-tune).
         """
         ...
 
@@ -47,7 +47,7 @@ class TrainingMode(Protocol):
         """Mode-specific precision casting & freeze/unfreeze logic.
 
         For PEFT: ``adapter.to(weight_dtype)``, freeze base model
-        (``unet.requires_grad_(False)``), freeze text-encoders.
+        (``denoiser.requires_grad_(False)``), freeze text-encoders.
         Shared dtype setup (FP8, TE dtype) is handled by the phase caller.
         """
         ...
@@ -83,8 +83,8 @@ class TrainingMode(Protocol):
         """Mode-specific gradient checkpointing & grad preparation.
 
         For PEFT: ``adapter.enable_gradient_checkpointing()``,
-        ``adapter.prepare_grad_etc(text_encoder, unet)``.
-        Shared UNet/TE gradient-checkpointing is handled by the phase caller.
+        ``adapter.prepare_grad_etc(text_encoder, denoiser)``.
+        Shared denoiser/TE gradient-checkpointing is handled by the phase caller.
         """
         ...
 
@@ -101,7 +101,7 @@ class TrainingMode(Protocol):
     def on_epoch_start(self, trainer: Trainer) -> None:
         """Mode-specific epoch start callback.
 
-        For PEFT: ``adapter.on_epoch_start(text_encoder, unet)``
+        For PEFT: ``adapter.on_epoch_start(text_encoder, denoiser)``
         (which calls ``adapter.train()`` internally).
         """
         ...
@@ -109,7 +109,7 @@ class TrainingMode(Protocol):
     def on_step_start(self, trainer: Trainer) -> None:
         """Mode-specific callback before each training step.
 
-        For PEFT: ``adapter.on_step_start(text_encoder, unet)`` if the
+        For PEFT: ``adapter.on_step_start(text_encoder, denoiser)`` if the
         adapter defines it.
         For fine-tune: typically a no-op.
         """
@@ -128,7 +128,7 @@ class TrainingMode(Protocol):
         """Return parameters for gradient clipping.
 
         For PEFT: ``adapter.get_trainable_params()``
-        For fine-tune: UNet (+ optional TE) parameters.
+        For fine-tune: denoiser (+ optional TE) parameters.
         """
         ...
 
@@ -136,7 +136,7 @@ class TrainingMode(Protocol):
         """Switch primary trainable module(s) to eval mode.
 
         For PEFT: ``adapter.eval()``
-        For fine-tune: ``unet.eval()`` + optional TE.
+        For fine-tune: ``denoiser.eval()`` + optional TE.
         """
         ...
 
@@ -144,7 +144,7 @@ class TrainingMode(Protocol):
         """Switch primary trainable module(s) to train mode.
 
         For PEFT: ``adapter.train()``
-        For fine-tune: ``unet.train()`` + optional TE.
+        For fine-tune: ``denoiser.train()`` + optional TE.
         """
         ...
 
@@ -183,7 +183,7 @@ class TrainingMode(Protocol):
 
         Each mode decides what to show:
         - PEFT: adapter only (frozen backbone is noise).
-        - Fine-tune: all backbone components (unet, TEs, vae).
+        - Fine-tune: all backbone components (denoiser, TEs, vae).
 
         Returns:
             (components, aliases) where components is a list of

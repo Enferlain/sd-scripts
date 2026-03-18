@@ -142,7 +142,7 @@ def _run_step_side_effects(
             trainer.vae,
             trainer.tokenizers,
             trainer._text_encoder,
-            trainer.unet,
+            trainer.denoiser,
         )
 
     if step_actions.should_validate:
@@ -155,7 +155,7 @@ def _run_step_side_effects(
             trainer._cyclic_val_dataloader,
             trainer.trainable_model,
             trainer.text_encoders,
-            trainer.unet,
+            trainer.denoiser,
             trainer.vae,
             trainer.noise_scheduler,
             trainer.vae_dtype,
@@ -385,7 +385,7 @@ def _finalize_epoch(
             trainer.vae,
             trainer.tokenizers,
             trainer._text_encoder,
-            trainer.unet,
+            trainer.denoiser,
         )
     trainer._progress_bar.unpause()
     trainer.optimizer_train_fn()
@@ -523,22 +523,10 @@ def run_training_loop(trainer: Trainer) -> None:
 
                     trainer._accumulation_counter += 1
 
-                    # preprocess batch for each model
-                    strategies.on_step_start(
-                        cfg,
-                        accelerator,
-                        trainer.trainable_model,
-                        trainer.text_encoders,
-                        trainer.unet,
-                        batch,
-                        trainer.weight_dtype,
-                        is_train=True,
-                    )
-
                     loss, pre_scaling_loss, loss_scaled, timesteps = strategies.process_batch(
                         batch,
                         trainer.text_encoders,
-                        trainer.unet,
+                        trainer.denoiser,
                         trainer.trainable_model,
                         trainer.vae,
                         trainer.noise_scheduler,
@@ -548,7 +536,7 @@ def run_training_loop(trainer: Trainer) -> None:
                         cfg,
                         is_train=True,
                         train_text_encoder=trainer._train_text_encoder,
-                        train_unet=trainer._train_unet,
+                        train_unet=trainer._train_denoiser,
                         edm2_model=trainer._edm2_model,
                         min_timestep_override=trainer._current_min_timestep,
                         max_timestep_override=trainer._current_max_timestep,

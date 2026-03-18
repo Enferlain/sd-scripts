@@ -9,7 +9,7 @@ from torchvision import transforms
 # General / Math
 # =============================================================================
 
-# --- unet.py, unet.py, model_metadata.py ---
+# --- denoiser.py, denoiser.py, model_metadata.py ---
 EPSILON = 1e-6
 
 
@@ -228,7 +228,7 @@ V2_UNET_PARAMS_CONTEXT_DIM = 1024
 # Model Parameters: SD Original UNet Implementation
 # =============================================================================
 
-# --- library/models/unet.py ---
+# --- library/models/denoiser.py ---
 BLOCK_OUT_CHANNELS: tuple[int, ...] = (320, 640, 1280, 1280)
 TIMESTEP_INPUT_DIM = BLOCK_OUT_CHANNELS[0]
 TIME_EMBED_DIM = BLOCK_OUT_CHANNELS[0] * 4
@@ -311,7 +311,7 @@ DIFFUSERS_SDXL_UNET_CONFIG = {
     "use_linear_projection": True,
 }
 
-# --- library/models/unet.py ---
+# --- library/models/denoiser.py ---
 SDXL_IN_CHANNELS: int = 4
 SDXL_OUT_CHANNELS: int = 4
 ADM_SDXL_IN_CHANNELS: int = 2816

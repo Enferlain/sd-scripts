@@ -291,11 +291,11 @@ class SdxlTrainingStrategy(TrainingStrategy):
                 "pool2": pool2.squeeze(0).cpu(),
             }
 
-    def call_unet(
+    def call_denoiser(
         self,
         cfg: Any,
         accelerator: Any,
-        unet: Any,
+        denoiser: Any,
         noisy_latents: torch.Tensor,
         timesteps: torch.Tensor,
         text_conds: Any,
@@ -311,7 +311,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         Args:
             cfg: Configuration object.
             accelerator: Accelerator instance.
-            unet: UNet model.
+            denoiser: Denoiser model.
             noisy_latents: Noisy latents tensor.
             timesteps: Timesteps tensor.
             text_conds: Tuple of text conditioning (encoder_hidden_states1, encoder_hidden_states2, pool2).
@@ -350,8 +350,33 @@ class SdxlTrainingStrategy(TrainingStrategy):
             text_embedding = text_embedding[indices]
             vector_embedding = vector_embedding[indices]
 
-        noise_pred = unet(noisy_latents, timesteps, text_embedding, vector_embedding)
+        noise_pred = denoiser(noisy_latents, timesteps, text_embedding, vector_embedding)
         return noise_pred
+
+    def call_unet(
+        self,
+        cfg: Any,
+        accelerator: Any,
+        unet: Any,
+        noisy_latents: torch.Tensor,
+        timesteps: torch.Tensor,
+        text_conds: Any,
+        batch: Any,
+        weight_dtype: torch.dtype,
+        **kwargs,
+    ) -> torch.Tensor:
+        """Backward-compatible SDXL alias for the denoiser call."""
+        return self.call_denoiser(
+            cfg,
+            accelerator,
+            unet,
+            noisy_latents,
+            timesteps,
+            text_conds,
+            batch,
+            weight_dtype,
+            **kwargs,
+        )
 
     def sample_images(
         self,

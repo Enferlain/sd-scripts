@@ -92,7 +92,7 @@ class TestPrepareOptimizer:
             mock_optimizer,  # optimizer
             MagicMock(),  # train_fn
             MagicMock(),  # eval_fn
-            ["unet"],  # lr_descriptions
+            ["denoiser"],  # lr_descriptions
         )
         mock_trainer.mode.register_state_hooks.return_value = MagicMock(return_value=None)
 
@@ -119,7 +119,7 @@ class TestPrepareOptimizer:
             mock_optimizer,
             MagicMock(),
             MagicMock(),
-            ["unet"],
+            ["denoiser"],
         )
         mock_trainer.mode.register_state_hooks.return_value = MagicMock(return_value=None)
 
@@ -143,7 +143,7 @@ class TestPrepareOptimizer:
             MagicMock(),
             MagicMock(),
             MagicMock(),
-            ["unet"],
+            ["denoiser"],
         )
         mock_trainer.mode.register_state_hooks.return_value = MagicMock(return_value=None)
 
@@ -172,7 +172,7 @@ class TestSetupGradientCheckpointing:
 
         _setup_gradient_checkpointing(mock_trainer)
 
-        mock_trainer.unet.enable_gradient_checkpointing.assert_called()
+        mock_trainer.denoiser.enable_gradient_checkpointing.assert_called()
 
     def test_skips_when_disabled(self, mock_trainer):
         """Test gradient checkpointing is skipped when disabled."""
@@ -182,7 +182,7 @@ class TestSetupGradientCheckpointing:
 
         _setup_gradient_checkpointing(mock_trainer)
 
-        mock_trainer.unet.enable_gradient_checkpointing.assert_not_called()
+        mock_trainer.denoiser.enable_gradient_checkpointing.assert_not_called()
 
     def test_delegates_adapter_gradient_to_mode(self, mock_trainer):
         """Test that adapter-specific gradient setup is delegated to mode."""

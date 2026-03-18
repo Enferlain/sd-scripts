@@ -23,15 +23,15 @@ def prepare_models(trainer: Trainer) -> None:
     """Phase 3: Create trainable model and configure precision.
 
     Delegates to ``trainer.mode`` for mode-specific setup. Updates
-    trainer.net_kwargs, trainer.unet_weight_dtype, and trainer.te_weight_dtype.
+    trainer.net_kwargs, trainer.denoiser_weight_dtype, and trainer.te_weight_dtype.
 
     Args:
         trainer: Trainer instance
     """
-    # Lazy load UNet if it was deferred during setup (memory optimization)
-    # This allows VAE/TE caching to complete before loading the large UNet
-    if trainer.unet is None:
-        trainer.unet, trainer.text_encoders = trainer.strategies.load_unet_lazily(
+    # Lazy load denoiser if it was deferred during setup (memory optimization)
+    # This allows VAE/TE caching to complete before loading the large denoiser
+    if trainer.denoiser is None:
+        trainer.denoiser, trainer.text_encoders = trainer.strategies.load_denoiser_lazily(
             trainer.cfg, trainer.weight_dtype, trainer.accelerator, trainer.text_encoders
         )
         # Update _text_encoder reference for adapter API compatibility
@@ -43,7 +43,7 @@ def prepare_models(trainer: Trainer) -> None:
     # Mode-specific: create and configure the trainable model (adapter)
     trainer.mode.prepare_trainables(trainer)
 
-    # Shared precision setup (FP8, dtype computation, UNet/TE casting)
+    # Shared precision setup (FP8, dtype computation, denoiser/TE casting)
     configure_precision(trainer)
 
     # Mode-specific: cast adapter, freeze base model
@@ -51,41 +51,41 @@ def prepare_models(trainer: Trainer) -> None:
 
 
 def configure_precision(trainer: Trainer) -> None:
-    """Configure shared precision settings for UNet and text encoders.
+    """Configure shared precision settings for denoiser and text encoders.
 
     Mode-specific precision (adapter casting, freezing base model) is
     handled by ``trainer.mode.configure_trainable_precision()``.
 
-    Updates trainer.unet_weight_dtype and trainer.te_weight_dtype.
+    Updates trainer.denoiser_weight_dtype and trainer.te_weight_dtype.
 
     Args:
         trainer: Trainer instance
     """
     cfg = trainer.cfg
-    unet = trainer.unet
+    denoiser = trainer.denoiser
     text_encoders = trainer.text_encoders
     weight_dtype = trainer.weight_dtype
     accelerator = trainer.accelerator
     strategies = trainer.strategies
 
-    unet_weight_dtype = te_weight_dtype = weight_dtype
+    denoiser_weight_dtype = te_weight_dtype = weight_dtype
 
     # FP8 support for base model
-    if cfg.performance.precision.fp8_base or cfg.performance.precision.fp8_base_unet:
+    if cfg.performance.precision.fp8_base or cfg.performance.precision.fp8_base_unet:  # TODO unet
         assert torch.__version__ >= "2.1.0", "fp8_base requires torch>=2.1.0"
-        accelerator.print("enable fp8 training for U-Net.")
-        unet_weight_dtype = torch.float8_e4m3fn
+        accelerator.print("enable fp8 training for denoiser.")
+        denoiser_weight_dtype = torch.float8_e4m3fn
 
-        if not cfg.performance.precision.fp8_base_unet:
+        if not cfg.performance.precision.fp8_base_unet:  # TODO unet
             accelerator.print("enable fp8 training for Text Encoder.")
-        te_weight_dtype = weight_dtype if cfg.performance.precision.fp8_base_unet else torch.float8_e4m3fn
+        te_weight_dtype = weight_dtype if cfg.performance.precision.fp8_base_unet else torch.float8_e4m3fn  # TODO unet
 
-        logger.info(f"set U-Net weight dtype to {unet_weight_dtype}")
-        unet.to(dtype=unet_weight_dtype)
+        logger.info(f"set denoiser weight dtype to {denoiser_weight_dtype}")
+        denoiser.to(dtype=denoiser_weight_dtype)
 
-    # Configure UNet casting
-    if strategies.cast_unet(cfg):
-        unet.to(dtype=unet_weight_dtype)
+    # Configure denoiser casting
+    if strategies.cast_denoiser(cfg):
+        denoiser.to(dtype=denoiser_weight_dtype)
 
     # Configure text encoder casting
     for i, t_enc in enumerate(text_encoders):
@@ -96,5 +96,5 @@ def configure_precision(trainer: Trainer) -> None:
             if te_weight_dtype != weight_dtype:
                 strategies.prepare_text_encoder_fp8(i, t_enc, te_weight_dtype, weight_dtype)
 
-    trainer.unet_weight_dtype = unet_weight_dtype
+    trainer.denoiser_weight_dtype = denoiser_weight_dtype
     trainer.te_weight_dtype = te_weight_dtype

@@ -47,7 +47,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
         trainer.lr_descriptions,
     ) = trainer.mode.build_optimizer_params(trainer)
 
-    # NOTE: trainer._train_unet and trainer._train_text_encoder are set in
+    # NOTE: trainer._train_denoiser and trainer._train_text_encoder are set in
     # prepare_models() -> create_adapter() as single source of truth
 
     # Create validation dataloader (once, deterministic)
@@ -101,7 +101,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
     # Accelerator.prepare - handles distributed training setup (delegated to mode)
     trainer.mode.prepare_with_accelerator(trainer)
 
-    # Gradient checkpointing setup (shared UNet/TE parts + mode-specific adapter parts)
+    # Gradient checkpointing setup (shared denoiser/TE parts + mode-specific adapter parts)
     # NOTE: This happens AFTER accelerator.prepare(), matching legacy behavior.
     # Risk: DDP with cpu_offload_checkpointing=True may have issues if hooks
     # are registered after wrapping. Requires manual verification in distributed
@@ -142,16 +142,16 @@ def _setup_gradient_checkpointing(trainer: Trainer) -> None:
 
     if cfg.performance.memory.gradient_checkpointing:
         if cfg.performance.memory.cpu_offload_checkpointing:
-            trainer.unet.enable_gradient_checkpointing(cpu_offload=True)
+            trainer.denoiser.enable_gradient_checkpointing(cpu_offload=True)
         else:
-            trainer.unet.enable_gradient_checkpointing()
+            trainer.denoiser.enable_gradient_checkpointing()
 
         for t_enc, flag in zip(trainer.text_encoders, trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders)):
             if flag and t_enc.supports_gradient_checkpointing:
                 t_enc.gradient_checkpointing_enable()
 
         # Train mode for gradient checkpointing
-        trainer.unet.train()
+        trainer.denoiser.train()
         for i, (t_enc, flag) in enumerate(
             zip(trainer.text_encoders, trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders))
         ):
@@ -159,7 +159,7 @@ def _setup_gradient_checkpointing(trainer: Trainer) -> None:
             if flag:
                 trainer.strategies.prepare_text_encoder_grad_ckpt_workaround(i, t_enc)
     else:
-        trainer.unet.eval()
+        trainer.denoiser.eval()
         for t_enc in trainer.text_encoders:
             t_enc.eval()
 

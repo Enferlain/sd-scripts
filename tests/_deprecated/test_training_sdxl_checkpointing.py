@@ -52,7 +52,7 @@ def mock_models():
     return {
         "text_encoder1": MagicMock(name="text_encoder1"),
         "text_encoder2": MagicMock(name="text_encoder2"),
-        "unet": MagicMock(name="unet"),
+        "denoiser": MagicMock(name="denoiser"),
         "vae": MagicMock(name="vae"),
         "logit_scale": MagicMock(name="logit_scale"),
         "ckpt_info": MagicMock(name="ckpt_info"),
@@ -223,7 +223,7 @@ class TestSaveSDModelOnTrainEnd:
         assert call_args.args[0] == "/output/diffusers_model"
         assert call_args.args[1] is mock_models["text_encoder1"]
         assert call_args.args[2] is mock_models["text_encoder2"]
-        assert call_args.args[3] is mock_models["unet"]
+        assert call_args.args[3] is mock_models["denoiser"]
         assert call_args.args[4] == "/path/to/source"
         assert call_args.args[5] is mock_models["vae"]
 

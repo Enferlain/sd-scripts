@@ -61,7 +61,7 @@ def create_training_metadata(
         "ss_output_name": cfg.output.saving.output_name,
         "ss_learning_rate": cfg.optimizer.learning_rates.base,
         "ss_text_encoder_lr": cfg.optimizer.learning_rates.text_encoders,
-        "ss_unet_lr": cfg.optimizer.learning_rates.unet,
+        "ss_unet_lr": cfg.optimizer.learning_rates.denoiser,
         "ss_num_train_images": num_train_images,
         "ss_num_validation_images": num_val_images,
         "ss_num_reg_images": num_reg_images,

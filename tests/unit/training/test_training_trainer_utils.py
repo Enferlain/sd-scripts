@@ -5,10 +5,16 @@ Tests learning rate logging utilities and accelerator preparation.
 """
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
+from library.config.dataclasses.output import LoggingConfig
+from library.config.dataclasses.performance import PrecisionConfig, CompilationConfig, DistributedConfig, DeepSpeedConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.logging.step_logging import init_trackers, append_lr_to_logs_with_names
 from library.training.trainer_utils import (
     append_lr_to_logs,
+    determine_grad_sync_context,
+    prepare_accelerator,
 )
 
 
@@ -33,14 +39,14 @@ class TestAppendLrToLogsWithNames:
     def test_adds_lr_entries_to_logs(self, mock_lr_scheduler):
         """Test that LR entries are added to logs dict."""
         logs = {}
-        names = ["unet", "text_encoder1"]
+        names = ["denoiser", "text_encoder1"]
         mock_lr_scheduler.get_last_lr.return_value = [1e-4, 1e-5]
 
         append_lr_to_logs_with_names(logs, mock_lr_scheduler, "AdamW", names)
 
-        assert "lr/unet" in logs
+        assert "lr/denoiser" in logs
         assert "lr/text_encoder1" in logs
-        assert logs["lr/unet"] == 1e-4
+        assert logs["lr/denoiser"] == 1e-4
         assert logs["lr/text_encoder1"] == 1e-5
 
     def test_lr_values_are_floats(self, mock_lr_scheduler):
@@ -56,38 +62,38 @@ class TestAppendLrToLogsWithNames:
     def test_dadapt_optimizer_adds_d_lr_entry(self, mock_lr_scheduler):
         """Test that DAdapt optimizers add d*lr entries."""
         logs = {}
-        names = ["unet"]
+        names = ["denoiser"]
         mock_lr_scheduler.get_last_lr.return_value = [1e-4]
         mock_lr_scheduler.optimizers = [MagicMock()]
         mock_lr_scheduler.optimizers[-1].param_groups = [{"d": 0.5, "lr": 1e-4}]
 
         append_lr_to_logs_with_names(logs, mock_lr_scheduler, "DAdaptAdam", names)
 
-        assert "lr/d*lr/unet" in logs
-        assert logs["lr/d*lr/unet"] == 0.5 * 1e-4
+        assert "lr/d*lr/denoiser" in logs
+        assert logs["lr/d*lr/denoiser"] == 0.5 * 1e-4
 
     def test_prodigy_optimizer_adds_d_lr_entry(self, mock_lr_scheduler):
         """Test that Prodigy optimizer adds d*lr entries."""
         logs = {}
-        names = ["unet"]
+        names = ["denoiser"]
         mock_lr_scheduler.get_last_lr.return_value = [1e-4]
         mock_lr_scheduler.optimizers = [MagicMock()]
         mock_lr_scheduler.optimizers[-1].param_groups = [{"d": 0.3, "lr": 2e-4}]
 
         append_lr_to_logs_with_names(logs, mock_lr_scheduler, "Prodigy", names)
 
-        assert "lr/d*lr/unet" in logs
-        assert logs["lr/d*lr/unet"] == 0.3 * 2e-4
+        assert "lr/d*lr/denoiser" in logs
+        assert logs["lr/d*lr/denoiser"] == 0.3 * 2e-4
 
     def test_regular_optimizer_does_not_add_d_lr(self, mock_lr_scheduler):
         """Test that regular optimizers don't add d*lr entries."""
         logs = {}
-        names = ["unet"]
+        names = ["denoiser"]
         mock_lr_scheduler.get_last_lr.return_value = [1e-4]
 
         append_lr_to_logs_with_names(logs, mock_lr_scheduler, "AdamW", names)
 
-        assert "lr/d*lr/unet" not in logs
+        assert "lr/d*lr/denoiser" not in logs
 
 
 # =============================================================================
@@ -100,29 +106,29 @@ class TestAppendLrToLogsWithNames:
 class TestAppendLrToLogs:
     """Test append_lr_to_logs function."""
 
-    def test_includes_unet_by_default(self, mock_lr_scheduler):
-        """Test that unet is included when including_unet=True."""
+    def test_includes_denoiser_by_default(self, mock_lr_scheduler):
+        """Test that denoiser is included when including_denoiser=True."""
         logs = {}
 
-        append_lr_to_logs(logs, mock_lr_scheduler, "AdamW", including_unet=True)
+        append_lr_to_logs(logs, mock_lr_scheduler, "AdamW", including_denoiser=True)
 
-        assert "lr/unet" in logs
+        assert "lr/denoiser" in logs
 
-    def test_excludes_unet_when_specified(self, mock_lr_scheduler):
-        """Test that unet is excluded when including_unet=False."""
+    def test_excludes_denoiser_when_specified(self, mock_lr_scheduler):
+        """Test that denoiser is excluded when including_denoiser=False."""
         logs = {}
         mock_lr_scheduler.get_last_lr.return_value = [1e-4, 1e-5]  # Only 2 values for TE1, TE2
 
-        append_lr_to_logs(logs, mock_lr_scheduler, "AdamW", including_unet=False)
+        append_lr_to_logs(logs, mock_lr_scheduler, "AdamW", including_denoiser=False)
 
-        assert "lr/unet" not in logs
+        assert "lr/denoiser" not in logs
         assert "lr/text_encoder1" in logs
 
     def test_always_includes_text_encoders(self, mock_lr_scheduler):
         """Test that text encoders are always included."""
         logs = {}
 
-        append_lr_to_logs(logs, mock_lr_scheduler, "AdamW", including_unet=True)
+        append_lr_to_logs(logs, mock_lr_scheduler, "AdamW", including_denoiser=True)
 
         assert "lr/text_encoder1" in logs
         assert "lr/text_encoder2" in logs
@@ -131,16 +137,6 @@ class TestAppendLrToLogs:
 # =============================================================================
 # Heavy Mocking Tests - prepare_accelerator
 # =============================================================================
-
-from unittest.mock import Mock, patch
-from library.training.trainer_utils import (
-    prepare_accelerator,
-    determine_grad_sync_context,
-)
-from library.logging.step_logging import init_trackers, append_lr_to_logs_with_names
-from library.config.dataclasses.performance import PrecisionConfig, CompilationConfig, DistributedConfig, DeepSpeedConfig
-from library.config.dataclasses.output import LoggingConfig
-from library.config.dataclasses.training import TrainingConfig
 
 
 @pytest.mark.training
@@ -417,8 +413,9 @@ class TestDetermineGradSyncContext:
         """Test that accumulate context includes edm2_model when provided."""
         edm2_model = Mock()
 
-        result = determine_grad_sync_context(
+        context = determine_grad_sync_context(
             mock_args, mock_accelerator, sync_gradients=True, training_model=mock_training_model, edm2_model=edm2_model
         )
 
         mock_accelerator.accumulate.assert_called_once_with(mock_training_model, edm2_model)
+        assert context == "accumulate_context"

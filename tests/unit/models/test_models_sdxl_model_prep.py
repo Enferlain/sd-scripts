@@ -42,7 +42,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         mock_match_mp.return_value = torch.float16
 
         # Mock return from _load_target_model
-        # (load_stable_diffusion_format, te1, te2, vae, unet, logit_scale, ckpt_info)
+        # (load_stable_diffusion_format, te1, te2, vae, denoiser, logit_scale, ckpt_info)
         te1 = MagicMock()
         te2 = MagicMock()
         vae = MagicMock()
@@ -85,7 +85,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         te1 = MagicMock()
         mock_load_internal.return_value = (True, te1, MagicMock(), MagicMock(), MagicMock(), 1.0, None)
 
-        result = sdxl_model_prep.load_target_model(
+        sdxl_model_prep.load_target_model(
             self.model_config, self.memory_config, self.caching_config, self.precision_config, accelerator, "v1", torch.float16
         )
 
@@ -161,7 +161,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         mock_isfile.return_value = True  # It IS a file
 
         # Setup mock return
-        mock_load_ckpt.return_value = ("te1", "te2", "vae", "unet", "logit", "info")
+        mock_load_ckpt.return_value = ("te1", "te2", "vae", "denoiser", "logit", "info")
 
         result = sdxl_model_prep._load_target_model(self.model_config, "my_model.safetensors", None, "v1", torch.float16, "cpu")
 
@@ -169,7 +169,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         mock_load_ckpt.assert_called_once_with("v1", "my_model.safetensors", "cpu", None, False)
         # load_stable_diffusion_format should be True
         self.assertEqual(result[0], True)
-        self.assertEqual(result[1:], ("te1", "te2", "vae", "unet", "logit", "info"))
+        self.assertEqual(result[1:], ("te1", "te2", "vae", "denoiser", "logit", "info"))
 
     @patch("os.path.isfile")
     @patch("os.path.islink")
@@ -179,7 +179,7 @@ class TestSDXLModelPrep(unittest.TestCase):
         """Test loading checkpoint with an external VAE."""
         mock_islink.return_value = False
         mock_isfile.return_value = True
-        mock_load_ckpt.return_value = ("te1", "te2", "old_vae", "unet", "logit", "info")
+        mock_load_ckpt.return_value = ("te1", "te2", "old_vae", "denoiser", "logit", "info")
         mock_load_vae.return_value = "new_vae"
 
         result = sdxl_model_prep._load_target_model(self.model_config, "my_model.safetensors", "vae_path.pt", "v1", torch.float16, "cpu")
@@ -194,7 +194,7 @@ class TestSDXLModelPrep(unittest.TestCase):
     def test_load_internal_vae_padding(self, mock_load_ckpt, mock_set_padding, mock_isfile):
         """Test that VAE padding mode is applied if configured."""
         mock_isfile.return_value = True
-        mock_load_ckpt.return_value = ("te1", "te2", "vae", "unet", "logit", "info")
+        mock_load_ckpt.return_value = ("te1", "te2", "vae", "denoiser", "logit", "info")
 
         self.model_config.vae_conv2d_padding_mode = "reflect"
 

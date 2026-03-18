@@ -324,10 +324,10 @@ class TestPrepareDeepspeedModel:
         cfg.mixed_precision = "no"
         model1 = nn.Linear(10, 10)
 
-        result = prepare_deepspeed_model(cfg, unet=model1, vae=None, text_encoder=None)
+        result = prepare_deepspeed_model(cfg, denoiser=model1, vae=None, text_encoder=None)
 
-        # Should only have unet
-        assert "unet" in result.models
+        # Should only have denoiser
+        assert "denoiser" in result.models
         assert "vae" not in result.models
         assert "text_encoder" not in result.models
 
@@ -339,10 +339,10 @@ class TestPrepareDeepspeedModel:
         cfg.mixed_precision = "no"
         model = nn.Linear(10, 10)
 
-        result = prepare_deepspeed_model(cfg, unet=model)
+        result = prepare_deepspeed_model(cfg, denoiser=model)
 
         assert isinstance(result.models, nn.ModuleDict)
-        assert "unet" in result.models
+        assert "denoiser" in result.models
 
     def test_wraps_multiple_models(self):
         """Multiple models should all be in ModuleDict."""
@@ -350,12 +350,12 @@ class TestPrepareDeepspeedModel:
 
         cfg = MagicMock()
         cfg.mixed_precision = "no"
-        unet = nn.Linear(10, 10)
+        denoiser = nn.Linear(10, 10)
         vae = nn.Conv2d(3, 3, 3)
 
-        result = prepare_deepspeed_model(cfg, unet=unet, vae=vae)
+        result = prepare_deepspeed_model(cfg, denoiser=denoiser, vae=vae)
 
-        assert "unet" in result.models
+        assert "denoiser" in result.models
         assert "vae" in result.models
 
     def test_wraps_model_list(self):
@@ -380,7 +380,7 @@ class TestPrepareDeepspeedModel:
         cfg.mixed_precision = "no"
         model = nn.Linear(10, 10)
 
-        result = prepare_deepspeed_model(cfg, unet=model)
+        result = prepare_deepspeed_model(cfg, denoiser=model)
 
         assert result.get_models() is result.models
 
@@ -406,11 +406,11 @@ class TestPrepareDeepspeedModel:
                 return self.linear(x)
 
         model = SimpleModel()
-        result = prepare_deepspeed_model(cfg, unet=model)
+        result = prepare_deepspeed_model(cfg, denoiser=model)
 
         # The model's forward should now be wrapped
         # We can verify by calling forward (it shouldn't error)
-        wrapped_model = result.models["unet"]
+        wrapped_model = result.models["denoiser"]
         x = torch.randn(2, 10)
         output = wrapped_model(x)
         assert output.shape == (2, 10)
@@ -422,10 +422,9 @@ class TestPrepareDeepspeedModel:
         cfg = MagicMock()
         cfg.mixed_precision = "no"
         model = nn.Linear(10, 10)
-        original_forward = model.forward
 
-        result = prepare_deepspeed_model(cfg, unet=model)
+        result = prepare_deepspeed_model(cfg, denoiser=model)
 
         # With no mixed precision, forward should be unchanged
         # (though it's still in the wrapper, the forward method itself is not modified)
-        assert result.models["unet"] is model  # Same reference
+        assert result.models["denoiser"] is model  # Same reference

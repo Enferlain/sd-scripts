@@ -144,7 +144,7 @@ def mock_cfg():
     # Optimizer config
     cfg.optimizer.learning_rates.base = 1e-4
     cfg.optimizer.learning_rates.text_encoders = None
-    cfg.optimizer.learning_rates.unet = None
+    cfg.optimizer.learning_rates.denoiser = None
     cfg.optimizer.scheduler.lr_warmup_steps = 0
     cfg.optimizer.scheduler.lr_scheduler = "constant"
     cfg.optimizer.max_grad_norm = 1.0

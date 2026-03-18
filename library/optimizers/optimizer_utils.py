@@ -42,16 +42,16 @@ def should_train_text_encoder(learning_rates: LearningRatesConfig) -> bool:
     return any(lr > 0 for lr in te_lr)
 
 
-def should_train_unet(learning_rates: LearningRatesConfig) -> bool:
+def should_train_denoiser(learning_rates: LearningRatesConfig) -> bool:
     """
-    Check if UNet should be trained based on learning rates.
+    Check if denoiser should be trained based on learning rates.
 
     Returns True if:
-    - unet LR is None (will use base LR)
-    - unet LR is a positive number
+    - denoiser LR is None (will use base LR)
+    - denoiser LR is a positive number
     """
-    unet_lr = learning_rates.unet
-    return unet_lr is None or unet_lr > 0
+    denoiser_lr = learning_rates.denoiser
+    return denoiser_lr is None or denoiser_lr > 0
 
 
 def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRatesConfig, adapter_config: PeftConfig, adapter):

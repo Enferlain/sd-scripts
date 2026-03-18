@@ -106,7 +106,7 @@ class TestBasicResourceMonitorBehavior:
             output_jsonl_path=None,
         )
 
-        components = {"unet": torch.nn.Linear(4, 4)}
+        components = {"denoiser": torch.nn.Linear(4, 4)}
         with patch("library.logging.resource_monitor.logger") as mock_logger:
             monitor.emit_startup_component_memory(components, "AdamW")
             mock_logger.info.assert_called()
@@ -148,7 +148,7 @@ class TestBasicResourceMonitorBehavior:
             output_jsonl_path=None,
         )
 
-        components = {"unet": torch.nn.Linear(4, 4)}
+        components = {"denoiser": torch.nn.Linear(4, 4)}
         with patch("library.logging.resource_monitor.logger") as mock_logger:
             monitor.emit_startup_component_memory(
                 components,

@@ -1,16 +1,15 @@
 """Trainer-facing model-family strategy contracts and minimal shared defaults."""
 
-import torch
-
 from abc import ABC, abstractmethod
 from typing import Any
 
+import torch
 
-from library.optimizers.optimizer_utils import should_train_text_encoder, should_train_unet
+from library.optimizers.optimizer_utils import should_train_denoiser, should_train_text_encoder
 
 
 class ModelLoadingStrategy(ABC):
-    """Strategy for loading model components (text encoders, VAE, UNet)."""
+    """Strategy for loading model components (text encoders, VAE, denoiser)."""
 
     @abstractmethod
     def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, Any, Any, Any]:
@@ -23,17 +22,17 @@ class ModelLoadingStrategy(ABC):
             accelerator: Accelerator instance for handling device placement.
 
         Returns:
-            Tuple of (model_version, text_encoder, vae, unet):
+            Tuple of (model_version, text_encoder, vae, denoiser):
             - model_version: String identifier for the model version.
             - text_encoder: A single text encoder model or a list of text encoders.
             - vae: The VAE model.
-            - unet: The UNet model, or None if loaded lazily.
+            - denoiser: The denoiser model, or None if loaded lazily.
         """
         raise NotImplementedError
 
-    def load_unet_lazily(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any, text_encoders: list[Any]) -> Any:
+    def load_denoiser_lazily(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any, text_encoders: list[Any]) -> Any:
         """
-        Load UNet lazily if not loaded in ``load_target_model``.
+        Load the denoiser lazily if not loaded in ``load_target_model``.
 
         Args:
             cfg: Configuration object.
@@ -42,12 +41,12 @@ class ModelLoadingStrategy(ABC):
             text_encoders: List of text encoders.
 
         Returns:
-            Loaded UNet model.
+            Loaded denoiser model.
 
         Raises:
             NotImplementedError: If not implemented by subclass.
         """
-        raise NotImplementedError("load_unet_lazily is not implemented for this architecture")
+        raise NotImplementedError("load_denoiser_lazily is not implemented for this architecture")
 
 
 class TokenizationStrategy(ABC):
@@ -191,7 +190,7 @@ class SampleGenerationStrategy(ABC):
         vae: Any,
         tokenizers: list[Any],
         text_encoders: list[Any],
-        unet: Any,
+        denoiser: Any,
     ) -> None:
         """
         Generate sample images for the current training step.
@@ -205,7 +204,7 @@ class SampleGenerationStrategy(ABC):
             vae: The VAE model.
             tokenizers: List of tokenizers.
             text_encoders: List of text encoders.
-            unet: The UNet model.
+            denoiser: The denoiser model.
         """
         raise NotImplementedError
 
@@ -288,7 +287,7 @@ class ValidationStrategy(ABC):
         cyclic_val_dataloader: Any,
         trainable_model: Any,
         text_encoders: list[Any],
-        unet: Any,
+        denoiser: Any,
         vae: Any,
         noise_scheduler: Any,
         vae_dtype: torch.dtype,
@@ -384,7 +383,7 @@ class DiffusionTrainingStrategy(ABC):
         self,
         batch: Any,
         text_encoders: list[Any],
-        unet: Any,
+        denoiser: Any,
         trainable_model: Any,
         vae: Any,
         noise_scheduler: Any,
@@ -394,7 +393,7 @@ class DiffusionTrainingStrategy(ABC):
         cfg: Any,
         is_train: bool = True,
         train_text_encoder: bool = True,
-        train_unet: bool = True,
+        train_denoiser: bool = True,
         edm2_model: Any | None = None,
         min_timestep_override: int | None = None,
         max_timestep_override: int | None = None,
@@ -409,15 +408,15 @@ class DiffusionTrainingStrategy(ABC):
         raise NotImplementedError
 
 
-class UNetCallingStrategy(ABC):
-    """Strategy for calling UNet during training."""
+class DenoiserCallingStrategy(ABC):
+    """Strategy for calling the denoiser during training."""
 
     @abstractmethod
-    def call_unet(
+    def call_denoiser(
         self,
         cfg: Any,
         accelerator: Any,
-        unet: Any,
+        denoiser: Any,
         noisy_latents: torch.Tensor,
         timesteps: torch.Tensor,
         text_conds: Any,
@@ -426,14 +425,14 @@ class UNetCallingStrategy(ABC):
         **kwargs,
     ) -> torch.Tensor:
         """
-        Call UNet with architecture-specific arguments.
+        Call the denoiser with architecture-specific arguments.
 
         SDXL adds added_cond_kwargs for size/crop conditioning.
 
         Args:
             cfg: Configuration object.
             accelerator: Accelerator instance.
-            unet: The UNet model.
+            denoiser: The denoiser model.
             noisy_latents: Input latents with noise.
             timesteps: Timesteps for denoising.
             text_conds: Text conditioning embeddings.
@@ -475,17 +474,17 @@ class ModelPreparationStrategy:
         """
         return should_train_text_encoder(cfg.optimizer.learning_rates)
 
-    def is_train_unet(self, cfg: Any) -> bool:
+    def is_train_denoiser(self, cfg: Any) -> bool:
         """
-        Check if UNet should be trained based on LR config.
+        Check if denoiser should be trained based on LR config.
 
         Args:
             cfg: Configuration object.
 
         Returns:
-            True if UNet should be trained, False otherwise.
+            True if denoiser should be trained, False otherwise.
         """
-        return should_train_unet(cfg.optimizer.learning_rates)
+        return should_train_denoiser(cfg.optimizer.learning_rates)
 
     def cast_text_encoder(self, cfg: Any) -> bool:
         """
@@ -511,9 +510,9 @@ class ModelPreparationStrategy:
         """
         return True
 
-    def cast_unet(self, cfg: Any) -> bool:
+    def cast_denoiser(self, cfg: Any) -> bool:
         """
-        Determine if UNet should be cast to a specific dtype.
+        Determine if denoiser should be cast to a specific dtype.
 
         Args:
             cfg: Configuration object.
@@ -556,21 +555,28 @@ class ModelPreparationStrategy:
             f"{type(self).__name__} must implement prepare_text_encoder_fp8"
         )
 
-    def prepare_unet_with_accelerator(self, cfg: Any, accelerator: Any, unet: Any) -> Any:
+    def prepare_denoiser_with_accelerator(self, cfg: Any, accelerator: Any, denoiser: Any) -> Any:
         """
-        Prepare UNet with the accelerator.
+        Prepare the denoiser with the accelerator.
 
         Args:
             cfg: Configuration object.
             accelerator: Accelerator instance.
-            unet: The UNet model.
+            denoiser: The denoiser model.
 
         Returns:
-            Prepared UNet model.
+            Prepared denoiser model.
         """
-        return accelerator.prepare(unet)
+        return accelerator.prepare(denoiser)
 
-    def post_process_trainable(self, cfg: Any, accelerator: Any, trainable_model: Any, text_encoders: list[Any], unet: Any) -> None:
+    def post_process_trainable(
+        self,
+        cfg: Any,
+        accelerator: Any,
+        trainable_model: Any,
+        text_encoders: list[Any],
+        denoiser: Any,
+    ) -> None:
         """
         Post-process the trainable model after creation.
 
@@ -579,37 +585,7 @@ class ModelPreparationStrategy:
             accelerator: Accelerator instance.
             trainable_model: The trainable model.
             text_encoders: List of text encoders.
-            unet: The UNet model.
-        """
-        return None
-
-
-class TrainingRuntimeStrategy:
-    """Strategy hooks used by the shared training loop runtime."""
-
-    def on_step_start(
-        self,
-        cfg: Any,
-        accelerator: Any,
-        trainable_model: Any,
-        text_encoders: list[Any],
-        unet: Any,
-        batch: Any,
-        weight_dtype: torch.dtype,
-        is_train: bool = True,
-    ) -> None:
-        """
-        Hook called at the start of each training or validation step.
-
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            trainable_model: The trainable model.
-            text_encoders: List of text encoders.
-            unet: The UNet model.
-            batch: The current data batch.
-            weight_dtype: Weight data type.
-            is_train: Boolean indicating training mode.
+            denoiser: The denoiser model.
         """
         return None
 
@@ -623,9 +599,8 @@ class TrainingStrategy(
     CheckpointingStrategy,
     ValidationStrategy,
     DiffusionTrainingStrategy,
-    UNetCallingStrategy,
+    DenoiserCallingStrategy,
     ModelPreparationStrategy,
-    TrainingRuntimeStrategy,
 ):
     """
     Combined interface for all training strategies.

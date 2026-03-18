@@ -1,5 +1,5 @@
 """
-Unit tests for library/models/unet.py and unet.py
+Unit tests for the SD U-Net helpers.
 
 Tests pure utility functions that don't require full model instantiation.
 """

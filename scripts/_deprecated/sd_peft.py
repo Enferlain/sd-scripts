@@ -139,7 +139,7 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     weight_dtype, save_dtype = prepare_dtype(cfg.performance.precision, cfg.output.saving)
     vae_dtype = (torch.float32 if cfg.performance.precision.no_half_vae else weight_dtype) if strategies.cast_vae(cfg) else None
 
-    # load target models: unet may be None for lazy loading
+    # load target models: denoiser may be None for lazy loading
     model_version, text_encoder, vae, unet = strategies.load_target_model(cfg, weight_dtype, accelerator)
 
     if vae_dtype is None:
@@ -177,8 +177,8 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
         strategies.cache_text_encoder_outputs_if_needed(cfg, accelerator, unet, vae, text_encoders, val_dataset_group, weight_dtype)
 
     if unet is None:
-        # lazy load unet if needed. text encoders may be freed or replaced with dummy models for saving memory
-        unet, text_encoders = strategies.load_unet_lazily(cfg, weight_dtype, accelerator, text_encoders)
+        # lazy load denoiser if needed. text encoders may be freed or replaced with dummy models for saving memory
+        unet, text_encoders = strategies.load_denoiser_lazily(cfg, weight_dtype, accelerator, text_encoders)
 
     # 差分追加学習のためにモデルを読み込む
     sys.path.append(os.path.dirname(__file__))
@@ -248,8 +248,8 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
 
     strategies.post_process_adapter(cfg, accelerator, adapter, text_encoders, unet)
 
-    # apply peft to unet and text_encoder
-    train_unet = strategies.is_train_unet(cfg)
+    # apply peft to denoiser and text_encoder
+    train_unet = strategies.is_train_denoiser(cfg)
     train_text_encoder = strategies.is_train_text_encoder(cfg)
     adapter.apply_to(text_encoder, unet, train_text_encoder, train_unet)
 
@@ -357,16 +357,16 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
             accelerator.print("enable fp8 training for Text Encoder.")
         te_weight_dtype = weight_dtype if cfg.performance.precision.fp8_base_unet else torch.float8_e4m3fn
 
-        # unet.to(accelerator.device)  # this makes faster `to(dtype)` below, but consumes 23 GB VRAM
-        # unet.to(dtype=unet_weight_dtype)  # without moving to gpu, this takes a lot of time and main memory
+        # denoiser.to(accelerator.device)  # this makes faster `to(dtype)` below, but consumes 23 GB VRAM
+        # denoiser.to(dtype=denoiser_weight_dtype)  # without moving to gpu, this takes a lot of time and main memory
 
-        # logger.info(f"set U-Net weight dtype to {unet_weight_dtype}, device to {accelerator.device}")
-        # unet.to(accelerator.device, dtype=unet_weight_dtype)  # this seems to be safer than above
+        # logger.info(f"set U-Net weight dtype to {denoiser_weight_dtype}, device to {accelerator.device}")
+        # denoiser.to(accelerator.device, dtype=denoiser_weight_dtype)  # this seems to be safer than above
         logger.info(f"set U-Net weight dtype to {unet_weight_dtype}")
-        unet.to(dtype=unet_weight_dtype)  # do not move to device because unet is not prepared by accelerator
+        unet.to(dtype=unet_weight_dtype)  # do not move to device because denoiser is not prepared by accelerator
 
     unet.requires_grad_(False)
-    if strategies.cast_unet(cfg):
+    if strategies.cast_denoiser(cfg):
         unet.to(dtype=unet_weight_dtype)
     for i, t_enc in enumerate(text_encoders):
         t_enc.requires_grad_(False)
@@ -393,11 +393,11 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
         training_model = ds_model
     else:
         if train_unet:
-            # default implementation is:  unet = accelerator.prepare(unet)
-            unet = strategies.prepare_unet_with_accelerator(cfg, accelerator, unet)  # accelerator does some magic here
+            # default implementation is:  denoiser = accelerator.prepare(denoiser)
+            unet = strategies.prepare_denoiser_with_accelerator(cfg, accelerator, unet)  # accelerator does some magic here
         else:
-            # move to device because unet is not prepared by accelerator
-            unet.to(accelerator.device, dtype=unet_weight_dtype if strategies.cast_unet(cfg) else None)
+            # move to device because denoiser is not prepared by accelerator
+            unet.to(accelerator.device, dtype=unet_weight_dtype if strategies.cast_denoiser(cfg) else None)
         if train_text_encoder:
             text_encoders = [
                 (accelerator.prepare(t_enc) if flag else t_enc)
