@@ -1,8 +1,4 @@
-"""
-Unit tests for library/strategies/strategy_sdxl.py
-
-Tests the SDXL strategy classes with mocked dual tokenizers and text encoders.
-"""
+"""Unit tests for the active SDXL strategy concern files."""
 
 import pytest
 import torch
@@ -266,8 +262,15 @@ class TestSdxlTextEncodingStrategy:
 
 
 @pytest.mark.unit
-class TestSdxlTrainingStrategyNewPipeline:
-    """Tests for the SDXL training strategy token/TE helpers."""
+class TestSdxlTrainingStrategyComposition:
+    """Tests for SDXL training-strategy composition across concern files."""
+
+    def test_training_strategy_uses_split_concern_modules(self):
+        """TrainingStrategy should inherit facet methods from the split SDXL files."""
+        assert SdxlTrainingStrategy.tokenize_captions.__module__ == "library.strategies.sdxl.tokenization"
+        assert SdxlTrainingStrategy.encode_te_outputs_in_memory.__module__ == "library.strategies.sdxl.encoding"
+        assert SdxlTrainingStrategy.create_te_caching_strategy.__module__ == "library.strategies.sdxl.caching"
+        assert SdxlTrainingStrategy._get_text_conds.__module__ == "library.strategies.sdxl.diffusion"
 
     @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_tokenize_captions_returns_dual_chunked_tensors(
@@ -290,12 +293,12 @@ class TestSdxlTrainingStrategyNewPipeline:
             mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
             strategy = SdxlTrainingStrategy(sdxl_strategy_cfg)
 
-            with patch("library.strategies.sdxl.training.encode_input_ids_sdxl") as mock_encode:
-                mock_encode.return_value = [
+            with patch("library.strategies.sdxl.encoding.encode_input_ids_sdxl") as mock_encode:
+                mock_encode.return_value = (
                     torch.randn(1, 77, 768),
                     torch.randn(1, 77, 1280),
                     torch.randn(1, 1280),
-                ]
+                )
 
                 result = strategy.encode_te_outputs_in_memory(
                     text_encoders=[mock_clip_text_encoder1, mock_clip_text_encoder2],
@@ -327,27 +330,66 @@ class TestSdxlTrainingStrategyNewPipeline:
         accelerator.device = torch.device("cpu")
         accelerator.unwrap_model.return_value = mock_clip_text_encoder2
         batch = {"captions": ["caption 1", "caption 2"]}
-        strategy._tokenizers = [mock_clip_tokenizer1, mock_clip_tokenizer2]
-        strategy.max_token_length = 77
 
         token_tensors = [torch.randint(0, 1000, (2, 1, 77)), torch.randint(0, 1000, (2, 1, 77))]
-        encoded_outputs = [torch.randn(2, 77, 768), torch.randn(2, 77, 1280), torch.randn(2, 1280)]
+        encoded_outputs = (torch.randn(2, 77, 768), torch.randn(2, 77, 1280), torch.randn(2, 1280))
 
         with (
             patch.object(strategy, "tokenize", return_value=token_tensors) as mock_tokenize,
             patch(
-                "library.strategies.sdxl.training.encode_input_ids_sdxl",
+                "library.strategies.sdxl.diffusion.encode_input_ids_sdxl",
                 return_value=encoded_outputs,
             ) as mock_encode,
         ):
-            result = strategy._get_text_cond(
+            result = strategy._get_text_conds(
                 cfg=cfg,
                 accelerator=accelerator,
                 batch=batch,
                 text_encoders=[mock_clip_text_encoder1, mock_clip_text_encoder2],
                 weight_dtype=torch.float32,
+                train_text_encoder=False,
+                is_train=False,
             )
 
         mock_tokenize.assert_called_once_with(batch["captions"])
         mock_encode.assert_called_once()
+        assert len(result) == 3
+
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
+    def test_get_text_conds_uses_cached_outputs_without_live_reencode(
+        self,
+        mock_load_tokenizer,
+        mock_clip_tokenizer1,
+        mock_clip_tokenizer2,
+        mock_clip_text_encoder1,
+        mock_clip_text_encoder2,
+        sdxl_strategy_cfg,
+    ):
+        """Cached TE outputs should be returned directly when live re-encoding is unnecessary."""
+        mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
+        strategy = SdxlTrainingStrategy(sdxl_strategy_cfg)
+        cfg = Mock()
+        cfg.performance.precision.full_fp16 = False
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+        batch = {
+            "text_encoder_outputs": {
+                "hidden_state1": torch.randn(2, 77, 768),
+                "hidden_state2": torch.randn(2, 77, 1280),
+                "pool2": torch.randn(2, 1280),
+            }
+        }
+
+        with patch("library.strategies.sdxl.diffusion.encode_input_ids_sdxl") as mock_encode:
+            result = strategy._get_text_conds(
+                cfg=cfg,
+                accelerator=accelerator,
+                batch=batch,
+                text_encoders=[mock_clip_text_encoder1, mock_clip_text_encoder2],
+                weight_dtype=torch.float32,
+                train_text_encoder=False,
+                is_train=False,
+            )
+
+        mock_encode.assert_not_called()
         assert len(result) == 3

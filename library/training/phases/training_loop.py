@@ -162,8 +162,8 @@ def _run_step_side_effects(
             trainer.weight_dtype,
             accelerator,
             cfg,
-            batch,
             trainer._current_epoch_state.value,
+            batch,
             trainer._train_text_encoder,
         )
         accelerator.print(f"  val_loss: {trainer._current_val_loss:.4f}  (avg: {trainer._average_val_loss:.4f})")

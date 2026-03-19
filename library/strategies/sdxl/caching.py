@@ -1,8 +1,9 @@
 """
-SDXL caching strategies for the new data pipeline.
+SDXL caching support for the active strategy and data-pipeline paths.
 
-These strategies implement the CacheHandler interface from library/data/pipeline/caching_engine.py
-and are designed to work with CacheEntry dataclasses, not the legacy ImageInfo.
+This module intentionally contains both the trainer-facing ``CachingStrategy``
+facet implementation and the SDXL-specific ``CacheHandler`` implementations used
+by the data backend.
 """
 
 import logging
@@ -19,6 +20,7 @@ from safetensors.torch import save_file
 from library.data.caching_engine import CacheHandler
 from library.data.structures import CacheData, CacheEntry, ModelConditioning
 from library.constants import SDXL_VAE_LATENT_SCALE
+from library.strategies.base.training import CachingStrategy
 
 from library.utils.hash_utils import stable_string_hash
 
@@ -44,6 +46,35 @@ class SdxlConditioning(ModelConditioning):
 
     target_size_hw: tuple[int, int]
     """Target/bucket resolution (height, width) the image was resized to."""
+
+
+class SdxlCachingStrategy(CachingStrategy):
+    """Training-facing SDXL caching facet implementation."""
+
+    def create_latent_caching_strategy(self, cfg: Any) -> "SdxlLatentsPipelineStrategy":
+        """Create the new-pipeline latent cache handler for SDXL."""
+        latent_dtype = "fp32" if cfg.performance.precision.no_half_vae else "fp16"
+        return SdxlLatentsPipelineStrategy(
+            flip_aug=cfg.data.preprocessing.flip_aug,
+            dtype=latent_dtype,
+        )
+
+    def create_te_caching_strategy(self, cfg: Any) -> "SdxlTextEncoderPipelineStrategy":
+        """Create the new-pipeline text-encoder cache handler for SDXL."""
+        return SdxlTextEncoderPipelineStrategy(
+            max_token_length=cfg.training.max_token_length,
+        )
+
+    def get_token_cache_encoder_names(self) -> list[str]:
+        """Return the SDXL token-cache encoder names."""
+        return ["clip_l", "clip_g"]
+
+    def build_te_cache_model_bundle(self, cfg: Any, accelerator: Any, text_encoders: list[Any], tokenizers: list[Any]) -> Any:
+        """Return the model bundle used by SDXL TE caching."""
+        return (*text_encoders, *tokenizers)
+
+
+# --- SDXL-specific data-pipeline cache handlers ---
 
 
 def get_crop_ltrb(

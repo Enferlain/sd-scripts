@@ -57,8 +57,21 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
     Text encoding strategy for SDXL.
     """
 
-    def __init__(self, tokenizers: list[CLIPTokenizer]) -> None:
-        self.tokenizers = tokenizers
+    def __init__(self, tokenizers: list[CLIPTokenizer] | None = None) -> None:
+        self._tokenizers = tokenizers
+
+    def _get_tokenizers(self) -> list[CLIPTokenizer]:
+        """Resolve tokenizer state from explicit construction or the tokenization facet."""
+        if self._tokenizers is not None:
+            return self._tokenizers
+
+        tokenizers = getattr(self, "tokenizers", None)
+        if tokenizers is None:
+            raise RuntimeError(
+                "SDXL text encoding requires tokenizers. Pass them to "
+                "SdxlTextEncodingStrategy(...) or mix in SdxlTokenizeStrategy."
+            )
+        return tokenizers
 
     def encode_tokens(self, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
         """
@@ -72,7 +85,7 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
         Returns:
             List of encoded tensors
         """
-        return encode_sdxl_tokens(self.tokenizers, models, tokens)
+        return encode_sdxl_tokens(self._get_tokenizers(), models, tokens)
 
     def encode_tokens_with_weights(
         self,
@@ -91,7 +104,7 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
         Returns:
             List of encoded tensors
         """
-        return encode_sdxl_tokens_with_weights(self.tokenizers, models, tokens, weights)
+        return encode_sdxl_tokens_with_weights(self._get_tokenizers(), models, tokens, weights)
 
     def encode_te_outputs_in_memory(
         self,

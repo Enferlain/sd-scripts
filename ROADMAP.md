@@ -40,7 +40,7 @@ Scripts (thin entry points):          Library Modules:
 
 - Concrete SD / SDXL strategy internals still use `unet` in places like `call_unet(...)` and some save/sample helpers; this is acceptable for now, but should be revisited if/when a non-UNet denoiser family starts using the same concrete strategy shape.
 - Compatibility-sensitive surfaces still retain `unet` naming for now:
-  - config/schema fields like `learning_rates.unet` and `fp8_base_unet`
+  - config/schema fields like `fp8_base_unet`
   - adapter/internal optimizer APIs that still accept `unet_lr`
   - metadata keys like `ss_unet_lr`
 - Deprecated and `copy` script/reference files should not drive naming decisions for the active contract.
@@ -93,18 +93,20 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [ ] Config Validation Edge Cases: Test `prepare_config()` and `validate_config()` for dataset conflicts
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
 - [ ] **Sampling config error**: Add error in `config_validation.py` when both `sample_every_n_steps` and `sample_every_n_epochs` are set (epoch-based takes precedence, step-based silently ignored)
+  - `config_validation.py` now catches model-family bucket-step mismatches and TE-output-caching conflicts with caption-mutation settings before training starts.
+  - Keep the cleanup within the same file unless the validation layer grows enough to justify a clearer internal boundary later.
 
 ---
 
 ## Code Quality TODOs
 
-- [x] **Checkpoint epoch metadata consistency (step vs epoch-end)** — Step-triggered saves now pass 1-based `current_epoch_state.value` (matching epoch-end saves). Added integration assertions for single-epoch and cross-epoch step checkpoint behavior.
-- [x] **Training loop helper extraction (phase orchestration readability)** — Moved step side-effects, tracker log emission, live timestep outputs, and epoch-end finalization into focused helpers while preserving runtime behavior (validation/sampling/checkpoint tests unchanged)
-- [x] **Remove env-var resource tracker branches from training/caching phases** — Replaced `BENCHMARK_RESOURCES` checks with config-driven monitor hooks (`phase_start/end`, `step_end`) wired through Trainer-owned monitor service
-- [x] **Remove epoch-end compatibility side-effect coupling** — `compute_epoch_end_actions()` now enters eval mode only when a real epoch-end action fires (`should_sample` or `should_save_epoch`), and `_finalize_epoch()` now samples only when `should_sample` is true (no unconditional epoch-end sample call path).
-- [x] **Make epoch/session cleanup robust under interruption** — Epoch-end sampling/saving no longer fires for partial epochs truncated by `max_train_steps`, and resource-monitor `phase_end`/`end_session` cleanup now runs through exception paths.
-- [x] **Begin text-encoder boundary cleanup before strategy API shaping** — SD text-encoder hidden-state logic now lives under `library/models/sd/text_encoder.py`, and SDXL strategy/training code now delegates input-ID encoding through shared model helpers in `library/models/sdxl/text_encoder.py` instead of carrying that logic inline.
-- [ ] **Strategy system follow-up** — Phase 1 shared token/TE shape leaks, the base `TrainingStrategy` facet split, the extraction of clearly generic training mechanics out of `base/training.py`, the removal of generic-base CLIP assumptions, the removal of singleton-era latent / TE-output caching hooks from the main caching contract, the move of `tokenize_captions()` out of the training-side `CachingStrategy`, the move of CLIP-family token/chunk/loading logic into the shared model-layer helper `library/models/sd/tokenizer.py`, the merge of runtime tokenization/text-encoding contracts into `base/training.py`, the removal of the temporary `base/tokenization.py` / `base/encoding.py` shims, the removal of dead legacy latent-caching registration from `Trainer.setup()`, the removal of active SDXL sampling dependence on tokenization/text-encoding singletons, the removal of the duplicate SDXL training-local tokenization helper, the collapse of tokenization/text-encoding into direct `TrainingStrategy` facets, the removal of the follow-up `initialize(cfg)` lifecycle hook, the removal of the unused strategy-side runtime step hook, and the concrete-strategy `@dataclass` cleanup are now done; remaining cleanup is naming/organization in `base/training.py`, the later concrete/compatibility `unet` -> `denoiser` follow-up, and further `base/`-to-`models/` ownership cleanup. `_deprecated` and `copy` reference files should not receive normal refactor work. See `docs_design/strategy_system_followup.md`.
+- [ ] **Strategy system follow-up** — The large base-strategy cleanup is mostly done. Remaining work is narrower:
+  - SD / SDXL concrete strategy cleanup against the current base contract
+  - naming/organization review for `library/strategies/base/training.py`
+  - later concrete/compatibility `unet` -> `denoiser` cleanup where it still makes sense
+  - further `base/`-to-`models/` ownership cleanup where model-specific behavior still sits too high
+  - `_deprecated` and `copy` reference files should not receive normal refactor work
+  - See `docs_design/strategy_system_followup.md`, `docs_design/strategy_base_decision.md`, and `docs_design/strategy_remaining_facet_audit.md`
 - [ ] **Training orchestration hardening follow-up** — Desirable shared-layer cleanup for explicit epoch outcomes, scoped shared lifecycle helpers, and preserving generic runner ownership. Sequence after strategy cleanup. See `docs_design/training_orchestration_followup.md`.
 - [ ] Timestep sampling needs proper reimplementation (currently hacked into training scripts)
 - [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
@@ -122,7 +124,25 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - `library/training/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 - [ ] **Refactor `register_adapter_state_hooks`** (low priority) - Return a structured object `{"epoch": int, "step": int}` instead of closure + side-effects for cleaner data flow. See AUDIT/2_AUDIT_RESUME_BEHAVIOR.md recommendation #3.
-- [x] **Remove `[DEBUG]` log statements in `sdxl/training.py`** — `_get_text_cond()` no longer emits the temporary TE placement / grad-state debug logs after the explicit strategy-wiring cleanup.
+
+### Near-Term Follow-up
+
+- [ ] **SD / SDXL strategy cleanup against the current contract** — Remove leftover rough edges in the concrete strategy files now that the base contract has settled.
+  - SDXL tokenization / text-encoding / caching ownership is now moving into the existing self-titled facet files, with `sdxl/training.py` reduced to composition plus SDXL-specific training behavior.
+  - SDXL model loading has been split into `sdxl/loading.py`; the next useful slices are model preparation, validation, and diffusion/UNet-calling ownership.
+  - SDXL model preparation has been split into `sdxl/model_preparation.py`; validation and diffusion/UNet-calling are the next larger ownership seams.
+  - SDXL validation has been split into `sdxl/validation.py`; diffusion / batch-processing and UNet-calling remain the most intertwined pieces in `sdxl/training.py`.
+  - SDXL checkpointing has been split into `sdxl/checkpointing.py`; sample generation and diffusion / UNet-calling are the main remaining contract-owned chunks in `sdxl/training.py`.
+  - SDXL sample generation has been split into `sdxl/sampling.py`; diffusion / batch-processing and UNet-calling are now the primary remaining `training.py` ownership seam.
+  - SDXL denoiser calling has been split into `sdxl/denoiser.py`; the remaining `training.py` core is now mostly training-time text-conditioning resolution plus diffusion batch processing.
+  - SDXL diffusion training has been split into `sdxl/diffusion.py`; `sdxl/training.py` is now reduced to strategy assembly and init/wiring.
+- [ ] **Timestep / `la_sampler` ownership cleanup** — Decide where timestep-sampling responsibilities should live and remove the current ad hoc feel.
+- [ ] **Hydra config vs dataclass audit** — Check whether shipped YAML config contents still fully match the dataclass schema after the recent refactors.
+- [ ] **`base/training.py` naming review** — Decide whether the file name still matches its role, or whether a different name would make the strategy layer easier to navigate.
+- [ ] **Cache handler naming review** — Re-evaluate whether “handler” is still the clearest term for the active cache-engine boundary.
+- [ ] **Live plotter / logging integration** — Fold the live plotter into the broader logging story instead of treating it as a side system.
+- [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
+- [ ] **External dependency ownership review** — Decide whether custom optimizers and LyCORIS should stay external or move under `library/` for easier modification.
 
 ---
 
@@ -217,58 +237,6 @@ Neutralized all remaining adapter-specific assumptions in shared code.
   - Benefits: Easier to test config logic without network calls or filesystem changes
 
 - [x] **Explicit step 0 validation** — Resolved by `ValidationScheduler` with `run_at_start`/`run_at_end` config flags and `calculate_val_loss_check()` deletion
-
----
-
-## Logging Improvements
-
-See `docs_design/log_implementation_plan_v2.md` for full design.
-
-### Phase 0: Correctness Patches (✅ Complete)
-
-- [x] Fix `for...else` duplicate LR metric emission in `generate_step_logs`
-- [x] Fix LR index math for fallback naming (`textencoder` / `unet` / `group{n}`)
-- [x] Fix `init_trackers` kwargs merge — deep-merge `log_tracker_config` instead of replacing
-- [x] Simplify `hasattr` guards (LoggingConfig is a known dataclass)
-- [x] 12 new unit tests (`tests/unit/logging/test_step_logging.py`)
-- [x] Fix 4 pre-existing `TestInitTrackers` tests passing wrong type to `init_trackers`
-
-### Phase 1: Logging Initialization Cleanup (✅ Complete)
-
-- [x] Remove import-time `setup_logging()` calls from 48 library modules
-- [x] Single bootstrap point: `Trainer.__init__()` line 214; script entrypoints keep own calls
-
-### Phase 2: Output Consistency (✅ Complete)
-
-- [x] Rank-aware logging: `suppress_non_main_process_logging()` sets root level to `WARNING` on non-main ranks after accelerator init
-
-### Phase 3: Tracker Volume Control (✅ Complete)
-
-- [x] Add `log_every_n_steps` to `LoggingConfig` (default `1`)
-- [x] Gate tracker emission by interval in training loop
-- [x] Normalize invalid values in `config_validation.py`
-
----
-
-## Resource Monitoring
-
-See `docs_design/resource_monitor_plan.md` for full design.
-
-### Phase 0-1: Skeleton + Config-Driven Hook Wiring (✅ Complete)
-
-- [x] Add trainer-owned `ResourceMonitor` service (`off` + `basic` behavior)
-- [x] Add typed resource monitor config fields under `output.logging`
-- [x] Add config normalization + validation for monitor settings
-- [x] Wire monitor lifecycle in trainer (`start_session`, `emit_startup_component_memory`, `end_session`)
-- [x] Remove phase-level `BENCHMARK_RESOURCES` branches and replace with monitor hooks in caching/training loop
-
-### Phase 2-3: Fidelity + Structured Output (✅ Complete)
-
-- [x] Add sampled/deep collectors (background sampling, richer CUDA counters)
-- [x] Add optional JSONL event stream with flush policy and queue pressure handling
-- [x] Add explicit DeepSpeed/ZeRO partitioning caveat in startup resource estimates (when DeepSpeed is enabled)
-- [x] Add integration smoke coverage for real `BasicResourceMonitor` JSONL event flow in both PEFT-like and fine-tune-like loop setups
-- [x] Add benchmark runner mode override (`-ResourceMonitorMode off|basic|sampled|deep`) to support reproducible off-vs-monitored overhead validation
 
 ---
 

@@ -26,6 +26,60 @@ def _is_non_bool_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
 
+def _get_optional_attr(root, *path, default=None):
+    """Return a nested attribute or ``default`` when a partial config omits it."""
+    current = root
+    for attr in path:
+        try:
+            current = getattr(current, attr)
+        except Exception:
+            return default
+        if current is None:
+            return default
+    return current
+
+
+def _get_required_bucket_reso_steps(model_type: str | None) -> int | None:
+    """Return the bucket-step requirement for known active model families."""
+    if model_type == "sdxl":
+        return 32
+    if model_type in {"sd1", "sd15", "sd2"}:
+        return 64
+    return None
+
+
+def _is_text_encoder_output_cacheable_config(cfg) -> bool:
+    """Return whether the current caption settings permit TE-output caching."""
+    caption_cfg = _get_optional_attr(cfg, "data", "caption")
+    if caption_cfg is None:
+        return True
+    return not (
+        caption_cfg.caption_dropout_rate > 0
+        or caption_cfg.shuffle_caption
+        or caption_cfg.token_warmup_step > 0
+        or caption_cfg.caption_tag_dropout_rate > 0
+    )
+
+
+def _validate_model_profile_config(cfg) -> None:
+    """Validate model-family rules expressible directly from active config."""
+    required_steps = _get_required_bucket_reso_steps(getattr(cfg.model, "model_type", None))
+    bucket_reso_steps = _get_optional_attr(cfg, "data", "bucketing", "bucket_reso_steps")
+    if required_steps is not None and bucket_reso_steps is not None and bucket_reso_steps % required_steps != 0:
+        raise ValueError(
+            f"bucket_reso_steps={bucket_reso_steps} must be divisible by {required_steps} "
+            f"for model_type={cfg.model.model_type}"
+        )
+
+    cache_te_outputs = _get_optional_attr(cfg, "data", "caching", "cache_text_encoder_outputs", default=False)
+    if cache_te_outputs and not _is_text_encoder_output_cacheable_config(cfg):
+        raise ValueError(
+            "cache_text_encoder_outputs cannot be used with caption_dropout_rate, "
+            "shuffle_caption, token_warmup_step, or caption_tag_dropout_rate because "
+            "those settings change text conditioning between steps."
+        )
+
+
 # =============================================================================
 # Auto-fixups (mutate config)
 # =============================================================================
@@ -240,6 +294,8 @@ def validate_config(cfg) -> None:
             "Cannot train text encoder while caching TE outputs. Set text_encoders LR to 0, or disable cache_text_encoder_outputs."
         )
 
+    _validate_model_profile_config(cfg)
+
     # TODO: Revisit when model-agnostic block/layer granular LR is implemented
     # Currently SDXL-specific and assumes 23 blocks - not widely used
     # if hasattr(cfg.optimizer, 'learning_rates') and cfg.optimizer.learning_rates.blocks:
@@ -258,32 +314,28 @@ def validate_config(cfg) -> None:
         logger.warning("zero_terminal_snr is enabled but v_parameterization is not. Training results may be unexpected.")
 
 
-# =============================================================================
-# Script-specific validators
-# =============================================================================
+def _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, min_steps: int) -> None:
+    """Apply dataset-group bucket-step validation for script-owned dataset paths."""
+    train_dataset_group.verify_bucket_reso_steps(min_steps)
+    if val_dataset_group is not None:
+        val_dataset_group.verify_bucket_reso_steps(min_steps)
 
 
 def validate_sd_peft(cfg, train_dataset_group, val_dataset_group) -> None:
-    """SD 1.5/2.0 PEFT-specific validation."""
-    train_dataset_group.verify_bucket_reso_steps(64)
-    if val_dataset_group is not None:
-        val_dataset_group.verify_bucket_reso_steps(64)
+    """SD 1.5/2.0 PEFT-specific dataset validation."""
+    _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, 64)
 
 
 def validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group) -> None:
-    """SDXL PEFT-specific validation."""
-    train_dataset_group.verify_bucket_reso_steps(32)
-    if val_dataset_group is not None:
-        val_dataset_group.verify_bucket_reso_steps(32)
+    """SDXL PEFT-specific dataset validation."""
+    _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, 32)
 
-    # SDXL caching constraints
     if cfg.data.caching.cache_text_encoder_outputs:
         assert train_dataset_group.is_text_encoder_output_cacheable(), (
             "when caching Text Encoder output, caption_dropout_rate, shuffle_caption, "
             "token_warmup_step, or caption_tag_dropout_rate cannot be used"
         )
 
-    # Cannot train TE peft while caching TE outputs
     train_te = should_train_text_encoder(cfg.optimizer.learning_rates)
     assert not train_te or not cfg.data.caching.cache_text_encoder_outputs, (
         "Adapter for Text Encoder cannot be trained with caching Text Encoder outputs"
@@ -291,14 +343,10 @@ def validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group) -> None:
 
 
 def validate_sd_textual_inversion(cfg, train_dataset_group, val_dataset_group) -> None:
-    """SD 1.5/2.0 Textual Inversion-specific validation."""
-    train_dataset_group.verify_bucket_reso_steps(64)
-    if val_dataset_group is not None:
-        val_dataset_group.verify_bucket_reso_steps(64)
+    """SD 1.5/2.0 Textual Inversion-specific dataset validation."""
+    _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, 64)
 
 
 def validate_sdxl_textual_inversion(cfg, train_dataset_group, val_dataset_group) -> None:
-    """SDXL Textual Inversion-specific validation."""
-    train_dataset_group.verify_bucket_reso_steps(32)
-    if val_dataset_group is not None:
-        val_dataset_group.verify_bucket_reso_steps(32)
+    """SDXL Textual Inversion-specific dataset validation."""
+    _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, 32)

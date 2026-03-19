@@ -245,6 +245,22 @@ class TestValidationSamplingDecoupling:
         # Sampling did NOT run
         mock_trainer.strategies.sample_images.assert_not_called()
 
+    def test_validation_call_uses_epoch_then_batch_argument_order(self, mock_trainer):
+        """Validation call should pass epoch, batch, then train_text_encoder.
+
+        Regression guard for the active shared path: the strategy contract is
+        ``(..., cfg, epoch, batch=None, train_text_encoder=True)``.
+        """
+        self._run_loop_with_triggers(mock_trainer, validation_returns=True, sample_returns=False)
+
+        call_args = mock_trainer.strategies.calculate_val_loss.call_args
+        args = call_args.args
+
+        assert args[15] == mock_trainer._current_epoch_state.value
+        assert isinstance(args[16], dict)
+        assert args[16]["latent"].shape == (1, 4, 64, 64)
+        assert args[17] is mock_trainer._train_text_encoder
+
     def test_sampling_trigger_does_not_force_validation(self, mock_trainer):
         """Sampling triggering should NOT cause calculate_val_loss to be called."""
         self._run_loop_with_triggers(mock_trainer, validation_returns=False, sample_returns=True)

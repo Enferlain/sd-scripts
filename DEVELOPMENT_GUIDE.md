@@ -2,14 +2,14 @@
 
 ## 1. Project Vision
 
-**Goal:** Modernize `sd-scripts` from a collection of monolithic, ad-hoc scripts into a robust, modular, and maintainable library for training image generation models.
+**Goal:** Evolve `sd-scripts` into a robust, modular, and maintainable framework for training diffusion models.
 
 **Philosophy:**
 
 - **No backwards compatibility:** The focus is on refactoring, not to keep legacy working. Only keep for as long as references are needed for the active work.
 - **Centralized Configuration:** Move from per-script `argparse` definitions to a global, type-safe system using **Hydra** and **Dataclasses**.
 - **Separation of Concerns:** Break down multi-thousand line scripts into focused, reusable library modules.
-- **Explicit over Implicit:** Functions should declare exactly what configuration they need. Avoid passing opaque `args` objects or global state.
+- **Explicit over Implicit:** Functions should declare exactly what configuration they need. Use `cfg` in orchestration-heavy layers, but prefer narrowly scoped typed config objects in reusable helpers.
 - **Production Quality:** Adopt best practices from high-end repositories (typing, structured configs, potential shipping as a package).
 
 ## 2. Architectural Principles
@@ -26,7 +26,7 @@
 This is the core of the project. It should contain the "building blocks" of training.
 
 - **Design Pattern:** Config Injection.
-  - ❌ **Bad (Legacy):**
+  - ❌ **Bad (Legacy broad container pattern):**
     ```python
     def setup_optimizer(args, model):
         # args is a massive unrelated object
@@ -108,13 +108,14 @@ def train(cfg: SDPeftConfig):
 
 Different layers of the codebase use different patterns for passing configuration:
 
-| Layer                   | Pattern      | Example                                   | Reason                                   |
-| ----------------------- | ------------ | ----------------------------------------- | ---------------------------------------- |
-| **Scripts** (`train()`) | `cfg.*`      | `cfg.training.max_train_epochs`           | Has full typed root config               |
-| **Strategies**          | `cfg.*`      | `cfg.data.caching.cache_latents`          | Receives full config, model-specific     |
-| **Library utilities**   | Typed params | `func(precision_config: PrecisionConfig)` | Modular, testable, explicit dependencies |
+| Layer                          | Pattern      | Example                                   | Reason                                        |
+| ------------------------------ | ------------ | ----------------------------------------- | --------------------------------------------- |
+| **Scripts** (`train()`)        | `cfg.*`      | `cfg.training.max_train_epochs`           | Has full typed root config                    |
+| **Strategies**                 | `cfg.*`      | `cfg.data.caching.cache_latents`          | Receives full config, model-specific          |
+| **Training phases / runners**  | `cfg.*`      | `cfg.validation.validate_every_n_steps`   | Shared orchestration layer coordinating flows |
+| **Lower-level reusable helpers** | Typed params | `func(precision_config: PrecisionConfig)` | Modular, testable, explicit dependencies      |
 
-**Key Rule: Pass the smallest container that has what the function needs.**
+**Key Rule: Outside orchestration layers, pass the smallest container that has what the function needs.**
 
 ```python
 # ✅ Good - Pass exactly what's needed (can be at different depths)
@@ -127,13 +128,15 @@ def prepare_dtype(performance_config: PerformanceConfig, ...):
     if performance_config.precision.mixed_precision == "fp16":  # Unnecessary nesting
         ...
 
-# ❌ Bad - Opaque untyped cfg
+# ❌ Bad - Reusable helper taking a broad root config
 def prepare_dtype(cfg):  # What type? What does it need?
     if cfg.performance.precision.mixed_precision:
         ...
 ```
 
-**Call sites show the full config path:**
+`cfg` is appropriate in scripts, strategies, and training phases/runners because those layers legitimately coordinate multiple concerns. Lower-level helpers should stay explicit and accept the narrowest typed config objects they need, even if that makes signatures more verbose.
+
+**Call sites should still show the full config path clearly:**
 
 ```python
 # In script (uses cfg.* pattern)
@@ -150,7 +153,7 @@ def train(cfg: SDPeftConfig):
     - Update the logic in `library/`.
     - Expose it in the main script.
 2.  **Refactoring:**
-    - If you see `args` being passed, refactor it to a detailed Config object.
+    - If you see legacy broad-config passing, refactor it toward explicit typed config objects with ownership that matches the layer.
 
 ## 7. Testing Strategy
 

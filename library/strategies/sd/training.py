@@ -735,7 +735,7 @@ class SdTrainingStrategy(TrainingStrategy):
         epoch: int,
         batch: Any | None = None,
         train_text_encoder: bool = True,
-    ) -> tuple[float | None, float | None, dict | None]:
+    ) -> tuple[float | None, float | None]:
         """
         Calculate validation loss.
 
@@ -760,11 +760,8 @@ class SdTrainingStrategy(TrainingStrategy):
             train_text_encoder: Train text encoder flag.
 
         Returns:
-            Tuple of (current_val_loss, average_val_loss, logs).
+            Tuple of (current_val_loss, average_val_loss).
         """
-        if batch is not None:
-            self.on_step_start(cfg, accelerator, trainable_model, text_encoders, unet, batch, weight_dtype, is_train=False)
-
         rng_states = switch_rng_state(int(cfg.validation.validation_seed) if cfg.validation.validation_seed else 23, accelerator)
         timesteps_list = ast.literal_eval(cfg.validation.validation_timesteps)
 
@@ -804,8 +801,7 @@ class SdTrainingStrategy(TrainingStrategy):
             val_loss_recorder.add(current_val_loss)
 
         average_val_loss: float = val_loss_recorder.average
-        logs = {"loss/current_val_loss": current_val_loss, "loss/average_val_loss": average_val_loss}
 
         restore_rng_state(rng_states, accelerator)
 
-        return current_val_loss, average_val_loss, logs
+        return current_val_loss, average_val_loss

@@ -5,10 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-20]
+
+### Changed
+
+- **Config validation structure tightened** — Model/profile-specific validation no longer has to accumulate in `config_validation.py`.
+  - Kept the cleanup inside `library/config/config_validation.py` instead of introducing another validation module, while still separating generic config checks from smaller internal helper functions.
+  - `validate_config()` now enforces known model-family bucket-step requirements directly from config (`sdxl` -> 32-step buckets, `sd1`/`sd15`/`sd2` -> 64-step buckets) instead of relying only on script-owned dataset-group validators.
+  - `validate_config()` now rejects TE-output caching together with caption mutation settings that change text conditioning over time (`shuffle_caption`, `caption_dropout_rate`, `token_warmup_step`, `caption_tag_dropout_rate`).
+  - The script-owned dataset validators (`validate_sd_peft()`, `validate_sdxl_peft()`, `validate_sd_textual_inversion()`, and `validate_sdxl_textual_inversion()`) remain in the same file for now rather than being split out.
+- **SDXL strategy tests updated for the split concern-file layout** — The strategy unit tests now reflect the current SDXL architecture instead of the old `sdxl/training.py` monolith.
+  - Updated `tests/unit/strategies/test_strategies_sdxl.py` to patch helpers from `encoding.py` and `diffusion.py` rather than `training.py`.
+  - Replaced the stale `_get_text_cond(...)` test path with `_get_text_conds(...)` and added a direct concern-ownership assertion for the composed `SdxlTrainingStrategy`.
+
 ## [2026-03-19]
 
 ### Changed
 
+- **SDXL facet ownership cleanup started** — The SDXL strategy now composes its existing tokenization / encoding / caching facet files instead of re-implementing those contract methods inside `sdxl/training.py`.
+  - `SdxlTrainingStrategy` now inherits `SdxlTokenizeStrategy`, `SdxlTextEncodingStrategy`, and `SdxlCachingStrategy`, while `sdxl/training.py` keeps only strategy assembly and SDXL-specific training behavior.
+  - `sdxl/caching.py` now owns the training-facing caching facet methods while continuing to host the SDXL-specific cache/data-backend handlers used by the data pipeline.
+  - `SdxlTextEncodingStrategy` now supports both standalone construction and mixed-in use with `SdxlTokenizeStrategy`, so active SDXL call sites do not need duplicate tokenizer ownership.
+  - `sdxl/loading.py` now owns the `ModelLoadingStrategy` facet for SDXL, moving model loading and RamTorch/xformers setup out of `sdxl/training.py`.
+  - `sdxl/model_preparation.py` now owns the `ModelPreparationStrategy` hooks for SDXL, including CLIP embedding prep, precision-cast decisions, and the TE1 freeze post-processing rule.
+  - `sdxl/validation.py` now owns the SDXL validation facet, including the fixed-timestep validation-batch helper and validation-loss loop.
+  - `sdxl/checkpointing.py` now owns the SDXL checkpointing facet, including metadata helpers and full-model save logic for both SD-format and Diffusers-format checkpoints.
+  - `sdxl/sampling.py` now owns the SDXL sample-generation facet, leaving `sdxl/training.py` focused on the diffusion / UNet-calling core.
+  - `sdxl/denoiser.py` now owns the SDXL denoiser-calling facet, including the UNet-call bridge and micro-conditioning tensor extraction.
+  - `sdxl/diffusion.py` now owns the SDXL diffusion-training facet, including training-time text-conditioning resolution, noise/target assembly, and `process_batch(...)`.
+  - The SDXL second-pass polish now mirrors the base contract more closely: the mixin order in `sdxl/training.py` follows the `TrainingStrategy` facet order, and the stale strategy-side `on_step_start(...)` validation hook has been removed now that step-start ownership lives on the training-mode layer.
+- **Validation contract cleanup for active strategies** — The live runner/strategy validation path now matches the current shared contract more closely.
+  - Fixed the active step-validation call in `training_loop.py` to pass `epoch`, `batch`, and `train_text_encoder` in the correct order to `calculate_val_loss(...)`.
+  - Removed the stale `self.on_step_start(...)` call from SD strategy validation after step-start ownership moved to the training-mode layer.
+  - Aligned `SdTrainingStrategy.calculate_val_loss(...)` with the base validation contract by returning the same 2-tuple shape as SDXL and the shared runner path.
 - **Trainability policy moved out of the base strategy contract** — Generic LR-driven trainability decisions now live in explicit shared helpers instead of `ModelPreparationStrategy`.
   - Centralized `should_train_denoiser()`, `should_train_text_encoder()`, and per-TE flag resolution in the shared optimizer helper layer.
   - `FineTuneMode`, `PeftMode`, and shared optimizer setup now call the trainability helpers directly.

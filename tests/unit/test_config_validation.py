@@ -367,6 +367,62 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="resource_monitor.mode must be one of"):
             validate_config(cfg)
 
+    def test_sdxl_bucket_reso_steps_must_be_divisible_by_32(self):
+        """SDXL configs should reject bucket step sizes incompatible with the model family."""
+        cfg = OmegaConf.create(
+            {
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": "sdxl"},
+                "training": {"clip_skip": None},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {
+                    "caching": {"cache_text_encoder_outputs": False},
+                    "bucketing": {"bucket_reso_steps": 48},
+                    "caption": {
+                        "shuffle_caption": False,
+                        "caption_dropout_rate": 0.0,
+                        "token_warmup_step": 0.0,
+                        "caption_tag_dropout_rate": 0.0,
+                    },
+                },
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
+            }
+        )
+        with pytest.raises(ValueError, match="bucket_reso_steps=48 must be divisible by 32"):
+            validate_config(cfg)
+
+    def test_cache_te_outputs_rejects_caption_mutation_settings(self):
+        """TE-output caching should reject caption settings that change TE outputs over time."""
+        cfg = OmegaConf.create(
+            {
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": "sdxl"},
+                "training": {"clip_skip": None},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {
+                    "caching": {"cache_text_encoder_outputs": True},
+                    "bucketing": {"bucket_reso_steps": 32},
+                    "caption": {
+                        "shuffle_caption": True,
+                        "caption_dropout_rate": 0.0,
+                        "token_warmup_step": 0.0,
+                        "caption_tag_dropout_rate": 0.0,
+                    },
+                },
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
+            }
+        )
+        with pytest.raises(ValueError, match="cache_text_encoder_outputs cannot be used with"):
+            validate_config(cfg)
+
     @pytest.mark.skip(reason="Block LR validation is model-specific, currently disabled pending refactor")
     def test_sdxl_block_lr_wrong_count_raises(self):
         """SDXL block_lr with wrong count should raise ValueError."""
