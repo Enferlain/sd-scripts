@@ -154,8 +154,6 @@ def mock_accelerator():
 def mock_strategies():
     """Create a mock training strategies object."""
     strategies = MagicMock()
-    strategies.is_train_denoiser = MagicMock(return_value=True)
-    strategies.is_train_text_encoder = MagicMock(return_value=False)
     strategies.cast_denoiser = MagicMock(return_value=True)
     strategies.cast_text_encoder = MagicMock(return_value=True)
     strategies.post_process_trainable = MagicMock()

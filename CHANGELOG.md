@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-19]
+
+### Changed
+
+- **Trainability policy moved out of the base strategy contract** — Generic LR-driven trainability decisions now live in explicit shared helpers instead of `ModelPreparationStrategy`.
+  - Centralized `should_train_denoiser()`, `should_train_text_encoder()`, and per-TE flag resolution in the shared optimizer helper layer.
+  - `FineTuneMode`, `PeftMode`, and shared optimizer setup now call the trainability helpers directly.
+  - Removed the LR-query wrapper methods from `ModelPreparationStrategy`, leaving only the genuinely model-owned preparation hooks on that facet.
+- **Denoiser accelerator wrapping no longer pretends to be strategy-owned** — `prepare_denoiser_with_accelerator(...)` has been removed from the base strategy contract.
+  - `FineTuneMode` and `PeftMode` now call `accelerator.prepare(...)` directly for denoiser wrapping in the non-DeepSpeed path.
+  - Updated the base-strategy audit/tests to reflect that denoiser accelerator preparation is shared mode logic, not a model-family seam.
+- **Model-preparation hooks are now explicit** — The remaining `ModelPreparationStrategy` hooks no longer rely on silent base defaults.
+  - `cast_text_encoder()`, `cast_vae()`, `cast_denoiser()`, and `post_process_trainable()` are now explicit strategy methods instead of inherited default behavior.
+  - SD and SDXL now provide the current behavior intentionally, making the remaining model-preparation seam more honest.
+- **Base strategy facet ownership tightened** — The remaining training-local tokenization / text-encoding hooks now live on the existing concern facets instead of directly on `TrainingStrategy`.
+  - Moved `tokenize_captions()` to `TokenizationStrategy`.
+  - Moved `encode_te_outputs_in_memory()` and `get_models_for_text_encoding()` to `TextEncodingStrategy`.
+  - Updated base-strategy tests to assert the new facet placement.
+
 ## [2026-03-18]
 
 ### Changed

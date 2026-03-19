@@ -52,15 +52,6 @@ class MockStrategy:
     def __init__(self):
         self.tokenizers = []
 
-    def is_train_denoiser(self, cfg):
-        return True
-
-    def is_train_text_encoder(self, cfg):
-        return False
-
-    def get_text_encoders_train_flags(self, cfg, te):
-        return [False] * len(te)
-
     def cast_denoiser(self, cfg):
         return False
 
@@ -84,9 +75,6 @@ class MockStrategy:
 
     def encode_tokens_with_weights(self, models, tokens, weights):
         return []
-
-    def prepare_denoiser_with_accelerator(self, cfg, accelerator, denoiser):
-        return denoiser
 
 
 class TestResumeBehavior(unittest.TestCase):

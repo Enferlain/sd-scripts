@@ -4,7 +4,7 @@ import torch
 from transformers import CLIPTokenizer
 
 from library.constants import TOKENIZER1_PATH, TOKENIZER2_PATH
-from library.models.sd.tokenizer import get_clip_input_ids, load_tokenizer
+from library.models.sd.tokenizer import get_clip_input_ids, load_tokenizer, tokenize_clip_captions
 from library.strategies.base.training import TokenizationStrategy
 
 
@@ -89,3 +89,10 @@ class SdxlTokenizeStrategy(TokenizationStrategy):
             Tuple of lists of token tensors and weight tensors
         """
         return tokenize_sdxl_text_with_weights(self.tokenizer1, self.tokenizer2, self.max_length, text)
+
+    def tokenize_captions(self, tokenizers: list[CLIPTokenizer], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
+        """Tokenize captions using the SDXL helper strategy's dual tokenizers."""
+        return [
+            tokenize_clip_captions(tokenizers[0], captions, max_token_length),
+            tokenize_clip_captions(tokenizers[1], captions, max_token_length),
+        ]

@@ -20,7 +20,12 @@ import torch
 from torch import nn
 
 from library.adapters.lora_utils import resolve_adapter_kwargs
-from library.optimizers.optimizer_utils import prepare_optimizer as _prepare_optimizer_util
+from library.optimizers.optimizer_utils import (
+    get_text_encoders_train_flags,
+    prepare_optimizer as _prepare_optimizer_util,
+    should_train_denoiser,
+    should_train_text_encoder,
+)
 from library.performance import deepspeed_utils
 from library.training.checkpointing import register_adapter_state_hooks
 
@@ -124,8 +129,8 @@ class PeftMode:
         trainer.strategies.post_process_trainable(cfg, accelerator, adapter, text_encoders, denoiser)
 
         # Apply adapter to denoiser and text_encoder
-        trainer._train_denoiser = trainer.strategies.is_train_denoiser(cfg)
-        trainer._train_text_encoder = trainer.strategies.is_train_text_encoder(cfg)
+        trainer._train_denoiser = should_train_denoiser(cfg.optimizer.learning_rates)
+        trainer._train_text_encoder = should_train_text_encoder(cfg.optimizer.learning_rates)
         adapter.apply_to(text_encoder, denoiser, trainer._train_text_encoder, trainer._train_denoiser)
 
         # Load weights if specified
@@ -185,7 +190,7 @@ class PeftMode:
         cfg = trainer.cfg
 
         if cfg.performance.deepspeed.deepspeed:
-            flags = trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders)
+            flags = get_text_encoders_train_flags(cfg.optimizer.learning_rates, trainer.text_encoders)
             # Build dynamic kwargs — no fixed TE count assumption
             ds_kwargs: dict[str, Any] = {}
             if trainer._train_denoiser:
@@ -203,7 +208,7 @@ class PeftMode:
             trainer._primary_trainable = trainer.adapter
         else:
             if trainer._train_denoiser:
-                trainer.denoiser = trainer.strategies.prepare_denoiser_with_accelerator(cfg, trainer.accelerator, trainer.denoiser)
+                trainer.denoiser = trainer.accelerator.prepare(trainer.denoiser)
             else:
                 trainer.denoiser.to(
                     trainer.accelerator.device,
@@ -215,7 +220,7 @@ class PeftMode:
                     (trainer.accelerator.prepare(t_enc) if flag else t_enc)
                     for t_enc, flag in zip(
                         trainer.text_encoders,
-                        trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders),
+                        get_text_encoders_train_flags(cfg.optimizer.learning_rates, trainer.text_encoders),
                     )
                 ]
                 trainer._text_encoder = trainer.text_encoders if len(trainer.text_encoders) > 1 else trainer.text_encoders[0]

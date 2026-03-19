@@ -27,7 +27,7 @@ from library.models.sd.text_encoder import get_hidden_states_sd
 from library.training.sample_generation import sample_images_common
 from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 from library.utils.model_metadata import get_model_metadata_from_config
-from library.training.diffusion import get_noise_noisy_latents_and_timesteps
+from library.training.diffusion import get_noise_noisy_latents_and_timesteps, prepare_latents
 from library.training.trainer_utils import restore_rng_state, switch_rng_state
 
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
@@ -101,6 +101,29 @@ class SdTrainingStrategy(TrainingStrategy):
         """Cast CLIP embeddings back from FP8 — nn.Embedding doesn't support FP8."""
         text_encoder.text_model.embeddings.to(dtype=weight_dtype)
 
+    def cast_text_encoder(self, cfg: Any) -> bool:
+        """SD casts text encoders during shared precision setup."""
+        return True
+
+    def cast_vae(self, cfg: Any) -> bool:
+        """SD casts the VAE during trainer setup."""
+        return True
+
+    def cast_denoiser(self, cfg: Any) -> bool:
+        """SD casts the denoiser during shared precision setup."""
+        return True
+
+    def post_process_trainable(
+        self,
+        cfg: Any,
+        accelerator: Any,
+        trainable_model: Any,
+        text_encoders: list[Any],
+        denoiser: Any,
+    ) -> None:
+        """SD currently requires no post-processing after trainable setup."""
+        return None
+
     max_token_length: int = 0
     clip_skip: int | None = None
 
@@ -165,6 +188,10 @@ class SdTrainingStrategy(TrainingStrategy):
         if not self._tokenizers:
             raise RuntimeError("SD strategy has no tokenizers configured.")
         return encode_sd_tokens(self._tokenizers[0], self.clip_skip, models, tokens)
+
+    def _prepare_latents(self, batch: Any, cfg: Any, accelerator: Any, vae: Any, vae_dtype: torch.dtype) -> torch.Tensor:
+        """Delegate SD latent preparation to the shared diffusion helper."""
+        return prepare_latents(batch, cfg, accelerator, vae, vae_dtype, self.vae_latent_scale)
 
     def encode_tokens_with_weights(
         self,
@@ -642,7 +669,7 @@ class SdTrainingStrategy(TrainingStrategy):
         if timesteps_list is None:
             timesteps_list = [50, 350, 500, 650, 950]
         with torch.autograd.grad_mode.inference_mode(mode=True):
-            latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
+            latents = prepare_latents(batch, cfg, accelerator, vae, vae_dtype, self.vae_latent_scale)
             total_loss = torch.zeros(1, device=latents.device)
 
             text_encoder_conds = self._get_text_conds(

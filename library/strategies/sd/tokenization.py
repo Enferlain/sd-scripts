@@ -95,3 +95,7 @@ class SdTokenizeStrategy(TokenizationStrategy):
             Tuple of lists of token tensors and weight tensors
         """
         return tokenize_sd_text_with_weights(self.tokenizer, self.max_length, text)
+
+    def tokenize_captions(self, tokenizers: list[CLIPTokenizer], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
+        """Tokenize captions using the SD helper strategy's CLIP tokenizer."""
+        return [tokenize_sd_captions(tokenizers[0], captions, max_token_length)]

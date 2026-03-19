@@ -11,6 +11,11 @@ import pytest
 import torch
 
 from library.models.sd.tokenizer import get_clip_weighted_input_ids, load_tokenizer
+from library.optimizers.optimizer_utils import (
+    get_text_encoders_train_flags,
+    should_train_denoiser,
+    should_train_text_encoder,
+)
 from library.strategies.base.training import (
     CachingStrategy,
     DiffusionTrainingStrategy,
@@ -21,6 +26,7 @@ from library.strategies.base.training import (
     TrainingStrategy,
     ValidationStrategy,
 )
+from library.training.diffusion import prepare_latents
 from library.training.noise_utils import get_noise_scheduler
 from library.training.trainer_utils import all_reduce_trainable, restore_rng_state, switch_rng_state
 
@@ -188,8 +194,6 @@ class TestModelTokenizerLoading:
 
 
 class _DummyDiffusionStrategy(DiffusionTrainingStrategy):
-    vae_latent_scale = 2.0
-
     def process_batch(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -225,23 +229,30 @@ class TestTrainingStrategyPhase2Facets:
         """Moved shared helpers should live on their facet bases, not TrainingStrategy itself."""
         assert "tokenize" in TokenizationStrategy.__dict__
         assert "tokenize_with_weights" in TokenizationStrategy.__dict__
+        assert "tokenize_captions" in TokenizationStrategy.__dict__
         assert "encode_tokens" in TextEncodingStrategy.__dict__
         assert "encode_tokens_with_weights" in TextEncodingStrategy.__dict__
-        assert "tokenize_captions" in TrainingStrategy.__dict__
-        assert "get_models_for_text_encoding" in TrainingStrategy.__dict__
-        assert "encode_te_outputs_in_memory" in TrainingStrategy.__dict__
+        assert "get_models_for_text_encoding" in TextEncodingStrategy.__dict__
+        assert "encode_te_outputs_in_memory" in TextEncodingStrategy.__dict__
         assert "create_latent_caching_strategy" in CachingStrategy.__dict__
         assert "load_denoiser_lazily" in ModelLoadingStrategy.__dict__
-        assert "prepare_denoiser_with_accelerator" in ModelPreparationStrategy.__dict__
+        assert "cast_text_encoder" in ModelPreparationStrategy.__dict__
+        assert "cast_vae" in ModelPreparationStrategy.__dict__
+        assert "cast_denoiser" in ModelPreparationStrategy.__dict__
+        assert "post_process_trainable" in ModelPreparationStrategy.__dict__
         assert "calculate_val_loss" in ValidationStrategy.__dict__
+        assert "is_train_denoiser" not in ModelPreparationStrategy.__dict__
+        assert "is_train_text_encoder" not in ModelPreparationStrategy.__dict__
+        assert "get_text_encoders_train_flags" not in ModelPreparationStrategy.__dict__
 
         assert "load_denoiser_lazily" not in TrainingStrategy.__dict__
-        assert "tokenize_captions" not in TokenizationStrategy.__dict__
+        assert "tokenize_captions" not in TrainingStrategy.__dict__
         assert "tokenize_captions" not in CachingStrategy.__dict__
         assert "initialize" not in TrainingStrategy.__dict__
+        assert "get_models_for_text_encoding" not in TrainingStrategy.__dict__
         assert "get_models_for_text_encoding" not in CachingStrategy.__dict__
+        assert "encode_te_outputs_in_memory" not in TrainingStrategy.__dict__
         assert "encode_te_outputs_in_memory" not in CachingStrategy.__dict__
-        assert "prepare_denoiser_with_accelerator" not in TrainingStrategy.__dict__
         assert "calculate_val_loss" not in TrainingStrategy.__dict__
 
     def test_model_loading_default_lazy_denoiser_hook_still_raises(self):
@@ -250,9 +261,13 @@ class TestTrainingStrategyPhase2Facets:
         with pytest.raises(NotImplementedError, match="load_denoiser_lazily"):
             strategy.load_denoiser_lazily(cfg=Mock(), weight_dtype=torch.float16, accelerator=Mock(), text_encoders=[])
 
-    def test_diffusion_training_prepare_latents_scales_encoded_latents(self):
-        """Moved diffusion helper should still apply VAE latent scaling."""
-        strategy = _DummyDiffusionStrategy()
+    def test_model_prep_methods_require_explicit_strategy_implementation(self):
+        """Model-prep hooks no longer silently default in the base facet."""
+        with pytest.raises(TypeError):
+            ModelPreparationStrategy()
+
+    def test_diffusion_helper_prepare_latents_scales_encoded_latents(self):
+        """Shared diffusion helper should still apply VAE latent scaling."""
         cfg = Mock()
         cfg.data.caching.vae_batch_size = None
         accelerator = Mock()
@@ -264,7 +279,7 @@ class TestTrainingStrategyPhase2Facets:
         vae.encode.return_value.latent_dist = latent_dist
 
         batch = {"images": torch.ones((1, 3, 64, 64))}
-        latents = strategy._prepare_latents(batch, cfg, accelerator, vae, torch.float32)
+        latents = prepare_latents(batch, cfg, accelerator, vae, torch.float32, vae_latent_scale=2.0)
 
         assert torch.equal(latents, torch.full((1, 4, 8, 8), 2.0))
 
@@ -285,6 +300,16 @@ class TestTrainingStrategyPhase2Facets:
         all_reduce_trainable(accelerator, module)
 
         accelerator.reduce.assert_called()
+
+    def test_trainability_helpers_resolve_lr_policy(self):
+        """LR-based trainability now lives in the shared optimizer helper layer."""
+        learning_rates = Mock()
+        learning_rates.denoiser = None
+        learning_rates.text_encoders = [1e-5, 0.0]
+
+        assert should_train_denoiser(learning_rates) is True
+        assert should_train_text_encoder(learning_rates) is True
+        assert get_text_encoders_train_flags(learning_rates, [Mock(), Mock(), Mock()]) == [True, False, False]
 
     def test_rng_helpers_can_round_trip_rng_state(self):
         """Validation RNG helpers now live in trainer_utils."""

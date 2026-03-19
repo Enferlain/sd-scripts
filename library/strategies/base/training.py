@@ -5,8 +5,6 @@ from typing import Any
 
 import torch
 
-from library.optimizers.optimizer_utils import should_train_denoiser, should_train_text_encoder
-
 
 class ModelLoadingStrategy(ABC):
     """Strategy for loading model components (text encoders, VAE, denoiser)."""
@@ -84,6 +82,21 @@ class TokenizationStrategy(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
+        """
+        Tokenize captions using model-family-specific tokenization.
+
+        Args:
+            tokenizers: List of tokenizer instances for this architecture.
+            captions: List of caption strings to tokenize.
+            max_token_length: Maximum token sequence length.
+
+        Returns:
+            List of token tensors, one per tokenizer.
+        """
+        raise NotImplementedError
+
 
 class TextEncodingStrategy(ABC):
     """Facet for model-family text-encoding behavior."""
@@ -104,6 +117,49 @@ class TextEncodingStrategy(ABC):
     ) -> list[torch.Tensor]:
         """
         Encode token tensors with prompt-weight application.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def encode_te_outputs_in_memory(
+        self,
+        text_encoders: list[Any],
+        tokenizers: list[Any],
+        caption: str,
+        max_token_length: int,
+        device: Any,
+    ) -> dict[str, torch.Tensor]:
+        """
+        Compute text encoder outputs for a single caption (in-memory caching path).
+
+        Used when TE outputs are cached in memory rather than to disk.
+
+        Args:
+            text_encoders: List of text encoder models.
+            tokenizers: List of tokenizer instances.
+            caption: Single caption string.
+            max_token_length: Maximum token sequence length.
+            device: Device to run computation on.
+
+        Returns:
+            Dict of output name -> tensor (CPU), e.g. {"hidden_state1": ..., "pool2": ...}.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
+        """
+        Return models to use for text encoding during training.
+
+        SDXL may return wrapped/unwrapped models differently.
+
+        Args:
+            cfg: Configuration object.
+            accelerator: Accelerator instance.
+            text_encoders: List of available text encoder models.
+
+        Returns:
+            List of models properly prepared for encoding.
         """
         raise NotImplementedError
 
@@ -308,75 +364,7 @@ class ValidationStrategy(ABC):
 
 
 class DiffusionTrainingStrategy(ABC):
-    """Strategy for diffusion-specific batch processing behavior."""
-
-    def encode_images_to_latents(self, cfg: Any, vae: Any, images: torch.Tensor) -> torch.Tensor:
-        """
-        Encode images to latents using the VAE.
-
-        Args:
-            cfg: Configuration object.
-            vae: VAE model instance.
-            images: Batch of images to encode.
-
-        Returns:
-            Encoded latents.
-        """
-        return vae.encode(images).latent_dist.sample()
-
-    def shift_scale_latents(self, cfg: Any, latents: torch.Tensor) -> torch.Tensor:
-        """
-        Apply the model-family VAE latent scale factor.
-
-        Args:
-            cfg: Configuration object.
-            latents: Latents tensor to scale.
-
-        Returns:
-            Scaled latents.
-        """
-        return latents * self.vae_latent_scale  # Defined in concrete strategies.
-
-    def _prepare_latents(self, batch: Any, cfg: Any, accelerator: Any, vae: Any, vae_dtype: torch.dtype) -> torch.Tensor:
-        """
-        Prepare latents from batch data or cached entries.
-
-        Shared between training and validation batch processing.
-
-        Args:
-            batch: Batch data containing either cached latents or images.
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            vae: VAE model for encoding images.
-            vae_dtype: Data type for VAE operations.
-
-        Returns:
-            Prepared and scaled latents tensor.
-        """
-        import typing
-
-        if "latents" in batch and batch["latents"] is not None:
-            latents = typing.cast(torch.FloatTensor, batch["latents"].to(accelerator.device))
-        else:
-            vae_batch_size = cfg.data.caching.vae_batch_size
-            if vae_batch_size is None or len(batch["images"]) <= vae_batch_size:
-                latents = self.encode_images_to_latents(cfg, vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
-            else:
-                chunks = [batch["images"][i : i + vae_batch_size] for i in range(0, len(batch["images"]), vae_batch_size)]
-                list_latents = []
-                for chunk in chunks:
-                    with torch.no_grad():
-                        chunk_latents = self.encode_images_to_latents(cfg, vae, chunk.to(accelerator.device, dtype=vae_dtype))
-                        list_latents.append(chunk_latents)
-                latents = torch.cat(list_latents, dim=0)
-
-            if torch.any(torch.isnan(latents)):
-                accelerator.print("NaN found in latents, replacing with zeros")
-                latents = typing.cast(torch.FloatTensor, torch.nan_to_num(latents, 0, out=latents))
-
-            latents = self.shift_scale_latents(cfg, latents)
-
-        return latents
+    """Contract for diffusion-specific batch processing behavior."""
 
     @abstractmethod
     def process_batch(
@@ -446,46 +434,10 @@ class DenoiserCallingStrategy(ABC):
         raise NotImplementedError
 
 
-class ModelPreparationStrategy:
+class ModelPreparationStrategy(ABC):
     """Strategy hooks used while preparing trainable models and precision."""
 
-    def get_text_encoders_train_flags(self, cfg: Any, text_encoders: list[Any]) -> list[bool]:
-        """
-        Return per-text-encoder training flags.
-
-        Args:
-            cfg: Configuration object.
-            text_encoders: List of text encoders.
-
-        Returns:
-            List of boolean flags indicating training status for each encoder.
-        """
-        return [True] * len(text_encoders) if self.is_train_text_encoder(cfg) else [False] * len(text_encoders)
-
-    def is_train_text_encoder(self, cfg: Any) -> bool:
-        """
-        Check if text encoder should be trained based on LR config.
-
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            True if text encoder should be trained, False otherwise.
-        """
-        return should_train_text_encoder(cfg.optimizer.learning_rates)
-
-    def is_train_denoiser(self, cfg: Any) -> bool:
-        """
-        Check if denoiser should be trained based on LR config.
-
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            True if denoiser should be trained, False otherwise.
-        """
-        return should_train_denoiser(cfg.optimizer.learning_rates)
-
+    @abstractmethod
     def cast_text_encoder(self, cfg: Any) -> bool:
         """
         Determine if text encoder should be cast to a specific dtype.
@@ -494,10 +446,11 @@ class ModelPreparationStrategy:
             cfg: Configuration object.
 
         Returns:
-            True by default.
+            True if the text encoder should be cast.
         """
-        return True
+        raise NotImplementedError(f"{type(self).__name__} must implement cast_text_encoder")
 
+    @abstractmethod
     def cast_vae(self, cfg: Any) -> bool:
         """
         Determine if VAE should be cast to a specific dtype.
@@ -506,10 +459,11 @@ class ModelPreparationStrategy:
             cfg: Configuration object.
 
         Returns:
-            True by default.
+            True if the VAE should be cast.
         """
-        return True
+        raise NotImplementedError(f"{type(self).__name__} must implement cast_vae")
 
+    @abstractmethod
     def cast_denoiser(self, cfg: Any) -> bool:
         """
         Determine if denoiser should be cast to a specific dtype.
@@ -518,9 +472,9 @@ class ModelPreparationStrategy:
             cfg: Configuration object.
 
         Returns:
-            True by default.
+            True if the denoiser should be cast.
         """
-        return True
+        raise NotImplementedError(f"{type(self).__name__} must implement cast_denoiser")
 
     def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
         """
@@ -555,20 +509,7 @@ class ModelPreparationStrategy:
             f"{type(self).__name__} must implement prepare_text_encoder_fp8"
         )
 
-    def prepare_denoiser_with_accelerator(self, cfg: Any, accelerator: Any, denoiser: Any) -> Any:
-        """
-        Prepare the denoiser with the accelerator.
-
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            denoiser: The denoiser model.
-
-        Returns:
-            Prepared denoiser model.
-        """
-        return accelerator.prepare(denoiser)
-
+    @abstractmethod
     def post_process_trainable(
         self,
         cfg: Any,
@@ -587,7 +528,7 @@ class ModelPreparationStrategy:
             text_encoders: List of text encoders.
             denoiser: The denoiser model.
         """
-        return None
+        raise NotImplementedError(f"{type(self).__name__} must implement post_process_trainable")
 
 
 class TrainingStrategy(
@@ -611,61 +552,3 @@ class TrainingStrategy(
     Runner code accesses ``strategy.tokenizers`` and calls strategy methods on
     the strategy itself without a separate initialization phase.
     """
-
-    @abstractmethod
-    def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
-        """
-        Tokenize captions using model-family-specific tokenization.
-
-        Args:
-            tokenizers: List of tokenizer instances for this architecture.
-            captions: List of caption strings to tokenize.
-            max_token_length: Maximum token sequence length.
-
-        Returns:
-            List of token tensors, one per tokenizer.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def encode_te_outputs_in_memory(
-        self,
-        text_encoders: list[Any],
-        tokenizers: list[Any],
-        caption: str,
-        max_token_length: int,
-        device: Any,
-    ) -> dict[str, torch.Tensor]:
-        """
-        Compute text encoder outputs for a single caption (in-memory caching path).
-
-        Used when TE outputs are cached in memory rather than to disk.
-
-        Args:
-            text_encoders: List of text encoder models.
-            tokenizers: List of tokenizer instances.
-            caption: Single caption string.
-            max_token_length: Maximum token sequence length.
-            device: Device to run computation on.
-
-        Returns:
-            Dict of output name -> tensor (CPU), e.g. {"hidden_state1": ..., "pool2": ...}.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
-        """
-        Return models to use for text encoding during training.
-
-        SDXL may return wrapped/unwrapped models differently.
-
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            text_encoders: List of available text encoder models.
-
-        Returns:
-            List of models properly prepared for encoding.
-        """
-        raise NotImplementedError

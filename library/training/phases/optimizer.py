@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from library.data import create_training_dataloader, prepare_validation_epoch
 from library.models.runtime_utils import patch_accelerator_for_fp16_training
+from library.optimizers.optimizer_utils import get_text_encoders_train_flags
 from library.optimizers.scheduler import get_scheduler_fix
 from library.training.checkpointing import resume_from_local_or_hf_if_specified
 
@@ -139,6 +140,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
 def _setup_gradient_checkpointing(trainer: Trainer) -> None:
     """Setup gradient checkpointing for shared models + mode-specific adapter."""
     cfg = trainer.cfg
+    te_train_flags = get_text_encoders_train_flags(cfg.optimizer.learning_rates, trainer.text_encoders)
 
     if cfg.performance.memory.gradient_checkpointing:
         if cfg.performance.memory.cpu_offload_checkpointing:
@@ -146,15 +148,13 @@ def _setup_gradient_checkpointing(trainer: Trainer) -> None:
         else:
             trainer.denoiser.enable_gradient_checkpointing()
 
-        for t_enc, flag in zip(trainer.text_encoders, trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders)):
+        for t_enc, flag in zip(trainer.text_encoders, te_train_flags):
             if flag and t_enc.supports_gradient_checkpointing:
                 t_enc.gradient_checkpointing_enable()
 
         # Train mode for gradient checkpointing
         trainer.denoiser.train()
-        for i, (t_enc, flag) in enumerate(
-            zip(trainer.text_encoders, trainer.strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders))
-        ):
+        for i, (t_enc, flag) in enumerate(zip(trainer.text_encoders, te_train_flags)):
             t_enc.train()
             if flag:
                 trainer.strategies.prepare_text_encoder_grad_ckpt_workaround(i, t_enc)

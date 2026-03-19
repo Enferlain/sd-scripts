@@ -21,7 +21,12 @@ import torch
 from torch import nn
 
 from library.optimizers.optimizer_factory import get_optimizer
-from library.optimizers.optimizer_utils import get_optimizer_train_eval_fn
+from library.optimizers.optimizer_utils import (
+    get_optimizer_train_eval_fn,
+    get_text_encoders_train_flags,
+    should_train_denoiser,
+    should_train_text_encoder,
+)
 from library.performance import deepspeed_utils
 
 
@@ -53,15 +58,16 @@ class FineTuneMode:
         ``trainer._primary_trainable``, and per-TE training flags on
         the mode instance.
 
-        Uses strategy for train-flag decisions and model-specific
-        post-processing (e.g. SDXL TE1 last-layer freezing).
+        Uses shared trainability helpers for generic LR-driven train flags and
+        the strategy for model-specific post-processing (e.g. SDXL TE1
+        last-layer freezing).
         """
         cfg = trainer.cfg
         strategies = trainer.strategies
 
-        # Determine what to train via strategy
-        trainer._train_denoiser = strategies.is_train_denoiser(cfg)
-        trainer._train_text_encoder = strategies.is_train_text_encoder(cfg)
+        # Determine what to train from generic LR policy
+        trainer._train_denoiser = should_train_denoiser(cfg.optimizer.learning_rates)
+        trainer._train_text_encoder = should_train_text_encoder(cfg.optimizer.learning_rates)
 
         # Unfreeze denoiser
         assert trainer.denoiser is not None, "denoiser must be loaded before prepare_trainables"
@@ -72,28 +78,11 @@ class FineTuneMode:
             trainer.denoiser.requires_grad_(False)
             trainer.denoiser.eval()
 
-        # Resolve per-TE training flags
-        # Strategy provides base flags; we refine with per-TE LR if configured
-        lr = cfg.optimizer.learning_rates
-        te_lr = lr.text_encoders
-        te_flags: list[bool]
-        if te_lr is None:
-            # Default: use strategy-provided flags
-            te_flags = strategies.get_text_encoders_train_flags(cfg, trainer.text_encoders)
-        elif isinstance(te_lr, (int, float)):
-            te_flags = [te_lr > 0] * len(trainer.text_encoders)
-        else:
-            # Per-TE LR list
-            te_flags = [lr_val > 0 for lr_val in te_lr]
-            # Pad if list is shorter than number of TEs
-            while len(te_flags) < len(trainer.text_encoders):
-                te_flags.append(False)
-
-        self._te_train_flags = te_flags
-        trainer._train_text_encoder = any(te_flags)
+        self._te_train_flags = get_text_encoders_train_flags(cfg.optimizer.learning_rates, trainer.text_encoders)
+        trainer._train_text_encoder = any(self._te_train_flags)
 
         # Freeze / unfreeze each TE
-        for t_enc, flag in zip(trainer.text_encoders, te_flags):
+        for t_enc, flag in zip(trainer.text_encoders, self._te_train_flags):
             if flag:
                 t_enc.requires_grad_(True)
                 t_enc.train()
@@ -222,7 +211,7 @@ class FineTuneMode:
         else:
             # Prepare denoiser
             if trainer._train_denoiser:
-                trainer.denoiser = trainer.strategies.prepare_denoiser_with_accelerator(cfg, trainer.accelerator, trainer.denoiser)
+                trainer.denoiser = trainer.accelerator.prepare(trainer.denoiser)
 
             # Prepare trained TEs; move non-trained TEs to device
             for i, (t_enc, flag) in enumerate(zip(trainer.text_encoders, self._te_train_flags)):

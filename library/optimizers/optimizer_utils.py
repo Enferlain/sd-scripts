@@ -11,8 +11,6 @@ from torch.optim import Optimizer
 from library.config.dataclasses.optimizer import OptimizerConfig, LearningRatesConfig
 from library.config.dataclasses.peft import PeftConfig
 from library.constants import int_pattern, float_pattern
-
-
 from library.optimizers.optimizer_factory import get_optimizer
 
 
@@ -26,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 def should_train_text_encoder(learning_rates: LearningRatesConfig) -> bool:
     """
-    Check if text encoder should be trained based on learning rates.
+    Check if any text encoder should be trained based on learning rates.
 
     Returns True if:
     - text_encoders LR is None (will use base LR)
@@ -44,7 +42,7 @@ def should_train_text_encoder(learning_rates: LearningRatesConfig) -> bool:
 
 def should_train_denoiser(learning_rates: LearningRatesConfig) -> bool:
     """
-    Check if denoiser should be trained based on learning rates.
+    Check if the denoiser should be trained based on learning rates.
 
     Returns True if:
     - denoiser LR is None (will use base LR)
@@ -52,6 +50,30 @@ def should_train_denoiser(learning_rates: LearningRatesConfig) -> bool:
     """
     denoiser_lr = learning_rates.denoiser
     return denoiser_lr is None or denoiser_lr > 0
+
+
+def get_text_encoders_train_flags(learning_rates: LearningRatesConfig, text_encoders: list[object]) -> list[bool]:
+    """
+    Resolve per-text-encoder train flags from the configured learning rates.
+
+    Args:
+        learning_rates: Learning-rate configuration.
+        text_encoders: Text encoders in the current model family.
+
+    Returns:
+        A list of booleans indicating whether each text encoder should train.
+    """
+    num_text_encoders = len(text_encoders)
+    te_lr = learning_rates.text_encoders
+    if te_lr is None:
+        return [should_train_text_encoder(learning_rates)] * num_text_encoders
+    if isinstance(te_lr, int | float):
+        return [te_lr > 0] * num_text_encoders
+
+    te_flags = [lr_val > 0 for lr_val in te_lr]
+    while len(te_flags) < num_text_encoders:
+        te_flags.append(False)
+    return te_flags[:num_text_encoders]
 
 
 def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRatesConfig, adapter_config: PeftConfig, adapter):

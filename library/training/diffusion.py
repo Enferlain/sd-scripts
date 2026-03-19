@@ -7,6 +7,84 @@ from library.config.dataclasses.timestep import TimestepConfig
 from library.config.dataclasses.training import TrainingConfig
 
 
+def encode_images_to_latents(vae, images: torch.Tensor) -> torch.Tensor:
+    """
+    Encode images to latents using the provided VAE.
+
+    Args:
+        vae: VAE model instance.
+        images: Batch of images to encode.
+
+    Returns:
+        Encoded latents tensor.
+    """
+    return vae.encode(images).latent_dist.sample()
+
+
+def shift_scale_latents(latents: torch.Tensor, vae_latent_scale: float) -> torch.Tensor:
+    """
+    Apply a model-family latent scaling factor.
+
+    Args:
+        latents: Latents tensor to scale.
+        vae_latent_scale: Model-family VAE latent scale factor.
+
+    Returns:
+        Scaled latents tensor.
+    """
+    return latents * vae_latent_scale
+
+
+def prepare_latents(
+    batch: dict,
+    cfg,
+    accelerator,
+    vae,
+    vae_dtype: torch.dtype,
+    vae_latent_scale: float,
+    encode_images_to_latents_fn=encode_images_to_latents,
+    shift_scale_latents_fn=shift_scale_latents,
+) -> torch.Tensor:
+    """
+    Prepare latents from cached batch entries or by live VAE encoding.
+
+    Args:
+        batch: Batch data containing either cached latents or images.
+        cfg: Configuration object.
+        accelerator: Accelerator instance.
+        vae: VAE model for encoding images.
+        vae_dtype: Data type for VAE operations.
+        vae_latent_scale: Model-family VAE latent scale factor.
+        encode_images_to_latents_fn: Helper used to encode images to latents.
+        shift_scale_latents_fn: Helper used to apply latent scaling.
+
+    Returns:
+        Prepared and scaled latents tensor.
+    """
+    if "latents" in batch and batch["latents"] is not None:
+        latents = batch["latents"].to(accelerator.device)
+    else:
+        vae_batch_size = cfg.data.caching.vae_batch_size
+        if vae_batch_size is None or len(batch["images"]) <= vae_batch_size:
+            latents = encode_images_to_latents_fn(vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
+        else:
+            chunks = [batch["images"][i : i + vae_batch_size] for i in range(0, len(batch["images"]), vae_batch_size)]
+            list_latents = []
+            for chunk in chunks:
+                with torch.no_grad():
+                    chunk_latents = encode_images_to_latents_fn(vae, chunk.to(accelerator.device, dtype=vae_dtype))
+                    list_latents.append(chunk_latents)
+            latents = torch.cat(list_latents, dim=0)
+
+        if torch.any(torch.isnan(latents)):
+            accelerator.print("NaN found in latents, replacing with zeros")
+            latents = torch.nan_to_num(latents, 0, out=latents)
+
+        latents = shift_scale_latents_fn(latents, vae_latent_scale)
+
+    return latents
+
+
 def get_timesteps(min_timestep: int, max_timestep: int, b_size: int, device: torch.device) -> torch.Tensor:
     """
     Generates a batch of timesteps for diffusion training.

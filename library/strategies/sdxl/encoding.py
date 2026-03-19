@@ -3,6 +3,7 @@ from typing import Any
 import torch
 
 from library.models.sdxl.text_encoder import encode_input_ids_sdxl, apply_hidden_state_weights_sdxl
+from library.models.sd.tokenizer import tokenize_clip_captions
 from transformers import CLIPTokenizer
 
 from library.strategies.base.training import TextEncodingStrategy
@@ -91,3 +92,34 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
             List of encoded tensors
         """
         return encode_sdxl_tokens_with_weights(self.tokenizers, models, tokens, weights)
+
+    def encode_te_outputs_in_memory(
+        self,
+        text_encoders: list[Any],
+        tokenizers: list[Any],
+        caption: str,
+        max_token_length: int,
+        device: Any,
+    ) -> dict[str, torch.Tensor]:
+        """Compute SDXL text encoder outputs for a single caption."""
+        input_ids1 = tokenize_clip_captions(tokenizers[0], [caption], max_token_length).to(device)
+        input_ids2 = tokenize_clip_captions(tokenizers[1], [caption], max_token_length).to(device)
+
+        with torch.no_grad():
+            hidden_state1, hidden_state2, pool2 = encode_input_ids_sdxl(
+                input_ids1,
+                input_ids2,
+                tokenizers[0],
+                tokenizers[1],
+                text_encoders[0],
+                text_encoders[1],
+            )
+        return {
+            "hidden_state1": hidden_state1.squeeze(0).cpu(),
+            "hidden_state2": hidden_state2.squeeze(0).cpu(),
+            "pool2": pool2.squeeze(0).cpu(),
+        }
+
+    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
+        """Return SDXL text encoders plus unwrapped text encoder 2."""
+        return text_encoders + [accelerator.unwrap_model(text_encoders[-1])]

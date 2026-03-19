@@ -99,11 +99,7 @@ def mock_text_encoders():
 def mock_strategies():
     """Create a mock strategies object with strategy methods."""
     strategies = MagicMock()
-    strategies.is_train_denoiser = MagicMock(return_value=True)
-    strategies.is_train_text_encoder = MagicMock(return_value=True)
-    strategies.get_text_encoders_train_flags = MagicMock(return_value=[True, True])
     strategies.post_process_trainable = MagicMock()
-    strategies.prepare_denoiser_with_accelerator = MagicMock(side_effect=lambda cfg, acc, u: u)
     strategies.save_model_checkpoint = MagicMock()
     return strategies
 
@@ -147,20 +143,19 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_denoiser, mock_text_encoders, 
 @pytest.mark.training
 @pytest.mark.unit
 class TestPrepareTrainables:
-    """Test prepare_trainables uses strategy methods."""
+    """Test prepare_trainables uses shared trainability helpers + strategy hooks."""
 
-    def test_uses_strategy_is_train_denoiser(self, mode, mock_trainer):
-        """Train flag is set via strategy.is_train_denoiser(cfg)."""
+    def test_sets_denoiser_train_flag_from_learning_rates(self, mode, mock_trainer):
+        """Denoiser train flag follows the configured learning rates."""
         mode.prepare_trainables(mock_trainer)
 
-        mock_trainer.strategies.is_train_denoiser.assert_called_once_with(mock_trainer.cfg)
         assert mock_trainer._train_denoiser is True
 
-    def test_uses_strategy_is_train_text_encoder(self, mode, mock_trainer):
-        """TE training flag is set via strategy."""
+    def test_sets_text_encoder_train_flag_from_learning_rates(self, mode, mock_trainer):
+        """TE train flag follows the configured learning rates."""
         mode.prepare_trainables(mock_trainer)
 
-        mock_trainer.strategies.is_train_text_encoder.assert_called_once_with(mock_trainer.cfg)
+        assert mock_trainer._train_text_encoder is True
 
     def test_delegates_post_process_to_strategy(self, mode, mock_trainer):
         """post_process_trainable is called on strategy after unfreezing."""
@@ -168,24 +163,20 @@ class TestPrepareTrainables:
 
         mock_trainer.strategies.post_process_trainable.assert_called_once()
 
-    def test_uses_strategy_te_flags_when_no_lr_override(self, mode, mock_trainer):
-        """When text_encoders LR is None, uses strategy-provided flags."""
+    def test_uses_trainability_helper_te_flags_when_no_lr_override(self, mode, mock_trainer):
+        """When text_encoders LR is None, all TEs train with the base LR."""
         mock_trainer.cfg.optimizer.learning_rates.text_encoders = None
-        mock_trainer.strategies.get_text_encoders_train_flags.return_value = [True, False]
 
         mode.prepare_trainables(mock_trainer)
 
-        mock_trainer.strategies.get_text_encoders_train_flags.assert_called_once()
-        assert mode._te_train_flags == [True, False]
+        assert mode._te_train_flags == [True, True]
 
-    def test_per_te_lr_overrides_strategy_flags(self, mode, mock_trainer):
-        """Per-TE LR list overrides strategy flags."""
+    def test_per_te_lr_list_controls_te_flags(self, mode, mock_trainer):
+        """Per-TE LR list drives per-encoder training flags directly."""
         mock_trainer.cfg.optimizer.learning_rates.text_encoders = [1e-5, 0.0]
 
         mode.prepare_trainables(mock_trainer)
 
-        # Strategy flags not used when explicit LR is given
-        mock_trainer.strategies.get_text_encoders_train_flags.assert_not_called()
         assert mode._te_train_flags == [True, False]
 
     def test_zero_te_lr_disables_all_tes(self, mode, mock_trainer):
@@ -291,6 +282,15 @@ class TestPrepareWithAccelerator:
 
         assert mock_trainer._grad_sync_handle is mock_trainer.denoiser
         assert mock_trainer._primary_trainable is mock_trainer.denoiser
+
+    def test_non_deepspeed_prepares_denoiser_directly_with_accelerator(self, mode, mock_trainer):
+        """Non-DeepSpeed fine-tune now prepares the denoiser directly."""
+        mode._te_train_flags = [False, False]
+        mock_trainer._train_denoiser = True
+
+        mode.prepare_with_accelerator(mock_trainer)
+
+        mock_trainer.accelerator.prepare.assert_any_call(mock_trainer.denoiser)
 
     def test_deepspeed_uses_dynamic_kwargs(self, mode, mock_trainer):
         """DeepSpeed path builds dynamic kwargs, no fixed TE count."""

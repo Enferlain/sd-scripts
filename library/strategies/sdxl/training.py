@@ -29,7 +29,7 @@ from library.models.runtime_utils import replace_unet_modules
 from library.training.sample_generation import sample_images_common
 from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
 from library.utils.model_metadata import get_model_metadata_from_config
-from library.training.diffusion import get_noise_noisy_latents_and_timesteps
+from library.training.diffusion import get_noise_noisy_latents_and_timesteps, prepare_latents
 from library.training.trainer_utils import restore_rng_state, switch_rng_state
 
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
@@ -148,6 +148,18 @@ class SdxlTrainingStrategy(TrainingStrategy):
         """Cast CLIP embeddings back from FP8 — nn.Embedding doesn't support FP8."""
         text_encoder.text_model.embeddings.to(dtype=weight_dtype)
 
+    def cast_text_encoder(self, cfg: Any) -> bool:
+        """SDXL casts text encoders during shared precision setup."""
+        return True
+
+    def cast_vae(self, cfg: Any) -> bool:
+        """SDXL casts the VAE during trainer setup."""
+        return True
+
+    def cast_denoiser(self, cfg: Any) -> bool:
+        """SDXL casts the denoiser during shared precision setup."""
+        return True
+
     def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
         """
         Return text encoders for encoding in SDXL.
@@ -239,6 +251,10 @@ class SdxlTrainingStrategy(TrainingStrategy):
         if len(self._tokenizers) != 2:
             raise RuntimeError("SDXL strategy has no tokenizers configured.")
         return encode_sdxl_tokens(self._tokenizers, models, tokens)
+
+    def _prepare_latents(self, batch: Any, cfg: Any, accelerator: Any, vae: Any, vae_dtype: torch.dtype) -> torch.Tensor:
+        """Delegate SDXL latent preparation to the shared diffusion helper."""
+        return prepare_latents(batch, cfg, accelerator, vae, vae_dtype, self.vae_latent_scale)
 
     def encode_tokens_with_weights(
         self,
@@ -931,7 +947,7 @@ class SdxlTrainingStrategy(TrainingStrategy):
         if timesteps_list is None:
             timesteps_list = [50, 350, 500, 650, 950]
         with torch.autograd.grad_mode.inference_mode(mode=True):
-            latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
+            latents = prepare_latents(batch, cfg, accelerator, vae, vae_dtype, self.vae_latent_scale)
             total_loss = torch.zeros(1, device=latents.device)
 
             # SDXL text conditioning

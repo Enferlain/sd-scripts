@@ -3,6 +3,7 @@ from typing import Any
 import torch
 
 from library.models.sd.text_encoder import get_hidden_states_sd, apply_hidden_state_weights_sd
+from library.strategies.sd.tokenization import tokenize_sd_captions
 from transformers import CLIPTokenizer
 
 from library.strategies.base.training import TextEncodingStrategy
@@ -63,3 +64,22 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         weights: list[torch.Tensor],
     ) -> list[torch.Tensor]:
         return encode_sd_tokens_with_weights(self.tokenizer, self.clip_skip, models, tokens, weights)
+
+    def encode_te_outputs_in_memory(
+        self,
+        text_encoders: list[Any],
+        tokenizers: list[Any],
+        caption: str,
+        max_token_length: int,
+        device: Any,
+    ) -> dict[str, torch.Tensor]:
+        """Compute SD text encoder outputs for a single caption."""
+        input_ids = tokenize_sd_captions(tokenizers[0], [caption], max_token_length).to(device)
+
+        with torch.no_grad():
+            hidden_state = get_hidden_states_sd(input_ids, tokenizers[0], text_encoders[0], clip_skip=self.clip_skip)
+        return {"hidden_state": hidden_state.squeeze(0).cpu()}
+
+    def get_models_for_text_encoding(self, cfg: Any, accelerator: Any, text_encoders: list[Any]) -> list[Any]:
+        """Return SD text encoders as-is for live encoding."""
+        return text_encoders
