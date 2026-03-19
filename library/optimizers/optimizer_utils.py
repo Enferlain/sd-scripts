@@ -170,7 +170,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
                 text_encoder_lr = raw_te_lr  # Keep as list
             results = adapter.prepare_optimizer_params_with_multiple_te_lrs(
                 text_encoder_lr=text_encoder_lr,
-                unet_lr=learning_rates.unet,
+                unet_lr=learning_rates.denoiser,
                 learning_rate=learning_rates.base,
                 apply_orthograd=apply_orthograd,
                 orthograd_targets=orthograd_targets,
@@ -194,7 +194,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
             text_encoder_lr = raw_te_lr[0] if len(raw_te_lr) > 0 else None
         results = adapter.prepare_optimizer_params(
             text_encoder_lr=text_encoder_lr,
-            unet_lr=learning_rates.unet,
+            unet_lr=learning_rates.denoiser,
             learning_rate=learning_rates.base,
             apply_orthograd=apply_orthograd,
             orthograd_targets=orthograd_targets,

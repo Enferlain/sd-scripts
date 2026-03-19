@@ -473,7 +473,7 @@ class OFTAdapter(torch.nn.Module):
         Prepare optimizer parameters.
         """
         # Extract LRs from config
-        unet_lr = learning_rates.unet
+        unet_lr = learning_rates.denoiser
 
         self.requires_grad_(True)
         all_params = []

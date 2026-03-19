@@ -1351,7 +1351,7 @@ class LoRAAdapter(torch.nn.Module):
         #     ), "LoRA+ and Prodigy/DAdaptation is not supported"
 
         # Extract LRs from config
-        unet_lr = learning_rates.unet
+        unet_lr = learning_rates.denoiser
         base_lr = learning_rates.base
         # Handle text_encoders which may be float, list, or None
         raw_te_lr = learning_rates.text_encoders

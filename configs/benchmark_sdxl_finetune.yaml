@@ -67,7 +67,7 @@ optimizer:
     - "betas=0.9, 0.999"
   learning_rates:
     base: 1e-6             # Lower LR for full-model stability
-    unet: 1e-6
+    denoiser: 1e-6
     text_encoders: [0, 0]  # TEs frozen for this benchmark (cached to disk)
   scheduler:
     lr_scheduler: "constant"

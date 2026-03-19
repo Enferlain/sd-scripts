@@ -10,21 +10,12 @@ class LearningRatesConfig:
     """
 
     base: float = field(default=2.0e-6, metadata={"help": "Base learning rate, used as fallback for all components"})
-    unet: float | None = field(default=None, metadata={"help": "UNet LR (overrides base if set)"})
+    denoiser: float | None = field(default=None, metadata={"help": "Denoiser LR (overrides base if set)"})
     # Supports single float or list of floats for multiple text encoders
     # NOTE: Type is Any due to OmegaConf limitation (Union of primitives and containers not supported).
     text_encoders: Any | None = field(default=None, metadata={"help": "Text Encoder LR(s) (overrides base if set)"})
     # Block-wise LR weights/values
     blocks: str | None = field(default=None, metadata={"help": "Per-block learning rates/weights"})
-
-    @property
-    def denoiser(self) -> float | None:
-        """Contract-level alias for the denoiser learning rate."""
-        return self.unet
-
-    @denoiser.setter
-    def denoiser(self, value: float | None) -> None:
-        self.unet = value
 
 
 @dataclass

@@ -66,7 +66,7 @@ optimizer:
     - "betas=0.9, 0.999"
   learning_rates:
     base: 1e-4
-    unet: 1e-5
+    denoiser: 1e-5
     text_encoders: [1e-5, 1e-5]
   scheduler:
     lr_scheduler: "constant"
@@ -113,4 +113,3 @@ output:
     sample_every_n_epochs: null
     sample_prompts: "D:/Projects/sd-scripts/tests/assets/3prompt.txt"
     sample_sampler: "k_euler"
-

@@ -84,7 +84,7 @@ optimizer:
     - "betas=0.9, 0.999"
   learning_rates:
     base: 1e-4
-    unet: 1e-5
+    denoiser: 1e-5
     # Important: If cache_text_encoder_outputs is true OR offload_text_encoders is true,
     # these MUST be set to 0. If training TEs (no cache), set to e.g. [1e-5, 1e-5].
     text_encoders: [0, 0]

@@ -5,7 +5,7 @@ use_lion_optimizer: false
 
 learning_rates:
   base: 2.0e-6
-  unet: null
+  denoiser: null
   text_encoders: null
   blocks: null
 

@@ -48,7 +48,7 @@ optimizer:
   optimizer_type: "AdamW8bit"
   learning_rates:
     base: 1e-4
-    unet: 1e-4
+    denoiser: 1e-4
     text_encoders: [5e-5, 5e-5] # Training both SDXL text encoders
   scheduler:
     lr_scheduler: "cosine_with_restarts"

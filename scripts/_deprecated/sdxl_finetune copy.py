@@ -332,7 +332,7 @@ def train(cfg: SDXLFineTuneConfig):
         training_models.append(unet)
         if block_lrs is None:
             params_to_optimize.append(
-                {"params": list(unet.parameters()), "lr": cfg.optimizer.learning_rates.unet or cfg.optimizer.learning_rates.base}
+                {"params": list(unet.parameters()), "lr": cfg.optimizer.learning_rates.denoiser or cfg.optimizer.learning_rates.base}
             )
         else:
             params_to_optimize.extend(get_block_params_to_optimize(unet, block_lrs))
