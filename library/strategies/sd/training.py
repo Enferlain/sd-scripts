@@ -32,6 +32,7 @@ from library.training.trainer_utils import restore_rng_state, switch_rng_state
 
 from library.losses.loss import get_huber_threshold_if_needed, conditional_loss
 from library.losses.loss_weighting import apply_masked_loss, post_process_loss
+
 logger = logging.getLogger(__name__)
 
 
@@ -189,10 +190,6 @@ class SdTrainingStrategy(TrainingStrategy):
             raise RuntimeError("SD strategy has no tokenizers configured.")
         return encode_sd_tokens(self._tokenizers[0], self.clip_skip, models, tokens)
 
-    def _prepare_latents(self, batch: Any, cfg: Any, accelerator: Any, vae: Any, vae_dtype: torch.dtype) -> torch.Tensor:
-        """Delegate SD latent preparation to the shared diffusion helper."""
-        return prepare_latents(batch, cfg, accelerator, vae, vae_dtype, self.vae_latent_scale)
-
     def encode_tokens_with_weights(
         self,
         models: list[Any],
@@ -249,11 +246,7 @@ class SdTrainingStrategy(TrainingStrategy):
     ) -> list[torch.Tensor]:
         """Get SD text conditioning from cached outputs, cached tokens, or live captions."""
         te_outputs = batch.get("text_encoder_outputs")
-        text_encoder_conds = (
-            [te_outputs["hidden_state"].to(accelerator.device, dtype=weight_dtype)]
-            if te_outputs is not None
-            else []
-        )
+        text_encoder_conds = [te_outputs["hidden_state"].to(accelerator.device, dtype=weight_dtype)] if te_outputs is not None else []
 
         if len(text_encoder_conds) == 0 or text_encoder_conds[0] is None or train_text_encoder:
             with torch.set_grad_enabled(is_train and train_text_encoder), accelerator.autocast():
@@ -565,7 +558,15 @@ class SdTrainingStrategy(TrainingStrategy):
             Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
         """
         with torch.no_grad():
-            latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
+            latents = prepare_latents(
+                batch,
+                cfg.data.caching,
+                accelerator.device,
+                vae,
+                vae_dtype,
+                self.vae_latent_scale,
+                log_fn=accelerator.print,
+            )
 
         text_encoder_conds = self._get_text_conds(
             batch=batch,
@@ -669,7 +670,15 @@ class SdTrainingStrategy(TrainingStrategy):
         if timesteps_list is None:
             timesteps_list = [50, 350, 500, 650, 950]
         with torch.autograd.grad_mode.inference_mode(mode=True):
-            latents = prepare_latents(batch, cfg, accelerator, vae, vae_dtype, self.vae_latent_scale)
+            latents = prepare_latents(
+                batch,
+                cfg.data.caching,
+                accelerator.device,
+                vae,
+                vae_dtype,
+                self.vae_latent_scale,
+                log_fn=accelerator.print,
+            )
             total_loss = torch.zeros(1, device=latents.device)
 
             text_encoder_conds = self._get_text_conds(

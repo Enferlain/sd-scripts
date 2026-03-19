@@ -1,6 +1,6 @@
 import torch
 
-
+from library.config.dataclasses.data import CachingConfig
 from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
 from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.timestep import TimestepConfig
@@ -37,11 +37,12 @@ def shift_scale_latents(latents: torch.Tensor, vae_latent_scale: float) -> torch
 
 def prepare_latents(
     batch: dict,
-    cfg,
-    accelerator,
+    caching_config: CachingConfig,
+    device: torch.device,
     vae,
     vae_dtype: torch.dtype,
     vae_latent_scale: float,
+    log_fn=None,
     encode_images_to_latents_fn=encode_images_to_latents,
     shift_scale_latents_fn=shift_scale_latents,
 ) -> torch.Tensor:
@@ -50,11 +51,12 @@ def prepare_latents(
 
     Args:
         batch: Batch data containing either cached latents or images.
-        cfg: Configuration object.
-        accelerator: Accelerator instance.
+        caching_config: Data caching configuration.
+        device: Device to move latents and images to.
         vae: VAE model for encoding images.
         vae_dtype: Data type for VAE operations.
         vae_latent_scale: Model-family VAE latent scale factor.
+        log_fn: Optional logging function used for NaN warnings.
         encode_images_to_latents_fn: Helper used to encode images to latents.
         shift_scale_latents_fn: Helper used to apply latent scaling.
 
@@ -62,22 +64,25 @@ def prepare_latents(
         Prepared and scaled latents tensor.
     """
     if "latents" in batch and batch["latents"] is not None:
-        latents = batch["latents"].to(accelerator.device)
+        latents = batch["latents"].to(device)
     else:
-        vae_batch_size = cfg.data.caching.vae_batch_size
-        if vae_batch_size is None or len(batch["images"]) <= vae_batch_size:
-            latents = encode_images_to_latents_fn(vae, batch["images"].to(accelerator.device, dtype=vae_dtype))
+        if caching_config.vae_batch_size is None or len(batch["images"]) <= caching_config.vae_batch_size:
+            latents = encode_images_to_latents_fn(vae, batch["images"].to(device, dtype=vae_dtype))
         else:
-            chunks = [batch["images"][i : i + vae_batch_size] for i in range(0, len(batch["images"]), vae_batch_size)]
+            chunks = [
+                batch["images"][i : i + caching_config.vae_batch_size]
+                for i in range(0, len(batch["images"]), caching_config.vae_batch_size)
+            ]
             list_latents = []
             for chunk in chunks:
                 with torch.no_grad():
-                    chunk_latents = encode_images_to_latents_fn(vae, chunk.to(accelerator.device, dtype=vae_dtype))
+                    chunk_latents = encode_images_to_latents_fn(vae, chunk.to(device, dtype=vae_dtype))
                     list_latents.append(chunk_latents)
             latents = torch.cat(list_latents, dim=0)
 
         if torch.any(torch.isnan(latents)):
-            accelerator.print("NaN found in latents, replacing with zeros")
+            if log_fn is not None:
+                log_fn("NaN found in latents, replacing with zeros")
             latents = torch.nan_to_num(latents, 0, out=latents)
 
         latents = shift_scale_latents_fn(latents, vae_latent_scale)

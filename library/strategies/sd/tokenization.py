@@ -40,7 +40,9 @@ def tokenize_sd_text(tokenizer: CLIPTokenizer, max_length: int, text: str | list
     return [torch.stack(input_ids, dim=0)]
 
 
-def tokenize_sd_text_with_weights(tokenizer: CLIPTokenizer, max_length: int, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+def tokenize_sd_text_with_weights(
+    tokenizer: CLIPTokenizer, max_length: int, text: str | list[str]
+) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
     """Tokenize SD text and return prompt weights for training/runtime use."""
     text = [text] if isinstance(text, str) else text
     tokens_list = []

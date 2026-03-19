@@ -160,6 +160,7 @@ def run_te_caching(trainer: Trainer) -> None:
         monitor.phase_start("te_caching")
         # In-memory TE caching: compute and store in entry.te_outputs
         try:
+
             def _cache_te_in_memory(manifest, desc: str) -> None:
                 """Cache TE outputs in memory for a manifest."""
                 for entry in tqdm(

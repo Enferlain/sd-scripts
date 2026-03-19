@@ -252,10 +252,6 @@ class SdxlTrainingStrategy(TrainingStrategy):
             raise RuntimeError("SDXL strategy has no tokenizers configured.")
         return encode_sdxl_tokens(self._tokenizers, models, tokens)
 
-    def _prepare_latents(self, batch: Any, cfg: Any, accelerator: Any, vae: Any, vae_dtype: torch.dtype) -> torch.Tensor:
-        """Delegate SDXL latent preparation to the shared diffusion helper."""
-        return prepare_latents(batch, cfg, accelerator, vae, vae_dtype, self.vae_latent_scale)
-
     def encode_tokens_with_weights(
         self,
         models: list[Any],
@@ -840,7 +836,15 @@ class SdxlTrainingStrategy(TrainingStrategy):
             Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
         """
         with torch.no_grad():
-            latents = self._prepare_latents(batch, cfg, accelerator, vae, vae_dtype)
+            latents = prepare_latents(
+                batch,
+                cfg.data.caching,
+                accelerator.device,
+                vae,
+                vae_dtype,
+                self.vae_latent_scale,
+                log_fn=accelerator.print,
+            )
 
         # SDXL text conditioning - use cached outputs or encode on the fly
         text_encoder_conds = self._get_text_cond(cfg, accelerator, batch, text_encoders, weight_dtype)
@@ -947,7 +951,15 @@ class SdxlTrainingStrategy(TrainingStrategy):
         if timesteps_list is None:
             timesteps_list = [50, 350, 500, 650, 950]
         with torch.autograd.grad_mode.inference_mode(mode=True):
-            latents = prepare_latents(batch, cfg, accelerator, vae, vae_dtype, self.vae_latent_scale)
+            latents = prepare_latents(
+                batch,
+                cfg.data.caching,
+                accelerator.device,
+                vae,
+                vae_dtype,
+                self.vae_latent_scale,
+                log_fn=accelerator.print,
+            )
             total_loss = torch.zeros(1, device=latents.device)
 
             # SDXL text conditioning

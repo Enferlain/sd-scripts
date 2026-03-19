@@ -326,16 +326,19 @@ class TestSdTrainingStrategyNewPipeline:
         accelerator = Mock()
         accelerator.device = torch.device("cpu")
 
-        with patch.object(strategy, "_prepare_latents", return_value=torch.randn(1, 4, 64, 64)), patch.object(
-            strategy,
-            "get_noise_pred_and_target",
-            return_value=(
-                torch.randn(1, 4, 64, 64),
-                torch.randn(1, 4, 64, 64),
-                torch.tensor([10]),
-                None,
-            ),
-        ) as mock_noise:
+        with (
+            patch("library.strategies.sd.training.prepare_latents", return_value=torch.randn(1, 4, 64, 64)),
+            patch.object(
+                strategy,
+                "get_noise_pred_and_target",
+                return_value=(
+                    torch.randn(1, 4, 64, 64),
+                    torch.randn(1, 4, 64, 64),
+                    torch.tensor([10]),
+                    None,
+                ),
+            ) as mock_noise,
+        ):
             strategy.process_batch(
                 batch=batch,
                 text_encoders=[Mock()],
@@ -373,16 +376,20 @@ class TestSdTrainingStrategyNewPipeline:
         accelerator.device = torch.device("cpu")
         accelerator.autocast.return_value = nullcontext()
 
-        with patch.object(strategy, "_prepare_latents", return_value=torch.randn(1, 4, 64, 64)), patch.object(
-            strategy,
-            "get_noise_pred_and_target",
-            return_value=(
-                torch.randn(1, 4, 64, 64),
-                torch.randn(1, 4, 64, 64),
-                torch.tensor([10]),
-                None,
+        with (
+            patch("library.strategies.sd.training.prepare_latents", return_value=torch.randn(1, 4, 64, 64)),
+            patch.object(
+                strategy,
+                "get_noise_pred_and_target",
+                return_value=(
+                    torch.randn(1, 4, 64, 64),
+                    torch.randn(1, 4, 64, 64),
+                    torch.tensor([10]),
+                    None,
+                ),
             ),
-        ), patch.object(strategy, "encode_tokens", return_value=[torch.randn(1, 77, 768)]) as mock_encode_tokens:
+            patch.object(strategy, "encode_tokens", return_value=[torch.randn(1, 77, 768)]) as mock_encode_tokens,
+        ):
             strategy.process_batch(
                 batch=batch,
                 text_encoders=[Mock()],

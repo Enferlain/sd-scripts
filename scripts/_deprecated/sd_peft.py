@@ -495,7 +495,13 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
     strategies.update_metadata(metadata, cfg)  # architecture specific metadata
 
     # calculate steps to skip when resuming or starting from a specific step
-    initial_step, epoch_to_start = calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
+    initial_step, epoch_to_start = calculate_initial_step(
+        cfg.training,
+        cfg.output.saving,
+        train_dataloader,
+        accelerator,
+        steps_from_state,
+    )
 
     global_step = 0
 

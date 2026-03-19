@@ -15,7 +15,6 @@ from PIL import Image
 from safetensors.torch import save_file
 
 
-
 from library.data.caching_engine import CacheHandler
 from library.data.structures import CacheData, CacheEntry
 from library.models.sd.text_encoder import get_hidden_states_sd
@@ -441,4 +440,3 @@ class SdTextEncoderPipelineStrategy(CacheHandler):
     ) -> torch.Tensor:
         """Return a dummy tensor because SD text encoding does not use images."""
         return torch.empty(0)
-

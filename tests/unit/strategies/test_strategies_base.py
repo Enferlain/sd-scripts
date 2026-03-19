@@ -268,18 +268,24 @@ class TestTrainingStrategyPhase2Facets:
 
     def test_diffusion_helper_prepare_latents_scales_encoded_latents(self):
         """Shared diffusion helper should still apply VAE latent scaling."""
-        cfg = Mock()
-        cfg.data.caching.vae_batch_size = None
-        accelerator = Mock()
-        accelerator.device = torch.device("cpu")
-        accelerator.print = Mock()
+        caching_config = Mock()
+        caching_config.vae_batch_size = None
+        log_fn = Mock()
         vae = Mock()
         latent_dist = Mock()
         latent_dist.sample.return_value = torch.ones((1, 4, 8, 8))
         vae.encode.return_value.latent_dist = latent_dist
 
         batch = {"images": torch.ones((1, 3, 64, 64))}
-        latents = prepare_latents(batch, cfg, accelerator, vae, torch.float32, vae_latent_scale=2.0)
+        latents = prepare_latents(
+            batch,
+            caching_config,
+            torch.device("cpu"),
+            vae,
+            torch.float32,
+            vae_latent_scale=2.0,
+            log_fn=log_fn,
+        )
 
         assert torch.equal(latents, torch.full((1, 4, 8, 8), 2.0))
 

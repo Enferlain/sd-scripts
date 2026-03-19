@@ -487,9 +487,7 @@ class ModelPreparationStrategy(ABC):
             index: Index of the text encoder.
             text_encoder: The text encoder model.
         """
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement prepare_text_encoder_grad_ckpt_workaround"
-        )
+        raise NotImplementedError(f"{type(self).__name__} must implement prepare_text_encoder_grad_ckpt_workaround")
 
     def prepare_text_encoder_fp8(self, index: int, text_encoder: Any, te_weight_dtype: torch.dtype, weight_dtype: torch.dtype) -> None:
         """
@@ -505,9 +503,7 @@ class ModelPreparationStrategy(ABC):
             te_weight_dtype: Target weight dtype for text encoder.
             weight_dtype: General weight dtype.
         """
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement prepare_text_encoder_fp8"
-        )
+        raise NotImplementedError(f"{type(self).__name__} must implement prepare_text_encoder_fp8")
 
     @abstractmethod
     def post_process_trainable(

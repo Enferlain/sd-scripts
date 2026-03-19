@@ -407,9 +407,6 @@ def save_state_on_train_end(saving_config: SavingConfig, accelerator: "Accelerat
         huggingface_util.upload(hf_config, state_dir, "/" + LAST_STATE_NAME.format(model_name))
 
 
-# NOTE: SD1.5/2-specific save_sd_model_on_train_end moved to sd_checkpointing.py
-
-
 def save_sd_model_on_train_end_common(
     saving_config: SavingConfig,
     save_stable_diffusion_format: bool,

@@ -110,9 +110,7 @@ def compute_epoch_end_actions(
     has_epoch_save_config = saving_config.save_every_n_epochs is not None
     should_save_epoch = False
     if has_epoch_save_config and saving_config.save_every_n_epochs > 0:
-        should_save_epoch = (
-            ctx.current_epoch % saving_config.save_every_n_epochs == 0 and ctx.current_epoch < ctx.num_train_epochs
-        )
+        should_save_epoch = ctx.current_epoch % saving_config.save_every_n_epochs == 0 and ctx.current_epoch < ctx.num_train_epochs
 
     # Enter eval mode only when an epoch-end side effect is actually scheduled.
     should_enter_eval_mode = should_sample or should_save_epoch

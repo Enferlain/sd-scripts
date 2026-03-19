@@ -465,10 +465,9 @@ class Trainer:
         self.accelerator.print(f"  gradient accumulation steps: {cfg.training.gradient_accumulation_steps}")
         self.accelerator.print(f"  total optimization steps: {self.max_train_steps}")
 
-        # --- Training diagnostics block ---
-        from library.training.trainer_utils import log_training_diagnostics
-
         diag_components, diag_aliases = self.mode.get_diagnostics_components(self)
+
+        from library.training.trainer_utils import log_training_diagnostics
 
         log_training_diagnostics(
             accelerator=self.accelerator,

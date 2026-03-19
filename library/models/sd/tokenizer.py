@@ -225,9 +225,7 @@ def get_clip_input_ids(
             new_weights = torch.ones(input_ids.shape)
             for i in range(1, effective_max_length - tokenizer.model_max_length + 2, tokenizer.model_max_length - 2):
                 batch_index = i // (tokenizer.model_max_length - 2)
-                new_weights[batch_index, 1 : 1 + tokenizer.model_max_length - 2] = weights[
-                    i : i + tokenizer.model_max_length - 2
-                ]
+                new_weights[batch_index, 1 : 1 + tokenizer.model_max_length - 2] = weights[i : i + tokenizer.model_max_length - 2]
             weights = new_weights
 
     if weighted and weights is not None:

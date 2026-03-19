@@ -260,13 +260,9 @@ class TestSdxlTextEncodingStrategy:
             weights = [torch.ones(1, 1, 77) * 1.5, torch.ones(1, 1, 77) * 1.5]
             mock_tokenize.return_value = (tokens, weights)
 
-            result = encoding_strategy.encode_tokens_with_weights(
-                [mock_clip_text_encoder1, mock_clip_text_encoder2], tokens, weights
-            )
+            result = encoding_strategy.encode_tokens_with_weights([mock_clip_text_encoder1, mock_clip_text_encoder2], tokens, weights)
 
         assert len(result) == 3
-
-
 
 
 @pytest.mark.unit
@@ -314,7 +310,13 @@ class TestSdxlTrainingStrategyNewPipeline:
 
     @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_get_text_cond_fallback_tokenizes_captions_with_strategy_helper(
-        self, mock_load_tokenizer, mock_clip_tokenizer1, mock_clip_tokenizer2, mock_clip_text_encoder1, mock_clip_text_encoder2, sdxl_strategy_cfg
+        self,
+        mock_load_tokenizer,
+        mock_clip_tokenizer1,
+        mock_clip_tokenizer2,
+        mock_clip_text_encoder1,
+        mock_clip_text_encoder2,
+        sdxl_strategy_cfg,
     ):
         mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
         strategy = SdxlTrainingStrategy(sdxl_strategy_cfg)
@@ -331,10 +333,13 @@ class TestSdxlTrainingStrategyNewPipeline:
         token_tensors = [torch.randint(0, 1000, (2, 1, 77)), torch.randint(0, 1000, (2, 1, 77))]
         encoded_outputs = [torch.randn(2, 77, 768), torch.randn(2, 77, 1280), torch.randn(2, 1280)]
 
-        with patch.object(strategy, "tokenize", return_value=token_tensors) as mock_tokenize, patch(
-            "library.strategies.sdxl.training.encode_input_ids_sdxl",
-            return_value=encoded_outputs,
-        ) as mock_encode:
+        with (
+            patch.object(strategy, "tokenize", return_value=token_tensors) as mock_tokenize,
+            patch(
+                "library.strategies.sdxl.training.encode_input_ids_sdxl",
+                return_value=encoded_outputs,
+            ) as mock_encode,
+        ):
             result = strategy._get_text_cond(
                 cfg=cfg,
                 accelerator=accelerator,

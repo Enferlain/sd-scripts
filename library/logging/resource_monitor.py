@@ -236,9 +236,7 @@ class BasicResourceMonitor:
     def _format_cpu(self, value: float | None) -> str:
         return "n/a" if value is None else f"{value:.0f}MB"
 
-    def _normalize_component_items(
-        self, components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None
-    ) -> list[tuple[str, Any]]:
+    def _normalize_component_items(self, components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None) -> list[tuple[str, Any]]:
         if not components:
             return []
 
@@ -468,10 +466,7 @@ class BasicResourceMonitor:
             duration = time.perf_counter() - self._session_started_at
 
             logger.info(
-                (
-                    "Resource session summary: duration=%.2fs, "
-                    "gpu_allocated=%s, gpu_reserved=%s, gpu_peak=%s, gpu_used=%s, cpu_rss=%s"
-                ),
+                ("Resource session summary: duration=%.2fs, gpu_allocated=%s, gpu_reserved=%s, gpu_peak=%s, gpu_used=%s, cpu_rss=%s"),
                 duration,
                 self._format_gpu(end_snapshot.gpu_allocated_mb),
                 self._format_gpu(end_snapshot.gpu_reserved_mb),
@@ -529,11 +524,7 @@ class BasicResourceMonitor:
                 sampled_peak_suffix = f", gpu_used_peak={self._format_gpu(start_state.sampled_peak_gpu_used_mb)}"
 
             logger.info(
-                (
-                    "Resource phase[%s]: duration=%.2fs, "
-                    "gpu_allocated=%s->%s, gpu_reserved=%s->%s, gpu_peak=%s%s, "
-                    "cpu_rss=%s->%s"
-                ),
+                ("Resource phase[%s]: duration=%.2fs, gpu_allocated=%s->%s, gpu_reserved=%s->%s, gpu_peak=%s%s, cpu_rss=%s->%s"),
                 name,
                 duration,
                 self._format_gpu(start_state.start_snapshot.gpu_allocated_mb),
@@ -641,20 +632,13 @@ class BasicResourceMonitor:
 
                 total_param_bytes += param_bytes
                 total_trainable_bytes += trainable_bytes
-                lines.append(
-                    "  - "
-                    f"{name}: params={param_bytes / (1024 * 1024):.1f}MB, "
-                    f"trainable={trainable_bytes / (1024 * 1024):.1f}MB"
-                )
+                lines.append(f"  - {name}: params={param_bytes / (1024 * 1024):.1f}MB, trainable={trainable_bytes / (1024 * 1024):.1f}MB")
 
             optimizer_state_multiplier = 2 if "adam" in optimizer_name.lower() or "lion" in optimizer_name.lower() else 1
             optimizer_state_bytes = total_trainable_bytes * optimizer_state_multiplier
             lines.append(f"  - gradients (est): {total_trainable_bytes / (1024 * 1024):.1f}MB")
             lines.append(f"  - optimizer_state (est): {optimizer_state_bytes / (1024 * 1024):.1f}MB [{optimizer_name}]")
-            lines.append(
-                "  - total (est): "
-                f"{(total_param_bytes + total_trainable_bytes + optimizer_state_bytes) / (1024 * 1024):.1f}MB"
-            )
+            lines.append(f"  - total (est): {(total_param_bytes + total_trainable_bytes + optimizer_state_bytes) / (1024 * 1024):.1f}MB")
             if deepspeed_enabled:
                 zero_stage_label = "n/a" if deepspeed_zero_stage is None else str(deepspeed_zero_stage)
                 lines.append(
@@ -987,12 +971,8 @@ class SampledResourceMonitor(BasicResourceMonitor):
             self._deep_window_baseline_ooms = counters.ooms
         self._deep_window_last_alloc_retries = counters.alloc_retries
         self._deep_window_last_ooms = counters.ooms
-        if (
-            counters.inactive_split_mb is not None
-            and (
-                self._deep_window_peak_inactive_split_mb is None
-                or counters.inactive_split_mb > self._deep_window_peak_inactive_split_mb
-            )
+        if counters.inactive_split_mb is not None and (
+            self._deep_window_peak_inactive_split_mb is None or counters.inactive_split_mb > self._deep_window_peak_inactive_split_mb
         ):
             self._deep_window_peak_inactive_split_mb = counters.inactive_split_mb
 

@@ -107,15 +107,12 @@ def prepare_config(cfg) -> None:
             resource_monitor_cfg.log_every_n_steps = 0
 
         if _is_non_bool_number(resource_monitor_cfg.sample_interval_sec) and resource_monitor_cfg.sample_interval_sec <= 0:
-            logger.warning(
-                f"resource_monitor.sample_interval_sec={resource_monitor_cfg.sample_interval_sec} <= 0, defaulting to 1.0"
-            )
+            logger.warning(f"resource_monitor.sample_interval_sec={resource_monitor_cfg.sample_interval_sec} <= 0, defaulting to 1.0")
             resource_monitor_cfg.sample_interval_sec = 1.0
 
         if _is_non_bool_number(resource_monitor_cfg.jsonl_flush_every_n_events) and resource_monitor_cfg.jsonl_flush_every_n_events < 1:
             logger.warning(
-                "resource_monitor.jsonl_flush_every_n_events="
-                f"{resource_monitor_cfg.jsonl_flush_every_n_events} < 1, defaulting to 1"
+                f"resource_monitor.jsonl_flush_every_n_events={resource_monitor_cfg.jsonl_flush_every_n_events} < 1, defaulting to 1"
             )
             resource_monitor_cfg.jsonl_flush_every_n_events = 1
 
@@ -124,9 +121,7 @@ def prepare_config(cfg) -> None:
             resource_monitor_cfg.queue_maxsize = 1
 
         if _is_non_bool_number(resource_monitor_cfg.max_collection_ms) and resource_monitor_cfg.max_collection_ms < 0:
-            logger.warning(
-                f"resource_monitor.max_collection_ms={resource_monitor_cfg.max_collection_ms} < 0, defaulting to 0.0"
-            )
+            logger.warning(f"resource_monitor.max_collection_ms={resource_monitor_cfg.max_collection_ms} < 0, defaulting to 0.0")
             resource_monitor_cfg.max_collection_ms = 0.0
 
         if _is_non_bool_number(resource_monitor_cfg.deep_window_steps) and resource_monitor_cfg.deep_window_steps < 0:
@@ -134,10 +129,7 @@ def prepare_config(cfg) -> None:
             resource_monitor_cfg.deep_window_steps = 0
 
         if _is_non_bool_number(resource_monitor_cfg.deep_window_seconds) and resource_monitor_cfg.deep_window_seconds < 0:
-            logger.warning(
-                "resource_monitor.deep_window_seconds="
-                f"{resource_monitor_cfg.deep_window_seconds} < 0, defaulting to 0.0"
-            )
+            logger.warning(f"resource_monitor.deep_window_seconds={resource_monitor_cfg.deep_window_seconds} < 0, defaulting to 0.0")
             resource_monitor_cfg.deep_window_seconds = 0.0
     except AttributeError:
         pass
@@ -172,36 +164,30 @@ def validate_config(cfg) -> None:
     if resource_monitor_cfg is not None:
         valid_modes = {"off", "basic", "sampled", "deep"}
         if resource_monitor_cfg.mode not in valid_modes:
-            raise ValueError(
-                f"resource_monitor.mode must be one of {sorted(valid_modes)}, got {resource_monitor_cfg.mode}"
-            )
+            raise ValueError(f"resource_monitor.mode must be one of {sorted(valid_modes)}, got {resource_monitor_cfg.mode}")
 
         valid_rank_scopes = {"main", "all"}
         if resource_monitor_cfg.rank_scope not in valid_rank_scopes:
             raise ValueError(
-                "resource_monitor.rank_scope must be one of "
-                f"{sorted(valid_rank_scopes)}, got {resource_monitor_cfg.rank_scope}"
+                f"resource_monitor.rank_scope must be one of {sorted(valid_rank_scopes)}, got {resource_monitor_cfg.rank_scope}"
             )
 
         valid_device_scopes = {"local", "all_visible"}
         if resource_monitor_cfg.device_scope not in valid_device_scopes:
             raise ValueError(
-                "resource_monitor.device_scope must be one of "
-                f"{sorted(valid_device_scopes)}, got {resource_monitor_cfg.device_scope}"
+                f"resource_monitor.device_scope must be one of {sorted(valid_device_scopes)}, got {resource_monitor_cfg.device_scope}"
             )
 
         valid_flush_modes = {"auto", "line", "batch"}
         if resource_monitor_cfg.jsonl_flush_mode not in valid_flush_modes:
             raise ValueError(
-                "resource_monitor.jsonl_flush_mode must be one of "
-                f"{sorted(valid_flush_modes)}, got {resource_monitor_cfg.jsonl_flush_mode}"
+                f"resource_monitor.jsonl_flush_mode must be one of {sorted(valid_flush_modes)}, got {resource_monitor_cfg.jsonl_flush_mode}"
             )
 
         valid_drop_policies = {"drop_oldest", "drop_newest", "block"}
         if resource_monitor_cfg.drop_policy not in valid_drop_policies:
             raise ValueError(
-                "resource_monitor.drop_policy must be one of "
-                f"{sorted(valid_drop_policies)}, got {resource_monitor_cfg.drop_policy}"
+                f"resource_monitor.drop_policy must be one of {sorted(valid_drop_policies)}, got {resource_monitor_cfg.drop_policy}"
             )
 
     # === Errors ===

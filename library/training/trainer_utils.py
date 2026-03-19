@@ -19,7 +19,7 @@ from library.config.dataclasses.performance import (
     DistributedConfig,
     DeepSpeedConfig,
 )
-from library.config.dataclasses.output import LoggingConfig
+from library.config.dataclasses.output import LoggingConfig, SavingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.logging.step_logging import append_lr_to_logs_with_names
 
@@ -128,22 +128,20 @@ def log_training_diagnostics(
     # --- Context line ---
     mode_name = type(mode).__name__
     strategy_name = type(strategies).__name__
-    precision = getattr(cfg.performance.precision, "mixed_precision", "fp32")
-    grad_ckpt = getattr(cfg.performance.memory, "gradient_checkpointing", False)
-    xformers = getattr(cfg.performance.attention, "xformers", False)
-    deepspeed = getattr(getattr(cfg.performance, "deepspeed", None), "deepspeed", False)
-
     accelerator.print("")
     accelerator.print(
         f"  mode={mode_name}  strategy={strategy_name}  "
-        f"precision={precision}  grad_ckpt={grad_ckpt}  xformers={xformers}  deepspeed={deepspeed}"
+        f"precision={cfg.performance.precision.mixed_precision}  "
+        f"grad_ckpt={cfg.performance.memory.gradient_checkpointing}  "
+        f"xformers={cfg.performance.attention.xformers}  "
+        f"deepspeed={cfg.performance.deepspeed.deepspeed}"
     )
 
-    batch_size = cfg.training.train_batch_size
-    grad_accum = cfg.training.gradient_accumulation_steps
-    effective_batch = batch_size * accelerator.num_processes * grad_accum
+    effective_batch = cfg.training.train_batch_size * accelerator.num_processes * cfg.training.gradient_accumulation_steps
     accelerator.print(
-        f"  batch: per_device={batch_size}  grad_accum={grad_accum}  effective={effective_batch}  max_steps={cfg.training.max_train_steps}"
+        f"  batch: per_device={cfg.training.train_batch_size}  "
+        f"grad_accum={cfg.training.gradient_accumulation_steps}  "
+        f"effective={effective_batch}  max_steps={cfg.training.max_train_steps}"
     )
 
     # --- Per-component stats ---
@@ -331,7 +329,13 @@ def determine_grad_sync_context(precision_config: PrecisionConfig | None, accele
         return accelerator.accumulate(training_model)
 
 
-def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state):
+def calculate_initial_step(
+    training_config: TrainingConfig,
+    saving_config: SavingConfig,
+    train_dataloader,
+    accelerator,
+    steps_from_state,
+):
     """
     Calculate initial step and epoch for training start/resume.
 
@@ -341,7 +345,8 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
     - skip_until_initial_step logic
 
     Args:
-        cfg: Training configuration
+        training_config: Training settings.
+        saving_config: Saving settings.
         train_dataloader: Training data loader
         accelerator: HuggingFace Accelerator
         steps_from_state: Steps loaded from saved state (or None)
@@ -350,16 +355,16 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
         Tuple of (initial_step, epoch_to_start)
     """
     initial_step = 0
-    if cfg.training.initial_epoch is not None or cfg.training.initial_step is not None:
+    if training_config.initial_epoch is not None or training_config.initial_step is not None:
         # if initial_epoch or initial_step is specified, steps_from_state is ignored even when resuming
         if steps_from_state is not None:
             logger.warning("steps from the state is ignored because initial_step is specified")
-        if cfg.training.initial_step is not None:
-            initial_step = cfg.training.initial_step
+        if training_config.initial_step is not None:
+            initial_step = training_config.initial_step
         else:
             # num steps per epoch is calculated by num_processes and gradient_accumulation_steps
-            initial_step = (cfg.training.initial_epoch - 1) * math.ceil(
-                len(train_dataloader) / accelerator.num_processes / cfg.training.gradient_accumulation_steps
+            initial_step = (training_config.initial_epoch - 1) * math.ceil(
+                len(train_dataloader) / accelerator.num_processes / training_config.gradient_accumulation_steps
             )
     else:
         # if initial_epoch and initial_step are not specified, steps_from_state is used when resuming
@@ -367,24 +372,24 @@ def calculate_initial_step(cfg, train_dataloader, accelerator, steps_from_state)
             initial_step = steps_from_state
 
     if initial_step > 0:
-        assert cfg.training.max_train_steps > initial_step, (
-            f"max_train_steps should be greater than initial step: {cfg.training.max_train_steps} vs {initial_step}"
+        assert training_config.max_train_steps > initial_step, (
+            f"max_train_steps should be greater than initial step: {training_config.max_train_steps} vs {initial_step}"
         )
 
     epoch_to_start = 0
     if initial_step > 0:
-        if cfg.training.skip_until_initial_step:
+        if training_config.skip_until_initial_step:
             # if skip_until_initial_step is specified, load data and discard it to ensure the same data is used
-            if not cfg.output.saving.resume:
+            if not saving_config.resume:
                 logger.info("initial_step is specified but not resuming. lr scheduler will be started from the beginning")
             logger.info(f"skipping {initial_step} steps")
-            initial_step *= cfg.training.gradient_accumulation_steps
+            initial_step *= training_config.gradient_accumulation_steps
 
             # set epoch to start to make initial_step less than len(train_dataloader)
-            epoch_to_start = initial_step // math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
+            epoch_to_start = initial_step // math.ceil(len(train_dataloader) / training_config.gradient_accumulation_steps)
         else:
             # if not, only epoch no is skipped for informative purpose
-            epoch_to_start = initial_step // math.ceil(len(train_dataloader) / cfg.training.gradient_accumulation_steps)
+            epoch_to_start = initial_step // math.ceil(len(train_dataloader) / training_config.gradient_accumulation_steps)
             initial_step = 0  # do not skip
 
     return initial_step, epoch_to_start

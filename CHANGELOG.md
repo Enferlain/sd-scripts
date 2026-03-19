@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Moved `tokenize_captions()` to `TokenizationStrategy`.
   - Moved `encode_te_outputs_in_memory()` and `get_models_for_text_encoding()` to `TextEncodingStrategy`.
   - Updated base-strategy tests to assert the new facet placement.
+- **Helper / runner config boundary clarified** — Training helpers now use narrower config surfaces only where that meaningfully improves ownership, while trainer-facing orchestration helpers stay `cfg`-centric.
+  - `prepare_latents()` now takes `CachingConfig` plus the explicit runtime values it needs, instead of the full root config / accelerator.
+  - Generic LR-driven trainability policy stays in the shared optimizer helper layer.
+  - `get_noise_scheduler()`, `log_training_diagnostics()`, and `create_training_metadata()` remain `cfg`-based where they are effectively trainer-facing orchestration helpers.
 
 ## [2026-03-18]
 
