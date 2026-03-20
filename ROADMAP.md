@@ -128,6 +128,8 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 ### Near-Term Follow-up
 
 - [ ] **SD / SDXL strategy cleanup against the current contract** — Remove leftover rough edges in the concrete strategy files now that the base contract has settled.
+  - SD tokenization / text-encoding / caching ownership now lives in the self-titled facet files, and the remaining SD contract-owned concerns have been split into `sd/loading.py`, `sd/model_preparation.py`, `sd/checkpointing.py`, `sd/sampling.py`, `sd/denoiser.py`, `sd/diffusion.py`, and `sd/validation.py`.
+  - `sd/training.py` is now reduced to strategy assembly and init/wiring, mirroring the SDXL composition pattern.
   - SDXL tokenization / text-encoding / caching ownership is now moving into the existing self-titled facet files, with `sdxl/training.py` reduced to composition plus SDXL-specific training behavior.
   - SDXL model loading has been split into `sdxl/loading.py`; the next useful slices are model preparation, validation, and diffusion/UNet-calling ownership.
   - SDXL model preparation has been split into `sdxl/model_preparation.py`; validation and diffusion/UNet-calling are the next larger ownership seams.
@@ -136,13 +138,19 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - SDXL sample generation has been split into `sdxl/sampling.py`; diffusion / batch-processing and UNet-calling are now the primary remaining `training.py` ownership seam.
   - SDXL denoiser calling has been split into `sdxl/denoiser.py`; the remaining `training.py` core is now mostly training-time text-conditioning resolution plus diffusion batch processing.
   - SDXL diffusion training has been split into `sdxl/diffusion.py`; `sdxl/training.py` is now reduced to strategy assembly and init/wiring.
+  - Conditioning is showing up as a real cross-cutting concern across tokenization/encoding, caching/data metadata, and denoiser input assembly, but it is not mature enough yet to force into a new base facet.
+  - Prompt weighting / weighted captions likely want to become a shared concern rather than accidental SD-only behavior, but that should be designed deliberately instead of copied model-by-model.
 - [ ] **Timestep / `la_sampler` ownership cleanup** — Decide where timestep-sampling responsibilities should live and remove the current ad hoc feel.
+- [ ] **Conditioning architecture review** — Decide when “conditioning” deserves its own first-class shared concern instead of remaining split across encoding, caching, and denoiser/diffusion ownership.
+- [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
 - [ ] **Hydra config vs dataclass audit** — Check whether shipped YAML config contents still fully match the dataclass schema after the recent refactors.
+  - Keep an eye on `config_validation.py` so generic checks, model-family policy, and script-owned dataset validators do not collapse back into one mixed bag as more validation rules are added.
 - [ ] **`base/training.py` naming review** — Decide whether the file name still matches its role, or whether a different name would make the strategy layer easier to navigate.
 - [ ] **Cache handler naming review** — Re-evaluate whether “handler” is still the clearest term for the active cache-engine boundary.
 - [ ] **Live plotter / logging integration** — Fold the live plotter into the broader logging story instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **External dependency ownership review** — Decide whether custom optimizers and LyCORIS should stay external or move under `library/` for easier modification.
+- [ ] **Future conditioning/data-flow experiments** — Later exploration area for better caption mutation, TE caching, on-the-fly CPU encoding, queues, async handoff, and related conditioning/data-flow improvements once the current building blocks are settled.
 
 ---
 

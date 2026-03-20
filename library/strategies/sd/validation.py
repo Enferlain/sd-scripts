@@ -11,14 +11,14 @@ from library.training.diffusion import prepare_latents
 from library.training.trainer_utils import restore_rng_state, switch_rng_state
 
 
-class SdxlValidationStrategy(ValidationStrategy):
-    """Validation facet for SDXL training strategies."""
+class SdValidationStrategy(ValidationStrategy):
+    """Validation facet for SD 1.5/2.0 training strategies."""
 
     def process_val_batch(
         self,
         batch: Any,
         text_encoders: list[Any],
-        unet: Any,
+        denoiser: Any,
         trainable_model: Any,
         vae: Any,
         noise_scheduler: Any,
@@ -30,27 +30,7 @@ class SdxlValidationStrategy(ValidationStrategy):
         train_denoiser: bool = True,
         timesteps_list: list[int] | None = None,
     ) -> torch.Tensor:
-        """
-        Process a batch for SDXL validation loss.
-
-        Args:
-            batch: Batch data.
-            text_encoders: List of text encoders.
-            unet: UNet model.
-            trainable_model: The trainable model.
-            vae: VAE model.
-            noise_scheduler: Noise scheduler.
-            vae_dtype: VAE data type.
-            weight_dtype: Weight data type.
-            accelerator: Accelerator instance.
-            cfg: Configuration object.
-            train_text_encoder: Train text encoder flag.
-            train_denoiser: Train denoiser flag.
-            timesteps_list: List of timesteps for validation.
-
-        Returns:
-            Validation loss.
-        """
+        """Process a batch for SD validation loss."""
         if timesteps_list is None:
             timesteps_list = [50, 350, 500, 650, 950]
         with torch.autograd.grad_mode.inference_mode(mode=True):
@@ -66,13 +46,13 @@ class SdxlValidationStrategy(ValidationStrategy):
             total_loss = torch.zeros(1, device=latents.device)
 
             text_encoder_conds = self._get_text_conds(
-                cfg,
-                accelerator,
-                batch,
-                text_encoders,
-                weight_dtype,
+                batch=batch,
+                text_encoders=text_encoders,
+                accelerator=accelerator,
+                cfg=cfg,
                 train_text_encoder=train_text_encoder,
                 is_train=False,
+                weight_dtype=weight_dtype,
             )
 
             batch_size = latents.shape[0]
@@ -85,7 +65,7 @@ class SdxlValidationStrategy(ValidationStrategy):
                     latents,
                     batch,
                     text_encoder_conds,
-                    unet,
+                    denoiser,
                     trainable_model,
                     weight_dtype,
                     train_denoiser,
@@ -109,7 +89,7 @@ class SdxlValidationStrategy(ValidationStrategy):
         cyclic_val_dataloader: Any,
         trainable_model: Any,
         text_encoders: list[Any],
-        unet: Any,
+        denoiser: Any,
         vae: Any,
         noise_scheduler: Any,
         vae_dtype: torch.dtype,
@@ -120,32 +100,7 @@ class SdxlValidationStrategy(ValidationStrategy):
         batch: Any | None = None,
         train_text_encoder: bool = True,
     ) -> tuple[float | None, float | None]:
-        """
-        Calculate validation loss for SDXL.
-
-        Args:
-            global_step: Global step.
-            epoch_step: Epoch step.
-            train_dataloader: Training dataloader.
-            val_loss_recorder: Validation loss recorder.
-            val_dataloader: Validation dataloader.
-            cyclic_val_dataloader: Cyclic validation dataloader.
-            trainable_model: The trainable model.
-            text_encoders: List of text encoders.
-            unet: UNet model.
-            vae: VAE model.
-            noise_scheduler: Noise scheduler.
-            vae_dtype: VAE data type.
-            weight_dtype: Weight data type.
-            accelerator: Accelerator instance.
-            cfg: Configuration object.
-            epoch: Current epoch.
-            batch: Optional batch.
-            train_text_encoder: Train text encoder flag.
-
-        Returns:
-            Tuple of (current_val_loss, average_val_loss).
-        """
+        """Calculate validation loss for SD."""
         rng_states = switch_rng_state(int(cfg.validation.validation_seed) if cfg.validation.validation_seed else 23, accelerator)
         timesteps_list = ast.literal_eval(cfg.validation.validation_timesteps)
 
@@ -169,7 +124,7 @@ class SdxlValidationStrategy(ValidationStrategy):
                 loss = self.process_val_batch(
                     batch,
                     text_encoders,
-                    unet,
+                    denoiser,
                     trainable_model,
                     vae,
                     noise_scheduler,
@@ -185,7 +140,5 @@ class SdxlValidationStrategy(ValidationStrategy):
             val_loss_recorder.add(current_val_loss)
 
         average_val_loss: float = val_loss_recorder.average
-
         restore_rng_state(rng_states, accelerator)
-
         return current_val_loss, average_val_loss

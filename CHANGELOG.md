@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SDXL strategy tests updated for the split concern-file layout** — The strategy unit tests now reflect the current SDXL architecture instead of the old `sdxl/training.py` monolith.
   - Updated `tests/unit/strategies/test_strategies_sdxl.py` to patch helpers from `encoding.py` and `diffusion.py` rather than `training.py`.
   - Replaced the stale `_get_text_cond(...)` test path with `_get_text_conds(...)` and added a direct concern-ownership assertion for the composed `SdxlTrainingStrategy`.
+- **SD strategy now mirrors the split concern-file layout** — SD 1.5/2.0 strategy organization now follows the same contract-owned file layout as SDXL.
+  - Split SD model loading, model preparation, checkpointing, sampling, denoiser calling, diffusion training, and validation into self-titled files under `library/strategies/sd/`.
+  - Reduced `sd/training.py` to strategy assembly and init/wiring, with the mixin order matching the base `TrainingStrategy` facet order.
+  - Updated `SdTextEncodingStrategy` for mixed-in use with `SdTokenizeStrategy`, added a training-facing `SdCachingStrategy`, and refreshed `tests/unit/strategies/test_strategies_sd.py` to assert the new concern ownership.
 
 ## [2026-03-19]
 

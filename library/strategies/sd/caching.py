@@ -18,12 +18,40 @@ from safetensors.torch import save_file
 from library.data.caching_engine import CacheHandler
 from library.data.structures import CacheData, CacheEntry
 from library.models.sd.text_encoder import get_hidden_states_sd
+from library.strategies.base.training import CachingStrategy
 from library.strategies.sd.tokenization import tokenize_sd_captions
 from library.utils.hash_utils import stable_string_hash
 from library.constants import SD_VAE_LATENT_SCALE
 
 
 logger = logging.getLogger(__name__)
+
+
+class SdCachingStrategy(CachingStrategy):
+    """Training-facing SD caching facet implementation."""
+
+    def create_latent_caching_strategy(self, cfg: Any) -> "SdLatentsPipelineStrategy":
+        """Create the new-pipeline latent cache handler for SD."""
+        latent_dtype = "fp32" if cfg.performance.precision.no_half_vae else "fp16"
+        return SdLatentsPipelineStrategy(
+            flip_aug=cfg.data.preprocessing.flip_aug,
+            dtype=latent_dtype,
+        )
+
+    def create_te_caching_strategy(self, cfg: Any) -> "SdTextEncoderPipelineStrategy":
+        """Create the new-pipeline text-encoder cache handler for SD."""
+        return SdTextEncoderPipelineStrategy(
+            clip_skip=cfg.training.clip_skip,
+            max_token_length=cfg.training.max_token_length,
+        )
+
+    def get_token_cache_encoder_names(self) -> list[str]:
+        """Return the SD token-cache encoder names."""
+        return ["clip"]
+
+    def build_te_cache_model_bundle(self, cfg: Any, accelerator: Any, text_encoders: list[Any], tokenizers: list[Any]) -> Any:
+        """Return the model bundle used by SD TE caching."""
+        return (*text_encoders, *tokenizers)
 
 
 class SdLatentsPipelineStrategy(CacheHandler):

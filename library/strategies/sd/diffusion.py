@@ -4,74 +4,49 @@ import torch
 
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.losses.loss_weighting import apply_masked_loss, post_process_loss
-from library.models.sdxl.text_encoder import encode_input_ids_sdxl
 from library.strategies.base.training import DiffusionTrainingStrategy
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps, prepare_latents
 
 
-class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
-    """Diffusion-training facet for SDXL training strategies."""
+class SdDiffusionTrainingStrategy(DiffusionTrainingStrategy):
+    """Diffusion-training facet for SD 1.5/2.0 training strategies."""
 
     def _get_text_conds(
         self,
-        cfg: Any,
-        accelerator: Any,
         batch: Any,
         text_encoders: list[Any],
-        weight_dtype: torch.dtype,
+        accelerator: Any,
+        cfg: Any,
         train_text_encoder: bool,
         is_train: bool,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Resolve SDXL text conditioning from cached outputs, cached tokens, or live captions.
-
-        Returns:
-            Tuple of (encoder_hidden_states1, encoder_hidden_states2, pool2).
-        """
+        weight_dtype: torch.dtype,
+    ) -> list[torch.Tensor]:
+        """Get SD text conditioning from cached outputs, cached tokens, or live captions."""
         te_outputs = batch.get("text_encoder_outputs")
-        text_encoder_conds = (
-            [
-                te_outputs["hidden_state1"].to(accelerator.device, dtype=weight_dtype),
-                te_outputs["hidden_state2"].to(accelerator.device, dtype=weight_dtype),
-                te_outputs["pool2"].to(accelerator.device, dtype=weight_dtype),
-            ]
-            if te_outputs is not None
-            else []
-        )
+        text_encoder_conds = [te_outputs["hidden_state"].to(accelerator.device, dtype=weight_dtype)] if te_outputs is not None else []
 
-        if len(text_encoder_conds) == 0 or any(cond is None for cond in text_encoder_conds) or train_text_encoder:
-            input_ids = batch.get("input_ids")
-            te_device = text_encoders[0].device
+        if len(text_encoder_conds) == 0 or text_encoder_conds[0] is None or train_text_encoder:
+            with torch.set_grad_enabled(is_train and train_text_encoder), accelerator.autocast():
+                if cfg.data.caption.weighted_captions:
+                    input_ids_list, weights_list = self.tokenize_with_weights(batch["captions"])
+                    encoded_text_encoder_conds = self.encode_tokens_with_weights(
+                        self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
+                        input_ids_list,
+                        weights_list,
+                    )
+                else:
+                    input_ids_dict = batch.get("input_ids")
+                    if input_ids_dict is not None:
+                        input_ids = [input_ids_dict["clip"].to(accelerator.device)]
+                    else:
+                        input_ids = [ids.to(accelerator.device) for ids in self.tokenize(batch["captions"])]
+                    encoded_text_encoder_conds = self.encode_tokens(
+                        self.get_models_for_text_encoding(cfg, accelerator, text_encoders),
+                        input_ids,
+                    )
 
-            if input_ids is None:
-                captions = batch.get("captions", [])
-                if not captions:
-                    raise ValueError("Batch has neither 'input_ids' nor 'captions' - cannot encode text")
-
-                input_ids1, input_ids2 = self.tokenize(captions)
-                input_ids1 = input_ids1.to(te_device)
-                input_ids2 = input_ids2.to(te_device)
-            else:
-                input_ids1 = input_ids["clip_l"].to(te_device)
-                input_ids2 = input_ids["clip_g"].to(te_device)
-
-            with torch.set_grad_enabled(is_train and train_text_encoder):
-                encoder_hidden_states1, encoder_hidden_states2, pool2 = encode_input_ids_sdxl(
-                    input_ids1,
-                    input_ids2,
-                    self.tokenizers[0],
-                    self.tokenizers[1],
-                    text_encoders[0],
-                    text_encoders[1],
-                    weight_dtype=None if not cfg.performance.precision.full_fp16 else weight_dtype,
-                    unwrapped_text_encoder2=accelerator.unwrap_model(text_encoders[1]),
-                )
-
-            encoded_text_encoder_conds = [
-                encoder_hidden_states1.to(accelerator.device, dtype=weight_dtype),
-                encoder_hidden_states2.to(accelerator.device, dtype=weight_dtype),
-                pool2.to(accelerator.device, dtype=weight_dtype),
-            ]
+                if cfg.performance.precision.full_fp16:
+                    encoded_text_encoder_conds = [c.to(weight_dtype) for c in encoded_text_encoder_conds]
 
             if len(text_encoder_conds) == 0:
                 text_encoder_conds = encoded_text_encoder_conds
@@ -80,7 +55,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
                     if cond is not None:
                         text_encoder_conds[i] = cond
 
-        return tuple(text_encoder_conds)
+        return text_encoder_conds
 
     def get_noise_pred_and_target(
         self,
@@ -89,8 +64,8 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         noise_scheduler: Any,
         latents: torch.Tensor,
         batch: Any,
-        text_encoder_conds: Any,
-        unet: Any,
+        text_encoder_conds: list[Any],
+        denoiser: Any,
         trainable_model: Any,
         weight_dtype: torch.dtype,
         train_denoiser: bool,
@@ -100,12 +75,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         max_timestep_override: int | None = None,
         global_step: int = 0,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
-        """
-        Sample noise, call the SDXL denoiser, and build the training target.
-
-        Returns:
-            Tuple of (noise_pred, target, timesteps, weighting).
-        """
+        """Sample noise, call the denoiser, and build the training target."""
         noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
             cfg.loss.regularization,
             cfg.timestep,
@@ -124,14 +94,19 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         if is_train and cfg.performance.memory.gradient_checkpointing:
             for x in noisy_latents:
                 x.requires_grad_(True)
-            if isinstance(text_encoder_conds, (list, tuple)):
-                for t in text_encoder_conds:
-                    if t is not None and hasattr(t, "requires_grad_"):
-                        t.requires_grad_(True)
+            for t in text_encoder_conds:
+                t.requires_grad_(True)
 
         with torch.set_grad_enabled(is_train), accelerator.autocast():
             noise_pred = self.call_denoiser(
-                cfg, accelerator, unet, noisy_latents.requires_grad_(train_denoiser), timesteps, text_encoder_conds, batch, weight_dtype
+                cfg,
+                accelerator,
+                denoiser,
+                noisy_latents.requires_grad_(train_denoiser),
+                timesteps,
+                text_encoder_conds,
+                batch,
+                weight_dtype,
             )
 
         if cfg.loss.v_parameterization:
@@ -151,7 +126,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
                     noise_pred_prior = self.call_denoiser(
                         cfg,
                         accelerator,
-                        unet,
+                        denoiser,
                         noisy_latents,
                         timesteps,
                         text_encoder_conds,
@@ -168,7 +143,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         self,
         batch: Any,
         text_encoders: list[Any],
-        unet: Any,
+        denoiser: Any,
         trainable_model: Any,
         vae: Any,
         noise_scheduler: Any,
@@ -184,7 +159,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         max_timestep_override: int | None = None,
         global_step: int = 0,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
-        """Process a training or validation batch for SDXL diffusion training."""
+        """Process a training or validation batch for SD diffusion training."""
         with torch.no_grad():
             latents = prepare_latents(
                 batch,
@@ -197,13 +172,13 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             )
 
         text_encoder_conds = self._get_text_conds(
-            cfg,
-            accelerator,
-            batch,
-            text_encoders,
-            weight_dtype,
+            batch=batch,
+            text_encoders=text_encoders,
+            accelerator=accelerator,
+            cfg=cfg,
             train_text_encoder=train_text_encoder,
             is_train=is_train,
+            weight_dtype=weight_dtype,
         )
 
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
@@ -213,7 +188,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             latents,
             batch,
             text_encoder_conds,
-            unet,
+            denoiser,
             trainable_model,
             weight_dtype,
             train_denoiser,
@@ -231,15 +206,6 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             if weighting is not None:
                 loss = loss * weighting
             if cfg.loss.masked.masked_loss or ("alpha_masks" in batch and batch["alpha_masks"] is not None):
-                if cfg.loss.masked.masked_loss:
-                    has_cond = "conditioning_images" in batch
-                    has_alpha = "alpha_masks" in batch and batch["alpha_masks"] is not None
-                    if not has_cond and not has_alpha:
-                        raise ValueError(
-                            "cfg.loss.masked.masked_loss=True but no masks found in batch. "
-                            "Ensure your dataset has alpha channels or conditioning images. "
-                            "Set cfg.loss.masked.masked_loss=False if masking is not intended."
-                        )
                 loss = apply_masked_loss(loss, batch)
         else:
             loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
@@ -251,7 +217,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
 
         loss = per_sample_loss
         if is_train:
-            loss = loss * batch["loss_weights"].to(loss.device)
+            loss = loss * batch["loss_weights"]
             loss = post_process_loss(loss, cfg, timesteps, noise_scheduler)
 
         if is_train and cfg.loss.loss_multiplier:

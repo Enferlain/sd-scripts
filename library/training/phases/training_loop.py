@@ -536,7 +536,7 @@ def run_training_loop(trainer: Trainer) -> None:
                         cfg,
                         is_train=True,
                         train_text_encoder=trainer._train_text_encoder,
-                        train_unet=trainer._train_denoiser,
+                        train_denoiser=trainer._train_denoiser,
                         edm2_model=trainer._edm2_model,
                         min_timestep_override=trainer._current_min_timestep,
                         max_timestep_override=trainer._current_max_timestep,

@@ -40,9 +40,28 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
     Text encoding strategy for SD1.5 and SD2.0.
     """
 
-    def __init__(self, tokenizer: CLIPTokenizer, clip_skip: int | None = None) -> None:
-        self.tokenizer = tokenizer
-        self.clip_skip = clip_skip
+    def __init__(self, tokenizer: CLIPTokenizer | None = None, clip_skip: int | None = None) -> None:
+        self._tokenizer = tokenizer
+        self._clip_skip = clip_skip
+
+    def _get_tokenizer(self) -> CLIPTokenizer:
+        """Resolve tokenizer state from explicit construction or the tokenization facet."""
+        if self._tokenizer is not None:
+            return self._tokenizer
+
+        tokenizers = getattr(self, "tokenizers", None)
+        if not tokenizers:
+            raise RuntimeError(
+                "SD text encoding requires a tokenizer. Pass one to "
+                "SdTextEncodingStrategy(...) or mix in SdTokenizeStrategy."
+            )
+        return tokenizers[0]
+
+    def _get_clip_skip(self) -> int | None:
+        """Resolve clip-skip from explicit construction or owning strategy state."""
+        if self._clip_skip is not None:
+            return self._clip_skip
+        return getattr(self, "clip_skip", None)
 
     def encode_tokens(self, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
         """
@@ -55,7 +74,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         Returns:
             List of encoded tensors
         """
-        return encode_sd_tokens(self.tokenizer, self.clip_skip, models, tokens)
+        return encode_sd_tokens(self._get_tokenizer(), self._get_clip_skip(), models, tokens)
 
     def encode_tokens_with_weights(
         self,
@@ -63,7 +82,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
         tokens: list[torch.Tensor],
         weights: list[torch.Tensor],
     ) -> list[torch.Tensor]:
-        return encode_sd_tokens_with_weights(self.tokenizer, self.clip_skip, models, tokens, weights)
+        return encode_sd_tokens_with_weights(self._get_tokenizer(), self._get_clip_skip(), models, tokens, weights)
 
     def encode_te_outputs_in_memory(
         self,

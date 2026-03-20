@@ -1,8 +1,4 @@
-"""
-Unit tests for library/strategies/strategy_sd.py
-
-Tests the SD 1.5/2.0 strategy classes with mocked tokenizers and text encoders.
-"""
+"""Unit tests for the active SD strategy concern files."""
 
 from contextlib import nullcontext
 
@@ -248,8 +244,15 @@ class TestSdTextEncodingStrategy:
 
 
 @pytest.mark.unit
-class TestSdTrainingStrategyNewPipeline:
-    """Tests for the SD new-pipeline strategy surface."""
+class TestSdTrainingStrategyComposition:
+    """Tests for SD strategy composition across concern files."""
+
+    def test_training_strategy_uses_split_concern_modules(self):
+        """SdTrainingStrategy should inherit facet methods from the split SD files."""
+        assert SdTrainingStrategy.tokenize_captions.__module__ == "library.strategies.sd.tokenization"
+        assert SdTrainingStrategy.encode_te_outputs_in_memory.__module__ == "library.strategies.sd.encoding"
+        assert SdTrainingStrategy.create_te_caching_strategy.__module__ == "library.strategies.sd.caching"
+        assert SdTrainingStrategy._get_text_conds.__module__ == "library.strategies.sd.diffusion"
 
     @patch("library.strategies.sd.tokenization.load_tokenizer")
     def test_create_latent_caching_strategy_returns_pipeline_strategy(self, mock_load_tokenizer, mock_clip_tokenizer, sd_strategy_cfg):
@@ -327,7 +330,7 @@ class TestSdTrainingStrategyNewPipeline:
         accelerator.device = torch.device("cpu")
 
         with (
-            patch("library.strategies.sd.training.prepare_latents", return_value=torch.randn(1, 4, 64, 64)),
+            patch("library.strategies.sd.diffusion.prepare_latents", return_value=torch.randn(1, 4, 64, 64)),
             patch.object(
                 strategy,
                 "get_noise_pred_and_target",
@@ -377,7 +380,7 @@ class TestSdTrainingStrategyNewPipeline:
         accelerator.autocast.return_value = nullcontext()
 
         with (
-            patch("library.strategies.sd.training.prepare_latents", return_value=torch.randn(1, 4, 64, 64)),
+            patch("library.strategies.sd.diffusion.prepare_latents", return_value=torch.randn(1, 4, 64, 64)),
             patch.object(
                 strategy,
                 "get_noise_pred_and_target",
