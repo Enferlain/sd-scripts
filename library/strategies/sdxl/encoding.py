@@ -62,8 +62,9 @@ class SdxlTextEncodingStrategy(TextEncodingStrategy):
 
     def _get_tokenizers(self) -> list[CLIPTokenizer]:
         """Resolve tokenizer state from explicit construction or the tokenization facet."""
-        if self._tokenizers is not None:
-            return self._tokenizers
+        tokenizers = getattr(self, "_tokenizers", None)
+        if tokenizers is not None:
+            return tokenizers
 
         tokenizers = getattr(self, "tokenizers", None)
         if tokenizers is None:

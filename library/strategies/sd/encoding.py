@@ -43,6 +43,7 @@ class SdTextEncodingStrategy(TextEncodingStrategy):
     def __init__(self, tokenizer: CLIPTokenizer | None = None, clip_skip: int | None = None) -> None:
         self._tokenizer = tokenizer
         self._clip_skip = clip_skip
+        self.clip_skip = clip_skip
 
     def _get_tokenizer(self) -> CLIPTokenizer:
         """Resolve tokenizer state from explicit construction or the tokenization facet."""

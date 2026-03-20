@@ -10,6 +10,7 @@ defaults:
 data:
   caching:
     cache_text_encoder_outputs: false # Must be false to train TEs
+    cache_text_encoder_outputs_to_disk: false
 
 optimizer:
   learning_rates:

@@ -291,7 +291,8 @@ def validate_config(cfg) -> None:
     # TE caching + TE training conflict
     if cfg.data.caching.cache_text_encoder_outputs and should_train_text_encoder(cfg.optimizer.learning_rates):
         raise ValueError(
-            "Cannot train text encoder while caching TE outputs. Set text_encoders LR to 0, or disable cache_text_encoder_outputs."
+            "Cannot train text encoder while TE output caching is enabled. "
+            "Disable TE output caching, or set text_encoders LR to 0."
         )
 
     _validate_model_profile_config(cfg)

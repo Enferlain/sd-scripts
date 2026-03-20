@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Sampling ownership was pulled back to the model strategies** — Shared sampling is generic again, while SD and SDXL now own their concrete pipeline construction and runtime setup directly.
+  - `library/training/sample_generation.py` no longer chooses SD vs. SDXL pipelines, carries sampling-runtime state bundles, or relies on callback/builder-style indirection.
+  - `library/strategies/sd/sampling.py` and `library/strategies/sdxl/sampling.py` now unwrap models, build their concrete pipelines locally, and restore runtime state around the shared sampling loop.
+  - The deprecated SD / SDXL sampling wrappers were adjusted to keep working with the simpler shared helper shape.
+- **Post-refactor strategy fixes landed from real benchmark runs** — Follow-up benchmark coverage flushed out a few remaining mixed-in state and naming leftovers in the active path.
+  - `SdxlTextEncodingStrategy` now tolerates mixed-in use when `_tokenizers` was never initialized directly, which fixed SDXL weighted-prompt sampling through the LPW pipeline.
+  - `SdxlCheckpointingStrategy.save_model_checkpoint()` now unwraps `trainer.denoiser` instead of the removed `trainer.unet` field.
+  - `SdTextEncodingStrategy` exposes `clip_skip` again for direct facet tests, and the SD strategy tests now call `process_batch(...)` with the active `denoiser=` seam rather than stale `unet=` kwargs.
+- **Text-encoder benchmark config/validation feedback tightened** — The text-encoder benchmark config and its failure message now reflect the actual TE-caching rules more clearly.
+  - `configs/test_text_encoder.yaml` now disables both `cache_text_encoder_outputs` and `cache_text_encoder_outputs_to_disk`, so it no longer re-enables TE caching through inherited disk-cache settings.
+  - The TE-training validation error now says plainly to disable TE output caching or set text-encoder LR to `0`, without leaking implementation detail into the message.
 - **Config validation structure tightened** — Model/profile-specific validation no longer has to accumulate in `config_validation.py`.
   - Kept the cleanup inside `library/config/config_validation.py` instead of introducing another validation module, while still separating generic config checks from smaller internal helper functions.
   - `validate_config()` now enforces known model-family bucket-step requirements directly from config (`sdxl` -> 32-step buckets, `sd1`/`sd15`/`sd2` -> 64-step buckets) instead of relying only on script-owned dataset-group validators.

@@ -28,9 +28,6 @@ from diffusers import (
 )
 
 from library.constants import SCHEDULER_TIMESTEPS, SCHEDULER_LINEAR_START, SCHEDULER_LINEAR_END, SCHEDULER_SCHEDULE
-from library.utils.device_utils import clean_memory_on_device
-from library.pipelines.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
-from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
 from library.config.dataclasses.output import SamplingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.output import SavingConfig
@@ -260,7 +257,6 @@ def sample_images_check(sampling_config: SamplingConfig, epoch: int | None, step
 
 
 def sample_images_common(
-    pipe_class,
     accelerator: Accelerator,
     sampling_config: SamplingConfig,
     training_config: TrainingConfig,
@@ -268,14 +264,9 @@ def sample_images_common(
     loss_config: LossConfig,
     epoch: int | None,
     steps: int,
-    device,
-    vae,
-    tokenizer,
-    text_encoder,
-    denoiser_wrapped,
+    pipeline,
     prompt_replacement: tuple[str, str] | None = None,
     controlnet=None,
-    strategy=None,
 ):
     """
     Common function for generating sample images during training.
@@ -284,7 +275,6 @@ def sample_images_common(
     of work across available devices.
 
     Args:
-        pipe_class: The pipeline class to use (e.g., StableDiffusionLongPromptWeightingPipeline).
         accelerator (Accelerator): The accelerator instance for distributed training.
         sampling_config (SamplingConfig): Configuration for sampling.
         training_config (TrainingConfig): Configuration for training.
@@ -292,101 +282,21 @@ def sample_images_common(
         loss_config (LossConfig): Configuration related to loss (used for v_parameterization).
         epoch (int, optional): The current epoch.
         steps (int): The current step.
-        device: The device to run inference on.
-        vae: The VAE model.
-        tokenizer: The tokenizer.
-        text_encoder: The text encoder model(s).
-        denoiser_wrapped: The denoiser model (wrapped).
+        pipeline: The ready model-family-specific sampling pipeline.
         prompt_replacement (tuple, optional): A tuple (target, replacement) to modify prompts.
         controlnet: ControlNet model (optional).
-        strategy: TrainingStrategy instance used by sampling pipelines that need
-            model-family-specific prompt handling.
     """
-
-    if not sample_images_check(sampling_config, epoch, steps):
-        return
 
     logger.info("")
     logger.info(f"generating sample images at step: {steps}")
     if not os.path.isfile(sampling_config.sample_prompts):
         logger.error(f"No prompt file: {sampling_config.sample_prompts}")
         return
-
-    distributed_state = PartialState()  # for multi gpu distributed inference. this is a singleton, so it's safe to use it here
-
-    # Save original devices for all models (they may be on CPU for memory efficiency)
-    org_vae_device = vae.device
-
-    # unwrap denoiser and text_encoder(s), saving their original devices
-    denoiser = accelerator.unwrap_model(denoiser_wrapped)
-    org_denoiser_device = denoiser.device
-
-    if isinstance(text_encoder, (list, tuple)):
-        text_encoder = [accelerator.unwrap_model(te) for te in text_encoder]
-        org_te_devices = [te.device for te in text_encoder]
-    else:
-        text_encoder = accelerator.unwrap_model(text_encoder)
-        org_te_devices = [text_encoder.device]
-
-    # Save original VAE dtype for restoration after sampling
-    org_vae_dtype = vae.dtype
-
-    # Apply sample_vae_dtype if specified (allows fp16 VAE for sampling even if training uses fp32)
-    if sampling_config.sample_vae_dtype is not None:
-        sample_dtype_map = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}
-        sample_vae_dtype = sample_dtype_map.get(sampling_config.sample_vae_dtype)
-        if sample_vae_dtype is not None and sample_vae_dtype != org_vae_dtype:
-            logger.info(f"Casting VAE from {org_vae_dtype} to {sample_vae_dtype} for sampling")
-            vae.to(dtype=sample_vae_dtype)
-
-    # Move VAE to device (text encoders and denoiser will be moved by pipeline.to())
-    vae.to(distributed_state.device)
-
-    # read prompts
-    if sampling_config.sample_prompts.endswith(".txt"):
-        with open(sampling_config.sample_prompts, encoding="utf-8") as f:
-            lines = f.readlines()
-        raw_prompts: list[str | dict] = [line.strip() for line in lines if len(line.strip()) > 0 and line[0] != "#"]
-    elif sampling_config.sample_prompts.endswith(".toml"):
-        with open(sampling_config.sample_prompts, encoding="utf-8") as f:
-            data = toml.load(f)
-        raw_prompts = [dict(**data["prompt"], **subset) for subset in data["prompt"]["subset"]]
-    elif sampling_config.sample_prompts.endswith(".json"):
-        with open(sampling_config.sample_prompts, encoding="utf-8") as f:
-            raw_prompts = json.load(f)
-    else:
-        logger.error(f"Unsupported prompt file format: {sampling_config.sample_prompts}. Supported formats: .txt, .toml, .json")
-        return
-
-    default_scheduler = get_my_scheduler(sample_sampler=sampling_config.sample_sampler, v_parameterization=loss_config.v_parameterization)
-
-    pipe_kwargs = {
-        "text_encoder": text_encoder,
-        "vae": vae,
-        "denoiser": denoiser,
-        "tokenizer": tokenizer,
-        "scheduler": default_scheduler,
-        "safety_checker": None,
-        "feature_extractor": None,
-        "requires_safety_checker": False,
-        "clip_skip": training_config.clip_skip,
-    }
-    if pipe_class is SdxlStableDiffusionLongPromptWeightingPipeline:
-        pipe_kwargs["strategy"] = strategy
-
-    pipeline = pipe_class(**pipe_kwargs)
+    distributed_state = PartialState()
     pipeline.to(distributed_state.device)
     save_dir = saving_config.output_dir + "/sample"
     os.makedirs(save_dir, exist_ok=True)
-
-    # Build result list with proper types
-    prompts: list[dict] = []
-    for i, p in enumerate(raw_prompts):
-        prompt_dict = line_to_prompt_dict(p) if isinstance(p, str) else p
-        assert isinstance(prompt_dict, dict)
-        prompt_dict["enum"] = i
-        prompt_dict.pop("subset", None)
-        prompts.append(prompt_dict)
+    prompts = load_prompts(sampling_config.sample_prompts)
 
     # save random state to restore later
     rng_state = torch.get_rng_state()
@@ -444,30 +354,10 @@ def sample_images_common(
 
     # clear pipeline and cache to reduce vram usage
     del pipeline
-    del default_scheduler
 
     torch.set_rng_state(rng_state)
     if torch.cuda.is_available() and cuda_rng_state is not None:
         torch.cuda.set_rng_state(cuda_rng_state)
-
-    # Restore all models to their original devices and dtypes (critical for training)
-    # This matches the pattern used in caching code (SdxlTrainingStrategy.cache_text_encoder_outputs_if_needed)
-    vae.to(device=org_vae_device, dtype=org_vae_dtype)
-    denoiser.to(org_denoiser_device)
-
-    # Restore text encoders - handle both single and list cases
-    if isinstance(text_encoder, (list, tuple)):
-        for te, org_device in zip(text_encoder, org_te_devices):
-            te.to(org_device)
-    else:
-        text_encoder.to(org_te_devices[0])
-
-    # Aggressive cleanup to prevent VRAM accumulation between sampling runs
-    gc.collect()
-    clean_memory_on_device(accelerator.device)
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        torch.cuda.synchronize()
 
 
 def sample_image_inference(
@@ -476,7 +366,7 @@ def sample_image_inference(
     training_config: TrainingConfig,
     saving_config: SavingConfig,
     loss_config: LossConfig,
-    pipeline: StableDiffusionLongPromptWeightingPipeline | SdxlStableDiffusionLongPromptWeightingPipeline,
+    pipeline,
     save_dir: str,
     prompt_dict: dict,
     epoch: int | None,

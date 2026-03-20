@@ -58,8 +58,8 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
         save_stable_diffusion_format = save_model_as in ("safetensors", "ckpt")
         use_safetensors = save_model_as == "safetensors"
 
-        assert trainer.unet is not None, "UNet must be set before save_model_checkpoint"
-        unet = trainer.accelerator.unwrap_model(trainer.unet)
+        assert trainer.denoiser is not None, "Denoiser must be set before save_model_checkpoint"
+        unet = trainer.accelerator.unwrap_model(trainer.denoiser)
         text_encoder1 = trainer.accelerator.unwrap_model(trainer.text_encoders[0])
         text_encoder2 = trainer.accelerator.unwrap_model(trainer.text_encoders[1]) if len(trainer.text_encoders) > 1 else None
         vae = trainer.vae

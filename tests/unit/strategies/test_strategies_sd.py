@@ -345,7 +345,7 @@ class TestSdTrainingStrategyComposition:
             strategy.process_batch(
                 batch=batch,
                 text_encoders=[Mock()],
-                unet=Mock(),
+                denoiser=Mock(),
                 trainable_model=Mock(),
                 vae=Mock(),
                 noise_scheduler=Mock(),
@@ -396,7 +396,7 @@ class TestSdTrainingStrategyComposition:
             strategy.process_batch(
                 batch=batch,
                 text_encoders=[Mock()],
-                unet=Mock(),
+                denoiser=Mock(),
                 trainable_model=Mock(),
                 vae=Mock(),
                 noise_scheduler=Mock(),
