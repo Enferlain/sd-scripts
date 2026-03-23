@@ -4,7 +4,6 @@ import torch
 
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.losses.loss_weighting import apply_masked_loss, post_process_loss
-from library.models.sdxl.text_encoder import encode_input_ids_sdxl
 from library.strategies.base.training import DiffusionTrainingStrategy
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps, prepare_latents
 
@@ -40,38 +39,39 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         )
 
         if len(text_encoder_conds) == 0 or any(cond is None for cond in text_encoder_conds) or train_text_encoder:
-            input_ids = batch.get("input_ids")
             te_device = text_encoders[0].device
-
-            if input_ids is None:
-                captions = batch.get("captions", [])
-                if not captions:
-                    raise ValueError("Batch has neither 'input_ids' nor 'captions' - cannot encode text")
-
-                input_ids1, input_ids2 = self.tokenize(captions)
-                input_ids1 = input_ids1.to(te_device)
-                input_ids2 = input_ids2.to(te_device)
-            else:
-                input_ids1 = input_ids["clip_l"].to(te_device)
-                input_ids2 = input_ids["clip_g"].to(te_device)
+            models = self.get_models_for_text_encoding(cfg, accelerator, text_encoders)
 
             with torch.set_grad_enabled(is_train and train_text_encoder):
-                encoder_hidden_states1, encoder_hidden_states2, pool2 = encode_input_ids_sdxl(
-                    input_ids1,
-                    input_ids2,
-                    self.tokenizers[0],
-                    self.tokenizers[1],
-                    text_encoders[0],
-                    text_encoders[1],
-                    weight_dtype=None if not cfg.performance.precision.full_fp16 else weight_dtype,
-                    unwrapped_text_encoder2=accelerator.unwrap_model(text_encoders[1]),
-                )
+                if cfg.data.caption.weighted_captions:
+                    captions = batch.get("captions", [])
+                    if not captions:
+                        raise ValueError(
+                            "Weighted captions require raw captions in the batch - cannot encode text from cached inputs alone"
+                        )
 
-            encoded_text_encoder_conds = [
-                encoder_hidden_states1.to(accelerator.device, dtype=weight_dtype),
-                encoder_hidden_states2.to(accelerator.device, dtype=weight_dtype),
-                pool2.to(accelerator.device, dtype=weight_dtype),
-            ]
+                    input_ids_list, weights_list = self.tokenize_with_weights(captions)
+                    input_ids_list = [input_ids.to(te_device) for input_ids in input_ids_list]
+                    encoded_text_encoder_conds = self.encode_tokens_with_weights(models, input_ids_list, weights_list)
+                else:
+                    input_ids = batch.get("input_ids")
+
+                    if input_ids is None:
+                        captions = batch.get("captions", [])
+                        if not captions:
+                            raise ValueError("Batch has neither 'input_ids' nor 'captions' - cannot encode text")
+
+                        input_ids_list = self.tokenize(captions)
+                        input_ids_list = [input_ids.to(te_device) for input_ids in input_ids_list]
+                    else:
+                        input_ids_list = [
+                            input_ids["clip_l"].to(te_device),
+                            input_ids["clip_g"].to(te_device),
+                        ]
+
+                    encoded_text_encoder_conds = self.encode_tokens(models, input_ids_list)
+
+                encoded_text_encoder_conds = [cond.to(accelerator.device, dtype=weight_dtype) for cond in encoded_text_encoder_conds]
 
             if len(text_encoder_conds) == 0:
                 text_encoder_conds = encoded_text_encoder_conds

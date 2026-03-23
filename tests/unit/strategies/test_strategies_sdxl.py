@@ -324,22 +324,20 @@ class TestSdxlTrainingStrategyComposition:
         mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
         strategy = SdxlTrainingStrategy(sdxl_strategy_cfg)
         cfg = Mock()
-        cfg.training.max_token_length = 75
+        cfg.data.caption.weighted_captions = False
         cfg.performance.precision.full_fp16 = False
         accelerator = Mock()
         accelerator.device = torch.device("cpu")
-        accelerator.unwrap_model.return_value = mock_clip_text_encoder2
         batch = {"captions": ["caption 1", "caption 2"]}
 
         token_tensors = [torch.randint(0, 1000, (2, 1, 77)), torch.randint(0, 1000, (2, 1, 77))]
-        encoded_outputs = (torch.randn(2, 77, 768), torch.randn(2, 77, 1280), torch.randn(2, 1280))
+        encoded_outputs = [torch.randn(2, 77, 768), torch.randn(2, 77, 1280), torch.randn(2, 1280)]
+        models = [mock_clip_text_encoder1, mock_clip_text_encoder2, mock_clip_text_encoder2]
 
         with (
             patch.object(strategy, "tokenize", return_value=token_tensors) as mock_tokenize,
-            patch(
-                "library.strategies.sdxl.diffusion.encode_input_ids_sdxl",
-                return_value=encoded_outputs,
-            ) as mock_encode,
+            patch.object(strategy, "get_models_for_text_encoding", return_value=models) as mock_get_models,
+            patch.object(strategy, "encode_tokens", return_value=encoded_outputs) as mock_encode,
         ):
             result = strategy._get_text_conds(
                 cfg=cfg,
@@ -352,7 +350,54 @@ class TestSdxlTrainingStrategyComposition:
             )
 
         mock_tokenize.assert_called_once_with(batch["captions"])
-        mock_encode.assert_called_once()
+        mock_get_models.assert_called_once_with(cfg, accelerator, [mock_clip_text_encoder1, mock_clip_text_encoder2])
+        mock_encode.assert_called_once_with(models, token_tensors)
+        assert len(result) == 3
+
+    @patch("library.strategies.sdxl.tokenization.load_tokenizer")
+    def test_get_text_conds_weighted_captions_use_strategy_weight_helpers(
+        self,
+        mock_load_tokenizer,
+        mock_clip_tokenizer1,
+        mock_clip_tokenizer2,
+        mock_clip_text_encoder1,
+        mock_clip_text_encoder2,
+        sdxl_strategy_cfg,
+    ):
+        mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
+        strategy = SdxlTrainingStrategy(sdxl_strategy_cfg)
+        cfg = Mock()
+        cfg.data.caption.weighted_captions = True
+        cfg.performance.precision.full_fp16 = False
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+        batch = {"captions": ["(caption:1.2)"]}
+
+        token_tensors = [torch.randint(0, 1000, (1, 1, 77)), torch.randint(0, 1000, (1, 1, 77))]
+        weight_tensors = [torch.ones(1, 1, 77) * 1.2, torch.ones(1, 1, 77) * 1.2]
+        encoded_outputs = [torch.randn(1, 77, 768), torch.randn(1, 77, 1280), torch.randn(1, 1280)]
+        models = [mock_clip_text_encoder1, mock_clip_text_encoder2, mock_clip_text_encoder2]
+
+        with (
+            patch.object(strategy, "tokenize_with_weights", return_value=(token_tensors, weight_tensors)) as mock_tokenize,
+            patch.object(strategy, "get_models_for_text_encoding", return_value=models) as mock_get_models,
+            patch.object(strategy, "encode_tokens_with_weights", return_value=encoded_outputs) as mock_encode,
+            patch.object(strategy, "encode_tokens") as mock_plain_encode,
+        ):
+            result = strategy._get_text_conds(
+                cfg=cfg,
+                accelerator=accelerator,
+                batch=batch,
+                text_encoders=[mock_clip_text_encoder1, mock_clip_text_encoder2],
+                weight_dtype=torch.float32,
+                train_text_encoder=False,
+                is_train=False,
+            )
+
+        mock_tokenize.assert_called_once_with(batch["captions"])
+        mock_get_models.assert_called_once_with(cfg, accelerator, [mock_clip_text_encoder1, mock_clip_text_encoder2])
+        mock_encode.assert_called_once_with(models, token_tensors, weight_tensors)
+        mock_plain_encode.assert_not_called()
         assert len(result) == 3
 
     @patch("library.strategies.sdxl.tokenization.load_tokenizer")
@@ -369,6 +414,7 @@ class TestSdxlTrainingStrategyComposition:
         mock_load_tokenizer.side_effect = [mock_clip_tokenizer1, mock_clip_tokenizer2]
         strategy = SdxlTrainingStrategy(sdxl_strategy_cfg)
         cfg = Mock()
+        cfg.data.caption.weighted_captions = False
         cfg.performance.precision.full_fp16 = False
         accelerator = Mock()
         accelerator.device = torch.device("cpu")
@@ -380,7 +426,10 @@ class TestSdxlTrainingStrategyComposition:
             }
         }
 
-        with patch("library.strategies.sdxl.diffusion.encode_input_ids_sdxl") as mock_encode:
+        with (
+            patch.object(strategy, "encode_tokens") as mock_encode,
+            patch.object(strategy, "encode_tokens_with_weights") as mock_weighted_encode,
+        ):
             result = strategy._get_text_conds(
                 cfg=cfg,
                 accelerator=accelerator,
@@ -392,4 +441,5 @@ class TestSdxlTrainingStrategyComposition:
             )
 
         mock_encode.assert_not_called()
+        mock_weighted_encode.assert_not_called()
         assert len(result) == 3
