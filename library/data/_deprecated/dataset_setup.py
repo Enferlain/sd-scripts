@@ -6,7 +6,6 @@ from library.config.config_util import BlueprintGenerator
 from library.data._deprecated.dataset_utils import load_arbitrary_dataset, collator_class, debug_dataset
 
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -22,7 +21,7 @@ def prepare_datasets(cfg, strategies):
     - Latent cacheability validation
 
     Args:
-        cfg: Training configuration (SDPeftConfig or SDXLPeftConfig)
+        cfg: Training configuration using the shared PEFT config shape
         strategies: PEFT strategy instance for validation
 
     Returns:

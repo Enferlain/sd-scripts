@@ -43,7 +43,7 @@ from library.optimizers.optimizer_utils import prepare_optimizer
 from library.optimizers.scheduler import get_scheduler_fix
 from library.training.sample_generation import sample_images_check
 from library.losses.loss import EMARecorder
-from library.config.dataclasses.sd_peft import SDPeftConfig
+from library.config.dataclasses.run import RunConfig
 from library.strategies.sd.training import SdTrainingStrategy
 from library.adapters.lora_utils import resolve_adapter_kwargs
 from library.training.training_metadata import create_training_metadata
@@ -93,7 +93,7 @@ init_ipex()
 logger = logging.getLogger(__name__)
 
 
-def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
+def train(cfg: RunConfig, strategies: "SdTrainingStrategy"):
     strategies.la_sampler = None
 
     session_id = random.randint(0, 2**32)
@@ -1014,13 +1014,13 @@ def train(cfg: SDPeftConfig, strategies: "SdTrainingStrategy"):
 
 
 # Register Hydra schema for this script
-from library.config.schemas import register_sd_peft
+from library.config.schemas import register_run
 
-register_sd_peft()
+register_run()
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="sd_peft")
-def main(cfg: SDPeftConfig):
+@hydra.main(version_base=None, config_path="../../configs", config_name="presets/sd_peft")
+def main(cfg: RunConfig):
     """Main entry point for SD PEFT training."""
     prepare_config(cfg)
     validate_config(cfg)

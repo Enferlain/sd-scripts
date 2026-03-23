@@ -73,7 +73,7 @@ class Trainer:
         Initialize the trainer.
 
         Args:
-            cfg: Hydra config object (e.g., SDXLPeftConfig)
+            cfg: Hydra config object (e.g., RunConfig)
             strategies: Model-specific training strategy
             mode: Training mode plugin (e.g., PeftMode)
         """

@@ -29,7 +29,7 @@ from library.optimizers.optimizer_factory import get_optimizer
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.logging.step_logging import append_lr_to_logs_with_names
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
-from library.config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
+from library.config.dataclasses.run import RunConfig
 from library.config.config_validation import prepare_config, validate_config
 
 from library.config.config_util import (
@@ -102,13 +102,13 @@ def append_block_lr_to_logs(block_lrs, logs, lr_scheduler, optimizer_type):
 
 
 # Register Hydra schema for this script
-from library.config.schemas import register_sdxl_finetune
+from library.config.schemas import register_run
 
-register_sdxl_finetune()
+register_run()
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="sdxl_finetune")
-def train(cfg: SDXLFineTuneConfig):
+@hydra.main(version_base=None, config_path="../../configs", config_name="presets/sdxl_finetune")
+def train(cfg: RunConfig):
     prepare_config(cfg)
     validate_config(cfg)
 

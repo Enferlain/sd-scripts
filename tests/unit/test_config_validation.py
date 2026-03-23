@@ -12,10 +12,7 @@ from omegaconf import OmegaConf
 from library.config.config_validation import (
     prepare_config,
     validate_config,
-    validate_sd_peft,
-    validate_sdxl_peft,
-    validate_sd_textual_inversion,
-    validate_sdxl_textual_inversion,
+    validate_dataset_groups,
 )
 
 
@@ -191,6 +188,109 @@ class TestPrepareConfig:
 @pytest.mark.config
 class TestValidateConfig:
     """Test validate_config errors and warnings."""
+
+    def test_missing_model_type_raises(self):
+        """Null or omitted model_type should raise a clear config error."""
+        cfg = OmegaConf.create(
+            {
+                "mode": "peft",
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": None},
+                "training": {"clip_skip": None},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {"caching": {"cache_text_encoder_outputs": False}},
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
+            }
+        )
+        with pytest.raises(ValueError, match="model\\.model_type is required"):
+            validate_config(cfg)
+
+    def test_invalid_mode_raises(self):
+        """Unknown top-level mode should raise ValueError when present."""
+        cfg = OmegaConf.create(
+            {
+                "mode": "mystery",
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": "sd1"},
+                "training": {"clip_skip": None},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {"caching": {"cache_text_encoder_outputs": False}},
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
+            }
+        )
+        with pytest.raises(ValueError, match="mode must be one of"):
+            validate_config(cfg)
+
+    def test_mode_peft_requires_peft_section(self):
+        """PEFT mode should fail when the PEFT section is missing."""
+        cfg = OmegaConf.create(
+            {
+                "mode": "peft",
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": "sdxl"},
+                "training": {"clip_skip": None},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {"caching": {"cache_text_encoder_outputs": False}},
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
+            }
+        )
+        with pytest.raises(ValueError, match="mode=peft requires a `peft` section"):
+            validate_config(cfg)
+
+    def test_mode_finetune_forbids_peft_section(self):
+        """Fine-tune mode should reject PEFT-specific config."""
+        cfg = OmegaConf.create(
+            {
+                "mode": "finetune",
+                "peft": {"adapter_rank": 16},
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": "sd15"},
+                "training": {"clip_skip": None},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {"caching": {"cache_text_encoder_outputs": False}},
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
+            }
+        )
+        with pytest.raises(ValueError, match="mode=finetune cannot be used with `peft` or `textual_inversion` sections"):
+            validate_config(cfg)
+
+    def test_mode_textual_inversion_forbids_peft_section(self):
+        """Textual inversion mode should reject mixed mode sections."""
+        cfg = OmegaConf.create(
+            {
+                "mode": "textual_inversion",
+                "peft": {"adapter_rank": 16},
+                "textual_inversion": {"token_string": "test"},
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": "sdxl"},
+                "training": {"clip_skip": None},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {"caching": {"cache_text_encoder_outputs": False}},
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
+            }
+        )
+        with pytest.raises(ValueError, match="`peft` and `textual_inversion` sections cannot both be active"):
+            validate_config(cfg)
 
     def test_adaptive_noise_scale_requires_noise_offset(self):
         """adaptive_noise_scale without noise_offset should raise ValueError."""
@@ -461,87 +561,60 @@ class TestValidateConfig:
 
 
 # =============================================================================
-# Script-specific validator Tests
+# Dataset-group validator Tests
 # =============================================================================
 
 
 @pytest.mark.unit
 @pytest.mark.config
-class TestScriptSpecificValidators:
-    """Test script-specific validation functions."""
+class TestDatasetGroupValidation:
+    """Test dataset-group validation derived from the active config."""
 
-    def test_validate_sd_peft_calls_verify_bucket_reso(self):
-        """validate_sd_peft should verify bucket reso with 64 steps."""
-        cfg = MagicMock()
+    def test_sd_family_uses_64_step_buckets(self):
+        """SD family configs should verify bucket reso with 64 steps."""
+        cfg = OmegaConf.create({"model": {"model_type": "sd15"}, "data": {"caching": {"cache_text_encoder_outputs": False}}})
         train_ds = MagicMock()
         val_ds = MagicMock()
 
-        validate_sd_peft(cfg, train_ds, val_ds)
+        validate_dataset_groups(cfg, train_ds, val_ds)
 
         train_ds.verify_bucket_reso_steps.assert_called_once_with(64)
         val_ds.verify_bucket_reso_steps.assert_called_once_with(64)
 
-    def test_validate_sd_peft_no_val_dataset(self):
-        """validate_sd_peft should handle None val_dataset."""
-        cfg = MagicMock()
+    def test_no_val_dataset_is_allowed(self):
+        """Dataset-group validation should handle missing validation datasets."""
+        cfg = OmegaConf.create({"model": {"model_type": "sd15"}, "data": {"caching": {"cache_text_encoder_outputs": False}}})
         train_ds = MagicMock()
 
-        validate_sd_peft(cfg, train_ds, None)
+        validate_dataset_groups(cfg, train_ds, None)
 
         train_ds.verify_bucket_reso_steps.assert_called_once_with(64)
 
-    def test_validate_sdxl_peft_calls_verify_bucket_reso_32(self):
-        """validate_sdxl_peft should verify bucket reso with 32 steps."""
-        cfg = MagicMock()
-        cfg.data.caching.cache_text_encoder_outputs = False
-        # Set TE LR to 0 (not training TE)
-        cfg.optimizer.learning_rates.text_encoders = 0
+    def test_sdxl_uses_32_step_buckets(self):
+        """SDXL configs should verify bucket reso with 32 steps."""
+        cfg = OmegaConf.create({"model": {"model_type": "sdxl"}, "data": {"caching": {"cache_text_encoder_outputs": False}}})
         train_ds = MagicMock()
         val_ds = MagicMock()
 
-        validate_sdxl_peft(cfg, train_ds, val_ds)
+        validate_dataset_groups(cfg, train_ds, val_ds)
 
         train_ds.verify_bucket_reso_steps.assert_called_once_with(32)
         val_ds.verify_bucket_reso_steps.assert_called_once_with(32)
 
-    def test_validate_sdxl_peft_cache_te_requires_cacheable(self):
-        """SDXL cache_text_encoder_outputs requires dataset to be cacheable."""
-        cfg = MagicMock()
-        cfg.data.caching.cache_text_encoder_outputs = True
-        # Set TE LR to 0 (not training TE, so caching is allowed)
-        cfg.optimizer.learning_rates.text_encoders = 0
+    def test_cache_te_requires_dataset_group_cacheability(self):
+        """Dataset-group validation should reject TE caching for non-cacheable datasets."""
+        cfg = OmegaConf.create({"model": {"model_type": "sdxl"}, "data": {"caching": {"cache_text_encoder_outputs": True}}})
         train_ds = MagicMock()
         train_ds.is_text_encoder_output_cacheable.return_value = False
 
-        with pytest.raises(AssertionError):
-            validate_sdxl_peft(cfg, train_ds, None)
+        with pytest.raises(ValueError, match="cache_text_encoder_outputs"):
+            validate_dataset_groups(cfg, train_ds, None)
 
-    def test_validate_sdxl_peft_cache_te_conflicts_with_te_training(self):
-        """Cannot cache TE outputs while training TE peft."""
-        cfg = MagicMock()
-        cfg.data.caching.cache_text_encoder_outputs = True
-        # TE LR > 0 means training TE, which conflicts with caching
-        cfg.optimizer.learning_rates.text_encoders = 1e-5
-        train_ds = MagicMock()
-        train_ds.is_text_encoder_output_cacheable.return_value = True
-
-        with pytest.raises(AssertionError):
-            validate_sdxl_peft(cfg, train_ds, None)
-
-    def test_validate_sd_textual_inversion_bucket_64(self):
-        """SD textual inversion uses 64-step buckets."""
-        cfg = MagicMock()
+    def test_unknown_model_type_skips_bucket_validation(self):
+        """Unknown or future model families should not force bucket-step validation here."""
+        cfg = OmegaConf.create({"model": {"model_type": "flux"}, "data": {"caching": {"cache_text_encoder_outputs": False}}})
         train_ds = MagicMock()
 
-        validate_sd_textual_inversion(cfg, train_ds, None)
+        validate_dataset_groups(cfg, train_ds, None)
 
-        train_ds.verify_bucket_reso_steps.assert_called_once_with(64)
-
-    def test_validate_sdxl_textual_inversion_bucket_32(self):
-        """SDXL textual inversion uses 32-step buckets."""
-        cfg = MagicMock()
-        train_ds = MagicMock()
-
-        validate_sdxl_textual_inversion(cfg, train_ds, None)
-
-        train_ds.verify_bucket_reso_steps.assert_called_once_with(32)
+        train_ds.verify_bucket_reso_steps.assert_not_called()

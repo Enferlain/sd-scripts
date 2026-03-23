@@ -20,6 +20,8 @@ from library.optimizers.optimizer_utils import should_train_text_encoder
 
 logger = logging.getLogger(__name__)
 
+VALID_MODES = {"finetune", "peft", "textual_inversion"}
+
 
 def _is_non_bool_number(value: object) -> bool:
     """Return True for int/float values, excluding bool."""
@@ -63,13 +65,14 @@ def _is_text_encoder_output_cacheable_config(cfg) -> bool:
 
 def _validate_model_profile_config(cfg) -> None:
     """Validate model-family rules expressible directly from active config."""
-    required_steps = _get_required_bucket_reso_steps(getattr(cfg.model, "model_type", None))
+    model_type = _get_optional_attr(cfg, "model", "model_type")
+    if model_type is None or (isinstance(model_type, str) and model_type.strip() == ""):
+        raise ValueError("model.model_type is required. Set it in the config to a value like sd15, sd2, sdxl, or flux.")
+
+    required_steps = _get_required_bucket_reso_steps(model_type)
     bucket_reso_steps = _get_optional_attr(cfg, "data", "bucketing", "bucket_reso_steps")
     if required_steps is not None and bucket_reso_steps is not None and bucket_reso_steps % required_steps != 0:
-        raise ValueError(
-            f"bucket_reso_steps={bucket_reso_steps} must be divisible by {required_steps} "
-            f"for model_type={cfg.model.model_type}"
-        )
+        raise ValueError(f"bucket_reso_steps={bucket_reso_steps} must be divisible by {required_steps} for model_type={model_type}")
 
     cache_te_outputs = _get_optional_attr(cfg, "data", "caching", "cache_text_encoder_outputs", default=False)
     if cache_te_outputs and not _is_text_encoder_output_cacheable_config(cfg):
@@ -78,6 +81,37 @@ def _validate_model_profile_config(cfg) -> None:
             "shuffle_caption, token_warmup_step, or caption_tag_dropout_rate because "
             "those settings change text conditioning between steps."
         )
+
+
+def _validate_mode_config(cfg) -> None:
+    """Validate the top-level training mode when present on the config."""
+    mode = getattr(cfg, "mode", None)
+    if mode is None:
+        return
+
+    if mode not in VALID_MODES:
+        raise ValueError(f"mode must be one of {sorted(VALID_MODES)}, got {mode}")
+
+    has_peft = _get_optional_attr(cfg, "peft") is not None
+    has_textual_inversion = _get_optional_attr(cfg, "textual_inversion") is not None
+
+    if has_peft and has_textual_inversion:
+        raise ValueError("`peft` and `textual_inversion` sections cannot both be active in the same config.")
+
+    if mode == "peft":
+        if not has_peft:
+            raise ValueError("mode=peft requires a `peft` section.")
+        if has_textual_inversion:
+            raise ValueError("mode=peft cannot be used with a `textual_inversion` section.")
+
+    if mode == "textual_inversion":
+        if not has_textual_inversion:
+            raise ValueError("mode=textual_inversion requires a `textual_inversion` section.")
+        if has_peft:
+            raise ValueError("mode=textual_inversion cannot be used with a `peft` section.")
+
+    if mode == "finetune" and (has_peft or has_textual_inversion):
+        raise ValueError("mode=finetune cannot be used with `peft` or `textual_inversion` sections.")
 
 
 # =============================================================================
@@ -291,10 +325,10 @@ def validate_config(cfg) -> None:
     # TE caching + TE training conflict
     if cfg.data.caching.cache_text_encoder_outputs and should_train_text_encoder(cfg.optimizer.learning_rates):
         raise ValueError(
-            "Cannot train text encoder while TE output caching is enabled. "
-            "Disable TE output caching, or set text_encoders LR to 0."
+            "Cannot train text encoder while TE output caching is enabled. Disable TE output caching, or set text_encoders LR to 0."
         )
 
+    _validate_mode_config(cfg)
     _validate_model_profile_config(cfg)
 
     # TODO: Revisit when model-agnostic block/layer granular LR is implemented
@@ -322,32 +356,16 @@ def _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group,
         val_dataset_group.verify_bucket_reso_steps(min_steps)
 
 
-def validate_sd_peft(cfg, train_dataset_group, val_dataset_group) -> None:
-    """SD 1.5/2.0 PEFT-specific dataset validation."""
-    _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, 64)
+def validate_dataset_groups(cfg, train_dataset_group, val_dataset_group) -> None:
+    """Validate dataset-group constraints that depend on the active config."""
+    required_steps = _get_required_bucket_reso_steps(_get_optional_attr(cfg, "model", "model_type"))
+    if required_steps is not None:
+        _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, required_steps)
 
-
-def validate_sdxl_peft(cfg, train_dataset_group, val_dataset_group) -> None:
-    """SDXL PEFT-specific dataset validation."""
-    _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, 32)
-
-    if cfg.data.caching.cache_text_encoder_outputs:
-        assert train_dataset_group.is_text_encoder_output_cacheable(), (
-            "when caching Text Encoder output, caption_dropout_rate, shuffle_caption, "
-            "token_warmup_step, or caption_tag_dropout_rate cannot be used"
-        )
-
-    train_te = should_train_text_encoder(cfg.optimizer.learning_rates)
-    assert not train_te or not cfg.data.caching.cache_text_encoder_outputs, (
-        "Adapter for Text Encoder cannot be trained with caching Text Encoder outputs"
-    )
-
-
-def validate_sd_textual_inversion(cfg, train_dataset_group, val_dataset_group) -> None:
-    """SD 1.5/2.0 Textual Inversion-specific dataset validation."""
-    _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, 64)
-
-
-def validate_sdxl_textual_inversion(cfg, train_dataset_group, val_dataset_group) -> None:
-    """SDXL Textual Inversion-specific dataset validation."""
-    _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, 32)
+    if _get_optional_attr(cfg, "data", "caching", "cache_text_encoder_outputs", default=False):
+        is_cacheable = getattr(train_dataset_group, "is_text_encoder_output_cacheable", None)
+        if callable(is_cacheable) and not is_cacheable():
+            raise ValueError(
+                "cache_text_encoder_outputs cannot be used with dataset/caption settings that change text conditioning "
+                "between steps."
+            )

@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-23]
+
+### Changed
+
+- **Hydra config composition now has an active entry-config audit** — The current shipped entry configs are now checked against the nested dataclass schema instead of relying on a few spot checks.
+  - `tests/unit/test_configs.py` now composes every active entry config under `configs/` (excluding `_defaults/` fragments and the example override file) so schema drift is caught by a single regression test.
+  - The generic internal baseline config was updated to the current nested defaults layout and moved under `configs/_defaults/config/default.yaml` so ad hoc composition and config tooling still have a valid baseline without leaving a fake entry config at the top level.
+  - Removed the empty SDXL placeholder namespace from the active schema/defaults path: the SDXL root dataclasses no longer expose a no-op `sdxl` field, the top-level SDXL config files no longer compose `sdxl: default`, and the dead placeholder files were deleted.
+  - `configs/model/default.yaml` is now truly shared again: it no longer chooses a model family, `ModelConfig.model_type` is required in the schema, and the top-level SD / SDXL configs now set `model.model_type` explicitly so run identity cannot drift from the config entrypoint.
+  - `configs/model/default.yaml` now still shows `model_type` explicitly, but as `null` instead of a misleading family default, and `config_validation.py` raises a clear error if it is left unset.
+  - The duplicated SD / SDXL root dataclass definitions were removed from the active path entirely: top-level presets now compose through one shared `run_schema`, while `peft` and `textual_inversion` remain the only mode-specific nested config sections.
+  - Active configs still declare `mode` explicitly (`peft`, `finetune`, or `textual_inversion`), and `config_validation.py` now enforces that `mode` matches the presence or absence of the `peft` / `textual_inversion` sections.
+  - The old entrypoint-flavored dataset validators (`validate_sd_*`, `validate_sdxl_*`) were replaced in the active path with one generic `validate_dataset_groups(...)` helper that derives bucket-step rules from `model.model_type` and handles dataset-backed TE-cacheability checks without encoding script names in the API.
+  - Config files are now organized more clearly by role: dataclass-backed default fragments live under `configs/_defaults/`, primary user entry presets under `configs/presets/`, example entry configs under `configs/examples/`, benchmark configs under `configs/benchmarks/`, and test-only configs under `configs/tests/`. Hydra defaults, script decorators, and moved config references were updated to match the new layout.
+  - The `_defaults/` reorganization now keeps preset files readable: package ownership lives inside each `_defaults/*/default.yaml` via `# @package ...`, so top-level presets can use `- _defaults/optimizer: default` instead of the uglier Hydra remap form `- _defaults/optimizer@optimizer: default`.
+  - Added missing Hydra `_self_` entries to the primary SD / SDXL top-level configs to remove composition-order warnings.
+- **SDXL training-time text conditioning now routes through the strategy encoding/tokenization seam** — The SDXL diffusion path now follows the same contract shape SD already uses instead of reaching directly into model helpers from the training facet.
+  - `library/strategies/sdxl/diffusion.py` now resolves live text conditioning through `tokenize()`, `tokenize_with_weights()`, `encode_tokens()`, `encode_tokens_with_weights()`, and `get_models_for_text_encoding()` rather than calling `encode_input_ids_sdxl(...)` directly.
+  - This keeps diffusion ownership focused on orchestration while the SDXL tokenization/encoding facets continue to own model-family behavior.
+  - SDXL weighted-caption support is now available on the live-encoding training path in the same way SD already handled it; TE-output caching policy remains a separate concern.
+- **SDXL strategy tests now assert the hook-based text-conditioning path directly** — Updated unit coverage so the training facet checks the strategy seam rather than the old direct model-helper call path.
+  - `tests/unit/strategies/test_strategies_sdxl.py` now verifies caption fallback, weighted-caption encoding, and cached-output short-circuit behavior via the active SDXL strategy methods.
+
 ## [2026-03-20]
 
 ### Changed
@@ -13,13 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `library/training/sample_generation.py` no longer chooses SD vs. SDXL pipelines, carries sampling-runtime state bundles, or relies on callback/builder-style indirection.
   - `library/strategies/sd/sampling.py` and `library/strategies/sdxl/sampling.py` now unwrap models, build their concrete pipelines locally, and restore runtime state around the shared sampling loop.
   - The deprecated SD / SDXL sampling wrappers were adjusted to keep working with the simpler shared helper shape.
-- **Post-refactor strategy fixes landed from real benchmark runs** — Follow-up benchmark coverage flushed out a few remaining mixed-in state and naming leftovers in the active path.
-  - `SdxlTextEncodingStrategy` now tolerates mixed-in use when `_tokenizers` was never initialized directly, which fixed SDXL weighted-prompt sampling through the LPW pipeline.
-  - `SdxlCheckpointingStrategy.save_model_checkpoint()` now unwraps `trainer.denoiser` instead of the removed `trainer.unet` field.
-  - `SdTextEncodingStrategy` exposes `clip_skip` again for direct facet tests, and the SD strategy tests now call `process_batch(...)` with the active `denoiser=` seam rather than stale `unet=` kwargs.
-- **Text-encoder benchmark config/validation feedback tightened** — The text-encoder benchmark config and its failure message now reflect the actual TE-caching rules more clearly.
-  - `configs/test_text_encoder.yaml` now disables both `cache_text_encoder_outputs` and `cache_text_encoder_outputs_to_disk`, so it no longer re-enables TE caching through inherited disk-cache settings.
-  - The TE-training validation error now says plainly to disable TE output caching or set text-encoder LR to `0`, without leaking implementation detail into the message.
 - **Config validation structure tightened** — Model/profile-specific validation no longer has to accumulate in `config_validation.py`.
   - Kept the cleanup inside `library/config/config_validation.py` instead of introducing another validation module, while still separating generic config checks from smaller internal helper functions.
   - `validate_config()` now enforces known model-family bucket-step requirements directly from config (`sdxl` -> 32-step buckets, `sd1`/`sd15`/`sd2` -> 64-step buckets) instead of relying only on script-owned dataset-group validators.
@@ -32,6 +48,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Split SD model loading, model preparation, checkpointing, sampling, denoiser calling, diffusion training, and validation into self-titled files under `library/strategies/sd/`.
   - Reduced `sd/training.py` to strategy assembly and init/wiring, with the mixin order matching the base `TrainingStrategy` facet order.
   - Updated `SdTextEncodingStrategy` for mixed-in use with `SdTokenizeStrategy`, added a training-facing `SdCachingStrategy`, and refreshed `tests/unit/strategies/test_strategies_sd.py` to assert the new concern ownership.
+
+### Fixed
+
+- **Post-refactor strategy leftovers found by benchmark runs** — Follow-up benchmark coverage flushed out the remaining mixed-in state and stale naming issues in the active path.
+  - `SdxlTextEncodingStrategy` now tolerates mixed-in use when `_tokenizers` was never initialized directly, which fixed SDXL weighted-prompt sampling through the LPW pipeline.
+  - `SdxlCheckpointingStrategy.save_model_checkpoint()` now unwraps `trainer.denoiser` instead of the removed `trainer.unet` field.
+  - `SdTextEncodingStrategy` exposes `clip_skip` again for direct facet tests, and the SD strategy tests now call `process_batch(...)` with the active `denoiser=` seam rather than stale `unet=` kwargs.
+- **Text-encoder benchmark config and validation feedback now line up** — The text-encoder benchmark config no longer re-enables TE caching through inherited disk-cache settings, and the resulting validation message is clearer.
+  - `configs/test_text_encoder.yaml` now disables both `cache_text_encoder_outputs` and `cache_text_encoder_outputs_to_disk`.
+  - The TE-training validation error now says plainly to disable TE output caching or set text-encoder LR to `0`.
 
 ## [2026-03-19]
 
@@ -49,17 +75,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `sdxl/denoiser.py` now owns the SDXL denoiser-calling facet, including the UNet-call bridge and micro-conditioning tensor extraction.
   - `sdxl/diffusion.py` now owns the SDXL diffusion-training facet, including training-time text-conditioning resolution, noise/target assembly, and `process_batch(...)`.
   - The SDXL second-pass polish now mirrors the base contract more closely: the mixin order in `sdxl/training.py` follows the `TrainingStrategy` facet order, and the stale strategy-side `on_step_start(...)` validation hook has been removed now that step-start ownership lives on the training-mode layer.
-- **Validation contract cleanup for active strategies** — The live runner/strategy validation path now matches the current shared contract more closely.
-  - Fixed the active step-validation call in `training_loop.py` to pass `epoch`, `batch`, and `train_text_encoder` in the correct order to `calculate_val_loss(...)`.
-  - Removed the stale `self.on_step_start(...)` call from SD strategy validation after step-start ownership moved to the training-mode layer.
-  - Aligned `SdTrainingStrategy.calculate_val_loss(...)` with the base validation contract by returning the same 2-tuple shape as SDXL and the shared runner path.
 - **Trainability policy moved out of the base strategy contract** — Generic LR-driven trainability decisions now live in explicit shared helpers instead of `ModelPreparationStrategy`.
   - Centralized `should_train_denoiser()`, `should_train_text_encoder()`, and per-TE flag resolution in the shared optimizer helper layer.
   - `FineTuneMode`, `PeftMode`, and shared optimizer setup now call the trainability helpers directly.
-  - Removed the LR-query wrapper methods from `ModelPreparationStrategy`, leaving only the genuinely model-owned preparation hooks on that facet.
-- **Denoiser accelerator wrapping no longer pretends to be strategy-owned** — `prepare_denoiser_with_accelerator(...)` has been removed from the base strategy contract.
-  - `FineTuneMode` and `PeftMode` now call `accelerator.prepare(...)` directly for denoiser wrapping in the non-DeepSpeed path.
-  - Updated the base-strategy audit/tests to reflect that denoiser accelerator preparation is shared mode logic, not a model-family seam.
 - **Model-preparation hooks are now explicit** — The remaining `ModelPreparationStrategy` hooks no longer rely on silent base defaults.
   - `cast_text_encoder()`, `cast_vae()`, `cast_denoiser()`, and `post_process_trainable()` are now explicit strategy methods instead of inherited default behavior.
   - SD and SDXL now provide the current behavior intentionally, making the remaining model-preparation seam more honest.
@@ -72,6 +90,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Generic LR-driven trainability policy stays in the shared optimizer helper layer.
   - `get_noise_scheduler()`, `log_training_diagnostics()`, and `create_training_metadata()` remain `cfg`-based where they are effectively trainer-facing orchestration helpers.
 
+### Removed
+
+- **Strategy contract no longer owns generic trainability and denoiser wrapping helpers** — The remaining non-model-specific helper seams were removed from the base strategy surface.
+  - Removed the LR-query wrapper methods from `ModelPreparationStrategy`, leaving only the genuinely model-owned preparation hooks on that facet.
+  - Removed `prepare_denoiser_with_accelerator(...)` from the base strategy contract; `FineTuneMode` and `PeftMode` now call `accelerator.prepare(...)` directly for denoiser wrapping in the non-DeepSpeed path.
+  - Updated the base-strategy audit/tests to reflect that denoiser accelerator preparation is shared mode logic, not a model-family seam.
+
+### Fixed
+
+- **Validation contract cleanup for active strategies** — The live runner/strategy validation path now matches the current shared contract more closely.
+  - Fixed the active step-validation call in `training_loop.py` to pass `epoch`, `batch`, and `train_text_encoder` in the correct order to `calculate_val_loss(...)`.
+  - Removed the stale `self.on_step_start(...)` call from SD strategy validation after step-start ownership moved to the training-mode layer.
+  - Aligned `SdTrainingStrategy.calculate_val_loss(...)` with the base validation contract by returning the same 2-tuple shape as SDXL and the shared runner path.
+
 ## [2026-03-18]
 
 ### Changed
@@ -81,13 +113,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated shared helpers like `sample_images_common()` and `append_lr_to_logs()` to use denoiser-oriented params/docs in the active path.
   - Added a `LearningRatesConfig.denoiser` alias over the existing `learning_rates.unet` field so shared code can move forward without forcing config churn yet.
   - Left concrete SD / SDXL internals, adapter APIs, and compatibility metadata/config keys on `unet` where they still refer to genuinely UNet-shaped or compatibility-sensitive surfaces.
-- **Active strategy contract pruned further** — Removed deprecated-only hooks from the live `TrainingStrategy` contract surface.
-  - Removed the unused `on_validation_step_end()` runtime hook from `TrainingRuntimeStrategy`.
-  - Removed the unused `TrainingRuntimeStrategy.on_step_start()` hook and the shared-loop call site; active step-start behavior now lives on the training mode layer.
-  - Removed `ValidationStrategy.validate_extra_config()` from the active strategy contract and from the SD / SDXL training strategies.
-  - Removed `ModelPreparationStrategy.is_text_encoder_not_needed_for_training()`, which was only referenced by deprecated script paths.
-  - Removed `SdxlTrainingStrategy.cache_text_encoder_outputs_if_needed()`, which was only referenced by deprecated PEFT script paths.
-  - Removed the now-misleading `@dataclass` decoration from `TrainingStrategy`, `SdTrainingStrategy`, and `SdxlTrainingStrategy`.
 - **TrainingStrategy now owns tokenization/text-encoding behavior directly** — `TrainingStrategy` now inherits the `TokenizationStrategy` and `TextEncodingStrategy` facets, while `SdTrainingStrategy` and `SdxlTrainingStrategy` implement `tokenize()`, `tokenize_with_weights()`, `encode_tokens()`, and `encode_tokens_with_weights()` directly.
   - Removed `_tokenize_strategy` / `_text_encoding_strategy` instance state from `TrainingStrategy`.
   - Removed `get_tokenize_strategy()`, `get_tokenizers()`, and `get_text_encoding_strategy()` from the active strategy contract.
@@ -99,6 +124,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tokenizer ownership now matches the tokenization facet** — `tokenizers` now lives as a tokenization-facet contract with concrete storage on the SD / SDXL training strategies, instead of as a shared data field on the composed `TrainingStrategy` base.
 - **Sampling now receives the training strategy itself** — `sample_images_common()` and the SDXL LPW sampling pipeline no longer receive separate tokenization/text-encoding runtime objects; SDXL sampling now uses the concrete `TrainingStrategy` instance as the prompt tokenization/encoding surface.
 - **Strategy tests updated for direct facets** — Base, SD, SDXL, and resume-logic tests now exercise the direct strategy-facet API instead of the removed sub-strategy factories/instance state.
+
+### Removed
+
+- **Active strategy contract pruned further** — Deprecated-only hooks and misleading base decorations were removed from the live strategy surface.
+  - Removed the unused `on_validation_step_end()` runtime hook from `TrainingRuntimeStrategy`.
+  - Removed the unused `TrainingRuntimeStrategy.on_step_start()` hook and the shared-loop call site; active step-start behavior now lives on the training mode layer.
+  - Removed `ValidationStrategy.validate_extra_config()` from the active strategy contract and from the SD / SDXL training strategies.
+  - Removed `ModelPreparationStrategy.is_text_encoder_not_needed_for_training()`, which was only referenced by deprecated script paths.
+  - Removed `SdxlTrainingStrategy.cache_text_encoder_outputs_if_needed()`, which was only referenced by deprecated PEFT script paths.
+  - Removed the now-misleading `@dataclass` decoration from `TrainingStrategy`, `SdTrainingStrategy`, and `SdxlTrainingStrategy`.
 
 ## [2026-03-12]
 

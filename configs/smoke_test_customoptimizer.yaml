@@ -4,8 +4,10 @@
 # Usage: python scripts/sdxl_peft.py --config-name=smoke_test
 
 defaults:
-  - sdxl_peft_schema
+  - run_schema
   - _self_
+
+mode: peft
 
 # ─── MODEL ──────────────────────────────────────────────────────────────────
 model:

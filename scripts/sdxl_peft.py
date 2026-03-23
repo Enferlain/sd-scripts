@@ -14,7 +14,7 @@ import logging
 import hydra
 
 from library.config.config_validation import prepare_config, validate_config
-from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
+from library.config.dataclasses.run import RunConfig
 from library.strategies.sdxl.training import SdxlTrainingStrategy
 from library.training.runners.trainer import Trainer
 from library.training.modes import PeftMode
@@ -27,7 +27,7 @@ init_ipex()
 logger = logging.getLogger(__name__)
 
 
-def train(cfg: SDXLPeftConfig, strategies: SdxlTrainingStrategy) -> None:
+def train(cfg: RunConfig, strategies: SdxlTrainingStrategy) -> None:
     """Run SDXL PEFT training.
 
     Args:
@@ -39,8 +39,8 @@ def train(cfg: SDXLPeftConfig, strategies: SdxlTrainingStrategy) -> None:
     trainer.train()
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="sdxl_peft")
-def main(cfg: SDXLPeftConfig):
+@hydra.main(version_base=None, config_path="../configs", config_name="presets/sdxl_peft")
+def main(cfg: RunConfig):
     """Main entry point for SDXL PEFT training."""
     prepare_config(cfg)
     validate_config(cfg)
@@ -51,7 +51,7 @@ def main(cfg: SDXLPeftConfig):
 
 if __name__ == "__main__":
     # Register Hydra schema only when running as script
-    from library.config.schemas import register_sdxl_peft
+    from library.config.schemas import register_run
 
-    register_sdxl_peft()
+    register_run()
     main()

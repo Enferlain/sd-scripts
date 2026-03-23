@@ -5,6 +5,8 @@ Tests that all config dataclasses properly instantiate, have correct defaults,
 and work with Hydra composition from YAML files.
 """
 
+import os
+
 import pytest
 from hydra import compose
 
@@ -21,7 +23,6 @@ from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import SamplingConfig
 from library.config.dataclasses.timestep import TimestepConfig
-from library.config.dataclasses.sdxl import SDXLConfig
 
 
 # ============================================================================
@@ -76,6 +77,7 @@ class TestConfigInstantiation:
         """Test ModelConfig instantiation with defaults."""
         config = ModelConfig()
         assert config is not None
+        assert hasattr(config, "model_type")
         assert hasattr(config, "pretrained_model_name_or_path")
 
     def test_saving_config_instantiation(self):
@@ -128,17 +130,6 @@ class TestConfigInstantiation:
         assert config is not None
         assert hasattr(config, "timestep_sampling")  # Field is 'timestep_sampling', not 'timestep_sampler'
 
-    def test_sdxl_config_instantiation(self):
-        """Test SDXLConfig instantiation with defaults."""
-        config = SDXLConfig()
-        assert config is not None
-        # SDXL-specific fields
-
-
-# ============================================================================
-# Config Values Tests
-# ============================================================================
-
 
 @pytest.mark.config
 @pytest.mark.unit
@@ -162,7 +153,7 @@ class TestConfigDefaults:
     def test_bucketing_config_defaults(self):
         """Test BucketingConfig default values."""
         config = BucketingConfig()
-        assert config.enable_bucket == False
+        assert not config.enable_bucket
         assert config.min_bucket_reso == 256
         assert config.max_bucket_reso == 1024
         assert config.bucket_reso_steps == 64
@@ -185,54 +176,90 @@ class TestConfigDefaults:
 class TestHydraComposition:
     """Test that configs properly compose from YAML files using Hydra."""
 
+    def test_all_active_entry_configs_compose(self, hydra_ctx):
+        """Every active entry config should compose against the current schema."""
+        config_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../configs"))
+        config_names = []
+        for root, _, filenames in os.walk(config_dir):
+            rel_root = os.path.relpath(root, config_dir)
+            if rel_root.startswith("_defaults"):
+                continue
+
+            for filename in filenames:
+                if not filename.endswith(".yaml"):
+                    continue
+                if rel_root == "examples":
+                    continue
+
+                rel_path = filename[:-5] if rel_root == "." else os.path.join(rel_root, filename[:-5])
+                config_names.append(rel_path.replace(os.sep, "/"))
+
+        config_names.sort()
+
+        for config_name in config_names:
+            cfg = compose(config_name=config_name)
+            assert cfg is not None, f"{config_name} failed to compose"
+
     def test_sd_peft_config_composition(self, hydra_ctx):
         """Test sd_peft config loading via Hydra."""
-        cfg = compose(config_name="sd_peft")
+        cfg = compose(config_name="presets/sd_peft")
         assert cfg is not None
+        assert cfg.mode == "peft"
         assert "peft" in cfg
         assert "optimizer" in cfg
         assert "data" in cfg
         assert "training" in cfg
+        assert cfg.model.model_type == "sd15"
 
     def test_sd_finetune_config_composition(self, hydra_ctx):
         """Test sd_finetune config loading via Hydra."""
-        cfg = compose(config_name="sd_finetune")
+        cfg = compose(config_name="presets/sd_finetune")
         assert cfg is not None
+        assert cfg.mode == "finetune"
         assert "optimizer" in cfg
         assert "data" in cfg
         assert "training" in cfg
+        assert cfg.model.model_type == "sd15"
 
     def test_sd_textual_inversion_config_composition(self, hydra_ctx):
         """Test sd_textual_inversion config loading via Hydra."""
-        cfg = compose(config_name="sd_textual_inversion")
+        cfg = compose(config_name="presets/sd_textual_inversion")
         assert cfg is not None
+        assert cfg.mode == "textual_inversion"
         assert "optimizer" in cfg
         assert "data" in cfg
         assert "training" in cfg
+        assert cfg.model.model_type == "sd15"
 
     def test_sdxl_peft_config_composition(self, hydra_ctx):
         """Test sdxl_peft config loading via Hydra."""
-        cfg = compose(config_name="sdxl_peft")
+        cfg = compose(config_name="presets/sdxl_peft")
         assert cfg is not None
+        assert cfg.mode == "peft"
         assert "peft" in cfg
         assert "optimizer" in cfg
-        assert "sdxl" in cfg
+        assert "sdxl" not in cfg
+        assert cfg.model.model_type == "sdxl"
 
     def test_sdxl_finetune_config_composition(self, hydra_ctx):
         """Test sdxl_finetune config loading via Hydra."""
-        cfg = compose(config_name="sdxl_finetune")
+        cfg = compose(config_name="presets/sdxl_finetune")
         assert cfg is not None
+        assert cfg.mode == "finetune"
         assert "optimizer" in cfg
         assert "data" in cfg
-        assert "sdxl" in cfg
+        assert "sdxl" not in cfg
+        assert cfg.model.model_type == "sdxl"
 
     def test_sdxl_textual_inversion_config_composition(self, hydra_ctx):
         """Test sdxl_textual_inversion config loading via Hydra."""
-        cfg = compose(config_name="sdxl_textual_inversion")
+        cfg = compose(config_name="presets/sdxl_textual_inversion")
         assert cfg is not None
+        assert cfg.mode == "textual_inversion"
         assert "optimizer" in cfg
         assert "data" in cfg
-        assert "sdxl" in cfg
+        assert "sdxl" not in cfg
+        assert cfg.model.model_type == "sdxl"
 
 
 # ============================================================================
@@ -247,18 +274,20 @@ class TestConfigOverrides:
 
     def test_optimizer_override(self, hydra_ctx):
         """Test overriding optimizer config values."""
-        cfg = compose(config_name="sd_peft", overrides=["optimizer.learning_rates.base=5e-5", "optimizer.optimizer_type=AdamW"])
+        cfg = compose(
+            config_name="presets/sd_peft", overrides=["optimizer.learning_rates.base=5e-5", "optimizer.optimizer_type=AdamW"]
+        )
         assert cfg.optimizer.learning_rates.base == 5e-5
         assert cfg.optimizer.optimizer_type == "AdamW"
 
     def test_network_override(self, hydra_ctx):
         """Test overriding peft config values."""
-        cfg = compose(config_name="sd_peft", overrides=["peft.adapter_rank=128", "peft.adapter_alpha=128"])
+        cfg = compose(config_name="presets/sd_peft", overrides=["peft.adapter_rank=128", "peft.adapter_alpha=128"])
         assert cfg.peft.adapter_rank == 128
         assert cfg.peft.adapter_alpha == 128
 
     def test_training_override(self, hydra_ctx):
         """Test overriding training config values."""
-        cfg = compose(config_name="sd_peft", overrides=["training.max_train_epochs=20", "training.train_batch_size=4"])
+        cfg = compose(config_name="presets/sd_peft", overrides=["training.max_train_epochs=20", "training.train_batch_size=4"])
         assert cfg.training.max_train_epochs == 20
         assert cfg.training.train_batch_size == 4

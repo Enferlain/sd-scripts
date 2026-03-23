@@ -9,7 +9,7 @@ def test_sd_peft_config_loading():
     config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../configs"))
 
     with hydra.initialize_config_dir(version_base=None, config_dir=config_path):
-        cfg = hydra.compose(config_name="sd_peft")
+        cfg = hydra.compose(config_name="presets/sd_peft")
         assert cfg is not None
 
         # Check if key sections exist

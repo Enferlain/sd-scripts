@@ -43,7 +43,7 @@ from library.optimizers.optimizer_utils import prepare_optimizer
 from library.optimizers.scheduler import get_scheduler_fix
 from library.training.sample_generation import sample_images_check
 from library.losses.loss import EMARecorder
-from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
+from library.config.dataclasses.run import RunConfig
 from library.strategies.sdxl.training import SdxlTrainingStrategy
 from library.adapters.lora_utils import resolve_adapter_kwargs
 from library.training.training_metadata import create_training_metadata
@@ -105,7 +105,7 @@ init_ipex()
 logger = logging.getLogger(__name__)
 
 
-def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
+def train(cfg: RunConfig, strategies: "SdxlTrainingStrategy"):
     strategies.la_sampler = None
 
     session_id = random.randint(0, 2**32)
@@ -1334,8 +1334,8 @@ def train(cfg: SDXLPeftConfig, strategies: "SdxlTrainingStrategy"):
     logger.info("model saved.")
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="sdxl_peft")
-def main(cfg: SDXLPeftConfig):
+@hydra.main(version_base=None, config_path="../../configs", config_name="presets/sdxl_peft")
+def main(cfg: RunConfig):
     """Main entry point for SDXL PEFT training."""
     prepare_config(cfg)
     validate_config(cfg)
@@ -1346,7 +1346,7 @@ def main(cfg: SDXLPeftConfig):
 
 if __name__ == "__main__":
     # Register Hydra schema only when running as script
-    from library.config.schemas import register_sdxl_peft
+    from library.config.schemas import register_run
 
-    register_sdxl_peft()
+    register_run()
     main()

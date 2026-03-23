@@ -44,7 +44,7 @@ EXPECTED_IMAGE_COUNT = (
 
 @pytest.fixture
 def mock_cfg():
-    """Create a mock config matching SDXLPeftConfig structure."""
+    """Create a mock config matching the shared PEFT config structure."""
     cfg = MagicMock()
 
     # Data config

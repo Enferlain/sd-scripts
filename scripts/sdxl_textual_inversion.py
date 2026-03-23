@@ -13,8 +13,9 @@ from library.utils.device_utils import init_ipex
 from library.data._deprecated.dataset import DatasetGroup, MinimalDataset
 from library.training._deprecated.sdxl_sample_generation import sample_images
 from library.models.sdxl.loader import load_target_model as load_target_model_sdxl
-from library.config.dataclasses.sdxl_textual_inversion import SDXLTextualInversionConfig
-from library.config.config_validation import prepare_config, validate_config, validate_sdxl_textual_inversion
+from library.config.dataclasses.run import RunConfig
+from library.config.config_validation import prepare_config, validate_config, validate_dataset_groups
+from library.config.schemas import register_run
 
 init_ipex()
 
@@ -27,7 +28,7 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         self.is_sdxl = True
 
     def validate_extra_config(self, config, train_dataset_group: DatasetGroup | MinimalDataset, val_dataset_group: DatasetGroup | None):
-        validate_sdxl_textual_inversion(config, train_dataset_group, val_dataset_group)
+        validate_dataset_groups(config, train_dataset_group, val_dataset_group)
 
     def load_target_model(self, cfg, weight_dtype, accelerator):
         (
@@ -142,18 +143,15 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         return [emb_l, emb_g]
 
 
-# Register Hydra schema for this script
-from library.config.schemas import register_sdxl_textual_inversion
-
-register_sdxl_textual_inversion()
+register_run()
 
 
-@hydra.main(config_path="../configs", config_name="sdxl_textual_inversion", version_base=None)
-def main(config: SDXLTextualInversionConfig):
+@hydra.main(config_path="../configs", config_name="presets/sdxl_textual_inversion", version_base=None)
+def main(config: RunConfig):
     prepare_config(config)
     validate_config(config)
     trainer = SdxlTextualInversionTrainer()
-    trainer.train(config)  # TODO: Expected type 'TextualInversionConfig', got 'SDXLTextualInversionConfig' instead
+    trainer.train(config)
 
 
 if __name__ == "__main__":

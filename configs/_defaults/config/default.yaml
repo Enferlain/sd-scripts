@@ -1,0 +1,26 @@
+# @package _global_
+
+# Generic current-layout base config.
+#
+# This file is not a primary training entrypoint like `presets/sdxl_peft.yaml`, but it
+# should still compose cleanly so config tooling and ad hoc experiments have a
+# valid baseline rooted in the active nested schema.
+
+defaults:
+  - /run_schema
+  - /_defaults/optimizer: default
+  - /_defaults/data: default
+  - /_defaults/model: default
+  - /_defaults/peft: default
+  - /_defaults/training: default
+  - /_defaults/output: default
+  - /_defaults/performance: default
+  - /_defaults/loss: default
+  - /_defaults/timestep: default
+  - /_defaults/validation: default
+  - _self_
+
+mode: peft
+
+model:
+  model_type: sdxl

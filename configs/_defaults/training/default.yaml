@@ -1,0 +1,14 @@
+# @package training
+
+# Training configuration
+train_batch_size: 1
+max_token_length: null
+max_train_steps: 1600
+max_train_epochs: null
+seed: null
+gradient_accumulation_steps: 1
+clip_skip: null
+dry_run: false
+initial_epoch: null
+initial_step: null
+skip_until_initial_step: false

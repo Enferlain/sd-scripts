@@ -1,5 +1,5 @@
 """
-DEPRECATED: This module is used by legacy training scripts (sdxl_finetune.py, etc.)
+DEPRECATED: This module is used by legacy training scripts.
 New scripts should use library/data/ modules directly (scanners.py, manifest.py, etc.)
 """
 
@@ -27,8 +27,7 @@ logger = logging.getLogger(__name__)
 class RootConfig(Protocol):
     """Protocol defining the expected structure for any training config passed to BlueprintGenerator.
 
-    All script-specific root configs (SDFineTuneConfig, SDPeftConfig, etc.)
-    should satisfy this protocol.
+    The shared root run config should satisfy this protocol.
     """
 
     data: DataConfig

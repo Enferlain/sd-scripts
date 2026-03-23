@@ -1,0 +1,25 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Integration Test: Validation Run
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=tests/test_peft_validation_run
+
+defaults:
+  - /tests/test_core
+  - _self_
+
+output:
+  saving:
+    output_name: "test_peft_validation_run"
+  logging:
+    resource_monitor:
+      enabled: false
+      mode: "off"
+
+validation:
+  validation_split: 0.1
+  validation_seed: 42
+  run_at_start: true
+  run_at_end: true
+  validate_every_n_steps: 10
+  validate_every_n_epochs: null

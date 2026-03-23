@@ -15,7 +15,7 @@ import logging
 import hydra
 
 from library.config.config_validation import prepare_config, validate_config
-from library.config.dataclasses.sdxl_finetune import SDXLFineTuneConfig
+from library.config.dataclasses.run import RunConfig
 from library.strategies.sdxl.training import SdxlTrainingStrategy
 from library.training.runners.trainer import Trainer
 from library.training.modes import FineTuneMode
@@ -28,7 +28,7 @@ init_ipex()
 logger = logging.getLogger(__name__)
 
 
-def train(cfg: SDXLFineTuneConfig, strategies: SdxlTrainingStrategy) -> None:
+def train(cfg: RunConfig, strategies: SdxlTrainingStrategy) -> None:
     """Run SDXL full-model fine-tuning.
 
     Args:
@@ -40,8 +40,8 @@ def train(cfg: SDXLFineTuneConfig, strategies: SdxlTrainingStrategy) -> None:
     trainer.train()
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="sdxl_finetune")
-def main(cfg: SDXLFineTuneConfig):
+@hydra.main(version_base=None, config_path="../configs", config_name="presets/sdxl_finetune")
+def main(cfg: RunConfig):
     """Main entry point for SDXL fine-tuning."""
     prepare_config(cfg)
     validate_config(cfg)
@@ -52,7 +52,7 @@ def main(cfg: SDXLFineTuneConfig):
 
 if __name__ == "__main__":
     # Register Hydra schema only when running as script
-    from library.config.schemas import register_sdxl_finetune
+    from library.config.schemas import register_run
 
-    register_sdxl_finetune()
+    register_run()
     main()

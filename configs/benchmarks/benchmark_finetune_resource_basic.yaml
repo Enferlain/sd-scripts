@@ -1,0 +1,19 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL Fine-Tune Benchmark: Resource Monitor (Basic)
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python -m scripts.sdxl_finetune --config-name=benchmarks/benchmark_finetune_resource_basic
+
+defaults:
+  - /benchmarks/benchmark_sdxl_finetune
+  - _self_
+
+output:
+  saving:
+    output_name: "benchmark_finetune_resource_basic"
+  logging:
+    resource_monitor:
+      enabled: true
+      mode: "basic"
+      rank_scope: "main"
+      log_every_n_steps: 0

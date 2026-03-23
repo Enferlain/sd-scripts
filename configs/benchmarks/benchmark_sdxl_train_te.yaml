@@ -1,0 +1,22 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Benchmark: No TE Caching (Train TEs)
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=benchmarks/benchmark_sdxl_train_te
+#
+# This config tests the pipeline WITHOUT TE caching, allowing TE training.
+# Use for comparing training speed when text encoders are being trained.
+
+defaults:
+  - /benchmarks/benchmark_sdxl # Inherit from base benchmark
+  - _self_
+
+# Override: Disable TE caching, enable TE training
+data:
+  caching:
+    cache_text_encoder_outputs: false
+    cache_text_encoder_outputs_to_disk: false
+
+optimizer:
+  learning_rates:
+    text_encoders: [1e-5, 1e-5] # Train both TEs

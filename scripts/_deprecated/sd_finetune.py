@@ -29,7 +29,7 @@ from library.optimizers.optimizer_factory import get_optimizer
 from library.training._deprecated.sd_sample_generation import sample_images
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
-from library.config.dataclasses.sd_finetune import SDFineTuneConfig
+from library.config.dataclasses.run import RunConfig
 from library.config.config_validation import prepare_config, validate_config
 
 from library.training.checkpointing import (
@@ -53,7 +53,7 @@ init_ipex()
 logger = logging.getLogger(__name__)
 
 
-def train(cfg: SDFineTuneConfig):
+def train(cfg: RunConfig):
     setup_logging(cfg.output.logging, reset=True)
     set_torch_cuda_reduced_precision(cfg.performance.precision)
     deepspeed_utils.prepare_deepspeed_config(cfg.performance.deepspeed)
@@ -526,13 +526,13 @@ def train(cfg: SDFineTuneConfig):
 
 
 # Register Hydra schema for this script
-from library.config.schemas import register_sd_finetune
+from library.config.schemas import register_run
 
-register_sd_finetune()
+register_run()
 
 
-@hydra.main(config_path="../../configs", config_name="sd_finetune", version_base=None)
-def main(cfg: SDFineTuneConfig):
+@hydra.main(config_path="../../configs", config_name="presets/sd_finetune", version_base=None)
+def main(cfg: RunConfig):
     prepare_config(cfg)
     validate_config(cfg)
     train(cfg)

@@ -1,0 +1,45 @@
+# @package performance
+
+precision:
+  mixed_precision: "no"
+  full_fp16: false
+  full_bf16: false
+  fp8_base: false
+  fp8_base_unet: false
+  no_half_vae: false
+  disable_cuda_reduced_precision_operations: false
+  enable_cuda_reduced_precision_operations: false
+
+memory:
+  gradient_checkpointing: false
+  cpu_offload_checkpointing: false
+  lowram: false
+  highvram: false
+  use_ramtorch: false
+  direct_ramtorch: false
+
+attention:
+  mem_eff_attn: false
+  xformers: false
+  sdpa: false
+  diffusers_xformers: false
+
+compilation:
+  torch_compile: false
+  dynamo_backend: "inductor"
+
+distributed:
+  ddp_timeout: null
+  ddp_gradient_as_bucket_view: false
+  ddp_static_graph: false
+
+deepspeed:
+  deepspeed: false
+  zero_stage: 2
+  offload_optimizer_device: null
+  offload_optimizer_nvme_path: null
+  offload_param_device: null
+  offload_param_nvme_path: null
+  zero3_init_flag: false
+  zero3_save_16bit_model: false
+  fp16_master_weights_and_gradients: false

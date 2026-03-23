@@ -31,7 +31,7 @@ from library.data._deprecated.dataset import (
     collator_class,
     debug_dataset,
 )
-from library.config.dataclasses.sd_textual_inversion import TextualInversionConfig
+from library.config.dataclasses.run import RunConfig
 
 from library.models.runtime_utils import (
     replace_unet_modules,
@@ -47,7 +47,7 @@ from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.config.config_validation import (
     prepare_config,
     validate_config,
-    validate_sd_textual_inversion,
+    validate_dataset_groups,
 )
 from library.constants import SD_VAE_LATENT_SCALE
 
@@ -98,7 +98,7 @@ class TextualInversionTrainer:
         train_dataset_group: DatasetGroup | MinimalDataset,
         val_dataset_group: DatasetGroup | None,
     ):
-        validate_sd_textual_inversion(config, train_dataset_group, val_dataset_group)
+        validate_dataset_groups(config, train_dataset_group, val_dataset_group)
 
     def load_target_model(self, cfg, weight_dtype, accelerator):
         is_v2 = cfg.model.model_type == "sd2"
@@ -217,7 +217,7 @@ class TextualInversionTrainer:
 
         return [emb]
 
-    def train(self, cfg: TextualInversionConfig):
+    def train(self, cfg: RunConfig):
         if cfg.output.saving.output_name is None:
             (cfg.output.saving).output_name = cfg.textual_inversion.token_string
         use_template = cfg.textual_inversion.use_object_template or cfg.textual_inversion.use_style_template
@@ -814,13 +814,13 @@ class TextualInversionTrainer:
 
 
 # Register Hydra schema for this script
-from library.config.schemas import register_sd_textual_inversion
+from library.config.schemas import register_run
 
-register_sd_textual_inversion()
+register_run()
 
 
-@hydra.main(config_path="../../configs", config_name="sd_textual_inversion", version_base=None)
-def main(config: TextualInversionConfig):
+@hydra.main(config_path="../../configs", config_name="presets/sd_textual_inversion", version_base=None)
+def main(config: RunConfig):
     prepare_config(config)
     validate_config(config)
     trainer = TextualInversionTrainer()

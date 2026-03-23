@@ -175,13 +175,13 @@ class TestConfigImports:
     """Test that config dataclasses can be imported."""
 
     def test_sd_peft_config_imports(self):
-        """Verify SDPeftConfig can be imported."""
-        from library.config.dataclasses.sd_peft import SDPeftConfig
+        """Verify RunConfig can be imported."""
+        from library.config.dataclasses.run import RunConfig
 
-        assert SDPeftConfig is not None
+        assert RunConfig is not None
 
     def test_sdxl_peft_config_imports(self):
-        """Verify SDXLPeftConfig can be imported."""
-        from library.config.dataclasses.sdxl_peft import SDXLPeftConfig
+        """Verify RunConfig can be imported."""
+        from library.config.dataclasses.run import RunConfig
 
-        assert SDXLPeftConfig is not None
+        assert RunConfig is not None

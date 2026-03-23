@@ -1,0 +1,29 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Benchmark: TE Offloading
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=benchmarks/benchmark_sdxl_offload
+#
+# This config tests TE offloading (TEs on CPU, encode on-demand).
+# Useful for lower VRAM GPUs or when caption augmentation is needed.
+#
+# NOTE: Cannot use both offloading AND caching - they're mutually exclusive.
+# NOTE: Cannot train TEs while offloading - TEs must be on GPU for training.
+
+defaults:
+  - /benchmarks/benchmark_sdxl # Inherit from base benchmark
+  - _self_
+
+# Override: Enable offloading, disable caching
+performance:
+  memory:
+    offload_text_encoders: true
+
+data:
+  caching:
+    cache_text_encoder_outputs: false
+    cache_text_encoder_outputs_to_disk: false
+
+optimizer:
+  learning_rates:
+    text_encoders: [0, 0] # Must be 0 when offloading TEs

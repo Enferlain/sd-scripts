@@ -1,0 +1,29 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Benchmark: Extended Training
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=benchmarks/benchmark_sdxl_large
+#
+# This config runs extended steps with workers to measure steady-state throughput.
+# Uses the full 550-image dataset from base config.
+#
+# Dataset: 550 real images × 1 repeat = 550 images
+# - 275 batches per epoch (batch size 2)
+# - Tests manifest creation, caching, DataLoader, epoch transitions
+
+defaults:
+  - /benchmarks/benchmark_sdxl # Inherit from base benchmark (550 images)
+  - _self_
+
+# More training steps for steady-state measurement
+training:
+  max_train_steps: 300 # ~1+ epochs to measure transitions
+  train_batch_size: 2
+
+# Workers for throughput testing
+data:
+  loader:
+    num_workers: 2 # Moderate workers (spawn cost vs throughput)
+    persistent_workers: true
+    prefetch_factor: 4
+    pin_memory: true

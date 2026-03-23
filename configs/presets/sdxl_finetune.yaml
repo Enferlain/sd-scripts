@@ -1,0 +1,22 @@
+# @package _global_
+
+# Configuration for sdxl_finetune.py
+# SDXL Full Model Fine-tuning
+
+defaults:
+  - /run_schema
+  - /_defaults/optimizer: default
+  - /_defaults/data: default
+  - /_defaults/model: default
+  - /_defaults/training: default
+  - /_defaults/output: default
+  - /_defaults/performance: default
+  - /_defaults/loss: default
+  - /_defaults/timestep: default
+  - /_defaults/validation: default
+  - _self_
+
+mode: finetune
+
+model:
+  model_type: sdxl

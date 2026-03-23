@@ -1,0 +1,20 @@
+# @package _global_
+
+defaults:
+  - /run_schema
+  - /_defaults/optimizer: default
+  - /_defaults/data: default
+  - /_defaults/model: default
+  - /_defaults/peft: default
+  - /_defaults/training: default
+  - /_defaults/output: default
+  - /_defaults/performance: default
+  - /_defaults/loss: default
+  - /_defaults/timestep: default
+  - /_defaults/validation: default
+  - _self_
+
+mode: peft
+
+model:
+  model_type: sd15

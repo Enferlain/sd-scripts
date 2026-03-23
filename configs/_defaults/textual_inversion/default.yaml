@@ -1,0 +1,8 @@
+# @package textual_inversion
+
+weights: null
+num_vectors_per_token: 1
+token_string: null
+init_word: null
+use_object_template: false
+use_style_template: false

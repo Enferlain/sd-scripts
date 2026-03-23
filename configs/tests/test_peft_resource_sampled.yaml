@@ -1,0 +1,21 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Integration Test: Resource Monitor (Sampled)
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python -m scripts.sdxl_peft --config-name=tests/test_peft_resource_sampled
+
+defaults:
+  - /tests/test_core
+  - _self_
+
+output:
+  saving:
+    output_name: "test_peft_resource_sampled"
+  logging:
+    resource_monitor:
+      enabled: true
+      mode: "sampled"
+      rank_scope: "main"
+      log_every_n_steps: 0
+      sample_interval_sec: 0.5
+      output_jsonl: "resource_monitor.jsonl"

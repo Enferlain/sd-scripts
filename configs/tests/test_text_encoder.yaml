@@ -1,0 +1,22 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Integration Test: Text Encoder
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=tests/test_text_encoder
+
+defaults:
+  - /tests/test_core
+  - _self_
+
+data:
+  caching:
+    cache_text_encoder_outputs: false # Must be false to train TEs
+    cache_text_encoder_outputs_to_disk: false
+
+optimizer:
+  learning_rates:
+    text_encoders: [1e-5, 1e-6] # Train both TEs with different rates
+
+performance:
+  memory:
+    gradient_checkpointing: true # Essential for TE training

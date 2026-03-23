@@ -1,0 +1,17 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Integration Test: Advanced Features
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python scripts/sdxl_peft.py --config-name=tests/test_advanced
+
+defaults:
+  - /tests/test_core
+  - _self_
+
+training:
+  gradient_accumulation_steps: 2
+
+performance:
+  precision:
+    mixed_precision: "bf16"
+    fp8_base: true # Test FP8

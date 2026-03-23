@@ -24,11 +24,6 @@ except ImportError:
 from hydra import initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 
-# Register all Hydra schemas (needed for tests that use compose())
-from library.config.schemas import register_all
-
-register_all()
-
 # Import all config dataclasses for fixture creation
 from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig
 from library.config.dataclasses.data import DataConfig, SourceConfig, PreprocessingConfig, BucketingConfig
@@ -38,6 +33,10 @@ from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.output import MetadataConfig
+from library.config.schemas import register_all
+
+# Register all Hydra schemas (needed for tests that use compose())
+register_all()
 
 
 # ============================================================================
@@ -145,6 +144,7 @@ def mock_adapter_config():
 def mock_model_config():
     """Create a basic ModelConfig for testing."""
     return ModelConfig(
+        model_type="sd15",
         pretrained_model_name_or_path="runwayml/stable-diffusion-v1-5",
     )
 

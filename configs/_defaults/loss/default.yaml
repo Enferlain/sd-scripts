@@ -1,0 +1,55 @@
+# @package loss
+
+# Loss configuration with nested subcategories
+loss_type: "l2"
+loss_scale: 1.0
+loss_multiplier: null
+prior_loss_weight: 1.0
+v_parameterization: false
+
+huber:
+  huber_schedule: "snr"
+  huber_c: 0.1
+  huber_scale: 1.0
+
+snr:
+  min_snr_gamma: null
+  scale_v_pred_loss_like_noise_pred: false
+  v_pred_like_loss: null
+  debiased_estimation_loss: false
+
+masked:
+  masked_loss: false
+  conditioning_data_dir: null
+
+regularization:
+  noise_offset: null
+  noise_offset_random_strength: false
+  multires_noise_iterations: null
+  multires_noise_discount: 0.3
+  ip_noise_gamma: null
+  ip_noise_gamma_random_strength: false
+  adaptive_noise_scale: null
+  zero_terminal_snr: false
+
+edm2:
+  edm2_loss_weighting: false
+  edm2_loss_weighting_laplace: false
+  edm2_loss_weighting_optimizer: "torch.optim.AdamW"
+  edm2_loss_weighting_optimizer_lr: 0.02
+  edm2_loss_weighting_optimizer_args: "{'weight_decay': 0, 'betas': (0.9,0.999)}"
+  edm2_loss_weighting_lr_scheduler: false
+  edm2_loss_weighting_lr_scheduler_warmup_percent: 0.1
+  edm2_loss_weighting_lr_scheduler_constant_percent: 0.1
+  edm2_loss_weighting_generate_graph: false
+  edm2_loss_weighting_generate_graph_every_x_steps: 20
+  edm2_loss_weighting_generate_graph_output_dir: null
+  edm2_loss_weighting_generate_graph_y_limit: null
+  edm2_loss_weighting_generate_graph_y_scale: "linear"
+  edm2_loss_weighting_num_channels: 128
+  edm2_loss_weighting_initial_weights: null
+  edm2_loss_weighting_lr_scheduler_decay_scaling: 1.0
+  edm2_loss_weighting_importance_weighting: false
+  edm2_loss_weighting_importance_weighting_max: 10.0
+  edm2_loss_weighting_importance_min_snr_gamma: 1.0
+  edm2_loss_weighting_importance_weighting_safety_override: false
