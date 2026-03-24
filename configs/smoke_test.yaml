@@ -113,5 +113,5 @@ output:
     sample_every_n_steps: 25
     sample_at_first: false
     sample_every_n_epochs: null
-    sample_prompts: "D:/Projects/sd-scripts/tests/assets/3prompt.txt"
+    sample_prompt_file: "D:/Projects/sd-scripts/tests/assets/3prompt.txt"
     sample_sampler: "k_euler"

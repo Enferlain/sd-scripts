@@ -11,7 +11,6 @@ from safetensors.torch import load_file
 
 from library.models.conversion_utils import shave_segments
 
-from library.utils.device_utils import init_ipex
 from library.utils.safetensors_utils import is_safetensors
 
 from library.constants import (
@@ -24,10 +23,6 @@ from library.constants import (
     VAE_PARAMS_NUM_RES_BLOCKS,
     VAE_PREFIX,
 )
-
-
-init_ipex()
-
 
 logger = logging.getLogger(__name__)
 

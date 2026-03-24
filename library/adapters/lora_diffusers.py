@@ -13,10 +13,7 @@ from diffusers import UNet2DConditionModel
 from tqdm import tqdm
 from transformers import CLIPTextModel
 
-from library.utils.device_utils import init_ipex, get_preferred_device
-
-
-init_ipex()
+from library.utils.device_utils import get_preferred_device
 
 
 logger = logging.getLogger(__name__)

@@ -90,4 +90,4 @@ output:
     log_with: "wandb"
   sampling:
     sample_every_n_epochs: 1
-    sample_prompts: "./prompts.txt"
+    sample_prompt_file: "./prompts.txt"

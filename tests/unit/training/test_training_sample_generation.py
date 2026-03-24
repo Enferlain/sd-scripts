@@ -11,6 +11,7 @@ from library.training.sample_generation import (
     sample_images_check,
     get_my_scheduler,
     load_prompts,
+    get_sampling_prompt_dicts,
     sample_image_inference,
 )
 from PIL import Image
@@ -51,13 +52,7 @@ class TestLineToPromptDict:
         assert result["sample_steps"] == 1000
 
         result = line_to_prompt_dict("test --s 0")
-        try:
-            assert result["sample_steps"] == 1
-        except AssertionError:
-            # Implementation might not strictly clamp to 1 if not explicitly handled,
-            # but let's see what the actual code does.
-            # If it fails, we will adjust expectation or fix code.
-            pass
+        assert result["sample_steps"] == 1
 
     def test_case_insensitive(self):
         result = line_to_prompt_dict("test --W 512 --H 512")
@@ -210,6 +205,38 @@ class TestLoadPrompts:
         assert prompts[0]["prompt"] == "cat"
 
 
+class TestGetSamplingPromptDicts:
+    def test_uses_prompt_file_when_configured(self, tmp_path):
+        txt_file = tmp_path / "prompts.txt"
+        txt_file.write_text("a cat", encoding="utf-8")
+
+        sampling_config = MagicMock()
+        sampling_config.sample_prompt_file = str(txt_file)
+        sampling_config.sample_prompt = "inline fallback"
+
+        prompts = get_sampling_prompt_dicts(sampling_config)
+
+        assert prompts is not None
+        assert len(prompts) == 1
+        assert prompts[0]["prompt"] == "a cat"
+
+    def test_uses_inline_prompt_when_no_prompt_file(self):
+        sampling_config = MagicMock()
+        sampling_config.sample_prompt_file = None
+        sampling_config.sample_prompt = "inline prompt"
+
+        prompts = get_sampling_prompt_dicts(sampling_config)
+
+        assert prompts == [{"prompt": "inline prompt", "enum": 0}]
+
+    def test_returns_none_when_no_prompt_source(self):
+        sampling_config = MagicMock()
+        sampling_config.sample_prompt_file = None
+        sampling_config.sample_prompt = None
+
+        assert get_sampling_prompt_dicts(sampling_config) is None
+
+
 class TestSampleImageInference:
     @patch("library.training.sample_generation.get_my_scheduler")
     def test_prompt_replacement(self, mock_get_scheduler):
@@ -238,9 +265,9 @@ class TestSampleImageInference:
         mock_get_scheduler.return_value = mock_scheduler
 
         with (
-            patch("torch.manual_seed") as mock_seed,
+            patch("torch.manual_seed"),
             patch("os.path.join", return_value="/tmp/test.png"),
-            patch("PIL.Image.Image.save") as mock_save,
+            patch("PIL.Image.Image.save"),
         ):
             sample_image_inference(
                 mock_accelerator,
@@ -260,3 +287,175 @@ class TestSampleImageInference:
         call_args = mock_pipeline.call_args
         assert call_args is not None
         assert "fluffy" in call_args.kwargs["prompt"]
+
+    @patch("library.training.sample_generation.get_my_scheduler")
+    def test_uses_sampling_config_defaults(self, mock_get_scheduler):
+        mock_pipeline = MagicMock()
+        mock_pipeline.latents_to_image.return_value = [Image.new("RGB", (640, 832))]
+        mock_pipeline.return_value = "latents"
+
+        mock_accelerator = MagicMock()
+        mock_accelerator.autocast.return_value.__enter__ = MagicMock()
+        mock_accelerator.autocast.return_value.__exit__ = MagicMock()
+        mock_accelerator.trackers = []
+
+        sampling_config = MagicMock()
+        sampling_config.sample_prompt = "config prompt"
+        sampling_config.sample_negative_prompt = "bad anatomy"
+        sampling_config.sample_width = 640
+        sampling_config.sample_height = 832
+        sampling_config.sample_steps = 28
+        sampling_config.sample_cfg_scale = 6.5
+        sampling_config.sample_seed = 123
+        sampling_config.sample_sampler = "ddim"
+        training_config = MagicMock()
+        saving_config = MagicMock()
+        saving_config.output_name = "test"
+        loss_config = MagicMock()
+        loss_config.v_parameterization = False
+
+        mock_scheduler = MagicMock()
+        mock_get_scheduler.return_value = mock_scheduler
+
+        with (
+            patch("torch.manual_seed") as mock_seed,
+            patch("os.path.join", return_value="/tmp/test.png"),
+            patch("PIL.Image.Image.save"),
+        ):
+            sample_image_inference(
+                mock_accelerator,
+                sampling_config,
+                training_config,
+                saving_config,
+                loss_config,
+                mock_pipeline,
+                "/tmp",
+                {"enum": 0},
+                epoch=1,
+                steps=100,
+                prompt_replacement=None,
+            )
+
+        mock_seed.assert_called_once_with(123)
+        assert mock_pipeline.call_args.kwargs["prompt"] == "config prompt"
+        assert mock_pipeline.call_args.kwargs["negative_prompt"] == "bad anatomy"
+        assert mock_pipeline.call_args.kwargs["width"] == 640
+        assert mock_pipeline.call_args.kwargs["height"] == 832
+        assert mock_pipeline.call_args.kwargs["num_inference_steps"] == 28
+        assert mock_pipeline.call_args.kwargs["guidance_scale"] == 6.5
+
+    @patch("library.training.sample_generation.get_my_scheduler")
+    def test_prompt_dict_overrides_sampling_defaults(self, mock_get_scheduler):
+        mock_pipeline = MagicMock()
+        mock_pipeline.latents_to_image.return_value = [Image.new("RGB", (1024, 768))]
+        mock_pipeline.return_value = "latents"
+
+        mock_accelerator = MagicMock()
+        mock_accelerator.autocast.return_value.__enter__ = MagicMock()
+        mock_accelerator.autocast.return_value.__exit__ = MagicMock()
+        mock_accelerator.trackers = []
+
+        sampling_config = MagicMock()
+        sampling_config.sample_prompt = "config prompt"
+        sampling_config.sample_negative_prompt = "config negative"
+        sampling_config.sample_width = 640
+        sampling_config.sample_height = 832
+        sampling_config.sample_steps = 28
+        sampling_config.sample_cfg_scale = 6.5
+        sampling_config.sample_seed = 123
+        sampling_config.sample_sampler = "ddim"
+        training_config = MagicMock()
+        saving_config = MagicMock()
+        saving_config.output_name = "test"
+        loss_config = MagicMock()
+        loss_config.v_parameterization = False
+
+        mock_scheduler = MagicMock()
+        mock_get_scheduler.return_value = mock_scheduler
+
+        with (
+            patch("torch.manual_seed") as mock_seed,
+            patch("os.path.join", return_value="/tmp/test.png"),
+            patch("PIL.Image.Image.save"),
+        ):
+            sample_image_inference(
+                mock_accelerator,
+                sampling_config,
+                training_config,
+                saving_config,
+                loss_config,
+                mock_pipeline,
+                "/tmp",
+                {
+                    "enum": 0,
+                    "prompt": "prompt file prompt",
+                    "negative_prompt": "prompt file negative",
+                    "width": 1024,
+                    "height": 768,
+                    "sample_steps": 50,
+                    "scale": 8.0,
+                    "seed": 777,
+                    "sample_sampler": "euler_a",
+                },
+                epoch=1,
+                steps=100,
+                prompt_replacement=None,
+            )
+
+        mock_seed.assert_called_once_with(777)
+        assert mock_pipeline.call_args.kwargs["prompt"] == "prompt file prompt"
+        assert mock_pipeline.call_args.kwargs["negative_prompt"] == "prompt file negative"
+        assert mock_pipeline.call_args.kwargs["width"] == 1024
+        assert mock_pipeline.call_args.kwargs["height"] == 768
+        assert mock_pipeline.call_args.kwargs["num_inference_steps"] == 50
+        assert mock_pipeline.call_args.kwargs["guidance_scale"] == 8.0
+        assert mock_get_scheduler.call_args.kwargs["sample_sampler"] == "euler_a"
+
+    @patch("library.training.sample_generation.get_my_scheduler")
+    def test_guidance_scale_alias_is_respected(self, mock_get_scheduler):
+        mock_pipeline = MagicMock()
+        mock_pipeline.latents_to_image.return_value = [Image.new("RGB", (512, 512))]
+        mock_pipeline.return_value = "latents"
+
+        mock_accelerator = MagicMock()
+        mock_accelerator.autocast.return_value.__enter__ = MagicMock()
+        mock_accelerator.autocast.return_value.__exit__ = MagicMock()
+        mock_accelerator.trackers = []
+
+        sampling_config = MagicMock()
+        sampling_config.sample_prompt = None
+        sampling_config.sample_negative_prompt = None
+        sampling_config.sample_width = None
+        sampling_config.sample_height = None
+        sampling_config.sample_steps = None
+        sampling_config.sample_cfg_scale = None
+        sampling_config.sample_seed = None
+        sampling_config.sample_sampler = "ddim"
+        training_config = MagicMock()
+        saving_config = MagicMock()
+        saving_config.output_name = "test"
+        loss_config = MagicMock()
+        loss_config.v_parameterization = False
+
+        mock_scheduler = MagicMock()
+        mock_get_scheduler.return_value = mock_scheduler
+
+        with (
+            patch("os.path.join", return_value="/tmp/test.png"),
+            patch("PIL.Image.Image.save"),
+        ):
+            sample_image_inference(
+                mock_accelerator,
+                sampling_config,
+                training_config,
+                saving_config,
+                loss_config,
+                mock_pipeline,
+                "/tmp",
+                {"enum": 0, "prompt": "alias prompt", "guidance_scale": 9.0},
+                epoch=1,
+                steps=100,
+                prompt_replacement=None,
+            )
+
+        assert mock_pipeline.call_args.kwargs["guidance_scale"] == 9.0

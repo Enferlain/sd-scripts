@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Legacy IPEX workaround code removed** — The old Intel Extension for PyTorch compatibility path is gone from the repo.
+  - Deleted the unused `library/performance/ipex/` package.
+  - Removed the leftover `init_ipex()` shim from `library.utils.device_utils` and dropped its no-op unit test.
+- **Sampling config now supports inline/default generation parameters** — Sampling can now be configured from YAML without giving up prompt-file workflows.
+  - `SamplingConfig` and `configs/_defaults/output/default.yaml` now expose `sample_prompt`, `sample_prompt_file`, `sample_negative_prompt`, `sample_width`, `sample_height`, `sample_steps`, `sample_cfg_scale`, and `sample_seed`.
+  - `library/training/sample_generation.py` now uses prompt-file values first, then falls back to sampling-config defaults, and supports a single inline `sample_prompt` when no prompt file is configured.
+  - Added unit coverage for inline prompt fallback, config-default resolution, and prompt-file override precedence in `tests/unit/training/test_training_sample_generation.py`.
 - **Strategy/base naming cleanup landed in the active path** — The shared strategy contract file and cache-engine boundary now use the clearer names discussed in roadmap follow-ups.
   - `library/strategies/base/training.py` is now `library/strategies/base/contracts.py`, and current-facing docs now point to the renamed contract module.
   - The active cache-engine surface now uses `CacheBackend` naming in `library/data/caching_engine.py`, `Trainer`, dataloader construction, and the touched unit/integration tests.

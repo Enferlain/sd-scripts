@@ -15,4 +15,4 @@ output:
     sample_at_first: true
     # NOTE: sample_every_n_epochs takes precedence - comment it out to use step-based
     # sample_every_n_epochs: 1
-    sample_prompts: "D:/Projects/sd-scripts/tests/assets/3prompt.txt"
+    sample_prompt_file: "D:/Projects/sd-scripts/tests/assets/3prompt.txt"

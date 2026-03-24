@@ -2,13 +2,6 @@ import functools
 import gc
 import torch
 
-import contextlib
-
-with contextlib.suppress(Exception):
-    # intel gpu support for pytorch older than 2.5
-    # ipex is not needed after pytorch 2.5
-    import intel_extension_for_pytorch as ipex  # noqa: F401
-
 try:
     HAS_CUDA = torch.cuda.is_available()
 except Exception:
@@ -103,24 +96,3 @@ def get_preferred_device() -> torch.device:
         device = torch.device("cpu")
     print(f"get_preferred_device() -> {device}")
     return device
-
-
-def init_ipex():
-    """
-    Apply IPEX to CUDA hijacks using `library.ipex.ipex_init`.
-
-    This function should run right after importing torch and before doing anything else.
-
-    If xpu is not available, this function does nothing.
-    """
-    try:
-        if HAS_XPU:
-            from library.performance.ipex import ipex_init
-
-            is_initialized, error_message = ipex_init()
-            if not is_initialized:
-                print("failed to initialize ipex:", error_message)
-        else:
-            return
-    except Exception as e:
-        print("failed to initialize ipex:", e)

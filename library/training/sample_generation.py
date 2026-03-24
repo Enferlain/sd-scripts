@@ -225,6 +225,27 @@ def load_prompts(prompt_file: str) -> list[dict]:
     return prompts
 
 
+def get_sampling_prompt_dicts(sampling_config: SamplingConfig) -> list[dict] | None:
+    """
+    Resolve the prompt source for sampling.
+
+    Preference order:
+    1. Prompt file from ``sample_prompt_file``
+    2. Inline single prompt from ``sample_prompt``
+    """
+    if sampling_config.sample_prompt_file:
+        if not os.path.isfile(sampling_config.sample_prompt_file):
+            logger.error(f"No prompt file: {sampling_config.sample_prompt_file}")
+            return None
+        return load_prompts(sampling_config.sample_prompt_file)
+
+    if sampling_config.sample_prompt:
+        return [{"prompt": sampling_config.sample_prompt, "enum": 0}]
+
+    logger.error("No sampling prompt source configured. Set output.sampling.sample_prompt or sample_prompt_file.")
+    return None
+
+
 def sample_images_check(sampling_config: SamplingConfig, epoch: int | None, steps: int) -> bool:
     """
     Checks if sample images should be generated at the current step or epoch.
@@ -289,14 +310,13 @@ def sample_images_common(
 
     logger.info("")
     logger.info(f"generating sample images at step: {steps}")
-    if not os.path.isfile(sampling_config.sample_prompts):
-        logger.error(f"No prompt file: {sampling_config.sample_prompts}")
+    prompts = get_sampling_prompt_dicts(sampling_config)
+    if prompts is None:
         return
     distributed_state = PartialState()
     pipeline.to(distributed_state.device)
     save_dir = saving_config.output_dir + "/sample"
     os.makedirs(save_dir, exist_ok=True)
-    prompts = load_prompts(sampling_config.sample_prompts)
 
     # save random state to restore later
     rng_state = torch.get_rng_state()
@@ -392,14 +412,17 @@ def sample_image_inference(
         controlnet: ControlNet model (optional).
     """
     assert isinstance(prompt_dict, dict)
-    negative_prompt = prompt_dict.get("negative_prompt")
-    sample_steps = prompt_dict.get("sample_steps", 30)
-    width = prompt_dict.get("width", 512)
-    height = prompt_dict.get("height", 512)
-    scale = prompt_dict.get("scale", 7.5)
-    seed = prompt_dict.get("seed")
+    prompt: str = prompt_dict.get("prompt", sampling_config.sample_prompt or "")
+    negative_prompt = prompt_dict.get("negative_prompt", sampling_config.sample_negative_prompt)
+    sample_steps = prompt_dict.get("sample_steps", sampling_config.sample_steps if sampling_config.sample_steps is not None else 30)
+    width = prompt_dict.get("width", sampling_config.sample_width if sampling_config.sample_width is not None else 512)
+    height = prompt_dict.get("height", sampling_config.sample_height if sampling_config.sample_height is not None else 512)
+    scale = prompt_dict.get(
+        "scale",
+        prompt_dict.get("guidance_scale", sampling_config.sample_cfg_scale if sampling_config.sample_cfg_scale is not None else 7.5),
+    )
+    seed = prompt_dict.get("seed", sampling_config.sample_seed)
     controlnet_image = prompt_dict.get("controlnet_image")
-    prompt: str = prompt_dict.get("prompt", "")
     sampler_name: str = prompt_dict.get("sample_sampler", sampling_config.sample_sampler)
 
     if prompt_replacement is not None:

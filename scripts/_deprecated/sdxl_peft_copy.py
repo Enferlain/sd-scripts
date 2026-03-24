@@ -36,7 +36,7 @@ import library.utils.huggingface_util as huggingface_util
 from library.config.config_validation import prepare_config, validate_config
 from library.performance import deepspeed_utils
 
-from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.utils.device_utils import clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.models.runtime_utils import patch_accelerator_for_fp16_training
 from library.optimizers.optimizer_utils import prepare_optimizer
@@ -98,9 +98,6 @@ try:
     import matplotlib.pyplot as plt
 except ImportError:
     plt = None  # type: ignore[assignment]
-
-init_ipex()
-
 
 logger = logging.getLogger(__name__)
 

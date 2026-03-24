@@ -67,7 +67,15 @@ sampling:
   sample_every_n_steps: null
   sample_at_first: false
   sample_every_n_epochs: null
-  sample_prompts: null
+  sample_vae_dtype: null
+  sample_prompt_file: null
+  sample_prompt: null
+  sample_negative_prompt: null
+  sample_width: null
+  sample_height: null
+  sample_steps: null
+  sample_cfg_scale: null
+  sample_seed: null
   sample_sampler: "ddim"
 
 metadata:

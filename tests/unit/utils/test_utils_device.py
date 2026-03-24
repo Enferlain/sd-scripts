@@ -4,7 +4,6 @@ Unit tests for library/utils/device_utils.py
 Tests for device utility functions using strict mocking to avoid hardware dependencies.
 """
 
-import sys
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -13,7 +12,6 @@ from library.utils.device_utils import (
     clean_memory_on_device,
     synchronize_device,
     get_preferred_device,
-    init_ipex,
 )
 
 
@@ -185,48 +183,3 @@ def test_get_preferred_device_is_cached(mock_torch):
 
 
 # -------------------------
-# init_ipex
-# -------------------------
-
-
-def test_init_ipex_calls_ipex_init_when_xpu():
-    # Use patch.dict to inject a mock module for library.performance.ipex
-    mock_ipex_module = MagicMock()
-    mock_ipex_module.ipex_init.return_value = (True, "")
-
-    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}), patch("library.utils.device_utils.HAS_XPU", True):
-        init_ipex()
-
-    mock_ipex_module.ipex_init.assert_called_once()
-
-
-def test_init_ipex_handles_failure(capsys):
-    mock_ipex_module = MagicMock()
-    mock_ipex_module.ipex_init.return_value = (False, "some_error")
-
-    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}), patch("library.utils.device_utils.HAS_XPU", True):
-        init_ipex()
-
-    captured = capsys.readouterr()
-    assert "failed to initialize ipex: some_error" in captured.out
-
-
-def test_init_ipex_no_xpu():
-    # Even if module exists, it shouldn't be touched if HAS_XPU is False
-    mock_ipex_module = MagicMock()
-
-    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}), patch("library.utils.device_utils.HAS_XPU", False):
-        init_ipex()
-
-    mock_ipex_module.ipex_init.assert_not_called()
-
-
-def test_init_ipex_catches_exceptions(capsys):
-    mock_ipex_module = MagicMock()
-    mock_ipex_module.ipex_init.side_effect = RuntimeError("boom")
-
-    with patch.dict(sys.modules, {"library.performance.ipex": mock_ipex_module}), patch("library.utils.device_utils.HAS_XPU", True):
-        init_ipex()
-
-    captured = capsys.readouterr()
-    assert "failed to initialize ipex:" in captured.out

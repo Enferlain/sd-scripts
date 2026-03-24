@@ -92,7 +92,16 @@ class SamplingConfig:
     sample_every_n_steps: int | None = field(default=None, metadata={"help": "Generate sample images every N steps"})
     sample_at_first: bool = field(default=False, metadata={"help": "Generate sample images before training starts (step 0)"})
     sample_every_n_epochs: int | None = field(default=None, metadata={"help": "Generate sample images every N epochs"})
-    sample_prompts: str | None = field(default=None, metadata={"help": "Path to prompts file (.txt, .toml, or .json)"})
+    sample_prompt: str | None = field(
+        default=None, metadata={"help": "Inline sample prompt used when sample_prompt_file is not set"}
+    )
+    sample_prompt_file: str | None = field(default=None, metadata={"help": "Path to prompts file (.txt, .toml, or .json)"})
+    sample_negative_prompt: str | None = field(default=None, metadata={"help": "Default negative prompt for sample generation"})
+    sample_width: int | None = field(default=None, metadata={"help": "Default sample width when not specified per prompt"})
+    sample_height: int | None = field(default=None, metadata={"help": "Default sample height when not specified per prompt"})
+    sample_steps: int | None = field(default=None, metadata={"help": "Default inference steps when not specified per prompt"})
+    sample_cfg_scale: float | None = field(default=None, metadata={"help": "Default CFG/guidance scale when not specified per prompt"})
+    sample_seed: int | None = field(default=None, metadata={"help": "Default seed for sample generation when not specified per prompt"})
     sample_sampler: str = field(default="ddim", metadata={"help": "Default sampler: ddim, euler, euler_a, dpmsolver, etc."})
     sample_vae_dtype: str | None = field(
         default=None, metadata={"help": "VAE dtype for sampling: fp16, bf16, or fp32. If None, uses training VAE dtype."}

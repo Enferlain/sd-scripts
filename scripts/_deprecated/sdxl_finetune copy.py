@@ -12,7 +12,7 @@ import library.config.config_util as config_util
 
 from library.constants import SDXL_VAE_LATENT_SCALE
 from library.models.sdxl.conversion import get_size_embeddings
-from library.utils.device_utils import init_ipex, clean_memory_on_device
+from library.utils.device_utils import clean_memory_on_device
 
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.performance import deepspeed_utils
@@ -45,9 +45,6 @@ from library.losses.loss_weighting import (
 )
 
 from library.training.noise_utils import fix_noise_scheduler_betas_for_zero_terminal_snr, prepare_scheduler_for_custom_training
-
-init_ipex()
-
 
 logger = logging.getLogger(__name__)
 

@@ -94,9 +94,12 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - Added focused unit coverage for `cache_dir` defaulting, LR inheritance, tracker/resource-monitor normalization, validation cadence disabling, TE offload/training conflicts, and dataset-group cacheability fallbacks.
   - The FP8 mixed-precision guard was also fixed while expanding that coverage; broader config edge-case coverage still remains.
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
-- [x] **Sampling config error**: Add error in `config_validation.py` when both `sample_every_n_steps` and `sample_every_n_epochs` are set (epoch-based takes precedence, step-based silently ignored)
-  - `config_validation.py` now catches model-family bucket-step mismatches and TE-output-caching conflicts with caption-mutation settings before training starts.
-  - Keep the cleanup within the same file unless the validation layer grows enough to justify a clearer internal boundary later.
+
+### Recent Completed
+
+- Sampling cadence conflicts now fail fast instead of silently preferring epoch cadence.
+- Active config composition now cleanly matches the shared dataclass schema.
+- Sampling config now supports inline/default generation parameters plus `sample_prompt_file`.
 
 ---
 
@@ -117,8 +120,6 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - Should extract to dedicated `Edm2LossConfig` sub-dataclass
   - Mutates config directly (`loss_config.debiased_estimation_loss = False`)
 - [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner
-- [ ] **Consolidate `init_ipex()` calls** (low priority) - During refactoring, `init_ipex()` was copied to all split-out library modules. Original pattern: only training scripts + `model_util.py` need it. Remove from other utility modules like `torch_utils.py`. **INIT_IPEX MIGHT BE USELESS POST TORCH 2.6.0**
-- [x] **SD Data Pipeline Support** (low priority) - `sd/training.py` now consumes the new `TrainingDataset` batch format (`input_ids`, `text_encoder_outputs`) and provides real SD implementations for the shared `CachingEngine` path instead of “not migrated yet” stubs.
 - [ ] **Delete legacy training wrappers** (after legacy script deprecation) - Once `*_finetune.py` and `*_textual_inversion.py` scripts are migrated to new data pipeline, delete:
   - `library/training/sd_sample_generation.py`
   - `library/training/sdxl_sample_generation.py`
@@ -140,18 +141,17 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [ ] **Timestep / `la_sampler` ownership cleanup** — Decide where timestep-sampling responsibilities should live and remove the current ad hoc feel.
 - [ ] **Conditioning architecture review** — Decide when “conditioning” deserves its own first-class shared concern instead of remaining split across encoding, caching, and denoiser/diffusion ownership.
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
-- [x] **Hydra config vs dataclass audit** — Active entry configs now compose cleanly against the current dataclass schema, and `tests/unit/test_configs.py` includes a regression check that composes every shipped entry config under `configs/`.
-  - The current config direction is one shared `run_schema` with explicit `mode` plus optional `peft` / `textual_inversion` nested sections, rather than separate root schemas per training mode or per model family.
-  - Config files are now split by role: user entry presets under `configs/presets/`, examples under `configs/examples/`, benchmarks under `configs/benchmarks/`, tests under `configs/tests/`, and Hydra fragment/internal baseline files under `configs/_defaults/`.
-  - Dataset-group validation in the active path now goes through one generic helper derived from `model.model_type` instead of entrypoint-flavored `validate_sd_*` / `validate_sdxl_*` functions.
-- [x] **`base/contracts.py` naming review** — The active strategy contract file now lives at `library/strategies/base/contracts.py`.
-  - `base/` remains the shared strategy-foundation folder, while `contracts.py` now communicates the file’s actual role more clearly than `training.py` did.
-- [x] **Cache handler naming review** — The active cache-engine surface now consistently uses `CacheBackend` for the engine-facing type.
-  - The old training-side caching facet collision is gone (`CachingStrategy` in `base/contracts.py`), and the active engine/state boundary now uses backend terminology in the main code path.
 - [ ] **Live plotter / logging integration** — Fold the live plotter into the broader logging story instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **External dependency ownership review** — Decide whether custom optimizers and LyCORIS should stay external or move under `library/` for easier modification.
 - [ ] **Future conditioning/data-flow experiments** — Later exploration area for better caption mutation, TE caching, on-the-fly CPU encoding, queues, async handoff, and related conditioning/data-flow improvements once the current building blocks are settled.
+
+### Recently Settled
+
+- `library/strategies/base/training.py` was renamed to `library/strategies/base/contracts.py`.
+- The active cache-engine naming surface now uses `CacheBackend`.
+- SD now supports the shared `CachingEngine` / `TrainingDataset` path.
+- The legacy IPEX workaround path was removed from the repo.
 
 ---
 
@@ -198,43 +198,12 @@ All phase functions in `library/training/phases/` are typed as `trainer: Trainer
 > [!IMPORTANT]
 > Key constraint: this repo prioritizes readability and ease of modification over abstraction. Whatever pattern is chosen must feel intuitive when adding new features. Decision deferred until full fine-tuning support is actively being built.
 
-### Phase 0: SDXL Decoupling (✅ Complete)
+### Current State
 
-Removed all direct SDXL imports from `caching.py` and `training_loop.py`. Phase files now call strategy factory methods (`create_latent_caching_strategy`, `create_te_caching_strategy`, `tokenize_captions`, `encode_te_outputs_in_memory`) on `TrainingStrategy`.
-
-- [x] Add 4 abstract methods to `TrainingStrategy` base class
-- [x] Implement in `SdxlTrainingStrategy`
-- [x] Add `NotImplementedError` stubs in `SdTrainingStrategy` (SD uses old pipeline)
-- [x] Remove SDXL imports from `caching.py` and `training_loop.py`
-- [ ] **Future:** Implement SD strategy methods when SD is migrated to new CachingEngine pipeline
-
-### Phase 1: TrainingMode Extraction (✅ Complete)
-
-Refactored `PeftTrainer` and phase files to use a pluggable `TrainingMode` protocol. Extracted PEFT-specific logic into `PeftMode`.
-
-- [x] Define `TrainingMode` protocol
-- [x] Extract `PeftMode` implementation
-- [x] Update phases to delegate to mode hooks
-
-### Phase 2A: Adapter-Neutral Shared Flow (✅ Complete)
-
-Neutralized all remaining adapter-specific assumptions in shared code.
-
-- [x] `PeftTrainer` → `Trainer` rename (hard cut)
-- [x] 4 new mode hooks (`on_step_start`, `get_trainable_params`, `set_eval`, `set_train`)
-- [x] `_primary_trainable` field + `trainable_model` property (distinct from `_grad_sync_handle` wrapper)
-- [x] Strategy renames: `all_reduce_adapter` → `all_reduce_trainable`, `post_process_adapter` → `post_process_trainable`
-- [x] `adapter` param → `trainable_model` in 6 base strategy methods
-- [x] PEFT metadata guarded (keys omitted when `cfg.peft` absent)
-- [x] `_grad_sync_handle` assertion before training loop
-- [x] Tracker name `adapter_train` → `training`
-
-### Phase 2B: FineTuneMode + SDXL Migration (Future)
-
-- [x] **Guard `set_multiplier` in strategies** — `trainable_model.set_multiplier()` in `sdxl/training.py` and `sd/training.py` guarded with `hasattr(trainable_model, "set_multiplier")`. Non-adapter trainables skip differential output preservation silently.
-- [x] Create `library/training/modes/finetune_mode.py`
-- [x] Migrate `scripts/sdxl_finetune.py` to thin entrypoint
-- [x] Add unit + integration tests
+- `Trainer` + `TrainingMode` is the active extensibility pattern.
+- `PeftMode` and `FineTuneMode` are both in place.
+- Shared phases already route divergent behavior through trainer/mode hooks.
+- The remaining work here is no longer the extraction itself; it is follow-up cleanup like optimizer-group features, orchestration hardening, and removing legacy wrappers.
 
 ---
 
@@ -245,26 +214,20 @@ Neutralized all remaining adapter-specific assumptions in shared code.
   - Suggested: Split into `compute_accelerator_config() -> AcceleratorConfig` (pure) and `prepare_accelerator(config)` (side effects)
   - Benefits: Easier to test config logic without network calls or filesystem changes
 
-- [x] **Explicit step 0 validation** — Resolved by `ValidationScheduler` with `run_at_start`/`run_at_end` config flags and `calculate_val_loss_check()` deletion
-
 ---
 
 ## CI/CD Setup
 
-- [x] GitHub Actions workflow for pytest (`.github/workflows/tests.yml` - multiple Python/PyTorch versions)
-- [x] Coverage reporting and tracking (pytest-cov + Codecov)
 - [ ] Pre-commit hooks for running tests
+
+### Current State
+
+- GitHub Actions pytest workflow is in place.
+- Coverage reporting/tracking is already set up.
 
 ---
 
 ## Future Ideas
-
-- [ ] **Sample Generation Config Defaults** - Add global defaults to `SamplingConfig` for common sampling parameters:
-  - `sample_width`, `sample_height` (default dimensions)
-  - `sample_steps`, `sample_cfg_scale` (default inference settings)
-  - `sample_negative_prompt` (global negative prompt)
-  - These would serve as defaults that per-prompt overrides (in sample_prompts file) could supersede
-  - Also: Add YAML support for `sample_prompts` for consistency with the rest of the config system (currently only txt, .toml, .json)
 
 - [ ] **Support for feather** - https://github.com/SuriyaaMM/feather
   - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support. Currently only considered for inference
@@ -294,14 +257,10 @@ Neutralized all remaining adapter-specific assumptions in shared code.
 
 See `DATA_PIPELINE_PLAN.md` for design, `DATA_PIPELINE_CURRENT.md` for implementation checklist.
 
-### Completed
+### Current State
 
-- [x] Created `library/data/pipeline/` package
-- [x] Core dataclasses: `CacheEntry`, `Bucket`, `EpochManifest`, `DatasetManifest`
-- [x] Manifest I/O: `save_dataset_manifest()`, `load_dataset_manifest()`
-- [x] Engine skeleton: `CacheBackend` interface, `CachingEngine`
-- [x] DataLoader: `TrainingDataset`, `create_training_dataloader()`
-- [x] Epoch prep: `prepare_epoch()`, `prepare_validation_epoch()`
+- The active data pipeline already has manifests, cache entries, bucket metadata, `CachingEngine`, `TrainingDataset`, and epoch preparation in place.
+- The remaining roadmap here is about scaling and future cache-store architecture rather than getting the base pipeline working.
 
 ---
 
