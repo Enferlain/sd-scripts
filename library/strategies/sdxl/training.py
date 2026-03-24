@@ -45,7 +45,7 @@ class SdxlTrainingStrategy(
         SdxlTokenizeStrategy.__init__(
             self,
             cfg.training.max_token_length,
-            cfg.model.tokenizer_cache_dir,
+            cfg.data.caching.tokenizer_cache_dir,
         )
         self.max_token_length = self.max_length
         self.load_stable_diffusion_format = False

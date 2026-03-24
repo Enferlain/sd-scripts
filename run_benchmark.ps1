@@ -30,26 +30,26 @@ param(
 
 # Map config names to actual config files
 $configMap = @{
-    "default"  = "benchmark_sdxl"
-    "train_te" = "benchmark_sdxl_train_te"
-    "offload"  = "benchmark_sdxl_offload"
-    "workers"  = "benchmark_sdxl_workers"
-    "large"    = "benchmark_sdxl_large"
-    "test_core"         = "test_core"
-    "test_finetune"     = "test_finetune"
-    "test_checkpoint"   = "test_checkpoint"
-    "test_resume"       = "test_resume"
-    "test_sampling"     = "test_sampling"
-    "test_validation"   = "test_validation"
-    "test_text_encoder" = "test_text_encoder"
-    "test_memory_optim" = "test_memory_optim"
-    "test_advanced"     = "test_advanced"
-    "test_logging"      = "test_logging"
-    "peft_validation_run" = "test_peft_validation_run"
-    "peft_resource_basic" = "test_peft_resource_basic"
-    "peft_resource_sampled" = "test_peft_resource_sampled"
-    "finetune_resource_basic" = "benchmark_finetune_resource_basic"
-    "finetune_resource_sampled" = "benchmark_finetune_resource_sampled"
+    "default"  = "benchmarks/benchmark_sdxl"
+    "train_te" = "benchmarks/benchmark_sdxl_train_te"
+    "offload"  = "benchmarks/benchmark_sdxl_offload"
+    "workers"  = "benchmarks/benchmark_sdxl_workers"
+    "large"    = "benchmarks/benchmark_sdxl_large"
+    "test_core"         = "tests/test_core"
+    "test_finetune"     = "tests/test_finetune"
+    "test_checkpoint"   = "tests/test_checkpoint"
+    "test_resume"       = "tests/test_resume"
+    "test_sampling"     = "tests/test_sampling"
+    "test_validation"   = "tests/test_validation"
+    "test_text_encoder" = "tests/test_text_encoder"
+    "test_memory_optim" = "tests/test_memory_optim"
+    "test_advanced"     = "tests/test_advanced"
+    "test_logging"      = "tests/test_logging"
+    "peft_validation_run" = "tests/test_peft_validation_run"
+    "peft_resource_basic" = "tests/test_peft_resource_basic"
+    "peft_resource_sampled" = "tests/test_peft_resource_sampled"
+    "finetune_resource_basic" = "benchmarks/benchmark_finetune_resource_basic"
+    "finetune_resource_sampled" = "benchmarks/benchmark_finetune_resource_sampled"
 }
 
 $ErrorActionPreference = "Stop"
@@ -66,7 +66,7 @@ if (-not $configMap.ContainsKey($Config)) {
     exit 1
 }
 $configName = $configMap[$Config]
-$configFile = "$projectRoot\configs\$configName.yaml"
+$configFile = Join-Path $projectRoot ("configs\" + ($configName -replace '/', '\') + ".yaml")
 
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host "  SDXL PEFT Benchmark (New Data Pipeline)" -ForegroundColor Cyan
@@ -96,7 +96,12 @@ $outputDir = "$projectRoot\benchmark_output"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 # Route finetune configs to sdxl_finetune.py, everything else to sdxl_peft.py
-$finetuneConfigs = @("test_finetune", "benchmark_sdxl_finetune", "benchmark_finetune_resource_basic", "benchmark_finetune_resource_sampled")
+$finetuneConfigs = @(
+    "tests/test_finetune",
+    "benchmarks/benchmark_sdxl_finetune",
+    "benchmarks/benchmark_finetune_resource_basic",
+    "benchmarks/benchmark_finetune_resource_sampled"
+)
 if ($finetuneConfigs -contains $configName) {
     $script = "scripts/sdxl_finetune.py"
     Write-Host "[INFO] Config: $Config ($configName)" -ForegroundColor Green
@@ -249,11 +254,11 @@ function Get-CombinedConfigContent {
         $content = Get-Content $resolved -Raw
         $combined += $content + "`n"
 
-        $defaultsMatches = [regex]::Matches($content, '(?m)^\s*-\s+([A-Za-z0-9_]+)\s*$')
+        $defaultsMatches = [regex]::Matches($content, '(?m)^\s*-\s+(/?[A-Za-z0-9_./-]+)\s*$')
         foreach ($dm in $defaultsMatches) {
-            $parentName = $dm.Groups[1].Value
+            $parentName = $dm.Groups[1].Value.TrimStart('/')
             if ($parentName -eq "_self_") { continue }
-            $parentFile = Join-Path $ConfigDir ($parentName + ".yaml")
+            $parentFile = Join-Path $ConfigDir (($parentName -replace '/', [IO.Path]::DirectorySeparatorChar) + ".yaml")
             if (Test-Path $parentFile) {
                 $pending.Enqueue((Resolve-Path $parentFile).Path)
             }

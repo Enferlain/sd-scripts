@@ -91,8 +91,10 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 ### Active TODOs
 
 - [ ] Config Validation Edge Cases: Test `prepare_config()` and `validate_config()` for dataset conflicts
+  - Added focused unit coverage for `cache_dir` defaulting, LR inheritance, tracker/resource-monitor normalization, validation cadence disabling, TE offload/training conflicts, and dataset-group cacheability fallbacks.
+  - The FP8 mixed-precision guard was also fixed while expanding that coverage; broader config edge-case coverage still remains.
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
-- [ ] **Sampling config error**: Add error in `config_validation.py` when both `sample_every_n_steps` and `sample_every_n_epochs` are set (epoch-based takes precedence, step-based silently ignored)
+- [x] **Sampling config error**: Add error in `config_validation.py` when both `sample_every_n_steps` and `sample_every_n_epochs` are set (epoch-based takes precedence, step-based silently ignored)
   - `config_validation.py` now catches model-family bucket-step mismatches and TE-output-caching conflicts with caption-mutation settings before training starts.
   - Keep the cleanup within the same file unless the validation layer grows enough to justify a clearer internal boundary later.
 
@@ -143,7 +145,14 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - Config files are now split by role: user entry presets under `configs/presets/`, examples under `configs/examples/`, benchmarks under `configs/benchmarks/`, tests under `configs/tests/`, and Hydra fragment/internal baseline files under `configs/_defaults/`.
   - Dataset-group validation in the active path now goes through one generic helper derived from `model.model_type` instead of entrypoint-flavored `validate_sd_*` / `validate_sdxl_*` functions.
 - [ ] **`base/training.py` naming review** — Decide whether the file name still matches its role, or whether a different name would make the strategy layer easier to navigate.
+  - Current state: this file is no longer “training logic” in the loop/orchestration sense; it is primarily the active strategy contract surface (facet-style ABCs plus the combined `TrainingStrategy` interface).
+  - The real naming question now is whether a name like `contracts.py`, `interfaces.py`, or `facets.py` would communicate that role better than `training.py`.
+  - Current preferred direction: keep `library/strategies/base/` as the shared strategy-foundation folder, but likely rename `library/strategies/base/training.py` to `library/strategies/base/contracts.py`.
 - [ ] **Cache handler naming review** — Re-evaluate whether “handler” is still the clearest term for the active cache-engine boundary.
+  - The old training-side `CacheHandler` facet collision is already gone; `base/training.py` now uses `CachingStrategy`.
+  - The remaining awkwardness is at the active engine/state boundary: names like `library.data.caching_engine.CacheHandler`, `trainer.latent_cache_handler`, and `trainer.te_cache_handler` read a bit event-driven/generic for objects that really behave more like cache backends/codecs/adapters.
+  - If renamed later, this should be evaluated as one coordinated surface (`CacheHandler` ABC, trainer fields, dataloader params, and phase locals) rather than piecemeal.
+  - Current preferred direction: rename the active cache-engine surface from `CacheHandler` to `CacheBackend`, including the ABC in `library/data/caching_engine.py` and state names like `latent_cache_handler` / `te_cache_handler`.
 - [ ] **Live plotter / logging integration** — Fold the live plotter into the broader logging story instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **External dependency ownership review** — Decide whether custom optimizers and LyCORIS should stay external or move under `library/` for easier modification.
@@ -264,6 +273,7 @@ Neutralized all remaining adapter-specific assumptions in shared code.
 
 - [ ] **Support for feather** - https://github.com/SuriyaaMM/feather
   - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support. Currently only considered for inference
+  - Note: the current `fp8_base` / `fp8_base_unet` config flags have a fairly narrow active effect. In the current training path they mostly drive shared model-prep dtype casting for the denoiser / text encoders (with TE embedding workarounds), plus validation and metadata. They should not be treated as a broad quantization backend or a settled precision architecture.
 
 - [ ] **Investigate 2022-2023 backend code**
   - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line.

@@ -39,7 +39,7 @@ class SdTrainingStrategy(
             self,
             cfg.model.model_type == "sd2",
             cfg.training.max_token_length,
-            cfg.model.tokenizer_cache_dir,
+            cfg.data.caching.tokenizer_cache_dir,
         )
         self.max_token_length = self.max_length
         self.clip_skip = cfg.training.clip_skip

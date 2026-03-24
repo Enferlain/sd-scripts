@@ -75,6 +75,7 @@ class CachingConfig:
     """Latent caching settings."""
 
     cache_dir: str | None = field(default=None, metadata={"help": "directory for cache files (latents, TE outputs)"})
+    tokenizer_cache_dir: str | None = field(default=None, metadata={"help": "directory for caching tokenizers"})
     cache_latents: bool = field(default=False, metadata={"help": "cache latents to main memory to reduce VRAM usage"})
     cache_latents_to_disk: bool = field(default=False, metadata={"help": "cache latents to disk to reduce VRAM usage"})
     cache_text_encoder_outputs: bool = field(default=False, metadata={"help": "Cache text encoder outputs to reduce VRAM usage"})

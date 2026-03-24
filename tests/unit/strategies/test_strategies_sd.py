@@ -73,7 +73,7 @@ def sd_strategy_cfg():
     """Create a minimal SD strategy config mock."""
     cfg = Mock()
     cfg.model.model_type = "sd1"
-    cfg.model.tokenizer_cache_dir = None
+    cfg.data.caching.tokenizer_cache_dir = None
     cfg.training.max_token_length = 75
     cfg.training.clip_skip = None
     return cfg

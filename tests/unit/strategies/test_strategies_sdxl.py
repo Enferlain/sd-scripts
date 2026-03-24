@@ -119,7 +119,7 @@ def sdxl_strategy_cfg():
     """Create a minimal SDXL strategy config mock."""
     cfg = Mock()
     cfg.training.max_token_length = 75
-    cfg.model.tokenizer_cache_dir = None
+    cfg.data.caching.tokenizer_cache_dir = None
     return cfg
 
 

@@ -16,6 +16,97 @@ from library.config.config_validation import (
 )
 
 
+def make_prepare_cfg(overrides: dict | None = None):
+    """Build a minimal config shape suitable for prepare_config tests."""
+    base = {
+        "data": {
+            "caching": {
+                "cache_latents": False,
+                "cache_latents_to_disk": False,
+                "cache_text_encoder_outputs": False,
+                "cache_text_encoder_outputs_to_disk": False,
+                "cache_dir": None,
+            },
+            "caption": {"caption_extention": None},
+            "source": {"train_data_dir": None},
+        },
+        "optimizer": {
+            "use_8bit_adam": False,
+            "use_lion_optimizer": False,
+            "optimizer_type": "",
+            "learning_rates": {"base": 1e-4, "denoiser": None, "text_encoders": None},
+        },
+        "output": {
+            "sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None},
+            "logging": {
+                "log_every_n_steps": 1,
+                "resource_monitor": {
+                    "enabled": True,
+                    "mode": "basic",
+                    "log_every_n_steps": 0,
+                    "sample_interval_sec": 1.0,
+                    "jsonl_flush_every_n_events": 50,
+                    "queue_maxsize": 1024,
+                    "max_collection_ms": 0.0,
+                    "deep_window_steps": 0,
+                    "deep_window_seconds": 0.0,
+                },
+            },
+        },
+        "validation": {"validate_every_n_steps": None, "validate_every_n_epochs": None},
+        "performance": {},
+    }
+    if overrides is None:
+        return OmegaConf.create(base)
+    return OmegaConf.merge(OmegaConf.create(base), OmegaConf.create(overrides))
+
+
+def make_validate_cfg(overrides: dict | None = None):
+    """Build a minimally valid config suitable for validate_config tests."""
+    base = {
+        "mode": "finetune",
+        "loss": {
+            "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+            "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+            "v_parameterization": False,
+        },
+        "model": {"model_type": "sd15"},
+        "training": {"clip_skip": None},
+        "optimizer": {
+            "learning_rates": {"blocks": None, "text_encoders": 0, "denoiser": 1e-4, "base": 1e-4},
+        },
+        "data": {
+            "caching": {"cache_text_encoder_outputs": False},
+            "bucketing": {"bucket_reso_steps": 64},
+            "caption": {
+                "shuffle_caption": False,
+                "caption_dropout_rate": 0.0,
+                "token_warmup_step": 0.0,
+                "caption_tag_dropout_rate": 0.0,
+            },
+        },
+        "performance": {
+            "memory": {"offload_text_encoders": False},
+            "precision": {"full_fp16": False, "full_bf16": False, "mixed_precision": "fp16", "fp8_base": False},
+        },
+        "output": {
+            "sampling": {"sample_every_n_steps": None, "sample_every_n_epochs": None},
+            "logging": {
+                "resource_monitor": {
+                    "mode": "basic",
+                    "rank_scope": "main",
+                    "device_scope": "local",
+                    "jsonl_flush_mode": "auto",
+                    "drop_policy": "drop_oldest",
+                }
+            },
+        },
+    }
+    if overrides is None:
+        return OmegaConf.create(base)
+    return OmegaConf.merge(OmegaConf.create(base), OmegaConf.create(overrides))
+
+
 # =============================================================================
 # prepare_config Tests
 # =============================================================================
@@ -28,13 +119,7 @@ class TestPrepareConfig:
 
     def test_cache_latents_to_disk_enables_cache_latents(self):
         """cache_latents_to_disk should automatically enable cache_latents."""
-        cfg = OmegaConf.create(
-            {
-                "data": {"caching": {"cache_latents": False, "cache_latents_to_disk": True}, "caption": {"caption_extention": None}},
-                "optimizer": {"use_8bit_adam": False, "use_lion_optimizer": False, "optimizer_type": ""},
-                "output": {"sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None}},
-            }
-        )
+        cfg = make_prepare_cfg({"data": {"caching": {"cache_latents_to_disk": True}}})
         prepare_config(cfg)
         assert cfg.data.caching.cache_latents is True
 
@@ -178,6 +263,60 @@ class TestPrepareConfig:
         prepare_config(cfg)
         assert cfg.output.logging.resource_monitor.log_every_n_steps == 0
 
+    def test_cache_dir_defaults_to_train_data_dir(self):
+        """cache_dir should default to train_data_dir when caching omits it."""
+        cfg = make_prepare_cfg({"data": {"source": {"train_data_dir": "/tmp/train-data"}}})
+        prepare_config(cfg)
+        assert cfg.data.caching.cache_dir == "/tmp/train-data"
+
+    def test_learning_rates_default_to_base_lr(self):
+        """Missing denoiser and text-encoder LRs should inherit the base LR."""
+        cfg = make_prepare_cfg({"optimizer": {"learning_rates": {"base": 2e-4, "denoiser": None, "text_encoders": None}}})
+        prepare_config(cfg)
+        assert cfg.optimizer.learning_rates.denoiser == 2e-4
+        assert cfg.optimizer.learning_rates.text_encoders == 2e-4
+
+    def test_log_every_n_steps_zero_defaults_to_one(self):
+        """Tracker cadence at zero should normalize back to 1."""
+        cfg = make_prepare_cfg({"output": {"logging": {"log_every_n_steps": 0}}})
+        prepare_config(cfg)
+        assert cfg.output.logging.log_every_n_steps == 1
+
+    @pytest.mark.parametrize(
+        ("field", "value", "expected"),
+        [
+            ("sample_interval_sec", 0.0, 1.0),
+            ("jsonl_flush_every_n_events", 0, 1),
+            ("queue_maxsize", 0, 1),
+            ("max_collection_ms", -1.0, 0.0),
+            ("deep_window_steps", -1, 0),
+            ("deep_window_seconds", -1.0, 0.0),
+        ],
+    )
+    def test_resource_monitor_invalid_values_are_normalized(self, field, value, expected):
+        """Resource monitor numeric settings should clamp invalid values."""
+        cfg = make_prepare_cfg({"output": {"logging": {"resource_monitor": {field: value}}}})
+        prepare_config(cfg)
+        assert getattr(cfg.output.logging.resource_monitor, field) == expected
+
+    def test_validation_cadence_zero_or_negative_disables_both(self):
+        """Validation cadence should disable non-positive step and epoch schedules."""
+        cfg = make_prepare_cfg({"validation": {"validate_every_n_steps": 0, "validate_every_n_epochs": -2}})
+        prepare_config(cfg)
+        assert cfg.validation.validate_every_n_steps is None
+        assert cfg.validation.validate_every_n_epochs is None
+
+    def test_prepare_config_tolerates_missing_logging_fields(self):
+        """Partial configs without output.logging should not raise."""
+        cfg = OmegaConf.create(
+            {
+                "data": {"caching": {"cache_latents": False, "cache_latents_to_disk": False}, "caption": {"caption_extention": None}},
+                "optimizer": {"use_8bit_adam": False, "use_lion_optimizer": False, "optimizer_type": ""},
+                "output": {"sampling": {"sample_every_n_epochs": None, "sample_every_n_steps": None}},
+            }
+        )
+        prepare_config(cfg)
+
 
 # =============================================================================
 # validate_config Tests
@@ -194,6 +333,7 @@ class TestValidateConfig:
         cfg = OmegaConf.create(
             {
                 "mode": "peft",
+                "peft": {"adapter_rank": 16},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
                     "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
@@ -211,21 +351,7 @@ class TestValidateConfig:
 
     def test_invalid_mode_raises(self):
         """Unknown top-level mode should raise ValueError when present."""
-        cfg = OmegaConf.create(
-            {
-                "mode": "mystery",
-                "loss": {
-                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
-                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
-                    "v_parameterization": False,
-                },
-                "model": {"model_type": "sd1"},
-                "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
-                "data": {"caching": {"cache_text_encoder_outputs": False}},
-                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
-            }
-        )
+        cfg = make_validate_cfg({"mode": "mystery", "model": {"model_type": "sd1"}})
         with pytest.raises(ValueError, match="mode must be one of"):
             validate_config(cfg)
 
@@ -290,6 +416,12 @@ class TestValidateConfig:
             }
         )
         with pytest.raises(ValueError, match="`peft` and `textual_inversion` sections cannot both be active"):
+            validate_config(cfg)
+
+    def test_mode_textual_inversion_requires_section(self):
+        """Textual inversion mode should fail when its section is missing."""
+        cfg = make_validate_cfg({"mode": "textual_inversion", "model": {"model_type": "sdxl"}})
+        with pytest.raises(ValueError, match="mode=textual_inversion requires a `textual_inversion` section"):
             validate_config(cfg)
 
     def test_adaptive_noise_scale_requires_noise_offset(self):
@@ -467,6 +599,57 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="resource_monitor.mode must be one of"):
             validate_config(cfg)
 
+    @pytest.mark.parametrize(
+        ("field", "value", "message"),
+        [
+            ("rank_scope", "world", "resource_monitor.rank_scope must be one of"),
+            ("device_scope", "remote", "resource_monitor.device_scope must be one of"),
+            ("jsonl_flush_mode", "immediate", "resource_monitor.jsonl_flush_mode must be one of"),
+            ("drop_policy", "discard", "resource_monitor.drop_policy must be one of"),
+        ],
+    )
+    def test_invalid_resource_monitor_enum_fields_raise(self, field, value, message):
+        """Each resource monitor enum field should reject unknown values."""
+        cfg = make_validate_cfg({"output": {"logging": {"resource_monitor": {field: value}}}})
+        with pytest.raises(ValueError, match=message):
+            validate_config(cfg)
+
+    @pytest.mark.parametrize("fp8_field", ["fp8_base", "fp8_base_unet"])
+    def test_fp8_base_requires_mixed_precision(self, fp8_field):
+        """FP8 precision flags should reject configs that disable mixed precision entirely."""
+        cfg = make_validate_cfg({"performance": {"precision": {fp8_field: True, "mixed_precision": "no"}}})
+        with pytest.raises(ValueError, match="fp8_base requires mixed_precision='fp16' or 'bf16'"):
+            validate_config(cfg)
+
+    def test_sampling_cadence_conflict_raises(self):
+        """Sampling should reject configs that enable both step and epoch cadence."""
+        cfg = OmegaConf.create(
+            {
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": "sdxl"},
+                "training": {"clip_skip": None},
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "data": {
+                    "caching": {"cache_text_encoder_outputs": False},
+                    "bucketing": {"bucket_reso_steps": 32},
+                    "caption": {
+                        "shuffle_caption": False,
+                        "caption_dropout_rate": 0.0,
+                        "token_warmup_step": 0.0,
+                        "caption_tag_dropout_rate": 0.0,
+                    },
+                },
+                "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
+                "output": {"sampling": {"sample_every_n_steps": 100, "sample_every_n_epochs": 1}},
+            }
+        )
+        with pytest.raises(ValueError, match="sample_every_n_steps and sample_every_n_epochs cannot both be set"):
+            validate_config(cfg)
+
     def test_sdxl_bucket_reso_steps_must_be_divisible_by_32(self):
         """SDXL configs should reject bucket step sizes incompatible with the model family."""
         cfg = OmegaConf.create(
@@ -521,6 +704,39 @@ class TestValidateConfig:
             }
         )
         with pytest.raises(ValueError, match="cache_text_encoder_outputs cannot be used with"):
+            validate_config(cfg)
+
+    def test_offload_text_encoders_conflicts_with_te_output_caching(self):
+        """Config validation should reject TE offloading together with TE output caching."""
+        cfg = make_validate_cfg(
+            {
+                "data": {"caching": {"cache_text_encoder_outputs": True}},
+                "performance": {"memory": {"offload_text_encoders": True}},
+            }
+        )
+        with pytest.raises(ValueError, match="Cannot use both offload_text_encoders and cache_text_encoder_outputs"):
+            validate_config(cfg)
+
+    def test_offload_text_encoders_conflicts_with_te_training(self):
+        """Offloading text encoders should reject configs that still train them."""
+        cfg = make_validate_cfg(
+            {
+                "optimizer": {"learning_rates": {"text_encoders": 1e-5}},
+                "performance": {"memory": {"offload_text_encoders": True}},
+            }
+        )
+        with pytest.raises(ValueError, match="Cannot train text encoder while offloading to CPU"):
+            validate_config(cfg)
+
+    def test_te_output_caching_conflicts_with_te_training(self):
+        """TE-output caching should reject configs that still train text encoders."""
+        cfg = make_validate_cfg(
+            {
+                "optimizer": {"learning_rates": {"text_encoders": 1e-5}},
+                "data": {"caching": {"cache_text_encoder_outputs": True}},
+            }
+        )
+        with pytest.raises(ValueError, match="Cannot train text encoder while TE output caching is enabled"):
             validate_config(cfg)
 
     @pytest.mark.skip(reason="Block LR validation is model-specific, currently disabled pending refactor")
@@ -609,6 +825,15 @@ class TestDatasetGroupValidation:
 
         with pytest.raises(ValueError, match="cache_text_encoder_outputs"):
             validate_dataset_groups(cfg, train_ds, None)
+
+    def test_cache_te_without_cacheability_probe_is_allowed(self):
+        """Dataset-group validation should tolerate dataset groups without the optional probe."""
+        cfg = OmegaConf.create({"model": {"model_type": "sdxl"}, "data": {"caching": {"cache_text_encoder_outputs": True}}})
+        train_ds = MagicMock(spec=["verify_bucket_reso_steps"])
+
+        validate_dataset_groups(cfg, train_ds, None)
+
+        train_ds.verify_bucket_reso_steps.assert_called_once_with(32)
 
     def test_unknown_model_type_skips_bucket_validation(self):
         """Unknown or future model families should not force bucket-step validation here."""

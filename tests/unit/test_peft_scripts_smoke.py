@@ -103,7 +103,7 @@ class TestStrategyImports:
         mock_load_tokenizer.return_value = Mock(model_max_length=77)
         cfg = Mock()
         cfg.model.model_type = "sd1"
-        cfg.model.tokenizer_cache_dir = None
+        cfg.data.caching.tokenizer_cache_dir = None
         cfg.training.max_token_length = 75
         cfg.training.clip_skip = None
 
@@ -118,7 +118,7 @@ class TestStrategyImports:
         mock_load_tokenizer.side_effect = [Mock(model_max_length=77), Mock(model_max_length=77, pad_token_id=0)]
         cfg = Mock()
         cfg.training.max_token_length = 75
-        cfg.model.tokenizer_cache_dir = None
+        cfg.data.caching.tokenizer_cache_dir = None
 
         strategy = SdxlTrainingStrategy(cfg)
         assert strategy is not None

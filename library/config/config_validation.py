@@ -280,6 +280,14 @@ def validate_config(cfg) -> None:
 
     # === Errors ===
 
+    sample_every_n_steps = _get_optional_attr(cfg, "output", "sampling", "sample_every_n_steps")
+    sample_every_n_epochs = _get_optional_attr(cfg, "output", "sampling", "sample_every_n_epochs")
+    if sample_every_n_steps is not None and sample_every_n_epochs is not None:
+        raise ValueError(
+            "sample_every_n_steps and sample_every_n_epochs cannot both be set. "
+            "Choose either step-based or epoch-based sampling cadence."
+        )
+
     # Regularization: adaptive_noise_scale requires noise_offset
     if cfg.loss.regularization.adaptive_noise_scale is not None and cfg.loss.regularization.noise_offset is None:
         raise ValueError("adaptive_noise_scale requires noise_offset")
@@ -299,11 +307,10 @@ def validate_config(cfg) -> None:
         if cfg.performance.precision.full_bf16 and cfg.performance.precision.mixed_precision != "bf16":
             raise ValueError("full_bf16 requires mixed_precision='bf16'")
         # fp8_base requires mixed precision enabled
-        if (
-            hasattr(cfg.performance, "fp8_base")
-            and (cfg.performance.precision.fp8_base or getattr(cfg.performance, "fp8_base_unet", False))
-            and cfg.performance.precision.mixed_precision == "no"
-        ):
+        fp8_base = _get_optional_attr(cfg, "performance", "precision", "fp8_base", default=False)
+        fp8_base_unet = _get_optional_attr(cfg, "performance", "precision", "fp8_base_unet", default=False)
+        mixed_precision = _get_optional_attr(cfg, "performance", "precision", "mixed_precision")
+        if (fp8_base or fp8_base_unet) and mixed_precision == "no":
             raise ValueError("fp8_base requires mixed_precision='fp16' or 'bf16'")
 
         # TE offloading + caching conflict (can't use both)

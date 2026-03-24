@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-24]
+
+### Changed
+
+- **Tokenizer cache config now lives with data caching settings** — The active config surface no longer treats tokenizer caching as part of model identity.
+  - Moved `tokenizer_cache_dir` from `model.*` to `data.caching.*` in the dataclass schema and Hydra default fragments.
+  - Updated the active SD / SDXL strategy construction paths, the active SDXL textual inversion script path, and related unit tests to read the cache location from `cfg.data.caching.tokenizer_cache_dir`.
+- **Config validation now rejects ambiguous sampling cadence settings** — Active configs can no longer set both `sample_every_n_steps` and `sample_every_n_epochs` and silently fall through to epoch precedence.
+  - `library/config/config_validation.py` now raises a clear error when both sampling cadence fields are set at once.
+  - `tests/unit/test_config_validation.py` now covers that new guard, a dataset-side `cache_dir` prepare-config default, and the existing TE offload vs. TE-output caching conflict.
+- **Config-validation edge-case coverage is broader and stricter** — The centralized validator now has regression coverage for more normalization paths and conflict branches, including one real FP8 validation fix.
+  - `tests/unit/test_config_validation.py` now covers learning-rate inheritance in `prepare_config()`, tracker/resource-monitor normalization, validation cadence disabling, partial-config tolerance, more resource-monitor enum validation, textual-inversion mode requirements, TE training/caching conflicts, and dataset-group cacheability fallbacks.
+  - `library/config/config_validation.py` now validates `fp8_base` / `fp8_base_unet` against `performance.precision.mixed_precision` correctly while still tolerating partial OmegaConf test configs that omit unrelated precision keys.
+
 ## [2026-03-23]
 
 ### Changed

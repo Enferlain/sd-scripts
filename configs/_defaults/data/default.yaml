@@ -47,6 +47,7 @@ bucketing:
 
 caching:
   cache_dir: null
+  tokenizer_cache_dir: null
   cache_latents: false
   cache_latents_to_disk: false
   cache_text_encoder_outputs: false
