@@ -1,7 +1,7 @@
 from typing import Any
 
 from library.constants import SD_VAE_LATENT_SCALE
-from library.strategies.base.training import TrainingStrategy
+from library.strategies.base.contracts import TrainingStrategy
 from library.strategies.sd.caching import SdCachingStrategy
 from library.strategies.sd.checkpointing import SdCheckpointingStrategy
 from library.strategies.sd.denoiser import SdDenoiserCallingStrategy

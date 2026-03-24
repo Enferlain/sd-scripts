@@ -2,7 +2,7 @@ from typing import Any
 
 import torch
 
-from library.strategies.base.training import ModelPreparationStrategy
+from library.strategies.base.contracts import ModelPreparationStrategy
 
 
 class SdModelPreparationStrategy(ModelPreparationStrategy):

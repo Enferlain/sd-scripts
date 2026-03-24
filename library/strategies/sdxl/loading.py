@@ -7,7 +7,7 @@ from torch import nn
 from library.constants import MODEL_VERSION_SDXL_BASE_V1_0
 from library.models.runtime_utils import replace_unet_modules
 from library.models.sdxl.loader import load_target_model as load_sdxl_target_model
-from library.strategies.base.training import ModelLoadingStrategy
+from library.strategies.base.contracts import ModelLoadingStrategy
 
 try:
     from ramtorch.helpers import replace_linear_with_ramtorch

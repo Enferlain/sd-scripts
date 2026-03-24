@@ -31,8 +31,8 @@ from library.data import create_manifest_from_config, get_or_create_manifest, Da
 
 if TYPE_CHECKING:
     from accelerate import Accelerator
-    from library.data.caching_engine import CacheHandler
-    from library.strategies.base.training import TrainingStrategy
+    from library.data.caching_engine import CacheBackend
+    from library.strategies.base.contracts import TrainingStrategy
     from library.training.modes.base import TrainingMode
 
 
@@ -106,8 +106,8 @@ class Trainer:
         self.te_weight_dtype: torch.dtype | None = None
 
         # Will be set during run_caching()
-        self.latent_cache_handler: CacheHandler | None = None
-        self.te_cache_handler: CacheHandler | None = None
+        self.latent_cache_backend: CacheBackend | None = None
+        self.te_cache_backend: CacheBackend | None = None
 
         # Will be set during prepare_optimizer()
         self.optimizer: Any = None

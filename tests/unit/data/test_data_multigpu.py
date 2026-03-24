@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 from library.data.structures import DatasetManifest, CacheEntry, Bucket
 from library.data.epoch_preparation import prepare_epoch
 from library.data.dataloader import TrainingDataset
-from library.data.caching_engine import CachingEngine, CacheHandler
+from library.data.caching_engine import CachingEngine, CacheBackend
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -110,7 +110,7 @@ class TestPipelineMultiGPU(unittest.TestCase):
         logger.info(f"Total batches in epoch: {total_batches}")
 
         # Mock strategy (we don't need real loading for this test)
-        mock_strategy = MagicMock(spec=CacheHandler)
+        mock_strategy = MagicMock(spec=CacheBackend)
         # Mock load_cache to return a dummy tensor
         import torch
 
@@ -160,7 +160,7 @@ class TestPipelineMultiGPU(unittest.TestCase):
         """Verify CachingEngine distribution logic."""
         logger.info("Test 4: Checking CachingEngine distribution...")
 
-        mock_strategy = MagicMock(spec=CacheHandler)
+        mock_strategy = MagicMock(spec=CacheBackend)
         mock_strategy.get_entry_cache_path.return_value = Path("/tmp/mock.safetensors")
         mock_strategy.is_cache_valid.return_value = False  # Force caching
 

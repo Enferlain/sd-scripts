@@ -4,7 +4,7 @@ import torch
 
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.losses.loss_weighting import apply_masked_loss, post_process_loss
-from library.strategies.base.training import DiffusionTrainingStrategy
+from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps, prepare_latents
 
 

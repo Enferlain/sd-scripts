@@ -2,7 +2,7 @@ from typing import Any
 
 import torch
 
-from library.strategies.base.training import DenoiserCallingStrategy
+from library.strategies.base.contracts import DenoiserCallingStrategy
 
 
 class SdDenoiserCallingStrategy(DenoiserCallingStrategy):

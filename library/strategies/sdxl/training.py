@@ -12,7 +12,7 @@ from library.strategies.sdxl.sampling import SdxlSampleGenerationStrategy
 from library.strategies.sdxl.tokenization import SdxlTokenizeStrategy
 from library.strategies.sdxl.validation import SdxlValidationStrategy
 
-from library.strategies.base.training import TrainingStrategy
+from library.strategies.base.contracts import TrainingStrategy
 
 
 class SdxlTrainingStrategy(

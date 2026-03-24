@@ -31,17 +31,21 @@ This repository has recently undergone a significant refactoring to improve modu
 .
 ├── scripts/            # Main training scripts
 ├── library/            # Core logic and modules
-│   ├── config/         # Argument parsing and configuration
+│   ├── adapters/       # LoRA and related adapter implementations
+│   ├── config/         # Hydra dataclasses and config validation
 │   ├── data/           # Dataset handling, caching, and image/prompt utilities
+│   ├── logging/        # Logging, tracking, and plotting helpers
 │   ├── losses/         # Loss functions for training
 │   ├── models/         # Model definitions (U-Net, Text Encoders, etc.)
-│   ├── networks/       # LoRA and other network customizations
-│   ├── optimizations/  # Optimizations like DeepSpeed
 │   ├── optimizers/     # Custom optimizer implementations
+│   ├── performance/    # Performance and memory optimization helpers
 │   ├── pipelines/      # Stable Diffusion pipelines
 │   ├── strategies/     # Training strategies for different model types
-│   ├── timestep_samplers/ # Samplers for the diffusion process
-│   ├── training/       # Core training loop, checkpointing, and sample generation
+│   │   ├── base/       # Shared strategy contracts in `contracts.py`
+│   │   ├── sd/         # SD1.5/2 strategy implementations
+│   │   └── sdxl/       # SDXL strategy implementations
+│   ├── timesteps/      # Timestep sampling strategies
+│   ├── training/       # Trainer, phases, checkpointing, and sample generation
 │   ├── utils/          # Miscellaneous utility functions
 │   └── vendor/         # Third-party code
 ├── tools/              # Utility scripts for data processing, model management, etc. (untested but unchanged)

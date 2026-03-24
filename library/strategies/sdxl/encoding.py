@@ -6,7 +6,7 @@ from library.models.sdxl.text_encoder import encode_input_ids_sdxl, apply_hidden
 from library.models.sd.tokenizer import tokenize_clip_captions
 from transformers import CLIPTokenizer
 
-from library.strategies.base.training import TextEncodingStrategy
+from library.strategies.base.contracts import TextEncodingStrategy
 
 
 def encode_sdxl_tokens(

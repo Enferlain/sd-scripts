@@ -1,5 +1,11 @@
 # Strategy System Follow-Up
 
+> [!NOTE]
+> This document spans multiple refactor stages. References to
+> `library/strategies/base/training.py` and `CacheHandler` should be read as
+> today’s `library/strategies/base/contracts.py` and `CacheBackend` unless the
+> surrounding text is explicitly discussing the older naming state.
+
 ## Purpose
 
 Record the current strategy-layer direction after the Trainer/TrainingMode
@@ -19,12 +25,12 @@ The architecture we are aiming for is:
 
 The important strategy-layer rule is:
 
-- `library/strategies/base/training.py` is the source of truth for the
+- `library/strategies/base/contracts.py` is the source of truth for the
   model-family training contract
 
 That means:
 
-- downstream model families should read `base/training.py` first
+- downstream model families should read `base/contracts.py` first
 - separate concern files are still fine, but contract definitions should not
   be mixed with helper code, singleton plumbing, or legacy support unless
   there is a strong reason

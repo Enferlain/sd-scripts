@@ -6,7 +6,7 @@ from library.models.sd.text_encoder import get_hidden_states_sd, apply_hidden_st
 from library.strategies.sd.tokenization import tokenize_sd_captions
 from transformers import CLIPTokenizer
 
-from library.strategies.base.training import TextEncodingStrategy
+from library.strategies.base.contracts import TextEncodingStrategy
 
 
 def encode_sd_tokens(tokenizer: CLIPTokenizer, clip_skip: int | None, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:

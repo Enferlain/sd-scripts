@@ -2,7 +2,7 @@ from typing import Any
 
 import torch
 
-from library.strategies.base.training import CheckpointingStrategy
+from library.strategies.base.contracts import CheckpointingStrategy
 from library.utils.model_metadata import get_model_metadata_from_config
 
 

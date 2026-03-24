@@ -8,7 +8,7 @@ The codebase follows a Trainer + TrainingMode pattern where scripts are thin ent
 Scripts (thin entry points):          Library Modules:
 ┌─────────────────┐                   ┌─────────────────────────────┐
 │   sd_peft.py    │                   │ library/strategies/         │
-│   (~55 lines)   │ ───imports───────►│   base/training.py          │
+│   (~55 lines)   │ ───imports───────►│   base/contracts.py         │
 └─────────────────┘                   │   sd/training.py            │
 ┌─────────────────┐                   │   sdxl/training.py          │
 │  sdxl_peft.py   │ ───imports───────►└─────────────┬───────────────┘
@@ -104,7 +104,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 - [ ] **Strategy system follow-up** — The large base-strategy cleanup is mostly done. Remaining work is narrower:
   - SD / SDXL concrete strategy cleanup against the current base contract
-  - naming/organization review for `library/strategies/base/training.py`
+  - naming/organization review for `library/strategies/base/contracts.py`
   - later concrete/compatibility `unet` -> `denoiser` cleanup where it still makes sense
   - further `base/`-to-`models/` ownership cleanup where model-specific behavior still sits too high
   - `_deprecated` and `copy` reference files should not receive normal refactor work
@@ -144,15 +144,10 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - The current config direction is one shared `run_schema` with explicit `mode` plus optional `peft` / `textual_inversion` nested sections, rather than separate root schemas per training mode or per model family.
   - Config files are now split by role: user entry presets under `configs/presets/`, examples under `configs/examples/`, benchmarks under `configs/benchmarks/`, tests under `configs/tests/`, and Hydra fragment/internal baseline files under `configs/_defaults/`.
   - Dataset-group validation in the active path now goes through one generic helper derived from `model.model_type` instead of entrypoint-flavored `validate_sd_*` / `validate_sdxl_*` functions.
-- [ ] **`base/training.py` naming review** — Decide whether the file name still matches its role, or whether a different name would make the strategy layer easier to navigate.
-  - Current state: this file is no longer “training logic” in the loop/orchestration sense; it is primarily the active strategy contract surface (facet-style ABCs plus the combined `TrainingStrategy` interface).
-  - The real naming question now is whether a name like `contracts.py`, `interfaces.py`, or `facets.py` would communicate that role better than `training.py`.
-  - Current preferred direction: keep `library/strategies/base/` as the shared strategy-foundation folder, but likely rename `library/strategies/base/training.py` to `library/strategies/base/contracts.py`.
-- [ ] **Cache handler naming review** — Re-evaluate whether “handler” is still the clearest term for the active cache-engine boundary.
-  - The old training-side `CacheHandler` facet collision is already gone; `base/training.py` now uses `CachingStrategy`.
-  - The remaining awkwardness is at the active engine/state boundary: names like `library.data.caching_engine.CacheHandler`, `trainer.latent_cache_handler`, and `trainer.te_cache_handler` read a bit event-driven/generic for objects that really behave more like cache backends/codecs/adapters.
-  - If renamed later, this should be evaluated as one coordinated surface (`CacheHandler` ABC, trainer fields, dataloader params, and phase locals) rather than piecemeal.
-  - Current preferred direction: rename the active cache-engine surface from `CacheHandler` to `CacheBackend`, including the ABC in `library/data/caching_engine.py` and state names like `latent_cache_handler` / `te_cache_handler`.
+- [x] **`base/contracts.py` naming review** — The active strategy contract file now lives at `library/strategies/base/contracts.py`.
+  - `base/` remains the shared strategy-foundation folder, while `contracts.py` now communicates the file’s actual role more clearly than `training.py` did.
+- [x] **Cache handler naming review** — The active cache-engine surface now consistently uses `CacheBackend` for the engine-facing type.
+  - The old training-side caching facet collision is gone (`CachingStrategy` in `base/contracts.py`), and the active engine/state boundary now uses backend terminology in the main code path.
 - [ ] **Live plotter / logging integration** — Fold the live plotter into the broader logging story instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **External dependency ownership review** — Decide whether custom optimizers and LyCORIS should stay external or move under `library/` for easier modification.
@@ -304,7 +299,7 @@ See `DATA_PIPELINE_PLAN.md` for design, `DATA_PIPELINE_CURRENT.md` for implement
 - [x] Created `library/data/pipeline/` package
 - [x] Core dataclasses: `CacheEntry`, `Bucket`, `EpochManifest`, `DatasetManifest`
 - [x] Manifest I/O: `save_dataset_manifest()`, `load_dataset_manifest()`
-- [x] Engine skeleton: `CacheHandler` interface, `CachingEngine`
+- [x] Engine skeleton: `CacheBackend` interface, `CachingEngine`
 - [x] DataLoader: `TrainingDataset`, `create_training_dataloader()`
 - [x] Epoch prep: `prepare_epoch()`, `prepare_validation_epoch()`
 
@@ -393,7 +388,7 @@ cache/
 
 2. **Training-facing API unchanged**
    - Same `CacheData` contract
-   - Same `CacheHandler` interface
+   - Same `CacheBackend` interface
    - Backend switch via config (`cache_backend: "per_image" | "sharded"`)
 
 3. **Threshold-based recommendation**

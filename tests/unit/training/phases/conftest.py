@@ -219,8 +219,8 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer.val_manifest = None
 
     # Strategies (cached versions)
-    trainer.latent_cache_handler = None
-    trainer.te_cache_handler = None
+    trainer.latent_cache_backend = None
+    trainer.te_cache_backend = None
     # Tokenization and text encoding now live directly on TrainingStrategy.
 
     # Adapter

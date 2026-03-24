@@ -5,7 +5,7 @@ This script is the entry point for SDXL full-model fine-tuning.
 All training logic is now in Trainer and its phase functions.
 
 Model-specific operations are delegated to:
-- library/strategies/sdxl/training.py (strategy pattern)
+- library/strategies/sdxl/contracts.py (strategy pattern)
 - library/training/runners/trainer.py (trainer orchestration)
 - library/training/modes/finetune_mode.py (fine-tune mode hooks)
 - library/training/phases/*.py (phase-specific logic)

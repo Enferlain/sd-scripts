@@ -467,8 +467,8 @@ def run_training_loop(trainer: Trainer) -> None:
             train_dataloader = create_training_dataloader(
                 dataset_manifest=trainer.train_manifest,
                 epoch_manifest=epoch_manifest,
-                latent_cache_handler=trainer.latent_cache_handler,
-                te_cache_handler=trainer.te_cache_handler,
+                latent_cache_backend=trainer.latent_cache_backend,
+                te_cache_backend=trainer.te_cache_backend,
                 flip_aug=cfg.data.preprocessing.flip_aug,
                 prior_loss_weight=cfg.loss.prior_loss_weight,
                 rank=accelerator.process_index,

@@ -9,7 +9,7 @@ Structure:
 - Hydra entry point: Loads config and calls train()
 
 Model-specific operations are delegated to:
-- library/strategies/training.py (strategy pattern)
+- library/strategies/contracts.py (strategy pattern)
 - library/training/*.py, library/logging/*.py, library/data/*.py (shared utilities)
 """
 

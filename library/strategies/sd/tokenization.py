@@ -5,7 +5,7 @@ from transformers import CLIPTokenizer
 
 from library.constants import V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
 from library.models.sd.tokenizer import get_clip_input_ids, load_tokenizer, tokenize_clip_captions
-from library.strategies.base.training import TokenizationStrategy
+from library.strategies.base.contracts import TokenizationStrategy
 import logging
 
 

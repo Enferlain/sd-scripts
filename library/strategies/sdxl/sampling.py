@@ -4,7 +4,7 @@ import gc
 import torch
 
 from library.pipelines.sdxl_lpw_stable_diffusion import SdxlStableDiffusionLongPromptWeightingPipeline
-from library.strategies.base.training import SampleGenerationStrategy
+from library.strategies.base.contracts import SampleGenerationStrategy
 from library.training.sample_generation import (
     get_my_scheduler,
     sample_images_check,

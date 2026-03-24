@@ -7,7 +7,7 @@ from torch import nn
 import library.models.sd.conversion
 from library.models.runtime_utils import replace_unet_modules
 from library.models.sd.loader import load_target_model
-from library.strategies.base.training import ModelLoadingStrategy
+from library.strategies.base.contracts import ModelLoadingStrategy
 
 try:
     from ramtorch.helpers import replace_linear_with_ramtorch

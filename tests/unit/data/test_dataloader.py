@@ -36,7 +36,7 @@ def mock_epoch_manifest():
 
 
 @pytest.fixture
-def mock_latent_cache_handler():
+def mock_latent_cache_backend():
     strategy = MagicMock()
     # Default behavior for load_cache
     cache_data = CacheData(
@@ -50,7 +50,7 @@ def mock_latent_cache_handler():
 
 
 @pytest.fixture
-def mock_te_cache_handler():
+def mock_te_cache_backend():
     strategy = MagicMock()
     cache_data = CacheData(aux={"encoder_output": torch.randn(2, 77, 768)})
     strategy.load_cache.return_value = cache_data
@@ -99,7 +99,7 @@ def sample_entries():
 # -----------------------------------------------------------------------------
 
 
-def test_training_dataset_iteration(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_handler, sample_entries):
+def test_training_dataset_iteration(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, sample_entries):
     """Verify that the dataset yields batches in the correct order."""
 
     # Setup manifest with entries
@@ -114,7 +114,7 @@ def test_training_dataset_iteration(mock_dataset_manifest, mock_epoch_manifest, 
     dataset = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
-        latent_cache_handler=mock_latent_cache_handler,
+        latent_cache_backend=mock_latent_cache_backend,
     )
 
     batches = list(dataset)
@@ -132,7 +132,7 @@ def test_training_dataset_iteration(mock_dataset_manifest, mock_epoch_manifest, 
     assert batches[1]["captions"] == ["proc_cap2"]
 
 
-def test_batch_format(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_handler, sample_entries):
+def test_batch_format(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, sample_entries):
     """Verify that the batch contains all required fields: latents, conditionings, captions, etc."""
 
     mock_dataset_manifest.entries = sample_entries
@@ -142,7 +142,7 @@ def test_batch_format(mock_dataset_manifest, mock_epoch_manifest, mock_latent_ca
     dataset = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
-        latent_cache_handler=mock_latent_cache_handler,
+        latent_cache_backend=mock_latent_cache_backend,
     )
 
     batch = next(iter(dataset))
@@ -158,7 +158,7 @@ def test_batch_format(mock_dataset_manifest, mock_epoch_manifest, mock_latent_ca
     assert isinstance(batch["flippeds"], list)
 
 
-def test_flip_aug(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_handler, sample_entries):
+def test_flip_aug(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, sample_entries):
     """Verify that random flip augmentation selects flipped latents."""
 
     mock_dataset_manifest.entries = sample_entries
@@ -169,7 +169,7 @@ def test_flip_aug(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_
     normal_latent = torch.zeros(4, 64, 64)
     flipped_latent = torch.ones(4, 64, 64)
 
-    mock_latent_cache_handler.load_cache.return_value = CacheData(
+    mock_latent_cache_backend.load_cache.return_value = CacheData(
         latents=normal_latent,
         latents_flipped=flipped_latent,
         conditioning=MagicMock(),
@@ -178,7 +178,7 @@ def test_flip_aug(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_
     dataset = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
-        latent_cache_handler=mock_latent_cache_handler,
+        latent_cache_backend=mock_latent_cache_backend,
         flip_aug=True,
     )
 
@@ -196,7 +196,7 @@ def test_flip_aug(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_
         assert batch["flippeds"][0] is True
 
 
-def test_prior_loss_weight(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_handler, sample_entries):
+def test_prior_loss_weight(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, sample_entries):
     """Verify that is_reg=True uses the configured prior_loss_weight."""
 
     mock_dataset_manifest.entries = sample_entries
@@ -209,7 +209,7 @@ def test_prior_loss_weight(mock_dataset_manifest, mock_epoch_manifest, mock_late
     dataset = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
-        latent_cache_handler=mock_latent_cache_handler,
+        latent_cache_backend=mock_latent_cache_backend,
         prior_loss_weight=prior_weight,
     )
 
@@ -221,7 +221,7 @@ def test_prior_loss_weight(mock_dataset_manifest, mock_epoch_manifest, mock_late
     assert loss_weights[1].item() == prior_weight
 
 
-def test_streaming_tokens(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_handler, sample_entries):
+def test_streaming_tokens(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, sample_entries):
     """Verify that streaming_tokens=True calls get_slice() to load per-batch tokens."""
 
     mock_dataset_manifest.entries = sample_entries
@@ -237,7 +237,7 @@ def test_streaming_tokens(mock_dataset_manifest, mock_epoch_manifest, mock_laten
     dataset = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
-        latent_cache_handler=mock_latent_cache_handler,
+        latent_cache_backend=mock_latent_cache_backend,
         tokens_path=tokens_path,
         streaming_tokens=True,
     )
@@ -276,7 +276,7 @@ def test_streaming_tokens(mock_dataset_manifest, mock_epoch_manifest, mock_laten
         # Let's inspect call args if possible, or trust that the loop offset logic is exercised.
 
 
-def test_on_the_fly_tokenization(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_handler, sample_entries):
+def test_on_the_fly_tokenization(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, sample_entries):
     """Verify functionality when tokens_path=None (on-the-fly tokenization fallback)."""
 
     mock_dataset_manifest.entries = sample_entries
@@ -295,7 +295,7 @@ def test_on_the_fly_tokenization(mock_dataset_manifest, mock_epoch_manifest, moc
     dataset = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
-        latent_cache_handler=mock_latent_cache_handler,
+        latent_cache_backend=mock_latent_cache_backend,
         tokens_path=None,  # No token file
     )
 
@@ -305,7 +305,7 @@ def test_on_the_fly_tokenization(mock_dataset_manifest, mock_epoch_manifest, moc
     assert torch.equal(batch["input_ids"]["clip"], torch.tensor([[101, 200, 102]]))
 
 
-def test_distributed_sharding(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_handler, sample_entries):
+def test_distributed_sharding(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, sample_entries):
     """Verify that rank/world_size splits batches correctly."""
 
     mock_dataset_manifest.entries = sample_entries
@@ -324,7 +324,7 @@ def test_distributed_sharding(mock_dataset_manifest, mock_epoch_manifest, mock_l
     dataset_r0 = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
-        latent_cache_handler=mock_latent_cache_handler,
+        latent_cache_backend=mock_latent_cache_backend,
         rank=0,
         world_size=2,
     )
@@ -338,7 +338,7 @@ def test_distributed_sharding(mock_dataset_manifest, mock_epoch_manifest, mock_l
     dataset_r1 = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
-        latent_cache_handler=mock_latent_cache_handler,
+        latent_cache_backend=mock_latent_cache_backend,
         rank=1,
         world_size=2,
     )
@@ -353,7 +353,7 @@ def test_distributed_sharding(mock_dataset_manifest, mock_epoch_manifest, mock_l
     assert len(dataset_r1) == 2
 
 
-def test_te_cache_loading(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_handler, mock_te_cache_handler, sample_entries):
+def test_te_cache_loading(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, mock_te_cache_backend, sample_entries):
     """Verify text encoder cache loading."""
 
     mock_dataset_manifest.entries = sample_entries
@@ -364,8 +364,8 @@ def test_te_cache_loading(mock_dataset_manifest, mock_epoch_manifest, mock_laten
     dataset = TrainingDataset(
         dataset_manifest=mock_dataset_manifest,
         epoch_manifest=mock_epoch_manifest,
-        latent_cache_handler=mock_latent_cache_handler,
-        te_cache_handler=mock_te_cache_handler,
+        latent_cache_backend=mock_latent_cache_backend,
+        te_cache_backend=mock_te_cache_backend,
     )
 
     batch = next(iter(dataset))
@@ -373,7 +373,7 @@ def test_te_cache_loading(mock_dataset_manifest, mock_epoch_manifest, mock_laten
     assert "text_encoder_outputs" in batch
     assert "encoder_output" in batch["text_encoder_outputs"]
     # Mock returns shape [2, 77, 768], we have 1 image, so stack result should be [1, 2, 77, 768] (if mock logic allows)
-    # Actually, mock_te_cache_handler returns CacheData.aux as dict.
+    # Actually, mock_te_cache_backend returns CacheData.aux as dict.
     # _load_te_outputs stacks them.
     # mock output: torch.randn(2, 77, 768)
 

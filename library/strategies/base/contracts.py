@@ -174,7 +174,7 @@ class CachingStrategy(ABC):
     @abstractmethod
     def create_latent_caching_strategy(self, cfg: Any) -> Any:
         """
-        Create a new-pipeline CacheHandler for VAE latent caching.
+        Create a new-pipeline CacheBackend for VAE latent caching.
 
         Returns an instance compatible with library.data.CachingEngine.
 
@@ -182,14 +182,14 @@ class CachingStrategy(ABC):
             cfg: Configuration object.
 
         Returns:
-            A CacheHandler (library.data.caching_engine.CacheHandler) instance.
+            A CacheBackend (library.data.caching_engine.CacheBackend) instance.
         """
         raise NotImplementedError
 
     @abstractmethod
     def create_te_caching_strategy(self, cfg: Any) -> Any:
         """
-        Create a new-pipeline CacheHandler for text encoder output caching.
+        Create a new-pipeline CacheBackend for text encoder output caching.
 
         Returns an instance compatible with library.data.CachingEngine, or None
         if disk-based TE caching is not applicable.
@@ -198,7 +198,7 @@ class CachingStrategy(ABC):
             cfg: Configuration object.
 
         Returns:
-            A CacheHandler instance, or None.
+            A CacheBackend instance, or None.
         """
         raise NotImplementedError
 

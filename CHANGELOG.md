@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Strategy/base naming cleanup landed in the active path** — The shared strategy contract file and cache-engine boundary now use the clearer names discussed in roadmap follow-ups.
+  - `library/strategies/base/training.py` is now `library/strategies/base/contracts.py`, and current-facing docs now point to the renamed contract module.
+  - The active cache-engine surface now uses `CacheBackend` naming in `library/data/caching_engine.py`, `Trainer`, dataloader construction, and the touched unit/integration tests.
 - **Tokenizer cache config now lives with data caching settings** — The active config surface no longer treats tokenizer caching as part of model identity.
   - Moved `tokenizer_cache_dir` from `model.*` to `data.caching.*` in the dataclass schema and Hydra default fragments.
   - Updated the active SD / SDXL strategy construction paths, the active SDXL textual inversion script path, and related unit tests to read the cache location from `cfg.data.caching.tokenizer_cache_dir`.
@@ -154,7 +157,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **Legacy caching classes** — Deleted `LatentsCachingStrategy` and `TextEncoderOutputsCachingStrategy` base classes (`library/strategies/base/caching.py`), along with their concrete implementations `SdSdxlLatentsCachingStrategy` and `SdxlTextEncoderOutputsCachingStrategy`.
-- **Singleton `set_strategy`/`get_strategy` methods** — Removed from `TokenizationStrategy` and `TextEncodingStrategy` in `library/strategies/base/training.py`. These patterns are replaced by instance ownership in `TrainingStrategy`.
+- **Singleton `set_strategy`/`get_strategy` methods** — Removed from `TokenizationStrategy` and `TextEncodingStrategy` in `library/strategies/base/contracts.py`. These patterns are replaced by instance ownership in `TrainingStrategy`.
 - **Legacy factory methods** — Removed `get_latents_caching_strategy` from `SdTrainingStrategy` and `SdxlTrainingStrategy`, and `get_text_encoder_outputs_caching_strategy` from `SdxlTrainingStrategy`. The active pipeline uses `create_latent_caching_strategy` / `create_te_caching_strategy` instead.
 - **Stale singleton calls** — Replaced broken `get_strategy()` calls in deprecated `dataset.py` with instance variables.
 - **Deprecated script methods** — Removed `get_latents_caching_strategy` from `scripts/sdxl_textual_inversion.py`.
@@ -178,8 +181,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Cache handler naming cleanup** — Training and data pipeline code now consistently refer to `CacheHandler` instances as cache handlers rather than “strategies”.
-  - `Trainer` fields are now `latent_cache_handler` / `te_cache_handler`.
+- **Cache backend naming cleanup** — Training and data pipeline code now consistently refer to the active caching-engine implementation surface as cache backends rather than generic handlers or “strategies”.
+  - `Trainer` fields are now `latent_cache_backend` / `te_cache_backend`.
   - Training phases and dataloader constructors use the new names to make the engine boundary clearer.
   - Integration/unit tests were updated to match the renamed arguments.
 
@@ -192,11 +195,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - SD and SDXL training strategies now own their CLIP-specific text-encoder preparation behavior directly.
   - Added unit coverage in `tests/unit/strategies/test_strategies_base.py` for the stricter base contract behavior.
   - Deprecated TE-output caching hooks on the base training strategy now default to optional legacy behavior (`None` / move encoders to device), so active strategies no longer need no-op overrides just to satisfy deprecated SD script paths.
-  - In `base/training.py`, `tokenize_captions()` now lives on `TokenizationStrategy`, while `get_text_encoding_strategy()`, `get_models_for_text_encoding()`, and `encode_te_outputs_in_memory()` stay on `TrainingStrategy`. The training-side `CachingStrategy` no longer owns text-encoding methods, so its scope is narrower and closer to its name.
+  - In `base/contracts.py`, `tokenize_captions()` now lives on `TokenizationStrategy`, while `get_text_encoding_strategy()`, `get_models_for_text_encoding()`, and `encode_te_outputs_in_memory()` stay on `TrainingStrategy`. The training-side `CachingStrategy` no longer owns text-encoding methods, so its scope is narrower and closer to its name.
   - Current CLIP-family token/chunk shaping and tokenizer loading now live under `library/models/sd/tokenizer.py`, and the SD / SDXL tokenization strategy classes delegate to that shared model-layer helper instead of keeping the behavior in `base/tokenization.py`.
-  - The runtime tokenization and text-encoding contracts now live in `base/training.py` (`TokenizationStrategy`, `TextEncodingStrategy`), while `TrainingStrategy` keeps the provider/wiring hooks (`get_tokenize_strategy()`, `get_tokenizers()`, `get_text_encoding_strategy()`, etc.).
-  - Removed the temporary `base/tokenization.py` and `base/encoding.py` shim modules after switching the remaining deprecated-dataset and unit-test callers to the canonical `base/training.py` contract and shared model-layer token helper APIs.
-  - Removed the singleton-era latent / TE-output caching hooks from the main `base/training.py` caching contract, and stopped `Trainer.setup()` from registering legacy latent caching singletons that the manifest-based runner does not use.
+  - The runtime tokenization and text-encoding contracts now live in `base/contracts.py` (`TokenizationStrategy`, `TextEncodingStrategy`), while `TrainingStrategy` keeps the provider/wiring hooks (`get_tokenize_strategy()`, `get_tokenizers()`, `get_text_encoding_strategy()`, etc.).
+  - Removed the temporary `base/tokenization.py` and `base/encoding.py` shim modules after switching the remaining deprecated-dataset and unit-test callers to the canonical `base/contracts.py` contract and shared model-layer token helper APIs.
+  - Removed the singleton-era latent / TE-output caching hooks from the main `base/contracts.py` caching contract, and stopped `Trainer.setup()` from registering legacy latent caching singletons that the manifest-based runner does not use.
   - SDXL sampling now receives tokenization and text-encoding strategies explicitly through `sample_images()` / `sample_images_common()` and the SDXL LPW pipeline, so the main `Trainer` no longer registers tokenization or text-encoding singletons for the active runner path.
   - SDXL training-side caption tokenization now routes through the shared CLIP-family helper path in `library/models/sd/tokenizer.py`, removing the duplicate `tokenize_sdxl_captions()` implementation from `sdxl/training.py` and aligning live caption fallback / in-memory TE caching with `SdxlTokenizeStrategy`.
   - Removed the temporary `[DEBUG]` info logging from `SdxlTrainingStrategy._get_text_cond()` now that the explicit strategy wiring path is in place.

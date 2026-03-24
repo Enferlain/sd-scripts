@@ -1,7 +1,7 @@
 """
 SD 1.5/2.0 caching strategies for the new data pipeline.
 
-These strategies implement the CacheHandler interface from library/data/pipeline/caching_engine.py
+These strategies implement the CacheBackend interface from library/data/pipeline/caching_engine.py
 and are designed to work with CacheEntry dataclasses, not the legacy ImageInfo.
 """
 
@@ -15,10 +15,10 @@ from PIL import Image
 from safetensors.torch import save_file
 
 
-from library.data.caching_engine import CacheHandler
+from library.data.caching_engine import CacheBackend
 from library.data.structures import CacheData, CacheEntry
 from library.models.sd.text_encoder import get_hidden_states_sd
-from library.strategies.base.training import CachingStrategy
+from library.strategies.base.contracts import CachingStrategy
 from library.strategies.sd.tokenization import tokenize_sd_captions
 from library.utils.hash_utils import stable_string_hash
 from library.constants import SD_VAE_LATENT_SCALE
@@ -54,7 +54,7 @@ class SdCachingStrategy(CachingStrategy):
         return (*text_encoders, *tokenizers)
 
 
-class SdLatentsPipelineStrategy(CacheHandler):
+class SdLatentsPipelineStrategy(CacheBackend):
     """
     Latent caching strategy for SD 1.5 and SD 2.0.
 
@@ -81,7 +81,7 @@ class SdLatentsPipelineStrategy(CacheHandler):
         self.dtype = dtype
         self._torch_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[dtype]
 
-    # Note: get_entry_cache_path() is inherited from CacheHandler base class
+    # Note: get_entry_cache_path() is inherited from CacheBackend base class
     # and returns entry.latent_cache_path by default - no override needed
 
     def encode_batch(
@@ -350,7 +350,7 @@ class SdLatentsPipelineStrategy(CacheHandler):
         return tensor
 
 
-class SdTextEncoderPipelineStrategy(CacheHandler):
+class SdTextEncoderPipelineStrategy(CacheBackend):
     """
     Text encoder output caching strategy for SD 1.5 and SD 2.0.
 

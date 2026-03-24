@@ -7,14 +7,14 @@ from unittest.mock import MagicMock
 from library.data.structures import DatasetManifest, CacheEntry, EpochManifest
 from library.data.epoch_preparation import prepare_epoch
 from library.data.dataloader import create_training_dataloader
-from library.data.caching_engine import CacheHandler
+from library.data.caching_engine import CacheBackend
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("benchmark")
 
 
-class MockCacheHandler(CacheHandler):
+class MockCacheHandler(CacheBackend):
     """Mock strategy that returns dummy tensors without disk I/O."""
 
     def __init__(self, latent_dim=(4, 64, 64)):

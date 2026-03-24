@@ -16,7 +16,7 @@ from library.optimizers.optimizer_utils import (
     should_train_denoiser,
     should_train_text_encoder,
 )
-from library.strategies.base.training import (
+from library.strategies.base.contracts import (
     CachingStrategy,
     DiffusionTrainingStrategy,
     ModelLoadingStrategy,

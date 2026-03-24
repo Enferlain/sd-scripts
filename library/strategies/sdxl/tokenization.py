@@ -5,7 +5,7 @@ from transformers import CLIPTokenizer
 
 from library.constants import TOKENIZER1_PATH, TOKENIZER2_PATH
 from library.models.sd.tokenizer import get_clip_input_ids, load_tokenizer, tokenize_clip_captions
-from library.strategies.base.training import TokenizationStrategy
+from library.strategies.base.contracts import TokenizationStrategy
 
 
 def build_sdxl_tokenizers(max_length: int | None, tokenizer_cache_dir: str | None = None) -> tuple[list[CLIPTokenizer], int]:

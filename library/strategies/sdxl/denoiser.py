@@ -3,7 +3,7 @@ from typing import Any
 import torch
 
 from library.models.sdxl.conversion import get_size_embeddings
-from library.strategies.base.training import DenoiserCallingStrategy
+from library.strategies.base.contracts import DenoiserCallingStrategy
 from library.strategies.sdxl.caching import SdxlConditioning
 
 

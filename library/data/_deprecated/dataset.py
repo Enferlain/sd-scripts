@@ -17,7 +17,7 @@ from library.constants import TEXT_ENCODER_OUTPUTS_CACHE_SUFFIX, IMAGE_TRANSFORM
 from library.utils.jpeg_xl_util import get_jxl_size
 from library.data.image_utils import load_image, trim_and_resize_if_required, resize_image, validate_interpolation_fn
 
-from library.strategies.base.training import TextEncodingStrategy, TokenizationStrategy
+from library.strategies.base.contracts import TextEncodingStrategy, TokenizationStrategy
 
 from library.data._deprecated.caching import is_disk_cached_latents_is_expected, cache_batch_latents, cache_batch_text_encoder_outputs
 

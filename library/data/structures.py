@@ -11,7 +11,7 @@ import torch
 
 
 # =============================================================================
-# Cache Loading Types (returned by CacheHandler.load_cache)
+# Cache Loading Types (returned by CacheBackend.load_cache)
 # =============================================================================
 
 
@@ -32,7 +32,7 @@ class ModelConditioning(ABC):  # noqa: B024 - Marker class, no abstract methods
 @dataclass
 class CacheData:
     """
-    Model-agnostic cache data returned by CacheHandler.load_cache().
+    Model-agnostic cache data returned by CacheBackend.load_cache().
 
     This is the universal container for loaded cache data. The `conditioning`
     field holds model-specific data via composition, keeping the dataloader

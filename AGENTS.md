@@ -130,7 +130,7 @@ Always check AGENTS.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELOG.md to ref
 │   ├── performance/       # Memory optimization, gradient checkpointing
 │   ├── pipelines/         # Inference pipelines (LPW, etc.)
 │   ├── strategies/        # Model-specific strategies (per-model subfolders)
-│   │   ├── base/          # ABCs: TrainingStrategy, TokenizeStrategy, CachingStrategy
+│   │   ├── base/          # Shared strategy contracts: TrainingStrategy, TokenizationStrategy, TextEncodingStrategy, CachingStrategy
 │   │   ├── sd/            # SD1.5/2: training, tokenization, encoding, caching
 │   │   └── sdxl/          # SDXL: training, tokenization, encoding, caching
 │   ├── timesteps/         # Timestep sampling strategies
@@ -157,7 +157,7 @@ Shared utilities: `conversion_utils.py`, `runtime_utils.py` (at root level)
 
 | Folder  | Contents                                                            |
 | ------- | ------------------------------------------------------------------- |
-| `base/` | ABCs: `training.py`, `tokenization.py`, `encoding.py`, `caching.py` |
+| `base/` | ABCs and shared strategy contracts in `contracts.py`                |
 | `sd/`   | `SdTrainingStrategy`, `SdTokenizeStrategy`, etc.                    |
 | `sdxl/` | `SdxlTrainingStrategy`, `SdxlTokenizeStrategy`, etc.                |
 
