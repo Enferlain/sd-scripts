@@ -325,7 +325,7 @@ class TestSdTrainingStrategyComposition:
         cfg.performance.precision.full_fp16 = False
         cfg.loss.masked.masked_loss = False
         cfg.loss.loss_multiplier = None
-        cfg.loss.edm2.edm2_loss_weighting = False
+        cfg.loss.edm2.enabled = False
         accelerator = Mock()
         accelerator.device = torch.device("cpu")
 
@@ -374,7 +374,7 @@ class TestSdTrainingStrategyComposition:
         cfg.performance.precision.full_fp16 = False
         cfg.loss.masked.masked_loss = False
         cfg.loss.loss_multiplier = None
-        cfg.loss.edm2.edm2_loss_weighting = False
+        cfg.loss.edm2.enabled = False
         accelerator = Mock()
         accelerator.device = torch.device("cpu")
         accelerator.autocast.return_value = nullcontext()

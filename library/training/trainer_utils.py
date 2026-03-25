@@ -357,7 +357,7 @@ def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_denoiser=Tru
     append_lr_to_logs_with_names(logs, lr_scheduler, optimizer_type, names)
 
 
-def determine_grad_sync_context(precision_config: PrecisionConfig | None, accelerator, sync_gradients, training_model, edm2_model=None):
+def determine_grad_sync_context(precision_config: PrecisionConfig | None, accelerator, sync_gradients, training_model, auxiliary_model=None):
     """
     Determine the gradient synchronization context.
 
@@ -366,14 +366,14 @@ def determine_grad_sync_context(precision_config: PrecisionConfig | None, accele
         accelerator: The accelerator object.
         sync_gradients: Whether to sync gradients (not currently used).
         training_model: The training model.
-        edm2_model: Optional EDM2 model.
+        auxiliary_model: Optional sidecar model that also participates in gradient accumulation.
 
     Returns:
         ContextManager: The gradient synchronization context.
     """
     # Note: Previously considered no_sync for full_bf16, but accumulate() handles this correctly
-    if edm2_model is not None:
-        return accelerator.accumulate(training_model, edm2_model)
+    if auxiliary_model is not None:
+        return accelerator.accumulate(training_model, auxiliary_model)
     else:
         return accelerator.accumulate(training_model)
 

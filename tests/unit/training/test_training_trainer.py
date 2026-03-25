@@ -46,7 +46,7 @@ class TestTrainer(unittest.TestCase):
         """Test that save_checkpoint passes unwrapped_adapter through as target_model.
 
         Regression test: EDM2 loss weight checkpoints pass a non-adapter
-        model (e.g. _edm2_model).  The mode must receive this as
+        model (e.g. edm2.model). The mode must receive this as
         target_model so it saves the correct weights.
         """
         mock_accelerator = MagicMock()

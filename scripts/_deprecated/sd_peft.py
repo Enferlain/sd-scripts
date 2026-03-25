@@ -80,7 +80,8 @@ from library.training.trainer_utils import (
     calculate_initial_step,
 )
 
-from library.losses.edm2_loss_utils import prepare_edm2_loss_weighting, plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
+from library.losses.edm2.factory import prepare_edm2_loss_weighting
+from library.losses.edm2.plotting import plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
 
 try:
     import matplotlib.pyplot as plt

@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-25]
+
+### Changed
+
+- **EDM2 config wiring is now explicit in the active config pipeline** — The nested loss schema no longer leaves EDM2/SNR conflict handling stranded in an unused helper.
+  - `library/config/config_validation.py` now normalizes EDM2 importance-weighting conflicts against `loss.snr.*` during `prepare_config()`, so the active nested config shape matches the intended auto-fix behavior.
+  - `library/losses/edm2_loss_utils.py` now accepts the current nested SNR config explicitly when conflict handling is used directly.
+  - `tests/unit/test_config_validation.py` and `tests/unit/losses/test_losses_edm2_loss.py` now cover the nested EDM2/SNR conflict path.
+- **EDM2 config now reads as one coherent feature surface** — The active schema no longer exposes a long flat list of `edm2_loss_weighting_*` fields.
+  - `library/config/dataclasses/loss.py` now keeps EDM2 under one `EDM2Config` root with nested `optimizer`, `importance`, and `visualization` sub-configs plus concise core fields like `enabled`, `num_channels`, and `initial_weights`.
+  - `configs/_defaults/loss/default.yaml`, the active EDM2 utilities, strategy checks, and touched tests were updated to the new `loss.edm2.*` shape.
+- **EDM2 runtime state now behaves like one subsystem instead of scattered trainer side fields** — The active training path now groups the optional loss-weighting sidecar more cleanly.
+  - Added `library/losses/edm2_runtime.py` with a typed `EDM2LossRuntime` bundle.
+  - `Trainer` now owns a single `edm2` runtime bundle instead of separate `_edm2_model`, `_edm2_optimizer`, `_edm2_lr_scheduler`, and EDM2-specific loss-tracking fields.
+  - `library/training/phases/training_loop.py` now reads/writes EDM2 behavior through that runtime bundle for grad-sync accumulation, optimizer stepping, checkpoint side-saves, and scaled-loss tracking/logging.
+  - Updated phase/integration trainer fixtures and trainer tests to reflect the bundled runtime shape.
+- **Trainer-owned loss modification now has a generic seam** — EDM2 no longer leaks into the shared diffusion batch-processing contract.
+  - Added `library/losses/loss_modifiers.py` with the generic `BatchLossOutput` / `LossModifierOutput` types, a `LossModifier` protocol, `NoOpLossModifier`, and `build_loss_modifier(...)`.
+  - Added `library/losses/edm2_modifier.py` so EDM2 is a separate concrete implementation instead of the generic seam being wrapped around an EDM2-shaped runtime object.
+  - `library/strategies/base/contracts.py` now points strategies at the shared `BatchLossOutput`, and the SD / SDXL diffusion strategies now return base per-sample loss plus timesteps without accepting an `edm2_model`.
+  - `library/training/phases/training_loop.py` now applies the trainer-owned loss modifier after `process_batch()` returns, calls `optimizer_step()` through the generic seam, and reads optional modifier metrics through `LossModifierOutput.metrics`.
+  - Step/epoch/final sidecar checkpoint saves, modifier LR logging, modifier metric accumulation, and modifier plotting now also flow through the generic loss-modifier hooks instead of the active path reaching into `trainer.edm2`.
+  - `library/training/runners/trainer.py` now constructs the active modifier through `build_loss_modifier(...)`, and the last `trainer.edm2` / `edm2_runtime.py` compatibility layer has been removed from the active codebase.
+- **EDM2 internals now live in a clearer package split** — The EDM2 package no longer keeps factory, plotting, and validation helpers mixed into one module.
+  - Added `library/losses/edm2/factory.py`, `library/losses/edm2/plotting.py`, and `library/losses/edm2/validation.py`, while reducing `library/losses/edm2/edm2_loss_utils.py` to a thin compatibility facade.
+  - `library/losses/loss_modifiers.py` now normalizes modifier metrics and enforces namespaced metric keys, so future modifiers have a clearer logging contract than a loose free-form dict.
+  - Added regression coverage for metric normalization and EDM2 sidecar save/load hooks in `tests/unit/losses/test_losses_edm2_loss.py`.
+- **Dormant EDM2 Laplace sampling now fails fast** — The unused config toggle no longer looks supported when no active training path wires it up.
+  - `library/config/config_validation.py` now raises a clear error when `loss.edm2.laplace_timestep_sampling=true`.
+  - Added regression coverage in `tests/unit/test_config_validation.py`.
+
 ## [2026-03-24]
 
 ### Changed

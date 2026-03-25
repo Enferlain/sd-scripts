@@ -1,8 +1,4 @@
-"""
-Unit tests for library/losses/edm2_loss.py and edm2_loss_utils.py
-
-Tests adaptive loss weighting components from EDM2 paper.
-"""
+"""Unit tests for the EDM2 loss-weighting package."""
 
 import pytest
 import torch
@@ -11,9 +7,12 @@ import os
 from unittest.mock import MagicMock, patch
 from diffusers import DDPMScheduler
 
-from library.losses.edm2_loss import normalize, FourierFeatureExtractor, NormalizedLinearLayer, AdaptiveLossWeightMLP, create_weight_MLP
+from library.losses.edm2.edm2_loss import normalize, FourierFeatureExtractor, NormalizedLinearLayer, AdaptiveLossWeightMLP, create_weight_MLP
+from library.losses.edm2.edm2_modifier import EDM2LossModifier
+from library.losses.loss_modifiers import BatchLossOutput, LossModifierOutput, NoOpLossModifier, build_loss_modifier
 
-from library.losses.edm2_loss_utils import handle_conflicting_configuration, plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
+from library.losses.edm2.plotting import plot_edm2_loss_weighting, plot_edm2_loss_weighting_check
+from library.losses.edm2.validation import handle_conflicting_configuration
 
 
 # =============================================================================
@@ -236,7 +235,7 @@ class TestCreateWeightMLP:
 
 
 # =============================================================================
-# edm2_loss_utils.py Tests
+# EDM2 Helper Tests
 # =============================================================================
 
 
@@ -245,45 +244,138 @@ class TestHandleConflictingConfiguration:
 
     def test_disables_debiased_estimation(self):
         """Test debiased estimation is disabled when conflicting."""
-        config = MagicMock()
-        config.edm2_loss_weighting = True
-        config.edm2_loss_weighting_importance_weighting = True
-        config.edm2_loss_weighting_importance_weighting_safety_override = False
-        config.debiased_estimation_loss = True
-        config.min_snr_gamma = None
+        edm2_config = MagicMock()
+        edm2_config.enabled = True
+        edm2_config.importance.enabled = True
+        edm2_config.importance.safety_override = False
+        snr_config = MagicMock()
+        snr_config.debiased_estimation_loss = True
+        snr_config.min_snr_gamma = None
 
-        handle_conflicting_configuration(config)
+        handle_conflicting_configuration(edm2_config, snr_config)
 
         # Should be disabled
-        assert config.debiased_estimation_loss is False
+        assert snr_config.debiased_estimation_loss is False
 
     def test_disables_min_snr_gamma(self):
         """Test min_snr_gamma is disabled when conflicting."""
-        config = MagicMock()
-        config.edm2_loss_weighting = True
-        config.edm2_loss_weighting_importance_weighting = True
-        config.edm2_loss_weighting_importance_weighting_safety_override = False
-        config.debiased_estimation_loss = False
-        config.min_snr_gamma = 5.0
+        edm2_config = MagicMock()
+        edm2_config.enabled = True
+        edm2_config.importance.enabled = True
+        edm2_config.importance.safety_override = False
+        snr_config = MagicMock()
+        snr_config.debiased_estimation_loss = False
+        snr_config.min_snr_gamma = 5.0
 
-        handle_conflicting_configuration(config)
+        handle_conflicting_configuration(edm2_config, snr_config)
 
-        assert config.min_snr_gamma is None
+        assert snr_config.min_snr_gamma is None
 
     def test_safety_override_prevents_disabling(self):
         """Test safety override prevents automatic disabling."""
-        config = MagicMock()
-        config.edm2_loss_weighting = True
-        config.edm2_loss_weighting_importance_weighting = True
-        config.edm2_loss_weighting_importance_weighting_safety_override = True
-        config.debiased_estimation_loss = True
-        config.min_snr_gamma = 5.0
+        edm2_config = MagicMock()
+        edm2_config.enabled = True
+        edm2_config.importance.enabled = True
+        edm2_config.importance.safety_override = True
+        snr_config = MagicMock()
+        snr_config.debiased_estimation_loss = True
+        snr_config.min_snr_gamma = 5.0
 
-        handle_conflicting_configuration(config)
+        handle_conflicting_configuration(edm2_config, snr_config)
 
         # Should NOT be disabled due to override
-        assert config.debiased_estimation_loss is True
-        assert config.min_snr_gamma == 5.0
+        assert snr_config.debiased_estimation_loss is True
+        assert snr_config.min_snr_gamma == 5.0
+
+
+class TestLossModifierBuilder:
+    """Test generic loss modifier construction."""
+
+    def test_builds_noop_when_edm2_disabled(self):
+        loss_config = MagicMock()
+        loss_config.edm2.enabled = False
+
+        modifier = build_loss_modifier(loss_config, MagicMock(), MagicMock(), MagicMock())
+
+        assert isinstance(modifier, NoOpLossModifier)
+
+    def test_builds_edm2_modifier_when_enabled(self):
+        loss_config = MagicMock()
+        loss_config.edm2.enabled = True
+
+        expected_modifier = EDM2LossModifier()
+        with patch("library.losses.edm2.factory.create_edm2_modifier", return_value=expected_modifier) as mock_create:
+            modifier = build_loss_modifier(loss_config, MagicMock(), MagicMock(), MagicMock())
+
+        assert modifier is expected_modifier
+        mock_create.assert_called_once()
+
+
+class TestEDM2LossModifier:
+    """Test the generic trainer-owned EDM2 modifier runtime."""
+
+    def test_apply_returns_mean_loss_when_disabled(self):
+        modifier = EDM2LossModifier()
+
+        result = modifier.apply(per_sample_loss=torch.tensor([1.0, 3.0]), timesteps=torch.tensor([10, 20]))
+
+        assert result.loss.item() == pytest.approx(2.0)
+        assert result.metrics == {}
+
+    def test_apply_uses_sidecar_model_when_enabled(self):
+        model = MagicMock(return_value=(torch.tensor([2.0, 4.0]), torch.tensor([1.0, 3.0])))
+        modifier = EDM2LossModifier(model=model)
+
+        result = modifier.apply(per_sample_loss=torch.tensor([1.0, 3.0]), timesteps=torch.tensor([10, 20]))
+
+        model.assert_called_once()
+        assert result.loss.item() == pytest.approx(3.0)
+        assert result.metrics["loss/current_scaled"] == pytest.approx(2.0)
+
+    def test_optimizer_step_and_zero_grad_delegate_to_optimizer_and_scheduler(self):
+        optimizer = MagicMock()
+        lr_scheduler = MagicMock()
+        modifier = EDM2LossModifier(model=MagicMock(), optimizer=optimizer, lr_scheduler=lr_scheduler)
+
+        modifier.optimizer_step()
+        modifier.zero_grad()
+
+        optimizer.step.assert_called_once()
+        lr_scheduler.step.assert_called_once()
+        optimizer.zero_grad.assert_called_once_with(set_to_none=True)
+
+    def test_save_and_load_sidecar_delegate_to_model(self):
+        model = MagicMock()
+        modifier = EDM2LossModifier(model=model)
+
+        modifier.save_sidecar("/tmp/test.safetensors", {"test": "value"})
+        modifier.load_sidecar("/tmp/test.safetensors")
+
+        model.save_weights.assert_called_once_with("/tmp/test.safetensors", dtype=torch.float32, metadata={"test": "value"})
+        model.load_weights.assert_called_once_with("/tmp/test.safetensors")
+
+
+class TestLossModifierMetricNormalization:
+    """Test metric normalization for batch and modifier outputs."""
+
+    def test_loss_modifier_output_rejects_unnamespaced_metric(self):
+        with pytest.raises(ValueError, match="namespaced"):
+            LossModifierOutput(loss=torch.tensor(1.0), metrics={"scaled_loss": 1.0})
+
+    def test_loss_modifier_output_coerces_scalar_tensor_metrics(self):
+        output = LossModifierOutput(loss=torch.tensor(1.0), metrics={"loss/current_scaled": torch.tensor(2.5)})
+
+        assert output.metrics == {"loss/current_scaled": 2.5}
+
+    def test_batch_loss_output_normalizes_metrics(self):
+        output = BatchLossOutput(
+            loss=torch.tensor(1.0),
+            per_sample_loss=torch.tensor([1.0]),
+            timesteps=torch.tensor([10]),
+            metrics={"loss/base": torch.tensor(1.5)},
+        )
+
+        assert output.metrics == {"loss/base": 1.5}
 
 
 class TestPlotEdm2LossWeightingCheck:
@@ -292,8 +384,8 @@ class TestPlotEdm2LossWeightingCheck:
     def test_returns_false_when_disabled(self):
         """Test returns False when plotting is disabled."""
         loss_config = MagicMock()
-        loss_config.edm2_loss_weighting = True
-        loss_config.edm2_loss_weighting_generate_graph = False
+        loss_config.enabled = True
+        loss_config.visualization.enabled = False
 
         training_config = MagicMock()
 
@@ -304,9 +396,9 @@ class TestPlotEdm2LossWeightingCheck:
     def test_returns_true_on_interval(self):
         """Test returns True on correct step intervals."""
         loss_config = MagicMock()
-        loss_config.edm2_loss_weighting = True
-        loss_config.edm2_loss_weighting_generate_graph = True
-        loss_config.edm2_loss_weighting_generate_graph_every_x_steps = 20
+        loss_config.enabled = True
+        loss_config.visualization.enabled = True
+        loss_config.visualization.every_n_steps = 20
 
         training_config = MagicMock()
         training_config.max_train_steps = 1000
@@ -321,9 +413,9 @@ class TestPlotEdm2LossWeightingCheck:
     def test_returns_true_on_final_step(self):
         """Test returns True on final training step."""
         loss_config = MagicMock()
-        loss_config.edm2_loss_weighting = True
-        loss_config.edm2_loss_weighting_generate_graph = True
-        loss_config.edm2_loss_weighting_generate_graph_every_x_steps = 20
+        loss_config.enabled = True
+        loss_config.visualization.enabled = True
+        loss_config.visualization.every_n_steps = 20
 
         training_config = MagicMock()
         training_config.max_train_steps = 1000
@@ -349,15 +441,8 @@ class TestPlotEdm2LossWeighting:
         """Test plot file is created."""
         with tempfile.TemporaryDirectory() as tmpdir:
             loss_config = MagicMock()
-            loss_config.edm2_loss_weighting_generate_graph_output_dir = tmpdir
-            loss_config.edm2_loss_weighting_generate_graph_y_limit = None
-
-            # Using patch to avoid matplotlib GUI backend issues if any,
-            # though aggg is set in import usually
-            with patch("matplotlib.pyplot.savefig") as mock_save:
-                # Actually we can just let it run if it's using Agg
-                # But safer to assert existence if real, or mock if we don't want IO
-                pass
+            loss_config.visualization.output_dir = tmpdir
+            loss_config.visualization.y_limit = None
 
             # Real IO test
             plot_edm2_loss_weighting(loss_config, output_name="test_run", step=100, model=mock_model, num_timesteps=1000, device="cpu")
@@ -372,8 +457,8 @@ class TestPlotEdm2LossWeighting:
         """Test graceful handling of save failures."""
         loss_config = MagicMock()
         # Invalid path on Windows
-        loss_config.edm2_loss_weighting_generate_graph_output_dir = ">>:|invalid|:<<"
-        loss_config.edm2_loss_weighting_generate_graph_y_limit = None
+        loss_config.visualization.output_dir = ">>:|invalid|:<<"
+        loss_config.visualization.y_limit = None
 
         # Should not raise, just log warning
         plot_edm2_loss_weighting(loss_config, output_name="test", step=0, model=mock_model, device="cpu")

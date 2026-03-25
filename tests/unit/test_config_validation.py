@@ -54,6 +54,13 @@ def make_prepare_cfg(overrides: dict | None = None):
             },
         },
         "validation": {"validate_every_n_steps": None, "validate_every_n_epochs": None},
+        "loss": {
+            "edm2": {
+                "enabled": False,
+                "importance": {"enabled": False, "safety_override": False},
+            },
+            "snr": {"debiased_estimation_loss": False, "min_snr_gamma": None},
+        },
         "performance": {},
     }
     if overrides is None:
@@ -68,6 +75,7 @@ def make_validate_cfg(overrides: dict | None = None):
         "loss": {
             "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
             "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+            "edm2": {"laplace_timestep_sampling": False},
             "v_parameterization": False,
         },
         "model": {"model_type": "sd15"},
@@ -316,6 +324,25 @@ class TestPrepareConfig:
             }
         )
         prepare_config(cfg)
+
+    def test_edm2_importance_weighting_disables_conflicting_snr_settings(self):
+        """EDM2 importance weighting should normalize conflicting nested SNR settings."""
+        cfg = make_prepare_cfg(
+            {
+                "loss": {
+                    "edm2": {
+                        "enabled": True,
+                        "importance": {"enabled": True},
+                    },
+                    "snr": {"debiased_estimation_loss": True, "min_snr_gamma": 5.0},
+                }
+            }
+        )
+
+        prepare_config(cfg)
+
+        assert cfg.loss.snr.debiased_estimation_loss is False
+        assert cfg.loss.snr.min_snr_gamma is None
 
 
 # =============================================================================
@@ -737,6 +764,13 @@ class TestValidateConfig:
             }
         )
         with pytest.raises(ValueError, match="Cannot train text encoder while TE output caching is enabled"):
+            validate_config(cfg)
+
+    def test_edm2_laplace_flag_fails_fast(self):
+        """Dormant EDM2 Laplace timestep weighting should fail fast instead of silently doing nothing."""
+        cfg = make_validate_cfg({"loss": {"edm2": {"laplace_timestep_sampling": True}}})
+
+        with pytest.raises(ValueError, match="laplace_timestep_sampling is not implemented"):
             validate_config(cfg)
 
     @pytest.mark.skip(reason="Block LR validation is model-specific, currently disabled pending refactor")

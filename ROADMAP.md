@@ -92,11 +92,17 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
 
-### Recent Completed
+### Recently Completed / Settled
 
 - Sampling cadence conflicts now fail fast instead of silently preferring epoch cadence.
 - Active config composition now cleanly matches the shared dataclass schema.
 - Sampling config now supports inline/default generation parameters plus `sample_prompt_file`.
+- EDM2 importance-weighting conflict handling now runs through the active nested config path, and the dormant `laplace_timestep_sampling` toggle now fails fast instead of silently acting unsupported.
+- The active training path now treats EDM2 as one bundled runtime sidecar instead of several loose trainer fields, which makes the loop/checkpoint/logging wiring easier to follow.
+- `loss.edm2` now has one structured feature-owned config surface (`enabled`, `optimizer.*`, `importance.*`, `visualization.*`) instead of a long flat list of `edm2_loss_weighting_*` fields.
+- The shared diffusion strategy contract now returns base loss state through the shared `BatchLossOutput`, and the trainer builds either a `NoOpLossModifier` or a concrete EDM2 modifier through one generic post-loss seam instead of threading `edm2_model` through SD / SDXL diffusion code.
+- Active checkpoint/logging/plotting paths now also use generic loss-modifier hooks, and the old `trainer.edm2` / `edm2_runtime.py` compatibility layer is gone from the active path.
+- EDM2 internals now live under the `library/losses/edm2/` package with separate factory / plotting / validation helpers, and modifier metrics now follow a stricter namespaced contract.
 
 ---
 
@@ -112,10 +118,6 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [ ] **Training orchestration hardening follow-up** — Desirable shared-layer cleanup for explicit epoch outcomes, scoped shared lifecycle helpers, and preserving generic runner ownership. Sequence after strategy cleanup. See `docs_design/training_orchestration_followup.md`.
 - [ ] Timestep sampling needs proper reimplementation (currently hacked into training scripts)
 - [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
-- [ ] **`edm2_loss_utils.py` Config Cleanup** (low priority, not critical component)
-  - 15+ flat config fields with absurdly long names (`edm2_loss_weighting_importance_weighting_safety_override`)
-  - Should extract to dedicated `Edm2LossConfig` sub-dataclass
-  - Mutates config directly (`loss_config.debiased_estimation_loss = False`)
 - [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner
 - [ ] **Delete legacy training wrappers** (after legacy script deprecation) - Once `*_finetune.py` and `*_textual_inversion.py` scripts are migrated to new data pipeline, delete:
   - `library/training/sd_sample_generation.py`
@@ -134,19 +136,13 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - Conditioning is showing up as a real cross-cutting concern across tokenization/encoding, caching/data metadata, and denoiser input assembly, but it is not mature enough yet to force into a new base facet.
   - Prompt weighting / weighted captions still likely want to become a shared concern rather than a model-by-model accumulation of special cases, especially once cache-policy expectations are made explicit.
 - [ ] **Timestep / `la_sampler` ownership cleanup** — Decide where timestep-sampling responsibilities should live and remove the current ad hoc feel.
+- [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now, but the feature still needs better user-facing presence (docs, examples/presets, and clearer guidance on when to use it).
 - [ ] **Conditioning architecture review** — Decide when “conditioning” deserves its own first-class shared concern instead of remaining split across encoding, caching, and denoiser/diffusion ownership.
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
 - [ ] **Live plotter / logging integration** — Fold the live plotter into the broader logging story instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **External dependency ownership review** — Decide whether custom optimizers and LyCORIS should stay external or move under `library/` for easier modification.
 - [ ] **Future conditioning/data-flow experiments** — Later exploration area for better caption mutation, TE caching, on-the-fly CPU encoding, queues, async handoff, and related conditioning/data-flow improvements once the current building blocks are settled.
-
-### Recently Settled
-
-- `library/strategies/base/training.py` was renamed to `library/strategies/base/contracts.py`.
-- The active cache-engine naming surface now uses `CacheBackend`.
-- SD now supports the shared `CachingEngine` / `TrainingDataset` path.
-- The legacy IPEX workaround path was removed from the repo.
 
 ---
 

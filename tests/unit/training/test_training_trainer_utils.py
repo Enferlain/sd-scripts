@@ -578,13 +578,13 @@ class TestDetermineGradSyncContext:
         mock_accelerator.accumulate.assert_called_once_with(mock_training_model)
         assert result == "accumulate_context"
 
-    def test_returns_accumulate_with_edm2_model(self, mock_args, mock_accelerator, mock_training_model):
-        """Test that accumulate context includes edm2_model when provided."""
-        edm2_model = Mock()
+    def test_returns_accumulate_with_auxiliary_model(self, mock_args, mock_accelerator, mock_training_model):
+        """Test that accumulate context includes an auxiliary model when provided."""
+        auxiliary_model = Mock()
 
         context = determine_grad_sync_context(
-            mock_args, mock_accelerator, sync_gradients=True, training_model=mock_training_model, edm2_model=edm2_model
+            mock_args, mock_accelerator, sync_gradients=True, training_model=mock_training_model, auxiliary_model=auxiliary_model
         )
 
-        mock_accelerator.accumulate.assert_called_once_with(mock_training_model, edm2_model)
+        mock_accelerator.accumulate.assert_called_once_with(mock_training_model, auxiliary_model)
         assert context == "accumulate_context"

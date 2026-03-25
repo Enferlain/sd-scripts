@@ -11,6 +11,8 @@ from types import SimpleNamespace
 
 import torch
 
+from library.losses.loss_modifiers import BatchLossOutput, LossModifierOutput
+
 
 @pytest.fixture
 def mock_cfg():
@@ -109,7 +111,7 @@ def mock_cfg():
 
     # loss
     cfg.loss.prior_loss_weight = 1.0
-    cfg.loss.edm2.edm2_loss_weighting = False
+    cfg.loss.edm2.enabled = False
 
     # validation
     cfg.validation.validate_every_n_steps = None
@@ -161,7 +163,13 @@ def mock_strategies():
     strategies.load_denoiser_lazily = MagicMock(return_value=(MagicMock(), []))
     strategies.get_token_cache_encoder_names = MagicMock(return_value=["clip_l", "clip_g"])
     strategies.build_te_cache_model_bundle = MagicMock(return_value=("te1", "te2", "tok1", "tok2"))
-    strategies.process_batch = MagicMock(return_value=(torch.tensor(0.5), torch.tensor(0.5), None, torch.tensor([500])))
+    strategies.process_batch = MagicMock(
+        return_value=BatchLossOutput(
+            loss=torch.tensor(0.5),
+            per_sample_loss=torch.tensor([0.5]),
+            timesteps=torch.tensor([500]),
+        )
+    )
     strategies.all_reduce_trainable = MagicMock()
     strategies.sample_images = MagicMock()
     strategies.calculate_val_loss = MagicMock(return_value=(None, None))
@@ -275,9 +283,7 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer._loss_recorder.add = MagicMock()
     trainer._loss_recorder.average = 0.5
     trainer._val_loss_recorder = None
-    trainer._loss_scaled_recorder = None
     trainer._current_global_step_loss = 0.0
-    trainer._current_global_step_loss_scaled = None
     trainer._current_val_loss = None
     trainer._average_val_loss = None
 
@@ -295,9 +301,20 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer._val_dataloader = None
     trainer._cyclic_val_dataloader = None
     trainer._training_model = trainer.adapter
-    trainer._edm2_model = None
-    trainer._edm2_optimizer = None
-    trainer._edm2_lr_scheduler = None
+    trainer.loss_modifier = SimpleNamespace(
+        name="noop",
+        is_enabled=False,
+        sidecar_suffix=None,
+        accumulation_model=None,
+        apply=MagicMock(return_value=LossModifierOutput(loss=torch.tensor(0.5), metrics={})),
+        optimizer_step=MagicMock(),
+        zero_grad=MagicMock(),
+        get_lr=MagicMock(return_value=None),
+        save_sidecar=MagicMock(),
+        load_sidecar=MagicMock(),
+        should_plot=MagicMock(return_value=False),
+        plot=MagicMock(),
+    )
     trainer._timestep_counts = None
     trainer._plotter_settings = None
     trainer._dynamic_timestep_schedule = []

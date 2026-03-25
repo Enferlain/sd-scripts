@@ -47,66 +47,69 @@ class RegularizationConfig:
 
 
 @dataclass
-class EDM2Config:
-    """EDM2 loss weighting settings."""
+class EDM2OptimizerConfig:
+    """Optimizer settings for the EDM2 sidecar model."""
 
-    edm2_loss_weighting: bool = field(default=False, metadata={"help": "Use EDM2 loss weighting."})
-    edm2_loss_weighting_laplace: bool = field(
-        default=False, metadata={"help": "Use EDM2 loss weighting to calculate timesteps sampling using laplace."}
-    )
-    edm2_loss_weighting_optimizer: str = field(
+    type: str = field(
         default="torch.optim.AdamW",
-        metadata={"help": "Fully qualified optimizer class name to use with the edm2 loss weighting optimizer."},
+        metadata={"help": "Fully qualified optimizer class name to use with the EDM2 loss-weighting optimizer."},
     )
-    edm2_loss_weighting_optimizer_lr: float = field(
-        default=2e-2, metadata={"help": "Learning rate as a float for the edm2 loss weighting optimizer."}
-    )
-    edm2_loss_weighting_optimizer_args: str = field(
+    lr: float = field(default=2e-2, metadata={"help": "Learning rate for the EDM2 loss-weighting optimizer."})
+    args: str = field(
         default="{'weight_decay': 0, 'betas': (0.9,0.999)}",
-        metadata={"help": "A JSON object as a string of optimizer args for the edm2 loss weighting optimizer."},
+        metadata={"help": "A JSON-like string of optimizer args for the EDM2 loss-weighting optimizer."},
     )
-    edm2_loss_weighting_lr_scheduler: bool = field(default=False, metadata={"help": "Use lr scheduler with EDM2 loss weighting optimizer."})
-    edm2_loss_weighting_lr_scheduler_warmup_percent: float = field(
-        default=0.1, metadata={"help": "Percent of training steps to use for warmup."}
+    use_scheduler: bool = field(default=False, metadata={"help": "Use an LR scheduler with the EDM2 optimizer."})
+    warmup_percent: float = field(default=0.1, metadata={"help": "Percent of training steps to use for warmup."})
+    constant_percent: float = field(
+        default=0.1, metadata={"help": "Percent of training steps to keep LR constant before decay."}
     )
-    edm2_loss_weighting_lr_scheduler_constant_percent: float = field(
-        default=0.1, metadata={"help": "Percent of training steps to maintain constant LR before decay."}
-    )
-    edm2_loss_weighting_generate_graph: bool = field(
-        default=False, metadata={"help": "Enable generation of graph images that show the loss weighting per timesteps."}
-    )
-    edm2_loss_weighting_generate_graph_every_x_steps: int = field(default=20, metadata={"help": "Every x steps generate a graph image."})
-    edm2_loss_weighting_generate_graph_output_dir: str | None = field(
-        default=None, metadata={"help": "The parent directory where loss weighting graph images should be stored"}
-    )
-    edm2_loss_weighting_generate_graph_y_limit: int | None = field(default=None, metadata={"help": "Set the max limit of the y axis"})
-    edm2_loss_weighting_generate_graph_y_scale: str = field(
-        default="linear", metadata={"help": "Select between linear or log scaling for the y-axis."}
-    )
-    edm2_loss_weighting_num_channels: int = field(
-        default=128, metadata={"help": "The number of channels used by for the loss weighting module."}
-    )
-    edm2_loss_weighting_initial_weights: str | None = field(
-        default=None, metadata={"help": "The full filepath to initial weights and state of edm2 weighting model to use instead of random."}
-    )
-    edm2_loss_weighting_lr_scheduler_decay_scaling: float = field(
-        default=1.0, metadata={"help": "A scaling factor to apply to the decay rate of the edm2_loss_weighting_lr_scheduler"}
-    )
-    edm2_loss_weighting_importance_weighting: bool = field(
-        default=False, metadata={"help": "If edm2 loss scaling weights are weighted by importance"}
-    )
-    edm2_loss_weighting_importance_weighting_max: float = field(
-        default=10.0, metadata={"help": "The max loss weighting/scaling to apply when using edm2 importance weighting"}
-    )
-    edm2_loss_weighting_importance_min_snr_gamma: float = field(
-        default=1.0, metadata={"help": "The min snr gamma used for edm2 importance weighting as a heuristic"}
-    )
-    edm2_loss_weighting_importance_weighting_safety_override: bool = field(
+    decay_scaling: float = field(default=1.0, metadata={"help": "Scaling factor applied to scheduler decay."})
+
+
+@dataclass
+class EDM2ImportanceConfig:
+    """Importance-weighting settings for EDM2."""
+
+    enabled: bool = field(default=False, metadata={"help": "Weight EDM2 loss scaling by timestep importance."})
+    max_weight: float = field(default=10.0, metadata={"help": "Maximum weighting/scaling used for EDM2 importance weighting."})
+    min_snr_gamma: float = field(default=1.0, metadata={"help": "Min-SNR gamma heuristic used for EDM2 importance weighting."})
+    safety_override: bool = field(
         default=False,
         metadata={
-            "help": "At your own risk, you may set this to true to ALLOW stacking debiased loss and/or typical min snr gamma with EDM2 using importance weighting."
+            "help": "Allow stacking debiased loss and/or regular min-SNR gamma with EDM2 importance weighting."
         },
     )
+
+
+@dataclass
+class EDM2VisualizationConfig:
+    """Optional visualization settings for EDM2 loss weights."""
+
+    enabled: bool = field(default=False, metadata={"help": "Generate graph images that show EDM2 loss weighting over timesteps."})
+    every_n_steps: int = field(default=20, metadata={"help": "Generate a graph image every N steps."})
+    output_dir: str | None = field(default=None, metadata={"help": "Parent directory for EDM2 graph images."})
+    y_limit: int | None = field(default=None, metadata={"help": "Optional max limit for the graph y-axis."})
+    y_scale: str = field(default="linear", metadata={"help": "Select between linear or log scaling for the y-axis."})
+
+
+@dataclass
+class EDM2Config:
+    """EDM2 loss-weighting settings grouped under one feature root."""
+
+    enabled: bool = field(default=False, metadata={"help": "Enable EDM2 loss weighting."})
+    laplace_timestep_sampling: bool = field(
+        default=False,
+        metadata={"help": "Experimental EDM2-related Laplace timestep sampling toggle (currently unsupported)."},
+    )
+    num_channels: int = field(default=128, metadata={"help": "Number of channels used by the EDM2 loss-weighting module."})
+    initial_weights: str | None = field(
+        default=None,
+        metadata={"help": "Optional filepath to initial EDM2 weights/state instead of random initialization."},
+    )
+    optimizer: EDM2OptimizerConfig = field(default_factory=EDM2OptimizerConfig)
+    importance: EDM2ImportanceConfig = field(default_factory=EDM2ImportanceConfig)
+    visualization: EDM2VisualizationConfig = field(default_factory=EDM2VisualizationConfig)
 
 
 @dataclass

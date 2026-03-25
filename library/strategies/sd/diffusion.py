@@ -3,6 +3,7 @@ from typing import Any
 import torch
 
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
+from library.losses.loss_modifiers import BatchLossOutput
 from library.losses.loss_weighting import apply_masked_loss, post_process_loss
 from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps, prepare_latents
@@ -154,11 +155,10 @@ class SdDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_denoiser: bool = True,
-        edm2_model: Any | None = None,
         min_timestep_override: int | None = None,
         max_timestep_override: int | None = None,
         global_step: int = 0,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
+    ) -> BatchLossOutput:
         """Process a training or validation batch for SD diffusion training."""
         with torch.no_grad():
             latents = prepare_latents(
@@ -223,12 +223,8 @@ class SdDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         if is_train and cfg.loss.loss_multiplier:
             loss.mul_(float(cfg.loss.loss_multiplier) if cfg.loss.loss_multiplier is not None else 1.0)
 
-        pre_scaling_loss = loss.mean()
-
-        if is_train and cfg.loss.edm2.edm2_loss_weighting and edm2_model is not None:
-            loss, loss_scaled = edm2_model(loss, timesteps)
-            loss_scaled = loss_scaled.mean()
-        else:
-            loss_scaled = None
-
-        return loss.mean(), pre_scaling_loss, loss_scaled, timesteps
+        return BatchLossOutput(
+            loss=loss.mean(),
+            per_sample_loss=loss,
+            timesteps=timesteps,
+        )

@@ -18,7 +18,7 @@ def generate_step_logs(
     maximum_norm=None,
     mean_grad_norm=None,
     mean_combined_norm=None,
-    edm2_lr_scheduler=None,
+    modifier_lrs: dict[str, float] | None = None,
     current_loss_scaled=None,
     average_loss_scaled=None,
     current_val_loss=None,
@@ -60,8 +60,9 @@ def generate_step_logs(
         if cfg.optimizer.optimizer_type.lower().endswith("prodigyplusschedulefree") and optimizer is not None:
             logs["lr/d*lr"] = optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
 
-    if edm2_lr_scheduler is not None:
-        logs["lr/edm2"] = edm2_lr_scheduler.get_last_lr()[0]
+    if modifier_lrs is not None:
+        for modifier_name, modifier_lr in modifier_lrs.items():
+            logs[f"lr/{modifier_name}"] = modifier_lr
 
     if cfg.timestep.timestep_sampling == "mix_adaptive" and la_sampler is not None and timesteps is not None:
         if hasattr(la_sampler, "last_mix_p"):

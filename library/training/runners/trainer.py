@@ -19,6 +19,7 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
+from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.logging.resource_monitor import create_resource_monitor
 from library.performance import deepspeed_utils
 from library.training.noise_utils import get_noise_scheduler
@@ -147,12 +148,12 @@ class Trainer:
         self.noise_scheduler: Any = None
         self._progress_bar: Any = None
         self._loss_recorder: Any = None
-        self._loss_scaled_recorder: Any = None
         self._val_loss_recorder: Any = None
+        self._loss_modifier_metric_recorders: dict[str, Any] = {}
         self._is_tracking: bool = False
         self._accumulation_counter: int = 0
         self._current_global_step_loss: float = 0.0
-        self._current_global_step_loss_scaled: float | None = 0.0
+        self._current_loss_modifier_metrics: dict[str, float] = {}
         self._current_val_loss: float | None = None
         self._average_val_loss: float | None = None
 
@@ -168,10 +169,8 @@ class Trainer:
         self._grad_sync_handle: Any = None  # Object passed to accelerator.accumulate() for grad sync
         self._primary_trainable: nn.Module | None = None  # Semantic trainable model (set by mode)
 
-        # EDM2 state
-        self._edm2_model: Any = None
-        self._edm2_optimizer: Any = None
-        self._edm2_lr_scheduler: Any = None
+        # Optional post-loss modifier runtime state
+        self._loss_modifier_runtime = NoOpLossModifier()
 
         # Dynamic timestep schedule
         self._dynamic_timestep_schedule: list | None = None
@@ -384,22 +383,18 @@ class Trainer:
             ckpt_name: Checkpoint filename.
             target_model: The model to save. For standard adapter saves
                 this is the unwrapped adapter; for EDM2 loss weights
-                this is ``_edm2_model``.
+                this is ``edm2.model``.
             step: Current training step.
             epoch: Current epoch number.
             force_sync_upload: Force synchronous HuggingFace upload.
             dtype_override: Override save dtype (e.g. float32 for EDM2).
         """
-        metadata_to_save = self._minimum_metadata.copy() if self.cfg.output.saving.no_metadata else self._metadata.copy()
-        modelspec_metadata = self.strategies.get_model_metadata(self.cfg)
-        metadata_to_save.update(modelspec_metadata)
-
         self.mode.save_checkpoint(
             self,
             ckpt_name=ckpt_name,
             step=step,
             epoch=epoch,
-            metadata=metadata_to_save,
+            metadata=self._build_checkpoint_metadata(),
             force_sync_upload=force_sync_upload,
             dtype_override=dtype_override,
             target_model=target_model,
@@ -427,6 +422,13 @@ class Trainer:
         """Internal event hook. No-op by default, override for extensions."""
         pass  # Future: dispatch to registered callbacks
 
+    def _build_checkpoint_metadata(self) -> dict[str, str]:
+        """Build checkpoint metadata for the main model and any sidecars."""
+        metadata_to_save = self._minimum_metadata.copy() if self.cfg.output.saving.no_metadata else self._metadata.copy()
+        modelspec_metadata = self.strategies.get_model_metadata(self.cfg)
+        metadata_to_save.update(modelspec_metadata)
+        return metadata_to_save
+
     # =========================================================================
     # Helper Methods
     # =========================================================================
@@ -435,8 +437,8 @@ class Trainer:
         """Log training configuration, create metadata, init noise scheduler, and loss recorders."""
         from tqdm import tqdm
 
-        from library.losses.edm2_loss_utils import prepare_edm2_loss_weighting
         from library.losses.loss import EMARecorder
+        from library.losses.loss_modifiers import build_loss_modifier
         from library.logging.step_logging import init_trackers
         from library.logging.training_plots import setup_live_plotter
         from library.timesteps.timestep_utils import init_timestep_sampler, parse_dynamic_timestep_schedule
@@ -524,9 +526,12 @@ class Trainer:
                 cfg, self.noise_scheduler, self.strategies.la_sampler, self.strategies
             )
 
-        # EDM2 loss weighting
-        self._edm2_model, self._edm2_optimizer, self._edm2_lr_scheduler = prepare_edm2_loss_weighting(
-            cfg.loss.edm2, cfg.training, self.noise_scheduler, self.accelerator
+        # Optional post-loss modifier
+        self._loss_modifier_runtime = build_loss_modifier(
+            cfg.loss,
+            cfg.training,
+            self.noise_scheduler,
+            self.accelerator,
         )
 
         # Init trackers
@@ -535,11 +540,11 @@ class Trainer:
         # Loss recorders
         self._loss_recorder = EMARecorder()
         self._val_loss_recorder = EMARecorder()
-        self._loss_scaled_recorder = EMARecorder() if cfg.loss.edm2.edm2_loss_weighting else None
+        self._loss_modifier_metric_recorders = {}
 
         # Init loss tracking state
         self._current_global_step_loss = 0.0
-        self._current_global_step_loss_scaled = 0.0 if cfg.loss.edm2.edm2_loss_weighting else None
+        self._current_loss_modifier_metrics = {}
         self._current_val_loss = None
         self._average_val_loss = None
         self._accumulation_counter = 0
@@ -658,23 +663,19 @@ class Trainer:
 
         # Save final checkpoint
         if self.is_main_process:
-            import torch
-
             assert self.trainable_model is not None, "trainable_model must be set before finalizing"
             unwrapped = self.accelerator.unwrap_model(self.trainable_model)
             ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as)
             self.save_checkpoint(ckpt_name, unwrapped, self.global_step, self.num_train_epochs, force_sync_upload=True)
 
-            if cfg.loss.edm2.edm2_loss_weighting:
-                loss_weights_ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, "_edm2_loss_weights")
-                self.save_checkpoint(
-                    loss_weights_ckpt_name,
-                    self.accelerator.unwrap_model(self._edm2_model),
-                    self.global_step,
-                    self.num_train_epochs,
-                    force_sync_upload=True,
-                    dtype_override=torch.float32,
+            if self.loss_modifier.is_enabled and self.loss_modifier.sidecar_suffix:
+                loss_weights_ckpt_name = get_last_ckpt_name(
+                    cfg.output.saving,
+                    "." + cfg.output.saving.save_model_as,
+                    self.loss_modifier.sidecar_suffix,
                 )
+                sidecar_path = os.path.join(cfg.output.saving.output_dir, loss_weights_ckpt_name)
+                self.loss_modifier.save_sidecar(sidecar_path, self._build_checkpoint_metadata())
 
         logger.info("model saved.")
 
@@ -688,6 +689,11 @@ class Trainer:
         Distinct from ``_grad_sync_handle`` which is the grad-sync wrapper
         """
         return self._primary_trainable
+
+    @property
+    def loss_modifier(self) -> LossModifier:
+        """Trainer-owned post-loss modifier runtime."""
+        return self._loss_modifier_runtime
 
     @property
     def accelerator(self) -> Accelerator:

@@ -17,6 +17,7 @@ import pytest
 import torch
 
 from library.logging.resource_monitor import create_resource_monitor
+from library.losses.loss_modifiers import BatchLossOutput, LossModifierOutput
 from library.training.phases.training_loop import run_training_loop
 from library.training.checkpointing import get_step_ckpt_name, get_epoch_ckpt_name
 
@@ -118,7 +119,7 @@ def _make_mock_trainer(
 
     # loss
     cfg.loss.prior_loss_weight = 1.0
-    cfg.loss.edm2.edm2_loss_weighting = False
+    cfg.loss.edm2.enabled = False
 
     # validation
     cfg.validation.validate_every_n_steps = None
@@ -149,7 +150,7 @@ def _make_mock_trainer(
 
     # ---- Strategies ----
     strategies = MagicMock()
-    strategies.process_batch = MagicMock(return_value=(torch.tensor(0.5), torch.tensor(0.5), None, torch.tensor([500])))
+    strategies.process_batch = MagicMock(return_value=BatchLossOutput(loss=torch.tensor(0.5), per_sample_loss=torch.tensor([0.5]), timesteps=torch.tensor([500])))
     strategies.on_step_start = MagicMock()
     strategies.all_reduce_trainable = MagicMock()
     strategies.sample_images = MagicMock()
@@ -216,9 +217,7 @@ def _make_mock_trainer(
     trainer._loss_recorder.add = MagicMock()
     trainer._loss_recorder.average = 0.5
     trainer._val_loss_recorder = None
-    trainer._loss_scaled_recorder = None
     trainer._current_global_step_loss = 0.0
-    trainer._current_global_step_loss_scaled = None
     trainer._current_val_loss = None
     trainer._average_val_loss = None
 
@@ -235,9 +234,20 @@ def _make_mock_trainer(
     trainer._n_workers = 0
     trainer._val_dataloader = None
     trainer._cyclic_val_dataloader = None
-    trainer._edm2_model = None
-    trainer._edm2_optimizer = None
-    trainer._edm2_lr_scheduler = None
+    trainer.loss_modifier = SimpleNamespace(
+        name="noop",
+        is_enabled=False,
+        sidecar_suffix=None,
+        accumulation_model=None,
+        apply=MagicMock(return_value=LossModifierOutput(loss=torch.tensor(0.5), metrics={})),
+        optimizer_step=MagicMock(),
+        zero_grad=MagicMock(),
+        get_lr=MagicMock(return_value=None),
+        save_sidecar=MagicMock(),
+        load_sidecar=MagicMock(),
+        should_plot=MagicMock(return_value=False),
+        plot=MagicMock(),
+    )
     trainer._timestep_counts = None
     trainer._plotter_settings = None
     trainer._dynamic_timestep_schedule = []

@@ -19,7 +19,6 @@ from library.data import CaptionConfig, prepare_epoch, create_training_dataloade
 from library.logging.resource_monitor import NoOpResourceMonitor
 from library.logging.step_logging import generate_step_logs, step_logging
 from library.logging.training_plots import save_timestep_distribution_plot
-from library.losses.edm2_loss_utils import plot_edm2_loss_weighting_check, plot_edm2_loss_weighting
 from library.training.checkpointing import (
     get_step_ckpt_name,
     save_and_remove_state_stepwise,
@@ -64,20 +63,15 @@ def _save_step_checkpoint_artifacts(trainer: Trainer) -> None:
         trainer._current_epoch_state.value,
     )
 
-    if cfg.loss.edm2.edm2_loss_weighting:
+    if trainer.loss_modifier.is_enabled and trainer.loss_modifier.sidecar_suffix:
         loss_weights_ckpt_name = get_step_ckpt_name(
             cfg.output.saving,
             "." + cfg.output.saving.save_model_as,
             trainer.global_step,
-            "_edm2_loss_weights",
+            trainer.loss_modifier.sidecar_suffix,
         )
-        trainer.save_checkpoint(
-            loss_weights_ckpt_name,
-            accelerator.unwrap_model(trainer._edm2_model),
-            trainer.global_step,
-            trainer._current_epoch_state.value,
-            dtype_override=torch.float32,
-        )
+        sidecar_path = str(Path(cfg.output.saving.output_dir) / loss_weights_ckpt_name)
+        trainer.loss_modifier.save_sidecar(sidecar_path, trainer._build_checkpoint_metadata())
 
     if cfg.output.saving.save_state:
         save_and_remove_state_stepwise(cfg.output.saving, accelerator, trainer.global_step)
@@ -89,12 +83,12 @@ def _save_step_checkpoint_artifacts(trainer: Trainer) -> None:
     remove_ckpt_name = get_step_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_step_no)
     trainer.remove_checkpoint(remove_ckpt_name)
 
-    if cfg.loss.edm2.edm2_loss_weighting:
+    if trainer.loss_modifier.is_enabled and trainer.loss_modifier.sidecar_suffix:
         remove_loss_weights_ckpt_name = get_step_ckpt_name(
             cfg.output.saving,
             "." + cfg.output.saving.save_model_as,
             remove_step_no,
-            "_edm2_loss_weights",
+            trainer.loss_modifier.sidecar_suffix,
         )
         trainer.remove_checkpoint(remove_loss_weights_ckpt_name)
 
@@ -175,13 +169,10 @@ def _run_step_side_effects(
         if accelerator.is_main_process:
             _save_step_checkpoint_artifacts(trainer)
 
-    if plot_edm2_loss_weighting_check(cfg.loss.edm2, cfg.training, trainer.global_step):
-        plot_edm2_loss_weighting(
-            cfg.loss.edm2,
+    if trainer.loss_modifier.should_plot(trainer.global_step):
+        trainer.loss_modifier.plot(
             cfg.output.saving.output_name,
             trainer.global_step,
-            trainer._edm2_model,
-            1000,
             accelerator.device,
         )
     trainer.optimizer_train_fn()
@@ -232,13 +223,16 @@ def _emit_step_tracking_logs(
     strategies = trainer.strategies
 
     current_global_step_loss = trainer._current_global_step_loss / trainer._accumulation_counter
-    if cfg.loss.edm2.edm2_loss_weighting:
-        assert trainer._current_global_step_loss_scaled is not None and trainer._loss_scaled_recorder is not None
-        current_global_step_loss_scaled = trainer._current_global_step_loss_scaled / trainer._accumulation_counter
-        average_loss_scaled: float | None = trainer._loss_scaled_recorder.average
-    else:
-        current_global_step_loss_scaled = None
-        average_loss_scaled = None
+    current_loss_scaled_total = trainer._current_loss_modifier_metrics.get("loss/current_scaled")
+    current_global_step_loss_scaled = (
+        current_loss_scaled_total / trainer._accumulation_counter if current_loss_scaled_total is not None else None
+    )
+    scaled_loss_recorder = trainer._loss_modifier_metric_recorders.get("loss/current_scaled")
+    average_loss_scaled: float | None = scaled_loss_recorder.average if scaled_loss_recorder is not None else None
+    modifier_lrs = None
+    modifier_lr = trainer.loss_modifier.get_lr()
+    if modifier_lr is not None:
+        modifier_lrs = {trainer.loss_modifier.name: modifier_lr}
 
     logs = generate_step_logs(
         cfg,
@@ -253,7 +247,7 @@ def _emit_step_tracking_logs(
         maximum_norm=maximum_norm,
         mean_grad_norm=None,
         mean_combined_norm=None,
-        edm2_lr_scheduler=trainer._edm2_lr_scheduler,
+        modifier_lrs=modifier_lrs,
         current_loss_scaled=current_global_step_loss_scaled,
         average_loss_scaled=average_loss_scaled,
         current_val_loss=trainer._current_val_loss,
@@ -278,29 +272,24 @@ def _save_epoch_checkpoint_artifacts(trainer: Trainer) -> None:
         trainer._current_epoch_state.value,
     )
 
-    if cfg.loss.edm2.edm2_loss_weighting:
+    if trainer.loss_modifier.is_enabled and trainer.loss_modifier.sidecar_suffix:
         loss_weights_ckpt_name = get_epoch_ckpt_name(
             cfg.output.saving,
             "." + cfg.output.saving.save_model_as,
             trainer._current_epoch_state.value,
-            "_edm2_loss_weights",
+            trainer.loss_modifier.sidecar_suffix,
         )
-        trainer.save_checkpoint(
-            loss_weights_ckpt_name,
-            accelerator.unwrap_model(trainer._edm2_model),
-            trainer.global_step,
-            trainer._current_epoch_state.value,
-            dtype_override=torch.float32,
-        )
+        sidecar_path = str(Path(cfg.output.saving.output_dir) / loss_weights_ckpt_name)
+        trainer.loss_modifier.save_sidecar(sidecar_path, trainer._build_checkpoint_metadata())
 
     remove_epoch_no = get_remove_epoch_no(cfg.output.saving, trainer._current_epoch_state.value)
     if remove_epoch_no is not None:
         remove_ckpt_name = get_epoch_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_epoch_no)
         trainer.remove_checkpoint(remove_ckpt_name)
 
-        if cfg.loss.edm2.edm2_loss_weighting:
+        if trainer.loss_modifier.is_enabled and trainer.loss_modifier.sidecar_suffix:
             remove_loss_weights_ckpt_name = get_epoch_ckpt_name(
-                cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_epoch_no, "_edm2_loss_weights"
+                cfg.output.saving, "." + cfg.output.saving.save_model_as, remove_epoch_no, trainer.loss_modifier.sidecar_suffix
             )
             trainer.remove_checkpoint(remove_loss_weights_ckpt_name)
 
@@ -517,13 +506,13 @@ def run_training_loop(trainer: Trainer) -> None:
                     accelerator,
                     None,
                     trainer._grad_sync_handle,
-                    trainer._edm2_model,
+                    trainer.loss_modifier.accumulation_model,
                 ):
                     trainer.mode.on_step_start(trainer)
 
                     trainer._accumulation_counter += 1
 
-                    loss, pre_scaling_loss, loss_scaled, timesteps = strategies.process_batch(
+                    batch_loss = strategies.process_batch(
                         batch,
                         trainer.text_encoders,
                         trainer.denoiser,
@@ -537,15 +526,18 @@ def run_training_loop(trainer: Trainer) -> None:
                         is_train=True,
                         train_text_encoder=trainer._train_text_encoder,
                         train_denoiser=trainer._train_denoiser,
-                        edm2_model=trainer._edm2_model,
                         min_timestep_override=trainer._current_min_timestep,
                         max_timestep_override=trainer._current_max_timestep,
                         global_step=trainer.global_step,
                     )
 
-                    accelerator.backward(loss)
-
-                    loss = pre_scaling_loss
+                    modifier_output = trainer.loss_modifier.apply(
+                        per_sample_loss=batch_loss.per_sample_loss,
+                        timesteps=batch_loss.timesteps,
+                        batch=batch,
+                        global_step=trainer.global_step,
+                    )
+                    accelerator.backward(modifier_output.loss)
 
                     if accelerator.sync_gradients:
                         all_reduce_trainable(accelerator, trainer.trainable_model)
@@ -557,10 +549,8 @@ def run_training_loop(trainer: Trainer) -> None:
                     trainer.lr_scheduler.step()
                     trainer.optimizer.zero_grad(set_to_none=True)
 
-                    if cfg.loss.edm2.edm2_loss_weighting:
-                        trainer._edm2_optimizer.step()
-                        trainer._edm2_lr_scheduler.step()
-                        trainer._edm2_optimizer.zero_grad(set_to_none=True)
+                    trainer.loss_modifier.optimizer_step()
+                    trainer.loss_modifier.zero_grad()
 
                 if accelerator.sync_gradients:
                     max_mean_logs = trainer.mode.on_step_end(trainer)
@@ -583,18 +573,20 @@ def run_training_loop(trainer: Trainer) -> None:
                     )
                     resource_monitor.step_end(trainer.global_step, trainer._current_epoch_state.value)
 
-                trainer._current_global_step_loss += loss.detach().item()
-                if cfg.loss.edm2.edm2_loss_weighting:
-                    assert loss_scaled is not None and trainer._current_global_step_loss_scaled is not None
-                    trainer._current_global_step_loss_scaled += loss_scaled.detach().item()
-                else:
-                    trainer._current_global_step_loss_scaled = None
+                trainer._current_global_step_loss += batch_loss.loss.detach().item()
+                for metric_name, metric_value in modifier_output.metrics.items():
+                    trainer._current_loss_modifier_metrics[metric_name] = (
+                        trainer._current_loss_modifier_metrics.get(metric_name, 0.0) + float(metric_value)
+                    )
 
                 if accelerator.sync_gradients:
                     trainer._loss_recorder.add(trainer._current_global_step_loss / trainer._accumulation_counter)
-                    if cfg.loss.edm2.edm2_loss_weighting:
-                        assert trainer._loss_scaled_recorder is not None and trainer._current_global_step_loss_scaled is not None
-                        trainer._loss_scaled_recorder.add(trainer._current_global_step_loss_scaled / trainer._accumulation_counter)
+                    for metric_name, metric_total in trainer._current_loss_modifier_metrics.items():
+                        if metric_name not in trainer._loss_modifier_metric_recorders:
+                            from library.losses.loss import EMARecorder
+
+                            trainer._loss_modifier_metric_recorders[metric_name] = EMARecorder()
+                        trainer._loss_modifier_metric_recorders[metric_name].add(metric_total / trainer._accumulation_counter)
                     avr_loss: float = trainer._loss_recorder.average
                     logs = {"avr_loss": avr_loss}
                     trainer._progress_bar.set_postfix(**{**max_mean_logs, **logs})
@@ -602,18 +594,17 @@ def run_training_loop(trainer: Trainer) -> None:
                     if trainer._is_tracking:
                         _emit_step_tracking_logs(
                             trainer,
-                            timesteps=timesteps,
+                            timesteps=batch_loss.timesteps,
                             keys_scaled=keys_scaled,
                             mean_norm=mean_norm,
                             maximum_norm=maximum_norm,
                         )
 
                     trainer._current_global_step_loss = 0.0
-                    if cfg.loss.edm2.edm2_loss_weighting:
-                        trainer._current_global_step_loss_scaled = 0.0
+                    trainer._current_loss_modifier_metrics = {}
                     trainer._accumulation_counter = 0
 
-                    _update_live_timestep_outputs(trainer, timesteps=timesteps)
+                    _update_live_timestep_outputs(trainer, timesteps=batch_loss.timesteps)
 
                 if trainer.global_step >= cfg.training.max_train_steps:
                     break

@@ -33,23 +33,26 @@ regularization:
   zero_terminal_snr: false
 
 edm2:
-  edm2_loss_weighting: false
-  edm2_loss_weighting_laplace: false
-  edm2_loss_weighting_optimizer: "torch.optim.AdamW"
-  edm2_loss_weighting_optimizer_lr: 0.02
-  edm2_loss_weighting_optimizer_args: "{'weight_decay': 0, 'betas': (0.9,0.999)}"
-  edm2_loss_weighting_lr_scheduler: false
-  edm2_loss_weighting_lr_scheduler_warmup_percent: 0.1
-  edm2_loss_weighting_lr_scheduler_constant_percent: 0.1
-  edm2_loss_weighting_generate_graph: false
-  edm2_loss_weighting_generate_graph_every_x_steps: 20
-  edm2_loss_weighting_generate_graph_output_dir: null
-  edm2_loss_weighting_generate_graph_y_limit: null
-  edm2_loss_weighting_generate_graph_y_scale: "linear"
-  edm2_loss_weighting_num_channels: 128
-  edm2_loss_weighting_initial_weights: null
-  edm2_loss_weighting_lr_scheduler_decay_scaling: 1.0
-  edm2_loss_weighting_importance_weighting: false
-  edm2_loss_weighting_importance_weighting_max: 10.0
-  edm2_loss_weighting_importance_min_snr_gamma: 1.0
-  edm2_loss_weighting_importance_weighting_safety_override: false
+  enabled: false
+  laplace_timestep_sampling: false
+  num_channels: 128
+  initial_weights: null
+  optimizer:
+    type: "torch.optim.AdamW"
+    lr: 0.02
+    args: "{'weight_decay': 0, 'betas': (0.9,0.999)}"
+    use_scheduler: false
+    warmup_percent: 0.1
+    constant_percent: 0.1
+    decay_scaling: 1.0
+  importance:
+    enabled: false
+    max_weight: 10.0
+    min_snr_gamma: 1.0
+    safety_override: false
+  visualization:
+    enabled: false
+    every_n_steps: 20
+    output_dir: null
+    y_limit: null
+    y_scale: "linear"

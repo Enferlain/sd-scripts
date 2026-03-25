@@ -83,6 +83,39 @@ def _validate_model_profile_config(cfg) -> None:
         )
 
 
+def _normalize_edm2_loss_config(cfg) -> None:
+    """Apply EDM2/SNR auto-fixups that depend on the nested loss config shape."""
+    edm2_cfg = _get_optional_attr(cfg, "loss", "edm2")
+    snr_cfg = _get_optional_attr(cfg, "loss", "snr")
+    if edm2_cfg is None or snr_cfg is None:
+        return
+
+    if (
+        edm2_cfg.enabled
+        and edm2_cfg.importance.enabled
+        and not edm2_cfg.importance.safety_override
+    ):
+        if getattr(snr_cfg, "debiased_estimation_loss", False):
+            snr_cfg.debiased_estimation_loss = False
+            logger.warning(
+                "Debiased estimation loss AND EDM2 loss weighting with importance weighting are enabled. "
+                "It is not advised to use both, as there is a possibility of loss curving to 0 as SNR approaches 0, "
+                "as such, debiased estimation loss has been disabled. "
+                "You may override this behavior by setting "
+                "loss.edm2.importance.safety_override=true."
+            )
+
+        if getattr(snr_cfg, "min_snr_gamma", None):
+            snr_cfg.min_snr_gamma = None
+            logger.warning(
+                "Min SNR gamma AND EDM2 loss weighting with importance weighting are enabled. "
+                "It is not advised to use both, as there is a possibility of loss curving to 0 as SNR approaches 0, "
+                "as such, min_snr_gamma has been disabled. "
+                "You may override this behavior by setting "
+                "loss.edm2.importance.safety_override=true."
+            )
+
+
 def _validate_mode_config(cfg) -> None:
     """Validate the top-level training mode when present on the config."""
     mode = getattr(cfg, "mode", None)
@@ -156,6 +189,8 @@ def prepare_config(cfg) -> None:
             lr_cfg.denoiser = lr_cfg.base
         if lr_cfg.text_encoders is None:
             lr_cfg.text_encoders = lr_cfg.base
+
+    _normalize_edm2_loss_config(cfg)
 
     # Data: cache_dir defaults to train_data_dir if not set
     if (
@@ -299,6 +334,12 @@ def validate_config(cfg) -> None:
     # Loss: v_pred_like_loss conflicts with v_parameterization
     if cfg.loss.snr.v_pred_like_loss is not None and cfg.loss.v_parameterization:
         raise ValueError("v_pred_like_loss conflicts with v_parameterization")
+
+    if _get_optional_attr(cfg, "loss", "edm2", "laplace_timestep_sampling", default=False):
+        raise ValueError(
+            "loss.edm2.laplace_timestep_sampling is not implemented in the active training path yet. "
+            "Disable it until the timestep-sampling wiring is implemented."
+        )
 
     # Precision: full_fp16 requires mixed_precision='fp16'
     if hasattr(cfg, "performance") and cfg.performance is not None:

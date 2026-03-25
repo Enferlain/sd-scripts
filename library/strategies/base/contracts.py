@@ -5,6 +5,8 @@ from typing import Any
 
 import torch
 
+from library.losses.loss_modifiers import BatchLossOutput
+
 
 class ModelLoadingStrategy(ABC):
     """Strategy for loading model components (text encoders, VAE, denoiser)."""
@@ -363,6 +365,9 @@ class ValidationStrategy(ABC):
         raise NotImplementedError
 
 
+DiffusionBatchLossOutput = BatchLossOutput
+
+
 class DiffusionTrainingStrategy(ABC):
     """Contract for diffusion-specific batch processing behavior."""
 
@@ -382,16 +387,15 @@ class DiffusionTrainingStrategy(ABC):
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_denoiser: bool = True,
-        edm2_model: Any | None = None,
         min_timestep_override: int | None = None,
         max_timestep_override: int | None = None,
         global_step: int = 0,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
+    ) -> BatchLossOutput:
         """
         Process a batch for training or validation.
 
         Returns:
-            Tuple of (loss, pre_scaling_loss, loss_scaled, timesteps).
+            Base per-sample loss and timestep data before trainer-owned modifiers.
         """
         raise NotImplementedError
 
