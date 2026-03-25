@@ -90,9 +90,6 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 ### Active TODOs
 
-- [ ] Config Validation Edge Cases: Test `prepare_config()` and `validate_config()` for dataset conflicts
-  - Added focused unit coverage for `cache_dir` defaulting, LR inheritance, tracker/resource-monitor normalization, validation cadence disabling, TE offload/training conflicts, and dataset-group cacheability fallbacks.
-  - The FP8 mixed-precision guard was also fixed while expanding that coverage; broader config edge-case coverage still remains.
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
 
 ### Recent Completed
@@ -206,11 +203,6 @@ All phase functions in `library/training/phases/` are typed as `trainer: Trainer
 ---
 
 ## Testability Improvements
-
-- [ ] **Split `prepare_accelerator`** - Separate config computation from side effects
-  - Currently mixes pure computation (logging_dir, log_with, plugins) with side effects (`os.makedirs`, `os.environ["WANDB_DIR"]`, `wandb.login`)
-  - Suggested: Split into `compute_accelerator_config() -> AcceleratorConfig` (pure) and `prepare_accelerator(config)` (side effects)
-  - Benefits: Easier to test config logic without network calls or filesystem changes
 
 ---
 

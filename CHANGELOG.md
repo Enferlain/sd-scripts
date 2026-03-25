@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Accelerator setup now has an explicit pure-computation split** — `prepare_accelerator()` no longer mixes all config derivation and side-effect handling in one block.
+  - `library/training/trainer_utils.py` now provides `compute_accelerator_config()` plus a typed `AcceleratorConfig` container for the derived accelerator constructor args and deferred wandb setup.
+  - `prepare_accelerator()` now applies the wandb/env/filesystem side effects after config computation, then instantiates `Accelerator` from the computed setup.
+  - `tests/unit/training/test_training_trainer_utils.py` now covers both the pure config derivation path and the retained wandb side effects.
 - **Resume hook state flow is now explicit across training modes** — Checkpoint resume metadata no longer comes back through closure-bound containers.
   - `library/training/checkpointing.py` now defines a shared `ResumeState` dataclass plus small `train_state.json` read/write helpers.
   - PEFT and fine-tune modes now register their own accelerator hooks locally while reusing the shared metadata helpers, and `optimizer.py` restores counters from `resume_state.step` directly.

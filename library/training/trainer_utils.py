@@ -3,6 +3,7 @@ import math
 import random
 import time
 import os
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -25,6 +26,21 @@ from library.logging.step_logging import append_lr_to_logs_with_names
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class AcceleratorConfig:
+    """Computed accelerator setup plus any deferred side-effect instructions."""
+
+    gradient_accumulation_steps: int
+    mixed_precision: str | None
+    log_with: str | None
+    project_dir: str | None
+    kwargs_handlers: list[Any]
+    dynamo_plugin: TorchDynamoPlugin | None
+    deepspeed_plugin: Any
+    configure_wandb: bool = False
+    wandb_api_key: str | None = None
 
 
 def all_reduce_trainable(accelerator: Accelerator, trainable_model: nn.Module) -> None:
@@ -218,6 +234,47 @@ def prepare_accelerator(
     Returns:
         Accelerator: The prepared accelerator object.
     """
+    accelerator_config = compute_accelerator_config(
+        precision_config,
+        compilation_config,
+        distributed_config,
+        deepspeed_config,
+        logging_config=logging_config,
+        training_config=training_config,
+    )
+
+    if accelerator_config.configure_wandb:
+        try:
+            import wandb
+        except ImportError:
+            raise ImportError("No wandb") from None
+        if accelerator_config.project_dir is not None:
+            os.makedirs(accelerator_config.project_dir, exist_ok=True)
+            os.environ["WANDB_DIR"] = accelerator_config.project_dir
+        if accelerator_config.wandb_api_key is not None:
+            wandb.login(key=accelerator_config.wandb_api_key)
+
+    accelerator = Accelerator(
+        gradient_accumulation_steps=accelerator_config.gradient_accumulation_steps,
+        mixed_precision=accelerator_config.mixed_precision,
+        log_with=accelerator_config.log_with,
+        project_dir=accelerator_config.project_dir,
+        kwargs_handlers=accelerator_config.kwargs_handlers,
+        dynamo_plugin=accelerator_config.dynamo_plugin,
+        deepspeed_plugin=accelerator_config.deepspeed_plugin,
+    )
+    return accelerator
+
+
+def compute_accelerator_config(
+    precision_config: PrecisionConfig,
+    compilation_config: CompilationConfig,
+    distributed_config: DistributedConfig,
+    deepspeed_config: DeepSpeedConfig,
+    logging_config: LoggingConfig | None = None,
+    training_config: TrainingConfig | None = None,
+) -> AcceleratorConfig:
+    """Compute accelerator constructor arguments without filesystem/network side effects."""
 
     # Handle logging directory
     if logging_config is None or logging_config.logging_dir is None:
@@ -236,16 +293,7 @@ def prepare_accelerator(
         log_with = logging_config.log_with
         if log_with in ["tensorboard", "all"] and logging_dir is None:
             raise ValueError("logging_dir is required when log_with is tensorboard")
-        if log_with in ["wandb", "all"]:
-            try:
-                import wandb
-            except ImportError:
-                raise ImportError("No wandb") from None
-            if logging_dir is not None:
-                os.makedirs(logging_dir, exist_ok=True)
-                os.environ["WANDB_DIR"] = logging_dir
-            if logging_config.wandb_api_key is not None:
-                wandb.login(key=logging_config.wandb_api_key)
+    configure_wandb = log_with in ["wandb", "all"]
 
     # torch.compile options
     if compilation_config.torch_compile:
@@ -277,7 +325,7 @@ def prepare_accelerator(
     # Gradient accumulation steps
     gradient_accumulation_steps = training_config.gradient_accumulation_steps if training_config else 1
 
-    accelerator = Accelerator(
+    return AcceleratorConfig(
         gradient_accumulation_steps=gradient_accumulation_steps,
         mixed_precision=precision_config.mixed_precision,
         log_with=log_with,
@@ -285,8 +333,9 @@ def prepare_accelerator(
         kwargs_handlers=kwargs_handlers,
         dynamo_plugin=dynamo_plugin,
         deepspeed_plugin=deepspeed_plugin,
+        configure_wandb=configure_wandb,
+        wandb_api_key=logging_config.wandb_api_key if logging_config is not None else None,
     )
-    return accelerator
 
 
 def append_lr_to_logs(logs, lr_scheduler, optimizer_type, including_denoiser=True):

@@ -4,6 +4,7 @@ Unit tests for library/training/trainer_utils.py
 Tests learning rate logging utilities and accelerator preparation.
 """
 
+import os
 import pytest
 from unittest.mock import MagicMock, Mock, patch
 
@@ -13,6 +14,7 @@ from library.config.dataclasses.training import TrainingConfig
 from library.logging.step_logging import init_trackers, append_lr_to_logs_with_names
 from library.training.trainer_utils import (
     append_lr_to_logs,
+    compute_accelerator_config,
     determine_grad_sync_context,
     prepare_accelerator,
 )
@@ -132,6 +134,135 @@ class TestAppendLrToLogs:
 
         assert "lr/text_encoder1" in logs
         assert "lr/text_encoder2" in logs
+
+
+# =============================================================================
+# Pure Tests - compute_accelerator_config
+# =============================================================================
+
+
+@pytest.mark.training
+@pytest.mark.unit
+class TestComputeAcceleratorConfig:
+    """Test pure accelerator config computation."""
+
+    @pytest.fixture
+    def mock_precision_config(self):
+        config = Mock(spec=PrecisionConfig)
+        config.mixed_precision = "fp16"
+        return config
+
+    @pytest.fixture
+    def mock_compilation_config(self):
+        config = Mock(spec=CompilationConfig)
+        config.torch_compile = False
+        return config
+
+    @pytest.fixture
+    def mock_distributed_config(self):
+        config = Mock(spec=DistributedConfig)
+        config.ddp_gradient_as_bucket_view = False
+        config.ddp_static_graph = False
+        return config
+
+    @pytest.fixture
+    def mock_deepspeed_config(self):
+        return Mock(spec=DeepSpeedConfig)
+
+    @pytest.fixture
+    def mock_logging_config(self, tmp_path):
+        config = Mock(spec=LoggingConfig)
+        config.logging_dir = str(tmp_path / "logs")
+        config.log_prefix = "test_"
+        config.log_with = None
+        config.wandb_api_key = None
+        return config
+
+    @pytest.fixture
+    def mock_training_config(self):
+        config = Mock(spec=TrainingConfig)
+        config.gradient_accumulation_steps = 2
+        return config
+
+    @patch("library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin")
+    @patch("library.training.trainer_utils.time.strftime", return_value="20260325010101")
+    def test_defaults_to_tensorboard_when_logging_dir_present(
+        self,
+        _mock_strftime,
+        mock_ds_plugin,
+        mock_precision_config,
+        mock_compilation_config,
+        mock_distributed_config,
+        mock_deepspeed_config,
+        mock_logging_config,
+        mock_training_config,
+    ):
+        mock_ds_plugin.return_value = None
+
+        result = compute_accelerator_config(
+            mock_precision_config,
+            mock_compilation_config,
+            mock_distributed_config,
+            mock_deepspeed_config,
+            logging_config=mock_logging_config,
+            training_config=mock_training_config,
+        )
+
+        assert result.log_with == "tensorboard"
+        assert result.project_dir == os.path.join(mock_logging_config.logging_dir, "test_20260325010101")
+        assert result.gradient_accumulation_steps == 2
+        assert result.configure_wandb is False
+
+    @patch("library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin")
+    def test_requires_logging_dir_for_tensorboard(
+        self,
+        mock_ds_plugin,
+        mock_precision_config,
+        mock_compilation_config,
+        mock_distributed_config,
+        mock_deepspeed_config,
+        mock_logging_config,
+    ):
+        mock_ds_plugin.return_value = None
+        mock_logging_config.logging_dir = None
+        mock_logging_config.log_with = "tensorboard"
+
+        with pytest.raises(ValueError, match="logging_dir is required"):
+            compute_accelerator_config(
+                mock_precision_config,
+                mock_compilation_config,
+                mock_distributed_config,
+                mock_deepspeed_config,
+                logging_config=mock_logging_config,
+            )
+
+    @patch("library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin")
+    @patch("library.training.trainer_utils.time.strftime", return_value="20260325010101")
+    def test_marks_wandb_setup_for_prepare_phase(
+        self,
+        _mock_strftime,
+        mock_ds_plugin,
+        mock_precision_config,
+        mock_compilation_config,
+        mock_distributed_config,
+        mock_deepspeed_config,
+        mock_logging_config,
+    ):
+        mock_ds_plugin.return_value = None
+        mock_logging_config.log_with = "wandb"
+        mock_logging_config.wandb_api_key = "secret"
+
+        result = compute_accelerator_config(
+            mock_precision_config,
+            mock_compilation_config,
+            mock_distributed_config,
+            mock_deepspeed_config,
+            logging_config=mock_logging_config,
+        )
+
+        assert result.log_with == "wandb"
+        assert result.configure_wandb is True
+        assert result.wandb_api_key == "secret"
 
 
 # =============================================================================
@@ -281,6 +412,44 @@ class TestPrepareAccelerator:
         prepare_accelerator(mock_precision_config, mock_compilation_config, mock_distributed_config, mock_deepspeed_config)
 
         mock_dynamo.assert_called_once()
+
+    @patch("library.training.trainer_utils.Accelerator")
+    @patch("library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin")
+    @patch("library.training.trainer_utils.os.makedirs")
+    @patch("library.training.trainer_utils.time.strftime", return_value="20260325010101")
+    def test_wandb_side_effects_happen_in_prepare_phase(
+        self,
+        _mock_strftime,
+        mock_makedirs,
+        mock_ds_plugin,
+        mock_accelerator_class,
+        mock_precision_config,
+        mock_compilation_config,
+        mock_distributed_config,
+        mock_deepspeed_config,
+        mock_logging_config,
+    ):
+        """Wandb import/login and WANDB_DIR setup should remain in prepare_accelerator()."""
+        mock_ds_plugin.return_value = None
+        mock_accelerator = Mock()
+        mock_accelerator_class.return_value = mock_accelerator
+        mock_logging_config.log_with = "wandb"
+        mock_logging_config.wandb_api_key = "secret"
+        mock_wandb = Mock()
+
+        with patch.dict("sys.modules", {"wandb": mock_wandb}), patch.dict("os.environ", {}, clear=True):
+            prepare_accelerator(
+                mock_precision_config,
+                mock_compilation_config,
+                mock_distributed_config,
+                mock_deepspeed_config,
+                logging_config=mock_logging_config,
+            )
+
+            expected_dir = os.path.join(mock_logging_config.logging_dir, "test_20260325010101")
+            mock_makedirs.assert_called_once_with(expected_dir, exist_ok=True)
+            assert os.environ["WANDB_DIR"] == expected_dir
+            mock_wandb.login.assert_called_once_with(key="secret")
 
 
 # =============================================================================
