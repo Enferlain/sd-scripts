@@ -9,6 +9,8 @@ and gradient setup are delegated to trainer.mode.* hooks.
 import pytest
 from unittest.mock import MagicMock, patch
 
+from library.training.checkpointing import ResumeState
+
 
 @pytest.mark.training
 @pytest.mark.unit
@@ -94,7 +96,7 @@ class TestPrepareOptimizer:
             MagicMock(),  # eval_fn
             ["denoiser"],  # lr_descriptions
         )
-        mock_trainer.mode.register_state_hooks.return_value = MagicMock(return_value=None)
+        mock_trainer.mode.register_state_hooks.return_value = ResumeState()
 
         with (
             patch("library.training.phases.optimizer.get_scheduler_fix", return_value=mock_scheduler),
@@ -121,7 +123,7 @@ class TestPrepareOptimizer:
             MagicMock(),
             ["denoiser"],
         )
-        mock_trainer.mode.register_state_hooks.return_value = MagicMock(return_value=None)
+        mock_trainer.mode.register_state_hooks.return_value = ResumeState()
 
         with (
             patch("library.training.phases.optimizer.get_scheduler_fix", return_value=mock_scheduler) as mock_get_sched,
@@ -145,7 +147,7 @@ class TestPrepareOptimizer:
             MagicMock(),
             ["denoiser"],
         )
-        mock_trainer.mode.register_state_hooks.return_value = MagicMock(return_value=None)
+        mock_trainer.mode.register_state_hooks.return_value = ResumeState()
 
         with (
             patch("library.training.phases.optimizer.get_scheduler_fix", return_value=MagicMock()),
@@ -157,6 +159,34 @@ class TestPrepareOptimizer:
             prepare_optimizer(mock_trainer)
 
             mock_trainer.mode.prepare_with_accelerator.assert_called_once_with(mock_trainer)
+
+    def test_restores_resume_state_step(self, mock_trainer):
+        """Test that explicit ResumeState.step restores optimizer resume counters."""
+        mock_optimizer = MagicMock()
+        mock_scheduler = MagicMock()
+
+        mock_trainer.mode.build_optimizer_params.return_value = (
+            "AdamW",
+            {},
+            mock_optimizer,
+            MagicMock(),
+            MagicMock(),
+            ["denoiser"],
+        )
+        mock_trainer.mode.register_state_hooks.return_value = ResumeState(epoch=2, step=15)
+
+        with (
+            patch("library.training.phases.optimizer.get_scheduler_fix", return_value=mock_scheduler),
+            patch("library.training.phases.optimizer._setup_gradient_checkpointing"),
+            patch("library.training.phases.optimizer.resume_from_local_or_hf_if_specified"),
+        ):
+            from library.training.phases.optimizer import prepare_optimizer
+
+            prepare_optimizer(mock_trainer)
+
+            assert mock_trainer._initial_step == 15
+            assert mock_trainer.epoch_to_start == 1
+            assert mock_trainer.global_step == 15
 
 
 @pytest.mark.training

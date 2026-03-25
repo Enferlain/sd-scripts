@@ -11,12 +11,12 @@ step is done for a specific training type).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
-from collections.abc import Callable
 
 import torch
 from torch import nn
 
 if TYPE_CHECKING:
+    from library.training.checkpointing import ResumeState
     from library.training.runners.trainer import Trainer
 
 
@@ -88,11 +88,11 @@ class TrainingMode(Protocol):
         """
         ...
 
-    def register_state_hooks(self, trainer: Trainer) -> Callable[[], int | None]:
+    def register_state_hooks(self, trainer: Trainer) -> ResumeState:
         """Register save/load hooks for checkpointing.
 
-        Returns a callable that retrieves the ``steps_from_state`` after
-        a checkpoint is loaded (or ``None`` if training from scratch).
+        Returns the mutable resume state populated by checkpoint load hooks
+        (or left empty when training from scratch).
         """
         ...
 

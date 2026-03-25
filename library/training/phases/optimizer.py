@@ -121,20 +121,19 @@ def prepare_optimizer(trainer: Trainer) -> None:
         patch_accelerator_for_fp16_training(trainer.accelerator)
 
     # Register state hooks for checkpointing (delegated to mode)
-    get_steps_from_state = trainer.mode.register_state_hooks(trainer)
+    resume_state = trainer.mode.register_state_hooks(trainer)
 
     # Resume from checkpoint if specified
     resume_from_local_or_hf_if_specified(trainer.accelerator, cfg.output.saving, cfg.output.huggingface)
-    steps_from_state = get_steps_from_state()
 
     # Calculate initial step for resuming
     trainer._initial_step = 0
     trainer.epoch_to_start = 0
     trainer.global_step = 0
-    if steps_from_state is not None:
-        trainer._initial_step = steps_from_state
+    if resume_state.step is not None:
+        trainer._initial_step = resume_state.step
         trainer.epoch_to_start = trainer._initial_step // trainer.num_batches_per_epoch
-        trainer.global_step = steps_from_state  # Restore global_step for correct logging/checkpointing
+        trainer.global_step = resume_state.step  # Restore global_step for correct logging/checkpointing
 
 
 def _setup_gradient_checkpointing(trainer: Trainer) -> None:

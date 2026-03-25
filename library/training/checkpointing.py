@@ -4,6 +4,7 @@ import json
 import shutil
 import logging
 
+from dataclasses import dataclass
 from typing import Any, TYPE_CHECKING
 from collections.abc import Callable
 from huggingface_hub import hf_hub_download
@@ -30,6 +31,14 @@ from library.constants import (
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ResumeState:
+    """Resume metadata restored from ``train_state.json`` via load hooks."""
+
+    epoch: int | None = None
+    step: int | None = None
 
 
 def resume_from_local_or_hf_if_specified(
@@ -456,12 +465,40 @@ def save_sd_model_on_train_end_common(
             huggingface_util.upload(hf_config, out_dir, "/" + model_name)
 
 
-def register_adapter_state_hooks(accelerator: "Accelerator", adapter, cfg, current_epoch, current_step) -> Callable[[], int | None]:
+def save_train_state_metadata(output_dir: str, current_epoch, current_step) -> None:
+    """Write epoch/step metadata alongside accelerator checkpoint state."""
+    train_state_file = os.path.join(output_dir, "train_state.json")
+    # +1 is needed because the state is saved before current_step is set from global_step
+    logger.info(f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
+    with open(train_state_file, "w", encoding="utf-8") as f:
+        json.dump({"current_epoch": current_epoch.value, "current_step": current_step.value + 1}, f)
+
+
+def load_train_state_metadata(input_dir: str, current_epoch, current_step, resume_state: ResumeState) -> None:
+    """Load epoch/step metadata from checkpoint state if present."""
+    train_state_file = os.path.join(input_dir, "train_state.json")
+    if not os.path.exists(train_state_file):
+        return
+
+    with open(train_state_file, encoding="utf-8") as f:
+        data = json.load(f)
+
+    resume_state.epoch = data["current_epoch"]
+    resume_state.step = data["current_step"]
+    current_epoch.value = data["current_epoch"]
+    current_step.value = data["current_step"]
+    logger.info(f"load train state from {train_state_file}: {data}")
+
+def register_adapter_state_hooks(accelerator: "Accelerator", adapter, cfg, current_epoch, current_step) -> ResumeState:
     """
-    Register save/load hooks for peft-only checkpointing.
+    Register save/load hooks for PEFT-only checkpointing.
 
     These hooks ensure that only the PEFT weights (LoRA/LyCORIS) are saved/loaded
     during checkpointing, not the full base model weights.
+
+    This helper remains for deprecated script compatibility. Active training
+    modes register their hooks locally and reuse ``save_train_state_metadata()``
+    / ``load_train_state_metadata()`` directly.
 
     Args:
         accelerator: HuggingFace Accelerator
@@ -471,54 +508,36 @@ def register_adapter_state_hooks(accelerator: "Accelerator", adapter, cfg, curre
         current_step: Shared Value for current step tracking
 
     Returns:
-        Callable that returns steps_from_state (or None if not resumed)
+        ResumeState populated by the load hook (or left empty when not resumed).
     """
-    # Container for steps loaded from state (nonlocal workaround)
-    state_container = {"steps_from_state": None}
+    resume_state = ResumeState()
+    adapter_type = type(accelerator.unwrap_model(adapter))
 
     def save_model_hook(models, weights, output_dir):
-        # pop weights of other models than peft to save only peft weights
-        # only main process or deepspeed https://github.com/huggingface/diffusers/issues/2606
         if accelerator.is_main_process or cfg.performance.deepspeed.deepspeed:
             remove_indices = []
             for i, model in enumerate(models):
-                if not isinstance(model, type(accelerator.unwrap_model(adapter))):
+                if not isinstance(model, adapter_type):
                     remove_indices.append(i)
+
             for i in reversed(remove_indices):
                 if len(weights) > i:
                     weights.pop(i)
 
-        # save current epoch and step
-        train_state_file = os.path.join(output_dir, "train_state.json")
-        # +1 is needed because the state is saved before current_step is set from global_step
-        logger.info(f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
-        with open(train_state_file, "w", encoding="utf-8") as f:
-            json.dump({"current_epoch": current_epoch.value, "current_step": current_step.value + 1}, f)
+            save_train_state_metadata(output_dir, current_epoch, current_step)
 
     def load_model_hook(models, input_dir):
-        # remove models except peft
         remove_indices = []
         for i, model in enumerate(models):
-            if not isinstance(model, type(accelerator.unwrap_model(adapter))):
+            if not isinstance(model, adapter_type):
                 remove_indices.append(i)
+
         for i in reversed(remove_indices):
             models.pop(i)
 
-        # load current epoch and step
-        train_state_file = os.path.join(input_dir, "train_state.json")
-        if os.path.exists(train_state_file):
-            with open(train_state_file, encoding="utf-8") as f:
-                data = json.load(f)
-            state_container["steps_from_state"] = data["current_step"]
-            # Also update the SimpleNamespace objects so trainer state is immediately correct
-            current_epoch.value = data["current_epoch"]
-            current_step.value = data["current_step"]
-            logger.info(f"load train state from {train_state_file}: {data}")
+        load_train_state_metadata(input_dir, current_epoch, current_step, resume_state)
 
     accelerator.register_save_state_pre_hook(save_model_hook)
     accelerator.register_load_state_pre_hook(load_model_hook)
 
-    def get_steps_from_state():
-        return state_container["steps_from_state"]
-
-    return get_steps_from_state
+    return resume_state

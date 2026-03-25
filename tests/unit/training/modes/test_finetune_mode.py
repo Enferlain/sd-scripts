@@ -345,14 +345,14 @@ class TestPrepareWithAccelerator:
 class TestRegisterStateHooks:
     """Test register_state_hooks hook."""
 
-    def test_returns_callable(self, mode, mock_trainer):
-        """Returns a callable get_steps_from_state function."""
+    def test_returns_resume_state(self, mode, mock_trainer):
+        """Returns an explicit ResumeState object."""
         mode._te_train_flags = [False, False]
 
         result = mode.register_state_hooks(mock_trainer)
 
-        assert callable(result)
-        assert result() is None  # No state loaded yet
+        assert result.epoch is None
+        assert result.step is None
 
 
 # =============================================================================

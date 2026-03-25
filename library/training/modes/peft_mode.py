@@ -14,7 +14,6 @@ import os
 import sys
 import time
 from typing import TYPE_CHECKING, Any
-from collections.abc import Callable
 
 import torch
 from torch import nn
@@ -27,7 +26,7 @@ from library.optimizers.optimizer_utils import (
     should_train_text_encoder,
 )
 from library.performance import deepspeed_utils
-from library.training.checkpointing import register_adapter_state_hooks
+from library.training.checkpointing import ResumeState, load_train_state_metadata, save_train_state_metadata
 
 if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
@@ -245,18 +244,45 @@ class PeftMode:
         # prepare_grad_etc is always called (regardless of gradient_checkpointing flag)
         trainer.accelerator.unwrap_model(trainer.adapter).prepare_grad_etc(trainer._text_encoder, trainer.denoiser)
 
-    def register_state_hooks(self, trainer: Trainer) -> Callable[[], int | None]:
+    def register_state_hooks(self, trainer: Trainer) -> ResumeState:
         """Register adapter save/load hooks for checkpointing.
 
         Extracted from ``optimizer.prepare_optimizer()`` L131-134.
         """
-        return register_adapter_state_hooks(
-            trainer.accelerator,
-            trainer.adapter,
-            trainer.cfg,
-            trainer._current_epoch_state,
-            trainer._current_step_state,
-        )
+        accelerator = trainer.accelerator
+        cfg = trainer.cfg
+        current_epoch = trainer._current_epoch_state
+        current_step = trainer._current_step_state
+        resume_state = ResumeState()
+        adapter_type = type(accelerator.unwrap_model(trainer.adapter))
+
+        def save_model_hook(models, weights, output_dir):
+            if accelerator.is_main_process or cfg.performance.deepspeed.deepspeed:
+                remove_indices = []
+                for i, model in enumerate(models):
+                    if not isinstance(model, adapter_type):
+                        remove_indices.append(i)
+
+                for i in reversed(remove_indices):
+                    if len(weights) > i:
+                        weights.pop(i)
+
+                save_train_state_metadata(output_dir, current_epoch, current_step)
+
+        def load_model_hook(models, input_dir):
+            remove_indices = []
+            for i, model in enumerate(models):
+                if not isinstance(model, adapter_type):
+                    remove_indices.append(i)
+
+            for i in reversed(remove_indices):
+                models.pop(i)
+
+            load_train_state_metadata(input_dir, current_epoch, current_step, resume_state)
+
+        accelerator.register_save_state_pre_hook(save_model_hook)
+        accelerator.register_load_state_pre_hook(load_model_hook)
+        return resume_state
 
     # ------------------------------------------------------------------
     # Per-epoch / per-step callbacks

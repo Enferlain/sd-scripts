@@ -126,8 +126,6 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - `library/training/sd_checkpointing.py`
   - `library/training/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
-- [ ] **Refactor `register_adapter_state_hooks`** (low priority) - Return a structured object `{"epoch": int, "step": int}` instead of closure + side-effects for cleaner data flow. See AUDIT/2_AUDIT_RESUME_BEHAVIOR.md recommendation #3.
-
 ### Near-Term Follow-up
 
 - [ ] **SD / SDXL strategy cleanup against the current contract** — The large structural split is done; the remaining work is narrower cleanup and architecture follow-up now that the base contract has settled.
@@ -238,7 +236,6 @@ All phase functions in `library/training/phases/` are typed as `trainer: Trainer
 
 ### Future Improvements
 
-- [ ] Fix zero-dimension bucket edge case for images smaller than `bucket_reso_steps`
 - [ ] Config-hash cache namespace - Auto-segregate caches by config hash (`resolution`, `bucket_steps`, `model_version`) to prevent cross-config issues. See `AUDIT/AUDIT_PHASE_6.md`.
 - [ ] **Large-scale dataset manifest optimization** - Current JSON manifest grows ~2KB/entry (100k images = ~200MB JSON). Options:
   - Binary format (msgpack/pickle) for faster I/O

@@ -11,10 +11,7 @@ are delegated to the strategy; this mode only handles generic lifecycle.
 from __future__ import annotations
 
 import contextlib
-import json
-import logging
 import os
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -28,13 +25,11 @@ from library.optimizers.optimizer_utils import (
     should_train_text_encoder,
 )
 from library.performance import deepspeed_utils
+from library.training.checkpointing import ResumeState, load_train_state_metadata, save_train_state_metadata
 
 
 if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
-
-
-logger = logging.getLogger(__name__)
 
 
 class FineTuneMode:
@@ -236,45 +231,28 @@ class FineTuneMode:
         """
         pass
 
-    def register_state_hooks(self, trainer: Trainer) -> Callable[[], int | None]:
+    def register_state_hooks(self, trainer: Trainer) -> ResumeState:
         """Register save/load hooks for epoch/step metadata.
 
         For full fine-tune, accelerator handles model state natively.
         Hooks only manage the epoch/step metadata file.
         """
-        state_container: dict[str, int | None] = {"steps_from_state": None}
-        current_epoch = trainer._current_epoch_state
-        current_step = trainer._current_step_state
         accelerator = trainer.accelerator
         cfg = trainer.cfg
+        current_epoch = trainer._current_epoch_state
+        current_step = trainer._current_step_state
+        resume_state = ResumeState()
 
         def save_model_hook(models, weights, output_dir):
-            # For fine-tune, all models are saved by accelerator natively.
-            # We just save training state metadata.
             if accelerator.is_main_process or cfg.performance.deepspeed.deepspeed:
-                train_state_file = os.path.join(output_dir, "train_state.json")
-                logger.info(f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
-                with open(train_state_file, "w", encoding="utf-8") as f:
-                    json.dump({"current_epoch": current_epoch.value, "current_step": current_step.value + 1}, f)
+                save_train_state_metadata(output_dir, current_epoch, current_step)
 
         def load_model_hook(models, input_dir):
-            # Load training state metadata
-            train_state_file = os.path.join(input_dir, "train_state.json")
-            if os.path.exists(train_state_file):
-                with open(train_state_file, encoding="utf-8") as f:
-                    data = json.load(f)
-                state_container["steps_from_state"] = data["current_step"]
-                current_epoch.value = data["current_epoch"]
-                current_step.value = data["current_step"]
-                logger.info(f"load train state from {train_state_file}: {data}")
+            load_train_state_metadata(input_dir, current_epoch, current_step, resume_state)
 
         accelerator.register_save_state_pre_hook(save_model_hook)
         accelerator.register_load_state_pre_hook(load_model_hook)
-
-        def get_steps_from_state():
-            return state_container["steps_from_state"]
-
-        return get_steps_from_state
+        return resume_state
 
     # ------------------------------------------------------------------
     # Per-epoch / per-step callbacks

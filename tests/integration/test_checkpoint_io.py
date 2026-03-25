@@ -392,10 +392,11 @@ class TestAdapterStateHooks:
         current_epoch = SimpleNamespace(value=3)
         current_step = SimpleNamespace(value=99)
 
-        get_steps = register_adapter_state_hooks(accel, adapter, cfg, current_epoch, current_step)
+        resume_state = register_adapter_state_hooks(accel, adapter, cfg, current_epoch, current_step)
 
         # Initially no steps loaded
-        assert get_steps() is None
+        assert resume_state.step is None
+        assert resume_state.epoch is None
 
         # Simulate save: call the save hook
         output_dir = str(tmp_path / "checkpoint_state")
@@ -421,7 +422,8 @@ class TestAdapterStateHooks:
 
         accel._load_hook(models=[adapter], input_dir=output_dir)
 
-        assert get_steps() == 100
+        assert resume_state.step == 100
+        assert resume_state.epoch == 3
         assert current_epoch.value == 3
         assert current_step.value == 100
 
@@ -475,15 +477,16 @@ class TestAdapterStateHooks:
         current_epoch = SimpleNamespace(value=5)
         current_step = SimpleNamespace(value=50)
 
-        get_steps = register_adapter_state_hooks(accel, adapter, cfg, current_epoch, current_step)
+        resume_state = register_adapter_state_hooks(accel, adapter, cfg, current_epoch, current_step)
 
         # Load from empty directory (no train_state.json)
         input_dir = str(tmp_path / "empty_state")
         os.makedirs(input_dir, exist_ok=True)
         accel._load_hook(models=[adapter], input_dir=input_dir)
 
-        # Should not crash, steps_from_state stays None
-        assert get_steps() is None
+        # Should not crash; resume state stays empty
+        assert resume_state.step is None
+        assert resume_state.epoch is None
         # Epoch/step should be unchanged
         assert current_epoch.value == 5
         assert current_step.value == 50

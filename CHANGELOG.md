@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Resume hook state flow is now explicit across training modes** — Checkpoint resume metadata no longer comes back through closure-bound containers.
+  - `library/training/checkpointing.py` now defines a shared `ResumeState` dataclass plus small `train_state.json` read/write helpers.
+  - PEFT and fine-tune modes now register their own accelerator hooks locally while reusing the shared metadata helpers, and `optimizer.py` restores counters from `resume_state.step` directly.
+  - Updated optimizer, fine-tune mode, resume-logic, and checkpoint I/O tests to assert the explicit resume-state flow.
 - **Legacy IPEX workaround code removed** — The old Intel Extension for PyTorch compatibility path is gone from the repo.
   - Deleted the unused `library/performance/ipex/` package.
   - Removed the leftover `init_ipex()` shim from `library.utils.device_utils` and dropped its no-op unit test.
