@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import itertools
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,7 +17,6 @@ import numpy as np
 import torch
 
 from library.data import CaptionConfig, prepare_epoch, create_training_dataloader
-from library.logging.resource_monitor import NoOpResourceMonitor
 from library.logging.step_logging import generate_step_logs, step_logging
 from library.logging.training_plots import save_timestep_distribution_plot
 from library.training.checkpointing import (
@@ -28,6 +28,12 @@ from library.training.checkpointing import (
     save_and_remove_state_on_epoch_end,
 )
 from library.training.sample_generation import sample_images_check
+from library.training.phases.orchestration_helpers import (
+    get_resource_monitor,
+    monitored_phase,
+    run_sampling_and_validation,
+    temporarily_in_eval_mode,
+)
 from library.training.trainer_utils import determine_grad_sync_context, all_reduce_trainable
 from library.training.phases.triggers import (
     StepTriggerContext,
@@ -42,12 +48,28 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-_NOOP_RESOURCE_MONITOR = NoOpResourceMonitor()
 
 
-def _resource_monitor(trainer: Trainer):
-    monitor = getattr(trainer, "_resource_monitor", None)
-    return monitor if monitor is not None else _NOOP_RESOURCE_MONITOR
+@dataclass(frozen=True)
+class EpochContext:
+    """Prepared epoch-local runtime inputs for step execution."""
+
+    train_dataloader: object
+    num_steps_in_epoch: int
+    remaining_batches_in_epoch: int
+    tokens_path: Path | None
+
+
+@dataclass(frozen=True)
+class EpochRunResult:
+    """Outcome of executing one training epoch."""
+
+    completed: bool
+    stop_training: bool
+    interrupted_by_step_cap: bool
+    batches_seen: int
+    expected_batches: int
+    tokens_path: Path | None
 
 
 def _save_step_checkpoint_artifacts(trainer: Trainer) -> None:
@@ -103,7 +125,6 @@ def _run_step_side_effects(
     """Run validation/sampling/checkpoint side-effects for an optimization step."""
     cfg = trainer.cfg
     accelerator = trainer.accelerator
-    strategies = trainer.strategies
 
     step_actions = compute_step_actions(
         validation_scheduler=trainer._validation_scheduler,
@@ -123,60 +144,28 @@ def _run_step_side_effects(
     if not step_actions.should_enter_eval_mode:
         return
 
-    trainer.mode.set_eval(trainer)
-    trainer.optimizer_eval_fn()
-
-    if step_actions.should_sample:
-        strategies.sample_images(
-            accelerator,
-            cfg,
-            None,
-            trainer.global_step,
-            accelerator.device,
-            trainer.vae,
-            trainer.tokenizers,
-            trainer._text_encoder,
-            trainer.denoiser,
+    with temporarily_in_eval_mode(trainer):
+        run_sampling_and_validation(
+            trainer,
+            should_sample=step_actions.should_sample,
+            should_validate=step_actions.should_validate,
+            sample_epoch=None,
+            validation_step=step,
+            validation_epoch=trainer._current_epoch_state.value,
+            validation_batch=batch,
         )
 
-    if step_actions.should_validate:
-        trainer._current_val_loss, trainer._average_val_loss = strategies.calculate_val_loss(
-            trainer.global_step,
-            step,
-            trainer.num_batches_per_epoch,
-            trainer._val_loss_recorder,
-            trainer._val_dataloader,
-            trainer._cyclic_val_dataloader,
-            trainer.trainable_model,
-            trainer.text_encoders,
-            trainer.denoiser,
-            trainer.vae,
-            trainer.noise_scheduler,
-            trainer.vae_dtype,
-            trainer.weight_dtype,
-            accelerator,
-            cfg,
-            trainer._current_epoch_state.value,
-            batch,
-            trainer._train_text_encoder,
-        )
-        accelerator.print(f"  val_loss: {trainer._current_val_loss:.4f}  (avg: {trainer._average_val_loss:.4f})")
-    else:
-        trainer._current_val_loss, trainer._average_val_loss = None, None
+        if step_actions.should_save_step:
+            accelerator.wait_for_everyone()
+            if accelerator.is_main_process:
+                _save_step_checkpoint_artifacts(trainer)
 
-    if step_actions.should_save_step:
-        accelerator.wait_for_everyone()
-        if accelerator.is_main_process:
-            _save_step_checkpoint_artifacts(trainer)
-
-    if trainer.loss_modifier.should_plot(trainer.global_step):
-        trainer.loss_modifier.plot(
-            cfg.output.saving.output_name,
-            trainer.global_step,
-            accelerator.device,
-        )
-    trainer.optimizer_train_fn()
-    trainer.mode.set_train(trainer)
+        if trainer.loss_modifier.should_plot(trainer.global_step):
+            trainer.loss_modifier.plot(
+                cfg.output.saving.output_name,
+                trainer.global_step,
+                accelerator.device,
+            )
 
 
 def _update_live_timestep_outputs(trainer: Trainer, *, timesteps: torch.Tensor) -> None:
@@ -381,6 +370,234 @@ def _finalize_epoch(
     trainer.mode.set_train(trainer)
 
 
+def _build_caption_config(cfg) -> CaptionConfig:
+    """Build the per-epoch caption mutation config."""
+    return CaptionConfig(
+        shuffle_caption=cfg.data.caption.shuffle_caption,
+        keep_tokens=cfg.data.caption.keep_tokens,
+        caption_dropout_rate=cfg.data.caption.caption_dropout_rate,
+        caption_tag_dropout_rate=cfg.data.caption.caption_tag_dropout_rate,
+        enable_wildcard=cfg.data.caption.enable_wildcard,
+        caption_separator=cfg.data.caption.caption_separator,
+        secondary_separator=cfg.data.caption.secondary_separator,
+        keep_tokens_separator=cfg.data.caption.keep_tokens_separator,
+        token_warmup_min=cfg.data.caption.token_warmup_min,
+        token_warmup_step=cfg.data.caption.token_warmup_step,
+    )
+
+
+def _prepare_epoch_context(trainer: Trainer, *, epoch: int) -> EpochContext:
+    """Prepare epoch-local manifest, token cache, and dataloader state."""
+    cfg = trainer.cfg
+    accelerator = trainer.accelerator
+
+    epoch_manifest = prepare_epoch(
+        manifest=trainer.train_manifest,
+        epoch=epoch,
+        seed=cfg.training.seed,
+        batch_size=cfg.training.train_batch_size,
+        caption_config=_build_caption_config(cfg),
+    )
+
+    tokens_path = _maybe_cache_epoch_tokens(
+        trainer,
+        epoch=epoch,
+        epoch_manifest=epoch_manifest,
+    )
+
+    train_dataloader = create_training_dataloader(
+        dataset_manifest=trainer.train_manifest,
+        epoch_manifest=epoch_manifest,
+        latent_cache_backend=trainer.latent_cache_backend,
+        te_cache_backend=trainer.te_cache_backend,
+        flip_aug=cfg.data.preprocessing.flip_aug,
+        prior_loss_weight=cfg.loss.prior_loss_weight,
+        rank=accelerator.process_index,
+        world_size=accelerator.num_processes,
+        num_workers=trainer._n_workers,
+        prefetch_factor=cfg.data.loader.prefetch_factor,
+        pin_memory=cfg.data.loader.pin_memory,
+        persistent_workers=cfg.data.loader.persistent_workers,
+        tokens_path=str(tokens_path) if tokens_path else None,
+    )
+    num_steps_in_epoch = len(train_dataloader)
+    initial_batches_to_skip = max(trainer._initial_step, 0)
+    remaining_batches_in_epoch = max(num_steps_in_epoch - initial_batches_to_skip, 0)
+
+    return EpochContext(
+        train_dataloader=train_dataloader,
+        num_steps_in_epoch=num_steps_in_epoch,
+        remaining_batches_in_epoch=remaining_batches_in_epoch,
+        tokens_path=tokens_path,
+    )
+
+
+def _run_epoch_steps(trainer: Trainer, *, epoch_ctx: EpochContext) -> EpochRunResult:
+    """Execute one epoch's training steps and return an explicit outcome."""
+    cfg = trainer.cfg
+    accelerator = trainer.accelerator
+    strategies = trainer.strategies
+
+    batches_seen_in_epoch = 0
+    dataloader_iter = iter(epoch_ctx.train_dataloader)
+    if trainer._initial_step > 0:
+        dataloader_iter = itertools.islice(dataloader_iter, trainer._initial_step - 1, None)
+        trainer._initial_step = 1
+
+    for step, batch in enumerate(dataloader_iter):
+        batches_seen_in_epoch += 1
+        trainer._current_step_state.value = trainer.global_step
+
+        if (
+            trainer._dynamic_timestep_schedule
+            and len(trainer._dynamic_timestep_schedule) > 0
+            and trainer.global_step >= trainer._dynamic_timestep_schedule[0][0]
+        ):
+            _, new_min, new_max = trainer._dynamic_timestep_schedule.pop(0)
+            trainer._current_min_timestep = new_min
+            trainer._current_max_timestep = new_max
+            accelerator.print(
+                f"\nStep {trainer.global_step}: Timestep range dynamically changed to "
+                f"[{trainer._current_min_timestep}, {trainer._current_max_timestep})"
+            )
+
+        if trainer._initial_step > 0:
+            trainer._initial_step -= 1
+            continue
+
+        with determine_grad_sync_context(
+            cfg.performance.precision,
+            accelerator,
+            None,
+            trainer._grad_sync_handle,
+            trainer.loss_modifier.accumulation_model,
+        ):
+            trainer.mode.on_step_start(trainer)
+
+            trainer._accumulation_counter += 1
+
+            batch_loss = strategies.process_batch(
+                batch,
+                trainer.text_encoders,
+                trainer.denoiser,
+                trainer.trainable_model,
+                trainer.vae,
+                trainer.noise_scheduler,
+                trainer.vae_dtype,
+                trainer.weight_dtype,
+                accelerator,
+                cfg,
+                is_train=True,
+                train_text_encoder=trainer._train_text_encoder,
+                train_denoiser=trainer._train_denoiser,
+                min_timestep_override=trainer._current_min_timestep,
+                max_timestep_override=trainer._current_max_timestep,
+                global_step=trainer.global_step,
+            )
+
+            modifier_output = trainer.loss_modifier.apply(
+                per_sample_loss=batch_loss.per_sample_loss,
+                timesteps=batch_loss.timesteps,
+                batch=batch,
+                global_step=trainer.global_step,
+            )
+            accelerator.backward(modifier_output.loss)
+
+            if accelerator.sync_gradients:
+                all_reduce_trainable(accelerator, trainer.trainable_model)
+                if cfg.optimizer.max_grad_norm != 0.0:
+                    params_to_clip = trainer.mode.get_trainable_params(trainer)
+                    accelerator.clip_grad_norm_(params_to_clip, cfg.optimizer.max_grad_norm)
+
+            trainer.optimizer.step()
+            trainer.lr_scheduler.step()
+            trainer.optimizer.zero_grad(set_to_none=True)
+
+            trainer.loss_modifier.optimizer_step()
+            trainer.loss_modifier.zero_grad()
+
+        if accelerator.sync_gradients:
+            max_mean_logs = trainer.mode.on_step_end(trainer)
+            keys_scaled = max_mean_logs.get("Keys Scaled")
+            mean_norm = max_mean_logs.get("Average key norm")
+            maximum_norm = None
+        else:
+            keys_scaled, mean_norm, maximum_norm = None, None, None
+            max_mean_logs = {}
+
+        if accelerator.sync_gradients:
+            trainer._progress_bar.update(1)
+            trainer.global_step += 1
+            _run_step_side_effects(
+                trainer,
+                step=step,
+                batch=batch,
+                num_steps_in_epoch=epoch_ctx.num_steps_in_epoch,
+            )
+            get_resource_monitor(trainer).step_end(trainer.global_step, trainer._current_epoch_state.value)
+
+        trainer._current_global_step_loss += batch_loss.loss.detach().item()
+        for metric_name, metric_value in modifier_output.metrics.items():
+            trainer._current_loss_modifier_metrics[metric_name] = trainer._current_loss_modifier_metrics.get(metric_name, 0.0) + float(metric_value)
+
+        if accelerator.sync_gradients:
+            trainer._loss_recorder.add(trainer._current_global_step_loss / trainer._accumulation_counter)
+            for metric_name, metric_total in trainer._current_loss_modifier_metrics.items():
+                if metric_name not in trainer._loss_modifier_metric_recorders:
+                    from library.losses.loss import EMARecorder
+
+                    trainer._loss_modifier_metric_recorders[metric_name] = EMARecorder()
+                trainer._loss_modifier_metric_recorders[metric_name].add(metric_total / trainer._accumulation_counter)
+            avr_loss: float = trainer._loss_recorder.average
+            logs = {"avr_loss": avr_loss}
+            trainer._progress_bar.set_postfix(**{**max_mean_logs, **logs})
+
+            if trainer._is_tracking:
+                _emit_step_tracking_logs(
+                    trainer,
+                    timesteps=batch_loss.timesteps,
+                    keys_scaled=keys_scaled,
+                    mean_norm=mean_norm,
+                    maximum_norm=maximum_norm,
+                )
+
+            trainer._current_global_step_loss = 0.0
+            trainer._current_loss_modifier_metrics = {}
+            trainer._accumulation_counter = 0
+
+            _update_live_timestep_outputs(trainer, timesteps=batch_loss.timesteps)
+
+        if trainer.global_step >= cfg.training.max_train_steps:
+            return EpochRunResult(
+                completed=False,
+                stop_training=True,
+                interrupted_by_step_cap=True,
+                batches_seen=batches_seen_in_epoch,
+                expected_batches=epoch_ctx.remaining_batches_in_epoch,
+                tokens_path=epoch_ctx.tokens_path,
+            )
+
+    return EpochRunResult(
+        completed=batches_seen_in_epoch >= epoch_ctx.remaining_batches_in_epoch,
+        stop_training=False,
+        interrupted_by_step_cap=False,
+        batches_seen=batches_seen_in_epoch,
+        expected_batches=epoch_ctx.remaining_batches_in_epoch,
+        tokens_path=epoch_ctx.tokens_path,
+    )
+
+
+def _finalize_epoch_if_completed(trainer: Trainer, *, epoch_result: EpochRunResult) -> None:
+    """Finalize epoch-owned side effects only when the epoch fully completed."""
+    if not epoch_result.completed:
+        return
+
+    _finalize_epoch(
+        trainer,
+        tokens_path=epoch_result.tokens_path,
+    )
+
+
 def run_training_loop(trainer: Trainer) -> None:
     """Execute the main training loop.
 
@@ -399,7 +616,6 @@ def run_training_loop(trainer: Trainer) -> None:
     # Unpack frequently used attributes for readability
     cfg = trainer.cfg
     accelerator = trainer.accelerator
-    strategies = trainer.strategies
 
     # Mode must set _grad_sync_handle during prepare_with_accelerator;
     # if missing, grad-sync context will silently fail.
@@ -422,199 +638,13 @@ def run_training_loop(trainer: Trainer) -> None:
 
         trainer.mode.on_epoch_start(trainer)
         epoch_phase_name = f"training_epoch_{trainer._current_epoch_state.value}"
-        resource_monitor = _resource_monitor(trainer)
-        resource_monitor.phase_start(epoch_phase_name)
-        try:
-            # Phase G: Create per-epoch DataLoader with fresh epoch manifest
-            caption_config = CaptionConfig(
-                shuffle_caption=cfg.data.caption.shuffle_caption,
-                keep_tokens=cfg.data.caption.keep_tokens,
-                caption_dropout_rate=cfg.data.caption.caption_dropout_rate,
-                caption_tag_dropout_rate=cfg.data.caption.caption_tag_dropout_rate,
-                enable_wildcard=cfg.data.caption.enable_wildcard,
-                caption_separator=cfg.data.caption.caption_separator,
-                secondary_separator=cfg.data.caption.secondary_separator,
-                keep_tokens_separator=cfg.data.caption.keep_tokens_separator,
-                token_warmup_min=cfg.data.caption.token_warmup_min,
-                token_warmup_step=cfg.data.caption.token_warmup_step,
-            )
-            epoch_manifest = prepare_epoch(
-                manifest=trainer.train_manifest,
-                epoch=epoch,
-                seed=cfg.training.seed,
-                batch_size=cfg.training.train_batch_size,
-                caption_config=caption_config,
-            )
+        with monitored_phase(trainer, epoch_phase_name):
+            epoch_ctx = _prepare_epoch_context(trainer, epoch=epoch)
+            epoch_result = _run_epoch_steps(trainer, epoch_ctx=epoch_ctx)
 
-            # Phase G.1: Optional epoch tokenization (when TE caching is disabled)
-            tokens_path = _maybe_cache_epoch_tokens(
-                trainer,
-                epoch=epoch,
-                epoch_manifest=epoch_manifest,
-            )
+        _finalize_epoch_if_completed(trainer, epoch_result=epoch_result)
 
-            train_dataloader = create_training_dataloader(
-                dataset_manifest=trainer.train_manifest,
-                epoch_manifest=epoch_manifest,
-                latent_cache_backend=trainer.latent_cache_backend,
-                te_cache_backend=trainer.te_cache_backend,
-                flip_aug=cfg.data.preprocessing.flip_aug,
-                prior_loss_weight=cfg.loss.prior_loss_weight,
-                rank=accelerator.process_index,
-                world_size=accelerator.num_processes,
-                num_workers=trainer._n_workers,
-                prefetch_factor=cfg.data.loader.prefetch_factor,
-                pin_memory=cfg.data.loader.pin_memory,
-                persistent_workers=cfg.data.loader.persistent_workers,
-                tokens_path=str(tokens_path) if tokens_path else None,
-            )
-            num_steps_in_epoch = len(train_dataloader)
-            initial_batches_to_skip = max(trainer._initial_step, 0)
-            remaining_batches_in_epoch = max(num_steps_in_epoch - initial_batches_to_skip, 0)
-            batches_seen_in_epoch = 0
-
-            # TRAINING
-            dataloader_iter = iter(train_dataloader)
-            if trainer._initial_step > 0:
-                dataloader_iter = itertools.islice(dataloader_iter, trainer._initial_step - 1, None)
-                trainer._initial_step = 1
-
-            for step, batch in enumerate(dataloader_iter):
-                batches_seen_in_epoch += 1
-                trainer._current_step_state.value = trainer.global_step
-
-                # Dynamic timestep schedule
-                if (
-                    trainer._dynamic_timestep_schedule
-                    and len(trainer._dynamic_timestep_schedule) > 0
-                    and trainer.global_step >= trainer._dynamic_timestep_schedule[0][0]
-                ):
-                    _, new_min, new_max = trainer._dynamic_timestep_schedule.pop(0)
-                    trainer._current_min_timestep = new_min
-                    trainer._current_max_timestep = new_max
-                    accelerator.print(
-                        f"\nStep {trainer.global_step}: Timestep range dynamically changed to "
-                        f"[{trainer._current_min_timestep}, {trainer._current_max_timestep})"
-                    )
-
-                if trainer._initial_step > 0:
-                    trainer._initial_step -= 1
-                    continue
-
-                with determine_grad_sync_context(
-                    cfg.performance.precision,
-                    accelerator,
-                    None,
-                    trainer._grad_sync_handle,
-                    trainer.loss_modifier.accumulation_model,
-                ):
-                    trainer.mode.on_step_start(trainer)
-
-                    trainer._accumulation_counter += 1
-
-                    batch_loss = strategies.process_batch(
-                        batch,
-                        trainer.text_encoders,
-                        trainer.denoiser,
-                        trainer.trainable_model,
-                        trainer.vae,
-                        trainer.noise_scheduler,
-                        trainer.vae_dtype,
-                        trainer.weight_dtype,
-                        accelerator,
-                        cfg,
-                        is_train=True,
-                        train_text_encoder=trainer._train_text_encoder,
-                        train_denoiser=trainer._train_denoiser,
-                        min_timestep_override=trainer._current_min_timestep,
-                        max_timestep_override=trainer._current_max_timestep,
-                        global_step=trainer.global_step,
-                    )
-
-                    modifier_output = trainer.loss_modifier.apply(
-                        per_sample_loss=batch_loss.per_sample_loss,
-                        timesteps=batch_loss.timesteps,
-                        batch=batch,
-                        global_step=trainer.global_step,
-                    )
-                    accelerator.backward(modifier_output.loss)
-
-                    if accelerator.sync_gradients:
-                        all_reduce_trainable(accelerator, trainer.trainable_model)
-                        if cfg.optimizer.max_grad_norm != 0.0:
-                            params_to_clip = trainer.mode.get_trainable_params(trainer)
-                            accelerator.clip_grad_norm_(params_to_clip, cfg.optimizer.max_grad_norm)
-
-                    trainer.optimizer.step()
-                    trainer.lr_scheduler.step()
-                    trainer.optimizer.zero_grad(set_to_none=True)
-
-                    trainer.loss_modifier.optimizer_step()
-                    trainer.loss_modifier.zero_grad()
-
-                if accelerator.sync_gradients:
-                    max_mean_logs = trainer.mode.on_step_end(trainer)
-                    keys_scaled = max_mean_logs.get("Keys Scaled")
-                    mean_norm = max_mean_logs.get("Average key norm")
-                    maximum_norm = None
-                else:
-                    keys_scaled, mean_norm, maximum_norm = None, None, None
-                    max_mean_logs = {}
-
-                # Checks if the accelerator has performed an optimization step
-                if accelerator.sync_gradients:
-                    trainer._progress_bar.update(1)
-                    trainer.global_step += 1
-                    _run_step_side_effects(
-                        trainer,
-                        step=step,
-                        batch=batch,
-                        num_steps_in_epoch=num_steps_in_epoch,
-                    )
-                    resource_monitor.step_end(trainer.global_step, trainer._current_epoch_state.value)
-
-                trainer._current_global_step_loss += batch_loss.loss.detach().item()
-                for metric_name, metric_value in modifier_output.metrics.items():
-                    trainer._current_loss_modifier_metrics[metric_name] = (
-                        trainer._current_loss_modifier_metrics.get(metric_name, 0.0) + float(metric_value)
-                    )
-
-                if accelerator.sync_gradients:
-                    trainer._loss_recorder.add(trainer._current_global_step_loss / trainer._accumulation_counter)
-                    for metric_name, metric_total in trainer._current_loss_modifier_metrics.items():
-                        if metric_name not in trainer._loss_modifier_metric_recorders:
-                            from library.losses.loss import EMARecorder
-
-                            trainer._loss_modifier_metric_recorders[metric_name] = EMARecorder()
-                        trainer._loss_modifier_metric_recorders[metric_name].add(metric_total / trainer._accumulation_counter)
-                    avr_loss: float = trainer._loss_recorder.average
-                    logs = {"avr_loss": avr_loss}
-                    trainer._progress_bar.set_postfix(**{**max_mean_logs, **logs})
-
-                    if trainer._is_tracking:
-                        _emit_step_tracking_logs(
-                            trainer,
-                            timesteps=batch_loss.timesteps,
-                            keys_scaled=keys_scaled,
-                            mean_norm=mean_norm,
-                            maximum_norm=maximum_norm,
-                        )
-
-                    trainer._current_global_step_loss = 0.0
-                    trainer._current_loss_modifier_metrics = {}
-                    trainer._accumulation_counter = 0
-
-                    _update_live_timestep_outputs(trainer, timesteps=batch_loss.timesteps)
-
-                if trainer.global_step >= cfg.training.max_train_steps:
-                    break
-
-            if batches_seen_in_epoch >= remaining_batches_in_epoch:
-                _finalize_epoch(
-                    trainer,
-                    tokens_path=tokens_path,
-                )
-        finally:
-            resource_monitor.phase_end(epoch_phase_name)
+        if epoch_result.stop_training:
+            break
 
         # end of epoch

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-26]
+
+### Changed
+
+- **Training orchestration now reads in clearer shared phases without changing the active training behavior** — The shared runner/phase layer now makes epoch outcomes, eval-side execution, and startup/finalization sequencing more explicit.
+  - Added `library/training/phases/orchestration_helpers.py` with small phase-shared helpers for monitored phase lifecycle and the common eval-side sampling/validation flow.
+  - `library/training/phases/caching.py` now uses the shared monitored-phase helper instead of open-coded resource monitor lifecycle pairing.
+  - `library/training/phases/training_loop.py` now uses explicit `EpochContext` / `EpochRunResult` dataclasses plus smaller helpers for epoch preparation, step execution, and conditional epoch finalization, so partial-epoch behavior and step-cap interruption are easier to follow.
+  - `library/training/runners/trainer.py` now reads more like top-level orchestration: startup initialization, startup eval actions, and finalization are split into smaller named helpers instead of large mixed blocks.
+  - Step-triggered eval actions in `training_loop.py` and startup eval actions in `trainer.py` now share the same eval-mode/sampling/validation orchestration path.
+  - Updated trainer/phase unit tests and training-loop integration coverage to reflect the clearer orchestration boundaries.
+
+### Fixed
+
+- **Accelerator logging directories are now built in a platform-correct way** — The pure accelerator config path no longer hardcodes POSIX separators when deriving the run log directory.
+  - `library/training/trainer_utils.py` now uses `os.path.join(...)` when building the computed accelerator `project_dir`.
+  - This restores the expected `tensorboard` default-path and `wandb` side-effect behavior on Windows and keeps `tests/unit/training/test_training_trainer_utils.py` green across platforms.
+
 ## [2026-03-25]
 
 ### Changed

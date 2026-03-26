@@ -193,8 +193,8 @@ class Trainer:
             self.prepare_models()
             self.prepare_optimizer()
 
-            self._log_training_info()
-            self._maybe_sample_at_start()
+            self._initialize_training_run_state()
+            self._run_startup_eval_actions()
 
             self.run_training_loop()
 
@@ -433,30 +433,20 @@ class Trainer:
     # Helper Methods
     # =========================================================================
 
-    def _log_training_info(self) -> None:
-        """Log training configuration, create metadata, init noise scheduler, and loss recorders."""
-        from tqdm import tqdm
+    def _compute_total_batch_size(self) -> int:
+        """Compute effective total batch size across devices and accumulation."""
+        cfg = self.cfg
+        return cfg.training.train_batch_size * self.accelerator.num_processes * cfg.training.gradient_accumulation_steps
 
-        from library.losses.loss import EMARecorder
-        from library.losses.loss_modifiers import build_loss_modifier
-        from library.logging.step_logging import init_trackers
-        from library.logging.training_plots import setup_live_plotter
-        from library.timesteps.timestep_utils import init_timestep_sampler, parse_dynamic_timestep_schedule
-        from library.training.training_metadata import create_training_metadata
-        from library.utils.device_utils import clean_memory_on_device
-
+    def _emit_training_startup_summary(self) -> None:
+        """Log dataset/runtime summary and emit startup diagnostics."""
         cfg = self.cfg
 
-        # Calculate total batch size
-        total_batch_size = cfg.training.train_batch_size * self.accelerator.num_processes * cfg.training.gradient_accumulation_steps
-
-        # Calculate stats from manifest
-        assert self.train_manifest is not None, "train_manifest must be set before _log_training_info"
+        assert self.train_manifest is not None, "train_manifest must be set before _emit_training_startup_summary"
         num_train_images = sum(e.num_repeats for e in self.train_manifest.entries.values() if not e.is_reg)
         num_reg_images = sum(e.num_repeats for e in self.train_manifest.entries.values() if e.is_reg)
         num_val_images = sum(e.num_repeats for e in self.val_manifest.entries.values()) if self.val_manifest else 0
 
-        # Log training stats
         self.accelerator.print("running training")
         self.accelerator.print(f"  num train images * repeats: {num_train_images}")
         self.accelerator.print(f"  num validation images * repeats: {num_val_images}")
@@ -489,14 +479,18 @@ class Trainer:
             deepspeed_zero_stage=cfg.performance.deepspeed.zero_stage,
         )
 
-        # Create training metadata
-        # Convert optimizer_args to a formatted string for metadata (may already be str)
+    def _format_optimizer_args_for_metadata(self) -> str:
+        """Format optimizer args into the string metadata form used in checkpoints."""
         if isinstance(self.optimizer_args, dict):
-            optimizer_args_str = ", ".join(f"{k}={v}" for k, v in self.optimizer_args.items())
-        else:
-            optimizer_args_str = str(self.optimizer_args) if self.optimizer_args else ""
+            return ", ".join(f"{k}={v}" for k, v in self.optimizer_args.items())
+        return str(self.optimizer_args) if self.optimizer_args else ""
+
+    def _initialize_training_metadata(self, *, total_batch_size: int) -> None:
+        """Build trainer metadata and let strategies append model-specific fields."""
+        from library.training.training_metadata import create_training_metadata
+
         self._metadata, self._minimum_metadata = create_training_metadata(
-            cfg=cfg,
+            cfg=self.cfg,
             manifest=self.train_manifest,
             val_manifest=self.val_manifest,
             session_id=self.session_id,
@@ -504,21 +498,25 @@ class Trainer:
             model_version=self._model_version,
             num_train_epochs=self.num_train_epochs,
             optimizer_name=self.optimizer_name,
-            optimizer_args=optimizer_args_str,
+            optimizer_args=self._format_optimizer_args_for_metadata(),
             net_kwargs=self.net_kwargs,
             num_batches_per_epoch=self.num_batches_per_epoch,
             total_batch_size=total_batch_size,
             use_dreambooth_method=self._use_dreambooth_method,
         )
-        self.strategies.update_metadata(self._metadata, cfg)
+        self.strategies.update_metadata(self._metadata, self.cfg)
 
-        # Noise scheduler
+    def _initialize_training_runtime(self) -> None:
+        """Initialize runtime helpers that depend on the optimizer and scheduler state."""
+        from library.losses.loss_modifiers import build_loss_modifier
+        from library.logging.training_plots import setup_live_plotter
+        from library.timesteps.timestep_utils import init_timestep_sampler
+
+        cfg = self.cfg
+
         self.noise_scheduler = get_noise_scheduler(cfg, self.accelerator.device)
-
-        # Timestep sampler
         self.strategies.la_sampler = init_timestep_sampler(cfg.timestep, self.noise_scheduler, self.accelerator)
 
-        # Live plotter setup
         self._timestep_counts = None
         self._plotter_settings = None
         if self.is_main_process:
@@ -526,7 +524,6 @@ class Trainer:
                 cfg, self.noise_scheduler, self.strategies.la_sampler, self.strategies
             )
 
-        # Optional post-loss modifier
         self._loss_modifier_runtime = build_loss_modifier(
             cfg.loss,
             cfg.training,
@@ -534,15 +531,24 @@ class Trainer:
             self.accelerator,
         )
 
-        # Init trackers
+    def _initialize_tracking_state(self) -> None:
+        """Initialize trackers, recorders, validation scheduler, and progress state."""
+        from tqdm import tqdm
+
+        from library.losses.loss import EMARecorder
+        from library.logging.step_logging import init_trackers
+        from library.training.phases.validation import ValidationScheduler
+        from library.timesteps.timestep_utils import parse_dynamic_timestep_schedule
+        from library.utils.device_utils import clean_memory_on_device
+
+        cfg = self.cfg
+
         init_trackers(self.accelerator, cfg.output.logging, "training")
 
-        # Loss recorders
         self._loss_recorder = EMARecorder()
         self._val_loss_recorder = EMARecorder()
         self._loss_modifier_metric_recorders = {}
 
-        # Init loss tracking state
         self._current_global_step_loss = 0.0
         self._current_loss_modifier_metrics = {}
         self._current_val_loss = None
@@ -550,31 +556,33 @@ class Trainer:
         self._accumulation_counter = 0
         self._is_tracking = len(self.accelerator.trackers) > 0
 
-        # Dynamic timestep schedule
         self._dynamic_timestep_schedule, self._current_min_timestep, self._current_max_timestep = parse_dynamic_timestep_schedule(
             cfg.timestep, self.noise_scheduler, self.accelerator
         )
 
         clean_memory_on_device(self.accelerator.device)
 
-        # Progress bar
         self._progress_bar = tqdm(
             range(self.max_train_steps - self._initial_step), smoothing=0, disable=not self.accelerator.is_local_main_process, desc="steps"
         )
-
-        # Validation scheduler (single source of truth for trigger decisions)
-        from library.training.phases.validation import ValidationScheduler
-
         self._validation_scheduler = ValidationScheduler(cfg.validation)
 
-    def _maybe_sample_at_start(self) -> None:
-        """Handle --sample_at_first and run_at_start validation if configured."""
+    def _initialize_training_run_state(self) -> None:
+        """Initialize the shared trainer runtime state before entering the loop."""
+        total_batch_size = self._compute_total_batch_size()
+        self._emit_training_startup_summary()
+        self._initialize_training_metadata(total_batch_size=total_batch_size)
+        self._initialize_training_runtime()
+        self._initialize_tracking_state()
+
+    def _compute_startup_eval_actions(self) -> tuple[bool, bool]:
+        """Return whether startup sampling and startup validation should run."""
         from library.training.sample_generation import sample_images_check
         from library.training.phases.validation import ValidationStepContext
 
         cfg = self.cfg
 
-        assert self._validation_scheduler is not None, "_validation_scheduler must be initialized before _maybe_sample_at_start"
+        assert self._validation_scheduler is not None, "_validation_scheduler must be initialized before startup eval"
 
         should_sample = sample_images_check(cfg.output.sampling, 0, self.global_step)
         val_ctx = ValidationStepContext(
@@ -586,96 +594,76 @@ class Trainer:
             is_training_end=False,
             has_validation_data=self._val_dataloader is not None,
         )
-        should_validate = self._validation_scheduler.should_run(val_ctx)
+        return should_sample, self._validation_scheduler.should_run(val_ctx)
 
+    def _cleanup_after_startup_eval(self) -> None:
+        """Free transient eval memory before training resumes."""
+        import gc
+
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+
+    def _run_startup_eval_actions(self) -> None:
+        """Run startup sampling/validation if configured by current trigger policy."""
+        from library.training.phases.orchestration_helpers import run_sampling_and_validation, temporarily_in_eval_mode
+
+        should_sample, should_validate = self._compute_startup_eval_actions()
         if should_sample or should_validate:
-            # Switch to eval mode
-            self.mode.set_eval(self)
-            self.optimizer_eval_fn()
-
-            # Sample images (independent of validation)
-            if should_sample:
-                self.strategies.sample_images(
-                    self.accelerator,
-                    cfg,
-                    0,
-                    self.global_step,
-                    self.accelerator.device,
-                    self.vae,
-                    self.tokenizers,
-                    self._text_encoder,
-                    self.denoiser,
+            with temporarily_in_eval_mode(self):
+                run_sampling_and_validation(
+                    self,
+                    should_sample=should_sample,
+                    should_validate=should_validate,
+                    sample_epoch=0,
+                    validation_step=0,
+                    validation_epoch=0,
+                    validation_batch=None,
                 )
+            self._cleanup_after_startup_eval()
 
-            # Validate (independent of sampling)
-            if should_validate:
-                assert self.vae_dtype is not None, "vae_dtype must be set"
-                assert self.weight_dtype is not None, "weight_dtype must be set"
-                self._current_val_loss, self._average_val_loss = self.strategies.calculate_val_loss(
-                    self.global_step,
-                    0,
-                    self.num_batches_per_epoch,
-                    self._val_loss_recorder,
-                    self._val_dataloader,
-                    self._cyclic_val_dataloader,
-                    self.trainable_model,
-                    self.text_encoders,
-                    self.denoiser,
-                    self.vae,
-                    self.noise_scheduler,
-                    self.vae_dtype,
-                    self.weight_dtype,
-                    self.accelerator,
-                    cfg,
-                    0,
-                    None,
-                    self._train_text_encoder,
-                )
-                self.accelerator.print(f"  val_loss: {self._current_val_loss:.4f}  (avg: {self._average_val_loss:.4f})")
+    def _save_final_state_if_enabled(self) -> None:
+        """Persist accelerator state at train end when configured."""
+        from library.training.checkpointing import save_state_on_train_end
 
-            # Switch back to train mode
-            self.optimizer_train_fn()
-            self.mode.set_train(self)
+        cfg = self.cfg
+        if self.is_main_process and (cfg.output.saving.save_state or cfg.output.saving.save_state_on_train_end):
+            save_state_on_train_end(cfg.output.saving, self.accelerator)
 
-            # Ensure VRAM is clean before resuming training
-            import gc
+    def _save_final_checkpoint_artifacts(self) -> None:
+        """Save final model checkpoint and optional loss-modifier sidecar."""
+        from library.training.checkpointing import get_last_ckpt_name
 
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                torch.cuda.synchronize()
+        cfg = self.cfg
+
+        if not self.is_main_process:
+            return
+
+        assert self.trainable_model is not None, "trainable_model must be set before finalizing"
+        unwrapped = self.accelerator.unwrap_model(self.trainable_model)
+        ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as)
+        self.save_checkpoint(ckpt_name, unwrapped, self.global_step, self.num_train_epochs, force_sync_upload=True)
+
+        if self.loss_modifier.is_enabled and self.loss_modifier.sidecar_suffix:
+            loss_weights_ckpt_name = get_last_ckpt_name(
+                cfg.output.saving,
+                "." + cfg.output.saving.save_model_as,
+                self.loss_modifier.sidecar_suffix,
+            )
+            sidecar_path = os.path.join(cfg.output.saving.output_dir, loss_weights_ckpt_name)
+            self.loss_modifier.save_sidecar(sidecar_path, self._build_checkpoint_metadata())
 
     def _finalize_training(self) -> None:
         """Cleanup and final save after training completes."""
-        from library.training.checkpointing import get_last_ckpt_name, save_state_on_train_end
-
-        cfg = self.cfg
 
         # Update metadata
         self._metadata["ss_training_finished_at"] = str(time.time())
 
         self.accelerator.end_training()
         self.optimizer_eval_fn()
-
-        # Save state if configured
-        if self.is_main_process and (cfg.output.saving.save_state or cfg.output.saving.save_state_on_train_end):
-            save_state_on_train_end(cfg.output.saving, self.accelerator)
-
-        # Save final checkpoint
-        if self.is_main_process:
-            assert self.trainable_model is not None, "trainable_model must be set before finalizing"
-            unwrapped = self.accelerator.unwrap_model(self.trainable_model)
-            ckpt_name = get_last_ckpt_name(cfg.output.saving, "." + cfg.output.saving.save_model_as)
-            self.save_checkpoint(ckpt_name, unwrapped, self.global_step, self.num_train_epochs, force_sync_upload=True)
-
-            if self.loss_modifier.is_enabled and self.loss_modifier.sidecar_suffix:
-                loss_weights_ckpt_name = get_last_ckpt_name(
-                    cfg.output.saving,
-                    "." + cfg.output.saving.save_model_as,
-                    self.loss_modifier.sidecar_suffix,
-                )
-                sidecar_path = os.path.join(cfg.output.saving.output_dir, loss_weights_ckpt_name)
-                self.loss_modifier.save_sidecar(sidecar_path, self._build_checkpoint_metadata())
+        self._save_final_state_if_enabled()
+        self._save_final_checkpoint_artifacts()
 
         logger.info("model saved.")
 

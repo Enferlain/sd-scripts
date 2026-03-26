@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from library.training.runners.trainer import Trainer
 
 
@@ -102,8 +102,8 @@ class TestTrainer(unittest.TestCase):
         self.trainer.run_caching = MagicMock()
         self.trainer.prepare_models = MagicMock()
         self.trainer.prepare_optimizer = MagicMock()
-        self.trainer._log_training_info = MagicMock()
-        self.trainer._maybe_sample_at_start = MagicMock()
+        self.trainer._initialize_training_run_state = MagicMock()
+        self.trainer._run_startup_eval_actions = MagicMock()
         self.trainer.run_training_loop = MagicMock(side_effect=RuntimeError("training failed"))
         self.trainer._finalize_training = MagicMock()
 
@@ -117,3 +117,66 @@ class TestTrainer(unittest.TestCase):
 
         mock_monitor.end_session.assert_called_once()
         self.trainer._finalize_training.assert_not_called()
+
+    def test_run_startup_eval_actions_validation_only_skips_sampling(self):
+        """Startup validation should not force startup sampling."""
+        self.trainer._accelerator = MagicMock()
+        self.trainer._accelerator.device = "cpu"
+        self.trainer._validation_scheduler = MagicMock()
+        self.trainer._validation_scheduler.should_run.return_value = True
+        self.trainer.optimizer_eval_fn = MagicMock()
+        self.trainer.optimizer_train_fn = MagicMock()
+        self.trainer._val_dataloader = MagicMock()
+        self.trainer._cyclic_val_dataloader = MagicMock()
+        self.trainer._val_loss_recorder = MagicMock()
+        self.trainer._primary_trainable = MagicMock()
+        self.trainer.text_encoders = [MagicMock()]
+        self.trainer.denoiser = MagicMock()
+        self.trainer.vae = MagicMock()
+        self.trainer.tokenizers = [MagicMock()]
+        self.trainer._text_encoder = self.trainer.text_encoders
+        self.trainer.vae_dtype = MagicMock()
+        self.trainer.weight_dtype = MagicMock()
+        self.trainer.noise_scheduler = MagicMock()
+        self.trainer.num_batches_per_epoch = 5
+        self.trainer._train_text_encoder = False
+        self.trainer.strategies.calculate_val_loss.return_value = (0.5, 0.5)
+
+        with patch("library.training.sample_generation.sample_images_check", return_value=False):
+            self.trainer._run_startup_eval_actions()
+
+        self.trainer.mode.set_eval.assert_called_once_with(self.trainer)
+        self.trainer.mode.set_train.assert_called_once_with(self.trainer)
+        self.trainer.strategies.sample_images.assert_not_called()
+        self.trainer.strategies.calculate_val_loss.assert_called_once()
+
+    def test_run_startup_eval_actions_sampling_only_skips_validation(self):
+        """Startup sampling should not force startup validation."""
+        self.trainer._accelerator = MagicMock()
+        self.trainer._accelerator.device = "cpu"
+        self.trainer._validation_scheduler = MagicMock()
+        self.trainer._validation_scheduler.should_run.return_value = False
+        self.trainer.optimizer_eval_fn = MagicMock()
+        self.trainer.optimizer_train_fn = MagicMock()
+        self.trainer._val_dataloader = None
+        self.trainer._cyclic_val_dataloader = None
+        self.trainer._val_loss_recorder = MagicMock()
+        self.trainer._primary_trainable = MagicMock()
+        self.trainer.text_encoders = [MagicMock()]
+        self.trainer.denoiser = MagicMock()
+        self.trainer.vae = MagicMock()
+        self.trainer.tokenizers = [MagicMock()]
+        self.trainer._text_encoder = self.trainer.text_encoders
+        self.trainer.vae_dtype = MagicMock()
+        self.trainer.weight_dtype = MagicMock()
+        self.trainer.noise_scheduler = MagicMock()
+        self.trainer.num_batches_per_epoch = 5
+        self.trainer._train_text_encoder = False
+
+        with patch("library.training.sample_generation.sample_images_check", return_value=True):
+            self.trainer._run_startup_eval_actions()
+
+        self.trainer.mode.set_eval.assert_called_once_with(self.trainer)
+        self.trainer.mode.set_train.assert_called_once_with(self.trainer)
+        self.trainer.strategies.sample_images.assert_called_once()
+        self.trainer.strategies.calculate_val_loss.assert_not_called()

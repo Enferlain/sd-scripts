@@ -281,7 +281,8 @@ def compute_accelerator_config(
         logging_dir = None
     else:
         log_prefix = "" if logging_config.log_prefix is None else logging_config.log_prefix
-        logging_dir = logging_config.logging_dir + "/" + log_prefix + time.strftime("%Y%m%d%H%M%S", time.localtime())
+        run_name = log_prefix + time.strftime("%Y%m%d%H%M%S", time.localtime())
+        logging_dir = os.path.join(logging_config.logging_dir, run_name)
 
     # Handle log_with setting
     if logging_config is None or logging_config.log_with is None:

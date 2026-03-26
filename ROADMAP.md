@@ -115,7 +115,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - further `base/`-to-`models/` ownership cleanup where model-specific behavior still sits too high
   - `_deprecated` and `copy` reference files should not receive normal refactor work
   - See `docs_design/strategy_system_followup.md`, `docs_design/strategy_base_decision.md`, and `docs_design/strategy_remaining_facet_audit.md`
-- [ ] **Training orchestration hardening follow-up** — Desirable shared-layer cleanup for explicit epoch outcomes, scoped shared lifecycle helpers, and preserving generic runner ownership. Sequence after strategy cleanup. See `docs_design/training_orchestration_followup.md`.
+- [x] **Training orchestration hardening follow-up** — Shared training orchestration now has explicit epoch outcomes, scoped shared lifecycle helpers, shared eval-side execution for startup and step-triggered actions, and clearer trainer startup/finalization sequencing. See `docs_design/training_orchestration_followup.md` and `docs_design/training_orchestration_refactor_plan.md`.
 - [ ] Timestep sampling needs proper reimplementation (currently hacked into training scripts)
 - [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
 - [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner

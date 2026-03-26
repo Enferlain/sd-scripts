@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING
 from tqdm import tqdm
 
 from library.data import CachingEngine
-from library.logging.resource_monitor import NoOpResourceMonitor
-
+from library.training.phases.orchestration_helpers import monitored_phase
 from library.utils.device_utils import clean_memory_on_device
 
 if TYPE_CHECKING:
@@ -22,12 +21,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-_NOOP_RESOURCE_MONITOR = NoOpResourceMonitor()
-
-
-def _resource_monitor(trainer: Trainer):
-    monitor = getattr(trainer, "_resource_monitor", None)
-    return monitor if monitor is not None else _NOOP_RESOURCE_MONITOR
 
 
 def run_caching(trainer: Trainer) -> None:
@@ -74,9 +67,7 @@ def run_latent_caching(trainer: Trainer) -> None:
         num_workers=trainer.cfg.data.caching.num_workers,
     )
 
-    monitor = _resource_monitor(trainer)
-    monitor.phase_start("latent_caching")
-    try:
+    with monitored_phase(trainer, "latent_caching"):
         trainer.train_manifest = latent_caching_engine.cache_dataset(
             manifest=trainer.train_manifest,
             model=trainer.vae,
@@ -94,11 +85,9 @@ def run_latent_caching(trainer: Trainer) -> None:
                 flip_aug=False,  # No flip aug for validation
                 cache_type="Latent Caching",
             )
-    finally:
         trainer.vae.to("cpu")
         clean_memory_on_device(trainer.accelerator.device)
         trainer.accelerator.wait_for_everyone()
-        monitor.phase_end("latent_caching")
 
 
 def run_te_caching(trainer: Trainer) -> None:
@@ -134,9 +123,7 @@ def run_te_caching(trainer: Trainer) -> None:
             batch_size=trainer.cfg.data.caching.te_batch_size,
         )
 
-        monitor = _resource_monitor(trainer)
-        monitor.phase_start("te_caching")
-        try:
+        with monitored_phase(trainer, "te_caching"):
             trainer.train_manifest = te_caching_engine.cache_dataset(
                 manifest=trainer.train_manifest,
                 model=te_cache_model_bundle,
@@ -152,14 +139,9 @@ def run_te_caching(trainer: Trainer) -> None:
                     cache_dir=cache_dir,
                     cache_type="TE Caching",
                 )
-        finally:
-            monitor.phase_end("te_caching")
-
     else:
-        monitor = _resource_monitor(trainer)
-        monitor.phase_start("te_caching")
         # In-memory TE caching: compute and store in entry.te_outputs
-        try:
+        with monitored_phase(trainer, "te_caching"):
 
             def _cache_te_in_memory(manifest, desc: str) -> None:
                 """Cache TE outputs in memory for a manifest."""
@@ -180,8 +162,6 @@ def run_te_caching(trainer: Trainer) -> None:
             _cache_te_in_memory(trainer.train_manifest, "TE caching (memory)")
             if trainer.val_manifest is not None:
                 _cache_te_in_memory(trainer.val_manifest, "TE caching val (memory)")
-        finally:
-            monitor.phase_end("te_caching")
 
     # Move text encoders back to CPU to save VRAM
     for t_enc in trainer.text_encoders:
