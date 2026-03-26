@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `library/training/runners/trainer.py` now reads more like top-level orchestration: startup initialization, startup eval actions, and finalization are split into smaller named helpers instead of large mixed blocks.
   - Step-triggered eval actions in `training_loop.py` and startup eval actions in `trainer.py` now share the same eval-mode/sampling/validation orchestration path.
   - Updated trainer/phase unit tests and training-loop integration coverage to reflect the clearer orchestration boundaries.
+- **EDM2 now has an active preset/example entry surface** — The feature is no longer only discoverable from nested defaults and source code.
+  - Added `configs/presets/sdxl_peft_edm2.yaml` as a direct SDXL PEFT preset with EDM2 weighting, importance weighting, scheduler use, and visualization enabled.
+  - Added `configs/examples/edm2_sdxl_peft.yaml` as a runnable example config that starts from `presets/sdxl_peft` and layers on EDM2-specific overrides.
+  - `tests/unit/test_configs.py` now verifies that both the direct preset and the runnable example compose correctly through Hydra.
 
 ### Fixed
 

@@ -241,6 +241,29 @@ class TestHydraComposition:
         assert "sdxl" not in cfg
         assert cfg.model.model_type == "sdxl"
 
+    def test_sdxl_peft_edm2_preset_composition(self, hydra_ctx):
+        """Test the dedicated SDXL PEFT EDM2 preset."""
+        cfg = compose(config_name="presets/sdxl_peft_edm2")
+        assert cfg is not None
+        assert cfg.mode == "peft"
+        assert cfg.model.model_type == "sdxl"
+        assert cfg.loss.edm2.enabled is True
+        assert cfg.loss.edm2.importance.enabled is True
+        assert cfg.loss.edm2.optimizer.use_scheduler is True
+        assert cfg.loss.edm2.visualization.enabled is True
+        assert cfg.output.saving.output_name == "sdxl_peft_edm2"
+
+    def test_sdxl_peft_edm2_example_composition(self, hydra_ctx):
+        """Test the runnable EDM2 example config."""
+        cfg = compose(config_name="examples/edm2_sdxl_peft")
+        assert cfg is not None
+        assert cfg.mode == "peft"
+        assert cfg.model.model_type == "sdxl"
+        assert cfg.loss.edm2.enabled is True
+        assert cfg.loss.edm2.importance.enabled is True
+        assert cfg.loss.snr.min_snr_gamma is None
+        assert cfg.output.saving.output_name == "sdxl_peft_edm2"
+
     def test_sdxl_finetune_config_composition(self, hydra_ctx):
         """Test sdxl_finetune config loading via Hydra."""
         cfg = compose(config_name="presets/sdxl_finetune")

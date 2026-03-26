@@ -103,6 +103,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - The shared diffusion strategy contract now returns base loss state through the shared `BatchLossOutput`, and the trainer builds either a `NoOpLossModifier` or a concrete EDM2 modifier through one generic post-loss seam instead of threading `edm2_model` through SD / SDXL diffusion code.
 - Active checkpoint/logging/plotting paths now also use generic loss-modifier hooks, and the old `trainer.edm2` / `edm2_runtime.py` compatibility layer is gone from the active path.
 - EDM2 internals now live under the `library/losses/edm2/` package with separate factory / plotting / validation helpers, and modifier metrics now follow a stricter namespaced contract.
+- EDM2 now has a first active SDXL PEFT preset/example surface (`presets/sdxl_peft_edm2` and the runnable `examples/edm2_sdxl_peft`) instead of being discoverable only from defaults and source.
 
 ---
 
@@ -136,7 +137,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - Conditioning is showing up as a real cross-cutting concern across tokenization/encoding, caching/data metadata, and denoiser input assembly, but it is not mature enough yet to force into a new base facet.
   - Prompt weighting / weighted captions still likely want to become a shared concern rather than a model-by-model accumulation of special cases, especially once cache-policy expectations are made explicit.
 - [ ] **Timestep / `la_sampler` ownership cleanup** — Decide where timestep-sampling responsibilities should live and remove the current ad hoc feel.
-- [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now, but the feature still needs better user-facing presence (docs, examples/presets, and clearer guidance on when to use it).
+- [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now and the repo has an initial SDXL PEFT preset/example, but the feature still needs real docs and clearer guidance on when to use it.
 - [ ] **Conditioning architecture review** — Decide when “conditioning” deserves its own first-class shared concern instead of remaining split across encoding, caching, and denoiser/diffusion ownership.
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
 - [ ] **Live plotter / logging integration** — Fold the live plotter into the broader logging story instead of treating it as a side system.
