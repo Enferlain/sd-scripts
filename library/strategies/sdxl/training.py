@@ -51,5 +51,4 @@ class SdxlTrainingStrategy(
         self.load_stable_diffusion_format = False
         self.logit_scale = None
         self.ckpt_info = None
-        self.la_sampler = None
         self.live_plotter_process = None

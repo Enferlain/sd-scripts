@@ -97,8 +97,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         train_denoiser: bool,
         fixed_timesteps: torch.Tensor | None = None,
         is_train: bool = True,
-        min_timestep_override: int | None = None,
-        max_timestep_override: int | None = None,
+        timestep_runtime: Any | None = None,
         global_step: int = 0,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
         """
@@ -113,12 +112,10 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             cfg.training,
             noise_scheduler,
             latents,
-            la_sampler=self.la_sampler,
+            timestep_runtime=timestep_runtime,
             global_step=global_step,
             fixed_timesteps=fixed_timesteps,
             is_train=is_train,
-            min_timestep_override=min_timestep_override,
-            max_timestep_override=max_timestep_override,
             output_dtype=weight_dtype,
         )
 
@@ -180,8 +177,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_denoiser: bool = True,
-        min_timestep_override: int | None = None,
-        max_timestep_override: int | None = None,
+        timestep_runtime: Any | None = None,
         global_step: int = 0,
     ) -> BatchLossOutput:
         """Process a training or validation batch for SDXL diffusion training."""
@@ -218,8 +214,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             weight_dtype,
             train_denoiser,
             is_train=is_train,
-            min_timestep_override=min_timestep_override,
-            max_timestep_override=max_timestep_override,
+            timestep_runtime=timestep_runtime,
             global_step=global_step,
         )
 
@@ -246,9 +241,6 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
 
         per_sample_loss = loss.mean([1, 2, 3])
 
-        if is_train and self.la_sampler is not None and hasattr(self.la_sampler, "update"):
-            self.la_sampler.update(timesteps.detach(), per_sample_loss.detach())
-
         loss = per_sample_loss
         if is_train:
             loss = loss * batch["loss_weights"].to(loss.device)
@@ -261,4 +253,5 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             loss=loss.mean(),
             per_sample_loss=loss,
             timesteps=timesteps,
+            sampling_loss=per_sample_loss,
         )

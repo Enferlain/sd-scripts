@@ -30,6 +30,7 @@ class BatchLossOutput:
     loss: torch.Tensor
     per_sample_loss: torch.Tensor
     timesteps: torch.Tensor
+    sampling_loss: torch.Tensor | None = None
     metrics: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:

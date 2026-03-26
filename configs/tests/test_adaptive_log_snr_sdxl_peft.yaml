@@ -1,0 +1,25 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Integration Test: Adaptive Log-SNR Timestep Sampling
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: uv run python -m scripts.sdxl_peft --config-name=tests/test_adaptive_log_snr_sdxl_peft
+
+defaults:
+  - /tests/test_core
+  - _self_
+
+timestep:
+  timestep_sampling: adaptive_log_snr
+  adaptive_log_snr:
+    bins: 32
+    ema_beta: 0.9
+    temperature: 0.75
+    prior_weight: 0.25
+    min_prob: 0.0001
+    warmup_steps: 200
+    entropy_floor: 0.65
+    uniform_mix_when_low_entropy: 0.1
+
+output:
+  saving:
+    output_name: "test_adaptive_log_snr_sdxl_peft"

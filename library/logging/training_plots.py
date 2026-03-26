@@ -5,14 +5,12 @@ Functions for plotting timesteps distributions and managing the live plotter.
 """
 
 import json
-import os
 import logging
+import os
 import subprocess
 import sys
 
 import numpy as np
-from library.timesteps.samplers.log_snr_sampler import LogSNRUniformSampler
-from library.timesteps.samplers.tempered_adaptive_sampler import TemperedAdaptiveSampler
 
 try:
     import matplotlib.pyplot as plt
@@ -85,93 +83,46 @@ def close_live_plotter(live_plotter_process: subprocess.Popen):
             live_plotter_process.kill()
 
 
-def get_plotter_settings(cfg, la_sampler) -> dict:
+def get_plotter_settings(cfg, timestep_runtime) -> dict:
     """
-    Gather plotter settings based on the sampler type and config.
+    Gather plotter settings based on the timestep runtime and config.
 
     Args:
         cfg: The training configuration object.
-        la_sampler: The loss-aware sampler object, or None.
+        timestep_runtime: The trainer-owned timestep runtime, or None.
 
     Returns:
         A dictionary containing the plotter settings to be displayed.
     """
-    # Determine the actual sampler being used
-    sampler_type = cfg.timestep.timestep_sampling
-    if la_sampler is not None:
-        if isinstance(la_sampler, LogSNRUniformSampler):
-            sampler_type = "log_snr_uniform"
-        elif isinstance(la_sampler, TemperedAdaptiveSampler):
-            sampler_type = "tempered_adaptive"
+    sampler_type = getattr(timestep_runtime, "requested_mode", cfg.timestep.timestep_sampling)
+    effective_mode = getattr(timestep_runtime, "effective_mode", sampler_type)
+    min_timestep = getattr(timestep_runtime, "current_min_timestep", cfg.timestep.min_timestep)
+    max_timestep = getattr(timestep_runtime, "current_max_timestep", cfg.timestep.max_timestep)
 
     plotter_settings = {
         "Timestep Sampler": sampler_type,
+        "Effective Sampler": effective_mode if effective_mode != sampler_type else None,
         "Dynamic Schedule": "Enabled" if cfg.timestep.dynamic_timestep_schedule else "Disabled",
-        "Min Timestep": cfg.timestep.min_timestep,
-        "Max Timestep": cfg.timestep.max_timestep,
+        "Min Timestep": min_timestep,
+        "Max Timestep": max_timestep,
     }
 
     # Add sampler-specific settings
-    if sampler_type == "mix_adaptive":
-        mc = cfg.timestep.mix_adaptive
+    if sampler_type == "adaptive_log_snr":
+        adaptive_cfg = cfg.timestep.adaptive_log_snr
         plotter_settings.update(
             {
-                "Anneal": mc.anneal,
-                "Start/End P": f"{mc.start_p} -> {mc.end_p}",
-                "Fixed P": mc.fixed_p,
-                "Num Bins": mc.bins,
-                "EMA Beta": mc.ema_beta,
-                "Small T Frac/Cap": f"{mc.small_t_frac} / {mc.small_t_cap}",
+                "Num Bins": adaptive_cfg.bins,
+                "EMA Beta": adaptive_cfg.ema_beta,
+                "Temperature": adaptive_cfg.temperature,
+                "Prior Weight": adaptive_cfg.prior_weight,
+                "Min Prob": adaptive_cfg.min_prob,
+                "Warmup Steps": adaptive_cfg.warmup_steps,
+                "Entropy Floor": adaptive_cfg.entropy_floor,
+                "Uniform Mix": adaptive_cfg.uniform_mix_when_low_entropy,
             }
         )
-    elif sampler_type == "tempered_adaptive":
-        tc = cfg.timestep.tempered_adaptive
-        plotter_settings.update(
-            {
-                "Num Bins": tc.bins,
-                "EMA Beta": tc.ema_beta,
-                "Temperature": tc.temperature,
-                "Prior Weight": tc.prior_weight,
-                "Min Prob": tc.min_prob,
-                "Warmup Steps": tc.warmup_steps,
-                "Prior Bias": tc.prior_bias,
-                "Entropy Floor": tc.entropy_floor,
-            }
-        )
-    elif sampler_type == "gaussian_mid_snr":
-        gc = cfg.timestep.gaussian_mid_snr
-        plotter_settings.update(
-            {
-                "Num Bins": gc.bins,
-                "EMA Beta": gc.ema_beta,
-                "Temperature": gc.temperature,
-                "Min Prob": gc.min_prob,
-                "Entropy Floor": gc.entropy_floor,
-                "Uniform Mix When Low Entropy": gc.uniform_mix_when_low_entropy,
-                "Prior_Mu": gc.prior_mu,
-                "Prior Sigma": gc.prior_sigma,
-                "Prior Weight": gc.prior_weight,
-                "Warmup Steps": gc.warmup_steps,
-            }
-        )
-    elif sampler_type == "snr_windowed":
-        sc = cfg.timestep.snr_windowed
-        plotter_settings.update(
-            {
-                "Num Bins": sc.bins,
-                "EMA Beta": sc.ema_beta,
-                "Temperature": sc.temperature,
-                "Min Prob": sc.min_prob,
-                "Entropy Floor": sc.entropy_floor,
-                "Uniform Mix": sc.uniform_mix_when_low_entropy,
-                "Center Mu": sc.center_mu,
-                "Half Width": sc.half_width,
-                "Widen To": sc.widen_to,
-                "Total Widen Steps": sc.max_train_steps,
-                "Cap Max T": sc.cap_max_t,
-            }
-        )
-    elif sampler_type not in ["uniform", "log_snr_uniform"]:
+    elif sampler_type == "shift":
         plotter_settings.update(
             {
                 "Shift": cfg.timestep.discrete_flow_shift,
@@ -182,14 +133,14 @@ def get_plotter_settings(cfg, la_sampler) -> dict:
     return plotter_settings
 
 
-def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
+def setup_live_plotter(cfg, noise_scheduler, timestep_runtime, strategy):
     """
     Setup the live plotter subprocess and initialize static plot timesteps tracking.
 
     Args:
         cfg: The training configuration object.
         noise_scheduler: The noise scheduler from Diffusers.
-        la_sampler: The loss-aware timesteps sampler (or None).
+        timestep_runtime: The trainer-owned timestep runtime (or None).
         strategy: The training strategy object, used to store the plotter process handle.
 
     Returns:
@@ -201,7 +152,7 @@ def setup_live_plotter(cfg, noise_scheduler, la_sampler, strategy):
     plotter_settings = None
 
     # Get plotter settings
-    plotter_settings = get_plotter_settings(cfg, la_sampler)
+    plotter_settings = get_plotter_settings(cfg, timestep_runtime)
 
     # Setup for the live interactive plotter
     if cfg.output.logging.live_plot_port is not None:

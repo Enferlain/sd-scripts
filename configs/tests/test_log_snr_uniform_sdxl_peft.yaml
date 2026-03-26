@@ -1,0 +1,16 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Integration Test: Log-SNR Uniform Timestep Sampling
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: uv run python -m scripts.sdxl_peft --config-name=tests/test_log_snr_uniform_sdxl_peft
+
+defaults:
+  - /tests/test_core
+  - _self_
+
+timestep:
+  timestep_sampling: log_snr_uniform
+
+output:
+  saving:
+    output_name: "test_log_snr_uniform_sdxl_peft"

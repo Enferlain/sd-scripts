@@ -43,5 +43,4 @@ class SdTrainingStrategy(
         )
         self.max_token_length = self.max_length
         self.clip_skip = cfg.training.clip_skip
-        self.la_sampler = None
         self.live_plotter_process = None

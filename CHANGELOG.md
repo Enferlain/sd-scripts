@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Active timestep sampling now has a trainer-owned runtime seam** — The main training path no longer depends on strategy-owned `la_sampler` state just to support adaptive timestep policies.
+  - Added `library/timesteps/runtime.py` with a `TimestepRuntime` that owns requested/effective mode resolution, adaptive sampler construction, dynamic timestep schedule state, timestep sampling, and adaptive-loss observation.
+  - `Trainer` now creates and stores `self.timestep_runtime`, and the training loop advances schedule state and reports adaptive observations through that runtime instead of keeping separate trainer timestep fields or updating sampler state inside SD / SDXL strategies.
+  - `library/training/diffusion.py` now always samples through a runtime path, and the old compatibility inputs (`la_sampler`, manual timestep overrides) are adapted into a temporary `TimestepRuntime` instead of keeping a second timestep-policy implementation alive.
+  - SD / SDXL diffusion strategies no longer carry or update `self.la_sampler`, and live logging/plotter setup now reads timestep runtime state directly instead of inferring sampler identity from ad hoc strategy fields and config mutation.
+  - The old compatibility utilities in `library/timesteps/timestep_utils.py` now delegate to the runtime too, so they no longer mutate config or maintain their own sampler/schedule logic.
+  - The active sampler surface is now intentionally smaller: the retained modes are `uniform`, `shift`, `log_snr_uniform`, and a new general-purpose `adaptive_log_snr`, while the old one-off adaptive samplers (`mix_adaptive`, `tempered_adaptive`, `gaussian_mid_snr`, `snr_windowed`, and the stale v1 variant) were removed from the active codebase.
+  - `library/config/config_validation.py` now fails fast on removed timestep sampler names and validates the new `timestep.adaptive_log_snr.*` config block.
+  - Added runnable SDXL PEFT test configs for both `adaptive_log_snr` and `log_snr_uniform`, each layered on the existing `tests/test_core` benchmark-backed setup so the new sampler and its baseline are easy to smoke-test from `configs/tests/`.
+  - The sampler call interface is now slimmer and more honest: `log_snr_uniform` and `adaptive_log_snr` no longer accept or discard `sigmoid_scale` / `discrete_flow_shift`, and the runtime only passes the shared sampling inputs that sampler-backed modes actually use.
+  - Added focused runtime and diffusion coverage in `tests/unit/timesteps/test_runtime.py` and `tests/unit/training/test_training_diffusion.py`, and updated training-loop fixtures/integration coverage for the trainer-owned runtime path.
 - **Training orchestration now reads in clearer shared phases without changing the active training behavior** — The shared runner/phase layer now makes epoch outcomes, eval-side execution, and startup/finalization sequencing more explicit.
   - Added `library/training/phases/orchestration_helpers.py` with small phase-shared helpers for monitored phase lifecycle and the common eval-side sampling/validation flow.
   - `library/training/phases/caching.py` now uses the shared monitored-phase helper instead of open-coded resource monitor lifecycle pairing.

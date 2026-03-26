@@ -80,6 +80,19 @@ def make_validate_cfg(overrides: dict | None = None):
         },
         "model": {"model_type": "sd15"},
         "training": {"clip_skip": None},
+        "timestep": {
+            "timestep_sampling": "uniform",
+            "adaptive_log_snr": {
+                "bins": 32,
+                "ema_beta": 0.9,
+                "temperature": 0.5,
+                "prior_weight": 0.25,
+                "min_prob": 1e-4,
+                "warmup_steps": 2000,
+                "entropy_floor": 0.7,
+                "uniform_mix_when_low_entropy": 0.1,
+            },
+        },
         "optimizer": {
             "learning_rates": {"blocks": None, "text_encoders": 0, "denoiser": 1e-4, "base": 1e-4},
         },
@@ -782,6 +795,20 @@ class TestValidateConfig:
         cfg = make_validate_cfg({"loss": {"edm2": {"laplace_timestep_sampling": True}}})
 
         with pytest.raises(ValueError, match="laplace_timestep_sampling is not implemented"):
+            validate_config(cfg)
+
+    def test_timestep_sampling_rejects_removed_experimental_modes(self):
+        """Removed one-off adaptive samplers should fail fast in the active config surface."""
+        cfg = make_validate_cfg({"timestep": {"timestep_sampling": "snr_windowed"}})
+
+        with pytest.raises(ValueError, match="timestep\\.timestep_sampling must be one of"):
+            validate_config(cfg)
+
+    def test_adaptive_log_snr_prior_weight_must_be_in_range(self):
+        """Adaptive log-SNR config should validate its probability-mixing bounds."""
+        cfg = make_validate_cfg({"timestep": {"adaptive_log_snr": {"prior_weight": 1.5}}})
+
+        with pytest.raises(ValueError, match="timestep\\.adaptive_log_snr\\.prior_weight must be between 0\\.0 and 1\\.0 inclusive"):
             validate_config(cfg)
 
     def test_validation_split_must_be_between_zero_and_one(self):

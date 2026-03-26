@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from accelerate import Accelerator
     from library.data.caching_engine import CacheBackend
     from library.strategies.base.contracts import TrainingStrategy
+    from library.timesteps.runtime import TimestepRuntime
     from library.training.modes.base import TrainingMode
 
 
@@ -172,10 +173,8 @@ class Trainer:
         # Optional post-loss modifier runtime state
         self._loss_modifier_runtime = NoOpLossModifier()
 
-        # Dynamic timestep schedule
-        self._dynamic_timestep_schedule: list | None = None
-        self._current_min_timestep: int | None = None
-        self._current_max_timestep: int | None = None
+        # Timestep runtime
+        self.timestep_runtime: TimestepRuntime | None = None
 
         # Live plotter state
         self._timestep_counts: Any = None
@@ -209,8 +208,6 @@ class Trainer:
 
     def setup(self) -> None:
         """Phase 1: Initialize accelerator, tokenizers, and create dataset manifests."""
-
-        self.strategies.la_sampler = None
 
         set_torch_cuda_reduced_precision(self.cfg.performance.precision)
         deepspeed_utils.prepare_deepspeed_config(self.cfg.performance.deepspeed, self.cfg.data.loader)
@@ -510,18 +507,18 @@ class Trainer:
         """Initialize runtime helpers that depend on the optimizer and scheduler state."""
         from library.losses.loss_modifiers import build_loss_modifier
         from library.logging.training_plots import setup_live_plotter
-        from library.timesteps.timestep_utils import init_timestep_sampler
+        from library.timesteps.runtime import build_timestep_runtime
 
         cfg = self.cfg
 
         self.noise_scheduler = get_noise_scheduler(cfg, self.accelerator.device)
-        self.strategies.la_sampler = init_timestep_sampler(cfg.timestep, self.noise_scheduler, self.accelerator)
+        self.timestep_runtime = build_timestep_runtime(cfg.timestep, self.noise_scheduler, self.accelerator)
 
         self._timestep_counts = None
         self._plotter_settings = None
         if self.is_main_process:
             self._timestep_counts, self._plotter_settings = setup_live_plotter(
-                cfg, self.noise_scheduler, self.strategies.la_sampler, self.strategies
+                cfg, self.noise_scheduler, self.timestep_runtime, self.strategies
             )
 
         self._loss_modifier_runtime = build_loss_modifier(
@@ -538,7 +535,6 @@ class Trainer:
         from library.losses.loss import EMARecorder
         from library.logging.step_logging import init_trackers
         from library.training.phases.validation import ValidationScheduler
-        from library.timesteps.timestep_utils import parse_dynamic_timestep_schedule
         from library.utils.device_utils import clean_memory_on_device
 
         cfg = self.cfg
@@ -555,10 +551,6 @@ class Trainer:
         self._average_val_loss = None
         self._accumulation_counter = 0
         self._is_tracking = len(self.accelerator.trackers) > 0
-
-        self._dynamic_timestep_schedule, self._current_min_timestep, self._current_max_timestep = parse_dynamic_timestep_schedule(
-            cfg.timestep, self.noise_scheduler, self.accelerator
-        )
 
         clean_memory_on_device(self.accelerator.device)
 

@@ -209,7 +209,6 @@ def _emit_step_tracking_logs(
     """Emit tracker metrics for the current optimization step when enabled."""
     cfg = trainer.cfg
     accelerator = trainer.accelerator
-    strategies = trainer.strategies
 
     current_global_step_loss = trainer._current_global_step_loss / trainer._accumulation_counter
     current_loss_scaled_total = trainer._current_loss_modifier_metrics.get("loss/current_scaled")
@@ -229,7 +228,7 @@ def _emit_step_tracking_logs(
         trainer._loss_recorder.average,
         trainer.lr_scheduler,
         trainer.lr_descriptions,
-        la_sampler=strategies.la_sampler,
+        timestep_runtime=trainer.timestep_runtime,
         optimizer=trainer.optimizer,
         keys_scaled=keys_scaled,
         mean_norm=mean_norm,
@@ -448,17 +447,16 @@ def _run_epoch_steps(trainer: Trainer, *, epoch_ctx: EpochContext) -> EpochRunRe
         batches_seen_in_epoch += 1
         trainer._current_step_state.value = trainer.global_step
 
-        if (
-            trainer._dynamic_timestep_schedule
-            and len(trainer._dynamic_timestep_schedule) > 0
-            and trainer.global_step >= trainer._dynamic_timestep_schedule[0][0]
-        ):
-            _, new_min, new_max = trainer._dynamic_timestep_schedule.pop(0)
-            trainer._current_min_timestep = new_min
-            trainer._current_max_timestep = new_max
+        if trainer.timestep_runtime is not None:
+            updated_range = trainer.timestep_runtime.advance_to_step(trainer.global_step)
+        else:
+            updated_range = None
+
+        if updated_range is not None:
+            new_min, new_max = updated_range
             accelerator.print(
                 f"\nStep {trainer.global_step}: Timestep range dynamically changed to "
-                f"[{trainer._current_min_timestep}, {trainer._current_max_timestep})"
+                f"[{new_min}, {new_max})"
             )
 
         if trainer._initial_step > 0:
@@ -490,10 +488,13 @@ def _run_epoch_steps(trainer: Trainer, *, epoch_ctx: EpochContext) -> EpochRunRe
                 is_train=True,
                 train_text_encoder=trainer._train_text_encoder,
                 train_denoiser=trainer._train_denoiser,
-                min_timestep_override=trainer._current_min_timestep,
-                max_timestep_override=trainer._current_max_timestep,
+                timestep_runtime=trainer.timestep_runtime,
                 global_step=trainer.global_step,
             )
+
+            if trainer.timestep_runtime is not None:
+                sampling_loss = batch_loss.sampling_loss if batch_loss.sampling_loss is not None else batch_loss.per_sample_loss
+                trainer.timestep_runtime.observe(batch_loss.timesteps, sampling_loss)
 
             modifier_output = trainer.loss_modifier.apply(
                 per_sample_loss=batch_loss.per_sample_loss,

@@ -264,6 +264,25 @@ class TestHydraComposition:
         assert cfg.loss.snr.min_snr_gamma is None
         assert cfg.output.saving.output_name == "sdxl_peft_edm2"
 
+    def test_sdxl_peft_adaptive_log_snr_test_config_composition(self, hydra_ctx):
+        """Test the runnable adaptive_log_snr test config."""
+        cfg = compose(config_name="tests/test_adaptive_log_snr_sdxl_peft")
+        assert cfg is not None
+        assert cfg.mode == "peft"
+        assert cfg.model.model_type == "sdxl"
+        assert cfg.timestep.timestep_sampling == "adaptive_log_snr"
+        assert cfg.timestep.adaptive_log_snr.prior_weight == 0.25
+        assert cfg.output.saving.output_name == "test_adaptive_log_snr_sdxl_peft"
+
+    def test_sdxl_peft_log_snr_uniform_test_config_composition(self, hydra_ctx):
+        """Test the runnable log_snr_uniform test config."""
+        cfg = compose(config_name="tests/test_log_snr_uniform_sdxl_peft")
+        assert cfg is not None
+        assert cfg.mode == "peft"
+        assert cfg.model.model_type == "sdxl"
+        assert cfg.timestep.timestep_sampling == "log_snr_uniform"
+        assert cfg.output.saving.output_name == "test_log_snr_uniform_sdxl_peft"
+
     def test_sdxl_finetune_config_composition(self, hydra_ctx):
         """Test sdxl_finetune config loading via Hydra."""
         cfg = compose(config_name="presets/sdxl_finetune")

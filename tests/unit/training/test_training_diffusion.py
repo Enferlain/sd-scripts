@@ -92,6 +92,18 @@ class MockNoiseScheduler:
         return latents + noise * 0.5
 
 
+class StubTimestepRuntime:
+    """Minimal timestep runtime stub for diffusion helper tests."""
+
+    def __init__(self, timesteps: torch.Tensor):
+        self.timesteps = timesteps
+        self.calls: list[dict[str, object]] = []
+
+    def sample_timesteps(self, **kwargs) -> torch.Tensor:
+        self.calls.append(kwargs)
+        return self.timesteps
+
+
 @pytest.fixture
 def mock_noise_scheduler():
     """Create a mock noise scheduler."""
@@ -268,6 +280,46 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
 
         assert timesteps.min() >= 200
         assert timesteps.max() < 400
+
+    def test_timestep_runtime_owns_sampling(
+        self, mock_noise_scheduler, sample_latents, default_regularization_config, default_timestep_config, default_training_config
+    ):
+        """Test that an injected timestep runtime becomes the timestep owner."""
+        runtime = StubTimestepRuntime(torch.tensor([111, 222]))
+
+        _, _, timesteps = get_noise_noisy_latents_and_timesteps(
+            regularization_config=default_regularization_config,
+            timestep_config=default_timestep_config,
+            training_config=default_training_config,
+            noise_scheduler=mock_noise_scheduler,
+            latents=sample_latents,
+            timestep_runtime=runtime,
+            min_timestep_override=500,
+            max_timestep_override=600,
+        )
+
+        assert torch.equal(timesteps, runtime.timesteps)
+        assert len(runtime.calls) == 1
+
+    def test_legacy_sampler_compatibility_keeps_requested_mode(
+        self, mock_noise_scheduler, sample_latents, default_regularization_config, default_training_config
+    ):
+        """Test legacy callers can still supply a sampler without mutating config."""
+        timestep_config = TimestepConfig(timestep_sampling="log_snr_uniform")
+        legacy_timesteps = torch.tensor([321, 654])
+        legacy_sampler = type("LegacySampler", (), {"sample": lambda self, *args, **kwargs: legacy_timesteps})()
+
+        _, _, timesteps = get_noise_noisy_latents_and_timesteps(
+            regularization_config=default_regularization_config,
+            timestep_config=timestep_config,
+            training_config=default_training_config,
+            noise_scheduler=mock_noise_scheduler,
+            latents=sample_latents,
+            la_sampler=legacy_sampler,
+        )
+
+        assert torch.equal(timesteps, legacy_timesteps)
+        assert timestep_config.timestep_sampling == "log_snr_uniform"
 
 
 @pytest.mark.training

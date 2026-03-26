@@ -250,9 +250,7 @@ def _make_mock_trainer(
     )
     trainer._timestep_counts = None
     trainer._plotter_settings = None
-    trainer._dynamic_timestep_schedule = []
-    trainer._current_min_timestep = 0
-    trainer._current_max_timestep = 1000
+    trainer.timestep_runtime = None
     trainer.noise_scheduler = MagicMock()
     trainer._validation_scheduler = MagicMock()
     trainer._validation_scheduler.should_run = MagicMock(return_value=False)

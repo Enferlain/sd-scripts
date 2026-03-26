@@ -317,9 +317,7 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     )
     trainer._timestep_counts = None
     trainer._plotter_settings = None
-    trainer._dynamic_timestep_schedule = []
-    trainer._current_min_timestep = 0
-    trainer._current_max_timestep = 1000
+    trainer.timestep_runtime = None
 
     # Validation scheduler (always returns False for should_run by default)
     trainer._validation_scheduler = MagicMock()

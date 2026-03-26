@@ -387,8 +387,7 @@ class DiffusionTrainingStrategy(ABC):
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_denoiser: bool = True,
-        min_timestep_override: int | None = None,
-        max_timestep_override: int | None = None,
+        timestep_runtime: Any | None = None,
         global_step: int = 0,
     ) -> BatchLossOutput:
         """

@@ -1,10 +1,11 @@
 import torch
 
 from library.config.dataclasses.data import CachingConfig
-from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
 from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.timestep import TimestepConfig
 from library.config.dataclasses.training import TrainingConfig
+from library.timesteps.runtime import build_timestep_runtime
+from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
 
 
 def encode_images_to_latents(vae, images: torch.Tensor) -> torch.Tensor:
@@ -117,6 +118,7 @@ def get_noise_noisy_latents_and_timesteps(
     training_config: TrainingConfig,
     noise_scheduler,
     latents: torch.Tensor,
+    timestep_runtime=None,
     la_sampler=None,
     global_step=0,
     fixed_timesteps=None,
@@ -134,12 +136,13 @@ def get_noise_noisy_latents_and_timesteps(
         training_config (TrainingConfig): Config for training settings.
         noise_scheduler: The diffusion noise scheduler.
         latents (torch.Tensor): Input latents tensor.
-        la_sampler (Optional): Optional custom timesteps sampler.
+        timestep_runtime (Optional): Active timestep runtime that owns timestep sampling behavior.
+        la_sampler (Optional): Legacy sampler input used to build a compatibility runtime for older callers.
         global_step (int, optional): Current training step (for adaptive sampling). Defaults to 0.
         fixed_timesteps (Optional): Optional fixed timesteps to use.
         is_train (bool, optional): Whether in training mode (affects noise augmentation). Defaults to True.
-        min_timestep_override (Optional[int]): Override minimum timesteps.
-        max_timestep_override (Optional[int]): Override maximum timesteps.
+        min_timestep_override (Optional[int]): Override minimum timesteps when constructing a compatibility runtime.
+        max_timestep_override (Optional[int]): Override maximum timesteps when constructing a compatibility runtime.
         output_dtype (Optional[torch.dtype]): If provided, cast noisy_latents to this dtype before returning.
             Useful because noise_scheduler.add_noise() may return float32
             even when inputs are float16/bfloat16 for numerical stability.
@@ -148,19 +151,7 @@ def get_noise_noisy_latents_and_timesteps(
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing
         (noise, noisy_latents, timesteps).
     """
-    # --- 1. Determine Timestep Range ---
-    # This part handles the dynamic timesteps schedule!
-    if min_timestep_override is not None:
-        min_timestep = min_timestep_override
-    else:
-        min_timestep = 0 if timestep_config.min_timestep is None else timestep_config.min_timestep
-
-    if max_timestep_override is not None:
-        max_timestep = max_timestep_override
-    else:
-        max_timestep = noise_scheduler.config.num_train_timesteps if timestep_config.max_timestep is None else timestep_config.max_timestep
-
-    # --- 2. Generate Base Noise ---
+    # --- 1. Generate Base Noise ---
     noise = torch.randn_like(latents, device=latents.device)
     if regularization_config.noise_offset and is_train:
         noise_offset = (
@@ -172,51 +163,30 @@ def get_noise_noisy_latents_and_timesteps(
 
     b_size = latents.shape[0]
 
-    # --- 3. TIMESTEP SAMPLING ---
-    if fixed_timesteps is not None:
-        timesteps = fixed_timesteps
-    elif is_train and hasattr(noise_scheduler, "edm2_laplace_weights"):
-        timesteps = torch.multinomial(noise_scheduler.edm2_laplace_weights, num_samples=b_size, replacement=True).to(
-            dtype=torch.long, device=latents.device
-        )
-    elif is_train and hasattr(noise_scheduler, "laplace_weights"):
-        timesteps = torch.multinomial(noise_scheduler.laplace_weights, num_samples=b_size, replacement=True).to(
-            dtype=torch.long, device=latents.device
-        )
-    elif is_train and timestep_config.timestep_sampling == "mix_adaptive":  # Requires la_sampler from main script
-        # The main script is now responsible for creating the sampler.
-        # We just check that it exists and use it.
-        if la_sampler is None:
-            raise ValueError(
-                "timestep_sampling is 'mix_adaptive' but la_sampler is not provided. "
-                "Please ensure the sampler is created in your main training script."
-            )
-
-        # Sample discrete indices in [0, T_range)
-        # Note: The sampler should be initialized with the full range of timesteps (e.g., 1000)
-        t_local = la_sampler.sample(
-            b_size,
-            latents.device,
-            global_step,
-            training_config.max_train_steps,
-            sigmoid_scale=timestep_config.sigmoid_scale,
-            discrete_flow_shift=timestep_config.discrete_flow_shift,
+    # --- 2. TIMESTEP SAMPLING ---
+    runtime = timestep_runtime
+    if runtime is None:
+        runtime = build_timestep_runtime(
+            timestep_config,
+            noise_scheduler,
+            sampler_override=la_sampler,
+            min_timestep_override=min_timestep_override,
+            max_timestep_override=max_timestep_override,
+            global_step=global_step,
         )
 
-        # Map local [0, T_total) to the absolute training range [min_timestep, max_timestep)
-        timesteps = t_local.clamp(min_timestep, max_timestep - 1).to(dtype=torch.long, device=latents.device)
-    elif is_train and timestep_config.timestep_sampling != "uniform":
-        shift = timestep_config.discrete_flow_shift
-        logits_norm = torch.randn(b_size, device="cpu")
-        logits_norm = logits_norm * timestep_config.sigmoid_scale
-        timesteps = logits_norm.sigmoid()
-        timesteps = (timesteps * shift) / (1 + (shift - 1) * timesteps)
-        timesteps = min_timestep + (timesteps * (max_timestep - min_timestep)).to(dtype=torch.long, device=latents.device)
-    else:
-        # Fallback to default (random) sampling
-        timesteps = get_timesteps(min_timestep, max_timestep, b_size, latents.device)
+    timesteps = runtime.sample_timesteps(
+        timestep_config=timestep_config,
+        training_config=training_config,
+        noise_scheduler=noise_scheduler,
+        batch_size=b_size,
+        device=latents.device,
+        global_step=global_step,
+        fixed_timesteps=fixed_timesteps,
+        is_train=is_train,
+    )
 
-    # --- 4. Advanced Noise Application (multires, ip_noise_gamma) ---
+    # --- 3. Advanced Noise Application (multires, ip_noise_gamma) ---
     if regularization_config.multires_noise_iterations and is_train:
         noise = pyramid_noise_like(
             noise, latents.device, regularization_config.multires_noise_iterations, regularization_config.multires_noise_discount

@@ -100,6 +100,8 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - Validation config now also fails fast for invalid `validation_split`, non-positive `max_validation_steps`, malformed or empty `validation_timesteps`, conflicting `val_data_dir` + `validation_split`, and scheduled validation with no validation data source instead of leaving those errors to strategy/runtime behavior.
 - EDM2 importance-weighting conflict handling now runs through the active nested config path, and the dormant `laplace_timestep_sampling` toggle now fails fast instead of silently acting unsupported.
 - The active training path now treats EDM2 as one bundled runtime sidecar instead of several loose trainer fields, which makes the loop/checkpoint/logging wiring easier to follow.
+- The active training path now also has a trainer-owned `TimestepRuntime` seam in `library/timesteps/`: trainer owns timestep schedule state and adaptive sampler lifecycle, SD / SDXL strategies no longer update `la_sampler`, and runtime/logging no longer depend on config mutation to know which sampler is active.
+- The active timestep sampler surface is now intentionally small: `uniform`, `shift`, `log_snr_uniform`, and `adaptive_log_snr`. The older one-off adaptive samplers were removed from the active path, and config validation now rejects their names instead of leaving them half-supported.
 - `loss.edm2` now has one structured feature-owned config surface (`enabled`, `optimizer.*`, `importance.*`, `visualization.*`) instead of a long flat list of `edm2_loss_weighting_*` fields.
 - The shared diffusion strategy contract now returns base loss state through the shared `BatchLossOutput`, and the trainer builds either a `NoOpLossModifier` or a concrete EDM2 modifier through one generic post-loss seam instead of threading `edm2_model` through SD / SDXL diffusion code.
 - Active checkpoint/logging/plotting paths now also use generic loss-modifier hooks, and the old `trainer.edm2` / `edm2_runtime.py` compatibility layer is gone from the active path.
@@ -118,7 +120,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - `_deprecated` and `copy` reference files should not receive normal refactor work
   - See `docs_design/strategy_system_followup.md`, `docs_design/strategy_base_decision.md`, and `docs_design/strategy_remaining_facet_audit.md`
 - [x] **Training orchestration hardening follow-up** — Shared training orchestration now has explicit epoch outcomes, scoped shared lifecycle helpers, shared eval-side execution for startup and step-triggered actions, and clearer trainer startup/finalization sequencing. See `docs_design/training_orchestration_followup.md` and `docs_design/training_orchestration_refactor_plan.md`.
-- [ ] Timestep sampling needs proper reimplementation (currently hacked into training scripts)
+- [x] Timestep sampling reimplementation — the active path and compatibility wrappers now go through a trainer-owned `TimestepRuntime`, the sampler surface is narrowed to the intended set, and the sampler-backed runtime interface no longer leaks shift-specific knobs through every sampler API.
 - [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
 - [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner
 - [ ] **Delete legacy training wrappers** (after legacy script deprecation) - Once `*_finetune.py` and `*_textual_inversion.py` scripts are migrated to new data pipeline, delete:
@@ -137,7 +139,11 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - SDXL training-time text conditioning now routes through the strategy tokenization / encoding seam instead of calling model helpers directly from `sdxl/diffusion.py`, which keeps the diffusion facet aligned with the settled strategy contract.
   - Conditioning is showing up as a real cross-cutting concern across tokenization/encoding, caching/data metadata, and denoiser input assembly, but it is not mature enough yet to force into a new base facet.
   - Prompt weighting / weighted captions still likely want to become a shared concern rather than a model-by-model accumulation of special cases, especially once cache-policy expectations are made explicit.
-- [ ] **Timestep / `la_sampler` ownership cleanup** — Decide where timestep-sampling responsibilities should live and remove the current ad hoc feel.
+- [x] **Timestep runtime redesign** — The trainer-owned timestep runtime landed and the active sampler/runtime cleanup is complete for the current SD / SDXL path.
+  - `library/timesteps/` now owns active runtime state and adaptive sampler lifecycle for the main trainer path.
+  - The active sampler surface is intentionally small: `uniform`, `shift`, `log_snr_uniform`, and `adaptive_log_snr`.
+  - The sampler-backed runtime interface now only passes shared sampling inputs; sampler-specific knobs like `sigmoid_scale` and `discrete_flow_shift` remain owned by the explicit `shift` path instead of leaking through every sampler API.
+  - Benchmark-backed smoke configs exist under `configs/tests/` for both `adaptive_log_snr` and `log_snr_uniform`, and both completed end-to-end manual smoke runs on the SDXL PEFT test setup.
 - [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now and the repo has an initial SDXL PEFT preset/example, but the feature still needs real docs and clearer guidance on when to use it.
 - [ ] **Conditioning architecture review** — Decide when “conditioning” deserves its own first-class shared concern instead of remaining split across encoding, caching, and denoiser/diffusion ownership.
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
@@ -145,6 +151,30 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **External dependency ownership review** — Decide whether custom optimizers and LyCORIS should stay external or move under `library/` for easier modification.
 - [ ] **Future conditioning/data-flow experiments** — Later exploration area for better caption mutation, TE caching, on-the-fly CPU encoding, queues, async handoff, and related conditioning/data-flow improvements once the current building blocks are settled.
+
+---
+
+## Future Ideas
+
+- [ ] **Support for feather** - https://github.com/SuriyaaMM/feather
+  - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support. Currently only considered for inference
+  - Note: the current `fp8_base` / `fp8_base_unet` config flags have a fairly narrow active effect. In the current training path they mostly drive shared model-prep dtype casting for the denoiser / text encoders (with TE embedding workarounds), plus validation and metadata. They should not be treated as a broad quantization backend or a settled precision architecture.
+
+- [ ] **Investigate 2022-2023 backend code**
+  - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line.
+
+### Future Improvements
+
+- [ ] Config-hash cache namespace - Auto-segregate caches by config hash (`resolution`, `bucket_steps`, `model_version`) to prevent cross-config issues. See `AUDIT/AUDIT_PHASE_6.md`.
+- [ ] **Large-scale dataset manifest optimization** - Current JSON manifest grows ~2KB/entry (100k images = ~200MB JSON). Options:
+  - Binary format (msgpack/pickle) for faster I/O
+  - Incremental manifest updates instead of full rewrite
+  - Lazy loading of manifest entries
+  - Sharded manifests by bucket
+  - Skip manifest creation if unchanged from previous run
+  - Maybe fp8 for te output storage, needs tests
+- [ ] **Smarter resource tracking/management** - This helps with training and also with inference, for example falling back to tiled vae when it would hit resource contraints and such. See `docs_design/resource_monitor_plan.md`
+- [ ] Old toml to new config translator
 
 ---
 
@@ -212,29 +242,6 @@ All phase functions in `library/training/phases/` are typed as `trainer: Trainer
 
 - GitHub Actions pytest workflow is in place.
 - Coverage reporting/tracking is already set up.
-
----
-
-## Future Ideas
-
-- [ ] **Support for feather** - https://github.com/SuriyaaMM/feather
-  - Feather is a high-performance emulation library that brings FP8 (E5M2 & E4M3) precision arithmetic to older GPU architectures (Ampere, Turing, Volta) that lack native hardware support. Currently only considered for inference
-  - Note: the current `fp8_base` / `fp8_base_unet` config flags have a fairly narrow active effect. In the current training path they mostly drive shared model-prep dtype casting for the denoiser / text encoders (with TE embedding workarounds), plus validation and metadata. They should not be treated as a broad quantization backend or a settled precision architecture.
-
-- [ ] **Investigate 2022-2023 backend code**
-  - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line.
-
-### Future Improvements
-
-- [ ] Config-hash cache namespace - Auto-segregate caches by config hash (`resolution`, `bucket_steps`, `model_version`) to prevent cross-config issues. See `AUDIT/AUDIT_PHASE_6.md`.
-- [ ] **Large-scale dataset manifest optimization** - Current JSON manifest grows ~2KB/entry (100k images = ~200MB JSON). Options:
-  - Binary format (msgpack/pickle) for faster I/O
-  - Incremental manifest updates instead of full rewrite
-  - Lazy loading of manifest entries
-  - Sharded manifests by bucket
-  - Skip manifest creation if unchanged from previous run
-  - Maybe fp8 for te output storage, needs tests
-- [ ] **Smarter resource tracking/management** - This helps with training and also with inference, for example falling back to tiled vae when it would hit resource contraints and such. See `docs_design/resource_monitor_plan.md`
 
 ---
 

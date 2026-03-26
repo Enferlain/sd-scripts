@@ -19,7 +19,6 @@ class LogSNRUniformSampler:
             noise_scheduler: Diffusers noise scheduler (e.g. DDPMScheduler).
             num_train_timesteps (int): Total number of training timesteps.
         """
-        print(f"LogSNRUniformSampler initialized with: num_train_timesteps={num_train_timesteps}")
         T = int(num_train_timesteps)
         with torch.no_grad():
             # Precompute SNR(t) = alpha^2 / (1 - alpha^2)
@@ -35,8 +34,6 @@ class LogSNRUniformSampler:
         device: torch.device,
         global_step: int,
         max_steps: int,
-        sigmoid_scale: float = 1.0,
-        discrete_flow_shift: float = 0.9,
     ) -> torch.Tensor:
         """
         Sample timesteps for a batch.
@@ -46,12 +43,11 @@ class LogSNRUniformSampler:
             device (torch.device): Device to put the sampled timesteps on.
             global_step (int): Current global step (unused).
             max_steps (int): Max training steps (unused).
-            sigmoid_scale (float): Scale for sigmoid (unused).
-            discrete_flow_shift (float): Shift for discrete flow (unused).
 
         Returns:
             torch.Tensor: A tensor of sampled timesteps with shape (bsz,).
         """
+        del global_step, max_steps
         # Uniform in log-SNR range, then nearest neighbor on indices
         log_min = self.log_snr.min()
         log_max = self.log_snr.max()

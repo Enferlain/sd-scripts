@@ -22,6 +22,7 @@ from library.optimizers.optimizer_utils import should_train_text_encoder
 logger = logging.getLogger(__name__)
 
 VALID_MODES = {"finetune", "peft", "textual_inversion"}
+VALID_TIMESTEP_SAMPLERS = {"uniform", "shift", "log_snr_uniform", "adaptive_log_snr"}
 
 
 def _is_non_bool_number(value: object) -> bool:
@@ -156,6 +157,44 @@ def _validate_validation_config(cfg) -> None:
         raise ValueError(
             "Validation is scheduled but no validation data source is configured. "
             "Set data.source.val_data_dir or validation.validation_split."
+        )
+
+
+def _validate_timestep_config(cfg) -> None:
+    """Validate the active timestep sampler surface and adaptive sampler settings."""
+    timestep_cfg = _get_optional_attr(cfg, "timestep")
+    if timestep_cfg is None:
+        return
+
+    timestep_sampling = getattr(timestep_cfg, "timestep_sampling", "uniform") or "uniform"
+    if timestep_sampling not in VALID_TIMESTEP_SAMPLERS:
+        raise ValueError(
+            f"timestep.timestep_sampling must be one of {sorted(VALID_TIMESTEP_SAMPLERS)}, got {timestep_sampling!r}"
+        )
+
+    adaptive_cfg = getattr(timestep_cfg, "adaptive_log_snr", None)
+    if adaptive_cfg is None:
+        return
+
+    if not _is_non_bool_int(adaptive_cfg.bins) or adaptive_cfg.bins < 2:
+        raise ValueError("timestep.adaptive_log_snr.bins must be an integer >= 2.")
+    if not _is_non_bool_number(adaptive_cfg.ema_beta) or not 0.0 <= float(adaptive_cfg.ema_beta) < 1.0:
+        raise ValueError("timestep.adaptive_log_snr.ema_beta must be in [0.0, 1.0).")
+    if not _is_non_bool_number(adaptive_cfg.temperature) or float(adaptive_cfg.temperature) <= 0.0:
+        raise ValueError("timestep.adaptive_log_snr.temperature must be > 0.")
+    if not _is_non_bool_number(adaptive_cfg.prior_weight) or not 0.0 <= float(adaptive_cfg.prior_weight) <= 1.0:
+        raise ValueError("timestep.adaptive_log_snr.prior_weight must be between 0.0 and 1.0 inclusive.")
+    if not _is_non_bool_number(adaptive_cfg.min_prob) or float(adaptive_cfg.min_prob) < 0.0:
+        raise ValueError("timestep.adaptive_log_snr.min_prob must be >= 0.")
+    if not _is_non_bool_int(adaptive_cfg.warmup_steps) or adaptive_cfg.warmup_steps < 0:
+        raise ValueError("timestep.adaptive_log_snr.warmup_steps must be a non-negative integer.")
+    if not _is_non_bool_number(adaptive_cfg.entropy_floor) or not 0.0 <= float(adaptive_cfg.entropy_floor) <= 1.0:
+        raise ValueError("timestep.adaptive_log_snr.entropy_floor must be between 0.0 and 1.0 inclusive.")
+    if not _is_non_bool_number(adaptive_cfg.uniform_mix_when_low_entropy) or not 0.0 <= float(
+        adaptive_cfg.uniform_mix_when_low_entropy
+    ) <= 1.0:
+        raise ValueError(
+            "timestep.adaptive_log_snr.uniform_mix_when_low_entropy must be between 0.0 and 1.0 inclusive."
         )
 
 
@@ -455,6 +494,7 @@ def validate_config(cfg) -> None:
     _validate_validation_config(cfg)
     _validate_mode_config(cfg)
     _validate_model_profile_config(cfg)
+    _validate_timestep_config(cfg)
 
     # TODO: Revisit when model-agnostic block/layer granular LR is implemented
     # Currently SDXL-specific and assumes 23 blocks - not widely used

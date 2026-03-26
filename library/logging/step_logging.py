@@ -11,7 +11,7 @@ def generate_step_logs(
     avr_loss,
     lr_scheduler,
     lr_descriptions: list[str],
-    la_sampler=None,
+    timestep_runtime=None,
     optimizer=None,
     keys_scaled=None,
     mean_norm=None,
@@ -64,24 +64,23 @@ def generate_step_logs(
         for modifier_name, modifier_lr in modifier_lrs.items():
             logs[f"lr/{modifier_name}"] = modifier_lr
 
-    if cfg.timestep.timestep_sampling == "mix_adaptive" and la_sampler is not None and timesteps is not None:
-        if hasattr(la_sampler, "last_mix_p"):
-            logs["sampler/mix_p"] = la_sampler.last_mix_p
-        if hasattr(la_sampler, "last_small_t_frac"):
-            logs["sampler/small_t_frac"] = la_sampler.last_small_t_frac
+    sampler = getattr(timestep_runtime, "sampler", None)
+    if sampler is not None and timesteps is not None:
+        if hasattr(sampler, "bin_loss_ema"):
+            logs["sampler/ema_loss_mean"] = sampler.bin_loss_ema.mean().item()
+            logs["sampler/ema_loss_std"] = sampler.bin_loss_ema.std().item()
 
-        if hasattr(la_sampler, "bin_loss_ema"):
-            logs["sampler/ema_loss_mean"] = la_sampler.bin_loss_ema.mean().item()
-            logs["sampler/ema_loss_std"] = la_sampler.bin_loss_ema.std().item()
-
-            for i, loss_val in enumerate(la_sampler.bin_loss_ema):
+            for i, loss_val in enumerate(sampler.bin_loss_ema):
                 logs[f"sampler_ema_loss_bins/bin_{i}"] = loss_val.item()
 
-        if hasattr(la_sampler, "num_bins") and hasattr(la_sampler, "T"):
+        if hasattr(sampler, "last_entropy_ratio"):
+            logs["sampler/entropy_ratio"] = sampler.last_entropy_ratio
+
+        if hasattr(sampler, "num_bins") and hasattr(sampler, "T"):
             hist = torch.histogram(
                 timesteps.float().cpu(),
-                bins=la_sampler.num_bins,
-                range=(0, la_sampler.T),
+                bins=sampler.num_bins,
+                range=(0, sampler.T),
             )
             for i, count in enumerate(hist.hist):
                 logs[f"sampler_timestep_hist/bin_{i}"] = count.item()  # hist is a Tensor, .item() is valid
