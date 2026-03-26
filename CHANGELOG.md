@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Accelerator logging directories are now built in a platform-correct way** — The pure accelerator config path no longer hardcodes POSIX separators when deriving the run log directory.
   - `library/training/trainer_utils.py` now uses `os.path.join(...)` when building the computed accelerator `project_dir`.
   - This restores the expected `tensorboard` default-path and `wandb` side-effect behavior on Windows and keeps `tests/unit/training/test_training_trainer_utils.py` green across platforms.
+- **Validation-loop config now fails fast for runtime-breaking values** — Invalid validation settings no longer make it through to strategy runtime where they would fail later or produce divide-by-zero behavior.
+  - `library/config/config_validation.py` now validates `validation.validation_split`, `validation.max_validation_steps`, and `validation.validation_timesteps`, including malformed literals and empty timestep lists.
+  - `tests/unit/test_config_validation.py` now covers the new validation-loop config error paths.
+  - The central validator now also rejects the previously ignored `data.source.val_data_dir` + `validation.validation_split` combination and fails fast when validation is scheduled but no validation data source is configured.
 
 ## [2026-03-25]
 

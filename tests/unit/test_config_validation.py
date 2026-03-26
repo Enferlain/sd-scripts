@@ -84,6 +84,7 @@ def make_validate_cfg(overrides: dict | None = None):
             "learning_rates": {"blocks": None, "text_encoders": 0, "denoiser": 1e-4, "base": 1e-4},
         },
         "data": {
+            "source": {"val_data_dir": None},
             "caching": {"cache_text_encoder_outputs": False},
             "bucketing": {"bucket_reso_steps": 64},
             "caption": {
@@ -108,6 +109,16 @@ def make_validate_cfg(overrides: dict | None = None):
                     "drop_policy": "drop_oldest",
                 }
             },
+        },
+        "validation": {
+            "validation_split": 0.0,
+            "validation_seed": None,
+            "run_at_start": False,
+            "run_at_end": False,
+            "validate_every_n_steps": None,
+            "validate_every_n_epochs": None,
+            "max_validation_steps": None,
+            "validation_timesteps": "[50, 350, 500, 650, 950]",
         },
     }
     if overrides is None:
@@ -772,6 +783,90 @@ class TestValidateConfig:
 
         with pytest.raises(ValueError, match="laplace_timestep_sampling is not implemented"):
             validate_config(cfg)
+
+    def test_validation_split_must_be_between_zero_and_one(self):
+        """Validation split should fail fast when outside the scanner-supported range."""
+        cfg = make_validate_cfg({"validation": {"validation_split": 1.5}})
+
+        with pytest.raises(ValueError, match="validation\\.validation_split must be between 0\\.0 and 1\\.0 inclusive"):
+            validate_config(cfg)
+
+    def test_max_validation_steps_must_be_positive(self):
+        """Zero validation steps should fail instead of dividing by zero in the validation loop."""
+        cfg = make_validate_cfg({"validation": {"max_validation_steps": 0}})
+
+        with pytest.raises(ValueError, match="validation\\.max_validation_steps must be a positive integer"):
+            validate_config(cfg)
+
+    def test_validation_timesteps_literal_must_parse(self):
+        """Malformed validation timestep literals should fail before strategy runtime."""
+        cfg = make_validate_cfg({"validation": {"validation_timesteps": "[50, bad, 950]"}})
+
+        with pytest.raises(ValueError, match="validation\\.validation_timesteps must be a valid Python list/tuple literal"):
+            validate_config(cfg)
+
+    def test_validation_timesteps_must_not_be_empty(self):
+        """An empty timestep list would produce a divide-by-zero in validation averaging."""
+        cfg = make_validate_cfg({"validation": {"validation_timesteps": "[]"}})
+
+        with pytest.raises(ValueError, match="validation\\.validation_timesteps must contain at least one timestep"):
+            validate_config(cfg)
+
+    def test_validation_timesteps_must_be_non_negative_ints(self):
+        """Only non-negative integer validation timesteps should be accepted."""
+        cfg = make_validate_cfg({"validation": {"validation_timesteps": "[50, -1, 950]"}})
+
+        with pytest.raises(ValueError, match="validation\\.validation_timesteps must contain only non-negative integers"):
+            validate_config(cfg)
+
+    def test_validation_split_conflicts_with_separate_validation_dir(self):
+        """Separate validation directories should not be combined with train-data splitting."""
+        cfg = make_validate_cfg(
+            {
+                "data": {"source": {"val_data_dir": "/tmp/val-data"}},
+                "validation": {"validation_split": 0.2},
+            }
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="data\\.source\\.val_data_dir and validation\\.validation_split cannot both be set",
+        ):
+            validate_config(cfg)
+
+    def test_validation_schedule_requires_validation_data_source(self):
+        """Explicit validation scheduling should fail fast when no validation data exists."""
+        cfg = make_validate_cfg({"validation": {"run_at_start": True}})
+
+        with pytest.raises(
+            ValueError,
+            match="Validation is scheduled but no validation data source is configured",
+        ):
+            validate_config(cfg)
+
+    def test_validation_schedule_with_split_is_allowed(self):
+        """Validation scheduling should be allowed when train-data splitting provides validation data."""
+        cfg = make_validate_cfg(
+            {
+                "validation": {
+                    "validation_split": 0.2,
+                    "validate_every_n_steps": 100,
+                }
+            }
+        )
+
+        validate_config(cfg)
+
+    def test_validation_schedule_with_separate_val_dir_is_allowed(self):
+        """Validation scheduling should be allowed when a separate validation directory exists."""
+        cfg = make_validate_cfg(
+            {
+                "data": {"source": {"val_data_dir": "/tmp/val-data"}},
+                "validation": {"validate_every_n_epochs": 1},
+            }
+        )
+
+        validate_config(cfg)
 
     @pytest.mark.skip(reason="Block LR validation is model-specific, currently disabled pending refactor")
     def test_sdxl_block_lr_wrong_count_raises(self):

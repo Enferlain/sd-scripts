@@ -14,6 +14,7 @@ Usage:
         # ... training code
 """
 
+import ast
 import logging
 
 from library.optimizers.optimizer_utils import should_train_text_encoder
@@ -26,6 +27,11 @@ VALID_MODES = {"finetune", "peft", "textual_inversion"}
 def _is_non_bool_number(value: object) -> bool:
     """Return True for int/float values, excluding bool."""
     return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def _is_non_bool_int(value: object) -> bool:
+    """Return True for int values, excluding bool."""
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def _get_optional_attr(root, *path, default=None):
@@ -80,6 +86,76 @@ def _validate_model_profile_config(cfg) -> None:
             "cache_text_encoder_outputs cannot be used with caption_dropout_rate, "
             "shuffle_caption, token_warmup_step, or caption_tag_dropout_rate because "
             "those settings change text conditioning between steps."
+        )
+
+
+def _parse_validation_timesteps(raw_timesteps: object) -> list[int]:
+    """Parse validation timestep config into a validated list of non-negative ints."""
+    if isinstance(raw_timesteps, str):
+        try:
+            parsed_timesteps = ast.literal_eval(raw_timesteps)
+        except (SyntaxError, ValueError) as exc:
+            raise ValueError(
+                "validation.validation_timesteps must be a valid Python list/tuple literal of integers."
+            ) from exc
+    elif isinstance(raw_timesteps, list | tuple):
+        parsed_timesteps = raw_timesteps
+    else:
+        raise ValueError("validation.validation_timesteps must be provided as a list/tuple or Python list literal string.")
+
+    if not isinstance(parsed_timesteps, list | tuple) or len(parsed_timesteps) == 0:
+        raise ValueError("validation.validation_timesteps must contain at least one timestep.")
+
+    validated_timesteps: list[int] = []
+    for timestep in parsed_timesteps:
+        if not _is_non_bool_int(timestep):
+            raise ValueError("validation.validation_timesteps must contain only integers.")
+        if timestep < 0:
+            raise ValueError("validation.validation_timesteps must contain only non-negative integers.")
+        validated_timesteps.append(int(timestep))
+
+    return validated_timesteps
+
+
+def _validate_validation_config(cfg) -> None:
+    """Validate the active validation config before the runtime loop consumes it."""
+    validation_cfg = _get_optional_attr(cfg, "validation")
+    if validation_cfg is None:
+        return
+
+    validation_split = getattr(validation_cfg, "validation_split", None)
+    if validation_split is not None and not 0.0 <= float(validation_split) <= 1.0:
+        raise ValueError("validation.validation_split must be between 0.0 and 1.0 inclusive.")
+
+    val_data_dir = _get_optional_attr(cfg, "data", "source", "val_data_dir")
+    has_separate_val_dir = isinstance(val_data_dir, str) and val_data_dir.strip() != ""
+    has_validation_split = validation_split is not None and float(validation_split) > 0.0
+    if has_separate_val_dir and has_validation_split:
+        raise ValueError(
+            "data.source.val_data_dir and validation.validation_split cannot both be set. "
+            "Choose either a separate validation directory or a split from the training data."
+        )
+
+    max_validation_steps = getattr(validation_cfg, "max_validation_steps", None)
+    if max_validation_steps is not None and (not _is_non_bool_int(max_validation_steps) or max_validation_steps < 1):
+        raise ValueError("validation.max_validation_steps must be a positive integer when set.")
+
+    validation_timesteps = getattr(validation_cfg, "validation_timesteps", None)
+    if validation_timesteps is not None:
+        _parse_validation_timesteps(validation_timesteps)
+
+    explicit_validation_requested = any(
+        (
+            bool(getattr(validation_cfg, "run_at_start", False)),
+            bool(getattr(validation_cfg, "run_at_end", False)),
+            getattr(validation_cfg, "validate_every_n_steps", None) is not None,
+            getattr(validation_cfg, "validate_every_n_epochs", None) is not None,
+        )
+    )
+    if explicit_validation_requested and not (has_separate_val_dir or has_validation_split):
+        raise ValueError(
+            "Validation is scheduled but no validation data source is configured. "
+            "Set data.source.val_data_dir or validation.validation_split."
         )
 
 
@@ -376,6 +452,7 @@ def validate_config(cfg) -> None:
             "Cannot train text encoder while TE output caching is enabled. Disable TE output caching, or set text_encoders LR to 0."
         )
 
+    _validate_validation_config(cfg)
     _validate_mode_config(cfg)
     _validate_model_profile_config(cfg)
 

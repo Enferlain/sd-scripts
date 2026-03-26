@@ -97,6 +97,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - Sampling cadence conflicts now fail fast instead of silently preferring epoch cadence.
 - Active config composition now cleanly matches the shared dataclass schema.
 - Sampling config now supports inline/default generation parameters plus `sample_prompt_file`.
+- Validation config now also fails fast for invalid `validation_split`, non-positive `max_validation_steps`, malformed or empty `validation_timesteps`, conflicting `val_data_dir` + `validation_split`, and scheduled validation with no validation data source instead of leaving those errors to strategy/runtime behavior.
 - EDM2 importance-weighting conflict handling now runs through the active nested config path, and the dormant `laplace_timestep_sampling` toggle now fails fast instead of silently acting unsupported.
 - The active training path now treats EDM2 as one bundled runtime sidecar instead of several loose trainer fields, which makes the loop/checkpoint/logging wiring easier to follow.
 - `loss.edm2` now has one structured feature-owned config surface (`enabled`, `optimizer.*`, `importance.*`, `visualization.*`) instead of a long flat list of `edm2_loss_weighting_*` fields.
