@@ -1,6 +1,4 @@
-"""Compatibility wrapper for launching the SDXL PEFT preset."""
-
-import logging
+"""Canonical root entrypoint for the active config-driven training launcher."""
 
 import hydra
 
@@ -8,19 +6,15 @@ from library.config.dataclasses.run import RunConfig
 from library.training.launcher import run_training
 
 
-logger = logging.getLogger(__name__)
-
-
 def train(cfg: RunConfig) -> None:
-    """Run SDXL PEFT training through the shared launcher."""
+    """Run training through the shared config-driven launcher."""
     run_training(cfg)
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="presets/sdxl_peft")
+@hydra.main(version_base=None, config_path="configs", config_name=None)
 def main(cfg: RunConfig) -> None:
-    """Main entry point for the SDXL PEFT compatibility wrapper."""
+    """Main entrypoint for the active training launcher."""
     train(cfg)
-
 
 if __name__ == "__main__":
     from library.config.schemas import register_run

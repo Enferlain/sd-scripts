@@ -9,6 +9,7 @@ import os
 
 import pytest
 from hydra import compose
+from omegaconf import OmegaConf
 
 from library.config.dataclasses.optimizer import OptimizerConfig
 from library.config.dataclasses.data import DataConfig, BucketingConfig
@@ -211,6 +212,13 @@ class TestHydraComposition:
         assert "training" in cfg
         assert cfg.model.model_type == "sd15"
 
+    def test_internal_default_config_composition(self, hydra_ctx):
+        """Test the internal full-schema default baseline."""
+        cfg = compose(config_name="_defaults/default")
+        assert cfg is not None
+        assert OmegaConf.is_missing(cfg, "mode")
+        assert cfg.model.model_type is None
+
     def test_sd_finetune_config_composition(self, hydra_ctx):
         """Test sd_finetune config loading via Hydra."""
         cfg = compose(config_name="presets/sd_finetune")
@@ -316,9 +324,7 @@ class TestConfigOverrides:
 
     def test_optimizer_override(self, hydra_ctx):
         """Test overriding optimizer config values."""
-        cfg = compose(
-            config_name="presets/sd_peft", overrides=["optimizer.learning_rates.base=5e-5", "optimizer.optimizer_type=AdamW"]
-        )
+        cfg = compose(config_name="presets/sd_peft", overrides=["optimizer.learning_rates.base=5e-5", "optimizer.optimizer_type=AdamW"])
         assert cfg.optimizer.learning_rates.base == 5e-5
         assert cfg.optimizer.optimizer_type == "AdamW"
 

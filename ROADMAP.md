@@ -94,6 +94,9 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 ### Recently Completed / Settled
 
+- The active launcher surface for PEFT/fine-tune is now config-driven: a canonical root `train.py` builds `mode` and `model.model_type` through small factories instead of requiring one near-duplicate active script per mode/model combination. Textual inversion still sits outside that launcher until its runtime path is migrated.
+- Benchmark runs now use that same root launcher path too, so benchmark smoke coverage exercises the active config-driven entry surface instead of separate script-specific launch wiring.
+- The root launcher now relies on an explicit `--config-name`, while the internal full-schema fallback lives at `configs/_defaults/default.yaml` without choosing a mode or model family.
 - Sampling cadence conflicts now fail fast instead of silently preferring epoch cadence.
 - Active config composition now cleanly matches the shared dataclass schema.
 - Sampling config now supports inline/default generation parameters plus `sample_prompt_file`.

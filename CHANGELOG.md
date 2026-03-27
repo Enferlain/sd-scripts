@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The active launcher path is now config-driven for PEFT/fine-tune** — The root entry surface no longer needs one near-duplicate script per active mode/model combination.
+  - Added a canonical root `train.py` launcher that composes the active nested config schema, prepares/validates config, and routes the run through shared mode/strategy factories.
+  - Added `library/training/modes/factory.py` for config-driven `mode -> TrainingMode` selection and `library/strategies/factory.py` for `model.model_type -> TrainingStrategy` selection.
+  - `scripts/sdxl_peft.py` and `scripts/sdxl_finetune.py` are now thin compatibility wrappers around the shared launcher instead of open-coding the same setup flow.
+  - `run_benchmark.ps1` now launches benchmark configs through `train.py --config-name=...` too, so benchmark runs follow the same active launcher surface instead of bypassing it through script-specific entrypoints.
+  - The generic launcher currently supports the active Trainer/TrainingMode path for `peft` and `finetune`; `textual_inversion` is still called out as not yet migrated to that path and fails fast if requested through the new launcher.
+  - The root launcher no longer invents a fake public default config: `train.py` now relies on an explicit `--config-name`, while the neutral internal `_defaults/default.yaml` baseline remains available for composition/tooling checks.
 - **Conditioning ownership is now clearer in the active strategy path** — The base conditioning marker no longer lives in the data layer, and SDXL’s concrete conditioning payload now has its own strategy module.
   - Moved `ModelConditioning` from `library/data/structures.py` to `library/strategies/base/contracts.py` so strategy-owned conditioning types are defined with the rest of the strategy contract surface.
   - Added `library/strategies/sdxl/conditioning.py` for `SdxlConditioning`, and updated the active SDXL caching / denoiser paths to import that concrete conditioning type from its own strategy home.
@@ -118,7 +125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Hydra config composition now has an active entry-config audit** — The current shipped entry configs are now checked against the nested dataclass schema instead of relying on a few spot checks.
   - `tests/unit/test_configs.py` now composes every active entry config under `configs/` (excluding `_defaults/` fragments and the example override file) so schema drift is caught by a single regression test.
-  - The generic internal baseline config was updated to the current nested defaults layout and moved under `configs/_defaults/config/default.yaml` so ad hoc composition and config tooling still have a valid baseline without leaving a fake entry config at the top level.
+  - The generic internal baseline config was updated to the current nested defaults layout so ad hoc composition and config tooling still have a valid baseline without leaving a fake entry config at the top level.
   - Removed the empty SDXL placeholder namespace from the active schema/defaults path: the SDXL root dataclasses no longer expose a no-op `sdxl` field, the top-level SDXL config files no longer compose `sdxl: default`, and the dead placeholder files were deleted.
   - `configs/model/default.yaml` is now truly shared again: it no longer chooses a model family, `ModelConfig.model_type` is required in the schema, and the top-level SD / SDXL configs now set `model.model_type` explicitly so run identity cannot drift from the config entrypoint.
   - `configs/model/default.yaml` now still shows `model_type` explicitly, but as `null` instead of a misleading family default, and `config_validation.py` raises a clear error if it is left unset.

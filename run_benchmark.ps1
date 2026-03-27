@@ -69,7 +69,7 @@ $configName = $configMap[$Config]
 $configFile = Join-Path $projectRoot ("configs\" + ($configName -replace '/', '\') + ".yaml")
 
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  SDXL PEFT Benchmark (New Data Pipeline)" -ForegroundColor Cyan
+Write-Host "  SDXL Benchmark (Active Train Launcher)" -ForegroundColor Cyan
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
 
@@ -95,7 +95,9 @@ if (Test-Path $configFile) {
 $outputDir = "$projectRoot\benchmark_output"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
-# Route finetune configs to sdxl_finetune.py, everything else to sdxl_peft.py
+# Benchmark runs now always go through the canonical root launcher.
+# Keep mode-specific detection only for operator-facing log messages.
+$launcher = "train.py"
 $finetuneConfigs = @(
     "tests/test_finetune",
     "benchmarks/benchmark_sdxl_finetune",
@@ -103,13 +105,11 @@ $finetuneConfigs = @(
     "benchmarks/benchmark_finetune_resource_sampled"
 )
 if ($finetuneConfigs -contains $configName) {
-    $script = "scripts/sdxl_finetune.py"
     Write-Host "[INFO] Config: $Config ($configName)" -ForegroundColor Green
-    Write-Host "[INFO] Running FINE-TUNE pipeline (sdxl_finetune.py)" -ForegroundColor Green
+    Write-Host "[INFO] Running FINE-TUNE mode through $launcher" -ForegroundColor Green
 } else {
-    $script = "scripts/sdxl_peft.py"
     Write-Host "[INFO] Config: $Config ($configName)" -ForegroundColor Green
-    Write-Host "[INFO] Running PEFT pipeline (sdxl_peft.py with TrainingDataset)" -ForegroundColor Green
+    Write-Host "[INFO] Running PEFT mode through $launcher" -ForegroundColor Green
 }
 
 # Collect system info
@@ -178,9 +178,9 @@ for ($i = 1; $i -le $Runs; $i++) {
     if ($Profile) {
         $profileFile = "$outputDir\profile_run${i}.prof"
         Write-Host "[INFO] Profiling enabled, output: $profileFile"
-        & $venv -m cProfile -o $profileFile $script "--config-name=$configName" @resourceMonitorArgs 2>&1 | Tee-Object -FilePath $logFile
+        & $venv -m cProfile -o $profileFile $launcher "--config-name=$configName" @resourceMonitorArgs 2>&1 | Tee-Object -FilePath $logFile
     } else {
-        & $venv $script "--config-name=$configName" @resourceMonitorArgs 2>&1 | Tee-Object -FilePath $logFile
+        & $venv $launcher "--config-name=$configName" @resourceMonitorArgs 2>&1 | Tee-Object -FilePath $logFile
     }
     $runExitCode = $LASTEXITCODE
     if ($runExitCode -ne 0) {
