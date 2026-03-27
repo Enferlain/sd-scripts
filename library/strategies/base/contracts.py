@@ -8,6 +8,18 @@ import torch
 from library.losses.loss_modifiers import BatchLossOutput
 
 
+class ModelConditioning(ABC):  # noqa: B024 - Marker class, no abstract methods
+    """
+    Base class for model-specific conditioning payloads.
+
+    Concrete strategy families define their own conditioning dataclasses and
+    thread them through cache loading / batch assembly as needed. The data
+    pipeline only transports these values; ownership lives with strategies.
+    """
+
+    pass
+
+
 class ModelLoadingStrategy(ABC):
     """Strategy for loading model components (text encoders, VAE, denoiser)."""
 

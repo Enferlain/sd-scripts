@@ -4,7 +4,7 @@ import torch
 
 from library.models.sdxl.conversion import get_size_embeddings
 from library.strategies.base.contracts import DenoiserCallingStrategy
-from library.strategies.sdxl.caching import SdxlConditioning
+from library.strategies.sdxl.conditioning import SdxlConditioning
 
 
 class SdxlDenoiserCallingStrategy(DenoiserCallingStrategy):

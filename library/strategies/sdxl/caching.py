@@ -7,7 +7,6 @@ by the data backend.
 """
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 import random
@@ -18,34 +17,15 @@ from safetensors.torch import save_file
 
 
 from library.data.caching_engine import CacheBackend
-from library.data.structures import CacheData, CacheEntry, ModelConditioning
+from library.data.structures import CacheData, CacheEntry
 from library.constants import SDXL_VAE_LATENT_SCALE
 from library.strategies.base.contracts import CachingStrategy
+from library.strategies.sdxl.conditioning import SdxlConditioning
 
 from library.utils.hash_utils import stable_string_hash
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class SdxlConditioning(ModelConditioning):
-    """
-    SDXL-specific micro-conditioning metadata.
-
-    SDXL uses original image size, crop coordinates, and target size as conditioning
-    inputs to improve generation quality. These are stored in cache metadata and
-    extracted during loading. See SDXL paper section 2.2.
-    """
-
-    original_size_hw: tuple[int, int]
-    """Original image size (height, width) before any processing."""
-
-    crop_top_left: tuple[int, int]
-    """Crop offset (top, left) in bucket pixel space."""
-
-    target_size_hw: tuple[int, int]
-    """Target/bucket resolution (height, width) the image was resized to."""
 
 
 class SdxlCachingStrategy(CachingStrategy):

@@ -4,29 +4,16 @@ Core dataclasses for the new data pipeline.
 These replace the monolithic ImageInfo with focused, single-responsibility structures.
 """
 
-from abc import ABC
 from dataclasses import dataclass, field
 
 import torch
+
+from library.strategies.base.contracts import ModelConditioning
 
 
 # =============================================================================
 # Cache Loading Types (returned by CacheBackend.load_cache)
 # =============================================================================
-
-
-class ModelConditioning(ABC):  # noqa: B024 - Marker class, no abstract methods
-    """
-    Base class for model-specific conditioning data.
-
-    Each model type (SD1.5, SDXL, Flux, SD3) has different conditioning requirements.
-    This abstract base enables type-safe composition without coupling the dataloader
-    to any specific model.
-
-    The training loop, which IS model-specific, casts this to the concrete type.
-    """
-
-    pass
 
 
 @dataclass

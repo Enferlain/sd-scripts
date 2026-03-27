@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Conditioning ownership is now clearer in the active strategy path** — The base conditioning marker no longer lives in the data layer, and SDXL’s concrete conditioning payload now has its own strategy module.
+  - Moved `ModelConditioning` from `library/data/structures.py` to `library/strategies/base/contracts.py` so strategy-owned conditioning types are defined with the rest of the strategy contract surface.
+  - Added `library/strategies/sdxl/conditioning.py` for `SdxlConditioning`, and updated the active SDXL caching / denoiser paths to import that concrete conditioning type from its own strategy home.
+  - `library/data/structures.py` now treats conditioning as a transported strategy payload via `CacheData.conditioning`, rather than owning the base type itself.
+- **SD / SDXL text-conditioning acquisition now reads more clearly inside diffusion** — The `get_text_conds` path keeps the same behavior, but the source-selection flow is easier to follow.
+  - `library/strategies/sd/diffusion.py` and `library/strategies/sdxl/diffusion.py` now split `get_text_conds` into small private helpers for cached-output loading, live encoding, and cached/live merge behavior.
+  - Added focused SD tests for the cached-output and forced-live-reencode branches, while keeping the existing SDXL source-selection coverage in place.
 - **Active timestep sampling now has a trainer-owned runtime seam** — The main training path no longer depends on strategy-owned `la_sampler` state just to support adaptive timestep policies.
   - Added `library/timesteps/runtime.py` with a `TimestepRuntime` that owns requested/effective mode resolution, adaptive sampler construction, dynamic timestep schedule state, timestep sampling, and adaptive-loss observation.
   - `Trainer` now creates and stores `self.timestep_runtime`, and the training loop advances schedule state and reports adaptive observations through that runtime instead of keeping separate trainer timestep fields or updating sampler state inside SD / SDXL strategies.

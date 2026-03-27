@@ -148,6 +148,7 @@ class TestSdLatentsPipelineStrategy:
         loaded = strategy.load_cache(cache_path)
         assert loaded.latents is not None
         assert loaded.latents.shape == (4, 72, 128)
+        assert loaded.conditioning is None
 
     def test_preprocess_image(self):
         """Test image preprocessing."""

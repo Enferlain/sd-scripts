@@ -20,6 +20,7 @@ from library.strategies.sdxl.caching import (
     SdxlTextEncoderPipelineStrategy,
     get_crop_ltrb,
 )
+from library.strategies.sdxl.conditioning import SdxlConditioning
 
 
 @pytest.fixture
@@ -128,6 +129,22 @@ class TestSdxlLatentsSaveLoad:
         assert "bucket_reso" in metadata
         assert metadata["bucket_reso"] == "1024,576"
         assert "crop_ltrb" in metadata
+
+    def test_load_cache_returns_sdxl_conditioning(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
+        """Test that SDXL latent cache loading reconstructs the SDXL conditioning payload."""
+        strategy = SdxlLatentsPipelineStrategy(dtype="fp32")
+        cache_path = Path(sample_entry.latent_cache_path)
+
+        images = torch.randn(1, 3, 576, 1024)
+        results = strategy.encode_batch(images, mock_vae, [sample_entry])
+        strategy.save_cache(results[0], cache_path)
+
+        cache_data = strategy.load_cache(cache_path)
+
+        assert isinstance(cache_data.conditioning, SdxlConditioning)
+        assert cache_data.conditioning.original_size_hw == (1080, 1920)
+        assert cache_data.conditioning.target_size_hw == (576, 1024)
+        assert cache_data.conditioning.crop_top_left == (0, 0)
 
     def test_dtype_fp16_roundtrip(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
         """Test fp16 latents save/load correctly."""

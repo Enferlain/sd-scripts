@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from library.data.dataloader import TrainingDataset
 from library.data.structures import DatasetManifest, EpochManifest, BatchInfo, CacheEntry, CacheData
+from library.strategies.sdxl.conditioning import SdxlConditioning
 
 
 # -----------------------------------------------------------------------------
@@ -156,6 +157,39 @@ def test_batch_format(mock_dataset_manifest, mock_epoch_manifest, mock_latent_ca
     assert isinstance(batch["loss_weights"], torch.Tensor)
     assert isinstance(batch["conditionings"], list)
     assert isinstance(batch["flippeds"], list)
+
+
+def test_dataloader_preserves_model_conditioning_payloads(
+    mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, sample_entries
+):
+    """Verify that dataloader transports strategy-owned conditioning payloads opaquely."""
+
+    mock_dataset_manifest.entries = sample_entries
+    batch_info = BatchInfo(image_ids=["img1"], bucket_reso=(512, 512), processed_captions=["proc_cap1"])
+    mock_epoch_manifest.batches = [batch_info]
+
+    conditioning = SdxlConditioning(
+        original_size_hw=(512, 512),
+        crop_top_left=(0, 0),
+        target_size_hw=(512, 512),
+    )
+    mock_latent_cache_backend.load_cache.return_value = CacheData(
+        latents=torch.randn(4, 64, 64),
+        latents_flipped=None,
+        conditioning=conditioning,
+        alpha_mask=None,
+    )
+
+    dataset = TrainingDataset(
+        dataset_manifest=mock_dataset_manifest,
+        epoch_manifest=mock_epoch_manifest,
+        latent_cache_backend=mock_latent_cache_backend,
+    )
+
+    batch = next(iter(dataset))
+
+    assert batch["conditionings"] == [conditioning]
+    assert isinstance(batch["conditionings"][0], SdxlConditioning)
 
 
 def test_flip_aug(mock_dataset_manifest, mock_epoch_manifest, mock_latent_cache_backend, sample_entries):

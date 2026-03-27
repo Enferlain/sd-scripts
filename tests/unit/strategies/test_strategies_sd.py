@@ -362,6 +362,84 @@ class TestSdTrainingStrategyComposition:
         assert isinstance(text_conds[0], torch.Tensor)
 
     @patch("library.strategies.sd.tokenization.load_tokenizer")
+    def test_get_text_conds_uses_cached_outputs_without_live_reencode(
+        self,
+        mock_load_tokenizer,
+        mock_clip_tokenizer,
+        mock_clip_text_encoder,
+        sd_strategy_cfg,
+    ):
+        mock_load_tokenizer.return_value = mock_clip_tokenizer
+        strategy = SdTrainingStrategy(sd_strategy_cfg)
+        batch = {
+            "text_encoder_outputs": {"hidden_state": torch.randn(1, 77, 768)},
+        }
+        cfg = Mock()
+        cfg.data.caption.weighted_captions = False
+        cfg.performance.precision.full_fp16 = False
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+
+        with (
+            patch.object(strategy, "encode_tokens") as mock_encode,
+            patch.object(strategy, "encode_tokens_with_weights") as mock_weighted_encode,
+        ):
+            result = strategy._get_text_conds(
+                batch=batch,
+                text_encoders=[mock_clip_text_encoder],
+                accelerator=accelerator,
+                cfg=cfg,
+                train_text_encoder=False,
+                is_train=False,
+                weight_dtype=torch.float32,
+            )
+
+        mock_encode.assert_not_called()
+        mock_weighted_encode.assert_not_called()
+        assert len(result) == 1
+
+    @patch("library.strategies.sd.tokenization.load_tokenizer")
+    def test_get_text_conds_reencodes_when_training_text_encoder(
+        self,
+        mock_load_tokenizer,
+        mock_clip_tokenizer,
+        mock_clip_text_encoder,
+        sd_strategy_cfg,
+    ):
+        mock_load_tokenizer.return_value = mock_clip_tokenizer
+        strategy = SdTrainingStrategy(sd_strategy_cfg)
+        cached_hidden_state = torch.randn(1, 77, 768)
+        live_hidden_state = torch.randn(1, 77, 768)
+        batch = {
+            "captions": ["a cat"],
+            "text_encoder_outputs": {"hidden_state": cached_hidden_state},
+        }
+        cfg = Mock()
+        cfg.data.caption.weighted_captions = False
+        cfg.performance.precision.full_fp16 = False
+        accelerator = Mock()
+        accelerator.device = torch.device("cpu")
+        accelerator.autocast.return_value = nullcontext()
+
+        with (
+            patch.object(strategy, "tokenize", return_value=[torch.randint(0, 100, (1, 1, 77))]),
+            patch.object(strategy, "get_models_for_text_encoding", return_value=[mock_clip_text_encoder]),
+            patch.object(strategy, "encode_tokens", return_value=[live_hidden_state]) as mock_encode,
+        ):
+            result = strategy._get_text_conds(
+                batch=batch,
+                text_encoders=[mock_clip_text_encoder],
+                accelerator=accelerator,
+                cfg=cfg,
+                train_text_encoder=True,
+                is_train=True,
+                weight_dtype=torch.float32,
+            )
+
+        mock_encode.assert_called_once()
+        assert torch.equal(result[0], live_hidden_state)
+
+    @patch("library.strategies.sd.tokenization.load_tokenizer")
     def test_process_batch_accepts_new_input_ids_key(self, mock_load_tokenizer, mock_clip_tokenizer, sd_strategy_cfg):
         mock_load_tokenizer.return_value = mock_clip_tokenizer
         strategy = SdTrainingStrategy(sd_strategy_cfg)

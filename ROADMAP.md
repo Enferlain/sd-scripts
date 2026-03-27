@@ -121,7 +121,6 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - See `docs_design/strategy_system_followup.md`, `docs_design/strategy_base_decision.md`, and `docs_design/strategy_remaining_facet_audit.md`
 - [x] **Training orchestration hardening follow-up** — Shared training orchestration now has explicit epoch outcomes, scoped shared lifecycle helpers, shared eval-side execution for startup and step-triggered actions, and clearer trainer startup/finalization sequencing. See `docs_design/training_orchestration_followup.md` and `docs_design/training_orchestration_refactor_plan.md`.
 - [x] Timestep sampling reimplementation — the active path and compatibility wrappers now go through a trainer-owned `TimestepRuntime`, the sampler surface is narrowed to the intended set, and the sampler-backed runtime interface no longer leaks shift-specific knobs through every sampler API.
-- [ ] Clean integration for external `live_plotter`, possible rework at later time with dedicated logging setup
 - [ ] **`training_plots.py`** - Functions access multiple sub-configs (`cfg.output.saving`, `cfg.output.logging`, `cfg.timestep`) - acceptable for orchestration functions but could be cleaner
 - [ ] **Delete legacy training wrappers** (after legacy script deprecation) - Once `*_finetune.py` and `*_textual_inversion.py` scripts are migrated to new data pipeline, delete:
   - `library/training/sd_sample_generation.py`
@@ -147,10 +146,25 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now and the repo has an initial SDXL PEFT preset/example, but the feature still needs real docs and clearer guidance on when to use it.
 - [ ] **Conditioning architecture review** — Decide when “conditioning” deserves its own first-class shared concern instead of remaining split across encoding, caching, and denoiser/diffusion ownership.
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
-- [ ] **Live plotter / logging integration** — Fold the live plotter into the broader logging story instead of treating it as a side system.
+- [ ] **Dashboard / logging system rework** — Fold the live plotter into a broader dashboard/logging system instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
-- [ ] **External dependency ownership review** — Decide whether custom optimizers and LyCORIS should stay external or move under `library/` for easier modification.
+- [ ] **LyCORIS vendor / integration pass** — Treat LyCORIS as a vendor/integration ownership question rather than an external dependency question, since adapter breakdown follow-up depends on tighter ownership and easier modification.
+- [ ] **Custom optimizer vendor / integration pass** — Treat customized optimizers as a vendor/integration ownership question rather than an external dependency question, so optimizer behavior can be evolved in-repo as the training stack settles.
+- [ ] **Single launch-script review** — Decide whether the current entry surface should grow a unified launcher once the config/layout story is stable enough to support it cleanly.
 - [ ] **Future conditioning/data-flow experiments** — Later exploration area for better caption mutation, TE caching, on-the-fly CPU encoding, queues, async handoff, and related conditioning/data-flow improvements once the current building blocks are settled.
+
+---
+
+## Next Phase After Stabilization
+
+Once the current stabilization / cleanup list above is tied off, the roadmap should shift from architecture settling to capability expansion.
+
+- [ ] **Gradual new model implementations** — Add new model families incrementally on top of the current trainer / strategy foundation instead of trying to land a large multi-model rewrite all at once.
+- [ ] **New training approaches** — Open the next wave of work around new training methods once the active SD / SDXL path is stable enough to serve as the reference implementation.
+- [ ] **Rectified flow / RF support** — Evaluate and implement RF-style training/runtime support when the timestep / conditioning seams are mature enough to carry another training formulation cleanly.
+- [ ] **RamTorch vendor / integration pass** — Decide how much RamTorch should be owned and integrated directly in-repo as future model/training work expands.
+- [ ] **Alternative VAE training support** — Support training existing model families against different VAEs without forcing that logic to stay script-local or ad hoc.
+- [ ] **Additional capability-expansion items** — Keep this section open for the next wave of model/runtime work once the current cleanup phase is no longer the primary constraint.
 
 ---
 
