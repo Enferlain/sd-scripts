@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-28]
+
+### Changed
+
+- **The generic launcher no longer hides behind compatibility wrappers** — The active entry surface is now just the root launcher we already expect users and benchmarks to call.
+  - Inlined the shared launch body into `train.py` and removed `library/training/launcher.py`.
+  - Removed the `scripts/sdxl_peft.py` and `scripts/sdxl_finetune.py` compatibility wrappers instead of keeping duplicate Hydra entrypoints around after the root launcher was already working.
+  - Updated launcher tests to exercise `train.py` directly.
+- **SD / SDXL CLIP behavior now lives with strategy tokenization/encoding instead of under `library/models/sd`** — The active ownership split is now more consistent with the strategy contracts and the design note for model vs behavior code.
+  - Moved the current SD text-encoding helpers into `library/strategies/sd/encoding.py` and the SDXL text-encoding helpers into `library/strategies/sdxl/encoding.py`.
+  - Moved the CLIP-family tokenization helpers out of `library/models/sd/tokenizer.py` into the SD / SDXL strategy tokenization modules directly; for now the identical helper logic is duplicated locally instead of introducing a new shared/base strategy module.
+  - Deleted the old model-layer helper files `library/models/sd/text_encoder.py`, `library/models/sd/tokenizer.py`, and `library/models/sdxl/text_encoder.py`.
+  - Updated the active SD / SDXL strategy, caching, pipeline, and tests/imports to use the new strategy-owned locations.
+- **Prompt-attention parsing now has one canonical implementation again** — The repo no longer carries separate LPW-pipeline copies of the same parser.
+  - Kept `library/data/prompt_utils.py::parse_prompt_attention()` as the canonical implementation and upgraded it to the best typed/docstring variant from the duplicated copies.
+  - `library/pipelines/lpw_stable_diffusion.py` and `library/pipelines/sdxl_lpw_stable_diffusion.py` now import that canonical parser instead of defining their own local copies.
+
 ## [2026-03-26]
 
 ### Changed

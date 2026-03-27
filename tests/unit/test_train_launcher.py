@@ -1,4 +1,4 @@
-"""Unit tests for the active config-driven train launcher and its factories."""
+"""Unit tests for the active config-driven train entrypoint and its factories."""
 
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -94,20 +94,20 @@ def test_build_training_strategy_unknown_model_type_raises() -> None:
         build_training_strategy(cfg)
 
 
-@patch("library.training.launcher.Trainer")
-@patch("library.training.launcher.build_training_mode")
-@patch("library.training.launcher.build_training_strategy")
-@patch("library.training.launcher.validate_config")
-@patch("library.training.launcher.prepare_config")
-def test_run_training_wires_mode_strategy_and_trainer(
+@patch("train.Trainer")
+@patch("train.build_training_mode")
+@patch("train.build_training_strategy")
+@patch("train.validate_config")
+@patch("train.prepare_config")
+def test_train_wires_mode_strategy_and_trainer(
     mock_prepare_config,
     mock_validate_config,
     mock_build_training_strategy,
     mock_build_training_mode,
     mock_trainer_cls,
 ) -> None:
-    """run_training should prepare config, build objects, and start the trainer."""
-    from library.training.launcher import run_training
+    """train() should prepare config, build objects, and start the trainer."""
+    import train
 
     cfg = SimpleNamespace(mode="peft", model=SimpleNamespace(model_type="sdxl"))
     strategies = Mock()
@@ -116,7 +116,7 @@ def test_run_training_wires_mode_strategy_and_trainer(
     mock_build_training_strategy.return_value = strategies
     mock_build_training_mode.return_value = mode
 
-    run_training(cfg)
+    train.train(cfg)
 
     mock_prepare_config.assert_called_once_with(cfg)
     mock_validate_config.assert_called_once_with(cfg)

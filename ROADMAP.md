@@ -94,7 +94,13 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 ### Recently Completed / Settled
 
+- The active SD / SDXL CLIP helper cleanup is now settled enough to stop blocking SD3 prep:
+  - family text-encoding behavior now lives in `library/strategies/*/encoding.py`
+  - CLIP-family tokenization helpers no longer pretend to be SD model-layer code
+  - the current duplicated SD / SDXL tokenization helpers are an intentional temporary tradeoff to avoid forcing a new shared/base ownership bucket too early
+  - prompt-attention parsing is back to a single canonical implementation in `library/data/prompt_utils.py`
 - The active launcher surface for PEFT/fine-tune is now config-driven: a canonical root `train.py` builds `mode` and `model.model_type` through small factories instead of requiring one near-duplicate active script per mode/model combination. Textual inversion still sits outside that launcher until its runtime path is migrated.
+- The temporary launcher compatibility wrappers have been removed again; the active entry surface is just the root `train.py`, which now owns the small amount of launcher orchestration directly.
 - Benchmark runs now use that same root launcher path too, so benchmark smoke coverage exercises the active config-driven entry surface instead of separate script-specific launch wiring.
 - The root launcher now relies on an explicit `--config-name`, while the internal full-schema fallback lives at `configs/_defaults/default.yaml` without choosing a mode or model family.
 - Sampling cadence conflicts now fail fast instead of silently preferring epoch cadence.
@@ -192,6 +198,7 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
   - Maybe fp8 for te output storage, needs tests
 - [ ] **Smarter resource tracking/management** - This helps with training and also with inference, for example falling back to tiled vae when it would hit resource contraints and such. See `docs_design/resource_monitor_plan.md`
 - [ ] Old toml to new config translator
+- [ ] Constants rework
 
 ---
 

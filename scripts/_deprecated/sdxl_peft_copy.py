@@ -331,8 +331,8 @@ def train(cfg: RunConfig, strategies: "SdxlTrainingStrategy"):
 
         else:
             # In-memory TE caching: compute and store in entry.te_outputs
-            from library.models.sd.tokenizer import tokenize_clip_captions
-            from library.models.sdxl.text_encoder import get_hidden_states_sdxl
+            from library.strategies.sdxl.tokenization import tokenize_clip_captions
+            from library.strategies.sdxl.encoding import get_hidden_states_sdxl
 
             logger.info("Computing text encoder outputs in memory...")
             for entry in tqdm(train_manifest.entries.values(), desc="TE caching (memory)", disable=accelerator.process_index != 0):
@@ -933,7 +933,7 @@ def train(cfg: RunConfig, strategies: "SdxlTrainingStrategy"):
         tokens_path = None
         if cfg.data.caching.cache_tokens_per_epoch and not cfg.data.caching.cache_text_encoder_outputs:
             from library.data import tokenize_epoch_manifest
-            from library.models.sd.tokenizer import tokenize_clip_captions
+                    from library.strategies.sdxl.tokenization import tokenize_clip_captions
 
             tokens_path = Path(cache_dir) / f"epoch_{epoch}_tokens.safetensors"
 

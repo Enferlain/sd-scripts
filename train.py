@@ -2,13 +2,23 @@
 
 import hydra
 
+from library.config.config_validation import prepare_config, validate_config
 from library.config.dataclasses.run import RunConfig
-from library.training.launcher import run_training
+from library.strategies.factory import build_training_strategy
+from library.training.modes.factory import build_training_mode
+from library.training.runners.trainer import Trainer
 
 
 def train(cfg: RunConfig) -> None:
     """Run training through the shared config-driven launcher."""
-    run_training(cfg)
+    prepare_config(cfg)
+    validate_config(cfg)
+
+    strategies = build_training_strategy(cfg)
+    mode = build_training_mode(cfg)
+
+    trainer = Trainer(cfg, strategies, mode)
+    trainer.train()
 
 
 @hydra.main(version_base=None, config_path="configs", config_name=None)

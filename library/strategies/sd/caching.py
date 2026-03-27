@@ -17,7 +17,7 @@ from safetensors.torch import save_file
 
 from library.data.caching_engine import CacheBackend
 from library.data.structures import CacheData, CacheEntry
-from library.models.sd.text_encoder import get_hidden_states_sd
+from library.strategies.sd.encoding import get_hidden_states_sd
 from library.strategies.base.contracts import CachingStrategy
 from library.strategies.sd.tokenization import tokenize_sd_captions
 from library.utils.hash_utils import stable_string_hash

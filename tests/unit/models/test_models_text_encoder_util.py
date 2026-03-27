@@ -1,7 +1,7 @@
 import torch
 from unittest.mock import MagicMock, patch
 from transformers import CLIPTextModelWithProjection
-from library.models.sdxl.text_encoder import (
+from library.strategies.sdxl.encoding import (
     pool_workaround,
     get_hidden_states_sdxl,
     encode_input_ids_sdxl,
@@ -144,7 +144,7 @@ class TestGetHiddenStatesSDXL:
         input_ids1 = torch.randint(0, 49408, (2, 1, 77))
         input_ids2 = torch.randint(0, 49408, (2, 1, 77))
 
-        with patch("library.models.sdxl.text_encoder.pool_workaround") as mock_pool:
+        with patch("library.strategies.sdxl.encoding.pool_workaround") as mock_pool:
             # Pool returns (batch*n, 1280)
             mock_pool.return_value = torch.randn(2, 1280)
 
@@ -195,7 +195,7 @@ class TestGetHiddenStatesSDXL:
         enc2_out = {"hidden_states": [torch.randn(3, 77, 1280) for _ in range(33)], "last_hidden_state": torch.randn(3, 77, 1280)}
         text_encoder2.return_value = enc2_out
 
-        with patch("library.models.sdxl.text_encoder.pool_workaround") as mock_pool:
+        with patch("library.strategies.sdxl.encoding.pool_workaround") as mock_pool:
             # Pool expects (batch*n, 1280) = (3, 1280)
             mock_pool.return_value = torch.randn(3, 1280)
 
@@ -247,7 +247,7 @@ class TestGetHiddenStatesSDXL:
         enc2_out = {"hidden_states": [torch.randn(4, 77, 1280) for _ in range(33)], "last_hidden_state": torch.randn(4, 77, 1280)}
         text_encoder2.return_value = enc2_out
 
-        with patch("library.models.sdxl.text_encoder.pool_workaround") as mock_pool:
+        with patch("library.strategies.sdxl.encoding.pool_workaround") as mock_pool:
             mock_pool.return_value = torch.randn(4, 1280)
 
             h1, h2, pool = get_hidden_states_sdxl(
@@ -282,7 +282,7 @@ class TestGetHiddenStatesSDXL:
         accelerator = MagicMock()
         accelerator.unwrap_model.return_value = text_encoder2
 
-        with patch("library.models.sdxl.text_encoder.pool_workaround") as mock_pool:
+        with patch("library.strategies.sdxl.encoding.pool_workaround") as mock_pool:
             mock_pool.return_value = torch.randn(1, 1280)
 
             get_hidden_states_sdxl(
@@ -309,7 +309,7 @@ class TestGetHiddenStatesSDXL:
             "last_hidden_state": torch.randn(1, 77, 1280),
         }
 
-        with patch("library.models.sdxl.text_encoder.pool_workaround", return_value=torch.randn(1, 1280)) as mock_pool:
+        with patch("library.strategies.sdxl.encoding.pool_workaround", return_value=torch.randn(1, 1280)):
             h1, h2, pool = get_hidden_states_sdxl(
                 max_token_length=None,
                 input_ids1=torch.zeros(1, 1, 77, dtype=torch.long),
@@ -345,7 +345,7 @@ class TestEncodeInputIdsSDXL:
         param2.device = torch.device("cpu")
         text_encoder2.parameters.return_value = iter([param2])
 
-        with patch("library.models.sdxl.text_encoder.get_hidden_states_sdxl") as mock_get_hidden_states:
+        with patch("library.strategies.sdxl.encoding.get_hidden_states_sdxl") as mock_get_hidden_states:
             mock_get_hidden_states.return_value = (torch.randn(1, 77, 768), torch.randn(1, 77, 1280), torch.randn(1, 1280))
 
             encode_input_ids_sdxl(

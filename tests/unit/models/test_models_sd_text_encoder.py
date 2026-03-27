@@ -1,7 +1,7 @@
 import torch
 from unittest.mock import Mock
 
-from library.models.sd.text_encoder import get_hidden_states_sd, apply_hidden_state_weights_sd
+from library.strategies.sd.encoding import get_hidden_states_sd, apply_hidden_state_weights_sd
 
 
 def _make_sd_tokenizer(*, pad_token_id: int = 49407, eos_token_id: int = 49407):

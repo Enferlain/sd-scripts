@@ -12,7 +12,7 @@ from library.constants import re_attention
 logger = logging.getLogger(__name__)
 
 
-def parse_prompt_attention(text):
+def parse_prompt_attention(text: str) -> list[list[str | float]]:
     r"""
     Parses a string with attention tokens and returns a list of pairs: text and its associated weight.
     Accepted tokens are:
@@ -25,29 +25,37 @@ def parse_prompt_attention(text):
       \] - literal character ']'
       \\ - literal character '\'
       anything else - just text
-    >>> parse_prompt_attention('normal text')
-    [['normal text', 1.0]]
-    >>> parse_prompt_attention('an (important) word')
-    [['an ', 1.0], ['important', 1.1], [' word', 1.0]]
-    >>> parse_prompt_attention('(unbalanced')
-    [['unbalanced', 1.1]]
-    >>> parse_prompt_attention('\(literal\]')
-    [['(literal]', 1.0]]
-    >>> parse_prompt_attention('(unnecessary)(parens)')
-    [['unnecessaryparens', 1.1]]
-    >>> parse_prompt_attention('a (((house:1.3)) [on] a (hill:0.5), sun, (((sky))).')
-    [['a ', 1.0],
-     ['house', 1.5730000000000004],
-     [' ', 1.1],
-     ['on', 1.0],
-     [' a ', 1.1],
-     ['hill', 0.55],
-     [', sun, ', 1.1],
-     ['sky', 1.4641000000000006],
-     ['.', 1.1]]
+    
+    Args:
+        text (str): The text to parse.
+
+    Returns:
+        List[List[str, float]]: A list of pairs, where each pair contains the text and its associated weight.
+
+    Examples:
+        >>> parse_prompt_attention('normal text')
+        [['normal text', 1.0]]
+        >>> parse_prompt_attention('an (important) word')
+        [['an ', 1.0], ['important', 1.1], [' word', 1.0]]
+        >>> parse_prompt_attention('(unbalanced')
+        [['unbalanced', 1.1]]
+        >>> parse_prompt_attention('\(literal\]')
+        [['(literal]', 1.0]]
+        >>> parse_prompt_attention('(unnecessary)(parens)')
+        [['unnecessaryparens', 1.1]]
+        >>> parse_prompt_attention('a (((house:1.3)) [on] a (hill:0.5), sun, (((sky))).')
+        [['a ', 1.0],
+         ['house', 1.5730000000000004],
+         [' ', 1.1],
+         ['on', 1.0],
+         [' a ', 1.1],
+         ['hill', 0.55],
+         [', sun, ', 1.1],
+         ['sky', 1.4641000000000006],
+         ['.', 1.1]]
     """
 
-    res = []
+    res: list[list[str | float]] = []
     round_brackets = []
     square_brackets = []
 

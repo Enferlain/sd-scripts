@@ -6,7 +6,7 @@ import numpy as np
 from diffusers import AutoencoderKL
 
 from library.constants import HIGH_VRAM, IMAGE_TRANSFORMS
-from library.models.sdxl.text_encoder import get_hidden_states_sdxl
+from library.strategies.sdxl.encoding import get_hidden_states_sdxl
 from library.utils.device_utils import clean_memory_on_device
 from library.data._deprecated.data_structures import ImageInfo
 from library.data.image_utils import load_image, trim_and_resize_if_required
