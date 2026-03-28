@@ -4,7 +4,7 @@ import torch
 
 from accelerate import Accelerator
 from transformers import CLIPTextModel, CLIPTextModelWithProjection
-from library.strategies.sdxl.tokenization import tokenize_clip_captions
+from library.strategies.shared.clip.tokenization import tokenize_clip_captions
 from transformers import CLIPTokenizer
 
 from library.strategies.base.contracts import TextEncodingStrategy

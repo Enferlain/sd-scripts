@@ -91,13 +91,18 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 ### Active TODOs
 
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
+- [ ] Check what "full bf16" means in our repo
 
 ### Recently Completed / Settled
 
+- The CLIP-family tokenization split is now explicit enough to stop re-litigating during SD3 work:
+  - shared CLIP prompt-tokenization behavior now lives in `library/strategies/shared/clip/tokenization.py`
+  - shared Hugging Face tokenizer bootstrap now lives in `library/models/sd/tokenizer.py`
+  - SD / SDXL now layer their family-specific tokenization assembly on those shared seams, while SD3 only reuses the bootstrap side until more of its CLIP+T5 behavior proves to be genuinely shared
 - The active SD / SDXL CLIP helper cleanup is now settled enough to stop blocking SD3 prep:
   - family text-encoding behavior now lives in `library/strategies/*/encoding.py`
   - CLIP-family tokenization helpers no longer pretend to be SD model-layer code
-  - the current duplicated SD / SDXL tokenization helpers are an intentional temporary tradeoff to avoid forcing a new shared/base ownership bucket too early
+  - the shared CLIP-family tokenization behavior now lives under `library/strategies/shared/clip/`, while tokenizer bootstrap/loading lives under `library/models/sd/tokenizer.py`
   - prompt-attention parsing is back to a single canonical implementation in `library/data/prompt_utils.py`
 - The active launcher surface for PEFT/fine-tune is now config-driven: a canonical root `train.py` builds `mode` and `model.model_type` through small factories instead of requiring one near-duplicate active script per mode/model combination. Textual inversion still sits outside that launcher until its runtime path is migrated.
 - The temporary launcher compatibility wrappers have been removed again; the active entry surface is just the root `train.py`, which now owns the small amount of launcher orchestration directly.

@@ -6,6 +6,7 @@ from typing import Any
 
 from library.strategies.base.contracts import TrainingStrategy
 from library.strategies.sd.training import SdTrainingStrategy
+from library.strategies.sd3.training import Sd3TrainingStrategy
 from library.strategies.sdxl.training import SdxlTrainingStrategy
 
 
@@ -14,6 +15,7 @@ _STRATEGY_REGISTRY: dict[str, type[TrainingStrategy]] = {
     "sd15": SdTrainingStrategy,
     "sd2": SdTrainingStrategy,
     "sdxl": SdxlTrainingStrategy,
+    "sd3": Sd3TrainingStrategy,
 }
 
 

@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **CLIP tokenization sharing now has an explicit split between component bootstrap and strategy behavior** — The repo no longer keeps identical CLIP tokenizer loading logic duplicated across SD / SDXL / SD3 strategy files, and the shared CLIP prompt-tokenization behavior now has one home.
+  - Added `library/models/sd/tokenizer.py` as the shared Hugging Face tokenizer loading/bootstrap helper used by SD, SDXL, and the CLIP side of SD3.
+  - Added `library/strategies/shared/clip/tokenization.py` for shared CLIP-family prompt-weight parsing, long-prompt chunking, and caption tokenization behavior.
+  - Reduced `library/strategies/sd/tokenization.py` and `library/strategies/sdxl/tokenization.py` to family-specific assembly on top of those shared seams, while `library/strategies/sd3/tokenization.py` now reuses the shared loader without forcing SD3’s CLIP+T5 behavior into the CLIP-only helper layer.
+- **Initial SD3 model-family groundwork is now present in the active library/strategy path** — The repo now has a first real SD3 implementation surface wired into the shared strategy system instead of only carrying SD / SDXL.
+  - Added `library/models/sd3/` component code for SD3 checkpoint conversion, MMDiT construction/loading, CLIP-L / CLIP-G / T5-XXL loading, and SD3 VAE handling.
+  - Added `library/strategies/sd3/` facet files for SD3 tokenization, text encoding, caching, denoiser calling, diffusion training, validation, checkpointing, sample generation, model preparation, and strategy assembly.
+  - Registered `Sd3TrainingStrategy` in the shared strategy factory so the config-driven launcher can resolve the SD3 family through the same `model.model_type -> TrainingStrategy` path used by the other active families.
+  - SD3 loading now supports the current unified-checkpoint path plus optional sidecar text encoders, scaled positional embeddings, block-swap setup, and the active partial FP8 handling used by the current strategy implementation.
+  - SD3 training/runtime behavior now includes CLIP-L + CLIP-G + T5 tokenization/encoding, SD3-specific cache payload handling, flow-matching diffusion/loss-weighting helpers, SD3 validation loss execution, SD3 metadata population, safetensors full-model checkpoint saving, and direct SD3 sample generation.
+  - The current SD3 path is still intentionally partial: weighted captions / prompt weighting are not implemented yet, T5-XXL FP8 preparation still fails fast, and full-model checkpoint saving currently supports only `save_model_as='safetensors'`.
 - **The generic launcher no longer hides behind compatibility wrappers** — The active entry surface is now just the root launcher we already expect users and benchmarks to call.
   - Inlined the shared launch body into `train.py` and removed `library/training/launcher.py`.
   - Removed the `scripts/sdxl_peft.py` and `scripts/sdxl_finetune.py` compatibility wrappers instead of keeping duplicate Hydra entrypoints around after the root launcher was already working.

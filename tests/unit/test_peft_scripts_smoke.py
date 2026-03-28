@@ -1,8 +1,8 @@
 """
-Smoke Tests for PEFT Training Scripts
+Smoke Tests for PEFT entrypoints and related imports.
 
-These tests verify that the PEFT training scripts and their dependencies
-can be imported without errors. Run after every refactoring change to catch
+These tests verify that the active PEFT-facing entry surface and its
+dependencies can be imported without errors. Run after refactoring to catch
 import issues early.
 
 Usage:
@@ -125,7 +125,7 @@ class TestStrategyImports:
 
 
 class TestScriptImports:
-    """Test that the main training scripts can be imported."""
+    """Test that the active training entrypoints can be imported."""
 
     @pytest.mark.skip(reason="Deprecated: sd_peft.py uses legacy data pipeline")
     def test_sd_peft_script_imports(self):
@@ -150,25 +150,25 @@ class TestScriptImports:
         assert hasattr(sd_peft, "main")
         assert callable(sd_peft.main)
 
-    def test_sdxl_peft_script_imports(self):
-        """Verify sdxl_peft.py can be imported without errors."""
-        import sdxl_peft
+    def test_train_script_imports(self):
+        """Verify train.py can be imported without errors."""
+        import train
 
-        assert sdxl_peft is not None
+        assert train is not None
 
-    def test_sdxl_peft_has_train_function(self):
-        """Verify sdxl_peft.py has train() function."""
-        import sdxl_peft
+    def test_train_has_train_function(self):
+        """Verify train.py has train() function."""
+        import train
 
-        assert hasattr(sdxl_peft, "train")
-        assert callable(sdxl_peft.train)
+        assert hasattr(train, "train")
+        assert callable(train.train)
 
-    def test_sdxl_peft_has_main_function(self):
-        """Verify sdxl_peft.py has main() function."""
-        import sdxl_peft
+    def test_train_has_main_function(self):
+        """Verify train.py has main() function."""
+        import train
 
-        assert hasattr(sdxl_peft, "main")
-        assert callable(sdxl_peft.main)
+        assert hasattr(train, "main")
+        assert callable(train.main)
 
 
 class TestConfigImports:

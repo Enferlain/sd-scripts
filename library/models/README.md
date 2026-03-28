@@ -84,3 +84,17 @@ model-family behavior helpers if that is the right ownership.
   files are not a sufficient ownership argument by themselves.
 - When a current placement feels wrong, write down the reasoning here before
   repeating the same argument in a future port.
+
+## Useful External Examples
+
+- [`Tencent-Hunyuan/HunyuanImage-2.1`](https://github.com/Tencent-Hunyuan/HunyuanImage-2.1/blob/0c44d1eda754edd42e69bde984251988fee7a4dc/hyimage/models/text_encoder/__init__.py) has examples of model-side component
+  ownership that are useful to keep in mind when judging future text encoder /
+  VAE code:
+  - `hyimage/models/text_encoder/__init__.py`
+  - `hyimage/models/vae/__init__.py`
+- These are good reference points for the case where the repo is not just
+  calling an external encoder/model, but is actually defining a reusable
+  component wrapper/module around it.
+- That is different from the current SD / SDXL CLIP helpers in this repo,
+  which are mostly about tokenization / encoding behavior on top of
+  `transformers` models and therefore fit the strategy layer better.

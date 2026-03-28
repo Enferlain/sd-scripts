@@ -753,6 +753,7 @@ def get_model_metadata_from_config(
     clip_skip: int | None = None,
     is_stable_diffusion_ckpt: bool | None = None,
     flux_type: str | None = None,
+    sd3_type: str | None = None,
     lumina_type: str | None = None,
     hunyuan_image_type: str | None = None,
     optional_metadata: dict[str, str] | None = None,
@@ -774,6 +775,7 @@ def get_model_metadata_from_config(
         clip_skip (int, optional): The clip skip value. Defaults to None.
         is_stable_diffusion_ckpt (bool, optional): Whether the model is a Stable Diffusion checkpoint. Defaults to None.
         flux_type (str, optional): The Flux model type. Defaults to None.
+        sd3_type (str, optional): The SD3 model type suffix (e.g. ``medium`` or ``5-large``). Defaults to None.
         lumina_type (str, optional): The Lumina model type. Defaults to None.
         hunyuan_image_type (str, optional): The Hunyuan Image model type. Defaults to None.
         optional_metadata (dict, optional): Additional metadata. Defaults to None.
@@ -796,6 +798,8 @@ def get_model_metadata_from_config(
     model_config_dict = {}
     if flux_type is not None:
         model_config_dict["flux"] = flux_type
+    if sd3_type is not None:
+        model_config_dict["sd3"] = sd3_type
     if lumina_type is not None:
         model_config_dict["lumina"] = lumina_type
     if hunyuan_image_type is not None:

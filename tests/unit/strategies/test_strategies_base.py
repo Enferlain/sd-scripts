@@ -10,7 +10,8 @@ import numpy as np
 import pytest
 import torch
 
-from library.strategies.sd.tokenization import get_clip_weighted_input_ids, load_tokenizer
+from library.models.sd.tokenizer import load_tokenizer
+from library.strategies.shared.clip.tokenization import get_clip_weighted_input_ids
 from library.optimizers.optimizer_utils import (
     get_text_encoders_train_flags,
     should_train_denoiser,
