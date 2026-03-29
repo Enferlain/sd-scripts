@@ -49,7 +49,7 @@ class Sd3ValidationStrategy(ValidationStrategy):
             )
             total_loss = torch.zeros(1, device=latents.device)
 
-            text_encoder_conds = self._get_text_conds(
+            text_encoder_conds = self.resolve_conditioning(
                 batch=batch,
                 text_encoders=text_encoders,
                 accelerator=accelerator,

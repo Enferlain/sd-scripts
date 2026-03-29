@@ -99,6 +99,19 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - shared CLIP prompt-tokenization behavior now lives in `library/strategies/shared/clip/tokenization.py`
   - shared Hugging Face tokenizer bootstrap now lives in `library/models/sd/tokenizer.py`
   - SD / SDXL now layer their family-specific tokenization assembly on those shared seams, while SD3 only reuses the bootstrap side until more of its CLIP+T5 behavior proves to be genuinely shared
+- Weighted prompt support is now treated as an explicit optional capability rather than a fake universal requirement:
+  - the required tokenization/text-encoding facets keep the non-weighted training/runtime path
+  - `WeightedPromptStrategy` owns the paired weighted tokenization / weighted encoding seam used by SD / SDXL
+  - SD3 no longer pretends to implement weighted prompting until that capability is actually present
+- Conditioning is now treated as a first-class strategy concern rather than staying implicit diffusion glue:
+  - `ConditioningStrategy.resolve_conditioning(...)` now exists on the required base contract
+  - SD / SDXL / SD3 each have a real family `conditioning.py` facet owning cached/live/merge conditioning resolution
+  - diffusion and validation now depend on that seam instead of private `_get_text_conds()` helpers
+  - family payload shapes still stay local, so the facet starts with one high-level responsibility rather than overcommitting helper-level conventions
+- SD3 local text-conditioning shape is now clearer without forcing a new cross-family abstraction:
+  - added named SD3-local payloads for token ids/masks and encoded text conditioning
+  - SD3 tokenization / encoding / diffusion / denoiser / sampling / caching internals now use those named payloads instead of positional six-item tensor lists
+  - the dataloader/cache dict boundary stays unchanged, so this remains a local SD3 normalization step rather than a broader conditioning rewrite
 - The active SD / SDXL CLIP helper cleanup is now settled enough to stop blocking SD3 prep:
   - family text-encoding behavior now lives in `library/strategies/*/encoding.py`
   - CLIP-family tokenization helpers no longer pretend to be SD model-layer code
@@ -150,7 +163,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - SDXL tokenization / text-encoding / caching ownership now also lives in the self-titled facet files, and the remaining SDXL contract-owned concerns have been split into `sdxl/loading.py`, `sdxl/model_preparation.py`, `sdxl/checkpointing.py`, `sdxl/sampling.py`, `sdxl/denoiser.py`, `sdxl/diffusion.py`, and `sdxl/validation.py`.
   - `sdxl/training.py` is now reduced to strategy assembly and init/wiring.
   - SDXL training-time text conditioning now routes through the strategy tokenization / encoding seam instead of calling model helpers directly from `sdxl/diffusion.py`, which keeps the diffusion facet aligned with the settled strategy contract.
-  - Conditioning is showing up as a real cross-cutting concern across tokenization/encoding, caching/data metadata, and denoiser input assembly, but it is not mature enough yet to force into a new base facet.
+  - The new conditioning facet now gives the concern a real home, but the return-shape convention is still intentionally loose and family-local while more model families are ported.
   - Prompt weighting / weighted captions still likely want to become a shared concern rather than a model-by-model accumulation of special cases, especially once cache-policy expectations are made explicit.
 - [x] **Timestep runtime redesign** — The trainer-owned timestep runtime landed and the active sampler/runtime cleanup is complete for the current SD / SDXL path.
   - `library/timesteps/` now owns active runtime state and adaptive sampler lifecycle for the main trainer path.
@@ -158,7 +171,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - The sampler-backed runtime interface now only passes shared sampling inputs; sampler-specific knobs like `sigmoid_scale` and `discrete_flow_shift` remain owned by the explicit `shift` path instead of leaking through every sampler API.
   - Benchmark-backed smoke configs exist under `configs/tests/` for both `adaptive_log_snr` and `log_snr_uniform`, and both completed end-to-end manual smoke runs on the SDXL PEFT test setup.
 - [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now and the repo has an initial SDXL PEFT preset/example, but the feature still needs real docs and clearer guidance on when to use it.
-- [ ] **Conditioning architecture review** — Decide when “conditioning” deserves its own first-class shared concern instead of remaining split across encoding, caching, and denoiser/diffusion ownership.
+- [ ] **Conditioning architecture follow-up** — Pressure-test the new `ConditioningStrategy` seam against more model families and decide whether any sub-conventions under `resolve_conditioning(...)` are mature enough to standardize.
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
 - [ ] **Dashboard / logging system rework** — Fold the live plotter into a broader dashboard/logging system instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.

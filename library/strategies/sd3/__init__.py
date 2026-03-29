@@ -5,6 +5,7 @@ from library.strategies.sd3.caching import (
     Sd3LatentsPipelineStrategy,
     Sd3TextEncoderPipelineStrategy,
 )
+from library.strategies.sd3.conditioning import Sd3ConditioningStrategy
 from library.strategies.sd3.denoiser import Sd3DenoiserCallingStrategy
 from library.strategies.sd3.diffusion import (
     Sd3DiffusionTrainingStrategy,
@@ -17,6 +18,8 @@ from library.strategies.sd3.diffusion import (
 )
 from library.strategies.sd3.encoding import (
     Sd3TextEncodingStrategy,
+    Sd3TextConditioning,
+    Sd3TokenizedText,
     build_sd3_attention_masks,
     concat_sd3_encodings,
     drop_cached_sd3_text_encoder_outputs,
@@ -47,6 +50,8 @@ __all__ = [
     "DEFAULT_SD3_T5_MAX_LENGTH",
     "Sd3CachingStrategy",
     "Sd3CheckpointingStrategy",
+    "Sd3ConditioningStrategy",
+    "Sd3TextConditioning",
     "Sd3DenoiserCallingStrategy",
     "Sd3DiffusionTrainingStrategy",
     "Sd3LatentsPipelineStrategy",
@@ -55,6 +60,7 @@ __all__ = [
     "Sd3SampleGenerationStrategy",
     "Sd3TextEncoderPipelineStrategy",
     "Sd3TextEncodingStrategy",
+    "Sd3TokenizedText",
     "Sd3TokenizeStrategy",
     "Sd3TrainingStrategy",
     "ModelSamplingDiscreteFlow",

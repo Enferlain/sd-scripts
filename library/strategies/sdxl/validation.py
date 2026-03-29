@@ -65,7 +65,7 @@ class SdxlValidationStrategy(ValidationStrategy):
             )
             total_loss = torch.zeros(1, device=latents.device)
 
-            text_encoder_conds = self._get_text_conds(
+            text_encoder_conds = self.resolve_conditioning(
                 cfg,
                 accelerator,
                 batch,

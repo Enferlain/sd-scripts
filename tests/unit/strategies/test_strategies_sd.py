@@ -252,7 +252,7 @@ class TestSdTrainingStrategyComposition:
         assert SdTrainingStrategy.tokenize_captions.__module__ == "library.strategies.sd.tokenization"
         assert SdTrainingStrategy.encode_te_outputs_in_memory.__module__ == "library.strategies.sd.encoding"
         assert SdTrainingStrategy.create_te_caching_strategy.__module__ == "library.strategies.sd.caching"
-        assert SdTrainingStrategy._get_text_conds.__module__ == "library.strategies.sd.diffusion"
+        assert SdTrainingStrategy.resolve_conditioning.__module__ == "library.strategies.sd.conditioning"
 
     @patch("library.strategies.sd.tokenization.load_tokenizer")
     def test_create_latent_caching_strategy_returns_pipeline_strategy(self, mock_load_tokenizer, mock_clip_tokenizer, sd_strategy_cfg):
@@ -362,7 +362,7 @@ class TestSdTrainingStrategyComposition:
         assert isinstance(text_conds[0], torch.Tensor)
 
     @patch("library.strategies.sd.tokenization.load_tokenizer")
-    def test_get_text_conds_uses_cached_outputs_without_live_reencode(
+    def test_resolve_conditioning_uses_cached_outputs_without_live_reencode(
         self,
         mock_load_tokenizer,
         mock_clip_tokenizer,
@@ -384,7 +384,7 @@ class TestSdTrainingStrategyComposition:
             patch.object(strategy, "encode_tokens") as mock_encode,
             patch.object(strategy, "encode_tokens_with_weights") as mock_weighted_encode,
         ):
-            result = strategy._get_text_conds(
+            result = strategy.resolve_conditioning(
                 batch=batch,
                 text_encoders=[mock_clip_text_encoder],
                 accelerator=accelerator,
@@ -399,7 +399,7 @@ class TestSdTrainingStrategyComposition:
         assert len(result) == 1
 
     @patch("library.strategies.sd.tokenization.load_tokenizer")
-    def test_get_text_conds_reencodes_when_training_text_encoder(
+    def test_resolve_conditioning_reencodes_when_training_text_encoder(
         self,
         mock_load_tokenizer,
         mock_clip_tokenizer,
@@ -426,7 +426,7 @@ class TestSdTrainingStrategyComposition:
             patch.object(strategy, "get_models_for_text_encoding", return_value=[mock_clip_text_encoder]),
             patch.object(strategy, "encode_tokens", return_value=[live_hidden_state]) as mock_encode,
         ):
-            result = strategy._get_text_conds(
+            result = strategy.resolve_conditioning(
                 batch=batch,
                 text_encoders=[mock_clip_text_encoder],
                 accelerator=accelerator,

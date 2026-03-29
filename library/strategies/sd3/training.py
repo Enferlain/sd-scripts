@@ -3,6 +3,7 @@ from typing import Any
 from library.strategies.base.contracts import TrainingStrategy
 from library.strategies.sd3.caching import Sd3CachingStrategy
 from library.strategies.sd3.checkpointing import Sd3CheckpointingStrategy
+from library.strategies.sd3.conditioning import Sd3ConditioningStrategy
 from library.strategies.sd3.denoiser import Sd3DenoiserCallingStrategy
 from library.strategies.sd3.diffusion import Sd3DiffusionTrainingStrategy
 from library.strategies.sd3.encoding import Sd3TextEncodingStrategy
@@ -17,6 +18,7 @@ class Sd3TrainingStrategy(
     Sd3ModelLoadingStrategy,
     Sd3TokenizeStrategy,
     Sd3TextEncodingStrategy,
+    Sd3ConditioningStrategy,
     Sd3CachingStrategy,
     Sd3SampleGenerationStrategy,
     Sd3CheckpointingStrategy,

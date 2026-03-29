@@ -84,19 +84,6 @@ class TokenizationStrategy(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
-        """
-        Tokenize text and return prompt weights alongside token tensors.
-
-        Args:
-            text: Text or list of text to tokenize.
-
-        Returns:
-            Tuple of token tensors and weight tensors.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
         """
         Tokenize captions using model-family-specific tokenization.
@@ -119,18 +106,6 @@ class TextEncodingStrategy(ABC):
     def encode_tokens(self, models: list[Any], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
         """
         Encode token tensors into model-family text-conditioning outputs.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def encode_tokens_with_weights(
-        self,
-        models: list[Any],
-        tokens: list[torch.Tensor],
-        weights: list[torch.Tensor],
-    ) -> list[torch.Tensor]:
-        """
-        Encode token tensors with prompt-weight application.
         """
         raise NotImplementedError
 
@@ -174,6 +149,30 @@ class TextEncodingStrategy(ABC):
 
         Returns:
             List of models properly prepared for encoding.
+        """
+        raise NotImplementedError
+
+
+class ConditioningStrategy(ABC):
+    """Facet for model-family conditioning resolution used by diffusion/validation."""
+
+    @abstractmethod
+    def resolve_conditioning(
+        self,
+        batch: Any,
+        text_encoders: list[Any],
+        accelerator: Any,
+        cfg: Any,
+        train_text_encoder: bool,
+        is_train: bool,
+        weight_dtype: torch.dtype,
+    ) -> Any:
+        """
+        Resolve the family-specific conditioning payload for a batch.
+
+        Implementations may combine cached text-encoder outputs, cached token
+        tensors, live caption encoding, and any family-specific merge policy
+        needed before diffusion/denoiser calls.
         """
         raise NotImplementedError
 
@@ -546,6 +545,7 @@ class TrainingStrategy(
     ModelLoadingStrategy,
     TokenizationStrategy,
     TextEncodingStrategy,
+    ConditioningStrategy,
     CachingStrategy,
     SampleGenerationStrategy,
     CheckpointingStrategy,

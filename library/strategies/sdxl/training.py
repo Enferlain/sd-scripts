@@ -3,6 +3,7 @@ from typing import Any
 from library.constants import SDXL_VAE_LATENT_SCALE
 from library.strategies.sdxl.caching import SdxlCachingStrategy
 from library.strategies.sdxl.checkpointing import SdxlCheckpointingStrategy
+from library.strategies.sdxl.conditioning import SdxlConditioningStrategy
 from library.strategies.sdxl.denoiser import SdxlDenoiserCallingStrategy
 from library.strategies.sdxl.diffusion import SdxlDiffusionTrainingStrategy
 from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
@@ -13,12 +14,14 @@ from library.strategies.sdxl.tokenization import SdxlTokenizeStrategy
 from library.strategies.sdxl.validation import SdxlValidationStrategy
 
 from library.strategies.base.contracts import TrainingStrategy
+from library.strategies.base.features import WeightedPromptStrategy
 
 
 class SdxlTrainingStrategy(
     SdxlModelLoadingStrategy,
     SdxlTokenizeStrategy,
     SdxlTextEncodingStrategy,
+    SdxlConditioningStrategy,
     SdxlCachingStrategy,
     SdxlSampleGenerationStrategy,
     SdxlCheckpointingStrategy,
@@ -26,6 +29,7 @@ class SdxlTrainingStrategy(
     SdxlDiffusionTrainingStrategy,
     SdxlDenoiserCallingStrategy,
     SdxlModelPreparationStrategy,
+    WeightedPromptStrategy,
     TrainingStrategy,
 ):
     """

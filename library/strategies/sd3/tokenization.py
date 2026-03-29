@@ -6,6 +6,7 @@ from transformers import CLIPTokenizer, T5TokenizerFast
 
 from library.models.sd.tokenizer import load_tokenizer
 from library.strategies.base.contracts import TokenizationStrategy
+from library.strategies.sd3.encoding import Sd3TokenizedText
 
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ def tokenize_sd3_text(
     tokenizer_t5: T5TokenizerFast,
     t5xxl_max_length: int,
     text: str | list[str],
-) -> list[torch.Tensor]:
+) -> Sd3TokenizedText:
     """Tokenize SD3 text into CLIP-L, CLIP-G, and T5 tensors plus attention masks."""
     text = [text] if isinstance(text, str) else text
 
@@ -48,14 +49,14 @@ def tokenize_sd3_text(
     g_tokens = tokenizer_g(text, max_length=77, padding="max_length", truncation=True, return_tensors="pt")
     t5_tokens = tokenizer_t5(text, max_length=t5xxl_max_length, padding="max_length", truncation=True, return_tensors="pt")
 
-    return [
-        cast(torch.Tensor, l_tokens["input_ids"]),
-        cast(torch.Tensor, g_tokens["input_ids"]),
-        cast(torch.Tensor, t5_tokens["input_ids"]),
-        cast(torch.Tensor, l_tokens["attention_mask"]),
-        cast(torch.Tensor, g_tokens["attention_mask"]),
-        cast(torch.Tensor, t5_tokens["attention_mask"]),
-    ]
+    return Sd3TokenizedText(
+        clip_l_input_ids=cast(torch.Tensor, l_tokens["input_ids"]),
+        clip_g_input_ids=cast(torch.Tensor, g_tokens["input_ids"]),
+        t5_input_ids=cast(torch.Tensor, t5_tokens["input_ids"]),
+        clip_l_attn_mask=cast(torch.Tensor, l_tokens["attention_mask"]),
+        clip_g_attn_mask=cast(torch.Tensor, g_tokens["attention_mask"]),
+        t5_attn_mask=cast(torch.Tensor, t5_tokens["attention_mask"]),
+    )
 
 
 def tokenize_sd3_captions(
@@ -67,7 +68,7 @@ def tokenize_sd3_captions(
     tokenizer_l, tokenizer_g, tokenizer_t5 = tokenizers
     t5_max_length = resolve_sd3_t5_max_length(max_token_length)
     tokens = tokenize_sd3_text(tokenizer_l, tokenizer_g, tokenizer_t5, t5_max_length, captions)
-    return tokens[:3]
+    return tokens.token_ids_only()
 
 
 class Sd3TokenizeStrategy(TokenizationStrategy):
@@ -84,11 +85,11 @@ class Sd3TokenizeStrategy(TokenizationStrategy):
 
     def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
         """Tokenize text into SD3 token ids and attention masks."""
-        return tokenize_sd3_text(self.tokenizer_l, self.tokenizer_g, self.tokenizer_t5, self.t5xxl_max_length, text)
+        return self.tokenize_to_payload(text).to_tensor_list()
 
-    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
-        """SD3 upstream does not define weighted prompt tokenization in the current port."""
-        raise NotImplementedError("SD3 prompt weighting is not implemented in the current strategy port")
+    def tokenize_to_payload(self, text: str | list[str]) -> Sd3TokenizedText:
+        """Tokenize text into the local named SD3 token payload."""
+        return tokenize_sd3_text(self.tokenizer_l, self.tokenizer_g, self.tokenizer_t5, self.t5xxl_max_length, text)
 
     def tokenize_captions(self, tokenizers: list[Any], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
         """Tokenize captions for SD3 per-epoch token caching."""

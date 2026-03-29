@@ -3,7 +3,7 @@ from typing import Any
 import torch
 
 from library.strategies.base.contracts import DenoiserCallingStrategy
-from library.strategies.sd3.encoding import concat_sd3_encodings
+from library.strategies.sd3.encoding import Sd3TextConditioning, concat_sd3_encodings
 
 
 class Sd3DenoiserCallingStrategy(DenoiserCallingStrategy):
@@ -25,8 +25,10 @@ class Sd3DenoiserCallingStrategy(DenoiserCallingStrategy):
         del cfg, accelerator, batch, weight_dtype
 
         indices = kwargs.get("indices")
-        lg_out, t5_out, lg_pooled, _l_attn_mask, _g_attn_mask, _t5_attn_mask = text_conds
-        context, pooled = concat_sd3_encodings(lg_out, t5_out, lg_pooled)
+        if isinstance(text_conds, list):
+            text_conds = Sd3TextConditioning.from_tensor_list(text_conds)
+
+        context, pooled = concat_sd3_encodings(text_conds)
 
         if indices is not None and len(indices) > 0:
             noisy_latents = noisy_latents[indices]

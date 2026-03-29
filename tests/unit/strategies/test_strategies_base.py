@@ -19,6 +19,7 @@ from library.optimizers.optimizer_utils import (
 )
 from library.strategies.base.contracts import (
     CachingStrategy,
+    ConditioningStrategy,
     DiffusionTrainingStrategy,
     ModelLoadingStrategy,
     ModelPreparationStrategy,
@@ -27,6 +28,7 @@ from library.strategies.base.contracts import (
     TrainingStrategy,
     ValidationStrategy,
 )
+from library.strategies.base.features import WeightedPromptStrategy
 from library.training.diffusion import prepare_latents
 from library.training.noise_utils import get_noise_scheduler
 from library.training.trainer_utils import all_reduce_trainable, restore_rng_state, switch_rng_state
@@ -41,21 +43,26 @@ class DummyTokenizationStrategy(TokenizationStrategy):
     def tokenize(self, text: str | list[str]) -> list[torch.Tensor]:
         return []
 
-    def tokenize_with_weights(self, text: str | list[str]) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
-        return [], []
+    def tokenize_captions(self, tokenizers: list[object], captions: list[str], max_token_length: int) -> list[torch.Tensor]:
+        return []
 
 
 class DummyTextEncodingStrategy(TextEncodingStrategy):
     def encode_tokens(self, models: list[object], tokens: list[torch.Tensor]) -> list[torch.Tensor]:
         return []
 
-    def encode_tokens_with_weights(
+    def encode_te_outputs_in_memory(
         self,
-        models: list[object],
-        tokens: list[torch.Tensor],
-        weights: list[torch.Tensor],
-    ) -> list[torch.Tensor]:
-        return []
+        text_encoders: list[object],
+        tokenizers: list[object],
+        caption: str,
+        max_token_length: int,
+        device: object,
+    ) -> dict[str, torch.Tensor]:
+        return {}
+
+    def get_models_for_text_encoding(self, cfg: object, accelerator: object, text_encoders: list[object]) -> list[object]:
+        return text_encoders
 
 
 @pytest.mark.unit
@@ -223,18 +230,21 @@ class TestTrainingStrategyPhase2Facets:
         """TrainingStrategy should compose the new capability facets."""
         assert issubclass(TrainingStrategy, ModelPreparationStrategy)
         assert issubclass(TrainingStrategy, DiffusionTrainingStrategy)
+        assert issubclass(TrainingStrategy, ConditioningStrategy)
         assert issubclass(TrainingStrategy, TokenizationStrategy)
         assert issubclass(TrainingStrategy, TextEncodingStrategy)
+        assert not issubclass(TrainingStrategy, WeightedPromptStrategy)
 
     def test_phase2_methods_live_on_facet_classes(self):
         """Moved shared helpers should live on their facet bases, not TrainingStrategy itself."""
         assert "tokenize" in TokenizationStrategy.__dict__
-        assert "tokenize_with_weights" in TokenizationStrategy.__dict__
         assert "tokenize_captions" in TokenizationStrategy.__dict__
         assert "encode_tokens" in TextEncodingStrategy.__dict__
-        assert "encode_tokens_with_weights" in TextEncodingStrategy.__dict__
+        assert "resolve_conditioning" in ConditioningStrategy.__dict__
         assert "get_models_for_text_encoding" in TextEncodingStrategy.__dict__
         assert "encode_te_outputs_in_memory" in TextEncodingStrategy.__dict__
+        assert "tokenize_with_weights" in WeightedPromptStrategy.__dict__
+        assert "encode_tokens_with_weights" in WeightedPromptStrategy.__dict__
         assert "create_latent_caching_strategy" in CachingStrategy.__dict__
         assert "load_denoiser_lazily" in ModelLoadingStrategy.__dict__
         assert "cast_text_encoder" in ModelPreparationStrategy.__dict__
@@ -250,6 +260,9 @@ class TestTrainingStrategyPhase2Facets:
         assert "tokenize_captions" not in TrainingStrategy.__dict__
         assert "tokenize_captions" not in CachingStrategy.__dict__
         assert "initialize" not in TrainingStrategy.__dict__
+        assert "tokenize_with_weights" not in TrainingStrategy.__dict__
+        assert "encode_tokens_with_weights" not in TrainingStrategy.__dict__
+        assert "resolve_conditioning" not in TrainingStrategy.__dict__
         assert "get_models_for_text_encoding" not in TrainingStrategy.__dict__
         assert "get_models_for_text_encoding" not in CachingStrategy.__dict__
         assert "encode_te_outputs_in_memory" not in TrainingStrategy.__dict__

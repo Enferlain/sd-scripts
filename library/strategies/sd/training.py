@@ -2,8 +2,10 @@ from typing import Any
 
 from library.constants import SD_VAE_LATENT_SCALE
 from library.strategies.base.contracts import TrainingStrategy
+from library.strategies.base.features import WeightedPromptStrategy
 from library.strategies.sd.caching import SdCachingStrategy
 from library.strategies.sd.checkpointing import SdCheckpointingStrategy
+from library.strategies.sd.conditioning import SdConditioningStrategy
 from library.strategies.sd.denoiser import SdDenoiserCallingStrategy
 from library.strategies.sd.diffusion import SdDiffusionTrainingStrategy
 from library.strategies.sd.encoding import SdTextEncodingStrategy
@@ -18,6 +20,7 @@ class SdTrainingStrategy(
     SdModelLoadingStrategy,
     SdTokenizeStrategy,
     SdTextEncodingStrategy,
+    SdConditioningStrategy,
     SdCachingStrategy,
     SdSampleGenerationStrategy,
     SdCheckpointingStrategy,
@@ -25,6 +28,7 @@ class SdTrainingStrategy(
     SdDiffusionTrainingStrategy,
     SdDenoiserCallingStrategy,
     SdModelPreparationStrategy,
+    WeightedPromptStrategy,
     TrainingStrategy,
 ):
     """SD 1.5/2.0 implementation of the training strategy."""

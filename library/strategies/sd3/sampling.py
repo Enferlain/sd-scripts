@@ -87,16 +87,15 @@ class Sd3SampleGenerationStrategy(SampleGenerationStrategy):
         device: torch.device,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Encode a prompt into SD3 context and pooled conditioning tensors."""
-        tokens = self.tokenize(prompt)
-        tokens = [token.to(device) for token in tokens]
-        outputs = encode_sd3_tokens(
+        tokens = self.tokenize_to_payload(prompt).to(device)
+        conditioning = encode_sd3_tokens(
             text_encoders,
             tokens,
             apply_lg_attn_mask=bool(getattr(self, "apply_lg_attn_mask", False)),
             apply_t5_attn_mask=bool(getattr(self, "apply_t5_attn_mask", False)),
             enable_dropout=False,
         )
-        return concat_sd3_encodings(outputs[0], outputs[1], outputs[2])
+        return concat_sd3_encodings(conditioning)
 
     def _do_sample(
         self,

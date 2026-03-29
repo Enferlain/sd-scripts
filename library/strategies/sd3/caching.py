@@ -289,7 +289,7 @@ class Sd3TextEncoderPipelineStrategy(CacheBackend):
         tokens = tokenize_sd3_text(tokenizer_l, tokenizer_g, tokenizer_t5, self.t5_max_length, captions)
 
         with torch.no_grad():
-            lg_out, t5_out, lg_pooled, l_attn_mask, g_attn_mask, t5_attn_mask = encode_sd3_tokens(
+            conditioning = encode_sd3_tokens(
                 [text_encoder_l, text_encoder_g, text_encoder_t5],
                 tokens,
                 apply_lg_attn_mask=self.apply_lg_attn_mask,
@@ -297,31 +297,18 @@ class Sd3TextEncoderPipelineStrategy(CacheBackend):
                 enable_dropout=False,
             )
 
-        lg_out = lg_out.to(dtype=self._torch_dtype).cpu()
-        lg_pooled = lg_pooled.to(dtype=self._torch_dtype).cpu()
-        if t5_out is not None:
-            t5_out = t5_out.to(dtype=self._torch_dtype).cpu()
-        l_attn_mask = l_attn_mask.cpu()
-        g_attn_mask = g_attn_mask.cpu()
-        t5_attn_mask = t5_attn_mask.cpu()
+        conditioning = conditioning.move_to("cpu", weight_dtype=self._torch_dtype)
 
         results = []
         for i, entry in enumerate(entries):
-            data: dict[str, Any] = {
-                "lg_out": lg_out[i],
-                "lg_pooled": lg_pooled[i],
-                "clip_l_attn_mask": l_attn_mask[i],
-                "clip_g_attn_mask": g_attn_mask[i],
-                "t5_attn_mask": t5_attn_mask[i],
-                "metadata": {
-                    "caption_hash": str(stable_string_hash(entry.caption)),
-                    "t5_max_length": str(self.t5_max_length),
-                    "apply_lg_attn_mask": str(self.apply_lg_attn_mask),
-                    "apply_t5_attn_mask": str(self.apply_t5_attn_mask),
-                },
+            sample_conditioning = conditioning.select(i)
+            data: dict[str, Any] = sample_conditioning.to_te_output_dict()
+            data["metadata"] = {
+                "caption_hash": str(stable_string_hash(entry.caption)),
+                "t5_max_length": str(self.t5_max_length),
+                "apply_lg_attn_mask": str(self.apply_lg_attn_mask),
+                "apply_t5_attn_mask": str(self.apply_t5_attn_mask),
             }
-            if t5_out is not None:
-                data["t5_out"] = t5_out[i]
             results.append(data)
 
         return results

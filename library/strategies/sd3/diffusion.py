@@ -8,7 +8,7 @@ from library.losses.loss_modifiers import BatchLossOutput
 from library.losses.loss_weighting import apply_masked_loss
 from library.models.sd3.vae import SDVAE
 from library.strategies.base.contracts import DiffusionTrainingStrategy
-from library.strategies.sd3.encoding import build_sd3_attention_masks
+from library.strategies.sd3.encoding import Sd3TextConditioning
 from library.training.diffusion import prepare_latents
 
 
@@ -95,127 +95,6 @@ def shift_scale_sd3_latents(latents: torch.Tensor, _vae_latent_scale: float) -> 
 class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
     """Diffusion-training facet for SD3 flow-matching."""
 
-    def _get_cached_text_conds(
-        self,
-        batch: Any,
-        accelerator: Any,
-        weight_dtype: torch.dtype,
-    ) -> list[torch.Tensor] | list[Any]:
-        """Load cached SD3 text-encoder outputs already attached to the batch."""
-        te_outputs = batch.get("text_encoder_outputs")
-        if te_outputs is None:
-            return []
-
-        lg_out = te_outputs["lg_out"].to(accelerator.device, dtype=weight_dtype).clone()
-        lg_pooled = te_outputs["lg_pooled"].to(accelerator.device, dtype=weight_dtype).clone()
-        t5_out = te_outputs.get("t5_out")
-        if t5_out is not None:
-            t5_out = t5_out.to(accelerator.device, dtype=weight_dtype).clone()
-
-        clip_l_attn_mask = te_outputs.get("clip_l_attn_mask")
-        if clip_l_attn_mask is not None:
-            clip_l_attn_mask = clip_l_attn_mask.to(accelerator.device).clone()
-        clip_g_attn_mask = te_outputs.get("clip_g_attn_mask")
-        if clip_g_attn_mask is not None:
-            clip_g_attn_mask = clip_g_attn_mask.to(accelerator.device).clone()
-        t5_attn_mask = te_outputs.get("t5_attn_mask")
-        if t5_attn_mask is not None:
-            t5_attn_mask = t5_attn_mask.to(accelerator.device).clone()
-
-        return self.drop_cached_text_encoder_outputs(
-            lg_out,
-            t5_out,
-            lg_pooled,
-            clip_l_attn_mask,
-            clip_g_attn_mask,
-            t5_attn_mask,
-        )
-
-    def _encode_live_text_conds(
-        self,
-        batch: Any,
-        text_encoders: list[Any],
-        accelerator: Any,
-        cfg: Any,
-        weight_dtype: torch.dtype,
-        train_text_encoder: bool,
-        is_train: bool,
-    ) -> list[torch.Tensor | None]:
-        """Encode SD3 text conditioning from token-cache tensors or live captions."""
-        models = self.get_models_for_text_encoding(cfg, accelerator, text_encoders)
-
-        if cfg.data.caption.weighted_captions:
-            raise NotImplementedError("SD3 weighted captions are not implemented in the current strategy port")
-
-        input_ids_dict = batch.get("input_ids")
-        if input_ids_dict is not None:
-            input_ids_list = [
-                input_ids_dict["clip_l"].to(accelerator.device),
-                input_ids_dict["clip_g"].to(accelerator.device),
-                input_ids_dict["t5"].to(accelerator.device),
-            ]
-            input_ids_list.extend(build_sd3_attention_masks(self.tokenizers, input_ids_list))
-        else:
-            captions = batch.get("captions", [])
-            if not captions:
-                raise ValueError("Batch has neither 'input_ids' nor 'captions' - cannot encode SD3 text")
-            input_ids_list = [tensor.to(accelerator.device) for tensor in self.tokenize(captions)]
-
-        with torch.set_grad_enabled(is_train and train_text_encoder), accelerator.autocast():
-            encoded_text_conds = self.encode_tokens(models, input_ids_list)
-
-        for index in range(3):
-            if encoded_text_conds[index] is not None:
-                encoded_text_conds[index] = encoded_text_conds[index].to(accelerator.device, dtype=weight_dtype)
-        for index in range(3, 6):
-            if encoded_text_conds[index] is not None:
-                encoded_text_conds[index] = encoded_text_conds[index].to(accelerator.device)
-
-        return encoded_text_conds
-
-    def _merge_text_conds(
-        self,
-        cached_text_conds: list[torch.Tensor | None],
-        encoded_text_conds: list[torch.Tensor | None],
-    ) -> list[torch.Tensor | None]:
-        """Prefer live-encoded outputs when they are recomputed for the current batch."""
-        if not cached_text_conds:
-            return encoded_text_conds
-
-        merged_text_conds = list(cached_text_conds)
-        for index, cond in enumerate(encoded_text_conds):
-            if cond is not None:
-                merged_text_conds[index] = cond
-        return merged_text_conds
-
-    def _get_text_conds(
-        self,
-        batch: Any,
-        text_encoders: list[Any],
-        accelerator: Any,
-        cfg: Any,
-        train_text_encoder: bool,
-        is_train: bool,
-        weight_dtype: torch.dtype,
-    ) -> list[torch.Tensor | None]:
-        """Resolve SD3 text conditioning from cache or a live encoding pass."""
-        cached_text_conds = self._get_cached_text_conds(batch, accelerator, weight_dtype)
-        needs_live_encoding = not cached_text_conds or any(cond is None for cond in cached_text_conds[:3]) or train_text_encoder
-
-        if not needs_live_encoding:
-            return cached_text_conds
-
-        encoded_text_conds = self._encode_live_text_conds(
-            batch=batch,
-            text_encoders=text_encoders,
-            accelerator=accelerator,
-            cfg=cfg,
-            weight_dtype=weight_dtype,
-            train_text_encoder=train_text_encoder,
-            is_train=is_train,
-        )
-        return self._merge_text_conds(cached_text_conds, encoded_text_conds)
-
     def get_noise_pred_and_target(
         self,
         cfg: Any,
@@ -223,7 +102,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
         noise_scheduler: Any,
         latents: torch.Tensor,
         batch: Any,
-        text_encoder_conds: list[torch.Tensor | None],
+        text_encoder_conds: Sd3TextConditioning,
         denoiser: Any,
         trainable_model: Any,
         weight_dtype: torch.dtype,
@@ -248,7 +127,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
 
         if is_train and cfg.performance.memory.gradient_checkpointing:
             noisy_model_input.requires_grad_(True)
-            for text_cond in text_encoder_conds:
+            for text_cond in text_encoder_conds.to_tensor_list():
                 if text_cond is not None and text_cond.dtype.is_floating_point:
                     text_cond.requires_grad_(True)
 
@@ -326,7 +205,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
                 shift_scale_latents_fn=shift_scale_sd3_latents,
             )
 
-        text_encoder_conds = self._get_text_conds(
+        text_encoder_conds = self.resolve_conditioning(
             batch=batch,
             text_encoders=text_encoders,
             accelerator=accelerator,

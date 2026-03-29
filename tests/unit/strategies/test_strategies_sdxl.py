@@ -270,7 +270,7 @@ class TestSdxlTrainingStrategyComposition:
         assert SdxlTrainingStrategy.tokenize_captions.__module__ == "library.strategies.sdxl.tokenization"
         assert SdxlTrainingStrategy.encode_te_outputs_in_memory.__module__ == "library.strategies.sdxl.encoding"
         assert SdxlTrainingStrategy.create_te_caching_strategy.__module__ == "library.strategies.sdxl.caching"
-        assert SdxlTrainingStrategy._get_text_conds.__module__ == "library.strategies.sdxl.diffusion"
+        assert SdxlTrainingStrategy.resolve_conditioning.__module__ == "library.strategies.sdxl.conditioning"
 
     @patch("library.strategies.sdxl.tokenization.load_tokenizer")
     def test_tokenize_captions_returns_dual_chunked_tensors(
@@ -339,7 +339,7 @@ class TestSdxlTrainingStrategyComposition:
             patch.object(strategy, "get_models_for_text_encoding", return_value=models) as mock_get_models,
             patch.object(strategy, "encode_tokens", return_value=encoded_outputs) as mock_encode,
         ):
-            result = strategy._get_text_conds(
+            result = strategy.resolve_conditioning(
                 cfg=cfg,
                 accelerator=accelerator,
                 batch=batch,
@@ -355,7 +355,7 @@ class TestSdxlTrainingStrategyComposition:
         assert len(result) == 3
 
     @patch("library.strategies.sdxl.tokenization.load_tokenizer")
-    def test_get_text_conds_weighted_captions_use_strategy_weight_helpers(
+    def test_resolve_conditioning_weighted_captions_use_strategy_weight_helpers(
         self,
         mock_load_tokenizer,
         mock_clip_tokenizer1,
@@ -384,7 +384,7 @@ class TestSdxlTrainingStrategyComposition:
             patch.object(strategy, "encode_tokens_with_weights", return_value=encoded_outputs) as mock_encode,
             patch.object(strategy, "encode_tokens") as mock_plain_encode,
         ):
-            result = strategy._get_text_conds(
+            result = strategy.resolve_conditioning(
                 cfg=cfg,
                 accelerator=accelerator,
                 batch=batch,
@@ -401,7 +401,7 @@ class TestSdxlTrainingStrategyComposition:
         assert len(result) == 3
 
     @patch("library.strategies.sdxl.tokenization.load_tokenizer")
-    def test_get_text_conds_uses_cached_outputs_without_live_reencode(
+    def test_resolve_conditioning_uses_cached_outputs_without_live_reencode(
         self,
         mock_load_tokenizer,
         mock_clip_tokenizer1,
@@ -430,7 +430,7 @@ class TestSdxlTrainingStrategyComposition:
             patch.object(strategy, "encode_tokens") as mock_encode,
             patch.object(strategy, "encode_tokens_with_weights") as mock_weighted_encode,
         ):
-            result = strategy._get_text_conds(
+            result = strategy.resolve_conditioning(
                 cfg=cfg,
                 accelerator=accelerator,
                 batch=batch,
