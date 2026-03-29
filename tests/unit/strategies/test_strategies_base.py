@@ -11,6 +11,10 @@ import pytest
 import torch
 
 from library.models.sd.tokenizer import load_tokenizer
+from library.strategies.shared.clip.model_preparation import (
+    prepare_clip_text_encoder_fp8,
+    prepare_clip_text_encoder_grad_ckpt_workaround,
+)
 from library.strategies.shared.clip.tokenization import get_clip_weighted_input_ids
 from library.optimizers.optimizer_utils import (
     get_text_encoders_train_flags,
@@ -143,6 +147,34 @@ class TestTokenizationHelpers:
         # All padding should be 1.0
         for i in range(3, 77):
             assert weights[0, i].item() == 1.0
+
+
+# =============================================================================
+# CLIP model-preparation helper tests
+# =============================================================================
+
+
+@pytest.mark.unit
+class TestClipModelPreparationHelpers:
+    """Test shared CLIP-family model-preparation helpers."""
+
+    def test_grad_ckpt_helper_enables_clip_embeddings(self) -> None:
+        embeddings = Mock()
+        text_encoder = Mock()
+        text_encoder.text_model.embeddings = embeddings
+
+        prepare_clip_text_encoder_grad_ckpt_workaround(text_encoder)
+
+        embeddings.requires_grad_.assert_called_once_with(True)
+
+    def test_fp8_helper_restores_clip_embedding_dtype(self) -> None:
+        embeddings = Mock()
+        text_encoder = Mock()
+        text_encoder.text_model.embeddings = embeddings
+
+        prepare_clip_text_encoder_fp8(text_encoder, torch.float16)
+
+        embeddings.to.assert_called_once_with(dtype=torch.float16)
 
 
 # =============================================================================

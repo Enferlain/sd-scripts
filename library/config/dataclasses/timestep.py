@@ -30,6 +30,13 @@ class TimestepConfig:
     dynamic_timestep_schedule: str | None = field(default=None, metadata={"help": "Dynamic timesteps schedule string"})
     sigmoid_scale: float = field(default=1.0, metadata={"help": "Scale for sigmoid sampling"})
     discrete_flow_shift: float = field(default=1.0, metadata={"help": "Shift for discrete flow sampling"})
+    weighting_scheme: str = field(
+        default="uniform",
+        metadata={"help": "RF timestep/loss weighting scheme: uniform, logit_normal, mode, sigma_sqrt, cosmap"},
+    )
+    logit_mean: float = field(default=0.0, metadata={"help": "Mean for RF logit_normal timestep density sampling"})
+    logit_std: float = field(default=1.0, metadata={"help": "Stddev for RF logit_normal timestep density sampling"})
+    mode_scale: float = field(default=1.29, metadata={"help": "Scale factor for RF mode timestep density sampling"})
 
     # Per-sampler configurations
     adaptive_log_snr: AdaptiveLogSNRConfig = field(

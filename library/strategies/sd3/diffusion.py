@@ -1,4 +1,3 @@
-import math
 from typing import Any
 
 import torch
@@ -10,76 +9,10 @@ from library.models.sd3.vae import SDVAE
 from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.strategies.sd3.encoding import Sd3TextConditioning
 from library.training.diffusion import prepare_latents
-
-
-def resolve_sd3_weighting_scheme(cfg: Any) -> str:
-    """Resolve the active SD3 weighting scheme from temporary model config fields."""
-    return getattr(cfg.model, "weighting_scheme", "uniform") or "uniform"
-
-
-def compute_density_for_timestep_sampling(
-    weighting_scheme: str,
-    batch_size: int,
-    *,
-    logit_mean: float = 0.0,
-    logit_std: float = 1.0,
-    mode_scale: float = 1.29,
-) -> torch.Tensor:
-    """Compute the SD3 timestep density used for flow-matching training."""
-    if weighting_scheme == "logit_normal":
-        samples = torch.normal(mean=logit_mean, std=logit_std, size=(batch_size,), device="cpu")
-        return torch.nn.functional.sigmoid(samples)
-    if weighting_scheme == "mode":
-        samples = torch.rand(size=(batch_size,), device="cpu")
-        return 1 - samples - mode_scale * (torch.cos(math.pi * samples / 2) ** 2 - 1 + samples)
-    return torch.rand(size=(batch_size,), device="cpu")
-
-
-def compute_loss_weighting_for_sd3(weighting_scheme: str, sigmas: torch.Tensor) -> torch.Tensor:
-    """Compute SD3 post-loss weighting from the sampled flow sigmas."""
-    if weighting_scheme == "sigma_sqrt":
-        return (sigmas**-2.0).float()
-    if weighting_scheme == "cosmap":
-        denominator = 1 - 2 * sigmas + 2 * sigmas**2
-        return 2 / (math.pi * denominator)
-    return torch.ones_like(sigmas)
-
-
-def get_noisy_model_input_and_timesteps(
-    cfg: Any,
-    latents: torch.Tensor,
-    noise: torch.Tensor,
-    *,
-    device: torch.device,
-    dtype: torch.dtype,
-    fixed_timesteps: torch.Tensor | None = None,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Build SD3 flow-matching inputs from clean latents and sampled noise."""
-    timestep_cfg = cfg.timestep
-    batch_size = latents.shape[0]
-
-    if fixed_timesteps is None:
-        weighting_scheme = resolve_sd3_weighting_scheme(cfg)
-        timestep_samples = compute_density_for_timestep_sampling(
-            weighting_scheme=weighting_scheme,
-            batch_size=batch_size,
-            logit_mean=float(getattr(cfg.model, "logit_mean", 0.0)),
-            logit_std=float(getattr(cfg.model, "logit_std", 1.0)),
-            mode_scale=float(getattr(cfg.model, "mode_scale", 1.29)),
-        )
-
-        t_min = timestep_cfg.min_timestep if timestep_cfg.min_timestep is not None else 0
-        t_max = timestep_cfg.max_timestep if timestep_cfg.max_timestep is not None else 1000
-        shift = float(timestep_cfg.discrete_flow_shift)
-        timestep_samples = (timestep_samples * shift) / (1 + (shift - 1) * timestep_samples)
-        timestep_indices = (timestep_samples * (t_max - t_min) + t_min).long()
-        timesteps = timestep_indices.to(device=device, dtype=torch.long)
-    else:
-        timesteps = fixed_timesteps.to(device=device, dtype=torch.long)
-
-    sigmas = (timesteps.to(dtype) / 1000).view(-1, 1, 1, 1)
-    noisy_model_input = sigmas * noise + (1.0 - sigmas) * latents
-    return noisy_model_input.to(dtype), timesteps, sigmas.to(dtype)
+from library.training.flow import (
+    build_flow_matching_model_input_and_timesteps,
+    compute_flow_matching_loss_weighting,
+)
 
 
 def encode_sd3_images_to_latents(vae: SDVAE, images: torch.Tensor) -> torch.Tensor:
@@ -116,8 +49,8 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
         del noise_scheduler, timestep_runtime, global_step
 
         noise = torch.randn_like(latents)
-        noisy_model_input, timesteps, sigmas = get_noisy_model_input_and_timesteps(
-            cfg,
+        noisy_model_input, timesteps, sigmas = build_flow_matching_model_input_and_timesteps(
+            cfg.timestep,
             latents,
             noise,
             device=accelerator.device,
@@ -144,7 +77,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
             )
 
         model_pred = model_pred * (-sigmas) + noisy_model_input
-        weighting = compute_loss_weighting_for_sd3(resolve_sd3_weighting_scheme(cfg), sigmas=sigmas)
+        weighting = compute_flow_matching_loss_weighting(cfg.timestep.weighting_scheme, sigmas=sigmas)
         target = latents
 
         if "custom_attributes" in batch:
@@ -266,10 +199,6 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
 
 __all__ = [
     "Sd3DiffusionTrainingStrategy",
-    "compute_density_for_timestep_sampling",
-    "compute_loss_weighting_for_sd3",
     "encode_sd3_images_to_latents",
-    "get_noisy_model_input_and_timesteps",
-    "resolve_sd3_weighting_scheme",
     "shift_scale_sd3_latents",
 ]

@@ -17,10 +17,6 @@ class Sd3CheckpointingStrategy(CheckpointingStrategy):
         """Add SD3-specific runtime metadata fields."""
         metadata["ss_apply_lg_attn_mask"] = str(bool(getattr(cfg.model, "apply_lg_attn_mask", False)))
         metadata["ss_apply_t5_attn_mask"] = str(bool(getattr(cfg.model, "apply_t5_attn_mask", False)))
-        metadata["ss_weighting_scheme"] = str(getattr(cfg.model, "weighting_scheme", "uniform"))
-        metadata["ss_logit_mean"] = str(getattr(cfg.model, "logit_mean", 0.0))
-        metadata["ss_logit_std"] = str(getattr(cfg.model, "logit_std", 1.0))
-        metadata["ss_mode_scale"] = str(getattr(cfg.model, "mode_scale", 1.29))
 
     def get_model_metadata(self, cfg: Any) -> dict:
         """Get the SAI model spec metadata for SD3."""

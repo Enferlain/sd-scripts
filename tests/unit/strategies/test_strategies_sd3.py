@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
+from library.strategies.sd3.checkpointing import Sd3CheckpointingStrategy
 from library.strategies.sd3.encoding import Sd3TextConditioning, Sd3TokenizedText, concat_sd3_encodings
 
 
@@ -77,3 +78,19 @@ def test_concat_sd3_encodings_uses_named_conditioning_payload() -> None:
 
     assert context.shape == (1, 154, 4096)
     assert pooled.shape == (1, 2048)
+
+
+@pytest.mark.unit
+def test_sd3_checkpoint_metadata_keeps_family_specific_attn_mask_fields() -> None:
+    strategy = Sd3CheckpointingStrategy()
+    metadata: dict[str, str] = {}
+    cfg = SimpleNamespace(
+        timestep=SimpleNamespace(weighting_scheme="mode", logit_mean=0.1, logit_std=1.2, mode_scale=1.5),
+        model=SimpleNamespace(apply_lg_attn_mask=True, apply_t5_attn_mask=False),
+    )
+
+    strategy.update_metadata(metadata, cfg)
+
+    assert metadata["ss_apply_lg_attn_mask"] == "True"
+    assert metadata["ss_apply_t5_attn_mask"] == "False"
+    assert "ss_weighting_scheme" not in metadata

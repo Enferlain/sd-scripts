@@ -3,6 +3,10 @@ from typing import Any
 import torch
 
 from library.strategies.base.contracts import ModelPreparationStrategy
+from library.strategies.shared.clip.model_preparation import (
+    prepare_clip_text_encoder_fp8,
+    prepare_clip_text_encoder_grad_ckpt_workaround,
+)
 
 
 class SdxlModelPreparationStrategy(ModelPreparationStrategy):
@@ -10,11 +14,13 @@ class SdxlModelPreparationStrategy(ModelPreparationStrategy):
 
     def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
         """Enable grad on CLIP embeddings so gradient checkpointing works."""
-        text_encoder.text_model.embeddings.requires_grad_(True)
+        del index
+        prepare_clip_text_encoder_grad_ckpt_workaround(text_encoder)
 
     def prepare_text_encoder_fp8(self, index: int, text_encoder: Any, te_weight_dtype: torch.dtype, weight_dtype: torch.dtype) -> None:
         """Cast CLIP embeddings back from FP8 because ``nn.Embedding`` does not support it."""
-        text_encoder.text_model.embeddings.to(dtype=weight_dtype)
+        del index, te_weight_dtype
+        prepare_clip_text_encoder_fp8(text_encoder, weight_dtype)
 
     def cast_text_encoder(self, cfg: Any) -> bool:
         """SDXL casts text encoders during shared precision setup."""

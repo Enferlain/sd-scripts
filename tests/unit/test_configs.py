@@ -123,13 +123,14 @@ class TestConfigInstantiation:
         """Test SamplingConfig instantiation with defaults."""
         config = SamplingConfig()
         assert config is not None
-        # Sampling fields are optional
+        assert hasattr(config, "sample_flow_shift")
 
     def test_timestep_config_instantiation(self):
         """Test TimestepConfig instantiation with defaults."""
         config = TimestepConfig()
         assert config is not None
         assert hasattr(config, "timestep_sampling")  # Field is 'timestep_sampling', not 'timestep_sampler'
+        assert hasattr(config, "weighting_scheme")
 
 
 @pytest.mark.config
@@ -165,6 +166,20 @@ class TestConfigDefaults:
         assert config.train_batch_size == 1
         assert config.gradient_accumulation_steps == 1
         assert config.max_train_steps == 1600
+
+    def test_sampling_config_defaults(self):
+        """Test SamplingConfig default values."""
+        config = SamplingConfig()
+        assert config.sample_sampler == "ddim"
+        assert config.sample_flow_shift is None
+
+    def test_timestep_config_rf_defaults(self):
+        """Test RF-related timestep config defaults."""
+        config = TimestepConfig()
+        assert config.weighting_scheme == "uniform"
+        assert config.logit_mean == 0.0
+        assert config.logit_std == 1.0
+        assert config.mode_scale == 1.29
 
 
 # ============================================================================

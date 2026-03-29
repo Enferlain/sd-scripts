@@ -13,6 +13,15 @@ from library.data import DatasetManifest, compute_tag_frequency
 from library.utils.hash_utils import get_git_revision_hash, model_hash, calculate_hash
 
 
+def append_objective_metadata(metadata: dict[str, object], cfg) -> None:
+    """Append objective/runtime metadata that does not belong to model-family strategies."""
+    if cfg.model.model_type == "sd3":
+        metadata["ss_weighting_scheme"] = cfg.timestep.weighting_scheme
+        metadata["ss_logit_mean"] = cfg.timestep.logit_mean
+        metadata["ss_logit_std"] = cfg.timestep.logit_std
+        metadata["ss_mode_scale"] = cfg.timestep.mode_scale
+
+
 def create_training_metadata(
     cfg,
     manifest: DatasetManifest,
@@ -191,6 +200,8 @@ def create_training_metadata(
             metadata["ss_new_vae_hash"] = calculate_hash(vae_name, hash_algorithm)
             vae_name = os.path.basename(vae_name)
         metadata["ss_vae_name"] = vae_name
+
+    append_objective_metadata(metadata, cfg)
 
     # Convert all values to strings
     metadata = {k: str(v) for k, v in metadata.items()}

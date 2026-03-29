@@ -4,6 +4,10 @@ import torch
 
 from library.optimizers.optimizer_utils import get_text_encoders_train_flags
 from library.strategies.base.contracts import ModelPreparationStrategy
+from library.strategies.shared.clip.model_preparation import (
+    prepare_clip_text_encoder_fp8,
+    prepare_clip_text_encoder_grad_ckpt_workaround,
+)
 
 
 class Sd3ModelPreparationStrategy(ModelPreparationStrategy):
@@ -13,9 +17,9 @@ class Sd3ModelPreparationStrategy(ModelPreparationStrategy):
     train_t5xxl: bool = False
 
     def prepare_text_encoder_grad_ckpt_workaround(self, index: int, text_encoder: Any) -> None:
-        """Enable grad on embedding layers so SD3 text encoders work with grad checkpointing."""
+        """Enable grad on embedding layers for CLIP via the shared helper and keep T5 local."""
         if index in (0, 1):
-            text_encoder.text_model.embeddings.requires_grad_(True)
+            prepare_clip_text_encoder_grad_ckpt_workaround(text_encoder)
             return
 
         if hasattr(text_encoder, "encoder") and hasattr(text_encoder.encoder, "embed_tokens"):
@@ -24,10 +28,10 @@ class Sd3ModelPreparationStrategy(ModelPreparationStrategy):
             text_encoder.shared.requires_grad_(True)
 
     def prepare_text_encoder_fp8(self, index: int, text_encoder: Any, te_weight_dtype: torch.dtype, weight_dtype: torch.dtype) -> None:
-        """Restore embedding layers from FP8 for CLIP; T5 remains explicitly unsupported for now."""
+        """Restore CLIP embeddings from FP8 via the shared helper; T5 stays unsupported for now."""
         del te_weight_dtype
         if index in (0, 1):
-            text_encoder.text_model.embeddings.to(dtype=weight_dtype)
+            prepare_clip_text_encoder_fp8(text_encoder, weight_dtype)
             return
 
         raise NotImplementedError("SD3 T5-XXL FP8 preparation is not implemented in the active strategy path yet")

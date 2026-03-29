@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-29]
+
+### Changed
+
+- **RF config ownership now points at timestep/sampling surfaces instead of pretending to be model identity** — The first SD3/RF port no longer reads its weighting and flow-shift settings only from ad hoc `cfg.model` fields.
+  - Added typed RF timestep settings to `library/config/dataclasses/timestep.py` and `configs/_defaults/timestep/default.yaml`: `weighting_scheme`, `logit_mean`, `logit_std`, and `mode_scale`.
+  - Added `sample_flow_shift` to `library/config/dataclasses/output.py` under `output.sampling`, with the shared output defaults YAML exposing the new field too.
+  - Updated the active SD3 diffusion, sampling, and checkpoint metadata paths to read the new typed config homes directly.
+  - Added focused unit coverage for the new config ownership in the SD3 strategy tests plus default-value assertions in the config tests.
+- **RF objective metadata no longer lives in SD3 checkpoint strategy code** — The shared training metadata builder now owns the current RF metadata fields, while SD3 checkpointing keeps only genuinely SD3-specific metadata.
+  - Added `append_objective_metadata(...)` to `library/training/training_metadata.py` and called it from `create_training_metadata(...)`.
+  - Moved `ss_weighting_scheme`, `ss_logit_mean`, `ss_logit_std`, and `ss_mode_scale` out of `library/strategies/sd3/checkpointing.py`.
+  - Kept `ss_apply_lg_attn_mask` and `ss_apply_t5_attn_mask` in the SD3 checkpoint strategy because those remain family-specific encoding/runtime flags.
+- **RF training math has its first shared runtime home outside SD3 strategy code** — The flow-matching helper functions used by SD3 training no longer live in the model-family strategy module.
+  - Added `library/training/flow.py` with shared flow-matching timestep-density, loss-weighting, and noisy-input construction helpers.
+  - Reduced `library/strategies/sd3/diffusion.py` so it now uses those training-side helpers instead of owning the RF math locally.
+  - Added focused unit coverage in `tests/unit/training/test_training_flow.py` for the extracted helper surface.
+- **Discrete-flow sampling math now has a pipeline-side home outside SD3 strategy code** — The reusable sigma-schedule helpers used by SD3 sampling no longer live under the model-family strategy package.
+  - Added `library/pipelines/flow.py` with `DiscreteFlowModelSampling`, `get_discrete_flow_sigmas(...)`, and `starts_at_max_denoise(...)`.
+  - Reduced `library/strategies/sd3/sampling.py` so it keeps SD3 prompt encoding and sampling orchestration, but imports the discrete-flow runtime math from the pipeline-side helper module.
+  - Added focused unit coverage in `tests/unit/test_pipelines_flow.py` for the extracted discrete-flow helper surface.
+- **CLIP-family model-preparation workarounds now have one explicit shared home** — The repo no longer keeps the same CLIP embedding prep helpers duplicated across SD and SDXL, and SD3 now reuses that shared CLIP branch while keeping its T5-specific behavior local.
+  - Added `library/strategies/shared/clip/model_preparation.py` for the shared CLIP text-encoder gradient-checkpointing workaround and FP8 embedding restore helper.
+  - Reduced `library/strategies/sd/model_preparation.py` and `library/strategies/sdxl/model_preparation.py` to family-specific policy around those shared CLIP helpers instead of each owning identical embedding prep code.
+  - Updated `library/strategies/sd3/model_preparation.py` so CLIP-L / CLIP-G reuse the shared helper path while T5-XXL keeps its explicit local grad-checkpointing and FP8 behavior.
+  - Added focused unit coverage for the new shared CLIP model-preparation helpers.
+
 ## [2026-03-28]
 
 ### Changed

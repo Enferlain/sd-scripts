@@ -11,6 +11,11 @@ import torch
 from PIL import Image
 from accelerate.state import PartialState
 
+from library.pipelines.flow import (
+    DiscreteFlowModelSampling,
+    get_discrete_flow_sigmas,
+    starts_at_max_denoise,
+)
 from library.strategies.base.contracts import SampleGenerationStrategy
 from library.strategies.sd3.encoding import concat_sd3_encodings, encode_sd3_tokens
 from library.training.sample_generation import get_sampling_prompt_dicts, sample_images_check
@@ -18,63 +23,6 @@ from library.utils.device_utils import clean_memory_on_device
 
 
 logger = logging.getLogger(__name__)
-
-
-class ModelSamplingDiscreteFlow:
-    """Sampler helper for SD3 discrete-flow sigma/timestep calculations."""
-
-    def __init__(self, shift: float = 1.0) -> None:
-        self.shift = shift
-        timesteps = 1000
-        self.sigmas = self.sigma(torch.arange(1, timesteps + 1, 1))
-
-    @property
-    def sigma_min(self) -> torch.Tensor:
-        return self.sigmas[0]
-
-    @property
-    def sigma_max(self) -> torch.Tensor:
-        return self.sigmas[-1]
-
-    def timestep(self, sigma: torch.Tensor | float) -> torch.Tensor | float:
-        return sigma * 1000
-
-    def sigma(self, timestep: torch.Tensor) -> torch.Tensor:
-        timestep = timestep / 1000.0
-        if self.shift == 1.0:
-            return timestep
-        return self.shift * timestep / (1 + (self.shift - 1) * timestep)
-
-    def calculate_denoised(self, sigma: torch.Tensor, model_output: torch.Tensor, model_input: torch.Tensor) -> torch.Tensor:
-        sigma = sigma.view(sigma.shape[:1] + (1,) * (model_output.ndim - 1))
-        return model_input - model_output * sigma
-
-    def noise_scaling(
-        self,
-        sigma: torch.Tensor,
-        noise: torch.Tensor,
-        latent_image: torch.Tensor,
-        max_denoise: bool = False,
-    ) -> torch.Tensor:
-        del max_denoise
-        return sigma * noise + (1.0 - sigma) * latent_image
-
-
-def get_all_sigmas(sampling: ModelSamplingDiscreteFlow, steps: int) -> torch.Tensor:
-    """Build the SD3 sigma schedule for the requested number of inference steps."""
-    start = sampling.timestep(sampling.sigma_max)
-    end = sampling.timestep(sampling.sigma_min)
-    timesteps = torch.linspace(start, end, steps)
-    sigmas = [sampling.sigma(timestep) for timestep in timesteps]
-    sigmas.append(torch.tensor(0.0))
-    return torch.stack(sigmas).float()
-
-
-def max_denoise(model_sampling: ModelSamplingDiscreteFlow, sigmas: torch.Tensor) -> bool:
-    """Return whether the denoising schedule starts at or above the model's max sigma."""
-    max_sigma = float(model_sampling.sigma_max)
-    sigma = float(sigmas[0])
-    return torch.isclose(torch.tensor(max_sigma), torch.tensor(sigma), rtol=1e-5).item() or sigma > max_sigma
 
 
 class Sd3SampleGenerationStrategy(SampleGenerationStrategy):
@@ -122,9 +70,9 @@ class Sd3SampleGenerationStrategy(SampleGenerationStrategy):
             .to(device)
         )
 
-        model_sampling = ModelSamplingDiscreteFlow(shift=flow_shift)
-        sigmas = get_all_sigmas(model_sampling, steps).to(device)
-        noise_scaled = model_sampling.noise_scaling(sigmas[0], noise, latent, max_denoise(model_sampling, sigmas))
+        model_sampling = DiscreteFlowModelSampling(shift=flow_shift)
+        sigmas = get_discrete_flow_sigmas(model_sampling, steps).to(device)
+        noise_scaled = model_sampling.noise_scaling(sigmas[0], noise, latent, starts_at_max_denoise(model_sampling, sigmas))
 
         c_crossattn = torch.cat([cond[0], neg_cond[0]]).to(device=device, dtype=dtype)
         y = torch.cat([cond[1], neg_cond[1]]).to(device=device, dtype=dtype)
@@ -178,7 +126,7 @@ class Sd3SampleGenerationStrategy(SampleGenerationStrategy):
             prompt_dict.get("guidance_scale", sampling_cfg.sample_cfg_scale if sampling_cfg.sample_cfg_scale is not None else 7.5),
         )
         seed = prompt_dict.get("seed", sampling_cfg.sample_seed)
-        flow_shift = float(prompt_dict.get("flow_shift", getattr(cfg.model, "sample_flow_shift", 3.0)))
+        flow_shift = float(prompt_dict.get("flow_shift", sampling_cfg.sample_flow_shift if sampling_cfg.sample_flow_shift is not None else 3.0))
 
         if seed is not None:
             torch.manual_seed(seed)
@@ -328,8 +276,5 @@ class Sd3SampleGenerationStrategy(SampleGenerationStrategy):
 
 
 __all__ = [
-    "ModelSamplingDiscreteFlow",
     "Sd3SampleGenerationStrategy",
-    "get_all_sigmas",
-    "max_denoise",
 ]

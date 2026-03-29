@@ -99,6 +99,25 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - shared CLIP prompt-tokenization behavior now lives in `library/strategies/shared/clip/tokenization.py`
   - shared Hugging Face tokenizer bootstrap now lives in `library/models/sd/tokenizer.py`
   - SD / SDXL now layer their family-specific tokenization assembly on those shared seams, while SD3 only reuses the bootstrap side until more of its CLIP+T5 behavior proves to be genuinely shared
+- The CLIP-family model-preparation split is now a bit cleaner too:
+  - shared CLIP text-encoder gradient-checkpointing and FP8 embedding-restore helpers now live in `library/strategies/shared/clip/model_preparation.py`
+  - SD / SDXL reuse that shared CLIP helper directly
+  - SD3 now also reuses the CLIP branch there for encoder indexes `0` and `1`, while keeping T5-specific model-preparation behavior local
+- The first RF config-ownership cleanup is now in place:
+  - RF timestep-weighting knobs now have typed config homes under `timestep` instead of only being read as ad hoc `model` fields
+  - the SD3 sampling-side `sample_flow_shift` default now has a typed home under `output.sampling`
+  - the active SD3 path now reads those typed config homes directly instead of carrying compatibility resolver shims
+- Objective-level RF metadata has started moving out of SD3 strategy ownership too:
+  - shared training metadata now adds the current RF metadata fields for the active RF consumer
+  - `library/strategies/sd3/checkpointing.py` now keeps only SD3-specific attention-mask metadata instead of also owning RF timestep-weighting fields
+- The first RF training-helper extraction is now in place:
+  - flow-matching timestep-density, loss-weighting, and noisy-input construction helpers now live in `library/training/flow.py`
+  - `library/strategies/sd3/diffusion.py` now consumes those helpers instead of owning the RF math directly
+  - this is still a temporary shared-runtime home, not the final objective/runtime layer
+- The first RF sampling-helper extraction is now in place too:
+  - discrete-flow sigma/timestep sampling helpers now live in `library/pipelines/flow.py`
+  - `library/strategies/sd3/sampling.py` now keeps SD3 sampling orchestration while importing the reusable discrete-flow math from that pipeline-side module
+  - this is a practical pipeline-side home for now, not a claim that the final inference/runtime structure is settled
 - Weighted prompt support is now treated as an explicit optional capability rather than a fake universal requirement:
   - the required tokenization/text-encoding facets keep the non-weighted training/runtime path
   - `WeightedPromptStrategy` owns the paired weighted tokenization / weighted encoding seam used by SD / SDXL

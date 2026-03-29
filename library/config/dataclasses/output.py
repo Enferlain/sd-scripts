@@ -103,6 +103,10 @@ class SamplingConfig:
     sample_cfg_scale: float | None = field(default=None, metadata={"help": "Default CFG/guidance scale when not specified per prompt"})
     sample_seed: int | None = field(default=None, metadata={"help": "Default seed for sample generation when not specified per prompt"})
     sample_sampler: str = field(default="ddim", metadata={"help": "Default sampler: ddim, euler, euler_a, dpmsolver, etc."})
+    sample_flow_shift: float | None = field(
+        default=None,
+        metadata={"help": "Default RF flow shift when not specified per prompt. If None, the strategy chooses a family default."},
+    )
     sample_vae_dtype: str | None = field(
         default=None, metadata={"help": "VAE dtype for sampling: fp16, bf16, or fp32. If None, uses training VAE dtype."}
     )
