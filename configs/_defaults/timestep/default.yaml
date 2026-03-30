@@ -1,16 +1,15 @@
 # @package timestep
 
 # Timestep configuration
-timestep_sampling: uniform # uniform | shift | log_snr_uniform | adaptive_log_snr
+timestep_sampling: uniform # shared: uniform | log_snr_uniform | adaptive_log_snr | logit_normal ; RF-only: cosine_shaped
 min_timestep: null
 max_timestep: null
 dynamic_timestep_schedule: null
-sigmoid_scale: 1.0
-discrete_flow_shift: 1.0
-weighting_scheme: uniform
+training_shift: 1.0
+rf_loss_weighting_scheme: uniform
 logit_mean: 0.0
 logit_std: 1.0
-mode_scale: 1.29
+cosine_shape_scale: 1.29
 
 # Adaptive log-SNR sampler
 adaptive_log_snr:

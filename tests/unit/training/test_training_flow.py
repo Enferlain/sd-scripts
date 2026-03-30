@@ -15,13 +15,13 @@ from library.objectives.rectified_flow import (
 @pytest.mark.unit
 def test_build_flow_matching_model_input_and_timesteps_uses_timestep_config() -> None:
     timestep_config = TimestepConfig(
-        weighting_scheme="mode",
+        timestep_sampling="cosine_shaped",
         logit_mean=0.5,
         logit_std=1.0,
-        mode_scale=1.5,
+        cosine_shape_scale=1.5,
         min_timestep=0,
         max_timestep=1000,
-        discrete_flow_shift=1.0,
+        training_shift=1.0,
     )
     latents = torch.zeros(2, 4, 8, 8)
     noise = torch.ones_like(latents)
@@ -53,5 +53,13 @@ def test_compute_flow_matching_loss_weighting_sigma_sqrt() -> None:
 @pytest.mark.unit
 def test_compute_flow_matching_timestep_density_returns_expected_shape() -> None:
     density = compute_flow_matching_timestep_density("uniform", batch_size=4)
+
+    assert density.shape == (4,)
+
+
+@pytest.mark.training
+@pytest.mark.unit
+def test_compute_flow_matching_timestep_density_logit_normal_returns_expected_shape() -> None:
+    density = compute_flow_matching_timestep_density("logit_normal", batch_size=4, logit_mean=0.0, logit_std=1.0)
 
     assert density.shape == (4,)

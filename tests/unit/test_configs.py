@@ -130,7 +130,7 @@ class TestConfigInstantiation:
         config = TimestepConfig()
         assert config is not None
         assert hasattr(config, "timestep_sampling")  # Field is 'timestep_sampling', not 'timestep_sampler'
-        assert hasattr(config, "weighting_scheme")
+        assert hasattr(config, "rf_loss_weighting_scheme")
 
 
 @pytest.mark.config
@@ -176,10 +176,11 @@ class TestConfigDefaults:
     def test_timestep_config_rf_defaults(self):
         """Test RF-related timestep config defaults."""
         config = TimestepConfig()
-        assert config.weighting_scheme == "uniform"
+        assert config.timestep_sampling == "uniform"
+        assert config.rf_loss_weighting_scheme == "uniform"
         assert config.logit_mean == 0.0
         assert config.logit_std == 1.0
-        assert config.mode_scale == 1.29
+        assert config.cosine_shape_scale == 1.29
 
 
 # ============================================================================

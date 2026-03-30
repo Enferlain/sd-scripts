@@ -804,11 +804,31 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="timestep\\.timestep_sampling must be one of"):
             validate_config(cfg)
 
+    def test_timestep_sampling_rejects_removed_shift_alias(self):
+        """The old shift alias should fail fast now that logit_normal is canonical."""
+        cfg = make_validate_cfg({"timestep": {"timestep_sampling": "shift"}})
+
+        with pytest.raises(ValueError, match="timestep\\.timestep_sampling must be one of"):
+            validate_config(cfg)
+
     def test_adaptive_log_snr_prior_weight_must_be_in_range(self):
         """Adaptive log-SNR config should validate its probability-mixing bounds."""
         cfg = make_validate_cfg({"timestep": {"adaptive_log_snr": {"prior_weight": 1.5}}})
 
         with pytest.raises(ValueError, match="timestep\\.adaptive_log_snr\\.prior_weight must be between 0\\.0 and 1\\.0 inclusive"):
+            validate_config(cfg)
+
+    def test_logit_normal_timestep_mode_is_available_outside_sd3(self):
+        """The shared logit-normal sampler should validate on non-SD3 model types too."""
+        cfg = make_validate_cfg({"model": {"model_type": "sd15"}, "timestep": {"timestep_sampling": "logit_normal"}})
+
+        validate_config(cfg)
+
+    def test_shared_log_snr_modes_reject_active_sd3_path(self):
+        """Shared DDPM timestep samplers should fail fast on the current RF path until implemented there."""
+        cfg = make_validate_cfg({"model": {"model_type": "sd3"}, "timestep": {"timestep_sampling": "adaptive_log_snr"}})
+
+        with pytest.raises(ValueError, match="is not implemented for the active SD3/RF timestep path yet"):
             validate_config(cfg)
 
     def test_validation_split_must_be_between_zero_and_one(self):

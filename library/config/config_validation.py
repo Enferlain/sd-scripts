@@ -22,7 +22,7 @@ from library.optimizers.optimizer_utils import should_train_text_encoder
 logger = logging.getLogger(__name__)
 
 VALID_MODES = {"finetune", "peft", "textual_inversion"}
-VALID_TIMESTEP_SAMPLERS = {"uniform", "shift", "log_snr_uniform", "adaptive_log_snr"}
+VALID_TIMESTEP_SAMPLERS = {"uniform", "log_snr_uniform", "adaptive_log_snr", "logit_normal", "cosine_shaped"}
 
 
 def _is_non_bool_number(value: object) -> bool:
@@ -170,6 +170,12 @@ def _validate_timestep_config(cfg) -> None:
     if timestep_sampling not in VALID_TIMESTEP_SAMPLERS:
         raise ValueError(
             f"timestep.timestep_sampling must be one of {sorted(VALID_TIMESTEP_SAMPLERS)}, got {timestep_sampling!r}"
+        )
+
+    model_type = _get_optional_attr(cfg, "model", "model_type")
+    if timestep_sampling in {"log_snr_uniform", "adaptive_log_snr"} and model_type == "sd3":
+        raise ValueError(
+            f"timestep.timestep_sampling={timestep_sampling!r} is not implemented for the active SD3/RF timestep path yet."
         )
 
     adaptive_cfg = getattr(timestep_cfg, "adaptive_log_snr", None)

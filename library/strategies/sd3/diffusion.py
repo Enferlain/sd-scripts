@@ -77,7 +77,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
             )
 
         model_pred = model_pred * (-sigmas) + noisy_model_input
-        weighting = compute_flow_matching_loss_weighting(cfg.timestep.weighting_scheme, sigmas=sigmas)
+        weighting = compute_flow_matching_loss_weighting(cfg.timestep.rf_loss_weighting_scheme, sigmas=sigmas)
         target = latents
 
         if "custom_attributes" in batch:

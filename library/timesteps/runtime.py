@@ -7,6 +7,7 @@ from typing import Any
 import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
+from library.timesteps.density import apply_training_shift, sample_timestep_density
 from library.timesteps.samplers.adaptive_log_snr_sampler import AdaptiveLogSNRSampler
 from library.timesteps.samplers.log_snr_sampler import LogSNRUniformSampler
 
@@ -20,12 +21,12 @@ def _runtime_print(accelerator: Any | None, message: str) -> None:
 def resolve_timestep_sampling_mode(requested_mode: str | None) -> tuple[str, str]:
     """Resolve the requested timestep mode into the effective runtime mode."""
     normalized_mode = requested_mode or "uniform"
-    if normalized_mode in {"uniform", "shift", "log_snr_uniform", "adaptive_log_snr"}:
+    if normalized_mode in {"uniform", "log_snr_uniform", "adaptive_log_snr", "logit_normal", "cosine_shaped"}:
         return normalized_mode, normalized_mode
 
     raise ValueError(
         f"Unsupported timestep_sampling={normalized_mode!r}. "
-        "Supported modes are: uniform, shift, log_snr_uniform, adaptive_log_snr."
+        "Supported modes are: uniform, log_snr_uniform, adaptive_log_snr, logit_normal, cosine_shaped."
     )
 
 
@@ -86,12 +87,12 @@ def _build_adaptive_sampler(
             requested_mode,
         )
 
-    if requested_mode in {"uniform", "shift"}:
+    if requested_mode in {"uniform", "logit_normal", "cosine_shaped"}:
         return None, requested_mode, requested_mode
 
     raise ValueError(
         f"Unsupported timestep_sampling={requested_mode!r}. "
-        "Supported modes are: uniform, shift, log_snr_uniform, adaptive_log_snr."
+        "Supported modes are: uniform, log_snr_uniform, adaptive_log_snr, logit_normal, cosine_shaped."
     )
 
 
@@ -191,13 +192,16 @@ class TimestepRuntime:
             )
             return t_local.clamp(min_timestep, max_timestep - 1).to(dtype=torch.long, device=device)
 
-        if is_train and self.effective_mode == "shift":
-            shift = timestep_config.discrete_flow_shift
-            logits_norm = torch.randn(batch_size, device="cpu")
-            logits_norm = logits_norm * timestep_config.sigmoid_scale
-            timesteps = logits_norm.sigmoid()
-            timesteps = (timesteps * shift) / (1 + (shift - 1) * timesteps)
-            return min_timestep + (timesteps * (max_timestep - min_timestep)).to(dtype=torch.long, device=device)
+        if is_train and self.effective_mode in {"logit_normal", "cosine_shaped"}:
+            timestep_density = sample_timestep_density(
+                self.effective_mode,
+                batch_size,
+                logit_mean=float(timestep_config.logit_mean),
+                logit_std=float(timestep_config.logit_std),
+                cosine_shape_scale=float(timestep_config.cosine_shape_scale),
+            )
+            timestep_density = apply_training_shift(timestep_density, float(timestep_config.training_shift))
+            return min_timestep + (timestep_density * (max_timestep - min_timestep)).to(dtype=torch.long, device=device)
 
         if self.effective_mode != "uniform":
             raise ValueError(f"Unsupported timestep runtime mode: {self.effective_mode}")

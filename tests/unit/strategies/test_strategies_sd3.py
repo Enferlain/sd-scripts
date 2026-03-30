@@ -85,7 +85,13 @@ def test_sd3_checkpoint_metadata_keeps_family_specific_attn_mask_fields() -> Non
     strategy = Sd3CheckpointingStrategy()
     metadata: dict[str, str] = {}
     cfg = SimpleNamespace(
-        timestep=SimpleNamespace(weighting_scheme="mode", logit_mean=0.1, logit_std=1.2, mode_scale=1.5),
+        timestep=SimpleNamespace(
+            timestep_sampling="cosine_shaped",
+            rf_loss_weighting_scheme="cosmap",
+            logit_mean=0.1,
+            logit_std=1.2,
+            cosine_shape_scale=1.5,
+        ),
         model=SimpleNamespace(apply_lg_attn_mask=True, apply_t5_attn_mask=False),
     )
 
@@ -93,4 +99,5 @@ def test_sd3_checkpoint_metadata_keeps_family_specific_attn_mask_fields() -> Non
 
     assert metadata["ss_apply_lg_attn_mask"] == "True"
     assert metadata["ss_apply_t5_attn_mask"] == "False"
-    assert "ss_weighting_scheme" not in metadata
+    assert "ss_timestep_sampling" not in metadata
+    assert "ss_rf_loss_weighting_scheme" not in metadata

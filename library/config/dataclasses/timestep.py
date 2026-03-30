@@ -20,7 +20,7 @@ class TimestepConfig:
     """
     Timestep sampling configuration.
 
-    timestep_sampling values: uniform, shift, log_snr_uniform, adaptive_log_snr
+    timestep_sampling values vary by training method.
     """
 
     # Core settings
@@ -28,15 +28,14 @@ class TimestepConfig:
     min_timestep: int | None = field(default=None, metadata={"help": "Minimum timesteps for training"})
     max_timestep: int | None = field(default=None, metadata={"help": "Maximum timesteps for training"})
     dynamic_timestep_schedule: str | None = field(default=None, metadata={"help": "Dynamic timesteps schedule string"})
-    sigmoid_scale: float = field(default=1.0, metadata={"help": "Scale for sigmoid sampling"})
-    discrete_flow_shift: float = field(default=1.0, metadata={"help": "Shift for discrete flow sampling"})
-    weighting_scheme: str = field(
+    training_shift: float = field(default=1.0, metadata={"help": "Shift applied to the sampled training-time distribution"})
+    rf_loss_weighting_scheme: str = field(
         default="uniform",
-        metadata={"help": "RF timestep/loss weighting scheme: uniform, logit_normal, mode, sigma_sqrt, cosmap"},
+        metadata={"help": "RF post-loss weighting scheme: uniform, sigma_sqrt, cosmap"},
     )
-    logit_mean: float = field(default=0.0, metadata={"help": "Mean for RF logit_normal timestep density sampling"})
-    logit_std: float = field(default=1.0, metadata={"help": "Stddev for RF logit_normal timestep density sampling"})
-    mode_scale: float = field(default=1.29, metadata={"help": "Scale factor for RF mode timestep density sampling"})
+    logit_mean: float = field(default=0.0, metadata={"help": "Mean for logit-normal timestep density sampling"})
+    logit_std: float = field(default=1.0, metadata={"help": "Stddev for logit-normal timestep density sampling"})
+    cosine_shape_scale: float = field(default=1.29, metadata={"help": "Scale factor for cosine-shaped timestep density sampling"})
 
     # Per-sampler configurations
     adaptive_log_snr: AdaptiveLogSNRConfig = field(

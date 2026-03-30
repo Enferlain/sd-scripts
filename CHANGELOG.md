@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **RF timestep-density and RF loss-weighting are now modeled as separate config concepts** — The active RF path no longer overloads one `weighting_scheme` field to mean both density sampling and post-loss weighting.
+  - Replaced the old overloaded `timestep.weighting_scheme` with a dedicated `timestep.rf_loss_weighting_scheme`, but folded RF timestep-density selection back into the main `timestep.timestep_sampling` surface instead of keeping a second parallel sampling selector.
+  - Updated `library/objectives/rectified_flow.py` so RF now reads training-time sampling from `timestep_sampling`, treats `logit_normal` as the canonical logit-family sampler, and keeps `cosine_shaped` as the remaining RF-local density option.
+  - Renamed the vague RF density label `mode` to `cosine_shaped`, and `mode_scale` to `cosine_shape_scale`, including the shared RF metadata field.
+  - Updated config validation to enforce the currently implemented timestep-sampling values by active model family, and updated RF metadata keys to record the shared `ss_timestep_sampling` field instead of an RF-only density-selector name.
+  - Renamed the remaining script-era timestep knobs `sigmoid_scale` and `discrete_flow_shift` to `logit_scale` and `training_shift` so the active config surface describes training-time behavior more directly.
+  - Collapsed the redundant `shift` RF sampler into `logit_normal + training_shift`, removed the now-redundant `logit_scale` knob, and added a shared timestep-density helper documenting the equivalence in code.
 - **Objective/runtime ownership now has a first explicit home outside trainer and model-family helpers** — The active runtime no longer wires DDPM scheduler setup, timestep runtime construction, RF metadata ownership, and post-loss modifier assembly as unrelated pieces.
   - Added `library/objectives/` with explicit objective owners plus a small runtime bundle/factory surface.
   - Trainer runtime initialization now resolves one objective owner, builds its runtime bundle, and reads checkpoint metadata hooks from that same objective seam.
@@ -16,13 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Moved the shared RF training helpers from `library/training/flow.py` into `library/objectives/rectified_flow.py`, and updated SD / SDXL / SD3 diffusion code to import their objective-owned helpers from the new package.
   - Added focused test updates for the new objective-owned DDPM scheduler / batch-input helper path and the RF metadata / helper imports.
 - **RF config ownership now points at timestep/sampling surfaces instead of pretending to be model identity** — The first SD3/RF port no longer reads its weighting and flow-shift settings only from ad hoc `cfg.model` fields.
-  - Added typed RF timestep settings to `library/config/dataclasses/timestep.py` and `configs/_defaults/timestep/default.yaml`: `weighting_scheme`, `logit_mean`, `logit_std`, and `mode_scale`.
+  - Added typed RF timestep settings to `library/config/dataclasses/timestep.py` and `configs/_defaults/timestep/default.yaml`: shared `timestep_sampling`, `rf_loss_weighting_scheme`, `logit_mean`, `logit_std`, and `cosine_shape_scale`.
   - Added `sample_flow_shift` to `library/config/dataclasses/output.py` under `output.sampling`, with the shared output defaults YAML exposing the new field too.
   - Updated the active SD3 diffusion, sampling, and checkpoint metadata paths to read the new typed config homes directly.
   - Added focused unit coverage for the new config ownership in the SD3 strategy tests plus default-value assertions in the config tests.
 - **RF objective metadata no longer lives in SD3 checkpoint strategy code** — The shared training metadata builder now owns the current RF metadata fields, while SD3 checkpointing keeps only genuinely SD3-specific metadata.
   - Added `append_objective_metadata(...)` to `library/training/training_metadata.py` and called it from `create_training_metadata(...)`.
-  - Moved `ss_weighting_scheme`, `ss_logit_mean`, `ss_logit_std`, and `ss_mode_scale` out of `library/strategies/sd3/checkpointing.py`.
+  - Moved `ss_timestep_sampling`, `ss_rf_loss_weighting_scheme`, `ss_logit_mean`, `ss_logit_std`, and `ss_cosine_shape_scale` out of `library/strategies/sd3/checkpointing.py`.
   - Kept `ss_apply_lg_attn_mask` and `ss_apply_t5_attn_mask` in the SD3 checkpoint strategy because those remain family-specific encoding/runtime flags.
 - **RF training math has its first shared runtime home outside SD3 strategy code** — The flow-matching helper functions used by SD3 training no longer live in the model-family strategy module.
   - Added `library/training/flow.py` with shared flow-matching timestep-density, loss-weighting, and noisy-input construction helpers.
@@ -103,7 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The active sampler surface is now intentionally smaller: the retained modes are `uniform`, `shift`, `log_snr_uniform`, and a new general-purpose `adaptive_log_snr`, while the old one-off adaptive samplers (`mix_adaptive`, `tempered_adaptive`, `gaussian_mid_snr`, `snr_windowed`, and the stale v1 variant) were removed from the active codebase.
   - `library/config/config_validation.py` now fails fast on removed timestep sampler names and validates the new `timestep.adaptive_log_snr.*` config block.
   - Added runnable SDXL PEFT test configs for both `adaptive_log_snr` and `log_snr_uniform`, each layered on the existing `tests/test_core` benchmark-backed setup so the new sampler and its baseline are easy to smoke-test from `configs/tests/`.
-  - The sampler call interface is now slimmer and more honest: `log_snr_uniform` and `adaptive_log_snr` no longer accept or discard `sigmoid_scale` / `discrete_flow_shift`, and the runtime only passes the shared sampling inputs that sampler-backed modes actually use.
+  - The sampler call interface is now slimmer and more honest: `log_snr_uniform` and `adaptive_log_snr` no longer accept or discard the shift-only time-sampling knobs, and the runtime only passes the shared sampling inputs that sampler-backed modes actually use.
   - Added focused runtime and diffusion coverage in `tests/unit/timesteps/test_runtime.py` and `tests/unit/training/test_training_diffusion.py`, and updated training-loop fixtures/integration coverage for the trainer-owned runtime path.
 - **Training orchestration now reads in clearer shared phases without changing the active training behavior** — The shared runner/phase layer now makes epoch outcomes, eval-side execution, and startup/finalization sequencing more explicit.
   - Added `library/training/phases/orchestration_helpers.py` with small phase-shared helpers for monitored phase lifecycle and the common eval-side sampling/validation flow.

@@ -17,10 +17,12 @@ from library.utils.hash_utils import get_git_revision_hash, model_hash, calculat
 def append_objective_metadata(metadata: dict[str, object], cfg, objective_name: str) -> None:
     """Append objective/runtime metadata that belongs to the shared metadata builder."""
     if objective_name == "rectified_flow":
-        metadata["ss_weighting_scheme"] = cfg.timestep.weighting_scheme
+        metadata["ss_timestep_sampling"] = cfg.timestep.timestep_sampling
+        metadata["ss_rf_loss_weighting_scheme"] = cfg.timestep.rf_loss_weighting_scheme
+        metadata["ss_training_shift"] = cfg.timestep.training_shift
         metadata["ss_logit_mean"] = cfg.timestep.logit_mean
         metadata["ss_logit_std"] = cfg.timestep.logit_std
-        metadata["ss_mode_scale"] = cfg.timestep.mode_scale
+        metadata["ss_cosine_shape_scale"] = cfg.timestep.cosine_shape_scale
 
 
 def create_training_metadata(

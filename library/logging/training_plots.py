@@ -122,11 +122,19 @@ def get_plotter_settings(cfg, timestep_runtime) -> dict:
                 "Uniform Mix": adaptive_cfg.uniform_mix_when_low_entropy,
             }
         )
-    elif sampler_type == "shift":
+    elif sampler_type == "logit_normal":
         plotter_settings.update(
             {
-                "Shift": cfg.timestep.discrete_flow_shift,
-                "Sigmoid Scale": cfg.timestep.sigmoid_scale,
+                "Logit Mean": cfg.timestep.logit_mean,
+                "Logit Std": cfg.timestep.logit_std,
+                "Training Shift": cfg.timestep.training_shift,
+            }
+        )
+    elif sampler_type == "cosine_shaped":
+        plotter_settings.update(
+            {
+                "Cosine Shape Scale": cfg.timestep.cosine_shape_scale,
+                "Training Shift": cfg.timestep.training_shift,
             }
         )
 

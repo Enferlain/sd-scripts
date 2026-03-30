@@ -104,9 +104,10 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - SD / SDXL reuse that shared CLIP helper directly
   - SD3 now also reuses the CLIP branch there for encoder indexes `0` and `1`, while keeping T5-specific model-preparation behavior local
 - The first RF config-ownership cleanup is now in place:
-  - RF timestep-weighting knobs now have typed config homes under `timestep` instead of only being read as ad hoc `model` fields
+  - RF loss-weighting knobs and RF-local time-sampling parameters now have typed config homes under `timestep` instead of only being read as ad hoc `model` fields
   - the SD3 sampling-side `sample_flow_shift` default now has a typed home under `output.sampling`
   - the active SD3 path now reads those typed config homes directly instead of carrying compatibility resolver shims
+  - the training-time RF sampling surface is a bit cleaner now too: `logit_normal` is the canonical logit-family sampler, `training_shift` remains as the post-sampling warp, and the redundant `shift`/`logit_scale` pair is gone from the active config surface
 - Objective-level RF metadata has started moving out of SD3 strategy ownership too:
   - shared training metadata now adds the current RF metadata fields for the active RF consumer
   - `library/strategies/sd3/checkpointing.py` now keeps only SD3-specific attention-mask metadata instead of also owning RF timestep-weighting fields
@@ -188,7 +189,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [x] **Timestep runtime redesign** — The trainer-owned timestep runtime landed and the active sampler/runtime cleanup is complete for the current SD / SDXL path.
   - `library/timesteps/` now owns active runtime state and adaptive sampler lifecycle for the main trainer path.
   - The active sampler surface is intentionally small: `uniform`, `shift`, `log_snr_uniform`, and `adaptive_log_snr`.
-  - The sampler-backed runtime interface now only passes shared sampling inputs; sampler-specific knobs like `sigmoid_scale` and `discrete_flow_shift` remain owned by the explicit `shift` path instead of leaking through every sampler API.
+  - The sampler-backed runtime interface now only passes shared sampling inputs; shift-only knobs like `logit_scale` and `training_shift` remain owned by the explicit `shift` path instead of leaking through every sampler API.
   - Benchmark-backed smoke configs exist under `configs/tests/` for both `adaptive_log_snr` and `log_snr_uniform`, and both completed end-to-end manual smoke runs on the SDXL PEFT test setup.
 - [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now and the repo has an initial SDXL PEFT preset/example, but the feature still needs real docs and clearer guidance on when to use it.
 - [ ] **Conditioning architecture follow-up** — Pressure-test the new `ConditioningStrategy` seam against more model families and decide whether any sub-conventions under `resolve_conditioning(...)` are mature enough to standardize.

@@ -6,31 +6,32 @@ import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
 from library.objectives.ddpm import DDPMObjective
+from library.timesteps.density import apply_training_shift, sample_timestep_density
 
 
 def compute_flow_matching_timestep_density(
-    weighting_scheme: str,
+    timestep_density_scheme: str,
     batch_size: int,
     *,
     logit_mean: float = 0.0,
     logit_std: float = 1.0,
-    mode_scale: float = 1.29,
+    cosine_shape_scale: float = 1.29,
 ) -> torch.Tensor:
     """Compute timestep-density samples for flow-matching training."""
-    if weighting_scheme == "logit_normal":
-        samples = torch.normal(mean=logit_mean, std=logit_std, size=(batch_size,), device="cpu")
-        return torch.nn.functional.sigmoid(samples)
-    if weighting_scheme == "mode":
-        samples = torch.rand(size=(batch_size,), device="cpu")
-        return 1 - samples - mode_scale * (torch.cos(math.pi * samples / 2) ** 2 - 1 + samples)
-    return torch.rand(size=(batch_size,), device="cpu")
+    return sample_timestep_density(
+        timestep_density_scheme,
+        batch_size,
+        logit_mean=logit_mean,
+        logit_std=logit_std,
+        cosine_shape_scale=cosine_shape_scale,
+    )
 
 
-def compute_flow_matching_loss_weighting(weighting_scheme: str, sigmas: torch.Tensor) -> torch.Tensor:
+def compute_flow_matching_loss_weighting(loss_weighting_scheme: str, sigmas: torch.Tensor) -> torch.Tensor:
     """Compute post-loss weighting from sampled flow sigmas."""
-    if weighting_scheme == "sigma_sqrt":
+    if loss_weighting_scheme == "sigma_sqrt":
         return (sigmas**-2.0).float()
-    if weighting_scheme == "cosmap":
+    if loss_weighting_scheme == "cosmap":
         denominator = 1 - 2 * sigmas + 2 * sigmas**2
         return 2 / (math.pi * denominator)
     return torch.ones_like(sigmas)
@@ -50,17 +51,16 @@ def build_flow_matching_model_input_and_timesteps(
 
     if fixed_timesteps is None:
         timestep_samples = compute_flow_matching_timestep_density(
-            weighting_scheme=timestep_config.weighting_scheme,
+            timestep_density_scheme=timestep_config.timestep_sampling,
             batch_size=batch_size,
             logit_mean=float(timestep_config.logit_mean),
             logit_std=float(timestep_config.logit_std),
-            mode_scale=float(timestep_config.mode_scale),
+            cosine_shape_scale=float(timestep_config.cosine_shape_scale),
         )
 
         t_min = timestep_config.min_timestep if timestep_config.min_timestep is not None else 0
         t_max = timestep_config.max_timestep if timestep_config.max_timestep is not None else 1000
-        shift = float(timestep_config.discrete_flow_shift)
-        timestep_samples = (timestep_samples * shift) / (1 + (shift - 1) * timestep_samples)
+        timestep_samples = apply_training_shift(timestep_samples, float(timestep_config.training_shift))
         timestep_indices = (timestep_samples * (t_max - t_min) + t_min).long()
         timesteps = timestep_indices.to(device=device, dtype=torch.long)
     else:

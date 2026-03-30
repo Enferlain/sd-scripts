@@ -139,15 +139,15 @@ class TestTimestepRuntime:
         assert not observed_timesteps.requires_grad
         assert not observed_loss.requires_grad
 
-    def test_shift_sampling_uses_runtime_range(self):
+    def test_logit_normal_sampling_uses_runtime_range(self):
         runtime = TimestepRuntime(
-            requested_mode="shift",
-            effective_mode="shift",
+            requested_mode="logit_normal",
+            effective_mode="logit_normal",
             current_min_timestep=200,
             current_max_timestep=400,
             dynamic_schedule=[],
         )
-        cfg = TimestepConfig(timestep_sampling="shift", sigmoid_scale=1.0, discrete_flow_shift=1.0)
+        cfg = TimestepConfig(timestep_sampling="logit_normal", logit_mean=0.0, logit_std=1.0, training_shift=1.0)
         training_cfg = MagicMock()
         training_cfg.max_train_steps = 1000
 
