@@ -9,7 +9,8 @@ from diffusers import DDPMScheduler
 
 from library.losses.edm2.edm2_loss import normalize, FourierFeatureExtractor, NormalizedLinearLayer, AdaptiveLossWeightMLP, create_weight_MLP
 from library.losses.edm2.edm2_modifier import EDM2LossModifier
-from library.losses.loss_modifiers import BatchLossOutput, LossModifierOutput, NoOpLossModifier, build_loss_modifier
+from library.losses.loss_modifiers import BatchLossOutput, LossModifierOutput, NoOpLossModifier
+from library.objectives.ddpm import build_loss_modifier
 
 from library.losses.edm2.plotting import plot_edm2_loss_weighting, plot_edm2_loss_weighting_check
 from library.losses.edm2.validation import handle_conflicting_configuration

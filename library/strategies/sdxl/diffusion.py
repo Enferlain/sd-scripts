@@ -5,8 +5,9 @@ import torch
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.losses.loss_modifiers import BatchLossOutput
 from library.losses.loss_weighting import apply_masked_loss, post_process_loss
+from library.objectives.ddpm import prepare_ddpm_training_inputs
 from library.strategies.base.contracts import DiffusionTrainingStrategy
-from library.training.diffusion import get_noise_noisy_latents_and_timesteps, prepare_latents
+from library.training.diffusion import prepare_latents
 
 
 class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
@@ -35,7 +36,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         Returns:
             Tuple of (noise_pred, target, timesteps, weighting).
         """
-        noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
+        noise, noisy_latents, timesteps = prepare_ddpm_training_inputs(
             cfg.loss.regularization,
             cfg.timestep,
             cfg.training,

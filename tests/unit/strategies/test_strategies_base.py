@@ -33,8 +33,8 @@ from library.strategies.base.contracts import (
     ValidationStrategy,
 )
 from library.strategies.base.features import WeightedPromptStrategy
+from library.objectives.ddpm import build_ddpm_noise_scheduler
 from library.training.diffusion import prepare_latents
-from library.training.noise_utils import get_noise_scheduler
 from library.training.trainer_utils import all_reduce_trainable, restore_rng_state, switch_rng_state
 
 
@@ -336,10 +336,10 @@ class TestTrainingStrategyPhase2Facets:
         assert torch.equal(latents, torch.full((1, 4, 8, 8), 2.0))
 
     def test_noise_scheduler_helper_builds_scheduler(self):
-        """Noise scheduler construction now lives in training.noise_utils."""
+        """DDPM scheduler construction now lives in the objective layer."""
         cfg = Mock()
         cfg.loss.regularization.zero_terminal_snr = False
-        scheduler = get_noise_scheduler(cfg, torch.device("cpu"))
+        scheduler = build_ddpm_noise_scheduler(cfg, torch.device("cpu"))
         assert scheduler.config.num_train_timesteps == 1000
 
     def test_training_runtime_helper_all_reduce_runs_on_gradients(self):

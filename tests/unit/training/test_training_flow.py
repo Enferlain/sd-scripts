@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
-from library.training.flow import (
+from library.objectives.rectified_flow import (
     build_flow_matching_model_input_and_timesteps,
     compute_flow_matching_loss_weighting,
     compute_flow_matching_timestep_density,

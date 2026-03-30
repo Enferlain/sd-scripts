@@ -16,7 +16,7 @@ def test_append_objective_metadata_adds_rf_fields_for_sd3() -> None:
         timestep=SimpleNamespace(weighting_scheme="mode", logit_mean=0.1, logit_std=1.2, mode_scale=1.5),
     )
 
-    append_objective_metadata(metadata, cfg)
+    append_objective_metadata(metadata, cfg, "rectified_flow")
 
     assert metadata["ss_weighting_scheme"] == "mode"
     assert metadata["ss_logit_mean"] == 0.1
@@ -33,6 +33,6 @@ def test_append_objective_metadata_skips_non_rf_model_families() -> None:
         timestep=SimpleNamespace(weighting_scheme="mode", logit_mean=0.1, logit_std=1.2, mode_scale=1.5),
     )
 
-    append_objective_metadata(metadata, cfg)
+    append_objective_metadata(metadata, cfg, "ddpm")
 
     assert metadata == {}

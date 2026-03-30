@@ -1,0 +1,160 @@
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import torch
+from diffusers import DDPMScheduler
+
+from library.config.dataclasses.loss import RegularizationConfig
+from library.config.dataclasses.timestep import TimestepConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.losses.loss_modifiers import build_loss_modifier
+from library.objectives.base import ObjectiveDefinition, ObjectiveRuntime
+from library.timesteps.runtime import build_timestep_runtime
+from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
+
+
+logger = logging.getLogger(__name__)
+
+
+def build_ddpm_noise_scheduler(cfg: Any, device: torch.device) -> DDPMScheduler:
+    """Create the DDPM-style scheduler used by the current diffusion objective path."""
+    noise_scheduler = DDPMScheduler(
+        beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000, clip_sample=False
+    )
+
+    if cfg.loss.regularization.zero_terminal_snr:
+        fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler)
+
+    prepare_scheduler_for_custom_training(noise_scheduler, device)
+    return noise_scheduler
+
+
+def prepare_scheduler_for_custom_training(noise_scheduler: Any, device: torch.device) -> None:
+    """Attach derived scheduler state used by the active DDPM-style runtime path."""
+    if hasattr(noise_scheduler, "all_snr"):
+        return
+
+    alphas_cumprod = noise_scheduler.alphas_cumprod
+    sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
+    sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - alphas_cumprod)
+    alpha = sqrt_alphas_cumprod
+    sigma = sqrt_one_minus_alphas_cumprod
+    all_snr = (alpha / sigma) ** 2
+
+    noise_scheduler.all_snr = all_snr.to(device)
+
+
+def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler: Any) -> None:
+    """Adjust scheduler betas to enforce zero terminal SNR."""
+    logger.info("fix noise scheduler betas: https://arxiv.org/abs/2305.08891")
+
+    def enforce_zero_terminal_snr(betas: torch.Tensor) -> torch.Tensor:
+        alphas = 1 - betas
+        alphas_bar = alphas.cumprod(0)
+        alphas_bar_sqrt = alphas_bar.sqrt()
+
+        alphas_bar_sqrt_0 = alphas_bar_sqrt[0].clone()
+        alphas_bar_sqrt_t = alphas_bar_sqrt[-1].clone()
+        alphas_bar_sqrt -= alphas_bar_sqrt_t
+        alphas_bar_sqrt *= alphas_bar_sqrt_0 / (alphas_bar_sqrt_0 - alphas_bar_sqrt_t)
+
+        alphas_bar = alphas_bar_sqrt**2
+        alphas = alphas_bar[1:] / alphas_bar[:-1]
+        alphas = torch.cat([alphas_bar[0:1], alphas])
+        return 1 - alphas
+
+    betas = enforce_zero_terminal_snr(noise_scheduler.betas)
+    alphas = 1.0 - betas
+    alphas_cumprod = torch.cumprod(alphas, dim=0)
+
+    noise_scheduler.betas = betas
+    noise_scheduler.alphas = alphas
+    noise_scheduler.alphas_cumprod = alphas_cumprod
+
+
+def prepare_ddpm_training_inputs(
+    regularization_config: RegularizationConfig,
+    timestep_config: TimestepConfig,
+    training_config: TrainingConfig,
+    noise_scheduler: Any,
+    latents: torch.Tensor,
+    timestep_runtime=None,
+    la_sampler=None,
+    global_step: int = 0,
+    fixed_timesteps=None,
+    is_train: bool = True,
+    min_timestep_override=None,
+    max_timestep_override=None,
+    output_dtype: torch.dtype | None = None,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Generate DDPM-style training noise, noisy latents, and timesteps."""
+    noise = torch.randn_like(latents, device=latents.device)
+    if regularization_config.noise_offset and is_train:
+        noise_offset = (
+            torch.rand(1, device=latents.device) * regularization_config.noise_offset
+            if regularization_config.noise_offset_random_strength
+            else regularization_config.noise_offset
+        )
+        noise = apply_noise_offset(latents, noise, noise_offset, regularization_config.adaptive_noise_scale)
+
+    b_size = latents.shape[0]
+
+    runtime = timestep_runtime
+    if runtime is None:
+        runtime = build_timestep_runtime(
+            timestep_config,
+            noise_scheduler,
+            sampler_override=la_sampler,
+            min_timestep_override=min_timestep_override,
+            max_timestep_override=max_timestep_override,
+            global_step=global_step,
+        )
+
+    timesteps = runtime.sample_timesteps(
+        timestep_config=timestep_config,
+        training_config=training_config,
+        noise_scheduler=noise_scheduler,
+        batch_size=b_size,
+        device=latents.device,
+        global_step=global_step,
+        fixed_timesteps=fixed_timesteps,
+        is_train=is_train,
+    )
+
+    if regularization_config.multires_noise_iterations and is_train:
+        noise = pyramid_noise_like(
+            noise, latents.device, regularization_config.multires_noise_iterations, regularization_config.multires_noise_discount
+        )
+
+    if regularization_config.ip_noise_gamma and is_train:
+        strength = (
+            torch.rand(1, device=latents.device) * regularization_config.ip_noise_gamma
+            if regularization_config.ip_noise_gamma_random_strength
+            else regularization_config.ip_noise_gamma
+        )
+        noisy_latents = noise_scheduler.add_noise(latents, noise + strength * torch.randn_like(latents), timesteps)
+    else:
+        noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+
+    if output_dtype is not None:
+        noisy_latents = noisy_latents.to(output_dtype)
+
+    return noise, noisy_latents, timesteps
+
+
+class DDPMObjective(ObjectiveDefinition):
+    """Default diffusion-style objective/runtime owner."""
+
+    name = "ddpm"
+
+    def build_runtime(self, cfg: Any, accelerator: Any) -> ObjectiveRuntime:
+        noise_scheduler = build_ddpm_noise_scheduler(cfg, accelerator.device)
+        timestep_runtime = build_timestep_runtime(cfg.timestep, noise_scheduler, accelerator)
+        loss_modifier = build_loss_modifier(cfg.loss, cfg.training, noise_scheduler, accelerator)
+        return ObjectiveRuntime(
+            noise_scheduler=noise_scheduler,
+            timestep_runtime=timestep_runtime,
+            loss_modifier=loss_modifier,
+        )

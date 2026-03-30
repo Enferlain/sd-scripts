@@ -1,10 +1,11 @@
-"""Shared training-side helpers for flow-matching style objectives."""
+from __future__ import annotations
 
 import math
 
 import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
+from library.objectives.ddpm import DDPMObjective
 
 
 def compute_flow_matching_timestep_density(
@@ -70,8 +71,7 @@ def build_flow_matching_model_input_and_timesteps(
     return noisy_model_input.to(dtype), timesteps, sigmas.to(dtype)
 
 
-__all__ = [
-    "build_flow_matching_model_input_and_timesteps",
-    "compute_flow_matching_loss_weighting",
-    "compute_flow_matching_timestep_density",
-]
+class RectifiedFlowObjective(DDPMObjective):
+    """Rectified-flow objective/runtime owner for the current SD3 path."""
+
+    name = "rectified_flow"

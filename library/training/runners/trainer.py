@@ -21,8 +21,8 @@ from torch import nn
 
 from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.logging.resource_monitor import create_resource_monitor
+from library.objectives import ObjectiveDefinition, build_objective
 from library.performance import deepspeed_utils
-from library.training.noise_utils import get_noise_scheduler
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
 from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
@@ -82,6 +82,7 @@ class Trainer:
         self.cfg = cfg
         self.strategies = strategies
         self.mode = mode
+        self.objective: ObjectiveDefinition = build_objective(cfg)
 
         # Will be set during setup()
         self._accelerator: Accelerator | None = None
@@ -500,19 +501,20 @@ class Trainer:
             num_batches_per_epoch=self.num_batches_per_epoch,
             total_batch_size=total_batch_size,
             use_dreambooth_method=self._use_dreambooth_method,
+            objective=self.objective,
         )
         self.strategies.update_metadata(self._metadata, self.cfg)
 
     def _initialize_training_runtime(self) -> None:
         """Initialize runtime helpers that depend on the optimizer and scheduler state."""
-        from library.losses.loss_modifiers import build_loss_modifier
         from library.logging.training_plots import setup_live_plotter
-        from library.timesteps.runtime import build_timestep_runtime
 
         cfg = self.cfg
 
-        self.noise_scheduler = get_noise_scheduler(cfg, self.accelerator.device)
-        self.timestep_runtime = build_timestep_runtime(cfg.timestep, self.noise_scheduler, self.accelerator)
+        objective_runtime = self.objective.build_runtime(cfg, self.accelerator)
+        self.noise_scheduler = objective_runtime.noise_scheduler
+        self.timestep_runtime = objective_runtime.timestep_runtime
+        self._loss_modifier_runtime = objective_runtime.loss_modifier
 
         self._timestep_counts = None
         self._plotter_settings = None
@@ -520,13 +522,6 @@ class Trainer:
             self._timestep_counts, self._plotter_settings = setup_live_plotter(
                 cfg, self.noise_scheduler, self.timestep_runtime, self.strategies
             )
-
-        self._loss_modifier_runtime = build_loss_modifier(
-            cfg.loss,
-            cfg.training,
-            self.noise_scheduler,
-            self.accelerator,
-        )
 
     def _initialize_tracking_state(self) -> None:
         """Initialize trackers, recorders, validation scheduler, and progress state."""

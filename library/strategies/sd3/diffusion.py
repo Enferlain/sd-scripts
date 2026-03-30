@@ -6,13 +6,13 @@ from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.losses.loss_modifiers import BatchLossOutput
 from library.losses.loss_weighting import apply_masked_loss
 from library.models.sd3.vae import SDVAE
-from library.strategies.base.contracts import DiffusionTrainingStrategy
-from library.strategies.sd3.encoding import Sd3TextConditioning
-from library.training.diffusion import prepare_latents
-from library.training.flow import (
+from library.objectives.rectified_flow import (
     build_flow_matching_model_input_and_timesteps,
     compute_flow_matching_loss_weighting,
 )
+from library.strategies.base.contracts import DiffusionTrainingStrategy
+from library.strategies.sd3.encoding import Sd3TextConditioning
+from library.training.diffusion import prepare_latents
 
 
 def encode_sd3_images_to_latents(vae: SDVAE, images: torch.Tensor) -> torch.Tensor:

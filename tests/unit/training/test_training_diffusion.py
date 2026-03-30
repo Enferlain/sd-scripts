@@ -1,19 +1,13 @@
-"""
-Unit tests for library/training/diffusion.py
-
-Tests timesteps generation and noisy latent creation functions.
-"""
+"""Unit tests for shared latent helpers and DDPM objective batch preparation."""
 
 import pytest
 import torch
 
-from library.training.diffusion import (
-    get_timesteps,
-    get_noise_noisy_latents_and_timesteps,
-)
 from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.timestep import TimestepConfig
 from library.config.dataclasses.training import TrainingConfig
+from library.objectives.ddpm import prepare_ddpm_training_inputs
+from library.training.diffusion import get_timesteps
 
 
 # =============================================================================
@@ -144,7 +138,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         self, mock_noise_scheduler, sample_latents, default_regularization_config, default_timestep_config, default_training_config
     ):
         """Test that function returns correct tuple structure."""
-        noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
+        noise, noisy_latents, timesteps = prepare_ddpm_training_inputs(
             regularization_config=default_regularization_config,
             timestep_config=default_timestep_config,
             training_config=default_training_config,
@@ -160,7 +154,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         self, mock_noise_scheduler, sample_latents, default_regularization_config, default_timestep_config, default_training_config
     ):
         """Test that output shapes match input latents."""
-        noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
+        noise, noisy_latents, timesteps = prepare_ddpm_training_inputs(
             regularization_config=default_regularization_config,
             timestep_config=default_timestep_config,
             training_config=default_training_config,
@@ -178,7 +172,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         """Test that fixed_timesteps are passed through unchanged."""
         fixed = torch.tensor([100, 200])
 
-        _, _, timesteps = get_noise_noisy_latents_and_timesteps(
+        _, _, timesteps = prepare_ddpm_training_inputs(
             regularization_config=default_regularization_config,
             timestep_config=default_timestep_config,
             training_config=default_training_config,
@@ -195,7 +189,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         """Test min_timestep_override is respected."""
         min_override = 500
 
-        _, _, timesteps = get_noise_noisy_latents_and_timesteps(
+        _, _, timesteps = prepare_ddpm_training_inputs(
             regularization_config=default_regularization_config,
             timestep_config=default_timestep_config,
             training_config=default_training_config,
@@ -212,7 +206,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         """Test max_timestep_override is respected."""
         max_override = 200
 
-        _, _, timesteps = get_noise_noisy_latents_and_timesteps(
+        _, _, timesteps = prepare_ddpm_training_inputs(
             regularization_config=default_regularization_config,
             timestep_config=default_timestep_config,
             training_config=default_training_config,
@@ -230,7 +224,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         # Config with noise offset
         reg_config_with_offset = RegularizationConfig(noise_offset=0.1)
 
-        noise_with_offset, _, _ = get_noise_noisy_latents_and_timesteps(
+        noise_with_offset, _, _ = prepare_ddpm_training_inputs(
             regularization_config=reg_config_with_offset,
             timestep_config=default_timestep_config,
             training_config=default_training_config,
@@ -253,7 +247,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         )
 
         # Should not raise and should skip augmentations
-        noise, noisy_latents, timesteps = get_noise_noisy_latents_and_timesteps(
+        noise, noisy_latents, timesteps = prepare_ddpm_training_inputs(
             regularization_config=reg_config,
             timestep_config=default_timestep_config,
             training_config=default_training_config,
@@ -270,7 +264,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         """Test that timesteps config min/max are respected."""
         timestep_config = TimestepConfig(min_timestep=200, max_timestep=400)
 
-        _, _, timesteps = get_noise_noisy_latents_and_timesteps(
+        _, _, timesteps = prepare_ddpm_training_inputs(
             regularization_config=default_regularization_config,
             timestep_config=timestep_config,
             training_config=default_training_config,
@@ -287,7 +281,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         """Test that an injected timestep runtime becomes the timestep owner."""
         runtime = StubTimestepRuntime(torch.tensor([111, 222]))
 
-        _, _, timesteps = get_noise_noisy_latents_and_timesteps(
+        _, _, timesteps = prepare_ddpm_training_inputs(
             regularization_config=default_regularization_config,
             timestep_config=default_timestep_config,
             training_config=default_training_config,
@@ -309,7 +303,7 @@ class TestGetNoiseNoisyLatentsAndTimesteps:
         legacy_timesteps = torch.tensor([321, 654])
         legacy_sampler = type("LegacySampler", (), {"sample": lambda self, *args, **kwargs: legacy_timesteps})()
 
-        _, _, timesteps = get_noise_noisy_latents_and_timesteps(
+        _, _, timesteps = prepare_ddpm_training_inputs(
             regularization_config=default_regularization_config,
             timestep_config=timestep_config,
             training_config=default_training_config,
@@ -336,7 +330,7 @@ class TestMultiresNoise:
             multires_noise_discount=0.3,
         )
 
-        noise, _, _ = get_noise_noisy_latents_and_timesteps(
+        noise, _, _ = prepare_ddpm_training_inputs(
             regularization_config=reg_config,
             timestep_config=default_timestep_config,
             training_config=default_training_config,
@@ -360,7 +354,7 @@ class TestIPNoiseGamma:
         """Test that IP noise gamma modifies noisy latents."""
         reg_config = RegularizationConfig(ip_noise_gamma=0.05)
 
-        _, noisy_latents, _ = get_noise_noisy_latents_and_timesteps(
+        _, noisy_latents, _ = prepare_ddpm_training_inputs(
             regularization_config=reg_config,
             timestep_config=default_timestep_config,
             training_config=default_training_config,

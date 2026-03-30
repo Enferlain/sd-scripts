@@ -110,10 +110,11 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - Objective-level RF metadata has started moving out of SD3 strategy ownership too:
   - shared training metadata now adds the current RF metadata fields for the active RF consumer
   - `library/strategies/sd3/checkpointing.py` now keeps only SD3-specific attention-mask metadata instead of also owning RF timestep-weighting fields
-- The first RF training-helper extraction is now in place:
-  - flow-matching timestep-density, loss-weighting, and noisy-input construction helpers now live in `library/training/flow.py`
-  - `library/strategies/sd3/diffusion.py` now consumes those helpers instead of owning the RF math directly
-  - this is still a temporary shared-runtime home, not the final objective/runtime layer
+- The first explicit objective/runtime ownership seam is now in place:
+  - `library/objectives/` now owns the active objective definitions plus a small runtime bundle/factory surface
+  - trainer runtime initialization now resolves one objective owner instead of wiring scheduler/timestep/loss-modifier pieces independently
+  - DDPM scheduler construction now lives under `library/objectives/ddpm.py`, and the RF training helpers now live under `library/objectives/rectified_flow.py`
+  - `library/training/noise_utils.py` now keeps only reusable noise-regularization helpers instead of also owning scheduler setup
 - The first RF sampling-helper extraction is now in place too:
   - discrete-flow sigma/timestep sampling helpers now live in `library/pipelines/flow.py`
   - `library/strategies/sd3/sampling.py` now keeps SD3 sampling orchestration while importing the reusable discrete-flow math from that pipeline-side module

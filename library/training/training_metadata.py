@@ -10,12 +10,13 @@ import os
 
 from library.constants import SS_METADATA_MINIMUM_KEYS
 from library.data import DatasetManifest, compute_tag_frequency
+from library.objectives import ObjectiveDefinition, build_objective
 from library.utils.hash_utils import get_git_revision_hash, model_hash, calculate_hash
 
 
-def append_objective_metadata(metadata: dict[str, object], cfg) -> None:
-    """Append objective/runtime metadata that does not belong to model-family strategies."""
-    if cfg.model.model_type == "sd3":
+def append_objective_metadata(metadata: dict[str, object], cfg, objective_name: str) -> None:
+    """Append objective/runtime metadata that belongs to the shared metadata builder."""
+    if objective_name == "rectified_flow":
         metadata["ss_weighting_scheme"] = cfg.timestep.weighting_scheme
         metadata["ss_logit_mean"] = cfg.timestep.logit_mean
         metadata["ss_logit_std"] = cfg.timestep.logit_std
@@ -36,6 +37,7 @@ def create_training_metadata(
     num_batches_per_epoch: int,
     total_batch_size: int,
     use_dreambooth_method: bool,  # TODO Parameter 'use_dreambooth_method' value is not used
+    objective: ObjectiveDefinition | None = None,
 ) -> tuple:
     """
     Create training metadata dict for model saving.
@@ -201,7 +203,9 @@ def create_training_metadata(
             vae_name = os.path.basename(vae_name)
         metadata["ss_vae_name"] = vae_name
 
-    append_objective_metadata(metadata, cfg)
+    if objective is None:
+        objective = build_objective(cfg)
+    append_objective_metadata(metadata, cfg, objective.name)
 
     # Convert all values to strings
     metadata = {k: str(v) for k, v in metadata.items()}

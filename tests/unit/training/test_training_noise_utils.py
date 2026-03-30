@@ -1,18 +1,10 @@
-"""
-Unit tests for library/training/noise_utils.py
-
-Tests noise-related utility functions for diffusion training.
-"""
+"""Unit tests for noise regularization helpers and DDPM scheduler preparation."""
 
 import pytest
 import torch
 
-from library.training.noise_utils import (
-    prepare_scheduler_for_custom_training,
-    fix_noise_scheduler_betas_for_zero_terminal_snr,
-    pyramid_noise_like,
-    apply_noise_offset,
-)
+from library.objectives.ddpm import fix_noise_scheduler_betas_for_zero_terminal_snr, prepare_scheduler_for_custom_training
+from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
 
 
 # =============================================================================

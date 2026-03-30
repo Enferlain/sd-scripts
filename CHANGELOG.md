@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Objective/runtime ownership now has a first explicit home outside trainer and model-family helpers** — The active runtime no longer wires DDPM scheduler setup, timestep runtime construction, RF metadata ownership, and post-loss modifier assembly as unrelated pieces.
+  - Added `library/objectives/` with explicit objective owners plus a small runtime bundle/factory surface.
+  - Trainer runtime initialization now resolves one objective owner, builds its runtime bundle, and reads checkpoint metadata hooks from that same objective seam.
+  - Moved DDPM scheduler construction into `library/objectives/ddpm.py`, while `library/training/noise_utils.py` now keeps only the reusable noise-regularization helpers.
+  - Moved the shared RF training helpers from `library/training/flow.py` into `library/objectives/rectified_flow.py`, and updated SD / SDXL / SD3 diffusion code to import their objective-owned helpers from the new package.
+  - Added focused test updates for the new objective-owned DDPM scheduler / batch-input helper path and the RF metadata / helper imports.
 - **RF config ownership now points at timestep/sampling surfaces instead of pretending to be model identity** — The first SD3/RF port no longer reads its weighting and flow-shift settings only from ad hoc `cfg.model` fields.
   - Added typed RF timestep settings to `library/config/dataclasses/timestep.py` and `configs/_defaults/timestep/default.yaml`: `weighting_scheme`, `logit_mean`, `logit_std`, and `mode_scale`.
   - Added `sample_flow_shift` to `library/config/dataclasses/output.py` under `output.sampling`, with the shared output defaults YAML exposing the new field too.
