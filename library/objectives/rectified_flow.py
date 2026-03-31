@@ -8,6 +8,15 @@ from library.config.dataclasses.timestep import TimestepConfig
 from library.objectives.ddpm import DDPMObjective
 from library.timesteps.continuous_sampling import apply_training_shift, sample_continuous_timesteps
 
+RECTIFIED_FLOW_PREDICTION_TYPE_FLOW = "flow"
+
+
+def resolve_rectified_flow_prediction_type(prediction: str) -> str:
+    """Validate and return the active rectified-flow prediction convention."""
+    if prediction != RECTIFIED_FLOW_PREDICTION_TYPE_FLOW:
+        raise ValueError(f"Unsupported rectified-flow prediction type: {prediction!r}")
+    return prediction
+
 
 def compute_flow_matching_timestep_density(
     timestep_sampling: str,

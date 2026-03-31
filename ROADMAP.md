@@ -115,6 +115,15 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - The first Huber-threshold cleanup is in place too:
   - `get_huber_threshold_if_needed(...)` now lives in `library/losses/huber.py` instead of sharing a file with the raw loss primitives
   - `library/losses/loss.py` now reads more like the actual generic loss-function home, while the threshold helper keeps the timestep/scheduler-aware pre-loss behavior separate
+- `zero_terminal_snr` is now described more honestly too:
+  - the active config help, validation warning, and design notes now treat it as DDPM scheduler shaping for noisy-state construction rather than as ordinary loss regularization
+- The first prediction-target cleanup is in place too:
+  - the active schema now uses explicit `objective.path` and `objective.prediction` fields instead of one overloaded `objective.target` field
+  - the active config no longer uses `auto` resolution for the objective layer; path and prediction are now declared explicitly in the current schema/defaults
+  - `v_parameterization` is now just a legacy compatibility mirror for `objective.prediction == "v_prediction"`
+  - the supported combination matrix is explicit too: DDPM allows `epsilon` / `v_prediction`, while rectified flow currently requires the RF-native `flow` prediction label instead of pretending DDPM-style targets are wired there
+  - active checkpoint strategies now choose model-spec `prediction_type` explicitly at the caller boundary, so SD3 no longer inherits the DDPM field just because the shared config still carries the legacy mirror
+  - DDPM now owns one shared prediction-type mapping for training-target construction and sample-time scheduler setup, instead of repeating the same boolean branch in SD / SDXL diffusion and sampling paths
 - Objective-level RF metadata has started moving out of SD3 strategy ownership too:
   - shared training metadata now adds the current RF metadata fields for the active RF consumer
   - `library/strategies/sd3/checkpointing.py` now keeps only SD3-specific attention-mask metadata instead of also owning RF timestep-weighting fields

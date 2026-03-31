@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from library.training.sample_generation import (
     get_my_scheduler,
     sample_images_check,
@@ -35,6 +37,10 @@ def sample_images(*args, **kwargs):
         denoiser_wrapped,
         *rest,
     ) = args
+    objective_config = kwargs.pop("objective_config", None)
+    prediction_type = "v_prediction" if loss_config.v_parameterization else "epsilon"
+    if objective_config is None:
+        objective_config = SimpleNamespace(target=prediction_type)
 
     if not sample_images_check(sampling_config, epoch, steps):
         return
@@ -61,7 +67,7 @@ def sample_images(*args, **kwargs):
             unet=denoiser,
             scheduler=get_my_scheduler(
                 sample_sampler=sampling_config.sample_sampler,
-                v_parameterization=loss_config.v_parameterization,
+                prediction_type=prediction_type,
             ),
             safety_checker=None,
             feature_extractor=None,
@@ -74,6 +80,7 @@ def sample_images(*args, **kwargs):
             sampling_config,
             training_config,
             saving_config,
+            objective_config,
             loss_config,
             epoch,
             steps,

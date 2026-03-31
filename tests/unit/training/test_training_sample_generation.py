@@ -14,6 +14,7 @@ from library.training.sample_generation import (
     get_sampling_prompt_dicts,
     sample_image_inference,
 )
+from library.objectives.ddpm import DDPM_PREDICTION_TYPE_EPSILON, DDPM_PREDICTION_TYPE_V
 from PIL import Image
 
 
@@ -113,35 +114,35 @@ class TestSampleImagesCheck:
 
 class TestGetMyScheduler:
     def test_ddim_scheduler(self):
-        scheduler = get_my_scheduler(sample_sampler="ddim", v_parameterization=False)
+        scheduler = get_my_scheduler(sample_sampler="ddim", prediction_type=DDPM_PREDICTION_TYPE_EPSILON)
         assert isinstance(scheduler, DDIMScheduler)
         # config access depends on scheduler instance structure
         # assert scheduler.config.prediction_type != "v_prediction"
 
     def test_euler_scheduler(self):
-        scheduler = get_my_scheduler(sample_sampler="euler", v_parameterization=False)
+        scheduler = get_my_scheduler(sample_sampler="euler", prediction_type=DDPM_PREDICTION_TYPE_EPSILON)
         assert isinstance(scheduler, EulerDiscreteScheduler)
 
     def test_euler_a_scheduler(self):
-        scheduler = get_my_scheduler(sample_sampler="euler_a", v_parameterization=False)
+        scheduler = get_my_scheduler(sample_sampler="euler_a", prediction_type=DDPM_PREDICTION_TYPE_EPSILON)
         assert isinstance(scheduler, EulerAncestralDiscreteScheduler)
 
     def test_dpmsolver_algorithm_type(self):
-        scheduler = get_my_scheduler(sample_sampler="dpmsolver++", v_parameterization=False)
+        scheduler = get_my_scheduler(sample_sampler="dpmsolver++", prediction_type=DDPM_PREDICTION_TYPE_EPSILON)
         assert isinstance(scheduler, DPMSolverMultistepScheduler)
         # Check algorithm type if accessible
         assert scheduler.config.algorithm_type == "dpmsolver++"
 
     def test_v_parameterization(self):
-        scheduler = get_my_scheduler(sample_sampler="ddim", v_parameterization=True)
+        scheduler = get_my_scheduler(sample_sampler="ddim", prediction_type=DDPM_PREDICTION_TYPE_V)
         assert scheduler.config.prediction_type == "v_prediction"
 
     def test_default_fallback(self):
-        scheduler = get_my_scheduler(sample_sampler="nonexistent", v_parameterization=False)
+        scheduler = get_my_scheduler(sample_sampler="nonexistent", prediction_type=DDPM_PREDICTION_TYPE_EPSILON)
         assert isinstance(scheduler, DDIMScheduler)
 
     def test_clip_sample_enabled(self):
-        scheduler = get_my_scheduler(sample_sampler="ddim", v_parameterization=False)
+        scheduler = get_my_scheduler(sample_sampler="ddim", prediction_type=DDPM_PREDICTION_TYPE_EPSILON)
         # Verify clip_sample default logic
         if hasattr(scheduler.config, "clip_sample"):
             assert scheduler.config.clip_sample is True  # Defaults usually True for DDIM in this codebase
@@ -252,11 +253,11 @@ class TestSampleImageInference:
         sampling_config = MagicMock()
         sampling_config.sample_sampler = "ddim"
         training_config = MagicMock()
-        training_config.v_parameterization = False
+        objective_config = MagicMock()
+        objective_config.target = DDPM_PREDICTION_TYPE_EPSILON
         saving_config = MagicMock()
         saving_config.output_name = "test"
         loss_config = MagicMock()
-        loss_config.v_parameterization = False
 
         prompt_dict = {"prompt": "a {token} cat", "enum": 0, "width": 512, "height": 512}
 
@@ -274,6 +275,7 @@ class TestSampleImageInference:
                 sampling_config,
                 training_config,
                 saving_config,
+                objective_config,
                 loss_config,
                 mock_pipeline,
                 "/tmp",
@@ -309,10 +311,11 @@ class TestSampleImageInference:
         sampling_config.sample_seed = 123
         sampling_config.sample_sampler = "ddim"
         training_config = MagicMock()
+        objective_config = MagicMock()
+        objective_config.target = DDPM_PREDICTION_TYPE_EPSILON
         saving_config = MagicMock()
         saving_config.output_name = "test"
         loss_config = MagicMock()
-        loss_config.v_parameterization = False
 
         mock_scheduler = MagicMock()
         mock_get_scheduler.return_value = mock_scheduler
@@ -327,6 +330,7 @@ class TestSampleImageInference:
                 sampling_config,
                 training_config,
                 saving_config,
+                objective_config,
                 loss_config,
                 mock_pipeline,
                 "/tmp",
@@ -365,10 +369,11 @@ class TestSampleImageInference:
         sampling_config.sample_seed = 123
         sampling_config.sample_sampler = "ddim"
         training_config = MagicMock()
+        objective_config = MagicMock()
+        objective_config.target = DDPM_PREDICTION_TYPE_EPSILON
         saving_config = MagicMock()
         saving_config.output_name = "test"
         loss_config = MagicMock()
-        loss_config.v_parameterization = False
 
         mock_scheduler = MagicMock()
         mock_get_scheduler.return_value = mock_scheduler
@@ -383,6 +388,7 @@ class TestSampleImageInference:
                 sampling_config,
                 training_config,
                 saving_config,
+                objective_config,
                 loss_config,
                 mock_pipeline,
                 "/tmp",
@@ -432,10 +438,11 @@ class TestSampleImageInference:
         sampling_config.sample_seed = None
         sampling_config.sample_sampler = "ddim"
         training_config = MagicMock()
+        objective_config = MagicMock()
+        objective_config.target = DDPM_PREDICTION_TYPE_EPSILON
         saving_config = MagicMock()
         saving_config.output_name = "test"
         loss_config = MagicMock()
-        loss_config.v_parameterization = False
 
         mock_scheduler = MagicMock()
         mock_get_scheduler.return_value = mock_scheduler
@@ -449,6 +456,7 @@ class TestSampleImageInference:
                 sampling_config,
                 training_config,
                 saving_config,
+                objective_config,
                 loss_config,
                 mock_pipeline,
                 "/tmp",

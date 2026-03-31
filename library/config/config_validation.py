@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 VALID_MODES = {"finetune", "peft", "textual_inversion"}
 VALID_TIMESTEP_SAMPLERS = {"uniform", "log_snr_uniform", "adaptive_log_snr", "logit_normal", "cosine_shaped"}
+VALID_OBJECTIVE_PATHS = {"ddpm", "rectified_flow"}
+VALID_OBJECTIVE_PREDICTIONS = {"epsilon", "v_prediction", "flow"}
 
 
 def _is_non_bool_number(value: object) -> bool:
@@ -313,6 +315,18 @@ def prepare_config(cfg) -> None:
 
     _normalize_edm2_loss_config(cfg)
 
+    objective_cfg = _get_optional_attr(cfg, "objective")
+    if objective_cfg is not None:
+        configured_prediction = getattr(objective_cfg, "prediction", None)
+        current_v_parameterization = _get_optional_attr(cfg, "loss", "v_parameterization", default=False)
+        if configured_prediction is not None and current_v_parameterization != (configured_prediction == "v_prediction"):
+            logger.warning(
+                "objective.prediction overrides legacy loss.v_parameterization; "
+                "the boolean is being synchronized for compatibility."
+            )
+            if _get_optional_attr(cfg, "loss") is not None:
+                cfg.loss.v_parameterization = configured_prediction == "v_prediction"
+
     # Data: cache_dir defaults to train_data_dir if not set
     if (
         hasattr(cfg.data, "caching")
@@ -448,13 +462,34 @@ def validate_config(cfg) -> None:
     if cfg.loss.regularization.adaptive_noise_scale is not None and cfg.loss.regularization.noise_offset is None:
         raise ValueError("adaptive_noise_scale requires noise_offset")
 
-    # Loss: scale_v_pred_loss_like_noise_pred requires v_parameterization
-    if cfg.loss.snr.scale_v_pred_loss_like_noise_pred and not cfg.loss.v_parameterization:
-        raise ValueError("scale_v_pred_loss_like_noise_pred requires v_parameterization")
+    objective_path = _get_optional_attr(cfg, "objective", "path", default="ddpm")
+    objective_prediction = _get_optional_attr(cfg, "objective", "prediction", default="epsilon")
 
-    # Loss: v_pred_like_loss conflicts with v_parameterization
-    if cfg.loss.snr.v_pred_like_loss is not None and cfg.loss.v_parameterization:
-        raise ValueError("v_pred_like_loss conflicts with v_parameterization")
+    if objective_path not in VALID_OBJECTIVE_PATHS:
+        raise ValueError(f"objective.path must be one of {sorted(VALID_OBJECTIVE_PATHS)}, got {objective_path}")
+    if objective_prediction not in VALID_OBJECTIVE_PREDICTIONS:
+        raise ValueError(f"objective.prediction must be one of {sorted(VALID_OBJECTIVE_PREDICTIONS)}, got {objective_prediction}")
+
+    model_type = _get_optional_attr(cfg, "model", "model_type")
+    if model_type == "sd3" and objective_path != "rectified_flow":
+        raise ValueError("model.model_type=sd3 requires objective.path='rectified_flow'")
+    if model_type in {"sd1", "sd15", "sd2", "sdxl"} and objective_path != "ddpm":
+        raise ValueError(f"model.model_type={model_type} requires objective.path='ddpm'")
+
+    if objective_path == "ddpm" and objective_prediction not in {"epsilon", "v_prediction"}:
+        raise ValueError("objective.path='ddpm' requires objective.prediction to be 'epsilon' or 'v_prediction'")
+    if objective_path == "rectified_flow" and objective_prediction != "flow":
+        raise ValueError("objective.path='rectified_flow' requires objective.prediction='flow'")
+
+    is_v_prediction = objective_prediction == "v_prediction"
+
+    # Loss: scale_v_pred_loss_like_noise_pred requires v_prediction
+    if cfg.loss.snr.scale_v_pred_loss_like_noise_pred and not is_v_prediction:
+        raise ValueError("scale_v_pred_loss_like_noise_pred requires objective.prediction='v_prediction'")
+
+    # Loss: v_pred_like_loss conflicts with v_prediction
+    if cfg.loss.snr.v_pred_like_loss is not None and is_v_prediction:
+        raise ValueError("v_pred_like_loss conflicts with objective.prediction='v_prediction'")
 
     if _get_optional_attr(cfg, "loss", "edm2", "laplace_timestep_sampling", default=False):
         raise ValueError(
@@ -515,9 +550,9 @@ def validate_config(cfg) -> None:
     if cfg.model.model_type == "sd2" and cfg.training.clip_skip is not None:
         logger.warning("v2 with clip_skip is unexpected")
 
-    # Regularization: zero_terminal_snr without v_parameterization
-    if cfg.loss.regularization.zero_terminal_snr and not cfg.loss.v_parameterization:
-        logger.warning("zero_terminal_snr is enabled but v_parameterization is not. Training results may be unexpected.")
+    # DDPM scheduler shaping: zero_terminal_snr without v_prediction
+    if cfg.loss.regularization.zero_terminal_snr and not is_v_prediction:
+        logger.warning("zero_terminal_snr is enabled but objective.prediction is not 'v_prediction'. Training results may be unexpected.")
 
 
 def _validate_dataset_group_bucket_steps(train_dataset_group, val_dataset_group, min_steps: int) -> None:

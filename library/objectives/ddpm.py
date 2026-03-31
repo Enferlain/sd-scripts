@@ -18,6 +18,30 @@ from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
 
 logger = logging.getLogger(__name__)
 
+DDPM_PREDICTION_TYPE_EPSILON = "epsilon"
+DDPM_PREDICTION_TYPE_V = "v_prediction"
+
+
+def resolve_ddpm_prediction_type(prediction: str) -> str:
+    """Validate and return the active DDPM prediction-target convention."""
+    if prediction not in {DDPM_PREDICTION_TYPE_EPSILON, DDPM_PREDICTION_TYPE_V}:
+        raise ValueError(f"Unsupported DDPM prediction type: {prediction!r}")
+    return prediction
+
+
+def build_ddpm_training_target(
+    noise_scheduler: Any,
+    latents: torch.Tensor,
+    noise: torch.Tensor,
+    timesteps: torch.Tensor,
+    prediction_type: str,
+) -> torch.Tensor:
+    """Build the DDPM training target tensor for the chosen prediction convention."""
+    resolved_prediction_type = resolve_ddpm_prediction_type(prediction_type)
+    if resolved_prediction_type == DDPM_PREDICTION_TYPE_V:
+        return noise_scheduler.get_velocity(latents, noise, timesteps)
+    return noise
+
 
 def build_ddpm_noise_scheduler(cfg: Any, device: torch.device) -> DDPMScheduler:
     """Create the DDPM-style scheduler used by the current diffusion objective path."""
@@ -125,14 +149,15 @@ def apply_debiased_estimation(
 
 def post_process_ddpm_loss(loss: torch.Tensor, cfg: Any, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler) -> torch.Tensor:
     """Apply configured DDPM-only post-loss weighting in the shared order."""
+    is_v_prediction = resolve_ddpm_prediction_type(cfg.objective.prediction) == DDPM_PREDICTION_TYPE_V
     if cfg.loss.snr.min_snr_gamma:
-        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.snr.min_snr_gamma, cfg.loss.v_parameterization)
+        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.snr.min_snr_gamma, is_v_prediction)
     if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
         loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
     if cfg.loss.snr.v_pred_like_loss:
         loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)
     if cfg.loss.snr.debiased_estimation_loss:
-        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
+        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, is_v_prediction)
     return loss
 
 

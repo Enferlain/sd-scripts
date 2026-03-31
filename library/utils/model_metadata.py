@@ -105,6 +105,7 @@ IMPL_HUNYUAN_IMAGE = "https://github.com/Tencent-Hunyuan/HunyuanImage-2.1"
 
 PRED_TYPE_EPSILON = "epsilon"
 PRED_TYPE_V = "v"
+PRED_TYPE_AUTO = "auto"
 
 
 @dataclass
@@ -449,6 +450,7 @@ def build_metadata_dataclass(
     merged_from: str | None = None,
     timesteps: tuple[int, int] | None = None,
     clip_skip: int | None = None,
+    prediction_type: str | None = PRED_TYPE_AUTO,
     model_config: dict | None = None,
     optional_metadata: dict | None = None,
 ) -> ModelSpecMetadata:
@@ -473,6 +475,10 @@ def build_metadata_dataclass(
         merged_from (str, optional): The model merge source.
         timesteps (tuple[int, int], optional): The timesteps range.
         clip_skip (int, optional): The clip skip value.
+        prediction_type (str | None, optional): Explicit prediction type to
+            serialize. Use ``None`` to omit the field, or leave the default
+            ``"auto"`` for legacy DDPM-style epsilon/v inference from
+            ``v_parameterization``.
         model_config (dict, optional): Dict containing model type info, e.g. {"flux": "dev"}, {"sd3": "large"}.
         optional_metadata (dict, optional): Dict of additional metadata fields to include.
 
@@ -505,14 +511,10 @@ def build_metadata_dataclass(
     # Use helper function for resolution
     resolution = determine_resolution(reso, sdxl, model_config, v2, v_parameterization)
 
-    # Handle prediction type - Flux models don't use prediction_type
     model_config = model_config or {}
-    prediction_type = None
-    if "flux" not in model_config:
-        if v_parameterization:
-            prediction_type = PRED_TYPE_V
-        else:
-            prediction_type = PRED_TYPE_EPSILON
+    resolved_prediction_type = prediction_type
+    if resolved_prediction_type == PRED_TYPE_AUTO:
+        resolved_prediction_type = PRED_TYPE_V if v_parameterization else PRED_TYPE_EPSILON
 
     # Handle timesteps
     timestep_range = None
@@ -563,7 +565,7 @@ def build_metadata_dataclass(
         tags=tags,
         merged_from=merged_from,
         resolution=resolution,
-        prediction_type=prediction_type,
+        prediction_type=resolved_prediction_type,
         timestep_range=timestep_range,
         encoder_layer=encoder_layer,
         additional_fields=processed_optional_metadata,
@@ -590,6 +592,7 @@ def build_metadata(
     merged_from: str | None = None,
     timesteps: tuple[int, int] | None = None,
     clip_skip: int | None = None,
+    prediction_type: str | None = PRED_TYPE_AUTO,
     model_config: dict | None = None,
     optional_metadata: dict | None = None,
 ) -> dict[str, str]:
@@ -640,6 +643,7 @@ def build_metadata(
         merged_from=merged_from,
         timesteps=timesteps,
         clip_skip=clip_skip,
+        prediction_type=prediction_type,
         model_config=model_config,
         optional_metadata=optional_metadata,
     )
@@ -751,6 +755,7 @@ def get_model_metadata_from_config(
     min_timestep: int | None = None,
     max_timestep: int | None = None,
     clip_skip: int | None = None,
+    prediction_type: str | None = PRED_TYPE_AUTO,
     is_stable_diffusion_ckpt: bool | None = None,
     flux_type: str | None = None,
     sd3_type: str | None = None,
@@ -773,6 +778,10 @@ def get_model_metadata_from_config(
         min_timestep (int, optional): The minimum timesteps. Defaults to None.
         max_timestep (int, optional): The maximum timesteps. Defaults to None.
         clip_skip (int, optional): The clip skip value. Defaults to None.
+        prediction_type (str | None, optional): Explicit prediction type to
+            serialize. Use ``None`` to omit the field, or leave the default
+            ``"auto"`` for legacy DDPM-style epsilon/v inference from
+            ``v_parameterization``.
         is_stable_diffusion_ckpt (bool, optional): Whether the model is a Stable Diffusion checkpoint. Defaults to None.
         flux_type (str, optional): The Flux model type. Defaults to None.
         sd3_type (str, optional): The SD3 model type suffix (e.g. ``medium`` or ``5-large``). Defaults to None.
@@ -857,6 +866,7 @@ def get_model_metadata_from_config(
         tags=metadata_config.metadata_tags,
         timesteps=timesteps,
         clip_skip=clip_skip,
+        prediction_type=prediction_type,
         model_config=model_config_dict,
         optional_metadata=all_optional_metadata,
     )

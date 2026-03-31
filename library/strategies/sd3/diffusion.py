@@ -10,6 +10,7 @@ from library.models.sd3.vae import SDVAE
 from library.objectives.rectified_flow import (
     build_flow_matching_model_input_and_timesteps,
     compute_flow_matching_loss_weighting,
+    resolve_rectified_flow_prediction_type,
 )
 from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.strategies.sd3.encoding import Sd3TextConditioning
@@ -48,6 +49,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Sample SD3 flow noise, run MMDiT, and build the flow-matching target."""
         del noise_scheduler, timestep_runtime, global_step
+        resolve_rectified_flow_prediction_type(cfg.objective.prediction)
 
         noise = torch.randn_like(latents)
         noisy_model_input, timesteps, sigmas = build_flow_matching_model_input_and_timesteps(

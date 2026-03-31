@@ -3,6 +3,7 @@
 import pytest
 import time
 
+from library.config.dataclasses.output import MetadataConfig
 from library.utils import model_metadata
 
 
@@ -288,6 +289,7 @@ class TestBuildMetadataIntegration:
             textual_inversion=False,
             timestamp=timestamp,
             title="Test Flux Model",
+            prediction_type=None,
             model_config={"flux": "dev"},
             optional_metadata={"trigger_phrase": "anime style"},
         )
@@ -315,10 +317,6 @@ class TestBuildMetadataIntegration:
         assert isinstance(metadata_dict, dict)
         assert metadata_dict["modelspec.sai_model_spec"] == "1.0.1"
         assert metadata_dict["modelspec.architecture"] == "stable-diffusion-xl-v1-base"
-
-
-from library.config.dataclasses.output import MetadataConfig
-
 
 class TestGetSaiModelSpecFromConfig:
     """Test get_model_metadata_from_config function."""
@@ -399,3 +397,39 @@ class TestGetSaiModelSpecFromConfig:
         )
 
         assert spec["modelspec.timestep_range"] == "100,900"
+
+    def test_sd3_omits_prediction_type(self):
+        """SD3 metadata should not emit DDPM-style prediction_type."""
+        metadata_config = MetadataConfig()
+
+        spec = model_metadata.get_model_metadata_from_config(
+            state_dict={},
+            metadata_config=metadata_config,
+            is_sdxl=False,
+            is_v2=False,
+            v_parameterization=True,
+            prediction_type=None,
+            is_lora=False,
+            is_textual_inversion=False,
+            sd3_type="medium",
+        )
+
+        assert spec["modelspec.architecture"] == "stable-diffusion-3-medium"
+        assert "modelspec.prediction_type" not in spec
+
+    def test_explicit_prediction_type_override(self):
+        """Explicit prediction-type input should override the legacy auto path."""
+        metadata_config = MetadataConfig()
+
+        spec = model_metadata.get_model_metadata_from_config(
+            state_dict={},
+            metadata_config=metadata_config,
+            is_sdxl=True,
+            is_v2=False,
+            v_parameterization=False,
+            prediction_type=model_metadata.PRED_TYPE_V,
+            is_lora=False,
+            is_textual_inversion=False,
+        )
+
+        assert spec["modelspec.prediction_type"] == "v"

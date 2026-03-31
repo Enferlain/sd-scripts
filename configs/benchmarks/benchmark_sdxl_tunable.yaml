@@ -109,6 +109,9 @@ performance:
     sdpa: false                      # PyTorch 2.0 Scaled Dot Product Attention (if xformers=false)
 
 # ─── LOSS ───────────────────────────────────────────────────────────────────
+objective:
+  prediction: "v_prediction"
+
 loss:
   v_parameterization: true
   loss_type: "l2"

@@ -1,0 +1,4 @@
+# @package objective
+
+path: "ddpm"
+prediction: "epsilon"

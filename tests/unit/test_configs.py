@@ -16,6 +16,7 @@ from library.config.dataclasses.data import DataConfig, BucketingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.peft import PeftConfig
 from library.config.dataclasses.model import ModelConfig
+from library.config.dataclasses.objective import ObjectiveConfig
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.output import MetadataConfig
@@ -125,6 +126,13 @@ class TestConfigInstantiation:
         assert config is not None
         assert hasattr(config, "sample_flow_shift")
 
+    def test_objective_config_instantiation(self):
+        """Test ObjectiveConfig instantiation with defaults."""
+        config = ObjectiveConfig()
+        assert config is not None
+        assert hasattr(config, "path")
+        assert hasattr(config, "prediction")
+
     def test_timestep_config_instantiation(self):
         """Test TimestepConfig instantiation with defaults."""
         config = TimestepConfig()
@@ -172,6 +180,12 @@ class TestConfigDefaults:
         config = SamplingConfig()
         assert config.sample_sampler == "ddim"
         assert config.sample_flow_shift is None
+
+    def test_objective_config_defaults(self):
+        """Test ObjectiveConfig default values."""
+        config = ObjectiveConfig()
+        assert config.path == "ddpm"
+        assert config.prediction == "epsilon"
 
     def test_timestep_config_rf_defaults(self):
         """Test RF-related timestep config defaults."""

@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Objective config now separates training-path choice from prediction-target choice, and the active schema no longer infers either axis through `auto`** — The current math layer now declares the two axes explicitly instead of overloading one mixed `objective.target` field.
+  - Replaced `objective.target` with explicit `objective.path` and `objective.prediction` fields in the shared run schema and default config fragments.
+  - Removed the active `auto` resolution path from config preparation and objective selection, so the runtime no longer infers DDPM vs RF or epsilon vs v-pred behind the scenes.
+  - Updated DDPM diffusion, sampling, loading, and checkpoint metadata paths to read `cfg.objective.prediction` directly, while `build_objective(...)` now selects the owner from `cfg.objective.path`.
+  - Kept `loss.v_parameterization` only as a synchronized legacy compatibility mirror for `objective.prediction == "v_prediction"`, and updated validation messages to point at the explicit objective fields.
+  - Tightened the supported combination matrix too: DDPM now allows only `epsilon` / `v_prediction`, while rectified flow now requires the explicit RF-native `flow` prediction label.
+  - The active SD3/RF diffusion path now validates that explicit `flow` prediction contract instead of silently ignoring the prediction field.
+- **Prediction-target metadata now stops at the DDPM family boundary** — The active repo no longer serializes DDPM-style `epsilon`/`v` model-spec metadata for SD3 checkpoints just because the shared config still carries `v_parameterization`.
+  - Updated `library/utils/model_metadata.py` so active callers now choose `modelspec.prediction_type` explicitly instead of relying on model-family checks inside the shared helper.
+  - SD / SDXL checkpoint strategies now pass their DDPM `epsilon`/`v` choice explicitly, while SD3 passes `None` to omit the field.
+  - Added focused unit coverage to keep SD3 model-spec metadata from inheriting the DDPM `prediction_type` axis.
+  - Tightened the `v_parameterization` config help text and design notes so they describe a DDPM prediction-target choice rather than a generic loss toggle.
+- **DDPM prediction-target behavior now has one objective-owned mapping instead of repeated boolean branches** — The active DDPM path no longer re-decides `epsilon` vs `v_prediction` separately in each diffusion strategy and sampling entrypoint.
+  - Added a DDPM-owned prediction-type resolver and training-target builder in `library/objectives/ddpm.py`.
+  - SD / SDXL diffusion strategies now build the DDPM training target through that objective seam instead of branching on `cfg.loss.v_parameterization` locally.
+  - Sample-time scheduler setup now accepts an explicit DDPM prediction type, and the active SD / SDXL sampling paths resolve it through the same objective-owned mapping.
+- **Zero-terminal-SNR is now described as DDPM scheduler shaping instead of generic loss regularization** — The active config/help/docs now point at the path/state-construction role the setting actually has.
+  - Updated the typed config help text and validation warning for `loss.regularization.zero_terminal_snr` so they describe DDPM scheduler shaping for noisy-state construction.
+  - Refreshed the active design notes to call out `zero_terminal_snr` as a scheduler/state-construction option instead of describing it like ordinary loss regularization.
 - **Loss-weighting ownership now distinguishes DDPM post-loss math from generic masking** — The active code no longer keeps DDPM-only SNR/v-pred weighting and generic mask application in the same helper module.
   - Moved Min-SNR weighting, debiased-estimation weighting, v-pred scaling, and the shared DDPM post-processing order into `library/objectives/ddpm.py`.
   - Added `library/losses/masking.py` so mask application stays with generic loss behavior instead of living in an objective-shaped weighting module.

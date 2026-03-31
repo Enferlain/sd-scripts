@@ -6,7 +6,11 @@ from library.losses.huber import get_huber_threshold_if_needed
 from library.losses.loss import conditional_loss
 from library.losses.loss_modifiers import BatchLossOutput
 from library.losses.masking import apply_masked_loss
-from library.objectives.ddpm import post_process_ddpm_loss, prepare_ddpm_training_inputs
+from library.objectives.ddpm import (
+    build_ddpm_training_target,
+    post_process_ddpm_loss,
+    prepare_ddpm_training_inputs,
+)
 from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.training.diffusion import prepare_latents
 
@@ -63,10 +67,7 @@ class SdDiffusionTrainingStrategy(DiffusionTrainingStrategy):
                 weight_dtype,
             )
 
-        if cfg.loss.v_parameterization:
-            target = noise_scheduler.get_velocity(latents, noise, timesteps)
-        else:
-            target = noise
+        target = build_ddpm_training_target(noise_scheduler, latents, noise, timesteps, cfg.objective.prediction)
 
         if "custom_attributes" in batch:
             diff_output_pr_indices = []

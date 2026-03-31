@@ -54,7 +54,7 @@ class SdxlSampleGenerationStrategy(SampleGenerationStrategy):
                 unet=denoiser,
                 scheduler=get_my_scheduler(
                     sample_sampler=cfg.output.sampling.sample_sampler,
-                    v_parameterization=cfg.loss.v_parameterization,
+                    prediction_type=cfg.objective.prediction,
                 ),
                 safety_checker=None,
                 feature_extractor=None,
@@ -67,6 +67,7 @@ class SdxlSampleGenerationStrategy(SampleGenerationStrategy):
                 cfg.output.sampling,
                 cfg.training,
                 cfg.output.saving,
+                cfg.objective,
                 cfg.loss,
                 epoch,
                 global_step,

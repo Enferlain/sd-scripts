@@ -5,6 +5,7 @@ from omegaconf import MISSING
 from library.config.dataclasses.data import DataConfig
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.model import ModelConfig
+from library.config.dataclasses.objective import ObjectiveConfig
 from library.config.dataclasses.optimizer import OptimizerConfig
 from library.config.dataclasses.output import OutputConfig
 from library.config.dataclasses.peft import PeftConfig
@@ -24,6 +25,7 @@ class RunConfig:
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     data: DataConfig = field(default_factory=DataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
+    objective: ObjectiveConfig = field(default_factory=ObjectiveConfig)
     peft: PeftConfig | None = field(default=None)
     textual_inversion: TextualInversionConfig | None = field(default=None)
     output: OutputConfig = field(default_factory=OutputConfig)

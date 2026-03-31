@@ -28,10 +28,12 @@ from diffusers import (
 )
 
 from library.constants import SCHEDULER_TIMESTEPS, SCHEDULER_LINEAR_START, SCHEDULER_LINEAR_END, SCHEDULER_SCHEDULE
+from library.config.dataclasses.objective import ObjectiveConfig
 from library.config.dataclasses.output import SamplingConfig
-from library.config.dataclasses.training import TrainingConfig
-from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.loss import LossConfig
+from library.config.dataclasses.output import SavingConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +41,14 @@ logger = logging.getLogger(__name__)
 def get_my_scheduler(
     *,
     sample_sampler: str,
-    v_parameterization: bool,
+    prediction_type: str,
 ):
     """
     Returns a scheduler object based on the provided sampler name and parameterization settings.
 
     Args:
         sample_sampler (str): The name of the sampler to use (e.g., "ddim", "pndm", "euler_a").
-        v_parameterization (bool): Whether to use v-parameterization.
+        prediction_type (str): Active DDPM prediction type for the scheduler.
 
     Returns:
         SchedulerMixin: The initialized scheduler object.
@@ -78,7 +80,7 @@ def get_my_scheduler(
     else:
         scheduler_cls = DDIMScheduler
 
-    if v_parameterization:
+    if prediction_type == DDPM_PREDICTION_TYPE_V:
         sched_init_args["prediction_type"] = "v_prediction"
 
     scheduler = scheduler_cls(
@@ -282,6 +284,7 @@ def sample_images_common(
     sampling_config: SamplingConfig,
     training_config: TrainingConfig,
     saving_config: SavingConfig,
+    objective_config: ObjectiveConfig,
     loss_config: LossConfig,
     epoch: int | None,
     steps: int,
@@ -300,7 +303,8 @@ def sample_images_common(
         sampling_config (SamplingConfig): Configuration for sampling.
         training_config (TrainingConfig): Configuration for training.
         saving_config (SavingConfig): Configuration for saving outputs.
-        loss_config (LossConfig): Configuration related to loss (used for v_parameterization).
+        objective_config (ObjectiveConfig): Configuration for objective/runtime behavior.
+        loss_config (LossConfig): Configuration related to loss.
         epoch (int, optional): The current epoch.
         steps (int): The current step.
         pipeline: The ready model-family-specific sampling pipeline.
@@ -333,6 +337,7 @@ def sample_images_common(
                     sampling_config,
                     training_config,
                     saving_config,
+                    objective_config,
                     loss_config,
                     pipeline,
                     save_dir,
@@ -362,6 +367,7 @@ def sample_images_common(
                     sampling_config,
                     training_config,
                     saving_config,
+                    objective_config,
                     loss_config,
                     pipeline,
                     save_dir,
@@ -385,6 +391,7 @@ def sample_image_inference(
     sampling_config: SamplingConfig,
     training_config: TrainingConfig,
     saving_config: SavingConfig,
+    objective_config: ObjectiveConfig,
     loss_config: LossConfig,
     pipeline,
     save_dir: str,
@@ -442,7 +449,7 @@ def sample_image_inference(
 
     scheduler = get_my_scheduler(
         sample_sampler=sampler_name,
-        v_parameterization=loss_config.v_parameterization,
+        prediction_type=objective_config.prediction,
     )
     pipeline.scheduler = scheduler
 

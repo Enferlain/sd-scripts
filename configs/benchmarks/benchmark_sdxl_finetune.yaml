@@ -87,6 +87,9 @@ performance:
     xformers: true
 
 # ─── LOSS ───────────────────────────────────────────────────────────────────
+objective:
+  prediction: "v_prediction"
+
 loss:
   v_parameterization: true
   loss_type: "l2"

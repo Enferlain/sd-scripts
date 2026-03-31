@@ -7,6 +7,7 @@ from torch import nn
 import library.models.sd.conversion
 from library.models.runtime_utils import replace_unet_modules
 from library.models.sd.loader import load_target_model
+from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
 from library.strategies.base.contracts import ModelLoadingStrategy
 
 try:
@@ -51,7 +52,8 @@ class SdModelLoadingStrategy(ModelLoadingStrategy):
 
         return (
             library.models.sd.conversion.get_model_version_str_for_sd1_sd2(
-                cfg.model.model_type == "sd2", cfg.loss.v_parameterization
+                cfg.model.model_type == "sd2",
+                resolve_ddpm_prediction_type(cfg.objective.prediction) == DDPM_PREDICTION_TYPE_V,
             ),
             text_encoder,
             vae,

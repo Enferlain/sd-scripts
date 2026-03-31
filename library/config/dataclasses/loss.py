@@ -121,7 +121,10 @@ class LossConfig:
     loss_scale: float = field(default=1.0, metadata={"help": "Multiplier applied to the computed loss"})
     loss_multiplier: float | None = field(default=None, metadata={"help": "Alternative loss multiplier (deprecated, use loss_scale)"})
     prior_loss_weight: float = field(default=1.0, metadata={"help": "Weight for prior preservation loss in DreamBooth training"})
-    v_parameterization: bool = field(default=False, metadata={"help": "Enable v-parameterization training"})
+    v_parameterization: bool = field(
+        default=False,
+        metadata={"help": "Legacy compatibility mirror for objective.prediction == v_prediction"},
+    )
 
     # Nested subcategories
     huber: HuberConfig = field(default_factory=HuberConfig)

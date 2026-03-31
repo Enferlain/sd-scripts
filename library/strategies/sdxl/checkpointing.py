@@ -2,6 +2,7 @@ from typing import Any
 
 import torch
 
+from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
 from library.strategies.base.contracts import CheckpointingStrategy
 from library.utils.model_metadata import get_model_metadata_from_config
 
@@ -20,12 +21,14 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
 
     def get_model_metadata(self, cfg: Any) -> dict:
         """Get the SAI model spec metadata for SDXL."""
+        prediction_type = resolve_ddpm_prediction_type(cfg.objective.prediction)
         return get_model_metadata_from_config(
             state_dict=None,
             metadata_config=cfg.output.metadata,
             is_sdxl=True,
             is_v2=False,
-            v_parameterization=cfg.loss.v_parameterization,
+            v_parameterization=prediction_type == DDPM_PREDICTION_TYPE_V,
+            prediction_type=prediction_type,
             is_lora=True,
             is_textual_inversion=False,
             resolution=cfg.data.preprocessing.resolution,
@@ -68,12 +71,14 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
         ckpt_file = os.path.join(cfg.output.saving.output_dir, ckpt_name)
 
         if save_stable_diffusion_format:
+            prediction_type = resolve_ddpm_prediction_type(cfg.objective.prediction)
             modelspec_metadata = get_model_metadata_from_config(
                 state_dict=None,
                 metadata_config=cfg.output.metadata,
                 is_sdxl=True,
                 is_v2=False,
-                v_parameterization=cfg.loss.v_parameterization,
+                v_parameterization=prediction_type == DDPM_PREDICTION_TYPE_V,
+                prediction_type=prediction_type,
                 is_lora=False,
                 is_textual_inversion=False,
                 is_stable_diffusion_ckpt=True,

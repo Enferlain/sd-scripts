@@ -54,6 +54,7 @@ def make_prepare_cfg(overrides: dict | None = None):
             },
         },
         "validation": {"validate_every_n_steps": None, "validate_every_n_epochs": None},
+        "objective": {"path": "ddpm", "prediction": "epsilon"},
         "loss": {
             "edm2": {
                 "enabled": False,
@@ -72,6 +73,7 @@ def make_validate_cfg(overrides: dict | None = None):
     """Build a minimally valid config suitable for validate_config tests."""
     base = {
         "mode": "finetune",
+        "objective": {"path": "ddpm", "prediction": "epsilon"},
         "loss": {
             "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
             "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
@@ -308,6 +310,35 @@ class TestPrepareConfig:
         assert cfg.optimizer.learning_rates.denoiser == 2e-4
         assert cfg.optimizer.learning_rates.text_encoders == 2e-4
 
+    def test_objective_prediction_syncs_legacy_v_parameterization(self):
+        """The legacy boolean should mirror the explicit objective prediction."""
+        cfg = make_prepare_cfg(
+            {
+                "objective": {"path": "ddpm", "prediction": "v_prediction"},
+                "loss": {"v_parameterization": False},
+            }
+        )
+        with patch("library.config.config_validation.logger") as mock_logger:
+            prepare_config(cfg)
+        assert cfg.objective.path == "ddpm"
+        assert cfg.objective.prediction == "v_prediction"
+        assert cfg.loss.v_parameterization is True
+        mock_logger.warning.assert_called()
+
+    def test_objective_prediction_keeps_legacy_mirror_in_sync(self):
+        """An explicit objective prediction should win and sync the legacy mirror."""
+        cfg = make_prepare_cfg(
+            {
+                "objective": {"path": "ddpm", "prediction": "epsilon"},
+                "loss": {"v_parameterization": True},
+            }
+        )
+        with patch("library.config.config_validation.logger") as mock_logger:
+            prepare_config(cfg)
+        assert cfg.objective.prediction == "epsilon"
+        assert cfg.loss.v_parameterization is False
+        mock_logger.warning.assert_called()
+
     def test_log_every_n_steps_zero_defaults_to_one(self):
         """Tracker cadence at zero should normalize back to 1."""
         cfg = make_prepare_cfg({"output": {"logging": {"log_every_n_steps": 0}}})
@@ -509,10 +540,11 @@ class TestValidateConfig:
         )
         validate_config(cfg)  # Should not raise
 
-    def test_scale_v_pred_loss_requires_v_parameterization(self):
-        """scale_v_pred_loss_like_noise_pred requires v_parameterization."""
+    def test_scale_v_pred_loss_requires_v_prediction(self):
+        """scale_v_pred_loss_like_noise_pred requires objective.prediction='v_prediction'."""
         cfg = OmegaConf.create(
             {
+                "objective": {"path": "ddpm", "prediction": "epsilon"},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
                     "snr": {"scale_v_pred_loss_like_noise_pred": True, "v_pred_like_loss": None},
@@ -522,13 +554,14 @@ class TestValidateConfig:
                 "training": {"clip_skip": None},
             }
         )
-        with pytest.raises(ValueError, match="scale_v_pred_loss_like_noise_pred requires v_parameterization"):
+        with pytest.raises(ValueError, match="scale_v_pred_loss_like_noise_pred requires objective.prediction='v_prediction'"):
             validate_config(cfg)
 
-    def test_v_pred_like_loss_conflicts_with_v_parameterization(self):
-        """v_pred_like_loss with v_parameterization should raise ValueError."""
+    def test_v_pred_like_loss_conflicts_with_v_prediction(self):
+        """v_pred_like_loss with objective.prediction='v_prediction' should raise ValueError."""
         cfg = OmegaConf.create(
             {
+                "objective": {"path": "ddpm", "prediction": "v_prediction"},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
                     "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": 0.5},
@@ -538,7 +571,26 @@ class TestValidateConfig:
                 "training": {"clip_skip": None},
             }
         )
-        with pytest.raises(ValueError, match="v_pred_like_loss conflicts with v_parameterization"):
+        with pytest.raises(ValueError, match="v_pred_like_loss conflicts with objective.prediction='v_prediction'"):
+            validate_config(cfg)
+
+    def test_ddpm_path_rejects_flow_prediction(self):
+        """DDPM should reject the RF-native prediction label."""
+        cfg = make_validate_cfg({"objective": {"path": "ddpm", "prediction": "flow"}})
+
+        with pytest.raises(ValueError, match="objective\\.path='ddpm' requires objective\\.prediction to be 'epsilon' or 'v_prediction'"):
+            validate_config(cfg)
+
+    def test_rectified_flow_path_requires_flow_prediction(self):
+        """RF should reject DDPM-style prediction labels."""
+        cfg = make_validate_cfg(
+            {
+                "model": {"model_type": "sd3"},
+                "objective": {"path": "rectified_flow", "prediction": "epsilon"},
+            }
+        )
+
+        with pytest.raises(ValueError, match="objective\\.path='rectified_flow' requires objective\\.prediction='flow'"):
             validate_config(cfg)
 
     def test_v2_with_clip_skip_warns(self):
@@ -562,10 +614,11 @@ class TestValidateConfig:
             mock_logger.warning.assert_called_once()
             assert "v2 with clip_skip" in str(mock_logger.warning.call_args)
 
-    def test_zero_terminal_snr_without_v_param_warns(self):
-        """zero_terminal_snr without v_parameterization should log a warning."""
+    def test_zero_terminal_snr_without_v_prediction_warns(self):
+        """zero_terminal_snr without v_prediction should log a warning."""
         cfg = OmegaConf.create(
             {
+                "objective": {"path": "ddpm", "prediction": "epsilon"},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": True},
                     "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
@@ -581,7 +634,7 @@ class TestValidateConfig:
         with patch("library.config.config_validation.logger") as mock_logger:
             validate_config(cfg)
             mock_logger.warning.assert_called_once()
-            assert "zero_terminal_snr" in str(mock_logger.warning.call_args)
+            assert "objective.prediction" in str(mock_logger.warning.call_args)
 
     def test_full_fp16_requires_fp16_mixed_precision(self):
         """full_fp16 without mixed_precision='fp16' should raise ValueError."""
@@ -826,7 +879,13 @@ class TestValidateConfig:
 
     def test_shared_log_snr_modes_reject_active_sd3_path(self):
         """Shared DDPM timestep samplers should fail fast on the current RF path until implemented there."""
-        cfg = make_validate_cfg({"model": {"model_type": "sd3"}, "timestep": {"timestep_sampling": "adaptive_log_snr"}})
+        cfg = make_validate_cfg(
+            {
+                "model": {"model_type": "sd3"},
+                "objective": {"path": "rectified_flow", "prediction": "flow"},
+                "timestep": {"timestep_sampling": "adaptive_log_snr"},
+            }
+        )
 
         with pytest.raises(ValueError, match="is not implemented for the active SD3/RF timestep path yet"):
             validate_config(cfg)

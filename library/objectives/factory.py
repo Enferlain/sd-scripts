@@ -8,11 +8,10 @@ from library.objectives.rectified_flow import RectifiedFlowObjective
 
 
 def build_objective(cfg: Any) -> ObjectiveDefinition:
-    """Resolve the active objective owner from the current config.
-
-    The repo does not yet expose a dedicated objective config root, so the
-    current resolution still infers the objective from the active model family.
-    """
-    if cfg.model.model_type == "sd3":
+    """Resolve the active objective owner from the current config."""
+    objective_path = getattr(getattr(cfg, "objective", None), "path", None)
+    if objective_path == "rectified_flow":
         return RectifiedFlowObjective()
-    return DDPMObjective()
+    if objective_path == "ddpm":
+        return DDPMObjective()
+    raise ValueError(f"Unsupported objective.path={objective_path!r}")
