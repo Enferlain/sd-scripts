@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-31]
+
+### Changed
+
+- **Loss-weighting ownership now distinguishes DDPM post-loss math from generic masking** — The active code no longer keeps DDPM-only SNR/v-pred weighting and generic mask application in the same helper module.
+  - Moved Min-SNR weighting, debiased-estimation weighting, v-pred scaling, and the shared DDPM post-processing order into `library/objectives/ddpm.py`.
+  - Added `library/losses/masking.py` so mask application stays with generic loss behavior instead of living in an objective-shaped weighting module.
+  - Updated SD / SDXL diffusion strategies to call `post_process_ddpm_loss(...)` from the DDPM objective seam, while SD3 now imports only the shared masking helper.
+  - Removed the old mixed `library/losses/loss_weighting.py` module and refreshed the focused unit coverage around DDPM weighting and masking behavior.
+- **Huber threshold scheduling now has its own small loss helper seam** — The active strategies no longer import a scheduler/timestep-aware threshold helper from the same module that owns the raw loss functions.
+  - Added `library/losses/huber.py` with `get_huber_threshold_if_needed(...)` and updated SD / SDXL / SD3 diffusion strategies to import the helper from there.
+  - Reduced `library/losses/loss.py` back to the actual loss primitives and `conditional_loss(...)` dispatch path.
+  - Updated the focused unit coverage so the Huber-threshold tests follow the new helper location.
+
 ## [2026-03-30]
 
 ### Changed

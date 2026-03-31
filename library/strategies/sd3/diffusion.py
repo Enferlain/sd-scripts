@@ -2,9 +2,10 @@ from typing import Any
 
 import torch
 
-from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
+from library.losses.huber import get_huber_threshold_if_needed
+from library.losses.loss import conditional_loss
 from library.losses.loss_modifiers import BatchLossOutput
-from library.losses.loss_weighting import apply_masked_loss
+from library.losses.masking import apply_masked_loss
 from library.models.sd3.vae import SDVAE
 from library.objectives.rectified_flow import (
     build_flow_matching_model_input_and_timesteps,

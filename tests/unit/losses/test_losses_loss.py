@@ -2,6 +2,7 @@ import torch
 import pytest
 import math
 from unittest.mock import MagicMock
+from library.losses.huber import get_huber_threshold_if_needed
 from library.losses.loss import (
     LossRecorder,
     EMARecorder,
@@ -15,7 +16,6 @@ from library.losses.loss import (
     standard_deviation_loss,
     conditional_loss,
     soft_welsch_loss,
-    get_huber_threshold_if_needed,
 )
 
 

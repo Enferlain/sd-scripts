@@ -2,10 +2,11 @@ from typing import Any
 
 import torch
 
-from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
+from library.losses.huber import get_huber_threshold_if_needed
+from library.losses.loss import conditional_loss
 from library.losses.loss_modifiers import BatchLossOutput
-from library.losses.loss_weighting import apply_masked_loss, post_process_loss
-from library.objectives.ddpm import prepare_ddpm_training_inputs
+from library.losses.masking import apply_masked_loss
+from library.objectives.ddpm import post_process_ddpm_loss, prepare_ddpm_training_inputs
 from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.training.diffusion import prepare_latents
 
@@ -174,7 +175,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         loss = per_sample_loss
         if is_train:
             loss = loss * batch["loss_weights"].to(loss.device)
-            loss = post_process_loss(loss, cfg, timesteps, noise_scheduler)
+            loss = post_process_ddpm_loss(loss, cfg, timesteps, noise_scheduler)
 
         if is_train and cfg.loss.loss_multiplier:
             loss.mul_(float(cfg.loss.loss_multiplier) if cfg.loss.loss_multiplier is not None else 1.0)

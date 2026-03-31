@@ -5,6 +5,7 @@ from typing import Any
 
 import torch
 from diffusers import DDPMScheduler
+from torch.types import Number
 
 from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.timestep import TimestepConfig
@@ -72,6 +73,67 @@ def fix_noise_scheduler_betas_for_zero_terminal_snr(noise_scheduler: Any) -> Non
     noise_scheduler.betas = betas
     noise_scheduler.alphas = alphas
     noise_scheduler.alphas_cumprod = alphas_cumprod
+
+
+def apply_snr_weight(
+    loss: torch.Tensor, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler, gamma: Number, v_prediction: bool = False
+) -> torch.Tensor:
+    """Apply Min-SNR weighting to per-sample DDPM diffusion loss."""
+    snr = torch.stack([noise_scheduler.all_snr[t] for t in timesteps])
+    min_snr_gamma = torch.minimum(snr, torch.full_like(snr, gamma))
+    if v_prediction:
+        snr_weight = torch.div(min_snr_gamma, snr + 1).float().to(loss.device)
+    else:
+        snr_weight = torch.div(min_snr_gamma, snr).float().to(loss.device)
+    return loss * snr_weight
+
+
+def get_snr_scale(timesteps: torch.Tensor, noise_scheduler: DDPMScheduler) -> torch.Tensor:
+    """Compute the DDPM SNR scaling factor used by v-pred post-processing."""
+    snr_t = torch.stack([noise_scheduler.all_snr[t] for t in timesteps])
+    snr_t = torch.minimum(snr_t, torch.ones_like(snr_t) * 1000)
+    return snr_t / (snr_t + 1)
+
+
+def scale_v_prediction_loss_like_noise_prediction(
+    loss: torch.Tensor, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler
+) -> torch.Tensor:
+    """Scale v-prediction loss to match the DDPM epsilon-prediction loss shape."""
+    return loss * get_snr_scale(timesteps, noise_scheduler)
+
+
+def add_v_prediction_like_loss(
+    loss: torch.Tensor, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler, v_pred_like_loss: torch.Tensor
+) -> torch.Tensor:
+    """Add the configured DDPM v-pred-like auxiliary loss term."""
+    scale = get_snr_scale(timesteps, noise_scheduler)
+    return loss + loss / scale * v_pred_like_loss
+
+
+def apply_debiased_estimation(
+    loss: torch.Tensor, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler, v_prediction: bool = False
+) -> torch.Tensor:
+    """Apply DDPM debiased-estimation weighting to per-sample loss."""
+    snr_t = torch.stack([noise_scheduler.all_snr[t] for t in timesteps])
+    snr_t = torch.minimum(snr_t, torch.ones_like(snr_t) * 1000)
+    if v_prediction:
+        weight = 1 / (snr_t + 1)
+    else:
+        weight = 1 / torch.sqrt(snr_t)
+    return weight * loss
+
+
+def post_process_ddpm_loss(loss: torch.Tensor, cfg: Any, timesteps: torch.Tensor, noise_scheduler: DDPMScheduler) -> torch.Tensor:
+    """Apply configured DDPM-only post-loss weighting in the shared order."""
+    if cfg.loss.snr.min_snr_gamma:
+        loss = apply_snr_weight(loss, timesteps, noise_scheduler, cfg.loss.snr.min_snr_gamma, cfg.loss.v_parameterization)
+    if cfg.loss.snr.scale_v_pred_loss_like_noise_pred:
+        loss = scale_v_prediction_loss_like_noise_prediction(loss, timesteps, noise_scheduler)
+    if cfg.loss.snr.v_pred_like_loss:
+        loss = add_v_prediction_like_loss(loss, timesteps, noise_scheduler, cfg.loss.snr.v_pred_like_loss)
+    if cfg.loss.snr.debiased_estimation_loss:
+        loss = apply_debiased_estimation(loss, timesteps, noise_scheduler, cfg.loss.v_parameterization)
+    return loss
 
 
 def prepare_ddpm_training_inputs(

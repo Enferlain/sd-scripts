@@ -108,6 +108,13 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - the SD3 sampling-side `sample_flow_shift` default now has a typed home under `output.sampling`
   - the active SD3 path now reads those typed config homes directly instead of carrying compatibility resolver shims
   - the training-time RF sampling surface is a bit cleaner now too: `logit_normal` is the canonical logit-family sampler, `training_shift` remains as the post-sampling warp, and the redundant `shift`/`logit_scale` pair is gone from the active config surface
+- The first loss-weighting ownership cleanup is now in place too:
+  - DDPM-only post-loss weighting helpers now live under `library/objectives/ddpm.py` instead of sharing a module with generic masking behavior
+  - generic mask application now has its own `library/losses/masking.py` helper
+  - SD / SDXL use the DDPM objective-owned post-processing seam directly, while SD3 now imports only the generic masking path
+- The first Huber-threshold cleanup is in place too:
+  - `get_huber_threshold_if_needed(...)` now lives in `library/losses/huber.py` instead of sharing a file with the raw loss primitives
+  - `library/losses/loss.py` now reads more like the actual generic loss-function home, while the threshold helper keeps the timestep/scheduler-aware pre-loss behavior separate
 - Objective-level RF metadata has started moving out of SD3 strategy ownership too:
   - shared training metadata now adds the current RF metadata fields for the active RF consumer
   - `library/strategies/sd3/checkpointing.py` now keeps only SD3-specific attention-mask metadata instead of also owning RF timestep-weighting fields

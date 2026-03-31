@@ -1,20 +1,20 @@
 """
-Unit tests for library/losses/loss_weighting.py
+Unit tests for DDPM post-loss weighting and generic masking helpers.
 
-Tests for SNR-based loss weighting functions using lightweight fake schedulers.
+Tests for SNR-based weighting functions use lightweight fake schedulers.
 These tests verify correct formulas, clamping behavior, and masking semantics.
 """
 
 import torch
 from types import SimpleNamespace
 
-from library.losses.loss_weighting import (
+from library.losses.masking import apply_masked_loss
+from library.objectives.ddpm import (
     apply_snr_weight,
     scale_v_prediction_loss_like_noise_prediction,
     get_snr_scale,
     add_v_prediction_like_loss,
     apply_debiased_estimation,
-    apply_masked_loss,
 )
 
 
