@@ -7,7 +7,7 @@ from typing import Any
 import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
-from library.timesteps.density import apply_training_shift, sample_timestep_density
+from library.timesteps.continuous_sampling import apply_training_shift, sample_continuous_timesteps
 from library.timesteps.samplers.adaptive_log_snr_sampler import AdaptiveLogSNRSampler
 from library.timesteps.samplers.log_snr_sampler import LogSNRUniformSampler
 
@@ -193,15 +193,17 @@ class TimestepRuntime:
             return t_local.clamp(min_timestep, max_timestep - 1).to(dtype=torch.long, device=device)
 
         if is_train and self.effective_mode in {"logit_normal", "cosine_shaped"}:
-            timestep_density = sample_timestep_density(
-                self.effective_mode,
-                batch_size,
+            u = sample_continuous_timesteps(
+                timestep_sampling=self.effective_mode,
+                batch_size=batch_size,
                 logit_mean=float(timestep_config.logit_mean),
                 logit_std=float(timestep_config.logit_std),
                 cosine_shape_scale=float(timestep_config.cosine_shape_scale),
             )
-            timestep_density = apply_training_shift(timestep_density, float(timestep_config.training_shift))
-            return min_timestep + (timestep_density * (max_timestep - min_timestep)).to(dtype=torch.long, device=device)
+            u = apply_training_shift(u, float(timestep_config.training_shift))
+            return min_timestep + (u * (max_timestep - min_timestep)).to(
+                dtype=torch.long, device=device
+            )
 
         if self.effective_mode != "uniform":
             raise ValueError(f"Unsupported timestep runtime mode: {self.effective_mode}")

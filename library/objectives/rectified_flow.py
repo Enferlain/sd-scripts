@@ -6,21 +6,21 @@ import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
 from library.objectives.ddpm import DDPMObjective
-from library.timesteps.density import apply_training_shift, sample_timestep_density
+from library.timesteps.continuous_sampling import apply_training_shift, sample_continuous_timesteps
 
 
 def compute_flow_matching_timestep_density(
-    timestep_density_scheme: str,
+    timestep_sampling: str,
     batch_size: int,
     *,
     logit_mean: float = 0.0,
     logit_std: float = 1.0,
     cosine_shape_scale: float = 1.29,
 ) -> torch.Tensor:
-    """Compute timestep-density samples for flow-matching training."""
-    return sample_timestep_density(
-        timestep_density_scheme,
-        batch_size,
+    """Compute pre-index timestep values for flow-matching training."""
+    return sample_continuous_timesteps(
+        timestep_sampling=timestep_sampling,
+        batch_size=batch_size,
         logit_mean=logit_mean,
         logit_std=logit_std,
         cosine_shape_scale=cosine_shape_scale,
@@ -50,8 +50,8 @@ def build_flow_matching_model_input_and_timesteps(
     batch_size = latents.shape[0]
 
     if fixed_timesteps is None:
-        timestep_samples = compute_flow_matching_timestep_density(
-            timestep_density_scheme=timestep_config.timestep_sampling,
+        u = compute_flow_matching_timestep_density(
+            timestep_sampling=timestep_config.timestep_sampling,
             batch_size=batch_size,
             logit_mean=float(timestep_config.logit_mean),
             logit_std=float(timestep_config.logit_std),
@@ -60,8 +60,8 @@ def build_flow_matching_model_input_and_timesteps(
 
         t_min = timestep_config.min_timestep if timestep_config.min_timestep is not None else 0
         t_max = timestep_config.max_timestep if timestep_config.max_timestep is not None else 1000
-        timestep_samples = apply_training_shift(timestep_samples, float(timestep_config.training_shift))
-        timestep_indices = (timestep_samples * (t_max - t_min) + t_min).long()
+        u = apply_training_shift(u, float(timestep_config.training_shift))
+        timestep_indices = (u * (t_max - t_min) + t_min).long()
         timesteps = timestep_indices.to(device=device, dtype=torch.long)
     else:
         timesteps = fixed_timesteps.to(device=device, dtype=torch.long)
