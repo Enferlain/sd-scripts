@@ -99,6 +99,8 @@ class TestResumeBehavior(unittest.TestCase):
         self.cfg.data.loader.prefetch_factor = None
         self.cfg.data.loader.pin_memory = False
         self.cfg.data.loader.persistent_workers = False
+        self.cfg.objective.path = "ddpm"
+        self.cfg.objective.prediction = "epsilon"
 
         self.cfg.output.saving.resume = None
         self.cfg.output.huggingface.resume_from_huggingface = False

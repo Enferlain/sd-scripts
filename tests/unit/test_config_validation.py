@@ -230,6 +230,19 @@ class TestPrepareConfig:
         prepare_config(cfg)
         assert cfg.optimizer.optimizer_type == "Lion"
 
+    def test_prepare_config_silently_syncs_legacy_v_parameterization_for_rf(self):
+        """RF configs should not warn when syncing the legacy DDPM-only mirror flag."""
+        cfg = make_prepare_cfg(
+            {
+                "objective": {"path": "rectified_flow", "prediction": "flow"},
+                "loss": {"v_parameterization": True},
+            }
+        )
+        with patch("library.config.config_validation.logger") as mock_logger:
+            prepare_config(cfg)
+            assert cfg.loss.v_parameterization is False
+            mock_logger.warning.assert_not_called()
+
     def test_sample_every_n_epochs_zero_becomes_none(self):
         """sample_every_n_epochs <= 0 should become None."""
         cfg = OmegaConf.create(
@@ -659,6 +672,67 @@ class TestValidateConfig:
             validate_config(cfg)
             mock_logger.warning.assert_called_once()
             assert "objective.prediction" in str(mock_logger.warning.call_args)
+
+    def test_zero_terminal_snr_on_rectified_flow_does_not_warn(self):
+        """DDPM-only zero_terminal_snr warning should not fire on RF configs."""
+        cfg = OmegaConf.create(
+            {
+                "objective": {"path": "rectified_flow", "prediction": "flow"},
+                "loss": {
+                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": True},
+                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
+                    "edm2": {"laplace_timestep_sampling": False},
+                    "v_parameterization": False,
+                },
+                "model": {"model_type": "sd3"},
+                "training": {"clip_skip": None},
+                "timestep": {
+                    "timestep_sampling": "uniform",
+                    "adaptive_log_snr": {
+                        "bins": 32,
+                        "ema_beta": 0.9,
+                        "temperature": 0.5,
+                        "prior_weight": 0.25,
+                        "min_prob": 1e-4,
+                        "warmup_steps": 2000,
+                        "entropy_floor": 0.7,
+                        "uniform_mix_when_low_entropy": 0.1,
+                    },
+                },
+                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0, "denoiser": 1e-4, "base": 1e-4}},
+                "data": {"source": {"val_data_dir": None}, "caching": {"cache_text_encoder_outputs": False}},
+                "performance": {
+                    "memory": {"offload_text_encoders": False},
+                    "precision": {"full_fp16": False, "full_bf16": False, "mixed_precision": "fp16", "fp8_base": False},
+                },
+                "output": {
+                    "sampling": {"sample_every_n_steps": None, "sample_every_n_epochs": None},
+                    "logging": {
+                        "resource_monitor": {
+                            "mode": "basic",
+                            "rank_scope": "main",
+                            "device_scope": "local",
+                            "jsonl_flush_mode": "auto",
+                            "drop_policy": "drop_oldest",
+                        }
+                    },
+                },
+                "validation": {
+                    "validation_split": 0.0,
+                    "validation_seed": None,
+                    "run_at_start": False,
+                    "run_at_end": False,
+                    "validate_every_n_steps": None,
+                    "validate_every_n_epochs": None,
+                    "max_validation_steps": None,
+                    "validation_timesteps": "[50, 350, 500, 650, 950]",
+                },
+                "mode": "finetune",
+            }
+        )
+        with patch("library.config.config_validation.logger") as mock_logger:
+            validate_config(cfg)
+            mock_logger.warning.assert_not_called()
 
     def test_full_fp16_requires_fp16_mixed_precision(self):
         """full_fp16 without mixed_precision='fp16' should raise ValueError."""

@@ -188,6 +188,19 @@ class TestSdxlLatentsSaveLoad:
         # Should fail when flip_aug is required
         assert not strategy.is_cache_valid(cache_path, sample_entry, flip_aug=True)
 
+    def test_is_cache_valid_returns_false_for_vae_signature_mismatch(self, sample_entry: CacheEntry, mock_vae, tmp_path: Path):
+        """Changing the active VAE signature should invalidate old latent caches."""
+        cache_path = Path(sample_entry.latent_cache_path)
+
+        writer = SdxlLatentsPipelineStrategy(dtype="fp32", vae_signature="vae-a")
+        reader = SdxlLatentsPipelineStrategy(dtype="fp32", vae_signature="vae-b")
+
+        images = torch.randn(1, 3, 576, 1024)
+        results = writer.encode_batch(images, mock_vae, [sample_entry])
+        writer.save_cache(results[0], cache_path)
+
+        assert not reader.is_cache_valid(cache_path, sample_entry, flip_aug=False)
+
 
 class TestSdxlTextEncoderSaveLoad:
     """Test SDXL text encoder caching save/load roundtrip."""

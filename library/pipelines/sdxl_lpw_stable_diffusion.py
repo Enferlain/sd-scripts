@@ -1,5 +1,6 @@
 # copy from https://github.com/huggingface/diffusers/blob/main/examples/community/lpw_stable_diffusion.py
 
+import gc
 import inspect
 import numpy as np
 import PIL.Image
@@ -17,10 +18,12 @@ from diffusers.utils import logging, PIL_INTERPOLATION
 
 from library.constants import SDXL_VAE_LATENT_SCALE
 from library.data.prompt_utils import parse_prompt_attention
+from library.pipelines.flow import DiscreteFlowModelSampling, get_discrete_flow_sigmas, starts_at_max_denoise
 from library.models.sdxl.conversion import get_size_embeddings
 from library.strategies.sdxl.encoding import pool_workaround
 from library.models.sdxl import unet as sdxl_original_unet
 from library.models.sdxl import control_net as sdxl_original_control_net
+from library.utils.device_utils import clean_memory_on_device
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -1010,10 +1013,149 @@ class SdxlStableDiffusionLongPromptWeightingPipeline:
         Returns:
             List[PIL.Image.Image]: The converted images.
         """
+        if not torch.isfinite(latents).all():
+            raise RuntimeError("SDXL pipeline received non-finite latents for decode")
         # 9. Post-processing
         image = self.decode_latents(latents.to(self.vae.dtype))
+        if not np.isfinite(image).all():
+            raise RuntimeError("SDXL pipeline produced non-finite decoded image array")
         image = self.numpy_to_pil(image)
         return image
+
+    @torch.no_grad()
+    def flow_text2img(
+        self,
+        prompt: str | list[str],
+        negative_prompt: str | list[str] | None = None,
+        height: int = 512,
+        width: int = 512,
+        num_inference_steps: int = 28,
+        guidance_scale: float = 5.0,
+        generator: torch.Generator | None = None,
+        shift: float = 2.5,
+        output_type: str = "pil",
+        callback: Callable[[int, int, torch.FloatTensor], None] | None = None,
+        callback_steps: int = 1,
+    ) -> list[PIL.Image.Image] | torch.Tensor:
+        """Generate SDXL images with the rectified-flow runtime used by RF checkpoints."""
+        if self.strategy is None:
+            raise RuntimeError("SDXL sampling pipeline requires an explicit training strategy")
+
+        if not isinstance(prompt, str) and not isinstance(prompt, list):
+            raise ValueError(f"`prompt` has to be of type `str` or `list` but is {type(prompt)}")
+        if height % 8 != 0 or width % 8 != 0:
+            raise ValueError(f"`height` and `width` have to be divisible by 8 but are {height} and {width}.")
+        if callback_steps <= 0:
+            raise ValueError(f"`callback_steps` has to be a positive integer but is {callback_steps}")
+
+        batch_size = 1 if isinstance(prompt, str) else len(prompt)
+        device = self._execution_device
+        do_classifier_free_guidance = guidance_scale > 1.0
+
+        text_input_ids, text_weights = self.strategy.tokenize_with_weights(prompt)
+        hidden_states_1, hidden_states_2, text_pool = self.strategy.encode_tokens_with_weights(
+            self.text_encoders, text_input_ids, text_weights
+        )
+        text_embeddings = torch.cat([hidden_states_1, hidden_states_2], dim=-1)
+
+        if do_classifier_free_guidance:
+            input_ids, weights = self.strategy.tokenize_with_weights(negative_prompt or "")
+            hidden_states_1, hidden_states_2, uncond_pool = self.strategy.encode_tokens_with_weights(self.text_encoders, input_ids, weights)
+            uncond_embeddings = torch.cat([hidden_states_1, hidden_states_2], dim=-1)
+        else:
+            uncond_embeddings = None
+            uncond_pool = None
+
+        unet_dtype = self.unet.dtype
+        dtype = unet_dtype
+        if hasattr(dtype, "itemsize") and dtype.itemsize == 1:
+            dtype = torch.float16
+            self.unet.to(dtype)
+
+        shape = (
+            batch_size,
+            self.unet.in_channels,
+            height // self.vae_scale_factor,
+            width // self.vae_scale_factor,
+        )
+        if generator is None:
+            if device.type == "mps":
+                noise = torch.randn(shape, device="cpu", dtype=dtype).to(device)
+            else:
+                noise = torch.randn(shape, device=device, dtype=dtype)
+        else:
+            if device.type == "mps":
+                noise = torch.randn(shape, generator=generator, device="cpu", dtype=dtype).to(device)
+            else:
+                noise = torch.randn(shape, generator=generator, device=device, dtype=dtype)
+
+        model_sampling = DiscreteFlowModelSampling(shift=shift)
+        sigmas = get_discrete_flow_sigmas(model_sampling, num_inference_steps).to(device=device, dtype=torch.float32)
+        latents = model_sampling.noise_scaling(sigmas[0], noise, torch.zeros_like(noise), starts_at_max_denoise(model_sampling, sigmas))
+
+        orig_size = torch.tensor([height, width]).repeat(batch_size, 1).to(device, dtype)
+        crop_size = torch.zeros_like(orig_size)
+        target_size = orig_size
+        embs = get_size_embeddings(orig_size, crop_size, target_size, device).to(device, dtype)
+
+        text_pool = text_pool.to(device, dtype)
+        if do_classifier_free_guidance:
+            text_embedding = torch.cat([uncond_embeddings, text_embeddings]).to(device, dtype)
+            uncond_pool = uncond_pool.to(device, dtype)
+            cond_vector = torch.cat([text_pool, embs], dim=1).to(dtype)
+            uncond_vector = torch.cat([uncond_pool, embs], dim=1).to(dtype)
+            vector_embedding = torch.cat([uncond_vector, cond_vector])
+        else:
+            text_embedding = text_embeddings.to(device, dtype)
+            vector_embedding = torch.cat([text_pool, embs], dim=1)
+
+        for i, sigma_hat in enumerate(self.progress_bar(sigmas[:-1])):
+            timestep = model_sampling.timestep(sigma_hat).float()
+            timesteps = torch.full((batch_size,), float(timestep), device=device, dtype=torch.float32)
+
+            latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
+            model_output = self.unet(latent_model_input, timesteps, text_embedding, vector_embedding).float()
+            if not torch.isfinite(model_output).all():
+                raise RuntimeError(f"SDXL RF pipeline produced non-finite model output at iteration {i}")
+
+            denoised_batch = model_sampling.calculate_denoised(sigma_hat, model_output, latents.float())
+            if do_classifier_free_guidance:
+                denoised_uncond, denoised_text = denoised_batch.chunk(2)
+                denoised = denoised_uncond + guidance_scale * (denoised_text - denoised_uncond)
+            else:
+                denoised = denoised_batch
+
+            sigma_hat_dims = sigma_hat[(...,) + (None,) * (latents.ndim - sigma_hat.ndim)]
+            derivative = (latents.float() - denoised) / sigma_hat_dims
+            dt = sigmas[i + 1] - sigma_hat
+            latents = (latents.float() + derivative * dt).to(dtype)
+
+            if not torch.isfinite(latents).all():
+                raise RuntimeError(f"SDXL RF pipeline produced non-finite latents at iteration {i}")
+
+            if i % callback_steps == 0 and callback is not None:
+                callback(i, int(timestep), latents)
+
+        self.unet.to(unet_dtype)
+        if not torch.isfinite(latents).all():
+            raise RuntimeError("SDXL RF pipeline produced non-finite latents before decode")
+        del text_input_ids, text_weights, hidden_states_1, hidden_states_2, text_pool
+        del text_embeddings, orig_size, crop_size, target_size, embs
+        del noise, model_sampling, sigmas
+        if do_classifier_free_guidance:
+            del input_ids, weights, uncond_pool, uncond_embeddings, cond_vector, uncond_vector
+        del text_embedding, vector_embedding
+        gc.collect()
+        clean_memory_on_device(self.device)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+        latents = latents.to(self.vae.dtype)
+        if not torch.isfinite(latents).all():
+            raise RuntimeError("SDXL RF pipeline produced non-finite latents after cast to VAE dtype")
+        if output_type == "latent":
+            return latents
+        return self.latents_to_image(latents)
 
     # copy from pil_utils.py
     def numpy_to_pil(self, images: np.ndarray) -> Image.Image:

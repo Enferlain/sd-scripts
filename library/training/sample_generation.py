@@ -14,6 +14,7 @@ import torch
 from PIL import Image
 from accelerate import Accelerator
 from accelerate.state import PartialState
+from tqdm import tqdm
 
 from diffusers import (
     DDPMScheduler,
@@ -489,7 +490,8 @@ def sample_images_common(
     if distributed_state.num_processes <= 1:
         # If only one device is available, just use the original prompt list. We don't need to care about the distribution of prompts.
         with torch.no_grad():
-            for prompt_dict in prompts:
+            prompt_iter = tqdm(prompts, desc="Sampling prompts", disable=not accelerator.is_local_main_process)
+            for prompt_dict in prompt_iter:
                 sample_image_inference(
                     accelerator,
                     sampling_config,
@@ -518,7 +520,12 @@ def sample_images_common(
             per_process_prompts.append(prompts[i :: distributed_state.num_processes])
 
         with torch.no_grad(), distributed_state.split_between_processes(per_process_prompts) as prompt_dict_lists:
-            for prompt_dict in prompt_dict_lists[0]:
+            prompt_iter = tqdm(
+                prompt_dict_lists[0],
+                desc=f"Sampling prompts (rank {distributed_state.process_index})",
+                disable=not accelerator.is_local_main_process,
+            )
+            for prompt_dict in prompt_iter:
                 sample_image_inference(
                     accelerator,
                     sampling_config,

@@ -8,7 +8,7 @@ import torch
 from PIL import Image
 from safetensors.torch import save_file
 
-from library.data.caching_engine import CacheBackend
+from library.data.caching_engine import CacheBackend, build_vae_cache_signature
 from library.data.structures import CacheData, CacheEntry
 from library.strategies.base.contracts import CachingStrategy
 from library.strategies.sd3.encoding import encode_sd3_tokens
@@ -28,6 +28,7 @@ class Sd3CachingStrategy(CachingStrategy):
         return Sd3LatentsPipelineStrategy(
             flip_aug=cfg.data.preprocessing.flip_aug,
             dtype=latent_dtype,
+            vae_signature=build_vae_cache_signature(cfg.model),
         )
 
     def create_te_caching_strategy(self, cfg: Any) -> "Sd3TextEncoderPipelineStrategy":
@@ -65,10 +66,12 @@ class Sd3LatentsPipelineStrategy(CacheBackend):
         cache_suffix: str = "_sd3_latents.safetensors",
         flip_aug: bool = False,
         dtype: str = "fp16",
+        vae_signature: str | None = None,
     ) -> None:
         self.cache_suffix = cache_suffix
         self.flip_aug = flip_aug
         self.dtype = dtype
+        self.vae_signature = vae_signature
         self._torch_dtype = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}[dtype]
 
     def encode_batch(
@@ -106,6 +109,7 @@ class Sd3LatentsPipelineStrategy(CacheBackend):
                     "bucket_reso": f"{entry.bucket_reso[0]},{entry.bucket_reso[1]}",
                     "resized_size": f"{entry.resized_size[0]},{entry.resized_size[1]}",
                     "crop_ltrb": "0,0,0,0",
+                    **({"vae_signature": self.vae_signature} if self.vae_signature is not None else {}),
                 },
             }
             if flipped_latents is not None:
@@ -175,6 +179,9 @@ class Sd3LatentsPipelineStrategy(CacheBackend):
                     expected_bucket = f"{entry.bucket_reso[0]},{entry.bucket_reso[1]}"
                     if stored_bucket and stored_bucket != expected_bucket:
                         logger.debug(f"Cache {path}: bucket_reso mismatch. Stored '{stored_bucket}', expected '{expected_bucket}'")
+                        return False
+                    if self.vae_signature is not None and metadata.get("vae_signature") != self.vae_signature:
+                        logger.debug(f"Cache {path}: VAE signature mismatch")
                         return False
 
             return True

@@ -5,6 +5,7 @@ This module provides the generic caching infrastructure that delegates
 model-specific encoding to cache backends from library/strategies/.
 """
 
+import json
 import os
 import logging
 from abc import ABC, abstractmethod
@@ -21,6 +22,33 @@ from library.data.structures import CacheData, CacheEntry, DatasetManifest
 
 
 logger = logging.getLogger(__name__)
+
+
+def build_vae_cache_signature(model_cfg: Any) -> str:
+    """Build a lightweight cache signature for the active VAE source.
+
+    This is used only for cache invalidation. Local files include stable path,
+    size, and mtime; non-file sources fall back to their configured name.
+    Padding mode is included because it changes effective VAE behavior.
+    """
+    source = getattr(model_cfg, "vae", None) or getattr(model_cfg, "pretrained_model_name_or_path", None) or "(unknown)"
+    payload: dict[str, Any] = {
+        "source": source,
+        "padding_mode": getattr(model_cfg, "vae_conv2d_padding_mode", None) or "zeros",
+    }
+
+    if isinstance(source, str) and os.path.exists(source) and os.path.isfile(source):
+        resolved = os.path.realpath(source)
+        stat = os.stat(resolved)
+        payload.update(
+            {
+                "source": resolved,
+                "size": stat.st_size,
+                "mtime_ns": stat.st_mtime_ns,
+            }
+        )
+
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
 class CacheBackend(ABC):

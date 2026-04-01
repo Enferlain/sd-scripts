@@ -16,3 +16,14 @@ output:
     # NOTE: sample_every_n_epochs takes precedence - comment it out to use step-based
     # sample_every_n_epochs: 1
     sample_prompt_file: "D:/Projects/sd-scripts/tests/assets/3prompt.txt"
+
+# objective:
+#   path: rectified_flow
+#   prediction: flow
+
+# timestep:
+#   timestep_sampling: logit_normal
+#   training_shift: 3.0
+
+# model:
+#   vae_conv2d_padding_mode: reflect

@@ -317,15 +317,17 @@ def prepare_config(cfg) -> None:
 
     objective_cfg = _get_optional_attr(cfg, "objective")
     if objective_cfg is not None:
+        objective_path = getattr(objective_cfg, "path", None)
         configured_prediction = getattr(objective_cfg, "prediction", None)
         current_v_parameterization = _get_optional_attr(cfg, "loss", "v_parameterization", default=False)
         if configured_prediction is not None and current_v_parameterization != (configured_prediction == "v_prediction"):
-            logger.warning(
-                "objective.prediction overrides legacy loss.v_parameterization; "
-                "the boolean is being synchronized for compatibility."
-            )
             if _get_optional_attr(cfg, "loss") is not None:
                 cfg.loss.v_parameterization = configured_prediction == "v_prediction"
+            if objective_path in {None, "ddpm"}:
+                logger.warning(
+                    "objective.prediction overrides legacy loss.v_parameterization; "
+                    "the boolean is being synchronized for compatibility."
+                )
 
     # Data: cache_dir defaults to train_data_dir if not set
     if (
@@ -553,7 +555,7 @@ def validate_config(cfg) -> None:
         logger.warning("v2 with clip_skip is unexpected")
 
     # DDPM scheduler shaping: zero_terminal_snr without v_prediction
-    if cfg.loss.regularization.zero_terminal_snr and not is_v_prediction:
+    if objective_path == "ddpm" and cfg.loss.regularization.zero_terminal_snr and not is_v_prediction:
         logger.warning("zero_terminal_snr is enabled but objective.prediction is not 'v_prediction'. Training results may be unexpected.")
 
 

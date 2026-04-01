@@ -102,6 +102,10 @@ def mock_cfg():
     cfg.training.max_train_steps = 100
     cfg.training.gradient_accumulation_steps = 1
 
+    # Objective config
+    cfg.objective.path = "ddpm"
+    cfg.objective.prediction = "epsilon"
+
     # Validation config
     cfg.validation.validation_split = 0.0
     cfg.validation.validation_seed = 42
