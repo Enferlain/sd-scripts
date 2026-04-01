@@ -317,7 +317,13 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     )
     trainer._timestep_counts = None
     trainer._plotter_settings = None
-    trainer.timestep_runtime = None
+    trainer.objective_runtime = SimpleNamespace(
+        name="ddpm",
+        num_train_timesteps=1000,
+        timestep_runtime=None,
+        advance_to_step=MagicMock(return_value=None),
+        update_from_batch=MagicMock(),
+    )
 
     # Validation scheduler (always returns False for should_run by default)
     trainer._validation_scheduler = MagicMock()
@@ -326,9 +332,6 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
 
     # trainable_model property (returns adapter for PEFT)
     type(trainer).trainable_model = PropertyMock(return_value=trainer.adapter)
-
-    # Noise scheduler
-    trainer.noise_scheduler = MagicMock()
 
     # Methods
     trainer.save_checkpoint = MagicMock()

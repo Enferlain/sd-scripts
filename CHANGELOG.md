@@ -32,11 +32,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Moved Min-SNR weighting, debiased-estimation weighting, v-pred scaling, and the shared DDPM post-processing order into `library/objectives/ddpm.py`.
   - Added `library/losses/masking.py` so mask application stays with generic loss behavior instead of living in an objective-shaped weighting module.
   - Updated SD / SDXL diffusion strategies to call `post_process_ddpm_loss(...)` from the DDPM objective seam, while SD3 now imports only the shared masking helper.
-  - Removed the old mixed `library/losses/loss_weighting.py` module and refreshed the focused unit coverage around DDPM weighting and masking behavior.
+  - Refreshed the focused unit coverage around DDPM weighting and masking behavior.
 - **Huber threshold scheduling now has its own small loss helper seam** — The active strategies no longer import a scheduler/timestep-aware threshold helper from the same module that owns the raw loss functions.
   - Added `library/losses/huber.py` with `get_huber_threshold_if_needed(...)` and updated SD / SDXL / SD3 diffusion strategies to import the helper from there.
   - Reduced `library/losses/loss.py` back to the actual loss primitives and `conditional_loss(...)` dispatch path.
   - Updated the focused unit coverage so the Huber-threshold tests follow the new helper location.
+- **Objective runtime ownership now reaches the trainer/strategy seam instead of stopping at runtime construction** — The active trainer no longer keeps a DDPM-shaped `noise_scheduler + timestep_runtime + loss_modifier` field split after objective selection.
+  - `Trainer` now stores one `objective_runtime` bundle directly, and the shared training/validation loops pass that bundle through to strategy calls instead of threading a raw scheduler as a fake universal dependency.
+  - `ObjectiveRuntime` now carries only the genuinely shared runtime fields (`num_train_timesteps`, optional `alphas_cumprod`, optional `timestep_runtime`, and `loss_modifier`), while DDPM and RF each expose typed runtime subclasses for their path-specific state.
+  - SD / SDXL diffusion and validation now require a DDPM runtime explicitly when they need scheduler math, while SD3 / RF now accepts a rectified-flow runtime without inheriting a DDPM scheduler by accident.
+  - Live timestep plotting and Huber-threshold scheduling now read objective-owned runtime metadata instead of assuming every active path has a raw Diffusers scheduler object.
+  - `RectifiedFlowObjective.build_runtime()` is now RF-native and fails fast on DDPM-only EDM2 weighting instead of silently inheriting DDPM runtime assembly.
+  - Followed up on the first runtime pass too: the shared base runtime no longer carries the DDPM-only `alphas_cumprod` field, the batch-feedback hook is now named `update_from_batch(...)` instead of `observe(...)`, and the DDPM family strategies now read their typed runtime via local casts instead of runtime assertion helpers.
+- **RF runtime ownership now includes RF batch-state assembly instead of stopping at runtime identity** — The active SD3 strategy no longer owns RF timestep/sigma/model-input construction directly.
+  - Added `RectifiedFlowObjectiveRuntime.build_training_batch_state(...)` plus a small `RectifiedFlowBatchState` container in `library/objectives/rectified_flow.py`.
+  - RF runtime construction now stores the active RF timestep config and RF loss-weighting scheme so the runtime can assemble `timesteps`, `sigmas`, noisy model input, and loss weighting from clean latents.
+  - `library/strategies/sd3/diffusion.py` now consumes that RF-owned batch state instead of rebuilding RF timestep state locally, which makes the SD3 strategy read more like denoiser orchestration plus loss application.
+  - Added focused unit coverage for the runtime-owned RF batch-state builder in `tests/unit/training/test_training_flow.py`.
+- **The active SD3 RF target now follows the paper-style direct velocity contract instead of supervising a projected clean latent inside the shared RF runtime** — Generic RF batch-state assembly now stops at path construction, while the SD3 strategy owns the family-specific target semantics directly.
+  - Removed the generic `target` field from `RectifiedFlowBatchState`, so the shared RF runtime now owns only noise, interpolated model input, timesteps, sigmas, and RF loss weighting.
+  - Added an SD3-local `build_sd3_flow_target(...)` helper in `library/strategies/sd3/diffusion.py` and switched the active SD3 training target to `noise - latents`, matching the direct RF velocity target described in the SD3 paper.
+  - Removed the old SD3 training-side projection `model_pred = model_pred * (-sigmas) + noisy_model_input` from the active SD3 loss path, since that projected-`x0` supervision was an older donor-specific parameterization rather than the paper-native RF target.
+  - Added focused unit coverage so the RF runtime test now checks only shared batch-state fields and the SD3 strategy test asserts the paper-style target direction explicitly.
+
+### Fixed
+
+- **SDXL conditioning regression introduced by the objective-runtime refactor** — The SDXL training and validation paths now call the shared conditioning facet using the same keyword argument contract as the other families.
+  - Updated `library/strategies/sdxl/diffusion.py` and `library/strategies/sdxl/validation.py` to pass `batch`, `text_encoders`, `accelerator`, `cfg`, and `weight_dtype` by name when resolving conditioning.
+  - Added focused regression coverage in `tests/unit/strategies/test_strategies_sdxl.py` so the SDXL batch-processing and validation paths fail loudly if they drift back to the old positional call shape.
+
+### Removed
+
+- **Removed the old mixed DDPM weighting helper module** — The repo no longer keeps DDPM-only weighting logic in a generic loss helper file.
+  - Deleted `library/losses/loss_weighting.py` after moving DDPM post-loss weighting into `library/objectives/ddpm.py` and generic masking into `library/losses/masking.py`.
 
 ## [2026-03-30]
 

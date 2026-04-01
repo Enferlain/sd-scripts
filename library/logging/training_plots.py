@@ -141,14 +141,13 @@ def get_plotter_settings(cfg, timestep_runtime) -> dict:
     return plotter_settings
 
 
-def setup_live_plotter(cfg, noise_scheduler, timestep_runtime, strategy):
+def setup_live_plotter(cfg, objective_runtime, strategy):
     """
     Setup the live plotter subprocess and initialize static plot timesteps tracking.
 
     Args:
         cfg: The training configuration object.
-        noise_scheduler: The noise scheduler from Diffusers.
-        timestep_runtime: The trainer-owned timestep runtime (or None).
+        objective_runtime: The active objective runtime bundle.
         strategy: The training strategy object, used to store the plotter process handle.
 
     Returns:
@@ -158,6 +157,7 @@ def setup_live_plotter(cfg, noise_scheduler, timestep_runtime, strategy):
     """
     timestep_counts = None
     plotter_settings = None
+    timestep_runtime = objective_runtime.timestep_runtime
 
     # Get plotter settings
     plotter_settings = get_plotter_settings(cfg, timestep_runtime)
@@ -178,13 +178,15 @@ def setup_live_plotter(cfg, noise_scheduler, timestep_runtime, strategy):
 
             # Send the initial "handshake" data
             reset_str = "RESET::\n"
-            alphas_cumprod_np = noise_scheduler.alphas_cumprod.cpu().numpy()
-            schedule_str = f"SCHEDULE::{','.join(map(str, alphas_cumprod_np))}\n"
             settings_str = f"SETTINGS::{json.dumps(plotter_settings)}\n"
 
             try:
                 strategy.live_plotter_process.stdin.write(reset_str.encode("utf-8"))
-                strategy.live_plotter_process.stdin.write(schedule_str.encode("utf-8"))
+                alphas_cumprod = getattr(objective_runtime, "alphas_cumprod", None)
+                if alphas_cumprod is not None:
+                    alphas_cumprod_np = alphas_cumprod.cpu().numpy()
+                    schedule_str = f"SCHEDULE::{','.join(map(str, alphas_cumprod_np))}\n"
+                    strategy.live_plotter_process.stdin.write(schedule_str.encode("utf-8"))
                 strategy.live_plotter_process.stdin.write(settings_str.encode("utf-8"))
                 strategy.live_plotter_process.stdin.flush()
             except (BrokenPipeError, OSError):
@@ -193,6 +195,6 @@ def setup_live_plotter(cfg, noise_scheduler, timestep_runtime, strategy):
 
     # Setup for saving static plot images
     if cfg.output.logging.log_timestep_distribution_every_n_steps is not None:
-        timestep_counts = np.zeros(noise_scheduler.config.num_train_timesteps, dtype=np.int64)
+        timestep_counts = np.zeros(objective_runtime.num_train_timesteps, dtype=np.int64)
 
     return timestep_counts, plotter_settings

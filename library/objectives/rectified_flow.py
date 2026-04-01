@@ -1,14 +1,63 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+from typing import Any
 
 import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
-from library.objectives.ddpm import DDPMObjective
+from library.losses.loss_modifiers import NoOpLossModifier
+from library.objectives.base import ObjectiveDefinition, ObjectiveRuntime
 from library.timesteps.continuous_sampling import apply_training_shift, sample_continuous_timesteps
 
 RECTIFIED_FLOW_PREDICTION_TYPE_FLOW = "flow"
+
+
+@dataclass
+class RectifiedFlowObjectiveRuntime(ObjectiveRuntime):
+    """Objective runtime state for rectified-flow training paths."""
+
+    timestep_config: TimestepConfig
+    loss_weighting_scheme: str
+
+    def build_training_batch_state(
+        self,
+        latents: torch.Tensor,
+        *,
+        device: torch.device,
+        dtype: torch.dtype,
+        fixed_timesteps: torch.Tensor | None = None,
+    ) -> RectifiedFlowBatchState:
+        """Build the RF training batch state owned by the active runtime."""
+        noise = torch.randn_like(latents)
+        noisy_model_input, timesteps, sigmas = build_flow_matching_model_input_and_timesteps(
+            self.timestep_config,
+            latents,
+            noise,
+            device=device,
+            dtype=dtype,
+            fixed_timesteps=fixed_timesteps,
+        )
+        loss_weighting = compute_flow_matching_loss_weighting(self.loss_weighting_scheme, sigmas=sigmas)
+        return RectifiedFlowBatchState(
+            noise=noise,
+            noisy_model_input=noisy_model_input,
+            timesteps=timesteps,
+            sigmas=sigmas,
+            loss_weighting=loss_weighting,
+        )
+
+
+@dataclass
+class RectifiedFlowBatchState:
+    """RF-owned training batch state derived from clean latents."""
+
+    noise: torch.Tensor
+    noisy_model_input: torch.Tensor
+    timesteps: torch.Tensor
+    sigmas: torch.Tensor
+    loss_weighting: torch.Tensor
 
 
 def resolve_rectified_flow_prediction_type(prediction: str) -> str:
@@ -80,7 +129,21 @@ def build_flow_matching_model_input_and_timesteps(
     return noisy_model_input.to(dtype), timesteps, sigmas.to(dtype)
 
 
-class RectifiedFlowObjective(DDPMObjective):
+class RectifiedFlowObjective(ObjectiveDefinition):
     """Rectified-flow objective/runtime owner for the current SD3 path."""
 
     name = "rectified_flow"
+
+    def build_runtime(self, cfg: Any, accelerator: Any) -> RectifiedFlowObjectiveRuntime:
+        del accelerator
+        if getattr(cfg.loss.edm2, "enabled", False):
+            raise ValueError("loss.edm2 is only supported with objective.path='ddpm'")
+
+        return RectifiedFlowObjectiveRuntime(
+            name=self.name,
+            num_train_timesteps=1000,
+            timestep_runtime=None,
+            loss_modifier=NoOpLossModifier(),
+            timestep_config=cfg.timestep,
+            loss_weighting_scheme=cfg.timestep.rf_loss_weighting_scheme,
+        )

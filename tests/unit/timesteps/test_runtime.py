@@ -133,7 +133,7 @@ class TestTimestepRuntime:
         timesteps = torch.tensor([10, 20], requires_grad=False)
         sampling_loss = torch.tensor([0.2, 0.4], requires_grad=True)
 
-        runtime.observe(timesteps, sampling_loss)
+        runtime.update_from_batch(timesteps, sampling_loss)
 
         observed_timesteps, observed_loss = sampler.update.call_args.args
         assert not observed_timesteps.requires_grad

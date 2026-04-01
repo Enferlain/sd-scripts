@@ -6,6 +6,7 @@ import torch
 from tqdm import tqdm
 
 from library.losses.loss import conditional_loss
+from library.objectives.base import ObjectiveRuntime
 from library.strategies.base.contracts import ValidationStrategy
 from library.training.diffusion import prepare_latents
 from library.training.trainer_utils import restore_rng_state, switch_rng_state
@@ -21,7 +22,7 @@ class SdxlValidationStrategy(ValidationStrategy):
         unet: Any,
         trainable_model: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -39,7 +40,7 @@ class SdxlValidationStrategy(ValidationStrategy):
             unet: UNet model.
             trainable_model: The trainable model.
             vae: VAE model.
-            noise_scheduler: Noise scheduler.
+            objective_runtime: Active objective runtime.
             vae_dtype: VAE data type.
             weight_dtype: Weight data type.
             accelerator: Accelerator instance.
@@ -66,13 +67,13 @@ class SdxlValidationStrategy(ValidationStrategy):
             total_loss = torch.zeros(1, device=latents.device)
 
             text_encoder_conds = self.resolve_conditioning(
-                cfg,
-                accelerator,
-                batch,
-                text_encoders,
-                weight_dtype,
+                batch=batch,
+                text_encoders=text_encoders,
+                accelerator=accelerator,
+                cfg=cfg,
                 train_text_encoder=train_text_encoder,
                 is_train=False,
+                weight_dtype=weight_dtype,
             )
 
             batch_size = latents.shape[0]
@@ -81,7 +82,7 @@ class SdxlValidationStrategy(ValidationStrategy):
                 noise_pred, target, _, _ = self.get_noise_pred_and_target(
                     cfg,
                     accelerator,
-                    noise_scheduler,
+                    objective_runtime,
                     latents,
                     batch,
                     text_encoder_conds,
@@ -111,7 +112,7 @@ class SdxlValidationStrategy(ValidationStrategy):
         text_encoders: list[Any],
         unet: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -134,7 +135,7 @@ class SdxlValidationStrategy(ValidationStrategy):
             text_encoders: List of text encoders.
             unet: UNet model.
             vae: VAE model.
-            noise_scheduler: Noise scheduler.
+            objective_runtime: Active objective runtime.
             vae_dtype: VAE data type.
             weight_dtype: Weight data type.
             accelerator: Accelerator instance.
@@ -172,7 +173,7 @@ class SdxlValidationStrategy(ValidationStrategy):
                     unet,
                     trainable_model,
                     vae,
-                    noise_scheduler,
+                    objective_runtime,
                     vae_dtype,
                     weight_dtype,
                     accelerator,

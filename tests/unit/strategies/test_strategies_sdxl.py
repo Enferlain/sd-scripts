@@ -1,12 +1,17 @@
 """Unit tests for the active SDXL strategy concern files."""
 
+from types import SimpleNamespace
 import pytest
 import torch
 from unittest.mock import Mock, patch
 
+from library.objectives.ddpm import DDPMObjectiveRuntime
+from library.losses.loss_modifiers import NoOpLossModifier
+from library.strategies.sdxl.diffusion import SdxlDiffusionTrainingStrategy
 from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
 from library.strategies.sdxl.tokenization import SdxlTokenizeStrategy
 from library.strategies.sdxl.training import SdxlTrainingStrategy
+from library.strategies.sdxl.validation import SdxlValidationStrategy
 
 
 # =============================================================================
@@ -217,7 +222,6 @@ class TestSdxlTextEncodingStrategy:
 
         with patch.object(tokenize_strategy, "tokenize") as mock_tokenize:
             mock_tokenize.return_value = [torch.randint(0, 1000, (1, 1, 77)), torch.randint(0, 1000, (1, 1, 77))]
-
             result = encoding_strategy.encode_tokens([mock_clip_text_encoder1, mock_clip_text_encoder2], list(mock_tokenize.return_value))
 
         assert len(result) == 3  # hidden1, hidden2, pool2
@@ -259,6 +263,117 @@ class TestSdxlTextEncodingStrategy:
             result = encoding_strategy.encode_tokens_with_weights([mock_clip_text_encoder1, mock_clip_text_encoder2], tokens, weights)
 
         assert len(result) == 3
+
+
+@pytest.mark.unit
+def test_sdxl_process_batch_resolves_conditioning_with_keywords() -> None:
+    strategy = SdxlDiffusionTrainingStrategy()
+    strategy.vae_latent_scale = 1.0
+    strategy.resolve_conditioning = Mock(return_value=("cond1", "cond2", "pool"))
+    strategy.get_noise_pred_and_target = Mock(
+        return_value=(
+            torch.zeros(1, 4, 8, 8),
+            torch.zeros(1, 4, 8, 8),
+            torch.zeros(1, dtype=torch.long),
+            None,
+        )
+    )
+
+    cfg = SimpleNamespace(
+        data=SimpleNamespace(caching=SimpleNamespace()),
+        loss=SimpleNamespace(
+            loss_type="l2",
+            loss_scale=1.0,
+            loss_multiplier=None,
+            masked=SimpleNamespace(masked_loss=False),
+            huber=SimpleNamespace(schedule="constant", c=0.1),
+        ),
+    )
+    batch = {"loss_weights": torch.ones(1)}
+    text_encoders = [Mock(), Mock()]
+    objective_runtime = DDPMObjectiveRuntime(
+        name="ddpm",
+        num_train_timesteps=1000,
+        timestep_runtime=None,
+        loss_modifier=NoOpLossModifier(),
+        noise_scheduler=Mock(),
+        alphas_cumprod=torch.ones(1000),
+    )
+    accelerator = Mock()
+    accelerator.device = torch.device("cpu")
+
+    with patch("library.strategies.sdxl.diffusion.prepare_latents", return_value=torch.zeros(1, 4, 8, 8)):
+        strategy.process_batch(
+            batch=batch,
+            text_encoders=text_encoders,
+            unet=Mock(),
+            trainable_model=Mock(),
+            vae=Mock(),
+            objective_runtime=objective_runtime,
+            vae_dtype=torch.float32,
+            weight_dtype=torch.float32,
+            accelerator=accelerator,
+            cfg=cfg,
+            is_train=False,
+        )
+
+    strategy.resolve_conditioning.assert_called_once_with(
+        batch=batch,
+        text_encoders=text_encoders,
+        accelerator=accelerator,
+        cfg=cfg,
+        train_text_encoder=True,
+        is_train=False,
+        weight_dtype=torch.float32,
+    )
+
+
+@pytest.mark.unit
+def test_sdxl_validation_resolves_conditioning_with_keywords() -> None:
+    strategy = SdxlValidationStrategy()
+    strategy.vae_latent_scale = 1.0
+    strategy.resolve_conditioning = Mock(return_value=("cond1", "cond2", "pool"))
+    strategy.get_noise_pred_and_target = Mock(
+        return_value=(
+            torch.zeros(1, 4, 8, 8),
+            torch.zeros(1, 4, 8, 8),
+            torch.zeros(1, dtype=torch.long),
+            None,
+        )
+    )
+
+    cfg = SimpleNamespace(data=SimpleNamespace(caching=SimpleNamespace()))
+    batch = {}
+    text_encoders = [Mock(), Mock()]
+    accelerator = Mock()
+    accelerator.device = torch.device("cpu")
+
+    with patch("library.strategies.sdxl.validation.prepare_latents", return_value=torch.zeros(1, 4, 8, 8)):
+        strategy.process_val_batch(
+            batch=batch,
+            text_encoders=text_encoders,
+            unet=Mock(),
+            trainable_model=Mock(),
+            vae=Mock(),
+            objective_runtime=Mock(),
+            vae_dtype=torch.float32,
+            weight_dtype=torch.float32,
+            accelerator=accelerator,
+            cfg=cfg,
+            train_text_encoder=False,
+            train_denoiser=True,
+            timesteps_list=[50],
+        )
+
+    strategy.resolve_conditioning.assert_called_once_with(
+        batch=batch,
+        text_encoders=text_encoders,
+        accelerator=accelerator,
+        cfg=cfg,
+        train_text_encoder=False,
+        is_train=False,
+        weight_dtype=torch.float32,
+    )
 
 
 @pytest.mark.unit

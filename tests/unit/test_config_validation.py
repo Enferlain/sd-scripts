@@ -593,6 +593,19 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="objective\\.path='rectified_flow' requires objective\\.prediction='flow'"):
             validate_config(cfg)
 
+    def test_rectified_flow_path_rejects_edm2(self):
+        """RF should reject DDPM-only EDM2 weighting early in validation."""
+        cfg = make_validate_cfg(
+            {
+                "model": {"model_type": "sd3"},
+                "objective": {"path": "rectified_flow", "prediction": "flow"},
+                "loss": {"edm2": {"enabled": True}},
+            }
+        )
+
+        with pytest.raises(ValueError, match="loss\\.edm2 is only supported with objective\\.path='ddpm'"):
+            validate_config(cfg)
+
     def test_v2_with_clip_skip_warns(self):
         """v2 model with clip_skip should log a warning."""
         cfg = OmegaConf.create(

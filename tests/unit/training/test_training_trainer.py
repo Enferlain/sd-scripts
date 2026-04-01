@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from library.training.runners.trainer import Trainer
 
@@ -6,6 +7,7 @@ from library.training.runners.trainer import Trainer
 class TestTrainer(unittest.TestCase):
     def setUp(self):
         self.cfg = MagicMock()
+        self.cfg.objective.path = "ddpm"
         self.strategies = MagicMock()
         self.mode = MagicMock()
         self.trainer = Trainer(self.cfg, self.strategies, self.mode)
@@ -137,7 +139,14 @@ class TestTrainer(unittest.TestCase):
         self.trainer._text_encoder = self.trainer.text_encoders
         self.trainer.vae_dtype = MagicMock()
         self.trainer.weight_dtype = MagicMock()
-        self.trainer.noise_scheduler = MagicMock()
+        self.trainer.objective_runtime = SimpleNamespace(
+            name="ddpm",
+            num_train_timesteps=1000,
+            timestep_runtime=None,
+            loss_modifier=MagicMock(),
+            advance_to_step=MagicMock(return_value=None),
+            update_from_batch=MagicMock(),
+        )
         self.trainer.num_batches_per_epoch = 5
         self.trainer._train_text_encoder = False
         self.trainer.strategies.calculate_val_loss.return_value = (0.5, 0.5)
@@ -169,7 +178,14 @@ class TestTrainer(unittest.TestCase):
         self.trainer._text_encoder = self.trainer.text_encoders
         self.trainer.vae_dtype = MagicMock()
         self.trainer.weight_dtype = MagicMock()
-        self.trainer.noise_scheduler = MagicMock()
+        self.trainer.objective_runtime = SimpleNamespace(
+            name="ddpm",
+            num_train_timesteps=1000,
+            timestep_runtime=None,
+            loss_modifier=MagicMock(),
+            advance_to_step=MagicMock(return_value=None),
+            update_from_batch=MagicMock(),
+        )
         self.trainer.num_batches_per_epoch = 5
         self.trainer._train_text_encoder = False
 

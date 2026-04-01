@@ -14,7 +14,9 @@ from library.objectives.ddpm import (
 )
 from library.objectives.factory import build_objective
 from library.objectives.rectified_flow import (
+    RectifiedFlowBatchState,
     RectifiedFlowObjective,
+    RectifiedFlowObjectiveRuntime,
     build_flow_matching_model_input_and_timesteps,
     compute_flow_matching_loss_weighting,
     compute_flow_matching_timestep_density,
@@ -24,7 +26,9 @@ __all__ = [
     "DDPMObjective",
     "ObjectiveDefinition",
     "ObjectiveRuntime",
+    "RectifiedFlowBatchState",
     "RectifiedFlowObjective",
+    "RectifiedFlowObjectiveRuntime",
     "add_v_prediction_like_loss",
     "apply_debiased_estimation",
     "apply_snr_weight",

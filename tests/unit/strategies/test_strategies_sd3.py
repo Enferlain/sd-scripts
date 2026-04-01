@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
+from library.strategies.sd3.diffusion import build_sd3_flow_target
 from library.strategies.sd3.checkpointing import Sd3CheckpointingStrategy
 from library.strategies.sd3.encoding import Sd3TextConditioning, Sd3TokenizedText, concat_sd3_encodings
 
@@ -101,3 +102,13 @@ def test_sd3_checkpoint_metadata_keeps_family_specific_attn_mask_fields() -> Non
     assert metadata["ss_apply_t5_attn_mask"] == "False"
     assert "ss_timestep_sampling" not in metadata
     assert "ss_rf_loss_weighting_scheme" not in metadata
+
+
+@pytest.mark.unit
+def test_sd3_flow_target_matches_paper_velocity_direction() -> None:
+    latents = torch.tensor([[[[1.0]]], [[[2.0]]]])
+    noise = torch.tensor([[[[4.0]]], [[[7.0]]]])
+
+    target = build_sd3_flow_target(latents, noise)
+
+    assert torch.equal(target, noise - latents)

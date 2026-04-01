@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import torch
 
@@ -6,7 +6,9 @@ from library.losses.huber import get_huber_threshold_if_needed
 from library.losses.loss import conditional_loss
 from library.losses.loss_modifiers import BatchLossOutput
 from library.losses.masking import apply_masked_loss
+from library.objectives.base import ObjectiveRuntime
 from library.objectives.ddpm import (
+    DDPMObjectiveRuntime,
     build_ddpm_training_target,
     post_process_ddpm_loss,
     prepare_ddpm_training_inputs,
@@ -22,7 +24,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         self,
         cfg: Any,
         accelerator: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         latents: torch.Tensor,
         batch: Any,
         text_encoder_conds: Any,
@@ -32,7 +34,6 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         train_denoiser: bool,
         fixed_timesteps: torch.Tensor | None = None,
         is_train: bool = True,
-        timestep_runtime: Any | None = None,
         global_step: int = 0,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
         """
@@ -41,13 +42,16 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         Returns:
             Tuple of (noise_pred, target, timesteps, weighting).
         """
+        ddpm_runtime = cast(DDPMObjectiveRuntime, objective_runtime)
+        noise_scheduler = ddpm_runtime.noise_scheduler
+
         noise, noisy_latents, timesteps = prepare_ddpm_training_inputs(
             cfg.loss.regularization,
             cfg.timestep,
             cfg.training,
             noise_scheduler,
             latents,
-            timestep_runtime=timestep_runtime,
+            timestep_runtime=ddpm_runtime.timestep_runtime,
             global_step=global_step,
             fixed_timesteps=fixed_timesteps,
             is_train=is_train,
@@ -101,7 +105,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         unet: Any,
         trainable_model: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -109,10 +113,11 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_denoiser: bool = True,
-        timestep_runtime: Any | None = None,
         global_step: int = 0,
     ) -> BatchLossOutput:
         """Process a training or validation batch for SDXL diffusion training."""
+        ddpm_runtime = cast(DDPMObjectiveRuntime, objective_runtime)
+
         with torch.no_grad():
             latents = prepare_latents(
                 batch,
@@ -125,19 +130,19 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             )
 
         text_encoder_conds = self.resolve_conditioning(
-            cfg,
-            accelerator,
-            batch,
-            text_encoders,
-            weight_dtype,
+            batch=batch,
+            text_encoders=text_encoders,
+            accelerator=accelerator,
+            cfg=cfg,
             train_text_encoder=train_text_encoder,
             is_train=is_train,
+            weight_dtype=weight_dtype,
         )
 
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
             cfg,
             accelerator,
-            noise_scheduler,
+            objective_runtime,
             latents,
             batch,
             text_encoder_conds,
@@ -146,12 +151,17 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             weight_dtype,
             train_denoiser,
             is_train=is_train,
-            timestep_runtime=timestep_runtime,
             global_step=global_step,
         )
 
         if is_train:
-            huber_c = get_huber_threshold_if_needed(cfg.loss, cfg.loss.huber, timesteps, noise_scheduler)
+            huber_c = get_huber_threshold_if_needed(
+                cfg.loss,
+                cfg.loss.huber,
+                timesteps,
+                num_train_timesteps=ddpm_runtime.num_train_timesteps,
+                alphas_cumprod=ddpm_runtime.alphas_cumprod,
+            )
             loss = conditional_loss(
                 noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale)
             )
@@ -176,7 +186,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         loss = per_sample_loss
         if is_train:
             loss = loss * batch["loss_weights"].to(loss.device)
-            loss = post_process_ddpm_loss(loss, cfg, timesteps, noise_scheduler)
+            loss = post_process_ddpm_loss(loss, cfg, timesteps, ddpm_runtime.noise_scheduler)
 
         if is_train and cfg.loss.loss_multiplier:
             loss.mul_(float(cfg.loss.loss_multiplier) if cfg.loss.loss_multiplier is not None else 1.0)

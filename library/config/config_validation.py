@@ -480,6 +480,8 @@ def validate_config(cfg) -> None:
         raise ValueError("objective.path='ddpm' requires objective.prediction to be 'epsilon' or 'v_prediction'")
     if objective_path == "rectified_flow" and objective_prediction != "flow":
         raise ValueError("objective.path='rectified_flow' requires objective.prediction='flow'")
+    if objective_path == "rectified_flow" and _get_optional_attr(cfg, "loss", "edm2", "enabled", default=False):
+        raise ValueError("loss.edm2 is only supported with objective.path='ddpm'")
 
     is_v_prediction = objective_prediction == "v_prediction"
 

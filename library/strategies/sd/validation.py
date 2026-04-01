@@ -6,6 +6,7 @@ import torch
 from tqdm import tqdm
 
 from library.losses.loss import conditional_loss
+from library.objectives.base import ObjectiveRuntime
 from library.strategies.base.contracts import ValidationStrategy
 from library.training.diffusion import prepare_latents
 from library.training.trainer_utils import restore_rng_state, switch_rng_state
@@ -21,7 +22,7 @@ class SdValidationStrategy(ValidationStrategy):
         denoiser: Any,
         trainable_model: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -61,7 +62,7 @@ class SdValidationStrategy(ValidationStrategy):
                 noise_pred, target, _, _ = self.get_noise_pred_and_target(
                     cfg,
                     accelerator,
-                    noise_scheduler,
+                    objective_runtime,
                     latents,
                     batch,
                     text_encoder_conds,
@@ -91,7 +92,7 @@ class SdValidationStrategy(ValidationStrategy):
         text_encoders: list[Any],
         denoiser: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -127,7 +128,7 @@ class SdValidationStrategy(ValidationStrategy):
                     denoiser,
                     trainable_model,
                     vae,
-                    noise_scheduler,
+                    objective_runtime,
                     vae_dtype,
                     weight_dtype,
                     accelerator,

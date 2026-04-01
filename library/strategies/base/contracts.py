@@ -6,6 +6,7 @@ from typing import Any
 import torch
 
 from library.losses.loss_modifiers import BatchLossOutput
+from library.objectives.base import ObjectiveRuntime
 
 
 class ModelConditioning(ABC):  # noqa: B024 - Marker class, no abstract methods
@@ -358,7 +359,7 @@ class ValidationStrategy(ABC):
         text_encoders: list[Any],
         denoiser: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -390,7 +391,7 @@ class DiffusionTrainingStrategy(ABC):
         denoiser: Any,
         trainable_model: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -398,7 +399,6 @@ class DiffusionTrainingStrategy(ABC):
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_denoiser: bool = True,
-        timestep_runtime: Any | None = None,
         global_step: int = 0,
     ) -> BatchLossOutput:
         """

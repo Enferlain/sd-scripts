@@ -1,7 +1,6 @@
 import torch
 import pytest
 import math
-from unittest.mock import MagicMock
 from library.losses.huber import get_huber_threshold_if_needed
 from library.losses.loss import (
     LossRecorder,
@@ -229,9 +228,8 @@ class TestGetHuberThreshold:
         huber_config = HuberConfig(huber_schedule="constant", huber_c=0.1, huber_scale=1.0)
 
         timesteps = torch.tensor([1, 2, 3])
-        noise_scheduler = MagicMock()
 
-        result = get_huber_threshold_if_needed(loss_config, huber_config, timesteps, noise_scheduler)
+        result = get_huber_threshold_if_needed(loss_config, huber_config, timesteps)
         assert math.isclose(result.item(), 0.1, rel_tol=1e-5)
 
     def test_exponential_schedule(self):
@@ -241,11 +239,9 @@ class TestGetHuberThreshold:
         huber_config = HuberConfig(huber_schedule="exponential", huber_c=0.1, huber_scale=1.0)
 
         timesteps = torch.tensor([0, 50, 100], dtype=torch.float32)
-        noise_scheduler = MagicMock()
-        noise_scheduler.config.num_train_timesteps = 100
 
         # Check callable and reasonable output
-        result = get_huber_threshold_if_needed(loss_config, huber_config, timesteps, noise_scheduler)
+        result = get_huber_threshold_if_needed(loss_config, huber_config, timesteps, num_train_timesteps=100)
         assert result.shape == timesteps.shape
         assert torch.all(result > 0)
 
@@ -256,10 +252,13 @@ class TestGetHuberThreshold:
         huber_config = HuberConfig(huber_schedule="snr", huber_c=0.1)
 
         timesteps = torch.tensor([0, 1])
-        noise_scheduler = MagicMock()
-        noise_scheduler.alphas_cumprod = torch.tensor([0.9, 0.8])
 
-        result = get_huber_threshold_if_needed(loss_config, huber_config, timesteps, noise_scheduler)
+        result = get_huber_threshold_if_needed(
+            loss_config,
+            huber_config,
+            timesteps,
+            alphas_cumprod=torch.tensor([0.9, 0.8]),
+        )
         assert result.shape == timesteps.shape
 
     def test_not_needed(self):
@@ -268,5 +267,5 @@ class TestGetHuberThreshold:
         loss_config = LossConfig(loss_type="l2")  # Not huber
         huber_config = HuberConfig()
         timesteps = torch.tensor([1])
-        result = get_huber_threshold_if_needed(loss_config, huber_config, timesteps, None)
+        result = get_huber_threshold_if_needed(loss_config, huber_config, timesteps)
         assert result is None

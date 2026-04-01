@@ -142,7 +142,7 @@ class TimestepRuntime:
             updated_range = (new_min, new_max)
         return updated_range
 
-    def observe(self, timesteps: torch.Tensor, per_sample_loss: torch.Tensor) -> None:
+    def update_from_batch(self, timesteps: torch.Tensor, per_sample_loss: torch.Tensor) -> None:
         """Update adaptive timestep state from the losses observed for a batch."""
         if self.sampler is not None and hasattr(self.sampler, "update"):
             self.sampler.update(timesteps.detach(), per_sample_loss.detach())

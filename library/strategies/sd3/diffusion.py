@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import torch
 
@@ -7,9 +7,9 @@ from library.losses.loss import conditional_loss
 from library.losses.loss_modifiers import BatchLossOutput
 from library.losses.masking import apply_masked_loss
 from library.models.sd3.vae import SDVAE
+from library.objectives.base import ObjectiveRuntime
 from library.objectives.rectified_flow import (
-    build_flow_matching_model_input_and_timesteps,
-    compute_flow_matching_loss_weighting,
+    RectifiedFlowObjectiveRuntime,
     resolve_rectified_flow_prediction_type,
 )
 from library.strategies.base.contracts import DiffusionTrainingStrategy
@@ -27,6 +27,11 @@ def shift_scale_sd3_latents(latents: torch.Tensor, _vae_latent_scale: float) -> 
     return SDVAE.process_in(latents)
 
 
+def build_sd3_flow_target(latents: torch.Tensor, noise: torch.Tensor) -> torch.Tensor:
+    """Build the paper-style SD3 rectified-flow velocity target."""
+    return noise - latents
+
+
 class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
     """Diffusion-training facet for SD3 flow-matching."""
 
@@ -34,7 +39,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
         self,
         cfg: Any,
         accelerator: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         latents: torch.Tensor,
         batch: Any,
         text_encoder_conds: Sd3TextConditioning,
@@ -44,22 +49,21 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
         train_denoiser: bool,
         fixed_timesteps: torch.Tensor | None = None,
         is_train: bool = True,
-        timestep_runtime: Any | None = None,
         global_step: int = 0,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Sample SD3 flow noise, run MMDiT, and build the flow-matching target."""
-        del noise_scheduler, timestep_runtime, global_step
+        rf_runtime = cast(RectifiedFlowObjectiveRuntime, objective_runtime)
+        del global_step
         resolve_rectified_flow_prediction_type(cfg.objective.prediction)
 
-        noise = torch.randn_like(latents)
-        noisy_model_input, timesteps, sigmas = build_flow_matching_model_input_and_timesteps(
-            cfg.timestep,
+        batch_state = rf_runtime.build_training_batch_state(
             latents,
-            noise,
             device=accelerator.device,
             dtype=weight_dtype,
             fixed_timesteps=fixed_timesteps,
         )
+        noisy_model_input = batch_state.noisy_model_input
+        timesteps = batch_state.timesteps
 
         if is_train and cfg.performance.memory.gradient_checkpointing:
             noisy_model_input.requires_grad_(True)
@@ -79,9 +83,8 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
                 weight_dtype,
             )
 
-        model_pred = model_pred * (-sigmas) + noisy_model_input
-        weighting = compute_flow_matching_loss_weighting(cfg.timestep.rf_loss_weighting_scheme, sigmas=sigmas)
-        target = latents
+        weighting = batch_state.loss_weighting
+        target = build_sd3_flow_target(latents, batch_state.noise)
 
         if "custom_attributes" in batch:
             diff_output_pr_indices = []
@@ -104,7 +107,6 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
                         indices=diff_output_pr_indices,
                     )
                 trainable_model.set_multiplier(1.0)
-                model_pred_prior = model_pred_prior * (-sigmas[diff_output_pr_indices]) + noisy_model_input[diff_output_pr_indices]
                 target[diff_output_pr_indices] = model_pred_prior.to(target.dtype)
 
         return model_pred, target, timesteps, weighting
@@ -116,7 +118,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
         denoiser: Any,
         trainable_model: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -124,7 +126,6 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
         is_train: bool = True,
         train_text_encoder: bool = True,
         train_denoiser: bool = True,
-        timestep_runtime: Any | None = None,
         global_step: int = 0,
     ) -> BatchLossOutput:
         """Process a training or validation batch for SD3 flow matching."""
@@ -154,7 +155,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
         noise_pred, target, timesteps, weighting = self.get_noise_pred_and_target(
             cfg,
             accelerator,
-            noise_scheduler,
+            objective_runtime,
             latents,
             batch,
             text_encoder_conds,
@@ -163,12 +164,16 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
             weight_dtype,
             train_denoiser,
             is_train=is_train,
-            timestep_runtime=timestep_runtime,
             global_step=global_step,
         )
 
         if is_train:
-            huber_c = get_huber_threshold_if_needed(cfg.loss, cfg.loss.huber, timesteps, noise_scheduler)
+            huber_c = get_huber_threshold_if_needed(
+                cfg.loss,
+                cfg.loss.huber,
+                timesteps,
+                num_train_timesteps=objective_runtime.num_train_timesteps,
+            )
             loss = conditional_loss(
                 noise_pred.float(),
                 target.float(),
@@ -202,6 +207,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
 
 __all__ = [
     "Sd3DiffusionTrainingStrategy",
+    "build_sd3_flow_target",
     "encode_sd3_images_to_latents",
     "shift_scale_sd3_latents",
 ]

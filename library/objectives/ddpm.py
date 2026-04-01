@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -20,6 +21,14 @@ logger = logging.getLogger(__name__)
 
 DDPM_PREDICTION_TYPE_EPSILON = "epsilon"
 DDPM_PREDICTION_TYPE_V = "v_prediction"
+
+
+@dataclass
+class DDPMObjectiveRuntime(ObjectiveRuntime):
+    """Objective runtime state for DDPM-style training paths."""
+
+    noise_scheduler: DDPMScheduler
+    alphas_cumprod: torch.Tensor
 
 
 def resolve_ddpm_prediction_type(prediction: str) -> str:
@@ -240,8 +249,11 @@ class DDPMObjective(ObjectiveDefinition):
         noise_scheduler = build_ddpm_noise_scheduler(cfg, accelerator.device)
         timestep_runtime = build_timestep_runtime(cfg.timestep, noise_scheduler, accelerator)
         loss_modifier = build_loss_modifier(cfg.loss, cfg.training, noise_scheduler, accelerator)
-        return ObjectiveRuntime(
-            noise_scheduler=noise_scheduler,
+        return DDPMObjectiveRuntime(
+            name=self.name,
+            num_train_timesteps=int(noise_scheduler.config.num_train_timesteps),
             timestep_runtime=timestep_runtime,
             loss_modifier=loss_modifier,
+            noise_scheduler=noise_scheduler,
+            alphas_cumprod=noise_scheduler.alphas_cumprod,
         )

@@ -8,7 +8,12 @@ from library.config.dataclasses.loss import HuberConfig, LossConfig
 
 
 def get_huber_threshold_if_needed(
-    loss_config: LossConfig, huber_config: HuberConfig, timesteps: torch.Tensor, noise_scheduler
+    loss_config: LossConfig,
+    huber_config: HuberConfig,
+    timesteps: torch.Tensor,
+    *,
+    num_train_timesteps: int | None = None,
+    alphas_cumprod: torch.Tensor | None = None,
 ) -> torch.Tensor | None:
     """Calculate the configured Huber-like threshold schedule for the current timesteps."""
     if loss_config.loss_type not in {
@@ -26,18 +31,15 @@ def get_huber_threshold_if_needed(
     if huber_config.huber_schedule == "constant":
         result = torch.tensor(huber_config.huber_c * float(huber_config.huber_scale), device=timesteps.device)
     elif huber_config.huber_schedule == "exponential":
-        alpha = -math.log(huber_config.huber_c) / noise_scheduler.config.num_train_timesteps
+        if num_train_timesteps is None:
+            raise NotImplementedError("Huber schedule 'exponential' requires objective runtime timestep metadata.")
+        alpha = -math.log(huber_config.huber_c) / num_train_timesteps
         result = torch.exp(-alpha * timesteps) * float(huber_config.huber_scale)
     elif huber_config.huber_schedule == "snr":
-        # This branch depends on scheduler state (alphas_cumprod), so it is only
-        # as formulation-independent as the active runtime makes it. It works for
-        # the current RF path because that path still carries scheduler state, not
-        # because "snr" is assumed to be a universal threshold schedule for every
-        # possible objective family.
-        if not hasattr(noise_scheduler, "alphas_cumprod"):
+        if alphas_cumprod is None:
             raise NotImplementedError("Huber schedule 'snr' is not supported with the current model.")
-        alphas_cumprod = torch.index_select(noise_scheduler.alphas_cumprod, 0, timesteps)
-        sigmas = ((1.0 - alphas_cumprod) / alphas_cumprod) ** 0.5
+        indexed_alphas_cumprod = torch.index_select(alphas_cumprod, 0, timesteps)
+        sigmas = ((1.0 - indexed_alphas_cumprod) / indexed_alphas_cumprod) ** 0.5
         result = (1 - huber_config.huber_c) / (1 + sigmas) ** 2 + huber_config.huber_c
         result = result.to(timesteps.device)
     else:

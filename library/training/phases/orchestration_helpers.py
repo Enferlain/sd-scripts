@@ -75,6 +75,7 @@ def run_sampling_and_validation(
     if should_validate:
         assert trainer.vae_dtype is not None, "vae_dtype must be set"
         assert trainer.weight_dtype is not None, "weight_dtype must be set"
+        assert trainer.objective_runtime is not None, "objective_runtime must be initialized"
         trainer._current_val_loss, trainer._average_val_loss = strategies.calculate_val_loss(
             trainer.global_step,
             validation_step,
@@ -86,7 +87,7 @@ def run_sampling_and_validation(
             trainer.text_encoders,
             trainer.denoiser,
             trainer.vae,
-            trainer.noise_scheduler,
+            trainer.objective_runtime,
             trainer.vae_dtype,
             trainer.weight_dtype,
             accelerator,

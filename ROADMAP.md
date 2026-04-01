@@ -132,6 +132,12 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - trainer runtime initialization now resolves one objective owner instead of wiring scheduler/timestep/loss-modifier pieces independently
   - DDPM scheduler construction now lives under `library/objectives/ddpm.py`, and the RF training helpers now live under `library/objectives/rectified_flow.py`
   - `library/training/noise_utils.py` now keeps only reusable noise-regularization helpers instead of also owning scheduler setup
+  - the trainer/strategy seam is now cleaner too: `Trainer` stores one `objective_runtime` bundle, diffusion/validation contracts take that bundle directly, and the active path no longer keeps a DDPM-shaped `trainer.noise_scheduler` compatibility split after objective selection
+  - `ObjectiveRuntime` now carries only shared runtime metadata plus objective-owned timestep/loss-modifier state, while DDPM and RF each expose their own typed runtime subclasses for path-specific data
+  - the follow-up polish is in too: DDPM-only `alphas_cumprod` metadata moved back down into `DDPMObjectiveRuntime`, and the runtime batch-feedback hook now uses `update_from_batch(...)` instead of the vaguer `observe(...)`
+  - RF runtime assembly is now honest: `RectifiedFlowObjective.build_runtime()` no longer inherits DDPM scheduler setup, and DDPM-only EDM2 weighting now fails fast if someone tries to enable it on the RF path
+  - RF ownership now reaches the batch-state builder too: `RectifiedFlowObjectiveRuntime` stores the active RF timestep/weighting config and now assembles RF `timesteps`, `sigmas`, noisy model input, and loss weighting for SD3 instead of leaving that construction inside the SD3 diffusion strategy
+  - the active SD3 target contract is now cleaner too: generic RF batch-state assembly no longer picks a universal RF target, and the SD3 strategy now owns its paper-style direct velocity target (`noise - latents`) locally instead of supervising a projected clean latent through the shared RF runtime
 - The first RF sampling-helper extraction is now in place too:
   - discrete-flow sigma/timestep sampling helpers now live in `library/pipelines/flow.py`
   - `library/strategies/sd3/sampling.py` now keeps SD3 sampling orchestration while importing the reusable discrete-flow math from that pipeline-side module

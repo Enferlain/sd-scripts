@@ -22,6 +22,7 @@ from torch import nn
 from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.logging.resource_monitor import create_resource_monitor
 from library.objectives import ObjectiveDefinition, build_objective
+from library.objectives.base import ObjectiveRuntime
 from library.performance import deepspeed_utils
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
@@ -34,7 +35,6 @@ if TYPE_CHECKING:
     from accelerate import Accelerator
     from library.data.caching_engine import CacheBackend
     from library.strategies.base.contracts import TrainingStrategy
-    from library.timesteps.runtime import TimestepRuntime
     from library.training.modes.base import TrainingMode
 
 
@@ -147,7 +147,7 @@ class Trainer:
         self._initial_step: int = 0
 
         # Training loop state (set before run_training_loop)
-        self.noise_scheduler: Any = None
+        self.objective_runtime: ObjectiveRuntime | None = None
         self._progress_bar: Any = None
         self._loss_recorder: Any = None
         self._val_loss_recorder: Any = None
@@ -173,9 +173,6 @@ class Trainer:
 
         # Optional post-loss modifier runtime state
         self._loss_modifier_runtime = NoOpLossModifier()
-
-        # Timestep runtime
-        self.timestep_runtime: TimestepRuntime | None = None
 
         # Live plotter state
         self._timestep_counts: Any = None
@@ -512,15 +509,14 @@ class Trainer:
         cfg = self.cfg
 
         objective_runtime = self.objective.build_runtime(cfg, self.accelerator)
-        self.noise_scheduler = objective_runtime.noise_scheduler
-        self.timestep_runtime = objective_runtime.timestep_runtime
+        self.objective_runtime = objective_runtime
         self._loss_modifier_runtime = objective_runtime.loss_modifier
 
         self._timestep_counts = None
         self._plotter_settings = None
         if self.is_main_process:
             self._timestep_counts, self._plotter_settings = setup_live_plotter(
-                cfg, self.noise_scheduler, self.timestep_runtime, self.strategies
+                cfg, objective_runtime, self.strategies
             )
 
     def _initialize_tracking_state(self) -> None:

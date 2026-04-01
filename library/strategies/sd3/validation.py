@@ -6,6 +6,7 @@ import torch
 from tqdm import tqdm
 
 from library.losses.loss import conditional_loss
+from library.objectives.base import ObjectiveRuntime
 from library.strategies.base.contracts import ValidationStrategy
 from library.strategies.sd3.diffusion import encode_sd3_images_to_latents, shift_scale_sd3_latents
 from library.training.diffusion import prepare_latents
@@ -22,7 +23,7 @@ class Sd3ValidationStrategy(ValidationStrategy):
         denoiser: Any,
         trainable_model: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -65,7 +66,7 @@ class Sd3ValidationStrategy(ValidationStrategy):
                 noise_pred, target, _, _ = self.get_noise_pred_and_target(
                     cfg,
                     accelerator,
-                    noise_scheduler,
+                    objective_runtime,
                     latents,
                     batch,
                     text_encoder_conds,
@@ -95,7 +96,7 @@ class Sd3ValidationStrategy(ValidationStrategy):
         text_encoders: list[Any],
         denoiser: Any,
         vae: Any,
-        noise_scheduler: Any,
+        objective_runtime: ObjectiveRuntime,
         vae_dtype: torch.dtype,
         weight_dtype: torch.dtype,
         accelerator: Any,
@@ -133,7 +134,7 @@ class Sd3ValidationStrategy(ValidationStrategy):
                     denoiser,
                     trainable_model,
                     vae,
-                    noise_scheduler,
+                    objective_runtime,
                     vae_dtype,
                     weight_dtype,
                     accelerator,

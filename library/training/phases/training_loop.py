@@ -228,7 +228,7 @@ def _emit_step_tracking_logs(
         trainer._loss_recorder.average,
         trainer.lr_scheduler,
         trainer.lr_descriptions,
-        timestep_runtime=trainer.timestep_runtime,
+        timestep_runtime=trainer.objective_runtime.timestep_runtime if trainer.objective_runtime is not None else None,
         optimizer=trainer.optimizer,
         keys_scaled=keys_scaled,
         mean_norm=mean_norm,
@@ -436,6 +436,7 @@ def _run_epoch_steps(trainer: Trainer, *, epoch_ctx: EpochContext) -> EpochRunRe
     cfg = trainer.cfg
     accelerator = trainer.accelerator
     strategies = trainer.strategies
+    assert trainer.objective_runtime is not None, "objective_runtime must be initialized before running the training loop"
 
     batches_seen_in_epoch = 0
     dataloader_iter = iter(epoch_ctx.train_dataloader)
@@ -447,10 +448,7 @@ def _run_epoch_steps(trainer: Trainer, *, epoch_ctx: EpochContext) -> EpochRunRe
         batches_seen_in_epoch += 1
         trainer._current_step_state.value = trainer.global_step
 
-        if trainer.timestep_runtime is not None:
-            updated_range = trainer.timestep_runtime.advance_to_step(trainer.global_step)
-        else:
-            updated_range = None
+        updated_range = trainer.objective_runtime.advance_to_step(trainer.global_step)
 
         if updated_range is not None:
             new_min, new_max = updated_range
@@ -480,7 +478,7 @@ def _run_epoch_steps(trainer: Trainer, *, epoch_ctx: EpochContext) -> EpochRunRe
                 trainer.denoiser,
                 trainer.trainable_model,
                 trainer.vae,
-                trainer.noise_scheduler,
+                trainer.objective_runtime,
                 trainer.vae_dtype,
                 trainer.weight_dtype,
                 accelerator,
@@ -488,13 +486,11 @@ def _run_epoch_steps(trainer: Trainer, *, epoch_ctx: EpochContext) -> EpochRunRe
                 is_train=True,
                 train_text_encoder=trainer._train_text_encoder,
                 train_denoiser=trainer._train_denoiser,
-                timestep_runtime=trainer.timestep_runtime,
                 global_step=trainer.global_step,
             )
 
-            if trainer.timestep_runtime is not None:
-                sampling_loss = batch_loss.sampling_loss if batch_loss.sampling_loss is not None else batch_loss.per_sample_loss
-                trainer.timestep_runtime.observe(batch_loss.timesteps, sampling_loss)
+            sampling_loss = batch_loss.sampling_loss if batch_loss.sampling_loss is not None else batch_loss.per_sample_loss
+            trainer.objective_runtime.update_from_batch(batch_loss.timesteps, sampling_loss)
 
             modifier_output = trainer.loss_modifier.apply(
                 per_sample_loss=batch_loss.per_sample_loss,

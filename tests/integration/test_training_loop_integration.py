@@ -250,8 +250,13 @@ def _make_mock_trainer(
     )
     trainer._timestep_counts = None
     trainer._plotter_settings = None
-    trainer.timestep_runtime = None
-    trainer.noise_scheduler = MagicMock()
+    trainer.objective_runtime = SimpleNamespace(
+        name="ddpm",
+        num_train_timesteps=1000,
+        timestep_runtime=None,
+        advance_to_step=MagicMock(return_value=None),
+        update_from_batch=MagicMock(),
+    )
     trainer._validation_scheduler = MagicMock()
     trainer._validation_scheduler.should_run = MagicMock(return_value=False)
     trainer._resource_monitor = MagicMock()
