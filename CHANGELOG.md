@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-04-01]
+
+### Added
+
+- **SDXL can now use the active rectified-flow path for both training and sample generation** — RF is no longer an SD3-only consumer of the current objective/runtime seam.
+  - Updated `library/strategies/sdxl/diffusion.py` so SDXL now branches on the active objective runtime, keeps its DDPM path intact, and adds an RF branch that consumes `RectifiedFlowObjectiveRuntime` batch state directly.
+  - SDXL RF training now uses the direct velocity target `noise - latents`, with RF loss weighting flowing through from the shared RF runtime instead of borrowing DDPM target semantics.
+  - Updated `library/config/config_validation.py` so `model.model_type=sdxl` now accepts `objective.path='rectified_flow'` with `objective.prediction='flow'`.
+  - Added focused unit coverage for the SDXL RF target, RF training-branch behavior, RF checkpoint metadata, and the new SDXL validation allowance.
+
+### Changed
+
+- **SDXL checkpoint metadata and sample generation now follow the active objective path instead of assuming DDPM everywhere** — The SDXL family no longer serializes DDPM prediction metadata or routes sample generation through DDPM-only schedulers when the run is using RF.
+  - Updated `library/strategies/sdxl/checkpointing.py` so RF-backed SDXL checkpoints omit DDPM `prediction_type` model-spec metadata, while DDPM-backed SDXL checkpoints keep the existing behavior.
+  - Updated `library/strategies/sdxl/sampling.py` so SDXL now keeps the existing DDPM pipeline path for DDPM runs and uses the shared discrete-flow Euler sampler path for RF runs, with `sample_flow_shift` as the active RF sampling knob.
+- **Sample generation now routes through an explicit backend seam instead of assuming every model family uses the same latent-returning local pipeline contract** — The common sampling layer can now host repo-local pipelines and custom/backend-owned executors without baking DDPM scheduler setup and latent decoding into every path.
+  - Added a normalized `SamplingRequest` plus `SamplingBackend` / `LocalPipelineSamplingBackend` seam in `library/training/sample_generation.py`.
+  - Moved prompt/default resolution, width/height normalization, seed setup, save naming, and tracker logging behind the shared orchestration layer instead of duplicating those concerns in family strategies.
+  - Reduced SD3 and the SDXL RF branch so they now plug into `sample_images_common(...)` through model-family-specific backend objects, while the existing SD / SDXL DDPM local pipelines still flow through the same entrypoint via the local-pipeline backend adapter.
+  - Kept `get_my_scheduler(...)` as the current local DDPM scheduler helper, but stopped making the common sampling loop assume that every backend wants repo-owned scheduler replacement or repo-owned latent decoding.
+
 ## [2026-03-31]
 
 ### Changed

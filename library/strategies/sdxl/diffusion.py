@@ -13,8 +13,17 @@ from library.objectives.ddpm import (
     post_process_ddpm_loss,
     prepare_ddpm_training_inputs,
 )
+from library.objectives.rectified_flow import (
+    RectifiedFlowObjectiveRuntime,
+    resolve_rectified_flow_prediction_type,
+)
 from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.training.diffusion import prepare_latents
+
+
+def build_sdxl_flow_target(latents: torch.Tensor, noise: torch.Tensor) -> torch.Tensor:
+    """Build the direct RF velocity target for SDXL flow training."""
+    return noise - latents
 
 
 class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
@@ -42,21 +51,36 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         Returns:
             Tuple of (noise_pred, target, timesteps, weighting).
         """
-        ddpm_runtime = cast(DDPMObjectiveRuntime, objective_runtime)
-        noise_scheduler = ddpm_runtime.noise_scheduler
+        weighting: torch.Tensor | None = None
+        if isinstance(objective_runtime, DDPMObjectiveRuntime):
+            noise_scheduler = objective_runtime.noise_scheduler
 
-        noise, noisy_latents, timesteps = prepare_ddpm_training_inputs(
-            cfg.loss.regularization,
-            cfg.timestep,
-            cfg.training,
-            noise_scheduler,
-            latents,
-            timestep_runtime=ddpm_runtime.timestep_runtime,
-            global_step=global_step,
-            fixed_timesteps=fixed_timesteps,
-            is_train=is_train,
-            output_dtype=weight_dtype,
-        )
+            noise, noisy_latents, timesteps = prepare_ddpm_training_inputs(
+                cfg.loss.regularization,
+                cfg.timestep,
+                cfg.training,
+                noise_scheduler,
+                latents,
+                timestep_runtime=objective_runtime.timestep_runtime,
+                global_step=global_step,
+                fixed_timesteps=fixed_timesteps,
+                is_train=is_train,
+                output_dtype=weight_dtype,
+            )
+        else:
+            rf_runtime = cast(RectifiedFlowObjectiveRuntime, objective_runtime)
+            del global_step
+            resolve_rectified_flow_prediction_type(cfg.objective.prediction)
+            batch_state = rf_runtime.build_training_batch_state(
+                latents,
+                device=accelerator.device,
+                dtype=weight_dtype,
+                fixed_timesteps=fixed_timesteps,
+            )
+            noise = batch_state.noise
+            noisy_latents = batch_state.noisy_model_input
+            timesteps = batch_state.timesteps
+            weighting = batch_state.loss_weighting
 
         if is_train and cfg.performance.memory.gradient_checkpointing:
             for x in noisy_latents:
@@ -71,7 +95,10 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
                 cfg, accelerator, unet, noisy_latents.requires_grad_(train_denoiser), timesteps, text_encoder_conds, batch, weight_dtype
             )
 
-        target = build_ddpm_training_target(noise_scheduler, latents, noise, timesteps, cfg.objective.prediction)
+        if isinstance(objective_runtime, DDPMObjectiveRuntime):
+            target = build_ddpm_training_target(noise_scheduler, latents, noise, timesteps, cfg.objective.prediction)
+        else:
+            target = build_sdxl_flow_target(latents, noise)
 
         if "custom_attributes" in batch:
             diff_output_pr_indices = []
@@ -96,7 +123,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
                 trainable_model.set_multiplier(1.0)
                 target[diff_output_pr_indices] = noise_pred_prior.to(target.dtype)
 
-        return noise_pred, target, timesteps, None
+        return noise_pred, target, timesteps, weighting
 
     def process_batch(
         self,
@@ -116,8 +143,6 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         global_step: int = 0,
     ) -> BatchLossOutput:
         """Process a training or validation batch for SDXL diffusion training."""
-        ddpm_runtime = cast(DDPMObjectiveRuntime, objective_runtime)
-
         with torch.no_grad():
             latents = prepare_latents(
                 batch,
@@ -155,12 +180,14 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         )
 
         if is_train:
+            huber_kwargs: dict[str, Any] = {"num_train_timesteps": objective_runtime.num_train_timesteps}
+            if isinstance(objective_runtime, DDPMObjectiveRuntime):
+                huber_kwargs["alphas_cumprod"] = objective_runtime.alphas_cumprod
             huber_c = get_huber_threshold_if_needed(
                 cfg.loss,
                 cfg.loss.huber,
                 timesteps,
-                num_train_timesteps=ddpm_runtime.num_train_timesteps,
-                alphas_cumprod=ddpm_runtime.alphas_cumprod,
+                **huber_kwargs,
             )
             loss = conditional_loss(
                 noise_pred.float(), target.float(), cfg.loss.loss_type, "none", huber_c, scale=float(cfg.loss.loss_scale)
@@ -186,7 +213,8 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         loss = per_sample_loss
         if is_train:
             loss = loss * batch["loss_weights"].to(loss.device)
-            loss = post_process_ddpm_loss(loss, cfg, timesteps, ddpm_runtime.noise_scheduler)
+            if isinstance(objective_runtime, DDPMObjectiveRuntime):
+                loss = post_process_ddpm_loss(loss, cfg, timesteps, objective_runtime.noise_scheduler)
 
         if is_train and cfg.loss.loss_multiplier:
             loss.mul_(float(cfg.loss.loss_multiplier) if cfg.loss.loss_multiplier is not None else 1.0)

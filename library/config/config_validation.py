@@ -473,7 +473,7 @@ def validate_config(cfg) -> None:
     model_type = _get_optional_attr(cfg, "model", "model_type")
     if model_type == "sd3" and objective_path != "rectified_flow":
         raise ValueError("model.model_type=sd3 requires objective.path='rectified_flow'")
-    if model_type in {"sd1", "sd15", "sd2", "sdxl"} and objective_path != "ddpm":
+    if model_type in {"sd1", "sd15", "sd2"} and objective_path != "ddpm":
         raise ValueError(f"model.model_type={model_type} requires objective.path='ddpm'")
 
     if objective_path == "ddpm" and objective_prediction not in {"epsilon", "v_prediction"}:

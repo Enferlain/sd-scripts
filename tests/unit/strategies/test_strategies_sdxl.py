@@ -1,13 +1,18 @@
 """Unit tests for the active SDXL strategy concern files."""
 
+from contextlib import nullcontext
 from types import SimpleNamespace
-import pytest
-import torch
 from unittest.mock import Mock, patch
 
+import pytest
+import torch
+
+from library.config.dataclasses.timestep import TimestepConfig
 from library.objectives.ddpm import DDPMObjectiveRuntime
 from library.losses.loss_modifiers import NoOpLossModifier
-from library.strategies.sdxl.diffusion import SdxlDiffusionTrainingStrategy
+from library.objectives.rectified_flow import RectifiedFlowObjectiveRuntime
+from library.strategies.sdxl.checkpointing import SdxlCheckpointingStrategy
+from library.strategies.sdxl.diffusion import SdxlDiffusionTrainingStrategy, build_sdxl_flow_target
 from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
 from library.strategies.sdxl.tokenization import SdxlTokenizeStrategy
 from library.strategies.sdxl.training import SdxlTrainingStrategy
@@ -374,6 +379,98 @@ def test_sdxl_validation_resolves_conditioning_with_keywords() -> None:
         is_train=False,
         weight_dtype=torch.float32,
     )
+
+
+@pytest.mark.unit
+def test_sdxl_flow_target_matches_direct_velocity_direction() -> None:
+    latents = torch.tensor([[[[1.0]]], [[[2.0]]]])
+    noise = torch.tensor([[[[4.0]]], [[[7.0]]]])
+
+    target = build_sdxl_flow_target(latents, noise)
+
+    assert torch.equal(target, noise - latents)
+
+
+@pytest.mark.unit
+def test_sdxl_get_noise_pred_and_target_rectified_flow_uses_rf_target_and_weighting() -> None:
+    strategy = SdxlDiffusionTrainingStrategy()
+    latents = torch.tensor(
+        [
+            [[[1.0, 2.0], [3.0, 4.0]]],
+            [[[5.0, 6.0], [7.0, 8.0]]],
+        ]
+    )
+    noise = torch.tensor(
+        [
+            [[[8.0, 7.0], [6.0, 5.0]]],
+            [[[4.0, 3.0], [2.0, 1.0]]],
+        ]
+    )
+    weighting = torch.full((2, 1, 1, 1), 2.5)
+    timesteps = torch.tensor([100, 200], dtype=torch.long)
+    noisy_model_input = torch.zeros_like(latents)
+    noise_pred = torch.ones_like(latents)
+
+    cfg = SimpleNamespace(
+        objective=SimpleNamespace(prediction="flow"),
+        performance=SimpleNamespace(memory=SimpleNamespace(gradient_checkpointing=False)),
+    )
+    accelerator = SimpleNamespace(device=torch.device("cpu"), autocast=lambda: nullcontext())
+    objective_runtime = RectifiedFlowObjectiveRuntime(
+        name="rectified_flow",
+        num_train_timesteps=1000,
+        timestep_runtime=None,
+        loss_modifier=NoOpLossModifier(),
+        timestep_config=TimestepConfig(),
+        loss_weighting_scheme="none",
+    )
+    objective_runtime.build_training_batch_state = Mock(
+        return_value=SimpleNamespace(
+            noise=noise,
+            noisy_model_input=noisy_model_input,
+            timesteps=timesteps,
+            sigmas=torch.full((2, 1, 1, 1), 0.5),
+            loss_weighting=weighting,
+        )
+    )
+    strategy.call_denoiser = Mock(return_value=noise_pred)
+
+    result_noise_pred, target, result_timesteps, result_weighting = strategy.get_noise_pred_and_target(
+        cfg=cfg,
+        accelerator=accelerator,
+        objective_runtime=objective_runtime,
+        latents=latents,
+        batch={},
+        text_encoder_conds=("cond1", "cond2", "pool"),
+        unet=Mock(),
+        trainable_model=Mock(),
+        weight_dtype=torch.float32,
+        train_denoiser=True,
+        is_train=False,
+    )
+
+    assert torch.equal(result_noise_pred, noise_pred)
+    assert torch.equal(target, noise - latents)
+    assert torch.equal(result_timesteps, timesteps)
+    assert torch.equal(result_weighting, weighting)
+
+
+@pytest.mark.unit
+def test_sdxl_checkpoint_metadata_omits_ddpm_prediction_for_rf() -> None:
+    strategy = SdxlCheckpointingStrategy()
+    cfg = SimpleNamespace(
+        objective=SimpleNamespace(path="rectified_flow", prediction="flow"),
+        output=SimpleNamespace(metadata=SimpleNamespace()),
+        data=SimpleNamespace(preprocessing=SimpleNamespace(resolution=1024)),
+        timestep=SimpleNamespace(min_timestep=None, max_timestep=None),
+        training=SimpleNamespace(clip_skip=None),
+    )
+
+    with patch("library.strategies.sdxl.checkpointing.get_model_metadata_from_config", return_value={}) as mock_metadata:
+        strategy.get_model_metadata(cfg)
+
+    assert mock_metadata.call_args.kwargs["prediction_type"] is None
+    assert mock_metadata.call_args.kwargs["v_parameterization"] is False
 
 
 @pytest.mark.unit

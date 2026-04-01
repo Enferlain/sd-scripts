@@ -7,6 +7,9 @@ from diffusers import (
     DPMSolverMultistepScheduler,
 )
 from library.training.sample_generation import (
+    LocalPipelineSamplingBackend,
+    SamplingRequest,
+    build_sampling_request,
     line_to_prompt_dict,
     sample_images_check,
     get_my_scheduler,
@@ -254,7 +257,7 @@ class TestSampleImageInference:
         sampling_config.sample_sampler = "ddim"
         training_config = MagicMock()
         objective_config = MagicMock()
-        objective_config.target = DDPM_PREDICTION_TYPE_EPSILON
+        objective_config.prediction = DDPM_PREDICTION_TYPE_EPSILON
         saving_config = MagicMock()
         saving_config.output_name = "test"
         loss_config = MagicMock()
@@ -312,7 +315,7 @@ class TestSampleImageInference:
         sampling_config.sample_sampler = "ddim"
         training_config = MagicMock()
         objective_config = MagicMock()
-        objective_config.target = DDPM_PREDICTION_TYPE_EPSILON
+        objective_config.prediction = DDPM_PREDICTION_TYPE_EPSILON
         saving_config = MagicMock()
         saving_config.output_name = "test"
         loss_config = MagicMock()
@@ -370,7 +373,7 @@ class TestSampleImageInference:
         sampling_config.sample_sampler = "ddim"
         training_config = MagicMock()
         objective_config = MagicMock()
-        objective_config.target = DDPM_PREDICTION_TYPE_EPSILON
+        objective_config.prediction = DDPM_PREDICTION_TYPE_EPSILON
         saving_config = MagicMock()
         saving_config.output_name = "test"
         loss_config = MagicMock()
@@ -439,7 +442,7 @@ class TestSampleImageInference:
         sampling_config.sample_sampler = "ddim"
         training_config = MagicMock()
         objective_config = MagicMock()
-        objective_config.target = DDPM_PREDICTION_TYPE_EPSILON
+        objective_config.prediction = DDPM_PREDICTION_TYPE_EPSILON
         saving_config = MagicMock()
         saving_config.output_name = "test"
         loss_config = MagicMock()
@@ -467,3 +470,86 @@ class TestSampleImageInference:
             )
 
         assert mock_pipeline.call_args.kwargs["guidance_scale"] == 9.0
+
+
+class TestSamplingBackends:
+    def test_build_sampling_request_normalizes_prompt_defaults_and_flow_shift(self):
+        sampling_config = MagicMock()
+        sampling_config.sample_prompt = "config prompt"
+        sampling_config.sample_negative_prompt = "negative"
+        sampling_config.sample_width = 641
+        sampling_config.sample_height = 833
+        sampling_config.sample_steps = 28
+        sampling_config.sample_cfg_scale = 6.5
+        sampling_config.sample_seed = 123
+        sampling_config.sample_sampler = "ddim"
+        sampling_config.sample_flow_shift = 2.5
+
+        request = build_sampling_request(sampling_config, {"enum": 2}, prompt_replacement=None)
+
+        assert request.prompt == "config prompt"
+        assert request.negative_prompt == "negative"
+        assert request.width == 640
+        assert request.height == 832
+        assert request.sample_steps == 28
+        assert request.guidance_scale == 6.5
+        assert request.seed == 123
+        assert request.sample_sampler == "ddim"
+        assert request.prompt_index == 2
+        assert request.flow_shift == 2.5
+
+    @patch("library.training.sample_generation.get_my_scheduler")
+    def test_local_pipeline_backend_decodes_latent_outputs(self, mock_get_scheduler):
+        mock_pipeline = MagicMock()
+        mock_pipeline.return_value = "latents"
+        mock_pipeline.latents_to_image.return_value = [Image.new("RGB", (64, 64))]
+        backend = LocalPipelineSamplingBackend(
+            pipeline=mock_pipeline,
+            prediction_type=DDPM_PREDICTION_TYPE_EPSILON,
+        )
+        accelerator = MagicMock()
+        accelerator.autocast.return_value.__enter__ = MagicMock()
+        accelerator.autocast.return_value.__exit__ = MagicMock()
+        request = SamplingRequest(
+            prompt="cat",
+            negative_prompt=None,
+            width=64,
+            height=64,
+            sample_steps=10,
+            guidance_scale=7.5,
+            seed=None,
+            sample_sampler="ddim",
+            prompt_index=0,
+        )
+
+        image = backend.generate_image(accelerator, request)
+
+        assert image.size == (64, 64)
+        assert mock_pipeline.call_args.kwargs["prompt"] == "cat"
+
+    @patch("library.training.sample_generation.get_my_scheduler")
+    def test_local_pipeline_backend_accepts_image_returning_pipelines(self, mock_get_scheduler):
+        mock_pipeline = MagicMock()
+        mock_pipeline.return_value = MagicMock(images=[Image.new("RGB", (128, 128))])
+        backend = LocalPipelineSamplingBackend(
+            pipeline=mock_pipeline,
+            prediction_type=DDPM_PREDICTION_TYPE_EPSILON,
+        )
+        accelerator = MagicMock()
+        accelerator.autocast.return_value.__enter__ = MagicMock()
+        accelerator.autocast.return_value.__exit__ = MagicMock()
+        request = SamplingRequest(
+            prompt="dog",
+            negative_prompt="bad",
+            width=128,
+            height=128,
+            sample_steps=12,
+            guidance_scale=5.0,
+            seed=None,
+            sample_sampler="euler",
+            prompt_index=1,
+        )
+
+        image = backend.generate_image(accelerator, request)
+
+        assert image.size == (128, 128)

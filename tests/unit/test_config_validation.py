@@ -606,6 +606,17 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="loss\\.edm2 is only supported with objective\\.path='ddpm'"):
             validate_config(cfg)
 
+    def test_sdxl_rectified_flow_path_is_allowed(self):
+        """SDXL should be allowed to opt into the active RF path."""
+        cfg = make_validate_cfg(
+            {
+                "model": {"model_type": "sdxl"},
+                "objective": {"path": "rectified_flow", "prediction": "flow"},
+            }
+        )
+
+        validate_config(cfg)
+
     def test_v2_with_clip_skip_warns(self):
         """v2 model with clip_skip should log a warning."""
         cfg = OmegaConf.create(

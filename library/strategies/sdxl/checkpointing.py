@@ -7,6 +7,15 @@ from library.strategies.base.contracts import CheckpointingStrategy
 from library.utils.model_metadata import get_model_metadata_from_config
 
 
+def resolve_sdxl_modelspec_prediction(cfg: Any) -> tuple[bool, str | None]:
+    """Resolve SDXL model-spec prediction metadata for the active objective path."""
+    if cfg.objective.path == "rectified_flow":
+        return False, None
+
+    prediction_type = resolve_ddpm_prediction_type(cfg.objective.prediction)
+    return prediction_type == DDPM_PREDICTION_TYPE_V, prediction_type
+
+
 class SdxlCheckpointingStrategy(CheckpointingStrategy):
     """Checkpointing facet for SDXL training strategies."""
 
@@ -21,13 +30,13 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
 
     def get_model_metadata(self, cfg: Any) -> dict:
         """Get the SAI model spec metadata for SDXL."""
-        prediction_type = resolve_ddpm_prediction_type(cfg.objective.prediction)
+        v_parameterization, prediction_type = resolve_sdxl_modelspec_prediction(cfg)
         return get_model_metadata_from_config(
             state_dict=None,
             metadata_config=cfg.output.metadata,
             is_sdxl=True,
             is_v2=False,
-            v_parameterization=prediction_type == DDPM_PREDICTION_TYPE_V,
+            v_parameterization=v_parameterization,
             prediction_type=prediction_type,
             is_lora=True,
             is_textual_inversion=False,
@@ -71,13 +80,13 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
         ckpt_file = os.path.join(cfg.output.saving.output_dir, ckpt_name)
 
         if save_stable_diffusion_format:
-            prediction_type = resolve_ddpm_prediction_type(cfg.objective.prediction)
+            v_parameterization, prediction_type = resolve_sdxl_modelspec_prediction(cfg)
             modelspec_metadata = get_model_metadata_from_config(
                 state_dict=None,
                 metadata_config=cfg.output.metadata,
                 is_sdxl=True,
                 is_v2=False,
-                v_parameterization=prediction_type == DDPM_PREDICTION_TYPE_V,
+                v_parameterization=v_parameterization,
                 prediction_type=prediction_type,
                 is_lora=False,
                 is_textual_inversion=False,

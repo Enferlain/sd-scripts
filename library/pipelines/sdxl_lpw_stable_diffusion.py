@@ -1,5 +1,4 @@
 # copy from https://github.com/huggingface/diffusers/blob/main/examples/community/lpw_stable_diffusion.py
-# and modify to support SD2.x
 
 import inspect
 import numpy as np

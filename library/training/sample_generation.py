@@ -7,6 +7,8 @@ import toml
 import re
 import logging
 import time
+from dataclasses import dataclass, field
+from typing import Any, Protocol
 import torch
 
 from PIL import Image
@@ -36,6 +38,79 @@ from library.config.dataclasses.training import TrainingConfig
 from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SamplingRequest:
+    """Normalized sampling request shared across repo-owned and backend-owned samplers."""
+
+    prompt: str
+    negative_prompt: str | None
+    width: int
+    height: int
+    sample_steps: int
+    guidance_scale: float
+    seed: int | None
+    sample_sampler: str
+    prompt_index: int
+    flow_shift: float | None = None
+    controlnet_image: str | None = None
+    extras: dict[str, Any] = field(default_factory=dict)
+
+
+class SamplingBackend(Protocol):
+    """Backend contract for turning a normalized sampling request into a final image."""
+
+    def generate_image(self, accelerator: Accelerator, request: SamplingRequest) -> Image.Image:
+        """Generate one image for the provided request."""
+
+
+@dataclass
+class LocalPipelineSamplingBackend:
+    """Adapter for the existing repo-local latent-returning sampling pipelines."""
+
+    _is_sampling_backend = True
+    pipeline: Any
+    prediction_type: str
+    controlnet: Any = None
+
+    def to(self, device: torch.device) -> None:
+        """Move the wrapped pipeline to the requested device."""
+        self.pipeline.to(device)
+
+    def generate_image(self, accelerator: Accelerator, request: SamplingRequest) -> Image.Image:
+        """Run the local pipeline path and decode its latent output to a final image."""
+        scheduler = get_my_scheduler(
+            sample_sampler=request.sample_sampler,
+            prediction_type=self.prediction_type,
+        )
+        self.pipeline.scheduler = scheduler
+
+        controlnet_image = None
+        if request.controlnet_image is not None:
+            controlnet_image = Image.open(request.controlnet_image).convert("RGB")
+            controlnet_image = controlnet_image.resize((request.width, request.height), Image.LANCZOS)
+
+        with accelerator.autocast(), torch.no_grad():
+            result = self.pipeline(
+                prompt=request.prompt,
+                height=request.height,
+                width=request.width,
+                num_inference_steps=request.sample_steps,
+                guidance_scale=request.guidance_scale,
+                negative_prompt=request.negative_prompt,
+                controlnet=self.controlnet,
+                controlnet_image=controlnet_image,
+            )
+
+        if hasattr(result, "images"):
+            image = result.images[0]
+        else:
+            image = self.pipeline.latents_to_image(result)[0]
+            del result
+
+        del scheduler
+        return image
 
 
 def get_my_scheduler(
@@ -279,6 +354,83 @@ def sample_images_check(sampling_config: SamplingConfig, epoch: int | None, step
     return steps % sampling_config.sample_every_n_steps == 0
 
 
+def build_sampling_request(
+    sampling_config: SamplingConfig,
+    prompt_dict: dict[str, Any],
+    prompt_replacement: tuple[str, str] | None = None,
+) -> SamplingRequest:
+    """Build one normalized sampling request from prompt-level overrides and config defaults."""
+    assert isinstance(prompt_dict, dict)
+    prompt: str = prompt_dict.get("prompt", sampling_config.sample_prompt or "")
+    negative_prompt = prompt_dict.get("negative_prompt", sampling_config.sample_negative_prompt)
+    sample_steps = prompt_dict.get("sample_steps", sampling_config.sample_steps if sampling_config.sample_steps is not None else 30)
+    width = prompt_dict.get("width", sampling_config.sample_width if sampling_config.sample_width is not None else 512)
+    height = prompt_dict.get("height", sampling_config.sample_height if sampling_config.sample_height is not None else 512)
+    guidance_scale = prompt_dict.get(
+        "scale",
+        prompt_dict.get("guidance_scale", sampling_config.sample_cfg_scale if sampling_config.sample_cfg_scale is not None else 7.5),
+    )
+    seed = prompt_dict.get("seed", sampling_config.sample_seed)
+    controlnet_image = prompt_dict.get("controlnet_image")
+    sample_sampler = prompt_dict.get("sample_sampler", sampling_config.sample_sampler)
+    flow_shift = (
+        float(prompt_dict["flow_shift"])
+        if prompt_dict.get("flow_shift") is not None
+        else (float(sampling_config.sample_flow_shift) if sampling_config.sample_flow_shift is not None else None)
+    )
+
+    if prompt_replacement is not None:
+        prompt = prompt.replace(prompt_replacement[0], prompt_replacement[1])
+        if negative_prompt is not None:
+            negative_prompt = negative_prompt.replace(prompt_replacement[0], prompt_replacement[1])
+
+    width = max(64, width - width % 8)
+    height = max(64, height - height % 8)
+
+    return SamplingRequest(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        width=width,
+        height=height,
+        sample_steps=sample_steps,
+        guidance_scale=guidance_scale,
+        seed=seed,
+        sample_sampler=sample_sampler,
+        prompt_index=int(prompt_dict["enum"]),
+        flow_shift=flow_shift,
+        controlnet_image=controlnet_image,
+    )
+
+
+def set_sampling_seed(seed: int | None) -> None:
+    """Set per-request RNG state for deterministic or random sample generation."""
+    if seed is not None:
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+        return
+
+    torch.seed()
+    if torch.cuda.is_available():
+        torch.cuda.seed()
+
+
+def _coerce_sampling_backend(
+    backend_or_pipeline: Any,
+    objective_config: ObjectiveConfig,
+    *,
+    controlnet: Any = None,
+) -> SamplingBackend:
+    """Wrap legacy local pipelines in a backend adapter while allowing custom backends directly."""
+    if getattr(backend_or_pipeline, "_is_sampling_backend", False) is True:
+        return backend_or_pipeline
+    return LocalPipelineSamplingBackend(
+        pipeline=backend_or_pipeline,
+        prediction_type=objective_config.prediction,
+        controlnet=controlnet,
+    )
+
+
 def sample_images_common(
     accelerator: Accelerator,
     sampling_config: SamplingConfig,
@@ -288,7 +440,7 @@ def sample_images_common(
     loss_config: LossConfig,
     epoch: int | None,
     steps: int,
-    pipeline,
+    backend_or_pipeline,
     prompt_replacement: tuple[str, str] | None = None,
     controlnet=None,
 ):
@@ -307,18 +459,24 @@ def sample_images_common(
         loss_config (LossConfig): Configuration related to loss.
         epoch (int, optional): The current epoch.
         steps (int): The current step.
-        pipeline: The ready model-family-specific sampling pipeline.
+        backend_or_pipeline: Sampling backend or legacy local pipeline object.
         prompt_replacement (tuple, optional): A tuple (target, replacement) to modify prompts.
         controlnet: ControlNet model (optional).
     """
-
     logger.info("")
     logger.info(f"generating sample images at step: {steps}")
     prompts = get_sampling_prompt_dicts(sampling_config)
     if prompts is None:
         return
+
+    backend = _coerce_sampling_backend(
+        backend_or_pipeline,
+        objective_config,
+        controlnet=controlnet,
+    )
     distributed_state = PartialState()
-    pipeline.to(distributed_state.device)
+    if hasattr(backend, "to"):
+        backend.to(distributed_state.device)
     save_dir = saving_config.output_dir + "/sample"
     os.makedirs(save_dir, exist_ok=True)
 
@@ -339,13 +497,12 @@ def sample_images_common(
                     saving_config,
                     objective_config,
                     loss_config,
-                    pipeline,
+                    backend,
                     save_dir,
                     prompt_dict,
                     epoch,
                     steps,
                     prompt_replacement,
-                    controlnet=controlnet,
                 )
                 # Per-prompt cleanup: free GPU memory between prompts to prevent accumulation
                 gc.collect()
@@ -369,17 +526,16 @@ def sample_images_common(
                     saving_config,
                     objective_config,
                     loss_config,
-                    pipeline,
+                    backend,
                     save_dir,
                     prompt_dict,
                     epoch,
                     steps,
                     prompt_replacement,
-                    controlnet=controlnet,
                 )
 
     # clear pipeline and cache to reduce vram usage
-    del pipeline
+    del backend
 
     torch.set_rng_state(rng_state)
     if torch.cuda.is_available() and cuda_rng_state is not None:
@@ -393,13 +549,12 @@ def sample_image_inference(
     saving_config: SavingConfig,
     objective_config: ObjectiveConfig,
     loss_config: LossConfig,
-    pipeline,
+    backend_or_pipeline,
     save_dir: str,
     prompt_dict: dict,
     epoch: int | None,
     steps: int,
     prompt_replacement: tuple[str, str] | None,
-    controlnet=None,
 ):
     """
     Performs the actual image inference for a single prompt.
@@ -410,91 +565,39 @@ def sample_image_inference(
         training_config (TrainingConfig): Training configuration.
         saving_config (SavingConfig): Saving configuration.
         loss_config (LossConfig): Loss configuration.
-        pipeline: The inference pipeline.
+        backend_or_pipeline: Sampling backend or legacy local pipeline object.
         save_dir (str): Directory to save the generated images.
         prompt_dict (dict): Dictionary containing the prompt and parameters.
         epoch (int, optional): Current epoch.
         steps (int): Current step.
         prompt_replacement (tuple, optional): Tuple for prompt replacement.
-        controlnet: ControlNet model (optional).
     """
-    assert isinstance(prompt_dict, dict)
-    prompt: str = prompt_dict.get("prompt", sampling_config.sample_prompt or "")
-    negative_prompt = prompt_dict.get("negative_prompt", sampling_config.sample_negative_prompt)
-    sample_steps = prompt_dict.get("sample_steps", sampling_config.sample_steps if sampling_config.sample_steps is not None else 30)
-    width = prompt_dict.get("width", sampling_config.sample_width if sampling_config.sample_width is not None else 512)
-    height = prompt_dict.get("height", sampling_config.sample_height if sampling_config.sample_height is not None else 512)
-    scale = prompt_dict.get(
-        "scale",
-        prompt_dict.get("guidance_scale", sampling_config.sample_cfg_scale if sampling_config.sample_cfg_scale is not None else 7.5),
-    )
-    seed = prompt_dict.get("seed", sampling_config.sample_seed)
-    controlnet_image = prompt_dict.get("controlnet_image")
-    sampler_name: str = prompt_dict.get("sample_sampler", sampling_config.sample_sampler)
+    del training_config, loss_config
+    request = build_sampling_request(sampling_config, prompt_dict, prompt_replacement)
+    backend = _coerce_sampling_backend(backend_or_pipeline, objective_config)
+    set_sampling_seed(request.seed)
 
-    if prompt_replacement is not None:
-        prompt = prompt.replace(prompt_replacement[0], prompt_replacement[1])
-        if negative_prompt is not None:
-            negative_prompt = negative_prompt.replace(prompt_replacement[0], prompt_replacement[1])
+    logger.info(f"prompt: {request.prompt}")
+    logger.info(f"negative_prompt: {request.negative_prompt}")
+    logger.info(f"height: {request.height}")
+    logger.info(f"width: {request.width}")
+    logger.info(f"sample_steps: {request.sample_steps}")
+    logger.info(f"scale: {request.guidance_scale}")
+    logger.info(f"sample_sampler: {request.sample_sampler}")
+    if request.flow_shift is not None:
+        logger.info(f"flow_shift: {request.flow_shift}")
+    if request.seed is not None:
+        logger.info(f"seed: {request.seed}")
 
-    if seed is not None:
-        torch.manual_seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed(seed)
-    else:
-        # True random sample image generation
-        torch.seed()
-        if torch.cuda.is_available():
-            torch.cuda.seed()
-
-    scheduler = get_my_scheduler(
-        sample_sampler=sampler_name,
-        prediction_type=objective_config.prediction,
-    )
-    pipeline.scheduler = scheduler
-
-    if controlnet_image is not None:
-        controlnet_image = Image.open(controlnet_image).convert("RGB")
-        controlnet_image = controlnet_image.resize((width, height), Image.LANCZOS)  # PIL.Image.Resampling.LANCZOS
-
-    height = max(64, height - height % 8)  # round to divisible by 8
-    width = max(64, width - width % 8)  # round to divisible by 8
-    logger.info(f"prompt: {prompt}")
-    logger.info(f"negative_prompt: {negative_prompt}")
-    logger.info(f"height: {height}")
-    logger.info(f"width: {width}")
-    logger.info(f"sample_steps: {sample_steps}")
-    logger.info(f"scale: {scale}")
-    logger.info(f"sample_sampler: {sampler_name}")
-    if seed is not None:
-        logger.info(f"seed: {seed}")
-
-    with accelerator.autocast(), torch.no_grad():
-        latents = pipeline(
-            prompt=prompt,
-            height=height,
-            width=width,
-            num_inference_steps=sample_steps,
-            guidance_scale=scale,
-            negative_prompt=negative_prompt,
-            controlnet=controlnet,
-            controlnet_image=controlnet_image,
-        )
-
-    # VAE decode - convert latents to image
-    with torch.no_grad():
-        image = pipeline.latents_to_image(latents)[0]
-
-    # Free latents immediately after decode
-    del latents
+    image = backend.generate_image(accelerator, request)
 
     # adding accelerator.wait_for_everyone() here should sync up and ensure that sample images are saved in the same order as the original prompt list
     # but adding 'enum' to the filename should be enough
 
     ts_str = time.strftime("%Y%m%d%H%M%S", time.localtime())
     num_suffix = f"e{epoch:06d}" if epoch is not None else f"{steps:06d}"
-    seed_suffix = "" if seed is None else f"_{seed}"
-    i: int = prompt_dict["enum"]
+    seed_suffix = "" if request.seed is None else f"_{request.seed}"
+    i = request.prompt_index
     img_filename = (
         f"{'' if saving_config.output_name is None else saving_config.output_name + '_'}{num_suffix}_{i:02d}_{ts_str}{seed_suffix}.png"
     )
@@ -508,8 +611,8 @@ def sample_image_inference(
 
         # not to commit images to avoid inconsistency between training and logging steps
         wandb_tracker.log(
-            {f"sample_{i}": wandb.Image(image, caption=prompt)}, commit=False
+            {f"sample_{i}": wandb.Image(image, caption=request.prompt)}, commit=False
         )  # positive prompt as caption, commit=False avoids step mismatch TODO: Parameter 'step' unfilled
 
     # Cleanup per-inference tensors to prevent accumulation
-    del image, scheduler
+    del image

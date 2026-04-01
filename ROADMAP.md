@@ -95,6 +95,15 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 ### Recently Completed / Settled
 
+- SDXL is now the second active RF consumer:
+  - `model.model_type=sdxl` now validates with `objective.path='rectified_flow'` and `objective.prediction='flow'`
+  - the SDXL diffusion strategy now branches cleanly between DDPM and RF without splitting into a second giant strategy tree
+  - SDXL RF training now uses the direct velocity target (`noise - latents`) while reusing the shared RF runtime for timestep / sigma / weighting assembly
+  - SDXL RF sample generation now reuses the shared discrete-flow sampler path instead of pretending DDPM schedulers are universal
+- Sampling orchestration now has a first backend seam:
+  - `library/training/sample_generation.py` now owns a normalized sampling request plus backend routing instead of assuming every family uses a local latent-returning pipeline with repo-owned scheduler setup
+  - SD / SDXL DDPM currently flow through the new seam via a local-pipeline adapter, while SD3 and the SDXL RF path now use model-family backend objects
+  - this does not settle the final Diffusers-vs-local pipeline story yet, but it gives the repo one place to host both without forcing every backend into the old `pipeline(...) -> latents -> latents_to_image(...)` contract
 - The CLIP-family tokenization split is now explicit enough to stop re-litigating during SD3 work:
   - shared CLIP prompt-tokenization behavior now lives in `library/strategies/shared/clip/tokenization.py`
   - shared Hugging Face tokenizer bootstrap now lives in `library/models/sd/tokenizer.py`
@@ -198,6 +207,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - `library/training/sd_checkpointing.py`
   - `library/training/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
+
 ### Near-Term Follow-up
 
 - [ ] **SD / SDXL strategy cleanup against the current contract** — The large structural split is done; the remaining work is narrower cleanup and architecture follow-up now that the base contract has settled.
@@ -247,6 +257,8 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [ ] **Investigate 2022-2023 backend code**
   - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line.
 
+- [ ] Model download/load for training from huggingface
+
 ### Future Improvements
 
 - [ ] Config-hash cache namespace - Auto-segregate caches by config hash (`resolution`, `bucket_steps`, `model_version`) to prevent cross-config issues. See `AUDIT/AUDIT_PHASE_6.md`.
@@ -260,7 +272,8 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [ ] **Smarter resource tracking/management** - This helps with training and also with inference, for example falling back to tiled vae when it would hit resource contraints and such. See `docs_design/resource_monitor_plan.md`
 - [ ] Old toml to new config translator
 - [ ] Constants rework
-
+- [ ] Metadata system
+- [ ] Kahan summation / stochastic rounding / optimal transport check in reference repos
 ---
 
 ## Training Mode Extensibility
