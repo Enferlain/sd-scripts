@@ -207,6 +207,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - `library/training/sd_checkpointing.py`
   - `library/training/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
+- [ ] Investigate naming conventions and possible drifts in the objective class and runtime layers
 
 ### Near-Term Follow-up
 
