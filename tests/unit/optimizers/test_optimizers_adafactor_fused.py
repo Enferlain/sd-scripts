@@ -1,12 +1,12 @@
 """
-Unit tests for library/optimizers/adafactor_fused.py.
+Unit tests for library/optimization/adafactor_fused.py.
 
 Tests the stochastic rounding function used for bfloat16 precision optimization.
 """
 
 import torch
 
-from library.optimizers.adafactor_fused import copy_stochastic_, patch_adafactor_fused
+from library.optimization.adafactor_fused import copy_stochastic_, patch_adafactor_fused
 
 
 class TestCopyStochastic:

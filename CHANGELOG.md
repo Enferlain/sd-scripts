@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-04-02]
+
+### Changed
+
+- **Optimization layer Phase 1 now has shared argument parsing and a first typed parameter-group seam** — The renamed `library/optimization/` package now owns the common optimizer-argument parsing path and a small shared group payload instead of keeping those details duplicated across fine-tune and PEFT setup.
+  - Added `library/optimization/arguments.py` with shared `key=value` parsing for optimizer-style argument lists.
+  - Added `library/optimization/types.py` with a typed `ParameterGroup` plus compatibility helpers that still materialize the existing optimizer dict payload.
+  - Updated `library/training/modes/finetune_mode.py` so full fine-tune now builds typed parameter groups through the shared helper instead of open-coding raw group dicts.
+  - Updated `library/optimization/optimizer_factory.py` and `library/optimization/optimizer_utils.py` to reuse the shared parsing/materialization helpers while preserving current runtime behavior.
+  - Added focused optimizer and fine-tune mode regression coverage for the new shared parsing/group helpers.
+
+### Fixed
+
+- **VAE cache-signature generation now ignores non-config mock objects instead of trying to serialize them** — Unit tests and other partial config callers no longer fail just because an unspecced mock leaks into a cache-signature field.
+  - Hardened `library/data/caching_engine.py` so cache-signature inputs only accept stable string/path-like config values.
+  - Cleaned the last stale `library.optimizers` import path from the deprecated SDXL fine-tune script after the package rename.
+
 ## [2026-04-01]
 
 ### Added

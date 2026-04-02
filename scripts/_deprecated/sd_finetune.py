@@ -24,8 +24,8 @@ from library.data._deprecated.dataset_utils import load_arbitrary_dataset, colla
 from library.models.runtime_utils import replace_unet_modules, patch_accelerator_for_fp16_training
 from library.models.sd.loader import load_target_model
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.optimizers.scheduler import get_scheduler_fix
-from library.optimizers.optimizer_factory import get_optimizer
+from library.optimization.scheduler import get_scheduler_fix
+from library.optimization.optimizer_factory import get_optimizer
 from library.training._deprecated.sd_sample_generation import sample_images
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss

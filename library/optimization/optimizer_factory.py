@@ -1,4 +1,3 @@
-import ast
 import importlib
 import logging
 
@@ -6,6 +5,8 @@ import torch
 import transformers
 
 from library.config.dataclasses.optimizer import OptimizerConfig, LearningRatesConfig, SchedulerConfig
+from library.optimization.arguments import parse_key_value_args
+from library.optimization.types import materialize_parameter_groups
 
 
 logger = logging.getLogger(__name__)
@@ -57,27 +58,11 @@ def get_optimizer(
     # Break down arguments
     if optimizer_kwargs is None:
         optimizer_kwargs = {}
-    if not optimizer_kwargs and optimizer_config.optimizer_args is not None and len(optimizer_config.optimizer_args) > 0:
-        for arg in optimizer_config.optimizer_args:
-            key, value = arg.split("=")
-            try:
-                value = ast.literal_eval(value)
-            except ValueError:
-                value = value
-
-            # value = value.split(",")
-            # for i in range(len(value)):
-            #     if value[i].lower() == "true" or value[i].lower() == "false":
-            #         value[i] = value[i].lower() == "true"
-            #     else:
-            #         value[i] = ast.float(value[i])
-            # if len(value) == 1:
-            #     value = value[0]
-            # else:
-            #     value = tuple(value)
-
-            optimizer_kwargs[key] = value
+    if not optimizer_kwargs:
+        optimizer_kwargs = parse_key_value_args(optimizer_config.optimizer_args)
     # logger.info(f"optkwargs {optimizer}_{kwargs}")
+
+    trainable_params = materialize_parameter_groups(trainable_params)
 
     lr = learning_rates.base
     optimizer = None

@@ -11,7 +11,9 @@ from torch.optim import Optimizer
 from library.config.dataclasses.optimizer import OptimizerConfig, LearningRatesConfig
 from library.config.dataclasses.peft import PeftConfig
 from library.constants import int_pattern, float_pattern
-from library.optimizers.optimizer_factory import get_optimizer
+from library.optimization.arguments import parse_key_value_args
+from library.optimization.optimizer_factory import get_optimizer
+from library.optimization.types import materialize_parameter_groups
 
 
 logger = logging.getLogger(__name__)
@@ -107,16 +109,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
             "c1.weight",
         ]
 
-    optimizer_kwargs = {}
-    if optimizer_config.optimizer_args is not None and len(optimizer_config.optimizer_args) > 0:
-        for arg in optimizer_config.optimizer_args:
-            key, value = arg.split("=")
-            try:
-                value = ast.literal_eval(value)
-            except ValueError:
-                value = value
-
-            optimizer_kwargs[key] = value
+    optimizer_kwargs = parse_key_value_args(optimizer_config.optimizer_args)
 
     try:
         # Check optimizer defaults
@@ -206,7 +199,11 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
             lr_descriptions = None
 
     optimizer_name, optimizer_args, optimizer = get_optimizer(
-        optimizer_config, learning_rates, optimizer_config.scheduler, trainable_params, optimizer_kwargs
+        optimizer_config,
+        learning_rates,
+        optimizer_config.scheduler,
+        materialize_parameter_groups(trainable_params),
+        optimizer_kwargs,
     )
     # Cast to Optimizer - get_optimizer returns object but we know it's an Optimizer
     optimizer_train_fn, optimizer_eval_fn = get_optimizer_train_eval_fn(optimizer, optimizer_config)  # type: ignore[arg-type]

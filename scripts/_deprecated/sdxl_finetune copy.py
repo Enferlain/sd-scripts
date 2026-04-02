@@ -24,8 +24,8 @@ from library.models.sdxl.loader import load_target_model
 from library.training._deprecated.sdxl_sample_generation import sample_images
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
 from library.models.runtime_utils import replace_unet_modules, patch_accelerator_for_fp16_training
-from library.optimizers.scheduler import get_scheduler_fix
-from library.optimizers.optimizer_factory import get_optimizer
+from library.optimization.scheduler import get_scheduler_fix
+from library.optimization.optimizer_factory import get_optimizer
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
 from library.logging.step_logging import append_lr_to_logs_with_names
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
@@ -257,7 +257,7 @@ def train(cfg: RunConfig):
     library.strategies.base.encoding.TextEncodingStrategy.set_strategy(text_encoding_strategy)
 
     # Train text encoder if TE LR > 0 (based on LR-based training control)
-    from library.optimizers.optimizer_utils import should_train_text_encoder
+    from library.optimization.optimizer_utils import should_train_text_encoder
 
     train_te_based_on_lr = should_train_text_encoder(cfg.optimizer.learning_rates)
     if train_te_based_on_lr:
@@ -472,9 +472,9 @@ def train(cfg: RunConfig):
     resume_from_local_or_hf_if_specified(accelerator, cfg.output.saving, cfg.output.huggingface)
 
     if cfg.optimizer.fused_backward_pass:
-        import library.optimizers.adafactor_fused
+        import library.optimization.adafactor_fused
 
-        library.optimizers.adafactor_fused.patch_adafactor_fused(optimizer)
+        library.optimization.adafactor_fused.patch_adafactor_fused(optimizer)
         for param_group in optimizer.param_groups:
             for parameter in param_group["params"]:
                 if parameter.requires_grad:

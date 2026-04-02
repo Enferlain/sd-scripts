@@ -8,7 +8,7 @@ sys.path.append(os.getcwd())
 def test_imports():
     print("Testing imports...")
     try:
-        import library.optimizers.optimizer_utils
+        import library.optimization.optimizer_utils
 
         print("✅ library.training.optimizer imported successfully")
     except ImportError as e:

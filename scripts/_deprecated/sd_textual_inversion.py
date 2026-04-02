@@ -40,8 +40,8 @@ from library.models.runtime_utils import (
 from library.models.sd.loader import load_target_model
 from library.training.trainer_utils import prepare_accelerator
 from library.training.diffusion import get_noise_noisy_latents_and_timesteps
-from library.optimizers.scheduler import get_scheduler_fix
-from library.optimizers.optimizer_factory import get_optimizer
+from library.optimization.scheduler import get_scheduler_fix
+from library.optimization.optimizer_factory import get_optimizer
 from library.training._deprecated.sd_sample_generation import sample_images
 from library.losses.loss import conditional_loss, get_huber_threshold_if_needed
 from library.config.config_validation import (

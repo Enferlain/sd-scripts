@@ -17,7 +17,7 @@ Usage:
 import ast
 import logging
 
-from library.optimizers.optimizer_utils import should_train_text_encoder
+from library.optimization.optimizer_utils import should_train_text_encoder
 
 logger = logging.getLogger(__name__)
 

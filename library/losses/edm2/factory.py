@@ -10,7 +10,7 @@ from library.config.dataclasses.loss import EDM2Config
 from library.config.dataclasses.training import TrainingConfig
 from library.losses.edm2 import edm2_loss
 from library.losses.edm2.edm2_modifier import EDM2LossModifier
-from library.optimizers.scheduler import get_dummy_scheduler
+from library.optimization.scheduler import get_dummy_scheduler
 
 
 def prepare_edm2_loss_weighting(edm2_config: EDM2Config, training_config: TrainingConfig, noise_scheduler, accelerator):

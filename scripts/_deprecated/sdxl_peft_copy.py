@@ -39,8 +39,8 @@ from library.performance import deepspeed_utils
 from library.utils.device_utils import clean_memory_on_device
 from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
 from library.models.runtime_utils import patch_accelerator_for_fp16_training
-from library.optimizers.optimizer_utils import prepare_optimizer
-from library.optimizers.scheduler import get_scheduler_fix
+from library.optimization.optimizer_utils import prepare_optimizer
+from library.optimization.scheduler import get_scheduler_fix
 from library.training.sample_generation import sample_images_check
 from library.losses.loss import EMARecorder
 from library.config.dataclasses.run import RunConfig

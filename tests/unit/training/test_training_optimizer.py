@@ -7,13 +7,15 @@ Tests optimizer creation, scheduler setup, and config-based initialization.
 import pytest
 import torch
 
-from library.optimizers.optimizer_utils import (
+from library.optimization.arguments import parse_key_value_args
+from library.optimization.optimizer_utils import (
     is_schedulefree_optimizer,
     is_wrapper_optimizer,
     parse_string_to_type,
 )
-from library.optimizers.scheduler import get_dummy_scheduler
-from library.optimizers.optimizer_factory import get_optimizer
+from library.optimization.scheduler import get_dummy_scheduler
+from library.optimization.optimizer_factory import get_optimizer
+from library.optimization.types import ParameterGroup, materialize_parameter_groups
 from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig, LearningRatesConfig
 
 
@@ -180,6 +182,25 @@ class TestScheduler:
 @pytest.mark.unit
 class TestOptimizerUtils:
     """Test utility functions."""
+
+    def test_parse_key_value_args(self):
+        """Shared key=value parsing preserves literal types."""
+        parsed = parse_key_value_args(["weight_decay=0.01", "betas=(0.9, 0.999)", "name='adamw'"])
+
+        assert parsed["weight_decay"] == 0.01
+        assert parsed["betas"] == (0.9, 0.999)
+        assert parsed["name"] == "adamw"
+
+    def test_materialize_parameter_groups(self):
+        """Typed parameter groups convert to legacy optimizer dicts."""
+        param = torch.nn.Parameter(torch.randn(2, 2))
+        groups = [ParameterGroup(params=[param], lr=1e-4, label="denoiser")]
+
+        materialized = materialize_parameter_groups(groups)
+
+        assert isinstance(materialized, list)
+        assert materialized[0]["params"] == [param]
+        assert materialized[0]["lr"] == 1e-4
 
     def test_parse_string_to_type_int(self):
         """Test parsing integer strings."""

@@ -24,6 +24,21 @@ from library.data.structures import CacheData, CacheEntry, DatasetManifest
 logger = logging.getLogger(__name__)
 
 
+def _string_config_value(value: Any) -> str | None:
+    """Return config values only when they are stable string-like values.
+
+    Tests sometimes pass unspecced mocks for partial config trees. Treat those
+    as missing rather than letting them flow into cache signatures.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, os.PathLike):
+        return os.fspath(value)
+    return None
+
+
 def build_vae_cache_signature(model_cfg: Any) -> str:
     """Build a lightweight cache signature for the active VAE source.
 
@@ -31,10 +46,12 @@ def build_vae_cache_signature(model_cfg: Any) -> str:
     size, and mtime; non-file sources fall back to their configured name.
     Padding mode is included because it changes effective VAE behavior.
     """
-    source = getattr(model_cfg, "vae", None) or getattr(model_cfg, "pretrained_model_name_or_path", None) or "(unknown)"
+    source = _string_config_value(getattr(model_cfg, "vae", None)) or _string_config_value(
+        getattr(model_cfg, "pretrained_model_name_or_path", None)
+    ) or "(unknown)"
     payload: dict[str, Any] = {
         "source": source,
-        "padding_mode": getattr(model_cfg, "vae_conv2d_padding_mode", None) or "zeros",
+        "padding_mode": _string_config_value(getattr(model_cfg, "vae_conv2d_padding_mode", None)) or "zeros",
     }
 
     if isinstance(source, str) and os.path.exists(source) and os.path.isfile(source):

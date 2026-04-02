@@ -2,7 +2,7 @@ from typing import Any
 
 import torch
 
-from library.optimizers.optimizer_utils import get_text_encoders_train_flags
+from library.optimization.optimizer_utils import get_text_encoders_train_flags
 from library.strategies.base.contracts import ModelPreparationStrategy
 from library.strategies.shared.clip.model_preparation import (
     prepare_clip_text_encoder_fp8,

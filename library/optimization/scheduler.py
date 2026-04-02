@@ -16,7 +16,7 @@ from transformers.optimization import TYPE_TO_SCHEDULER_FUNCTION
 
 from library.config.dataclasses.optimizer import SchedulerConfig, OptimizerConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.optimizers.optimizer_utils import parse_string_to_type
+from library.optimization.optimizer_utils import parse_string_to_type
 
 
 logger = logging.getLogger(__name__)

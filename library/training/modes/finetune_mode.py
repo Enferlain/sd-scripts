@@ -10,15 +10,16 @@ are delegated to the strategy; this mode only handles generic lifecycle.
 
 from __future__ import annotations
 
-import contextlib
 import os
 from typing import TYPE_CHECKING, Any
 
 import torch
 from torch import nn
 
-from library.optimizers.optimizer_factory import get_optimizer
-from library.optimizers.optimizer_utils import (
+from library.optimization.arguments import parse_key_value_args
+from library.optimization.optimizer_factory import get_optimizer
+from library.optimization.types import build_module_parameter_group
+from library.optimization.optimizer_utils import (
     get_optimizer_train_eval_fn,
     get_text_encoders_train_flags,
     should_train_denoiser,
@@ -128,8 +129,6 @@ class FineTuneMode:
         Block-level LR grouping and pattern-based grouping are deferred
         to a later mode-agnostic phase and are not supported in 2B.
         """
-        import ast
-
         cfg = trainer.cfg
         lr = cfg.optimizer.learning_rates
 
@@ -150,7 +149,7 @@ class FineTuneMode:
         if trainer._train_denoiser:
             assert trainer.denoiser is not None, "denoiser must be loaded before build_optimizer_params"
             denoiser_lr = lr.denoiser if lr.denoiser is not None else lr.base
-            trainable_params.append({"params": list(trainer.denoiser.parameters()), "lr": denoiser_lr})
+            trainable_params.append(build_module_parameter_group(trainer.denoiser, lr=denoiser_lr, label="denoiser"))
             lr_descriptions.append(f"denoiser lr: {denoiser_lr}")
 
         te_lr_raw = lr.text_encoders
@@ -162,17 +161,11 @@ class FineTuneMode:
                     te_lr = te_lr_raw
                 else:
                     te_lr = te_lr_raw[i] if i < len(te_lr_raw) else lr.base
-                trainable_params.append({"params": list(t_enc.parameters()), "lr": te_lr})
+                trainable_params.append(build_module_parameter_group(t_enc, lr=te_lr, label=f"text_encoder{i + 1}"))
                 lr_descriptions.append(f"text_encoder{i + 1} lr: {te_lr}")
 
         # --- Parse optimizer kwargs ---
-        optimizer_kwargs = {}
-        if cfg.optimizer.optimizer_args is not None and len(cfg.optimizer.optimizer_args) > 0:
-            for arg in cfg.optimizer.optimizer_args:
-                key, value = arg.split("=")
-                with contextlib.suppress(ValueError, SyntaxError):
-                    value = ast.literal_eval(value)
-                optimizer_kwargs[key] = value
+        optimizer_kwargs = parse_key_value_args(cfg.optimizer.optimizer_args)
 
         # --- Create optimizer ---
         optimizer_name, optimizer_args, optimizer = get_optimizer(

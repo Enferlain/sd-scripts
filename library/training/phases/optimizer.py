@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 
 from library.data import create_training_dataloader, prepare_validation_epoch
 from library.models.runtime_utils import patch_accelerator_for_fp16_training
-from library.optimizers.optimizer_utils import get_text_encoders_train_flags
-from library.optimizers.scheduler import get_scheduler_fix
+from library.optimization.optimizer_utils import get_text_encoders_train_flags
+from library.optimization.scheduler import get_scheduler_fix
 from library.training.checkpointing import resume_from_local_or_hf_if_specified
 
 if TYPE_CHECKING:

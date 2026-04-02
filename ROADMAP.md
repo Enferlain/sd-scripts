@@ -260,6 +260,8 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 
 - [ ] Model download/load for training from huggingface
 
+- [ ] Selective activation checkpointing
+
 ### Future Improvements
 
 - [ ] Config-hash cache namespace - Auto-segregate caches by config hash (`resolution`, `bucket_steps`, `model_version`) to prevent cross-config issues. See `AUDIT/AUDIT_PHASE_6.md`.
@@ -275,6 +277,7 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [ ] Constants rework
 - [ ] Metadata system
 - [ ] Kahan summation / stochastic rounding / optimal transport check in reference repos
+
 ---
 
 ## Training Mode Extensibility

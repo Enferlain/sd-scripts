@@ -19,7 +19,7 @@ import torch
 from torch import nn
 
 from library.adapters.lora_utils import resolve_adapter_kwargs
-from library.optimizers.optimizer_utils import (
+from library.optimization.optimizer_utils import (
     get_text_encoders_train_flags,
     prepare_optimizer as _prepare_optimizer_util,
     should_train_denoiser,

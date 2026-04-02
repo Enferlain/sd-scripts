@@ -16,7 +16,7 @@ from library.strategies.shared.clip.model_preparation import (
     prepare_clip_text_encoder_grad_ckpt_workaround,
 )
 from library.strategies.shared.clip.tokenization import get_clip_weighted_input_ids
-from library.optimizers.optimizer_utils import (
+from library.optimization.optimizer_utils import (
     get_text_encoders_train_flags,
     should_train_denoiser,
     should_train_text_encoder,
