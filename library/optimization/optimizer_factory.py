@@ -6,10 +6,39 @@ import transformers
 
 from library.config.dataclasses.optimizer import OptimizerConfig, LearningRatesConfig, SchedulerConfig
 from library.optimization.arguments import parse_key_value_args
+from library.optimization.registry import OptimizerRegistration, get_configured_optimizer_name, get_optimizer_registration
 from library.optimization.types import materialize_parameter_groups
 
 
 logger = logging.getLogger(__name__)
+
+
+def _load_registered_target(target: str):
+    module_name, attr_name = target.rsplit(".", 1)
+    module = importlib.import_module(module_name)
+    return getattr(module, attr_name)
+
+
+def _instantiate_registered_optimizer(
+    registration: OptimizerRegistration,
+    trainable_params,
+    lr: float,
+    optimizer_kwargs: dict,
+):
+    if registration.target is None:
+        return None, None
+
+    optimizer_class = _load_registered_target(registration.target)
+
+    if registration.name == "sgdnesterov":
+        if "momentum" not in optimizer_kwargs:
+            logger.info("SGD with Nesterov must be with momentum, set momentum to 0.9")
+            optimizer_kwargs["momentum"] = 0.9
+        optimizer = optimizer_class(trainable_params, lr=lr, nesterov=True, **optimizer_kwargs)
+        return optimizer_class, optimizer
+
+    optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
+    return optimizer_class, optimizer
 
 
 def get_optimizer(
@@ -38,14 +67,10 @@ def get_optimizer(
     if optimizer_config.use_8bit_adam:
         assert not optimizer_config.use_lion_optimizer, "both option use_8bit_adam and use_lion_optimizer are specified"
         assert optimizer_type is None or optimizer_type == "", "both option use_8bit_adam and optimizer_type are specified"
-        optimizer_type = "AdamW8bit"
-
     elif optimizer_config.use_lion_optimizer:
         assert optimizer_type is None or optimizer_type == "", "both option use_lion_optimizer and optimizer_type are specified"
-        optimizer_type = "Lion"
 
-    if optimizer_type is None or optimizer_type == "":
-        optimizer_type = "AdamW"
+    optimizer_type = get_configured_optimizer_name(optimizer_config)
     optimizer_type = optimizer_type.lower()
 
     if optimizer_config.fused_backward_pass:
@@ -67,15 +92,18 @@ def get_optimizer(
     lr = learning_rates.base
     optimizer = None
     optimizer_class = None
+    optimizer_registration = get_optimizer_registration(optimizer_type)
 
-    if optimizer_type == "Lion".lower():
-        try:
-            import lion_pytorch
-        except ImportError as err:
-            raise ImportError("No lion_pytorch") from err
-        logger.info(f"use Lion optimizer | {optimizer_kwargs}")
-        optimizer_class = lion_pytorch.Lion
-        optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
+    if optimizer_registration is not None and optimizer_registration.name in {
+        "adamw",
+        "lion",
+        "sgdnesterov",
+        "radamschedulefree",
+        "adamwschedulefree",
+        "sgdschedulefree",
+    }:
+        logger.info(f"use {optimizer_registration.name} optimizer | {optimizer_kwargs}")
+        optimizer_class, optimizer = _instantiate_registered_optimizer(optimizer_registration, trainable_params, lr, optimizer_kwargs)
 
     elif optimizer_type.endswith("8bit".lower()):
         try:

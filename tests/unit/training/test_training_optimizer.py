@@ -8,6 +8,12 @@ import pytest
 import torch
 
 from library.optimization.arguments import parse_key_value_args
+from library.optimization.registry import (
+    OPT_CAP_NO_EXTERNAL_SCHEDULER,
+    get_configured_optimizer_name,
+    get_optimizer_registration,
+    get_scheduler_registration,
+)
 from library.optimization.optimizer_utils import (
     is_schedulefree_optimizer,
     is_wrapper_optimizer,
@@ -96,6 +102,14 @@ class TestGetOptimizer:
         assert optimizer is not None
         assert "sgd" in optimizer_name.lower()
 
+    def test_sgdnesterov_defaults_momentum(self, mock_model_parameters):
+        """Registry-backed SGDNesterov construction should still supply default momentum."""
+        config = OptimizerConfig(optimizer_type="SGDNesterov", learning_rates=LearningRatesConfig(base=0.01))
+
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
+
+        assert optimizer.param_groups[0]["momentum"] == 0.9
+
 
 # =============================================================================
 # Optimizer Detection Tests
@@ -125,7 +139,34 @@ class TestOptimizerDetection:
         config = OptimizerConfig(optimizer_type="AdamW", optimizer_schedulefree_wrapper=True)
 
         # Just verify the config preserves the value
-        assert config.optimizer_schedulefree_wrapper == True
+        assert config.optimizer_schedulefree_wrapper
+
+    def test_registry_marks_schedulefree_wrapper_as_wrapper(self):
+        """Built-in wrapper metadata should be registry-owned."""
+        registration = get_optimizer_registration("ScheduleFreeWrapper")
+
+        assert registration is not None
+        assert registration.kind == "wrapper"
+
+    def test_registry_marks_builtin_schedulefree_as_no_external_scheduler(self):
+        """Built-in schedule-free optimizers should advertise dummy-scheduler behavior."""
+        registration = get_optimizer_registration("AdamWScheduleFree")
+
+        assert registration is not None
+        assert registration.supports(OPT_CAP_NO_EXTERNAL_SCHEDULER)
+
+    def test_configured_optimizer_name_respects_compat_flags(self):
+        """Compatibility flags should resolve through the shared optimizer-name helper."""
+        config = OptimizerConfig(use_8bit_adam=True)
+
+        assert get_configured_optimizer_name(config) == "AdamW8bit"
+
+    def test_registry_exposes_builtin_optimizer_targets(self):
+        """Built-in registrations should carry target paths for migrated constructors."""
+        registration = get_optimizer_registration("AdamW")
+
+        assert registration is not None
+        assert registration.target == "torch.optim.AdamW"
 
 
 # =============================================================================
@@ -171,6 +212,13 @@ class TestScheduler:
 
         # LR should remain unchanged
         assert optimizer.param_groups[0]["lr"] == initial_lr
+
+    def test_scheduler_registry_resolves_builtin_alias(self):
+        """Known scheduler aliases should resolve through the shared registry."""
+        registration = get_scheduler_registration("CosineAnnealingLR")
+
+        assert registration is not None
+        assert registration.name == "cosineannealinglr"
 
 
 # =============================================================================
@@ -306,7 +354,7 @@ class TestOptimizerConfigIntegration:
 
         # Note: fused_backward_pass only works with Adafactor
         # This test just verifies the config preserves the value
-        assert config.fused_backward_pass == True
+        assert config.fused_backward_pass
 
 
 # =============================================================================

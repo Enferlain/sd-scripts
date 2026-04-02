@@ -1,4 +1,3 @@
-import ast
 import importlib
 import logging
 from typing import Any
@@ -16,6 +15,14 @@ from transformers.optimization import TYPE_TO_SCHEDULER_FUNCTION
 
 from library.config.dataclasses.optimizer import SchedulerConfig, OptimizerConfig
 from library.config.dataclasses.training import TrainingConfig
+from library.optimization.arguments import parse_key_value_args
+from library.optimization.registry import (
+    OPT_CAP_NO_EXTERNAL_SCHEDULER,
+    OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER,
+    get_configured_optimizer_name,
+    get_optimizer_registration,
+    get_scheduler_registration,
+)
 from library.optimization.optimizer_utils import parse_string_to_type
 
 
@@ -44,19 +51,28 @@ def get_scheduler_fix(
     Returns:
         The configured scheduler.
     """
-    optimizer_type = optimizer_config.optimizer_type
+    optimizer_name = get_configured_optimizer_name(optimizer_config)
+    optimizer_registration = get_optimizer_registration(optimizer_name)
+
     # if schedulefree optimizer, return dummy scheduler
-    if optimizer_type.lower().split(".")[0] not in {
+    if optimizer_registration is not None and optimizer_registration.supports(OPT_CAP_NO_EXTERNAL_SCHEDULER):
+        return get_dummy_scheduler(optimizer)
+
+    if optimizer_registration is None and optimizer_name.lower().split(".")[0] not in {
         "LoraEasyCustomOptimizer".lower(),
         "prodigyplus".lower(),
-    } and optimizer_type.lower().endswith("schedulefree".lower()):
+    } and optimizer_name.lower().endswith("schedulefree".lower()):
         return get_dummy_scheduler(optimizer)
 
     # Need to apply scheduler to base_optimizer
-    if optimizer_type.lower().endswith("schedulefreewrapper".lower()) or optimizer_type.lower().endswith("snoo_asgd".lower()):
+    if (optimizer_registration is not None and optimizer_registration.supports(OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER)) or (
+        optimizer_registration is None
+        and (optimizer_name.lower().endswith("schedulefreewrapper".lower()) or optimizer_name.lower().endswith("snoo_asgd".lower()))
+    ):
         optimizer = getattr(optimizer, "base_optimizer", optimizer)  # Get wrapped base optimizer
 
     name = scheduler_config.lr_scheduler
+    scheduler_registration = get_scheduler_registration(name)
     num_training_steps = training_config.max_train_steps * num_processes  # * args.gradient_accumulation_steps
     num_warmup_steps: int | None = (
         int(scheduler_config.lr_warmup_steps * num_training_steps)
@@ -83,12 +99,7 @@ def get_scheduler_fix(
     timescale = scheduler_config.lr_scheduler_timescale
     min_lr_ratio = scheduler_config.lr_scheduler_min_lr_ratio
 
-    lr_scheduler_kwargs = {}  # get custom lr_scheduler kwargs
-    if scheduler_config.lr_scheduler_args is not None and len(scheduler_config.lr_scheduler_args) > 0:
-        for arg in scheduler_config.lr_scheduler_args:
-            key, value = arg.split("=")
-            value = ast.literal_eval(value)
-            lr_scheduler_kwargs[key] = value
+    lr_scheduler_kwargs = parse_key_value_args(scheduler_config.lr_scheduler_args)
 
     def wrap_check_needless_num_warmup_steps(return_vals):
         if num_warmup_steps is not None and num_warmup_steps != 0:
@@ -109,7 +120,8 @@ def get_scheduler_fix(
         lr_scheduler = lr_scheduler_class(optimizer, **lr_scheduler_kwargs)
         return wrap_check_needless_num_warmup_steps(lr_scheduler)
     else:
-        logger.info(f"use {name} | {lr_scheduler_kwargs} as lr_scheduler")
+        display_name = scheduler_registration.name if scheduler_registration is not None else name
+        logger.info(f"use {display_name} | {lr_scheduler_kwargs} as lr_scheduler")
 
     if name.startswith("adafactor"):
         assert isinstance(optimizer, transformers.optimization.Adafactor), "adafactor scheduler must be used with Adafactor optimizer"

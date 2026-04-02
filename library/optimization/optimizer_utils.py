@@ -13,6 +13,11 @@ from library.config.dataclasses.peft import PeftConfig
 from library.constants import int_pattern, float_pattern
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.optimizer_factory import get_optimizer
+from library.optimization.registry import (
+    OPT_CAP_TRAIN_EVAL_TOGGLE,
+    get_configured_optimizer_name,
+    get_optimizer_registration,
+)
 from library.optimization.types import materialize_parameter_groups
 
 
@@ -245,9 +250,13 @@ def is_schedulefree_optimizer(optimizer: Optimizer, optimizer_config: OptimizerC
     Returns:
         bool: True if the optimizer is schedule-free, False otherwise.
     """
-    return optimizer_config.optimizer_type.lower().endswith("schedulefree".lower()) or optimizer_config.optimizer_type.lower().endswith(
-        "schedulefreewrapper".lower()
-    )
+    optimizer_name = get_configured_optimizer_name(optimizer_config)
+    registration = get_optimizer_registration(optimizer_name)
+    if registration is not None:
+        return registration.supports(OPT_CAP_TRAIN_EVAL_TOGGLE)
+
+    optimizer_name = optimizer_name.lower()
+    return optimizer_name.endswith("schedulefree".lower()) or optimizer_name.endswith("schedulefreewrapper".lower())
 
 
 def is_wrapper_optimizer(optimizer_config: OptimizerConfig) -> bool:
@@ -260,9 +269,13 @@ def is_wrapper_optimizer(optimizer_config: OptimizerConfig) -> bool:
     Returns:
         bool: True if the optimizer is a wrapper optimizer, False otherwise.
     """
-    return optimizer_config.optimizer_type.lower().endswith(
-        "schedulefreewrapper".lower()
-    ) or optimizer_config.optimizer_type.lower().endswith("snoo_asgd".lower())
+    optimizer_name = get_configured_optimizer_name(optimizer_config)
+    registration = get_optimizer_registration(optimizer_name)
+    if registration is not None:
+        return registration.kind == "wrapper"
+
+    optimizer_name = optimizer_name.lower()
+    return optimizer_name.endswith("schedulefreewrapper".lower()) or optimizer_name.endswith("snoo_asgd".lower())
 
 
 def parse_string_to_type(s):

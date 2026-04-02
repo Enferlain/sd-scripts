@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `library/training/modes/finetune_mode.py` so full fine-tune now builds typed parameter groups through the shared helper instead of open-coding raw group dicts.
   - Updated `library/optimization/optimizer_factory.py` and `library/optimization/optimizer_utils.py` to reuse the shared parsing/materialization helpers while preserving current runtime behavior.
   - Added focused optimizer and fine-tune mode regression coverage for the new shared parsing/group helpers.
+- **Built-in optimizer and scheduler identities now have a first repo-owned registry skeleton** — The optimization layer can start making orchestration decisions from declared metadata instead of relying only on string suffix checks.
+  - Added `library/optimization/registry.py` with built-in optimizer/scheduler registrations, effective optimizer-name resolution, and initial capability flags for schedule-free and wrapper behaviors.
+  - Updated optimizer construction, schedule-free detection, and scheduler setup to consult the registry metadata where available while keeping current fallback behavior intact.
+  - Added focused regression coverage for registry resolution and the built-in schedule-free/wrapper capability flags.
+- **A small set of built-in optimizers now construct through registry target metadata instead of only through the legacy branch chain** — The factory can start migrating toward registration-driven construction without forcing a broad behavior change all at once.
+  - Added target metadata for `AdamW`, `Lion`, `SGDNesterov`, and the built-in schedule-free optimizers in `library/optimization/registry.py`.
+  - Updated `library/optimization/optimizer_factory.py` so those built-ins instantiate through the repo-owned registrations first, while all unported and special-case optimizers still fall back to the existing conditional logic.
+  - Added focused coverage to keep the built-in target metadata and `SGDNesterov` default-momentum behavior stable during the migration.
 
 ### Fixed
 
