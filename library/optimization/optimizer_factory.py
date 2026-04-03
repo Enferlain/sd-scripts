@@ -111,6 +111,8 @@ def _load_registered_optimizer_class(registration: OptimizerRegistration):
     except ImportError as err:
         if registration.backend == "bitsandbytes":
             raise ImportError("No bitsandbytes") from err
+        if registration.backend == "torchao":
+            raise ImportError("No torchao") from err
         if registration.backend == "dadaptation":
             raise ImportError("No dadaptation") from err
         if registration.backend == "prodigy":

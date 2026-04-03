@@ -6,7 +6,7 @@ from pytorch_optimizer.base.exception import NoSparseGradientError
 from pytorch_optimizer.base.optimizer import BaseOptimizer
 from pytorch_optimizer.base.type import Betas, Closure, Defaults, Loss, ParamGroup
 
-from library.optimization.optimizers.stochastic import copy_stochastic_
+from library.optimization.optimizers.utils.stochastic import copy_stochastic_
 
 
 class AdaBelief(BaseOptimizer):

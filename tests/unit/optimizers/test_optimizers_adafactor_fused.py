@@ -1,7 +1,7 @@
 """
 Unit tests for library/optimization/adafactor_fused.py.
 
-Tests the stochastic rounding function used for bfloat16 precision optimization.
+Tests the shared stochastic rounding helper as used by fused Adafactor.
 """
 
 import torch
@@ -108,6 +108,25 @@ class TestCopyStochastic:
         # Large values should be preserved approximately
         assert target[0].item() > 1e9
         assert target[1].item() < -1e9
+
+    def test_float64_source_is_downcast_before_stochastic_rounding(self):
+        """Float64 sources should be handled by downcasting to float32 first."""
+        source = torch.tensor([1.25, -2.5, 3.75], dtype=torch.float64)
+        target = torch.zeros(3, dtype=torch.bfloat16)
+
+        copy_stochastic_(target, source)
+
+        assert target.dtype == torch.bfloat16
+        assert torch.allclose(target.float(), source.float(), atol=0.05)
+
+    def test_non_float32_source_falls_back_to_direct_copy(self):
+        """Non-float32-like sources should bypass stochastic rounding and copy directly."""
+        source = torch.tensor([1.5, -0.5, 0.25], dtype=torch.float16)
+        target = torch.zeros(3, dtype=torch.bfloat16)
+
+        copy_stochastic_(target, source)
+
+        assert torch.equal(target, source.to(dtype=target.dtype))
 
 
 class TestPatchAdafactorFused:

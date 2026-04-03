@@ -23,7 +23,7 @@ class OptimizerRegistration:
     target: str | None = None
     kind: Literal["optimizer", "wrapper", "offload_wrapper"] = "optimizer"
     wrapper_style: Literal["wrap_optimizer"] | None = None
-    backend: Literal["torch", "bitsandbytes", "dadaptation", "prodigy", "transformers", "schedulefree", "repo"] | None = None
+    backend: Literal["torch", "bitsandbytes", "torchao", "dadaptation", "prodigy", "transformers", "schedulefree", "repo"] | None = None
     aliases: tuple[str, ...] = ()
     capabilities: frozenset[str] = field(default_factory=frozenset)
 
@@ -63,8 +63,88 @@ def is_wrapper_optimizer_name(name: str | None) -> bool:
 
 _OPTIMIZER_REGISTRATIONS = [
     OptimizerRegistration(name="adamw", target="torch.optim.AdamW", backend="torch"),
+    OptimizerRegistration(name="adopt", target="library.optimization.optimizers.adopt.ADOPT", backend="repo"),
+    OptimizerRegistration(
+        name="adoptemamixschedulefree",
+        target="library.optimization.optimizers.adopt_schedulefree.ADOPTEMAMixScheduleFree",
+        backend="repo",
+        capabilities=frozenset({OPT_CAP_TRAIN_EVAL_TOGGLE, OPT_CAP_NO_EXTERNAL_SCHEDULER}),
+    ),
+    OptimizerRegistration(name="adoptmars", target="library.optimization.optimizers.adopt.ADOPTMARS", backend="repo"),
+    OptimizerRegistration(
+        name="adoptmarsschedulefree",
+        target="library.optimization.optimizers.adopt_schedulefree.ADOPTMARSScheduleFree",
+        backend="repo",
+        capabilities=frozenset({OPT_CAP_TRAIN_EVAL_TOGGLE, OPT_CAP_NO_EXTERNAL_SCHEDULER}),
+    ),
+    OptimizerRegistration(
+        name="adoptnesterovschedulefree",
+        target="library.optimization.optimizers.adopt_schedulefree.ADOPTNesterovScheduleFree",
+        backend="repo",
+        capabilities=frozenset({OPT_CAP_TRAIN_EVAL_TOGGLE, OPT_CAP_NO_EXTERNAL_SCHEDULER}),
+    ),
+    OptimizerRegistration(
+        name="adoptschedulefree",
+        target="library.optimization.optimizers.adopt_schedulefree.ADOPTScheduleFree",
+        backend="repo",
+        capabilities=frozenset({OPT_CAP_TRAIN_EVAL_TOGGLE, OPT_CAP_NO_EXTERNAL_SCHEDULER}),
+        aliases=("ADOPTScheduleFree",),
+    ),
+    OptimizerRegistration(
+        name="adoptaoschedulefree",
+        target="library.optimization.optimizers.adopt_schedulefree_ao.ADOPTAOScheduleFree",
+        backend="torchao",
+        capabilities=frozenset({OPT_CAP_TRAIN_EVAL_TOGGLE, OPT_CAP_NO_EXTERNAL_SCHEDULER}),
+        aliases=("ADOPTAOScheduleFree",),
+    ),
+    OptimizerRegistration(
+        name="fadoptemamixschedulefree",
+        target="library.optimization.optimizers.adopt_schedulefree.FADOPTEMAMixScheduleFree",
+        backend="repo",
+        capabilities=frozenset({OPT_CAP_TRAIN_EVAL_TOGGLE, OPT_CAP_NO_EXTERNAL_SCHEDULER}),
+    ),
+    OptimizerRegistration(
+        name="fadoptmarsschedulefree",
+        target="library.optimization.optimizers.adopt_schedulefree.FADOPTMARSScheduleFree",
+        backend="repo",
+        capabilities=frozenset({OPT_CAP_TRAIN_EVAL_TOGGLE, OPT_CAP_NO_EXTERNAL_SCHEDULER}),
+    ),
+    OptimizerRegistration(
+        name="fadoptnesterovschedulefree",
+        target="library.optimization.optimizers.adopt_schedulefree.FADOPTNesterovScheduleFree",
+        backend="repo",
+        capabilities=frozenset({OPT_CAP_TRAIN_EVAL_TOGGLE, OPT_CAP_NO_EXTERNAL_SCHEDULER}),
+    ),
+    OptimizerRegistration(
+        name="fadoptschedulefree",
+        target="library.optimization.optimizers.adopt_schedulefree.FADOPTScheduleFree",
+        backend="repo",
+        capabilities=frozenset({OPT_CAP_TRAIN_EVAL_TOGGLE, OPT_CAP_NO_EXTERNAL_SCHEDULER}),
+    ),
+    OptimizerRegistration(name="fadoptmars", target="library.optimization.optimizers.adopt.FADOPTMARS", backend="repo"),
+    OptimizerRegistration(name="ademamix", target="library.optimization.optimizers.ademamix.AdEMAMix", backend="repo"),
     OptimizerRegistration(name="adabelief", target="library.optimization.optimizers.adabelief.AdaBelief", backend="repo"),
+    OptimizerRegistration(name="adai", target="library.optimization.optimizers.adai.Adai", backend="repo"),
     OptimizerRegistration(name="adan", target="library.optimization.optimizers.adan.Adan", backend="repo"),
+    OptimizerRegistration(name="adamw4bitao", target="library.optimization.optimizers.adamw_low_bit.AdamW4bitAO", backend="torchao"),
+    OptimizerRegistration(name="adamw8bitao", target="library.optimization.optimizers.adamw_low_bit.AdamW8bitAO", backend="torchao"),
+    OptimizerRegistration(name="alice", target="library.optimization.optimizers.alice.Alice", backend="repo"),
+    OptimizerRegistration(name="adamwfp8ao", target="library.optimization.optimizers.adamw_low_bit.AdamWfp8AO", backend="torchao"),
+    OptimizerRegistration(name="fcompass", target="library.optimization.optimizers.fcompass.FCompass", backend="repo"),
+    OptimizerRegistration(name="fcompassadopt", target="library.optimization.optimizers.fcompass.FCompassADOPT", backend="repo"),
+    OptimizerRegistration(name="fcompassadoptmars", target="library.optimization.optimizers.fcompass.FCompassADOPTMARS", backend="repo"),
+    OptimizerRegistration(name="fcompassplus", target="library.optimization.optimizers.fcompass.FCompassPlus", backend="repo"),
+    OptimizerRegistration(name="laprop", target="library.optimization.optimizers.laprop.LaProp", backend="repo"),
+    OptimizerRegistration(name="lamb", target="library.optimization.optimizers.lamb.Lamb", backend="repo"),
+    OptimizerRegistration(name="lpfadamw", target="library.optimization.optimizers.lpf_adamw.LPFAdamW", backend="repo"),
+    OptimizerRegistration(name="racs", target="library.optimization.optimizers.racs.RACS", backend="repo"),
+    OptimizerRegistration(name="rmsprop", target="library.optimization.optimizers.rmsprop.RMSProp", backend="repo"),
+    OptimizerRegistration(name="rmspropadopt", target="library.optimization.optimizers.rmsprop.RMSPropADOPT", backend="repo"),
+    OptimizerRegistration(name="rmspropadoptmars", target="library.optimization.optimizers.rmsprop.RMSPropADOPTMARS", backend="repo"),
+    OptimizerRegistration(name="sgdsai", target="library.optimization.optimizers.sgd_sai.SGDSaI", backend="repo"),
+    OptimizerRegistration(name="simplifiedademamix", target="library.optimization.optimizers.ademamix.SimplifiedAdEMAMix", backend="repo"),
+    OptimizerRegistration(name="simplifiedademamixexm", target="library.optimization.optimizers.ademamix.SimplifiedAdEMAMixExM", backend="repo"),
+    OptimizerRegistration(name="vsgd", target="library.optimization.optimizers.vsgd.VSGD", backend="repo"),
     OptimizerRegistration(
         name="adamw8bitkahan",
         target="library.optimization.optimizers.adamw_8bit_kahan.AdamW8bitKahan",
@@ -144,6 +224,18 @@ _SCHEDULER_REGISTRATIONS = [
         target="torch.optim.lr_scheduler.CosineAnnealingLR",
         kind="torch",
         aliases=("cosineannealinglr", "CosineAnnealingLR"),
+    ),
+    SchedulerRegistration(
+        name="cosineannealingwarmrestarts",
+        target="library.optimization.schedulers.warm_restarts.CosineAnnealingWarmRestarts",
+        kind="torch",
+        aliases=("CosineAnnealingWarmRestarts", "cosine_warm_restarts"),
+    ),
+    SchedulerRegistration(
+        name="rexannealingwarmrestarts",
+        target="library.optimization.schedulers.warm_restarts.RexAnnealingWarmRestarts",
+        kind="torch",
+        aliases=("RexAnnealingWarmRestarts", "rex_warm_restarts"),
     ),
     SchedulerRegistration(name="adafactor", kind="optimizer_embedded"),
 ]

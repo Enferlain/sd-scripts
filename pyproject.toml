@@ -49,6 +49,7 @@ dependencies = [
     "ruff>=0.15.1",
     "ty>=0.0.17",
     "nvidia-ml-py",
+    "torchao>=0.17.0",
 ]
 
 # Torch profiles. Pick exactly one for your machine.

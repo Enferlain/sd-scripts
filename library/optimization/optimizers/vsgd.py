@@ -1,0 +1,145 @@
+import math
+
+import torch
+
+from pytorch_optimizer.base.exception import NoSparseGradientError
+from pytorch_optimizer.base.optimizer import BaseOptimizer
+from pytorch_optimizer.base.type import Closure, Defaults, Loss, ParamGroup
+
+from library.optimization.optimizers.utils.stochastic import copy_stochastic_
+
+
+class VSGD(BaseOptimizer):
+    """Repo-owned VSGD optimizer adapted for the optimization layer."""
+
+    def __init__(
+        self,
+        params: ParamGroup,
+        lr: float = 1e-1,
+        ghattg: float = 30.0,
+        ps: float = 1e-8,
+        tau1: float = 0.81,
+        tau2: float = 0.9,
+        weight_decay: float = 0.0,
+        weight_decouple: bool = True,
+        eps: float = 1e-8,
+        maximize: bool = False,
+        stochastic_fp: bool = True,
+        **kwargs,
+    ):
+        self.validate_learning_rate(lr)
+        self.validate_non_negative(ghattg, "ghattg")
+        self.validate_non_negative(ps, "ps")
+        self.validate_non_negative(tau1, "tau1")
+        self.validate_non_negative(tau2, "tau2")
+        self.validate_non_negative(weight_decay, "weight_decay")
+        self.validate_non_negative(eps, "eps")
+
+        self.maximize = maximize
+        defaults: Defaults = {
+            "lr": lr,
+            "tau1": tau1,
+            "tau2": tau2,
+            "pa2": 2.0 * ps + 1.0 + 1e-4,
+            "pbg2": 2.0 * ps,
+            "pbhg2": 2.0 * ghattg * ps,
+            "weight_decay": weight_decay,
+            "weight_decouple": weight_decouple,
+            "eps": eps,
+            "stochastic_fp": stochastic_fp,
+        }
+        super().__init__(params, defaults)
+
+    def __str__(self) -> str:
+        return "VSGD"
+
+    def init_group(self, group, **kwargs) -> None:
+        for parameter in group["params"]:
+            if parameter.grad is None:
+                continue
+            grad = parameter.grad
+            if grad.is_sparse:
+                raise NoSparseGradientError(str(self))
+
+            state = self.state[parameter]
+            if len(state) == 0:
+                state["mug"] = torch.zeros_like(parameter)
+                state["bg"] = torch.zeros_like(parameter)
+                state["bhg"] = torch.zeros_like(parameter)
+
+    @torch.no_grad()
+    def reset(self):
+        pass
+
+    @torch.no_grad()
+    def step(self, closure: Closure = None) -> Loss:
+        loss: Loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
+
+        for group in self.param_groups:
+            if "step" not in group:
+                self.init_group(group)
+                group["step"] = 1
+            else:
+                group["step"] += 1
+
+            pa2, pbg2, pbhg2 = group["pa2"], group["pbg2"], group["pbhg2"]
+            rho1 = math.pow(group["step"], -group["tau1"])
+            rho2 = math.pow(group["step"], -group["tau2"])
+
+            for parameter in group["params"]:
+                if parameter.grad is None:
+                    continue
+
+                grad = parameter.grad
+                state = self.state[parameter]
+                parameter_fp32 = parameter
+
+                if parameter.dtype in {torch.float16, torch.bfloat16} and group["stochastic_fp"]:
+                    parameter_fp32 = parameter.to(torch.float32)
+                    grad = grad.to(torch.float32)
+
+                self.apply_weight_decay(
+                    parameter_fp32,
+                    grad=grad,
+                    lr=group["lr"],
+                    weight_decay=group["weight_decay"],
+                    weight_decouple=group["weight_decouple"],
+                    fixed_decay=False,
+                )
+
+                bg, bhg, mug = state["bg"], state["bhg"], state["mug"]
+                if parameter.dtype in {torch.float16, torch.bfloat16} and group["stochastic_fp"]:
+                    bg = bg.to(torch.float32)
+                    bhg = bhg.to(torch.float32)
+                    mug = mug.to(torch.float32)
+
+                if group["step"] == 1:
+                    sg = pbg2 / (pa2 - 1.0)
+                    shg = pbhg2 / (pa2 - 1.0)
+                else:
+                    sg = bg / pa2
+                    shg = bhg / pa2
+
+                mug_prev = mug.clone()
+                mug.mul_(shg).add_(grad * sg).div_(sg + shg)
+                sigg = (sg * shg) / (sg + shg)
+                mug_sq = mug.pow(2).add_(sigg)
+
+                bg2 = pbg2 + mug_sq - 2.0 * mug * mug_prev + mug_prev.pow(2)
+                bhg2 = pbhg2 + mug_sq - 2.0 * grad * mug + grad.pow(2)
+
+                bg.mul_(1.0 - rho1).add_(bg2, alpha=rho1)
+                bhg.mul_(1.0 - rho2).add_(bhg2, alpha=rho2)
+
+                parameter_fp32.add_(group["lr"] / mug_sq.sqrt().add_(group["eps"]) * mug, alpha=-1.0)
+
+                if parameter.dtype in {torch.float16, torch.bfloat16} and group["stochastic_fp"]:
+                    copy_stochastic_(state["bg"], bg)
+                    copy_stochastic_(state["bhg"], bhg)
+                    copy_stochastic_(state["mug"], mug)
+                    copy_stochastic_(parameter, parameter_fp32)
+
+        return loss

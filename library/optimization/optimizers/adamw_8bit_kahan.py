@@ -2,7 +2,7 @@ import bitsandbytes
 import bitsandbytes.functional as F
 import torch
 
-from library.optimization.optimizers.stochastic import copy_stochastic_
+from library.optimization.optimizers.utils.stochastic import copy_stochastic_
 
 
 class AdamW8bitKahan(bitsandbytes.optim.AdamW8bit):

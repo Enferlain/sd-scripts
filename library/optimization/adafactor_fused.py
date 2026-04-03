@@ -2,7 +2,7 @@ import math
 import torch
 
 from transformers import Adafactor
-from library.optimization.optimizers.stochastic import copy_stochastic_
+from library.optimization.optimizers.utils.stochastic import copy_stochastic_
 
 
 @torch.no_grad()

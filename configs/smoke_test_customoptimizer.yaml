@@ -82,8 +82,7 @@ optimizer:
   learning_rates:
     base: 1e-4
   scheduler:
-    lr_scheduler: "cosine"
-    lr_scheduler_type: "LoraEasyCustomOptimizer.RexAnnealingWarmRestarts.RexAnnealingWarmRestarts"
+    lr_scheduler: "RexAnnealingWarmRestarts"
     lr_scheduler_num_cycles: 3
     lr_scheduler_args:
       - "min_lr=1e-07"
