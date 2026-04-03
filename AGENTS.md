@@ -94,6 +94,9 @@ uv run ty check library/training/checkpointing.py
 
 **Note:** ty is configured to exclude legacy directories (`tools/`, `data_processing/`, `upscaling/`) and downgrade noisy rules to warnings for gradual adoption.
 
+**Environment differences:** In WSL needs to use `uv run ty check --python ./.venv-wsl/bin/python`
+
+
 ## Important Files
 
 | File                   | Purpose                                       |

@@ -6,10 +6,13 @@ Tests optimizer creation, scheduler setup, and config-based initialization.
 
 import pytest
 import torch
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from diffusers.optimization import SchedulerType as DiffusersSchedulerType
 
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.registry import (
     OPT_CAP_NO_EXTERNAL_SCHEDULER,
+    OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER,
     get_configured_optimizer_name,
     get_optimizer_registration,
     get_scheduler_registration,
@@ -19,10 +22,11 @@ from library.optimization.optimizer_utils import (
     is_wrapper_optimizer,
     parse_string_to_type,
 )
-from library.optimization.scheduler import get_dummy_scheduler
+from library.optimization.scheduler import get_dummy_scheduler, get_scheduler_fix
 from library.optimization.optimizer_factory import get_optimizer
 from library.optimization.types import ParameterGroup, materialize_parameter_groups
 from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig, LearningRatesConfig
+from library.config.dataclasses.training import TrainingConfig
 
 
 # =============================================================================
@@ -110,6 +114,33 @@ class TestGetOptimizer:
 
         assert optimizer.param_groups[0]["momentum"] == 0.9
 
+    def test_adafactor_registry_path_preserves_relative_step_behavior(self, mock_model_parameters):
+        """Registry-backed Adafactor construction should keep relative-step preprocessing behavior."""
+        config = OptimizerConfig(
+            optimizer_type="Adafactor",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=["relative_step=True"],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
+
+        assert "adafactor" in optimizer_name.lower()
+        assert optimizer.__class__.__name__ == "Adafactor"
+        assert config.learning_rates.base == 0.0
+
+    def test_fully_qualified_optimizer_keeps_fallback_path(self, mock_model_parameters):
+        """Unregistered fully-qualified optimizers should still build through the shared fallback path."""
+        config = OptimizerConfig(
+            optimizer_type="torch.optim.AdamW",
+            learning_rates=LearningRatesConfig(base=2e-4),
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
+
+        assert optimizer.__class__.__name__ == "AdamW"
+        assert optimizer.param_groups[0]["lr"] == 2e-4
+        assert optimizer_name == "torch.optim.adamw.AdamW"
+
 
 # =============================================================================
 # Optimizer Detection Tests
@@ -141,12 +172,69 @@ class TestOptimizerDetection:
         # Just verify the config preserves the value
         assert config.optimizer_schedulefree_wrapper
 
+    def test_is_wrapper_optimizer_true_for_schedulefree_wrapper_flag(self):
+        """The legacy wrapper config should now participate in wrapper detection."""
+        config = OptimizerConfig(optimizer_type="AdamW", optimizer_schedulefree_wrapper=True)
+
+        assert is_wrapper_optimizer(config)
+
+    def test_is_schedulefree_optimizer_true_for_schedulefree_wrapper_flag(self, mock_model_parameters):
+        """The legacy wrapper config should count as schedule-free for train/eval handling."""
+        pytest.importorskip("schedulefree")
+        config = OptimizerConfig(optimizer_type="AdamW", optimizer_schedulefree_wrapper=True)
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
+
+        assert is_schedulefree_optimizer(optimizer, config)
+
+    def test_optimizer_schedulefree_wrapper_wraps_base_optimizer(self, mock_model_parameters):
+        """The legacy wrapper config should create a real schedule-free wrapper around the base optimizer."""
+        pytest.importorskip("schedulefree")
+        config = OptimizerConfig(
+            optimizer_type="AdamW",
+            optimizer_schedulefree_wrapper=True,
+            schedulefree_wrapper_args=["momentum=0.95"],
+        )
+
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
+
+        assert hasattr(optimizer, "base_optimizer")
+        assert optimizer.base_optimizer.__class__.__name__ == "AdamW"
+
+    def test_scheduler_uses_base_optimizer_for_schedulefree_wrapper_flag(self, mock_model_parameters):
+        """Wrapped optimizers should still schedule their base optimizer."""
+        pytest.importorskip("schedulefree")
+        optimizer_config = OptimizerConfig(
+            optimizer_type="AdamW",
+            optimizer_schedulefree_wrapper=True,
+            schedulefree_wrapper_args=["momentum=0.95"],
+            scheduler=SchedulerConfig(lr_scheduler="constant_with_warmup", lr_warmup_steps=5),
+        )
+        training_config = TrainingConfig(max_train_steps=25)
+        _, _, optimizer = get_optimizer(
+            optimizer_config,
+            optimizer_config.learning_rates,
+            optimizer_config.scheduler,
+            mock_model_parameters,
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            optimizer,
+            num_processes=1,
+        )
+
+        assert scheduler.optimizer is optimizer.base_optimizer
+
     def test_registry_marks_schedulefree_wrapper_as_wrapper(self):
         """Built-in wrapper metadata should be registry-owned."""
         registration = get_optimizer_registration("ScheduleFreeWrapper")
 
         assert registration is not None
         assert registration.kind == "wrapper"
+        assert registration.wrapper_style == "wrap_optimizer"
+        assert registration.supports(OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER)
 
     def test_registry_marks_builtin_schedulefree_as_no_external_scheduler(self):
         """Built-in schedule-free optimizers should advertise dummy-scheduler behavior."""
@@ -167,6 +255,223 @@ class TestOptimizerDetection:
 
         assert registration is not None
         assert registration.target == "torch.optim.AdamW"
+        assert registration.backend == "torch"
+
+    def test_registry_exposes_repo_owned_optimizer_target(self):
+        """Absorbed optimizers should register through a repo-owned target and backend."""
+        registration = get_optimizer_registration("AdaBelief")
+
+        assert registration is not None
+        assert registration.target == "library.optimization.optimizers.adabelief.AdaBelief"
+        assert registration.backend == "repo"
+
+    def test_registry_exposes_second_repo_owned_optimizer_target(self):
+        """Additional absorbed optimizers should reuse the same repo-owned registration shape."""
+        registration = get_optimizer_registration("Adan")
+
+        assert registration is not None
+        assert registration.target == "library.optimization.optimizers.adan.Adan"
+        assert registration.backend == "repo"
+
+    def test_registry_exposes_bitsandbytes_backed_repo_optimizer_target(self):
+        """Optimizer augmentations can still be repo-owned while declaring a bitsandbytes dependency."""
+        registration = get_optimizer_registration("AdamW8bitKahan")
+
+        assert registration is not None
+        assert registration.target == "library.optimization.optimizers.adamw_8bit_kahan.AdamW8bitKahan"
+        assert registration.backend == "bitsandbytes"
+
+    def test_registry_exposes_adafactor_backend(self):
+        """Adafactor should be modeled as a transformers-backed built-in registration."""
+        registration = get_optimizer_registration("Adafactor")
+
+        assert registration is not None
+        assert registration.target == "transformers.optimization.Adafactor"
+        assert registration.backend == "transformers"
+
+    def test_registered_schedulefree_wrapper_builds_from_base_optimizer(self, mock_model_parameters):
+        """Explicit wrapper optimizers should build their base optimizer through the shared wrapper path."""
+        pytest.importorskip("schedulefree")
+        config = OptimizerConfig(
+            optimizer_type="ScheduleFreeWrapper",
+            learning_rates=LearningRatesConfig(base=3e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW",
+                "base_optimizer.weight_decay=0.01",
+                "momentum=0.95",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        assert "ScheduleFreeWrapper" in optimizer_name
+        assert hasattr(optimizer, "base_optimizer")
+        assert optimizer.base_optimizer.__class__.__name__ == "AdamW"
+        assert optimizer.base_optimizer.param_groups[0]["weight_decay"] == 0.01
+
+    def test_registered_schedulefree_wrapper_schedules_base_optimizer(self, mock_model_parameters):
+        """Registered wrappers should route schedulers onto their base optimizer when declared."""
+        pytest.importorskip("schedulefree")
+        optimizer_config = OptimizerConfig(
+            optimizer_type="ScheduleFreeWrapper",
+            learning_rates=LearningRatesConfig(base=3e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW",
+                "base_optimizer.weight_decay=0.01",
+                "momentum=0.95",
+            ],
+            scheduler=SchedulerConfig(lr_scheduler="constant_with_warmup", lr_warmup_steps=5),
+        )
+        training_config = TrainingConfig(max_train_steps=25)
+        _, _, optimizer = get_optimizer(
+            optimizer_config,
+            optimizer_config.learning_rates,
+            optimizer_config.scheduler,
+            mock_model_parameters,
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            optimizer,
+            num_processes=1,
+        )
+
+        assert scheduler.optimizer is optimizer.base_optimizer
+
+    def test_registered_snoo_asgd_builds_from_base_optimizer(self, mock_model_parameters):
+        """Repo-owned wrappers should be able to wrap a base optimizer with namespaced base args."""
+        config = OptimizerConfig(
+            optimizer_type="snoo_asgd",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW",
+                "base_optimizer.weight_decay=0.02",
+                "alpha=0.5",
+                "t0=0",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        assert "SNOOASGD" in optimizer_name
+        assert optimizer.base_optimizer.__class__.__name__ == "AdamW"
+        assert optimizer.base_optimizer.param_groups[0]["weight_decay"] == 0.02
+        assert optimizer.alpha == 0.5
+
+    def test_registered_snoo_asgd_schedules_base_optimizer(self, mock_model_parameters):
+        """Wrapper registrations should drive scheduler-on-base-optimizer routing generically."""
+        optimizer_config = OptimizerConfig(
+            optimizer_type="snoo_asgd",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW",
+                "base_optimizer.weight_decay=0.02",
+                "alpha=0.5",
+                "t0=0",
+            ],
+            scheduler=SchedulerConfig(lr_scheduler="constant_with_warmup", lr_warmup_steps=5),
+        )
+        training_config = TrainingConfig(max_train_steps=25)
+        _, _, optimizer = get_optimizer(
+            optimizer_config,
+            optimizer_config.learning_rates,
+            optimizer_config.scheduler,
+            mock_model_parameters,
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            optimizer,
+            num_processes=1,
+        )
+
+        assert scheduler.optimizer is optimizer.base_optimizer
+
+    def test_registered_adabelief_builds_repo_owned_optimizer(self, mock_model_parameters):
+        """The first absorbed plain optimizer should construct through the shared registry path."""
+        config = OptimizerConfig(
+            optimizer_type="AdaBelief",
+            learning_rates=LearningRatesConfig(base=2e-4),
+            optimizer_args=[
+                "weight_decay=0.02",
+                "rectify=True",
+                "cautious=True",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        assert "AdaBelief" in optimizer_name
+        assert optimizer.param_groups[0]["weight_decay"] == 0.02
+        assert optimizer.param_groups[0]["rectify"] is True
+        assert optimizer.param_groups[0]["cautious"] is True
+
+    def test_registered_adan_builds_repo_owned_optimizer(self, mock_model_parameters):
+        """Repo-owned optimizer absorption should also handle the richer Adan option surface."""
+        config = OptimizerConfig(
+            optimizer_type="Adan",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "max_grad_norm=0.5",
+                "use_gc=True",
+                "update_strategy='grams'",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        assert "Adan" in optimizer_name
+        assert optimizer.param_groups[0]["weight_decay"] == 0.01
+        assert optimizer.param_groups[0]["max_grad_norm"] == 0.5
+        assert optimizer.use_gc is True
+        assert optimizer.param_groups[0]["update_strategy"] == "grams"
+
+    def test_registered_adamw8bitkahan_builds_repo_owned_augmentation(self, mock_model_parameters):
+        """Optimizer augmentations should construct through the same shared registry path."""
+        pytest.importorskip("bitsandbytes")
+        config = OptimizerConfig(
+            optimizer_type="AdamW8bitKahan",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "stabilize=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        assert "AdamW8bitKahan" in optimizer_name
+        assert optimizer.stabilize is False
 
 
 # =============================================================================
@@ -178,6 +483,29 @@ class TestOptimizerDetection:
 @pytest.mark.unit
 class TestScheduler:
     """Test scheduler-related functions."""
+
+    @staticmethod
+    def _build_optimizer_and_training_config(
+        mock_model_parameters,
+        *,
+        optimizer_type: str = "AdamW",
+        learning_rate: float = 1e-4,
+        scheduler_config: SchedulerConfig | None = None,
+        max_train_steps: int = 25,
+    ):
+        optimizer_config = OptimizerConfig(
+            optimizer_type=optimizer_type,
+            learning_rates=LearningRatesConfig(base=learning_rate),
+            scheduler=scheduler_config or SchedulerConfig(),
+        )
+        _, _, optimizer = get_optimizer(
+            optimizer_config,
+            optimizer_config.learning_rates,
+            optimizer_config.scheduler,
+            mock_model_parameters,
+        )
+        training_config = TrainingConfig(max_train_steps=max_train_steps)
+        return optimizer_config, training_config, optimizer
 
     def test_get_dummy_scheduler(self, mock_model_parameters):
         """Test dummy scheduler creation."""
@@ -219,6 +547,92 @@ class TestScheduler:
 
         assert registration is not None
         assert registration.name == "cosineannealinglr"
+
+    def test_scheduler_registry_exposes_builtin_target(self):
+        """Migrated built-in schedulers should carry registry target metadata."""
+        registration = get_scheduler_registration("CosineAnnealingLR")
+
+        assert registration is not None
+        assert registration.target == "torch.optim.lr_scheduler.CosineAnnealingLR"
+        assert registration.kind == "torch"
+
+    def test_cosineannealinglr_constructs_through_registry(self, mock_model_parameters):
+        """CosineAnnealingLR should construct cleanly through the registry-backed path."""
+        optimizer_config, training_config, optimizer = self._build_optimizer_and_training_config(
+            mock_model_parameters,
+            scheduler_config=SchedulerConfig(lr_scheduler="CosineAnnealingLR", lr_scheduler_args=["min_lr=1e-6"]),
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            optimizer,
+            num_processes=2,
+        )
+
+        assert isinstance(scheduler, CosineAnnealingLR)
+        assert scheduler.T_max == 50
+
+    def test_constant_with_warmup_constructs_through_registry(self, mock_model_parameters):
+        """Registered transformers schedulers should build through the shared dispatch path."""
+        optimizer_config, training_config, optimizer = self._build_optimizer_and_training_config(
+            mock_model_parameters,
+            scheduler_config=SchedulerConfig(lr_scheduler="constant_with_warmup", lr_warmup_steps=5),
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            optimizer,
+            num_processes=1,
+        )
+
+        assert scheduler.optimizer is optimizer
+        assert scheduler.__class__.__name__ == "LambdaLR"
+
+    def test_piecewise_constant_constructs_through_registry(self, mock_model_parameters):
+        """Registered diffusers schedulers should build through the shared dispatch path."""
+        optimizer_config, training_config, optimizer = self._build_optimizer_and_training_config(
+            mock_model_parameters,
+            scheduler_config=SchedulerConfig(
+                lr_scheduler=DiffusersSchedulerType.PIECEWISE_CONSTANT.value,
+                lr_scheduler_args=["step_rules='1:10,0.1:20,0.01'"],
+            ),
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            optimizer,
+            num_processes=1,
+        )
+
+        assert scheduler.optimizer is optimizer
+        assert scheduler.__class__.__name__ == "LambdaLR"
+
+    def test_custom_scheduler_type_keeps_one_entrypoint(self, mock_model_parameters):
+        """Custom scheduler classes should still route through the shared scheduler entrypoint."""
+        optimizer_config, training_config, optimizer = self._build_optimizer_and_training_config(
+            mock_model_parameters,
+            scheduler_config=SchedulerConfig(
+                lr_scheduler="constant",
+                lr_scheduler_type="torch.optim.lr_scheduler.StepLR",
+                lr_scheduler_args=["step_size=5", "gamma=0.1"],
+            ),
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            optimizer,
+            num_processes=1,
+        )
+
+        assert scheduler.__class__.__name__ == "StepLR"
 
 
 # =============================================================================

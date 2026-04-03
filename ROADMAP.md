@@ -227,6 +227,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now and the repo has an initial SDXL PEFT preset/example, but the feature still needs real docs and clearer guidance on when to use it.
 - [ ] **Conditioning architecture follow-up** — Pressure-test the new `ConditioningStrategy` seam against more model families and decide whether any sub-conventions under `resolve_conditioning(...)` are mature enough to standardize.
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
+- [ ] **Regularization-image UX / docs note** — The current DreamBooth-style `reg_data_dir` / `is_reg` path is mechanically correct, but it only helps when those images are genuine class/prior images with matching generic captions or `class_tokens`, not just arbitrary extra images. Make sure future docs/examples call that out explicitly.
 - [ ] **Dashboard / logging system rework** — Fold the live plotter into a broader dashboard/logging system instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **LyCORIS vendor / integration pass** — Treat LyCORIS as a vendor/integration ownership question rather than an external dependency question, since adapter breakdown follow-up depends on tighter ownership and easier modification.
@@ -258,7 +259,7 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [ ] **Investigate 2022-2023 backend code**
   - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line.
 
-- [ ] Model download/load for training from huggingface
+- [ ] Model download/load to memory for training from huggingface
 
 - [ ] Selective activation checkpointing
 

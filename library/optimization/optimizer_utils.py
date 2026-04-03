@@ -1,5 +1,4 @@
 import ast
-import importlib
 import inspect
 import logging
 import types
@@ -12,16 +11,34 @@ from library.config.dataclasses.optimizer import OptimizerConfig, LearningRatesC
 from library.config.dataclasses.peft import PeftConfig
 from library.constants import int_pattern, float_pattern
 from library.optimization.arguments import parse_key_value_args
+from library.optimization.loading import load_target
 from library.optimization.optimizer_factory import get_optimizer
 from library.optimization.registry import (
     OPT_CAP_TRAIN_EVAL_TOGGLE,
     get_configured_optimizer_name,
     get_optimizer_registration,
+    is_schedulefree_optimizer_name,
+    is_wrapper_optimizer_name,
 )
 from library.optimization.types import materialize_parameter_groups
 
 
 logger = logging.getLogger(__name__)
+
+
+DEFAULT_ORTHOGRAD_TARGETS = [
+    "lora_down.weight",
+    "lora_up.weight",
+    "lora_down1.weight",
+    "lora_up1.weight",
+    "lora_down2.weight",
+    "lora_up2.weight",
+    "a1.weight",
+    "a2.weight",
+    "b1.weight",
+    "b2.weight",
+    "c1.weight",
+]
 
 
 # =============================================================================
@@ -83,6 +100,92 @@ def get_text_encoders_train_flags(learning_rates: LearningRatesConfig, text_enco
     return te_flags[:num_text_encoders]
 
 
+def _resolve_orthograd_targets(adapter_config: PeftConfig):
+    if isinstance(adapter_config.orthograd_targets, str):
+        return ast.literal_eval(adapter_config.orthograd_targets)
+    return DEFAULT_ORTHOGRAD_TARGETS
+
+
+def _load_optimizer_class_for_signature(optimizer_config: OptimizerConfig, optimizer_kwargs: dict):
+    case_sensitive_optimizer_type = optimizer_config.optimizer_type
+
+    try:
+        if is_wrapper_optimizer_name(optimizer_config.optimizer_type):
+            case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
+            if case_sensitive_full_base_optimizer_name is None:
+                raise ValueError("base_optimizer_type is required in optimizer_args for ScheduleFreeWrapper/snoo_asgd optimizers")
+            return load_target(case_sensitive_full_base_optimizer_name)
+
+        if "." not in case_sensitive_optimizer_type:
+            return getattr(torch.optim, case_sensitive_optimizer_type)
+
+        return load_target(case_sensitive_optimizer_type)
+    except Exception as e:
+        logger.warning(f"Encountered an error while trying to determine default orthograd from optimizer init signature. {e}")
+        return None
+
+
+def _resolve_apply_orthograd(optimizer_config: OptimizerConfig, optimizer_kwargs: dict) -> bool:
+    optimizer_class = _load_optimizer_class_for_signature(optimizer_config, optimizer_kwargs)
+    optimizer_init_sig_parameters = {}
+
+    if optimizer_class is not None:
+        sig = inspect.signature(optimizer_class.__init__)
+        optimizer_init_sig_parameters = sig.parameters
+
+    return any(
+        optimizer_kwargs.get(key, getattr(optimizer_init_sig_parameters.get(key, types.SimpleNamespace()), "default", False)) is True
+        for key in ["use_orthograd", "orthograd"]
+    )
+
+
+def _resolve_text_encoder_lr(raw_te_lr, *, keep_list: bool):
+    if raw_te_lr is None or isinstance(raw_te_lr, (float, int)):
+        return raw_te_lr
+    if keep_list:
+        return raw_te_lr
+    return raw_te_lr[0] if len(raw_te_lr) > 0 else None
+
+
+def _unpack_optimizer_results(results):
+    if type(results) is tuple:
+        return results
+    return results, None
+
+
+def _prepare_adapter_optimizer_params(adapter, learning_rates: LearningRatesConfig, apply_orthograd: bool, orthograd_targets):
+    support_multiple_lrs = hasattr(adapter, "prepare_optimizer_params_with_multiple_te_lrs")
+
+    try:
+        if support_multiple_lrs:
+            text_encoder_lr = _resolve_text_encoder_lr(learning_rates.text_encoders, keep_list=True)
+            results = adapter.prepare_optimizer_params_with_multiple_te_lrs(
+                text_encoder_lr=text_encoder_lr,
+                unet_lr=learning_rates.denoiser,
+                learning_rate=learning_rates.base,
+                apply_orthograd=apply_orthograd,
+                orthograd_targets=orthograd_targets,
+            )
+            return _unpack_optimizer_results(results)
+
+        results = adapter.prepare_optimizer_params(
+            learning_rates=learning_rates,
+            apply_orthograd=apply_orthograd,
+            orthograd_targets=orthograd_targets,
+        )
+        return _unpack_optimizer_results(results)
+    except TypeError:
+        text_encoder_lr = _resolve_text_encoder_lr(learning_rates.text_encoders, keep_list=False)
+        results = adapter.prepare_optimizer_params(
+            text_encoder_lr=text_encoder_lr,
+            unet_lr=learning_rates.denoiser,
+            learning_rate=learning_rates.base,
+            apply_orthograd=apply_orthograd,
+            orthograd_targets=orthograd_targets,
+        )
+        return _unpack_optimizer_results(results)
+
+
 def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: LearningRatesConfig, adapter_config: PeftConfig, adapter):
     """
     Prepares the optimizer for training, including handling adapter-specific logic and learning rate setup.
@@ -97,111 +200,15 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
         tuple: A tuple containing the optimizer name, optimizer arguments string, optimizer instance,
                train function, eval function, and learning rate descriptions.
     """
-    if isinstance(adapter_config.orthograd_targets, str):
-        orthograd_targets = ast.literal_eval(adapter_config.orthograd_targets)
-    else:
-        orthograd_targets = [
-            "lora_down.weight",
-            "lora_up.weight",
-            "lora_down1.weight",
-            "lora_up1.weight",
-            "lora_down2.weight",
-            "lora_up2.weight",
-            "a1.weight",
-            "a2.weight",
-            "b1.weight",
-            "b2.weight",
-            "c1.weight",
-        ]
-
+    orthograd_targets = _resolve_orthograd_targets(adapter_config)
     optimizer_kwargs = parse_key_value_args(optimizer_config.optimizer_args)
-
-    try:
-        # Check optimizer defaults
-        case_sensitive_optimizer_type = optimizer_config.optimizer_type  # not lower
-
-        if "." not in case_sensitive_optimizer_type:  # from torch.optim
-            optimizer_module = torch.optim
-        else:  # from other library
-            values = case_sensitive_optimizer_type.split(".")
-            optimizer_module = importlib.import_module(".".join(values[:-1]))
-            case_sensitive_optimizer_type = values[-1]
-
-        # Need to handle base optimizer
-        if case_sensitive_optimizer_type.lower() == "schedulefreewrapper" or optimizer_config.optimizer_type.lower().endswith(
-            "snoo_asgd".lower()
-        ):
-            case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
-            if case_sensitive_full_base_optimizer_name is None:
-                raise ValueError("base_optimizer_type is required in optimizer_args for ScheduleFreeWrapper/snoo_asgd optimizers")
-            base_optimizer_values = case_sensitive_full_base_optimizer_name.split(".")  # Not None - line 116 raises if None
-            base_optimizer_module = importlib.import_module(".".join(base_optimizer_values[:-1]))
-            case_sensitive_base_optimizer_type = base_optimizer_values[-1]
-            optimizer_class = getattr(base_optimizer_module, case_sensitive_base_optimizer_type)
-        else:
-            optimizer_class = getattr(optimizer_module, case_sensitive_optimizer_type)
-
-        sig = inspect.signature(optimizer_class.__init__)
-
-        optimizer_init_sig_parameters = sig.parameters
-    except Exception as e:
-        logger.warning(f"Encountered an error while trying to determine default orthograd from optimizer init signature. {e}")
-        optimizer_init_sig_parameters = {}
-
-    apply_orthograd = any(
-        optimizer_kwargs.get(key, getattr(optimizer_init_sig_parameters.get(key, types.SimpleNamespace()), "default", False)) is True
-        for key in ["use_orthograd", "orthograd"]
+    apply_orthograd = _resolve_apply_orthograd(optimizer_config, optimizer_kwargs)
+    trainable_params, lr_descriptions = _prepare_adapter_optimizer_params(
+        adapter,
+        learning_rates,
+        apply_orthograd,
+        orthograd_targets,
     )
-
-    # learning_rates is now passed explicitly as a parameter
-
-    # Check if peft supports multiple text encoder learning rates
-    support_multiple_lrs = hasattr(adapter, "prepare_optimizer_params_with_multiple_te_lrs")
-
-    try:
-        if support_multiple_lrs:
-            # only flux atm via Kohya's - still uses old signature for now
-            raw_te_lr = learning_rates.text_encoders
-            if raw_te_lr is None or isinstance(raw_te_lr, (float, int)):
-                text_encoder_lr = raw_te_lr
-            else:
-                text_encoder_lr = raw_te_lr  # Keep as list
-            results = adapter.prepare_optimizer_params_with_multiple_te_lrs(
-                text_encoder_lr=text_encoder_lr,
-                unet_lr=learning_rates.denoiser,
-                learning_rate=learning_rates.base,
-                apply_orthograd=apply_orthograd,
-                orthograd_targets=orthograd_targets,
-            )
-        else:
-            # New signature: pass LearningRatesConfig directly
-            results = adapter.prepare_optimizer_params(
-                learning_rates=learning_rates, apply_orthograd=apply_orthograd, orthograd_targets=orthograd_targets
-            )
-        if type(results) is tuple:
-            trainable_params, lr_descriptions = results
-        else:
-            trainable_params = results
-            lr_descriptions = None
-    except TypeError:
-        # Fallback for adapters that don't yet support new signature (e.g., LyCORIS)
-        raw_te_lr = learning_rates.text_encoders
-        if raw_te_lr is None or isinstance(raw_te_lr, (float, int)):
-            text_encoder_lr = raw_te_lr
-        else:
-            text_encoder_lr = raw_te_lr[0] if len(raw_te_lr) > 0 else None
-        results = adapter.prepare_optimizer_params(
-            text_encoder_lr=text_encoder_lr,
-            unet_lr=learning_rates.denoiser,
-            learning_rate=learning_rates.base,
-            apply_orthograd=apply_orthograd,
-            orthograd_targets=orthograd_targets,
-        )
-        if type(results) is tuple:
-            trainable_params, lr_descriptions = results
-        else:
-            trainable_params = results
-            lr_descriptions = None
 
     optimizer_name, optimizer_args, optimizer = get_optimizer(
         optimizer_config,
@@ -253,10 +260,9 @@ def is_schedulefree_optimizer(optimizer: Optimizer, optimizer_config: OptimizerC
     optimizer_name = get_configured_optimizer_name(optimizer_config)
     registration = get_optimizer_registration(optimizer_name)
     if registration is not None:
-        return registration.supports(OPT_CAP_TRAIN_EVAL_TOGGLE)
+        return registration.supports(OPT_CAP_TRAIN_EVAL_TOGGLE) or optimizer_config.optimizer_schedulefree_wrapper
 
-    optimizer_name = optimizer_name.lower()
-    return optimizer_name.endswith("schedulefree".lower()) or optimizer_name.endswith("schedulefreewrapper".lower())
+    return optimizer_config.optimizer_schedulefree_wrapper or is_schedulefree_optimizer_name(optimizer_name) or is_wrapper_optimizer_name(optimizer_name)
 
 
 def is_wrapper_optimizer(optimizer_config: OptimizerConfig) -> bool:
@@ -272,10 +278,9 @@ def is_wrapper_optimizer(optimizer_config: OptimizerConfig) -> bool:
     optimizer_name = get_configured_optimizer_name(optimizer_config)
     registration = get_optimizer_registration(optimizer_name)
     if registration is not None:
-        return registration.kind == "wrapper"
+        return registration.kind == "wrapper" or optimizer_config.optimizer_schedulefree_wrapper
 
-    optimizer_name = optimizer_name.lower()
-    return optimizer_name.endswith("schedulefreewrapper".lower()) or optimizer_name.endswith("snoo_asgd".lower())
+    return optimizer_config.optimizer_schedulefree_wrapper or is_wrapper_optimizer_name(optimizer_name)
 
 
 def parse_string_to_type(s):

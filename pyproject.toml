@@ -251,7 +251,7 @@ directory = "htmlcov"
 # ty - Type Checking
 # =============================================================================
 [tool.ty.environment]
-python-version = "3.11"
+python-version = "3.13"
 python = "./.venv"
 
 [tool.ty.src]
