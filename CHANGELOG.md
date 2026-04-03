@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Rules:
+- Use proper sub titles "Added", "Changed", "Removed" and "Fixed"
+- Keep proper track of days for where entries should go
+- Be concise but mention all changes without necessarily detailing each one
+
+## [2026-04-03]
+
+### Added
+
+- **Repo-owned scheduler absorption now has a first real implementation slice** — Standalone scheduler classes no longer need to stay trapped behind `lr_scheduler_type` custom-import paths.
+  - Added `library/optimization/schedulers/` with repo-owned `CosineAnnealingWarmRestarts` and `RexAnnealingWarmRestarts` implementations adapted from the vendor schedulers.
+  - Updated `library/optimization/registry.py` so both warm-restart schedulers are modeled as registry-backed torch-style scheduler targets.
+  - Updated `configs/smoke_test_customoptimizer.yaml` so the custom-optimizer smoke config now uses the repo-facing `RexAnnealingWarmRestarts` scheduler name directly instead of a vendor `lr_scheduler_type` path.
+  - Added focused regression coverage for the new scheduler registrations and shared construction paths.
+- **The shared registration path now hosts more than one shape of absorbed plain optimizer cleanly** — Adding repo-owned plain optimizers still does not require new factory special cases.
+  - Added `library/optimization/optimizers/laprop.py` with a repo-owned `LaProp` implementation adapted from the vendor source.
+  - Added `library/optimization/optimizers/adopt.py` with a repo-owned `ADOPT` implementation adapted from the vendor source.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both optimizers participate in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for both registrations and both shared construction paths.
+- **The optimization layer now hosts a repo-owned schedule-free leaf optimizer too** — Schedule-free support is no longer limited to third-party leaves and wrapper integrations.
+  - Added `library/optimization/optimizers/adopt_schedulefree.py` with a repo-owned `ADOPTScheduleFree` implementation adapted from the vendor source.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `ADOPTScheduleFree` is modeled as a repo-owned schedule-free leaf with train/eval-toggle and no-external-scheduler capabilities.
+  - Added focused regression coverage for the new registration metadata, shared construction path, train/eval handling, and dummy-scheduler routing.
+- **The repo-owned schedule-free leaf surface now covers the rest of the non-AO ADOPT/FADOPT family too** — The big donor `schedulefree.py` file is no longer represented by a single absorbed leaf plus several forgotten siblings.
+  - Expanded `library/optimization/optimizers/adopt_schedulefree.py` to absorb `ADOPTEMAMixScheduleFree`, `ADOPTNesterovScheduleFree`, `ADOPTMARSScheduleFree`, `FADOPTScheduleFree`, `FADOPTEMAMixScheduleFree`, `FADOPTNesterovScheduleFree`, and `FADOPTMARSScheduleFree`.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so the full non-AO schedule-free ADOPT/FADOPT family participates in the shared repo-owned registration path with train/eval-toggle and no-external-scheduler capabilities.
+  - Expanded absorbed-integration coverage so the new schedule-free leaves construct through the shared factory path and continue to use the dummy-scheduler route consistently.
+- **The AO schedule-free ADOPT leaf now has its own low-bit-specific home too** — The remaining low-bit schedule-free variant no longer has to share a file with the non-AO family or stay lost in the donor module.
+  - Added `library/optimization/optimizers/adopt_schedulefree_ao.py` with a repo-facing `ADOPTAOScheduleFree` implementation separated from the non-AO schedule-free family.
+  - Added small repo-owned helper seams needed by the AO path under `library/optimization/optimizers/utils/`, including `CLIP_TYPE` / `STATE_PRECISION`, beta warmup scheduling, spam clipping helpers, cosine-decay helpers, stable-spam tensor helpers, and a compiled paper-OrthoGrad wrapper.
+  - Updated `library/optimization/optimizers/__init__.py`, `library/optimization/registry.py`, and the absorbed optimizer tests so `ADOPTAOScheduleFree` participates in the shared registry path with TorchAO-backed capability modeling and the same dummy-scheduler schedule-free behavior.
+- **The absorbed plain-optimizer surface is still scaling cleanly without new factory branches** — The repo-owned optimizer path can now host more varied non-Adam-family optimizers too.
+  - Added `library/optimization/optimizers/lpf_adamw.py` with a repo-owned `LPFAdamW` implementation adapted from the vendor source.
+  - Added `library/optimization/optimizers/sgd_sai.py` with a repo-owned `SGDSaI` implementation adapted from the vendor source.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both optimizers participate in the shared repo-owned registration path.
+  - Added focused regression coverage for both new registrations and both shared construction paths.
+- **The repo-owned adaptive-optimizer set continues to grow without changing the factory shape** — The next absorbed pair still fit the existing registration model with only light repo-owned adaptation.
+  - Added `library/optimization/optimizers/adai.py` with a repo-owned `Adai` implementation adapted from the vendor source.
+  - Added `library/optimization/optimizers/vsgd.py` with a repo-owned `VSGD` implementation adapted from the vendor source, including an explicit `stochastic_fp` default on the repo-owned path.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both optimizers participate in the shared repo-owned registration path.
+  - Added focused regression coverage for both new registrations and both shared construction paths.
+- **The absorbed plain-optimizer set now includes the first row/column-scaled SGD variant too** — The shared registration path can host small donor helper adaptations without growing a new utility dependency pile.
+  - Added `library/optimization/optimizers/racs.py` with a repo-owned `RACS` implementation adapted from the vendor source.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `RACS` participates in the shared repo-owned registration path.
+  - Added focused regression coverage for the new registration metadata and shared construction path.
+- **Shared optimizer helpers and absorbed test coverage now have clearer homes** — The optimization package and its tests should stay easier to grow from here instead of accumulating more root-level helpers and one giant optimizer test file.
+  - Moved shared optimizer-helper modules under `library/optimization/optimizers/utils/`, including the shared stochastic-rounding helper and the reusable math helpers.
+  - Updated the absorbed optimizer implementations plus `library/optimization/adafactor_fused.py` to import from the new `optimizers/utils/` package.
+  - Split absorbed optimizer and scheduler registration/construction coverage into `tests/unit/optimizers/test_registry.py` and `tests/unit/optimizers/test_absorbed_integrations.py`.
+  - Kept `tests/unit/training/test_training_optimizer.py` focused on shared optimizer/scheduler orchestration, compatibility flags, and config-driven behavior instead of growing it with every absorbed implementation.
+- **The absorbed plain-optimizer surface now covers additional large-batch and subspace-style variants too** — The current registration path can keep scaling to richer optimizer behaviors without forcing new factory branches.
+  - Added `library/optimization/optimizers/alice.py` with a repo-owned `Alice` implementation adapted from the vendor source.
+  - Added `library/optimization/optimizers/lamb.py` with a repo-owned `Lamb` implementation adapted from the vendor source.
+  - Added `library/optimization/optimizers/utils/norms.py` with a repo-owned global-gradient-norm helper and updated `Adan` to reuse it instead of importing from `pytorch_optimizer` internals.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both optimizers participate in the shared repo-owned registration path.
+  - Added absorbed-registry and shared-construction coverage for both optimizers under `tests/unit/optimizers/`.
+- **The `adopt.py` family is now absorbed as a whole instead of leaving sibling variants behind** — The repo-owned optimization layer can now host the MARS-corrected ADOPT variants without splitting them into a separate donor-driven utility pile.
+  - Extended `library/optimization/optimizers/adopt.py` with repo-owned `ADOPTMARS` and `FADOPTMARS` implementations adapted from the vendor source, keeping the whole family together with `ADOPT`.
+  - Added `library/optimization/optimizers/utils/clipping.py` with shared `agc(...)`, `adaptive_eps(...)`, and `NORM_TYPE` helpers for optimizer families that need clipping/adaptive-epsilon behavior.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both new ADOPT-family variants participate in the shared repo-owned registration path.
+  - Added absorbed-registry and shared-construction coverage for both new variants under `tests/unit/optimizers/`.
+
+### Changed
+
+- **The TorchAO AdamW low-bit family is now absorbed as a real repo-owned optimizer family** — The optimization layer no longer needs `lr_scheduler_type`-style custom imports or donor package wiring to expose the AO AdamW variants we want to keep.
+  - Added `library/optimization/optimizers/adamw_low_bit.py` with `AdamW8bitAO`, `AdamW4bitAO`, and `AdamWfp8AO` as the absorbed low-bit AdamW family built on top of the installed `torchao.optim.adam` classes.
+  - Registered the AO family in `library/optimization/registry.py` with an explicit `torchao` backend, and taught the shared optimizer factory to surface missing-TorchAO imports through the same backend-aware error path as the other optional optimizer stacks.
+  - Added focused registry and construction coverage so the AO family is exercised through the shared optimization-layer entrypoints rather than only existing as copied implementation files.
+- **The `rmsprop.py` family is now absorbed as a whole too** — The repo-owned optimization layer can now host the base RMSProp variant plus its ADOPT-style siblings without falling back to donor utility imports.
+  - Added `library/optimization/optimizers/rmsprop.py` with repo-owned `RMSProp`, `RMSPropADOPT`, and `RMSPropADOPTMARS` implementations adapted from the vendor family file.
+  - Added `library/optimization/optimizers/utils/second_moment.py` with the shared factored-second-moment helpers used by the RMSProp family and future adaptive optimizers that want the same storage/reconstruction behavior.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so all three RMSProp-family variants participate in the shared repo-owned registration path.
+  - Added focused absorbed-registry and shared-construction coverage for the full RMSProp family under `tests/unit/optimizers/`.
+- **The `ademamix.py` family is now absorbed behind repo-owned helper seams instead of donor utility imports** — The repo-owned optimization layer can now host the AdEMAMix family without inheriting the vendor package’s giant mixed utility module.
+  - Added `library/optimization/optimizers/ademamix.py` with repo-owned `AdEMAMix`, `SimplifiedAdEMAMix`, and `SimplifiedAdEMAMixExM` implementations adapted from the vendor family file.
+  - Added repo-owned helper modules for shared AdEMAMix-family needs: `utils/types.py` for update-strategy typing, `utils/orthograd.py` for Newton-Schulz / orthograd helpers, `utils/stable_spam.py` for Stable-SPAM clipping, and `utils/update.py` for reusable update post-processing.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so the full AdEMAMix family participates in the shared repo-owned registration path.
+  - Added focused absorbed-registry and shared-construction coverage for the AdEMAMix family under `tests/unit/optimizers/`.
+- **The `fcompass.py` family now lives on the repo-owned optimization path too** — The Fisher/Compass variants no longer need to stay in the vendor tree to participate in the shared optimizer registry.
+  - Added `library/optimization/optimizers/fcompass.py` with repo-owned `FCompass`, `FCompassADOPT`, `FCompassADOPTMARS`, and `FCompassPlus` implementations adapted from the donor family file.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so the full FCompass family participates in the shared repo-owned registration path.
+  - Added focused absorbed-registry and shared-construction coverage for the FCompass family under `tests/unit/optimizers/`.
+
 ## [2026-04-02]
 
 ### Changed
@@ -61,58 +144,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `library/optimization/optimizers/adamw_8bit_kahan.py` with a repo-owned `AdamW8bitKahan` implementation adapted from the vendor source.
   - Updated `library/optimization/registry.py` so `AdamW8bitKahan` is modeled as a repo-owned optimizer target with a `bitsandbytes` backend dependency instead of living only as a future note.
   - Added focused regression coverage for the new registration metadata and the shared construction path for `AdamW8bitKahan`.
-- **Repo-owned scheduler absorption now has a first real implementation slice** — Standalone scheduler classes no longer need to stay trapped behind `lr_scheduler_type` custom-import paths.
-  - Added `library/optimization/schedulers/` with repo-owned `CosineAnnealingWarmRestarts` and `RexAnnealingWarmRestarts` implementations adapted from the vendor schedulers.
-  - Updated `library/optimization/registry.py` so both warm-restart schedulers are modeled as registry-backed torch-style scheduler targets.
-  - Updated `configs/smoke_test_customoptimizer.yaml` so the custom-optimizer smoke config now uses the repo-facing `RexAnnealingWarmRestarts` scheduler name directly instead of a vendor `lr_scheduler_type` path.
-  - Added focused regression coverage for the new scheduler registrations and shared construction paths.
-- **The shared registration path now hosts more than one shape of absorbed plain optimizer cleanly** — Adding repo-owned plain optimizers still does not require new factory special cases.
-  - Added `library/optimization/optimizers/laprop.py` with a repo-owned `LaProp` implementation adapted from the vendor source.
-  - Added `library/optimization/optimizers/adopt.py` with a repo-owned `ADOPT` implementation adapted from the vendor source.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both optimizers participate in the shared repo-owned optimizer registration path.
-  - Added focused regression coverage for both registrations and both shared construction paths.
-- **The optimization layer now hosts a repo-owned schedule-free leaf optimizer too** — Schedule-free support is no longer limited to third-party leaves and wrapper integrations.
-  - Added `library/optimization/optimizers/adopt_schedulefree.py` with a repo-owned `ADOPTScheduleFree` implementation adapted from the vendor source.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `ADOPTScheduleFree` is modeled as a repo-owned schedule-free leaf with train/eval-toggle and no-external-scheduler capabilities.
-  - Added focused regression coverage for the new registration metadata, shared construction path, train/eval handling, and dummy-scheduler routing.
-- **The repo-owned schedule-free leaf surface now covers the rest of the non-AO ADOPT/FADOPT family too** — The big donor `schedulefree.py` file is no longer represented by a single absorbed leaf plus several forgotten siblings.
-  - Expanded `library/optimization/optimizers/adopt_schedulefree.py` to absorb `ADOPTEMAMixScheduleFree`, `ADOPTNesterovScheduleFree`, `ADOPTMARSScheduleFree`, `FADOPTScheduleFree`, `FADOPTEMAMixScheduleFree`, `FADOPTNesterovScheduleFree`, and `FADOPTMARSScheduleFree`.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so the full non-AO schedule-free ADOPT/FADOPT family participates in the shared repo-owned registration path with train/eval-toggle and no-external-scheduler capabilities.
-  - Expanded absorbed-integration coverage so the new schedule-free leaves construct through the shared factory path and continue to use the dummy-scheduler route consistently.
-- **The AO schedule-free ADOPT leaf now has its own low-bit-specific home too** — The remaining low-bit schedule-free variant no longer has to share a file with the non-AO family or stay lost in the donor module.
-  - Added `library/optimization/optimizers/adopt_schedulefree_ao.py` with a repo-facing `ADOPTAOScheduleFree` implementation separated from the non-AO schedule-free family.
-  - Added small repo-owned helper seams needed by the AO path under `library/optimization/optimizers/utils/`, including `CLIP_TYPE` / `STATE_PRECISION`, beta warmup scheduling, spam clipping helpers, cosine-decay helpers, stable-spam tensor helpers, and a compiled paper-OrthoGrad wrapper.
-  - Updated `library/optimization/optimizers/__init__.py`, `library/optimization/registry.py`, and the absorbed optimizer tests so `ADOPTAOScheduleFree` participates in the shared registry path with TorchAO-backed capability modeling and the same dummy-scheduler schedule-free behavior.
-- **The absorbed plain-optimizer surface is still scaling cleanly without new factory branches** — The repo-owned optimizer path can now host more varied non-Adam-family optimizers too.
-  - Added `library/optimization/optimizers/lpf_adamw.py` with a repo-owned `LPFAdamW` implementation adapted from the vendor source.
-  - Added `library/optimization/optimizers/sgd_sai.py` with a repo-owned `SGDSaI` implementation adapted from the vendor source.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both optimizers participate in the shared repo-owned registration path.
-  - Added focused regression coverage for both new registrations and both shared construction paths.
-- **The repo-owned adaptive-optimizer set continues to grow without changing the factory shape** — The next absorbed pair still fit the existing registration model with only light repo-owned adaptation.
-  - Added `library/optimization/optimizers/adai.py` with a repo-owned `Adai` implementation adapted from the vendor source.
-  - Added `library/optimization/optimizers/vsgd.py` with a repo-owned `VSGD` implementation adapted from the vendor source, including an explicit `stochastic_fp` default on the repo-owned path.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both optimizers participate in the shared repo-owned registration path.
-  - Added focused regression coverage for both new registrations and both shared construction paths.
-- **The absorbed plain-optimizer set now includes the first row/column-scaled SGD variant too** — The shared registration path can host small donor helper adaptations without growing a new utility dependency pile.
-  - Added `library/optimization/optimizers/racs.py` with a repo-owned `RACS` implementation adapted from the vendor source.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `RACS` participates in the shared repo-owned registration path.
-  - Added focused regression coverage for the new registration metadata and shared construction path.
-- **Shared optimizer helpers and absorbed test coverage now have clearer homes** — The optimization package and its tests should stay easier to grow from here instead of accumulating more root-level helpers and one giant optimizer test file.
-  - Moved shared optimizer-helper modules under `library/optimization/optimizers/utils/`, including the shared stochastic-rounding helper and the reusable math helpers.
-  - Updated the absorbed optimizer implementations plus `library/optimization/adafactor_fused.py` to import from the new `optimizers/utils/` package.
-  - Split absorbed optimizer and scheduler registration/construction coverage into `tests/unit/optimizers/test_registry.py` and `tests/unit/optimizers/test_absorbed_integrations.py`.
-  - Kept `tests/unit/training/test_training_optimizer.py` focused on shared optimizer/scheduler orchestration, compatibility flags, and config-driven behavior instead of growing it with every absorbed implementation.
-- **The absorbed plain-optimizer surface now covers additional large-batch and subspace-style variants too** — The current registration path can keep scaling to richer optimizer behaviors without forcing new factory branches.
-  - Added `library/optimization/optimizers/alice.py` with a repo-owned `Alice` implementation adapted from the vendor source.
-  - Added `library/optimization/optimizers/lamb.py` with a repo-owned `Lamb` implementation adapted from the vendor source.
-  - Added `library/optimization/optimizers/utils/norms.py` with a repo-owned global-gradient-norm helper and updated `Adan` to reuse it instead of importing from `pytorch_optimizer` internals.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both optimizers participate in the shared repo-owned registration path.
-  - Added absorbed-registry and shared-construction coverage for both optimizers under `tests/unit/optimizers/`.
-- **The `adopt.py` family is now absorbed as a whole instead of leaving sibling variants behind** — The repo-owned optimization layer can now host the MARS-corrected ADOPT variants without splitting them into a separate donor-driven utility pile.
-  - Extended `library/optimization/optimizers/adopt.py` with repo-owned `ADOPTMARS` and `FADOPTMARS` implementations adapted from the vendor source, keeping the whole family together with `ADOPT`.
-  - Added `library/optimization/optimizers/utils/clipping.py` with shared `agc(...)`, `adaptive_eps(...)`, and `NORM_TYPE` helpers for optimizer families that need clipping/adaptive-epsilon behavior.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so both new ADOPT-family variants participate in the shared repo-owned registration path.
-  - Added absorbed-registry and shared-construction coverage for both new variants under `tests/unit/optimizers/`.
 
 ### Fixed
 
@@ -265,25 +296,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2026-03-28]
 
 ### Changed
-
-- **The TorchAO AdamW low-bit family is now absorbed as a real repo-owned optimizer family** — The optimization layer no longer needs `lr_scheduler_type`-style custom imports or donor package wiring to expose the AO AdamW variants we want to keep.
-  - Added `library/optimization/optimizers/adamw_low_bit.py` with `AdamW8bitAO`, `AdamW4bitAO`, and `AdamWfp8AO` as the absorbed low-bit AdamW family built on top of the installed `torchao.optim.adam` classes.
-  - Registered the AO family in `library/optimization/registry.py` with an explicit `torchao` backend, and taught the shared optimizer factory to surface missing-TorchAO imports through the same backend-aware error path as the other optional optimizer stacks.
-  - Added focused registry and construction coverage so the AO family is exercised through the shared optimization-layer entrypoints rather than only existing as copied implementation files.
-- **The `rmsprop.py` family is now absorbed as a whole too** — The repo-owned optimization layer can now host the base RMSProp variant plus its ADOPT-style siblings without falling back to donor utility imports.
-  - Added `library/optimization/optimizers/rmsprop.py` with repo-owned `RMSProp`, `RMSPropADOPT`, and `RMSPropADOPTMARS` implementations adapted from the vendor family file.
-  - Added `library/optimization/optimizers/utils/second_moment.py` with the shared factored-second-moment helpers used by the RMSProp family and future adaptive optimizers that want the same storage/reconstruction behavior.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so all three RMSProp-family variants participate in the shared repo-owned registration path.
-  - Added focused absorbed-registry and shared-construction coverage for the full RMSProp family under `tests/unit/optimizers/`.
-- **The `ademamix.py` family is now absorbed behind repo-owned helper seams instead of donor utility imports** — The repo-owned optimization layer can now host the AdEMAMix family without inheriting the vendor package’s giant mixed utility module.
-  - Added `library/optimization/optimizers/ademamix.py` with repo-owned `AdEMAMix`, `SimplifiedAdEMAMix`, and `SimplifiedAdEMAMixExM` implementations adapted from the vendor family file.
-  - Added repo-owned helper modules for shared AdEMAMix-family needs: `utils/types.py` for update-strategy typing, `utils/orthograd.py` for Newton-Schulz / orthograd helpers, `utils/stable_spam.py` for Stable-SPAM clipping, and `utils/update.py` for reusable update post-processing.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so the full AdEMAMix family participates in the shared repo-owned registration path.
-  - Added focused absorbed-registry and shared-construction coverage for the AdEMAMix family under `tests/unit/optimizers/`.
-- **The `fcompass.py` family now lives on the repo-owned optimization path too** — The Fisher/Compass variants no longer need to stay in the vendor tree to participate in the shared optimizer registry.
-  - Added `library/optimization/optimizers/fcompass.py` with repo-owned `FCompass`, `FCompassADOPT`, `FCompassADOPTMARS`, and `FCompassPlus` implementations adapted from the donor family file.
-  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so the full FCompass family participates in the shared repo-owned registration path.
-  - Added focused absorbed-registry and shared-construction coverage for the FCompass family under `tests/unit/optimizers/`.
 
 - **CLIP tokenization sharing now has an explicit split between component bootstrap and strategy behavior** — The repo no longer keeps identical CLIP tokenizer loading logic duplicated across SD / SDXL / SD3 strategy files, and the shared CLIP prompt-tokenization behavior now has one home.
   - Added `library/models/sd/tokenizer.py` as the shared Hugging Face tokenizer loading/bootstrap helper used by SD, SDXL, and the CLIP side of SD3.
