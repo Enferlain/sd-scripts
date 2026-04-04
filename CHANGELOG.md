@@ -51,6 +51,10 @@ Rules:
   - Fixed the plain `Compass` step path so `weight_decouple` stays a boolean instead of accidentally becoming a one-tuple.
   - Updated `CompassPlus` to re-read per-group `betas` during its phase-3 update pass and to initialize diff-amp reset state without assuming gradients already exist during `reset()`.
   - Updated `CompassADOPT` and `CompassADOPTMARS` reset paths to derive factored-state shapes from parameter shapes instead of assuming pre-existing gradients.
+- **Internal contributor docs now describe the active launcher/config architecture more accurately** — The repo docs no longer describe the old script-per-mode setup as the current design.
+  - Updated `AGENTS.md` project structure, config-system notes, and common task examples around `train.py`, `RunConfig`, and the current `configs/` layout.
+  - Updated `DEVELOPMENT_GUIDE.md` launcher, type-checking, config-grouping, config-passing, and testing guidance to match the active schema-driven architecture.
+  - Pruned `ROADMAP.md` so completed architecture notes stay in the changelog while the roadmap focuses on active follow-up work.
 
 ## [2026-04-03]
 

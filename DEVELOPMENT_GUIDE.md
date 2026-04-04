@@ -7,9 +7,9 @@
 **Philosophy:**
 
 - **No backwards compatibility:** The focus is on refactoring, not to keep legacy working. Only keep for as long as references are needed for the active work.
-- **Centralized Configuration:** Move from per-script `argparse` definitions to a global, type-safe system using **Hydra** and **Dataclasses**.
+- **Centralized Configuration:** The active training path uses a shared, type-safe config system built on **Hydra** and **Dataclasses**.
 - **Separation of Concerns:** Break down multi-thousand line scripts into focused, reusable library modules.
-- **Explicit over Implicit:** Functions should declare exactly what configuration they need. Use `cfg` in orchestration-heavy layers, but prefer narrowly scoped typed config objects in reusable helpers.
+- **Explicit over Implicit:** Functions should declare exactly what configuration they need. Orchestration-level code may use `cfg`; otherwise descriptive typed config parameter names are required.
 - **Production Quality:** Adopt best practices from high-end repositories (typing, structured configs, potential shipping as a package).
 
 ## 2. Architectural Principles
@@ -34,22 +34,23 @@ This is the core of the project. It should contain the "building blocks" of trai
     ```
   - ✅ **Good (Modern):**
     ```python
-    def setup_optimizer(config_name: OptimizerConfig, model):
+    def setup_optimizer(optimizer_config: OptimizerConfig, model):
         # config contains ONLY optimizer settings
-        lr = config.learning_rate
+        lr = optimizer_config.learning_rates.base
     ```
 - **Modularity:** Modules should be loosely coupled. An optimizer module shouldn't need to know about dataset details.
 
-### C. Scripts (`scripts/`)
+### C. Launchers (`train.py`, `scripts/`)
 
-Scripts are thin entry points (Consumers) of the library.
+The active launcher surface should stay thin and orchestration-focused.
 
 - **Responsibility:**
-  1.  Initialize Hydra (`@hydra.main`).
-  2.  Instantiate configuration objects.
-  3.  Orchestrate calls to library functions.
-  4.  Run the main loop.
-- **No Business Logic:** Complex logic (like "how to save a model" or "how to build a dataset") belongs in `library/`, not in the script script.
+  1. Initialize Hydra (`@hydra.main`).
+  2. Compose and validate the shared config.
+  3. Build the active strategy and training mode.
+  4. Hand off to the shared `Trainer`.
+- **No Business Logic:** Complex logic (like "how to save a model" or "how to build a dataset") belongs in `library/`, not in the launcher.
+- **Current shape:** `train.py` is the canonical launcher for active PEFT / fine-tune runs. Dedicated scripts that remain under `scripts/` are either transitional helpers or still-unmigrated paths such as textual inversion.
 
 ## 3. Coding Standards
 
@@ -60,49 +61,77 @@ Scripts are thin entry points (Consumers) of the library.
   - Lazy imports only for strict optional dependencies or proven startup/memory bottlenecks.
   - No lazy imports as a cycle workaround; fix module boundaries instead.
 - **Docstrings:** Document the _config_ expected by functions.
-- **No Argparse:** Do not import `argparse` in `library/` modules.
 - **Linting:** Use `ruff check .` and `ruff format .` before committing. Configuration is in `pyproject.toml`.
-- **Type Checking:** Use `uvx ty check` for fast type checking. Configuration is in `pyproject.toml` under `[tool.ty]`.
+- **Type Checking:** Use `uv run ty check`. In WSL use `uv run ty check --python ./.venv-wsl/bin/python`. Configuration is in `pyproject.toml` under `[tool.ty]`.
 - **Searching:** Use `rg` (ripgrep) for fast, gitignore-aware searching throughout the codebase.
 - **Import Order:** isort is disabled; use `tools/fix_imports.py` for custom ordering if needed.
-- **Naming Convention:** Folders use **plural** names (`adapters/`, `strategies/`, `models/`), files use **singular** names (`lora.py`, `strategy_base.py`, `model_util.py`) unless it houses various utilities.
+- **Naming Convention:** Folders use **plural** names (`adapters/`, `strategies/`, `models/`) where it makes sense. Files are usually named for the concern they own (`tokenization.py`, `checkpointing.py`, `trainer.py`) rather than by one universal singular/plural rule.
 
 ## 4. Config Design Principles
 
 ### A. Schema Enforces Validity
 
-Each script's root config (e.g., `SDPeftConfig`, `SDXLFineTuneConfig`) defines what's valid for that mode. Hydra validates YAML against the dataclass schema at load time.
+`RunConfig` is the shared root schema for the active launcher. Hydra validates composed YAML against the dataclass schema at load time, and presets layer mode/model defaults on top of the shared nested sections.
 
-- **No `*SpecificConfig` pattern needed** - If `SDPeftConfig` doesn't have a `fine_tune:` field, Hydra errors if someone tries to use it.
-- **Mode-specific options** belong in the root config or a shared sub-config, not nested specific configs.
+- **Nested ownership matters** - each concern should have one typed home (`optimizer`, `data`, `objective`, `output`, etc.).
+- **Mode-specific options** belong in their dedicated sub-configs (`peft`, `textual_inversion`) and are gated by launcher/validation rules.
+- **Hard rule** - reusable library helpers should not accept broad root configs or generic `args`; they should take the narrowest typed config objects they actually use.
+- **Naming rule** - orchestration-level code such as entrypoints, strategies, trainers, and phases may use `cfg`. Otherwise use descriptive typed names such as `optimizer_config`, `saving_config`, or `run_config`.
 
 ### B. Config Grouping
 
-| Setting Type                                                           | Location            |
-| ---------------------------------------------------------------------- | ------------------- |
-| Performance/memory (xformers, gradient_checkpointing, mixed_precision) | `PerformanceConfig` |
-| Learning rates (optimizer LR, scheduler)                               | `OptimizerConfig`   |
-| Model-specific (in the future)                                         | `ModelnameConfig`   |
-| Adapter/LoRA settings                                                  | `PeftConfig`        |
+| Setting Type                                            | Location             |
+| ------------------------------------------------------- | -------------------- |
+| Training loop / runtime cadence                         | `TrainingConfig`     |
+| Learning rates, optimizer, scheduler                    | `OptimizerConfig`    |
+| Dataset source, captions, bucketing, caching, loader    | `DataConfig`         |
+| Model family and checkpoint inputs                      | `ModelConfig`        |
+| Objective path / prediction semantics                   | `ObjectiveConfig`    |
+| Output, logging, sampling, metadata, publishing         | `OutputConfig`       |
+| Precision, memory, attention, distributed, deepspeed    | `PerformanceConfig`  |
+| Loss shaping / EDM2                                     | `LossConfig`         |
+| Timestep sampling                                       | `TimestepConfig`     |
+| Validation policy                                       | `ValidationConfig`   |
+| Mode-specific adapter settings                          | `PeftConfig`         |
+| Mode-specific textual inversion settings                | `TextualInversionConfig` |
 
-### C. Code Style in Scripts and Strategies
+### C. Code Style in Orchestration Code
 
 ```python
-# ✅ Good - use cfg.X.Y directly
-def train(cfg: SDPeftConfig):
+# ✅ Good - orchestration-level code may use cfg
+def train(cfg: RunConfig):
     if cfg.training.max_train_epochs:
         ...
     if cfg.performance.memory.gradient_checkpointing:
         ...
 
-# ❌ Bad - don't create aliases
-def train(cfg: SDPeftConfig):
-    training_config = cfg.training  # Unnecessary
-    perf_config = cfg.performance   # Unnecessary
+# ✅ Good - obvious short aliases are fine when reused heavily
+def train(cfg: RunConfig):
+    te_lr = cfg.optimizer.learning_rates.text_encoders
+    ...
+
+# ❌ Bad - don't alias every sub-config by default
+def train(cfg: RunConfig):
+    training_config = cfg.training
+    perf_config = cfg.performance
 ```
 
-- **Use `cfg`** as the config variable name (not `config`)
-- **Access sub-configs directly** - `cfg.training.X`, not `training_config.X`
+- **`cfg` is fine in orchestration-level code** such as entrypoints, strategies, trainers, and phases
+- **Prefer direct access for simple reads** - `cfg.training.X`, not `training_config.X`
+- **Obvious short aliases are fine** when they materially improve readability and are reused a lot (`te_lr`, similar repeated values)
+- **Do not create convenience aliases by default** just to shorten repeated `cfg.output.*` or `cfg.training.*` access
+
+Outside orchestration-level code, use descriptive typed parameter names:
+
+```python
+# ✅ Good - helper uses descriptive typed config names
+def setup_outputs(saving_config: SavingConfig, logging_config: LoggingConfig):
+    ...
+
+# ❌ Bad - helper uses cfg outside orchestration code
+def setup_outputs(cfg: OutputConfig):
+    ...
+```
 
 ### D. Config Passing Patterns
 
@@ -134,13 +163,13 @@ def prepare_dtype(cfg):  # What type? What does it need?
         ...
 ```
 
-`cfg` is appropriate in scripts, strategies, and training phases/runners because those layers legitimately coordinate multiple concerns. Lower-level helpers should stay explicit and accept the narrowest typed config objects they need, even if that makes signatures more verbose.
+`cfg` is appropriate in strategies, trainers, phases, entrypoints, and similar orchestration layers because those layers legitimately coordinate multiple concerns. Lower-level helpers should stay explicit and accept the narrowest typed config objects they need, even if that makes signatures more verbose.
 
 **Call sites should still show the full config path clearly:**
 
 ```python
-# In script (uses cfg.* pattern)
-def train(cfg: SDPeftConfig):
+# In launcher / orchestration code
+def train(cfg: RunConfig):
     # When calling library functions, pass the smallest container needed:
     prepare_dtype(cfg.performance.precision, cfg.output.saving)  # Different depths OK
     init_trackers(accelerator, cfg.output.logging, "my_project")
@@ -162,9 +191,11 @@ def train(cfg: SDPeftConfig):
 - **Framework:** We use `pytest`.
 - **Requirement:** Every new or refactored library module MUST have corresponding unit tests in `tests/`.
 - **What to Test:**
-  - **Unit Tests:** Verify that `library/training/optimizer.py` correctly creates an optimizer given a specific `OptimizerConfig`.
-  - **Config Tests:** Verify that `dataclasses` correctly default values and handle missing keys.
+  - **Unit Tests:** Verify focused library behavior such as optimizer/scheduler construction, config validation, sampling helpers, or strategy facets.
+  - **Config Tests:** Verify that dataclasses compose correctly and validation catches invalid combinations.
+  - **Integration / Smoke Tests:** Cover representative end-to-end launcher or trainer flows where wiring matters.
 - **How to Run:**
   ```bash
-  pytest tests/
+  uv run pytest tests/unit/ -v
+  uv run pytest tests/integration/ -v
   ```

@@ -112,35 +112,37 @@ Always check AGENTS.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELOG.md to ref
 ## Project Structure
 
 ```
+├── train.py               # Canonical Hydra launcher for active training runs
 ├── AGENTS.md              # This file - agent instructions
-├── CHANGELOG.md           # Notable changes log (update when completing work)
+├── CHANGELOG.md           # Notable changes log
 ├── DEVELOPMENT_GUIDE.md   # Architectural principles and coding standards
-├── LICENSE.md             # Apache 2.0 license
-├── README.md              # User-facing documentation
-├── ROADMAP.md             # Refactoring progress and future plans
-├── configs/               # YAML configuration files for Hydra
-├── docs/                  # Additional documentation
+├── ROADMAP.md             # Active follow-up work and future ideas
+├── configs/               # Hydra YAML composition
+│   ├── _defaults/         # Nested config-group defaults for shared schema sections
+│   ├── presets/           # Representative runnable mode/model presets
+│   ├── examples/          # Example overrides layered on presets
+│   ├── tests/             # Test/smoke configs
+│   └── benchmarks/        # Benchmark-oriented configs
+├── docs/                  # User-facing documentation
 ├── library/               # Core library modules
 │   ├── adapters/          # LoRA and network adapter implementations
-│   ├── config/            # Hydra dataclasses (source of truth for config)
-│   ├── data/              # Data pipeline: scanning, caching, bucketing, dataloaders
-│   ├── logging/           # Training logging and plotting utilities
-│   ├── losses/            # Loss functions and weighting utilities
-│   ├── models/            # Model definitions (per-model subfolders)
-│   │   ├── sd/            # SD1.5/2 UNet, conversion, loader, VAE
-│   │   └── sdxl/          # SDXL UNet, conversion, loader, text encoder, control net
-│   ├── optimizers/        # Custom optimizer implementations
-│   ├── performance/       # Memory optimization, gradient checkpointing
-│   ├── pipelines/         # Inference pipelines (LPW, etc.)
-│   ├── strategies/        # Model-specific strategies (per-model subfolders)
-│   │   ├── base/          # Shared strategy contracts: TrainingStrategy, TokenizationStrategy, TextEncodingStrategy, CachingStrategy
-│   │   ├── sd/            # SD1.5/2: training, tokenization, encoding, caching
-│   │   └── sdxl/          # SDXL: training, tokenization, encoding, caching
-│   ├── timesteps/         # Timestep sampling strategies
-│   ├── training/          # Checkpointing, sample generation, trainer utilities
-│   ├── utils/             # General utilities (hashing, device, torch)
+│   ├── config/            # Shared dataclasses, schema registration, validation
+│   ├── data/              # Data pipeline: manifests, caching, bucketing, loaders
+│   ├── logging/           # Training logging, plotting, resource monitoring
+│   ├── losses/            # Losses and loss-modifier helpers
+│   ├── models/            # Model-family loaders, conversion, runtime helpers
+│   ├── objectives/        # DDPM / RF objective ownership and runtime assembly
+│   ├── optimization/      # Optimizers, schedulers, wrappers, factories
+│   ├── performance/       # Memory and distributed/runtime helpers
+│   ├── pipelines/         # Inference and sampling backends
+│   ├── strategies/        # Shared contracts plus family-specific strategy facets
+│   ├── timesteps/         # Timestep runtime and sampler logic
+│   ├── training/          # Trainer, phases, modes, checkpointing, sampling
+│   ├── utils/             # General utilities (hashing, device, torch, logging)
 │   └── vendor/            # Third-party vendored code
-├── scripts/               # Thin Hydra entry points (training scripts)
+├── scripts/               # Transitional helpers and non-root entrypoints
+│   ├── sdxl_textual_inversion.py
+│   └── _deprecated/       # Legacy launcher references kept during migration
 ├── tests/                 # Unit and integration tests, test assets
 └── tools/                 # Standalone utilities (still use argparse)
 ```
@@ -149,43 +151,57 @@ Always check AGENTS.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELOG.md to ref
 
 ### Models (`library/models/`)
 
-| Folder  | Contents                                                                     |
-| ------- | ---------------------------------------------------------------------------- |
-| `sd/`   | `unet.py`, `conversion.py`, `loader.py`, `vae.py`                            |
-| `sdxl/` | `unet.py`, `conversion.py`, `loader.py`, `text_encoder.py`, `control_net.py` |
+Representative families:
 
-Shared utilities: `conversion_utils.py`, `runtime_utils.py` (at root level)
+| Folder  | Typical contents                                                                 |
+| ------- | -------------------------------------------------------------------------------- |
+| `sd/`   | SD1.5/2 loaders, UNet/VAE helpers, tokenizer/bootstrap utilities                |
+| `sdxl/` | SDXL loaders, UNet/VAE/text-encoder helpers, control-net support                |
+| `sd3/`  | SD3 family-specific loading and runtime helpers                                 |
+
+Shared utilities live alongside the family folders when they are genuinely cross-family (`conversion_utils.py`, `runtime_utils.py`, etc.).
 
 ### Strategies (`library/strategies/`)
 
-| Folder  | Contents                                                            |
-| ------- | ------------------------------------------------------------------- |
-| `base/` | ABCs and shared strategy contracts in `contracts.py`                |
-| `sd/`   | `SdTrainingStrategy`, `SdTokenizeStrategy`, etc.                    |
-| `sdxl/` | `SdxlTrainingStrategy`, `SdxlTokenizeStrategy`, etc.                |
+| Folder   | Contents                                                                  |
+| -------- | ------------------------------------------------------------------------- |
+| `base/`  | Required contracts and optional feature seams                              |
+| `shared/`| Cross-family strategy-owned helpers (for example shared CLIP behavior)    |
+| `sd/`    | SD family strategy facets and assembly                                     |
+| `sdxl/`  | SDXL family strategy facets and assembly                                   |
+
+Additional family folders may exist; use the above as the shape of the architecture, not an exhaustive catalog.
 
 ### Training (`library/training/`)
 
-| File                   | Purpose                                     |
-| ---------------------- | ------------------------------------------- |
-| `checkpointing.py`     | Generic checkpoint utilities                |
-| `sample_generation.py` | `sample_images_common()` for all models     |
-| `trainer_utils.py`     | Training loop utilities                     |
-| `sd_*.py`, `sdxl_*.py` | Legacy wrappers (kept for finetune scripts) |
+| Path                         | Purpose                                                  |
+| ---------------------------- | -------------------------------------------------------- |
+| `runners/trainer.py`         | Shared trainer orchestration                             |
+| `modes/`                     | Training-mode plugins (`PeftMode`, `FineTuneMode`)       |
+| `phases/`                    | Shared training phases (caching, model prep, loop, etc.) |
+| `checkpointing.py`           | Generic checkpoint utilities                             |
+| `sample_generation.py`       | Shared sample generation orchestration                   |
+| `_deprecated/`               | Legacy wrappers retained for unmigrated paths            |
 
 ## Configuration System
 
 - **Dataclasses** in `library/config/dataclasses/` define the schema
-- **YAML files** in `configs/` are user-facing configuration
-- Scripts use `@hydra.main()` decorator
+- **YAML files** in `configs/` compose the user-facing config surface
+- `configs/_defaults/` defines nested shared sections; `configs/presets/` selects a runnable mode/model baseline
+- The active launcher is `train.py`, which uses `@hydra.main()` with an explicit `--config-name`
+- Textual inversion still has a dedicated entrypoint while that runtime path is being migrated
 
-**Key principle:** Functions should accept specific `Config` objects, not generic `args`:
+**Key principle:** Reusable helpers should accept the narrowest specific typed config objects they need, and use descriptive typed parameter names. Orchestration-level code may use `cfg`:
 
 ```python
-# ✅ Good
+# ✅ Good - reusable helper takes the exact typed config it needs
 def save_model(saving_config: SavingConfig, ...):
 
-# ❌ Bad (_deprecated pattern)
+# ✅ Also good - orchestration-level code may use `cfg`
+def train(cfg: RunConfig):
+    ...
+
+# ❌ Bad - generic container
 def save_model(args, ...):
 ```
 
@@ -194,19 +210,19 @@ def save_model(args, ...):
 ### Verifying imports work
 
 ```powershell
-uv run python -c "from library.training.checkpointing import model_hash; print('OK')"
+uv run python -c "from train import train; print('OK')"
 ```
 
-### Running a specific script (example)
+### Running the active launcher (example)
 
 ```powershell
-uv run python scripts/sd_finetune.py --config-name=sd_finetune
+uv run python train.py --config-name=presets/sd_finetune
 ```
 
 ### Checking for import errors in a module
 
 ```powershell
-uv run python -c "from scripts.sd_finetune import train; print('OK')"
+uv run python -c "from library.training.runners.trainer import Trainer; print('OK')"
 ```
 
 ## Documentation Updates
@@ -220,4 +236,4 @@ When completing refactoring work:
 ## Known Quirks
 
 - `tools/` contains standalone utilities that still use `argparse` (external compatibility)
-- `v2` flag distinguishes SD2.x from SD1.x; both handled by `sd_*` modules (not SDXL)
+- `train.py` is the active launcher for PEFT and fine-tune flows; textual inversion still uses its dedicated script for now
