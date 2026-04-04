@@ -478,6 +478,56 @@ class TestOptimizerRegistry:
                 },
             ),
             (
+                "SCION",
+                {
+                    "target": "library.optimization.optimizers.scion.SCION",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "Dehaze",
+                {
+                    "target": "library.optimization.optimizers.dehaze.Dehaze",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "GOODDOG",
+                {
+                    "target": "library.optimization.optimizers.gooddog.GOODDOG",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "Mythical",
+                {
+                    "target": "library.optimization.optimizers.mythical.Mythical",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "StableSPAM",
+                {
+                    "target": "library.optimization.optimizers.spam.StableSPAM",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
                 "AdamW8bitKahan",
                 {
                     "target": "library.optimization.optimizers.adamw_8bit_kahan.AdamW8bitKahan",

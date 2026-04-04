@@ -610,6 +610,88 @@ class TestAbsorbedOptimizers:
                 },
             ),
             (
+                "Dehaze",
+                1e-3,
+                [
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "stage1_atan2=False",
+                    "stage2_atan2=True",
+                    "adaptive_muon=True",
+                    "stochastic_fp=False",
+                    "torch_compile=False",
+                ],
+                "Dehaze",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "stage1_atan2": False,
+                    "stage2_atan2": True,
+                    "adaptive_muon": True,
+                    "stochastic_fp": False,
+                    "torch_compile": False,
+                },
+            ),
+            (
+                "GOODDOG",
+                1e-3,
+                [
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "invariant=True",
+                    "adaptive_muon=True",
+                    "orthograd=True",
+                    "stochastic_fp=False",
+                ],
+                "GOODDOG",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "invariant": True,
+                    "adaptive_muon": True,
+                    "orthograd": True,
+                    "stochastic_fp": False,
+                },
+            ),
+            (
+                "SCION",
+                1e-3,
+                [
+                    "momentum=0.2",
+                    "constraint=True",
+                    "norm_type=7",
+                    "norm_kwargs={'transpose': True}",
+                    "scale=2.5",
+                    "weight_decay=0.01",
+                    "weight_decouple=False",
+                    "use_focus=True",
+                    "focus_beta=0.9",
+                    "adaptive_clip=0.1",
+                    "adaptive_clip_type='unit'",
+                    "update_strategy='both'",
+                    "use_stable_spam_clipping=True",
+                    "ssc_t_max=8",
+                    "torch_compile=False",
+                ],
+                "SCION",
+                {
+                    "momentum": 0.2,
+                    "constraint": True,
+                    "norm_type": 7,
+                    "norm_kwargs": {"transpose": True},
+                    "scale": 2.5,
+                    "weight_decay": 0.01,
+                    "weight_decouple": False,
+                    "use_focus": True,
+                    "focus_beta": 0.9,
+                    "adaptive_clip": 0.1,
+                    "adaptive_clip_type": "unit",
+                    "update_strategy": "both",
+                    "use_stable_spam_clipping": True,
+                    "torch_compile": False,
+                },
+            ),
+            (
                 "ScalableShampoo",
                 1e-3,
                 [
@@ -628,6 +710,54 @@ class TestAbsorbedOptimizers:
                     "decoupled_learning_rate": True,
                     "moving_average_for_momentum": False,
                     "nesterov": True,
+                },
+            ),
+            (
+                "StableSPAM",
+                1e-3,
+                [
+                    "weight_decay=0.01",
+                    "gamma1=0.8",
+                    "gamma2=0.9999",
+                    "gamma3=0.99",
+                    "t_max=10",
+                    "eta_min=0.25",
+                    "update_proj_gap=5",
+                    "use_adopt=True",
+                    "update_strategy='grams'",
+                ],
+                "StableSPAM",
+                {
+                    "weight_decay": 0.01,
+                    "use_adopt": True,
+                    "update_strategy": "grams",
+                },
+            ),
+            (
+                "Mythical",
+                1e-3,
+                [
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "amp=1.5",
+                    "orthograd=True",
+                    "adaptive_ema=True",
+                    "atan2=True",
+                    "warmup=True",
+                    "cautious_min=0.25",
+                    "stochastic_fp=False",
+                ],
+                "Mythical",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "amp": 1.5,
+                    "orthograd": True,
+                    "adaptive_ema": True,
+                    "atan2": True,
+                    "warmup": True,
+                    "cautious_min": 0.25,
+                    "stochastic_fp": False,
                 },
             ),
             (
@@ -776,8 +906,14 @@ class TestAbsorbedOptimizers:
             assert optimizer.cautious is True
         if optimizer_type == "Lamb":
             assert optimizer.pre_norm is True
+        if optimizer_type == "Dehaze":
+            assert optimizer._init_lr == learning_rate
+        if optimizer_type == "GOODDOG":
+            assert optimizer._init_lr == learning_rate
         if optimizer_type == "SGDSaI":
             assert optimizer.has_warmup is False
+        if optimizer_type == "Mythical":
+            assert optimizer._init_lr == learning_rate
         if optimizer_type == "SOAP":
             assert optimizer.data_format == "channels_first"
         if optimizer_type == "Ranger21":
@@ -785,10 +921,20 @@ class TestAbsorbedOptimizers:
             assert optimizer.disable_lr_scheduler is True
             assert optimizer.lookahead_merge_time == 4
             assert optimizer.use_softplus is False
+        if optimizer_type == "SCION":
+            assert optimizer.ssc_t_max == 8
+            assert optimizer.warmup is not None
         if optimizer_type == "ScalableShampoo":
             assert optimizer.block_size == 32
             assert optimizer.start_preconditioning_step == 1
             assert optimizer.preconditioning_compute_steps == 1
+        if optimizer_type == "StableSPAM":
+            assert optimizer.gamma1 == 0.8
+            assert optimizer.gamma2 == 0.9999
+            assert optimizer.gamma3 == 0.99
+            assert optimizer.t_max == 10
+            assert optimizer.update_proj_gap == 5
+            assert optimizer.warmup is not None
         if optimizer_type == "Adai":
             assert optimizer.use_gc is True
         if optimizer_type == "VSGD":
@@ -1122,6 +1268,199 @@ class TestAbsorbedOptimizers:
         assert "max_variance_ma" in state
         assert optimizer.current_lr == pytest.approx(2e-5)
         assert optimizer.lookahead_step == 1
+
+    def test_registered_scion_init_and_first_step_work_without_focus(self, mock_model_parameters):
+        """SCION should initialize LMO state and take a first step through the default non-focus path."""
+        config = OptimizerConfig(
+            optimizer_type="SCION",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "momentum=0.15",
+                "scale=1.5",
+                "constraint=False",
+                "weight_decay=0.01",
+                "use_focus=False",
+                "norm_type=1",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        first_parameter = optimizer.param_groups[0]["params"][0]
+        optimizer.init()
+        initial_parameter = first_parameter.detach().clone()
+
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        state = optimizer.state[first_parameter]
+
+        assert "SCION" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "d" in state
+        assert "pbar" not in state
+        assert state["d"].shape == first_parameter.shape
+        assert not torch.equal(first_parameter, initial_parameter)
+
+    def test_registered_dehaze_initializes_stage_state_on_first_step(self, mock_model_parameters):
+        """Dehaze should initialize its dual denominator and sign state on the first optimization step."""
+        config = OptimizerConfig(
+            optimizer_type="Dehaze",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "adaptive_muon=True",
+                "stage1_atan2=False",
+                "stage2_atan2=True",
+                "stochastic_fp=False",
+                "torch_compile=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        first_parameter = optimizer.param_groups[0]["params"][0]
+        state = optimizer.state[first_parameter]
+
+        assert "Dehaze" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "stage1_emasq" in state
+        assert "stage2_emasq" in state
+        assert "sign_momentum" in state
+        assert state["stage1_emasq"].shape == first_parameter.shape
+        assert state["stage2_emasq"].shape == first_parameter.shape
+        assert state["sign_momentum"].shape == first_parameter.shape
+
+    def test_registered_gooddog_initializes_dual_denom_state_on_first_step(self, mock_model_parameters):
+        """GOODDOG should initialize both denominator buffers and sign momentum on the first optimization step."""
+        config = OptimizerConfig(
+            optimizer_type="GOODDOG",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "invariant=True",
+                "adaptive_muon=True",
+                "orthograd=True",
+                "stochastic_fp=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        first_parameter = optimizer.param_groups[0]["params"][0]
+        state = optimizer.state[first_parameter]
+
+        assert "GOODDOG" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "stage1_emasq" in state
+        assert "stage2_emasq" in state
+        assert "sign_momentum" in state
+        assert state["stage1_emasq"].shape == first_parameter.shape
+        assert state["stage2_emasq"].shape == first_parameter.shape
+        assert state["sign_momentum"].shape == first_parameter.shape
+
+    def test_registered_stablespam_resets_projection_buffers_on_gap_for_float32_params(self):
+        """StableSPAM should write reset projection buffers back into float32 state when the gap triggers."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="StableSPAM",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "weight_decay=0.0",
+                "update_proj_gap=2",
+                "use_adopt=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.ones_like(parameter)
+        optimizer.step()
+        first_step_exp_avg = optimizer.state[parameter]["exp_avg"].clone()
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "StableSPAM" in optimizer_name
+        assert optimizer.total_step == 2
+        assert state["step"] == 1
+        assert not torch.allclose(state["exp_avg"], first_step_exp_avg)
+        assert state["exp_avg"].std().item() > 0.0
+        assert state["exp_avg_sq"].std().item() > 0.0
+
+    def test_registered_mythical_initializes_running_state_on_first_step(self, mock_model_parameters):
+        """Mythical should initialize EMA, squared EMA, and previous-gradient state on the first optimization step."""
+        config = OptimizerConfig(
+            optimizer_type="Mythical",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "amp=1.5",
+                "orthograd=True",
+                "adaptive_ema=True",
+                "atan2=True",
+                "warmup=True",
+                "cautious_min=0.25",
+                "stochastic_fp=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        first_parameter = optimizer.param_groups[0]["params"][0]
+        state = optimizer.state[first_parameter]
+
+        assert "Mythical" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "ema" in state
+        assert "ema_squared" in state
+        assert "prev_grad" in state
+        assert state["ema"].shape == first_parameter.shape
+        assert state["ema_squared"].shape == first_parameter.shape
+        assert state["prev_grad"].shape == first_parameter.shape
 
     def test_registered_scalable_shampoo_initializes_preconditioner_and_graft_state(self, mock_model_parameters):
         """ScalableShampoo should initialize its preconditioner and graft state on the first optimization step."""

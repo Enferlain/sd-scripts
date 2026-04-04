@@ -16,6 +16,18 @@ Rules:
 
 - **Adapter-layer direction now has a dedicated design note** — The repo now has a written proposal for how the adapter surface should evolve without freezing the public architecture around the current Kohya/LyCORIS-shaped runtime seam.
   - Added `docs_design/adapter_layer_direction.md` covering the current implicit adapter contract, the desired trainer/runtime/target/backend split, a power-user-friendly config direction, and a staged plan for absorbing LyCORIS behind a repo-owned facade.
+- **The absorbed plain-optimizer path now covers SCION too** — The repo can now host the norm-constrained LMO optimizer without routing through the donor package at runtime.
+  - Added `library/optimization/optimizers/scion.py` with a repo-owned `SCION` implementation adapted from the vendor source while switching its helper imports onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `SCION` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `SCION` construction plus manual initialization / first-step state handling through the shared factory path.
+- **The absorbed plain-optimizer path now covers StableSPAM too** — The repo can now host the stable-spam optimizer without routing through the donor package at runtime.
+  - Added `library/optimization/optimizers/spam.py` with a repo-owned `StableSPAM` implementation adapted from the vendor source while switching its helper imports onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `StableSPAM` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `StableSPAM` construction and the float32 projection-buffer reset path when `update_proj_gap` triggers through the shared factory path.
+- **The absorbed plain-optimizer path now covers three more self-contained sign/muon variants too** — The repo can now host another small cluster of donor optimizers without routing through the vendor package at runtime.
+  - Added `library/optimization/optimizers/dehaze.py`, `library/optimization/optimizers/gooddog.py`, and `library/optimization/optimizers/mythical.py` with repo-owned implementations adapted from the vendor sources while switching shared helper usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `Dehaze`, `GOODDOG`, and `Mythical` participate in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for construction plus first-step state initialization of all three optimizers through the shared factory path.
 - **The absorbed plain-optimizer surface now includes a first low-rank projection optimizer too** — The repo can now host a projector-backed optimizer without routing through the donor package at runtime.
   - Added `library/optimization/optimizers/galore.py` with a repo-owned `GaLore` implementation adapted from the vendor source.
   - Added `library/optimization/optimizers/utils/galore.py` with the repo-owned `GaLoreProjector` helper adapted from the vendor projector utility.
@@ -46,6 +58,12 @@ Rules:
 
 ### Changed
 
+- **The optimizer absorption queue docs now reflect the post-SCION backlog** — The local optimizer README no longer points at SCION as the next untouched serious target after it moved onto the repo-owned path.
+  - Updated `library/optimization/optimizers/README.md` counts and remaining-target notes after absorbing `scion.py`.
+- **The StableSPAM absorption pass also hardens one donor state-reset edge case while keeping the algorithm shape intact** — The repo-owned copy now preserves the intended projection-buffer reset behavior for normal float32 params instead of only updating the replacement tensors on the bf16 copy-back path.
+  - Updated `library/optimization/optimizers/spam.py` so `update_proj_gap` resets write the replacement `exp_avg` and `exp_avg_sq` tensors back into optimizer state before continuing the step.
+- **The Dehaze absorption pass also hardens one donor adaptive-muon edge case while keeping the algorithm shape intact** — The repo-owned copy now initializes and reuses the normalized-gradient tensor instead of referencing an undefined local inside the adaptive-muon branch.
+  - Updated `library/optimization/optimizers/dehaze.py` so adaptive-muon normalization always starts from the current gradient and writes the normalized result back before the denominator stages.
 - **Scheduler orchestration now fails fast for `Ranger21` double-scheduling conflicts** — Runs using Ranger21’s built-in LR schedule no longer quietly stack a second external scheduler on top unless the config explicitly disables the optimizer-local scheduler.
   - Updated `library/optimization/scheduler.py` so `Ranger21` only accepts the effectively no-op external scheduler case (`lr_scheduler='constant'` with no warmup) while its internal LR schedule is active.
   - The shared scheduler path still allows normal external schedulers for `Ranger21` when `disable_lr_scheduler=True`.

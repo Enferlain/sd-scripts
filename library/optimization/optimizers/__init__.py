@@ -18,18 +18,23 @@ from library.optimization.optimizers.adan import Adan
 from library.optimization.optimizers.adamw_8bit_kahan import AdamW8bitKahan
 from library.optimization.optimizers.adamw_low_bit import AdamW4bitAO, AdamW8bitAO, AdamWfp8AO
 from library.optimization.optimizers.compass import Compass, CompassADOPT, CompassADOPTMARS, CompassPlus
+from library.optimization.optimizers.dehaze import Dehaze
 from library.optimization.optimizers.fcompass import FCompass, FCompassADOPT, FCompassADOPTMARS, FCompassPlus
 from library.optimization.optimizers.fira import Fira
 from library.optimization.optimizers.galore import GaLore
+from library.optimization.optimizers.gooddog import GOODDOG
 from library.optimization.optimizers.laprop import LaProp
 from library.optimization.optimizers.lamb import Lamb
 from library.optimization.optimizers.lpf_adamw import LPFAdamW
+from library.optimization.optimizers.mythical import Mythical
 from library.optimization.optimizers.racs import RACS
 from library.optimization.optimizers.ranger21 import Ranger21
 from library.optimization.optimizers.rmsprop import RMSProp, RMSPropADOPT, RMSPropADOPTMARS
+from library.optimization.optimizers.scion import SCION
 from library.optimization.optimizers.sgd_sai import SGDSaI
 from library.optimization.optimizers.shampoo import ScalableShampoo
 from library.optimization.optimizers.soap import SOAP
+from library.optimization.optimizers.spam import StableSPAM
 from library.optimization.optimizers.vsgd import VSGD
 
 
@@ -54,6 +59,7 @@ __all__ = [
     "CompassADOPT",
     "CompassADOPTMARS",
     "CompassPlus",
+    "Dehaze",
     "FADOPTEMAMixScheduleFree",
     "FADOPTMARSScheduleFree",
     "FADOPTNesterovScheduleFree",
@@ -65,17 +71,21 @@ __all__ = [
     "FCompassPlus",
     "Fira",
     "GaLore",
+    "GOODDOG",
     "LaProp",
     "Lamb",
     "LPFAdamW",
+    "Mythical",
     "RACS",
     "Ranger21",
     "RMSProp",
     "RMSPropADOPT",
     "RMSPropADOPTMARS",
+    "SCION",
     "ScalableShampoo",
     "SGDSaI",
     "SOAP",
+    "StableSPAM",
     "SimplifiedAdEMAMix",
     "SimplifiedAdEMAMixExM",
     "VSGD",
