@@ -172,7 +172,6 @@ class TestOptimizerDetection:
 
     def test_is_schedulefree_optimizer_true_for_schedulefree_wrapper_flag(self, mock_model_parameters):
         """The legacy wrapper config should count as schedule-free for train/eval handling."""
-        pytest.importorskip("schedulefree")
         config = OptimizerConfig(optimizer_type="AdamW", optimizer_schedulefree_wrapper=True)
         _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
 
@@ -180,7 +179,6 @@ class TestOptimizerDetection:
 
     def test_optimizer_schedulefree_wrapper_wraps_base_optimizer(self, mock_model_parameters):
         """The legacy wrapper config should create a real schedule-free wrapper around the base optimizer."""
-        pytest.importorskip("schedulefree")
         config = OptimizerConfig(
             optimizer_type="AdamW",
             optimizer_schedulefree_wrapper=True,
@@ -194,7 +192,6 @@ class TestOptimizerDetection:
 
     def test_scheduler_uses_base_optimizer_for_schedulefree_wrapper_flag(self, mock_model_parameters):
         """Wrapped optimizers should still schedule their base optimizer."""
-        pytest.importorskip("schedulefree")
         optimizer_config = OptimizerConfig(
             optimizer_type="AdamW",
             optimizer_schedulefree_wrapper=True,
@@ -237,11 +234,13 @@ class TestScheduler:
         optimizer_type: str = "AdamW",
         learning_rate: float = 1e-4,
         scheduler_config: SchedulerConfig | None = None,
+        optimizer_args: list[str] | None = None,
         max_train_steps: int = 25,
     ):
         optimizer_config = OptimizerConfig(
             optimizer_type=optimizer_type,
             learning_rates=LearningRatesConfig(base=learning_rate),
+            optimizer_args=optimizer_args or [],
             scheduler=scheduler_config or SchedulerConfig(),
         )
         _, _, optimizer = get_optimizer(
@@ -346,6 +345,44 @@ class TestScheduler:
         )
 
         assert scheduler.__class__.__name__ == "StepLR"
+
+    def test_ranger21_rejects_external_scheduler_when_internal_scheduler_is_enabled(self, mock_model_parameters):
+        """Ranger21 should fail fast instead of silently stacking internal and external LR schedules."""
+        optimizer_config, training_config, optimizer = self._build_optimizer_and_training_config(
+            mock_model_parameters,
+            optimizer_type="Ranger21",
+            optimizer_args=["num_iterations=25"],
+            scheduler_config=SchedulerConfig(lr_scheduler="cosine", lr_warmup_steps=5),
+        )
+
+        with pytest.raises(ValueError, match="Ranger21 manages learning-rate scheduling internally"):
+            get_scheduler_fix(
+                optimizer_config.scheduler,
+                optimizer_config,
+                training_config,
+                optimizer,
+                num_processes=1,
+            )
+
+    def test_ranger21_allows_external_scheduler_when_internal_scheduler_is_disabled(self, mock_model_parameters):
+        """Ranger21 should still support normal external schedulers when its internal LR schedule is disabled."""
+        optimizer_config, training_config, optimizer = self._build_optimizer_and_training_config(
+            mock_model_parameters,
+            optimizer_type="Ranger21",
+            optimizer_args=["num_iterations=25", "disable_lr_scheduler=True"],
+            scheduler_config=SchedulerConfig(lr_scheduler="cosine", lr_warmup_steps=5),
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            optimizer,
+            num_processes=1,
+        )
+
+        assert scheduler.optimizer is optimizer
+        assert scheduler.__class__.__name__ == "LambdaLR"
 
 
 # =============================================================================

@@ -1,5 +1,7 @@
 import torch
 
+from library.optimization.wrappers.schedulefree import ScheduleFreeWrapper
+
 
 class WrappedOptimizerProxy(torch.optim.Optimizer):
     """Expose wrapper objects through a stable Optimizer-shaped surface."""
@@ -263,3 +265,10 @@ class SNOOASGD(torch.optim.Optimizer):
         if self.is_swapped:
             for p_gpu, p_avg_cpu in zip(self.model_params, self.averaged_params_cpu, strict=True):
                 p_gpu.copy_(p_avg_cpu.data, non_blocking=True)
+
+
+__all__ = [
+    "ScheduleFreeWrapper",
+    "SNOOASGD",
+    "WrappedOptimizerProxy",
+]

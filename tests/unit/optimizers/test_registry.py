@@ -20,11 +20,11 @@ class TestOptimizerRegistry:
             (
                 "ScheduleFreeWrapper",
                 {
-                    "target": "schedulefree.ScheduleFreeWrapper",
-                    "backend": "schedulefree",
+                    "target": "library.optimization.wrappers.ScheduleFreeWrapper",
+                    "backend": "repo",
                     "kind": "wrapper",
                     "wrapper_style": "wrap_optimizer",
-                    "capabilities": [OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER],
+                    "capabilities": [OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER, OPT_CAP_TRAIN_EVAL_TOGGLE],
                 },
             ),
             (
@@ -218,6 +218,26 @@ class TestOptimizerRegistry:
                 },
             ),
             (
+                "Fira",
+                {
+                    "target": "library.optimization.optimizers.fira.Fira",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "GaLore",
+                {
+                    "target": "library.optimization.optimizers.galore.GaLore",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
                 "Adan",
                 {
                     "target": "library.optimization.optimizers.adan.Adan",
@@ -268,6 +288,66 @@ class TestOptimizerRegistry:
                 },
             ),
             (
+                "Compass",
+                {
+                    "target": "library.optimization.optimizers.compass.Compass",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "CompassADOPT",
+                {
+                    "target": "library.optimization.optimizers.compass.CompassADOPT",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "CompassADOPTMARS",
+                {
+                    "target": "library.optimization.optimizers.compass.CompassADOPTMARS",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "CompassPlus",
+                {
+                    "target": "library.optimization.optimizers.compass.CompassPlus",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "Ranger21",
+                {
+                    "target": "library.optimization.optimizers.ranger21.Ranger21",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "ScalableShampoo",
+                {
+                    "target": "library.optimization.optimizers.shampoo.ScalableShampoo",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
                 "LaProp",
                 {
                     "target": "library.optimization.optimizers.laprop.LaProp",
@@ -301,6 +381,16 @@ class TestOptimizerRegistry:
                 "SGDSaI",
                 {
                     "target": "library.optimization.optimizers.sgd_sai.SGDSaI",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "SOAP",
+                {
+                    "target": "library.optimization.optimizers.soap.SOAP",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,

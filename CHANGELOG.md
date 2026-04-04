@@ -10,9 +10,57 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-04]
+
+### Added
+
+- **The absorbed plain-optimizer surface now includes a first low-rank projection optimizer too** — The repo can now host a projector-backed optimizer without routing through the donor package at runtime.
+  - Added `library/optimization/optimizers/galore.py` with a repo-owned `GaLore` implementation adapted from the vendor source.
+  - Added `library/optimization/optimizers/utils/galore.py` with the repo-owned `GaLoreProjector` helper adapted from the vendor projector utility.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `GaLore` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `GaLore` construction and ranked 2D projector initialization through the shared factory path.
+- **The absorbed plain-optimizer path now includes the first Shampoo-family entry too** — The repo can now host a preconditioner-based optimizer without routing through the donor package at runtime.
+  - Added `library/optimization/optimizers/soap.py` with a repo-owned `SOAP` implementation adapted from the vendor source.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `SOAP` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `SOAP` construction and first-step preconditioner state initialization through the shared factory path.
+- **The absorbed plain-optimizer path now includes its first optimizer-local LR-scheduling family too** — The repo can now host a donor optimizer with built-in warmup/warmdown behavior without silently double-scheduling it from the outside.
+  - Added `library/optimization/optimizers/ranger21.py` with a repo-owned `Ranger21` implementation adapted from the vendor source while switching its helper imports onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `Ranger21` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `Ranger21` construction, first-step state initialization, and scheduler-orchestration behavior through the shared optimizer/scheduler entrypoints.
+- **The absorbed plain-optimizer path now includes a full Shampoo-family optimizer too** — The repo can now host the heavier Shampoo-style preconditioner path without relying on vendor or `pytorch_optimizer` helper imports at runtime.
+  - Added `library/optimization/optimizers/shampoo.py` with a repo-owned `ScalableShampoo` implementation adapted from the vendor source.
+  - Added `library/optimization/optimizers/utils/shampoo.py` with the repo-owned Shampoo helper surface used by `ScalableShampoo`.
+  - Updated `library/optimization/optimizers/soap.py` to reuse the repo-owned `merge_small_dims(...)` helper instead of importing it from `pytorch_optimizer`.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `ScalableShampoo` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `ScalableShampoo` construction and first-step preconditioner/graft initialization through the shared factory path.
+- **The absorbed low-rank optimizer surface now includes the second projector-backed variant too** — The repo can now host both the baseline projector path and a richer projector-backed variant without falling back to the donor package.
+  - Added `library/optimization/optimizers/fira.py` with a repo-owned `Fira` implementation adapted from the vendor source.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `Fira` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `Fira` construction and ranked 2D projector initialization through the shared factory path.
+- **The absorbed plain-optimizer path now owns the baseline Compass family too** — The repo can now host the non-optional `Compass` variants without routing through the donor package or dragging the backend-heavy 8-bit/AO code into the first pass.
+  - Added `library/optimization/optimizers/compass.py` with repo-owned `Compass`, `CompassPlus`, `CompassADOPT`, and `CompassADOPTMARS` implementations adapted from the vendor family file.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so the absorbed Compass family participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for Compass-family construction, `CompassPlus` lookahead-state initialization, and factored/previous-gradient state initialization in the ADOPT-style Compass variants.
+
+### Changed
+
+- **Scheduler orchestration now fails fast for `Ranger21` double-scheduling conflicts** — Runs using Ranger21’s built-in LR schedule no longer quietly stack a second external scheduler on top unless the config explicitly disables the optimizer-local scheduler.
+  - Updated `library/optimization/scheduler.py` so `Ranger21` only accepts the effectively no-op external scheduler case (`lr_scheduler='constant'` with no warmup) while its internal LR schedule is active.
+  - The shared scheduler path still allows normal external schedulers for `Ranger21` when `disable_lr_scheduler=True`.
+- **The first Compass-family absorption pass also hardens a few donor edge cases while keeping the algorithm structure intact** — The repo-owned copy now avoids a couple of brittle donor assumptions instead of preserving them as hidden footguns.
+  - Fixed the plain `Compass` step path so `weight_decouple` stays a boolean instead of accidentally becoming a one-tuple.
+  - Updated `CompassPlus` to re-read per-group `betas` during its phase-3 update pass and to initialize diff-amp reset state without assuming gradients already exist during `reset()`.
+  - Updated `CompassADOPT` and `CompassADOPTMARS` reset paths to derive factored-state shapes from parameter shapes instead of assuming pre-existing gradients.
+
 ## [2026-04-03]
 
 ### Added
+
+- **The wrapper path now has its first fully repo-owned schedule-free wrapper too** — Wrapper absorption no longer stops at `SNOO_ASGD`, and the legacy schedule-free wrapper flag no longer depends on the external `schedulefree` package.
+  - Added `library/optimization/wrappers/schedulefree.py` with a repo-owned `ScheduleFreeWrapper` implementation adapted from the vendor wrapper logic while switching to repo-local stochastic-copy utilities and the repo’s base-optimizer wrapping flow.
+  - Updated `library/optimization/registry.py` so `ScheduleFreeWrapper` is modeled as a repo-owned wrapper with both train/eval-toggle and scheduler-on-base-optimizer capabilities.
+  - Updated `library/optimization/optimizer_factory.py` so both the explicit `optimizer_type='ScheduleFreeWrapper'` path and the legacy `optimizer_schedulefree_wrapper=True` path now use the same repo-owned wrapper implementation.
+  - Expanded wrapper-focused regression coverage so the absorbed wrapper continues to build through the shared wrapper path, schedule the base optimizer, and advertise schedule-free train/eval handling.
 
 - **Repo-owned scheduler absorption now has a first real implementation slice** — Standalone scheduler classes no longer need to stay trapped behind `lr_scheduler_type` custom-import paths.
   - Added `library/optimization/schedulers/` with repo-owned `CosineAnnealingWarmRestarts` and `RexAnnealingWarmRestarts` implementations adapted from the vendor schedulers.

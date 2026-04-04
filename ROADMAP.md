@@ -121,6 +121,27 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - DDPM-only post-loss weighting helpers now live under `library/objectives/ddpm.py` instead of sharing a module with generic masking behavior
   - generic mask application now has its own `library/losses/masking.py` helper
   - SD / SDXL use the DDPM objective-owned post-processing seam directly, while SD3 now imports only the generic masking path
+- The wrapper absorption path has a cleaner first repo-owned schedule-free target now too:
+  - `ScheduleFreeWrapper` now lives under `library/optimization/wrappers/` instead of depending on the external `schedulefree` package
+  - the explicit wrapper registration and the legacy `optimizer_schedulefree_wrapper=True` path now share that same repo-owned wrapper implementation
+  - wrapper capability metadata now also declares the train/eval-toggle behavior that schedule-free execution actually needs
+- The absorbed plain-optimizer path now has its first projector-backed low-rank entry too:
+  - `GaLore` now lives under `library/optimization/optimizers/` with its projector helper owned under `optimizers/utils/`
+  - the shared registry/factory path can now construct a repo-owned optimizer that carries projector state for ranked 2D parameter groups without falling back to the donor package at runtime
+- The absorbed plain-optimizer path now has its first Shampoo-family entry too:
+  - `SOAP` now lives under `library/optimization/optimizers/` and constructs through the shared repo-owned registry/factory path
+  - the active absorbed coverage now checks that its preconditioner state initializes on first step instead of only exercising constructor metadata
+- The absorbed plain-optimizer path now includes an optimizer-local scheduler family too:
+  - `Ranger21` now lives under `library/optimization/optimizers/` and constructs through the shared repo-owned registry/factory path
+  - the shared scheduler path now fails fast if `Ranger21` keeps its internal LR schedule active while config also asks for a real external scheduler, and still allows ordinary external schedulers when `disable_lr_scheduler=True`
+- The absorbed plain-optimizer path now includes a full Shampoo-family optimizer too:
+  - `ScalableShampoo` now lives under `library/optimization/optimizers/` and constructs through the shared repo-owned registry/factory path
+  - the Shampoo helper seam now also lives under `library/optimization/optimizers/utils/`, and `SOAP` now reuses that repo-owned helper instead of importing `merge_small_dims(...)` from `pytorch_optimizer`
+- The absorbed low-rank optimizer path now includes a second projector-backed variant too:
+  - `Fira` now lives under `library/optimization/optimizers/` and reuses the repo-owned `GaLoreProjector` helper through the shared registry/factory path
+- The absorbed plain-optimizer path now includes the baseline non-optional Compass family too:
+  - `Compass`, `CompassPlus`, `CompassADOPT`, and `CompassADOPTMARS` now live under `library/optimization/optimizers/` and construct through the shared repo-owned registry/factory path
+  - the first Compass pass intentionally leaves the backend-heavy `Compass8BitBNB` / `CompassAO` slice for later while still covering the plain family’s lookahead and ADOPT-style state initialization paths with focused regression tests
 - The first Huber-threshold cleanup is in place too:
   - `get_huber_threshold_if_needed(...)` now lives in `library/losses/huber.py` instead of sharing a file with the raw loss primitives
   - `library/losses/loss.py` now reads more like the actual generic loss-function home, while the threshold helper keeps the timestep/scheduler-aware pre-loss behavior separate

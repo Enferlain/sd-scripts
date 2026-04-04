@@ -45,7 +45,6 @@ def _assert_group_values(group: dict, expected_values: dict):
 class TestAbsorbedWrappers:
     def test_registered_schedulefree_wrapper_builds_from_base_optimizer(self, mock_model_parameters):
         """Explicit wrapper optimizers should build their base optimizer through the shared wrapper path."""
-        pytest.importorskip("schedulefree")
         config = OptimizerConfig(
             optimizer_type="ScheduleFreeWrapper",
             learning_rates=LearningRatesConfig(base=3e-4),
@@ -70,7 +69,6 @@ class TestAbsorbedWrappers:
 
     def test_registered_schedulefree_wrapper_schedules_base_optimizer(self, mock_model_parameters):
         """Registered wrappers should route schedulers onto their base optimizer when declared."""
-        pytest.importorskip("schedulefree")
         optimizer_config, training_config, optimizer = _build_optimizer_and_training_config(
             mock_model_parameters,
             optimizer_type="ScheduleFreeWrapper",
@@ -92,6 +90,29 @@ class TestAbsorbedWrappers:
         )
 
         assert scheduler.optimizer is optimizer.base_optimizer
+
+    def test_registered_schedulefree_wrapper_is_schedulefree_for_train_eval_handling(self, mock_model_parameters):
+        """Repo-owned wrapper registrations should advertise schedule-free train/eval behavior."""
+        config = OptimizerConfig(
+            optimizer_type="ScheduleFreeWrapper",
+            learning_rates=LearningRatesConfig(base=3e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW",
+                "base_optimizer.weight_decay=0.01",
+                "momentum=0.95",
+            ],
+        )
+        _, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        assert is_schedulefree_optimizer(optimizer, config)
+        train_fn, eval_fn = get_optimizer_train_eval_fn(optimizer, config)
+        assert callable(train_fn)
+        assert callable(eval_fn)
 
     def test_registered_snoo_asgd_builds_from_base_optimizer(self, mock_model_parameters):
         """Repo-owned wrappers should be able to wrap a base optimizer with namespaced base args."""
@@ -407,6 +428,63 @@ class TestAbsorbedOptimizers:
                 },
             ),
             (
+                "Compass",
+                1e-4,
+                ["weight_decay=0.01", "weight_decouple=True", "clip=0.5", "adaptive_clipping=True", "update_strategy='grams'"],
+                "Compass",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decouple": True,
+                    "clip": 0.5,
+                    "adaptive_clipping": True,
+                    "update_strategy": "grams",
+                },
+            ),
+            (
+                "CompassADOPT",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "weight_decouple=True",
+                    "factor_second_moment=True",
+                    "compass_second_moment_smoothing=False",
+                    "use_stable_spam_clipping=False",
+                ],
+                "CompassADOPT",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decouple": True,
+                    "factor_second_moment": True,
+                    "compass_second_moment_smoothing": False,
+                    "use_stable_spam_clipping": False,
+                },
+            ),
+            (
+                "CompassADOPTMARS",
+                1e-4,
+                ["weight_decay=0.02", "weight_decouple=True", "factor_second_moment=True", "gamma=0.05", "cautious=False"],
+                "CompassADOPTMARS",
+                {
+                    "weight_decay": 0.02,
+                    "weight_decouple": True,
+                    "factor_second_moment": True,
+                    "gamma": 0.05,
+                    "cautious": False,
+                },
+            ),
+            (
+                "CompassPlus",
+                1e-4,
+                ["weight_decay=0.01", "use_lookahead=True", "lookahead_merge_time=3", "use_softplus=True"],
+                "CompassPlus",
+                {
+                    "weight_decay": 0.01,
+                    "use_lookahead": True,
+                    "lookahead_merge_time": 3,
+                    "use_softplus": True,
+                },
+            ),
+            (
                 "FCompass",
                 1e-4,
                 ["weight_decay=0.01", "amp_fac=1.5", "clip=0.5", "centralization=0.5"],
@@ -450,6 +528,32 @@ class TestAbsorbedOptimizers:
                 },
             ),
             (
+                "Fira",
+                1e-4,
+                ["weight_decay=0.01", "rank=4", "update_proj_gap=2", "scale=0.5", "projection_type='std'"],
+                "Fira",
+                {
+                    "weight_decay": 0.01,
+                    "rank": 4,
+                    "update_proj_gap": 2,
+                    "scale": 0.5,
+                    "projection_type": "std",
+                },
+            ),
+            (
+                "GaLore",
+                1e-4,
+                ["weight_decay=0.01", "rank=4", "update_proj_gap=2", "scale=0.5", "projection_type='std'"],
+                "GaLore",
+                {
+                    "weight_decay": 0.01,
+                    "rank": 4,
+                    "update_proj_gap": 2,
+                    "scale": 0.5,
+                    "projection_type": "std",
+                },
+            ),
+            (
                 "LaProp",
                 4e-4,
                 ["weight_decay=0.02", "centered=True", "ams_bound=True", "cautious=True"],
@@ -487,11 +591,72 @@ class TestAbsorbedOptimizers:
                 },
             ),
             (
+                "Ranger21",
+                5e-4,
+                [
+                    "num_iterations=20",
+                    "weight_decay=0.01",
+                    "beta0=0.8",
+                    "lookahead_merge_time=4",
+                    "disable_lr_scheduler=True",
+                    "use_softplus=False",
+                ],
+                "Ranger21",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decouple": True,
+                    "fixed_decay": False,
+                    "adam_debias": False,
+                },
+            ),
+            (
+                "ScalableShampoo",
+                1e-3,
+                [
+                    "weight_decay=0.01",
+                    "block_size=32",
+                    "start_preconditioning_step=1",
+                    "preconditioning_compute_steps=1",
+                    "statistics_compute_steps=1",
+                    "graft_type=2",
+                    "use_svd=False",
+                ],
+                "ScalableShampoo",
+                {
+                    "weight_decay": 0.01,
+                    "decoupled_weight_decay": False,
+                    "decoupled_learning_rate": True,
+                    "moving_average_for_momentum": False,
+                    "nesterov": True,
+                },
+            ),
+            (
                 "SGDSaI",
                 1e-3,
                 ["momentum=0.8", "weight_decay=0.01", "cautious=True"],
                 "SGDSaI",
                 {"momentum": 0.8, "weight_decay": 0.01, "cautious": True},
+            ),
+            (
+                "SOAP",
+                3e-3,
+                [
+                    "weight_decay=0.02",
+                    "precondition_frequency=2",
+                    "max_precondition_dim=32",
+                    "merge_dims=True",
+                    "precondition_1d=True",
+                    "correct_bias=False",
+                ],
+                "SOAP",
+                {
+                    "weight_decay": 0.02,
+                    "precondition_frequency": 2,
+                    "max_precondition_dim": 32,
+                    "merge_dims": True,
+                    "precondition_1d": True,
+                    "correct_bias": False,
+                },
             ),
             (
                 "SimplifiedAdEMAMix",
@@ -599,14 +764,31 @@ class TestAbsorbedOptimizers:
             assert optimizer.param_groups[0]["_lr_ratio"] == 0.01
         if optimizer_type == "AdEMAMix":
             assert optimizer.param_groups[0]["adopt"] is False
+        if optimizer_type == "CompassPlus":
+            assert optimizer.use_lookahead is True
         if optimizer_type == "FCompassPlus":
             assert optimizer.use_lookahead is True
+        if optimizer_type == "Fira":
+            assert optimizer.param_groups[0]["projection_type"] == "std"
+        if optimizer_type == "GaLore":
+            assert optimizer.param_groups[0]["projection_type"] == "std"
         if optimizer_type == "LaProp":
             assert optimizer.cautious is True
         if optimizer_type == "Lamb":
             assert optimizer.pre_norm is True
         if optimizer_type == "SGDSaI":
             assert optimizer.has_warmup is False
+        if optimizer_type == "SOAP":
+            assert optimizer.data_format == "channels_first"
+        if optimizer_type == "Ranger21":
+            assert optimizer.beta0 == 0.8
+            assert optimizer.disable_lr_scheduler is True
+            assert optimizer.lookahead_merge_time == 4
+            assert optimizer.use_softplus is False
+        if optimizer_type == "ScalableShampoo":
+            assert optimizer.block_size == 32
+            assert optimizer.start_preconditioning_step == 1
+            assert optimizer.preconditioning_compute_steps == 1
         if optimizer_type == "Adai":
             assert optimizer.use_gc is True
         if optimizer_type == "VSGD":
@@ -684,6 +866,302 @@ class TestAbsorbedOptimizers:
         assert "AdamW8bitKahan" in optimizer_name
         assert optimizer.stabilize is False
 
+    def test_registered_galore_initializes_projector_for_ranked_2d_parameters(self, mock_model_parameters):
+        """GaLore should create a projector only for ranked 2D parameter groups during step execution."""
+        config = OptimizerConfig(
+            optimizer_type="GaLore",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "rank=4",
+                "update_proj_gap=1",
+                "scale=0.5",
+                "projection_type='std'",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        for parameter in mock_model_parameters:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        matrix_param = next(parameter for parameter in mock_model_parameters if parameter.ndim == 2)
+        vector_param = next(parameter for parameter in mock_model_parameters if parameter.ndim == 1)
+
+        assert "GaLore" in optimizer_name
+        assert "projector" in optimizer.state[matrix_param]
+        assert "projector" not in optimizer.state[vector_param]
+        assert optimizer.state[matrix_param]["projector"].rank == 4
+        assert optimizer.state[matrix_param]["projector"].projection_type == "std"
+
+    def test_registered_fira_initializes_projector_for_ranked_2d_parameters(self, mock_model_parameters):
+        """Fira should create a projector only for ranked 2D parameter groups during step execution."""
+        config = OptimizerConfig(
+            optimizer_type="Fira",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "rank=4",
+                "update_proj_gap=1",
+                "scale=0.5",
+                "projection_type='std'",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        for parameter in mock_model_parameters:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        matrix_param = next(parameter for parameter in mock_model_parameters if parameter.ndim == 2)
+        vector_param = next(parameter for parameter in mock_model_parameters if parameter.ndim == 1)
+
+        assert "Fira" in optimizer_name
+        assert "projector" in optimizer.state[matrix_param]
+        assert "projector" not in optimizer.state[vector_param]
+        assert optimizer.state[matrix_param]["projector"].rank == 4
+        assert optimizer.state[matrix_param]["projector"].projection_type == "std"
+
+    def test_registered_compassplus_initializes_lookahead_state_on_first_step(self, mock_model_parameters):
+        """CompassPlus should initialize lookahead state and advance its lookahead counter on step."""
+        config = OptimizerConfig(
+            optimizer_type="CompassPlus",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "use_lookahead=True",
+                "lookahead_merge_time=2",
+                "use_softplus=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        for parameter in mock_model_parameters:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        first_parameter = optimizer.param_groups[0]["params"][0]
+        state = optimizer.state[first_parameter]
+
+        assert "CompassPlus" in optimizer_name
+        assert optimizer.lookahead_step == 1
+        assert "lookahead_params" in state
+        assert state["lookahead_params"].shape == first_parameter.shape
+
+    def test_registered_compassadopt_initializes_factored_second_moment_state(self):
+        """CompassADOPT should factor second-moment state for matrix parameters on the first optimization step."""
+        matrix_param = torch.nn.Parameter(torch.randn(64, 64))
+        vector_param = torch.nn.Parameter(torch.randn(16))
+        parameters = [matrix_param, vector_param]
+
+        config = OptimizerConfig(
+            optimizer_type="CompassADOPT",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decouple=True",
+                "factor_second_moment=True",
+                "use_stable_spam_clipping=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        for parameter in parameters:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        assert "CompassADOPT" in optimizer_name
+        assert isinstance(optimizer.state[matrix_param]["exp_avg_sq"], list)
+        assert len(optimizer.state[matrix_param]["exp_avg_sq"]) == 5
+        assert isinstance(optimizer.state[vector_param]["exp_avg_sq"], torch.Tensor)
+        assert optimizer.state[matrix_param]["exp_avg"].shape == matrix_param.shape
+
+    def test_registered_compassadoptmars_initializes_previous_grad_state(self):
+        """CompassADOPTMARS should initialize factored second-moment and previous-grad state on the first step."""
+        matrix_param = torch.nn.Parameter(torch.randn(64, 64))
+        vector_param = torch.nn.Parameter(torch.randn(16))
+        parameters = [matrix_param, vector_param]
+
+        config = OptimizerConfig(
+            optimizer_type="CompassADOPTMARS",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.02",
+                "weight_decouple=True",
+                "factor_second_moment=True",
+                "gamma=0.05",
+                "cautious=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        for parameter in parameters:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        matrix_state = optimizer.state[matrix_param]
+        vector_state = optimizer.state[vector_param]
+
+        assert "CompassADOPTMARS" in optimizer_name
+        assert isinstance(matrix_state["exp_avg_sq"], list)
+        assert len(matrix_state["exp_avg_sq"]) == 5
+        assert isinstance(vector_state["exp_avg_sq"], torch.Tensor)
+        assert matrix_state["previous_grad"].shape == matrix_param.shape
+        assert torch.count_nonzero(matrix_state["previous_grad"]).item() > 0
+
+    def test_registered_soap_initializes_preconditioner_state_on_first_step(self, mock_model_parameters):
+        """SOAP should initialize preconditioner state on the first optimization step."""
+        config = OptimizerConfig(
+            optimizer_type="SOAP",
+            learning_rates=LearningRatesConfig(base=3e-3),
+            optimizer_args=[
+                "weight_decay=0.02",
+                "precondition_frequency=2",
+                "max_precondition_dim=32",
+                "merge_dims=False",
+                "precondition_1d=True",
+                "correct_bias=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        for parameter in mock_model_parameters:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        matrix_param = next(parameter for parameter in mock_model_parameters if parameter.ndim == 2)
+        vector_param = next(parameter for parameter in mock_model_parameters if parameter.ndim == 1)
+
+        assert "SOAP" in optimizer_name
+        assert optimizer.param_groups[0]["precondition_frequency"] == 2
+        assert "GG" in optimizer.state[matrix_param]
+        assert "Q" in optimizer.state[matrix_param]
+        assert optimizer.state[matrix_param]["Q"] is not None
+        assert len(optimizer.state[matrix_param]["GG"]) == matrix_param.ndim
+        assert len(optimizer.state[vector_param]["GG"]) == 1
+
+    def test_registered_ranger21_initializes_state_and_updates_internal_lr_on_first_step(self, mock_model_parameters):
+        """Ranger21 should initialize optimizer state and advance its built-in LR schedule on step."""
+        config = OptimizerConfig(
+            optimizer_type="Ranger21",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "num_iterations=10",
+                "weight_decay=0.01",
+                "beta0=0.8",
+                "lookahead_merge_time=3",
+                "num_warm_up_iterations=5",
+                "num_warm_down_iterations=1",
+                "disable_lr_scheduler=False",
+                "use_softplus=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.ones_like(parameter)
+
+        optimizer.step()
+
+        first_parameter = optimizer.param_groups[0]["params"][0]
+        state = optimizer.state[first_parameter]
+
+        assert "Ranger21" in optimizer_name
+        assert state["lookahead_params"].shape == first_parameter.shape
+        assert "grad_ma" in state
+        assert "variance_ma" in state
+        assert "neg_grad_ma" in state
+        assert "max_variance_ma" in state
+        assert optimizer.current_lr == pytest.approx(2e-5)
+        assert optimizer.lookahead_step == 1
+
+    def test_registered_scalable_shampoo_initializes_preconditioner_and_graft_state(self, mock_model_parameters):
+        """ScalableShampoo should initialize its preconditioner and graft state on the first optimization step."""
+        config = OptimizerConfig(
+            optimizer_type="ScalableShampoo",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "block_size=32",
+                "start_preconditioning_step=1",
+                "preconditioning_compute_steps=1",
+                "statistics_compute_steps=1",
+                "graft_type=2",
+                "use_svd=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        matrix_param = next(parameter for parameter in optimizer.param_groups[0]["params"] if parameter.ndim == 2)
+        state = optimizer.state[matrix_param]
+        pre_conditioner = state["pre_conditioner"]
+
+        assert "ScalableShampoo" in optimizer_name
+        assert "momentum" in state
+        assert "graft" in state
+        assert pre_conditioner.rank >= 1
+        assert len(pre_conditioner.statistics) == len(pre_conditioner.pre_conditioners)
+        assert len(pre_conditioner.pre_conditioners) > 0
+
     @pytest.mark.parametrize(
         ("optimizer_type", "optimizer_args"),
         [
@@ -691,7 +1169,10 @@ class TestAbsorbedOptimizers:
             ("ADOPTEMAMixScheduleFree", ["weight_decay=0.01", "adaptive_clip=0.0", "alpha=4.0", "t_alpha_beta3=20"]),
             ("ADOPTNesterovScheduleFree", ["weight_decay=0.01", "adaptive_clip=0.0", "debias_beta3=True"]),
             ("ADOPTMARSScheduleFree", ["weight_decay=0.01", "gamma=0.05", "adaptive_clip=0.0"]),
-            ("ADOPTAOScheduleFree", ["weight_decay=0.01", "state_precision='parameter'", "block_size=0", "adaptive_clip=0.0", "torch_compile=False"]),
+            (
+                "ADOPTAOScheduleFree",
+                ["weight_decay=0.01", "state_precision='parameter'", "block_size=0", "adaptive_clip=0.0", "torch_compile=False"],
+            ),
             ("FADOPTScheduleFree", ["weight_decay=0.01", "fisher_clip=0.5", "adaptive_clip=0.0"]),
             ("FADOPTEMAMixScheduleFree", ["weight_decay=0.01", "fisher_clip=0.5", "alpha=4.0", "t_alpha_beta3=20"]),
             ("FADOPTNesterovScheduleFree", ["weight_decay=0.01", "fisher_clip=0.5", "adaptive_clip=0.0", "debias_beta3=True"]),

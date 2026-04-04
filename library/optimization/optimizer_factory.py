@@ -14,7 +14,7 @@ from library.optimization.registry import (
     is_wrapper_optimizer_name,
 )
 from library.optimization.types import materialize_parameter_groups
-from library.optimization.wrappers import WrappedOptimizerProxy
+from library.optimization.wrappers import ScheduleFreeWrapper, WrappedOptimizerProxy
 
 
 logger = logging.getLogger(__name__)
@@ -254,16 +254,11 @@ def _maybe_wrap_with_schedulefree(
     if is_schedulefree_optimizer_name(optimizer_name) or is_wrapper_optimizer_name(optimizer_name):
         return optimizer
 
-    try:
-        import schedulefree as sf
-    except ImportError as err:
-        raise ImportError("No schedulefree") from err
-
     wrapper_kwargs = parse_key_value_args(optimizer_config.schedulefree_wrapper_args)
-    sf_wrapper = sf.ScheduleFreeWrapper(optimizer, **wrapper_kwargs)
+    sf_wrapper = ScheduleFreeWrapper(optimizer, **wrapper_kwargs)
     sf_wrapper.train()
     logger.info(f"wrap optimizer with ScheduleFreeWrapper | {wrapper_kwargs}")
-    return WrappedOptimizerProxy(sf_wrapper, optimizer)
+    return sf_wrapper
 
 
 def get_optimizer(

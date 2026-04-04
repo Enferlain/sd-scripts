@@ -31,6 +31,7 @@ from library.optimization.optimizer_utils import parse_string_to_type
 
 logger = logging.getLogger(__name__)
 
+
 def _wrap_requires_no_warmup(name: str, num_warmup_steps: int | None, scheduler):
     if num_warmup_steps is not None and num_warmup_steps != 0:
         raise ValueError(f"{name} does not require `num_warmup_steps`. Set None or 0.")
@@ -231,6 +232,30 @@ def _build_registered_scheduler(
     raise ValueError(f"Unknown scheduler registration kind: {registration.kind}")
 
 
+def _assert_ranger21_scheduler_compatibility(
+    optimizer_name: str,
+    optimizer_config: OptimizerConfig,
+    scheduler_config: SchedulerConfig,
+    num_warmup_steps: int | None,
+):
+    if optimizer_name.lower() != "ranger21":
+        return
+
+    optimizer_kwargs = parse_key_value_args(optimizer_config.optimizer_args)
+    if optimizer_kwargs.get("disable_lr_scheduler", False):
+        return
+
+    scheduler_name = (scheduler_config.lr_scheduler or "constant").strip().lower()
+    has_external_scheduler = scheduler_name != "constant" or scheduler_config.lr_scheduler_type or num_warmup_steps not in {None, 0}
+    if not has_external_scheduler:
+        return
+
+    raise ValueError(
+        "Ranger21 manages learning-rate scheduling internally unless `disable_lr_scheduler=True`. "
+        "Use `lr_scheduler='constant'` with no warmup, or disable the internal scheduler before configuring an external scheduler."
+    )
+
+
 # Modified version of get_scheduler() function from diffusers.optimizer.get_scheduler
 # Add some checking and features to the original function.
 def get_scheduler_fix(
@@ -260,16 +285,20 @@ def get_scheduler_fix(
     if optimizer_registration is not None and optimizer_registration.supports(OPT_CAP_NO_EXTERNAL_SCHEDULER):
         return get_dummy_scheduler(optimizer)
 
-    if optimizer_registration is None and optimizer_name.lower().split(".")[0] not in {
-        "LoraEasyCustomOptimizer".lower(),
-        "prodigyplus".lower(),
-    } and is_schedulefree_optimizer_name(optimizer_name):
+    if (
+        optimizer_registration is None
+        and optimizer_name.lower().split(".")[0]
+        not in {
+            "LoraEasyCustomOptimizer".lower(),
+            "prodigyplus".lower(),
+        }
+        and is_schedulefree_optimizer_name(optimizer_name)
+    ):
         return get_dummy_scheduler(optimizer)
 
     # Need to apply scheduler to base_optimizer
     if (optimizer_registration is not None and optimizer_registration.supports(OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER)) or (
-        (optimizer_registration is None and is_wrapper_optimizer_name(optimizer_name))
-        or optimizer_config.optimizer_schedulefree_wrapper
+        (optimizer_registration is None and is_wrapper_optimizer_name(optimizer_name)) or optimizer_config.optimizer_schedulefree_wrapper
     ):
         optimizer = getattr(optimizer, "base_optimizer", optimizer)  # Get wrapped base optimizer
 
@@ -280,6 +309,12 @@ def get_scheduler_fix(
         int(scheduler_config.lr_warmup_steps * num_training_steps)
         if isinstance(scheduler_config.lr_warmup_steps, float)
         else scheduler_config.lr_warmup_steps
+    )
+    _assert_ranger21_scheduler_compatibility(
+        optimizer_name,
+        optimizer_config,
+        scheduler_config,
+        num_warmup_steps,
     )
 
     temp_lr_decay_steps = (
