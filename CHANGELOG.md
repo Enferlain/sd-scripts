@@ -14,6 +14,8 @@ Rules:
 
 ### Added
 
+- **Adapter-layer direction now has a dedicated design note** — The repo now has a written proposal for how the adapter surface should evolve without freezing the public architecture around the current Kohya/LyCORIS-shaped runtime seam.
+  - Added `docs_design/adapter_layer_direction.md` covering the current implicit adapter contract, the desired trainer/runtime/target/backend split, a power-user-friendly config direction, and a staged plan for absorbing LyCORIS behind a repo-owned facade.
 - **The absorbed plain-optimizer surface now includes a first low-rank projection optimizer too** — The repo can now host a projector-backed optimizer without routing through the donor package at runtime.
   - Added `library/optimization/optimizers/galore.py` with a repo-owned `GaLore` implementation adapted from the vendor source.
   - Added `library/optimization/optimizers/utils/galore.py` with the repo-owned `GaLoreProjector` helper adapted from the vendor projector utility.
