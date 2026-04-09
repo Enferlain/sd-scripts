@@ -288,10 +288,60 @@ class TestOptimizerRegistry:
                 },
             ),
             (
+                "ABMOG",
+                {
+                    "target": "library.optimization.optimizers.abmog.ABMOG",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "BCOS",
+                {
+                    "target": "library.optimization.optimizers.bcos.BCOS",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "CAME",
+                {
+                    "target": "library.optimization.optimizers.came.CAME",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "CStableAdamW",
+                {
+                    "target": "library.optimization.optimizers.cstableadamw.CStableAdamW",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
                 "Compass",
                 {
                     "target": "library.optimization.optimizers.compass.Compass",
                     "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "Compass8BitBNB",
+                {
+                    "target": "library.optimization.optimizers.compass.Compass8BitBNB",
+                    "backend": "bitsandbytes",
                     "kind": "optimizer",
                     "wrapper_style": None,
                     "capabilities": [],
@@ -312,6 +362,16 @@ class TestOptimizerRegistry:
                 {
                     "target": "library.optimization.optimizers.compass.CompassADOPTMARS",
                     "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "CompassAO",
+                {
+                    "target": "library.optimization.optimizers.compass.CompassAO",
+                    "backend": "torchao",
                     "kind": "optimizer",
                     "wrapper_style": None,
                     "capabilities": [],
@@ -488,6 +548,36 @@ class TestOptimizerRegistry:
                 },
             ),
             (
+                "SingState",
+                {
+                    "target": "library.optimization.optimizers.singstate.SingState",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "SCORN",
+                {
+                    "target": "library.optimization.optimizers.scorn.SCORN",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "SCORNMachina",
+                {
+                    "target": "library.optimization.optimizers.scornmachina.SCORNMachina",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
                 "Dehaze",
                 {
                     "target": "library.optimization.optimizers.dehaze.Dehaze",
@@ -498,9 +588,99 @@ class TestOptimizerRegistry:
                 },
             ),
             (
+                "FFTDescent",
+                {
+                    "target": "library.optimization.optimizers.fftdescent.FFTDescent",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "FARMSCrop",
+                {
+                    "target": "library.optimization.optimizers.farmscrop.FARMSCrop",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "FARMSCropV2",
+                {
+                    "target": "library.optimization.optimizers.farmscrop_v2.FARMSCropV2",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "FMARSCrop",
+                {
+                    "target": "library.optimization.optimizers.fmarscrop.FMARSCrop",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "FMARSCropV2",
+                {
+                    "target": "library.optimization.optimizers.fmarscrop_v2.FMARSCropV2",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "FishMonger",
+                {
+                    "target": "library.optimization.optimizers.fishmonger.FishMonger",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "FishMonger8BitBNB",
+                {
+                    "target": "library.optimization.optimizers.fishmonger.FishMonger8BitBNB",
+                    "backend": "bitsandbytes",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
                 "GOODDOG",
                 {
                     "target": "library.optimization.optimizers.gooddog.GOODDOG",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "GrokFastAdamW",
+                {
+                    "target": "library.optimization.optimizers.grokfast.GrokFastAdamW",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "Glyph",
+                {
+                    "target": "library.optimization.optimizers.glyph.Glyph",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -518,9 +698,69 @@ class TestOptimizerRegistry:
                 },
             ),
             (
+                "OAGOpt",
+                {
+                    "target": "library.optimization.optimizers.oagopt.OAGOpt",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "OCGOpt",
+                {
+                    "target": "library.optimization.optimizers.ocgopt.OCGOpt",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "ProjectiveAdam",
+                {
+                    "target": "library.optimization.optimizers.projective_adam.ProjectiveAdam",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "SCGOpt",
+                {
+                    "target": "library.optimization.optimizers.scgopt.SCGOpt",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "WiwiOpt",
+                {
+                    "target": "library.optimization.optimizers.wiwiopt.WiwiOpt",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
                 "StableSPAM",
                 {
                     "target": "library.optimization.optimizers.spam.StableSPAM",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "TALON",
+                {
+                    "target": "library.optimization.optimizers.talon.TALON",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,

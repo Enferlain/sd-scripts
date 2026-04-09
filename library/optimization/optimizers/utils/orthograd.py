@@ -75,3 +75,18 @@ def paper_orthograd(param, grad, alpha: float = 1.0, eps: float | torch.Tensor =
 @torch.compile(fullgraph=True, mode="reduce-overhead")
 def paper_orthograd_compile(param, grad, alpha: float = 1.0, eps: float | torch.Tensor = 1e-20):
     return paper_orthograd(param, grad, alpha, eps)
+
+
+# Implementation from: https://github.com/LucasPrietoAl/grokking-at-the-edge-of-numerical-stability/blob/main/orthograd.py
+@torch.no_grad()
+def orthograd_atan(param: torch.Tensor, grad: torch.Tensor) -> torch.Tensor:
+    """Apply the donor atan-based orthogonal gradient projection and return the projected tensor."""
+    grad_shape = grad.shape
+    weight = param.view(-1)
+    grad_flat = grad.view(-1)
+
+    proj = torch.dot(weight, grad_flat).atan2_(torch.dot(weight, weight)).mul_(1.27323954474)
+    grad_orth = grad_flat.to(dtype=torch.float32, copy=True).sub_(weight, alpha=proj)
+    grad_orth_scaled = grad_orth.mul_(grad_flat.norm(2).div_(grad_orth.norm(2).clamp_(min=1e-6)))
+
+    return grad_orth_scaled.view(grad_shape)

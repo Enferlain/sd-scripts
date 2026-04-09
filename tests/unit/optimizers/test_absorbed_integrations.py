@@ -428,6 +428,29 @@ class TestAbsorbedOptimizers:
                 },
             ),
             (
+                "ABMOG",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "adaptive=True",
+                    "bcos=False",
+                    "abm_order=3",
+                    "abm_k=2",
+                    "state_storage_dtype='float32'",
+                    "state_storage_device='cpu'",
+                ],
+                "ABMOG",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "adaptive": True,
+                    "bcos": False,
+                    "abm_order": 3,
+                    "abm_k": 2,
+                },
+            ),
+            (
                 "Compass",
                 1e-4,
                 ["weight_decay=0.01", "weight_decouple=True", "clip=0.5", "adaptive_clipping=True", "update_strategy='grams'"],
@@ -438,6 +461,25 @@ class TestAbsorbedOptimizers:
                     "clip": 0.5,
                     "adaptive_clipping": True,
                     "update_strategy": "grams",
+                },
+            ),
+            (
+                "Compass8BitBNB",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "weight_decouple=True",
+                    "clip=0.5",
+                    "centralization=0.5",
+                    "quantization_group_size=64",
+                ],
+                "Compass8BitBNB",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decouple": True,
+                    "clip": 0.5,
+                    "centralization": 0.5,
+                    "group_size": 64,
                 },
             ),
             (
@@ -470,6 +512,23 @@ class TestAbsorbedOptimizers:
                     "factor_second_moment": True,
                     "gamma": 0.05,
                     "cautious": False,
+                },
+            ),
+            (
+                "CompassAO",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "weight_decouple=True",
+                    "state_precision='parameter'",
+                    "torch_compile=False",
+                    "use_spam_clipping=False",
+                ],
+                "CompassAO",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decouple": True,
+                    "use_spam_clipping": False,
                 },
             ),
             (
@@ -654,6 +713,56 @@ class TestAbsorbedOptimizers:
                 },
             ),
             (
+                "GrokFastAdamW",
+                3e-4,
+                [
+                    "weight_decay=0.01",
+                    "weight_decouple=False",
+                    "fixed_decay=True",
+                    "grokfast=True",
+                    "grokfast_alpha=0.95",
+                    "grokfast_lamb=1.5",
+                    "grokfast_after_step=1",
+                    "eps=1e-7",
+                ],
+                "GrokFastAdamW",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decouple": False,
+                    "fixed_decay": True,
+                    "grokfast": True,
+                    "grokfast_alpha": 0.95,
+                    "grokfast_lamb": 1.5,
+                    "grokfast_after_step": 1,
+                    "eps": 1e-7,
+                },
+            ),
+            (
+                "Glyph",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "amp=1.5",
+                    "orthograd=True",
+                    "adaptive_ema=True",
+                    "atan2=True",
+                    "cautious_min=0.25",
+                    "stochastic_fp=False",
+                ],
+                "Glyph",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "amp": 1.5,
+                    "orthograd": True,
+                    "adaptive_ema": True,
+                    "atan2": True,
+                    "cautious_min": 0.25,
+                    "stochastic_fp": False,
+                },
+            ),
+            (
                 "SCION",
                 1e-3,
                 [
@@ -689,6 +798,556 @@ class TestAbsorbedOptimizers:
                     "update_strategy": "both",
                     "use_stable_spam_clipping": True,
                     "torch_compile": False,
+                },
+            ),
+            (
+                "SingState",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "spectral_clip=False",
+                    "lowpass_grad=0.5",
+                ],
+                "SingState",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "spectral_clip": False,
+                    "lowpass_grad": 0.5,
+                },
+            ),
+            (
+                "SCORN",
+                1e-3,
+                [
+                    "focus_ratio=0.1",
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "amp=4.0",
+                    "reset_interval=3",
+                    "reset_increment=2",
+                    "orthograd=True",
+                    "spectral_update_scale=0.75",
+                    "constrain=True",
+                    "cautious_min=0.25",
+                    "stochastic_fp=False",
+                    "use_stable_spam_clipping=True",
+                    "torch_compile=False",
+                ],
+                "SCORN",
+                {
+                    "focus_ratio": 0.1,
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "amp": 4.0,
+                    "reset_interval": 3,
+                    "reset_increment": 2,
+                    "orthograd": True,
+                    "spectral_update_scale": 0.75,
+                    "constrain": True,
+                    "cautious_min": 0.25,
+                    "stochastic_fp": False,
+                    "use_stable_spam_clipping": True,
+                    "torch_compile": False,
+                },
+            ),
+            (
+                "SCORNMachina",
+                6e-4,
+                [
+                    "focus_ratio=0.1",
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "amp=4.0",
+                    "reset_interval=3",
+                    "reset_increment=2",
+                    "orthograd=True",
+                    "orthograd_alpha=0.75",
+                    "spectral_update_scale=0.5",
+                    "constrain=True",
+                    "cautious_min=0.25",
+                    "stochastic_fp=False",
+                    "use_stable_spam_clipping=True",
+                    "eps=1e-8",
+                    "eps2=1e-2",
+                    "eps_floor=1e-16",
+                    "use_adagc=True",
+                    "adagc_warmup_steps=2",
+                    "amsgrad=True",
+                    "amsgrad_decay_rate=0.9",
+                    "torch_compile=False",
+                    "sync_chunk_size=16",
+                    "state_storage_dtype='float32'",
+                    "state_storage_device='cpu'",
+                ],
+                "SCORNMachina",
+                {
+                    "focus_ratio": 0.1,
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "amp": 4.0,
+                    "reset_interval": 3,
+                    "reset_increment": 2,
+                    "orthograd": True,
+                    "orthograd_alpha": 0.75,
+                    "spectral_update_scale": 0.5,
+                    "constrain": True,
+                    "cautious_min": 0.25,
+                    "stochastic_fp": False,
+                    "use_stable_spam_clipping": True,
+                    "eps": 1e-8,
+                    "eps2": 1e-2,
+                    "eps_floor": 1e-16,
+                    "amsgrad": True,
+                    "amsgrad_decay_rate": 0.9,
+                    "torch_compile": False,
+                    "sync_chunk_size": 16,
+                },
+            ),
+            (
+                "CAME",
+                5e-5,
+                [
+                    "weight_decay=0.01",
+                    "weight_decouple=False",
+                    "fixed_decay=True",
+                    "clip_threshold=0.75",
+                    "ams_bound=True",
+                    "eps1=1e-20",
+                    "eps2=1e-12",
+                    "update_strategy='grams'",
+                    "sync_chunk_size=16",
+                    "state_storage_dtype='float32'",
+                    "state_storage_device='cpu'",
+                    "cautious_weight_decay=True",
+                ],
+                "CAME",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decouple": False,
+                    "fixed_decay": True,
+                    "ams_bound": True,
+                    "eps1": 1e-20,
+                    "eps2": 1e-12,
+                    "update_strategy": "grams",
+                    "sync_chunk_size": 16,
+                    "cautious_weight_decay": True,
+                },
+            ),
+            (
+                "BCOS",
+                1e-4,
+                [
+                    "beta=0.95",
+                    "beta2=0.98",
+                    "eps=1e-8",
+                    "weight_decay=0.02",
+                    "mode='m'",
+                    "decouple_wd=False",
+                    "simple_cond=True",
+                    "sync_chunk_size=16",
+                    "state_storage_dtype='float32'",
+                    "state_storage_device='cpu'",
+                ],
+                "BCOS",
+                {
+                    "beta": 0.95,
+                    "beta2": 0.98,
+                    "eps": 1e-8,
+                    "wd": 0.02,
+                    "sync_chunk_size": 16,
+                    "state_storage_dtype": torch.float32,
+                    "state_storage_device": "cpu",
+                },
+            ),
+            (
+                "OAGOpt",
+                1e-4,
+                [
+                    "betas=(0.9, 0.95, 0.98)",
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "spectral_adaptive=False",
+                    "spectral_clip_compile=False",
+                    "spectral_clip_dtype='float32'",
+                    "adaptive=False",
+                    "input_norm=False",
+                    "lowpass_grad=0.2",
+                    "sim_match=True",
+                    "cautious_min=0.2",
+                    "sgd_nesterov=False",
+                    "stochastic_fp=False",
+                    "sync_chunk_size=16",
+                    "state_storage_dtype='float32'",
+                    "state_storage_device='cpu'",
+                ],
+                "OAGOpt",
+                {
+                    "betas": (0.9, 0.95, 0.98),
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "spectral_adaptive": False,
+                    "spectral_clip_compile": False,
+                    "spectral_clip_dtype": torch.float32,
+                    "adaptive": False,
+                    "input_norm": False,
+                    "lowpass_grad": 0.2,
+                    "sim_match": True,
+                    "cautious_min": 0.2,
+                    "sgd_nesterov": False,
+                    "stochastic_fp": False,
+                    "sync_chunk_size": 16,
+                    "state_storage_dtype": torch.float32,
+                    "state_storage_device": "cpu",
+                },
+            ),
+            (
+                "OCGOpt",
+                1e-4,
+                [
+                    "betas=(0.9, 0.92, 0.97)",
+                    "weight_decay=0.02",
+                    "centralization=0.5",
+                    "spectral_adaptive=False",
+                    "spectral_clip_compile=False",
+                    "spectral_clip_dtype='float32'",
+                    "adaptive=False",
+                    "input_norm=True",
+                    "lowpass_grad=0.1",
+                    "sim_match=True",
+                    "cautious_min=0.1",
+                    "stochastic_fp=False",
+                    "kahan_summation=True",
+                    "sync_chunk_size=16",
+                    "state_storage_dtype='float32'",
+                    "state_storage_device='cpu'",
+                ],
+                "OCGOpt",
+                {
+                    "betas": (0.9, 0.92, 0.97),
+                    "weight_decay": 0.02,
+                    "centralization": 0.5,
+                    "spectral_adaptive": False,
+                    "spectral_clip_compile": False,
+                    "spectral_clip_dtype": torch.float32,
+                    "adaptive": False,
+                    "input_norm": True,
+                    "lowpass_grad": 0.1,
+                    "sim_match": True,
+                    "cautious_min": 0.1,
+                    "stochastic_fp": False,
+                    "kahan_summation": True,
+                    "sync_chunk_size": 16,
+                    "state_storage_dtype": torch.float32,
+                    "state_storage_device": "cpu",
+                },
+            ),
+            (
+                "SCGOpt",
+                1e-4,
+                [
+                    "betas=(0.9, 0.92, 0.97)",
+                    "weight_decay=0.02",
+                    "centralization=0.5",
+                    "spectral_clip=True",
+                    "spectral_adaptive=False",
+                    "spectral_clip_compile=False",
+                    "spectral_clip_dtype='float32'",
+                    "adaptive=False",
+                    "use_sign=False",
+                    "lowpass_grad=0.1",
+                    "sim_match=True",
+                    "cautious_min=0.1",
+                    "stochastic_fp=False",
+                ],
+                "SCGOpt",
+                {
+                    "betas": (0.9, 0.92, 0.97),
+                    "weight_decay": 0.02,
+                    "centralization": 0.5,
+                    "spectral_clip": True,
+                    "spectral_adaptive": False,
+                    "spectral_clip_compile": False,
+                    "spectral_clip_dtype": torch.float32,
+                    "adaptive": False,
+                    "use_sign": False,
+                    "lowpass_grad": 0.1,
+                    "sim_match": True,
+                    "cautious_min": 0.1,
+                    "stochastic_fp": False,
+                },
+            ),
+            (
+                "CStableAdamW",
+                1e-3,
+                [
+                    "weight_decay=0.01",
+                    "weight_decouple=False",
+                    "eps=1e-12",
+                    "use_rms=True",
+                    "use_atan2=True",
+                    "atan2_a=1.1",
+                    "atan2_b=0.9",
+                    "cautious_factor=0.5",
+                    "use_adopt=True",
+                    "use_stable_spam_clipping=True",
+                    "ssc_scale=0.8",
+                    "ssc_gamma1=0.81",
+                    "ssc_gamma2=0.9999",
+                    "ssc_gamma3=0.99",
+                    "ssc_eps_floor=1e-20",
+                    "torch_compile=False",
+                ],
+                "CStableAdamW",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decouple": False,
+                    "eps": 1e-12,
+                    "use_rms": True,
+                    "use_atan2": True,
+                    "atan2_a": 1.1,
+                    "atan2_b": 0.9,
+                    "cautious_factor": 0.5,
+                    "use_adopt": True,
+                    "use_stable_spam_clipping": True,
+                    "ssc_scale": 0.8,
+                    "ssc_gamma1": 0.81,
+                    "ssc_gamma2": 0.9999,
+                    "ssc_gamma3": 0.99,
+                    "ssc_eps_floor": 1e-20,
+                    "torch_compile": False,
+                },
+            ),
+            (
+                "FFTDescent",
+                1e-4,
+                [
+                    "beta=0.9",
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "spectral_clip=True",
+                    "spectral_clip_compile=False",
+                    "spectral_clip_dtype='float32'",
+                    "spectral_min=-0.5",
+                    "spectral_max=0.75",
+                    "spectral_adaptive=True",
+                    "lowpass_grad=0.5",
+                    "sign_momentum=0.8",
+                    "stochastic_fp=False",
+                ],
+                "FFTDescent",
+                {
+                    "beta": 0.9,
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "spectral_clip": True,
+                    "spectral_clip_compile": False,
+                    "spectral_clip_dtype": torch.float32,
+                    "spectral_min": -0.5,
+                    "spectral_max": 0.75,
+                    "spectral_adaptive": True,
+                    "lowpass_grad": 0.5,
+                    "sign_momentum": 0.8,
+                    "stochastic_fp": False,
+                },
+            ),
+            (
+                "FARMSCrop",
+                1e-4,
+                [
+                    "betas=(0.9, 0.99)",
+                    "weight_decay=0.01",
+                    "centralization=0.5",
+                    "diff_mult=1.25",
+                    "momentum_beta=0.95",
+                    "momentum_amp=3.0",
+                    "eps=1e-7",
+                    "eps2=0.02",
+                    "eps_floor=1e-16",
+                ],
+                "FARMSCrop",
+                {
+                    "betas": (0.9, 0.99),
+                    "weight_decay": 0.01,
+                    "centralization": 0.5,
+                    "diff_mult": 1.25,
+                    "momentum_beta": 0.95,
+                    "momentum_amp": 3.0,
+                    "eps": 1e-7,
+                    "eps2": 0.02,
+                    "eps_floor": 1e-16,
+                },
+            ),
+            (
+                "FARMSCropV2",
+                1e-4,
+                [
+                    "betas=(0.9, 0.99)",
+                    "weight_decay=0.01",
+                    "centralization=0.5",
+                    "diff_mult=1.25",
+                    "momentum_beta=0.95",
+                    "momentum_lambda=0.35",
+                    "clip=0.75",
+                    "cautious=True",
+                    "cautious_grad='approx_grad_nat'",
+                    "eps=1e-7",
+                    "eps2=0.02",
+                    "eps_floor=1e-16",
+                ],
+                "FARMSCropV2",
+                {
+                    "betas": (0.9, 0.99),
+                    "weight_decay": 0.01,
+                    "centralization": 0.5,
+                    "diff_mult": 1.25,
+                    "momentum_beta": 0.95,
+                    "momentum_lambda": 0.35,
+                    "clip": 0.75,
+                    "cautious": True,
+                    "cautious_grad": "approx_grad_nat",
+                    "eps": 1e-7,
+                    "eps2": 0.02,
+                    "eps_floor": 1e-16,
+                },
+            ),
+            (
+                "FMARSCrop",
+                1e-4,
+                [
+                    "betas=(0.9, 0.99)",
+                    "weight_decay=0.01",
+                    "weight_decouple=True",
+                    "centralization=0.5",
+                    "moment_centralization=0.25",
+                    "diff_mult=1.25",
+                    "momentum_beta=0.95",
+                    "momentum_lambda=0.35",
+                    "gamma=0.01",
+                    "clip=0.75",
+                    "adaptive_clip=0.5",
+                    "adaptive_clip_type='layer'",
+                    "cautious=True",
+                    "debias_beta2=False",
+                    "eps=1e-7",
+                    "eps2=0.02",
+                    "eps_floor=1e-16",
+                ],
+                "FMARSCrop",
+                {
+                    "betas": (0.9, 0.99),
+                    "weight_decay": 0.01,
+                    "weight_decouple": True,
+                    "centralization": 0.5,
+                    "moment_centralization": 0.25,
+                    "diff_mult": 1.25,
+                    "momentum_beta": 0.95,
+                    "momentum_lambda": 0.35,
+                    "gamma": 0.01,
+                    "clip": 0.75,
+                    "adaptive_clip": 0.5,
+                    "adaptive_clip_type": "layer",
+                    "cautious": True,
+                    "debias_beta2": False,
+                    "eps": 1e-7,
+                    "eps2": 0.02,
+                    "eps_floor": 1e-16,
+                },
+            ),
+            (
+                "FMARSCropV2",
+                1e-4,
+                [
+                    "betas=(0.9, 0.99)",
+                    "weight_decay=0.01",
+                    "centralization=0.5",
+                    "moment_centralization=0.25",
+                    "diff_mult=1.25",
+                    "momentum_beta=0.95",
+                    "momentum_lambda=0.35",
+                    "gamma=0.01",
+                    "clip=0.75",
+                    "adaptive_clip=0.5",
+                    "cautious=True",
+                    "debias_beta2=False",
+                    "eps=1e-7",
+                    "eps2=0.02",
+                    "eps_floor=1e-16",
+                ],
+                "FMARSCropV2",
+                {
+                    "betas": (0.9, 0.99),
+                    "weight_decay": 0.01,
+                    "centralization": 0.5,
+                    "moment_centralization": 0.25,
+                    "diff_mult": 1.25,
+                    "momentum_beta": 0.95,
+                    "momentum_lambda": 0.35,
+                    "gamma": 0.01,
+                    "clip": 0.75,
+                    "adaptive_clip": 0.5,
+                    "cautious": True,
+                    "debias_beta2": False,
+                    "eps": 1e-7,
+                    "eps2": 0.02,
+                    "eps_floor": 1e-16,
+                },
+            ),
+            (
+                "FishMonger",
+                1e-3,
+                [
+                    "betas=(0.8, 0.9, 0.99)",
+                    "eps=1e-8",
+                    "eps2=0.02",
+                    "eps_floor=1e-16",
+                    "weight_decay=0.01",
+                    "clip=0.5",
+                    "centralization=0.5",
+                    "diff_amp=0.1",
+                    "diff_amp_beta=0.95",
+                ],
+                "FishMonger",
+                {
+                    "betas": (0.8, 0.9, 0.99),
+                    "eps": 1e-8,
+                    "eps2": 0.02,
+                    "eps_floor": 1e-16,
+                    "weight_decay": 0.01,
+                    "clip": 0.5,
+                    "centralization": 0.5,
+                    "diff_amp": 0.1,
+                    "diff_amp_beta": 0.95,
+                },
+            ),
+            (
+                "FishMonger8BitBNB",
+                1e-3,
+                [
+                    "betas=(0.8, 0.9, 0.99)",
+                    "eps=1e-8",
+                    "eps2=0.02",
+                    "eps_floor=1e-16",
+                    "weight_decay=0.01",
+                    "clip=0.5",
+                    "centralization=0.5",
+                    "diff_amp=0.1",
+                    "diff_amp_beta=0.95",
+                    "quantization_group_size=64",
+                ],
+                "FishMonger8BitBNB",
+                {
+                    "betas": (0.8, 0.9, 0.99),
+                    "eps": 1e-8,
+                    "eps2": 0.02,
+                    "eps_floor": 1e-16,
+                    "weight_decay": 0.01,
+                    "clip": 0.5,
+                    "centralization": 0.5,
+                    "diff_amp": 0.1,
+                    "diff_amp_beta": 0.95,
+                    "group_size": 64,
                 },
             ),
             (
@@ -734,6 +1393,25 @@ class TestAbsorbedOptimizers:
                 },
             ),
             (
+                "TALON",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "denom_atan2=True",
+                    "spectral_clip=False",
+                    "signscale_power=1.5",
+                ],
+                "TALON",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "denom_atan2": True,
+                    "spectral_clip": False,
+                    "signscale_power": 1.5,
+                },
+            ),
+            (
                 "Mythical",
                 1e-3,
                 [
@@ -758,6 +1436,62 @@ class TestAbsorbedOptimizers:
                     "warmup": True,
                     "cautious_min": 0.25,
                     "stochastic_fp": False,
+                },
+            ),
+            (
+                "ProjectiveAdam",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "projection='hyperbolic'",
+                    "input_norm=False",
+                    "normuon=True",
+                    "use_compile=False",
+                    "ortho_dtype='float32'",
+                    "stochastic_fp=False",
+                    "sync_chunk_size=16",
+                    "state_storage_dtype='float32'",
+                    "state_storage_device='cpu'",
+                ],
+                "ProjectiveAdam",
+                {
+                    "weight_decay": 0.01,
+                    "projection": "hyperbolic",
+                    "input_norm": False,
+                    "normuon": True,
+                    "use_compile": False,
+                    "ortho_dtype": torch.float32,
+                    "stochastic_fp": False,
+                    "sync_chunk_size": 16,
+                    "state_storage_dtype": torch.float32,
+                    "state_storage_device": "cpu",
+                },
+            ),
+            (
+                "WiwiOpt",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "normuon=True",
+                    "use_compile=False",
+                    "ortho_dtype='float32'",
+                    "stochastic_fp=False",
+                    "dynamic_lr=True",
+                    "dynamic_lr_boost=False",
+                    "egd=True",
+                    "egd_oja=True",
+                ],
+                "WiwiOpt",
+                {
+                    "weight_decay": 0.01,
+                    "normuon": True,
+                    "use_compile": False,
+                    "ortho_dtype": torch.float32,
+                    "stochastic_fp": False,
+                    "dynamic_lr": True,
+                    "dynamic_lr_boost": False,
+                    "egd": True,
+                    "egd_oja": True,
                 },
             ),
             (
@@ -894,8 +1628,20 @@ class TestAbsorbedOptimizers:
             assert optimizer.param_groups[0]["_lr_ratio"] == 0.01
         if optimizer_type == "AdEMAMix":
             assert optimizer.param_groups[0]["adopt"] is False
+        if optimizer_type == "ABMOG":
+            assert optimizer._init_lr == learning_rate
+            assert optimizer.state_storage_dtype == torch.float32
+            assert optimizer.state_storage_device == "cpu"
+            assert str(optimizer) == "ABMOG"
         if optimizer_type == "CompassPlus":
             assert optimizer.use_lookahead is True
+        if optimizer_type == "Compass8BitBNB":
+            assert str(optimizer) == "Compass8BitBNB"
+        if optimizer_type == "CompassAO":
+            assert optimizer.block_size == 0
+            assert optimizer.min_quant_size == 4096
+            assert optimizer.state_precision == "parameter"
+            assert optimizer.torch_compile is False
         if optimizer_type == "FCompassPlus":
             assert optimizer.use_lookahead is True
         if optimizer_type == "Fira":
@@ -908,12 +1654,81 @@ class TestAbsorbedOptimizers:
             assert optimizer.pre_norm is True
         if optimizer_type == "Dehaze":
             assert optimizer._init_lr == learning_rate
+        if optimizer_type == "FFTDescent":
+            assert optimizer._init_lr == learning_rate
+            assert str(optimizer) == "FFTDescent"
+        if optimizer_type == "FARMSCrop":
+            assert optimizer.eps == 1e-7
+            assert optimizer.eps2 == 0.02
+            assert optimizer.eps_floor == 1e-16
+            assert str(optimizer) == "FARMSCrop"
+        if optimizer_type == "FARMSCropV2":
+            assert optimizer.param_groups[0]["cautious"] is True
+            assert optimizer.param_groups[0]["cautious_grad"] == "approx_grad_nat"
+            assert str(optimizer) == "FARMSCropV2"
+        if optimizer_type == "FMARSCrop":
+            assert optimizer.param_groups[0]["weight_decouple"] is True
+            assert optimizer.param_groups[0]["adaptive_clip_type"] == "layer"
+            assert str(optimizer) == "FMARSCrop"
+        if optimizer_type == "FMARSCropV2":
+            assert optimizer.param_groups[0]["momentum_beta"] == 0.95
+            assert optimizer.param_groups[0]["debias_beta2"] is False
+            assert str(optimizer) == "FMARSCropV2"
+        if optimizer_type == "FishMonger":
+            assert optimizer.eps == 1e-8
+            assert optimizer.eps2 == 0.02
+            assert optimizer.eps_floor == 1e-16
+            assert str(optimizer) == "FishMonger"
+        if optimizer_type == "FishMonger8BitBNB":
+            assert optimizer.eps == 1e-8
+            assert optimizer.eps2 == 0.02
+            assert optimizer.eps_floor == 1e-16
+            assert str(optimizer) == "FishMonger8BitBNB"
         if optimizer_type == "GOODDOG":
             assert optimizer._init_lr == learning_rate
+        if optimizer_type == "Glyph":
+            assert optimizer._init_lr == learning_rate
+            assert str(optimizer) == "Glyph"
+        if optimizer_type == "GrokFastAdamW":
+            assert optimizer.param_groups[0]["lr"] == pytest.approx(learning_rate / 2.5)
         if optimizer_type == "SGDSaI":
             assert optimizer.has_warmup is False
         if optimizer_type == "Mythical":
             assert optimizer._init_lr == learning_rate
+        if optimizer_type == "ProjectiveAdam":
+            assert optimizer.state_storage_dtype == torch.float32
+            assert optimizer.state_storage_device == "cpu"
+        if optimizer_type == "WiwiOpt":
+            assert str(optimizer) == "WiwiOpt"
+        if optimizer_type == "SCORN":
+            assert optimizer._init_lr == learning_rate
+        if optimizer_type == "SCORNMachina":
+            assert optimizer._init_lr == learning_rate
+            assert optimizer.use_adagc is True
+            assert optimizer.state_storage_dtype == torch.float32
+            assert optimizer.state_storage_device == "cpu"
+        if optimizer_type == "CAME":
+            assert optimizer.clip_threshold == 0.75
+            assert optimizer.state_storage_dtype == torch.float32
+            assert optimizer.state_storage_device == "cpu"
+        if optimizer_type == "BCOS":
+            assert optimizer.mode == "m"
+            assert optimizer.decouple_wd is False
+            assert optimizer.simple_cond is True
+            assert optimizer.state_storage_dtype == torch.float32
+            assert optimizer.state_storage_device == "cpu"
+        if optimizer_type == "OAGOpt":
+            assert optimizer.state_storage_dtype == torch.float32
+            assert optimizer.state_storage_device == "cpu"
+            assert str(optimizer) == "OAGOpt"
+        if optimizer_type == "OCGOpt":
+            assert optimizer.state_storage_dtype == torch.float32
+            assert optimizer.state_storage_device == "cpu"
+            assert optimizer._init_lr == learning_rate
+        if optimizer_type == "SCGOpt":
+            assert optimizer._init_lr == learning_rate
+        if optimizer_type == "CStableAdamW":
+            assert str(optimizer) == "CStableAdamW_with_SSC"
         if optimizer_type == "SOAP":
             assert optimizer.data_format == "channels_first"
         if optimizer_type == "Ranger21":
@@ -924,6 +1739,9 @@ class TestAbsorbedOptimizers:
         if optimizer_type == "SCION":
             assert optimizer.ssc_t_max == 8
             assert optimizer.warmup is not None
+        if optimizer_type == "SingState":
+            assert optimizer._init_lr == learning_rate
+            assert str(optimizer) == "SingState"
         if optimizer_type == "ScalableShampoo":
             assert optimizer.block_size == 32
             assert optimizer.start_preconditioning_step == 1
@@ -935,6 +1753,9 @@ class TestAbsorbedOptimizers:
             assert optimizer.t_max == 10
             assert optimizer.update_proj_gap == 5
             assert optimizer.warmup is not None
+        if optimizer_type == "TALON":
+            assert optimizer._init_lr == learning_rate
+            assert str(optimizer) == "TALON"
         if optimizer_type == "Adai":
             assert optimizer.use_gc is True
         if optimizer_type == "VSGD":
@@ -1114,6 +1935,138 @@ class TestAbsorbedOptimizers:
         assert optimizer.lookahead_step == 1
         assert "lookahead_params" in state
         assert state["lookahead_params"].shape == first_parameter.shape
+
+    def test_registered_compass8bitbnb_handles_runtime_support_expectations(self):
+        """Compass8BitBNB should fail fast on unsupported CPU execution instead of crashing."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="Compass8BitBNB",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decouple=True",
+                "clip=0.5",
+                "centralization=0.5",
+                "quantization_group_size=64",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        assert "Compass8BitBNB" in optimizer_name
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+
+        if not torch.cuda.is_available():
+            with pytest.raises(RuntimeError, match="requires CUDA-enabled bitsandbytes"):
+                optimizer.step()
+            return
+
+        parameter = torch.nn.Parameter(torch.zeros(4, 4, device="cuda"))
+        parameters = [parameter]
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype, device=parameter.device).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "Compass8BitBNB" in optimizer_name
+        assert "ema" in state
+        assert "ema_squared" in state
+        assert isinstance(state["ema"], tuple)
+        assert isinstance(state["ema_squared"], tuple)
+
+    def test_registered_compassao_initializes_parameter_precision_state_on_first_step(self):
+        """CompassAO should initialize repo-owned state cleanly when kept in parameter precision."""
+        parameter = torch.nn.Parameter(torch.randn(8, 8))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="CompassAO",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decouple=True",
+                "state_precision='parameter'",
+                "torch_compile=False",
+                "use_spam_clipping=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "CompassAO" in optimizer_name
+        assert "exp_avg" in state
+        assert "exp_avg_sq" in state
+        assert isinstance(state["exp_avg"], torch.Tensor)
+        assert isinstance(state["exp_avg_sq"], torch.Tensor)
+        assert state["exp_avg"].shape == parameter.shape
+
+    def test_registered_compassao_quantized_state_requires_cuda(self):
+        """CompassAO should fail fast when quantized state is requested for CPU parameters."""
+        parameter = torch.nn.Parameter(torch.randn(64, 64))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="CompassAO",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decouple=True",
+                "state_precision='q8bit'",
+                "torch_compile=False",
+                "use_spam_clipping=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        assert "CompassAO" in optimizer_name
+        parameter.grad = torch.randn_like(parameter)
+
+        if torch.cuda.is_available():
+            parameter = torch.nn.Parameter(torch.randn(64, 64, device="cuda"))
+            parameters = [parameter]
+            optimizer_name, _, optimizer = get_optimizer(
+                config,
+                config.learning_rates,
+                config.scheduler,
+                parameters,
+            )
+            parameter.grad = torch.randn_like(parameter)
+            optimizer.step()
+            state = optimizer.state[parameter]
+            assert "exp_avg" in state
+            return
+
+        with pytest.raises(RuntimeError, match="quantized state requires CUDA"):
+            optimizer.step()
 
     def test_registered_compassadopt_initializes_factored_second_moment_state(self):
         """CompassADOPT should factor second-moment state for matrix parameters on the first optimization step."""
@@ -1309,6 +2262,967 @@ class TestAbsorbedOptimizers:
         assert state["d"].shape == first_parameter.shape
         assert not torch.equal(first_parameter, initial_parameter)
 
+    def test_registered_scorn_init_and_first_step_track_focus_and_reset_state(self, mock_model_parameters):
+        """SCORN should tolerate init() and initialize focus/reset bookkeeping on the first optimization step."""
+        config = OptimizerConfig(
+            optimizer_type="SCORN",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "focus_ratio=0.1",
+                "weight_decay=0.01",
+                "amp=4.0",
+                "reset_interval=2",
+                "reset_increment=1",
+                "orthograd=True",
+                "spectral_update_scale=0.75",
+                "constrain=True",
+                "cautious_min=0.25",
+                "stochastic_fp=False",
+                "use_stable_spam_clipping=True",
+                "torch_compile=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        optimizer.init()
+
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        first_parameter = optimizer.param_groups[0]["params"][0]
+        state = optimizer.state[first_parameter]
+
+        assert "SCORN" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "ema" in state
+        assert "ema_squared" in state
+        assert "pbar" in state
+        assert "times_zero" in state
+        assert "steps_since_reset" in state
+        assert state["ema"].shape == first_parameter.shape
+        assert state["ema_squared"].shape == first_parameter.shape
+        assert state["pbar"].shape == first_parameter.shape
+        assert state["times_zero"] == 0
+        assert state["steps_since_reset"] == 2
+
+    def test_registered_scornmachina_initializes_offloaded_state_and_adagc_tracking(self, mock_model_parameters):
+        """SCORNMachina should initialize offloaded state buffers and AdaGC tracking on the first optimization step."""
+        config = OptimizerConfig(
+            optimizer_type="SCORNMachina",
+            learning_rates=LearningRatesConfig(base=6e-4),
+            optimizer_args=[
+                "focus_ratio=0.1",
+                "weight_decay=0.01",
+                "amp=4.0",
+                "reset_interval=2",
+                "reset_increment=1",
+                "orthograd=True",
+                "orthograd_alpha=0.75",
+                "spectral_update_scale=0.5",
+                "constrain=True",
+                "cautious_min=0.25",
+                "stochastic_fp=False",
+                "use_stable_spam_clipping=True",
+                "eps=1e-8",
+                "eps2=1e-2",
+                "eps_floor=1e-16",
+                "use_adagc=True",
+                "adagc_warmup_steps=2",
+                "amsgrad=True",
+                "amsgrad_decay_rate=0.9",
+                "torch_compile=False",
+                "sync_chunk_size=16",
+                "state_storage_dtype='float32'",
+                "state_storage_device='cpu'",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            mock_model_parameters,
+        )
+
+        optimizer.init()
+
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.randn_like(parameter)
+
+        optimizer.step()
+
+        first_parameter = optimizer.param_groups[0]["params"][0]
+        state = optimizer.state[first_parameter]
+
+        assert "SCORNMachina" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert optimizer._global_step == 1
+        assert "ema" in state
+        assert "ema_squared" in state
+        assert "pbar" in state
+        assert "times_zero" in state
+        assert "steps_since_reset" in state
+        assert "adagc_gamma" in state
+        assert state["ema"].dtype == torch.float32
+        assert state["ema_squared"].dtype == torch.float32
+        assert state["pbar"].dtype == torch.float32
+        assert state["ema"].device.type == "cpu"
+        assert state["ema_squared"].device.type == "cpu"
+        assert state["pbar"].device.type == "cpu"
+        assert state["times_zero"] == 0
+        assert state["steps_since_reset"] == 2
+
+    def test_registered_came_initializes_factored_state_on_first_step(self):
+        """CAME should initialize factored second-moment state and optional AMSBound storage on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="CAME",
+            learning_rates=LearningRatesConfig(base=5e-5),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decouple=False",
+                "fixed_decay=True",
+                "clip_threshold=0.75",
+                "ams_bound=True",
+                "eps1=1e-20",
+                "eps2=1e-12",
+                "update_strategy='grams'",
+                "sync_chunk_size=16",
+                "state_storage_dtype='float32'",
+                "state_storage_device='cpu'",
+                "cautious_weight_decay=True",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "CAME" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "exp_avg" in state
+        assert "exp_avg_sq_row" in state
+        assert "exp_avg_sq_col" in state
+        assert "exp_avg_res_row" in state
+        assert "exp_avg_res_col" in state
+        assert "exp_avg_sq_hat" in state
+        assert state["exp_avg"].dtype == torch.float32
+        assert state["exp_avg"].device.type == "cpu"
+        assert state["exp_avg_sq_row"].shape == (4,)
+        assert state["exp_avg_sq_col"].shape == (4,)
+        assert state["exp_avg_res_row"].shape == (4,)
+        assert state["exp_avg_res_col"].shape == (4,)
+
+    def test_registered_bcos_initializes_cpu_state_and_steps_without_cuda(self):
+        """BCOS should keep CPU state-storage execution working even when CUDA is unavailable."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="BCOS",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "beta=0.95",
+                "beta2=0.98",
+                "eps=1e-8",
+                "weight_decay=0.02",
+                "mode='m'",
+                "decouple_wd=False",
+                "simple_cond=True",
+                "sync_chunk_size=16",
+                "state_storage_dtype='float32'",
+                "state_storage_device='cpu'",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "BCOS" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "m" in state
+        assert "v" in state
+        assert state["m"].dtype == torch.float32
+        assert state["v"].dtype == torch.float32
+        assert state["m"].device.type == "cpu"
+        assert state["v"].device.type == "cpu"
+
+    def test_registered_oagopt_initializes_offloaded_state_on_first_step(self):
+        """OAGOpt should initialize its scalar state and value momentum on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="OAGOpt",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "spectral_clip_compile=False",
+                "spectral_clip_dtype='float32'",
+                "stochastic_fp=False",
+                "sync_chunk_size=16",
+                "state_storage_dtype='float32'",
+                "state_storage_device='cpu'",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "OAGOpt" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "denom" in state
+        assert "ratio" in state
+        assert "value_momentum" in state
+        assert state["denom"].dtype == torch.float32
+        assert state["ratio"].dtype == torch.float32
+        assert state["value_momentum"].dtype == torch.float32
+        assert state["denom"].device.type == "cpu"
+        assert state["ratio"].device.type == "cpu"
+        assert state["value_momentum"].device.type == "cpu"
+
+    def test_registered_ocgopt_initializes_offloaded_state_on_first_step(self):
+        """OCGOpt should initialize its centralized momentum state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="OCGOpt",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.02",
+                "centralization=0.5",
+                "spectral_clip_compile=False",
+                "spectral_clip_dtype='float32'",
+                "stochastic_fp=False",
+                "sync_chunk_size=16",
+                "state_storage_dtype='float32'",
+                "state_storage_device='cpu'",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "OCGOpt" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "value_momentum" in state
+        assert "centralized_momentum" in state
+        assert "kahan_comp" not in state
+        assert state["value_momentum"].dtype == torch.float32
+        assert state["centralized_momentum"].dtype == torch.float32
+        assert state["value_momentum"].device.type == "cpu"
+        assert state["centralized_momentum"].device.type == "cpu"
+
+    def test_registered_scgopt_initializes_state_on_first_step(self):
+        """SCGOpt should initialize its denominator and momentum state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="SCGOpt",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "use_sign=False",
+                "spectral_clip=True",
+                "spectral_clip_compile=False",
+                "spectral_clip_dtype='float32'",
+                "stochastic_fp=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "SCGOpt" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "denom" in state
+        assert "value_momentum" in state
+        assert "centralized_momentum" in state
+        assert state["denom"].shape == parameter.shape
+
+    def test_registered_projectiveadam_initializes_projection_and_normuon_state(self):
+        """ProjectiveAdam should initialize projection EMA and NorMuon state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="ProjectiveAdam",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "projection='hyperbolic'",
+                "input_norm=False",
+                "normuon=True",
+                "use_compile=False",
+                "ortho_dtype='float32'",
+                "stochastic_fp=False",
+                "sync_chunk_size=16",
+                "state_storage_dtype='float32'",
+                "state_storage_device='cpu'",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "ProjectiveAdam" in optimizer_name
+        assert state["step"] == 1
+        assert "exp_avg_y" in state
+        assert "exp_avg_z" in state
+        assert "normuon_second_momentum" in state
+        assert state["exp_avg_y"].dtype == torch.float32
+        assert state["exp_avg_z"].dtype == torch.float32
+        assert state["normuon_second_momentum"].dtype == torch.float32
+        assert state["exp_avg_y"].device.type == "cpu"
+        assert state["exp_avg_z"].device.type == "cpu"
+        assert state["normuon_second_momentum"].device.type == "cpu"
+        assert state["normuon_second_momentum"].shape == (4, 1)
+
+    def test_registered_wiwiopt_initializes_dynamic_lr_and_oja_state(self):
+        """WiwiOpt should initialize its dynamic-LR, NorMuon, and Oja state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="WiwiOpt",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "normuon=True",
+                "use_compile=False",
+                "ortho_dtype='float32'",
+                "stochastic_fp=False",
+                "dynamic_lr=True",
+                "dynamic_lr_boost=False",
+                "egd=True",
+                "egd_oja=True",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "WiwiOpt" in optimizer_name
+        assert state["step"] == 1
+        assert "polyak" in state
+        assert "accum" in state
+        assert "exp_avg" in state
+        assert "delta_ema" in state
+        assert "delta_norm_ema" in state
+        assert "normuon_second_momentum" in state
+        assert "oja_basis" in state
+        assert state["polyak"].shape == (4, 1)
+        assert state["accum"].shape == (4, 1)
+        assert state["delta_norm_ema"].shape == (4, 1)
+        assert state["normuon_second_momentum"].shape == (4, 1)
+        assert state["oja_basis"].shape[1] == 4
+
+    def test_registered_cstableadamw_initializes_adopt_and_ssc_state_on_first_step(self):
+        """CStableAdamW should initialize ADOPT and Stable-SPAM state on the first optimization step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="CStableAdamW",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decouple=False",
+                "eps=1e-12",
+                "use_rms=True",
+                "use_atan2=True",
+                "atan2_a=1.1",
+                "atan2_b=0.9",
+                "cautious_factor=0.5",
+                "use_adopt=True",
+                "use_stable_spam_clipping=True",
+                "ssc_scale=0.8",
+                "ssc_gamma1=0.81",
+                "ssc_gamma2=0.9999",
+                "ssc_gamma3=0.99",
+                "ssc_eps_floor=1e-20",
+                "torch_compile=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "CStableAdamW" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert state["steps"] == 1
+        assert "exp_avg" in state
+        assert "exp_avg_sq" in state
+        assert "prev_grad" in state
+        assert "ssc_m_norm_t" in state
+        assert "ssc_v_norm_t" in state
+        assert "ssc_m_max_t" in state
+        assert torch.count_nonzero(state["exp_avg"]) > 0
+        assert torch.count_nonzero(state["prev_grad"]) > 0
+        assert torch.count_nonzero(state["exp_avg_sq"]) == 0
+        assert state["ssc_m_norm_t"].item() > 0.0
+        assert state["ssc_v_norm_t"].item() > 0.0
+        assert state["ssc_m_max_t"].item() > 0.0
+
+    def test_registered_fftdescent_initializes_momentum_state_on_first_step(self):
+        """FFTDescent should initialize momentum and optional sign momentum state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FFTDescent",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "beta=0.9",
+                "weight_decay=0.01",
+                "spectral_clip=True",
+                "spectral_clip_compile=False",
+                "spectral_clip_dtype='float32'",
+                "sign_momentum=0.8",
+                "stochastic_fp=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "FFTDescent" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "momentum" in state
+        assert "sign_momentum" in state
+        assert state["momentum"].shape == parameter.shape
+        assert state["sign_momentum"].shape == parameter.shape
+
+    def test_registered_fishmonger_initializes_fim_and_diff_state_on_first_step(self):
+        """FishMonger should initialize its momentum, FIM, and differential-amplification state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FishMonger",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "betas=(0.8, 0.9, 0.99)",
+                "eps=1e-8",
+                "eps2=0.02",
+                "eps_floor=1e-16",
+                "weight_decay=0.01",
+                "clip=0.5",
+                "centralization=0.5",
+                "diff_amp=0.1",
+                "diff_amp_beta=0.95",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "FishMonger" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "momentum" in state
+        assert "momentum_slow" in state
+        assert "momentum_slow_squared" in state
+        assert "fim" in state
+        assert "ema_diff" in state
+        assert "previous_grad" in state
+        assert torch.count_nonzero(state["momentum"]) > 0
+        assert torch.count_nonzero(state["momentum_slow"]) > 0
+        assert torch.count_nonzero(state["fim"]) > 0
+
+    def test_registered_fishmonger8bitbnb_handles_runtime_support_expectations(self):
+        """FishMonger8BitBNB should fail fast on unsupported CPU execution instead of crashing."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FishMonger8BitBNB",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "betas=(0.8, 0.9, 0.99)",
+                "eps=1e-8",
+                "eps2=0.02",
+                "eps_floor=1e-16",
+                "weight_decay=0.01",
+                "clip=0.5",
+                "centralization=0.5",
+                "diff_amp=0.1",
+                "diff_amp_beta=0.95",
+                "quantization_group_size=64",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        assert "FishMonger8BitBNB" in optimizer_name
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+
+        if not torch.cuda.is_available():
+            with pytest.raises(RuntimeError, match="requires CUDA-enabled bitsandbytes"):
+                optimizer.step()
+            return
+
+        parameter = torch.nn.Parameter(torch.zeros(4, 4, device="cuda"))
+        parameters = [parameter]
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype, device=parameter.device).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "momentum" in state
+        assert "momentum_slow" in state
+        assert "momentum_slow_squared" in state
+        assert "fim" in state
+        assert "ema_diff" in state
+        assert "previous_grad" in state
+        assert isinstance(state["momentum"], tuple)
+        assert isinstance(state["fim"], tuple)
+
+    def test_registered_farmscrop_initializes_fisher_and_diff_state_on_first_step(self):
+        """FARMSCrop should initialize FIM, momentum, and diff-history state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FARMSCrop",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "betas=(0.9, 0.99)",
+                "weight_decay=0.01",
+                "centralization=0.5",
+                "diff_mult=1.25",
+                "momentum_beta=0.95",
+                "momentum_amp=3.0",
+                "eps=1e-7",
+                "eps2=0.02",
+                "eps_floor=1e-16",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "FARMSCrop" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "fim" in state
+        assert "momentum" in state
+        assert "previous_grad" in state
+        assert "grad_diff_fim" in state
+        assert state["fim"].shape == parameter.shape
+        assert state["previous_grad"].shape == parameter.shape
+
+    def test_registered_farmscropv2_initializes_optional_diff_state_on_first_step(self):
+        """FARMSCropV2 should initialize its FIM, momentum, and optional diff-history state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FARMSCropV2",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "betas=(0.9, 0.99)",
+                "weight_decay=0.01",
+                "centralization=0.5",
+                "diff_mult=1.25",
+                "momentum_beta=0.95",
+                "momentum_lambda=0.35",
+                "clip=0.75",
+                "cautious=True",
+                "cautious_grad='approx_grad_nat'",
+                "eps=1e-7",
+                "eps2=0.02",
+                "eps_floor=1e-16",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "FARMSCropV2" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "fim" in state
+        assert "momentum" in state
+        assert "previous_grad" in state
+        assert "grad_diff_fim" in state
+        assert state["momentum"].shape == parameter.shape
+        assert state["grad_diff_fim"].shape == parameter.shape
+
+    def test_registered_fmarscrop_initializes_mars_and_diff_state_on_first_step(self):
+        """FMARSCrop should initialize FIM, momentum, and MARS diff-history state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FMARSCrop",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "betas=(0.9, 0.99)",
+                "weight_decay=0.01",
+                "weight_decouple=True",
+                "centralization=0.5",
+                "moment_centralization=0.25",
+                "diff_mult=1.25",
+                "momentum_beta=0.95",
+                "momentum_lambda=0.35",
+                "gamma=0.01",
+                "clip=0.75",
+                "adaptive_clip=0.5",
+                "adaptive_clip_type='layer'",
+                "cautious=True",
+                "debias_beta2=False",
+                "eps=1e-7",
+                "eps2=0.02",
+                "eps_floor=1e-16",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "FMARSCrop" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "fim" in state
+        assert "momentum" in state
+        assert "prev_grad" in state
+        assert "grad_diff_fim" in state
+        assert state["fim"].shape == parameter.shape
+        assert state["prev_grad"].shape == parameter.shape
+
+    def test_registered_fmarscropv2_initializes_mars_and_diff_state_on_first_step(self):
+        """FMARSCropV2 should initialize FIM, momentum, and optional diff-history state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FMARSCropV2",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "betas=(0.9, 0.99)",
+                "weight_decay=0.01",
+                "centralization=0.5",
+                "moment_centralization=0.25",
+                "diff_mult=1.25",
+                "momentum_beta=0.95",
+                "momentum_lambda=0.35",
+                "gamma=0.01",
+                "clip=0.75",
+                "adaptive_clip=0.5",
+                "cautious=True",
+                "debias_beta2=False",
+                "eps=1e-7",
+                "eps2=0.02",
+                "eps_floor=1e-16",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "FMARSCropV2" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "fim" in state
+        assert "momentum" in state
+        assert "prev_grad" in state
+        assert "grad_diff_fim" in state
+        assert state["momentum"].shape == parameter.shape
+        assert state["grad_diff_fim"].shape == parameter.shape
+
+    def test_registered_abmog_initializes_cpu_state_without_cuda(self):
+        """ABMOG should initialize repo-owned offloaded state and run on CPU-only setups."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="ABMOG",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decay_rate=0.99",
+                "adaptive=True",
+                "bcos=False",
+                "abm_order=3",
+                "abm_k=2",
+                "state_storage_dtype='float32'",
+                "state_storage_device='cpu'",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "ABMOG" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "value_momentum" in state
+        assert "denom" in state
+        assert "p_history" in state
+        assert state["value_momentum"].device.type == "cpu"
+        assert state["denom"].device.type == "cpu"
+
+    def test_registered_glyph_initializes_ema_state_on_first_step(self):
+        """Glyph should initialize EMA, squared EMA, and previous-grad state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="Glyph",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decay_rate=0.99",
+                "amp=1.5",
+                "orthograd=True",
+                "adaptive_ema=True",
+                "atan2=True",
+                "cautious_min=0.25",
+                "stochastic_fp=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "Glyph" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "ema" in state
+        assert "ema_squared" in state
+        assert "prev_grad" in state
+        assert state["ema"].shape == parameter.shape
+        assert state["prev_grad"].shape == parameter.shape
+
+    def test_registered_singstate_initializes_momentum_state_on_first_step(self):
+        """SingState should initialize its sign-tracking momentum state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="SingState",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decay_rate=0.99",
+                "spectral_clip=False",
+                "lowpass_grad=0.5",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "SingState" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "momentum" in state
+        assert state["momentum"].shape == parameter.shape
+
+    def test_registered_talon_initializes_multistage_momentum_state_on_first_step(self):
+        """TALON should initialize value, denominator, and sign state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="TALON",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decay_rate=0.99",
+                "denom_atan2=True",
+                "spectral_clip=False",
+                "signscale_power=1.5",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "TALON" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "value_momentum" in state
+        assert "stage2_emasq" in state
+        assert "sign_momentum" in state
+        assert state["value_momentum"].shape == parameter.shape
+        assert state["sign_momentum"].shape == parameter.shape
+
     def test_registered_dehaze_initializes_stage_state_on_first_step(self, mock_model_parameters):
         """Dehaze should initialize its dual denominator and sign state on the first optimization step."""
         config = OptimizerConfig(
@@ -1383,6 +3297,58 @@ class TestAbsorbedOptimizers:
         assert state["stage1_emasq"].shape == first_parameter.shape
         assert state["stage2_emasq"].shape == first_parameter.shape
         assert state["sign_momentum"].shape == first_parameter.shape
+
+    def test_registered_grokfastadamw_tracks_grok_state_after_warmup(self):
+        """GrokFastAdamW should initialize the grok EMA on the first step and use it once warmup has elapsed."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="GrokFastAdamW",
+            learning_rates=LearningRatesConfig(base=3e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decouple=False",
+                "fixed_decay=True",
+                "grokfast=True",
+                "grokfast_alpha=0.95",
+                "grokfast_lamb=1.5",
+                "grokfast_after_step=1",
+                "eps=1e-7",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        first_grad = torch.ones_like(parameter)
+        parameter.grad = first_grad.clone()
+        optimizer.step()
+
+        first_step_state = optimizer.state[parameter]["grok_exp_avg"].clone()
+
+        second_grad = torch.full_like(parameter, 3.0)
+        parameter.grad = second_grad.clone()
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "GrokFastAdamW" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 2
+        assert "exp_avg" in state
+        assert "exp_avg_sq" in state
+        assert "grok_exp_avg" in state
+        assert torch.allclose(first_step_state, first_grad)
+        assert torch.allclose(
+            state["grok_exp_avg"],
+            first_grad.lerp(second_grad, weight=1.0 - optimizer.param_groups[0]["grokfast_alpha"]),
+        )
+        assert torch.count_nonzero(state["exp_avg"]) > 0
+        assert torch.count_nonzero(state["exp_avg_sq"]) > 0
 
     def test_registered_stablespam_resets_projection_buffers_on_gap_for_float32_params(self):
         """StableSPAM should write reset projection buffers back into float32 state when the gap triggers."""

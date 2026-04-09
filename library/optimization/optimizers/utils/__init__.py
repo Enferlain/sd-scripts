@@ -1,9 +1,11 @@
+from library.optimization.optimizers.utils.adagc import adagc_global_clipping_calc, apply_adagc_clipping_and_update_gamma
 from library.optimization.optimizers.utils.clipping import NORM_TYPE, adaptive_eps, agc
 from library.optimization.optimizers.utils.math_utils import debias_beta, schedule_beta_tc
 from library.optimization.optimizers.utils.norms import get_global_gradient_norm
 from library.optimization.optimizers.utils.orthograd import (
     bias_rms,
     bias_rms_compile,
+    orthograd_atan,
     paper_orthograd,
     paper_orthograd_compile,
     zero_power_via_newton_schulz_6,
@@ -29,8 +31,10 @@ __all__ = [
     "STATE_PRECISION",
     "SSCCosineDecay",
     "UPDATE_STRATEGY",
+    "adagc_global_clipping_calc",
     "adaptive_eps",
     "agc",
+    "apply_adagc_clipping_and_update_gamma",
     "apply_update_strategies",
     "bias_rms",
     "bias_rms_compile",
@@ -39,6 +43,7 @@ __all__ = [
     "debias_beta",
     "get_denom",
     "get_global_gradient_norm",
+    "orthograd_atan",
     "paper_orthograd",
     "paper_orthograd_compile",
     "schedule_beta_tc",

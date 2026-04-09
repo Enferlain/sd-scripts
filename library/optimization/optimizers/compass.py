@@ -3,18 +3,28 @@
 # repo: https://github.com/lodestone-rock/compass_optimizer/blob/main/experimental/compass_experimental_sr_bf16.py
 # Defaults tuned for lora training based on testing
 
+import logging
 import math
 
 import torch
 from pytorch_optimizer.base.exception import NoSparseGradientError, ZeroParameterSizeError
 from pytorch_optimizer.base.optimizer import BaseOptimizer
 from pytorch_optimizer.base.type import Betas, Closure, Defaults, Loss, ParamGroup
+from torch.distributed._tensor import DTensor
 from pytorch_optimizer.optimizer.gradient_centralization import centralize_gradient
 from pytorch_optimizer.optimizer.utils import normalize_gradient, unit_norm
+from torch.optim import Optimizer
 from torch.nn.functional import softplus
+from torchao.optim.quant_utils import _fp32_to_bf16_sr
+from torchao.optim.subclass_4bit import OptimState4bit
+from torchao.optim.subclass_8bit import OptimState8bit
+from torchao.optim.subclass_fp8 import OptimStateFp8
 
 from library.optimization.optimizers.utils import (
+    CLIP_TYPE,
     NORM_TYPE,
+    STATE_PRECISION,
+    CosineDecay,
     SSCCosineDecay,
     UPDATE_STRATEGY,
     adaptive_eps,
@@ -22,11 +32,20 @@ from library.optimization.optimizers.utils import (
     copy_stochastic_,
     create_factored_dims,
     get_denom,
+    paper_orthograd_compile,
     paper_orthograd,
+    spam_grad_clipping,
+    spam_grad_clipping_logging,
     stable_spam_clipping_compile_wrapper,
     stable_spam_clipping_impl,
     update_second_moment,
 )
+
+try:
+    from bitsandbytes.functional import dequantize_blockwise, quantize_blockwise
+except ImportError:  # pragma: no cover - exercised through loader/registry import handling
+    dequantize_blockwise = None
+    quantize_blockwise = None
 
 
 class Compass(BaseOptimizer):
@@ -1603,3 +1622,898 @@ class CompassADOPTMARS(BaseOptimizer):
                 group["exp_avg_sq_mean_sqrt"] = math.sqrt(exp_avg_sq_sum / param_size)
 
         return loss
+
+
+def get_rms(tensor: torch.Tensor) -> torch.Tensor:
+    return tensor.norm().div(math.sqrt(tensor.numel()))
+
+
+class Compass8BitBNB(Optimizer):
+    r"""
+    Compass8BitBNB quantizes Compass state blockwise with bitsandbytes while preserving the donor update shape.
+    """
+
+    def __init__(
+        self,
+        params,
+        lr: float = 1e-4,
+        betas: tuple[float, float] = (0.975, 0.999),
+        weight_decay: float = 0.001,
+        weight_decouple: bool = True,
+        fixed_decay: bool = False,
+        clip: float = 0.0,
+        amp_fac: float = 2.0,
+        eps: float = 1e-8,
+        centralization: float = 0.0,
+        quantization_group_size: int = 64,
+    ) -> None:
+        if quantize_blockwise is None or dequantize_blockwise is None:
+            raise ImportError("No bitsandbytes")
+        if quantization_group_size not in {64, 128, 256, 512, 1024, 2048, 4096}:
+            raise ValueError(
+                "quantization_group_size must be one of 64, 128, 256, 512, 1024, 2048, or 4096"
+            )
+
+        defaults = {
+            "lr": lr,
+            "betas": betas,
+            "amp_fac": amp_fac,
+            "eps": eps,
+            "weight_decay": weight_decay,
+            "weight_decouple": weight_decouple,
+            "fixed_decay": fixed_decay,
+            "clip": clip,
+            "centralization": centralization,
+            "group_size": quantization_group_size,
+        }
+        super().__init__(params, defaults)
+
+    def __str__(self) -> str:
+        return "Compass8BitBNB"
+
+    @staticmethod
+    def get_rms(x: torch.Tensor) -> torch.Tensor:
+        return x.norm(2) / math.sqrt(x.numel())
+
+    @staticmethod
+    def _ensure_cuda_params(param_groups) -> None:
+        if not torch.cuda.is_available():
+            raise RuntimeError("Compass8BitBNB requires CUDA-enabled bitsandbytes blockwise quantization")
+        for group in param_groups:
+            for param in group["params"]:
+                if param.device.type != "cuda":
+                    raise RuntimeError("Compass8BitBNB only supports CUDA parameters")
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
+
+        self._ensure_cuda_params(self.param_groups)
+
+        for group in self.param_groups:
+            group["step"] = group.get("step", 0) + 1
+
+            beta1, beta2 = group["betas"]
+            amplification_factor = group["amp_fac"]
+            lr = group["lr"]
+            weight_decay = group["weight_decay"]
+            weight_decouple = group["weight_decouple"]
+            fixed_decay = group["fixed_decay"]
+            centralization = group["centralization"]
+            eps = group["eps"]
+            clip = group["clip"]
+
+            for param in group["params"]:
+                if param.grad is None:
+                    continue
+
+                grad = param.grad
+                if grad.is_sparse:
+                    raise RuntimeError("Compass8BitBNB does not support sparse gradients")
+
+                state = self.state[param]
+                if len(state) == 0:
+                    state["ema"] = quantize_blockwise(
+                        torch.zeros_like(param.data),
+                        blocksize=group["group_size"],
+                    )
+                    state["ema_squared"] = quantize_blockwise(
+                        torch.zeros_like(param.data),
+                        blocksize=group["group_size"],
+                    )
+
+                param_fp32 = param
+                if param.dtype in {torch.float16, torch.bfloat16}:
+                    grad = grad.to(torch.float32)
+                    param_fp32 = param.clone().to(torch.float32)
+
+                if centralization != 0 and grad.dim() > 1:
+                    grad.sub_(grad.mean(dim=tuple(range(1, grad.dim())), keepdim=True).mul_(centralization))
+
+                bias_correction = 1 - beta1**group["step"]
+                bias_correction_sqrt = math.sqrt(1 - beta2**group["step"])
+                debiased_lr = lr / bias_correction
+
+                if clip > 0.0:
+                    grad.div_((self.get_rms(grad).add_(eps) / clip).clamp_(min=1.0))
+
+                ema = dequantize_blockwise(*state["ema"]) + (1 - beta1) * grad
+                grad.add_(ema, alpha=amplification_factor)
+
+                ema_squared = dequantize_blockwise(*state["ema_squared"]) + (1 - beta2) * grad.pow(2)
+                state["ema"] = quantize_blockwise(ema, blocksize=group["group_size"])
+
+                denom = ema_squared.sqrt().div_(bias_correction_sqrt).add_(eps)
+                state["ema_squared"] = quantize_blockwise(ema_squared, blocksize=group["group_size"])
+
+                if weight_decouple:
+                    decay = 1.0 if fixed_decay else debiased_lr
+                    param_fp32.data.mul_(1.0 - decay * weight_decay)
+                elif weight_decay > 0.0:
+                    grad.add_(param_fp32, alpha=weight_decay)
+
+                param_fp32.data.addcdiv_(grad, denom, value=-debiased_lr)
+
+                if param.dtype in {torch.float16, torch.bfloat16}:
+                    copy_stochastic_(param, param_fp32)
+
+        return loss
+
+
+class _CompassBase(Optimizer):
+    def __init__(
+        self,
+        params,
+        lr,
+        betas,
+        eps,
+        eps2,
+        eps_floor,
+        weight_decay,
+        weight_decouple,
+        stable_weight_decay,
+        amp_fac,
+        cautious,
+        adaptive_clip,
+        adaptive_clip_eps,
+        adaptive_clip_type,
+        debias_beta1,
+        debias_beta2,
+        adopt,
+        mars_gamma,
+        compass_second_moment_smoothing,
+        update_strategy,
+        stable_update,
+        stable_update_clip_threshold,
+        use_orthograd,
+        use_spam_clipping,
+        spam_clipping_type,
+        spam_clipping_threshold,
+        spam_clipping_start_step,
+        spam_clipping_eps,
+        use_spam_momentum_reset,
+        spam_momentum_reset_warmup_steps,
+        spam_momentum_reset_interval_steps,
+        use_focus,
+        focus_gamma,
+        focus_beta,
+        debug,
+        use_exadam,
+        *,
+        block_size,
+        min_quant_size,
+        state_precision,
+        torch_compile,
+    ) -> None:
+        if lr < 0.0:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        if eps < 0.0:
+            raise ValueError(f"Invalid epsilon value: {eps}")
+        if not 0.0 <= betas[0] < 1.0:
+            raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
+        if not 0.0 <= betas[1] < 1.0:
+            raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
+        if update_strategy is not None and update_strategy not in {"unmodified", "cautious", "grams", "both"}:
+            raise ValueError(f"Invalid update strategy: {update_strategy}")
+
+        if cautious:
+            update_strategy = "cautious"
+
+        if eps_floor is not None and eps_floor < eps and eps_floor <= 0:
+            eps_floor = torch.finfo(torch.float32).tiny
+
+        if spam_clipping_eps is None or spam_clipping_eps <= 0:
+            spam_clipping_eps = torch.finfo(torch.float32).tiny
+
+        if block_size is None:
+            if state_precision == "parameter":
+                block_size = 0
+            elif state_precision == "q8bit":
+                block_size = 256
+            elif state_precision == "q4bit":
+                block_size = 128
+            elif state_precision == "qfp8":
+                block_size = 256
+            else:
+                raise NotImplementedError
+
+        defaults = {
+            "lr": torch.tensor(lr),
+            "betas": betas,
+            "eps": eps,
+            "eps2": eps2,
+            "eps_floor": eps_floor,
+            "weight_decay": weight_decay,
+            "weight_decouple": weight_decouple,
+            "stable_weight_decay": stable_weight_decay,
+            "amp_fac": amp_fac,
+            "cautious": cautious,
+            "adaptive_clip": adaptive_clip,
+            "adaptive_clip_eps": adaptive_clip_eps,
+            "adaptive_clip_type": adaptive_clip_type,
+            "debias_beta1": debias_beta1,
+            "debias_beta2": debias_beta2,
+            "adopt": adopt,
+            "mars_gamma": mars_gamma,
+            "compass_second_moment_smoothing": compass_second_moment_smoothing,
+            "update_strategy": update_strategy,
+            "stable_update": stable_update,
+            "stable_update_clip_threshold": stable_update_clip_threshold,
+            "use_orthograd": use_orthograd,
+            "use_spam_clipping": use_spam_clipping,
+            "spam_clipping_threshold": spam_clipping_threshold,
+            "spam_clipping_start_step": spam_clipping_start_step,
+            "spam_clipping_type": spam_clipping_type,
+            "spam_clipping_eps": spam_clipping_eps,
+            "use_spam_momentum_reset": use_spam_momentum_reset,
+            "spam_momentum_reset_warmup_steps": spam_momentum_reset_warmup_steps,
+            "spam_momentum_reset_interval_steps": spam_momentum_reset_interval_steps,
+            "use_focus": use_focus,
+            "focus_gamma": focus_gamma,
+            "focus_beta": focus_beta,
+            "debug": debug,
+            "use_exadam": use_exadam,
+        }
+        super().__init__(params, defaults)
+        self.block_size = block_size
+        self.min_quant_size = min_quant_size
+        self.state_precision = state_precision
+        self.torch_compile = torch_compile
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        for group in self.param_groups:
+            device = group["params"][0].device
+
+            group.setdefault("amp_fac", 2.0)
+            group.setdefault("cautious", False)
+            group.setdefault("adaptive_clip", 1.0)
+            group.setdefault("adaptive_clip_eps", 1e-3)
+            group.setdefault("adaptive_clip_type", "layer")
+            group.setdefault("debias_beta1", True)
+            group.setdefault("debias_beta2", True)
+            group.setdefault("adopt", False)
+            group.setdefault("mars_gamma", 0.0)
+            group.setdefault("eps2", 1e-3)
+            group.setdefault("eps_floor", None)
+            group.setdefault("weight_decouple", True)
+            group.setdefault("stable_weight_decay", False)
+            group.setdefault("compass_second_moment_smoothing", True)
+            group.setdefault("swd_second_moment_mean_sqrt", torch.tensor(1.0, dtype=torch.float32, device=device))
+            group.setdefault("update_strategy", "unmodified")
+            group.setdefault("stable_update", False)
+            group.setdefault("stable_update_clip_threshold", 1.0)
+            group.setdefault("use_orthograd", False)
+            group.setdefault("use_spam_clipping", False)
+            group.setdefault("spam_clipping_threshold", 500.0)
+            group.setdefault("spam_clipping_start_step", 20)
+            group.setdefault("spam_clipping_type", "element")
+            group.setdefault("spam_clipping_eps", None)
+            group.setdefault("use_spam_momentum_reset", False)
+            group.setdefault("spam_momentum_reset_warmup_steps", 20)
+            group.setdefault("spam_momentum_reset_interval_steps", 41)
+            torch.serialization.add_safe_globals([CosineDecay, SSCCosineDecay])
+            group.setdefault(
+                "spam_momentum_reset_warmup_scheduler",
+                CosineDecay(0.99, group.get("spam_momentum_reset_warmup_steps")),
+            )
+            group.setdefault(
+                "spam_momentum_reset_warmup_scheduler_current_step",
+                group.get("spam_momentum_reset_warmup_steps"),
+            )
+            group.setdefault("spam_warmup_scaling_factor", torch.tensor(1.0, dtype=torch.float32, device=device))
+            group.setdefault("step", 0)
+            group.setdefault("use_focus", False)
+            group.setdefault("focus_gamma", 0.1)
+            group.setdefault("focus_beta", 0.9)
+            group.setdefault("debug", False)
+            group.setdefault("use_exadam", False)
+
+    def _subclass_zeros(self, p: torch.Tensor, signed: bool, block_size: int):
+        if self.state_precision == "parameter":
+            return torch.zeros_like(p)
+        if self.state_precision == "q8bit":
+            return OptimState8bit.zeros(p.shape, signed, block_size, p.device)
+        if self.state_precision == "q4bit":
+            return OptimState4bit.zeros(p.shape, signed, block_size, p.device)
+        if self.state_precision == "qfp8":
+            return OptimStateFp8.zeros(p.shape, block_size, p.device)
+        raise NotImplementedError
+
+    def _new_buffer(self, p: torch.Tensor, signed: bool):
+        local_p = p.to_local() if isinstance(p, DTensor) else p
+        should_quantize = self.block_size != 0 and (
+            local_p.numel() >= self.min_quant_size and local_p.numel() % self.block_size == 0
+        )
+        if should_quantize and local_p.device.type != "cuda":
+            raise RuntimeError("CompassAO quantized state requires CUDA-backed torchao optimizer state tensors")
+        if should_quantize:
+            out = self._subclass_zeros(local_p, signed, self.block_size)
+        else:
+            out = torch.zeros_like(local_p)
+
+        if isinstance(p, DTensor):
+            out = DTensor.from_local(
+                local_tensor=out,
+                device_mesh=p.device_mesh,
+                placements=p.placements,
+                run_check=False,
+                shape=p.shape,
+                stride=p.stride(),
+            )
+
+        return out
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
+
+        with torch._dynamo.utils.disable_cache_limit():
+            for group in self.param_groups:
+                group["step"] = group.get("step", 0) + 1
+
+                device = group["params"][0].device
+                group.setdefault("swd_second_moment_mean_sqrt", torch.tensor(1.0, dtype=torch.float32, device=device))
+
+                swd_param_size_sum = 0
+                swd_second_moment_group_sum = 0.0
+                mars_gamma = group["mars_gamma"]
+                beta1 = group["betas"][0]
+
+                group.setdefault("spam_warmup_scaling_factor", torch.tensor(1.0, dtype=torch.float32, device=device))
+
+                if group["use_spam_momentum_reset"]:
+                    group["spam_warmup_scaling_factor"].fill_(
+                        1
+                        - group["spam_momentum_reset_warmup_scheduler"].get_dr(
+                            group["spam_momentum_reset_warmup_scheduler_current_step"]
+                        )
+                    )
+                    group["spam_momentum_reset_warmup_scheduler_current_step"] += 1
+                else:
+                    group["spam_warmup_scaling_factor"].fill_(1.0)
+
+                reset_momentum = (
+                    group["use_spam_momentum_reset"]
+                    and group["step"] % group["spam_momentum_reset_interval_steps"] == 0
+                )
+
+                apply_spam_clipping = False
+                if group["use_spam_clipping"] and group["step"] >= group["spam_clipping_start_step"]:
+                    if group["use_spam_momentum_reset"]:
+                        if (
+                            group["spam_momentum_reset_warmup_scheduler_current_step"]
+                            % group["spam_momentum_reset_interval_steps"]
+                            >= group["spam_clipping_start_step"]
+                        ):
+                            apply_spam_clipping = True
+                    else:
+                        apply_spam_clipping = True
+
+                for p in group["params"]:
+                    if p.grad is None:
+                        continue
+
+                    grad = p.grad
+                    if grad.is_sparse:
+                        raise RuntimeError("Sparse gradient is not supported")
+
+                    state = self.state[p]
+                    if len(state) == 0:
+                        state["step"] = torch.tensor(0, device=p.device, dtype=torch.int32)
+                        if group["weight_decay"] > 0 and group["weight_decouple"] and group["stable_weight_decay"]:
+                            state["swd_second_moment_parameter_sum"] = torch.tensor(
+                                0.0, device=p.device, dtype=torch.float32
+                            )
+                        state["exp_avg"] = self._new_buffer(p, True)
+                        state["exp_avg_sq"] = self._new_buffer(p, False)
+                        if group["use_focus"]:
+                            state["pbar"] = self._new_buffer(p, True)
+                        if mars_gamma > 0:
+                            state["previous_grad"] = self._new_buffer(p, True)
+                            if state["previous_grad"].dtype == torch.bfloat16:
+                                state["previous_grad"].copy_(_fp32_to_bf16_sr(p.grad.float()))
+                            else:
+                                state["previous_grad"].copy_(p.grad.float())
+
+                    state["step"] = state["step"].add_(1)
+
+                    if not isinstance(group["lr"], torch.Tensor):
+                        raise RuntimeError(
+                            "lr was changed to a non-Tensor object. If you want to update lr, please use "
+                            "optim.param_groups[0]['lr'].fill_(new_lr)"
+                        )
+
+                    if group["weight_decay"] > 0 and group["stable_weight_decay"]:
+                        swd_param_size_sum += p.numel()
+
+                    if group["adopt"] and state["step"] == 1:
+                        grad_f32 = grad.float()
+                        p_f32 = p.float()
+
+                        if mars_gamma > 0:
+                            previous_grad_f32 = torch.zeros_like(grad_f32, dtype=torch.float32).copy_(
+                                state["previous_grad"].float()
+                            )
+                            temp_grad_f32 = grad_f32.clone().detach()
+                            grad_f32 = (
+                                grad_f32 - previous_grad_f32
+                            ).mul_(mars_gamma * (beta1 / (1.0 - beta1))).add_(grad_f32)
+
+                            if state["previous_grad"].dtype == torch.bfloat16:
+                                state["previous_grad"].copy_(_fp32_to_bf16_sr(temp_grad_f32))
+                            else:
+                                state["previous_grad"].copy_(temp_grad_f32)
+
+                        if group["use_orthograd"]:
+                            paper_orthograd(p_f32, grad_f32)
+
+                        if group["adaptive_clip"] > 0:
+                            grad_f32 = agc(
+                                p=p_f32,
+                                grad=grad_f32,
+                                agc_clip_val=group["adaptive_clip"],
+                                agc_eps=group["adaptive_clip_eps"],
+                                norm_type=group["adaptive_clip_type"],
+                            )
+
+                        exp_avg_sq_f32 = torch.zeros_like(p.float(), dtype=torch.float32).copy_(
+                            state["exp_avg_sq"].float()
+                        )
+                        exp_avg_sq_f32.add_(grad_f32.square())
+
+                        if state["exp_avg_sq"].dtype == torch.bfloat16:
+                            state["exp_avg_sq"].copy_(_fp32_to_bf16_sr(exp_avg_sq_f32))
+                        else:
+                            state["exp_avg_sq"].copy_(exp_avg_sq_f32)
+                    else:
+                        if group["debug"] and p.numel() >= 2 and apply_spam_clipping:
+                            spam_grad_clipping_logging(
+                                grad=grad.float(),
+                                second_moment=state["exp_avg_sq"].float(),
+                                clip_threshold=group["spam_clipping_threshold"],
+                                clip_type=group["spam_clipping_type"],
+                                spam_clip_eps=group["spam_clipping_eps"],
+                            )
+
+                        step_fn = single_param_compass
+                        if self.torch_compile:
+                            step_fn = torch.compile(single_param_compass, fullgraph=True, dynamic=False)
+
+                        step_fn(
+                            p=p.detach(),
+                            grad=grad,
+                            step=state["step"],
+                            exp_avg=state["exp_avg"],
+                            exp_avg_sq=state["exp_avg_sq"],
+                            previous_grad=state["previous_grad"] if mars_gamma > 0 else None,
+                            pbar=state["pbar"] if group["use_focus"] else None,
+                            lr=group["lr"],
+                            beta1=group["betas"][0],
+                            beta2=group["betas"][1],
+                            weight_decay=group["weight_decay"],
+                            weight_decouple=group["weight_decouple"],
+                            stable_weight_decay=group["stable_weight_decay"],
+                            eps=group["eps"],
+                            eps2=group["eps2"],
+                            eps_floor=group["eps_floor"],
+                            amp_fac=group["amp_fac"],
+                            adaptive_clip=group["adaptive_clip"],
+                            adaptive_clip_eps=group["adaptive_clip_eps"],
+                            adaptive_clip_type=group["adaptive_clip_type"],
+                            debias_beta1=group["debias_beta1"],
+                            debias_beta2=group["debias_beta2"],
+                            adopt=group["adopt"],
+                            mars_gamma=group["mars_gamma"],
+                            compass_second_moment_smoothing=group["compass_second_moment_smoothing"],
+                            update_strategy=group["update_strategy"],
+                            stable_update=group["stable_update"],
+                            stable_update_clip_threshold=group["stable_update_clip_threshold"],
+                            use_orthograd=group["use_orthograd"],
+                            spam_clipping_threshold=group["spam_clipping_threshold"],
+                            spam_clipping_type=group["spam_clipping_type"],
+                            spam_clipping_eps=group["spam_clipping_eps"],
+                            use_focus=group["use_focus"],
+                            focus_gamma=group["focus_gamma"],
+                            focus_beta=group["focus_beta"],
+                            apply_spam_clipping=apply_spam_clipping,
+                            reset_momentum=reset_momentum,
+                            use_exadam=group["use_exadam"],
+                            spam_warmup_scaling_factor=group["spam_warmup_scaling_factor"],
+                            swd_second_moment_mean_sqrt=(
+                                group["swd_second_moment_mean_sqrt"] if group["stable_weight_decay"] else None
+                            ),
+                            swd_second_moment_parameter_sum=(
+                                state["swd_second_moment_parameter_sum"] if group["stable_weight_decay"] else None
+                            ),
+                        )
+
+                        if group["weight_decay"] > 0 and group["stable_weight_decay"]:
+                            swd_second_moment_group_sum += state["swd_second_moment_parameter_sum"].item()
+
+                if group["use_spam_momentum_reset"] and group["step"] % group["spam_momentum_reset_interval_steps"] == 0:
+                    group["spam_momentum_reset_warmup_scheduler_current_step"] = 0
+                    group["spam_momentum_reset_warmup_scheduler"] = CosineDecay(
+                        0.99, group["spam_momentum_reset_warmup_steps"]
+                    )
+
+                if group["weight_decay"] > 0 and group["stable_weight_decay"]:
+                    swd_second_moment_mean_sqrt = math.sqrt(swd_second_moment_group_sum / swd_param_size_sum)
+                    if group["debug"]:
+                        logging.info("swd_second_moment_mean_sqrt=%s", str(swd_second_moment_mean_sqrt))
+
+                    if swd_second_moment_mean_sqrt > 0:
+                        group["swd_second_moment_mean_sqrt"].fill_(swd_second_moment_mean_sqrt)
+                    else:
+                        group["swd_second_moment_mean_sqrt"].fill_(1.0)
+
+                    if group["debug"]:
+                        logging.info(
+                            "resulting_stable_weight_decay_multiplier=%s",
+                            str(1.0 / group["swd_second_moment_mean_sqrt"]),
+                        )
+
+        return loss
+
+
+def single_param_compass(
+    p: torch.Tensor,
+    grad: torch.Tensor,
+    step: torch.Tensor,
+    exp_avg: torch.Tensor,
+    exp_avg_sq: torch.Tensor,
+    previous_grad: torch.Tensor | None,
+    pbar: torch.Tensor | None,
+    lr: torch.Tensor,
+    beta1: float,
+    beta2: float,
+    weight_decay: float,
+    weight_decouple: bool,
+    stable_weight_decay: bool,
+    eps: float,
+    eps2: float,
+    eps_floor: float | None,
+    amp_fac: float,
+    adaptive_clip: float,
+    adaptive_clip_eps: float,
+    adaptive_clip_type: NORM_TYPE,
+    debias_beta1: bool,
+    debias_beta2: bool,
+    adopt: bool,
+    mars_gamma: float,
+    compass_second_moment_smoothing: bool,
+    update_strategy: UPDATE_STRATEGY,
+    stable_update: bool,
+    stable_update_clip_threshold: float,
+    use_orthograd: bool,
+    spam_clipping_threshold: float,
+    spam_clipping_type: CLIP_TYPE,
+    spam_clipping_eps: float,
+    use_focus: bool,
+    focus_gamma: float,
+    focus_beta: float,
+    apply_spam_clipping: bool,
+    reset_momentum: bool,
+    use_exadam: bool,
+    spam_warmup_scaling_factor: torch.Tensor,
+    swd_second_moment_mean_sqrt: torch.Tensor | None,
+    swd_second_moment_parameter_sum: torch.Tensor | None,
+):
+    p_f32 = p.float()
+    grad_f32 = grad.float()
+
+    beta1_t = beta1**step
+    bias_correction1 = 1.0
+    if debias_beta1:
+        bias_correction1 = 1 - beta1_t
+
+    beta2_t = beta2**step
+    bias_correction2 = 1.0
+    current_beta2 = beta2
+    if debias_beta2:
+        bias_correction2 = 1.0 - beta2_t
+
+    exp_avg_sq_f32 = torch.zeros_like(p_f32, dtype=torch.float32).copy_(exp_avg_sq.float())
+    exp_avg_f32 = torch.zeros_like(p_f32, dtype=torch.float32).copy_(exp_avg.float())
+
+    if use_focus and pbar is not None:
+        pbar_f32 = torch.zeros_like(pbar, dtype=torch.float32).copy_(pbar.float())
+    else:
+        pbar_f32 = None
+
+    if reset_momentum:
+        exp_avg_f32 = torch.zeros_like(exp_avg_f32)
+        exp_avg_sq_f32 = torch.zeros_like(exp_avg_sq_f32)
+
+    if mars_gamma > 0 and previous_grad is not None:
+        previous_grad_f32 = torch.zeros_like(grad_f32, dtype=torch.float32).copy_(previous_grad.float())
+        temp_grad_f32 = grad_f32.clone().detach()
+        grad_f32 = (grad_f32 - previous_grad_f32).mul_(mars_gamma * (beta1 / (1.0 - beta1))).add_(grad_f32)
+
+        if previous_grad.dtype == torch.bfloat16:
+            previous_grad.copy_(_fp32_to_bf16_sr(temp_grad_f32))
+        else:
+            previous_grad.copy_(temp_grad_f32)
+
+    if use_orthograd:
+        paper_orthograd_compile(p_f32, grad_f32)
+
+    if spam_clipping_threshold != 0 and apply_spam_clipping and p.numel() >= 2 and p.ndim >= 1:
+        grad_f32 = spam_grad_clipping(
+            grad=grad_f32,
+            second_moment=exp_avg_sq_f32,
+            clip_threshold=spam_clipping_threshold,
+            clip_type=spam_clipping_type,
+            spam_clip_eps=spam_clipping_eps,
+        )
+
+    if adaptive_clip > 0:
+        grad_f32 = agc(
+            p=p_f32,
+            grad=grad_f32,
+            agc_clip_val=adaptive_clip,
+            agc_eps=adaptive_clip_eps,
+            norm_type=adaptive_clip_type,
+        )
+
+    if eps_floor is not None and eps_floor < eps:
+        rms_grad = grad_f32.pow(2).mean().sqrt_()
+        curr_eps = max(min(eps, eps2 * rms_grad), eps_floor)
+    else:
+        curr_eps = eps
+
+    if adopt:
+        if use_exadam:
+            d1 = 1 + (exp_avg_sq_f32.div(exp_avg_sq_f32 + curr_eps)) * beta2_t
+            d2 = 1 + (exp_avg_f32.pow(2).div(exp_avg_f32.pow(2) + curr_eps)) * beta1_t
+            v_tilde = exp_avg_sq_f32.div(bias_correction2) * d2
+            adopt_denom = v_tilde.sqrt().add_(curr_eps)
+        else:
+            adopt_denom = exp_avg_sq_f32.div(bias_correction2).sqrt().add_(curr_eps)
+
+        adopt_clip = (step - 1) ** 0.25
+        if compass_second_moment_smoothing:
+            scaled_adopt_clip = adopt_clip * adopt_denom
+            normed_grad = grad_f32.clamp(-scaled_adopt_clip, scaled_adopt_clip)
+
+            unnormed_exp_avg_f32 = exp_avg_f32.mul(beta1).add_(grad_f32, alpha=1.0 - beta1)
+            exp_avg_f32.mul_(beta1).add_(normed_grad, alpha=1.0 - beta1)
+
+            if use_exadam:
+                normed_grad = normed_grad.div(bias_correction1) * d1
+                m_tilde = exp_avg_f32.div(bias_correction1) * d1
+                update = normed_grad.add(m_tilde, alpha=amp_fac)
+            else:
+                update = normed_grad.add(normed_grad, alpha=amp_fac)
+
+            unnormed_update = grad_f32.add(unnormed_exp_avg_f32, alpha=amp_fac)
+            if use_exadam:
+                unnormed_update = grad_f32.div(bias_correction1) * d1
+                m_tilde = unnormed_exp_avg_f32.div(bias_correction1) * d1
+                unnormed_update = grad_f32.add(m_tilde, alpha=amp_fac)
+            else:
+                unnormed_update = grad_f32.add(unnormed_exp_avg_f32, alpha=amp_fac)
+
+            exp_avg_sq_f32.mul_(current_beta2).addcmul_(unnormed_update, unnormed_update, value=1.0 - current_beta2)
+            update_grad = grad_f32
+            de_nom = adopt_denom
+        else:
+            normed_grad = grad_f32.div(adopt_denom).clamp(-adopt_clip, adopt_clip)
+            exp_avg_f32.mul_(beta1).add_(normed_grad, alpha=1 - beta1)
+
+            if use_exadam:
+                normed_grad = normed_grad.div(bias_correction1) * d1
+                m_tilde = exp_avg_f32.div(bias_correction1) * d1
+                update = normed_grad.add(m_tilde, alpha=amp_fac)
+            else:
+                update = normed_grad.add(exp_avg_f32, alpha=amp_fac)
+
+            exp_avg_sq_f32.mul_(current_beta2).addcmul_(grad_f32, grad_f32, value=1 - current_beta2)
+            update_grad = normed_grad
+            de_nom = torch.tensor(1.0, device=p.device, dtype=torch.float32)
+    else:
+        exp_avg_f32.mul_(beta1).add_(grad_f32, alpha=1 - beta1)
+
+        if use_exadam:
+            d1 = 1 + (exp_avg_sq_f32.div(exp_avg_sq_f32 + curr_eps)) * beta2_t
+            d2 = 1 + (exp_avg_f32.pow(2).div(exp_avg_f32.pow(2) + curr_eps)) * beta1_t
+            v_tilde = exp_avg_sq_f32.div(bias_correction2) * d2
+            grad_f32 = grad_f32.div(bias_correction1) * d1
+            m_tilde = exp_avg_f32.div(bias_correction1) * d1
+            update = grad_f32.add(m_tilde, alpha=amp_fac)
+        else:
+            update = grad_f32.add(exp_avg_f32, alpha=amp_fac)
+
+        if compass_second_moment_smoothing:
+            exp_avg_sq_f32.mul_(current_beta2).addcmul_(update, update, value=1 - current_beta2)
+        else:
+            exp_avg_sq_f32.mul_(current_beta2).addcmul_(grad_f32, grad_f32, value=1 - current_beta2)
+
+        update_grad = grad_f32
+        if use_exadam:
+            de_nom = v_tilde.sqrt().add_(curr_eps)
+        else:
+            de_nom = exp_avg_sq_f32.div(bias_correction2).sqrt().add_(curr_eps)
+
+    update = update.mul(spam_warmup_scaling_factor)
+
+    if weight_decay > 0 and stable_weight_decay and swd_second_moment_parameter_sum is not None:
+        swd_second_moment_parameter_sum.copy_(exp_avg_sq_f32.div(bias_correction2).sum())
+
+    if stable_update:
+        rms = get_rms(update).div(stable_update_clip_threshold).clamp_min(1)
+        update.mul_(1 / rms)
+
+    if use_focus and pbar_f32 is not None and pbar is not None:
+        pbar_f32.mul_(focus_beta).add_(p_f32, alpha=1.0 - focus_beta)
+        pbar_hat = pbar / (1.0 - focus_beta**step)
+        update = torch.sign(update) + focus_gamma * torch.sign(p_f32 - pbar_hat)
+    else:
+        pbar_hat = None
+
+    if exp_avg.dtype == torch.bfloat16:
+        exp_avg.copy_(_fp32_to_bf16_sr(exp_avg_f32))
+        exp_avg_sq.copy_(_fp32_to_bf16_sr(exp_avg_sq_f32))
+        if use_focus and pbar_f32 is not None and pbar is not None:
+            pbar.copy_(_fp32_to_bf16_sr(pbar_f32))
+    else:
+        exp_avg.copy_(exp_avg_f32)
+        exp_avg_sq.copy_(exp_avg_sq_f32)
+        if use_focus and pbar_f32 is not None and pbar is not None:
+            pbar.copy_(pbar_f32)
+
+    if update_strategy in {"cautious", "grams", "both"}:
+        if update_strategy in {"cautious", "both"}:
+            mask = (update * update_grad > 0).to(update_grad.dtype)
+            mask.div_(mask.mean().clamp_(min=1e-3))
+            update = update * mask
+        if update_strategy in {"grams", "both"}:
+            update.copy_(torch.sign(update_grad) * update.abs())
+
+    if weight_decay > 0 and stable_weight_decay and swd_second_moment_mean_sqrt is not None:
+        swd_scaling = 1.0 / swd_second_moment_mean_sqrt
+    else:
+        swd_scaling = 1.0
+
+    if weight_decay > 0 and weight_decouple and not use_focus:
+        p_f32.mul_(1.0 - weight_decay * lr * swd_scaling)
+    elif weight_decay > 0 and not use_focus:
+        update.add_(p_f32, alpha=weight_decay * swd_scaling)
+
+    if use_exadam:
+        step_size = lr * torch.log(torch.sqrt(step + 1) * math.sqrt(2))
+    else:
+        step_size = lr / bias_correction1
+
+    p_f32.addcdiv_(update, de_nom, value=-step_size)
+
+    if weight_decay > 0 and use_focus and pbar_hat is not None:
+        p_f32.add_(pbar_hat, alpha=-lr * weight_decay * swd_scaling)
+
+    if p.dtype == torch.bfloat16:
+        p.copy_(_fp32_to_bf16_sr(p_f32))
+    else:
+        p.copy_(p_f32)
+
+
+class CompassAO(_CompassBase):
+    r"""Compass supporting optional features and torchao-managed optimizer state quantization."""
+
+    def __init__(
+        self,
+        params,
+        lr: float = 1e-4,
+        betas=(0.95, 0.999),
+        eps: float = 1e-8,
+        eps2: float = 1e-2,
+        eps_floor: float | None = None,
+        weight_decay: float = 0.0,
+        weight_decouple: bool = True,
+        stable_weight_decay: bool = False,
+        amp_fac: float = 2.0,
+        cautious: bool = False,
+        adaptive_clip: float = 1.0,
+        adaptive_clip_eps: float = 1e-3,
+        adaptive_clip_type: NORM_TYPE = "layer",
+        debias_beta1: bool = True,
+        debias_beta2: bool = True,
+        adopt: bool = False,
+        mars_gamma: float = 0.0,
+        compass_second_moment_smoothing: bool = True,
+        update_strategy: UPDATE_STRATEGY = "unmodified",
+        stable_update: bool = False,
+        stable_update_clip_threshold: float = 1.0,
+        use_orthograd: bool = False,
+        use_spam_clipping: bool = False,
+        spam_clipping_threshold: float = 500.0,
+        spam_clipping_start_step: int = 20,
+        spam_clipping_type: CLIP_TYPE = "element",
+        spam_clipping_eps: float | None = None,
+        use_spam_momentum_reset: bool = False,
+        spam_momentum_reset_warmup_steps: int = 20,
+        spam_momentum_reset_interval_steps: int = 41,
+        use_focus: bool = False,
+        focus_gamma: float = 0.1,
+        focus_beta: float = 0.9,
+        debug: bool = False,
+        use_exadam: bool = False,
+        *,
+        block_size: int | None = None,
+        min_quant_size: int = 4096,
+        state_precision: STATE_PRECISION = "parameter",
+        torch_compile: bool = True,
+        **kwargs,
+    ) -> None:
+        del kwargs
+
+        super().__init__(
+            params=params,
+            lr=lr,
+            betas=betas,
+            eps=eps,
+            eps2=eps2,
+            eps_floor=eps_floor,
+            weight_decay=weight_decay,
+            weight_decouple=weight_decouple,
+            stable_weight_decay=stable_weight_decay,
+            amp_fac=amp_fac,
+            cautious=cautious,
+            adaptive_clip=adaptive_clip,
+            adaptive_clip_eps=adaptive_clip_eps,
+            adaptive_clip_type=adaptive_clip_type,
+            debias_beta1=debias_beta1,
+            debias_beta2=debias_beta2,
+            adopt=adopt,
+            mars_gamma=mars_gamma,
+            compass_second_moment_smoothing=compass_second_moment_smoothing,
+            update_strategy=update_strategy,
+            block_size=block_size,
+            min_quant_size=min_quant_size,
+            state_precision=state_precision,
+            stable_update=stable_update,
+            stable_update_clip_threshold=stable_update_clip_threshold,
+            use_orthograd=use_orthograd,
+            use_spam_clipping=use_spam_clipping,
+            spam_clipping_type=spam_clipping_type,
+            spam_clipping_threshold=spam_clipping_threshold,
+            spam_clipping_start_step=spam_clipping_start_step,
+            spam_clipping_eps=spam_clipping_eps,
+            use_spam_momentum_reset=use_spam_momentum_reset,
+            spam_momentum_reset_warmup_steps=spam_momentum_reset_warmup_steps,
+            spam_momentum_reset_interval_steps=spam_momentum_reset_interval_steps,
+            use_focus=use_focus,
+            focus_gamma=focus_gamma,
+            focus_beta=focus_beta,
+            debug=debug,
+            use_exadam=use_exadam,
+            torch_compile=torch_compile,
+        )
+
+    def __str__(self) -> str:
+        return "CompassAO"

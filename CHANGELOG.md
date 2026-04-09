@@ -10,6 +10,111 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-09]
+
+### Added
+
+- **The absorbed plain-optimizer path now covers BCOS too** — The repo can now host the donor BCOS optimizer without routing through the vendor package at runtime.
+  - Added `library/optimization/optimizers/bcos.py` with a repo-owned `BCOS` implementation adapted from the donor source while switching stochastic-copy usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `BCOS` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `BCOS` construction plus first-step CPU/offloaded-state initialization through the shared factory path.
+- **The absorbed plain-optimizer path now covers ProjectiveAdam too** — The repo can now host the donor projection-based Adam variant without routing through the vendor package at runtime.
+  - Added `library/optimization/optimizers/projective_adam.py` with a repo-owned `ProjectiveAdam` implementation adapted from the donor source while switching stochastic-copy usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `ProjectiveAdam` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `ProjectiveAdam` construction plus first-step projection / NorMuon state initialization through the shared factory path.
+- **The absorbed plain-optimizer path now covers WiwiOpt too** — The repo can now host the donor WiwiOpt optimizer without routing through the vendor package at runtime.
+  - Added `library/optimization/optimizers/wiwiopt.py` with a repo-owned `WiwiOpt` implementation adapted from the donor source while switching stochastic-copy usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `WiwiOpt` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `WiwiOpt` construction plus first-step dynamic-LR / Oja / NorMuon state initialization through the shared factory path.
+- **The absorbed plain-optimizer path now covers OAGOpt, OCGOpt, and SCGOpt too** — The repo can now host the donor orthogonalized/centralized variants without routing through the vendor package at runtime.
+  - Added `library/optimization/optimizers/oagopt.py`, `library/optimization/optimizers/ocgopt.py`, and `library/optimization/optimizers/scgopt.py` with repo-owned implementations adapted from the donor sources while switching stochastic-copy usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `OAGOpt`, `OCGOpt`, and `SCGOpt` participate in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `OAGOpt`, `OCGOpt`, and `SCGOpt` construction plus first-step state initialization through the shared factory path.
+- **The absorbed plain-optimizer path now covers FFTDescent and the plain FishMonger variant too** — The repo can now host two more donor optimizers without routing through the vendor package at runtime.
+  - Added `library/optimization/optimizers/fftdescent.py` and `library/optimization/optimizers/fishmonger.py` with repo-owned implementations adapted from the donor sources while switching shared helper usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `FFTDescent` and `FishMonger` participate in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `FFTDescent` and `FishMonger` construction plus first-step state initialization through the shared factory path.
+- **The FishMonger absorption pass now covers the vendored 8-bit sibling too** — The repo no longer leaves the bitsandbytes-backed FishMonger variant stranded behind the donor file.
+  - Updated `library/optimization/optimizers/fishmonger.py` to add the repo-owned `FishMonger8BitBNB` implementation adapted from the vendored backend source while switching helper usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `FishMonger8BitBNB` participates in the shared optimizer registration path with bitsandbytes-backed loading semantics.
+  - Added focused regression coverage for `FishMonger8BitBNB` construction plus first-step quantized-state initialization through the shared factory path.
+- **The absorbed Compass family now covers the vendored AO and bitsandbytes siblings too** — The repo no longer leaves the heaviest remaining `compass.py` variants stranded behind the donor file.
+  - Updated `library/optimization/optimizers/compass.py` to add repo-owned `Compass8BitBNB`, `_CompassBase`, `single_param_compass(...)`, and `CompassAO` implementations adapted from the vendored backend source while switching helper usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `Compass8BitBNB` and `CompassAO` participate in the shared optimizer registration path with bitsandbytes / torchao backend metadata.
+  - Added focused regression coverage for `Compass8BitBNB` construction/runtime support handling plus `CompassAO` parameter-precision and quantized-state initialization through the shared factory path.
+- **The absorbed standalone optimizer pass now covers ABMOG, SingState, and TALON too** — The repo can now host three more donor optimizers directly without routing back through the vendor package.
+  - Added [abmog.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/abmog.py), [singstate.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/singstate.py), and [talon.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/talon.py) with repo-owned implementations adapted from the authoritative vendor tree while keeping comments/docstrings and switching shared helper usage onto the repo-owned optimization utilities where appropriate.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `ABMOG`, `SingState`, and `TALON` participate in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `ABMOG`, `SingState`, and `TALON` construction plus first-step state initialization through the shared factory path.
+- **The absorbed standalone optimizer pass now covers Glyph too** — The repo can now host the donor Glyph optimizer directly without routing back through the vendor package.
+  - Added [glyph.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/glyph.py) with a repo-owned `Glyph` implementation adapted from the authoritative vendor tree while reusing the repo-owned Newton-Schulz helper and stochastic-copy utility.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `Glyph` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `Glyph` construction plus first-step EMA / squared-EMA / previous-gradient state initialization through the shared factory path.
+- **The absorbed standalone optimizer pass now covers FARMSCrop and FARMSCropV2 too** — The repo can now host the donor FARMSCrop pair directly without routing back through the vendor package.
+  - Added [farmscrop.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/farmscrop.py) and [farmscrop_v2.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/farmscrop_v2.py) with repo-owned implementations adapted from the authoritative vendor tree while switching helper usage onto the repo-owned adaptive-epsilon and stochastic-copy utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `FARMSCrop` and `FARMSCropV2` participate in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `FARMSCrop` and `FARMSCropV2` construction plus first-step FIM / momentum / diff-history state initialization through the shared factory path.
+- **The absorbed FMARS family pass now covers the plain FMARSCrop pair too** — The repo can now host the vendor file’s plain `FMARSCrop` and `FMARSCropV2` paths directly without routing back through the donor package.
+  - Added [fmarscrop.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/fmarscrop.py) and [fmarscrop_v2.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/fmarscrop_v2.py) with repo-owned implementations adapted from the authoritative vendor tree while switching helper usage onto the repo-owned adaptive-epsilon, AGC, and stochastic-copy utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `FMARSCrop` and `FMARSCropV2` participate in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `FMARSCrop` and `FMARSCropV2` construction plus first-step MARS/FIM/momentum state initialization through the shared factory path.
+
+### Changed
+
+- **The BCOS absorption pass also hardens the donor offload path while keeping the algorithm shape intact** — The repo-owned copy no longer assumes CUDA is always available for CPU parameters or accidentally drops back to the stored CPU state tensors mid-step.
+  - Updated `library/optimization/optimizers/bcos.py` so CPU-parameter execution falls back to CPU compute cleanly when CUDA is unavailable, while still preserving staged CUDA execution when it exists.
+  - Updated `library/optimization/optimizers/bcos.py` so staged momentum/variance tensors stay on the active compute device until they are explicitly synchronized back to the configured state-storage device.
+- **The ProjectiveAdam absorption pass also hardens the donor offload path while keeping the algorithm shape intact** — The repo-owned copy no longer assumes CUDA is always available for CPU parameters and no longer routes float32 state writes through the stochastic-copy path by mistake.
+  - Updated `library/optimization/optimizers/projective_adam.py` so CPU-parameter execution falls back to CPU compute/sync behavior cleanly when CUDA is unavailable, while still preserving staged CUDA execution when it exists.
+  - Updated `library/optimization/optimizers/projective_adam.py` so float32 state buffers copy back directly instead of always passing through the donor’s stochastic-rounding write path.
+- **The WiwiOpt absorption pass also hardens a donor scalar/state edge while keeping the algorithm shape intact** — The repo-owned copy no longer assumes every parameter tensor has at least one dimension when it builds row-wise summary state.
+  - Updated `library/optimization/optimizers/wiwiopt.py` so summary, RMS, and norm helper paths handle scalar parameters cleanly instead of assuming `dim=-1` is always valid.
+- **The Compass backend absorption pass also hardens low-bit runtime behavior while keeping the donor family together in one module** — The repo-owned copy now fails fast on unsupported backend combinations instead of falling through to backend-specific crashes.
+  - Updated `library/optimization/optimizers/compass.py` so `Compass8BitBNB` explicitly rejects CPU execution and invalid bitsandbytes block sizes before touching blockwise quantization.
+  - Updated `library/optimization/optimizers/compass.py` so `CompassAO` keeps the full family in the same module as `Compass` while rejecting quantized-state requests for CPU parameters with a clear runtime error.
+- **The new standalone absorption batch also hardens compiled spectral-helper selection for CPU-first environments** — The repo-owned copies no longer assume the donor `torch.compile` fast path is always usable when `nvcc` is unavailable or not executable.
+  - Updated `library/optimization/optimizers/abmog.py`, [singstate.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/singstate.py), and [talon.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/talon.py) so compiled spectral helpers are only selected when CUDA and an executable `nvcc` are actually available; otherwise they fall back to the plain helper implementation.
+  - Updated [abmog.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/abmog.py) so CPU-parameter execution no longer assumes a CUDA compute device exists before staging state/offload work.
+
+## [2026-04-05]
+
+### Added
+
+- **The absorbed plain-optimizer path now covers SCORN too** — The repo can now host another orthogonalized/focus-style optimizer without routing through the donor package at runtime.
+  - Added `library/optimization/optimizers/scorn.py` with a repo-owned `SCORN` implementation adapted from the vendor source while switching shared helper usage onto the repo-owned optimization utilities.
+  - Added the repo-owned `orthograd_atan(...)` helper under `library/optimization/optimizers/utils/orthograd.py` and re-exported it through `library/optimization/optimizers/utils/__init__.py` so the optimizer no longer needs to reach back into donor utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `SCORN` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `SCORN` construction plus first-step focus/reset bookkeeping through the shared factory path.
+- **The absorbed plain-optimizer path now covers SCORNMachina too** — The repo can now host the heavier offloaded-state SCORN variant without routing through the donor package at runtime.
+  - Added `library/optimization/optimizers/scornmachina.py` with a repo-owned `SCORNMachina` implementation adapted from the vendor source while switching shared helper usage onto the repo-owned optimization utilities.
+  - Added `library/optimization/optimizers/utils/adagc.py` with repo-owned AdaGC helper functions used by the `SCORNMachina` path, and re-exported them through `library/optimization/optimizers/utils/__init__.py`.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `SCORNMachina` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `SCORNMachina` construction plus first-step offloaded-state / AdaGC bookkeeping through the shared factory path.
+- **The absorbed plain-optimizer path now covers CAME too** — The repo can now host the confidence-guided memory-efficient optimizer without routing through the donor package at runtime.
+  - Added `library/optimization/optimizers/came.py` with a repo-owned `CAME` implementation adapted from the vendor source while switching shared helper usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `CAME` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `CAME` construction plus first-step factored-state / AMSBound initialization through the shared factory path.
+- **The absorbed plain-optimizer path now covers CStableAdamW too** — The repo can now host the donor stable-AdamW variant with optional Stable-SPAM clipping and ADOPT behavior without routing through the donor package at runtime.
+  - Added `library/optimization/optimizers/cstableadamw.py` with a repo-owned `CStableAdamW` implementation adapted from the vendor source while switching Stable-SPAM helper usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `CStableAdamW` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `CStableAdamW` construction plus first-step ADOPT / Stable-SPAM state initialization through the shared factory path.
+- **The absorbed plain-optimizer path now covers GrokFastAdamW too** — The repo can now host the donor grokfast optimizer without routing through the donor package at runtime.
+  - Added `library/optimization/optimizers/grokfast.py` with repo-owned `GrokFastAdamW`, `gradfilter_ma(...)`, and `gradfilter_ema(...)` implementations adapted from the vendor source while switching stochastic-copy usage onto the repo-owned optimization utilities.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `GrokFastAdamW` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `GrokFastAdamW` construction plus post-warmup grok-EMA state tracking through the shared factory path.
+
+### Changed
+
+- **The SCORN absorption pass also hardens two donor crash edges while keeping the algorithm shape intact** — The repo-owned copy no longer carries over a pair of brittle donor assumptions around initialization and norm setup.
+  - Updated `library/optimization/optimizers/scorn.py` so `init()` tolerates the donor’s missing `scale` group key instead of crashing when the method is exercised.
+  - Updated `library/optimization/optimizers/scorn.py` so the LMO norm helper is always built before use, instead of only on the `spectral_update_scale > 0` branch.
+- **The SCORNMachina absorption pass also hardens CPU-only/offloaded execution edges while keeping the algorithm shape intact** — The repo-owned copy no longer assumes CUDA is always available when it queues compute-device work for CPU parameters.
+  - Updated `library/optimization/optimizers/scornmachina.py` so offloaded-state execution falls back to CPU compute/sync behavior cleanly when CUDA is unavailable, while still preserving the asynchronous path when CUDA exists.
+- **The CAME absorption pass also hardens CPU-only/offloaded execution edges while keeping the algorithm shape intact** — The repo-owned copy no longer assumes CPU parameters can always stage work onto a CUDA device when using offloaded optimizer state.
+  - Updated `library/optimization/optimizers/came.py` so the offloaded-state path falls back to CPU compute/sync behavior cleanly when CUDA is unavailable, while preserving the asynchronous path when CUDA exists.
+- **The GrokFastAdamW absorption pass also fixes a donor denominator typo while keeping the algorithm shape intact** — The repo-owned copy no longer carries the donor’s invalid tensor API call in the Adam denominator path.
+  - Updated `library/optimization/optimizers/grokfast.py` so the denominator adds `eps` correctly instead of calling `Tensor.add_(min=...)`, which would raise at runtime.
+
 ## [2026-04-04]
 
 ### Added
