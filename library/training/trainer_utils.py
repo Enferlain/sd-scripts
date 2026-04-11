@@ -23,6 +23,7 @@ from library.config.dataclasses.performance import (
 from library.config.dataclasses.output import LoggingConfig, SavingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.logging.step_logging import append_lr_to_logs_with_names
+from library.utils.compile_env import prepare_windows_compiler_env_for_torch_compile
 
 
 logger = logging.getLogger(__name__)
@@ -298,6 +299,7 @@ def compute_accelerator_config(
 
     # torch.compile options
     if compilation_config.torch_compile:
+        prepare_windows_compiler_env_for_torch_compile()
         dynamo_plugin = TorchDynamoPlugin(
             backend="inductor",  # type: ignore[arg-type] - accelerate accepts str at runtime
             mode="default",

@@ -4,6 +4,7 @@ import torch
 from torch.optim import Optimizer
 
 from library.optimization.optimizers.utils import copy_stochastic_, filter_grad
+from library.utils.compile_env import prepare_windows_compiler_env_for_torch_compile
 
 
 logger = logging.getLogger(__name__)
@@ -145,6 +146,8 @@ class FFTDescent(Optimizer):
         self._init_lr = lr
 
         if spectral_clip:
+            if spectral_clip_compile:
+                prepare_windows_compiler_env_for_torch_compile()
             self.clip_func = spectral_clip_compiled_func if spectral_clip_compile else spectral_clip_func
 
         if isinstance(spectral_clip_dtype, str):

@@ -264,6 +264,33 @@ class TestComputeAcceleratorConfig:
         assert result.configure_wandb is True
         assert result.wandb_api_key == "secret"
 
+    @patch("library.training.trainer_utils.deepspeed_utils.prepare_deepspeed_plugin")
+    @patch("library.training.trainer_utils.TorchDynamoPlugin")
+    @patch("library.training.trainer_utils.prepare_windows_compiler_env_for_torch_compile")
+    def test_torch_compile_bootstraps_windows_compiler_env(
+        self,
+        mock_prepare_compile_env,
+        mock_dynamo_plugin,
+        mock_ds_plugin,
+        mock_precision_config,
+        mock_compilation_config,
+        mock_distributed_config,
+        mock_deepspeed_config,
+    ):
+        mock_compilation_config.torch_compile = True
+        mock_ds_plugin.return_value = None
+        mock_dynamo_plugin.return_value = Mock()
+
+        compute_accelerator_config(
+            mock_precision_config,
+            mock_compilation_config,
+            mock_distributed_config,
+            mock_deepspeed_config,
+        )
+
+        mock_prepare_compile_env.assert_called_once()
+        mock_dynamo_plugin.assert_called_once()
+
 
 # =============================================================================
 # Heavy Mocking Tests - prepare_accelerator

@@ -6,7 +6,12 @@ import math
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.optimizers.utils import copy_stochastic_, filter_grad, resolve_state_storage_dtype
+from library.optimization.optimizers.utils import (
+    copy_stochastic_,
+    filter_grad,
+    resolve_state_storage_dtype,
+)
+from library.utils.compile_env import prepare_windows_compiler_env_for_torch_compile
 
 
 logger = logging.getLogger(__name__)
@@ -210,6 +215,8 @@ class OAGOpt(Optimizer):
         elif isinstance(spectral_clip_dtype, str):
             spectral_clip_dtype = getattr(torch, spectral_clip_dtype.split(".")[-1])
 
+        if spectral_clip_compile:
+            prepare_windows_compiler_env_for_torch_compile()
         self.clip_func = orthogonalize_compiled_func if spectral_clip_compile else orthogonalize_func
 
         defaults = {

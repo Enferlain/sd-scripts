@@ -6,6 +6,7 @@ import torch
 from torch.optim import Optimizer
 
 from library.optimization.optimizers.utils import copy_stochastic_, filter_grad
+from library.utils.compile_env import prepare_windows_compiler_env_for_torch_compile
 
 # Original Spectral Clipping code by leloykun (https://leloykun.github.io/ponder/spectral-clipping/ https://github.com/leloykun/spectral_clip)
 
@@ -208,6 +209,8 @@ class SCGOpt(Optimizer):
         self._init_lr = lr
 
         if spectral_clip:
+            if spectral_clip_compile:
+                prepare_windows_compiler_env_for_torch_compile()
             self.clip_func = orthogonalize_compiled_func if spectral_clip_compile else orthogonalize_func
 
         if spectral_clip_dtype is None:

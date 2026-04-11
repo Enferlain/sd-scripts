@@ -5,7 +5,11 @@ from typing import Literal
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.optimizers.utils import copy_stochastic_, resolve_state_storage_dtype
+from library.optimization.optimizers.utils import (
+    copy_stochastic_,
+    resolve_state_storage_dtype,
+)
+from library.utils.compile_env import prepare_windows_compiler_env_for_torch_compile
 
 
 logger = logging.getLogger(__name__)
@@ -150,6 +154,8 @@ class ProjectiveAdam(Optimizer):
         self.sync_chunk_size = sync_chunk_size
         self.state_storage_dtype = final_state_dtype
         self.state_storage_device = state_storage_device
+        if use_compile:
+            prepare_windows_compiler_env_for_torch_compile()
         self.ortho_func = torch.compile(orthogonalize, mode="reduce-overhead") if use_compile else orthogonalize
 
     def __str__(self) -> str:

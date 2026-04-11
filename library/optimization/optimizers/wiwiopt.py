@@ -4,6 +4,7 @@ import torch
 from torch.optim import Optimizer
 
 from library.optimization.optimizers.utils import copy_stochastic_
+from library.utils.compile_env import prepare_windows_compiler_env_for_torch_compile
 
 
 # Newton-Schulz iteration coefficients for orthogonalization
@@ -211,6 +212,8 @@ class WiwiOpt(Optimizer):
         }
         super().__init__(params, defaults)
 
+        if use_compile:
+            prepare_windows_compiler_env_for_torch_compile()
         self.ortho_func = torch.compile(orthogonalize, mode="reduce-overhead") if use_compile else orthogonalize
         if egd:
             if egd_oja:

@@ -2,13 +2,12 @@
 
 import collections
 import math
-import os
-import shutil
 
 import torch
 from torch.optim import Optimizer
 
 from library.optimization.optimizers.utils import copy_stochastic_, filter_grad
+from library.utils.compile_env import can_use_compiled_cuda_helpers
 
 # Original Spectral Clipping code by leloykun (https://leloykun.github.io/ponder/spectral-clipping/ https://github.com/leloykun/spectral_clip)
 
@@ -124,8 +123,7 @@ def reshape_to_2d(grad):
 
 
 def _can_use_compiled_spectral_helpers() -> bool:
-    nvcc_path = shutil.which("nvcc")
-    return bool(torch.cuda.is_available() and nvcc_path and os.access(nvcc_path, os.X_OK))
+    return can_use_compiled_cuda_helpers()
 
 
 class ABMOG(Optimizer):
