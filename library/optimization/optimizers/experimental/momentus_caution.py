@@ -1,3 +1,5 @@
+# from https://github.com/Clybius/ Clybius via discord schizo sharing
+
 import torch
 from torch.optim import Optimizer
 
