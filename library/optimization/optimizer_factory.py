@@ -1,3 +1,4 @@
+import inspect
 import logging
 from copy import deepcopy
 
@@ -15,6 +16,7 @@ from library.optimization.registry import (
 )
 from library.optimization.types import materialize_parameter_groups
 from library.optimization.wrappers import ScheduleFreeWrapper, WrappedOptimizerProxy
+from library.utils.compile_env import prepare_windows_compiler_env_for_torch_compile
 
 
 logger = logging.getLogger(__name__)
@@ -106,6 +108,9 @@ def _load_registered_optimizer_class(registration: OptimizerRegistration):
     if registration.target is None:
         return None
 
+    if registration.backend == "torchao":
+        prepare_windows_compiler_env_for_torch_compile()
+
     try:
         return load_target(registration.target)
     except ImportError as err:
@@ -187,13 +192,25 @@ def _build_arbitrary_optimizer(
     return optimizer_class, optimizer
 
 
-def _split_wrapper_optimizer_kwargs(optimizer_kwargs: dict):
+def _split_wrapper_optimizer_kwargs(
+    optimizer_kwargs: dict,
+    *,
+    wrapper_class=None,
+    wrapper_style: str | None = None,
+):
     base_optimizer_type = optimizer_kwargs.get("base_optimizer_type")
     if base_optimizer_type is None:
         raise ValueError("base_optimizer_type is required in optimizer_args for wrapper optimizers")
 
     base_optimizer_kwargs = {}
     wrapper_kwargs = {}
+    wrapper_signature_params = set()
+    if wrapper_class is not None:
+        wrapper_signature_params = {
+            name
+            for name in inspect.signature(wrapper_class.__init__).parameters
+            if name not in {"self", "optimizer", "base_optimizer_kwargs"}
+        }
     for key, value in optimizer_kwargs.items():
         if key == "base_optimizer_type":
             continue
@@ -202,6 +219,12 @@ def _split_wrapper_optimizer_kwargs(optimizer_kwargs: dict):
             continue
         if key.startswith("wrapper."):
             wrapper_kwargs[key.removeprefix("wrapper.")] = value
+            continue
+        if key in wrapper_signature_params:
+            wrapper_kwargs[key] = value
+            continue
+        if wrapper_style == "wrap_optimizer_with_base_kwargs":
+            base_optimizer_kwargs[key] = value
             continue
         wrapper_kwargs[key] = value
 
@@ -218,10 +241,14 @@ def _build_registered_wrapper(
     if registration.target is None:
         return None, None
 
-    base_optimizer_type, base_optimizer_kwargs, wrapper_kwargs = _split_wrapper_optimizer_kwargs(optimizer_kwargs)
     wrapper_class = _load_registered_optimizer_class(registration)
     if wrapper_class is None:
         return None, None
+    base_optimizer_type, base_optimizer_kwargs, wrapper_kwargs = _split_wrapper_optimizer_kwargs(
+        optimizer_kwargs,
+        wrapper_class=wrapper_class,
+        wrapper_style=registration.wrapper_style,
+    )
 
     base_optimizer_config = OptimizerConfig(optimizer_type=base_optimizer_type)
     _, _, base_optimizer = get_optimizer(

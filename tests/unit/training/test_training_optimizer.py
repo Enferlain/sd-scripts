@@ -4,12 +4,15 @@ Unit tests for library/training/optimizer_utils.py
 Tests optimizer creation, scheduler setup, and config-based initialization.
 """
 
+from unittest.mock import patch
+
 import pytest
 import torch
 from diffusers.optimization import SchedulerType as DiffusersSchedulerType
 
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.optimizer_utils import (
+    _load_optimizer_class_for_signature,
     is_schedulefree_optimizer,
     is_wrapper_optimizer,
     parse_string_to_type,
@@ -133,6 +136,37 @@ class TestGetOptimizer:
         assert optimizer.param_groups[0]["lr"] == 2e-4
         assert optimizer_name == "torch.optim.adamw.AdamW"
 
+    @patch("library.optimization.optimizer_factory.prepare_windows_compiler_env_for_torch_compile")
+    def test_torchao_optimizer_bootstraps_windows_compile_env(self, mock_prepare_compile_env, mock_model_parameters):
+        """TorchAO-backed optimizers should prepare the Windows compiler env before upstream compile paths run."""
+        pytest.importorskip("torchao.optim.adam")
+
+        config = OptimizerConfig(optimizer_type="AdamW8bitAO", learning_rates=LearningRatesConfig(base=1e-4))
+
+        optimizer_name, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
+
+        assert optimizer is not None
+        assert "adamw8bitao" in optimizer_name.lower()
+        mock_prepare_compile_env.assert_called_once()
+
+    @pytest.mark.parametrize("optimizer_type", ["ADOPTAOScheduleFree", "CompassAO"])
+    def test_torchao_repo_optimizers_tensorize_group_learning_rates(self, optimizer_type, mock_model_parameters):
+        """TorchAO repo-owned optimizers should normalize explicit group LRs into tensors."""
+        pytest.importorskip("torchao.optim.adam")
+
+        config = OptimizerConfig(optimizer_type=optimizer_type, learning_rates=LearningRatesConfig(base=1e-4))
+        trainable_params = [{"params": mock_model_parameters, "lr": 5e-5}]
+
+        _, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            trainable_params,
+        )
+
+        assert isinstance(optimizer.param_groups[0]["lr"], torch.Tensor)
+        assert optimizer.param_groups[0]["lr"].item() == pytest.approx(5e-5)
+
 
 # =============================================================================
 # Optimizer Detection Tests
@@ -215,6 +249,35 @@ class TestOptimizerDetection:
         )
 
         assert scheduler.optimizer is optimizer.base_optimizer
+
+
+@pytest.mark.training
+@pytest.mark.unit
+class TestOptimizerSignatureLookup:
+    """Test optimizer signature probing for default orthograd resolution."""
+
+    def test_registered_repo_owned_torchao_optimizer_uses_registry_target(self):
+        """Registered repo-owned optimizers should not be probed through torch.optim."""
+        pytest.importorskip("torchao.optim.adam")
+
+        config = OptimizerConfig(optimizer_type="AdamW8bitAO")
+
+        optimizer_class = _load_optimizer_class_for_signature(config, {})
+
+        assert optimizer_class is not None
+        assert optimizer_class.__name__ == "AdamW8bitAO"
+        assert optimizer_class.__module__ == "library.optimization.optimizers.adamw.adamw_low_bit"
+
+    def test_wrapper_optimizer_uses_registered_base_target_for_signature(self):
+        """Wrapper optimizers should resolve named base optimizers through the registry."""
+        pytest.importorskip("bitsandbytes")
+
+        config = OptimizerConfig(optimizer_type="CPUOffloadOptimizer")
+
+        optimizer_class = _load_optimizer_class_for_signature(config, {"base_optimizer_type": "AdamW8bit"})
+
+        assert optimizer_class is not None
+        assert optimizer_class.__name__ == "AdamW8bit"
 
 
 # =============================================================================
@@ -397,11 +460,23 @@ class TestOptimizerUtils:
 
     def test_parse_key_value_args(self):
         """Shared key=value parsing preserves literal types."""
-        parsed = parse_key_value_args(["weight_decay=0.01", "betas=(0.9, 0.999)", "name='adamw'"])
+        parsed = parse_key_value_args(
+            [
+                "weight_decay=0.01",
+                "betas=(0.9, 0.999)",
+                "name='adamw'",
+                "enabled=true",
+                "offload=false",
+                "missing=null",
+            ]
+        )
 
         assert parsed["weight_decay"] == 0.01
         assert parsed["betas"] == (0.9, 0.999)
         assert parsed["name"] == "adamw"
+        assert parsed["enabled"] is True
+        assert parsed["offload"] is False
+        assert parsed["missing"] is None
 
     def test_materialize_parameter_groups(self):
         """Typed parameter groups convert to legacy optimizer dicts."""

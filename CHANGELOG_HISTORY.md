@@ -5,6 +5,153 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-03-31]
+
+### Changed
+
+- **Objective config now separates training-path choice from prediction-target choice, and the active schema no longer infers either axis through `auto`** — The current math layer now declares the two axes explicitly instead of overloading one mixed `objective.target` field.
+  - Replaced `objective.target` with explicit `objective.path` and `objective.prediction` fields in the shared run schema and default config fragments.
+  - Removed the active `auto` resolution path from config preparation and objective selection, so the runtime no longer infers DDPM vs RF or epsilon vs v-pred behind the scenes.
+  - Updated DDPM diffusion, sampling, loading, and checkpoint metadata paths to read `cfg.objective.prediction` directly, while `build_objective(...)` now selects the owner from `cfg.objective.path`.
+  - Kept `loss.v_parameterization` only as a synchronized legacy compatibility mirror for `objective.prediction == "v_prediction"`, and updated validation messages to point at the explicit objective fields.
+  - Tightened the supported combination matrix too: DDPM now allows only `epsilon` / `v_prediction`, while rectified flow now requires the explicit RF-native `flow` prediction label.
+  - The active SD3/RF diffusion path now validates that explicit `flow` prediction contract instead of silently ignoring the prediction field.
+- **Prediction-target metadata now stops at the DDPM family boundary** — The active repo no longer serializes DDPM-style `epsilon`/`v` model-spec metadata for SD3 checkpoints just because the shared config still carries `v_parameterization`.
+  - Updated `library/utils/model_metadata.py` so active callers now choose `modelspec.prediction_type` explicitly instead of relying on model-family checks inside the shared helper.
+  - SD / SDXL checkpoint strategies now pass their DDPM `epsilon`/`v` choice explicitly, while SD3 passes `None` to omit the field.
+  - Added focused unit coverage to keep SD3 model-spec metadata from inheriting the DDPM `prediction_type` axis.
+  - Tightened the `v_parameterization` config help text and design notes so they describe a DDPM prediction-target choice rather than a generic loss toggle.
+- **DDPM prediction-target behavior now has one objective-owned mapping instead of repeated boolean branches** — The active DDPM path no longer re-decides `epsilon` vs `v_prediction` separately in each diffusion strategy and sampling entrypoint.
+  - Added a DDPM-owned prediction-type resolver and training-target builder in `library/objectives/ddpm.py`.
+  - SD / SDXL diffusion strategies now build the DDPM training target through that objective seam instead of branching on `cfg.loss.v_parameterization` locally.
+  - Sample-time scheduler setup now accepts an explicit DDPM prediction type, and the active SD / SDXL sampling paths resolve it through the same objective-owned mapping.
+- **Zero-terminal-SNR is now described as DDPM scheduler shaping instead of generic loss regularization** — The active config/help/docs now point at the path/state-construction role the setting actually has.
+  - Updated the typed config help text and validation warning for `loss.regularization.zero_terminal_snr` so they describe DDPM scheduler shaping for noisy-state construction.
+  - Refreshed the active design notes to call out `zero_terminal_snr` as a scheduler/state-construction option instead of describing it like ordinary loss regularization.
+- **Loss-weighting ownership now distinguishes DDPM post-loss math from generic masking** — The active code no longer keeps DDPM-only SNR/v-pred weighting and generic mask application in the same helper module.
+  - Moved Min-SNR weighting, debiased-estimation weighting, v-pred scaling, and the shared DDPM post-processing order into `library/objectives/ddpm.py`.
+  - Added `library/losses/masking.py` so mask application stays with generic loss behavior instead of living in an objective-shaped weighting module.
+  - Updated SD / SDXL diffusion strategies to call `post_process_ddpm_loss(...)` from the DDPM objective seam, while SD3 now imports only the shared masking helper.
+  - Refreshed the focused unit coverage around DDPM weighting and masking behavior.
+- **Huber threshold scheduling now has its own small loss helper seam** — The active strategies no longer import a scheduler/timestep-aware threshold helper from the same module that owns the raw loss functions.
+  - Added `library/losses/huber.py` with `get_huber_threshold_if_needed(...)` and updated SD / SDXL / SD3 diffusion strategies to import the helper from there.
+  - Reduced `library/losses/loss.py` back to the actual loss primitives and `conditional_loss(...)` dispatch path.
+  - Updated the focused unit coverage so the Huber-threshold tests follow the new helper location.
+- **Objective runtime ownership now reaches the trainer/strategy seam instead of stopping at runtime construction** — The active trainer no longer keeps a DDPM-shaped `noise_scheduler + timestep_runtime + loss_modifier` field split after objective selection.
+  - `Trainer` now stores one `objective_runtime` bundle directly, and the shared training/validation loops pass that bundle through to strategy calls instead of threading a raw scheduler as a fake universal dependency.
+  - `ObjectiveRuntime` now carries only the genuinely shared runtime fields (`num_train_timesteps`, optional `alphas_cumprod`, optional `timestep_runtime`, and `loss_modifier`), while DDPM and RF each expose typed runtime subclasses for their path-specific state.
+  - SD / SDXL diffusion and validation now require a DDPM runtime explicitly when they need scheduler math, while SD3 / RF now accepts a rectified-flow runtime without inheriting a DDPM scheduler by accident.
+  - Live timestep plotting and Huber-threshold scheduling now read objective-owned runtime metadata instead of assuming every active path has a raw Diffusers scheduler object.
+  - `RectifiedFlowObjective.build_runtime()` is now RF-native and fails fast on DDPM-only EDM2 weighting instead of silently inheriting DDPM runtime assembly.
+  - Followed up on the first runtime pass too: the shared base runtime no longer carries the DDPM-only `alphas_cumprod` field, the batch-feedback hook is now named `update_from_batch(...)` instead of `observe(...)`, and the DDPM family strategies now read their typed runtime via local casts instead of runtime assertion helpers.
+- **RF runtime ownership now includes RF batch-state assembly instead of stopping at runtime identity** — The active SD3 strategy no longer owns RF timestep/sigma/model-input construction directly.
+  - Added `RectifiedFlowObjectiveRuntime.build_training_batch_state(...)` plus a small `RectifiedFlowBatchState` container in `library/objectives/rectified_flow.py`.
+  - RF runtime construction now stores the active RF timestep config and RF loss-weighting scheme so the runtime can assemble `timesteps`, `sigmas`, noisy model input, and loss weighting from clean latents.
+  - `library/strategies/sd3/diffusion.py` now consumes that RF-owned batch state instead of rebuilding RF timestep state locally, which makes the SD3 strategy read more like denoiser orchestration plus loss application.
+  - Added focused unit coverage for the runtime-owned RF batch-state builder in `tests/unit/training/test_training_flow.py`.
+- **The active SD3 RF target now follows the paper-style direct velocity contract instead of supervising a projected clean latent inside the shared RF runtime** — Generic RF batch-state assembly now stops at path construction, while the SD3 strategy owns the family-specific target semantics directly.
+  - Removed the generic `target` field from `RectifiedFlowBatchState`, so the shared RF runtime now owns only noise, interpolated model input, timesteps, sigmas, and RF loss weighting.
+  - Added an SD3-local `build_sd3_flow_target(...)` helper in `library/strategies/sd3/diffusion.py` and switched the active SD3 training target to `noise - latents`, matching the direct RF velocity target described in the SD3 paper.
+  - Removed the old SD3 training-side projection `model_pred = model_pred * (-sigmas) + noisy_model_input` from the active SD3 loss path, since that projected-`x0` supervision was an older donor-specific parameterization rather than the paper-native RF target.
+  - Added focused unit coverage so the RF runtime test now checks only shared batch-state fields and the SD3 strategy test asserts the paper-style target direction explicitly.
+
+### Fixed
+
+- **SDXL conditioning regression introduced by the objective-runtime refactor** — The SDXL training and validation paths now call the shared conditioning facet using the same keyword argument contract as the other families.
+  - Updated `library/strategies/sdxl/diffusion.py` and `library/strategies/sdxl/validation.py` to pass `batch`, `text_encoders`, `accelerator`, `cfg`, and `weight_dtype` by name when resolving conditioning.
+  - Added focused regression coverage in `tests/unit/strategies/test_strategies_sdxl.py` so the SDXL batch-processing and validation paths fail loudly if they drift back to the old positional call shape.
+
+### Removed
+
+- **Removed the old mixed DDPM weighting helper module** — The repo no longer keeps DDPM-only weighting logic in a generic loss helper file.
+  - Deleted `library/losses/loss_weighting.py` after moving DDPM post-loss weighting into `library/objectives/ddpm.py` and generic masking into `library/losses/masking.py`.
+
+## [2026-03-30]
+
+### Changed
+
+- **RF timestep-density and RF loss-weighting are now modeled as separate config concepts** — The active RF path no longer overloads one `weighting_scheme` field to mean both density sampling and post-loss weighting.
+  - Replaced the old overloaded `timestep.weighting_scheme` with a dedicated `timestep.rf_loss_weighting_scheme`, but folded RF timestep-density selection back into the main `timestep.timestep_sampling` surface instead of keeping a second parallel sampling selector.
+  - Updated `library/objectives/rectified_flow.py` so RF now reads training-time sampling from `timestep_sampling`, treats `logit_normal` as the canonical logit-family sampler, and keeps `cosine_shaped` as the remaining RF-local density option.
+  - Renamed the vague RF density label `mode` to `cosine_shaped`, and `mode_scale` to `cosine_shape_scale`, including the shared RF metadata field.
+  - Updated config validation to enforce the currently implemented timestep-sampling values by active model family, and updated RF metadata keys to record the shared `ss_timestep_sampling` field instead of an RF-only density-selector name.
+  - Renamed the remaining script-era timestep knobs `sigmoid_scale` and `discrete_flow_shift` to `logit_scale` and `training_shift` so the active config surface describes training-time behavior more directly.
+  - Collapsed the redundant `shift` RF sampler into `logit_normal + training_shift`, removed the now-redundant `logit_scale` knob, and added a shared timestep-density helper documenting the equivalence in code.
+  - Followed up on the shared sampler naming so the extracted helper now lives in `library/timesteps/continuous_sampling.py`, uses `sample_continuous_timesteps(...)`, and keeps the intermediate RF variable as `u` instead of introducing a misleading `density`/`timestep_values` term.
+- **Objective/runtime ownership now has a first explicit home outside trainer and model-family helpers** — The active runtime no longer wires DDPM scheduler setup, timestep runtime construction, RF metadata ownership, and post-loss modifier assembly as unrelated pieces.
+  - Added `library/objectives/` with explicit objective owners plus a small runtime bundle/factory surface.
+  - Trainer runtime initialization now resolves one objective owner, builds its runtime bundle, and reads checkpoint metadata hooks from that same objective seam.
+  - Moved DDPM scheduler construction into `library/objectives/ddpm.py`, while `library/training/noise_utils.py` now keeps only the reusable noise-regularization helpers.
+  - Moved the shared RF training helpers from `library/training/flow.py` into `library/objectives/rectified_flow.py`, and updated SD / SDXL / SD3 diffusion code to import their objective-owned helpers from the new package.
+  - Added focused test updates for the new objective-owned DDPM scheduler / batch-input helper path and the RF metadata / helper imports.
+- **RF config ownership now points at timestep/sampling surfaces instead of pretending to be model identity** — The first SD3/RF port no longer reads its weighting and flow-shift settings only from ad hoc `cfg.model` fields.
+  - Added typed RF timestep settings to `library/config/dataclasses/timestep.py` and `configs/_defaults/timestep/default.yaml`: shared `timestep_sampling`, `rf_loss_weighting_scheme`, `logit_mean`, `logit_std`, and `cosine_shape_scale`.
+  - Added `sample_flow_shift` to `library/config/dataclasses/output.py` under `output.sampling`, with the shared output defaults YAML exposing the new field too.
+  - Updated the active SD3 diffusion, sampling, and checkpoint metadata paths to read the new typed config homes directly.
+  - Added focused unit coverage for the new config ownership in the SD3 strategy tests plus default-value assertions in the config tests.
+- **RF objective metadata no longer lives in SD3 checkpoint strategy code** — The shared training metadata builder now owns the current RF metadata fields, while SD3 checkpointing keeps only genuinely SD3-specific metadata.
+  - Added `append_objective_metadata(...)` to `library/training/training_metadata.py` and called it from `create_training_metadata(...)`.
+  - Moved `ss_timestep_sampling`, `ss_rf_loss_weighting_scheme`, `ss_logit_mean`, `ss_logit_std`, and `ss_cosine_shape_scale` out of `library/strategies/sd3/checkpointing.py`.
+  - Kept `ss_apply_lg_attn_mask` and `ss_apply_t5_attn_mask` in the SD3 checkpoint strategy because those remain family-specific encoding/runtime flags.
+- **The sampler call interface is now slimmer and more honest** — The runtime no longer threads shift-only knobs through every sampler-backed path.
+  - `log_snr_uniform` and `adaptive_log_snr` no longer accept or discard the shift-only time-sampling knobs, and the runtime only passes the shared sampling inputs that sampler-backed modes actually use.
+
+## [2026-03-29]
+
+### Changed
+
+- **RF training math has its first shared runtime home outside SD3 strategy code** — The flow-matching helper functions used by SD3 training no longer live in the model-family strategy module.
+  - Added `library/training/flow.py` with shared flow-matching timestep-density, loss-weighting, and noisy-input construction helpers.
+  - Reduced `library/strategies/sd3/diffusion.py` so it now uses those training-side helpers instead of owning the RF math locally.
+  - Added focused unit coverage in `tests/unit/training/test_training_flow.py` for the extracted helper surface.
+- **Discrete-flow sampling math now has a pipeline-side home outside SD3 strategy code** — The reusable sigma-schedule helpers used by SD3 sampling no longer live under the model-family strategy package.
+  - Added `library/pipelines/flow.py` with `DiscreteFlowModelSampling`, `get_discrete_flow_sigmas(...)`, and `starts_at_max_denoise(...)`.
+  - Reduced `library/strategies/sd3/sampling.py` so it keeps SD3 prompt encoding and sampling orchestration, but imports the discrete-flow runtime math from the pipeline-side helper module.
+  - Added focused unit coverage in `tests/unit/test_pipelines_flow.py` for the extracted discrete-flow helper surface.
+- **CLIP-family model-preparation workarounds now have one explicit shared home** — The repo no longer keeps the same CLIP embedding prep helpers duplicated across SD and SDXL, and SD3 now reuses that shared CLIP branch while keeping its T5-specific behavior local.
+  - Added `library/strategies/shared/clip/model_preparation.py` for the shared CLIP text-encoder gradient-checkpointing workaround and FP8 embedding restore helper.
+  - Reduced `library/strategies/sd/model_preparation.py` and `library/strategies/sdxl/model_preparation.py` to family-specific policy around those shared CLIP helpers instead of each owning identical embedding prep code.
+  - Updated `library/strategies/sd3/model_preparation.py` so CLIP-L / CLIP-G reuse the shared helper path while T5-XXL keeps its explicit local grad-checkpointing and FP8 behavior.
+  - Added focused unit coverage for the new shared CLIP model-preparation helpers.
+
+## [2026-03-28]
+
+### Changed
+
+- **CLIP tokenization sharing now has an explicit split between component bootstrap and strategy behavior** — The repo no longer keeps identical CLIP tokenizer loading logic duplicated across SD / SDXL / SD3 strategy files, and the shared CLIP prompt-tokenization behavior now has one home.
+  - Added `library/models/sd/tokenizer.py` as the shared Hugging Face tokenizer loading/bootstrap helper used by SD, SDXL, and the CLIP side of SD3.
+  - Added `library/strategies/shared/clip/tokenization.py` for shared CLIP-family prompt-weight parsing, long-prompt chunking, and caption tokenization behavior.
+  - Reduced `library/strategies/sd/tokenization.py` and `library/strategies/sdxl/tokenization.py` to family-specific assembly on top of those shared seams, while `library/strategies/sd3/tokenization.py` now reuses the shared loader without forcing SD3’s CLIP+T5 behavior into the CLIP-only helper layer.
+- **Weighted prompt support is now modeled as an explicit optional strategy capability** — The base strategy contracts no longer imply that every active model family must support weighted tokenization/encoding just because SD and SDXL do.
+  - Added `WeightedPromptStrategy` in `library/strategies/base/features.py` for the paired `tokenize_with_weights()` and `encode_tokens_with_weights()` capability.
+  - `SdTrainingStrategy` and `SdxlTrainingStrategy` now opt into that capability explicitly, while SD3 no longer carries placeholder weighted-prompt methods that only raise `NotImplementedError`.
+  - Updated the base strategy tests so weighted prompt support is asserted on the optional capability surface rather than on the required tokenization/text-encoding facets.
+- **Initial SD3 model-family groundwork is now present in the active library/strategy path** — The repo now has a first real SD3 implementation surface wired into the shared strategy system instead of only carrying SD / SDXL.
+  - Added `library/models/sd3/` component code for SD3 checkpoint conversion, MMDiT construction/loading, CLIP-L / CLIP-G / T5-XXL loading, and SD3 VAE handling.
+  - Added `library/strategies/sd3/` facet files for SD3 tokenization, text encoding, caching, denoiser calling, diffusion training, validation, checkpointing, sample generation, model preparation, and strategy assembly.
+  - Registered `Sd3TrainingStrategy` in the shared strategy factory so the config-driven launcher can resolve the SD3 family through the same `model.model_type -> TrainingStrategy` path used by the other active families.
+  - SD3 loading now supports the current unified-checkpoint path plus optional sidecar text encoders, scaled positional embeddings, block-swap setup, and the active partial FP8 handling used by the current strategy implementation.
+  - SD3 training/runtime behavior now includes CLIP-L + CLIP-G + T5 tokenization/encoding, SD3-specific cache payload handling, flow-matching diffusion/loss-weighting helpers, SD3 validation loss execution, SD3 metadata population, safetensors full-model checkpoint saving, and direct SD3 sample generation.
+  - Added named SD3-local text payload dataclasses in `library/strategies/sd3/encoding.py`, and rewired SD3 tokenization / encoding / diffusion / denoiser / sampling / caching internals to use those named payloads instead of positional six-item tensor lists.
+  - The current SD3 path is still intentionally partial: weighted captions / prompt weighting are not implemented yet, T5-XXL FP8 preparation still fails fast, and full-model checkpoint saving currently supports only `save_model_as='safetensors'`.
+- **Conditioning is now a real strategy facet instead of staying half-buried in diffusion helpers** — The shared strategy surface now has one explicit high-level conditioning seam, while each family keeps its own cache/live/merge implementation details local.
+  - Added `ConditioningStrategy.resolve_conditioning(...)` to `library/strategies/base/contracts.py` as the small trainer/runtime-facing contract for family conditioning resolution.
+  - Added real family facets in `library/strategies/sd/conditioning.py`, `library/strategies/sdxl/conditioning.py`, and `library/strategies/sd3/conditioning.py` to own cached-conditioning loading, live encoding fallback, and merge policy.
+  - Reduced `sd/diffusion.py`, `sdxl/diffusion.py`, and `sd3/diffusion.py` so they now consume `resolve_conditioning(...)` instead of carrying their own private `_get_text_conds()` flow, and updated validation paths to use that same seam.
+  - Kept family payload shapes local: SD still returns its simple text tensor list, SDXL still resolves the current text tuple alongside its existing `SdxlConditioning` metadata path, and SD3 still uses `Sd3TextConditioning` from `sd3/encoding.py`.
+- **The generic launcher no longer hides behind compatibility wrappers** — The active entry surface is now just the root launcher we already expect users and benchmarks to call.
+  - Inlined the shared launch body into `train.py` and removed `library/training/launcher.py`.
+  - Removed the `scripts/sdxl_peft.py` and `scripts/sdxl_finetune.py` compatibility wrappers instead of keeping duplicate Hydra entrypoints around after the root launcher was already working.
+  - Updated launcher tests to exercise `train.py` directly.
+- **SD / SDXL CLIP behavior now lives with strategy tokenization/encoding instead of under `library/models/sd`** — The active ownership split is now more consistent with the strategy contracts and the design note for model vs behavior code.
+  - Moved the current SD text-encoding helpers into `library/strategies/sd/encoding.py` and the SDXL text-encoding helpers into `library/strategies/sdxl/encoding.py`.
+  - Moved the CLIP-family tokenization helpers out of `library/models/sd/tokenizer.py` into the SD / SDXL strategy tokenization modules directly; for now the identical helper logic is duplicated locally instead of introducing a new shared/base strategy module.
+  - Deleted the old model-layer helper files `library/models/sd/text_encoder.py`, `library/models/sd/tokenizer.py`, and `library/models/sdxl/text_encoder.py`.
+  - Updated the active SD / SDXL strategy, caching, pipeline, and tests/imports to use the new strategy-owned locations.
+- **Prompt-attention parsing now has one canonical implementation again** — The repo no longer carries separate LPW-pipeline copies of the same parser.
+  - Kept `library/data/prompt_utils.py::parse_prompt_attention()` as the canonical implementation and upgraded it to the best typed/docstring variant from the duplicated copies.
+  - `library/pipelines/lpw_stable_diffusion.py` and `library/pipelines/sdxl_lpw_stable_diffusion.py` now import that canonical parser instead of defining their own local copies.
+
 ## [2026-03-26]
 
 ### Changed

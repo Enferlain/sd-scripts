@@ -33,6 +33,12 @@ class CPUOffloadOptimizerWrapper(torch.optim.Optimizer):
             raise RuntimeError("CPUOffloadOptimizer requires a CUDA or XPU runtime")
 
         optimizer_class = optimizer.__class__
+        if optimizer_class.__module__.startswith("bitsandbytes."):
+            raise RuntimeError(
+                "CPUOffloadOptimizer is incompatible with bitsandbytes optimizers because TorchAO CPU offload "
+                "runs optimizer steps on CPU while bitsandbytes requires its tensors to stay on GPU. "
+                "Use a torch optimizer such as AdamW for CPU offload."
+            )
         param_groups = _clone_param_groups(optimizer.param_groups)
         optimizer_kwargs = dict(base_optimizer_kwargs or {})
 

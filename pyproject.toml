@@ -42,12 +42,13 @@ dependencies = [
     "blake3",
     "rich~=14.2.0",
     "sentencepiece~=0.2.1",
-    "torch>=2.9,<2.12",
-    "torchvision",
     "xformers",
     "ruff>=0.15.1",
     "ty>=0.0.17",
     "nvidia-ml-py",
+    "torch>=2.9.1,<2.12",
+    "torchvision",
+    "torchao>=0.15,<0.18",
 ]
 
 # Torch profiles. Pick exactly one for your machine.

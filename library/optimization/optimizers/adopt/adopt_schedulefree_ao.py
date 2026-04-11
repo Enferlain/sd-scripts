@@ -155,10 +155,18 @@ class _ADOPTAOScheduleFreeBase(Optimizer):
         self.state_precision = state_precision
         self.torch_compile = torch_compile
 
+    def add_param_group(self, param_group: dict) -> None:
+        super().add_param_group(param_group)
+        group = self.param_groups[-1]
+        if not isinstance(group["lr"], torch.Tensor):
+            group["lr"] = torch.tensor(group["lr"], dtype=torch.float32)
+
     def __setstate__(self, state):
         super().__setstate__(state)
         for group in self.param_groups:
             device = group["params"][0].device
+            if not isinstance(group["lr"], torch.Tensor):
+                group["lr"] = torch.tensor(group["lr"], dtype=torch.float32)
 
             group.setdefault("adaptive_clip", 1.0)
             group.setdefault("adaptive_clip_eps", 1e-3)

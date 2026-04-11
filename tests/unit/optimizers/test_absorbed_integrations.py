@@ -163,6 +163,40 @@ class TestAbsorbedWrappers:
         assert optimizer.base_optimizer.minimal_size == 2048
         assert optimizer.param_groups[0]["weight_decay"] == 0.01
 
+    def test_registered_cpu_offload_wrapper_routes_bare_base_optimizer_args(self, mock_model_parameters):
+        """CPU offload wrapper should treat unprefixed optimizer kwargs as base-optimizer args unless owned by the wrapper."""
+        config = OptimizerConfig(
+            optimizer_type="CPUOffloadOptimizer",
+            learning_rates=LearningRatesConfig(base=3e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW",
+                "weight_decay=0.01",
+                "betas=0.9, 0.999",
+                "wrapper.offload_gradients=false",
+                "wrapper.minimal_size=4096",
+            ],
+        )
+
+        with (
+            patch("library.optimization.wrappers.cpu_offload.get_available_devices", return_value=["cuda"]),
+            patch(
+                "library.optimization.wrappers.cpu_offload.TorchAOCPUOffloadOptimizer",
+                self._FakeTorchAOCPUOffloadOptimizer,
+            ),
+        ):
+            _, _, optimizer = get_optimizer(
+                config,
+                config.learning_rates,
+                config.scheduler,
+                mock_model_parameters,
+            )
+
+        assert optimizer.base_optimizer.optimizer_class.__name__ == "AdamW"
+        assert optimizer.base_optimizer.kwargs["weight_decay"] == 0.01
+        assert optimizer.base_optimizer.kwargs["betas"] == (0.9, 0.999)
+        assert optimizer.base_optimizer.offload_gradients is False
+        assert optimizer.base_optimizer.minimal_size == 4096
+
     def test_registered_cpu_offload_wrapper_schedules_wrapper_directly(self, mock_model_parameters):
         """CPU offload wrapper should be scheduled directly rather than routing to a nested base optimizer."""
         optimizer_config = OptimizerConfig(
@@ -219,6 +253,29 @@ class TestAbsorbedWrappers:
                 self._FakeTorchAOCPUOffloadOptimizer,
             ),
             pytest.raises(RuntimeError, match="CUDA or XPU"),
+        ):
+            get_optimizer(
+                config,
+                config.learning_rates,
+                config.scheduler,
+                mock_model_parameters,
+            )
+
+    def test_registered_cpu_offload_wrapper_rejects_bitsandbytes_base_optimizer(self, mock_model_parameters):
+        """CPU offload wrapper should fail fast for bitsandbytes base optimizers, which cannot step on CPU."""
+        pytest.importorskip("bitsandbytes")
+        config = OptimizerConfig(
+            optimizer_type="CPUOffloadOptimizer",
+            learning_rates=LearningRatesConfig(base=3e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW8bit",
+                "weight_decay=0.01",
+            ],
+        )
+
+        with (
+            patch("library.optimization.wrappers.cpu_offload.get_available_devices", return_value=["cuda"]),
+            pytest.raises(RuntimeError, match="incompatible with bitsandbytes optimizers"),
         ):
             get_optimizer(
                 config,

@@ -111,11 +111,20 @@ def _load_optimizer_class_for_signature(optimizer_config: OptimizerConfig, optim
 
     try:
         registration = get_optimizer_registration(optimizer_config.optimizer_type)
-        if registration is not None and registration.kind == "wrapper":
-            case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
-            if case_sensitive_full_base_optimizer_name is None:
-                raise ValueError("base_optimizer_type is required in optimizer_args for wrapper optimizers")
-            return load_target(case_sensitive_full_base_optimizer_name)
+        if registration is not None:
+            if registration.kind == "wrapper":
+                case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
+                if case_sensitive_full_base_optimizer_name is None:
+                    raise ValueError("base_optimizer_type is required in optimizer_args for wrapper optimizers")  # todo: looks like config validation maybe
+                base_registration = get_optimizer_registration(case_sensitive_full_base_optimizer_name)
+                if base_registration is not None and base_registration.target is not None:
+                    return load_target(base_registration.target)
+                if "." not in case_sensitive_full_base_optimizer_name:
+                    return getattr(torch.optim, case_sensitive_full_base_optimizer_name)
+                return load_target(case_sensitive_full_base_optimizer_name)
+
+            if registration.target is not None:
+                return load_target(registration.target)
 
         if "." not in case_sensitive_optimizer_type:
             return getattr(torch.optim, case_sensitive_optimizer_type)

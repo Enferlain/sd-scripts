@@ -2,6 +2,14 @@ import ast
 from typing import Any
 
 
+_LOWERCASE_LITERAL_VALUES = {
+    "true": True,
+    "false": False,
+    "none": None,
+    "null": None,
+}
+
+
 def parse_key_value_args(args: list[str] | None) -> dict[str, Any]:
     """Parse ``key=value`` optimizer/scheduler-style argument lists.
 
@@ -17,7 +25,7 @@ def parse_key_value_args(args: list[str] | None) -> dict[str, Any]:
         try:
             value = ast.literal_eval(value)
         except (ValueError, SyntaxError):
-            pass
+            value = _LOWERCASE_LITERAL_VALUES.get(value.lower(), value)
         parsed[key] = value
 
     return parsed
