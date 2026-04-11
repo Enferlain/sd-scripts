@@ -8,7 +8,19 @@ from library.optimization.optimizers.utils.stochastic import copy_stochastic_
 
 
 class LaProp(BaseOptimizer):
-    """Repo-owned LaProp optimizer adapted for the optimization layer."""
+    r"""Separating Momentum and Adaptivity in Adam.
+
+    :param params: ParamGroup. iterable of parameters to optimize or dicts defining parameter groups.
+    :param lr: float. learning rate.
+    :param betas: Betas. coefficients used for computing running averages of gradient and the squared hessian trace.
+    :param centered: bool.
+    :param weight_decay: float. weight decay (L2 penalty).
+    :param weight_decouple: bool. the optimizer uses decoupled weight decay as in AdamW.
+    :param fixed_decay: bool. fix weight decay.
+    :param ams_bound: bool. whether to use the AMSBound variant.
+    :param cautious: bool. whether to use the Cautious variant.
+    :param eps: float. epsilon value.
+    """
 
     def __init__(
         self,
@@ -136,7 +148,9 @@ class LaProp(BaseOptimizer):
                         max_exp_avg_sq = max_exp_avg_sq.to(torch.float32)
 
                     if not (group["centered"] and group["step"] <= self.steps_before_using_centered):
+                        # Maintains the maximum of all (centered) 2nd moment running avg. till now
                         torch.max(max_exp_avg_sq, denominator, out=max_exp_avg_sq)
+                        # Use the max. for normalizing running avg. of gradient
                         denominator = max_exp_avg_sq
 
                     if parameter.dtype in {torch.float16, torch.bfloat16}:

@@ -1,21 +1,9 @@
+# Source: https://github.com/facebookresearch/bcos
+
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.optimizers.utils import copy_stochastic_
-
-
-def _resolve_state_storage_dtype(state_storage_dtype: str | torch.dtype) -> torch.dtype:
-    if not isinstance(state_storage_dtype, str):
-        return state_storage_dtype
-
-    normalized_dtype = state_storage_dtype.strip().lower()
-    if normalized_dtype == "float32":
-        return torch.float32
-    if normalized_dtype == "float16":
-        return torch.float16
-    if normalized_dtype == "bfloat16":
-        return torch.bfloat16
-    return torch.bfloat16
+from library.optimization.optimizers.utils import copy_stochastic_, resolve_state_storage_dtype
 
 
 class BCOS(Optimizer):
@@ -48,7 +36,7 @@ class BCOS(Optimizer):
         if mode not in {"g", "m", "c"}:
             raise ValueError(f"BCOS mode {mode} not supported")
 
-        final_dtype = _resolve_state_storage_dtype(state_storage_dtype)
+        final_dtype = resolve_state_storage_dtype(state_storage_dtype)
         defaults = {
             "lr": lr,
             "beta": beta,
@@ -62,8 +50,8 @@ class BCOS(Optimizer):
         super().__init__(params, defaults)
 
         self.mode = mode
-        self.decouple_wd = decouple_wd
-        self.simple_cond = simple_cond
+        self.decouple_wd = decouple_wd  # True for BCOSW
+        self.simple_cond = simple_cond  # True for simple alternative v estimator in 'c' mode
         self.sync_chunk_size = sync_chunk_size
         self.state_storage_dtype = final_dtype
         self.state_storage_device = state_storage_device
@@ -138,13 +126,14 @@ class BCOS(Optimizer):
                 grad_fp32 = grad.to(compute_device, non_blocking=non_blocking, dtype=torch.float32)
                 parameter_fp32 = parameter.detach().to(compute_device, non_blocking=non_blocking, dtype=torch.float32)
 
-                if self.decouple_wd:
+                # decoupled weight decay or absorb in gradient
+                if self.decouple_wd:  # p := (1 - lr * wd) * p
                     parameter_fp32.mul_(1 - lr * weight_decay)
-                else:
+                else:  # g := g + wd * p
                     grad_fp32.add_(parameter_fp32, alpha=weight_decay)
 
                 if self.mode in {"m", "c"}:
-                    if self.mode == "c":
+                    if self.mode == "c":  # conditional estimator
                         if self.simple_cond:
                             beta_variance = 1 - (1 - beta) ** 2 if beta2 is None else beta2
                             variance = beta_variance * momentum.square() + (1 - beta_variance) * grad_fp32.square()
@@ -155,15 +144,17 @@ class BCOS(Optimizer):
                                 + 2 * beta * (1 - beta) ** 2 * momentum * grad_fp32
                             )
 
+                    # update momentum
                     momentum.mul_(beta).add_(grad_fp32, alpha=1 - beta)
                     direction = momentum
                 else:
                     direction = grad_fp32
 
-                if self.mode in {"g", "m"}:
+                if self.mode in {"g", "m"}:  # EMA estimator
                     beta_variance = beta if beta2 is None else beta2
                     variance.mul_(beta_variance).add_(direction.square(), alpha=1 - beta_variance)
 
+                # BCOS update: p := p - lr * (d / (sqrt(v) + eps))
                 parameter_fp32.add_(direction.div(variance.sqrt().add_(eps)), alpha=-lr)
 
                 self._copy_parameter_back(parameter, parameter_fp32)

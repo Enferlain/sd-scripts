@@ -22,7 +22,7 @@ class OptimizerRegistration:
     name: str
     target: str | None = None
     kind: Literal["optimizer", "wrapper", "offload_wrapper"] = "optimizer"
-    wrapper_style: Literal["wrap_optimizer"] | None = None
+    wrapper_style: Literal["wrap_optimizer", "wrap_optimizer_with_base_kwargs"] | None = None
     backend: Literal["torch", "bitsandbytes", "torchao", "dadaptation", "prodigy", "transformers", "schedulefree", "repo"] | None = None
     aliases: tuple[str, ...] = ()
     capabilities: frozenset[str] = field(default_factory=frozenset)
@@ -127,6 +127,7 @@ _OPTIMIZER_REGISTRATIONS = [
     OptimizerRegistration(name="adabelief", target="library.optimization.optimizers.adabelief.AdaBelief", backend="repo"),
     OptimizerRegistration(name="adai", target="library.optimization.optimizers.adai.Adai", backend="repo"),
     OptimizerRegistration(name="adan", target="library.optimization.optimizers.adan.Adan", backend="repo"),
+    OptimizerRegistration(name="adammini", target="library.optimization.optimizers.adammini.AdamMini", backend="repo"),
     OptimizerRegistration(name="adamw4bitao", target="library.optimization.optimizers.adamw_low_bit.AdamW4bitAO", backend="torchao"),
     OptimizerRegistration(name="adamw8bitao", target="library.optimization.optimizers.adamw_low_bit.AdamW8bitAO", backend="torchao"),
     OptimizerRegistration(name="alice", target="library.optimization.optimizers.alice.Alice", backend="repo"),
@@ -161,6 +162,17 @@ _OPTIMIZER_REGISTRATIONS = [
     OptimizerRegistration(name="fira", target="library.optimization.optimizers.fira.Fira", backend="repo"),
     OptimizerRegistration(name="fmarscrop", target="library.optimization.optimizers.fmarscrop.FMARSCrop", backend="repo"),
     OptimizerRegistration(name="fmarscropv2", target="library.optimization.optimizers.fmarscrop_v2.FMARSCropV2", backend="repo"),
+    OptimizerRegistration(
+        name="fmarscropv2exmachina",
+        target="library.optimization.optimizers.fmarscrop_v2_exmachina.FMARSCropV2ExMachina",
+        backend="repo",
+    ),
+    OptimizerRegistration(name="fmarscropv3", target="library.optimization.optimizers.fmarscrop_v3.FMARSCropV3", backend="repo"),
+    OptimizerRegistration(
+        name="fmarscropv3exmachina",
+        target="library.optimization.optimizers.fmarscrop_v3_exmachina.FMARSCropV3ExMachina",
+        backend="repo",
+    ),
     OptimizerRegistration(name="galore", target="library.optimization.optimizers.galore.GaLore", backend="repo"),
     OptimizerRegistration(name="glyph", target="library.optimization.optimizers.glyph.Glyph", backend="repo"),
     OptimizerRegistration(name="gooddog", target="library.optimization.optimizers.gooddog.GOODDOG", backend="repo"),
@@ -169,11 +181,13 @@ _OPTIMIZER_REGISTRATIONS = [
     OptimizerRegistration(name="lamb", target="library.optimization.optimizers.lamb.Lamb", backend="repo"),
     OptimizerRegistration(name="lpfadamw", target="library.optimization.optimizers.lpf_adamw.LPFAdamW", backend="repo"),
     OptimizerRegistration(name="mythical", target="library.optimization.optimizers.mythical.Mythical", backend="repo"),
+    OptimizerRegistration(name="momentuscaution", target="library.optimization.optimizers.momentus_caution.MomentusCaution", backend="repo"),
     OptimizerRegistration(name="oagopt", target="library.optimization.optimizers.oagopt.OAGOpt", backend="repo"),
     OptimizerRegistration(name="ocgopt", target="library.optimization.optimizers.ocgopt.OCGOpt", backend="repo"),
     OptimizerRegistration(name="projectiveadam", target="library.optimization.optimizers.projective_adam.ProjectiveAdam", backend="repo"),
     OptimizerRegistration(name="racs", target="library.optimization.optimizers.racs.RACS", backend="repo"),
     OptimizerRegistration(name="ranger21", target="library.optimization.optimizers.ranger21.Ranger21", backend="repo"),
+    OptimizerRegistration(name="remaster", target="library.optimization.optimizers.remaster.REMASTER", backend="repo"),
     OptimizerRegistration(name="rmsprop", target="library.optimization.optimizers.rmsprop.RMSProp", backend="repo"),
     OptimizerRegistration(name="rmspropadopt", target="library.optimization.optimizers.rmsprop.RMSPropADOPT", backend="repo"),
     OptimizerRegistration(name="rmspropadoptmars", target="library.optimization.optimizers.rmsprop.RMSPropADOPTMARS", backend="repo"),
@@ -253,6 +267,14 @@ _OPTIMIZER_REGISTRATIONS = [
         kind="wrapper",
         wrapper_style="wrap_optimizer",
         capabilities=frozenset({OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER}),
+    ),
+    OptimizerRegistration(
+        name="cpuoffloadoptimizer",
+        target="library.optimization.wrappers.CPUOffloadOptimizerWrapper",
+        kind="wrapper",
+        wrapper_style="wrap_optimizer_with_base_kwargs",
+        backend="torchao",
+        aliases=("CPUOffloadOptimizer",),
     ),
 ]
 

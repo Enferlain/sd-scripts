@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any
 
 from torch import nn
 
@@ -45,8 +46,14 @@ def build_module_parameter_group(
     label: str | None = None,
     **options: Any,
 ) -> ParameterGroup:
-    """Build a typed parameter group directly from a module."""
-    return build_parameter_group(module.parameters(), lr=lr, label=label, **options)
+    """Build a typed parameter group directly from a module.
+
+    The materialized optimizer dict keeps `named_params` alongside `params`
+    so optimizers that need parameter-name context can still build through
+    the shared factory path.
+    """
+    named_params = list(module.named_parameters())
+    return build_parameter_group((param for _, param in named_params), lr=lr, label=label, named_params=named_params, **options)
 
 
 def materialize_parameter_groups(trainable_params: Any) -> Any:

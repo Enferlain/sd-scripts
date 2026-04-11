@@ -1,3 +1,5 @@
+# TALON from https://github.com/Clybius/Personalized-Optimizers by Clybius
+
 import logging
 import math
 import os
@@ -9,6 +11,17 @@ from torch.optim import Optimizer
 from library.optimization.optimizers.utils import copy_stochastic_
 
 
+# Original Spectral Clipping code by leloykun (https://leloykun.github.io/ponder/spectral-clipping/ https://github.com/leloykun/spectral_clip)
+
+"""
+@misc{cesista2025spectralclipping,
+  author = {Franz Louis Cesista},
+  title = {"Fast, Numerically Stable, and Auto-Differentiable Spectral Clipping Via Newton-Schulz Iteration"},
+  year = {2025},
+  url = {http://leloykun.github.io/ponder/spectral-clipping/},
+}
+"""
+
 NS_COEFFS = [
     (3.5318, -4.7911, 1.9388),
     (3.3274, -4.0557, 1.5782),
@@ -18,6 +31,18 @@ NS_COEFFS = [
     (2.1535, -1.8338, 0.6869),
 ]
 
+# New coeffs from https://kexue.fm/archives/11059, may enable later.
+"""
+NS_COEFFS = [
+    (8.287212018145622, -23.59588651909882, 17.300387312530923),
+    (4.107059111542197, -2.9478499167379084, 0.54484310829266),
+    (3.9486908534822938, -2.908902115962947, 0.5518191394370131),
+    (3.3184196573706055, -2.488488024314878, 0.5100489401237208),
+    (2.3006520199548186, -1.6689039845747518, 0.4188073119525678),
+    (1.8913014077874002, -1.2679958271945908, 0.37680408948524996),
+    (1.875, -1.25, 0.375)
+]
+"""
 
 @torch.no_grad()
 def orthogonalize(matrix: torch.Tensor, num_ns_steps: int = len(NS_COEFFS), ortho_dtype=None, adaptive: bool = False):
@@ -215,7 +240,50 @@ def _can_use_compiled_spectral_helpers() -> bool:
 
 class TALON(Optimizer):
     r"""
-    TALON: Temporal Adaptation via Level and Orientation Normalization.
+    TALON: Temporal Adaptation via Level and Orientation Normalization. 
+    
+    Cuts through noise by decoupling the gradient's sign and magnitude into two different momentum states, with a denominator for adaptive learning.
+
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining
+            parameter groups.
+        lr (float):
+            Learning rate parameter (default 0.0001).
+        betas (float, float, float):
+            Coefficient used for computing the sign momentum, running average, and the long-term squared running average (default: 0.9, 0.99, 0.9999999)
+        weight_decay (float):
+            AdamW-like weight decay, i.e. a L2 penalty (default: 0.0).
+        weight_decay_rate (float):
+            Decay the multiplier at which rate weight decay is applied, weight_decay * weight_decay_rate**step (default: 0.995).
+        denom_atan2 (bool):
+            Divide the smooth gradient using .atan2 instead of .div for stability and scale-invariance, removes epsilon/eps - https://arxiv.org/abs/2407.05872 (default: True).
+        separate_frequencies (float):
+            The ratio of which frequencies to consider "low" before applying the gradient to the model parameters. You can adjust the multiplier of high frequencies via highfreq_mult. (default: 0.0 (recommended 0.1 if used)).
+        highfreq_mult (float):
+            The multiplier of the separated high frequencies. `separate_frequencies` is disabled by default, so remember to enable it if you intend to change this. (default: 0.1).
+        lowpass_grad (float):
+            Pre-condition the gradient via a gaussian low-pass filter at this strength, the recommended value is 1.0 or possibly even higher when used. (default: 0.0).
+        invariant (bool):
+            Scale the latent into -1 to 1 space via .arctan().sin(), then later divide by the original grad's .arctan().cos(). Its been tested a bit, with the general result of speeding up descent. (default: False).
+        spectral_clip (bool):
+            Utilize six optimized Newton-Schulz iterations per step to clip the spectral norm to a max of 1. - https://leloykun.github.io/ponder/spectral-clipping/ - https://github.com/leloykun/spectral_clip (default: True).
+                * Set spectral_min and spectral_max to 0 to enable generic Newton-Schulz orthogonalization.
+                * Set spectral_min to any value below -1000.0 to enable block-wise "spectral hardcapping" mode. Likely to be slower in this mode, but more stable.
+        spectral_clip_compile (bool):
+            Compile the spectral clip function (Highly recommended for a large speed increase). (default: True).
+        spectral_min (float):
+            The minimum value of the spectral magnitude. Ought to be lower than spectral_max. (default: -1.0).
+        spectral_max (float):
+            The maximum value of the spectral magnitude. (default: 1.0).
+        spectral_adaptive (bool):
+            Adapt the result of spectral clipping to adapt to the scale of the gradients - https://github.com/leloykun/adaptive-muon (default: False).
+        signscale_power (float):
+            Power multiplier for the sign momentum scale. A higher value means more confidence in the sign is needed to scale to the chosen LR, whereas a lower value indicates less confidence is needed. (default: 1.0).
+        orthograd (bool):
+            Modify the gradient to apply an orthogonal gradient update, - https://arxiv.org/abs/2501.04697 - extended with atan2sin in place of epsilon (default: False).
+        stochastic_fp (bool):
+            Utilize stochastic rounding for bf16 and fp16 tensors. (default: True).
     """
 
     def __init__(

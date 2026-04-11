@@ -110,10 +110,11 @@ def _load_optimizer_class_for_signature(optimizer_config: OptimizerConfig, optim
     case_sensitive_optimizer_type = optimizer_config.optimizer_type
 
     try:
-        if is_wrapper_optimizer_name(optimizer_config.optimizer_type):
+        registration = get_optimizer_registration(optimizer_config.optimizer_type)
+        if registration is not None and registration.kind == "wrapper":
             case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
             if case_sensitive_full_base_optimizer_name is None:
-                raise ValueError("base_optimizer_type is required in optimizer_args for ScheduleFreeWrapper/snoo_asgd optimizers")
+                raise ValueError("base_optimizer_type is required in optimizer_args for wrapper optimizers")
             return load_target(case_sensitive_full_base_optimizer_name)
 
         if "." not in case_sensitive_optimizer_type:

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from library.config.dataclasses.optimizer import OptimizerConfig
@@ -5,6 +7,8 @@ from library.optimization.registry import (
     OPT_CAP_NO_EXTERNAL_SCHEDULER,
     OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER,
     OPT_CAP_TRAIN_EVAL_TOGGLE,
+    _OPTIMIZER_REGISTRATIONS,
+    _SCHEDULER_REGISTRATIONS,
     get_configured_optimizer_name,
     get_optimizer_registration,
     get_scheduler_registration,
@@ -25,6 +29,16 @@ class TestOptimizerRegistry:
                     "kind": "wrapper",
                     "wrapper_style": "wrap_optimizer",
                     "capabilities": [OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER, OPT_CAP_TRAIN_EVAL_TOGGLE],
+                },
+            ),
+            (
+                "CPUOffloadOptimizer",
+                {
+                    "target": "library.optimization.wrappers.CPUOffloadOptimizerWrapper",
+                    "backend": "torchao",
+                    "kind": "wrapper",
+                    "wrapper_style": "wrap_optimizer_with_base_kwargs",
+                    "capabilities": [],
                 },
             ),
             (
@@ -241,6 +255,16 @@ class TestOptimizerRegistry:
                 "Adan",
                 {
                     "target": "library.optimization.optimizers.adan.Adan",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "AdamMini",
+                {
+                    "target": "library.optimization.optimizers.adammini.AdamMini",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -638,6 +662,36 @@ class TestOptimizerRegistry:
                 },
             ),
             (
+                "FMARSCropV2ExMachina",
+                {
+                    "target": "library.optimization.optimizers.fmarscrop_v2_exmachina.FMARSCropV2ExMachina",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "FMARSCropV3",
+                {
+                    "target": "library.optimization.optimizers.fmarscrop_v3.FMARSCropV3",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "FMARSCropV3ExMachina",
+                {
+                    "target": "library.optimization.optimizers.fmarscrop_v3_exmachina.FMARSCropV3ExMachina",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
                 "FishMonger",
                 {
                     "target": "library.optimization.optimizers.fishmonger.FishMonger",
@@ -698,6 +752,16 @@ class TestOptimizerRegistry:
                 },
             ),
             (
+                "MomentusCaution",
+                {
+                    "target": "library.optimization.optimizers.momentus_caution.MomentusCaution",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
                 "OAGOpt",
                 {
                     "target": "library.optimization.optimizers.oagopt.OAGOpt",
@@ -721,6 +785,16 @@ class TestOptimizerRegistry:
                 "ProjectiveAdam",
                 {
                     "target": "library.optimization.optimizers.projective_adam.ProjectiveAdam",
+                    "backend": "repo",
+                    "kind": "optimizer",
+                    "wrapper_style": None,
+                    "capabilities": [],
+                },
+            ),
+            (
+                "REMASTER",
+                {
+                    "target": "library.optimization.optimizers.remaster.REMASTER",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -807,6 +881,20 @@ class TestOptimizerRegistry:
 
         assert get_configured_optimizer_name(config) == "AdamW8bit"
 
+    def test_package_exports_cover_registered_repo_optimizer_targets(self):
+        """Repo-owned optimizer registrations should stay aligned with the package export surface."""
+        init_text = Path("library/optimization/optimizers/__init__.py").read_text(encoding="utf-8")
+
+        for registration in _OPTIMIZER_REGISTRATIONS:
+            if registration.target is None or not registration.target.startswith("library.optimization.optimizers."):
+                continue
+
+            module_path, class_name = registration.target.rsplit(".", 1)
+            export_line = f"from {module_path} import "
+
+            assert export_line in init_text, f"{module_path} missing from optimizer package imports"
+            assert f'"{class_name}"' in init_text, f"{class_name} missing from optimizer package __all__"
+
 
 @pytest.mark.training
 @pytest.mark.unit
@@ -845,3 +933,17 @@ class TestSchedulerRegistry:
         assert registration is not None
         assert registration.target == target
         assert registration.kind == kind
+
+    def test_package_exports_cover_registered_repo_scheduler_targets(self):
+        """Repo-owned scheduler registrations should stay aligned with the package export surface."""
+        init_text = Path("library/optimization/schedulers/__init__.py").read_text(encoding="utf-8")
+
+        for registration in _SCHEDULER_REGISTRATIONS:
+            if registration.target is None or not registration.target.startswith("library.optimization.schedulers."):
+                continue
+
+            module_path, class_name = registration.target.rsplit(".", 1)
+            export_line = f"from {module_path} import "
+
+            assert export_line in init_text, f"{module_path} missing from scheduler package imports"
+            assert f'"{class_name}"' in init_text, f"{class_name} missing from scheduler package __all__"

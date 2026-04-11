@@ -16,7 +16,24 @@ UpdateStrategy = Literal["unmodified", "cautious", "grams"]
 
 
 class Adan(BaseOptimizer):
-    """Repo-owned Adan optimizer adapted for the optimization layer."""
+    r"""Adaptive Nesterov Momentum Algorithm for Faster Optimizing Deep Models.
+
+    :param params: ParamGroup. iterable of parameters to optimize or dicts defining parameter groups.
+    :param lr: float. learning rate.
+    :param betas: Betas. coefficients used for computing running averages of gradient and the squared hessian trace.
+    :param weight_decay: float. weight decay (L2 penalty).
+    :param weight_decouple: bool. decoupled weight decay.
+    :param max_grad_norm: float. max gradient norm to clip.
+    :param use_gc: bool. use gradient centralization.
+    :param r: float. EMA factor. between 0.9 ~ 0.99 is preferred.
+    :param adanorm: bool. whether to use the AdaNorm variant.
+    :param eps: float. term added to the denominator to improve numerical stability.
+    cautious (bool) (deprecated, use update strategy)
+        Use cautious mask on parameter update - https://arxiv.org/abs/2411.16085 (default: False)
+    update_strategy (str) (NOTE: for backwards compatibility, cautious parameter being set to true will override to cautious)
+        Determine the update strategy to use, valid values are 'unmodified', 'cautious' (https://arxiv.org/abs/2411.16085), 
+        and 'grams' (https://arxiv.org/abs/2412.17107) (default: unmodified)
+    """
 
     def __init__(
         self,
@@ -43,6 +60,7 @@ class Adan(BaseOptimizer):
         if update_strategy not in {"unmodified", "cautious", "grams"}:
             raise ValueError(f"Invalid update strategy: {update_strategy}")
 
+        # If cautious true, override update strategy to cautious
         if cautious:
             update_strategy = "cautious"
 

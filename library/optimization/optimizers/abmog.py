@@ -1,3 +1,5 @@
+# ABMOG from https://github.com/Clybius/Personalized-Optimizers by Clybius
+
 import collections
 import math
 import os
@@ -6,9 +8,20 @@ import shutil
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.optimizers.utils import copy_stochastic_
+from library.optimization.optimizers.utils import copy_stochastic_, filter_grad
 
+# Original Spectral Clipping code by leloykun (https://leloykun.github.io/ponder/spectral-clipping/ https://github.com/leloykun/spectral_clip)
 
+"""
+@misc{cesista2025spectralclipping,
+  author = {Franz Louis Cesista},
+  title = {"Fast, Numerically Stable, and Auto-Differentiable Spectral Clipping Via Newton-Schulz Iteration"},
+  year = {2025},
+  url = {http://leloykun.github.io/ponder/spectral-clipping/},
+}
+"""
+
+# New coeffs from https://kexue.fm/archives/11059, may enable later.
 NS_COEFFS = [
     (8.287212018145622, -23.59588651909882, 17.300387312530923),
     (4.107059111542197, -2.9478499167379084, 0.54484310829266),
@@ -27,7 +40,7 @@ def orthogonalize(
     ortho_dtype=None,
     adaptive: bool = False,
 ) -> torch.Tensor:
-    """Orthogonalize a matrix via Newton-Schulz iteration."""
+    """Orthogonalize a matrix via 5th order Newton-Schulz iteration."""
     if ortho_dtype is not None:
         orig_dtype = matrix.dtype
         matrix = matrix.to(ortho_dtype)
@@ -76,20 +89,6 @@ def orthogonalize_compiled_func(
     del sigma_min, sigma_max
     return orthogonalize(weights, num_ns_steps=num_ns_steps, ortho_dtype=ortho_dtype, adaptive=adaptive)
 
-
-def filter_grad(grad, fft_alpha: float = 1.0):
-    grad_freq = torch.fft.fftn(grad, norm="ortho")
-    freq_dims = [torch.fft.fftfreq(size, device=grad.device) for size in grad.shape]
-    shifted_freq_dims = [torch.fft.ifftshift(dim) for dim in freq_dims]
-    coords = torch.stack(torch.meshgrid(*shifted_freq_dims, indexing="ij"))
-    max_radius = 0.5 * math.sqrt(len(grad.shape))
-    radius = torch.linalg.norm(coords, dim=0) / max_radius
-    filter_weights = torch.exp(-fft_alpha * (radius**2))
-    filtered_grad_freq = grad_freq * filter_weights
-    modified_grad = torch.fft.ifftn(filtered_grad_freq, norm="ortho")
-    return modified_grad.real
-
-
 def create_gaussian_mask(shape, sigma: float = 1.0, device="cpu"):
     freq_dims = [torch.fft.fftfreq(size, device=device) for size in shape]
     shifted_freq_dims = [torch.fft.ifftshift(dim) for dim in freq_dims]
@@ -131,10 +130,53 @@ def _can_use_compiled_spectral_helpers() -> bool:
 
 class ABMOG(Optimizer):
     r"""
-    ABMOG: Adams-Bashforth-Moulton Orthogonal Gradient.
+    ABMOG: Adams-Bashforth-Moulton Orthogonal Gradient
 
     A Muon-styled optimizer which incorporates an Adams-Bashforth predictor and Adams-Moulton corrector
-    step to refine the gradient based on its history, accelerating convergence.
+    step to refine the gradient based on its history, accelerating convergence. Now includes bonus goodies (bcos, cautious, dual-norm gradient)
+
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining
+            parameter groups.
+        lr (float):
+            Learning rate parameter (default 0.0001).
+        betas (float, float, float):
+            Coefficient used for computing the Nesterov-styled momentum, the long-term squared mean running average, and the running average grad norm for the adaptive learning-rate ratio (default: 0.95, 0.99, 0.999).
+        weight_decay (float):
+            AdamW-like weight decay, i.e. a L2 penalty (default: 0.0).
+        weight_decay_rate (float):
+            Decay the multiplier at which rate weight decay is applied, weight_decay * weight_decay_rate**step - Visualization: https://www.desmos.com/calculator/ipgbjovebr - (default: 0.995).
+        spectral_adaptive (bool):
+            Adapt the result of spectral clipping to adapt to the scale of the gradients - https://github.com/leloykun/adaptive-muon (default: True).
+        spectral_clip_compile (bool):
+            Compile the spectral clip function (Highly recommended for a large speed increase) (default: True).
+        spectral_clip_dtype (torch.dtype in string format):
+            Sets the dtype of spectral clipping calculation. Recommended to use torch.float32 (or leave at default of None) (default: None, which results in torch.float32).
+        adaptive (bool):
+            Scale the full step to the momentumized average gradient (default: True).
+        adaptive_min (float):
+            Minimum multiplier for the adaptive scale (default: -1.0).
+        adaptive_max (float):
+            Maximum multiplier for the adaptive scale (default: 1.0).
+        input_norm (bool):
+            Normalizes with RMS on the input feature dimensions instead of utilizing gradient-wise RMS normalization (default: True).
+        lowpass_grad (float):
+            Pre-conditions the gradient via a low-pass filter that maintains the direction of the gradient. Higher = stronger filtering, 0 = disabled (default: 0.0).
+        bcos (bool):
+            Uses a conditional estimator from facebookresearch's bcos as the denominator - https://github.com/facebookresearch/bcos (default: True).
+        cautious_min (float):
+            A value other than 1.0 will utilize cautious-stepping. At 0.0, this zeros out parts of the momentum which don't correlate with the current gradient's direction. 0.5 will halve it instead (default: 0.0).
+        sgd_nesterov (bool):
+            Utilizes SGD-like Nesterov momentum instead of current-gradient-focused momentum (default: True).
+        abm_order (int):
+            Order of the Adams-Bashforth-Moulton method. Uses abm_order gradients. Set abm_order to 1 to disable ABM extrapolation. (default: 4).
+        abm_k (int):
+            Do an Adams-Bashforth-Moulton extrapolation every abm_k steps. (default: 5).
+        abm_cpu_storage (bool):
+            Store ABM gradient history on CPU to save VRAM. (default: True).
+        stochastic_fp (bool):
+            Utilize stochastic rounding for bf16 and fp16 tensors. (default: True).
     """
 
     def __init__(
@@ -189,6 +231,8 @@ class ABMOG(Optimizer):
             dtype_name = spectral_clip_dtype.split(".")[-1]
             spectral_clip_dtype = getattr(torch, dtype_name)
 
+        # Coefficients for Adams-Bashforth (Predictor)
+        # k=1 to 9. History is [g_n, g_{n-1}, ...]
         self.ab_coeffs = {
             1: [1.0],
             2: [1.5, -0.5],
@@ -201,8 +245,11 @@ class ABMOG(Optimizer):
             9: [14097241 / 3628800, -43448842 / 3628800, 98223681 / 3628800, -145788142 / 3628800, 143531169 / 3628800, -92956942 / 3628800, 38162241 / 3628800, -9124282 / 3628800, 959281 / 3628800],
             10: [29579241 / 7257600, -104829331 / 7257600, 276985582 / 7257600, -491429182 / 7257600, 608822461 / 7257600, -520448951 / 7257600, 296222582 / 7257600, -107198731 / 7257600, 22254361 / 7257600, -2043851 / 7257600],
         }
+
+        # Coefficients for Adams-Moulton (Corrector)
+        # k=1 to 9. History is [g_{n+1}_pred, g_n, g_{n-1}, ...]
         self.am_coeffs = {
-            1: [1.0],
+            1: [1.0],  # Using predicted gradient only as corrector
             2: [0.5, 0.5],
             3: [5 / 12, 8 / 12, -1 / 12],
             4: [9 / 24, 19 / 24, -5 / 24, 1 / 24],
@@ -275,6 +322,7 @@ class ABMOG(Optimizer):
                 device = param.device
                 grad = param.grad.data
 
+                # State initialization
                 if len(state) == 0:
                     if self.state_storage_device == "cpu":
                         if not group["bcos"]:
@@ -301,8 +349,11 @@ class ABMOG(Optimizer):
                             device=self.state_storage_device,
                         )
                     if abm_order > 1:
+                        # Use a deque to efficiently manage fixed-size history
                         state["p_history"] = collections.deque(maxlen=abm_order)
 
+                # ========= Asynchronously queue all operations for this parameter =========
+                # Determine target GPU device for computation
                 if device.type == "cpu":
                     compute_device = (
                         torch.device("cuda", torch.cuda.current_device()) if torch.cuda.is_available() else device
@@ -311,18 +362,24 @@ class ABMOG(Optimizer):
                     compute_device = device
                 used_cuda = used_cuda or compute_device.type == "cuda"
 
+                # 1. Queue Host-to-Device copy
                 if not group["bcos"]:
                     denom = state["denom"].to(compute_device, non_blocking=True, dtype=torch.float32)
                 value_momentum = state["value_momentum"].to(compute_device, non_blocking=True, dtype=torch.float32)
                 grad = grad.to(torch.float32).to(compute_device, non_blocking=True)
                 param_fp32 = param.to(compute_device, dtype=torch.float32, non_blocking=True)
 
+                # Fast-to-slow beta (0 @ step 1, 0.5 @ step 2, 0.6667... @ step 3, repeating to a max of beta2)
                 slow_beta2 = (beta2**step - beta2) / (beta2**step - 1.0)
+                
+                # ADOPT-style clamp to prevent overshooting at the beginning
                 grad = grad.clamp(-step, step)
 
+                # Optional low-passing of gradient
                 if grad.ndim > 0 and group["lowpass_grad"] != 0:
                     grad = filter_grad(grad, fft_alpha=group["lowpass_grad"]).abs().mul_(grad.sign())
 
+                # Normalize the gradient per-channel (input_norm=True + dim > 0) or per-tensor
                 if grad.ndim >= 1 and group["input_norm"]:
                     grad_2d = reshape_to_2d(grad)
                     rms = grad_2d.pow(2).mean(dim=1, keepdim=True).sqrt_().clamp_min_(1e-16)
@@ -331,6 +388,7 @@ class ABMOG(Optimizer):
                     rms = grad.pow(2).mean().sqrt_().clamp_min_(1e-16)
                     grad = grad.div(rms)
 
+                # SGD-Like Nesterov or Adam-like Nesterov
                 if group["sgd_nesterov"]:
                     value_momentum = value_momentum.mul(beta).add_(grad)
                     exp_avg = value_momentum.mul(beta).add_(grad).mul(1.0 - beta)
@@ -341,6 +399,7 @@ class ABMOG(Optimizer):
                 if not group["bcos"]:
                     current_denom = denom.sqrt()
 
+                # Muon-styled spectral norming, with scalar denominator
                 if grad.ndim >= 1:
                     exp_avg_2d = reshape_to_2d(exp_avg)
                     flip = exp_avg_2d.shape[0] < exp_avg_2d.shape[1]
@@ -382,8 +441,11 @@ class ABMOG(Optimizer):
                     torch.ones_like(full_step) * group["cautious_min"],
                 ).to(full_step.dtype)
                 scale_factor_mask = scale_factor_mask.div(scale_factor_mask.mean().clamp_min_(1e-3))
+                
+                # Cautious masking
                 full_step = full_step.mul(scale_factor_mask)
 
+                # Dual-norm gradient
                 if group["adaptive"]:
                     if grad.ndim >= 1 and group["input_norm"]:
                         if grad.ndim > 2:
@@ -408,32 +470,50 @@ class ABMOG(Optimizer):
                 if weight_decay != 0:
                     param_fp32 = param_fp32.mul(1 - lr * weight_decay * weight_decay_rate**group["step"])
 
+                # Add step
                 param_fp32.add_(full_step, alpha=-lr)
 
                 if abm_order > 1 and step % abm_k == 0:
+                    # Store history on CPU
                     storage_device = "cpu" if abm_cpu_storage else param_fp32.device
+
+                    # Add current grad to history (left side is newest)
                     state["p_history"].appendleft(param_fp32.detach().to(storage_device))
                     history = list(state["p_history"])
                     current_k = len(history)
+                    
+                    # Wait for history buffer to fill at least once
                     if current_k > 1:
+                        # Bring history to calculation device
                         history_compute = [hist.to(compute_device) for hist in history]
+
+                        # Predictor (Adams-Bashforth)
                         ab_c = self.ab_coeffs[current_k]
                         p_pred = torch.zeros_like(history_compute[0])
                         for hist, coeff in zip(history_compute, ab_c, strict=False):
                             p_pred.add_(hist, alpha=coeff)
+
+                        # Corrector (Adams-Moulton)
                         am_c = self.am_coeffs[current_k]
+
+                        # Use predicted grad as proxy for g_{n+1}
                         corrector_hist = [p_pred, *history_compute[:-1]]
+
                         p_corrected = torch.zeros_like(history_compute[0])
                         for hist, coeff in zip(corrector_hist, am_c, strict=False):
                             p_corrected.add_(hist, alpha=coeff)
+
                         param_fp32.copy_(p_corrected)
 
+                # 3. Queue Device-to-Host copy
+                # only use stochastic rounding if using bf16
                 if device.type == "cpu":
                     if param.dtype == torch.bfloat16:
                         copy_stochastic_(param.data, param_fp32)
                     else:
                         param.data.copy_(param_fp32.to(device))
                 else:
+                    # Original GPU path
                     if param.dtype == torch.bfloat16:
                         copy_stochastic_(param, param_fp32)
                     else:
@@ -451,9 +531,14 @@ class ABMOG(Optimizer):
                         non_blocking=True,
                     )
 
+                # ========= Check if we need to synchronize =========
+                # We synchronize after processing a chunk of parameters.
+                # The (i + 1) ensures we sync after the 1st, 2nd, ... chunk.
                 if used_cuda and (i + 1) % self.sync_chunk_size == 0:
                     torch.cuda.synchronize()
 
+            # Final synchronization to handle the last partial chunk
+            # This ensures all operations for the group are complete before exiting.
             if used_cuda:
                 torch.cuda.synchronize()
 

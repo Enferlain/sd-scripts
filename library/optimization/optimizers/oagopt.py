@@ -1,15 +1,40 @@
+# OAGOpt from https://github.com/Clybius/Personalized-Optimizers by Clybius
+
 import logging
 import math
 
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.optimizers.utils import copy_stochastic_
+from library.optimization.optimizers.utils import copy_stochastic_, filter_grad, resolve_state_storage_dtype
 
 
 logger = logging.getLogger(__name__)
 
 
+# Original Spectral Clipping code by leloykun (https://leloykun.github.io/ponder/spectral-clipping/ https://github.com/leloykun/spectral_clip)
+
+"""
+@misc{cesista2025spectralclipping,
+  author = {Franz Louis Cesista},
+  title = {"Fast, Numerically Stable, and Auto-Differentiable Spectral Clipping Via Newton-Schulz Iteration"},
+  year = {2025},
+  url = {http://leloykun.github.io/ponder/spectral-clipping/},
+}
+"""
+
+"""
+NS_COEFFS = [
+    (3.5318, -4.7911, 1.9388),
+    (3.3274, -4.0557, 1.5782),
+    (3.0809, -3.5160, 1.3464),
+    (2.7476, -2.8484, 1.0775),
+    (2.2948, -2.0951, 0.7895),
+    (2.1535, -1.8338, 0.6869),
+]
+"""
+
+# New coeffs from https://kexue.fm/archives/11059, may enable later.
 NS_COEFFS = [
     (8.287212018145622, -23.59588651909882, 17.300387312530923),
     (4.107059111542197, -2.9478499167379084, 0.54484310829266),
@@ -19,21 +44,6 @@ NS_COEFFS = [
     (1.8913014077874002, -1.2679958271945908, 0.37680408948524996),
     (1.875, -1.25, 0.375),
 ]
-
-
-def _resolve_state_storage_dtype(state_storage_dtype: str | torch.dtype) -> torch.dtype:
-    if not isinstance(state_storage_dtype, str):
-        return state_storage_dtype
-
-    normalized_dtype = state_storage_dtype.strip().lower()
-    if normalized_dtype == "float32":
-        return torch.float32
-    if normalized_dtype == "float16":
-        return torch.float16
-    if normalized_dtype == "bfloat16":
-        return torch.bfloat16
-    return torch.bfloat16
-
 
 @torch.no_grad()
 def orthogonalize(matrix: torch.Tensor, ortho_dtype: torch.dtype | None = None, adaptive: bool = False) -> torch.Tensor:
@@ -88,20 +98,6 @@ def orthogonalize_compiled_func(
 ) -> torch.Tensor:
     return orthogonalize(matrix, ortho_dtype=ortho_dtype, adaptive=adaptive)
 
-
-def filter_grad(grad: torch.Tensor, fft_alpha: float = 1.0) -> torch.Tensor:
-    grad_freq = torch.fft.fftn(grad, norm="ortho")
-    freq_dims = [torch.fft.fftfreq(size, device=grad.device) for size in grad.shape]
-    shifted_freq_dims = [torch.fft.ifftshift(freq) for freq in freq_dims]
-    coords = torch.stack(torch.meshgrid(*shifted_freq_dims, indexing="ij"))
-    max_radius = 0.5 * math.sqrt(len(grad.shape))
-    radius = torch.linalg.norm(coords, dim=0) / max_radius
-    filter_weights = torch.exp(-fft_alpha * (radius**2))
-    filtered_grad_freq = grad_freq * filter_weights
-    modified_grad = torch.fft.ifftn(filtered_grad_freq, norm="ortho")
-    return modified_grad.real
-
-
 def create_gaussian_mask(shape: tuple[int, ...], sigma: float = 1.0, device: str | torch.device = "cpu") -> torch.Tensor:
     freq_dims = [torch.fft.fftfreq(size, device=device) for size in shape]
     shifted_freq_dims = [torch.fft.ifftshift(freq) for freq in freq_dims]
@@ -136,6 +132,43 @@ class OAGOpt(Optimizer):
     Two scalars, one momentum state, fully free descent. Featuring Muon's
     orthogonalization, RMS normalization, cautious stepping, and dual-normed
     adaptive update magnitudes.
+
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining
+            parameter groups.
+        lr (float):
+            Learning rate parameter (default 0.0001).
+        betas (float, float, float):
+            Coefficient used for computing the Nesterov-styled momentum, the long-term squared mean running average, and the running average grad norm for the adaptive learning-rate ratio (default: 0.95, 0.99, 0.999).
+        weight_decay (float):
+            AdamW-like weight decay, i.e. a L2 penalty (default: 0.0).
+        weight_decay_rate (float):
+            Decay the multiplier at which rate weight decay is applied, weight_decay * weight_decay_rate**step - Visualization: https://www.desmos.com/calculator/ipgbjovebr - (default: 0.995).
+        spectral_adaptive (bool):
+            Adapt the result of spectral clipping to adapt to the scale of the gradients - https://github.com/leloykun/adaptive-muon (default: True).
+        spectral_clip_compile (bool):
+            Compile the spectral clip function (Highly recommended for a large speed increase) (default: True).
+        spectral_clip_dtype (torch.dtype in string format):
+            Sets the dtype of spectral clipping calculation. Recommended to use torch.float32 (or leave at default of None) (default: None, which results in torch.float32).
+        adaptive (bool):
+            Scale the full step to the momentumized average gradient (default: True).
+        adaptive_min (float):
+            Minimum multiplier for the adaptive scale (default: -1.0).
+        adaptive_max (float):
+            Maximum multiplier for the adaptive scale (default: 1.0).
+        input_norm (bool):
+            Normalizes with RMS on the input feature dimensions instead of utilizing gradient-wise RMS normalization (default: True).
+        lowpass_grad (float):
+            Pre-conditions the gradient via a low-pass filter that maintains the direction of the gradient. Higher = stronger filtering, 0 = disabled (default: 0.0).
+        sim_match (bool):
+            Filters the frequencies of the running average with the gradient of the current step's frequencies (default: False).
+        cautious_min (float):
+            A value other than 1.0 will utilize cautious-stepping. At 0.0, this zeros out parts of the momentum which don't correlate with the current gradient's direction. 0.5 will halve it instead (default: 0.0).
+        sgd_nesterov (bool):
+            Utilizes SGD-like Nesterov momentum instead of current-gradient-focused momentum (default: True).
+        stochastic_fp (bool):
+            Utilize stochastic rounding for bf16 and fp16 tensors. (default: True).
     """
 
     def __init__(
@@ -147,7 +180,7 @@ class OAGOpt(Optimizer):
         weight_decay_rate: float = 0.995,
         spectral_adaptive: bool = True,
         spectral_clip_compile: bool = True,
-        spectral_clip_dtype=None,
+        spectral_clip_dtype=None,  # Can be set to torch.bfloat16, torch.float16, torch.float32, or even torch.float64 if you're insane in the membrane.
         adaptive: bool = True,
         adaptive_min: float = -1.0,
         adaptive_max: float = 1.0,
@@ -165,7 +198,7 @@ class OAGOpt(Optimizer):
         for key in kwargs:
             logger.warning("Unrecognized optimizer argument '%s'. It will be ignored.", key)
 
-        final_dtype = _resolve_state_storage_dtype(state_storage_dtype)
+        final_dtype = resolve_state_storage_dtype(state_storage_dtype)
 
         self.sync_chunk_size = sync_chunk_size
         self.state_storage_dtype = final_dtype
@@ -259,39 +292,52 @@ class OAGOpt(Optimizer):
                 grad = grad.to(torch.float32).to(compute_device, non_blocking=non_blocking)
                 param_fp32 = param.to(compute_device, dtype=torch.float32, non_blocking=non_blocking)
 
+                # Averaged beta (step 1 = 0, step 2 = 0.5, step 3 = 0.6667, step 4 = 0.75...)
                 slow_beta2 = (beta2**step - beta2) / (beta2**step - 1.0)
                 slow_beta3 = (beta3**step - beta3) / (beta3**step - 1.0)
 
+                # ADOPT-style clamping for early stability / to prevent NaNs
                 grad = grad.clamp(-step, step)
 
+                # Low-pass filter via FFT, maintains direction
                 if dimcount > 0 and group["lowpass_grad"] != 0:
                     grad = filter_grad(grad, fft_alpha=group["lowpass_grad"]).abs().mul_(grad.sign())
 
+                # Move RMS to 1.0, input-feature-wise if 2D or larger, otherwise utilize standard gradient-wide RMS normalization.
                 if dimcount >= 1 and group["input_norm"]:
                     grad_2d = grad.reshape(len(grad), -1) if dimcount != 2 else grad
-                    rms = grad_2d.pow(2).mean(dim=1, keepdim=True).sqrt_().clamp_min_(1e-16)
+                    rms = grad_2d.pow(2).mean(dim=1, keepdim=True).sqrt_().clamp_min_(1e-16)  # Cap at RMS of 1.0
                     grad = grad_2d.div(rms).view_as(grad)
                 else:
-                    rms = grad.pow(2).mean().sqrt_().clamp_min_(1e-16)
+                    rms = grad.pow(2).mean().sqrt_().clamp_min_(1e-16)  # Cap at RMS of 1.0
                     grad = grad.div(rms)
 
+                # ADOPT-style denominator update (un-updated denom)
                 current_denom = denom.sqrt()
 
                 if group["sgd_nesterov"]:
+                    # Update full momentum
                     value_momentum = value_momentum.mul(beta).add_(grad)
+                    
+                    # SGD Nesterov-like momentum, lowered by beta remainder
                     exp_avg = value_momentum.mul(beta).add_(grad).mul(1.0 - beta)
                 else:
+                    # Update full momentum
                     value_momentum = value_momentum.lerp(grad, weight=1.0 - beta)
+                    
+                    # Nesterov-like momentum
                     exp_avg = grad.lerp(value_momentum, weight=beta)
 
+                # Frequency matching the momentumized update with the current step's gradient
                 if dimcount > 0 and group["sim_match"]:
                     exp_avg = similarity_fft(exp_avg, grad)
 
+                # Spectral Clipping / Newton Schulz iters
                 if dimcount >= 1:
                     exp_avg_2d = exp_avg.reshape(len(exp_avg), -1) if dimcount != 2 else exp_avg
                     flip = exp_avg_2d.shape[0] < exp_avg_2d.shape[1]
                     if flip:
-                        exp_avg_2d = exp_avg_2d.T
+                        exp_avg_2d = exp_avg_2d.T  # Flip if first dim is larger
                     exp_avg_2d = self.clip_func(
                         exp_avg_2d,
                         ortho_dtype=group["spectral_clip_dtype"],
@@ -302,7 +348,7 @@ class OAGOpt(Optimizer):
 
                     full_step = exp_avg_2d.view_as(exp_avg)
                     denom = denom.lerp(full_step.pow(2).mean(), weight=1.0 - slow_beta2)
-                    full_step = full_step.div(current_denom.clamp_min(1.0))
+                    full_step = full_step.div(current_denom.clamp_min(1.0))  #.atan2(current_denom).mul_(1.27323954474)#.div(full_step.pow(2).mean().sqrt_().clamp_min_(1))
                 else:
                     denom = denom.lerp(exp_avg.pow(2), weight=1.0 - slow_beta2)
                     full_step = exp_avg.atan2(current_denom).mul_(1.27323954474)
@@ -312,9 +358,14 @@ class OAGOpt(Optimizer):
                     torch.ones_like(full_step),
                     torch.ones_like(full_step) * group["cautious_min"],
                 ).to(full_step.dtype)
+
+                # Cautious update (zero-out update where the update isn't in the direction of the current gradient)
                 scale_factor_mask = scale_factor_mask.div(scale_factor_mask.mean().clamp_min_(1e-3))
+
+                # Apply Cautious update
                 full_step = full_step.mul(scale_factor_mask)
 
+                # Scale the full step with the gradient
                 if group["adaptive"]:
                     if dimcount >= 1 and group["input_norm"]:
                         full_step_2d = full_step.reshape(len(full_step), -1) if dimcount != 2 else full_step
@@ -327,10 +378,14 @@ class OAGOpt(Optimizer):
                         scale_factor = (exp_avg * full_step).sum().clamp(group["adaptive_min"], group["adaptive_max"])
                         full_step = scale_factor * full_step
 
+                # Perform weight decay
                 if weight_decay != 0:
                     full_step = full_step.add(param_fp32, alpha=weight_decay * weight_decay_rate**group["step"])
 
+                # Take full_step norm, divided by parameter count
                 grad_norm = full_step.norm().clamp_min_(1e-16).div(param.numel())
+
+                # Adjust step size based on norm-to-average-norm. Lower full_step norms receive lower LR
                 step_size = lr * (grad_norm.atan2(ratio.sqrt()).mul_(1.27323954474))
                 ratio = ratio.lerp(grad_norm.pow(2), weight=1.0 - slow_beta3)
 

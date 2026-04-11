@@ -1,15 +1,39 @@
+# OCGOpt from https://github.com/Clybius/Personalized-Optimizers by Clybius
+
 import logging
 import math
 
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.optimizers.utils import copy_stochastic_
+from library.optimization.optimizers.utils import copy_stochastic_, filter_grad, resolve_state_storage_dtype
 
 
 logger = logging.getLogger(__name__)
 
+# Original Spectral Clipping code by leloykun (https://leloykun.github.io/ponder/spectral-clipping/ https://github.com/leloykun/spectral_clip)
 
+"""
+@misc{cesista2025spectralclipping,
+  author = {Franz Louis Cesista},
+  title = {"Fast, Numerically Stable, and Auto-Differentiable Spectral Clipping Via Newton-Schulz Iteration"},
+  year = {2025},
+  url = {http://leloykun.github.io/ponder/spectral-clipping/},
+}
+"""
+
+"""
+NS_COEFFS = [
+    (3.5318, -4.7911, 1.9388),
+    (3.3274, -4.0557, 1.5782),
+    (3.0809, -3.5160, 1.3464),
+    (2.7476, -2.8484, 1.0775),
+    (2.2948, -2.0951, 0.7895),
+    (2.1535, -1.8338, 0.6869),
+]
+"""
+
+# New coeffs from https://kexue.fm/archives/11059, may enable later.
 NS_COEFFS = [
     (8.287212018145622, -23.59588651909882, 17.300387312530923),
     (4.107059111542197, -2.9478499167379084, 0.54484310829266),
@@ -19,21 +43,6 @@ NS_COEFFS = [
     (1.8913014077874002, -1.2679958271945908, 0.37680408948524996),
     (1.875, -1.25, 0.375),
 ]
-
-
-def _resolve_state_storage_dtype(state_storage_dtype: str | torch.dtype) -> torch.dtype:
-    if not isinstance(state_storage_dtype, str):
-        return state_storage_dtype
-
-    normalized_dtype = state_storage_dtype.strip().lower()
-    if normalized_dtype == "float32":
-        return torch.float32
-    if normalized_dtype == "float16":
-        return torch.float16
-    if normalized_dtype == "bfloat16":
-        return torch.bfloat16
-    return torch.bfloat16
-
 
 @torch.no_grad()
 def orthogonalize(
@@ -99,20 +108,6 @@ def orthogonalize_compiled_func(
     del sigma_min, sigma_max
     return orthogonalize(matrix, ortho_dtype=ortho_dtype, adaptive=adaptive)
 
-
-def filter_grad(grad: torch.Tensor, fft_alpha: float = 1.0) -> torch.Tensor:
-    grad_freq = torch.fft.fftn(grad, norm="ortho")
-    freq_dims = [torch.fft.fftfreq(size, device=grad.device) for size in grad.shape]
-    shifted_freq_dims = [torch.fft.ifftshift(freq) for freq in freq_dims]
-    coords = torch.stack(torch.meshgrid(*shifted_freq_dims, indexing="ij"))
-    max_radius = 0.5 * math.sqrt(len(grad.shape))
-    radius = torch.linalg.norm(coords, dim=0) / max_radius
-    filter_weights = torch.exp(-fft_alpha * (radius**2))
-    filtered_grad_freq = grad_freq * filter_weights
-    modified_grad = torch.fft.ifftn(filtered_grad_freq, norm="ortho")
-    return modified_grad.real
-
-
 def create_gaussian_mask(
     shape: tuple[int, ...],
     sigma: float = 1.0,
@@ -150,6 +145,46 @@ class OCGOpt(Optimizer):
 
     Separates momentum states into full gradient and centralized gradient for smoother and faster descent.
     Featuring orthogonalization, RMS normalization, cautious stepping, and dual-normed adaptive update magnitudes.
+
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining
+            parameter groups.
+        lr (float):
+            Learning rate parameter (default 0.0001).
+        betas (float, float, float):
+            Coefficient used for computing the centralized momentum, full gradient momentum (used for centering), and the long-term squared running average (default: 0.95, 0.9999999, 0.9999999).
+        weight_decay (float):
+            AdamW-like weight decay, i.e. a L2 penalty (default: 0.0).
+        weight_decay_rate (float):
+            Decay the multiplier at which rate weight decay is applied, weight_decay * weight_decay_rate**step - Visualization: https://www.desmos.com/calculator/ipgbjovebr - (default: 0.995).
+        centralization (float):
+            Subtract the full gradient momentum from the current gradient at this ratio (default: 1.0).
+        spectral_adaptive (bool):
+            Adapt the result of spectral clipping to adapt to the scale of the gradients - https://github.com/leloykun/adaptive-muon (default: True).
+        spectral_clip_compile (bool):
+            Compile the spectral clip function (Highly recommended for a large speed increase) (default: True).
+        spectral_clip_dtype (torch.dtype in string format):
+            Sets the dtype of spectral clipping calculation. Recommended to use torch.float32 (or leave at default of None) (default: None, which results in torch.float32).
+        adaptive (bool):
+            Scale the full step to the momentumized average gradient, always utilizes RMS normalization on the gradient if True, otherwise caps RMS at 1.0 (default: True).
+        adaptive_min (float):
+            Minimum multiplier for the adaptive scale (default: -1.0).
+        adaptive_max (float):
+            Maximum multiplier for the adaptive scale (default: 1.0).
+        input_norm (bool):
+            Normalizes with RMS on the input feature dimensions instead of utilizing gradient-wise RMS normalization (default: False).
+        lowpass_grad (float):
+            Pre-conditions the gradient via a low-pass filter that maintains the direction of the gradient. Higher = stronger filtering, 0 = disabled (default: 0.0).
+        sim_match (bool):
+            Filters the frequencies of the running average with the gradient of the current step's frequencies (default: False).
+        cautious_min (float):
+            A value other than 1.0 will utilize cautious-stepping. At 0.0, this zeros out parts of the momentum which don't correlate with the current gradient's direction. 0.5 will halve it instead (default: 0.0).
+        stochastic_fp (bool):
+            Utilize stochastic rounding for bf16 and fp16 tensors. (default: True).
+        kahan_summation (bool):
+            Utilize Kahan Summation for the parameter update. This maintains a high-precision error buffer to effectively effectively double the precision of the accumulation step. 
+            Excellent for bfloat16 training, compatible with stochastic rounding. (default: False).
     """
 
     def __init__(
@@ -162,7 +197,7 @@ class OCGOpt(Optimizer):
         centralization: float = 1.0,
         spectral_adaptive: bool = True,
         spectral_clip_compile: bool = True,
-        spectral_clip_dtype=None,
+        spectral_clip_dtype=None,  # Can be set to torch.bfloat16, torch.float16, torch.float32, or even torch.float64 if you're insane in the membrane.
         adaptive: bool = True,
         adaptive_min: float = -1.0,
         adaptive_max: float = 1.0,
@@ -180,7 +215,7 @@ class OCGOpt(Optimizer):
         for key in kwargs:
             logger.warning("Unrecognized optimizer argument '%s'. It will be ignored.", key)
 
-        final_dtype = _resolve_state_storage_dtype(state_storage_dtype)
+        final_dtype = resolve_state_storage_dtype(state_storage_dtype)
 
         self.sync_chunk_size = sync_chunk_size
         self.state_storage_dtype = final_dtype

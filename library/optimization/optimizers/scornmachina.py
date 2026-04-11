@@ -1,3 +1,5 @@
+# SCORN from https://github.com/Clybius/Personalized-Optimizers by Clybius
+
 import logging
 import math
 from enum import IntEnum

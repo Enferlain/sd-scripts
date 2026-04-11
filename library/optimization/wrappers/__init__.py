@@ -1,5 +1,6 @@
 import torch
 
+from library.optimization.wrappers.cpu_offload import CPUOffloadOptimizerWrapper
 from library.optimization.wrappers.schedulefree import ScheduleFreeWrapper
 
 
@@ -268,6 +269,7 @@ class SNOOASGD(torch.optim.Optimizer):
 
 
 __all__ = [
+    "CPUOffloadOptimizerWrapper",
     "ScheduleFreeWrapper",
     "SNOOASGD",
     "WrappedOptimizerProxy",

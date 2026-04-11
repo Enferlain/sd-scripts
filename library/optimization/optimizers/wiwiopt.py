@@ -6,6 +6,8 @@ from torch.optim import Optimizer
 from library.optimization.optimizers.utils import copy_stochastic_
 
 
+# Newton-Schulz iteration coefficients for orthogonalization
+# From https://kexue.fm/archives/11059
 NS_COEFFS = [
     (8.287212018145622, -23.59588651909882, 17.300387312530923),
     (4.107059111542197, -2.9478499167379084, 0.54484310829266),
@@ -82,10 +84,74 @@ def sanger_update(samples: torch.Tensor, basis: torch.Tensor, lr: float) -> tupl
 
 
 class WiwiOpt(Optimizer):
-    r"""WiwiOpt (V1.1).
+    r"""
+    WiwiOpt (V1.1).
 
-    A gradient descent optimizer that combines several stabilization and
-    acceleration techniques to produce high-signal stable parameter updates.
+    A gradient descent optimizer that combines several stabilization & acceleration techniques to produce
+    high-signal stable parameter updates.
+
+    WiwiOpt works by:
+    1. RMS-based gradient normalization: Incoming gradients are normalized
+       by a polynomial-decay EMA of their per-row RMS, preventing exploding
+       or vanishing gradient magnitudes.
+    2. Egalitarian Gradient Descent (EGD) preconditioning: For 2D+
+       parameters, a low-rank SVD approximation is used to precondition the
+       gradient, equalizing contribution across singular directions.
+    3. Polynomial-schedule momentum: Momentum and accumulation use
+       polynomial decay schedules (``1 / step^beta``) instead of fixed
+       betas, providing smoothing that naturally increases over training.
+    4. Newton-Schulz orthogonalization (Muon): The effective gradient is
+       orthogonalized via Newton-Schulz iteration for multi-dimensional
+       parameters, producing direction-pure updates.
+    5. NorMuon scaling: After orthogonalization, the update is re-scaled
+       using a tracked second-moment estimate to maintain consistent update
+       magnitudes, then re-projected to preserve the original norm.
+    6. Projection re-scaling: The orthogonalized step is re-scaled by its
+       projection onto the un-orthogonalized effective gradient, preserving
+       meaningful magnitude information.
+    7. Cautious masking: Updates are masked so that only components
+       agreeing in sign with the raw gradient are kept, preventing
+       counterproductive steps.
+    8. Dynamic learning rate: Per-parameter learning rate adjustment based
+       on the alignment between the EMA of parameter deltas and the EMA of
+       their norms, optionally boosted by an ``atan2``-based scaling factor.
+
+    Arguments:
+        params (iterable): Iterable of parameters to optimize.
+        lr (float): Learning rate (default: 1e-3).
+        betas (Tuple[float, float, float] or Tuple[float, float]):
+            Exponents for the de-biased beta schedules.
+            ``beta1`` controls momentum and gradient accumulation decay,
+            ``beta2`` controls the variance tracker and NorMuon second-moment
+            decay, and ``beta3`` controls the dynamic learning rate EMAs.
+            (default: (0.95, 0.995, 0.99)).
+        eps (float): Numerical stability term for divisions and clamps
+            (default: 1e-16).
+        weight_decay (float): Decoupled weight decay coefficient
+            (default: 0.0).
+        normuon (bool): Apply NorMuon second-moment scaling after
+            orthogonalization to stabilize update magnitudes
+            (default: True).
+        use_compile (bool): Use ``torch.compile`` on the orthogonalization
+            and SVD functions for faster execution (default: True).
+        ortho_dtype (str or None): Data type for Newton-Schulz
+            orthogonalization. Accepts ``None`` (defaults to float32) or a
+            string like ``"torch.bfloat16"`` (default: None).
+        stochastic_fp (bool): Use stochastic rounding when parameters are
+            stored in bfloat16, reducing quantization bias (default: True).
+        dynamic_lr (bool): Enable per-row dynamic learning rate
+            adjustment based on delta alignment (default: True).
+        dynamic_lr_boost (bool): When ``dynamic_lr`` is enabled, apply an
+            additional ``atan2``-based boost factor that amplifies the
+            learning rate when parameter deltas are large relative to their
+            directional EMA (default: True).
+        egd (bool): Enable Egalitarian Gradient Descent preconditioning via
+            low-rank SVD for parameters with 2+ dimensions, equalizing
+            gradient contribution across singular directions
+            (default: True).
+        egd_oja (bool): Enables a lightweight approximation
+            of EGD using Sanger's rule (Generalized Oja's rule) in place 
+            of full SVD tracking (default: True).
     """
 
     def __init__(

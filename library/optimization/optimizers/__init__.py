@@ -17,6 +17,7 @@ from library.optimization.optimizers.adabelief import AdaBelief
 from library.optimization.optimizers.adan import Adan
 from library.optimization.optimizers.adamw_8bit_kahan import AdamW8bitKahan
 from library.optimization.optimizers.adamw_low_bit import AdamW4bitAO, AdamW8bitAO, AdamWfp8AO
+from library.optimization.optimizers.adammini import AdamMini
 from library.optimization.optimizers.abmog import ABMOG
 from library.optimization.optimizers.bcos import BCOS
 from library.optimization.optimizers.came import CAME
@@ -38,6 +39,9 @@ from library.optimization.optimizers.fishmonger import FishMonger, FishMonger8Bi
 from library.optimization.optimizers.fira import Fira
 from library.optimization.optimizers.fmarscrop import FMARSCrop
 from library.optimization.optimizers.fmarscrop_v2 import FMARSCropV2
+from library.optimization.optimizers.fmarscrop_v2_exmachina import FMARSCropV2ExMachina
+from library.optimization.optimizers.fmarscrop_v3 import FMARSCropV3
+from library.optimization.optimizers.fmarscrop_v3_exmachina import FMARSCropV3ExMachina
 from library.optimization.optimizers.galore import GaLore
 from library.optimization.optimizers.glyph import Glyph
 from library.optimization.optimizers.gooddog import GOODDOG
@@ -46,6 +50,7 @@ from library.optimization.optimizers.laprop import LaProp
 from library.optimization.optimizers.lamb import Lamb
 from library.optimization.optimizers.lpf_adamw import LPFAdamW
 from library.optimization.optimizers.mythical import Mythical
+from library.optimization.optimizers.momentus_caution import MomentusCaution
 from library.optimization.optimizers.oagopt import OAGOpt
 from library.optimization.optimizers.ocgopt import OCGOpt
 from library.optimization.optimizers.projective_adam import ProjectiveAdam
@@ -61,6 +66,7 @@ from library.optimization.optimizers.shampoo import ScalableShampoo
 from library.optimization.optimizers.singstate import SingState
 from library.optimization.optimizers.soap import SOAP
 from library.optimization.optimizers.spam import StableSPAM
+from library.optimization.optimizers.remaster import REMASTER
 from library.optimization.optimizers.talon import TALON
 from library.optimization.optimizers.vsgd import VSGD
 from library.optimization.optimizers.wiwiopt import WiwiOpt
@@ -83,6 +89,7 @@ __all__ = [
     "AdamW8bitAO",
     "AdamW8bitKahan",
     "AdamWfp8AO",
+    "AdamMini",
     "Alice",
     "BCOS",
     "CAME",
@@ -111,6 +118,9 @@ __all__ = [
     "Fira",
     "FMARSCrop",
     "FMARSCropV2",
+    "FMARSCropV2ExMachina",
+    "FMARSCropV3",
+    "FMARSCropV3ExMachina",
     "GaLore",
     "Glyph",
     "GOODDOG",
@@ -119,6 +129,7 @@ __all__ = [
     "Lamb",
     "LPFAdamW",
     "Mythical",
+    "MomentusCaution",
     "OAGOpt",
     "OCGOpt",
     "ProjectiveAdam",
@@ -127,6 +138,7 @@ __all__ = [
     "RMSProp",
     "RMSPropADOPT",
     "RMSPropADOPTMARS",
+    "REMASTER",
     "SCGOpt",
     "SCION",
     "SCORN",

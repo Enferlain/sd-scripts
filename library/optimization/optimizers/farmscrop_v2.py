@@ -12,7 +12,39 @@ MASK_GRADS = Literal["grad", "approx_grad_nat", "grad_nat"]
 
 class FARMSCropV2(BaseOptimizer):
     r"""
-    FARMSCropV2: Fisher-Accelerated RMSProp with Compass amplification and ADOPT-style behavior.
+    FARMSCropV2: Fisher-Accelerated RMSprop, with momentum-based Compass-style amplification, with ADOPT's AdamW changes. (https://arxiv.org/abs/2411.02853).
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining
+            parameter groups.
+        lr (float):
+            Learning rate parameter (default 0.0001).
+        betas (float, float):
+            coefficients used for computing running averages of
+            gradient difference FIM and approx. natural grad FIM (default: 0.999, 0.9999).
+        eps (float):
+            Term the denominator is minimally clamped to, to
+            improve numerical stability. (default: 1e-6).
+        eps2 (float):
+            Term to multiple the RMS of the grad to calculate adaptive eps. (default: 1e-2).
+        eps_floor (float):
+            Term to set a floor for the eps, to prevent NaNs. (default: None, disabling adaptive eps).
+        weight_decay (float):
+            Weight decay, i.e. a L2 penalty (default: 0.0).
+        centralization (float):
+            Center model grad (default: 0.0).
+        diff_mult (float):
+            Multiplier for difference amplification (default: 1.0).
+        momentum_beta (float):
+            Beta value for slow momentum / EMA (default: 0.9999) (Alternative recommendation: 0.99999).
+        momentum_lambda (float):
+            Amplification exponent for slow momentum / EMA (default: 0.25) (Alternative recommendation: 0.5).
+        clip (float):
+            Value to clip the grad's RMS at (default: 1.0)
+        cautious (bool):
+            Use cautious mask on parameter update - https://arxiv.org/abs/2411.16085 (default: False)
+        cautious_grad (str):
+            Which form of grad to use for the cautious mask, valid options are 'grad', 'approx_grad_nat' 'grad_nat' (Default: grad)
     """
 
     def __init__(
@@ -41,6 +73,8 @@ class FARMSCropV2(BaseOptimizer):
         self.validate_non_negative(eps, "eps")
         self.validate_non_negative(eps2, "eps2")
 
+        # Override zero to 1e-37, as zero and float32.tiny NaNs
+        # Using 1e-37 as 1e-38 NaNs for Flux loras
         if eps_floor is not None and eps_floor < eps and eps_floor <= 0:
             eps_floor = 1e-37
 

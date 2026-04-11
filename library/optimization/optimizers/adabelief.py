@@ -10,7 +10,24 @@ from library.optimization.optimizers.utils.stochastic import copy_stochastic_
 
 
 class AdaBelief(BaseOptimizer):
-    """Repo-owned AdaBelief optimizer adapted for the optimization layer."""
+    r"""Adapting Step-sizes by the Belief in Observed Gradients.
+
+    :param params: ParamGroup. iterable of parameters to optimize or dicts defining parameter groups.
+    :param lr: float. learning rate.
+    :param betas: Betas. coefficients used for computing running averages of gradient and the squared hessian trace.
+    :param weight_decay: float. weight decay (L2 penalty).
+    :param weight_decouple: bool. the optimizer uses decoupled weight decay as in AdamW.
+    :param fixed_decay: bool. fix weight decay.
+    :param rectify: bool. perform the rectified update similar to RAdam.
+    :param n_sma_threshold: number of SMA threshold (recommended is 5).
+    :param degenerated_to_sgd: bool. perform SGD update when variance of gradient is high.
+    :param ams_bound: bool. whether to use the AMSBound variant.
+    :param r: float. EMA factor. between 0.9 ~ 0.99 is preferred.
+    :param adanorm: bool. whether to use the AdaNorm variant.
+    :param adam_debias: bool. Only correct the denominator to avoid inflating step sizes early in training.
+    :param eps: float. term added to the denominator to improve numerical stability.
+    :param cautious: bool: Use cautious mask on parameter update - https://arxiv.org/abs/2411.16085
+    """
 
     def __init__(
         self,

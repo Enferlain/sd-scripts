@@ -32,6 +32,13 @@ class Norm:
 
 
 class Col(Norm):
+    r"""col-wise normalization.
+
+    :param normalized: bool. normalize by the input dimension. use for non-input layers.
+    :param transpose: bool. transpose input before normalization. use for embedding layers which have a shape of
+        (vocab_size, embedding_dim)
+    """
+    
     def __init__(self, normalized: bool = False, transpose: bool = False) -> None:
         self.normalized = normalized
         self.transpose = transpose
@@ -68,6 +75,13 @@ class Col(Norm):
 
 
 class Row(Norm):
+    r"""row-wise normalization.
+
+    :param normalized: bool. normalize by the input dimension. use for non-input layers.
+    :param transpose: bool. transpose input before normalization. use for embedding layers which have a shape of
+        (vocab_size, embedding_dim)
+    """
+
     def __init__(self, normalized: bool = True, transpose: bool = False) -> None:
         self.normalized = normalized
         self.transpose = transpose
@@ -103,6 +117,8 @@ class Row(Norm):
 
 
 class BiasRMS(Norm):
+    r"""bias RMS."""
+
     def init(self, x: torch.Tensor) -> torch.Tensor:
         return torch.nn.init.zeros_(x)
 
@@ -113,6 +129,11 @@ class BiasRMS(Norm):
 
 
 class SpectralConv(Norm):
+    r"""spectral-convolution normalization.
+
+    :param num_steps: int. number of steps of zero-power Newton-Schulz 5.
+    """
+
     def __init__(self, num_steps: int = 5) -> None:
         self.num_steps = num_steps
 
@@ -136,6 +157,13 @@ class SpectralConv(Norm):
 
 
 class Spectral(Norm):
+    r"""spectral normalization.
+
+    :param max_scale: bool. set upper bound (1.0) of the scale.
+    :param normalize: bool. normalize by the input dimension. use for non-input layers.
+    :param num_steps: int. number of steps of zero-power Newton-Schulz 5.
+    """
+
     def __init__(self, max_scale: bool = False, normalize: bool = True, num_steps: int = 5) -> None:
         self.max_scale = max_scale
         self.normalize = normalize
@@ -167,6 +195,12 @@ class Spectral(Norm):
 
 
 class Sign(Norm):
+    r"""sign normalization.
+
+    :param zero_init: bool. initialize with zero.
+    :param normalize: bool. normalize by the input dimension. use for non-input layers.
+    """
+
     def __init__(self, zero_init: bool = False, normalize: bool = True) -> None:
         self.zero_init = zero_init
         self.normalize = normalize
@@ -188,6 +222,8 @@ class Sign(Norm):
 
 
 class Auto(Norm):
+    r"""choose Norm type automatically."""
+
     def init(self, x: torch.Tensor) -> torch.Tensor:
         ndim = x.ndim
         if ndim in (0, 1):
@@ -210,6 +246,8 @@ class Auto(Norm):
 
 
 def build_lmo_norm(norm_type: int, **kwargs) -> Norm:  # noqa: PLR0911
+    r"""Build LMONorm by given norm_type."""
+
     if norm_type == LMONorm.AUTO:
         return Auto()
     if norm_type == LMONorm.SPECTRAL:
@@ -229,7 +267,34 @@ def build_lmo_norm(norm_type: int, **kwargs) -> Norm:  # noqa: PLR0911
 
 class Glyph(Optimizer):
     r"""
-    Glyph: adaptation, normalization, and scale-invariance with LMO-style shaping.
+    Glyph: Cutting through noise via adaptation, normalization, and scale-invariance. 
+    
+    For optimal use: Utilize a gradient accumulation size of 1, highest batch size you can handle, adjust LR as needed (If reducing your total batch size, reduce your LR). May be prone to excessive updates with a higher LR.
+
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining
+            parameter groups.
+        lr (float):
+            Learning rate parameter (default 0.0001).
+        betas (float):
+            Coefficient used for computing the running average, and the running square of running average (default: 0.95, 0.999999)
+        weight_decay (float):
+            AdamW-like weight decay, i.e. a L2 penalty (default: 0.0).
+        weight_decay_rate (float):
+            Decay the multiplier at which rate weight decay is applied, weight_decay * weight_decay_rate**step (default: 0.998).
+        amp (float):
+            Beta-adjusted scaling parameter for adding the running nesterov average to the gradient, functionally acts as strength value for a low-pass filter. (default: 1.0).
+        orthograd (bool):
+            Modify the gradient to apply an orthogonal gradient update, - https://arxiv.org/abs/2501.04697 (default: False).
+        adaptive_ema (bool):
+            Scale the EMA using a modified cautious mask (default: True).
+        atan2 (bool):
+            Divide the gradient using .atan2 instead of .div for stability and scale-invariance, removes epsilon/eps - https://arxiv.org/abs/2407.05872 (default: True).
+        cautious_min (bool):
+            Use cautious mask on full step update, clamped to a minimum of cautious_min - https://arxiv.org/abs/2411.16085 (default: 1.0, thus disabling the mask. Use 0 to fully utilize the mask).
+        stochastic_fp (bool):
+            Utilize stochastic rounding for bf16 and fp16 tensors. (default: True).
     """
 
     def __init__(
@@ -265,6 +330,7 @@ class Glyph(Optimizer):
     def __str__(self) -> str:
         return "Glyph"
 
+    # Implementation from: https://github.com/LoganBooker/prodigy-plus-schedule-free/blob/1d2cfa2fe692a828d46a5a29b9667ec924961ac7/prodigyplus/core_optimiser.py#L169C5-L177C48
     @torch.no_grad()
     def orthograd(self, param, grad):
         w = param.view(-1)
@@ -314,8 +380,11 @@ class Glyph(Optimizer):
                 state = self.state[param]
                 grad = param.grad.data
 
+                # State initialization
                 if len(state) == 0:
+                    # Exponential moving average of gradient values
                     state["ema"] = torch.zeros_like(param.data)
+                    # Exponential moving average of squared gradient values
                     state["ema_squared"] = torch.ones_like(param.data)
                     state["prev_grad"] = torch.zeros_like(grad)
 
@@ -338,34 +407,49 @@ class Glyph(Optimizer):
                 if group["orthograd"] and param_fp32.data.nelement() > 1:
                     self.orthograd(param_fp32, grad)
 
+                # Stabilize gradient oscillations via weird but cool math that I don't have a name for
                 grad = self.smoothen_oscillation(grad, prev_grad)
+                
+                # MARS
                 correction = (((1.0 - betas[0]) / 2) * betas[0]) / (1 - betas[0]) * (grad - prev_grad)
                 c_t = grad + correction
+                
+                # SCION spectral norm
                 c_t = norm.lmo(c_t, eps=1e-30)
+                
+                # Parameter-based amplification
                 c_t = self.smoothen_oscillation(c_t, param_fp32.data)
 
+                # Update ema
                 ema = ema.mul(betas[0]).add_(c_t)
+
+                # Adaptive ema
                 if group["adaptive_ema"]:
                     mask = (c_t * ema > 0).to(c_t.dtype)
                     mask.clamp_min_(betas[0])
-                    mask.div_(mask.mean().clamp_(min=1e-3))
+                    mask.div_(mask.mean().clamp_(min=1e-3)) # Divide by mean (0.001-1.0)
                     ema = ema.mul(mask)
 
+                # Compass amplification (functionally/practically a low-pass filter when used with a denom)
                 update = c_t.add(ema, alpha=group["amp"] * betas[0])
                 denom = ema_squared.sqrt() if group["atan2"] else torch.clamp(ema_squared.sqrt(), 1e-16)
 
+                # AMSGrad with decay (to prevent little learning later on during training)
                 ema_squared_new = ema_squared.mul(slow_beta).addcmul_(update, update, value=1 - slow_beta)
                 ema_squared = torch.maximum(ema_squared.mul(slow_beta), ema_squared_new)
 
+                # ADOPT update (update squared EMA after creation of denominator)
                 if group["atan2"]:
-                    full_step = update.atan2(denom).mul_(1.27323954474)
+                    full_step = update.atan2(denom).mul_(1.27323954474) # Multiply by reciprocal of atan2(1,1)
                 else:
                     clip_lambda = step**0.25
-                    full_step = update.div(denom).clamp_(-clip_lambda, clip_lambda)
+                    full_step = update.div(denom).clamp_(-clip_lambda, clip_lambda)  # Ensure updates aren't obscenely large for the first few steps, there may be a better way...
 
                 if weight_decay != 0:
+                    # Perform weight decay
                     full_step = full_step.add(param_fp32.data, alpha=weight_decay * weight_decay_rate**step)
 
+                # Apply caution as per 'Cautious Optimizers' with a modified minimum.
                 if group["cautious_min"] != 1.0:
                     mask = (full_step * grad > 0).to(full_step.dtype)
                     mask.clamp_min_(group["cautious_min"])

@@ -1,3 +1,5 @@
+# Authored by: https://github.com/kozistr
+
 import math
 from enum import IntEnum
 

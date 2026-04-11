@@ -1,3 +1,5 @@
+# https://github.com/kozistr/pytorch_optimizer/blob/main/pytorch_optimizer/optimizer/sgd.py
+
 import math
 
 import torch
@@ -10,7 +12,19 @@ from library.optimization.optimizers.utils.stochastic import copy_stochastic_
 
 
 class VSGD(BaseOptimizer):
-    """Repo-owned VSGD optimizer adapted for the optimization layer."""
+    r"""Variational Stochastic Gradient Descent for Deep Neural Networks. https://arxiv.org/abs/2404.06549
+
+    :param params: ParamGroup. iterable of parameters to optimize or dicts defining parameter groups.
+    :param lr: float. learning rate.
+    :param ghattg: float. prior variance ratio between ghat and g, Var(ghat_t-g_t)/Var(g_t-g_{t-1}).
+    :param ps: float. prior strength.
+    :param tau1: float. remember rate for the gamma parameters of g.
+    :param tau2: float. remember rate for the gamma parameter of ghat.
+    :param weight_decay: float. weight decay (L2 penalty).
+    :param weight_decouple: bool. the optimizer uses decoupled weight decay as in AdamW.
+    :param eps: float. term added to the denominator to improve numerical stability.
+    :param maximize: bool. maximize the objective with respect to the params, instead of minimizing.
+    """
 
     def __init__(
         self,

@@ -22,6 +22,27 @@ class ScheduleFreeWrapper(Optimizer):
     ``weight_decay_at_y`` parameter, which seems to give better results in our
     experiments. This approach to decay only works correctly if the base
     optimizer uses ``group["lr"]`` as the current learning rate.
+
+    params (ParamGroup): 
+        iterable of parameters to optimize or dicts defining parameter groups.
+    base_optimizer (OPTIMIZER): 
+        PyTorch optimizer object, in Kohya's pass in an additional optimizer arg called 
+        base_optimizer_type and the fully qualified optimizer name. 
+        e.x. 
+            base_optimizer_type=LoraEasyCustomOptimizer.compass.Compass
+            base_optimizer_type=LoraEasyCustomOptimizer.came.CAME
+            base_optimizer_type=LoraEasyCustomOptimizer.adopt.ADOPT
+            base_optimizer_type=torch.optim.AdamW
+    sf_momentum (float): 
+        Apply momentum on the outer optimizer (default 0.9)
+    sf_weight_decay_at_y (float): 
+        Weight decay calculated at the y point. Set weight decay on the 
+        inner optimizer to instead calculate at z (default: 0.0).
+    sf_r (float): Use polynomial weighting in the average 
+        with power r (default 0.0).
+    sf_weight_lr_power (float): The weights in the average will
+        be equal to lr raised to this power. Set to 0 for no weighting
+        (default 2.0).
     """
 
     @torch.no_grad()

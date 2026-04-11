@@ -1,3 +1,6 @@
+# Authored by: https://github.com/kozistr
+# Source: https://github.com/kozistr/pytorch_optimizer/blob/main/pytorch_optimizer/optimizer/ademamix.py
+
 import logging
 import math
 
@@ -16,7 +19,25 @@ logger = logging.getLogger(__name__)
 
 
 class AdEMAMix(BaseOptimizer):
-    r"""Better, Faster, Older."""
+    r"""Better, Faster, Older.
+
+    :param params: ParamGroup. iterable of parameters to optimize or dicts defining parameter groups.
+    :param lr: float. learning rate.
+    :param betas: Betas. coefficients used for computing running averages of gradient and the squared hessian trace.
+    :param weight_decay: float. weight decay (L2 penalty).
+    :param weight_decouple: bool. the optimizer uses decoupled weight decay as in AdamW.
+    :param fixed_decay: bool. fix weight decay.
+    :param clip: float. threshold of root-mean-square of gradient update.
+    :param alpha: float. usually between 4 and 10 would work well.
+    :param t_alpha_beta3: Optional[float]. total number of iterations is preferred when needed.
+    :param eps: float. term added to the denominator to improve numerical stability.
+    :param centralization: float. center model grad 
+    cautious (bool) (deprecated, use update strategy)
+        Use cautious mask on parameter update - https://arxiv.org/abs/2411.16085 (default: False)
+    update_strategy (str) (NOTE: for backwards compatibility, cautious parameter being set to true will override to cautious)
+        Determine the update strategy to use, valid values are 'unmodified', 'cautious' (https://arxiv.org/abs/2411.16085), 
+        and 'grams' (https://arxiv.org/abs/2412.17107) (default: unmodified)
+    """
 
     def __init__(
         self,
@@ -47,6 +68,8 @@ class AdEMAMix(BaseOptimizer):
 
         if update_strategy not in {"unmodified", "cautious", "grams"}:
             raise ValueError(f"Invalid update strategy: {update_strategy}")
+
+        # If cautious true, override update strategy to cautious
         if cautious:
             update_strategy = "cautious"
 
@@ -140,13 +163,15 @@ class AdEMAMix(BaseOptimizer):
                     p_fp32 = p.to(torch.float32)
 
                 state = self.state[p]
-                if len(state) == 0:
+                if len(state) == 0:  # save memory in case beta1 is 0.0
                     state["exp_avg"] = torch.zeros_like(p) if beta1 > 0.0 else None
                     state["exp_avg_sq"] = torch.zeros_like(p)
                     state["exp_avg_slow"] = torch.zeros_like(p)
 
                 if centralization > 0.0 and grad.dim() > 1:
                     grad.sub_(grad.mean(dim=tuple(range(1, grad.dim())), keepdim=True).mul_(centralization))
+
+                # Clip the gradient 
                 if clip > 0.0:
                     grad.div_(((self.get_rms(grad) + eps) / clip).clamp_(min=1.0))
 
@@ -206,7 +231,21 @@ class AdEMAMix(BaseOptimizer):
 
 
 class SimplifiedAdEMAMix(BaseOptimizer):
-    r"""Connections between Schedule-Free Optimizers, AdEMAMix, and Accelerated SGD Variants."""
+    r"""Connections between Schedule-Free Optimizers, AdEMAMix, and Accelerated SGD Variants.
+
+    :param params: ParamGroup. iterable of parameters to optimize or dicts defining parameter groups.
+    :param lr: float. learning rate.
+    :param betas: Betas. coefficients used for computing running averages of gradient and the squared hessian trace.
+    :param alpha: float. coefficient for mixing the current gradient and EMA.
+    :param beta1_warmup: Optional[int]. number of warmup steps used to increase beta1.
+    :param min_beta1: float. minimum value of beta1 to start from.
+    :param weight_decay: float. weight decay (L2 penalty).
+    :param weight_decouple: bool. the optimizer uses decoupled weight decay as in AdamW.
+    :param fixed_decay: bool. fix weight decay.
+    :param eps: float. term added to the denominator to improve numerical stability.
+    :param bias_correction1: bool. whether to use bias_correction in numerator
+    :param bias_correction2: bool. whether to use bias_correction in denominator
+    """
 
     def __init__(
         self,
@@ -244,6 +283,7 @@ class SimplifiedAdEMAMix(BaseOptimizer):
         self.validate_non_negative(weight_decay, "weight_decay")
         self.validate_non_negative(eps, "eps")
 
+        # Loop over the keys in the kwargs dictionary
         for key in kwargs:
             logger.warning("Unrecognized optimizer argument '%s'. It will be ignored.", key)
 
@@ -262,6 +302,7 @@ class SimplifiedAdEMAMix(BaseOptimizer):
         self.state_storage_dtype = final_dtype
         self.state_storage_device = state_storage_device
 
+        # Override zero to tiny
         if eps_floor is not None and eps_floor < eps and eps_floor <= 0:
             eps_floor = torch.finfo(torch.float32).tiny
         if update_strategy not in {"unmodified", "cautious", "grams", "both"}:
@@ -329,7 +370,7 @@ class SimplifiedAdEMAMix(BaseOptimizer):
             adopt_clip: float = (group["step"] - 1) ** 0.25
             beta1, beta2 = group["betas"]
             use_stable_spam_clipping = group["use_stable_spam_clipping"]
-            apply_ortho_to_group = group.get("is_ortho_group", False)
+            apply_ortho_to_group = group.get("is_ortho_group", False)  # Default to False if key missing
 
             if group["beta1_warmup"]:
                 beta1 = self.linear_hl_warmup_scheduler(group["step"], beta_end=beta1, beta_start=group["min_beta1"], warmup=group["beta1_warmup"])
@@ -436,7 +477,18 @@ class SimplifiedAdEMAMix(BaseOptimizer):
 
 
 class SimplifiedAdEMAMixExM(BaseOptimizer):
-    r"""Connections between Schedule-Free Optimizers, AdEMAMix, and Accelerated SGD Variants."""
+    r"""Connections between Schedule-Free Optimizers, AdEMAMix, and Accelerated SGD Variants.
+
+    :param params: ParamGroup. iterable of parameters to optimize or dicts defining parameter groups.
+    :param lr: float. learning rate.
+    :param betas: Betas. coefficients used for computing running averages of gradient and the squared hessian trace.
+    :param alpha: float. coefficient for mixing the current gradient and EMA.
+    :param beta1_warmup: Optional[int]. number of warmup steps used to increase beta1. Recommend setting to iteration/step count.
+    :param min_beta1: float. minimum value of beta1 to start from.
+    :param weight_decay: float. weight decay (L2 penalty).
+    :param weight_decouple: bool. the optimizer uses decoupled weight decay as in AdamW.
+    :param eps: float. term added to the denominator to improve numerical stability.
+    """
 
     def __init__(
         self,
@@ -556,7 +608,7 @@ class SimplifiedAdEMAMixExM(BaseOptimizer):
             adopt_clip: float = (step - 1) ** 0.25
             beta1, beta2 = group["betas"]
             use_stable_spam_clipping = group["use_stable_spam_clipping"]
-            apply_ortho_to_group = group.get("is_ortho_group", False)
+            apply_ortho_to_group = group.get("is_ortho_group", False)  # Default to False if key missing
             eps_floor = group["eps_floor"]
 
             if group["beta1_warmup"]:
@@ -597,8 +649,11 @@ class SimplifiedAdEMAMixExM(BaseOptimizer):
                     else:
                         grad = stable_spam_clipping_impl(state, grad, step=step, eps=eps_floor)
 
+                # Calculate RMS of grad once
                 rms_grad = torch.sqrt(torch.mean(grad.pow(2)))
                 curr_eps = adaptive_eps(grad, group, rms_grad=rms_grad)
+
+                # RMS Norm
                 grad_normed = grad.div(rms_grad.clamp_min_(1))
 
                 if group["use_newton_schulz"]:
@@ -607,12 +662,14 @@ class SimplifiedAdEMAMixExM(BaseOptimizer):
                     elif grad_normed.numel() > 1:
                         grad_normed = bias_rms_compile(grad_normed) if group["torch_compile"] else bias_rms(grad_normed)
 
+                # Adaptive ema
                 mask = (grad_normed * exp_avg > 0).to(grad_normed.dtype)
                 mask.clamp_min_(beta1)
-                mask.div_(mask.mean().clamp_(min=1e-3))
+                mask.div_(mask.mean().clamp_(min=1e-3))  # Divide by mean (0.001-1.0)
                 exp_avg.mul_(mask)
                 exp_avg.mul_(beta1).add_(grad_normed, alpha=1.0 - beta1)
 
+                # Compass amplification + beta1 Bias correction
                 if group["use_compass"]:
                     bias_corrected_exp_avg = exp_avg.div(bias_correction1)
                     c_t = grad_normed.add(bias_corrected_exp_avg, alpha=group["alpha"])
@@ -621,6 +678,7 @@ class SimplifiedAdEMAMixExM(BaseOptimizer):
 
                 if step == 1:
                     if group["use_compass"]:
+                        # Try adding residual to c_t
                         grad_residual = c_t.add(grad_normed.add(bias_corrected_exp_avg, alpha=-1))
                     else:
                         grad_residual = grad_normed - exp_avg
@@ -629,6 +687,7 @@ class SimplifiedAdEMAMixExM(BaseOptimizer):
                     denominator = exp_avg_sq.sqrt().div_(bias_correction2_sqrt).add_(curr_eps)
                     if group["use_adabelief"]:
                         if group["use_compass"]:
+                            # Try adding residual to c_t
                             grad_residual = c_t.add(grad_normed.add(bias_corrected_exp_avg, alpha=-1))
                         else:
                             grad_residual = grad_normed - exp_avg
@@ -636,6 +695,7 @@ class SimplifiedAdEMAMixExM(BaseOptimizer):
                     else:
                         new_exp_avg_sq = exp_avg_sq.mul(beta2).addcmul_(c_t, c_t, value=1.0 - beta2)
 
+                    # Decaying amsgrad
                     torch.maximum(exp_avg_sq.mul(max(min(beta2, group["amsgrad_max_decay_rate"]), group["amsgrad_min_decay_rate"])), new_exp_avg_sq, out=exp_avg_sq)
                     update = c_t if group["use_compass"] else (group["alpha"] * grad_normed + exp_avg)
                     update = apply_update_strategies(update, grad_normed, group["update_strategy"], group["update_strategy_scale"])

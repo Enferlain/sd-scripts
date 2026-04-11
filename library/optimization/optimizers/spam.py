@@ -1,3 +1,5 @@
+# Authored originally by: https://github.com/kozistr
+
 import math
 
 import torch

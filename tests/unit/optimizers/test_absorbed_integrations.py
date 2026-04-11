@@ -1,6 +1,8 @@
 import pytest
 import torch
+from torch import nn
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from unittest.mock import patch
 
 from library.config.dataclasses.optimizer import LearningRatesConfig, OptimizerConfig, SchedulerConfig
 from library.config.dataclasses.training import TrainingConfig
@@ -8,6 +10,7 @@ from library.optimization.optimizer_factory import get_optimizer
 from library.optimization.optimizer_utils import get_optimizer_train_eval_fn, is_schedulefree_optimizer
 from library.optimization.scheduler import get_scheduler_fix
 from library.optimization.schedulers import CosineAnnealingWarmRestarts, RexAnnealingWarmRestarts
+from library.optimization.types import build_module_parameter_group
 
 
 def _build_optimizer_and_training_config(
@@ -43,6 +46,40 @@ def _assert_group_values(group: dict, expected_values: dict):
 @pytest.mark.training
 @pytest.mark.unit
 class TestAbsorbedWrappers:
+    class _FakeTorchAOCPUOffloadOptimizer:
+        def __init__(
+            self,
+            params,
+            optimizer_class=torch.optim.AdamW,
+            *,
+            offload_gradients=False,
+            minimal_size=4096,
+            **kwargs,
+        ):
+            self.param_groups = list(params)
+            self.optimizer_class = optimizer_class
+            self.offload_gradients = offload_gradients
+            self.minimal_size = minimal_size
+            self.kwargs = kwargs
+            self.state = {}
+            self.defaults = {}
+
+        def add_param_group(self, param_group):
+            self.param_groups.append(param_group)
+
+        def load_state_dict(self, state_dict):
+            self._loaded_state_dict = state_dict
+
+        def state_dict(self):
+            return {"offloaded": []}
+
+        def zero_grad(self, set_to_none=True):
+            self._zero_grad_called = set_to_none
+
+        def step(self, closure=None):
+            self._step_called = True
+            return closure() if closure is not None else None
+
     def test_registered_schedulefree_wrapper_builds_from_base_optimizer(self, mock_model_parameters):
         """Explicit wrapper optimizers should build their base optimizer through the shared wrapper path."""
         config = OptimizerConfig(
@@ -90,6 +127,105 @@ class TestAbsorbedWrappers:
         )
 
         assert scheduler.optimizer is optimizer.base_optimizer
+
+    def test_registered_cpu_offload_wrapper_builds_from_base_optimizer(self, mock_model_parameters):
+        """CPU offload wrapper should rebuild the configured base optimizer through the shared wrapper path."""
+        config = OptimizerConfig(
+            optimizer_type="CPUOffloadOptimizer",
+            learning_rates=LearningRatesConfig(base=3e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW",
+                "base_optimizer.weight_decay=0.01",
+                "offload_gradients=True",
+                "minimal_size=2048",
+            ],
+        )
+
+        with (
+            patch("library.optimization.wrappers.cpu_offload.get_available_devices", return_value=["cuda"]),
+            patch(
+                "library.optimization.wrappers.cpu_offload.TorchAOCPUOffloadOptimizer",
+                self._FakeTorchAOCPUOffloadOptimizer,
+            ),
+        ):
+            optimizer_name, _, optimizer = get_optimizer(
+                config,
+                config.learning_rates,
+                config.scheduler,
+                mock_model_parameters,
+            )
+
+        assert "CPUOffloadOptimizerWrapper" in optimizer_name
+        assert str(optimizer) == "CPUOffloadOptimizer"
+        assert optimizer.base_optimizer.optimizer_class.__name__ == "AdamW"
+        assert optimizer.base_optimizer.kwargs["weight_decay"] == 0.01
+        assert optimizer.base_optimizer.offload_gradients is True
+        assert optimizer.base_optimizer.minimal_size == 2048
+        assert optimizer.param_groups[0]["weight_decay"] == 0.01
+
+    def test_registered_cpu_offload_wrapper_schedules_wrapper_directly(self, mock_model_parameters):
+        """CPU offload wrapper should be scheduled directly rather than routing to a nested base optimizer."""
+        optimizer_config = OptimizerConfig(
+            optimizer_type="CPUOffloadOptimizer",
+            learning_rates=LearningRatesConfig(base=3e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW",
+                "base_optimizer.weight_decay=0.01",
+                "minimal_size=2048",
+            ],
+            scheduler=SchedulerConfig(lr_scheduler="constant_with_warmup", lr_warmup_steps=5),
+        )
+        training_config = TrainingConfig(max_train_steps=25)
+
+        with (
+            patch("library.optimization.wrappers.cpu_offload.get_available_devices", return_value=["cuda"]),
+            patch(
+                "library.optimization.wrappers.cpu_offload.TorchAOCPUOffloadOptimizer",
+                self._FakeTorchAOCPUOffloadOptimizer,
+            ),
+        ):
+            _, _, optimizer = get_optimizer(
+                optimizer_config,
+                optimizer_config.learning_rates,
+                optimizer_config.scheduler,
+                mock_model_parameters,
+            )
+
+            scheduler = get_scheduler_fix(
+                optimizer_config.scheduler,
+                optimizer_config,
+                training_config,
+                optimizer,
+                num_processes=1,
+            )
+
+        assert scheduler.optimizer is optimizer
+
+    def test_registered_cpu_offload_wrapper_requires_cuda_or_xpu(self, mock_model_parameters):
+        """CPU offload wrapper should fail fast when no supported accelerator runtime is available."""
+        config = OptimizerConfig(
+            optimizer_type="CPUOffloadOptimizer",
+            learning_rates=LearningRatesConfig(base=3e-4),
+            optimizer_args=[
+                "base_optimizer_type=AdamW",
+                "minimal_size=2048",
+            ],
+        )
+
+        with (
+            patch("library.optimization.wrappers.cpu_offload.get_available_devices", return_value=["cpu"]),
+            patch(
+                "library.optimization.wrappers.cpu_offload.TorchAOCPUOffloadOptimizer",
+                self._FakeTorchAOCPUOffloadOptimizer,
+            ),
+            pytest.raises(RuntimeError, match="CUDA or XPU"),
+        ):
+            get_optimizer(
+                config,
+                config.learning_rates,
+                config.scheduler,
+                mock_model_parameters,
+            )
 
     def test_registered_schedulefree_wrapper_is_schedulefree_for_train_eval_handling(self, mock_model_parameters):
         """Repo-owned wrapper registrations should advertise schedule-free train/eval behavior."""
@@ -1295,6 +1431,137 @@ class TestAbsorbedOptimizers:
                 },
             ),
             (
+                "FMARSCropV2ExMachina",
+                1e-4,
+                [
+                    "betas=(0.9, 0.99, 0.999)",
+                    "weight_decay=0.01",
+                    "weight_decouple=True",
+                    "centralization=0.5",
+                    "moment_centralization=0.25",
+                    "diff_mult=1.25",
+                    "momentum_lambda=0.35",
+                    "gamma=0.01",
+                    "clip=0.75",
+                    "adaptive_clip=0.5",
+                    "adaptive_clip_type='layer'",
+                    "update_strategy='grams'",
+                    "debias_beta1=True",
+                    "debias_beta2=False",
+                    "debias_beta3=True",
+                    "eps=1e-7",
+                    "eps2=0.02",
+                    "eps_floor=1e-16",
+                ],
+                "FMARSCropV2ExMachina",
+                {
+                    "betas": (0.9, 0.99, 0.999),
+                    "weight_decay": 0.01,
+                    "weight_decouple": True,
+                    "centralization": 0.5,
+                    "moment_centralization": 0.25,
+                    "diff_mult": 1.25,
+                    "momentum_lambda": 0.35,
+                    "gamma": 0.01,
+                    "clip": 0.75,
+                    "adaptive_clip": 0.5,
+                    "adaptive_clip_type": "layer",
+                    "update_strategy": "grams",
+                    "debias_beta1": True,
+                    "debias_beta2": False,
+                    "debias_beta3": True,
+                    "eps": 1e-7,
+                    "eps2": 0.02,
+                    "eps_floor": 1e-16,
+                },
+            ),
+            (
+                "FMARSCropV3",
+                1e-4,
+                [
+                    "betas=(0.9, 0.95)",
+                    "weight_decay=0.01",
+                    "centralization=0.5",
+                    "moment_centralization=0.25",
+                    "diff_mult=1.25",
+                    "momentum_lambda=1.5",
+                    "gamma=0.01",
+                    "clip_lambda=0.75",
+                    "adaptive_clip=0.5",
+                    "adaptive_clip_norm_type=False",
+                    "cautious=True",
+                    "eps=1e-7",
+                    "eps2=0.02",
+                    "eps_floor=1e-16",
+                ],
+                "FMARSCropV3",
+                {
+                    "betas": (0.9, 0.95),
+                    "weight_decay": 0.01,
+                    "centralization": 0.5,
+                    "moment_centralization": 0.25,
+                    "diff_mult": 1.25,
+                    "momentum_lambda": 1.5,
+                    "gamma": 0.01,
+                    "clip_lambda": 0.75,
+                    "adaptive_clip": 0.5,
+                    "adaptive_clip_norm_type": False,
+                    "cautious": True,
+                    "eps": 1e-7,
+                    "eps2": 0.02,
+                    "eps_floor": 1e-16,
+                },
+            ),
+            (
+                "FMARSCropV3ExMachina",
+                1e-4,
+                [
+                    "betas=(0.9, 0.95)",
+                    "weight_decay=0.01",
+                    "weight_decouple=True",
+                    "centralization=0.5",
+                    "moment_centralization=0.25",
+                    "diff_mult=1.25",
+                    "momentum_lambda=1.5",
+                    "gamma=0.01",
+                    "clip=0.75",
+                    "adaptive_clip=0.5",
+                    "adaptive_clip_type='layer'",
+                    "update_strategy='both'",
+                    "debias_beta1=True",
+                    "debias_beta2=True",
+                    "stable_update=True",
+                    "atan2_denom=True",
+                    "use_orthograd=True",
+                    "eps=1e-7",
+                    "eps2=0.02",
+                    "eps_floor=1e-16",
+                ],
+                "FMARSCropV3ExMachina",
+                {
+                    "betas": (0.9, 0.95),
+                    "weight_decay": 0.01,
+                    "weight_decouple": True,
+                    "centralization": 0.5,
+                    "moment_centralization": 0.25,
+                    "diff_mult": 1.25,
+                    "momentum_lambda": 1.5,
+                    "gamma": 0.01,
+                    "clip": 0.75,
+                    "adaptive_clip": 0.5,
+                    "adaptive_clip_type": "layer",
+                    "update_strategy": "both",
+                    "debias_beta1": True,
+                    "debias_beta2": True,
+                    "stable_update": True,
+                    "atan2_denom": True,
+                    "use_orthograd": True,
+                    "eps": 1e-7,
+                    "eps2": 0.02,
+                    "eps_floor": 1e-16,
+                },
+            ),
+            (
                 "FishMonger",
                 1e-3,
                 [
@@ -1439,6 +1706,29 @@ class TestAbsorbedOptimizers:
                 },
             ),
             (
+                "MomentusCaution",
+                1e-4,
+                [
+                    "beta=0.85",
+                    "momentum_beta=0.5",
+                    "weight_decay=0.01",
+                    "gamma_ratio=0.25",
+                    "adaptive_clip=0.5",
+                    "cautious=False",
+                    "nesterov=True",
+                ],
+                "MomentusCaution",
+                {
+                    "beta": 0.85,
+                    "momentum_beta": 0.5,
+                    "weight_decay": 0.01,
+                    "gamma_ratio": 0.25,
+                    "adaptive_clip": 0.5,
+                    "cautious": False,
+                    "nesterov": True,
+                },
+            ),
+            (
                 "ProjectiveAdam",
                 1e-4,
                 [
@@ -1465,6 +1755,31 @@ class TestAbsorbedOptimizers:
                     "sync_chunk_size": 16,
                     "state_storage_dtype": torch.float32,
                     "state_storage_device": "cpu",
+                },
+            ),
+            (
+                "REMASTER",
+                1e-4,
+                [
+                    "weight_decay=0.01",
+                    "weight_decay_rate=0.99",
+                    "amp=3.0",
+                    "reset_interval=2",
+                    "reset_increment=1",
+                    "orthograd=False",
+                    "cautious_min=0.25",
+                    "stochastic_fp=False",
+                ],
+                "REMASTER",
+                {
+                    "weight_decay": 0.01,
+                    "weight_decay_rate": 0.99,
+                    "amp": 3.0,
+                    "reset_interval": 2,
+                    "reset_increment": 1,
+                    "orthograd": False,
+                    "cautious_min": 0.25,
+                    "stochastic_fp": False,
                 },
             ),
             (
@@ -1674,6 +1989,21 @@ class TestAbsorbedOptimizers:
             assert optimizer.param_groups[0]["momentum_beta"] == 0.95
             assert optimizer.param_groups[0]["debias_beta2"] is False
             assert str(optimizer) == "FMARSCropV2"
+        if optimizer_type == "FMARSCropV2ExMachina":
+            assert optimizer.param_groups[0]["update_strategy"] == "grams"
+            assert optimizer.param_groups[0]["debias_beta1"] is True
+            assert optimizer.param_groups[0]["debias_beta3"] is True
+            assert str(optimizer) == "FMARSCropV2ExMachina"
+        if optimizer_type == "FMARSCropV3":
+            assert optimizer.param_groups[0]["clip_lambda"] == 0.75
+            assert optimizer.param_groups[0]["adaptive_clip_norm_type"] is False
+            assert str(optimizer) == "FMARSCropV3"
+        if optimizer_type == "FMARSCropV3ExMachina":
+            assert optimizer.param_groups[0]["update_strategy"] == "both"
+            assert optimizer.param_groups[0]["stable_update"] is True
+            assert optimizer.param_groups[0]["atan2_denom"] is True
+            assert optimizer.param_groups[0]["use_orthograd"] is True
+            assert str(optimizer) == "FMARSCropV3ExMachina"
         if optimizer_type == "FishMonger":
             assert optimizer.eps == 1e-8
             assert optimizer.eps2 == 0.02
@@ -1695,9 +2025,14 @@ class TestAbsorbedOptimizers:
             assert optimizer.has_warmup is False
         if optimizer_type == "Mythical":
             assert optimizer._init_lr == learning_rate
+        if optimizer_type == "MomentusCaution":
+            assert str(optimizer) == "MomentusCaution"
         if optimizer_type == "ProjectiveAdam":
             assert optimizer.state_storage_dtype == torch.float32
             assert optimizer.state_storage_device == "cpu"
+        if optimizer_type == "REMASTER":
+            assert optimizer._init_lr == learning_rate
+            assert str(optimizer) == "REMASTER"
         if optimizer_type == "WiwiOpt":
             assert str(optimizer) == "WiwiOpt"
         if optimizer_type == "SCORN":
@@ -3073,6 +3408,159 @@ class TestAbsorbedOptimizers:
         assert state["momentum"].shape == parameter.shape
         assert state["grad_diff_fim"].shape == parameter.shape
 
+    def test_registered_fmarscropv2exmachina_initializes_strategy_and_diff_state_on_first_step(self):
+        """FMARSCropV2ExMachina should initialize FIM, momentum, and diff-history state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FMARSCropV2ExMachina",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "betas=(0.9, 0.99, 0.999)",
+                "weight_decay=0.01",
+                "weight_decouple=True",
+                "centralization=0.5",
+                "moment_centralization=0.25",
+                "diff_mult=1.25",
+                "momentum_lambda=0.35",
+                "gamma=0.01",
+                "clip=0.75",
+                "adaptive_clip=0.5",
+                "adaptive_clip_type='layer'",
+                "update_strategy='grams'",
+                "debias_beta1=True",
+                "debias_beta2=False",
+                "debias_beta3=True",
+                "eps=1e-7",
+                "eps2=0.02",
+                "eps_floor=1e-16",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "FMARSCropV2ExMachina" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert optimizer.param_groups[0]["update_strategy"] == "grams"
+        assert "fim" in state
+        assert "momentum" in state
+        assert "prev_grad" in state
+        assert "grad_diff_fim" in state
+        assert state["momentum"].shape == parameter.shape
+        assert state["grad_diff_fim"].shape == parameter.shape
+
+    def test_registered_fmarscropv3_initializes_state_on_first_step(self):
+        """FMARSCropV3 should initialize FIM, momentum, and diff-history state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FMARSCropV3",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "betas=(0.9, 0.95)",
+                "weight_decay=0.01",
+                "centralization=0.5",
+                "moment_centralization=0.25",
+                "diff_mult=1.25",
+                "momentum_lambda=1.5",
+                "gamma=0.01",
+                "clip_lambda=0.75",
+                "adaptive_clip=0.5",
+                "adaptive_clip_norm_type=False",
+                "cautious=True",
+                "eps=1e-7",
+                "eps2=0.02",
+                "eps_floor=1e-16",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "FMARSCropV3" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "fim" in state
+        assert "momentum" in state
+        assert "prev_grad" in state
+        assert "grad_diff_fim" in state
+        assert state["momentum"].shape == parameter.shape
+        assert state["grad_diff_fim"].shape == parameter.shape
+
+    def test_registered_fmarscropv3exmachina_initializes_state_on_first_step(self):
+        """FMARSCropV3ExMachina should initialize FIM, momentum, and diff-history state on the first step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="FMARSCropV3ExMachina",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "betas=(0.9, 0.95)",
+                "weight_decay=0.01",
+                "weight_decouple=True",
+                "centralization=0.5",
+                "moment_centralization=0.25",
+                "diff_mult=1.25",
+                "momentum_lambda=1.5",
+                "gamma=0.01",
+                "clip=0.75",
+                "adaptive_clip=0.5",
+                "adaptive_clip_type='layer'",
+                "update_strategy='both'",
+                "debias_beta1=True",
+                "debias_beta2=True",
+                "stable_update=True",
+                "atan2_denom=True",
+                "use_orthograd=True",
+                "eps=1e-7",
+                "eps2=0.02",
+                "eps_floor=1e-16",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "FMARSCropV3ExMachina" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert optimizer.param_groups[0]["update_strategy"] == "both"
+        assert "fim" in state
+        assert "momentum" in state
+        assert "prev_grad" in state
+        assert "grad_diff_fim" in state
+        assert state["momentum"].shape == parameter.shape
+        assert state["grad_diff_fim"].shape == parameter.shape
+
     def test_registered_abmog_initializes_cpu_state_without_cuda(self):
         """ABMOG should initialize repo-owned offloaded state and run on CPU-only setups."""
         parameter = torch.nn.Parameter(torch.zeros(4, 4))
@@ -3427,6 +3915,141 @@ class TestAbsorbedOptimizers:
         assert state["ema"].shape == first_parameter.shape
         assert state["ema_squared"].shape == first_parameter.shape
         assert state["prev_grad"].shape == first_parameter.shape
+
+    def test_registered_momentuscaution_initializes_running_state_on_first_step(self):
+        """MomentusCaution should initialize momentum and gradient-history state on the first optimization step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="MomentusCaution",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "beta=0.85",
+                "momentum_beta=0.5",
+                "weight_decay=0.01",
+                "gamma_ratio=0.25",
+                "adaptive_clip=0.5",
+                "cautious=False",
+                "nesterov=True",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.arange(1, 17, dtype=parameter.dtype).view_as(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "MomentusCaution" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "momentum" in state
+        assert "prev_grad" in state
+        assert "grad_momentum" in state
+        assert state["momentum"].shape == parameter.shape
+        assert state["prev_grad"].shape == parameter.shape
+
+    def test_registered_remaster_initializes_running_state_on_first_step(self):
+        """REMASTER should initialize EMA and squared-EMA state on the first optimization step."""
+        parameter = torch.nn.Parameter(torch.zeros(4, 4))
+        parameters = [parameter]
+
+        config = OptimizerConfig(
+            optimizer_type="REMASTER",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "weight_decay_rate=0.99",
+                "amp=3.0",
+                "reset_interval=2",
+                "reset_increment=1",
+                "orthograd=False",
+                "cautious_min=0.25",
+                "stochastic_fp=False",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            parameters,
+        )
+
+        parameter.grad = torch.randn_like(parameter)
+        optimizer.step()
+
+        state = optimizer.state[parameter]
+
+        assert "REMASTER" in optimizer_name
+        assert optimizer.param_groups[0]["step"] == 1
+        assert "ema" in state
+        assert "ema_squared" in state
+        assert "times_zero" in state
+        assert "steps_since_reset" in state
+        assert state["ema"].shape == parameter.shape
+        assert state["ema_squared"].shape == parameter.shape
+
+    def test_registered_adammini_builds_from_named_module_group_and_initializes_specialized_state(self):
+        """AdamMini should preserve donor name-based grouping when built from module parameter groups."""
+
+        class _ToyAdamMiniModule(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.embed = nn.Embedding(8, 8)
+                self.q_proj = nn.Linear(8, 8, bias=False)
+                self.k_proj = nn.Linear(8, 8, bias=False)
+                self.mlp = nn.Linear(8, 8, bias=False)
+
+        module = _ToyAdamMiniModule()
+        trainable_params = [build_module_parameter_group(module, lr=1e-3, label="toy_model")]
+
+        config = OptimizerConfig(
+            optimizer_type="AdamMini",
+            learning_rates=LearningRatesConfig(base=1e-3),
+            optimizer_args=[
+                "weight_decay=0.01",
+                "num_embeds=8",
+                "num_heads=2",
+                "num_query_groups=2",
+            ],
+        )
+
+        optimizer_name, _, optimizer = get_optimizer(
+            config,
+            config.learning_rates,
+            config.scheduler,
+            trainable_params,
+        )
+
+        named_groups = {group["name"]: group for group in optimizer.param_groups}
+        assert "AdamMini" in optimizer_name
+        assert str(optimizer) == "AdamMini"
+        assert "embed.weight" in named_groups
+        assert "q_proj.weight" in named_groups
+        assert "mlp.weight" in named_groups
+
+        for _, parameter in module.named_parameters():
+            parameter.grad = torch.ones_like(parameter)
+
+        optimizer.step()
+
+        embed_state = optimizer.state[module.embed.weight]
+        q_proj_state = optimizer.state[module.q_proj.weight]
+        mlp_state = optimizer.state[module.mlp.weight]
+
+        assert "m" in embed_state
+        assert "v" in embed_state
+        assert "head" in q_proj_state
+        assert "v_mean" in q_proj_state
+        assert "dimension" in mlp_state
+        assert "reduced" in mlp_state
 
     def test_registered_scalable_shampoo_initializes_preconditioner_and_graft_state(self, mock_model_parameters):
         """ScalableShampoo should initialize its preconditioner and graft state on the first optimization step."""

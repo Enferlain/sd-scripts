@@ -218,9 +218,6 @@ def _build_registered_wrapper(
     if registration.target is None:
         return None, None
 
-    if registration.wrapper_style != "wrap_optimizer":
-        raise ValueError(f"Unsupported wrapper construction style: {registration.wrapper_style}")
-
     base_optimizer_type, base_optimizer_kwargs, wrapper_kwargs = _split_wrapper_optimizer_kwargs(optimizer_kwargs)
     wrapper_class = _load_registered_optimizer_class(registration)
     if wrapper_class is None:
@@ -236,7 +233,13 @@ def _build_registered_wrapper(
     )
 
     logger.info(f"use {registration.name} wrapper | {wrapper_kwargs}")
-    optimizer = wrapper_class(base_optimizer, **wrapper_kwargs)
+    if registration.wrapper_style == "wrap_optimizer":
+        optimizer = wrapper_class(base_optimizer, **wrapper_kwargs)
+    elif registration.wrapper_style == "wrap_optimizer_with_base_kwargs":
+        optimizer = wrapper_class(base_optimizer, base_optimizer_kwargs=base_optimizer_kwargs, **wrapper_kwargs)
+    else:
+        raise ValueError(f"Unsupported wrapper construction style: {registration.wrapper_style}")
+
     if not hasattr(optimizer, "base_optimizer"):
         optimizer = WrappedOptimizerProxy(optimizer, base_optimizer)
 

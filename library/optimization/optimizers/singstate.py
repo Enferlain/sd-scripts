@@ -1,13 +1,25 @@
+# SingState from https://github.com/Clybius/Personalized-Optimizers by Clybius
+
 import logging
-import math
 import os
 import shutil
 
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.optimizers.utils import copy_stochastic_
+from library.optimization.optimizers.utils import copy_stochastic_, filter_grad
 
+
+# Original Spectral Clipping code by leloykun (https://leloykun.github.io/ponder/spectral-clipping/ https://github.com/leloykun/spectral_clip)
+
+"""
+@misc{cesista2025spectralclipping,
+  author = {Franz Louis Cesista},
+  title = {"Fast, Numerically Stable, and Auto-Differentiable Spectral Clipping Via Newton-Schulz Iteration"},
+  year = {2025},
+  url = {http://leloykun.github.io/ponder/spectral-clipping/},
+}
+"""
 
 NS_COEFFS = [
     (3.5318, -4.7911, 1.9388),
@@ -18,6 +30,18 @@ NS_COEFFS = [
     (2.1535, -1.8338, 0.6869),
 ]
 
+# New coeffs from https://kexue.fm/archives/11059, may enable later.
+"""
+NS_COEFFS = [
+    (8.287212018145622, -23.59588651909882, 17.300387312530923),
+    (4.107059111542197, -2.9478499167379084, 0.54484310829266),
+    (3.9486908534822938, -2.908902115962947, 0.5518191394370131),
+    (3.3184196573706055, -2.488488024314878, 0.5100489401237208),
+    (2.3006520199548186, -1.6689039845747518, 0.4188073119525678),
+    (1.8913014077874002, -1.2679958271945908, 0.37680408948524996),
+    (1.875, -1.25, 0.375)
+]
+"""
 
 @torch.no_grad()
 def orthogonalize(matrix: torch.Tensor, num_ns_steps: int = len(NS_COEFFS), ortho_dtype=None, adaptive: bool = False):
@@ -190,19 +214,6 @@ def separate_frequencies(grad: torch.Tensor, cutoff_freq_ratio: float = 0.1):
 def freq_sep_func(weights: torch.Tensor, cutoff_freq_ratio: float = 0.1):
     return separate_frequencies(weights, cutoff_freq_ratio=cutoff_freq_ratio)
 
-
-def filter_grad(grad, fft_alpha: float = 1.0):
-    grad_freq = torch.fft.fftn(grad, norm="ortho")
-    freq_dims = [torch.fft.fftfreq(size, device=grad.device) for size in grad.shape]
-    shifted_freq_dims = [torch.fft.ifftshift(dim) for dim in freq_dims]
-    coords = torch.stack(torch.meshgrid(*shifted_freq_dims, indexing="ij"))
-    max_radius = 0.5 * math.sqrt(len(grad.shape))
-    radius = torch.linalg.norm(coords, dim=0) / max_radius
-    filter_weights = torch.exp(-fft_alpha * (radius**2))
-    filtered_grad_freq = grad_freq * filter_weights
-    return torch.fft.ifftn(filtered_grad_freq, norm="ortho").real
-
-
 def sym(matrix):
     return 0.5 * (matrix + matrix.T)
 
@@ -227,7 +238,42 @@ def _can_use_compiled_spectral_helpers() -> bool:
 
 class SingState(Optimizer):
     r"""
-    SingState cuts through noise by decoupling the gradient sign and magnitude into different momentum states.
+    SingState: Temporal Adaptation via Level and Orientation Normalization. 
+    
+    Cuts through noise by decoupling the gradient's sign and magnitude into two different momentum states, with a denominator for adaptive learning.
+
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining
+            parameter groups.
+        lr (float):
+            Learning rate parameter (default 0.0001).
+        betas (float, float, float):
+            Coefficient used for computing the sign momentum, running average, and the long-term squared running average (default: 0.9, 0.99, 0.9999999)
+        weight_decay (float):
+            AdamW-like weight decay, i.e. a L2 penalty (default: 0.0).
+        weight_decay_rate (float):
+            Decay the multiplier at which rate weight decay is applied, weight_decay * weight_decay_rate**step (default: 0.995).
+        denom_atan2 (bool):
+            Divide the smooth gradient using .atan2 instead of .div for stability and scale-invariance, removes epsilon/eps - https://arxiv.org/abs/2407.05872 (default: True).
+        invariant (bool):
+            Scale the latent into -1 to 1 space via .arctan().sin(), then later divide by the original grad's .arctan().cos(). Its been tested a bit, with the general result of speeding up descent. (default: False).
+        spectral_clip (bool):
+            Utilize six optimized Newton-Schulz iterations per step to clip the spectral norm to a max of 1. - https://leloykun.github.io/ponder/spectral-clipping/ - https://github.com/leloykun/spectral_clip (default: True).
+                * Set spectral_min and spectral_max to 0 to enable generic Newton-Schulz orthogonalization.
+                * Set spectral_min to any value below -1000.0 to enable block-wise "spectral hardcapping" mode. Likely to be slower in this mode, but more stable.
+        spectral_clip_compile (bool):
+            Compile the spectral clip function (Highly recommended for a large speed increase). (default: True).
+        spectral_min (float):
+            The minimum value of the spectral magnitude. Ought to be lower than spectral_max. (default: -1.0).
+        spectral_max (float):
+            The maximum value of the spectral magnitude. (default: 1.0).
+        spectral_adaptive (bool):
+            Adapt the result of spectral clipping to adapt to the scale of the gradients - https://github.com/leloykun/adaptive-muon (default: False).
+        lowpass_grad (bofloatol):
+            Pre-condition the gradient with a lowpass filter via FFT (default: 1.0).
+        stochastic_fp (bool):
+            Utilize stochastic rounding for bf16 and fp16 tensors. (default: True).
     """
 
     def __init__(
@@ -239,7 +285,7 @@ class SingState(Optimizer):
         weight_decay_rate: float = 0.995,
         spectral_clip: bool = False,
         spectral_clip_compile: bool = True,
-        spectral_clip_dtype=None,
+        spectral_clip_dtype=None,  # Can be set to torch.bfloat16, torch.float16, torch.float32, or even torch.float64 if you're insane in the membrane.
         spectral_min: float = -1.0,
         spectral_max: float = 1.0,
         spectral_adaptive: bool = False,
@@ -311,7 +357,9 @@ class SingState(Optimizer):
                 grad = param.grad.data
                 dimcount = grad.ndim
 
+                # State initialization
                 if len(state) == 0:
+                    # Exponential moving average of gradient values
                     state["momentum"] = torch.zeros_like(grad)
 
                 param_fp32 = param.detach().clone()
@@ -325,19 +373,21 @@ class SingState(Optimizer):
                 if dimcount > 0:
                     grad = filter_grad(grad, fft_alpha=group["lowpass_grad"]).abs().mul_(grad.sign())
 
+                #rms = grad.pow(2).mean().sqrt_().clamp_min_(1.0)
                 grad = grad.clamp(-group["step"], group["step"])
                 denom = momentum.abs()
-                momentum = momentum.lerp(grad.sign(), weight=1.0 - beta)
+                momentum = momentum.lerp(grad.sign(), weight=1.0 - beta)  #.abs_().lerp_(grad.sign(), weight=1. - beta)
                 c_t = grad.abs().lerp(momentum.abs(), weight=beta)
 
+                # Spectral Clipping / Newton Schulz iters or RMS normalization
                 if dimcount >= 2 and group["spectral_clip"]:
                     if dimcount > 2:
-                        c_t_2d = c_t.reshape(len(c_t), -1)
+                        c_t_2d = c_t.reshape(len(c_t), -1)  # Make 2D if conv or 1 dim
                     else:
                         c_t_2d = c_t
                     flip = c_t_2d.shape[0] > c_t_2d.shape[1]
                     if flip:
-                        c_t_2d = c_t_2d.T
+                        c_t_2d = c_t_2d.T  # Flip if first dim is larger
                     c_t_2d = self.clip_func(
                         c_t_2d,
                         sigma_min=group["spectral_min"],
@@ -349,13 +399,18 @@ class SingState(Optimizer):
                         c_t_2d = c_t_2d.T
                     full_step = c_t_2d.view_as(c_t).atan2(denom).mul_(1.27323954474)
                 else:
+                    # Utilize momentum as denom with atan2
                     full_step = c_t.atan2(denom).mul_(1.27323954474)
 
+                #rms = momentum.pow(2).mean().sqrt_().clamp_min_(1.0)
                 nesterov_direction = grad.sign().lerp_(momentum, weight=beta)
                 full_step = full_step.mul(nesterov_direction)
 
+                # Perform weight decay
                 if weight_decay != 0:
                     full_step = full_step.add(param_fp32.data, alpha=weight_decay * weight_decay_rate**group["step"])
+
+                #print(full_step)
                 param_fp32.data.add_(full_step, alpha=-lr)
 
                 if param.dtype in {torch.float16, torch.bfloat16} and group["stochastic_fp"]:

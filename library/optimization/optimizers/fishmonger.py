@@ -16,6 +16,33 @@ class FishMonger(Optimizer):
 
     Tracks a fast momentum/FIM path plus a slower natural-gradient path, with optional differential amplification
     between successive gradients.
+    
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining
+            parameter groups.
+        lr (float):
+            Learning rate parameter (default 0.001)
+        betas (Tuple[float, float, float], optional):
+            coefficients used for computing running averages of
+            fim, momentum, and its square (default: (0.9, 0.99, 0.999)).
+        eps (float):
+            Term added to the denominator outside of the root operation to
+            improve numerical stability. (default: 1e-8).
+        eps2 (float):
+            Term to multiple the RMS of the grad to calculate adaptive eps. (default: 0.01).
+        eps_floor (float):
+            Term to set a floor for the eps, to prevent NaNs. (default: 1e-30).
+        weight_decay (float):
+            Weight decay, i.e. a L2 penalty (default: 0.0).
+        clip (float):
+            Clip gradient to this value (default: 1.0).
+        centralization (float):
+            Center grad (default: 1.0).
+        diff_amp (float):
+            Accelerate the difference between the current and past gradient by this multiplicative value (default: 1.0).
+        diff_amp_beta (float):
+            Coefficient used for computing running average of the current and past gradients (default: 0.999).
     """
 
     def __init__(

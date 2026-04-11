@@ -3,7 +3,17 @@ import torch
 
 @torch.no_grad()
 def apply_update_strategies(update, grad, update_strategy, scale=1.0):
-    """Apply cautious / grams style update post-processing with optional scaling."""
+    """Apply cautious / grams style update post-processing with optional scaling.
+
+    Args:
+        update (torch.Tensor): The current update tensor to be modified.
+        grad_normed (torch.Tensor): The normalized gradient.
+        update_strategy (str): One of 'cautious', 'grams', 'both'.
+        scale (float): Scaling factor for the Grams strategies.
+
+    Returns:
+        torch.Tensor: The modified update tensor.
+    """
     if scale <= 0 or update_strategy not in {"cautious", "grams", "both"}:
         return update
 

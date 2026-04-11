@@ -8,7 +8,15 @@ from library.optimization.optimizers.utils.stochastic import copy_stochastic_
 
 
 class SGDSaI(BaseOptimizer):
-    """Repo-owned SGDSaI optimizer adapted for the optimization layer."""
+    r"""No More Adam: Learning Rate Scaling at Initialization is All You Need.
+
+    :param params: ParamGroup. iterable of parameters to optimize or dicts defining parameter groups.
+    :param lr: float. learning rate.
+    :param momentum: float.  coefficients used for computing running averages of gradient.
+    :param weight_decay: float. weight decay (L2 penalty).
+    :param weight_decouple: bool. the optimizer uses decoupled weight decay as in AdamW.
+    :param eps: float. term added to the denominator to improve numerical stability.
+    """
 
     def __init__(
         self,

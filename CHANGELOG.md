@@ -10,6 +10,37 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-10]
+
+### Added
+
+- **The last top-level donor optimizer leaves are now repo-owned too** — The repo no longer needs to leave `adammini.py` or `clybius_experiments.py` behind in the authoritative vendor tree just because they were awkward fits for the shared optimizer layer.
+  - Added [adammini.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/adammini.py) with a repo-owned `AdamMini` implementation adapted from the authoritative vendor tree while preserving its name-aware grouping logic for attention/embed-specific update paths.
+  - Added [momentus_caution.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/momentus_caution.py) and [remaster.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/remaster.py) by splitting the donor `clybius_experiments.py` file into one-optimizer-per-file repo-owned leaves while keeping the key donor comments/docstrings.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `AdamMini`, `MomentusCaution`, and `REMASTER` participate in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `AdamMini` named-group construction plus first-step specialized state initialization, and for `MomentusCaution` / `REMASTER` construction plus first-step running-state initialization through the shared factory path.
+
+### Changed
+
+- **The shared optimizer group materialization now preserves parameter names for name-aware repo-owned optimizers** — Optimizers adapted from donor code no longer have to bypass the factory path just because they need module parameter names to rebuild specialized group structure.
+  - Updated `library/optimization/types.py` so `build_module_parameter_group(...)` preserves a materialized `named_params` payload alongside the flat `params` list.
+  - Updated [adammini.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/adammini.py) so the repo-owned `AdamMini` can reconstruct donor-style embed/QK/attention grouping from shared factory param groups instead of requiring a raw `nn.Module`.
+- **The AdamMini adaptation also hardens a donor broadcasting edge on newer PyTorch builds** — The repo-owned copy now avoids the donor’s in-place broadcast multiply in attention update paths, which can raise on current PyTorch instead of applying the intended scaling.
+  - Updated [adammini.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/adammini.py) so the attention-projection and grouped-attention update branches use equivalent non-in-place scaling math that keeps the donor behavior without depending on in-place broadcast semantics.
+- **The optimization wrapper layer now exposes TorchAO CPU optimizer offload through the shared factory path** — The repo no longer has to leave the old vendor `low_bit_optim/cpu_offload.py` script dangling just to access that feature.
+  - Added [cpu_offload.py](/mnt/d/Projects/sd-scripts/library/optimization/wrappers/cpu_offload.py) with a repo-owned `CPUOffloadOptimizerWrapper` that wraps upstream `torchao.optim.CPUOffloadOptimizer` through the existing `base_optimizer_type=...` wrapper config pattern.
+  - Updated `library/optimization/registry.py`, `library/optimization/optimizer_factory.py`, `library/optimization/optimizer_utils.py`, and `library/optimization/wrappers/__init__.py` so `CPUOffloadOptimizer` is a registered wrapper, preserves base-optimizer kwargs during wrapper construction, and participates in wrapper detection/signature handling cleanly.
+  - Added focused regression coverage for `CPUOffloadOptimizer` registration metadata, wrapper construction with namespaced base args, scheduler integration, and fast-fail behavior when no CUDA/XPU runtime is available.
+- **The older repo-owned optimization surface now has package-alignment guardrails too** — The earlier in-repo optimizers and schedulers were already on the shared registry/factory path, and the test suite now checks that they stay aligned with the public package exports as the package is cleaned up.
+  - Updated `tests/unit/optimizers/test_registry.py` with coverage that iterates registered optimizer and scheduler targets under `library.optimization.optimizers.*` / `library.optimization.schedulers.*` and asserts the package-level exports resolve to the same underlying classes.
+  - Updated [library/optimization/optimizers/README.md](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/README.md) and [ROADMAP.md](/mnt/d/Projects/sd-scripts/ROADMAP.md) to note that the pre-existing repo-owned optimizer/scheduler files were audited and already participate in the unified optimization layer.
+- **State-storage dtype normalization is now shared across the absorbed offload-aware optimizers** — The repo no longer keeps duplicate string-to-dtype normalization helpers in each optimizer file that stages state onto a configurable storage dtype.
+  - Added `library/optimization/optimizers/utils/state.py` with a shared `resolve_state_storage_dtype(...)` helper and re-exported it through `library/optimization/optimizers/utils/__init__.py`.
+  - Updated [bcos.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/bcos.py), [oagopt.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/oagopt.py), [ocgopt.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/ocgopt.py), and [projective_adam.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/projective_adam.py) to use the shared helper instead of carrying local copies.
+- **The common FFT low-pass gradient helper is now shared where the implementations were already aligned** — Several of the orthogonalized/spectral optimizer files no longer each carry the same `filter_grad(...)` body locally.
+  - Added `library/optimization/optimizers/utils/frequency.py` with a shared `filter_grad(...)` helper and re-exported it through `library/optimization/optimizers/utils/__init__.py`.
+  - Updated [fftdescent.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/fftdescent.py), [oagopt.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/oagopt.py), [ocgopt.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/ocgopt.py), [scgopt.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/scgopt.py), [abmog.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/abmog.py), and [singstate.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/singstate.py) to use the shared helper, while leaving `TALON` on its local FFT variant because its normalization path differs.
+
 ## [2026-04-09]
 
 ### Added
@@ -58,6 +89,14 @@ Rules:
   - Added [fmarscrop.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/fmarscrop.py) and [fmarscrop_v2.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/fmarscrop_v2.py) with repo-owned implementations adapted from the authoritative vendor tree while switching helper usage onto the repo-owned adaptive-epsilon, AGC, and stochastic-copy utilities.
   - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `FMARSCrop` and `FMARSCropV2` participate in the shared repo-owned optimizer registration path.
   - Added focused regression coverage for `FMARSCrop` and `FMARSCropV2` construction plus first-step MARS/FIM/momentum state initialization through the shared factory path.
+- **The heavier FMARS family follow-up now covers FMARSCropV2ExMachina too** — The repo no longer leaves that donor variant stranded behind the vendor file while the rest of the plain FMARS pair is repo-owned.
+  - Added [fmarscrop_v2_exmachina.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/fmarscrop_v2_exmachina.py) with a repo-owned `FMARSCropV2ExMachina` implementation adapted from the authoritative vendor tree while preserving the fuller donor docstring and key inline algorithm comments.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `FMARSCropV2ExMachina` participates in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `FMARSCropV2ExMachina` construction plus first-step update-strategy / diff-history state initialization through the shared factory path.
+- **The remaining FMARS family pass now covers FMARSCropV3 and FMARSCropV3ExMachina too** — The repo no longer leaves the final donor `fmarscrop.py` variants stranded behind the vendor file.
+  - Added [fmarscrop_v3.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/fmarscrop_v3.py) and [fmarscrop_v3_exmachina.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/fmarscrop_v3_exmachina.py) with repo-owned implementations adapted from the authoritative vendor tree while preserving the fuller donor docstrings and key inline algorithm comments.
+  - Updated `library/optimization/optimizers/__init__.py` and `library/optimization/registry.py` so `FMARSCropV3` and `FMARSCropV3ExMachina` participate in the shared repo-owned optimizer registration path.
+  - Added focused regression coverage for `FMARSCropV3` and `FMARSCropV3ExMachina` construction plus first-step FIM / momentum / diff-history state initialization through the shared factory path.
 
 ### Changed
 

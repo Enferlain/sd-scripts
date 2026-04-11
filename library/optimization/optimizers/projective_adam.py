@@ -5,7 +5,7 @@ from typing import Literal
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.optimizers.utils import copy_stochastic_
+from library.optimization.optimizers.utils import copy_stochastic_, resolve_state_storage_dtype
 
 
 logger = logging.getLogger(__name__)
@@ -20,21 +20,6 @@ NS_COEFFS = [
     (1.8913014077874002, -1.2679958271945908, 0.37680408948524996),
     (1.875, -1.25, 0.375),
 ]
-
-
-def _resolve_state_storage_dtype(state_storage_dtype: str | torch.dtype) -> torch.dtype:
-    if not isinstance(state_storage_dtype, str):
-        return state_storage_dtype
-
-    normalized_dtype = state_storage_dtype.strip().lower()
-    if normalized_dtype == "float32":
-        return torch.float32
-    if normalized_dtype == "float16":
-        return torch.float16
-    if normalized_dtype == "bfloat16":
-        return torch.bfloat16
-    return torch.bfloat16
-
 
 def _resolve_ortho_dtype(ortho_dtype: str | torch.dtype | None) -> torch.dtype:
     if ortho_dtype is None:
@@ -85,7 +70,26 @@ class ProjectiveAdam(Optimizer):
     This optimizer maps gradients onto a geometric manifold using one of several
     projection types, tracks momentum on that manifold, and reconstructs the
     update via inverse projection.
+
+    Supported Projections:
+        - 'stereographic': Maps R^n -> S^n via stereographic projection from the south pole.
+        - 'gnomonic': Maps R^n -> Hemisphere via central/gnomonic projection.
+        - 'hyperbolic': Maps R^n -> Poincaré Ball (Hyperbolic space) via tanh scaling.
+    
+    Arguments:
+        params (iterable): Iterable of parameters to optimize.
+        lr (float): Learning rate (default: 1e-3).
+        betas (Tuple[float, float]): Coefficients for EMAs (default: (0.95, 0.999)).
+        eps (float): Numerical stability term (default: 1e-16).
+        weight_decay (float): Weight decay coefficient (default: 0.0).
+        projection (str): Projection type: 'stereographic', 'gnomonic', 'hyperbolic' (default: 'gnomonic').
+        input_norm (bool): Normalize RMS by last 2D dimension if True, otherwise tensor-wise RMS (default: True).
+        normuon (bool): Use NorMuon update scaling (default: True).
+        use_compile (bool): Use torch.compile on orthogonalization for faster execution (default: True).
+        ortho_dtype (str): Data type for Newton-Schulz orthogonalization (default: None (torch.float32)).
+        stochastic_fp (bool): Use stochastic rounding for half-precision (default: True).
     """
+
 
     PROJECTION_TYPES = ("stereographic", "gnomonic", "hyperbolic")
 
@@ -123,7 +127,7 @@ class ProjectiveAdam(Optimizer):
         for key in kwargs:
             logger.warning("Unrecognized optimizer argument '%s'. It will be ignored.", key)
 
-        final_state_dtype = _resolve_state_storage_dtype(state_storage_dtype)
+        final_state_dtype = resolve_state_storage_dtype(state_storage_dtype)
         resolved_ortho_dtype = _resolve_ortho_dtype(ortho_dtype)
 
         defaults = {
@@ -200,6 +204,12 @@ class ProjectiveAdam(Optimizer):
 
     @staticmethod
     def _stereographic_project(grad: torch.Tensor, eps: float) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Element-wise Stereographic Projection from South Pole.
+        Maps each element g_i -> (y_i, z_i) on a 2D circle.
+
+        proj(g_i) = (2*g_i / (g_i^2 + 1), (g_i^2 - 1) / (g_i^2 + 1))
+        """
         del eps
         grad_sq = grad.pow(2)
         denom = grad_sq + 1.0
@@ -207,26 +217,52 @@ class ProjectiveAdam(Optimizer):
 
     @staticmethod
     def _stereographic_inverse(y: torch.Tensor, z: torch.Tensor, eps: float) -> torch.Tensor:
+        """
+        Inverse Stereographic Projection. Maps S^n -> R^n.
+
+        inv(y, z) = y / (1 - z)
+        """
         return y / (1.0 - z).clamp_min(eps)
 
     @staticmethod
     def _gnomonic_project(grad: torch.Tensor, eps: float) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Element-wise Gnomonic (Central) Projection.
+        Maps each element g_i -> (y_i, z_i) on the hemisphere.
+
+        proj(g_i) = (g_i / sqrt(1 + g_i^2), 1 / sqrt(1 + g_i^2))
+        """
         del eps
         inv_sqrt = torch.rsqrt(1.0 + grad.pow(2))
         return grad * inv_sqrt, inv_sqrt
 
     @staticmethod
     def _gnomonic_inverse(y: torch.Tensor, z: torch.Tensor, eps: float) -> torch.Tensor:
+        """
+        Inverse Gnomonic Projection. Maps Hemisphere -> R^n.
+
+        inv(y, z) = y / z
+        """
         return y / z.clamp_min(eps)
 
     @staticmethod
     def _hyperbolic_project(grad: torch.Tensor, eps: float) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Element-wise Hyperbolic (Poincaré) Projection.
+
+        proj(g_i) = tanh(g_i), z = |tanh(g_i)|
+        """
         del eps
         y = torch.tanh(grad)
         return y, y.abs()
 
     @staticmethod
     def _hyperbolic_inverse(y: torch.Tensor, z: torch.Tensor, eps: float) -> torch.Tensor:
+        """
+        Inverse Hyperbolic Projection. Maps D^1 -> R^1 via arctanh.
+
+        inv(y_i) = arctanh(clamp(y_i))
+        """
         del z
         y_clamped = y.clamp(min=-1.0 + eps, max=1.0 - eps)
         return torch.atanh(y_clamped)

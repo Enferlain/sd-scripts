@@ -19,6 +19,7 @@ class AdamW8bitKahan(bitsandbytes.optim.AdamW8bit):
 
     @torch.no_grad()
     def update_step(self, group, p, gindex, pindex):
+        # avoid update error from non-contiguous memory layout
         p.data = p.data.contiguous()
         p.grad = p.grad.contiguous()
 
@@ -41,6 +42,7 @@ class AdamW8bitKahan(bitsandbytes.optim.AdamW8bit):
 
         shift = state["shift"]
 
+        # StableAdamW
         if self.stabilize:
             exp_avg_sq = state["state2"]
             eps_sq = torch.tensor(config["eps"] ** 2, dtype=exp_avg_sq.dtype, device=exp_avg_sq.device)
@@ -117,8 +119,17 @@ class AdamW8bitKahan(bitsandbytes.optim.AdamW8bit):
                 skip_zeros=config["skip_zeros"],
             )
 
+        # Apply decoupled weight decay manually after the bitsandbytes update.
+        # The optimizer_update_* kernels operate on `shift`, not the true parameter `p`,
+        # so passing a nonzero weight decay there would decay the compensation buffer
+        # instead of the weight tensor. We therefore run the kernel with
+        # weight_decay=0.0 and inject the decoupled decay here, after the kernel,
+        # so our stochastic bf16 copy-back is the final write.
         weight_decay = config["weight_decay"]
         if weight_decay > 0.0:
+            # shift -= lr * weight_decay * p
+            # Do the decay update in fp32, then stochastically round back to bf16
+            # to avoid losing tiny updates during the compensation write-back.
             wd_update = p.data.float().mul_(lr * weight_decay)
             shift_fp32 = shift.float().sub_(wd_update)
             if shift.dtype == torch.bfloat16:

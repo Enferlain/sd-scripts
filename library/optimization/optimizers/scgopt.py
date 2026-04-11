@@ -1,10 +1,22 @@
+# SCGOpt from https://github.com/Clybius/Personalized-Optimizers by Clybius
+
 import math
 
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.optimizers.utils import copy_stochastic_
+from library.optimization.optimizers.utils import copy_stochastic_, filter_grad
 
+# Original Spectral Clipping code by leloykun (https://leloykun.github.io/ponder/spectral-clipping/ https://github.com/leloykun/spectral_clip)
+
+"""
+@misc{cesista2025spectralclipping,
+  author = {Franz Louis Cesista},
+  title = {"Fast, Numerically Stable, and Auto-Differentiable Spectral Clipping Via Newton-Schulz Iteration"},
+  year = {2025},
+  url = {http://leloykun.github.io/ponder/spectral-clipping/},
+}
+"""
 
 NS_COEFFS = [
     (3.5318, -4.7911, 1.9388),
@@ -14,6 +26,19 @@ NS_COEFFS = [
     (2.2948, -2.0951, 0.7895),
     (2.1535, -1.8338, 0.6869),
 ]
+
+# New coeffs from https://kexue.fm/archives/11059, may enable later.
+"""
+NS_COEFFS = [
+    (8.287212018145622, -23.59588651909882, 17.300387312530923),
+    (4.107059111542197, -2.9478499167379084, 0.54484310829266),
+    (3.9486908534822938, -2.908902115962947, 0.5518191394370131),
+    (3.3184196573706055, -2.488488024314878, 0.5100489401237208),
+    (2.3006520199548186, -1.6689039845747518, 0.4188073119525678),
+    (1.8913014077874002, -1.2679958271945908, 0.37680408948524996),
+    (1.875, -1.25, 0.375)
+]
+"""
 
 
 @torch.no_grad()
@@ -81,19 +106,6 @@ def orthogonalize_compiled_func(
     return orthogonalize(matrix, ortho_dtype=ortho_dtype, adaptive=adaptive)
 
 
-def filter_grad(grad: torch.Tensor, fft_alpha: float = 1.0) -> torch.Tensor:
-    grad_freq = torch.fft.fftn(grad, norm="ortho")
-    freq_dims = [torch.fft.fftfreq(size, device=grad.device) for size in grad.shape]
-    shifted_freq_dims = [torch.fft.ifftshift(freq) for freq in freq_dims]
-    coords = torch.stack(torch.meshgrid(*shifted_freq_dims, indexing="ij"))
-    max_radius = 0.5 * math.sqrt(len(grad.shape))
-    radius = torch.linalg.norm(coords, dim=0) / max_radius
-    filter_weights = torch.exp(-fft_alpha * (radius**2))
-    filtered_grad_freq = grad_freq * filter_weights
-    modified_grad = torch.fft.ifftn(filtered_grad_freq, norm="ortho")
-    return modified_grad.real
-
-
 def create_gaussian_mask(
     shape: tuple[int, ...],
     sigma: float = 1.0,
@@ -131,6 +143,45 @@ class SCGOpt(Optimizer):
 
     Separates momentum states into full gradient and centralized gradient for smoother and faster descent, with a few
     extra features for boosting and stabilizing descent.
+
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining
+            parameter groups.
+        lr (float):
+            Learning rate parameter (default 0.0001).
+        betas (float, float, float):
+            Coefficient used for computing the centralized momentum, full gradient momentum (used for centering), and the long-term squared running average (default: 0.95, 0.9999999, 0.9999999).
+        weight_decay (float):
+            AdamW-like weight decay, i.e. a L2 penalty (default: 0.0).
+        weight_decay_rate (float):
+            Decay the multiplier at which rate weight decay is applied, weight_decay * weight_decay_rate**step (default: 0.995).
+        centralization (float):
+            Subtract the full gradient momentum from the current gradient at this ratio (default: 1.0).
+        spectral_clip (bool):
+            Utilize six optimized Newton-Schulz iterations per step to clip the spectral norm to a max of 1. - https://leloykun.github.io/ponder/spectral-clipping/ - https://github.com/leloykun/spectral_clip (default: False).
+        spectral_adaptive (bool):
+            Adapt the result of spectral clipping to adapt to the scale of the gradients - https://github.com/leloykun/adaptive-muon (default: True).
+        spectral_clip_compile (bool):
+            Compile the spectral clip function (Highly recommended for a large speed increase) (default: True).
+        spectral_clip_dtype (torch.dtype in string format):
+            Sets the dtype of spectral clipping calculation. Recommended to use torch.float32 (or leave at default of None) (default: None, which results in torch.float32).
+        adaptive (bool):
+            Scale the full step to the momentumized average gradient, always utilizes RMS normalization on the gradient if True, otherwise caps RMS at 1.0 (default: True).
+        adaptive_min (float):
+            Minimum multiplier for the adaptive scale (default: -1.0).
+        adaptive_max (float):
+            Maximum multiplier for the adaptive scale (default: 1.0).
+        use_sign (bool):
+            Transform the gradient into its .sign() based form (-1 if negative or 1 if positive). May be more stable in noisy scenarios (default: True).
+        lowpass_grad (float):
+            Pre-conditions the gradient via a low-pass filter that maintains the direction of the gradient. Higher = stronger filtering, 0 = disabled (default: 0.0).
+        sim_match (bool):
+            Filters the frequencies of the running average with the gradient of the current step's frequencies (default: False).
+        cautious_min (float):
+            A value other than 1.0 will utilize cautious-stepping. At 0.0, this zeros out parts of the momentum which don't correlate with the current gradient's direction. 0.5 will halve it instead (default: 0.0).
+        stochastic_fp (bool):
+            Utilize stochastic rounding for bf16 and fp16 tensors. (default: True).
     """
 
     def __init__(
@@ -144,7 +195,7 @@ class SCGOpt(Optimizer):
         spectral_clip: bool = False,
         spectral_adaptive: bool = True,
         spectral_clip_compile: bool = True,
-        spectral_clip_dtype=None,
+        spectral_clip_dtype=None,  # Can be set to torch.bfloat16, torch.float16, torch.float32, or even torch.float64 if you're insane in the membrane.
         adaptive: bool = True,
         adaptive_min: float = -1.0,
         adaptive_max: float = 1.0,
@@ -216,7 +267,9 @@ class SCGOpt(Optimizer):
                 grad = param.grad.data
                 dimcount = grad.ndim
 
+                # State initialization
                 if len(state) == 0:
+                    # Exponential moving average of gradient values
                     state["denom"] = torch.ones_like(grad).mean() if group["use_sign"] else torch.ones_like(grad)
                     state["value_momentum"] = torch.zeros_like(grad)
                     state["centralized_momentum"] = torch.zeros_like(grad)
@@ -233,52 +286,67 @@ class SCGOpt(Optimizer):
                     centralized_momentum = state["centralized_momentum"].detach().clone().to(torch.float32)
                     param_fp32 = param.detach().clone().to(torch.float32)
 
+                # Averaged beta (step 1 = 0, step 2 = 0.5, step 3 = 0.6667, step 4 = 0.75...)
                 slow_beta2 = (beta2**step - beta2) / (beta2**step - 1.0)
                 slow_beta3 = (beta3**step - beta3) / (beta3**step - 1.0)
 
+                # ADOPT-style clamping for early stability / to prevent NaNs
                 grad = grad.clamp(-step, step)
 
                 if group["use_sign"]:
                     grad = grad.sign()
                 else:
+                    # Low-pass filter via FFT, maintains direction
                     if dimcount > 0 and group["lowpass_grad"] != 0:
                         grad = filter_grad(grad, fft_alpha=group["lowpass_grad"]).abs().mul_(grad.sign())
 
+                    # Move RMS to 1.0 if scale-matching (adaptive) is enabled, otherwise cap the RMS at 1.0 if not
                     if group["adaptive"]:
-                        rms = grad.pow(2).mean().sqrt_().clamp_min_(1e-16)
+                        rms = grad.pow(2).mean().sqrt_().clamp_min_(1e-16)  # Cap at RMS of 1.0
                     else:
-                        rms = grad.pow(2).mean().sqrt_().clamp_min_(1.0)
+                        rms = grad.pow(2).mean().sqrt_().clamp_min_(1.0)  # Cap at min RMS of 1.0
                     grad = grad.div(rms)
 
+                # ADOPT-style denominator update (un-updated denom)
                 current_denom = denom.sqrt()
 
+                # Centralize gradient by removing running average
                 centralized_grad = grad.sub(value_momentum, alpha=centralization)
+
+                # Momentumize the centralized gradient
                 centralized_momentum = centralized_momentum.lerp(centralized_grad, weight=1.0 - beta)
+
+                # Update full momentum
                 value_momentum = value_momentum.lerp(grad, weight=1.0 - slow_beta2)
+
+                # Add back full momentum to the centralized gradient
                 exp_avg = centralized_grad.lerp(centralized_momentum, weight=beta).add_(
                     grad.lerp(value_momentum, weight=slow_beta2),
                     alpha=centralization,
                 )
 
+                # Update denominator with either centralized gradient, or its mean when utilizing a sign-based gradient
                 denom = denom.lerp(
                     centralized_grad.pow(2).mean() if group["use_sign"] else centralized_grad.pow(2),
                     weight=1.0 - slow_beta3,
                 )
 
+                # Frequency matching the momentumized update with the current step's gradient
                 if dimcount > 0 and group["sim_match"] and not group["use_sign"]:
                     exp_avg = similarity_fft(exp_avg, grad)
 
+                # Spectral Clipping / Newton Schulz iters
                 if dimcount >= 1 and group["spectral_clip"]:
                     if dimcount > 2:
-                        exp_avg_2d = exp_avg.reshape(len(exp_avg), -1)
+                        exp_avg_2d = exp_avg.reshape(len(exp_avg), -1)  # Make 2D if conv or 1 dim
                     elif dimcount < 2:
-                        exp_avg_2d = exp_avg.reshape(1, -1)
+                        exp_avg_2d = exp_avg.reshape(1, -1)   # Make 2D if conv or 1 dim
                     else:
                         exp_avg_2d = exp_avg
 
                     flip = exp_avg_2d.shape[0] > exp_avg_2d.shape[1]
                     if flip:
-                        exp_avg_2d = exp_avg_2d.T
+                        exp_avg_2d = exp_avg_2d.T  # Flip if first dim is larger
 
                     exp_avg_2d = self.clip_func(
                         exp_avg_2d,
@@ -293,6 +361,7 @@ class SCGOpt(Optimizer):
 
                     exp_avg = exp_avg_2d.view_as(exp_avg)
 
+                # Cautious update (zero-out update where the update isn't in the direction of the current gradient)
                 scale_factor_mask = torch.where(
                     grad * exp_avg > 0,
                     torch.ones_like(exp_avg),
@@ -300,16 +369,21 @@ class SCGOpt(Optimizer):
                 ).to(exp_avg.dtype)
                 scale_factor_mask = scale_factor_mask.div(scale_factor_mask.mean().clamp_min_(1e-3))
 
+                # Atan2-Adam denominator for scale invariance
                 full_step = exp_avg.mul(scale_factor_mask).atan2(current_denom).mul_(1.27323954474)
+
+                # Scale the full step with the gradient, channel-wise
                 if group["adaptive"] and dimcount > 0:
                     scale_factor = (exp_avg * full_step).sum().clamp(group["adaptive_min"], group["adaptive_max"])
                     full_step = scale_factor * full_step
 
+                # Perform weight decay
                 if weight_decay != 0:
                     full_step = full_step.add(param_fp32.data, alpha=weight_decay * weight_decay_rate**group["step"])
 
                 param_fp32.data.add_(full_step, alpha=-lr)
 
+                # Stochastic update
                 if param.dtype in {torch.float16, torch.bfloat16} and group["stochastic_fp"]:
                     copy_stochastic_(state["denom"], denom)
                     copy_stochastic_(state["value_momentum"], value_momentum)
