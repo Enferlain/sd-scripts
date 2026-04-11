@@ -3012,15 +3012,17 @@ class TestAbsorbedOptimizers:
 
         assert "WiwiOpt" in optimizer_name
         assert state["step"] == 1
-        assert "polyak" in state
         assert "accum" in state
         assert "exp_avg" in state
+        assert "exp_avg_sq_row" in state
+        assert "exp_avg_sq_col" in state
         assert "delta_ema" in state
         assert "delta_norm_ema" in state
         assert "normuon_second_momentum" in state
         assert "oja_basis" in state
-        assert state["polyak"].shape == (4, 1)
         assert state["accum"].shape == (4, 1)
+        assert state["exp_avg_sq_row"].shape == (4,)
+        assert state["exp_avg_sq_col"].shape == (4,)
         assert state["delta_norm_ema"].shape == (4, 1)
         assert state["normuon_second_momentum"].shape == (4, 1)
         assert state["oja_basis"].shape[1] == 4

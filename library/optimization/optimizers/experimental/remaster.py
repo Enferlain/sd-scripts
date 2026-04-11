@@ -1,3 +1,5 @@
+# REMASTER from https://github.com/Clybius/Personalized-Optimizers by Clybius
+
 import torch
 from torch.optim import Optimizer
 
@@ -7,7 +9,7 @@ from library.optimization.optimizers.utils import copy_stochastic_
 class REMASTER(Optimizer):
     r"""
     REMASTER: Applying the idea of no gradient accumulation, as its been
-    supersceded by momentum. Faster training, smoother weights, Papa Johns.
+    superseded by momentum. Faster training, smoother weights, Papa Johns.
 
     Arguments:
         params (iterable):

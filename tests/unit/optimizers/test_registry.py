@@ -84,7 +84,7 @@ class TestOptimizerRegistry:
             (
                 "ADOPTEMAMixScheduleFree",
                 {
-                    "target": "library.optimization.optimizers.adopt_schedulefree.ADOPTEMAMixScheduleFree",
+                    "target": "library.optimization.optimizers.adopt.ADOPTEMAMixScheduleFree",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -104,7 +104,7 @@ class TestOptimizerRegistry:
             (
                 "ADOPTMARSScheduleFree",
                 {
-                    "target": "library.optimization.optimizers.adopt_schedulefree.ADOPTMARSScheduleFree",
+                    "target": "library.optimization.optimizers.adopt.ADOPTMARSScheduleFree",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -114,7 +114,7 @@ class TestOptimizerRegistry:
             (
                 "ADOPTAOScheduleFree",
                 {
-                    "target": "library.optimization.optimizers.adopt_schedulefree_ao.ADOPTAOScheduleFree",
+                    "target": "library.optimization.optimizers.adopt.ADOPTAOScheduleFree",
                     "backend": "torchao",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -124,7 +124,7 @@ class TestOptimizerRegistry:
             (
                 "ADOPTNesterovScheduleFree",
                 {
-                    "target": "library.optimization.optimizers.adopt_schedulefree.ADOPTNesterovScheduleFree",
+                    "target": "library.optimization.optimizers.adopt.ADOPTNesterovScheduleFree",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -134,7 +134,7 @@ class TestOptimizerRegistry:
             (
                 "ADOPTScheduleFree",
                 {
-                    "target": "library.optimization.optimizers.adopt_schedulefree.ADOPTScheduleFree",
+                    "target": "library.optimization.optimizers.adopt.ADOPTScheduleFree",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -144,7 +144,7 @@ class TestOptimizerRegistry:
             (
                 "FADOPTEMAMixScheduleFree",
                 {
-                    "target": "library.optimization.optimizers.adopt_schedulefree.FADOPTEMAMixScheduleFree",
+                    "target": "library.optimization.optimizers.adopt.FADOPTEMAMixScheduleFree",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -164,7 +164,7 @@ class TestOptimizerRegistry:
             (
                 "FADOPTMARSScheduleFree",
                 {
-                    "target": "library.optimization.optimizers.adopt_schedulefree.FADOPTMARSScheduleFree",
+                    "target": "library.optimization.optimizers.adopt.FADOPTMARSScheduleFree",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -174,7 +174,7 @@ class TestOptimizerRegistry:
             (
                 "FADOPTNesterovScheduleFree",
                 {
-                    "target": "library.optimization.optimizers.adopt_schedulefree.FADOPTNesterovScheduleFree",
+                    "target": "library.optimization.optimizers.adopt.FADOPTNesterovScheduleFree",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -184,7 +184,7 @@ class TestOptimizerRegistry:
             (
                 "FADOPTScheduleFree",
                 {
-                    "target": "library.optimization.optimizers.adopt_schedulefree.FADOPTScheduleFree",
+                    "target": "library.optimization.optimizers.adopt.FADOPTScheduleFree",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -194,7 +194,7 @@ class TestOptimizerRegistry:
             (
                 "FCompass",
                 {
-                    "target": "library.optimization.optimizers.fcompass.FCompass",
+                    "target": "library.optimization.optimizers.compass.FCompass",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -204,7 +204,7 @@ class TestOptimizerRegistry:
             (
                 "FCompassADOPT",
                 {
-                    "target": "library.optimization.optimizers.fcompass.FCompassADOPT",
+                    "target": "library.optimization.optimizers.compass.FCompassADOPT",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -214,7 +214,7 @@ class TestOptimizerRegistry:
             (
                 "FCompassADOPTMARS",
                 {
-                    "target": "library.optimization.optimizers.fcompass.FCompassADOPTMARS",
+                    "target": "library.optimization.optimizers.compass.FCompassADOPTMARS",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -224,7 +224,7 @@ class TestOptimizerRegistry:
             (
                 "FCompassPlus",
                 {
-                    "target": "library.optimization.optimizers.fcompass.FCompassPlus",
+                    "target": "library.optimization.optimizers.compass.FCompassPlus",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -274,7 +274,7 @@ class TestOptimizerRegistry:
             (
                 "AdamW4bitAO",
                 {
-                    "target": "library.optimization.optimizers.adamw_low_bit.AdamW4bitAO",
+                    "target": "library.optimization.optimizers.adamw.AdamW4bitAO",
                     "backend": "torchao",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -284,7 +284,7 @@ class TestOptimizerRegistry:
             (
                 "AdamW8bitAO",
                 {
-                    "target": "library.optimization.optimizers.adamw_low_bit.AdamW8bitAO",
+                    "target": "library.optimization.optimizers.adamw.AdamW8bitAO",
                     "backend": "torchao",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -304,7 +304,7 @@ class TestOptimizerRegistry:
             (
                 "AdamWfp8AO",
                 {
-                    "target": "library.optimization.optimizers.adamw_low_bit.AdamWfp8AO",
+                    "target": "library.optimization.optimizers.adamw.AdamWfp8AO",
                     "backend": "torchao",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -594,7 +594,7 @@ class TestOptimizerRegistry:
             (
                 "SCORNMachina",
                 {
-                    "target": "library.optimization.optimizers.scornmachina.SCORNMachina",
+                    "target": "library.optimization.optimizers.scorn.SCORNMachina",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -634,7 +634,7 @@ class TestOptimizerRegistry:
             (
                 "FARMSCropV2",
                 {
-                    "target": "library.optimization.optimizers.farmscrop_v2.FARMSCropV2",
+                    "target": "library.optimization.optimizers.farmscrop.FARMSCropV2",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -654,7 +654,7 @@ class TestOptimizerRegistry:
             (
                 "FMARSCropV2",
                 {
-                    "target": "library.optimization.optimizers.fmarscrop_v2.FMARSCropV2",
+                    "target": "library.optimization.optimizers.fmarscrop.FMARSCropV2",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -664,7 +664,7 @@ class TestOptimizerRegistry:
             (
                 "FMARSCropV2ExMachina",
                 {
-                    "target": "library.optimization.optimizers.fmarscrop_v2_exmachina.FMARSCropV2ExMachina",
+                    "target": "library.optimization.optimizers.fmarscrop.FMARSCropV2ExMachina",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -674,7 +674,7 @@ class TestOptimizerRegistry:
             (
                 "FMARSCropV3",
                 {
-                    "target": "library.optimization.optimizers.fmarscrop_v3.FMARSCropV3",
+                    "target": "library.optimization.optimizers.fmarscrop.FMARSCropV3",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -684,7 +684,7 @@ class TestOptimizerRegistry:
             (
                 "FMARSCropV3ExMachina",
                 {
-                    "target": "library.optimization.optimizers.fmarscrop_v3_exmachina.FMARSCropV3ExMachina",
+                    "target": "library.optimization.optimizers.fmarscrop.FMARSCropV3ExMachina",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -814,7 +814,7 @@ class TestOptimizerRegistry:
             (
                 "WiwiOpt",
                 {
-                    "target": "library.optimization.optimizers.wiwiopt.WiwiOpt",
+                    "target": "library.optimization.optimizers.experimental.wiwiopt.WiwiOpt",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -844,7 +844,7 @@ class TestOptimizerRegistry:
             (
                 "AdamW8bitKahan",
                 {
-                    "target": "library.optimization.optimizers.adamw_8bit_kahan.AdamW8bitKahan",
+                    "target": "library.optimization.optimizers.adamw.AdamW8bitKahan",
                     "backend": "bitsandbytes",
                     "kind": "optimizer",
                     "wrapper_style": None,

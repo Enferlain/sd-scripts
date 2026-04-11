@@ -98,7 +98,7 @@ class Compass(BaseOptimizer):
             Determine the update strategy to use, valid values are 'unmodified', 'cautious' (https://arxiv.org/abs/2411.16085),
             and 'grams' (https://arxiv.org/abs/2412.17107) (default: unmodified)
         use_orthograd (boolean):
-            Experimental. Updates weights using the component of the gradient that is orthogonal to the current
+            experimental. Updates weights using the component of the gradient that is orthogonal to the current
             weight direction, as described in "Grokking at the Edge of Numerical Stability" (https://arxiv.org/pdf/2501.04697).
             Can help prevent overfitting and improve generalisation.
             (default: False)

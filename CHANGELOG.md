@@ -10,6 +10,15 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-11]
+
+### Changed
+
+- **The experimental WiwiOpt copy now tracks the newer V1.3 algorithm shape instead of the older absorbed variant** — The repo-owned experimental copy now carries the newer factorized-variance and PAST-capable update path while keeping the shared stochastic-rounding and Windows compile-bootstrap integrations.
+  - Updated [wiwiopt.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/experimental/wiwiopt.py) with the `WiwiOptV1.py` algorithm changes, including CAME-style factorized variance tracking, `weight_decay_rate`, and configurable `egd_method` support.
+  - Updated [registry.py](/mnt/d/Projects/sd-scripts/library/optimization/registry.py) and [test_registry.py](/mnt/d/Projects/sd-scripts/tests/unit/optimizers/test_registry.py) so the `WiwiOpt` registration points at the experimental package path used after the optimizer package reorganization.
+  - Updated [test_absorbed_integrations.py](/mnt/d/Projects/sd-scripts/tests/unit/optimizers/test_absorbed_integrations.py) to reflect the new first-step WiwiOpt state layout (`exp_avg_sq_row` / `exp_avg_sq_col`) instead of the older `polyak` state.
+
 ## [2026-04-10]
 
 ### Added

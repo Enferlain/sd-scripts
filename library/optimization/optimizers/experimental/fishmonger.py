@@ -1,3 +1,5 @@
+# FishMonger from https://github.com/Clybius/Personalized-Optimizers by Clybius
+
 import torch
 from torch.optim import Optimizer
 
