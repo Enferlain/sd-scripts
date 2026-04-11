@@ -314,7 +314,7 @@ class TestOptimizerRegistry:
             (
                 "ABMOG",
                 {
-                    "target": "library.optimization.optimizers.abmog.ABMOG",
+                    "target": "library.optimization.optimizers.experimental.abmog.ABMOG",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -574,7 +574,7 @@ class TestOptimizerRegistry:
             (
                 "SingState",
                 {
-                    "target": "library.optimization.optimizers.singstate.SingState",
+                    "target": "library.optimization.optimizers.experimental.singstate.SingState",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -694,7 +694,7 @@ class TestOptimizerRegistry:
             (
                 "FishMonger",
                 {
-                    "target": "library.optimization.optimizers.fishmonger.FishMonger",
+                    "target": "library.optimization.optimizers.experimental.fishmonger.FishMonger",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -704,7 +704,7 @@ class TestOptimizerRegistry:
             (
                 "FishMonger8BitBNB",
                 {
-                    "target": "library.optimization.optimizers.fishmonger.FishMonger8BitBNB",
+                    "target": "library.optimization.optimizers.experimental.fishmonger.FishMonger8BitBNB",
                     "backend": "bitsandbytes",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -714,7 +714,7 @@ class TestOptimizerRegistry:
             (
                 "GOODDOG",
                 {
-                    "target": "library.optimization.optimizers.gooddog.GOODDOG",
+                    "target": "library.optimization.optimizers.experimental.gooddog.GOODDOG",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -744,7 +744,7 @@ class TestOptimizerRegistry:
             (
                 "Mythical",
                 {
-                    "target": "library.optimization.optimizers.mythical.Mythical",
+                    "target": "library.optimization.optimizers.experimental.mythical.Mythical",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -754,7 +754,7 @@ class TestOptimizerRegistry:
             (
                 "MomentusCaution",
                 {
-                    "target": "library.optimization.optimizers.momentus_caution.MomentusCaution",
+                    "target": "library.optimization.optimizers.experimental.momentus_caution.MomentusCaution",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -764,7 +764,7 @@ class TestOptimizerRegistry:
             (
                 "OAGOpt",
                 {
-                    "target": "library.optimization.optimizers.oagopt.OAGOpt",
+                    "target": "library.optimization.optimizers.experimental.oagopt.OAGOpt",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -774,7 +774,7 @@ class TestOptimizerRegistry:
             (
                 "OCGOpt",
                 {
-                    "target": "library.optimization.optimizers.ocgopt.OCGOpt",
+                    "target": "library.optimization.optimizers.experimental.ocgopt.OCGOpt",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -794,7 +794,7 @@ class TestOptimizerRegistry:
             (
                 "REMASTER",
                 {
-                    "target": "library.optimization.optimizers.remaster.REMASTER",
+                    "target": "library.optimization.optimizers.experimental.remaster.REMASTER",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -804,7 +804,7 @@ class TestOptimizerRegistry:
             (
                 "SCGOpt",
                 {
-                    "target": "library.optimization.optimizers.scgopt.SCGOpt",
+                    "target": "library.optimization.optimizers.experimental.scgopt.SCGOpt",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,
@@ -834,7 +834,7 @@ class TestOptimizerRegistry:
             (
                 "TALON",
                 {
-                    "target": "library.optimization.optimizers.talon.TALON",
+                    "target": "library.optimization.optimizers.experimental.talon.TALON",
                     "backend": "repo",
                     "kind": "optimizer",
                     "wrapper_style": None,

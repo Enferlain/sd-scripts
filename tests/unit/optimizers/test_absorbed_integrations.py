@@ -1921,6 +1921,9 @@ class TestAbsorbedOptimizers:
         expected_group_values,
     ):
         """Repo-owned absorbed optimizers should build through the shared registry path."""
+        if optimizer_type == "FishMonger8BitBNB":
+            pytest.importorskip("bitsandbytes")
+
         config = OptimizerConfig(
             optimizer_type=optimizer_type,
             learning_rates=LearningRatesConfig(base=learning_rate),

@@ -24,7 +24,6 @@ dependencies = [
     "torchastic~=0.1.2",
     "torch-optimi~=0.3.2",
     "adv_optm~=1.2.3",
-    "customized-optimizers",
     "kornia~=0.8.2",
     "tensorboard~=2.20.0",
     "safetensors~=0.6.2",
@@ -43,29 +42,35 @@ dependencies = [
     "blake3",
     "rich~=14.2.0",
     "sentencepiece~=0.2.1",
-    "torch>=2.9,<2.11",
+    "torch>=2.9,<2.12",
     "torchvision",
     "xformers",
     "ruff>=0.15.1",
     "ty>=0.0.17",
     "nvidia-ml-py",
-    "torchao>=0.17.0",
 ]
 
 # Torch profiles. Pick exactly one for your machine.
 [project.optional-dependencies]
+torch-cu126 = ["torch", "torchvision"]
 torch-cu128 = ["torch", "torchvision"]
-torch-cu129 = ["torch", "torchvision"]
 torch-cu130 = ["torch", "torchvision"]
 
 # Torch version profiles. Pick exactly one.
 torch-v29 = [
-    "torch>=2.9,<2.10",
+    "torch>=2.9.1,<2.10",
     "triton-windows>=3.5,<3.6; platform_system == 'Windows'",
+    "torchao>=0.15,<0.16",
 ]
 torch-v210 = [
     "torch>=2.10,<2.11",
     "triton-windows>=3.6,<3.7; platform_system == 'Windows'",
+    "torchao>=0.16,<0.17",
+]
+torch-v211 = [
+    "torch>=2.11,<2.12",
+    "triton-windows>=3.6,<3.7; platform_system == 'Windows'",
+    "torchao>=0.17,<0.18",
 ]
 
 onnx-cpu = ["onnxruntime>=1.20"]
@@ -84,42 +89,30 @@ default-groups = ["dev"]
 index-strategy = "unsafe-best-match"
 conflicts = [
     [
+        { extra = "torch-cu126" },
         { extra = "torch-cu128" },
-        { extra = "torch-cu129" },
         { extra = "torch-cu130" },
     ],
     [
         { extra = "torch-v29" },
         { extra = "torch-v210" },
+        { extra = "torch-v211" },
     ],
     [
         { extra = "onnx-cpu" },
         { extra = "onnx-gpu" },
     ],
-    [
-        { extra = "torch-cu129" },
-        { extra = "torch-v29" },
-        { extra = "torch-v210" },
-    ],
-    [
-        { extra = "torch-cu128" },
-        { extra = "torch-v210" },
-    ],
-    [
-        { extra = "torch-cu130" },
-        { extra = "torch-v29" },
-    ],
 ]
 
 
 [[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 [[tool.uv.index]]
-name = "pytorch-cu129"
-url = "https://download.pytorch.org/whl/cu129"
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [[tool.uv.index]]
@@ -128,16 +121,15 @@ url = "https://download.pytorch.org/whl/cu130"
 
 [tool.uv.sources]
 torch = [
+    { index = "pytorch-cu126", extra = "torch-cu126" },
     { index = "pytorch-cu128", extra = "torch-cu128" },
-    { index = "pytorch-cu129", extra = "torch-cu129" },
     { index = "pytorch-cu130", extra = "torch-cu130" },
 ]
 torchvision = [
+    { index = "pytorch-cu126", extra = "torch-cu126" },
     { index = "pytorch-cu128", extra = "torch-cu128" },
-    { index = "pytorch-cu129", extra = "torch-cu129" },
     { index = "pytorch-cu130", extra = "torch-cu130" },
 ]
-customized-optimizers = { git = "https://github.com/67372a/customized-optimizers" }
 
 # =============================================================================
 # Ruff - Linting and Formatting

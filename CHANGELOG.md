@@ -14,6 +14,13 @@ Rules:
 
 ### Changed
 
+- **The Torch/TorchAO compatibility story is now expressed through the Torch version profiles instead of a broad unconditional TorchAO dependency** — The base environment no longer claims one `torchao` line works across every supported Torch version, and the project now has an explicit `torch-v211` profile too.
+  - Updated [pyproject.toml](/mnt/d/Projects/sd-scripts/pyproject.toml) to widen the core Torch range to `<2.12`, remove the unconditional base `torchao` dependency, add a `torch-v211` profile, and bundle TorchAO version ranges with the `torch-v29`, `torch-v210`, and `torch-v211` extras according to the supported compatibility table.
+- **The CUDA wheel extras now mirror the mainstream PyTorch installer lanes more closely** — The dependency matrix no longer carries the awkward `cu129` lane, and the extra/conflict layout now cleanly models “pick one CUDA lane and one Torch version lane.”
+  - Updated [pyproject.toml](/mnt/d/Projects/sd-scripts/pyproject.toml) to replace `torch-cu129` with `torch-cu126`, add the `pytorch-cu126` index/source mapping, and remove the stale cross-conflict rules between CUDA-lane extras and Torch-version extras.
+- **The repo no longer declares the old git-installed `customized-optimizers` package as a dependency** — The absorbed optimizer surface now lives in-repo, and the lingering smoke config has been retargeted to the repo-owned optimizer name instead of the old vendor package path.
+  - Updated [pyproject.toml](/mnt/d/Projects/sd-scripts/pyproject.toml) to remove the `customized-optimizers` dependency and its `tool.uv.sources` git entry.
+  - Updated [smoke_test_customoptimizer.yaml](/mnt/d/Projects/sd-scripts/configs/smoke_test_customoptimizer.yaml) so the smoke config uses `SimplifiedAdEMAMixExM` directly and the current `use_orthograd` argument spelling.
 - **The experimental WiwiOpt copy now tracks the newer V1.3 algorithm shape instead of the older absorbed variant** — The repo-owned experimental copy now carries the newer factorized-variance and PAST-capable update path while keeping the shared stochastic-rounding and Windows compile-bootstrap integrations.
   - Updated [wiwiopt.py](/mnt/d/Projects/sd-scripts/library/optimization/optimizers/experimental/wiwiopt.py) with the `WiwiOptV1.py` algorithm changes, including CAME-style factorized variance tracking, `weight_decay_rate`, and configurable `egd_method` support.
   - Updated [registry.py](/mnt/d/Projects/sd-scripts/library/optimization/registry.py) and [test_registry.py](/mnt/d/Projects/sd-scripts/tests/unit/optimizers/test_registry.py) so the `WiwiOpt` registration points at the experimental package path used after the optimizer package reorganization.
