@@ -18,7 +18,12 @@ from torch import nn
 
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.optimizer_factory import get_optimizer
-from library.optimization.types import build_module_parameter_group
+from library.optimization.types import (
+    OptimizationPlan,
+    OptimizerBuildResult,
+    build_logical_parameter_group,
+    build_module_parameter_group,
+)
 from library.optimization.optimizer_utils import (
     get_optimizer_train_eval_fn,
     get_text_encoders_train_flags,
@@ -123,7 +128,7 @@ class FineTuneMode:
     # Optimizer & accelerator
     # ------------------------------------------------------------------
 
-    def build_optimizer_params(self, trainer: Trainer) -> tuple[str, dict, Any, Any, Any, list[str]]:
+    def build_optimizer_params(self, trainer: Trainer) -> OptimizerBuildResult:
         """Build optimizer with standard denoiser + TE param groups.
 
         Block-level LR grouping and pattern-based grouping are deferred
@@ -144,13 +149,22 @@ class FineTuneMode:
 
         # --- Build param groups ---
         trainable_params = []
-        lr_descriptions = []
+        logical_groups = []
 
         if trainer._train_denoiser:
             assert trainer.denoiser is not None, "denoiser must be loaded before build_optimizer_params"
             denoiser_lr = lr.denoiser if lr.denoiser is not None else lr.base
-            trainable_params.append(build_module_parameter_group(trainer.denoiser, lr=denoiser_lr, label="denoiser"))
-            lr_descriptions.append(f"denoiser lr: {denoiser_lr}")
+            parameter_group = build_module_parameter_group(trainer.denoiser, lr=denoiser_lr, label="denoiser")
+            trainable_params.append(parameter_group)
+            logical_groups.append(
+                build_logical_parameter_group(
+                    "denoiser",
+                    parameter_group.params,
+                    lr=denoiser_lr,
+                    label="denoiser",
+                    execution_group_indices=(len(trainable_params) - 1,),
+                )
+            )
 
         te_lr_raw = lr.text_encoders
         for i, (t_enc, flag) in enumerate(zip(trainer.text_encoders, self._te_train_flags)):
@@ -161,19 +175,40 @@ class FineTuneMode:
                     te_lr = te_lr_raw
                 else:
                     te_lr = te_lr_raw[i] if i < len(te_lr_raw) else lr.base
-                trainable_params.append(build_module_parameter_group(t_enc, lr=te_lr, label=f"text_encoder{i + 1}"))
-                lr_descriptions.append(f"text_encoder{i + 1} lr: {te_lr}")
+                parameter_group = build_module_parameter_group(t_enc, lr=te_lr, label=f"text_encoder{i + 1}")
+                trainable_params.append(parameter_group)
+                logical_groups.append(
+                    build_logical_parameter_group(
+                        f"text_encoder{i + 1}",
+                        parameter_group.params,
+                        lr=te_lr,
+                        label=f"text_encoder{i + 1}",
+                        execution_group_indices=(len(trainable_params) - 1,),
+                    )
+                )
+
+        optimization_plan = OptimizationPlan(
+            logical_groups=logical_groups,
+            parameter_groups=trainable_params,
+        )
 
         # --- Parse optimizer kwargs ---
         optimizer_kwargs = parse_key_value_args(cfg.optimizer.optimizer_args)
 
         # --- Create optimizer ---
         optimizer_name, optimizer_args, optimizer = get_optimizer(
-            cfg.optimizer, lr, cfg.optimizer.scheduler, trainable_params, optimizer_kwargs
+            cfg.optimizer, lr, cfg.optimizer.scheduler, optimization_plan.parameter_groups, optimizer_kwargs
         )
         optimizer_train_fn, optimizer_eval_fn = get_optimizer_train_eval_fn(optimizer, cfg.optimizer)  # type: ignore[arg-type]
 
-        return optimizer_name, optimizer_args, optimizer, optimizer_train_fn, optimizer_eval_fn, lr_descriptions  # type: ignore[return-value]
+        return OptimizerBuildResult(
+            optimizer_name=optimizer_name,
+            optimizer_args=optimizer_args,
+            optimizer=optimizer,
+            optimizer_train_fn=optimizer_train_fn,
+            optimizer_eval_fn=optimizer_eval_fn,
+            optimization_plan=optimization_plan,
+        )
 
     def prepare_with_accelerator(self, trainer: Trainer) -> None:
         """Wrap denoiser/TEs with ``accelerator.prepare()``."""

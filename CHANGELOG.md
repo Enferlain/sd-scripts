@@ -10,6 +10,21 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-12]
+
+### Added
+
+- **The optimization-layer architecture work now has a persistent OpenSpec change scaffold** — The repo can keep the logical-grouping redesign proposal, design notes, and task breakdown alongside the implementation work instead of relying only on transient conversation context.
+  - Added `openspec/changes/optimization-logical-grouping-foundation/` with proposal, design, spec, and task artifacts covering the base-path logical grouping foundation.
+
+### Changed
+
+- **The first base-path optimization-plan foundation is now in the active codepath** — Fine-tune mode can now emit stable logical-group metadata without requiring trainer-facing code to reconstruct meaning entirely from runtime `optimizer.param_groups`.
+  - Updated `library/optimization/types.py` with `LogicalParameterGroup`, `OptimizationPlan`, `OptimizerBuildResult`, and a shared logical-group builder while preserving legacy execution-group materialization.
+  - Updated `library/training/modes/finetune_mode.py`, `library/training/modes/base.py`, and `library/training/phases/optimizer.py` so the fine-tune optimizer build seam can return a plan-aware result, the optimizer phase stores plan metadata on the trainer, and the legacy tuple path remains available for compatibility-oriented callers.
+  - Updated `library/training/runners/trainer.py`, `library/training/trainer_utils.py`, `library/training/phases/training_loop.py`, and `library/logging/step_logging.py` so startup diagnostics and step LR logging can prefer logical-group metadata from the stored optimization plan instead of only reading raw runtime optimizer groups plus a parallel string list.
+  - Added/updated focused unit coverage in `tests/unit/training/test_training_optimizer.py`, `tests/unit/training/modes/test_finetune_mode.py`, `tests/unit/training/phases/test_optimizer.py`, and `tests/unit/logging/test_step_logging.py` for the new logical-group/plan types and the base-path plan-aware logging contract.
+
 ## [2026-04-11]
 
 ### Changed

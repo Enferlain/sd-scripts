@@ -19,7 +19,13 @@ from library.optimization.optimizer_utils import (
 )
 from library.optimization.scheduler import get_dummy_scheduler, get_scheduler_fix
 from library.optimization.optimizer_factory import get_optimizer
-from library.optimization.types import ParameterGroup, materialize_parameter_groups
+from library.optimization.types import (
+    LogicalParameterGroup,
+    OptimizationPlan,
+    ParameterGroup,
+    build_logical_parameter_group,
+    materialize_parameter_groups,
+)
 from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig, LearningRatesConfig
 from library.config.dataclasses.training import TrainingConfig
 
@@ -488,6 +494,34 @@ class TestOptimizerUtils:
         assert isinstance(materialized, list)
         assert materialized[0]["params"] == [param]
         assert materialized[0]["lr"] == 1e-4
+
+    def test_build_logical_parameter_group(self):
+        """Logical groups preserve trainer-facing metadata independently of execution groups."""
+        param = torch.nn.Parameter(torch.randn(2, 2))
+
+        logical_group = build_logical_parameter_group(
+            "denoiser",
+            [param],
+            lr=1e-4,
+            label="denoiser",
+            execution_group_indices=(0,),
+        )
+
+        assert isinstance(logical_group, LogicalParameterGroup)
+        assert logical_group.metric_name == "denoiser"
+        assert logical_group.parameter_count == 4
+        assert logical_group.execution_group_indices == (0,)
+
+    def test_optimization_plan_lr_descriptions(self):
+        """Optimization plans expose stable LR-reporting names from logical groups."""
+        plan = OptimizationPlan(
+            logical_groups=[
+                LogicalParameterGroup(key="denoiser", label="denoiser", params=[], execution_group_indices=(0,)),
+                LogicalParameterGroup(key="text_encoder1", label="text_encoder1", params=[], execution_group_indices=(1,)),
+            ]
+        )
+
+        assert plan.lr_descriptions == ["denoiser", "text_encoder1"]
 
     def test_parse_string_to_type_int(self):
         """Test parsing integer strings."""

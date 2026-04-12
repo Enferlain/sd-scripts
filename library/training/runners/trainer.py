@@ -23,6 +23,7 @@ from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.logging.resource_monitor import create_resource_monitor
 from library.objectives import ObjectiveDefinition, build_objective
 from library.objectives.base import ObjectiveRuntime
+from library.optimization.types import OptimizationPlan
 from library.performance import deepspeed_utils
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
@@ -119,6 +120,7 @@ class Trainer:
         self.optimizer_train_fn: Any = None
         self.optimizer_eval_fn: Any = None
         self.lr_descriptions: list = []
+        self.optimization_plan: OptimizationPlan | None = None
         self.lr_scheduler: Any = None
 
         # Training state
@@ -465,6 +467,7 @@ class Trainer:
             optimizer=self.optimizer,
             optimizer_name=self.optimizer_name,
             lr_descriptions=self.lr_descriptions,
+            optimization_plan=self.optimization_plan,
             aliases=diag_aliases,
         )
         self._resource_monitor.emit_startup_component_memory(

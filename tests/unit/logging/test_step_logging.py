@@ -33,6 +33,11 @@ class _StubCfg:
     timestep: _TimestepConfig = field(default_factory=_TimestepConfig)
 
 
+@dataclass
+class _OptimizationPlanStub:
+    lr_descriptions: list[str]
+
+
 def _make_lr_scheduler(lrs: list[float]):
     """Create a minimal LR scheduler mock returning *lrs* from get_last_lr."""
     sched = MagicMock()
@@ -100,6 +105,18 @@ class TestGenerateStepLogsLrKeys:
         )
         lr_keys = [k for k in logs if k.startswith("lr/")]
         assert lr_keys == ["lr/my_unet", "lr/my_te"]
+
+    def test_optimization_plan_descriptions_take_priority(self):
+        logs = self.generate_step_logs(
+            cfg=_StubCfg(),
+            current_loss=0.1,
+            avr_loss=0.2,
+            lr_scheduler=_make_lr_scheduler([1e-4, 2e-4]),
+            lr_descriptions=["legacy_a", "legacy_b"],
+            optimization_plan=_OptimizationPlanStub(["denoiser", "text_encoder1"]),
+        )
+        lr_keys = [k for k in logs if k.startswith("lr/")]
+        assert lr_keys == ["lr/denoiser", "lr/text_encoder1"]
 
     def test_no_duplicate_keys(self):
         """Ensure exactly one key per param group, no extra keys from stale fallback logic."""

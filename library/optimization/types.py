@@ -28,6 +28,66 @@ class ParameterGroup:
         return group
 
 
+@dataclass(slots=True)
+class LogicalParameterGroup:
+    """Stable trainer-facing optimization group metadata.
+
+    Logical groups model user-facing grouping intent independently from the
+    optimizer's runtime ``param_groups`` layout. In the first pass, the base
+    fine-tune path keeps a straightforward 1:1 mapping to execution groups,
+    but wrappers/offload/fused follow-up work can evolve execution grouping
+    later without forcing trainer logging/diagnostics to change shape.
+    """
+
+    key: str
+    params: list[Any]
+    lr: float | None = None
+    label: str | None = None
+    options: dict[str, Any] = field(default_factory=dict)
+    execution_group_indices: tuple[int, ...] = ()
+
+    @property
+    def metric_name(self) -> str:
+        return self.label or self.key
+
+    @property
+    def parameter_count(self) -> int:
+        return sum(param.numel() for param in self.params if isinstance(param, nn.Parameter))
+
+
+@dataclass(slots=True)
+class OptimizationPlan:
+    """Shared optimizer-planning payload for trainer-facing orchestration."""
+
+    logical_groups: list[LogicalParameterGroup] = field(default_factory=list)
+    parameter_groups: list[ParameterGroup] = field(default_factory=list)
+
+    @property
+    def lr_descriptions(self) -> list[str]:
+        return [group.metric_name for group in self.logical_groups]
+
+    def materialize_execution_groups(self) -> list[Any]:
+        return materialize_parameter_groups(self.parameter_groups)
+
+
+@dataclass(slots=True)
+class OptimizerBuildResult:
+    """Optimizer construction result plus normalized plan metadata."""
+
+    optimizer_name: str
+    optimizer_args: Any
+    optimizer: Any
+    optimizer_train_fn: Any
+    optimizer_eval_fn: Any
+    optimization_plan: OptimizationPlan | None = None
+
+    @property
+    def lr_descriptions(self) -> list[str]:
+        if self.optimization_plan is None:
+            return []
+        return self.optimization_plan.lr_descriptions
+
+
 def build_parameter_group(
     params: Iterable[Any],
     *,
@@ -37,6 +97,26 @@ def build_parameter_group(
 ) -> ParameterGroup:
     """Build a typed parameter group from any parameter iterable."""
     return ParameterGroup(params=list(params), lr=lr, label=label, options=options)
+
+
+def build_logical_parameter_group(
+    key: str,
+    params: Iterable[Any],
+    *,
+    lr: float | None = None,
+    label: str | None = None,
+    execution_group_indices: Iterable[int] = (),
+    **options: Any,
+) -> LogicalParameterGroup:
+    """Build a stable logical optimization group from any parameter iterable."""
+    return LogicalParameterGroup(
+        key=key,
+        params=list(params),
+        lr=lr,
+        label=label,
+        options=options,
+        execution_group_indices=tuple(execution_group_indices),
+    )
 
 
 def build_module_parameter_group(

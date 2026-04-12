@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
+from library.optimization.types import OptimizerBuildResult
 from library.training.modes.finetune_mode import FineTuneMode
 
 
@@ -235,8 +236,8 @@ class TestConfigureTrainablePrecision:
 class TestBuildOptimizerParams:
     """Test build_optimizer_params hook."""
 
-    def test_returns_6_tuple(self, mode, mock_trainer):
-        """Returns the standard 6-tuple of optimizer components."""
+    def test_returns_optimizer_build_result(self, mode, mock_trainer):
+        """Returns a normalized build result with logical-group metadata."""
         mode._te_train_flags = [True, False]
         mock_trainer._train_denoiser = True
 
@@ -249,10 +250,10 @@ class TestBuildOptimizerParams:
 
             result = mode.build_optimizer_params(mock_trainer)
 
-        assert len(result) == 6
-        name, args, optimizer, train_fn, eval_fn, lr_descs = result
-        assert name == "AdamW"
-        assert any("denoiser" in d for d in lr_descs)
+        assert isinstance(result, OptimizerBuildResult)
+        assert result.optimizer_name == "AdamW"
+        assert any(group.metric_name == "denoiser" for group in result.optimization_plan.logical_groups)
+        assert result.lr_descriptions == ["denoiser", "text_encoder1"]
 
     def test_rejects_block_lr(self, mode, mock_trainer):
         """Block LR in optimizer_args raises NotImplementedError."""

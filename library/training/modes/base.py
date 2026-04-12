@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 import torch
 from torch import nn
 
+from library.optimization.types import OptimizerBuildResult
+
 if TYPE_CHECKING:
     from library.training.checkpointing import ResumeState
     from library.training.runners.trainer import Trainer
@@ -54,10 +56,12 @@ class TrainingMode(Protocol):
 
     # --- Optimizer & accelerator ---
 
-    def build_optimizer_params(self, trainer: Trainer) -> tuple[str, dict, Any, Any, Any, list[str]]:
+    def build_optimizer_params(self, trainer: Trainer) -> OptimizerBuildResult | tuple[str, dict, Any, Any, Any, list[str]]:
         """Build optimizer parameter groups and create the optimizer.
 
         Returns:
+            Either a normalized ``OptimizerBuildResult`` or the legacy
+            compatibility tuple:
             (optimizer_name, optimizer_args, optimizer,
              train_fn, eval_fn, lr_descriptions)
         """

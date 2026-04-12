@@ -23,6 +23,7 @@ from library.config.dataclasses.performance import (
 from library.config.dataclasses.output import LoggingConfig, SavingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.logging.step_logging import append_lr_to_logs_with_names
+from library.optimization.types import OptimizationPlan
 from library.utils.compile_env import prepare_windows_compiler_env_for_torch_compile
 
 
@@ -131,6 +132,7 @@ def log_training_diagnostics(
     optimizer: Any,
     optimizer_name: str,
     lr_descriptions: list[str],
+    optimization_plan: OptimizationPlan | None = None,
     aliases: list[tuple[str, str]] | None = None,
 ) -> None:
     """Emit a compact training diagnostics block.
@@ -202,7 +204,16 @@ def log_training_diagnostics(
     # --- Optimizer groups ---
     accelerator.print("")
     accelerator.print(f"  optimizer: {optimizer_name}")
-    if hasattr(optimizer, "param_groups"):
+    if optimization_plan is not None and optimization_plan.logical_groups:
+        runtime_groups = getattr(optimizer, "param_groups", [])
+        for i, logical_group in enumerate(optimization_plan.logical_groups):
+            group_lr = logical_group.lr
+            if logical_group.execution_group_indices and logical_group.execution_group_indices[0] < len(runtime_groups):
+                group_lr = runtime_groups[logical_group.execution_group_indices[0]].get("lr", group_lr)
+
+            label = logical_group.metric_name if logical_group.metric_name else f"group {i}"
+            accelerator.print(f"    {label}  params={logical_group.parameter_count:,}  lr={group_lr}")
+    elif hasattr(optimizer, "param_groups"):
         for i, group in enumerate(optimizer.param_groups):
             group_lr = group.get("lr", "?")
             param_count = sum(p.numel() for p in group["params"] if isinstance(p, torch.Tensor))

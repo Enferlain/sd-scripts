@@ -9,6 +9,7 @@ and gradient setup are delegated to trainer.mode.* hooks.
 import pytest
 from unittest.mock import MagicMock, patch
 
+from library.optimization.types import LogicalParameterGroup, OptimizationPlan, OptimizerBuildResult
 from library.training.checkpointing import ResumeState
 
 
@@ -109,6 +110,43 @@ class TestPrepareOptimizer:
 
             mock_trainer.mode.build_optimizer_params.assert_called_once_with(mock_trainer)
             assert mock_trainer.optimizer is mock_optimizer
+
+    def test_stores_optimization_plan_from_build_result(self, mock_trainer):
+        """Plan-aware build results populate trainer optimization metadata."""
+        mock_optimizer = MagicMock()
+        mock_scheduler = MagicMock()
+        optimization_plan = OptimizationPlan(
+            logical_groups=[
+                LogicalParameterGroup(
+                    key="denoiser",
+                    label="denoiser",
+                    params=[],
+                    lr=1e-4,
+                    execution_group_indices=(0,),
+                )
+            ]
+        )
+        mock_trainer.mode.build_optimizer_params.return_value = OptimizerBuildResult(
+            optimizer_name="AdamW",
+            optimizer_args={},
+            optimizer=mock_optimizer,
+            optimizer_train_fn=MagicMock(),
+            optimizer_eval_fn=MagicMock(),
+            optimization_plan=optimization_plan,
+        )
+        mock_trainer.mode.register_state_hooks.return_value = ResumeState()
+
+        with (
+            patch("library.training.phases.optimizer.get_scheduler_fix", return_value=mock_scheduler),
+            patch("library.training.phases.optimizer._setup_gradient_checkpointing"),
+            patch("library.training.phases.optimizer.resume_from_local_or_hf_if_specified"),
+        ):
+            from library.training.phases.optimizer import prepare_optimizer
+
+            prepare_optimizer(mock_trainer)
+
+        assert mock_trainer.optimization_plan is optimization_plan
+        assert mock_trainer.lr_descriptions == ["denoiser"]
 
     def test_creates_lr_scheduler(self, mock_trainer):
         """Test that LR scheduler is created and assigned."""

@@ -17,6 +17,7 @@ from library.data import create_training_dataloader, prepare_validation_epoch
 from library.models.runtime_utils import patch_accelerator_for_fp16_training
 from library.optimization.optimizer_utils import get_text_encoders_train_flags
 from library.optimization.scheduler import get_scheduler_fix
+from library.optimization.types import OptimizerBuildResult
 from library.training.checkpointing import resume_from_local_or_hf_if_specified
 
 if TYPE_CHECKING:
@@ -24,6 +25,29 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+def _assign_optimizer_build_result(trainer: Trainer, build_result) -> None:
+    """Normalize legacy and plan-aware optimizer build outputs onto the trainer."""
+    if isinstance(build_result, OptimizerBuildResult):
+        trainer.optimizer_name = build_result.optimizer_name
+        trainer.optimizer_args = build_result.optimizer_args
+        trainer.optimizer = build_result.optimizer
+        trainer.optimizer_train_fn = build_result.optimizer_train_fn
+        trainer.optimizer_eval_fn = build_result.optimizer_eval_fn
+        trainer.optimization_plan = build_result.optimization_plan
+        trainer.lr_descriptions = build_result.lr_descriptions
+        return
+
+    (
+        trainer.optimizer_name,
+        trainer.optimizer_args,
+        trainer.optimizer,
+        trainer.optimizer_train_fn,
+        trainer.optimizer_eval_fn,
+        trainer.lr_descriptions,
+    ) = build_result
+    trainer.optimization_plan = None
 
 
 def prepare_optimizer(trainer: Trainer) -> None:
@@ -39,14 +63,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
     cfg = trainer.cfg
 
     # Create optimizer (delegated to mode)
-    (
-        trainer.optimizer_name,
-        trainer.optimizer_args,
-        trainer.optimizer,
-        trainer.optimizer_train_fn,
-        trainer.optimizer_eval_fn,
-        trainer.lr_descriptions,
-    ) = trainer.mode.build_optimizer_params(trainer)
+    _assign_optimizer_build_result(trainer, trainer.mode.build_optimizer_params(trainer))
 
     # NOTE: trainer._train_denoiser and trainer._train_text_encoder are set in
     # prepare_models() -> create_adapter() as single source of truth

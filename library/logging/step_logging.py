@@ -5,12 +5,20 @@ from omegaconf import OmegaConf
 from library.config.dataclasses.output import LoggingConfig
 
 
+def _resolve_lr_descriptions(lr_descriptions: list[str], optimization_plan=None) -> list[str]:
+    """Resolve trainer-facing LR labels from plan metadata when available."""
+    if optimization_plan is None:
+        return lr_descriptions
+    return list(getattr(optimization_plan, "lr_descriptions", lr_descriptions))
+
+
 def generate_step_logs(
     cfg,
     current_loss,
     avr_loss,
     lr_scheduler,
     lr_descriptions: list[str],
+    optimization_plan=None,
     timestep_runtime=None,
     optimizer=None,
     keys_scaled=None,
@@ -47,9 +55,10 @@ def generate_step_logs(
         logs["loss/average_val_loss"] = average_val_loss
 
     lrs = lr_scheduler.get_last_lr()
+    lr_names = _resolve_lr_descriptions(lr_descriptions, optimization_plan)
 
     for i, lr in enumerate(lrs):
-        lr_desc = lr_descriptions[i]
+        lr_desc = lr_names[i]
 
         logs[f"lr/{lr_desc}"] = lr
 
