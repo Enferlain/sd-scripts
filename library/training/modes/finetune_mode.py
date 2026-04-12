@@ -24,7 +24,6 @@ from library.optimization.types import (
     OptimizerBuildResult,
 )
 from library.optimization.optimizer_utils import (
-    get_optimizer_train_eval_fn,
     get_text_encoders_train_flags,
     should_train_denoiser,
     should_train_text_encoder,
@@ -166,14 +165,11 @@ class FineTuneMode:
         optimizer_name, optimizer_args, optimizer = get_optimizer(
             cfg.optimizer, lr, cfg.optimizer.scheduler, optimization_plan.execution_groups, optimizer_kwargs
         )
-        optimizer_train_fn, optimizer_eval_fn = get_optimizer_train_eval_fn(optimizer, cfg.optimizer)  # type: ignore[arg-type]
 
         return OptimizerBuildResult(
             optimizer_name=optimizer_name,
             optimizer_args=optimizer_args,
             optimizer=optimizer,
-            optimizer_train_fn=optimizer_train_fn,
-            optimizer_eval_fn=optimizer_eval_fn,
             optimization_plan=optimization_plan,
         )
 

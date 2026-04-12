@@ -29,9 +29,9 @@ class ScheduleFreeWrapper(Optimizer):
         PyTorch optimizer object, in Kohya's pass in an additional optimizer arg called 
         base_optimizer_type and the fully qualified optimizer name. 
         e.x. 
-            base_optimizer_type=LoraEasyCustomOptimizer.compass.Compass
-            base_optimizer_type=LoraEasyCustomOptimizer.came.CAME
-            base_optimizer_type=LoraEasyCustomOptimizer.adopt.ADOPT
+            base_optimizer_type=library.optimization.optimizers.compass.Compass
+            base_optimizer_type=library.optimization.optimizers.came.CAME
+            base_optimizer_type=library.optimization.optimizers.adopt.ADOPT
             base_optimizer_type=torch.optim.AdamW
     sf_momentum (float): 
         Apply momentum on the outer optimizer (default 0.9)

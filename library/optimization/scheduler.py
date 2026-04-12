@@ -27,9 +27,41 @@ from library.optimization.registry import (
     is_wrapper_optimizer_name,
 )
 from library.optimization.optimizer_utils import parse_string_to_type
+from library.optimization.types import OptimizationPlan, SchedulerRuntimeMetadata
 
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_scheduler_runtime_metadata(
+    scheduler_config: SchedulerConfig,
+    optimizer_config: OptimizerConfig,
+    optimizer: Optimizer,
+) -> SchedulerRuntimeMetadata:
+    """Resolve scheduler ownership/target metadata for the current optimizer runtime."""
+    optimizer_name = get_configured_optimizer_name(optimizer_config)
+    optimizer_registration = get_optimizer_registration(optimizer_name)
+    scheduler_registration = get_scheduler_registration(scheduler_config.lr_scheduler)
+
+    if optimizer_registration is not None and optimizer_registration.supports(OPT_CAP_NO_EXTERNAL_SCHEDULER):
+        return SchedulerRuntimeMetadata(mode="none", target="optimizer")
+
+    if (
+        optimizer_registration is None
+        and optimizer_name.lower().split(".")[0] != "prodigyplus"
+        and is_schedulefree_optimizer_name(optimizer_name)
+    ):
+        return SchedulerRuntimeMetadata(mode="none", target="optimizer")
+
+    if scheduler_registration is not None and scheduler_registration.kind == "optimizer_embedded":
+        return SchedulerRuntimeMetadata(mode="embedded", target="optimizer")
+
+    if (optimizer_registration is not None and optimizer_registration.supports(OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER)) or (
+        (optimizer_registration is None and is_wrapper_optimizer_name(optimizer_name)) or optimizer_config.optimizer_schedulefree_wrapper
+    ):
+        return SchedulerRuntimeMetadata(mode="external", target="base_optimizer")
+
+    return SchedulerRuntimeMetadata(mode="external", target="optimizer")
 
 
 def _wrap_requires_no_warmup(name: str, num_warmup_steps: int | None, scheduler):
@@ -264,6 +296,7 @@ def get_scheduler_fix(
     training_config: TrainingConfig,
     optimizer: Optimizer,
     num_processes: int,
+    optimization_plan: OptimizationPlan | None = None,
 ):
     """
     Unified API to get any scheduler from its name.
@@ -278,28 +311,16 @@ def get_scheduler_fix(
     Returns:
         The configured scheduler.
     """
+    scheduler_runtime = optimization_plan.scheduler_runtime if optimization_plan is not None else None
+    if scheduler_runtime is None:
+        scheduler_runtime = resolve_scheduler_runtime_metadata(scheduler_config, optimizer_config, optimizer)
+
     optimizer_name = get_configured_optimizer_name(optimizer_config)
-    optimizer_registration = get_optimizer_registration(optimizer_name)
 
-    # if schedulefree optimizer, return dummy scheduler
-    if optimizer_registration is not None and optimizer_registration.supports(OPT_CAP_NO_EXTERNAL_SCHEDULER):
+    if scheduler_runtime.mode == "none":
         return get_dummy_scheduler(optimizer)
 
-    if (
-        optimizer_registration is None
-        and optimizer_name.lower().split(".")[0]
-        not in {
-            "LoraEasyCustomOptimizer".lower(),
-            "prodigyplus".lower(),
-        }
-        and is_schedulefree_optimizer_name(optimizer_name)
-    ):
-        return get_dummy_scheduler(optimizer)
-
-    # Need to apply scheduler to base_optimizer
-    if (optimizer_registration is not None and optimizer_registration.supports(OPT_CAP_SCHEDULER_ON_BASE_OPTIMIZER)) or (
-        (optimizer_registration is None and is_wrapper_optimizer_name(optimizer_name)) or optimizer_config.optimizer_schedulefree_wrapper
-    ):
+    if scheduler_runtime.target == "base_optimizer":
         optimizer = getattr(optimizer, "base_optimizer", optimizer)  # Get wrapped base optimizer
 
     name = scheduler_config.lr_scheduler

@@ -244,7 +244,6 @@ class TestBuildOptimizerParams:
         with (
             patch("library.training.modes.finetune_mode.build_finetune_grouping") as mock_grouping,
             patch("library.training.modes.finetune_mode.get_optimizer") as mock_get_opt,
-            patch("library.training.modes.finetune_mode.get_optimizer_train_eval_fn") as mock_get_fn,
         ):
             mock_grouping.return_value.execution_groups = [MagicMock()]
             mock_grouping.return_value.logical_groups = [
@@ -252,7 +251,6 @@ class TestBuildOptimizerParams:
                 SimpleNamespace(metric_name="text_encoder1"),
             ]
             mock_get_opt.return_value = ("AdamW", {}, MagicMock())
-            mock_get_fn.return_value = (lambda: None, lambda: None)
 
             result = mode.build_optimizer_params(mock_trainer)
 
@@ -269,6 +267,8 @@ class TestBuildOptimizerParams:
         assert result.optimization_plan.execution_groups == mock_grouping.return_value.execution_groups
         assert result.optimization_plan.parameter_groups == mock_grouping.return_value.execution_groups
         assert result.lr_descriptions == ["denoiser", "text_encoder1"]
+        assert not hasattr(result, "optimizer_train_fn")
+        assert not hasattr(result, "optimizer_eval_fn")
 
     def test_rejects_block_lr(self, mode, mock_trainer):
         """Block LR in optimizer_args raises NotImplementedError."""

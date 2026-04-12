@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from torch import nn
 
@@ -56,11 +56,28 @@ class LogicalParameterGroup:
 
 
 @dataclass(slots=True)
+class SchedulerRuntimeMetadata:
+    """Explicit scheduler/runtime ownership metadata for optimizer orchestration."""
+
+    mode: Literal["external", "embedded", "none"] = "external"
+    target: Literal["optimizer", "base_optimizer"] = "optimizer"
+
+
+@dataclass(slots=True)
+class OptimizerRuntimeMetadata:
+    """Explicit optimizer runtime behavior metadata for orchestration."""
+
+    supports_train_eval_toggle: bool = False
+
+
+@dataclass(slots=True)
 class OptimizationPlan:
     """Shared optimizer-planning payload for trainer-facing orchestration."""
 
     logical_groups: list[LogicalParameterGroup] = field(default_factory=list)
     execution_groups: list[ParameterGroup] = field(default_factory=list)
+    scheduler_runtime: SchedulerRuntimeMetadata | None = None
+    optimizer_runtime: OptimizerRuntimeMetadata | None = None
 
     @property
     def lr_descriptions(self) -> list[str]:
@@ -82,8 +99,6 @@ class OptimizerBuildResult:
     optimizer_name: str
     optimizer_args: Any
     optimizer: Any
-    optimizer_train_fn: Any
-    optimizer_eval_fn: Any
     optimization_plan: OptimizationPlan | None = None
 
     @property

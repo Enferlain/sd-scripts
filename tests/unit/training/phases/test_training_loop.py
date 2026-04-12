@@ -224,6 +224,37 @@ class TestStepTrackingLogs:
 
 @pytest.mark.training
 @pytest.mark.unit
+class TestEpochFinalize:
+    """Test epoch-end runtime mode transitions."""
+
+    def test_finalize_epoch_uses_optimizer_runtime_mode_helper(self, mock_trainer):
+        """Epoch-end eval sections should use the shared optimizer runtime helper."""
+        mock_trainer.optimization_plan = MagicMock()
+        mock_trainer._current_epoch_state.value = 1
+        mock_trainer.global_step = 10
+        mock_trainer.num_train_epochs = 5
+
+        with (
+            patch("library.training.phases.training_loop.compute_epoch_end_actions") as mock_actions,
+            patch("library.training.phases.training_loop.apply_optimizer_runtime_mode") as mock_apply_runtime_mode,
+        ):
+            mock_actions.return_value = MagicMock(
+                should_enter_eval_mode=True,
+                should_save_epoch=False,
+                should_sample=False,
+            )
+
+            from library.training.phases.training_loop import _finalize_epoch
+
+            _finalize_epoch(mock_trainer, tokens_path=None)
+
+        assert mock_apply_runtime_mode.call_count == 2
+        assert mock_apply_runtime_mode.call_args_list[0].kwargs == {"training": False}
+        assert mock_apply_runtime_mode.call_args_list[1].kwargs == {"training": True}
+
+
+@pytest.mark.training
+@pytest.mark.unit
 class TestValidationSamplingDecoupling:
     """Assert that validation and sampling triggers are behaviorally independent."""
 

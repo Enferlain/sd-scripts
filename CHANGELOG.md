@@ -33,6 +33,13 @@ Rules:
   - Updated `library/optimization/types.py` so `OptimizationPlan` stores `execution_groups`, keeps a compatibility `parameter_groups` accessor, and still materializes legacy optimizer dicts through the shared boundary.
   - Updated `library/optimization/grouping.py` and `library/training/modes/finetune_mode.py` so the shared fine-tune grouping flow returns and consumes execution-group-oriented data.
   - Added focused coverage in `tests/unit/training/test_training_optimizer.py` and `tests/unit/training/modes/test_finetune_mode.py` for execution-group compatibility accessors and the base-path fine-tune integration.
+- **Scheduler ownership is now starting to move into explicit optimization-plan runtime metadata instead of staying purely heuristic inside the scheduler entrypoint** — Plan-aware paths can now carry scheduler mode/target information while legacy callers still keep the older fallback behavior.
+  - Updated `library/optimization/types.py`, `library/optimization/scheduler.py`, and `library/training/phases/optimizer.py` with explicit scheduler/runtime metadata, a shared resolver, and plan-aware scheduler construction.
+  - Added focused coverage in `tests/unit/training/test_training_optimizer.py` and `tests/unit/training/phases/test_optimizer.py` for plan-owned scheduler target selection and optimizer-phase metadata population.
+- **Plan-aware optimizer runtime transitions no longer pretend the legacy callback pair is part of the primary contract** — The fine-tune/base path now relies on plan-owned runtime metadata directly, while callback-pair handling stays confined to the legacy tuple boundary.
+  - Updated `library/optimization/types.py`, `library/training/modes/base.py`, `library/training/modes/finetune_mode.py`, and `library/training/phases/optimizer.py` so `OptimizerBuildResult` no longer carries train/eval callbacks, fine-tune stops constructing them, and the optimizer phase clears legacy callback state on plan-aware results.
+  - Updated `library/optimization/optimizer_utils.py` and `library/training/runners/trainer.py` to document the remaining callback pair as compatibility-only state for older tuple-based callers.
+  - Added focused coverage in `tests/unit/training/modes/test_finetune_mode.py`, `tests/unit/training/phases/test_optimizer.py`, and `tests/unit/training/test_training_trainer.py` to confirm plan-aware runtime transitions do not depend on callback-pair plumbing.
 
 ## [2026-04-11]
 

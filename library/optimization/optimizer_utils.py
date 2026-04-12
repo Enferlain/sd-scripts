@@ -20,7 +20,7 @@ from library.optimization.registry import (
     is_schedulefree_optimizer_name,
     is_wrapper_optimizer_name,
 )
-from library.optimization.types import materialize_parameter_groups
+from library.optimization.types import OptimizationPlan, OptimizerRuntimeMetadata, materialize_parameter_groups
 
 
 logger = logging.getLogger(__name__)
@@ -235,7 +235,7 @@ def prepare_optimizer(optimizer_config: OptimizerConfig, learning_rates: Learnin
 
 def get_optimizer_train_eval_fn(optimizer: Optimizer, optimizer_config: OptimizerConfig) -> tuple[Callable, Callable]:
     """
-    Returns the train and eval functions for the optimizer if it is schedule-free.
+    Return legacy compatibility callbacks for optimizer runtime transitions.
 
     Args:
         optimizer (Optimizer): The optimizer instance.
@@ -254,6 +254,27 @@ def get_optimizer_train_eval_fn(optimizer: Optimizer, optimizer_config: Optimize
     eval_fn = getattr(optimizer, "eval", lambda: None)
 
     return train_fn, eval_fn
+
+
+def resolve_optimizer_runtime_metadata(optimizer: Optimizer, optimizer_config: OptimizerConfig) -> OptimizerRuntimeMetadata:
+    """Resolve plan-owned optimizer runtime behavior metadata."""
+    return OptimizerRuntimeMetadata(
+        supports_train_eval_toggle=(
+            is_schedulefree_optimizer(optimizer, optimizer_config) and not getattr(optimizer_config, "fused_optimizer_groups", False)
+        )
+    )
+
+
+def apply_optimizer_runtime_mode(optimizer: Optimizer, optimization_plan: OptimizationPlan | None, *, training: bool) -> None:
+    """Apply optimizer runtime train/eval mode when the plan says it participates."""
+    optimizer_runtime = optimization_plan.optimizer_runtime if optimization_plan is not None else None
+    if optimizer_runtime is None or not optimizer_runtime.supports_train_eval_toggle:
+        return
+
+    transition_name = "train" if training else "eval"
+    transition_fn = getattr(optimizer, transition_name, None)
+    if transition_fn is not None:
+        transition_fn()
 
 
 def is_schedulefree_optimizer(optimizer: Optimizer, optimizer_config: OptimizerConfig) -> bool:

@@ -9,7 +9,13 @@ and gradient setup are delegated to trainer.mode.* hooks.
 import pytest
 from unittest.mock import MagicMock, patch
 
-from library.optimization.types import LogicalParameterGroup, OptimizationPlan, OptimizerBuildResult
+from library.optimization.types import (
+    LogicalParameterGroup,
+    OptimizationPlan,
+    OptimizerBuildResult,
+    OptimizerRuntimeMetadata,
+    SchedulerRuntimeMetadata,
+)
 from library.training.checkpointing import ResumeState
 
 
@@ -130,8 +136,6 @@ class TestPrepareOptimizer:
             optimizer_name="AdamW",
             optimizer_args={},
             optimizer=mock_optimizer,
-            optimizer_train_fn=MagicMock(),
-            optimizer_eval_fn=MagicMock(),
             optimization_plan=optimization_plan,
         )
         mock_trainer.mode.register_state_hooks.return_value = ResumeState()
@@ -147,6 +151,86 @@ class TestPrepareOptimizer:
 
         assert mock_trainer.optimization_plan is optimization_plan
         assert mock_trainer.lr_descriptions == ["denoiser"]
+        assert mock_trainer.optimizer_train_fn is None
+        assert mock_trainer.optimizer_eval_fn is None
+
+    def test_populates_scheduler_runtime_metadata_on_plan(self, mock_trainer):
+        """Optimizer preparation should populate explicit scheduler/runtime metadata on the stored plan."""
+        mock_optimizer = MagicMock()
+        mock_scheduler = MagicMock()
+        optimization_plan = OptimizationPlan(
+            logical_groups=[
+                LogicalParameterGroup(
+                    key="denoiser",
+                    label="denoiser",
+                    params=[],
+                    lr=1e-4,
+                    execution_group_indices=(0,),
+                )
+            ]
+        )
+        mock_trainer.mode.build_optimizer_params.return_value = OptimizerBuildResult(
+            optimizer_name="AdamW",
+            optimizer_args={},
+            optimizer=mock_optimizer,
+            optimization_plan=optimization_plan,
+        )
+        mock_trainer.mode.register_state_hooks.return_value = ResumeState()
+
+        with (
+            patch("library.training.phases.optimizer.get_scheduler_fix", return_value=mock_scheduler),
+            patch(
+                "library.training.phases.optimizer.resolve_scheduler_runtime_metadata",
+                return_value=SchedulerRuntimeMetadata(mode="external", target="optimizer"),
+            ) as mock_resolve_runtime,
+            patch("library.training.phases.optimizer._setup_gradient_checkpointing"),
+            patch("library.training.phases.optimizer.resume_from_local_or_hf_if_specified"),
+        ):
+            from library.training.phases.optimizer import prepare_optimizer
+
+            prepare_optimizer(mock_trainer)
+
+        mock_resolve_runtime.assert_called_once()
+        assert mock_trainer.optimization_plan.scheduler_runtime == SchedulerRuntimeMetadata(mode="external", target="optimizer")
+
+    def test_populates_optimizer_runtime_metadata_on_plan(self, mock_trainer):
+        """Optimizer preparation should populate explicit optimizer-runtime metadata on the stored plan."""
+        mock_optimizer = MagicMock()
+        mock_scheduler = MagicMock()
+        optimization_plan = OptimizationPlan(
+            logical_groups=[
+                LogicalParameterGroup(
+                    key="denoiser",
+                    label="denoiser",
+                    params=[],
+                    lr=1e-4,
+                    execution_group_indices=(0,),
+                )
+            ]
+        )
+        mock_trainer.mode.build_optimizer_params.return_value = OptimizerBuildResult(
+            optimizer_name="AdamW",
+            optimizer_args={},
+            optimizer=mock_optimizer,
+            optimization_plan=optimization_plan,
+        )
+        mock_trainer.mode.register_state_hooks.return_value = ResumeState()
+
+        with (
+            patch("library.training.phases.optimizer.get_scheduler_fix", return_value=mock_scheduler),
+            patch(
+                "library.training.phases.optimizer.resolve_optimizer_runtime_metadata",
+                return_value=OptimizerRuntimeMetadata(supports_train_eval_toggle=True),
+            ) as mock_resolve_runtime,
+            patch("library.training.phases.optimizer._setup_gradient_checkpointing"),
+            patch("library.training.phases.optimizer.resume_from_local_or_hf_if_specified"),
+        ):
+            from library.training.phases.optimizer import prepare_optimizer
+
+            prepare_optimizer(mock_trainer)
+
+        mock_resolve_runtime.assert_called_once()
+        assert mock_trainer.optimization_plan.optimizer_runtime == OptimizerRuntimeMetadata(supports_train_eval_toggle=True)
 
     def test_creates_lr_scheduler(self, mock_trainer):
         """Test that LR scheduler is created and assigned."""

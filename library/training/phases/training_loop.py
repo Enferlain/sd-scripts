@@ -19,6 +19,7 @@ import torch
 from library.data import CaptionConfig, prepare_epoch, create_training_dataloader
 from library.logging.step_logging import generate_step_logs, step_logging
 from library.logging.training_plots import save_timestep_distribution_plot
+from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
 from library.training.checkpointing import (
     get_step_ckpt_name,
     save_and_remove_state_stepwise,
@@ -348,7 +349,7 @@ def _finalize_epoch(
     if not epoch_end_actions.should_enter_eval_mode:
         return
 
-    trainer.optimizer_eval_fn()
+    apply_optimizer_runtime_mode(trainer.optimizer, trainer.optimization_plan, training=False)
     trainer.mode.set_eval(trainer)
     if trainer.is_main_process and epoch_end_actions.should_save_epoch:
         _save_epoch_checkpoint_artifacts(trainer)
@@ -366,7 +367,7 @@ def _finalize_epoch(
             trainer.denoiser,
         )
     trainer._progress_bar.unpause()
-    trainer.optimizer_train_fn()
+    apply_optimizer_runtime_mode(trainer.optimizer, trainer.optimization_plan, training=True)
     trainer.mode.set_train(trainer)
 
 

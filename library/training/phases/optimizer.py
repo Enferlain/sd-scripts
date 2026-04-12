@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 
 from library.data import create_training_dataloader, prepare_validation_epoch
 from library.models.runtime_utils import patch_accelerator_for_fp16_training
-from library.optimization.optimizer_utils import get_text_encoders_train_flags
-from library.optimization.scheduler import get_scheduler_fix
+from library.optimization.optimizer_utils import get_text_encoders_train_flags, resolve_optimizer_runtime_metadata
+from library.optimization.scheduler import get_scheduler_fix, resolve_scheduler_runtime_metadata
 from library.optimization.types import OptimizerBuildResult
 from library.training.checkpointing import resume_from_local_or_hf_if_specified
 
@@ -33,8 +33,8 @@ def _assign_optimizer_build_result(trainer: Trainer, build_result) -> None:
         trainer.optimizer_name = build_result.optimizer_name
         trainer.optimizer_args = build_result.optimizer_args
         trainer.optimizer = build_result.optimizer
-        trainer.optimizer_train_fn = build_result.optimizer_train_fn
-        trainer.optimizer_eval_fn = build_result.optimizer_eval_fn
+        trainer.optimizer_train_fn = None
+        trainer.optimizer_eval_fn = None
         trainer.optimization_plan = build_result.optimization_plan
         trainer.lr_descriptions = build_result.lr_descriptions
         return
@@ -53,9 +53,10 @@ def _assign_optimizer_build_result(trainer: Trainer, build_result) -> None:
 def prepare_optimizer(trainer: Trainer) -> None:
     """Phase 4: Create optimizer, LR scheduler, accelerator.prepare, and training state.
 
-    Updates trainer.optimizer, trainer.optimizer_train_fn, trainer.optimizer_eval_fn,
-    trainer.lr_descriptions, trainer.max_train_steps, trainer.lr_scheduler,
-    trainer._val_dataloader, trainer._cyclic_val_dataloader, trainer.num_train_epochs, etc.
+    Updates trainer.optimizer, trainer.lr_descriptions, trainer.max_train_steps,
+    trainer.lr_scheduler, trainer._val_dataloader, trainer._cyclic_val_dataloader,
+    trainer.num_train_epochs, etc. Legacy optimizer callback compatibility state is
+    preserved only for tuple-based mode implementations.
 
     Args:
         trainer: Trainer instance
@@ -107,6 +108,18 @@ def prepare_optimizer(trainer: Trainer) -> None:
     else:
         trainer.max_train_steps = cfg.training.max_train_steps
 
+    if trainer.optimization_plan is not None and trainer.optimization_plan.scheduler_runtime is None:
+        trainer.optimization_plan.scheduler_runtime = resolve_scheduler_runtime_metadata(
+            cfg.optimizer.scheduler,
+            cfg.optimizer,
+            trainer.optimizer,
+        )
+    if trainer.optimization_plan is not None and trainer.optimization_plan.optimizer_runtime is None:
+        trainer.optimization_plan.optimizer_runtime = resolve_optimizer_runtime_metadata(
+            trainer.optimizer,
+            cfg.optimizer,
+        )
+
     # Create LR scheduler
     trainer.lr_scheduler = get_scheduler_fix(
         cfg.optimizer.scheduler,
@@ -114,6 +127,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
         cfg.training,
         trainer.optimizer,
         trainer.accelerator.num_processes,
+        optimization_plan=trainer.optimization_plan,
     )
 
     # Accelerator.prepare - handles distributed training setup (delegated to mode)

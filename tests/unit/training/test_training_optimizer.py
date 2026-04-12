@@ -4,7 +4,7 @@ Unit tests for library/training/optimizer_utils.py
 Tests optimizer creation, scheduler setup, and config-based initialization.
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
@@ -13,20 +13,25 @@ from diffusers.optimization import SchedulerType as DiffusersSchedulerType
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.grouping import build_finetune_grouping
 from library.optimization.optimizer_utils import (
+    apply_optimizer_runtime_mode,
     _load_optimizer_class_for_signature,
     is_schedulefree_optimizer,
     is_wrapper_optimizer,
     parse_string_to_type,
+    resolve_optimizer_runtime_metadata,
 )
 from library.optimization.scheduler import get_dummy_scheduler, get_scheduler_fix
 from library.optimization.optimizer_factory import get_optimizer
 from library.optimization.types import (
     LogicalParameterGroup,
     OptimizationPlan,
+    OptimizerRuntimeMetadata,
     ParameterGroup,
+    SchedulerRuntimeMetadata,
     build_logical_parameter_group,
     materialize_parameter_groups,
 )
+from library.optimization.wrappers.schedulefree import ScheduleFreeWrapper
 from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig, LearningRatesConfig
 from library.config.dataclasses.training import TrainingConfig
 
@@ -257,6 +262,30 @@ class TestOptimizerDetection:
 
         assert scheduler.optimizer is optimizer.base_optimizer
 
+    def test_resolve_optimizer_runtime_metadata_detects_train_eval_toggle(self, mock_model_parameters):
+        """Schedule-free optimizer runtimes should advertise train/eval participation explicitly."""
+        config = OptimizerConfig(
+            optimizer_type="AdamW",
+            optimizer_schedulefree_wrapper=True,
+            schedulefree_wrapper_args=["momentum=0.95"],
+        )
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
+
+        runtime = resolve_optimizer_runtime_metadata(optimizer, config)
+
+        assert runtime == OptimizerRuntimeMetadata(supports_train_eval_toggle=True)
+
+    def test_apply_optimizer_runtime_mode_noops_when_plan_disables_toggle(self):
+        """Runtime helper should safely no-op when the plan says no optimizer mode switch is needed."""
+        optimizer = MagicMock()
+        plan = OptimizationPlan(optimizer_runtime=OptimizerRuntimeMetadata(supports_train_eval_toggle=False))
+
+        apply_optimizer_runtime_mode(optimizer, plan, training=False)
+        apply_optimizer_runtime_mode(optimizer, plan, training=True)
+
+        optimizer.eval.assert_not_called()
+        optimizer.train.assert_not_called()
+
 
 @pytest.mark.training
 @pytest.mark.unit
@@ -453,6 +482,53 @@ class TestScheduler:
 
         assert scheduler.optimizer is optimizer
         assert scheduler.__class__.__name__ == "LambdaLR"
+
+    def test_plan_scheduler_runtime_none_uses_dummy_scheduler(self, mock_model_parameters):
+        """Plan metadata should be able to declare that no external scheduler is owned."""
+        optimizer_config, training_config, optimizer = self._build_optimizer_and_training_config(
+            mock_model_parameters,
+            scheduler_config=SchedulerConfig(lr_scheduler="constant_with_warmup", lr_warmup_steps=5),
+        )
+        optimization_plan = OptimizationPlan(
+            scheduler_runtime=SchedulerRuntimeMetadata(mode="none", target="optimizer"),
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            optimizer,
+            num_processes=1,
+            optimization_plan=optimization_plan,
+        )
+
+        assert scheduler.optimizer is optimizer
+        assert scheduler.__class__.__name__ == "DummyScheduler"
+
+    def test_plan_scheduler_runtime_can_target_base_optimizer(self, mock_model_parameters):
+        """Plan metadata should drive scheduler attachment onto the wrapped base optimizer."""
+        base_optimizer = torch.optim.AdamW(mock_model_parameters, lr=1e-4)
+        wrapped_optimizer = ScheduleFreeWrapper(base_optimizer, momentum=0.95)
+        optimizer_config = OptimizerConfig(
+            optimizer_type="AdamW",
+            learning_rates=LearningRatesConfig(base=1e-4),
+            scheduler=SchedulerConfig(lr_scheduler="constant_with_warmup", lr_warmup_steps=5),
+        )
+        training_config = TrainingConfig(max_train_steps=25)
+        optimization_plan = OptimizationPlan(
+            scheduler_runtime=SchedulerRuntimeMetadata(mode="external", target="base_optimizer"),
+        )
+
+        scheduler = get_scheduler_fix(
+            optimizer_config.scheduler,
+            optimizer_config,
+            training_config,
+            wrapped_optimizer,
+            num_processes=1,
+            optimization_plan=optimization_plan,
+        )
+
+        assert scheduler.optimizer is wrapped_optimizer.base_optimizer
 
 
 # =============================================================================

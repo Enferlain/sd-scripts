@@ -126,8 +126,6 @@ class TestTrainer(unittest.TestCase):
         self.trainer._accelerator.device = "cpu"
         self.trainer._validation_scheduler = MagicMock()
         self.trainer._validation_scheduler.should_run.return_value = True
-        self.trainer.optimizer_eval_fn = MagicMock()
-        self.trainer.optimizer_train_fn = MagicMock()
         self.trainer._val_dataloader = MagicMock()
         self.trainer._cyclic_val_dataloader = MagicMock()
         self.trainer._val_loss_recorder = MagicMock()
@@ -165,8 +163,6 @@ class TestTrainer(unittest.TestCase):
         self.trainer._accelerator.device = "cpu"
         self.trainer._validation_scheduler = MagicMock()
         self.trainer._validation_scheduler.should_run.return_value = False
-        self.trainer.optimizer_eval_fn = MagicMock()
-        self.trainer.optimizer_train_fn = MagicMock()
         self.trainer._val_dataloader = None
         self.trainer._cyclic_val_dataloader = None
         self.trainer._val_loss_recorder = MagicMock()

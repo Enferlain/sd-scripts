@@ -23,6 +23,7 @@ from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.logging.resource_monitor import create_resource_monitor
 from library.objectives import ObjectiveDefinition, build_objective
 from library.objectives.base import ObjectiveRuntime
+from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
 from library.optimization.types import OptimizationPlan
 from library.performance import deepspeed_utils
 from library.training.trainer_utils import prepare_accelerator
@@ -117,8 +118,8 @@ class Trainer:
         self.optimizer: Any = None
         self.optimizer_name: str = ""
         self.optimizer_args: dict = {}
-        self.optimizer_train_fn: Any = None
-        self.optimizer_eval_fn: Any = None
+        self.optimizer_train_fn: Any = None  # Legacy tuple-path compatibility only
+        self.optimizer_eval_fn: Any = None  # Legacy tuple-path compatibility only
         self.lr_descriptions: list = []
         self.optimization_plan: OptimizationPlan | None = None
         self.lr_scheduler: Any = None
@@ -647,7 +648,7 @@ class Trainer:
         self._metadata["ss_training_finished_at"] = str(time.time())
 
         self.accelerator.end_training()
-        self.optimizer_eval_fn()
+        apply_optimizer_runtime_mode(self.optimizer, self.optimization_plan, training=False)
         self._save_final_state_if_enabled()
         self._save_final_checkpoint_artifacts()
 

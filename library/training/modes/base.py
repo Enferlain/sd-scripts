@@ -60,8 +60,8 @@ class TrainingMode(Protocol):
         """Build optimizer parameter groups and create the optimizer.
 
         Returns:
-            Either a normalized ``OptimizerBuildResult`` or the legacy
-            compatibility tuple:
+            Either a normalized ``OptimizerBuildResult`` for plan-aware paths,
+            or the legacy compatibility tuple:
             (optimizer_name, optimizer_args, optimizer,
              train_fn, eval_fn, lr_descriptions)
         """

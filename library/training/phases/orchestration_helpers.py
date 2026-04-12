@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from library.logging.resource_monitor import NoOpResourceMonitor
+from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -36,11 +37,11 @@ def monitored_phase(trainer, phase_name: str) -> Iterator[object]:
 def temporarily_in_eval_mode(trainer) -> Iterator[None]:
     """Temporarily switch trainer-owned runtime state into eval mode."""
     trainer.mode.set_eval(trainer)
-    trainer.optimizer_eval_fn()
+    apply_optimizer_runtime_mode(trainer.optimizer, trainer.optimization_plan, training=False)
     try:
         yield
     finally:
-        trainer.optimizer_train_fn()
+        apply_optimizer_runtime_mode(trainer.optimizer, trainer.optimization_plan, training=True)
         trainer.mode.set_train(trainer)
 
 
