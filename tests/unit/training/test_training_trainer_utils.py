@@ -7,15 +7,18 @@ Tests learning rate logging utilities and accelerator preparation.
 import os
 import pytest
 from unittest.mock import MagicMock, Mock, patch
+import torch
 
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.performance import PrecisionConfig, CompilationConfig, DistributedConfig, DeepSpeedConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.logging.step_logging import init_trackers, append_lr_to_logs_with_names
+from library.optimization.types import LogicalParameterGroup, OptimizationPlan
 from library.training.trainer_utils import (
     append_lr_to_logs,
     compute_accelerator_config,
     determine_grad_sync_context,
+    log_training_diagnostics,
     prepare_accelerator,
 )
 
@@ -134,6 +137,58 @@ class TestAppendLrToLogs:
 
         assert "lr/text_encoder1" in logs
         assert "lr/text_encoder2" in logs
+
+
+@pytest.mark.training
+@pytest.mark.unit
+class TestLogTrainingDiagnostics:
+    """Test startup diagnostics output."""
+
+    def test_prefers_optimization_plan_group_labels(self):
+        """Logical-group metadata should work without legacy lr_descriptions."""
+        accelerator = MagicMock()
+        accelerator.num_processes = 1
+        accelerator.print = MagicMock()
+
+        cfg = MagicMock()
+        cfg.performance.precision.mixed_precision = "fp16"
+        cfg.performance.memory.gradient_checkpointing = False
+        cfg.performance.attention.xformers = False
+        cfg.performance.deepspeed.deepspeed = False
+        cfg.training.train_batch_size = 1
+        cfg.training.gradient_accumulation_steps = 1
+        cfg.training.max_train_steps = 10
+
+        module = torch.nn.Linear(2, 2)
+        params = list(module.parameters())
+        optimizer = MagicMock()
+        optimizer.param_groups = [{"params": params, "lr": 1e-4}]
+        optimization_plan = OptimizationPlan(
+            logical_groups=[
+                LogicalParameterGroup(
+                    key="denoiser",
+                    label="denoiser",
+                    params=params,
+                    lr=1e-4,
+                    execution_group_indices=(0,),
+                )
+            ]
+        )
+
+        log_training_diagnostics(
+            accelerator=accelerator,
+            cfg=cfg,
+            mode=MagicMock(),
+            strategies=MagicMock(),
+            components=[("denoiser", module)],
+            optimizer=optimizer,
+            optimizer_name="AdamW",
+            lr_descriptions=None,
+            optimization_plan=optimization_plan,
+        )
+
+        printed_lines = [call.args[0] for call in accelerator.print.call_args_list]
+        assert any("denoiser" in line and "params=" in line for line in printed_lines)
 
 
 # =============================================================================

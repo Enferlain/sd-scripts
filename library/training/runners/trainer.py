@@ -466,7 +466,7 @@ class Trainer:
             components=diag_components,
             optimizer=self.optimizer,
             optimizer_name=self.optimizer_name,
-            lr_descriptions=self.lr_descriptions,
+            lr_descriptions=None if self.optimization_plan is not None else self.lr_descriptions,
             optimization_plan=self.optimization_plan,
             aliases=diag_aliases,
         )

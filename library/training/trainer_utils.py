@@ -131,7 +131,7 @@ def log_training_diagnostics(
     components: list[tuple[str, nn.Module]],
     optimizer: Any,
     optimizer_name: str,
-    lr_descriptions: list[str],
+    lr_descriptions: list[str] | None = None,
     optimization_plan: OptimizationPlan | None = None,
     aliases: list[tuple[str, str]] | None = None,
 ) -> None:
@@ -214,11 +214,12 @@ def log_training_diagnostics(
             label = logical_group.metric_name if logical_group.metric_name else f"group {i}"
             accelerator.print(f"    {label}  params={logical_group.parameter_count:,}  lr={group_lr}")
     elif hasattr(optimizer, "param_groups"):
+        lr_names = list(lr_descriptions or [])
         for i, group in enumerate(optimizer.param_groups):
             group_lr = group.get("lr", "?")
             param_count = sum(p.numel() for p in group["params"] if isinstance(p, torch.Tensor))
             # Try to label the group from lr_descriptions
-            label = lr_descriptions[i] if i < len(lr_descriptions) else f"group {i}"
+            label = lr_names[i] if i < len(lr_names) else f"group {i}"
             accelerator.print(f"    {label}  params={param_count:,}  lr={group_lr}")
 
     accelerator.print("")

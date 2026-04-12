@@ -15,5 +15,5 @@
 
 ## 4. Validation
 
-- [ ] 4.1 Update focused orchestration tests for the new plan-carrying contract and logging behavior.
+- [x] 4.1 Update focused orchestration tests for the new plan-carrying contract and logging behavior.
 - [ ] 4.2 Run targeted optimizer/training tests and record the change in `CHANGELOG.md` if the implementation lands in this working session.

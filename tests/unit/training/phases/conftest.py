@@ -262,6 +262,7 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer.lr_scheduler = MagicMock()
     trainer.lr_scheduler.step = MagicMock()
     trainer.lr_descriptions = ["denoiser"]
+    trainer.optimization_plan = None
     trainer.optimizer_train_fn = MagicMock()
     trainer.optimizer_eval_fn = MagicMock()
 
@@ -284,6 +285,8 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer._loss_recorder.average = 0.5
     trainer._val_loss_recorder = None
     trainer._current_global_step_loss = 0.0
+    trainer._current_loss_modifier_metrics = {}
+    trainer._loss_modifier_metric_recorders = {}
     trainer._current_val_loss = None
     trainer._average_val_loss = None
 

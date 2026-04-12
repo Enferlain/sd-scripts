@@ -227,7 +227,7 @@ def _emit_step_tracking_logs(
         current_global_step_loss,
         trainer._loss_recorder.average,
         trainer.lr_scheduler,
-        trainer.lr_descriptions,
+        lr_descriptions=None if trainer.optimization_plan is not None else trainer.lr_descriptions,
         optimization_plan=trainer.optimization_plan,
         timestep_runtime=trainer.objective_runtime.timestep_runtime if trainer.objective_runtime is not None else None,
         optimizer=trainer.optimizer,

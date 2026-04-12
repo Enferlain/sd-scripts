@@ -194,6 +194,36 @@ class TestRunTrainingLoop:
 
 @pytest.mark.training
 @pytest.mark.unit
+class TestStepTrackingLogs:
+    """Test step-log emission wiring."""
+
+    def test_emit_step_tracking_logs_passes_optimization_plan(self, mock_trainer):
+        """Step-log generation should receive the trainer optimization plan."""
+        mock_trainer._accumulation_counter = 1
+        mock_trainer._current_global_step_loss = 0.5
+        mock_trainer.cfg.output.logging.log_every_n_steps = 1
+        mock_trainer.optimization_plan = MagicMock()
+
+        with (
+            patch("library.training.phases.training_loop.generate_step_logs", return_value={}) as mock_generate_logs,
+            patch("library.training.phases.training_loop.step_logging"),
+        ):
+            from library.training.phases.training_loop import _emit_step_tracking_logs
+
+            _emit_step_tracking_logs(
+                mock_trainer,
+                timesteps=torch.tensor([10]),
+                keys_scaled=None,
+                mean_norm=None,
+                maximum_norm=None,
+            )
+
+        assert mock_generate_logs.call_args.kwargs["optimization_plan"] is mock_trainer.optimization_plan
+        assert mock_generate_logs.call_args.kwargs["lr_descriptions"] is None
+
+
+@pytest.mark.training
+@pytest.mark.unit
 class TestValidationSamplingDecoupling:
     """Assert that validation and sampling triggers are behaviorally independent."""
 

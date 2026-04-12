@@ -2,7 +2,7 @@
 
 Tests correctness of LR metric emission and tracker initialization,
 specifically the bugs fixed in Phase 0:
-1. Duplicate LR keys (removed dead fallback code, lr_descriptions now required)
+1. Duplicate LR keys (removed dead fallback code; plan metadata can now supply labels)
 2. wandb_run_name overwritten by log_tracker_config
 """
 
@@ -51,7 +51,7 @@ def _make_lr_scheduler(lrs: list[float]):
 
 
 class TestGenerateStepLogsLrKeys:
-    """Assert LR keys match the provided lr_descriptions with no duplicates."""
+    """Assert LR keys match the resolved trainer-facing group labels with no duplicates."""
 
     @pytest.fixture(autouse=True)
     def _import(self):
@@ -113,6 +113,17 @@ class TestGenerateStepLogsLrKeys:
             avr_loss=0.2,
             lr_scheduler=_make_lr_scheduler([1e-4, 2e-4]),
             lr_descriptions=["legacy_a", "legacy_b"],
+            optimization_plan=_OptimizationPlanStub(["denoiser", "text_encoder1"]),
+        )
+        lr_keys = [k for k in logs if k.startswith("lr/")]
+        assert lr_keys == ["lr/denoiser", "lr/text_encoder1"]
+
+    def test_optimization_plan_does_not_require_legacy_descriptions(self):
+        logs = self.generate_step_logs(
+            cfg=_StubCfg(),
+            current_loss=0.1,
+            avr_loss=0.2,
+            lr_scheduler=_make_lr_scheduler([1e-4, 2e-4]),
             optimization_plan=_OptimizationPlanStub(["denoiser", "text_encoder1"]),
         )
         lr_keys = [k for k in logs if k.startswith("lr/")]

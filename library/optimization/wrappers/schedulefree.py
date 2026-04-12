@@ -1,7 +1,7 @@
 import torch
 from torch.optim import Optimizer
 
-from library.optimization.stochastic import copy_stochastic_
+from library.optimization.optimizers.utils import copy_stochastic_
 
 
 class ScheduleFreeWrapper(Optimizer):
