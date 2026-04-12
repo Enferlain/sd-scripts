@@ -60,14 +60,19 @@ class OptimizationPlan:
     """Shared optimizer-planning payload for trainer-facing orchestration."""
 
     logical_groups: list[LogicalParameterGroup] = field(default_factory=list)
-    parameter_groups: list[ParameterGroup] = field(default_factory=list)
+    execution_groups: list[ParameterGroup] = field(default_factory=list)
 
     @property
     def lr_descriptions(self) -> list[str]:
         return [group.metric_name for group in self.logical_groups]
 
+    @property
+    def parameter_groups(self) -> list[ParameterGroup]:
+        """Compatibility accessor for older plan consumers."""
+        return self.execution_groups
+
     def materialize_execution_groups(self) -> list[Any]:
-        return materialize_parameter_groups(self.parameter_groups)
+        return materialize_parameter_groups(self.execution_groups)
 
 
 @dataclass(slots=True)

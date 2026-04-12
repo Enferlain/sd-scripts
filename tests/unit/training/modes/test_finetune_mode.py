@@ -242,17 +242,32 @@ class TestBuildOptimizerParams:
         mock_trainer._train_denoiser = True
 
         with (
+            patch("library.training.modes.finetune_mode.build_finetune_grouping") as mock_grouping,
             patch("library.training.modes.finetune_mode.get_optimizer") as mock_get_opt,
             patch("library.training.modes.finetune_mode.get_optimizer_train_eval_fn") as mock_get_fn,
         ):
+            mock_grouping.return_value.execution_groups = [MagicMock()]
+            mock_grouping.return_value.logical_groups = [
+                SimpleNamespace(metric_name="denoiser"),
+                SimpleNamespace(metric_name="text_encoder1"),
+            ]
             mock_get_opt.return_value = ("AdamW", {}, MagicMock())
             mock_get_fn.return_value = (lambda: None, lambda: None)
 
             result = mode.build_optimizer_params(mock_trainer)
 
+        mock_grouping.assert_called_once_with(
+            denoiser=mock_trainer.denoiser,
+            train_denoiser=True,
+            text_encoders=mock_trainer.text_encoders,
+            te_train_flags=[True, False],
+            learning_rates=mock_trainer.cfg.optimizer.learning_rates,
+        )
         assert isinstance(result, OptimizerBuildResult)
         assert result.optimizer_name == "AdamW"
         assert any(group.metric_name == "denoiser" for group in result.optimization_plan.logical_groups)
+        assert result.optimization_plan.execution_groups == mock_grouping.return_value.execution_groups
+        assert result.optimization_plan.parameter_groups == mock_grouping.return_value.execution_groups
         assert result.lr_descriptions == ["denoiser", "text_encoder1"]
 
     def test_rejects_block_lr(self, mode, mock_trainer):

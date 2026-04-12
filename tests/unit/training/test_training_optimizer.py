@@ -11,6 +11,7 @@ import torch
 from diffusers.optimization import SchedulerType as DiffusersSchedulerType
 
 from library.optimization.arguments import parse_key_value_args
+from library.optimization.grouping import build_finetune_grouping
 from library.optimization.optimizer_utils import (
     _load_optimizer_class_for_signature,
     is_schedulefree_optimizer,
@@ -522,6 +523,47 @@ class TestOptimizerUtils:
         )
 
         assert plan.lr_descriptions == ["denoiser", "text_encoder1"]
+
+    def test_optimization_plan_execution_groups_preserve_parameter_group_compatibility(self):
+        """Execution-group naming should coexist with the older parameter-group accessor."""
+        param = torch.nn.Parameter(torch.randn(2, 2))
+        execution_group = ParameterGroup(params=[param], lr=1e-4, label="denoiser")
+        plan = OptimizationPlan(execution_groups=[execution_group])
+
+        assert plan.execution_groups == [execution_group]
+        assert plan.parameter_groups == [execution_group]
+        assert plan.materialize_execution_groups()[0]["lr"] == 1e-4
+
+    def test_build_finetune_grouping_preserves_order_and_indices(self):
+        """Shared grouping keeps trainer-facing order stable for the base fine-tune path."""
+        denoiser = torch.nn.Linear(4, 4)
+        text_encoder_1 = torch.nn.Linear(3, 3)
+        text_encoder_2 = torch.nn.Linear(2, 2)
+
+        grouping = build_finetune_grouping(
+            denoiser=denoiser,
+            train_denoiser=True,
+            text_encoders=[text_encoder_1, text_encoder_2],
+            te_train_flags=[True, False],
+            learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5, text_encoders=[3e-5, 4e-5]),
+        )
+
+        assert [group.metric_name for group in grouping.logical_groups] == ["denoiser", "text_encoder1"]
+        assert [group.execution_group_indices for group in grouping.logical_groups] == [(0,), (1,)]
+        assert [group.label for group in grouping.execution_groups] == ["denoiser", "text_encoder1"]
+        assert grouping.parameter_groups == grouping.execution_groups
+
+    def test_build_finetune_grouping_uses_configured_learning_rates(self):
+        """Shared grouping preserves denoiser overrides and text-encoder LR fallback behavior."""
+        grouping = build_finetune_grouping(
+            denoiser=torch.nn.Linear(4, 4),
+            train_denoiser=True,
+            text_encoders=[torch.nn.Linear(3, 3), torch.nn.Linear(2, 2)],
+            te_train_flags=[True, True],
+            learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5, text_encoders=[3e-5]),
+        )
+
+        assert [group.lr for group in grouping.logical_groups] == [2e-5, 3e-5, 1e-5]
 
     def test_parse_string_to_type_int(self):
         """Test parsing integer strings."""

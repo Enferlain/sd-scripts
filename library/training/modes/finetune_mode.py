@@ -16,13 +16,12 @@ from typing import TYPE_CHECKING, Any
 import torch
 from torch import nn
 
+from library.optimization.grouping import build_finetune_grouping
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.optimizer_factory import get_optimizer
 from library.optimization.types import (
     OptimizationPlan,
     OptimizerBuildResult,
-    build_logical_parameter_group,
-    build_module_parameter_group,
 )
 from library.optimization.optimizer_utils import (
     get_optimizer_train_eval_fn,
@@ -147,49 +146,17 @@ class FineTuneMode:
                         "optimizer-group phase. Remove block_lr from optimizer_args for 2B."
                     )
 
-        # --- Build param groups ---
-        trainable_params = []
-        logical_groups = []
-
-        if trainer._train_denoiser:
-            assert trainer.denoiser is not None, "denoiser must be loaded before build_optimizer_params"
-            denoiser_lr = lr.denoiser if lr.denoiser is not None else lr.base
-            parameter_group = build_module_parameter_group(trainer.denoiser, lr=denoiser_lr, label="denoiser")
-            trainable_params.append(parameter_group)
-            logical_groups.append(
-                build_logical_parameter_group(
-                    "denoiser",
-                    parameter_group.params,
-                    lr=denoiser_lr,
-                    label="denoiser",
-                    execution_group_indices=(len(trainable_params) - 1,),
-                )
-            )
-
-        te_lr_raw = lr.text_encoders
-        for i, (t_enc, flag) in enumerate(zip(trainer.text_encoders, self._te_train_flags)):
-            if flag:
-                if te_lr_raw is None:
-                    te_lr = lr.base
-                elif isinstance(te_lr_raw, (int, float)):
-                    te_lr = te_lr_raw
-                else:
-                    te_lr = te_lr_raw[i] if i < len(te_lr_raw) else lr.base
-                parameter_group = build_module_parameter_group(t_enc, lr=te_lr, label=f"text_encoder{i + 1}")
-                trainable_params.append(parameter_group)
-                logical_groups.append(
-                    build_logical_parameter_group(
-                        f"text_encoder{i + 1}",
-                        parameter_group.params,
-                        lr=te_lr,
-                        label=f"text_encoder{i + 1}",
-                        execution_group_indices=(len(trainable_params) - 1,),
-                    )
-                )
+        grouping = build_finetune_grouping(
+            denoiser=trainer.denoiser,
+            train_denoiser=trainer._train_denoiser,
+            text_encoders=trainer.text_encoders,
+            te_train_flags=self._te_train_flags,
+            learning_rates=lr,
+        )
 
         optimization_plan = OptimizationPlan(
-            logical_groups=logical_groups,
-            parameter_groups=trainable_params,
+            logical_groups=grouping.logical_groups,
+            execution_groups=grouping.execution_groups,
         )
 
         # --- Parse optimizer kwargs ---
@@ -197,7 +164,7 @@ class FineTuneMode:
 
         # --- Create optimizer ---
         optimizer_name, optimizer_args, optimizer = get_optimizer(
-            cfg.optimizer, lr, cfg.optimizer.scheduler, optimization_plan.parameter_groups, optimizer_kwargs
+            cfg.optimizer, lr, cfg.optimizer.scheduler, optimization_plan.execution_groups, optimizer_kwargs
         )
         optimizer_train_fn, optimizer_eval_fn = get_optimizer_train_eval_fn(optimizer, cfg.optimizer)  # type: ignore[arg-type]
 
