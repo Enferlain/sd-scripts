@@ -11,7 +11,7 @@ import torch
 from diffusers.optimization import SchedulerType as DiffusersSchedulerType
 
 from library.optimization.arguments import parse_key_value_args
-from library.optimization.grouping import build_finetune_grouping, resolve_finetune_trainability
+from library.optimization.grouping import build_finetune_grouping, resolve_finetune_trainability, resolve_learning_rate_groups
 from library.optimization.optimizer_utils import (
     apply_optimizer_runtime_mode,
     _load_optimizer_class_for_signature,
@@ -684,6 +684,38 @@ class TestOptimizerUtils:
             len(group.params) for group in grouping.execution_groups
         )
         assert len(grouping.execution_groups[-1].params) == 2  # only the unmatched "other" layer remains
+
+    def test_resolve_learning_rate_groups_loads_yaml_file(self, tmp_path):
+        """Named groups can be loaded from a separate YAML file."""
+        groups_file = tmp_path / "groups.yaml"
+        groups_file.write_text(
+            "- name: attention\n"
+            "  lr: 5e-5\n"
+            "  match:\n"
+            "    - denoiser.*attn*\n",
+            encoding="utf-8",
+        )
+
+        groups = resolve_learning_rate_groups(LearningRatesConfig(base=1e-4, groups_file=str(groups_file)))
+
+        assert len(groups) == 1
+        assert groups[0].name == "attention"
+        assert groups[0].lr == pytest.approx(5e-5)
+        assert groups[0].match == ["denoiser.*attn*"]
+
+    def test_resolve_learning_rate_groups_rejects_inline_and_file_together(self, tmp_path):
+        """Inline groups and groups_file should stay mutually exclusive."""
+        groups_file = tmp_path / "groups.yaml"
+        groups_file.write_text("groups: []\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="cannot be set at the same time"):
+            resolve_learning_rate_groups(
+                LearningRatesConfig(
+                    base=1e-4,
+                    groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["denoiser.*attn*"])],
+                    groups_file=str(groups_file),
+                )
+            )
 
     def test_parse_string_to_type_int(self):
         """Test parsing integer strings."""

@@ -10,6 +10,16 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-13]
+
+### Changed
+
+- **Base fine-tune grouping now supports simple named parameter-group LR overrides on top of component/default learning rates** — The optimizer config can now express user-facing override groups under `optimizer.learning_rates.groups`, matched against live named parameters, and `base: null` now means “only explicitly named things train.”
+  - Updated `library/config/dataclasses/optimizer.py`, `configs/_defaults/optimizer/default.yaml`, `library/optimization/grouping.py`, and `library/training/modes/finetune_mode.py` with inline `optimizer.learning_rates.groups` support, optional `optimizer.learning_rates.groups_file` loading from YAML, live named-parameter matching (glob by default, `re:` for regex), and fine-tune grouping/trainability resolution that layers named overrides over denoiser/text-encoder defaults.
+  - Updated `library/optimization/optimizer_utils.py` so base/component trainability helpers treat `base: null` as “no fallback training” instead of implicitly enabling denoiser/text-encoder training.
+  - Updated `library/training/modes/peft_mode.py` to fail fast if inline or file-backed fine-tune grouping overrides are configured, since adapter-specific grouping is still deferred to the later adapter rework.
+  - Added focused coverage in `tests/unit/training/test_training_optimizer.py` and `tests/unit/training/modes/test_finetune_mode.py` for `base: null` semantics, `groups_file` loading, group-driven component activation, and named-group overrides splitting matched denoiser parameters away from the component remainder.
+
 ## [2026-04-12]
 
 ### Added
@@ -40,11 +50,6 @@ Rules:
   - Updated `library/optimization/types.py`, `library/training/modes/base.py`, `library/training/modes/finetune_mode.py`, and `library/training/phases/optimizer.py` so `OptimizerBuildResult` no longer carries train/eval callbacks, fine-tune stops constructing them, and the optimizer phase clears legacy callback state on plan-aware results.
   - Updated `library/optimization/optimizer_utils.py` and `library/training/runners/trainer.py` to document the remaining callback pair as compatibility-only state for older tuple-based callers.
   - Added focused coverage in `tests/unit/training/modes/test_finetune_mode.py`, `tests/unit/training/phases/test_optimizer.py`, and `tests/unit/training/test_training_trainer.py` to confirm plan-aware runtime transitions do not depend on callback-pair plumbing.
-- **Base fine-tune grouping now supports simple named parameter-group LR overrides on top of component/default learning rates** — The optimizer config can now express user-facing override groups under `optimizer.learning_rates.groups`, matched against live named parameters, and `base: null` now means “only explicitly named things train.”
-  - Updated `library/config/dataclasses/optimizer.py`, `configs/_defaults/optimizer/default.yaml`, `library/optimization/grouping.py`, and `library/training/modes/finetune_mode.py` with inline `optimizer.learning_rates.groups` support, live named-parameter matching (glob by default, `re:` for regex), and fine-tune grouping/trainability resolution that layers named overrides over denoiser/text-encoder defaults.
-  - Updated `library/optimization/optimizer_utils.py` so base/component trainability helpers treat `base: null` as “no fallback training” instead of implicitly enabling denoiser/text-encoder training.
-  - Updated `library/training/modes/peft_mode.py` to fail fast if `optimizer.learning_rates.groups` is configured, since adapter-specific grouping is still deferred to the later adapter rework.
-  - Added focused coverage in `tests/unit/training/test_training_optimizer.py` and `tests/unit/training/modes/test_finetune_mode.py` for `base: null` semantics, group-driven component activation, and named-group overrides splitting matched denoiser parameters away from the component remainder.
 
 ## [2026-04-11]
 

@@ -19,6 +19,7 @@ import torch
 from torch import nn
 
 from library.adapters.lora_utils import resolve_adapter_kwargs
+from library.optimization.grouping import resolve_learning_rate_groups
 from library.optimization.optimizer_utils import (
     get_text_encoders_train_flags,
     prepare_optimizer as _prepare_optimizer_util,
@@ -174,7 +175,7 @@ class PeftMode:
         Extracted from ``optimizer.prepare_optimizer()`` L52-57.
         """
         cfg = trainer.cfg
-        if cfg.optimizer.learning_rates.groups:
+        if resolve_learning_rate_groups(cfg.optimizer.learning_rates):
             raise NotImplementedError("optimizer.learning_rates.groups are currently supported only for fine-tune mode")
         return _prepare_optimizer_util(
             cfg.optimizer,

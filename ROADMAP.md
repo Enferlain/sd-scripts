@@ -102,6 +102,7 @@ Recent architecture and config settlements now belong in `CHANGELOG.md`; this se
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 - [ ] Investigate naming conventions and possible drifts in the objective class and runtime layers
 - [ ] Dep version health check, lots of old versions pinned
+- [ ] Config related validation to the config validation file
 
 ### Near-Term Follow-up
 

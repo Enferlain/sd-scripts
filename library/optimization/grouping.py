@@ -4,7 +4,10 @@ import fnmatch
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
+import yaml
 from torch import nn
 
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, LearningRatesConfig
@@ -57,6 +60,86 @@ class FinetuneSelection:
             key=lambda label: int(label.removeprefix("text_encoder")),
         )
         return [bool(self.selected_by_component[label]) for label in text_encoder_labels]
+
+
+def _coerce_learning_rate_group_config(group: Any, source: str) -> LearningRateGroupConfig:
+    if isinstance(group, LearningRateGroupConfig):
+        return group
+
+    if isinstance(group, dict):
+        raw_name = group.get("name", "")
+        raw_lr = group.get("lr", 0.0)
+        raw_match = group.get("match", [])
+    else:
+        raw_name = getattr(group, "name", "")
+        raw_lr = getattr(group, "lr", 0.0)
+        raw_match = getattr(group, "match", [])
+
+    if isinstance(raw_match, str):
+        match = [raw_match]
+    elif isinstance(raw_match, Sequence):
+        match = list(raw_match)
+    else:
+        raise ValueError(f"{source} must define 'match' as a string or list of strings")
+
+    try:
+        lr = float(raw_lr)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{source} must define 'lr' as a number") from exc
+
+    return LearningRateGroupConfig(name=str(raw_name), lr=lr, match=match)
+
+
+def _load_learning_rate_groups_file(groups_file: str) -> list[LearningRateGroupConfig]:
+    path = Path(groups_file).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+
+    if path.suffix.lower() not in {".yaml", ".yml"}:
+        raise ValueError("optimizer.learning_rates.groups_file must point to a .yaml or .yml file")
+    if not path.is_file():
+        raise ValueError(f"optimizer.learning_rates.groups_file does not exist: {path}")
+
+    with path.open(encoding="utf-8") as f:
+        loaded = yaml.safe_load(f)
+
+    if loaded is None:
+        return []
+
+    raw_groups: Any
+    if isinstance(loaded, list):
+        raw_groups = loaded
+    elif isinstance(loaded, dict) and "groups" in loaded:
+        raw_groups = loaded["groups"]
+    else:
+        raise ValueError(
+            "optimizer.learning_rates.groups_file must contain either a top-level list of groups or a top-level 'groups' list"
+        )
+
+    if not isinstance(raw_groups, list):
+        raise ValueError("optimizer.learning_rates.groups_file must define groups as a list")
+
+    return [
+        _coerce_learning_rate_group_config(group, f"optimizer.learning_rates.groups_file[{index}]")
+        for index, group in enumerate(raw_groups)
+    ]
+
+
+def resolve_learning_rate_groups(learning_rates: LearningRatesConfig) -> list[LearningRateGroupConfig]:
+    """Normalize inline/file-backed learning-rate groups into one resolved list."""
+    inline_groups = list(learning_rates.groups or [])
+    groups_file = learning_rates.groups_file
+
+    if inline_groups and groups_file:
+        raise ValueError("optimizer.learning_rates.groups and optimizer.learning_rates.groups_file cannot be set at the same time")
+
+    if groups_file:
+        return _load_learning_rate_groups_file(groups_file)
+
+    return [
+        _coerce_learning_rate_group_config(group, f"optimizer.learning_rates.groups[{index}]")
+        for index, group in enumerate(inline_groups)
+    ]
 
 
 def _resolve_text_encoder_lr(learning_rates: LearningRatesConfig, index: int) -> float | None:

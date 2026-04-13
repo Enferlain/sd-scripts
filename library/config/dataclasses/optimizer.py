@@ -16,6 +16,7 @@ class LearningRatesConfig:
     text_encoders: Any | None = field(default=None, metadata={"help": "Text Encoder LR(s) (overrides base if set)"})
     # Block-wise LR weights/values
     blocks: str | None = field(default=None, metadata={"help": "Per-block learning rates/weights"})
+    groups_file: str | None = field(default=None, metadata={"help": "Optional YAML file containing fine-grained named LR override groups"})
     groups: list["LearningRateGroupConfig"] = field(default_factory=list, metadata={"help": "Fine-grained named parameter-group LR overrides"})
 
 

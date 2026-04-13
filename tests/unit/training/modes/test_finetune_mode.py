@@ -36,6 +36,7 @@ def mock_cfg():
     cfg.optimizer.learning_rates.base = 1e-5
     cfg.optimizer.learning_rates.denoiser = None  # Default: use base LR
     cfg.optimizer.learning_rates.text_encoders = None  # Default: train TEs with base LR
+    cfg.optimizer.learning_rates.groups_file = None
     cfg.optimizer.optimizer_type = "AdamW"
     cfg.optimizer.optimizer_args = None
     cfg.optimizer.scheduler = "constant"
@@ -230,6 +231,37 @@ class TestPrepareTrainables:
         assert mock_trainer.denoiser.attn_proj.bias.requires_grad is True
         assert mock_trainer.denoiser.other.weight.requires_grad is False
         assert mock_trainer.denoiser.other.bias.requires_grad is False
+
+    def test_groups_file_loads_named_overrides(self, mode, mock_trainer, tmp_path):
+        """Fine-tune mode should resolve named groups from a separate YAML file."""
+
+        class DummyDenoiser(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.attn_proj = nn.Linear(4, 4)
+                self.other = nn.Linear(4, 4)
+
+        groups_file = tmp_path / "groups.yaml"
+        groups_file.write_text(
+            "- name: attention\n"
+            "  lr: 5e-5\n"
+            "  match:\n"
+            "    - denoiser.*attn*\n",
+            encoding="utf-8",
+        )
+
+        mock_trainer.denoiser = DummyDenoiser()
+        mock_trainer.cfg.optimizer.learning_rates.base = None
+        mock_trainer.cfg.optimizer.learning_rates.denoiser = None
+        mock_trainer.cfg.optimizer.learning_rates.text_encoders = [0.0, 0.0]
+        mock_trainer.cfg.optimizer.learning_rates.groups = []
+        mock_trainer.cfg.optimizer.learning_rates.groups_file = str(groups_file)
+
+        mode.prepare_trainables(mock_trainer)
+
+        assert mock_trainer._train_denoiser is True
+        assert mock_trainer.denoiser.attn_proj.weight.requires_grad is True
+        assert mock_trainer.denoiser.other.weight.requires_grad is False
 
     def test_sets_primary_trainable(self, mode, mock_trainer):
         """Primary trainable is set to the denoiser."""

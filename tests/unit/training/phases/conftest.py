@@ -80,6 +80,8 @@ def mock_cfg():
     cfg.optimizer.optimizer_type = "AdamW"
     cfg.optimizer.max_grad_norm = 1.0
     cfg.optimizer.learning_rates = MagicMock()  # Nested learning rates config
+    cfg.optimizer.learning_rates.groups = []
+    cfg.optimizer.learning_rates.groups_file = None
 
     # peft
     cfg.peft.adapter_module = "library.adapters.lora"
