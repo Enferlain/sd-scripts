@@ -10,6 +10,7 @@ learning_rates:
   denoiser: null
   text_encoders: null
   blocks: null
+  groups: []
 
 scheduler:
   lr_scheduler: "constant"

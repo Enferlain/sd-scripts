@@ -174,6 +174,8 @@ class PeftMode:
         Extracted from ``optimizer.prepare_optimizer()`` L52-57.
         """
         cfg = trainer.cfg
+        if cfg.optimizer.learning_rates.groups:
+            raise NotImplementedError("optimizer.learning_rates.groups are currently supported only for fine-tune mode")
         return _prepare_optimizer_util(
             cfg.optimizer,
             cfg.optimizer.learning_rates,

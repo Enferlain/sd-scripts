@@ -16,17 +16,12 @@ from typing import TYPE_CHECKING, Any
 import torch
 from torch import nn
 
-from library.optimization.grouping import build_finetune_grouping
+from library.optimization.grouping import build_finetune_grouping, resolve_finetune_selection
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.optimizer_factory import get_optimizer
 from library.optimization.types import (
     OptimizationPlan,
     OptimizerBuildResult,
-)
-from library.optimization.optimizer_utils import (
-    get_text_encoders_train_flags,
-    should_train_denoiser,
-    should_train_text_encoder,
 )
 from library.performance import deepspeed_utils
 from library.training.checkpointing import ResumeState, load_train_state_metadata, save_train_state_metadata
@@ -49,6 +44,7 @@ class FineTuneMode:
     # ------------------------------------------------------------------
 
     _te_train_flags: list[bool]
+    _selected_params_by_component: dict[str, list[nn.Parameter]]
 
     def prepare_trainables(self, trainer: Trainer) -> None:
         """Unfreeze denoiser and optionally text encoders for training.
@@ -64,29 +60,38 @@ class FineTuneMode:
         cfg = trainer.cfg
         strategies = trainer.strategies
 
-        # Determine what to train from generic LR policy
-        trainer._train_denoiser = should_train_denoiser(cfg.optimizer.learning_rates)
-        trainer._train_text_encoder = should_train_text_encoder(cfg.optimizer.learning_rates)
+        selection = resolve_finetune_selection(
+            denoiser=trainer.denoiser,
+            text_encoders=trainer.text_encoders,
+            learning_rates=cfg.optimizer.learning_rates,
+            groups=cfg.optimizer.learning_rates.groups,
+        )
+        trainer._train_denoiser = selection.train_denoiser
+        self._te_train_flags = selection.te_train_flags
+        trainer._train_text_encoder = any(self._te_train_flags)
+        self._selected_params_by_component = {
+            label: [ref.param for ref in refs] for label, refs in selection.selected_by_component.items()
+        }
 
         # Unfreeze denoiser
         assert trainer.denoiser is not None, "denoiser must be loaded before prepare_trainables"
+        denoiser_selected_ids = {id(param) for param in self._selected_params_by_component.get("denoiser", [])}
+        for _, param in trainer.denoiser.named_parameters():
+            param.requires_grad_(id(param) in denoiser_selected_ids)
         if trainer._train_denoiser:
-            trainer.denoiser.requires_grad_(True)
             trainer.denoiser.train()
         else:
-            trainer.denoiser.requires_grad_(False)
             trainer.denoiser.eval()
 
-        self._te_train_flags = get_text_encoders_train_flags(cfg.optimizer.learning_rates, trainer.text_encoders)
-        trainer._train_text_encoder = any(self._te_train_flags)
-
         # Freeze / unfreeze each TE
-        for t_enc, flag in zip(trainer.text_encoders, self._te_train_flags):
+        for index, (t_enc, flag) in enumerate(zip(trainer.text_encoders, self._te_train_flags)):
+            label = f"text_encoder{index + 1}"
+            selected_ids = {id(param) for param in self._selected_params_by_component.get(label, [])}
+            for _, param in t_enc.named_parameters():
+                param.requires_grad_(id(param) in selected_ids)
             if flag:
-                t_enc.requires_grad_(True)
                 t_enc.train()
             else:
-                t_enc.requires_grad_(False)
                 t_enc.eval()
 
         # Delegate model-specific post-processing to strategy
@@ -127,11 +132,7 @@ class FineTuneMode:
     # ------------------------------------------------------------------
 
     def build_optimizer_params(self, trainer: Trainer) -> OptimizerBuildResult:
-        """Build optimizer with standard denoiser + TE param groups.
-
-        Block-level LR grouping and pattern-based grouping are deferred
-        to a later mode-agnostic phase and are not supported in 2B.
-        """
+        """Build optimizer groups for the base fine-tune path."""
         cfg = trainer.cfg
         lr = cfg.optimizer.learning_rates
 
@@ -151,6 +152,7 @@ class FineTuneMode:
             text_encoders=trainer.text_encoders,
             te_train_flags=self._te_train_flags,
             learning_rates=lr,
+            groups=cfg.optimizer.learning_rates.groups,
         )
 
         optimization_plan = OptimizationPlan(
@@ -272,11 +274,9 @@ class FineTuneMode:
     def get_trainable_params(self, trainer: Trainer) -> list:
         """Return all trainable parameters for gradient clipping."""
         params: list[nn.Parameter] = []
-        if trainer._train_denoiser and trainer.denoiser is not None:
-            params.extend(list(trainer.denoiser.parameters()))
-        for t_enc, flag in zip(trainer.text_encoders, self._te_train_flags):
-            if flag:
-                params.extend(list(t_enc.parameters()))
+        params.extend(self._selected_params_by_component.get("denoiser", []))
+        for index, _ in enumerate(trainer.text_encoders):
+            params.extend(self._selected_params_by_component.get(f"text_encoder{index + 1}", []))
         return params
 
     def set_eval(self, trainer: Trainer) -> None:

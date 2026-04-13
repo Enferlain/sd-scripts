@@ -9,13 +9,23 @@ class LearningRatesConfig:
     Component-specific LRs (denoiser, text_encoders) override base when set.
     """
 
-    base: float = field(default=2.0e-6, metadata={"help": "Base learning rate, used as fallback for all components"})
+    base: float | None = field(default=2.0e-6, metadata={"help": "Base learning rate, used as fallback for all components"})
     denoiser: float | None = field(default=None, metadata={"help": "Denoiser LR (overrides base if set)"})
     # Supports single float or list of floats for multiple text encoders
     # NOTE: Type is Any due to OmegaConf limitation (Union of primitives and containers not supported).
     text_encoders: Any | None = field(default=None, metadata={"help": "Text Encoder LR(s) (overrides base if set)"})
     # Block-wise LR weights/values
     blocks: str | None = field(default=None, metadata={"help": "Per-block learning rates/weights"})
+    groups: list["LearningRateGroupConfig"] = field(default_factory=list, metadata={"help": "Fine-grained named parameter-group LR overrides"})
+
+
+@dataclass
+class LearningRateGroupConfig:
+    """User-facing fine-grained LR override group."""
+
+    name: str = field(default="", metadata={"help": "Display name for this parameter group"})
+    lr: float = field(default=0.0, metadata={"help": "Learning rate override for matched parameters"})
+    match: list[str] = field(default_factory=list, metadata={"help": "Glob patterns or re:<pattern> regexes matched against named parameters"})
 
 
 @dataclass

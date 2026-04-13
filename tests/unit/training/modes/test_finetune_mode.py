@@ -39,6 +39,7 @@ def mock_cfg():
     cfg.optimizer.optimizer_type = "AdamW"
     cfg.optimizer.optimizer_args = None
     cfg.optimizer.scheduler = "constant"
+    cfg.optimizer.learning_rates.groups = []
 
     # performance
     cfg.performance.precision.full_fp16 = False
@@ -76,7 +77,9 @@ def mock_accelerator():
 def mock_denoiser():
     """Create a mock denoiser."""
     denoiser = MagicMock(spec=nn.Module)
-    denoiser.parameters = MagicMock(return_value=[nn.Parameter(torch.randn(4, 4))])
+    parameter = nn.Parameter(torch.randn(4, 4))
+    denoiser.parameters = MagicMock(return_value=[parameter])
+    denoiser.named_parameters = MagicMock(return_value=[("weight", parameter)])
     return denoiser
 
 
@@ -84,14 +87,18 @@ def mock_denoiser():
 def mock_text_encoders():
     """Create mock SDXL text encoders with TE1 having text_model structure."""
     te1 = MagicMock(spec=nn.Module)
-    te1.parameters = MagicMock(return_value=[nn.Parameter(torch.randn(2, 2))])
+    te1_parameter = nn.Parameter(torch.randn(2, 2))
+    te1.parameters = MagicMock(return_value=[te1_parameter])
+    te1.named_parameters = MagicMock(return_value=[("weight", te1_parameter)])
     te1.text_model = MagicMock()
     te1.text_model.encoder = MagicMock()
     te1.text_model.encoder.layers = [MagicMock() for _ in range(12)]
     te1.text_model.final_layer_norm = MagicMock()
 
     te2 = MagicMock(spec=nn.Module)
-    te2.parameters = MagicMock(return_value=[nn.Parameter(torch.randn(2, 2))])
+    te2_parameter = nn.Parameter(torch.randn(2, 2))
+    te2.parameters = MagicMock(return_value=[te2_parameter])
+    te2.named_parameters = MagicMock(return_value=[("weight", te2_parameter)])
 
     return [te1, te2]
 
@@ -189,6 +196,41 @@ class TestPrepareTrainables:
         assert mode._te_train_flags == [False, False]
         assert mock_trainer._train_text_encoder is False
 
+    def test_groups_make_denoiser_trainable_without_base_lr(self, mode, mock_trainer):
+        """Named groups can enable denoiser training even when no baseline LR is configured."""
+        mock_trainer.cfg.optimizer.learning_rates.base = None
+        mock_trainer.cfg.optimizer.learning_rates.denoiser = None
+        mock_trainer.cfg.optimizer.learning_rates.text_encoders = [0.0, 0.0]
+        mock_trainer.cfg.optimizer.learning_rates.groups = [SimpleNamespace(name="attention", lr=5e-5, match=["denoiser.*weight"])]
+
+        mode.prepare_trainables(mock_trainer)
+
+        assert mock_trainer._train_denoiser is True
+        assert mock_trainer._train_text_encoder is False
+        assert mode._te_train_flags == [False, False]
+
+    def test_groups_only_enable_matched_params(self, mode, mock_trainer):
+        """When only explicit groups train, unmatched params keep requires_grad disabled."""
+
+        class DummyDenoiser(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.attn_proj = nn.Linear(4, 4)
+                self.other = nn.Linear(4, 4)
+
+        mock_trainer.denoiser = DummyDenoiser()
+        mock_trainer.cfg.optimizer.learning_rates.base = None
+        mock_trainer.cfg.optimizer.learning_rates.denoiser = None
+        mock_trainer.cfg.optimizer.learning_rates.text_encoders = [0.0, 0.0]
+        mock_trainer.cfg.optimizer.learning_rates.groups = [SimpleNamespace(name="attention", lr=5e-5, match=["denoiser.*attn*"])]
+
+        mode.prepare_trainables(mock_trainer)
+
+        assert mock_trainer.denoiser.attn_proj.weight.requires_grad is True
+        assert mock_trainer.denoiser.attn_proj.bias.requires_grad is True
+        assert mock_trainer.denoiser.other.weight.requires_grad is False
+        assert mock_trainer.denoiser.other.bias.requires_grad is False
+
     def test_sets_primary_trainable(self, mode, mock_trainer):
         """Primary trainable is set to the denoiser."""
         mode.prepare_trainables(mock_trainer)
@@ -260,6 +302,7 @@ class TestBuildOptimizerParams:
             text_encoders=mock_trainer.text_encoders,
             te_train_flags=[True, False],
             learning_rates=mock_trainer.cfg.optimizer.learning_rates,
+            groups=[],
         )
         assert isinstance(result, OptimizerBuildResult)
         assert result.optimizer_name == "AdamW"
@@ -408,14 +451,16 @@ class TestEvalTrain:
     """Test eval/train transitions and param retrieval."""
 
     def test_get_trainable_params_returns_all(self, mode, mock_trainer):
-        """Returns denoiser + trained TE params."""
+        """Returns only the selected trainable params."""
         mock_trainer._train_denoiser = True
         mode._te_train_flags = [True, False]
-
         denoiser_params = [nn.Parameter(torch.randn(4, 4))]
         te1_params = [nn.Parameter(torch.randn(2, 2))]
-        mock_trainer.denoiser.parameters.return_value = denoiser_params
-        mock_trainer.text_encoders[0].parameters.return_value = te1_params
+        mode._selected_params_by_component = {
+            "denoiser": denoiser_params,
+            "text_encoder1": te1_params,
+            "text_encoder2": [],
+        }
 
         params = mode.get_trainable_params(mock_trainer)
 

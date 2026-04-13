@@ -57,7 +57,7 @@ def should_train_text_encoder(learning_rates: LearningRatesConfig) -> bool:
     """
     te_lr = learning_rates.text_encoders
     if te_lr is None:
-        return True  # Default: train TE with base LR
+        return learning_rates.base is not None and learning_rates.base > 0
     if isinstance(te_lr, (int, float)):
         return te_lr > 0
     # List of LRs - train if any are positive
@@ -72,8 +72,8 @@ def should_train_denoiser(learning_rates: LearningRatesConfig) -> bool:
     - denoiser LR is None (will use base LR)
     - denoiser LR is a positive number
     """
-    denoiser_lr = learning_rates.denoiser
-    return denoiser_lr is None or denoiser_lr > 0
+    denoiser_lr = learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
+    return denoiser_lr is not None and denoiser_lr > 0
 
 
 def get_text_encoders_train_flags(learning_rates: LearningRatesConfig, text_encoders: list[object]) -> list[bool]:
@@ -90,7 +90,8 @@ def get_text_encoders_train_flags(learning_rates: LearningRatesConfig, text_enco
     num_text_encoders = len(text_encoders)
     te_lr = learning_rates.text_encoders
     if te_lr is None:
-        return [should_train_text_encoder(learning_rates)] * num_text_encoders
+        base_train = learning_rates.base is not None and learning_rates.base > 0
+        return [base_train] * num_text_encoders
     if isinstance(te_lr, int | float):
         return [te_lr > 0] * num_text_encoders
 

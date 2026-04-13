@@ -11,7 +11,7 @@ import torch
 from diffusers.optimization import SchedulerType as DiffusersSchedulerType
 
 from library.optimization.arguments import parse_key_value_args
-from library.optimization.grouping import build_finetune_grouping
+from library.optimization.grouping import build_finetune_grouping, resolve_finetune_trainability
 from library.optimization.optimizer_utils import (
     apply_optimizer_runtime_mode,
     _load_optimizer_class_for_signature,
@@ -32,7 +32,7 @@ from library.optimization.types import (
     materialize_parameter_groups,
 )
 from library.optimization.wrappers.schedulefree import ScheduleFreeWrapper
-from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfig, LearningRatesConfig
+from library.config.dataclasses.optimizer import LearningRateGroupConfig, OptimizerConfig, SchedulerConfig, LearningRatesConfig
 from library.config.dataclasses.training import TrainingConfig
 
 
@@ -640,6 +640,50 @@ class TestOptimizerUtils:
         )
 
         assert [group.lr for group in grouping.logical_groups] == [2e-5, 3e-5, 1e-5]
+
+    def test_resolve_finetune_trainability_uses_groups_when_base_is_missing(self):
+        """Explicit groups can make a component trainable even without a base fallback LR."""
+        train_denoiser, te_flags = resolve_finetune_trainability(
+            denoiser=torch.nn.Linear(4, 4),
+            text_encoders=[torch.nn.Linear(3, 3), torch.nn.Linear(2, 2)],
+            learning_rates=LearningRatesConfig(base=None, denoiser=None, text_encoders=[0.0, 0.0]),
+            groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["denoiser.*weight"])],
+        )
+
+        assert train_denoiser is True
+        assert te_flags == [False, False]
+
+    def test_build_finetune_grouping_applies_named_group_overrides_before_component_remainder(self):
+        """Named groups should override matched subsets while component LR handles the remaining params."""
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.attn_proj = torch.nn.Linear(4, 4)
+                self.time_embed = torch.nn.Linear(4, 4)
+                self.other = torch.nn.Linear(4, 4)
+
+        denoiser = DummyDenoiser()
+        groups = [
+            LearningRateGroupConfig(name="attention", lr=5e-5, match=["denoiser.*attn*"]),
+            LearningRateGroupConfig(name="time_embed", lr=1e-4, match=["denoiser.*time_embed.*"]),
+        ]
+
+        grouping = build_finetune_grouping(
+            denoiser=denoiser,
+            train_denoiser=True,
+            text_encoders=[],
+            te_train_flags=[],
+            learning_rates=LearningRatesConfig(base=1e-4, denoiser=1e-5),
+            groups=groups,
+        )
+
+        assert [group.metric_name for group in grouping.logical_groups] == ["attention", "time_embed", "denoiser"]
+        assert [group.lr for group in grouping.logical_groups] == [5e-5, 1e-4, 1e-5]
+        assert len({id(param) for group in grouping.execution_groups for param in group.params}) == sum(
+            len(group.params) for group in grouping.execution_groups
+        )
+        assert len(grouping.execution_groups[-1].params) == 2  # only the unmatched "other" layer remains
 
     def test_parse_string_to_type_int(self):
         """Test parsing integer strings."""

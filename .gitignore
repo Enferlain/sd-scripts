@@ -26,6 +26,7 @@ GEMINI.md
 .claude/
 .gemini/
 .agent/skills
+openspec/changes/archive/
 *code-workspace
 
 # Project Data & Outputs
