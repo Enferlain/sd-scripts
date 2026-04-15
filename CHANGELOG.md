@@ -19,6 +19,10 @@ Rules:
   - Updated `library/optimization/optimizer_utils.py` so base/component trainability helpers treat `base: null` as “no fallback training” instead of implicitly enabling denoiser/text-encoder training.
   - Updated `library/training/modes/peft_mode.py` to fail fast if inline or file-backed fine-tune grouping overrides are configured, since adapter-specific grouping is still deferred to the later adapter rework.
   - Added focused coverage in `tests/unit/training/test_training_optimizer.py` and `tests/unit/training/modes/test_finetune_mode.py` for `base: null` semantics, `groups_file` loading, group-driven component activation, and named-group overrides splitting matched denoiser parameters away from the component remainder.
+- **The repo now has a standalone named-parameter inspection tool for loaded model runtimes** — You can dump live parameter names grouped by explicit family component names (`clip_l`, `clip_g`, `t5xxl`, `vae`, `unet`, `mmdit`) instead of inferring them from state-dict structure.
+  - Added `library/models/parameter_dump.py` with reusable helpers for family-aware component mapping and compact YAML rendering.
+  - Added `tools/model_management/dump_named_parameters.py` to load a model through the active strategy path and emit one-line-per-parameter YAML, with optional component filtering and `--trainable-only`.
+  - Added focused unit coverage in `tests/unit/models/test_parameter_dump.py` for SD3 component naming and formatter output shape.
 
 ## [2026-04-12]
 

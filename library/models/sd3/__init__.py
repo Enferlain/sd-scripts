@@ -1,5 +1,6 @@
 """SD3 model components."""
 
+from library.models.parameter_dump import NamedParameterComponentNames
 from library.models.sd3.conversion import save_models
 from library.models.sd3.loader import (
     analyze_state_dict_state,
@@ -12,6 +13,12 @@ from library.models.sd3.loader import (
 )
 from library.models.sd3.mmdit import MMDiT, SD3Params, create_sd3_mmdit
 from library.models.sd3.vae import SDVAE, VAE_SCALE_FACTOR, VAE_SHIFT_FACTOR
+
+NAMED_PARAMETER_COMPONENT_NAMES = NamedParameterComponentNames(
+    text_encoder_names=("clip_l", "clip_g", "t5xxl"),
+    vae_name="vae",
+    denoiser_name="mmdit",
+)
 
 
 __all__ = [
@@ -29,4 +36,5 @@ __all__ = [
     "load_mmdit",
     "load_t5xxl",
     "load_vae",
+    "NAMED_PARAMETER_COMPONENT_NAMES",
 ]
