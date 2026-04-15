@@ -97,6 +97,24 @@ def load_mmdit(
     return mmdit.to(device)
 
 
+def _materialize_meta_module(
+    module: torch.nn.Module,
+    state_dict: dict[str, torch.Tensor],
+    device: str | torch.device,
+) -> tuple[list[str], list[str]]:
+    """Materialize meta-initialized modules on the target device before loading weights.
+
+    Hugging Face text models may keep non-persistent buffers off the state dict. If the module
+    stays on the meta device until after `load_state_dict(..., assign=True)`, a later `.to(device)`
+    will fail when those buffers remain meta. `to_empty()` gives every tensor real storage first,
+    then `load_state_dict(..., assign=True)` can still swap in the checkpoint tensors without
+    leaving those buffers on the meta device.
+    """
+    module.to_empty(device=device)
+    info = module.load_state_dict(state_dict, strict=False, assign=True)
+    return info.missing_keys, info.unexpected_keys
+
+
 def load_clip_l(
     clip_l_path: str | None,
     dtype: torch.dtype | None,
@@ -145,9 +163,9 @@ def load_clip_l(
         logger.info("Adding text_projection.weight to CLIP-L state dict")
         clip_l_sd["text_projection.weight"] = torch.eye(768, dtype=dtype, device=device)
 
-    info = clip.load_state_dict(clip_l_sd, strict=False, assign=True)
-    logger.info("Loaded CLIP-L: %s", info)
-    return clip.to(device)
+    missing_keys, unexpected_keys = _materialize_meta_module(clip, clip_l_sd, device)
+    logger.info("Loaded CLIP-L: missing_keys=%s unexpected_keys=%s", missing_keys, unexpected_keys)
+    return clip
 
 
 def load_clip_g(
@@ -193,9 +211,9 @@ def load_clip_g(
         assert clip_g_path is not None
         logger.info("Loading state dict from %s", clip_g_path)
         clip_g_sd = load_safetensors(clip_g_path, device=str(device), disable_mmap=disable_mmap, dtype=dtype)
-    info = clip.load_state_dict(clip_g_sd, strict=False, assign=True)
-    logger.info("Loaded CLIP-G: %s", info)
-    return clip.to(device)
+    missing_keys, unexpected_keys = _materialize_meta_module(clip, clip_g_sd, device)
+    logger.info("Loaded CLIP-G: missing_keys=%s unexpected_keys=%s", missing_keys, unexpected_keys)
+    return clip
 
 
 def load_t5xxl(
@@ -255,9 +273,9 @@ def load_t5xxl(
         assert t5xxl_path is not None
         logger.info("Loading state dict from %s", t5xxl_path)
         t5xxl_sd = load_safetensors(t5xxl_path, device=str(device), disable_mmap=disable_mmap, dtype=dtype)
-    info = t5xxl.load_state_dict(t5xxl_sd, strict=False, assign=True)
-    logger.info("Loaded T5xxl: %s", info)
-    return t5xxl.to(device)
+    missing_keys, unexpected_keys = _materialize_meta_module(t5xxl, t5xxl_sd, device)
+    logger.info("Loaded T5xxl: missing_keys=%s unexpected_keys=%s", missing_keys, unexpected_keys)
+    return t5xxl
 
 
 def load_vae(

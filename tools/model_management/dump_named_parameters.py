@@ -1,20 +1,46 @@
-"""Dump live model named parameters grouped by component in a compact YAML shape."""
+"""Inspect loaded model runtimes and dump parameters, modules, or state to YAML."""
+
+# ruff: noqa: E402
 
 from __future__ import annotations
 
 import argparse
+import importlib
+import importlib.util
 from pathlib import Path
 import re
 from types import SimpleNamespace
 import sys
 
 import torch
-from hydra import compose, initialize_config_dir
-from hydra.core.global_hydra import GlobalHydra
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+from library.config.dataclasses.data import DataConfig
+from library.config.dataclasses.model import ModelConfig
+from library.config.dataclasses.performance import PerformanceConfig
+from library.config.dataclasses.training import TrainingConfig
+from library.models.parameter_dump import (
+    NamedParameterComponentNames,
+    build_named_components,
+    derive_parameter_dump_identifier,
+    format_component_module_dump,
+    format_component_state_dump,
+    format_named_parameter_dump,
+)
+
+_WINDOWS_ABS_PATH_RE = re.compile(r"^([A-Za-z]):[\\/](.*)$")
+_MODEL_PACKAGE_ALIASES = {"sd1": "sd", "sd15": "sd", "sd2": "sd"}
+_DTYPE_CHOICES = {
+    "float32": torch.float32,
+    "fp32": torch.float32,
+    "float16": torch.float16,
+    "fp16": torch.float16,
+    "bfloat16": torch.bfloat16,
+    "bf16": torch.bfloat16,
+}
 
 
 class _ToolAccelerator:
@@ -28,44 +54,66 @@ class _ToolAccelerator:
         return None
 
 
-_WINDOWS_ABS_PATH_RE = re.compile(r"^([A-Za-z]):[\\/](.*)$")
+def supported_model_types() -> tuple[str, ...]:
+    """Return model families supported by the active strategy path."""
+    from library.strategies.factory import _STRATEGY_REGISTRY
+
+    return tuple(_STRATEGY_REGISTRY)
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Dump live model named parameters grouped by component.")
-    parser.add_argument("--config-name", required=True, help="Hydra config name, for example presets/sdxl_finetune")
-    parser.add_argument("--override", action="append", default=[], help="Hydra override, may be passed multiple times")
+def build_strategy(cfg):
+    """Build the active training strategy for a minimal inspection runtime config."""
+    from library.strategies.factory import build_training_strategy
+
+    return build_training_strategy(cfg)
+
+
+def validate_model_type(parser: argparse.ArgumentParser, model_type: str) -> None:
+    supported_types = supported_model_types()
+    if model_type in supported_types:
+        return
+
+    supported = ", ".join(supported_types)
+    parser.error(f"Unsupported --model-type {model_type!r}. Supported model types: {supported}")
+
+
+def setup_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Inspect a loaded model runtime and emit YAML views.")
+    parser.add_argument("--model-type", required=True, help="Model family to inspect")
+    parser.add_argument("--model-path", required=True, help="Checkpoint path or diffusers path")
+    parser.add_argument("--vae", default=None, help="Optional VAE path")
+    parser.add_argument("--clip-l", default=None, help="Optional SD3 CLIP-L sidecar path")
+    parser.add_argument("--clip-g", default=None, help="Optional SD3 CLIP-G sidecar path")
+    parser.add_argument("--t5xxl", default=None, help="Optional SD3 T5-XXL sidecar path")
     parser.add_argument("--device", default="cpu", help="Device to load the model on for inspection")
+    parser.add_argument("--dtype", default="float32", choices=tuple(_DTYPE_CHOICES), help="Weight dtype for loading")
+    parser.add_argument("--disable-mmap", action="store_true", help="Disable safetensors mmap loading when supported")
+    parser.add_argument(
+        "--view",
+        default="parameters",
+        choices=("parameters", "modules", "state"),
+        help="Inspection view to render",
+    )
     parser.add_argument("--identifier", default=None, help="Optional identifier override for the YAML header")
     parser.add_argument("--component", action="append", default=[], help="Optional component filter, may be passed multiple times")
     parser.add_argument("--trainable-only", action="store_true", help="Only include parameters with requires_grad=True")
     parser.add_argument("--output", default=None, help="Optional output path; prints to stdout when omitted")
-    return parser.parse_args()
+    return parser
 
 
-def _load_repo_dependencies():
-    from library.config.config_validation import prepare_config
-    from library.config.schemas import register_all
-    from library.models.parameter_dump import (
-        derive_parameter_dump_identifier,
-        format_named_parameter_dump,
-        resolve_named_parameter_components,
-    )
-    from library.strategies.factory import build_training_strategy
-    from library.utils.torch_utils import prepare_dtype
+def parse_args() -> argparse.Namespace:
+    parser = setup_parser()
+    args = parser.parse_args()
 
-    return {
-        "prepare_config": prepare_config,
-        "register_all": register_all,
-        "derive_parameter_dump_identifier": derive_parameter_dump_identifier,
-        "format_named_parameter_dump": format_named_parameter_dump,
-        "resolve_named_parameter_components": resolve_named_parameter_components,
-        "build_training_strategy": build_training_strategy,
-        "prepare_dtype": prepare_dtype,
-    }
+    validate_model_type(parser, args.model_type)
+
+    if args.trainable_only and args.view != "parameters":
+        parser.error("--trainable-only only applies to the parameters view")
+
+    return args
 
 
-def _normalize_windows_path(path: str | None) -> str | None:
+def normalize_path(path: str | None) -> str | None:
     if not path:
         return path
 
@@ -82,60 +130,129 @@ def _normalize_windows_path(path: str | None) -> str | None:
     return str(converted) if converted.exists() else path
 
 
-def _normalize_model_paths(cfg) -> None:
-    model_cfg = cfg.model
-    model_cfg.pretrained_model_name_or_path = _normalize_windows_path(model_cfg.pretrained_model_name_or_path)
-    model_cfg.vae = _normalize_windows_path(model_cfg.vae)
-
-    for attr in ("clip_l", "clip_g", "t5xxl"):
-        if hasattr(model_cfg, attr):
-            setattr(model_cfg, attr, _normalize_windows_path(getattr(model_cfg, attr)))
+def mixed_precision_from_dtype(dtype: torch.dtype) -> str:
+    if dtype == torch.float16:
+        return "fp16"
+    if dtype == torch.bfloat16:
+        return "bf16"
+    return "no"
 
 
-def main() -> None:
-    args = _parse_args()
-    deps = _load_repo_dependencies()
+def build_runtime_cfg(args: argparse.Namespace) -> SimpleNamespace:
+    """Build the minimal runtime config needed to reuse the strategy loading path."""
+    model_config = ModelConfig(
+        model_type=args.model_type,
+        pretrained_model_name_or_path=normalize_path(args.model_path),
+        vae=normalize_path(args.vae),
+    )
+    for attr_name, value in (
+        ("clip_l", args.clip_l),
+        ("clip_g", args.clip_g),
+        ("t5xxl", args.t5xxl),
+    ):
+        if value is not None:
+            setattr(model_config, attr_name, normalize_path(value))
 
-    config_dir = REPO_ROOT / "configs"
+    training_config = TrainingConfig(max_token_length=None, clip_skip=None)
+    data_config = DataConfig()
+    data_config.caching.disable_mmap_load_safetensors = bool(args.disable_mmap)
+    performance_config = PerformanceConfig()
+    performance_config.precision.mixed_precision = mixed_precision_from_dtype(_DTYPE_CHOICES[args.dtype])
 
-    deps["register_all"]()
-    GlobalHydra.instance().clear()
-    with initialize_config_dir(version_base=None, config_dir=str(config_dir)):
-        cfg = compose(config_name=args.config_name, overrides=args.override)
-    GlobalHydra.instance().clear()
+    return SimpleNamespace(
+        mode="finetune",
+        model=model_config,
+        training=training_config,
+        data=data_config,
+        performance=performance_config,
+        objective=SimpleNamespace(prediction="epsilon"),
+    )
 
-    deps["prepare_config"](cfg)
-    _normalize_model_paths(cfg)
 
-    strategy = deps["build_training_strategy"](cfg)
+def resolve_model_package_name(model_type: str) -> str | None:
+    direct_spec = importlib.util.find_spec(f"library.models.{model_type}")
+    if direct_spec is not None:
+        return model_type
+    return _MODEL_PACKAGE_ALIASES.get(model_type)
+
+
+def resolve_component_names(model_type: str) -> NamedParameterComponentNames | None:
+    package_name = resolve_model_package_name(model_type)
+    if package_name is None:
+        return None
+
+    model_package = importlib.import_module(f"library.models.{package_name}")
+    component_names = getattr(model_package, "NAMED_PARAMETER_COMPONENT_NAMES", None)
+    if isinstance(component_names, NamedParameterComponentNames):
+        return component_names
+    return None
+
+
+def load_components(args: argparse.Namespace) -> tuple[str, list[tuple[str, torch.nn.Module]]]:
+    """Load the model through the active strategy path and group top-level components."""
+    cfg = build_runtime_cfg(args)
+    strategy = build_strategy(cfg)
     accelerator = _ToolAccelerator(args.device)
-    weight_dtype, _ = deps["prepare_dtype"](cfg.performance.precision)
+    weight_dtype = _DTYPE_CHOICES[args.dtype]
     model_version, text_encoders, vae, denoiser = strategy.load_target_model(cfg, weight_dtype, accelerator)
-
-    components = deps["resolve_named_parameter_components"](
-        model_type=cfg.model.model_type,
+    component_names = resolve_component_names(args.model_type)
+    components = build_named_components(
+        component_names=component_names,
         text_encoders=text_encoders,
         vae=vae,
         denoiser=denoiser,
     )
-    if args.component:
-        requested = set(args.component)
-        components = [(name, module) for name, module in components if name in requested]
+    identifier = args.identifier or derive_parameter_dump_identifier(args.model_type, model_version)
+    return identifier, components
 
-    identifier = args.identifier or deps["derive_parameter_dump_identifier"](cfg.model.model_type, model_version)
-    rendered = deps["format_named_parameter_dump"](
+
+def filter_components(
+    components: list[tuple[str, torch.nn.Module]],
+    requested_components: list[str],
+) -> list[tuple[str, torch.nn.Module]]:
+    if not requested_components:
+        return components
+
+    requested = set(requested_components)
+    return [(name, module) for name, module in components if name in requested]
+
+
+def render_view(
+    *,
+    view: str,
+    identifier: str,
+    components: list[tuple[str, torch.nn.Module]],
+    trainable_only: bool,
+) -> str:
+    if view == "modules":
+        return format_component_module_dump(identifier=identifier, components=components)
+    if view == "state":
+        return format_component_state_dump(identifier=identifier, components=components)
+    return format_named_parameter_dump(identifier=identifier, components=components, trainable_only=trainable_only)
+
+
+def write_output(rendered: str, output_path: str | None) -> None:
+    if output_path is None:
+        print(rendered, end="")
+        return
+
+    resolved_output = Path(output_path).expanduser()
+    if not resolved_output.is_absolute():
+        resolved_output = Path.cwd() / resolved_output
+    resolved_output.write_text(rendered, encoding="utf-8")
+
+
+def main() -> None:
+    args = parse_args()
+    identifier, components = load_components(args)
+    filtered_components = filter_components(components, args.component)
+    rendered = render_view(
+        view=args.view,
         identifier=identifier,
-        components=components,
+        components=filtered_components,
         trainable_only=args.trainable_only,
     )
-
-    if args.output:
-        output_path = Path(args.output).expanduser()
-        if not output_path.is_absolute():
-            output_path = Path.cwd() / output_path
-        output_path.write_text(rendered, encoding="utf-8")
-    else:
-        print(rendered, end="")
+    write_output(rendered, args.output)
 
 
 if __name__ == "__main__":

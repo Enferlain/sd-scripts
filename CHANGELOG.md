@@ -10,6 +10,17 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-15]
+
+### Changed
+
+- **The model parameter dump tooling was rebuilt as a real model inspection tool** — `tools/model_management/dump_named_parameters.py` now uses the repo's existing strategy loading path to inspect real loaded runtime modules and emit deterministic YAML views for parameters, modules, or full state.
+  - Replaced the old Hydra/config-driven training-pipeline surface with a direct inspection CLI: `--model-type`, `--model-path`, optional sidecars, and `--view parameters|modules|state`.
+  - Kept `library/models/parameter_dump.py` limited to the accepted shared surface: top-level component-name metadata plus pure YAML formatting helpers, without any dump-specific loader/package APIs.
+  - Made the default output parameter-oriented and grouped under existing `NAMED_PARAMETER_COMPONENT_NAMES`, with module inspection and buffer/state inspection sharing the same component ordering.
+  - Hardened the SD3 Hugging Face text-encoder loading path so meta-initialized CLIP/T5 modules are materialized with `to_empty()` before state-dict assignment, avoiding the `Cannot copy out of meta tensor` failure that the inspection tool exposed on unified SD3 checkpoints without changing the underlying assign-based loading path.
+  - Added focused unit coverage for tool-side loading orchestration, component grouping, and the parameter/module/state renderers.
+
 ## [2026-04-13]
 
 ### Changed
