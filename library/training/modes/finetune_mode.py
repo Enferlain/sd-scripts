@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 import torch
 from torch import nn
 
+from library.models.parameter_dump import resolve_component_names
 from library.optimization.grouping import build_finetune_grouping, resolve_finetune_selection, resolve_learning_rate_groups
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.optimizer_factory import get_optimizer
@@ -60,12 +61,14 @@ class FineTuneMode:
         cfg = trainer.cfg
         strategies = trainer.strategies
         groups = resolve_learning_rate_groups(cfg.optimizer.learning_rates)
+        component_names = resolve_component_names(cfg.model.model_type)
 
         selection = resolve_finetune_selection(
             denoiser=trainer.denoiser,
             text_encoders=trainer.text_encoders,
             learning_rates=cfg.optimizer.learning_rates,
             groups=groups,
+            component_names=component_names,
         )
         trainer._train_denoiser = selection.train_denoiser
         self._te_train_flags = selection.te_train_flags
@@ -137,6 +140,7 @@ class FineTuneMode:
         cfg = trainer.cfg
         lr = cfg.optimizer.learning_rates
         groups = resolve_learning_rate_groups(lr)
+        component_names = resolve_component_names(cfg.model.model_type)
 
         # --- Fail-fast for deferred features ---
         # Block LR is configured via optimizer_args or dedicated config
@@ -155,6 +159,7 @@ class FineTuneMode:
             te_train_flags=self._te_train_flags,
             learning_rates=lr,
             groups=groups,
+            component_names=component_names,
         )
 
         optimization_plan = OptimizationPlan(

@@ -96,7 +96,7 @@ def make_validate_cfg(overrides: dict | None = None):
             },
         },
         "optimizer": {
-            "learning_rates": {"blocks": None, "text_encoders": 0, "denoiser": 1e-4, "base": 1e-4},
+            "learning_rates": {"text_encoders": 0, "denoiser": 1e-4, "base": 1e-4},
         },
         "data": {
             "source": {"val_data_dir": None},
@@ -436,7 +436,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": None},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {"caching": {"cache_text_encoder_outputs": False}},
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
@@ -462,7 +462,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sdxl"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {"caching": {"cache_text_encoder_outputs": False}},
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
@@ -483,7 +483,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sd15"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {"caching": {"cache_text_encoder_outputs": False}},
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
@@ -505,7 +505,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sdxl"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {"caching": {"cache_text_encoder_outputs": False}},
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
@@ -546,7 +546,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sd1"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {"caching": {"cache_text_encoder_outputs": False}},
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
@@ -641,7 +641,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sd2"},
                 "training": {"clip_skip": 2},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {"caching": {"cache_text_encoder_outputs": False}},
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
@@ -663,7 +663,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sd1"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {"caching": {"cache_text_encoder_outputs": False}},
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
@@ -699,7 +699,7 @@ class TestValidateConfig:
                         "uniform_mix_when_low_entropy": 0.1,
                     },
                 },
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0, "denoiser": 1e-4, "base": 1e-4}},
+                "optimizer": {"learning_rates": {"text_encoders": 0, "denoiser": 1e-4, "base": 1e-4}},
                 "data": {"source": {"val_data_dir": None}, "caching": {"cache_text_encoder_outputs": False}},
                 "performance": {
                     "memory": {"offload_text_encoders": False},
@@ -779,7 +779,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sd1"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {"caching": {"cache_text_encoder_outputs": False}},
                 "performance": {
                     "memory": {"offload_text_encoders": False},
@@ -834,7 +834,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sdxl"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {
                     "caching": {"cache_text_encoder_outputs": False},
                     "bucketing": {"bucket_reso_steps": 32},
@@ -863,7 +863,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sdxl"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {
                     "caching": {"cache_text_encoder_outputs": False},
                     "bucketing": {"bucket_reso_steps": 48},
@@ -891,7 +891,7 @@ class TestValidateConfig:
                 },
                 "model": {"model_type": "sdxl"},
                 "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": None, "text_encoders": 0}},
+                "optimizer": {"learning_rates": {"text_encoders": 0}},
                 "data": {
                     "caching": {"cache_text_encoder_outputs": True},
                     "bucketing": {"bucket_reso_steps": 32},
@@ -1071,43 +1071,6 @@ class TestValidateConfig:
         )
 
         validate_config(cfg)
-
-    @pytest.mark.skip(reason="Block LR validation is model-specific, currently disabled pending refactor")
-    def test_sdxl_block_lr_wrong_count_raises(self):
-        """SDXL block_lr with wrong count should raise ValueError."""
-        cfg = OmegaConf.create(
-            {
-                "loss": {
-                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
-                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
-                    "v_parameterization": False,
-                },
-                "model": {"model_type": "sd1"},
-                "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": "0.1,0.2,0.3"}},  # Only 3 values, need 23
-            }
-        )
-        with pytest.raises(ValueError, match="block_lr must have 23 values"):
-            validate_config(cfg)
-
-    @pytest.mark.skip(reason="Block LR validation is model-specific, currently disabled pending refactor")
-    def test_sdxl_block_lr_correct_count_passes(self):
-        """SDXL block_lr with 23 values should not raise."""
-        block_lrs = ",".join(["0.1"] * 23)
-        cfg = OmegaConf.create(
-            {
-                "loss": {
-                    "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
-                    "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
-                    "v_parameterization": False,
-                },
-                "model": {"model_type": "sd1"},
-                "training": {"clip_skip": None},
-                "optimizer": {"learning_rates": {"blocks": block_lrs}},
-            }
-        )
-        validate_config(cfg)  # Should not raise
-
 
 # =============================================================================
 # Dataset-group validator Tests

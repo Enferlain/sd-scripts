@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
@@ -18,11 +20,35 @@ class NamedParameterComponentNames:
     denoiser_name: str = "denoiser"
 
 
+_MODEL_PACKAGE_ALIASES = {"sd1": "sd", "sd15": "sd", "sd2": "sd"}
+
+
 def derive_parameter_dump_identifier(model_type: str, model_version: str | None) -> str:
     """Build a readable identifier for inspection output."""
     if model_version is None or model_version == model_type:
         return model_type
     return f"{model_type}-{model_version}"
+
+
+def resolve_component_names(model_type: str) -> NamedParameterComponentNames | None:
+    """Resolve family-owned component labels from the model package metadata."""
+    package_name = model_type
+    direct_spec = importlib.util.find_spec(f"library.models.{package_name}")
+    if direct_spec is None:
+        package_name = _MODEL_PACKAGE_ALIASES.get(model_type)
+        if package_name is None:
+            return None
+
+    model_package = importlib.import_module(f"library.models.{package_name}")
+    component_names = getattr(model_package, "NAMED_PARAMETER_COMPONENT_NAMES", None)
+    if isinstance(component_names, NamedParameterComponentNames):
+        return component_names
+    return None
+
+
+def build_selector_name(component_name: str, local_name: str) -> str:
+    """Build the canonical external selector path for a component-local name."""
+    return component_name if not local_name else f"{component_name}.{local_name}"
 
 
 def _normalize_text_encoders(text_encoders: nn.Module | Sequence[nn.Module | None] | None) -> list[nn.Module | None]:
@@ -101,6 +127,7 @@ def _buffer_record(module: nn.Module, name: str, buffer: torch.Tensor) -> dict[s
 def _iter_component_parameter_lines(
     module: nn.Module,
     *,
+    component_name: str,
     trainable_only: bool = False,
     include_kind: bool = False,
     indent: str = "    ",
@@ -108,18 +135,14 @@ def _iter_component_parameter_lines(
     for name, param in sorted(module.named_parameters(), key=lambda item: item[0]):
         if trainable_only and not param.requires_grad:
             continue
-        yield f"{indent}{name}: {_format_inline_record(_parameter_record(param, include_kind=include_kind))}"
+        selector_name = build_selector_name(component_name, name)
+        yield f"{indent}{selector_name}: {_format_inline_record(_parameter_record(param, include_kind=include_kind))}"
 
 
-def _buffer_is_persistent(module: nn.Module, name: str) -> bool:
-    module_path, _, buffer_name = name.rpartition(".")
-    owner = module.get_submodule(module_path) if module_path else module
-    return buffer_name not in owner._non_persistent_buffers_set
-
-
-def _iter_component_buffer_lines(module: nn.Module, *, indent: str = "      ") -> Iterable[str]:
+def _iter_component_buffer_lines(module: nn.Module, *, component_name: str, indent: str = "      ") -> Iterable[str]:
     for name, buffer in sorted(module.named_buffers(), key=lambda item: item[0]):
-        yield f"{indent}{name}: {_format_inline_record(_buffer_record(module, name, buffer))}"
+        selector_name = build_selector_name(component_name, name)
+        yield f"{indent}{selector_name}: {_format_inline_record(_buffer_record(module, name, buffer))}"
 
 
 def _iter_component_module_lines(module: nn.Module, *, indent: str = "      ") -> Iterable[str]:
@@ -138,7 +161,9 @@ def format_named_parameter_dump(
     lines = [f"identifier: {identifier}", "components:"]
 
     for component_name, module in components:
-        parameter_lines = list(_iter_component_parameter_lines(module, trainable_only=trainable_only))
+        parameter_lines = list(
+            _iter_component_parameter_lines(module, component_name=component_name, trainable_only=trainable_only)
+        )
         if trainable_only and not parameter_lines:
             continue
 
@@ -146,6 +171,12 @@ def format_named_parameter_dump(
         lines.extend(parameter_lines)
 
     return "\n".join(lines) + "\n"
+
+
+def _buffer_is_persistent(module: nn.Module, name: str) -> bool:
+    module_path, _, buffer_name = name.rpartition(".")
+    owner = module.get_submodule(module_path) if module_path else module
+    return buffer_name not in owner._non_persistent_buffers_set
 
 
 def format_component_state_dump(
@@ -158,14 +189,16 @@ def format_component_state_dump(
 
     for component_name, module in components:
         lines.append(f"  {component_name}:")
-        parameter_lines = list(_iter_component_parameter_lines(module, include_kind=True, indent="      "))
+        parameter_lines = list(
+            _iter_component_parameter_lines(module, component_name=component_name, include_kind=True, indent="      ")
+        )
         if parameter_lines:
             lines.append("    parameters:")
             lines.extend(parameter_lines)
         else:
             lines.append("    parameters: {}")
 
-        buffer_lines = list(_iter_component_buffer_lines(module))
+        buffer_lines = list(_iter_component_buffer_lines(module, component_name=component_name))
         if buffer_lines:
             lines.append("    buffers:")
             lines.extend(buffer_lines)

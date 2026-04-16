@@ -10,14 +10,25 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-16]
+
+### Changed
+
+- **Parameter selector names now use model-facing component prefixes across dumps and fine-grained optimizer matching** — The public selector surface is now `component.local_name` instead of the old training-internal placeholders like `denoiser.*` and `text_encoder1.*`.
+  - Updated `library/models/parameter_dump.py` and `tools/model_management/dump_named_parameters.py` so parameter-oriented YAML emits component-qualified selector names such as `unet.*`, `clip_l.*`, and `mmdit.*` while still grouping entries under the same top-level component sections.
+  - Updated `library/optimization/grouping.py` and `library/training/modes/finetune_mode.py` so inline/file-backed `optimizer.learning_rates.groups` patterns are matched against the same component-qualified selector names shown by the inspection dumps, while keeping training-internal component bookkeeping internal.
+  - Removed the obsolete `optimizer.learning_rates.blocks` field from `library/config/dataclasses/optimizer.py`, `configs/_defaults/optimizer/default.yaml`, and stale validation comments/tests.
+  - Added focused regression coverage in `tests/unit/models/test_parameter_dump.py`, `tests/unit/tools/test_dump_named_parameters.py`, `tests/unit/training/test_training_optimizer.py`, `tests/unit/training/modes/test_finetune_mode.py`, and `tests/unit/test_config_validation.py` for the normalized selector namespace and schema cleanup.
+
 ## [2026-04-15]
 
 ### Changed
 
 - **The model parameter dump tooling was rebuilt as a real model inspection tool** — `tools/model_management/dump_named_parameters.py` now uses the repo's existing strategy loading path to inspect real loaded runtime modules and emit deterministic YAML views for parameters, modules, or full state.
-  - Replaced the old Hydra/config-driven training-pipeline surface with a direct inspection CLI: `--model-type`, `--model-path`, optional sidecars, and `--view parameters|modules|state`.
+  - Replaced the old Hydra/config-driven training-pipeline surface with a direct inspection CLI: `--model-type`, `--model-path`, optional sidecars, and `--view parameters|modules|summary|state`.
   - Kept `library/models/parameter_dump.py` limited to the accepted shared surface: top-level component-name metadata plus pure YAML formatting helpers, without any dump-specific loader/package APIs.
   - Made the default output parameter-oriented and grouped under existing `NAMED_PARAMETER_COMPONENT_NAMES`, with module inspection and buffer/state inspection sharing the same component ordering.
+  - Added a compact `summary` inspection view that prints a cheat-sheet mapping of `component -> composite module type -> useful child module types`, derived generically from the loaded runtime tree without dumping raw parameter names.
   - Hardened the SD3 Hugging Face text-encoder loading path so meta-initialized CLIP/T5 modules are materialized with `to_empty()` before state-dict assignment, avoiding the `Cannot copy out of meta tensor` failure that the inspection tool exposed on unified SD3 checkpoints without changing the underlying assign-based loading path.
   - Added focused unit coverage for tool-side loading orchestration, component grouping, and the parameter/module/state renderers.
 

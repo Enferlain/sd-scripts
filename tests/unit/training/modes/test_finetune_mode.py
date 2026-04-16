@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
+from library.models.parameter_dump import NamedParameterComponentNames
 from library.optimization.types import OptimizerBuildResult
 from library.training.modes.finetune_mode import FineTuneMode
 
@@ -57,6 +58,7 @@ def mock_cfg():
     cfg.loss.v_parameterization = False
 
     # model
+    cfg.model.model_type = "sdxl"
     cfg.model.pretrained_model_name_or_path = "/models/sdxl-base"
 
     return cfg
@@ -202,7 +204,7 @@ class TestPrepareTrainables:
         mock_trainer.cfg.optimizer.learning_rates.base = None
         mock_trainer.cfg.optimizer.learning_rates.denoiser = None
         mock_trainer.cfg.optimizer.learning_rates.text_encoders = [0.0, 0.0]
-        mock_trainer.cfg.optimizer.learning_rates.groups = [SimpleNamespace(name="attention", lr=5e-5, match=["denoiser.*weight"])]
+        mock_trainer.cfg.optimizer.learning_rates.groups = [SimpleNamespace(name="attention", lr=5e-5, match=["unet.*weight"])]
 
         mode.prepare_trainables(mock_trainer)
 
@@ -223,7 +225,7 @@ class TestPrepareTrainables:
         mock_trainer.cfg.optimizer.learning_rates.base = None
         mock_trainer.cfg.optimizer.learning_rates.denoiser = None
         mock_trainer.cfg.optimizer.learning_rates.text_encoders = [0.0, 0.0]
-        mock_trainer.cfg.optimizer.learning_rates.groups = [SimpleNamespace(name="attention", lr=5e-5, match=["denoiser.*attn*"])]
+        mock_trainer.cfg.optimizer.learning_rates.groups = [SimpleNamespace(name="attention", lr=5e-5, match=["unet.*attn*"])]
 
         mode.prepare_trainables(mock_trainer)
 
@@ -246,7 +248,7 @@ class TestPrepareTrainables:
             "- name: attention\n"
             "  lr: 5e-5\n"
             "  match:\n"
-            "    - denoiser.*attn*\n",
+            "    - unet.*attn*\n",
             encoding="utf-8",
         )
 
@@ -335,6 +337,11 @@ class TestBuildOptimizerParams:
             te_train_flags=[True, False],
             learning_rates=mock_trainer.cfg.optimizer.learning_rates,
             groups=[],
+            component_names=NamedParameterComponentNames(
+                text_encoder_names=("clip_l", "clip_g"),
+                vae_name="vae",
+                denoiser_name="unet",
+            ),
         )
         assert isinstance(result, OptimizerBuildResult)
         assert result.optimizer_name == "AdamW"

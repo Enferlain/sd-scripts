@@ -541,13 +541,6 @@ def validate_config(cfg) -> None:
     _validate_model_profile_config(cfg)
     _validate_timestep_config(cfg)
 
-    # TODO: Revisit when model-agnostic block/layer granular LR is implemented
-    # Currently SDXL-specific and assumes 23 blocks - not widely used
-    # if hasattr(cfg.optimizer, 'learning_rates') and cfg.optimizer.learning_rates.blocks:
-    #     block_lr_count = len(cfg.optimizer.learning_rates.blocks.split(","))
-    #     if block_lr_count != 23:
-    #         raise ValueError(f"block_lr must have 23 values, got {block_lr_count}")
-
     # === Warnings ===
 
     # Model: v2 with clip_skip is unexpected

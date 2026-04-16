@@ -5,8 +5,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib
-import importlib.util
 from pathlib import Path
 import re
 from types import SimpleNamespace
@@ -23,16 +21,15 @@ from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import PerformanceConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.models.parameter_dump import (
-    NamedParameterComponentNames,
     build_named_components,
     derive_parameter_dump_identifier,
     format_component_module_dump,
     format_component_state_dump,
     format_named_parameter_dump,
+    resolve_component_names,
 )
 
 _WINDOWS_ABS_PATH_RE = re.compile(r"^([A-Za-z]):[\\/](.*)$")
-_MODEL_PACKAGE_ALIASES = {"sd1": "sd", "sd15": "sd", "sd2": "sd"}
 _DTYPE_CHOICES = {
     "float32": torch.float32,
     "fp32": torch.float32,
@@ -41,6 +38,14 @@ _DTYPE_CHOICES = {
     "bfloat16": torch.bfloat16,
     "bf16": torch.bfloat16,
 }
+_CONTAINER_MODULE_TYPES = (
+    torch.nn.ModuleList,
+    torch.nn.Sequential,
+    torch.nn.ModuleDict,
+    torch.nn.ParameterList,
+    torch.nn.ParameterDict,
+)
+_SUMMARY_IGNORED_TYPES = {"Identity"}
 
 
 class _ToolAccelerator:
@@ -91,7 +96,7 @@ def setup_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--view",
         default="parameters",
-        choices=("parameters", "modules", "state"),
+        choices=("parameters", "modules", "summary", "state"),
         help="Inspection view to render",
     )
     parser.add_argument("--identifier", default=None, help="Optional identifier override for the YAML header")
@@ -169,25 +174,6 @@ def build_runtime_cfg(args: argparse.Namespace) -> SimpleNamespace:
     )
 
 
-def resolve_model_package_name(model_type: str) -> str | None:
-    direct_spec = importlib.util.find_spec(f"library.models.{model_type}")
-    if direct_spec is not None:
-        return model_type
-    return _MODEL_PACKAGE_ALIASES.get(model_type)
-
-
-def resolve_component_names(model_type: str) -> NamedParameterComponentNames | None:
-    package_name = resolve_model_package_name(model_type)
-    if package_name is None:
-        return None
-
-    model_package = importlib.import_module(f"library.models.{package_name}")
-    component_names = getattr(model_package, "NAMED_PARAMETER_COMPONENT_NAMES", None)
-    if isinstance(component_names, NamedParameterComponentNames):
-        return component_names
-    return None
-
-
 def load_components(args: argparse.Namespace) -> tuple[str, list[tuple[str, torch.nn.Module]]]:
     """Load the model through the active strategy path and group top-level components."""
     cfg = build_runtime_cfg(args)
@@ -226,9 +212,78 @@ def render_view(
 ) -> str:
     if view == "modules":
         return format_component_module_dump(identifier=identifier, components=components)
+    if view == "summary":
+        return format_component_summary_dump(identifier=identifier, components=components)
     if view == "state":
         return format_component_state_dump(identifier=identifier, components=components)
     return format_named_parameter_dump(identifier=identifier, components=components, trainable_only=trainable_only)
+
+
+def _is_container_module(module: torch.nn.Module) -> bool:
+    return isinstance(module, _CONTAINER_MODULE_TYPES)
+
+
+def _iter_summary_child_modules(module: torch.nn.Module):
+    for child in module.children():
+        if _is_container_module(child):
+            yield from _iter_summary_child_modules(child)
+            continue
+        yield child
+
+
+def build_component_summary(
+    components: list[tuple[str, torch.nn.Module]],
+) -> dict[str, dict[str, list[str]]]:
+    summary: dict[str, dict[str, list[str]]] = {}
+
+    for component_name, module in components:
+        component_summary: dict[str, list[str]] = {}
+
+        for _, child_module in module.named_modules():
+            if _is_container_module(child_module):
+                continue
+
+            child_types: list[str] = []
+            for summary_child in _iter_summary_child_modules(child_module):
+                child_type = summary_child.__class__.__name__
+                if child_type in _SUMMARY_IGNORED_TYPES or child_type in child_types:
+                    continue
+                child_types.append(child_type)
+
+            if not child_types:
+                continue
+
+            composite_type = child_module.__class__.__name__
+            existing_types = component_summary.setdefault(composite_type, [])
+            for child_type in child_types:
+                if child_type not in existing_types:
+                    existing_types.append(child_type)
+
+        summary[component_name] = component_summary
+
+    return summary
+
+
+def format_component_summary_dump(
+    *,
+    identifier: str,
+    components: list[tuple[str, torch.nn.Module]],
+) -> str:
+    lines = [f"identifier: {identifier}", "components:"]
+    summary = build_component_summary(components)
+
+    for component_name, composite_summary in summary.items():
+        if not composite_summary:
+            lines.append(f"  {component_name}: {{}}")
+            continue
+
+        lines.append(f"  {component_name}:")
+        for composite_type, child_types in composite_summary.items():
+            lines.append(f"    {composite_type}:")
+            for child_type in child_types:
+                lines.append(f"      - {child_type}")
+
+    return "\n".join(lines) + "\n"
 
 
 def write_output(rendered: str, output_path: str | None) -> None:

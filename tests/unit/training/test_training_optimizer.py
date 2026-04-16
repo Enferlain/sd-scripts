@@ -34,6 +34,7 @@ from library.optimization.types import (
 from library.optimization.wrappers.schedulefree import ScheduleFreeWrapper
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, OptimizerConfig, SchedulerConfig, LearningRatesConfig
 from library.config.dataclasses.training import TrainingConfig
+from library.models.parameter_dump import NamedParameterComponentNames
 
 
 # =============================================================================
@@ -653,6 +654,23 @@ class TestOptimizerUtils:
         assert train_denoiser is True
         assert te_flags == [False, False]
 
+    def test_resolve_finetune_trainability_uses_component_qualified_match_names(self):
+        """Component-qualified selectors should activate the expected model-facing component."""
+        train_denoiser, te_flags = resolve_finetune_trainability(
+            denoiser=torch.nn.Linear(4, 4),
+            text_encoders=[torch.nn.Linear(3, 3), torch.nn.Linear(2, 2)],
+            learning_rates=LearningRatesConfig(base=None, denoiser=None, text_encoders=[0.0, 0.0]),
+            groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["unet.*weight"])],
+            component_names=NamedParameterComponentNames(
+                text_encoder_names=("clip_l", "clip_g"),
+                vae_name="vae",
+                denoiser_name="unet",
+            ),
+        )
+
+        assert train_denoiser is True
+        assert te_flags == [False, False]
+
     def test_build_finetune_grouping_applies_named_group_overrides_before_component_remainder(self):
         """Named groups should override matched subsets while component LR handles the remaining params."""
 
@@ -685,6 +703,37 @@ class TestOptimizerUtils:
         )
         assert len(grouping.execution_groups[-1].params) == 2  # only the unmatched "other" layer remains
 
+    def test_build_finetune_grouping_matches_sd3_component_qualified_names(self):
+        """Named groups should match SD3-style public component prefixes, not generic placeholders."""
+
+        class DummyMmdit(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.attn_proj = torch.nn.Linear(4, 4)
+                self.other = torch.nn.Linear(4, 4)
+
+        denoiser = DummyMmdit()
+        grouping = build_finetune_grouping(
+            denoiser=denoiser,
+            train_denoiser=True,
+            text_encoders=[],
+            te_train_flags=[],
+            learning_rates=LearningRatesConfig(base=1e-4, denoiser=1e-5),
+            groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["mmdit.*attn*"])],
+            component_names=NamedParameterComponentNames(
+                text_encoder_names=("clip_l", "clip_g", "t5xxl"),
+                vae_name="vae",
+                denoiser_name="mmdit",
+            ),
+        )
+
+        assert [group.metric_name for group in grouping.logical_groups] == ["attention", "denoiser"]
+        assert grouping.execution_groups[0].label == "attention"
+        assert {name for name, _ in grouping.execution_groups[0].options["named_params"]} == {
+            "mmdit.attn_proj.weight",
+            "mmdit.attn_proj.bias",
+        }
+
     def test_resolve_learning_rate_groups_loads_yaml_file(self, tmp_path):
         """Named groups can be loaded from a separate YAML file."""
         groups_file = tmp_path / "groups.yaml"
@@ -692,7 +741,7 @@ class TestOptimizerUtils:
             "- name: attention\n"
             "  lr: 5e-5\n"
             "  match:\n"
-            "    - denoiser.*attn*\n",
+            "    - unet.*attn*\n",
             encoding="utf-8",
         )
 
@@ -701,7 +750,7 @@ class TestOptimizerUtils:
         assert len(groups) == 1
         assert groups[0].name == "attention"
         assert groups[0].lr == pytest.approx(5e-5)
-        assert groups[0].match == ["denoiser.*attn*"]
+        assert groups[0].match == ["unet.*attn*"]
 
     def test_resolve_learning_rate_groups_rejects_inline_and_file_together(self, tmp_path):
         """Inline groups and groups_file should stay mutually exclusive."""
@@ -712,7 +761,7 @@ class TestOptimizerUtils:
             resolve_learning_rate_groups(
                 LearningRatesConfig(
                     base=1e-4,
-                    groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["denoiser.*attn*"])],
+                    groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["unet.*attn*"])],
                     groups_file=str(groups_file),
                 )
             )

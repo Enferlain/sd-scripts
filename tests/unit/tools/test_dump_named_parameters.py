@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 from torch import nn
 
+from library.models import parameter_dump
 from library.models.parameter_dump import NamedParameterComponentNames
 from tools.model_management import dump_named_parameters
 
@@ -23,6 +24,35 @@ class DummyVae(nn.Module):
     def __init__(self):
         super().__init__()
         self.decoder = nn.Linear(2, 2)
+
+
+class CrossAttention(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.to_q = nn.Linear(4, 4)
+        self.to_k = nn.Linear(4, 4)
+        self.to_out = nn.ModuleList([nn.Linear(4, 4)])
+
+
+class FeedForward(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(4, 4), nn.SiLU(), nn.Identity())
+
+
+class BasicTransformerBlock(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.attn = CrossAttention()
+        self.ff = FeedForward()
+        self.norm = nn.LayerNorm(4)
+
+
+class Transformer2DModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proj_in = nn.Linear(4, 4)
+        self.blocks = nn.ModuleList([BasicTransformerBlock()])
 
 
 def test_build_runtime_cfg_sets_minimal_strategy_fields():
@@ -63,10 +93,10 @@ def test_resolve_component_names_reads_existing_package_metadata(monkeypatch):
             denoiser_name="unet",
         )
     )
-    monkeypatch.setattr(dump_named_parameters.importlib.util, "find_spec", lambda _: object())
-    monkeypatch.setattr(dump_named_parameters.importlib, "import_module", lambda _: fake_package)
+    monkeypatch.setattr(parameter_dump.importlib.util, "find_spec", lambda _: object())
+    monkeypatch.setattr(parameter_dump.importlib, "import_module", lambda _: fake_package)
 
-    component_names = dump_named_parameters.resolve_component_names("sdxl")
+    component_names = parameter_dump.resolve_component_names("sdxl")
 
     assert component_names == fake_package.NAMED_PARAMETER_COMPONENT_NAMES
 
@@ -76,6 +106,31 @@ def test_validate_model_type_accepts_supported_types(monkeypatch):
     monkeypatch.setattr(dump_named_parameters, "supported_model_types", lambda: ("sdxl", "sd3"))
 
     dump_named_parameters.validate_model_type(parser, "sd3")
+
+
+def test_format_component_summary_dump_builds_component_composite_child_type_cheat_sheet():
+    rendered = dump_named_parameters.format_component_summary_dump(
+        identifier="sdxl",
+        components=[("unet", Transformer2DModel())],
+    )
+
+    assert rendered == (
+        "identifier: sdxl\n"
+        "components:\n"
+        "  unet:\n"
+        "    Transformer2DModel:\n"
+        "      - Linear\n"
+        "      - BasicTransformerBlock\n"
+        "    BasicTransformerBlock:\n"
+        "      - CrossAttention\n"
+        "      - FeedForward\n"
+        "      - LayerNorm\n"
+        "    CrossAttention:\n"
+        "      - Linear\n"
+        "    FeedForward:\n"
+        "      - Linear\n"
+        "      - SiLU\n"
+    )
 
 
 def test_load_components_uses_strategy_loading_path(monkeypatch):

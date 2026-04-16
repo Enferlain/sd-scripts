@@ -14,8 +14,6 @@ class LearningRatesConfig:
     # Supports single float or list of floats for multiple text encoders
     # NOTE: Type is Any due to OmegaConf limitation (Union of primitives and containers not supported).
     text_encoders: Any | None = field(default=None, metadata={"help": "Text Encoder LR(s) (overrides base if set)"})
-    # Block-wise LR weights/values
-    blocks: str | None = field(default=None, metadata={"help": "Per-block learning rates/weights"})
     groups_file: str | None = field(default=None, metadata={"help": "Optional YAML file containing fine-grained named LR override groups"})
     groups: list["LearningRateGroupConfig"] = field(default_factory=list, metadata={"help": "Fine-grained named parameter-group LR overrides"})
 

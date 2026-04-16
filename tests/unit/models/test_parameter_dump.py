@@ -4,6 +4,7 @@ from torch import nn
 from library.models.parameter_dump import (
     NamedParameterComponentNames,
     build_named_components,
+    build_selector_name,
     derive_parameter_dump_identifier,
     format_component_module_dump,
     format_component_state_dump,
@@ -56,8 +57,11 @@ def test_format_named_parameter_dump_groups_one_line_per_parameter():
     )
 
     assert rendered.startswith("identifier: sdxl-sgm\ncomponents:\n  clip_l:\n")
-    assert "    proj.bias: {shape: [3], dtype: float32, requires_grad: false}\n" in rendered
-    assert "    proj.weight: {shape: [3, 4], dtype: float32, requires_grad: false}\n" in rendered
+    assert f"    {build_selector_name('clip_l', 'proj.bias')}: {{shape: [3], dtype: float32, requires_grad: false}}\n" in rendered
+    assert (
+        f"    {build_selector_name('clip_l', 'proj.weight')}: {{shape: [3, 4], dtype: float32, requires_grad: false}}\n"
+        in rendered
+    )
     assert "scale" not in rendered
 
 
@@ -76,7 +80,7 @@ def test_format_named_parameter_dump_can_filter_to_trainable_only():
         "identifier: sd3-medium\n"
         "components:\n"
         "  clip_l:\n"
-        "    proj.weight: {shape: [3, 4], dtype: float32, requires_grad: true}\n"
+        "    clip_l.proj.weight: {shape: [3, 4], dtype: float32, requires_grad: true}\n"
     )
 
 
@@ -91,9 +95,9 @@ def test_format_component_state_dump_includes_parameters_and_buffers():
 
     assert rendered.startswith("identifier: sdxl-sgm\ncomponents:\n  clip_l:\n")
     assert "    parameters:\n" in rendered
-    assert "      proj.weight: {kind: parameter, shape: [3, 4], dtype: float32, requires_grad: false}\n" in rendered
+    assert "      clip_l.proj.weight: {kind: parameter, shape: [3, 4], dtype: float32, requires_grad: false}\n" in rendered
     assert "    buffers:\n" in rendered
-    assert "      scale: {kind: buffer, shape: [1], dtype: float32, requires_grad: false, persistent: true}\n" in rendered
+    assert "      clip_l.scale: {kind: buffer, shape: [1], dtype: float32, requires_grad: false, persistent: true}\n" in rendered
 
 
 def test_format_component_module_dump_includes_named_modules():

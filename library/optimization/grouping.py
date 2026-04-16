@@ -11,6 +11,7 @@ import yaml
 from torch import nn
 
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, LearningRatesConfig
+from library.models.parameter_dump import NamedParameterComponentNames, build_selector_name
 from library.optimization.types import (
     LogicalParameterGroup,
     ParameterGroup,
@@ -37,6 +38,7 @@ class GroupingResult:
 class NamedParameterRef:
     """Resolved live parameter with a stable full name for matching."""
 
+    component_key: str
     component_label: str
     local_name: str
     full_name: str
@@ -165,19 +167,38 @@ def _collect_component_named_parameters(
     *,
     denoiser: nn.Module | None,
     text_encoders: Sequence[nn.Module],
+    component_names: NamedParameterComponentNames | None = None,
 ) -> dict[str, list[NamedParameterRef]]:
     component_params: dict[str, list[NamedParameterRef]] = {}
 
     if denoiser is not None:
+        public_denoiser_label = component_names.denoiser_name if component_names is not None else "denoiser"
         component_params["denoiser"] = [
-            NamedParameterRef("denoiser", name, f"denoiser.{name}", param)
+            NamedParameterRef(
+                "denoiser",
+                public_denoiser_label,
+                name,
+                build_selector_name(public_denoiser_label, name),
+                param,
+            )
             for name, param in denoiser.named_parameters()
         ]
 
     for index, text_encoder in enumerate(text_encoders):
-        label = f"text_encoder{index + 1}"
-        component_params[label] = [
-            NamedParameterRef(label, name, f"{label}.{name}", param)
+        internal_label = f"text_encoder{index + 1}"
+        public_label = (
+            component_names.text_encoder_names[index]
+            if component_names is not None and index < len(component_names.text_encoder_names)
+            else internal_label
+        )
+        component_params[internal_label] = [
+            NamedParameterRef(
+                internal_label,
+                public_label,
+                name,
+                build_selector_name(public_label, name),
+                param,
+            )
             for name, param in text_encoder.named_parameters()
         ]
 
@@ -216,6 +237,7 @@ def resolve_finetune_trainability(
     text_encoders: Sequence[nn.Module],
     learning_rates: LearningRatesConfig,
     groups: Sequence[LearningRateGroupConfig] | None = None,
+    component_names: NamedParameterComponentNames | None = None,
 ) -> tuple[bool, list[bool]]:
     """Resolve component-level trainability from baseline LRs plus explicit groups."""
     selection = resolve_finetune_selection(
@@ -223,6 +245,7 @@ def resolve_finetune_trainability(
         text_encoders=text_encoders,
         learning_rates=learning_rates,
         groups=groups,
+        component_names=component_names,
     )
     return selection.train_denoiser, selection.te_train_flags
 
@@ -233,9 +256,14 @@ def resolve_finetune_selection(
     text_encoders: Sequence[nn.Module],
     learning_rates: LearningRatesConfig,
     groups: Sequence[LearningRateGroupConfig] | None = None,
+    component_names: NamedParameterComponentNames | None = None,
 ) -> FinetuneSelection:
     """Resolve selected live parameters from baseline LRs plus explicit groups."""
-    component_params = _collect_component_named_parameters(denoiser=denoiser, text_encoders=text_encoders)
+    component_params = _collect_component_named_parameters(
+        denoiser=denoiser,
+        text_encoders=text_encoders,
+        component_names=component_names,
+    )
 
     denoiser_lr = learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
     te_lrs = [_resolve_text_encoder_lr(learning_rates, index) for index, _ in enumerate(text_encoders)]
@@ -269,11 +297,16 @@ def build_finetune_grouping(
     te_train_flags: Sequence[bool],
     learning_rates: LearningRatesConfig,
     groups: Sequence[LearningRateGroupConfig] | None = None,
+    component_names: NamedParameterComponentNames | None = None,
 ) -> GroupingResult:
     """Build the base fine-tune logical/execution groups in trainer-facing order."""
     execution_groups: list[ParameterGroup] = []
     logical_groups: list[LogicalParameterGroup] = []
-    component_params = _collect_component_named_parameters(denoiser=denoiser, text_encoders=text_encoders)
+    component_params = _collect_component_named_parameters(
+        denoiser=denoiser,
+        text_encoders=text_encoders,
+        component_names=component_names,
+    )
     assigned_param_ids: set[int] = set()
     seen_group_names: set[str] = set()
     overridden_components: set[str] = set()
@@ -309,7 +342,7 @@ def build_finetune_grouping(
         )
 
         assigned_param_ids.update(id(ref.param) for ref in matched_refs)
-        overridden_components.update(ref.component_label for ref in matched_refs)
+        overridden_components.update(ref.component_key for ref in matched_refs)
 
     if train_denoiser:
         assert denoiser is not None, "denoiser must be loaded before build_finetune_grouping"
