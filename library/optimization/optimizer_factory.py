@@ -30,6 +30,7 @@ _BITSANDBYTES_ATTRIBUTE_ERRORS = {
     "pagedlion8bit": "No PagedLion8bit. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later.",
 }
 
+
 def _ensure_nesterov_momentum(optimizer_kwargs: dict, *, warning: bool = False):
     if "momentum" in optimizer_kwargs:
         return
@@ -41,7 +42,7 @@ def _ensure_nesterov_momentum(optimizer_kwargs: dict, *, warning: bool = False):
     optimizer_kwargs["momentum"] = 0.9
 
 
-def _warn_adaptive_lr_usage(trainable_params, lr: float):
+def _warn_adaptive_lr_usage(trainable_params, lr: float | None):
     actual_lr = lr
     lr_count = 1
     if isinstance(trainable_params, list) and isinstance(trainable_params[0], dict):
@@ -50,6 +51,9 @@ def _warn_adaptive_lr_usage(trainable_params, lr: float):
         for group in trainable_params:
             lrs.add(group.get("lr", actual_lr))
         lr_count = len(lrs)
+
+    if actual_lr is None:
+        return
 
     if actual_lr <= 0.1:
         logger.warning(f"learning rate is too low. If using D-Adaptation or Prodigy, set learning rate around 1.0: lr={actual_lr}")
@@ -65,7 +69,7 @@ def _prepare_adafactor(
     scheduler_config: SchedulerConfig,
     trainable_params,
     optimizer_kwargs: dict,
-    lr: float,
+    lr: float | None,
 ):
     if "relative_step" not in optimizer_kwargs:
         optimizer_kwargs["relative_step"] = True
@@ -76,7 +80,7 @@ def _prepare_adafactor(
 
     if optimizer_kwargs["relative_step"]:
         logger.info("relative_step is true")
-        if lr != 0.0:
+        if lr is not None and lr != 0.0:
             logger.warning("learning rate is used as initial_lr")
         optimizer_config.learning_rates.base = 0.0
 
@@ -102,6 +106,44 @@ def _prepare_adafactor(
         logger.warning("clip_threshold=1.0 will be good")
 
     return lr
+
+
+def _resolve_constructor_learning_rate(
+    optimizer_name: str,
+    base_lr: float | None,
+    trainable_params,
+) -> float | None:
+    """Resolve constructor LR without inventing a synthetic fallback value."""
+    if base_lr is not None:
+        return base_lr
+
+    if not isinstance(trainable_params, list) or not trainable_params:
+        raise ValueError(
+            f"{optimizer_name} cannot be built with optimizer.learning_rates.base=null unless "
+            "every optimizer param group defines an explicit lr."
+        )
+
+    for index, group in enumerate(trainable_params):
+        if not isinstance(group, dict) or "params" not in group:
+            raise ValueError(
+                f"{optimizer_name} cannot be built with optimizer.learning_rates.base=null unless "
+                "every optimizer param group is an explicit dict with an lr."
+            )
+        if group.get("lr") is None:
+            raise ValueError(
+                f"{optimizer_name} cannot be built with optimizer.learning_rates.base=null because "
+                f"optimizer param group {index} does not define an explicit lr."
+            )
+
+    return None
+
+
+def _build_optimizer_init_kwargs(optimizer_kwargs: dict, *, lr: float | None, **extra_kwargs):
+    init_kwargs = dict(optimizer_kwargs)
+    if lr is not None:
+        init_kwargs["lr"] = lr
+    init_kwargs.update(extra_kwargs)
+    return init_kwargs
 
 
 def _load_registered_optimizer_class(registration: OptimizerRegistration):
@@ -136,7 +178,7 @@ def _build_registered_optimizer(
     optimizer_config: OptimizerConfig,
     scheduler_config: SchedulerConfig,
     trainable_params,
-    lr: float,
+    lr: float | None,
     optimizer_kwargs: dict,
 ):
     if registration.target is None or registration.backend is None:
@@ -156,22 +198,28 @@ def _build_registered_optimizer(
 
     if registration.name == "sgdnesterov":
         _ensure_nesterov_momentum(optimizer_kwargs)
-        optimizer = optimizer_class(trainable_params, lr=lr, nesterov=True, **optimizer_kwargs)
+        optimizer = optimizer_class(
+            trainable_params,
+            **_build_optimizer_init_kwargs(optimizer_kwargs, lr=lr, nesterov=True),
+        )
         return optimizer_class, optimizer, lr
 
     if registration.name == "sgdnesterov8bit":
         _ensure_nesterov_momentum(optimizer_kwargs, warning=True)
-        optimizer = optimizer_class(trainable_params, lr=lr, nesterov=True, **optimizer_kwargs)
+        optimizer = optimizer_class(
+            trainable_params,
+            **_build_optimizer_init_kwargs(optimizer_kwargs, lr=lr, nesterov=True),
+        )
         return optimizer_class, optimizer, lr
 
-    optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
+    optimizer = optimizer_class(trainable_params, **_build_optimizer_init_kwargs(optimizer_kwargs, lr=lr))
     return optimizer_class, optimizer, lr
 
 
 def _build_arbitrary_optimizer(
     optimizer_config: OptimizerConfig,
     trainable_params,
-    lr: float,
+    lr: float | None,
     optimizer_kwargs: dict,
 ):
     case_sensitive_optimizer_type = optimizer_config.optimizer_type
@@ -187,8 +235,12 @@ def _build_arbitrary_optimizer(
     if is_wrapper_optimizer_name(optimizer_config.optimizer_type):
         raise ValueError("Wrapper optimizers must be registered and built through the shared wrapper path")
 
-    optimizer_class = load_target(optimizer_config.optimizer_type) if optimizer_module is None else getattr(optimizer_module, case_sensitive_optimizer_type)
-    optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
+    optimizer_class = (
+        load_target(optimizer_config.optimizer_type)
+        if optimizer_module is None
+        else getattr(optimizer_module, case_sensitive_optimizer_type)
+    )
+    optimizer = optimizer_class(trainable_params, **_build_optimizer_init_kwargs(optimizer_kwargs, lr=lr))
     return optimizer_class, optimizer
 
 
@@ -318,7 +370,8 @@ def get_optimizer(
     elif optimizer_config.use_lion_optimizer:
         assert optimizer_type is None or optimizer_type == "", "both option use_lion_optimizer and optimizer_type are specified"
 
-    optimizer_type = get_configured_optimizer_name(optimizer_config).lower()
+    configured_optimizer_name = get_configured_optimizer_name(optimizer_config)
+    optimizer_type = configured_optimizer_name.lower()
 
     if optimizer_config.fused_backward_pass:
         assert optimizer_type == "adafactor", "fused_backward_pass currently only works with optimizer_type Adafactor"
@@ -329,9 +382,12 @@ def get_optimizer(
     if not optimizer_kwargs:
         optimizer_kwargs = parse_key_value_args(optimizer_config.optimizer_args)
 
-    trainable_params = materialize_parameter_groups(trainable_params)
+    raw_optimizer_type = optimizer_config.optimizer_type or ""
+    needs_param_names = optimizer_type == "adammini" or raw_optimizer_type.rsplit(".", 1)[-1].lower() == "adammini"
+    metadata_keys = {"param_names"} if needs_param_names else None
+    trainable_params = materialize_parameter_groups(trainable_params, include_metadata_keys=metadata_keys)
 
-    lr = learning_rates.base
+    lr = _resolve_constructor_learning_rate(configured_optimizer_name, learning_rates.base, trainable_params)
     optimizer = None
     optimizer_class = None
     optimizer_registration = get_optimizer_registration(optimizer_type)

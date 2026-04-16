@@ -6,16 +6,31 @@ from typing import Any
 class LearningRatesConfig:
     """
     Consolidated learning rates for all components.
-    Component-specific LRs (denoiser, text_encoders) override base when set.
+
+    `base` is the shared fallback learning rate. Setting it to `None` means
+    there is no fallback baseline LR. Component-specific LRs override that
+    fallback when set: `None` means inherit from base when available, `0`
+    means keep that baseline path frozen, and positive values mean train.
     """
 
-    base: float | None = field(default=2.0e-6, metadata={"help": "Base learning rate, used as fallback for all components"})
-    denoiser: float | None = field(default=None, metadata={"help": "Denoiser LR (overrides base if set)"})
+    base: float | None = field(
+        default=2.0e-6,
+        metadata={"help": "Shared fallback learning rate. Set to null to require explicit component/group learning rates"},
+    )
+    denoiser: float | None = field(
+        default=None,
+        metadata={"help": "Denoiser baseline LR. null inherits from base, 0 freezes the baseline denoiser path"},
+    )
     # Supports single float or list of floats for multiple text encoders
     # NOTE: Type is Any due to OmegaConf limitation (Union of primitives and containers not supported).
-    text_encoders: Any | None = field(default=None, metadata={"help": "Text Encoder LR(s) (overrides base if set)"})
+    text_encoders: Any | None = field(
+        default=None,
+        metadata={"help": "Text Encoder baseline LR(s). null inherits from base, 0 freezes the baseline TE path"},
+    )
     groups_file: str | None = field(default=None, metadata={"help": "Optional YAML file containing fine-grained named LR override groups"})
-    groups: list["LearningRateGroupConfig"] = field(default_factory=list, metadata={"help": "Fine-grained named parameter-group LR overrides"})
+    groups: list["LearningRateGroupConfig"] = field(
+        default_factory=list, metadata={"help": "Fine-grained named parameter-group LR overrides"}
+    )
 
 
 @dataclass
@@ -24,7 +39,9 @@ class LearningRateGroupConfig:
 
     name: str = field(default="", metadata={"help": "Display name for this parameter group"})
     lr: float = field(default=0.0, metadata={"help": "Learning rate override for matched parameters"})
-    match: list[str] = field(default_factory=list, metadata={"help": "Glob patterns or re:<pattern> regexes matched against named parameters"})
+    match: list[str] = field(
+        default_factory=list, metadata={"help": "Glob patterns or re:<pattern> regexes matched against named parameters"}
+    )
 
 
 @dataclass

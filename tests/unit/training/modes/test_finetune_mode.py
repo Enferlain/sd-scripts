@@ -190,8 +190,8 @@ class TestPrepareTrainables:
 
         assert mode._te_train_flags == [True, False]
 
-    def test_zero_te_lr_disables_all_tes(self, mode, mock_trainer):
-        """Zero text_encoders LR disables both TEs."""
+    def test_zero_te_lr_freezes_all_tes(self, mode, mock_trainer):
+        """Zero text_encoders LR keeps both TEs frozen."""
         mock_trainer.cfg.optimizer.learning_rates.text_encoders = 0.0
 
         mode.prepare_trainables(mock_trainer)
@@ -245,10 +245,7 @@ class TestPrepareTrainables:
 
         groups_file = tmp_path / "groups.yaml"
         groups_file.write_text(
-            "- name: attention\n"
-            "  lr: 5e-5\n"
-            "  match:\n"
-            "    - unet.*attn*\n",
+            "- name: attention\n  lr: 5e-5\n  match:\n    - unet.*attn*\n",
             encoding="utf-8",
         )
 

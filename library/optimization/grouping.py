@@ -328,7 +328,7 @@ def build_finetune_grouping(
                 [ref.param for ref in matched_refs],
                 lr=group.lr,
                 label=group.name,
-                named_params=[(ref.full_name, ref.param) for ref in matched_refs],
+                metadata={"param_names": [ref.full_name for ref in matched_refs]},
             )
         )
         logical_groups.append(
@@ -356,7 +356,7 @@ def build_finetune_grouping(
                     [ref.param for ref in remaining_refs],
                     lr=denoiser_lr,
                     label="denoiser",
-                    named_params=[(ref.full_name, ref.param) for ref in remaining_refs],
+                    metadata={"param_names": [ref.full_name for ref in remaining_refs]},
                 )
             execution_groups.append(parameter_group)
             logical_groups.append(
@@ -384,7 +384,7 @@ def build_finetune_grouping(
                     [ref.param for ref in remaining_refs],
                     lr=text_encoder_lr,
                     label=label,
-                    named_params=[(ref.full_name, ref.param) for ref in remaining_refs],
+                    metadata={"param_names": [ref.full_name for ref in remaining_refs]},
                 )
             execution_groups.append(parameter_group)
             logical_groups.append(

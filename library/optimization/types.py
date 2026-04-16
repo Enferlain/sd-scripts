@@ -13,18 +13,23 @@ class ParameterGroup:
 
     Phase 1 keeps the runtime payload compatible with the existing optimizer
     factories while giving the optimization layer one shared group shape.
+    Runtime options stay separate from metadata so execution groups do not
+    accidentally leak planning/debug state into optimizer serialization.
     """
 
     params: list[Any]
     lr: float | None = None
     label: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_optimizer_dict(self) -> dict[str, Any]:
+    def to_optimizer_dict(self, *, include_metadata_keys: set[str] | None = None) -> dict[str, Any]:
         group: dict[str, Any] = {"params": self.params}
         if self.lr is not None:
             group["lr"] = self.lr
         group.update(self.options)
+        if include_metadata_keys:
+            group.update({key: value for key, value in self.metadata.items() if key in include_metadata_keys})
         return group
 
 
@@ -113,10 +118,11 @@ def build_parameter_group(
     *,
     lr: float | None = None,
     label: str | None = None,
+    metadata: dict[str, Any] | None = None,
     **options: Any,
 ) -> ParameterGroup:
     """Build a typed parameter group from any parameter iterable."""
-    return ParameterGroup(params=list(params), lr=lr, label=label, options=options)
+    return ParameterGroup(params=list(params), lr=lr, label=label, options=options, metadata=dict(metadata or {}))
 
 
 def build_logical_parameter_group(
@@ -148,15 +154,25 @@ def build_module_parameter_group(
 ) -> ParameterGroup:
     """Build a typed parameter group directly from a module.
 
-    The materialized optimizer dict keeps `named_params` alongside `params`
-    so optimizers that need parameter-name context can still build through
-    the shared factory path.
+    Parameter names are kept as execution metadata so optimizer-specific
+    adapters can opt into them without putting live duplicate parameter
+    references into the generic runtime payload.
     """
     named_params = list(module.named_parameters())
-    return build_parameter_group((param for _, param in named_params), lr=lr, label=label, named_params=named_params, **options)
+    return build_parameter_group(
+        (param for _, param in named_params),
+        lr=lr,
+        label=label,
+        metadata={"param_names": [name for name, _ in named_params]},
+        **options,
+    )
 
 
-def materialize_parameter_groups(trainable_params: Any) -> Any:
+def materialize_parameter_groups(
+    trainable_params: Any,
+    *,
+    include_metadata_keys: set[str] | None = None,
+) -> Any:
     """Convert typed parameter groups into the legacy optimizer dict payload."""
     if not isinstance(trainable_params, list):
         return trainable_params
@@ -164,7 +180,7 @@ def materialize_parameter_groups(trainable_params: Any) -> Any:
     materialized: list[Any] = []
     for group in trainable_params:
         if isinstance(group, ParameterGroup):
-            materialized.append(group.to_optimizer_dict())
+            materialized.append(group.to_optimizer_dict(include_metadata_keys=include_metadata_keys))
         else:
             materialized.append(group)
     return materialized

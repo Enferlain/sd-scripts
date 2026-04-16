@@ -356,6 +356,7 @@ class TestTrainingStrategyPhase2Facets:
     def test_trainability_helpers_resolve_lr_policy(self):
         """LR-based trainability now lives in the shared optimizer helper layer."""
         learning_rates = Mock()
+        learning_rates.base = 1e-5
         learning_rates.denoiser = None
         learning_rates.text_encoders = [1e-5, 0.0]
 

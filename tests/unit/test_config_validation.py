@@ -323,6 +323,20 @@ class TestPrepareConfig:
         assert cfg.optimizer.learning_rates.denoiser == 2e-4
         assert cfg.optimizer.learning_rates.text_encoders == 2e-4
 
+    def test_learning_rates_stay_null_when_base_is_null(self):
+        """Inherited component LRs should remain null when the shared fallback is disabled."""
+        cfg = make_prepare_cfg({"optimizer": {"learning_rates": {"base": None, "denoiser": None, "text_encoders": None}}})
+        prepare_config(cfg)
+        assert cfg.optimizer.learning_rates.denoiser is None
+        assert cfg.optimizer.learning_rates.text_encoders is None
+
+    def test_learning_rates_preserve_explicit_zero_as_frozen(self):
+        """Explicit zero LRs should remain zero instead of being rewritten as inherited values."""
+        cfg = make_prepare_cfg({"optimizer": {"learning_rates": {"base": 2e-4, "denoiser": 0.0, "text_encoders": 0.0}}})
+        prepare_config(cfg)
+        assert cfg.optimizer.learning_rates.denoiser == 0.0
+        assert cfg.optimizer.learning_rates.text_encoders == 0.0
+
     def test_objective_prediction_syncs_legacy_v_parameterization(self):
         """The legacy boolean should mirror the explicit objective prediction."""
         cfg = make_prepare_cfg(
@@ -1071,6 +1085,7 @@ class TestValidateConfig:
         )
 
         validate_config(cfg)
+
 
 # =============================================================================
 # Dataset-group validator Tests

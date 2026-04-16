@@ -86,20 +86,23 @@ class AdamMini(BaseOptimizer):  # pragma: no cover
         named_entries: list[tuple[str, torch.nn.Parameter, dict[str, Any]]] = []
         if isinstance(model_or_params, list) and model_or_params and isinstance(model_or_params[0], dict):
             for group_index, group in enumerate(model_or_params):
-                group_options = {key: value for key, value in group.items() if key not in {"params", "named_params"}}
+                group_options = {key: value for key, value in group.items() if key not in {"params", "param_names"}}
                 params = group["params"]
                 if isinstance(params, torch.Tensor):
                     params = [params]
                 else:
                     params = list(params)
 
-                named_params = group.get("named_params")
-                if named_params is not None:
-                    name_by_id = {id(param): name for name, param in named_params}
+                param_names = group.get("param_names")
+                if param_names is not None:
                     for param_index, param in enumerate(params):
                         if not param.requires_grad:
                             continue
-                        name = name_by_id.get(id(param), f"group{group_index}.param{param_index}")
+                        name = (
+                            param_names[param_index]
+                            if param_index < len(param_names)
+                            else f"group{group_index}.param{param_index}"
+                        )
                         named_entries.append((name, param, group_options))
                     continue
 

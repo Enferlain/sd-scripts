@@ -28,6 +28,7 @@ from library.optimization.types import (
     OptimizerRuntimeMetadata,
     ParameterGroup,
     SchedulerRuntimeMetadata,
+    build_parameter_group,
     build_logical_parameter_group,
     materialize_parameter_groups,
 )
@@ -72,6 +73,17 @@ class TestGetOptimizer:
         assert optimizer is not None
         assert "8bit" in optimizer_name.lower()
 
+    def test_adamw8bit_grouped_optimizer_uses_explicit_group_lr_when_base_is_null(self, mock_model_parameters):
+        """bitsandbytes should initialize cleanly when grouped params already define their LRs."""
+        pytest.importorskip("bitsandbytes")
+
+        config = OptimizerConfig(optimizer_type="AdamW8bit", learning_rates=LearningRatesConfig(base=None))
+        trainable_params = [{"params": mock_model_parameters, "lr": 5e-5}]
+
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, trainable_params)
+
+        assert optimizer.param_groups[0]["lr"] == pytest.approx(5e-5)
+
     def test_optimizer_with_custom_lr(self, mock_model_parameters):
         """Test optimizer with custom learning rate."""
         config = OptimizerConfig(optimizer_type="AdamW", learning_rates=LearningRatesConfig(base=5e-5))
@@ -82,6 +94,62 @@ class TestGetOptimizer:
         param_groups = optimizer.param_groups
         assert len(param_groups) > 0
         assert param_groups[0]["lr"] == 5e-5
+
+    @patch("library.optimization.optimizer_factory.load_target")
+    def test_grouped_optimizer_omits_constructor_lr_when_base_is_null(self, mock_load_target, mock_model_parameters):
+        """Explicit group LRs should be enough when the shared base fallback is null."""
+
+        class DummyGroupedOptimizer(torch.optim.Optimizer):
+            def __init__(self, params, **kwargs):
+                self.received_kwargs = dict(kwargs)
+                super().__init__(params, {"lr": kwargs.get("lr", 1e-3)})
+
+        mock_load_target.return_value = DummyGroupedOptimizer
+
+        config = OptimizerConfig(
+            optimizer_type="custom.DummyGroupedOptimizer",
+            learning_rates=LearningRatesConfig(base=None),
+        )
+        trainable_params = [{"params": mock_model_parameters, "lr": 5e-5}]
+
+        _, _, optimizer = get_optimizer(config, config.learning_rates, config.scheduler, trainable_params)
+
+        assert "lr" not in optimizer.received_kwargs
+        assert optimizer.param_groups[0]["lr"] == pytest.approx(5e-5)
+
+    @patch("library.optimization.optimizer_factory.materialize_parameter_groups")
+    @patch("library.optimization.optimizer_factory.load_target")
+    def test_fully_qualified_adammini_keeps_param_name_metadata_opt_in(
+        self,
+        mock_load_target,
+        mock_materialize,
+        mock_model_parameters,
+    ):
+        """Fully qualified AdamMini targets should still opt into safe param-name metadata."""
+
+        class DummyOptimizer(torch.optim.Optimizer):
+            def __init__(self, params, **kwargs):
+                super().__init__(params, {"lr": kwargs.get("lr", 1e-3)})
+
+        mock_load_target.return_value = DummyOptimizer
+        mock_materialize.return_value = [{"params": mock_model_parameters, "lr": 1e-3, "param_names": ["toy.weight"]}]
+
+        config = OptimizerConfig(
+            optimizer_type="library.optimization.optimizers.adammini.AdamMini",
+            learning_rates=LearningRatesConfig(base=1e-3),
+        )
+
+        get_optimizer(config, config.learning_rates, config.scheduler, mock_model_parameters)
+
+        assert mock_materialize.call_args.kwargs["include_metadata_keys"] == {"param_names"}
+
+    def test_grouped_optimizer_requires_explicit_group_lrs_when_base_is_null(self, mock_model_parameters):
+        """Null base LR should fail fast if grouped optimizer params omit explicit LRs."""
+        config = OptimizerConfig(optimizer_type="AdamW", learning_rates=LearningRatesConfig(base=None))
+        trainable_params = [{"params": mock_model_parameters}]
+
+        with pytest.raises(ValueError, match="base=null.*group 0 does not define an explicit lr"):
+            get_optimizer(config, config.learning_rates, config.scheduler, trainable_params)
 
     def test_optimizer_with_args(self, mock_model_parameters):
         """Test optimizer with additional arguments."""
@@ -611,6 +679,39 @@ class TestOptimizerUtils:
         assert plan.parameter_groups == [execution_group]
         assert plan.materialize_execution_groups()[0]["lr"] == 1e-4
 
+    def test_materialize_parameter_groups_keeps_metadata_out_of_generic_runtime_payload(self):
+        """Execution-group metadata should stay out of generic optimizer payloads by default."""
+        param = torch.nn.Parameter(torch.randn(2, 2))
+        group = build_parameter_group(
+            [param],
+            lr=1e-4,
+            label="denoiser",
+            metadata={"param_names": ["unet.linear.weight"]},
+            weight_decay=0.01,
+        )
+
+        materialized = materialize_parameter_groups([group])[0]
+
+        assert materialized["params"] == [param]
+        assert materialized["lr"] == pytest.approx(1e-4)
+        assert materialized["weight_decay"] == pytest.approx(0.01)
+        assert "param_names" not in materialized
+
+    def test_materialize_parameter_groups_can_include_selected_safe_metadata(self):
+        """Optimizer-specific adapters can opt into safe string metadata when needed."""
+        param = torch.nn.Parameter(torch.randn(2, 2))
+        group = build_parameter_group(
+            [param],
+            lr=1e-4,
+            label="denoiser",
+            metadata={"param_names": ["unet.linear.weight"], "debug_refs": [param]},
+        )
+
+        materialized = materialize_parameter_groups([group], include_metadata_keys={"param_names"})[0]
+
+        assert materialized["param_names"] == ["unet.linear.weight"]
+        assert "debug_refs" not in materialized
+
     def test_build_finetune_grouping_preserves_order_and_indices(self):
         """Shared grouping keeps trainer-facing order stable for the base fine-tune path."""
         denoiser = torch.nn.Linear(4, 4)
@@ -729,19 +830,17 @@ class TestOptimizerUtils:
 
         assert [group.metric_name for group in grouping.logical_groups] == ["attention", "denoiser"]
         assert grouping.execution_groups[0].label == "attention"
-        assert {name for name, _ in grouping.execution_groups[0].options["named_params"]} == {
+        assert set(grouping.execution_groups[0].metadata["param_names"]) == {
             "mmdit.attn_proj.weight",
             "mmdit.attn_proj.bias",
         }
+        assert "param_names" not in materialize_parameter_groups(grouping.execution_groups)[0]
 
     def test_resolve_learning_rate_groups_loads_yaml_file(self, tmp_path):
         """Named groups can be loaded from a separate YAML file."""
         groups_file = tmp_path / "groups.yaml"
         groups_file.write_text(
-            "- name: attention\n"
-            "  lr: 5e-5\n"
-            "  match:\n"
-            "    - unet.*attn*\n",
+            "- name: attention\n  lr: 5e-5\n  match:\n    - unet.*attn*\n",
             encoding="utf-8",
         )
 

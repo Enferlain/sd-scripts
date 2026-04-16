@@ -14,11 +14,22 @@ Rules:
 
 ### Changed
 
+- **Grouped optimizer construction now treats explicit group learning rates as the authoritative runtime source** — Fine-tune group-only configs no longer rely on `optimizer.learning_rates.base` reaching backend constructors when every execution group already defines its own `lr`, and the user-facing `null` versus `0` semantics are now documented more clearly.
+  - Updated `library/optimization/optimizer_factory.py` so optimizer construction omits constructor `lr` when `base` is `null` but every materialized optimizer param group already defines an explicit `lr`, and now raises repo-owned `ValueError`s when `base: null` leaves any optimizer group without an explicit LR.
+  - Updated `library/optimization/optimizer_utils.py`, `library/config/dataclasses/optimizer.py`, `library/config/config_validation.py`, and `configs/_defaults/optimizer/default.yaml` so helper docs, config help text, defaults comments, and validation guidance consistently describe `null` as inherit/no-fallback and `0` as a frozen baseline path.
+  - Added focused regression coverage in `tests/unit/training/test_training_optimizer.py`, `tests/unit/test_config_validation.py`, and `tests/unit/training/modes/test_finetune_mode.py` for group-only optimizer construction, bitsandbytes grouped LR handling, repo-owned error reporting, and the clarified frozen-versus-inherited LR semantics.
+
 - **Parameter selector names now use model-facing component prefixes across dumps and fine-grained optimizer matching** — The public selector surface is now `component.local_name` instead of the old training-internal placeholders like `denoiser.*` and `text_encoder1.*`.
   - Updated `library/models/parameter_dump.py` and `tools/model_management/dump_named_parameters.py` so parameter-oriented YAML emits component-qualified selector names such as `unet.*`, `clip_l.*`, and `mmdit.*` while still grouping entries under the same top-level component sections.
   - Updated `library/optimization/grouping.py` and `library/training/modes/finetune_mode.py` so inline/file-backed `optimizer.learning_rates.groups` patterns are matched against the same component-qualified selector names shown by the inspection dumps, while keeping training-internal component bookkeeping internal.
   - Removed the obsolete `optimizer.learning_rates.blocks` field from `library/config/dataclasses/optimizer.py`, `configs/_defaults/optimizer/default.yaml`, and stale validation comments/tests.
   - Added focused regression coverage in `tests/unit/models/test_parameter_dump.py`, `tests/unit/tools/test_dump_named_parameters.py`, `tests/unit/training/test_training_optimizer.py`, `tests/unit/training/modes/test_finetune_mode.py`, and `tests/unit/test_config_validation.py` for the normalized selector namespace and schema cleanup.
+
+- **Execution-group metadata no longer serializes live duplicate parameter references through the generic optimizer payload** — The optimization plan now keeps parameter-name context as sidecar metadata instead of stuffing `(name, Parameter)` tuples into runtime param groups, avoiding the extra denoiser-sized allocation that `accelerate.prepare(optimizer)` could trigger when it device-moved arbitrary param-group state.
+  - Updated `library/optimization/types.py` so `ParameterGroup` distinguishes runtime `options` from non-serialized `metadata`, and so `materialize_parameter_groups(...)` only includes explicitly requested metadata keys.
+  - Updated `library/optimization/grouping.py` so fine-tune execution groups keep only string `param_names` metadata for optimizer-specific consumers instead of live `named_params` tuples.
+  - Updated `library/optimization/optimizer_factory.py` and `library/optimization/optimizers/adammini.py` so `AdamMini` opts into the safe `param_names` metadata path, including fully qualified `AdamMini` config targets, while the generic runtime payload remains minimal.
+  - Added focused regression coverage in `tests/unit/training/test_training_optimizer.py` for metadata-free generic materialization plus selective safe metadata inclusion.
 
 ## [2026-04-15]
 

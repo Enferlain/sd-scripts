@@ -153,6 +153,8 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 
 - [ ] Selective activation checkpointing
 
+- [ ] Database for run settings/combinations to be able to build a model for resurce usages based on actual training run effects
+
 ### Future Improvements
 
 - [ ] Config-hash cache namespace - Auto-segregate caches by config hash (`resolution`, `bucket_steps`, `model_version`) to prevent cross-config issues. See `AUDIT/AUDIT_PHASE_6.md`.

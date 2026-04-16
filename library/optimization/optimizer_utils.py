@@ -51,7 +51,7 @@ def should_train_text_encoder(learning_rates: LearningRatesConfig) -> bool:
     Check if any text encoder should be trained based on learning rates.
 
     Returns True if:
-    - text_encoders LR is None (will use base LR)
+    - text_encoders LR is None and base LR is positive
     - text_encoders LR is a positive number
     - text_encoders LR is a list with any positive values
     """
@@ -69,7 +69,7 @@ def should_train_denoiser(learning_rates: LearningRatesConfig) -> bool:
     Check if the denoiser should be trained based on learning rates.
 
     Returns True if:
-    - denoiser LR is None (will use base LR)
+    - denoiser LR is None and base LR is positive
     - denoiser LR is a positive number
     """
     denoiser_lr = learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
@@ -86,6 +86,8 @@ def get_text_encoders_train_flags(learning_rates: LearningRatesConfig, text_enco
 
     Returns:
         A list of booleans indicating whether each text encoder should train.
+        Null means inherit from base when one exists, zero means frozen, and
+        positive values mean train.
     """
     num_text_encoders = len(text_encoders)
     te_lr = learning_rates.text_encoders
@@ -116,7 +118,9 @@ def _load_optimizer_class_for_signature(optimizer_config: OptimizerConfig, optim
             if registration.kind == "wrapper":
                 case_sensitive_full_base_optimizer_name = optimizer_kwargs.get("base_optimizer_type")
                 if case_sensitive_full_base_optimizer_name is None:
-                    raise ValueError("base_optimizer_type is required in optimizer_args for wrapper optimizers")  # todo: looks like config validation maybe
+                    raise ValueError(
+                        "base_optimizer_type is required in optimizer_args for wrapper optimizers"
+                    )  # todo: looks like config validation maybe
                 base_registration = get_optimizer_registration(case_sensitive_full_base_optimizer_name)
                 if base_registration is not None and base_registration.target is not None:
                     return load_target(base_registration.target)
@@ -294,7 +298,11 @@ def is_schedulefree_optimizer(optimizer: Optimizer, optimizer_config: OptimizerC
     if registration is not None:
         return registration.supports(OPT_CAP_TRAIN_EVAL_TOGGLE) or optimizer_config.optimizer_schedulefree_wrapper
 
-    return optimizer_config.optimizer_schedulefree_wrapper or is_schedulefree_optimizer_name(optimizer_name) or is_wrapper_optimizer_name(optimizer_name)
+    return (
+        optimizer_config.optimizer_schedulefree_wrapper
+        or is_schedulefree_optimizer_name(optimizer_name)
+        or is_wrapper_optimizer_name(optimizer_name)
+    )
 
 
 def is_wrapper_optimizer(optimizer_config: OptimizerConfig) -> bool:

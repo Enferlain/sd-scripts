@@ -98,9 +98,7 @@ def _parse_validation_timesteps(raw_timesteps: object) -> list[int]:
         try:
             parsed_timesteps = ast.literal_eval(raw_timesteps)
         except (SyntaxError, ValueError) as exc:
-            raise ValueError(
-                "validation.validation_timesteps must be a valid Python list/tuple literal of integers."
-            ) from exc
+            raise ValueError("validation.validation_timesteps must be a valid Python list/tuple literal of integers.") from exc
     elif isinstance(raw_timesteps, list | tuple):
         parsed_timesteps = raw_timesteps
     else:
@@ -170,15 +168,11 @@ def _validate_timestep_config(cfg) -> None:
 
     timestep_sampling = getattr(timestep_cfg, "timestep_sampling", "uniform") or "uniform"
     if timestep_sampling not in VALID_TIMESTEP_SAMPLERS:
-        raise ValueError(
-            f"timestep.timestep_sampling must be one of {sorted(VALID_TIMESTEP_SAMPLERS)}, got {timestep_sampling!r}"
-        )
+        raise ValueError(f"timestep.timestep_sampling must be one of {sorted(VALID_TIMESTEP_SAMPLERS)}, got {timestep_sampling!r}")
 
     model_type = _get_optional_attr(cfg, "model", "model_type")
     if timestep_sampling in {"log_snr_uniform", "adaptive_log_snr"} and model_type == "sd3":
-        raise ValueError(
-            f"timestep.timestep_sampling={timestep_sampling!r} is not implemented for the active SD3/RF timestep path yet."
-        )
+        raise ValueError(f"timestep.timestep_sampling={timestep_sampling!r} is not implemented for the active SD3/RF timestep path yet.")
 
     adaptive_cfg = getattr(timestep_cfg, "adaptive_log_snr", None)
     if adaptive_cfg is None:
@@ -198,12 +192,11 @@ def _validate_timestep_config(cfg) -> None:
         raise ValueError("timestep.adaptive_log_snr.warmup_steps must be a non-negative integer.")
     if not _is_non_bool_number(adaptive_cfg.entropy_floor) or not 0.0 <= float(adaptive_cfg.entropy_floor) <= 1.0:
         raise ValueError("timestep.adaptive_log_snr.entropy_floor must be between 0.0 and 1.0 inclusive.")
-    if not _is_non_bool_number(adaptive_cfg.uniform_mix_when_low_entropy) or not 0.0 <= float(
-        adaptive_cfg.uniform_mix_when_low_entropy
-    ) <= 1.0:
-        raise ValueError(
-            "timestep.adaptive_log_snr.uniform_mix_when_low_entropy must be between 0.0 and 1.0 inclusive."
-        )
+    if (
+        not _is_non_bool_number(adaptive_cfg.uniform_mix_when_low_entropy)
+        or not 0.0 <= float(adaptive_cfg.uniform_mix_when_low_entropy) <= 1.0
+    ):
+        raise ValueError("timestep.adaptive_log_snr.uniform_mix_when_low_entropy must be between 0.0 and 1.0 inclusive.")
 
 
 def _normalize_edm2_loss_config(cfg) -> None:
@@ -213,11 +206,7 @@ def _normalize_edm2_loss_config(cfg) -> None:
     if edm2_cfg is None or snr_cfg is None:
         return
 
-    if (
-        edm2_cfg.enabled
-        and edm2_cfg.importance.enabled
-        and not edm2_cfg.importance.safety_override
-    ):
+    if edm2_cfg.enabled and edm2_cfg.importance.enabled and not edm2_cfg.importance.safety_override:
         if getattr(snr_cfg, "debiased_estimation_loss", False):
             snr_cfg.debiased_estimation_loss = False
             logger.warning(
@@ -305,7 +294,8 @@ def prepare_config(cfg) -> None:
     if cfg.optimizer.use_lion_optimizer:
         cfg.optimizer.optimizer_type = "Lion"
 
-    # Learning rates: default denoiser/text_encoders to base if not set
+    # Learning rates: inherit denoiser/text_encoders from base when one exists.
+    # If base is null, inherited component fields remain null as well.
     if hasattr(cfg.optimizer, "learning_rates"):
         lr_cfg = cfg.optimizer.learning_rates
         if lr_cfg.denoiser is None:
@@ -325,8 +315,7 @@ def prepare_config(cfg) -> None:
                 cfg.loss.v_parameterization = configured_prediction == "v_prediction"
             if objective_path in {None, "ddpm"}:
                 logger.warning(
-                    "objective.prediction overrides legacy loss.v_parameterization; "
-                    "the boolean is being synchronized for compatibility."
+                    "objective.prediction overrides legacy loss.v_parameterization; the boolean is being synchronized for compatibility."
                 )
 
     # Data: cache_dir defaults to train_data_dir if not set
@@ -456,8 +445,7 @@ def validate_config(cfg) -> None:
     sample_every_n_epochs = _get_optional_attr(cfg, "output", "sampling", "sample_every_n_epochs")
     if sample_every_n_steps is not None and sample_every_n_epochs is not None:
         raise ValueError(
-            "sample_every_n_steps and sample_every_n_epochs cannot both be set. "
-            "Choose either step-based or epoch-based sampling cadence."
+            "sample_every_n_steps and sample_every_n_epochs cannot both be set. Choose either step-based or epoch-based sampling cadence."
         )
 
     # Regularization: adaptive_noise_scale requires noise_offset
@@ -527,13 +515,13 @@ def validate_config(cfg) -> None:
         if cfg.performance.memory.offload_text_encoders and should_train_text_encoder(cfg.optimizer.learning_rates):
             raise ValueError(
                 "Cannot train text encoder while offloading to CPU. Text encoder training requires TEs on GPU. "
-                "Either set text_encoders LR to 0, or disable offload_text_encoders."
+                "Either set text_encoders LR to 0 to keep the baseline TE path frozen, or disable offload_text_encoders."
             )
 
     # TE caching + TE training conflict
     if cfg.data.caching.cache_text_encoder_outputs and should_train_text_encoder(cfg.optimizer.learning_rates):
         raise ValueError(
-            "Cannot train text encoder while TE output caching is enabled. Disable TE output caching, or set text_encoders LR to 0."
+            "Cannot train text encoder while TE output caching is enabled. Disable TE output caching, or set text_encoders LR to 0 to keep the baseline TE path frozen."
         )
 
     _validate_validation_config(cfg)
@@ -569,6 +557,5 @@ def validate_dataset_groups(cfg, train_dataset_group, val_dataset_group) -> None
         is_cacheable = getattr(train_dataset_group, "is_text_encoder_output_cacheable", None)
         if callable(is_cacheable) and not is_cacheable():
             raise ValueError(
-                "cache_text_encoder_outputs cannot be used with dataset/caption settings that change text conditioning "
-                "between steps."
+                "cache_text_encoder_outputs cannot be used with dataset/caption settings that change text conditioning between steps."
             )
