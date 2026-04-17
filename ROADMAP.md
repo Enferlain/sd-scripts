@@ -63,8 +63,7 @@ Current testing follow-up is about expanding coverage around the remaining riski
 
 Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Currently fail-fast with `NotImplementedError` in `FineTuneMode.build_optimizer_params()` to prevent silent behavior differences.
 
-- [ ] **Block-level learning rates** — Per-UNet-block LR grouping (legacy `get_block_params_to_optimize()`). Should be implemented as a mode-agnostic optimizer-group feature, not mode-specific.
-- [ ] **Pattern-based optimizer groups** — Regex/glob-based param grouping for fine-grained LR control. Same mode-agnostic approach as block LR.
+- [x] **Pattern-based optimizer groups** — Regex/glob-based param grouping for fine-grained LR control. Same mode-agnostic approach as block LR.
 - [ ] **Fused optimizer groups** — Multi-optimizer support with `fused_backward_pass` (per-parameter backward hooks). Complex multi-optimizer logic from legacy `sdxl_finetune.py`.
 - [ ] **PEFT module/param breakdown** — Per-component (unet, TE) module and parameter counts in training diagnostics for PEFT mode. Requires an optional adapter protocol method (`get_diagnostics_components()`) that each adapter type implements to report its own per-component allocation. `PeftMode` already has the `hasattr` hook ready — just needs adapter-side implementations. Deferred because adapter internals vary (LoRA, LyCORIS, OFT) and LyCORIS is still external.
 
@@ -122,8 +121,7 @@ Recent architecture and config settlements now belong in `CHANGELOG.md`; this se
 - [ ] **Dashboard / logging system rework** — Fold the live plotter into a broader dashboard/logging system instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **LyCORIS vendor / integration pass** — Treat LyCORIS as a vendor/integration ownership question rather than an external dependency question, since adapter breakdown follow-up depends on tighter ownership and easier modification.
-- [ ] **Custom optimizer vendor / integration pass** — Treat customized optimizers as a vendor/integration ownership question rather than an external dependency question, so optimizer behavior can be evolved in-repo as the training stack settles. The old `CompassAO` / `Compass8BitBNB` heavy remainder is now absorbed too, and `abmog.py`, `singstate.py`, `talon.py`, `glyph.py`, `adammini.py`, `momentus_caution.py`, `remaster.py`, `farmscrop.py`, `farmscrop_v2.py`, `fmarscrop.py`, `fmarscrop_v2.py`, `fmarscrop_v2_exmachina.py`, `fmarscrop_v3.py`, and `fmarscrop_v3_exmachina.py` are repo-owned as well, on top of the recent absorptions including `SCORN`, `SCORNMachina`, `CAME`, `CStableAdamW`, `GrokFastAdamW`, `BCOS`, `ProjectiveAdam`, `WiwiOpt`, `OAGOpt`, `OCGOpt`, `SCGOpt`, `FFTDescent`, the full `FishMonger` file, and now the full `Compass` family too. The repo also now exposes upstream TorchAO CPU optimizer offload through a wrapper integration path instead of relying on the older vendored `low_bit_optim/` snapshot. The remaining work here is mostly structural follow-up such as splitting very large family modules and improving comment/docstring preservation consistency in earlier absorptions.
-  - A consistency audit also confirmed the older repo-owned optimizer/scheduler files already participate in the shared registry/factory path; the remaining work is alignment and cleanup, not a second migration of those pre-existing leaves.
+- [ ] **torchao pulled into the repo so it can be modified when wanted** — upstream is restrictive for offloading
 - [ ] **Future conditioning/data-flow experiments** — Later exploration area for better caption mutation, TE caching, on-the-fly CPU encoding, queues, async handoff, and related conditioning/data-flow improvements once the current building blocks are settled.
 
 ---

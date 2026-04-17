@@ -1,5 +1,8 @@
-## ADDED Requirements
+# optimizer-group-lr-behavior Specification
 
+## Purpose
+TBD - created by archiving change improve-group-lr-optimizer-behavior. Update Purpose after archive.
+## Requirements
 ### Requirement: Grouped optimizer learning rates are authoritative
 When the optimization layer materializes explicit execution groups with per-group learning rates, the system SHALL treat those group learning rates as the authoritative runtime optimizer LRs for that grouped path.
 
@@ -28,3 +31,4 @@ The system SHALL reject unsupported grouped learning-rate configurations with cl
 #### Scenario: Repo rejects grouped LR configuration before backend type errors leak through
 - **WHEN** the optimizer factory cannot satisfy a configured grouped learning-rate plan for the selected optimizer backend
 - **THEN** the repo SHALL raise an error that describes the unsupported grouped learning-rate configuration at the repo boundary
+

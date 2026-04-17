@@ -1,5 +1,8 @@
-## ADDED Requirements
+# component-qualified-selectors Specification
 
+## Purpose
+TBD - created by archiving change normalize-component-qualified-selectors. Update Purpose after archive.
+## Requirements
 ### Requirement: Parameter dumps use component-qualified selector names
 The inspection tool SHALL expose parameter-oriented selector names in the form `component.local_name`, where `component` is the model-facing component label derived from existing model package metadata and `local_name` is the real runtime parameter path within that component.
 
@@ -35,3 +38,4 @@ The config schema and defaults SHALL remove `optimizer.learning_rates.blocks` on
 #### Scenario: Reading default optimizer config
 - **WHEN** a user inspects the default optimizer config surface
 - **THEN** `optimizer.learning_rates.blocks` SHALL no longer appear as an available learning-rate field
+
