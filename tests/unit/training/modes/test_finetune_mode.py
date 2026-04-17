@@ -199,6 +199,19 @@ class TestPrepareTrainables:
         assert mode._te_train_flags == [False, False]
         assert mock_trainer._train_text_encoder is False
 
+    def test_zero_denoiser_lr_freezes_denoiser_params(self, mode, mock_trainer):
+        """Explicit zero denoiser LR should keep the baseline denoiser path frozen."""
+        mock_trainer.cfg.optimizer.learning_rates.base = None
+        mock_trainer.cfg.optimizer.learning_rates.denoiser = 0.0
+        mock_trainer.cfg.optimizer.learning_rates.text_encoders = [0.0, 0.0]
+
+        mode.prepare_trainables(mock_trainer)
+
+        assert mock_trainer._train_denoiser is False
+        assert mock_trainer._train_text_encoder is False
+        for _, parameter in mock_trainer.denoiser.named_parameters():
+            assert parameter.requires_grad is False
+
     def test_groups_make_denoiser_trainable_without_base_lr(self, mode, mock_trainer):
         """Named groups can enable denoiser training even when no baseline LR is configured."""
         mock_trainer.cfg.optimizer.learning_rates.base = None

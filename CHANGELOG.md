@@ -10,6 +10,15 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-17]
+
+### Changed
+
+- **Text-encoder training validation now treats explicit TE-targeting optimizer groups as real TE training, not just positive baseline TE LRs** — Configs can no longer sneak TE subset training past TE-cache/offload guards by setting `text_encoders: 0` and only using positive `clip_*` / `text_encoder*` groups.
+  - Updated `library/config/config_validation.py` so TE caching/offload conflicts consider both baseline TE LRs and positive explicit groups that target known TE selector namespaces for the active model family, with clearer error text about removing TE-targeting groups when the TE path must stay frozen.
+  - Updated `library/optimization/optimizer_utils.py` to keep the baseline TE trainability helpers/documentation aligned with the current `null`-means-inherit / `0`-means-frozen semantics.
+  - Added focused regression coverage in `tests/unit/test_config_validation.py`, `tests/unit/training/modes/test_finetune_mode.py`, and `tests/unit/training/test_training_optimizer.py` for grouped TE validation conflicts and explicit zero-LR frozen-component behavior.
+
 ## [2026-04-16]
 
 ### Changed

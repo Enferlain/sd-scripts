@@ -55,9 +55,9 @@ def should_train_text_encoder(learning_rates: LearningRatesConfig) -> bool:
     - text_encoders LR is a positive number
     - text_encoders LR is a list with any positive values
     """
-    te_lr = learning_rates.text_encoders
+    te_lr = learning_rates.text_encoders if learning_rates.text_encoders is not None else learning_rates.base
     if te_lr is None:
-        return learning_rates.base is not None and learning_rates.base > 0
+        return False
     if isinstance(te_lr, (int, float)):
         return te_lr > 0
     # List of LRs - train if any are positive
@@ -92,9 +92,11 @@ def get_text_encoders_train_flags(learning_rates: LearningRatesConfig, text_enco
     num_text_encoders = len(text_encoders)
     te_lr = learning_rates.text_encoders
     if te_lr is None:
+        # Null component LR means: inherit from a positive base when present,
+        # otherwise keep every TE frozen.
         base_train = learning_rates.base is not None and learning_rates.base > 0
         return [base_train] * num_text_encoders
-    if isinstance(te_lr, int | float):
+    if isinstance(te_lr, (int, float)):
         return [te_lr > 0] * num_text_encoders
 
     te_flags = [lr_val > 0 for lr_val in te_lr]

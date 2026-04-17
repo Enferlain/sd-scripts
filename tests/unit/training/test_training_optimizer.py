@@ -743,6 +743,28 @@ class TestOptimizerUtils:
 
         assert [group.lr for group in grouping.logical_groups] == [2e-5, 3e-5, 1e-5]
 
+    def test_zero_lr_keeps_baseline_component_frozen_and_excludes_optimizer_groups(self):
+        """Explicit zero LR should freeze the baseline component instead of creating a zero-LR optimizer group."""
+        denoiser = torch.nn.Linear(4, 4)
+        train_denoiser, te_flags = resolve_finetune_trainability(
+            denoiser=denoiser,
+            text_encoders=[],
+            learning_rates=LearningRatesConfig(base=None, denoiser=0.0),
+        )
+
+        grouping = build_finetune_grouping(
+            denoiser=denoiser,
+            train_denoiser=train_denoiser,
+            text_encoders=[],
+            te_train_flags=te_flags,
+            learning_rates=LearningRatesConfig(base=None, denoiser=0.0),
+        )
+
+        assert train_denoiser is False
+        assert te_flags == []
+        assert grouping.execution_groups == []
+        assert grouping.logical_groups == []
+
     def test_resolve_finetune_trainability_uses_groups_when_base_is_missing(self):
         """Explicit groups can make a component trainable even without a base fallback LR."""
         train_denoiser, te_flags = resolve_finetune_trainability(

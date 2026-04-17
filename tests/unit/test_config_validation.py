@@ -941,7 +941,24 @@ class TestValidateConfig:
                 "performance": {"memory": {"offload_text_encoders": True}},
             }
         )
-        with pytest.raises(ValueError, match="Cannot train text encoder while offloading to CPU"):
+        with pytest.raises(ValueError, match="Cannot train text encoder parameters while offloading to CPU"):
+            validate_config(cfg)
+
+    def test_offload_text_encoders_conflicts_with_grouped_te_training(self):
+        """Offloading text encoders should also reject explicit TE-targeting groups."""
+        cfg = make_validate_cfg(
+            {
+                "optimizer": {
+                    "learning_rates": {
+                        "text_encoders": 0.0,
+                        "groups": [{"name": "clip_probe", "lr": 1e-5, "match": ["clip_l.*"]}],
+                    }
+                },
+                "performance": {"memory": {"offload_text_encoders": True}},
+                "model": {"model_type": "sdxl"},
+            }
+        )
+        with pytest.raises(ValueError, match="Cannot train text encoder parameters while offloading to CPU"):
             validate_config(cfg)
 
     def test_te_output_caching_conflicts_with_te_training(self):
@@ -952,7 +969,24 @@ class TestValidateConfig:
                 "data": {"caching": {"cache_text_encoder_outputs": True}},
             }
         )
-        with pytest.raises(ValueError, match="Cannot train text encoder while TE output caching is enabled"):
+        with pytest.raises(ValueError, match="Cannot train text encoder parameters while TE output caching is enabled"):
+            validate_config(cfg)
+
+    def test_te_output_caching_conflicts_with_grouped_te_training(self):
+        """TE-output caching should also reject explicit TE-targeting groups."""
+        cfg = make_validate_cfg(
+            {
+                "optimizer": {
+                    "learning_rates": {
+                        "text_encoders": 0.0,
+                        "groups": [{"name": "clip_probe", "lr": 1e-5, "match": ["clip_l.*"]}],
+                    }
+                },
+                "data": {"caching": {"cache_text_encoder_outputs": True}},
+                "model": {"model_type": "sdxl"},
+            }
+        )
+        with pytest.raises(ValueError, match="Cannot train text encoder parameters while TE output caching is enabled"):
             validate_config(cfg)
 
     def test_edm2_laplace_flag_fails_fast(self):

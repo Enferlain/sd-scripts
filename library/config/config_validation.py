@@ -15,8 +15,12 @@ Usage:
 """
 
 import ast
+import fnmatch
 import logging
+import re
 
+from library.models.parameter_dump import resolve_component_names
+from library.optimization.grouping import resolve_learning_rate_groups
 from library.optimization.optimizer_utils import should_train_text_encoder
 
 logger = logging.getLogger(__name__)
@@ -70,6 +74,45 @@ def _is_text_encoder_output_cacheable_config(cfg) -> bool:
         or caption_cfg.token_warmup_step > 0
         or caption_cfg.caption_tag_dropout_rate > 0
     )
+
+
+def _pattern_targets_selector(pattern: str, selector_name: str) -> bool:
+    """Return whether a group pattern can target the provided selector probe."""
+    if pattern.startswith("re:"):
+        return re.search(pattern[3:], selector_name) is not None
+    return fnmatch.fnmatchcase(selector_name, pattern)
+
+
+def _has_positive_text_encoder_groups(cfg) -> bool:
+    """Return whether explicit positive-LR groups target any known TE selector namespace."""
+    learning_rates = _get_optional_attr(cfg, "optimizer", "learning_rates")
+    if learning_rates is None:
+        return False
+
+    has_inline_groups = bool(_get_optional_attr(learning_rates, "groups", default=[]))
+    has_groups_file = _get_optional_attr(learning_rates, "groups_file") is not None
+    if not has_inline_groups and not has_groups_file:
+        return False
+
+    groups = resolve_learning_rate_groups(learning_rates)
+    if not groups:
+        return False
+
+    model_type = _get_optional_attr(cfg, "model", "model_type")
+    component_names = resolve_component_names(model_type)
+    selector_prefixes = list(component_names.text_encoder_names) if component_names is not None else []
+    selector_prefixes.extend(f"text_encoder{i + 1}" for i in range(len(selector_prefixes)))
+    if not selector_prefixes:
+        selector_prefixes.extend(["text_encoder", "text_encoder1", "text_encoder2", "text_encoder3"])
+
+    selector_probes = [probe for prefix in selector_prefixes for probe in (prefix, f"{prefix}.__probe__")]
+
+    for group in groups:
+        if group.lr <= 0:
+            continue
+        if any(_pattern_targets_selector(pattern, selector_probe) for pattern in group.match for selector_probe in selector_probes):
+            return True
+    return False
 
 
 def _validate_model_profile_config(cfg) -> None:
@@ -512,16 +555,19 @@ def validate_config(cfg) -> None:
         # TE offloading + TE training conflict
         # TODO: Could support granular offloading (e.g., [1e-5, 0] trains TE1 on GPU, offloads TE2 to CPU)
         #       Would require per-TE device placement and mixed-device encoding in _get_text_cond
-        if cfg.performance.memory.offload_text_encoders and should_train_text_encoder(cfg.optimizer.learning_rates):
+        trains_text_encoder = should_train_text_encoder(cfg.optimizer.learning_rates) or _has_positive_text_encoder_groups(cfg)
+        if cfg.performance.memory.offload_text_encoders and trains_text_encoder:
             raise ValueError(
-                "Cannot train text encoder while offloading to CPU. Text encoder training requires TEs on GPU. "
-                "Either set text_encoders LR to 0 to keep the baseline TE path frozen, or disable offload_text_encoders."
+                "Cannot train text encoder parameters while offloading to CPU. Text encoder training requires TEs on GPU. "
+                "Set text_encoders LR to 0 and remove TE-targeting groups, or disable offload_text_encoders."
             )
 
     # TE caching + TE training conflict
-    if cfg.data.caching.cache_text_encoder_outputs and should_train_text_encoder(cfg.optimizer.learning_rates):
+    trains_text_encoder = should_train_text_encoder(cfg.optimizer.learning_rates) or _has_positive_text_encoder_groups(cfg)
+    if cfg.data.caching.cache_text_encoder_outputs and trains_text_encoder:
         raise ValueError(
-            "Cannot train text encoder while TE output caching is enabled. Disable TE output caching, or set text_encoders LR to 0 to keep the baseline TE path frozen."
+            "Cannot train text encoder parameters while TE output caching is enabled. "
+            "Disable TE output caching, or set text_encoders LR to 0 and remove TE-targeting groups."
         )
 
     _validate_validation_config(cfg)
