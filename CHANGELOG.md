@@ -10,6 +10,15 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-18]
+
+### Changed
+
+- **The adapter-system rework now has its first repo-owned runtime scaffolding slice in place** — The repo can start moving built-in adapter training onto a new `library/adapters/` framework surface without touching LyCORIS yet or preserving the old PEFT module-import shape as the architectural center.
+  - Added `library/adapters/registry.py`, `library/adapters/types.py`, `library/adapters/runtime/`, and `library/adapters/shared/` as the first package structure for the new adapter-system architecture.
+  - Added built-in adapter-type wrapper packages under `library/adapters/methods/` for `lora`, `dylora`, and `oft`, with a lazy registry/build path that keeps the new runtime surface cheap to import.
+  - Added focused coverage in `tests/unit/adapters/test_runtime_registry.py` for adapter-type discovery, legacy-module resolution, and the first repo-owned build entrypoints.
+
 ## [2026-04-17]
 
 ### Changed

@@ -1,4 +1,8 @@
-Fork of sd-scripts from [sd3](https://github.com/kohya-ss/sd-scripts/tree/sd3), specifically another fork of that sd3 from here [sd3-upstream](https://github.com/67372a/sd-scripts/tree/sd3-upstream). For use with the lora easy trainer ui for the time being, until I make a new in-repo frontend.
+# Not ready to be used yet. All docs and readme are considered outdated, pending full rewrite
+
+---
+
+Originally a fork of sd-scripts from [sd3](https://github.com/kohya-ss/sd-scripts/tree/sd3), specifically another fork of that sd3 from here [sd3-upstream](https://github.com/67372a/sd-scripts/tree/sd3-upstream).
 The library has been reorganized for modularity and it's highly opinionated. There can be inconsistencies or questionable choices until further notice, or no notice at all. readme and docs will be properly updated to reflect the state of the repo in time.
 
 ---
