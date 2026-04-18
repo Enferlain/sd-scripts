@@ -14,6 +14,13 @@ Rules:
 
 ### Changed
 
+- **The first repo-owned adapter runtime seam now consumes an explicit build request plus optimization-owned resolved original-model targets** — `PeftMode` no longer creates built-in adapters by calling raw compatibility-era positional constructors directly, and the migration path now carries public component-root target provenance like `clip_l` / `clip_g` / `unet` into the runtime boundary without making the runtime filter the model context itself.
+  - Updated `library/adapters/runtime/` with `AdapterBuildRequest`, `AdapterRuntimeSpec`, and public component-root target builders that the optimization layer now owns for the current PEFT migration slice.
+  - Updated `library/optimization/grouping.py` with an optimization-owned `resolve_adapter_target_selection(...)` helper so adapter target policy is resolved outside `PeftMode` before adapter instantiation.
+  - Updated the built-in method wrappers under `library/adapters/methods/` and `library/training/modes/peft_mode.py` so adapter construction routes through the repo-owned runtime request path while `PeftMode` keeps training-side ownership and base-weight merge behavior.
+  - Updated the current built-in adapter implementations to tolerate unselected components during migration, while the runtime wrappers now preserve the full model context and attach resolved-target provenance onto the constructed adapter instead of stripping untargeted components out during construction.
+  - Added focused coverage in `tests/unit/adapters/test_runtime_registry.py`, `tests/unit/training/modes/test_peft_mode.py`, and `tests/unit/training/test_training_optimizer.py` for component-root target construction, optimization-owned PEFT target resolution, the real runtime-wrapper boundary, and the new `PeftMode` build-request handoff.
+
 - **The adapter-system rework now has its first repo-owned runtime scaffolding slice in place** — The repo can start moving built-in adapter training onto a new `library/adapters/` framework surface without touching LyCORIS yet or preserving the old PEFT module-import shape as the architectural center.
   - Added `library/adapters/registry.py`, `library/adapters/types.py`, `library/adapters/runtime/`, and `library/adapters/shared/` as the first package structure for the new adapter-system architecture.
   - Added built-in adapter-type wrapper packages under `library/adapters/methods/` for `lora`, `dylora`, and `oft`, with a lazy registry/build path that keeps the new runtime surface cheap to import.

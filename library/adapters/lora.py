@@ -1114,9 +1114,12 @@ class LoRAAdapter(torch.nn.Module):
         def create_modules(
             is_unet: bool,
             text_encoder_idx: int | None,  # None, 1, 2
-            root_module: torch.nn.Module,
+            root_module: torch.nn.Module | None,
             target_replace_modules: list[torch.nn.Module],
-        ) -> list[LoRAModule]:
+        ) -> tuple[list[LoRAModule], list[str]]:
+            if root_module is None:
+                return [], []
+
             prefix = (
                 self.LORA_PREFIX_UNET
                 if is_unet
@@ -1184,13 +1187,20 @@ class LoRAAdapter(torch.nn.Module):
                             loras.append(lora)
             return loras, skipped
 
-        text_encoders = text_encoder if isinstance(text_encoder, list) else [text_encoder]
+        if isinstance(text_encoder, list):
+            text_encoders = text_encoder
+        elif text_encoder is None:
+            text_encoders = []
+        else:
+            text_encoders = [text_encoder]
 
         # create LoRA for text encoder
         # it's wasteful to create all modules every time, need to consider
         self.text_encoder_loras = []
         skipped_te = []
         for i, text_encoder in enumerate(text_encoders):
+            if text_encoder is None:
+                continue
             if len(text_encoders) > 1:
                 index = i + 1
                 logger.info(f"create LoRA for Text Encoder {index}:")

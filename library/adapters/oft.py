@@ -370,9 +370,12 @@ class OFTAdapter(torch.nn.Module):
 
         # create module instances
         def create_modules(
-            root_module: torch.nn.Module,
+            root_module: torch.nn.Module | None,
             target_replace_modules: list[torch.nn.Module],
         ) -> list[OFTModule]:
+            if root_module is None:
+                return []
+
             prefix = self.OFT_PREFIX_UNET
             ofts = []
             for name, module in root_module.named_modules():

@@ -11,7 +11,12 @@ import torch
 from diffusers.optimization import SchedulerType as DiffusersSchedulerType
 
 from library.optimization.arguments import parse_key_value_args
-from library.optimization.grouping import build_finetune_grouping, resolve_finetune_trainability, resolve_learning_rate_groups
+from library.optimization.grouping import (
+    build_finetune_grouping,
+    resolve_adapter_target_selection,
+    resolve_finetune_trainability,
+    resolve_learning_rate_groups,
+)
 from library.optimization.optimizer_utils import (
     apply_optimizer_runtime_mode,
     _load_optimizer_class_for_signature,
@@ -793,6 +798,23 @@ class TestOptimizerUtils:
 
         assert train_denoiser is True
         assert te_flags == [False, False]
+
+    def test_resolve_adapter_target_selection_is_optimization_owned_for_peft(self):
+        """Adapter target selection should be resolved by optimization policy, not PeftMode."""
+        clip_l = torch.nn.Linear(3, 3)
+        clip_g = torch.nn.Linear(2, 2)
+        denoiser = torch.nn.Linear(4, 4)
+
+        selection = resolve_adapter_target_selection(
+            model_type="sdxl",
+            denoiser=denoiser,
+            text_encoders=[clip_l, clip_g],
+            learning_rates=LearningRatesConfig(base=None, denoiser=1e-4, text_encoders=[0.0, 5e-5]),
+        )
+
+        assert selection.train_denoiser is True
+        assert selection.te_train_flags == [False, True]
+        assert [target.component for target in selection.resolved_targets.targets] == ["clip_g", "unet"]
 
     def test_build_finetune_grouping_applies_named_group_overrides_before_component_remainder(self):
         """Named groups should override matched subsets while component LR handles the remaining params."""

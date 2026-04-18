@@ -218,6 +218,31 @@ The initial package layout should reflect the adapter architecture directly:
 top-level registry and shared types, a runtime-oriented subpackage, per-adapter
 type folders, and a shared area for code reused by more than one adapter type.
 
+## Current Implementation Note
+
+The current migration slice now expresses the ownership split more directly in
+code:
+
+- optimization resolves the current PEFT target bundle through an explicit
+  helper before adapter instantiation
+- `PeftMode` consumes that resolved bundle as orchestration input rather than
+  deciding target policy itself
+- the repo-owned runtime request carries both the resolved target provenance
+  and the full model context into the adapter wrapper layer
+- the runtime wrappers attach the resolved target bundle to the constructed
+  adapter/runtime object as provenance, but they do not strip untargeted model
+  components out of the construction context
+
+That last point matters for breadth. A target bundle tells the adapter system
+which original-model effect surfaces are in scope, but it should not force the
+implementation to assume that non-trainable components are never still useful
+as construction-time reference context.
+
+One consistency follow-up still remains in this area: the main adapter training
+path now consumes optimization-owned resolved targets, but base-weight merge and
+other inference-shaped setup paths should also be aligned to that same handoff
+instead of rebuilding their own target bundle ad hoc inside `PeftMode`.
+
 Current working sketch:
 
 ```text

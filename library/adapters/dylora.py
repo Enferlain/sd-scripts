@@ -399,7 +399,10 @@ class DyLoRAAdapter(torch.nn.Module):
                 logger.info("apply LoRA to Conv2d with kernel size (3,3).")
 
         # create module instances
-        def create_modules(is_unet, root_module: torch.nn.Module, target_replace_modules) -> list[DyLoRAModule]:
+        def create_modules(is_unet, root_module: torch.nn.Module | None, target_replace_modules) -> list[DyLoRAModule]:
+            if root_module is None:
+                return []
+
             prefix = DyLoRAAdapter.LORA_PREFIX_UNET if is_unet else DyLoRAAdapter.LORA_PREFIX_TEXT_ENCODER
             loras = []
             for name, module in root_module.named_modules():
@@ -432,10 +435,17 @@ class DyLoRAAdapter(torch.nn.Module):
                             loras.append(lora)
             return loras
 
-        text_encoders = text_encoder if isinstance(text_encoder, list) else [text_encoder]
+        if isinstance(text_encoder, list):
+            text_encoders = text_encoder
+        elif text_encoder is None:
+            text_encoders = []
+        else:
+            text_encoders = [text_encoder]
 
         self.text_encoder_loras = []
         for i, text_encoder in enumerate(text_encoders):
+            if text_encoder is None:
+                continue
             if len(text_encoders) > 1:
                 index = i + 1
                 logger.info(f"create LoRA for Text Encoder {index}")

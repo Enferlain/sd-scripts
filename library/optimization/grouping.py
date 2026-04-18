@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 from torch import nn
 
+from library.adapters.runtime.targets import AdapterResolvedTargets, build_component_root_targets
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, LearningRatesConfig
 from library.models.parameter_dump import NamedParameterComponentNames, build_selector_name
 from library.optimization.types import (
@@ -62,6 +63,19 @@ class FinetuneSelection:
             key=lambda label: int(label.removeprefix("text_encoder")),
         )
         return [bool(self.selected_by_component[label]) for label in text_encoder_labels]
+
+
+@dataclass(slots=True)
+class AdapterTargetSelection:
+    """Optimization-owned resolved target selection for adapter training."""
+
+    resolved_targets: AdapterResolvedTargets
+    train_denoiser: bool
+    te_train_flags: list[bool]
+
+    @property
+    def train_any_text_encoder(self) -> bool:
+        return any(self.te_train_flags)
 
 
 def _coerce_learning_rate_group_config(group: Any, source: str) -> LearningRateGroupConfig:
@@ -161,6 +175,39 @@ def _matches_pattern(name: str, pattern: str) -> bool:
     if pattern.startswith("re:"):
         return re.search(pattern[3:], name) is not None
     return fnmatch.fnmatchcase(name, pattern)
+
+
+def resolve_adapter_target_selection(
+    *,
+    model_type: str,
+    denoiser: nn.Module | None,
+    text_encoders: Sequence[nn.Module],
+    learning_rates: LearningRatesConfig,
+) -> AdapterTargetSelection:
+    """Resolve optimization-owned component targeting for the adapter path.
+
+    The current PEFT migration slice keeps the target bundle intentionally
+    narrow: optimization decides which top-level components are in scope from
+    learning-rate policy, and the adapter runtime consumes that resolved
+    bundle without re-owning the decision.
+    """
+
+    denoiser_lr = learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
+    te_train_flags = [_is_positive_lr(_resolve_text_encoder_lr(learning_rates, index)) for index, _ in enumerate(text_encoders)]
+    train_denoiser = _is_positive_lr(denoiser_lr)
+
+    return AdapterTargetSelection(
+        resolved_targets=build_component_root_targets(
+            model_type=model_type,
+            text_encoders=list(text_encoders),
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=te_train_flags,
+            include_denoiser=train_denoiser,
+        ),
+        train_denoiser=train_denoiser,
+        te_train_flags=te_train_flags,
+    )
 
 
 def _collect_component_named_parameters(

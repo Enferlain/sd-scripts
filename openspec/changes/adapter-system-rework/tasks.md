@@ -9,7 +9,7 @@
 
 - [x] 2.1 Create the initial `library/adapters/` scaffolding for the agreed package layout
 - [x] 2.2 Introduce the repo-owned adapter runtime/framework surface that `PeftMode` will use for adapter training
-- [ ] 2.3 Rework the adapter path so adapter instantiation consumes resolved original-model targets instead of owning targeting policy
+- [x] 2.3 Rework the adapter path so adapter instantiation consumes resolved original-model targets instead of owning targeting policy
 - [ ] 2.4 Replace compatibility-era optimizer handoff behavior with a handoff that lets optimization remain the owner of grouping and scheduling
 
 ## 3. Rework Config And Persistence Direction
@@ -20,6 +20,6 @@
 
 ## 4. Migrate And Validate
 
-- [ ] 4.1 Migrate the current built-in adapter path onto the new adapter-system architecture without moving training-side ownership out of `PeftMode`
+- [ ] 4.1 Migrate the current built-in adapter path onto the new adapter-system architecture without moving training-side ownership out of `PeftMode`, including aligning base-weight merge and inference-style setup with the same optimization-owned resolved-target handoff used by the main adapter training path
 - [ ] 4.2 Validate that optimization still owns original-model targeting and grouping behavior for adapter runs
 - [ ] 4.3 Add or update focused tests and design/docs coverage for the new adapter architecture and migration behavior

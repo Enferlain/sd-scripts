@@ -8,24 +8,27 @@ of the code it replaces — **zero behavior change** in Phase 1.
 
 from __future__ import annotations
 
-import importlib
 import logging
 import os
-import sys
 import time
 from typing import TYPE_CHECKING, Any
 
 import torch
 from torch import nn
 
-from library.adapters.lora_utils import resolve_adapter_kwargs
-from library.optimization.grouping import resolve_learning_rate_groups
-from library.optimization.optimizer_utils import (
-    get_text_encoders_train_flags,
-    prepare_optimizer as _prepare_optimizer_util,
-    should_train_denoiser,
-    should_train_text_encoder,
+from library.adapters import (
+    AdapterBuildContext,
+    AdapterBuildRequest,
+    AdapterModelContext,
+    AdapterRuntimeSpec,
+    build_adapter_for_legacy_module,
+    build_adapter_from_weights_for_legacy_module,
+    build_component_root_targets,
+    get_adapter_method_for_legacy_module,
 )
+from library.adapters.lora_utils import resolve_adapter_kwargs
+from library.optimization.grouping import resolve_adapter_target_selection, resolve_learning_rate_groups
+from library.optimization.optimizer_utils import get_text_encoders_train_flags, prepare_optimizer as _prepare_optimizer_util
 from library.performance import deepspeed_utils
 from library.training.checkpointing import ResumeState, load_train_state_metadata, save_train_state_metadata
 
@@ -34,6 +37,35 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+def _build_adapter_settings(peft_config, net_kwargs: dict[str, Any]) -> dict[str, Any]:
+    settings = dict(net_kwargs)
+    settings["adapter_rank"] = peft_config.adapter_rank
+    settings["adapter_alpha"] = peft_config.adapter_alpha
+    settings["neuron_dropout"] = peft_config.neuron_dropout
+    return settings
+
+
+def _build_adapter_request(
+    *,
+    vae,
+    text_encoders: list[nn.Module],
+    denoiser,
+    adapter_type: str,
+    settings: dict[str, Any],
+    resolved_targets,
+    for_inference: bool = False,
+) -> AdapterBuildRequest:
+    return AdapterBuildRequest(
+        adapter=AdapterRuntimeSpec(adapter_type=adapter_type, settings=settings),
+        context=AdapterBuildContext(
+            model=AdapterModelContext(vae=vae, text_encoder=text_encoders, denoiser=denoiser),
+            multiplier=1.0,
+            for_inference=for_inference,
+        ),
+        resolved_targets=resolved_targets,
+    )
 
 
 class PeftMode:
@@ -60,11 +92,19 @@ class PeftMode:
         text_encoder = trainer._text_encoder
         text_encoders = trainer.text_encoders
         weight_dtype = trainer.weight_dtype
+        adapter_registration = get_adapter_method_for_legacy_module(cfg.peft.adapter_module)
+        adapter_type = adapter_registration.name
 
-        # Import adapter module dynamically
-        sys.path.append(os.path.dirname(__file__))
         accelerator.print("import peft module:", cfg.peft.adapter_module)
-        adapter_module = importlib.import_module(cfg.peft.adapter_module)
+
+        target_selection = resolve_adapter_target_selection(
+            model_type=cfg.model.model_type,
+            denoiser=denoiser,
+            text_encoders=text_encoders,
+            learning_rates=cfg.optimizer.learning_rates,
+        )
+        trainer._train_denoiser = target_selection.train_denoiser
+        trainer._train_text_encoder = target_selection.train_any_text_encoder
 
         # Merge base weights if specified
         if cfg.peft.base_weights is not None:
@@ -76,9 +116,23 @@ class PeftMode:
 
                 accelerator.print(f"merging module: {weight_path} with multiplier {multiplier}")
 
-                module, weights_sd = adapter_module.create_adapter_from_weights(
-                    multiplier, weight_path, vae, text_encoder, denoiser, for_inference=True
+                merge_request = AdapterBuildRequest(
+                    adapter=AdapterRuntimeSpec(adapter_type=adapter_type, settings={}),
+                    context=AdapterBuildContext(
+                        model=AdapterModelContext(vae=vae, text_encoder=text_encoders, denoiser=denoiser),
+                        multiplier=multiplier,
+                        for_inference=True,
+                    ),
+                    resolved_targets=build_component_root_targets(
+                        model_type=cfg.model.model_type,
+                        text_encoders=text_encoders,
+                        vae=vae,
+                        denoiser=denoiser,
+                        include_text_encoders=[te is not None for te in text_encoders],
+                        include_denoiser=denoiser is not None,
+                    ),
                 )
+                module, weights_sd = build_adapter_from_weights_for_legacy_module(cfg.peft.adapter_module, merge_request, weight_path)
                 module.merge_to(
                     text_encoder,
                     denoiser,
@@ -97,24 +151,24 @@ class PeftMode:
                 net_kwargs[key] = value
 
         resolve_adapter_kwargs(cfg.peft, net_kwargs)
+        adapter_settings = _build_adapter_settings(cfg.peft, net_kwargs)
 
         # Create adapter
+        build_request = _build_adapter_request(
+            vae=vae,
+            text_encoders=text_encoders,
+            denoiser=denoiser,
+            adapter_type=adapter_type,
+            settings=adapter_settings,
+            resolved_targets=target_selection.resolved_targets,
+        )
         if cfg.peft.adapter_rank_from_weights:
-            adapter, _ = adapter_module.create_adapter_from_weights(1, cfg.peft.adapter_weights, vae, text_encoder, denoiser, **net_kwargs)
+            adapter, _ = build_adapter_from_weights_for_legacy_module(cfg.peft.adapter_module, build_request, cfg.peft.adapter_weights)
         else:
             if "dropout" not in net_kwargs:
                 net_kwargs["dropout"] = cfg.peft.neuron_dropout
-
-            adapter = adapter_module.create_adapter(
-                1.0,
-                cfg.peft.adapter_rank,
-                cfg.peft.adapter_alpha,
-                vae,
-                text_encoder,
-                denoiser,
-                neuron_dropout=cfg.peft.neuron_dropout,
-                **net_kwargs,
-            )
+            build_request.adapter.settings["dropout"] = net_kwargs["dropout"]
+            adapter = build_adapter_for_legacy_module(cfg.peft.adapter_module, build_request)
 
         if adapter is None:
             raise RuntimeError("Adapter creation returned None - check adapter module configuration")
@@ -129,8 +183,6 @@ class PeftMode:
         trainer.strategies.post_process_trainable(cfg, accelerator, adapter, text_encoders, denoiser)
 
         # Apply adapter to denoiser and text_encoder
-        trainer._train_denoiser = should_train_denoiser(cfg.optimizer.learning_rates)
-        trainer._train_text_encoder = should_train_text_encoder(cfg.optimizer.learning_rates)
         adapter.apply_to(text_encoder, denoiser, trainer._train_text_encoder, trainer._train_denoiser)
 
         # Load weights if specified
@@ -139,6 +191,7 @@ class PeftMode:
             accelerator.print(f"load peft weights from {cfg.peft.adapter_weights}: {info}")
 
         trainer.adapter = adapter
+        trainer.adapter_resolved_targets = build_request.resolved_targets
         trainer.net_kwargs = net_kwargs
 
     def configure_trainable_precision(self, trainer: Trainer) -> None:
