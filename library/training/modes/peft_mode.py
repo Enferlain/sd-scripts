@@ -53,9 +53,13 @@ _UNSUPPORTED_ADAPTER_OPTIMIZER_POLICY_KEYS = (
 
 def _ensure_supported_adapter_optimizer_policy(cfg, net_kwargs: dict[str, Any] | None = None) -> None:
     legacy_optimizer_policy_fields = {
-        "peft.loraplus_lr_ratio": cfg.peft.loraplus_lr_ratio,
-        "peft.loraplus_unet_lr_ratio": cfg.peft.loraplus_unet_lr_ratio,
-        "peft.loraplus_text_encoder_lr_ratio": cfg.peft.loraplus_text_encoder_lr_ratio,
+        "peft.lora.down_lr_weight": cfg.peft.lora.down_lr_weight,
+        "peft.lora.mid_lr_weight": cfg.peft.lora.mid_lr_weight,
+        "peft.lora.up_lr_weight": cfg.peft.lora.up_lr_weight,
+        "peft.lora.block_lr_zero_threshold": cfg.peft.lora.block_lr_zero_threshold,
+        "peft.lora.loraplus_lr_ratio": cfg.peft.lora.loraplus_lr_ratio,
+        "peft.lora.loraplus_unet_lr_ratio": cfg.peft.lora.loraplus_unet_lr_ratio,
+        "peft.lora.loraplus_text_encoder_lr_ratio": cfg.peft.lora.loraplus_text_encoder_lr_ratio,
     }
     active_fields = [name for name, value in legacy_optimizer_policy_fields.items() if value is not None]
     if active_fields:
@@ -74,10 +78,11 @@ def _ensure_supported_adapter_optimizer_policy(cfg, net_kwargs: dict[str, Any] |
 
 
 def _build_adapter_settings(peft_config, net_kwargs: dict[str, Any]) -> dict[str, Any]:
+    lora_config = peft_config.lora
     settings = dict(net_kwargs)
-    settings["adapter_rank"] = peft_config.adapter_rank
-    settings["adapter_alpha"] = peft_config.adapter_alpha
-    settings["neuron_dropout"] = peft_config.neuron_dropout
+    settings["adapter_rank"] = lora_config.rank
+    settings["adapter_alpha"] = lora_config.alpha
+    settings["neuron_dropout"] = lora_config.dropout
     return settings
 
 
@@ -201,7 +206,7 @@ class PeftMode:
             adapter, _ = build_adapter_from_weights_for_legacy_module(cfg.peft.adapter_module, build_request, cfg.peft.adapter_weights)
         else:
             if "dropout" not in net_kwargs:
-                net_kwargs["dropout"] = cfg.peft.neuron_dropout
+                net_kwargs["dropout"] = cfg.peft.lora.dropout
             build_request.adapter.settings["dropout"] = net_kwargs["dropout"]
             adapter = build_adapter_for_legacy_module(cfg.peft.adapter_module, build_request)
 

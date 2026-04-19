@@ -84,15 +84,15 @@ def mock_cfg():
     cfg.optimizer.learning_rates.groups_file = None
 
     # peft
+    cfg.peft.lora.rank = 4
+    cfg.peft.lora.alpha = 1.0
+    cfg.peft.lora.dropout = 0.0
     cfg.peft.adapter_module = "library.adapters.lora"
-    cfg.peft.adapter_rank = 4
-    cfg.peft.adapter_alpha = 1.0
     cfg.peft.adapter_weights = None
     cfg.peft.adapter_rank_from_weights = False
     cfg.peft.adapter_args = None
     cfg.peft.base_weights = None
     cfg.peft.base_weights_multiplier = None
-    cfg.peft.neuron_dropout = 0.0
     cfg.peft.scale_weight_norms = False
 
     # output.saving

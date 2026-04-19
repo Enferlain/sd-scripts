@@ -9,6 +9,10 @@ _BUILTIN_ADAPTER_METHODS = (
         legacy_module_path="library.adapters.lora",
         runtime_module_path="library.adapters.methods.lora.runtime",
     ),
+    # Left over on purpose as legacy bridges. The current adapter-system task
+    # is centered on the LoRA-shaped path; Dylora/OFT will be revisited from
+    # the vendor LyCORIS direction rather than by extending the already-present
+    # local implementations here.
     AdapterMethodRegistration(
         name="dylora",
         legacy_module_path="library.adapters.dylora",

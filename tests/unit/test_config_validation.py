@@ -442,7 +442,7 @@ class TestValidateConfig:
         cfg = OmegaConf.create(
             {
                 "mode": "peft",
-                "peft": {"adapter_rank": 16},
+                "peft": {"lora": {"rank": 16}},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
                     "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
@@ -489,7 +489,7 @@ class TestValidateConfig:
         cfg = OmegaConf.create(
             {
                 "mode": "finetune",
-                "peft": {"adapter_rank": 16},
+                "peft": {"lora": {"rank": 16}},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
                     "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
@@ -510,7 +510,7 @@ class TestValidateConfig:
         cfg = OmegaConf.create(
             {
                 "mode": "textual_inversion",
-                "peft": {"adapter_rank": 16},
+                "peft": {"lora": {"rank": 16}},
                 "textual_inversion": {"token_string": "test"},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},

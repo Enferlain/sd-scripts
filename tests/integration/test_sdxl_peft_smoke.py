@@ -137,10 +137,10 @@ def mock_cfg():
     cfg.loss.huber.huber_c = None
 
     # PEFT config
+    cfg.peft.lora.rank = 4
+    cfg.peft.lora.alpha = 1.0
+    cfg.peft.lora.dropout = 0.0
     cfg.peft.adapter_module = "lora"
-    cfg.peft.adapter_rank = 4
-    cfg.peft.adapter_alpha = 1.0
-    cfg.peft.neuron_dropout = 0.0
     cfg.peft.training_comment = None
     cfg.peft.adapter_args = None
     cfg.peft.scale_weight_norms = None

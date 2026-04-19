@@ -1,8 +1,10 @@
 # @package peft
 
-adapter_rank: null
-adapter_alpha: 1.0
-neuron_dropout: null
+# Active PEFT config surface.
+# LoRA method settings live under `peft.lora`. Top-level `peft.*` fields are
+# reserved for PEFT-shell orchestration concerns like module selection,
+# checkpoint inputs, and merge behavior.
+
 adapter_weights: null
 adapter_module: null
 adapter_args: null
@@ -11,6 +13,8 @@ scale_weight_norms: null
 base_weights: null
 base_weights_multiplier: null
 training_comment: null
+# Left over on purpose as a legacy reference surface for later orthograd
+# follow-up. The active repo-owned PEFT path does not currently consume it.
 orthograd_targets:
   [
     "lora_down.weight",
@@ -25,3 +29,26 @@ orthograd_targets:
     "b2.weight",
     "c1.weight",
   ]
+
+lora:
+  rank: null
+  alpha: 1.0
+  dropout: null
+  conv_rank: null
+  conv_alpha: null
+  rank_dropout: null
+  module_dropout: null
+  # Left over on purpose for the current adapter-system slice: these legacy
+  # optimizer-policy knobs remain visible as explicit reference points, but the
+  # active repo-owned PEFT path rejects them under the new grouping boundary.
+  block_ranks: null
+  block_alphas: null
+  conv_block_ranks: null
+  conv_block_alphas: null
+  down_lr_weight: null
+  mid_lr_weight: null
+  up_lr_weight: null
+  block_lr_zero_threshold: null
+  loraplus_lr_ratio: null
+  loraplus_unet_lr_ratio: null
+  loraplus_text_encoder_lr_ratio: null

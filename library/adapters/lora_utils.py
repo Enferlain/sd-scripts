@@ -278,32 +278,24 @@ def load_safetensors_with_fp8_optimization_and_hook(
 
 def resolve_adapter_kwargs(cfg: PeftConfig, net_kwargs: dict):
     """
-    Populate net_kwargs with explicit LoRA fields from PeftConfig if they are set.
+    Populate adapter-build kwargs from the LoRA method config surface.
 
     Args:
         cfg (PeftConfig): The PEFT configuration object.
         net_kwargs (dict): The network kwargs dictionary to populate.
     """
-    # Mapping explicit config fields to peft kwargs
-    fields = [
-        "conv_dim",
-        "conv_alpha",
-        "rank_dropout",
-        "module_dropout",
-        "block_dims",
-        "block_alphas",
-        "conv_block_dims",
-        "conv_block_alphas",
-        "down_lr_weight",
-        "mid_lr_weight",
-        "up_lr_weight",
-        "block_lr_zero_threshold",
-        "loraplus_lr_ratio",
-        "loraplus_unet_lr_ratio",
-        "loraplus_text_encoder_lr_ratio",
-    ]
+    lora_config = cfg.lora
+    build_kwargs = {
+        "conv_dim": lora_config.conv_rank,
+        "conv_alpha": lora_config.conv_alpha,
+        "rank_dropout": lora_config.rank_dropout,
+        "module_dropout": lora_config.module_dropout,
+        "block_dims": lora_config.block_ranks,
+        "block_alphas": lora_config.block_alphas,
+        "conv_block_dims": lora_config.conv_block_ranks,
+        "conv_block_alphas": lora_config.conv_block_alphas,
+    }
 
-    for field_name in fields:
-        value = getattr(cfg, field_name, None)
+    for field_name, value in build_kwargs.items():
         if value is not None:
             net_kwargs[field_name] = value

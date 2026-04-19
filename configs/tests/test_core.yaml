@@ -5,7 +5,8 @@
 # Usage: python scripts/sdxl_peft.py --config-name=tests/test_core
 
 defaults:
-  - /benchmarks/benchmark_sdxl
+#  - /benchmarks/benchmark_sdxl  # this is for peft
+  - /benchmarks/benchmark_sdxl_finetune
   - _self_
 
 output:

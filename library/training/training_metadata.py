@@ -130,10 +130,11 @@ def create_training_metadata(
 
     # PEFT-specific metadata (omitted entirely for non-PEFT modes)
     if hasattr(cfg, "peft") and cfg.peft is not None:
+        lora_config = cfg.peft.lora
         metadata["ss_adapter_module"] = cfg.peft.adapter_module
-        metadata["ss_adapter_rank"] = cfg.peft.adapter_rank
-        metadata["ss_adapter_alpha"] = cfg.peft.adapter_alpha
-        metadata["ss_adapter_neuron_dropout"] = cfg.peft.neuron_dropout
+        metadata["ss_adapter_rank"] = lora_config.rank
+        metadata["ss_adapter_alpha"] = lora_config.alpha
+        metadata["ss_adapter_neuron_dropout"] = lora_config.dropout
         metadata["ss_training_comment"] = cfg.peft.training_comment
         metadata["ss_scale_weight_norms"] = cfg.peft.scale_weight_norms
 

@@ -64,9 +64,10 @@ class TestConfigInstantiation:
         """Test PeftConfig instantiation with defaults."""
         config = PeftConfig()
         assert config is not None
+        assert hasattr(config, "lora")
         assert hasattr(config, "adapter_module")
-        assert hasattr(config, "adapter_rank")
-        assert hasattr(config, "adapter_alpha")
+        assert hasattr(config.lora, "rank")
+        assert hasattr(config.lora, "alpha")
 
     def test_bucketing_config_instantiation(self):
         """Test BucketingConfig instantiation with defaults."""
@@ -156,9 +157,24 @@ class TestConfigDefaults:
     def test_adapter_config_defaults(self):
         """Test PeftConfig default values."""
         config = PeftConfig()
-        assert config.adapter_rank is None  # None by default
-        assert config.adapter_alpha == 1.0
+        assert config.lora.rank is None
+        assert config.lora.alpha == 1.0
         assert config.adapter_module is None  # None by default
+        assert config.orthograd_targets is not None
+        assert config.orthograd_targets[0] == "lora_down.weight"
+
+    def test_lora_config_owns_method_settings(self):
+        """LoRA method settings should live only under the nested surface."""
+        config = PeftConfig()
+        config.lora.rank = 16
+        config.lora.alpha = 32.0
+        config.lora.dropout = 0.25
+        config.lora.conv_rank = 8
+
+        assert config.lora.rank == 16
+        assert config.lora.alpha == 32.0
+        assert config.lora.dropout == 0.25
+        assert config.lora.conv_rank == 8
 
     def test_bucketing_config_defaults(self):
         """Test BucketingConfig default values."""
@@ -358,11 +374,11 @@ class TestConfigOverrides:
         assert cfg.optimizer.learning_rates.base == 5e-5
         assert cfg.optimizer.optimizer_type == "AdamW"
 
-    def test_network_override(self, hydra_ctx):
-        """Test overriding peft config values."""
-        cfg = compose(config_name="presets/sd_peft", overrides=["peft.adapter_rank=128", "peft.adapter_alpha=128"])
-        assert cfg.peft.adapter_rank == 128
-        assert cfg.peft.adapter_alpha == 128
+    def test_nested_lora_override(self, hydra_ctx):
+        """Test overriding the nested LoRA config surface."""
+        cfg = compose(config_name="presets/sd_peft", overrides=["peft.lora.rank=128", "peft.lora.alpha=128"])
+        assert cfg.peft.lora.rank == 128
+        assert cfg.peft.lora.alpha == 128
 
     def test_training_override(self, hydra_ctx):
         """Test overriding training config values."""

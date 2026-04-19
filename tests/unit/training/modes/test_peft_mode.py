@@ -14,15 +14,32 @@ def _build_mock_trainer():
     cfg = SimpleNamespace(
         model=SimpleNamespace(model_type="sdxl"),
         peft=SimpleNamespace(
+            lora=SimpleNamespace(
+                rank=None,
+                alpha=1.0,
+                dropout=None,
+                conv_rank=None,
+                conv_alpha=None,
+                rank_dropout=None,
+                module_dropout=None,
+                block_ranks=None,
+                block_alphas=None,
+                conv_block_ranks=None,
+                conv_block_alphas=None,
+                down_lr_weight=None,
+                mid_lr_weight=None,
+                up_lr_weight=None,
+                block_lr_zero_threshold=None,
+                loraplus_lr_ratio=None,
+                loraplus_unet_lr_ratio=None,
+                loraplus_text_encoder_lr_ratio=None,
+            ),
             adapter_module="library.adapters.lora",
             base_weights=None,
             base_weights_multiplier=None,
             adapter_args=None,
             adapter_rank_from_weights=False,
             adapter_weights=None,
-            adapter_rank=8,
-            adapter_alpha=16.0,
-            neuron_dropout=0.05,
             scale_weight_norms=False,
         ),
         optimizer=SimpleNamespace(
@@ -86,6 +103,46 @@ def test_prepare_trainables_builds_resolved_targets_before_adapter_instantiation
     adapter.apply_to.assert_called_once_with(trainer._text_encoder, trainer.denoiser, True, False)
 
 
+def test_prepare_trainables_prefers_nested_lora_config_surface(monkeypatch):
+    trainer = _build_mock_trainer()
+    trainer.cfg.peft.lora.rank = 64
+    trainer.cfg.peft.lora.alpha = 128.0
+    trainer.cfg.peft.lora.dropout = 0.2
+    captured = {}
+    adapter = MagicMock()
+    adapter.apply_to = MagicMock()
+    resolved_targets = build_component_root_targets(
+        model_type="sdxl",
+        text_encoders=trainer.text_encoders,
+        vae=None,
+        denoiser=trainer.denoiser,
+        include_text_encoders=[True, False],
+        include_denoiser=False,
+    )
+
+    def fake_build_adapter_for_legacy_module(module_path, request):
+        captured["module_path"] = module_path
+        captured["request"] = request
+        return adapter
+
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.resolve_adapter_target_selection",
+        lambda **_: SimpleNamespace(
+            resolved_targets=resolved_targets,
+            train_denoiser=False,
+            train_any_text_encoder=True,
+        ),
+    )
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", fake_build_adapter_for_legacy_module)
+
+    PeftMode().prepare_trainables(trainer)
+
+    assert captured["request"].adapter.settings["adapter_rank"] == 64
+    assert captured["request"].adapter.settings["adapter_alpha"] == 128.0
+    assert captured["request"].adapter.settings["neuron_dropout"] == 0.2
+    assert captured["request"].adapter.settings["dropout"] == 0.2
+
+
 def test_build_optimizer_params_uses_repo_owned_grouping_plan(monkeypatch):
     trainer = _build_mock_trainer()
     trainer.adapter = object()
@@ -129,3 +186,31 @@ def test_build_optimizer_params_rejects_legacy_built_in_optimizer_policy(monkeyp
 
     with pytest.raises(NotImplementedError, match="adapter args"):
         PeftMode().build_optimizer_params(trainer)
+
+
+def test_prepare_trainables_rejects_legacy_built_in_optimizer_policy_before_adapter_build(monkeypatch):
+    trainer = _build_mock_trainer()
+    trainer.cfg.peft.lora.down_lr_weight = "linear"
+
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.resolve_adapter_target_selection",
+        lambda **_: SimpleNamespace(
+            resolved_targets=build_component_root_targets(
+                model_type="sdxl",
+                text_encoders=trainer.text_encoders,
+                vae=None,
+                denoiser=trainer.denoiser,
+                include_text_encoders=[True, False],
+                include_denoiser=False,
+            ),
+            train_denoiser=False,
+            train_any_text_encoder=True,
+        ),
+    )
+    build_mock = MagicMock()
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", build_mock)
+
+    with pytest.raises(NotImplementedError, match="adapter args"):
+        PeftMode().prepare_trainables(trainer)
+
+    build_mock.assert_not_called()

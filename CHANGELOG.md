@@ -14,6 +14,12 @@ Rules:
 
 ### Changed
 
+- **The adapter-system config rework now has its first real method-specific surface under the existing PEFT shell** — The active adapter path now treats nested `peft.lora` config as the live LoRA authority without requiring a top-level mode rename yet, while the top-level `peft` section stays focused on PEFT-shell orchestration concerns instead of carrying a second flat LoRA schema.
+  - Added `PeftLoraConfig` in `library/config/dataclasses/peft.py` as the single LoRA method-config authority under the existing PEFT shell, while keeping only true PEFT-shell/orchestration fields flat at the top level.
+  - Updated `configs/_defaults/peft/default.yaml` plus the active smoke/example/benchmark PEFT configs so LoRA settings now live under `peft.lora` instead of a second flat LoRA-shaped surface.
+  - Updated `library/adapters/lora_utils.py`, `library/training/modes/peft_mode.py`, and `library/training/training_metadata.py` so the active LoRA path and PEFT metadata now read the nested method surface directly, while unsupported legacy optimizer-policy knobs remain explicit under `peft.lora` and still fail fast.
+  - Added focused coverage in `tests/unit/test_configs.py`, `tests/unit/training/modes/test_peft_mode.py`, and `tests/test_sd_peft_config.py` for the new nested `peft.lora` surface, flat-field compatibility fallback, and mode-side precedence behavior.
+
 - **PEFT optimizer setup now consumes a repo-owned adapter trainable-ref contract and optimization-owned grouping plan instead of adapter-owned optimizer hooks** — The active adapter training path no longer relies on compatibility-era `prepare_optimizer_params(...)` as its optimizer boundary, and `PeftMode` now builds a typed optimization plan like the fine-tune path.
   - Added `AdapterTrainableParameterRef` and provider helpers under `library/adapters/shared/` so adapter runtimes can expose trainable parameter provenance through a repo-owned contract.
   - Updated the built-in adapter runtime wrappers under `library/adapters/methods/` to attach repo-owned trainable-ref describers that only expose trainable identity plus original-target provenance, without smuggling built-in LoRA-specific LR math or grouping hints through the runtime boundary.

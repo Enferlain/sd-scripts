@@ -42,11 +42,12 @@ data:
 
 # ─── PEFT (adapter configuration) ───────────────────────────────────────────
 peft:
-  adapter_rank: 32
-  adapter_alpha: 16
   adapter_module: "lycoris.kohya"
   adapter_args: ["algo=loha", "preset=full"]
-  conv_dim: 16
+  lora:
+    rank: 32
+    alpha: 16
+    conv_rank: 16
 
 # ─── OPTIMIZER ──────────────────────────────────────────────────────────────
 optimizer:

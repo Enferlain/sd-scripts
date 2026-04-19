@@ -14,8 +14,8 @@
 
 ## 3. Rework Config And Persistence Direction
 
-- [ ] 3.1 Define the first adapter-type-specific config surfaces needed for the new adapter architecture
-- [ ] 3.2 Treat the current `PeftConfig` as a compatibility surface and route it toward the new adapter-type-specific direction
+- [x] 3.1 Define the first adapter-type-specific config surfaces needed for the new adapter architecture
+- [x] 3.2 Treat the current `PeftConfig` as a compatibility surface and route it toward the new adapter-type-specific direction
 - [ ] 3.3 Define the adapter-training save/load flow so `PeftMode` remains the training-side owner while adapter runtime behavior participates where needed
 
 ## 4. Migrate And Validate
