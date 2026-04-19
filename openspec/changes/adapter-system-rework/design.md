@@ -218,30 +218,109 @@ The initial package layout should reflect the adapter architecture directly:
 top-level registry and shared types, a runtime-oriented subpackage, per-adapter
 type folders, and a shared area for code reused by more than one adapter type.
 
+### 10. Optimization-to-adapter boundaries must stay contract-based
+
+The optimization layer should depend on repo-owned adapter-facing contracts and
+returned metadata, not on the internals of any concrete adapter method
+implementation.
+
+Rationale:
+
+- Optimization owning policy does not mean optimization should know built-in
+  adapter class names, ad hoc runtime attributes, or method-local naming quirks
+- Hard-coding current LoRA/DyLoRA/OFT internals into optimization would turn
+  policy code into a second adapter implementation layer
+- A contract-based boundary keeps future adapter methods from forcing more
+  special cases into optimization
+
+Alternatives considered:
+
+- Let optimization branch directly on current adapter implementation details
+  - Rejected because it creates current-shape lock-in in exactly the layer that
+    is supposed to stay broad
+
+### 11. Grouping code should integrate as grouping, not as overflow
+
+Grouping-related logic belongs in grouping code. The problem is not that the
+grouping area may cover multiple grouping responsibilities. The problem is
+adding behavior there that is not properly integrated as grouping logic, such
+as config-loading concerns, compatibility shims that become de facto policy
+surfaces, or direct dependence on adapter-method internals.
+
+Rationale:
+
+- Grouping is a real optimization concern, so related policy and construction
+  logic should live where grouping is owned
+- The failure mode is not "too much grouping in grouping"; it is unrelated or
+  weakly related behavior getting parked there because it is nearby
+- Fine-tune grouping and adapter grouping may both live under optimization
+  ownership as long as their integration stays explicit and the boundaries stay
+  clean
+
+Alternatives considered:
+
+- Treat any broad grouping module as suspicious by default
+  - Rejected because module size is not the core issue
+- Keep adding adjacent behavior to grouping even when it is really config
+  parsing, compatibility translation, or adapter-specific integration glue
+  - Rejected because it hides boundary problems inside an optimization-owned
+    file
+
+### 12. Production interfaces should stay typed and not bend around test fixtures
+
+Typed production helpers should continue accepting the specific config/runtime
+objects they are designed for. Tests should construct realistic typed inputs
+instead of driving production code toward loose duck-typed access patterns.
+
+Rationale:
+
+- The repo's config direction is explicit dataclasses and typed helpers
+- Loosening production interfaces to accommodate shortcut test fixtures hides
+  real integration mistakes and weakens contracts
+- The adapter rewrite needs stronger boundaries, not softer ones
+
+Alternatives considered:
+
+- Accept broad attribute-based objects in production helpers for convenience
+  - Rejected because it trades away clarity and validation in a part of the
+    repo that is still being actively shaped
+
+### 13. `PeftMode` should remain orchestration-first
+
+`PeftMode` owns the training-side adapter lifecycle, but its optimizer-build
+path should remain explicit orchestration rather than hiding adapter-state
+mutation inside optimizer preparation.
+
+Rationale:
+
+- Mode ownership is about coordinating the flow, not smuggling state changes
+  into unrelated steps
+- Hidden trainability mutation during optimizer construction makes lifecycle
+  behavior harder to reason about and test
+- The adapter path is already more complex than fine-tune; keeping the
+  orchestration surface explicit matters
+
+Alternatives considered:
+
+- Allow optimizer-build helpers to silently mutate adapter trainability state
+  as needed
+  - Rejected because it blurs lifecycle boundaries inside the mode layer
+
 ## Current Implementation Note
 
-The current migration slice now expresses the ownership split more directly in
-code:
+A recent implementation attempt explored some of this direction, but it was
+reverted because the resulting shape did not match the intended architecture.
 
-- optimization resolves the current PEFT target bundle through an explicit
-  helper before adapter instantiation
-- `PeftMode` consumes that resolved bundle as orchestration input rather than
-  deciding target policy itself
-- the repo-owned runtime request carries both the resolved target provenance
-  and the full model context into the adapter wrapper layer
-- the runtime wrappers attach the resolved target bundle to the constructed
-  adapter/runtime object as provenance, but they do not strip untargeted model
-  components out of the construction context
+The design constraints above should therefore be read as active implementation
+guardrails for the next pass, especially:
 
-That last point matters for breadth. A target bundle tells the adapter system
-which original-model effect surfaces are in scope, but it should not force the
-implementation to assume that non-trainable components are never still useful
-as construction-time reference context.
-
-One consistency follow-up still remains in this area: the main adapter training
-path now consumes optimization-owned resolved targets, but base-weight merge and
-other inference-shaped setup paths should also be aligned to that same handoff
-instead of rebuilding their own target bundle ad hoc inside `PeftMode`.
+- optimization-owned grouping should not be pushed into compatibility-shaped
+  config surfaces
+- the adapter layer should not become the home for optimization logic
+- grouping code may own grouping behavior, but not unrelated config parsing or
+  adapter-specific internals that bypass repo-owned contracts
+- typed production helpers should stay strict
+- `PeftMode` lifecycle steps should remain explicit
 
 Current working sketch:
 

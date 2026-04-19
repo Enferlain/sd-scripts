@@ -2,6 +2,41 @@ from __future__ import annotations
 
 from library.adapters import oft as legacy_oft
 from library.adapters.runtime import AdapterBuildRequest
+from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider
+
+
+def _resolve_component_labels(resolved_targets) -> dict[str, str]:
+    labels: dict[str, str] = {}
+    for target in resolved_targets.targets:
+        component_key = target.metadata.get("component_key")
+        if isinstance(component_key, str):
+            labels[component_key] = target.component
+    return labels
+
+
+def _attach_trainable_ref_provider(adapter, request: AdapterBuildRequest):
+    def describe_trainable_parameter_refs() -> list[AdapterTrainableParameterRef]:
+        component_labels = _resolve_component_labels(adapter.adapter_resolved_targets)
+        component_label = component_labels.get("denoiser", "denoiser")
+        refs: list[AdapterTrainableParameterRef] = []
+
+        for oft in getattr(adapter, "unet_ofts", []):
+            for param_name, param in oft.named_parameters():
+                refs.append(
+                    AdapterTrainableParameterRef(
+                        param=param,
+                        name=f"{oft.oft_name}.{param_name}",
+                        algorithm=request.adapter.adapter_type,
+                        component=component_label,
+                        component_key="denoiser",
+                        target_path=oft.oft_name,
+                    )
+                )
+
+        return refs
+
+    attach_trainable_parameter_provider(adapter, describe_trainable_parameter_refs)
+    return adapter
 
 
 def create_adapter(request: AdapterBuildRequest):
@@ -26,7 +61,7 @@ def create_adapter(request: AdapterBuildRequest):
         **settings,
     )
     adapter.adapter_resolved_targets = request.resolved_targets
-    return adapter
+    return _attach_trainable_ref_provider(adapter, request)
 
 
 def create_adapter_from_weights(request: AdapterBuildRequest, weights_path: str):
@@ -50,4 +85,4 @@ def create_adapter_from_weights(request: AdapterBuildRequest, weights_path: str)
         **settings,
     )
     adapter.adapter_resolved_targets = request.resolved_targets
-    return adapter, weights_sd
+    return _attach_trainable_ref_provider(adapter, request), weights_sd

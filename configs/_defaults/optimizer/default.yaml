@@ -6,10 +6,12 @@ use_8bit_adam: false
 use_lion_optimizer: false
 
 learning_rates:
+  # Shared fallback LR. Set to null to require explicit component/group learning rates.
   base: 2.0e-6
+  # null inherits from base, 0 keeps the baseline denoiser path frozen.
   denoiser: null
+  # null inherits from base, 0 keeps the baseline TE path frozen.
   text_encoders: null
-  blocks: null
   groups_file: null
   groups: []
 

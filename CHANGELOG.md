@@ -10,6 +10,16 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-19]
+
+### Changed
+
+- **PEFT optimizer setup now consumes a repo-owned adapter trainable-ref contract and optimization-owned grouping plan instead of adapter-owned optimizer hooks** — The active adapter training path no longer relies on compatibility-era `prepare_optimizer_params(...)` as its optimizer boundary, and `PeftMode` now builds a typed optimization plan like the fine-tune path.
+  - Added `AdapterTrainableParameterRef` and provider helpers under `library/adapters/shared/` so adapter runtimes can expose trainable parameter provenance through a repo-owned contract.
+  - Updated the built-in adapter runtime wrappers under `library/adapters/methods/` to attach repo-owned trainable-ref describers that only expose trainable identity plus original-target provenance, without smuggling built-in LoRA-specific LR math or grouping hints through the runtime boundary.
+  - Updated `library/optimization/grouping.py` and `library/training/modes/peft_mode.py` so adapter grouping is resolved in optimization-owned code, while legacy built-in optimizer-policy knobs that are not yet real repo concepts now fail fast instead of leaking through the adapter runtime handoff.
+  - Added focused coverage in `tests/unit/adapters/test_runtime_registry.py`, `tests/unit/training/modes/test_peft_mode.py`, and `tests/unit/training/test_training_optimizer.py` for the new adapter trainable-ref contract and optimization-owned PEFT grouping behavior.
+
 ## [2026-04-18]
 
 ### Changed

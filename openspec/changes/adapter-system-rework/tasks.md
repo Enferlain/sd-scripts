@@ -10,7 +10,7 @@
 - [x] 2.1 Create the initial `library/adapters/` scaffolding for the agreed package layout
 - [x] 2.2 Introduce the repo-owned adapter runtime/framework surface that `PeftMode` will use for adapter training
 - [x] 2.3 Rework the adapter path so adapter instantiation consumes resolved original-model targets instead of owning targeting policy
-- [ ] 2.4 Replace compatibility-era optimizer handoff behavior with a handoff that lets optimization remain the owner of grouping and scheduling
+- [x] 2.4 Replace compatibility-era optimizer handoff behavior with a handoff that lets optimization remain the owner of grouping and scheduling
 
 ## 3. Rework Config And Persistence Direction
 

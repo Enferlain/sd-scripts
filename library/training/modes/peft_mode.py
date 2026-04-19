@@ -1,9 +1,10 @@
 """
-PeftMode — TrainingMode implementation for PEFT (LoRA/LyCORIS) training.
+PeftMode — TrainingMode implementation for PEFT/adapter training.
 
-This is a direct extraction of adapter-specific logic that was previously
-inline in the phase files and trainer.  Every method mirrors the behavior
-of the code it replaces — **zero behavior change** in Phase 1.
+This began as a direct extraction of adapter-specific logic that was previously
+inline in the phase files and trainer. The class now also owns the repo-owned
+adapter runtime/orchestration seam that replaced the older compatibility-era
+optimizer boundary.
 """
 
 from __future__ import annotations
@@ -27,8 +28,11 @@ from library.adapters import (
     get_adapter_method_for_legacy_module,
 )
 from library.adapters.lora_utils import resolve_adapter_kwargs
-from library.optimization.grouping import resolve_adapter_target_selection, resolve_learning_rate_groups
-from library.optimization.optimizer_utils import get_text_encoders_train_flags, prepare_optimizer as _prepare_optimizer_util
+from library.optimization.arguments import parse_key_value_args
+from library.optimization.grouping import build_adapter_grouping, resolve_adapter_target_selection, resolve_learning_rate_groups
+from library.optimization.optimizer_factory import get_optimizer
+from library.optimization.optimizer_utils import get_text_encoders_train_flags
+from library.optimization.types import OptimizationPlan, OptimizerBuildResult
 from library.performance import deepspeed_utils
 from library.training.checkpointing import ResumeState, load_train_state_metadata, save_train_state_metadata
 
@@ -37,6 +41,36 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+_UNSUPPORTED_ADAPTER_OPTIMIZER_POLICY_KEYS = (
+    "down_lr_weight",
+    "mid_lr_weight",
+    "up_lr_weight",
+    "block_lr_zero_threshold",
+)
+
+
+def _ensure_supported_adapter_optimizer_policy(cfg, net_kwargs: dict[str, Any] | None = None) -> None:
+    legacy_optimizer_policy_fields = {
+        "peft.loraplus_lr_ratio": cfg.peft.loraplus_lr_ratio,
+        "peft.loraplus_unet_lr_ratio": cfg.peft.loraplus_unet_lr_ratio,
+        "peft.loraplus_text_encoder_lr_ratio": cfg.peft.loraplus_text_encoder_lr_ratio,
+    }
+    active_fields = [name for name, value in legacy_optimizer_policy_fields.items() if value is not None]
+    if active_fields:
+        raise NotImplementedError(
+            "Legacy built-in adapter optimizer policy is not supported by the repo-owned trainable-ref handoff: "
+            + ", ".join(active_fields)
+        )
+
+    adapter_kwargs = net_kwargs or {}
+    active_kwargs = [key for key in _UNSUPPORTED_ADAPTER_OPTIMIZER_POLICY_KEYS if adapter_kwargs.get(key) is not None]
+    if active_kwargs:
+        raise NotImplementedError(
+            "Legacy built-in adapter optimizer policy in adapter args is not supported by the repo-owned trainable-ref handoff: "
+            + ", ".join(active_kwargs)
+        )
 
 
 def _build_adapter_settings(peft_config, net_kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -71,9 +105,9 @@ def _build_adapter_request(
 class PeftMode:
     """PEFT (LoRA/LyCORIS) training mode.
 
-    Implements the ``TrainingMode`` protocol for adapter-based training.
-    Each method is extracted from inline phase/trainer code with no
-    behavior change.
+    Implements the ``TrainingMode`` protocol for adapter-based training while
+    keeping training-side orchestration in the mode layer and leaving
+    optimizer grouping ownership in the optimization layer.
     """
 
     # ------------------------------------------------------------------
@@ -151,6 +185,7 @@ class PeftMode:
                 net_kwargs[key] = value
 
         resolve_adapter_kwargs(cfg.peft, net_kwargs)
+        _ensure_supported_adapter_optimizer_policy(cfg, net_kwargs)
         adapter_settings = _build_adapter_settings(cfg.peft, net_kwargs)
 
         # Create adapter
@@ -190,6 +225,7 @@ class PeftMode:
             info = adapter.load_weights(cfg.peft.adapter_weights)
             accelerator.print(f"load peft weights from {cfg.peft.adapter_weights}: {info}")
 
+        adapter.requires_grad_(True)
         trainer.adapter = adapter
         trainer.adapter_resolved_targets = build_request.resolved_targets
         trainer.net_kwargs = net_kwargs
@@ -222,19 +258,35 @@ class PeftMode:
     # Optimizer & accelerator
     # ------------------------------------------------------------------
 
-    def build_optimizer_params(self, trainer: Trainer) -> tuple[str, dict, Any, Any, Any, list[str]]:
-        """Build optimizer for adapter params.
-
-        Extracted from ``optimizer.prepare_optimizer()`` L52-57.
-        """
+    def build_optimizer_params(self, trainer: Trainer) -> OptimizerBuildResult:
+        """Build optimization-owned adapter groups and create the optimizer."""
         cfg = trainer.cfg
         if resolve_learning_rate_groups(cfg.optimizer.learning_rates):
             raise NotImplementedError("optimizer.learning_rates.groups are currently supported only for fine-tune mode")
-        return _prepare_optimizer_util(
+        _ensure_supported_adapter_optimizer_policy(cfg, getattr(trainer, "net_kwargs", None))
+
+        grouping = build_adapter_grouping(
+            adapter=trainer.adapter,
+            learning_rates=cfg.optimizer.learning_rates,
+        )
+        optimization_plan = OptimizationPlan(
+            logical_groups=grouping.logical_groups,
+            execution_groups=grouping.execution_groups,
+        )
+        optimizer_kwargs = parse_key_value_args(cfg.optimizer.optimizer_args)
+        optimizer_name, optimizer_args, optimizer = get_optimizer(
             cfg.optimizer,
             cfg.optimizer.learning_rates,
-            cfg.peft,
-            trainer.adapter,
+            cfg.optimizer.scheduler,
+            optimization_plan.execution_groups,
+            optimizer_kwargs,
+        )
+
+        return OptimizerBuildResult(
+            optimizer_name=optimizer_name,
+            optimizer_args=optimizer_args,
+            optimizer=optimizer,
+            optimization_plan=optimization_plan,
         )
 
     def prepare_with_accelerator(self, trainer: Trainer) -> None:

@@ -1,6 +1,8 @@
 import sys
 import types
 
+import torch
+
 from library.adapters import (
     AdapterBuildContext,
     AdapterBuildRequest,
@@ -79,6 +81,57 @@ class TestAdapterRegistry:
         assert captured["denoiser"] is unet
         assert captured["kwargs"]["dropout"] == 0.1
         assert adapter.adapter_resolved_targets is request.resolved_targets
+
+    def test_registered_runtime_exposes_repo_owned_trainable_refs(self, monkeypatch):
+        from library.adapters.methods.lora import runtime as lora_runtime
+
+        class FakeLoraModule(torch.nn.Module):
+            def __init__(self, lora_name: str):
+                super().__init__()
+                self.lora_name = lora_name
+                self.lora_down = torch.nn.Linear(2, 2, bias=False)
+                self.lora_up = torch.nn.Linear(2, 2, bias=False)
+
+        class FakeAdapter(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.text_encoder_loras = [FakeLoraModule("lora_te1_text_model_attn_proj")]
+                self.unet_loras = [FakeLoraModule("lora_unet_input_blocks_1_attn_proj")]
+                self.block_lr = False
+                self.loraplus_lr_ratio = 2.0
+                self.loraplus_unet_lr_ratio = None
+                self.loraplus_text_encoder_lr_ratio = None
+
+        monkeypatch.setattr(lora_runtime.legacy_lora, "create_adapter", lambda *args, **kwargs: FakeAdapter())
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="lora",
+                settings={"adapter_rank": 8, "adapter_alpha": 16.0},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[object(), object()], denoiser=object()),
+            ),
+            resolved_targets=build_component_root_targets(
+                model_type="sdxl",
+                text_encoders=[object(), object()],
+                vae=None,
+                denoiser=object(),
+                include_text_encoders=[True, False],
+                include_denoiser=True,
+            ),
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.lora", request)
+        refs = adapter.describe_trainable_parameter_refs()
+
+        assert [ref.component for ref in refs] == ["clip_l", "clip_l", "unet", "unet"]
+        assert [ref.name for ref in refs] == [
+            "lora_te1_text_model_attn_proj.lora_down.weight",
+            "lora_te1_text_model_attn_proj.lora_up.weight",
+            "lora_unet_input_blocks_1_attn_proj.lora_down.weight",
+            "lora_unet_input_blocks_1_attn_proj.lora_up.weight",
+        ]
+        assert refs[2].component_key == "denoiser"
 
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()

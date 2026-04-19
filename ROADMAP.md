@@ -121,6 +121,7 @@ Recent architecture and config settlements now belong in `CHANGELOG.md`; this se
 - [ ] **Dashboard / logging system rework** — Fold the live plotter into a broader dashboard/logging system instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **LyCORIS vendor / integration pass** — Treat LyCORIS as a vendor/integration ownership question rather than an external dependency question, since adapter breakdown follow-up depends on tighter ownership and easier modification.
+- [ ] **Adapter-system follow-up** — The PEFT optimizer handoff now uses repo-owned adapter trainable refs plus optimization-owned grouping/plan construction. Remaining adapter-system work is the config/persistence/migration slice in the active `adapter-system-rework` change rather than more compatibility-owned optimizer wiring.
 - [ ] **torchao pulled into the repo so it can be modified when wanted** — upstream is restrictive for offloading
 - [ ] **Future conditioning/data-flow experiments** — Later exploration area for better caption mutation, TE caching, on-the-fly CPU encoding, queues, async handoff, and related conditioning/data-flow improvements once the current building blocks are settled.
 

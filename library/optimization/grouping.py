@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 from torch import nn
 
+from library.adapters.shared import AdapterTrainableParameterRef, get_trainable_parameter_refs
 from library.adapters.runtime.targets import AdapterResolvedTargets, build_component_root_targets
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, LearningRatesConfig
 from library.models.parameter_dump import NamedParameterComponentNames, build_selector_name
@@ -208,6 +209,64 @@ def resolve_adapter_target_selection(
         train_denoiser=train_denoiser,
         te_train_flags=te_train_flags,
     )
+
+
+def _resolve_adapter_component_lr(ref: AdapterTrainableParameterRef, learning_rates: LearningRatesConfig) -> float | None:
+    if ref.component_key == "denoiser":
+        return learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
+    if ref.component_key.startswith("text_encoder"):
+        suffix = ref.component_key.removeprefix("text_encoder")
+        if not suffix.isdigit():
+            raise ValueError(f"Adapter trainable ref '{ref.name}' has malformed text-encoder component key '{ref.component_key}'")
+        index = int(suffix) - 1
+        return _resolve_text_encoder_lr(learning_rates, index)
+    return learning_rates.base
+
+
+def build_adapter_grouping(
+    *,
+    adapter,
+    learning_rates: LearningRatesConfig,
+) -> GroupingResult:
+    """Build optimization-owned groups from repo-owned adapter trainable refs."""
+
+    refs = get_trainable_parameter_refs(adapter)
+    grouped_refs: dict[str, list[AdapterTrainableParameterRef]] = {}
+    grouped_lrs: dict[str, float] = {}
+
+    for ref in refs:
+        lr = _resolve_adapter_component_lr(ref, learning_rates)
+        if not _is_positive_lr(lr):
+            continue
+
+        group_label = ref.component
+        grouped_refs.setdefault(group_label, []).append(ref)
+        grouped_lrs[group_label] = lr
+
+    execution_groups: list[ParameterGroup] = []
+    logical_groups: list[LogicalParameterGroup] = []
+    for group_label, group_refs in grouped_refs.items():
+        group_index = len(execution_groups)
+        params = [ref.param for ref in group_refs]
+        execution_groups.append(
+            build_parameter_group(
+                params,
+                lr=grouped_lrs[group_label],
+                label=group_label,
+                metadata={"param_names": [ref.name for ref in group_refs]},
+            )
+        )
+        logical_groups.append(
+            build_logical_parameter_group(
+                group_label,
+                params,
+                lr=grouped_lrs[group_label],
+                label=group_label,
+                execution_group_indices=(group_index,),
+            )
+        )
+
+    return GroupingResult(execution_groups=execution_groups, logical_groups=logical_groups)
 
 
 def _collect_component_named_parameters(

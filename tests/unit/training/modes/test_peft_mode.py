@@ -3,6 +3,9 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
+from library.optimization.types import OptimizerBuildResult
 from library.adapters.runtime.targets import build_component_root_targets
 from library.training.modes.peft_mode import PeftMode
 
@@ -23,7 +26,9 @@ def _build_mock_trainer():
             scale_weight_norms=False,
         ),
         optimizer=SimpleNamespace(
-            learning_rates=SimpleNamespace(base=1e-4, denoiser=1e-4, text_encoders=[0.0, 1e-4], groups=None, groups_file=None)
+            learning_rates=SimpleNamespace(base=1e-4, denoiser=1e-4, text_encoders=[0.0, 1e-4], groups=None, groups_file=None),
+            optimizer_args=None,
+            scheduler=SimpleNamespace(),
         ),
         performance=SimpleNamespace(memory=SimpleNamespace(lowram=False)),
     )
@@ -79,3 +84,48 @@ def test_prepare_trainables_builds_resolved_targets_before_adapter_instantiation
     assert trainer._train_denoiser is False
     assert trainer.adapter_resolved_targets is captured["request"].resolved_targets
     adapter.apply_to.assert_called_once_with(trainer._text_encoder, trainer.denoiser, True, False)
+
+
+def test_build_optimizer_params_uses_repo_owned_grouping_plan(monkeypatch):
+    trainer = _build_mock_trainer()
+    trainer.adapter = object()
+    execution_groups = [MagicMock()]
+    logical_groups = [MagicMock(metric_name="unet")]
+    captured = {}
+
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.build_adapter_grouping",
+        lambda **kwargs: SimpleNamespace(execution_groups=execution_groups, logical_groups=logical_groups),
+    )
+
+    def fake_get_optimizer(optimizer_config, learning_rates, scheduler_config, execution_group_payload, optimizer_kwargs):
+        captured["execution_groups"] = execution_group_payload
+        captured["optimizer_kwargs"] = optimizer_kwargs
+        return "AdamW", {"lr": 1e-4}, "optimizer"
+
+    monkeypatch.setattr("library.training.modes.peft_mode.get_optimizer", fake_get_optimizer)
+
+    result = PeftMode().build_optimizer_params(trainer)
+
+    assert isinstance(result, OptimizerBuildResult)
+    assert result.optimizer_name == "AdamW"
+    assert result.optimizer == "optimizer"
+    assert result.optimization_plan.execution_groups == execution_groups
+    assert result.optimization_plan.logical_groups == logical_groups
+    assert result.lr_descriptions == ["unet"]
+    assert captured["execution_groups"] == execution_groups
+    assert captured["optimizer_kwargs"] == {}
+
+
+def test_build_optimizer_params_rejects_legacy_built_in_optimizer_policy(monkeypatch):
+    trainer = _build_mock_trainer()
+    trainer.adapter = object()
+    trainer.net_kwargs = {"down_lr_weight": "linear"}
+
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.build_adapter_grouping",
+        lambda **kwargs: SimpleNamespace(execution_groups=[], logical_groups=[]),
+    )
+
+    with pytest.raises(NotImplementedError, match="adapter args"):
+        PeftMode().build_optimizer_params(trainer)

@@ -12,6 +12,7 @@ from diffusers.optimization import SchedulerType as DiffusersSchedulerType
 
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.grouping import (
+    build_adapter_grouping,
     build_finetune_grouping,
     resolve_adapter_target_selection,
     resolve_finetune_trainability,
@@ -37,6 +38,7 @@ from library.optimization.types import (
     build_logical_parameter_group,
     materialize_parameter_groups,
 )
+from library.adapters.shared import AdapterTrainableParameterRef
 from library.optimization.wrappers.schedulefree import ScheduleFreeWrapper
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, OptimizerConfig, SchedulerConfig, LearningRatesConfig
 from library.config.dataclasses.training import TrainingConfig
@@ -815,6 +817,65 @@ class TestOptimizerUtils:
         assert selection.train_denoiser is True
         assert selection.te_train_flags == [False, True]
         assert [target.component for target in selection.resolved_targets.targets] == ["clip_g", "unet"]
+
+    def test_build_adapter_grouping_uses_repo_owned_trainable_refs(self):
+        """Adapter grouping should consume repo-owned refs instead of legacy optimizer hooks."""
+        clip_l_param = torch.nn.Parameter(torch.randn(2, 2))
+        unet_param = torch.nn.Parameter(torch.randn(2, 2))
+
+        class FakeAdapter:
+            def describe_trainable_parameter_refs(self):
+                return [
+                    AdapterTrainableParameterRef(
+                        param=clip_l_param,
+                        name="lora_te1_block.lora_down.weight",
+                        algorithm="lora",
+                        component="clip_l",
+                        component_key="text_encoder1",
+                        target_path="lora_te1_block",
+                    ),
+                    AdapterTrainableParameterRef(
+                        param=unet_param,
+                        name="lora_unet_block.lora_down.weight",
+                        algorithm="lora",
+                        component="unet",
+                        component_key="denoiser",
+                        target_path="lora_unet_block",
+                    ),
+                ]
+
+        grouping = build_adapter_grouping(
+            adapter=FakeAdapter(),
+            learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5, text_encoders=[3e-5]),
+        )
+
+        assert [group.metric_name for group in grouping.logical_groups] == ["clip_l", "unet"]
+        assert [group.lr for group in grouping.logical_groups] == [3e-5, 2e-5]
+        assert grouping.execution_groups[0].metadata["param_names"] == ["lora_te1_block.lora_down.weight"]
+        assert grouping.execution_groups[1].metadata["param_names"] == ["lora_unet_block.lora_down.weight"]
+
+    def test_build_adapter_grouping_rejects_malformed_text_encoder_component_key(self):
+        """Adapter grouping should require explicit repo-owned component identities."""
+        te_param = torch.nn.Parameter(torch.randn(2, 2))
+
+        class FakeAdapter:
+            def describe_trainable_parameter_refs(self):
+                return [
+                    AdapterTrainableParameterRef(
+                        param=te_param,
+                        name="lora_te_bad.lora_down.weight",
+                        algorithm="lora",
+                        component="clip_l",
+                        component_key="text_encoder_bad",
+                        target_path="lora_te_bad",
+                    )
+                ]
+
+        with pytest.raises(ValueError, match="malformed text-encoder component key"):
+            build_adapter_grouping(
+                adapter=FakeAdapter(),
+                learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5),
+            )
 
     def test_build_finetune_grouping_applies_named_group_overrides_before_component_remainder(self):
         """Named groups should override matched subsets while component LR handles the remaining params."""

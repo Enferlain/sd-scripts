@@ -19,6 +19,12 @@ from .runtime import (
     build_adapter_from_weights_for_legacy_module,
     build_component_root_targets,
 )
+from .shared import (
+    AdapterTrainableParameterProvider,
+    AdapterTrainableParameterRef,
+    attach_trainable_parameter_provider,
+    get_trainable_parameter_refs,
+)
 
 __all__ = [
     "AdapterBuildContext",
@@ -35,5 +41,9 @@ __all__ = [
     "build_component_root_targets",
     "get_adapter_method",
     "get_adapter_method_for_legacy_module",
+    "AdapterTrainableParameterProvider",
+    "AdapterTrainableParameterRef",
+    "attach_trainable_parameter_provider",
+    "get_trainable_parameter_refs",
     "list_adapter_methods",
 ]
