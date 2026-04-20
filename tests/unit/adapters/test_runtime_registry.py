@@ -1,6 +1,7 @@
 import sys
 import types
 
+import pytest
 import torch
 
 from library.adapters import (
@@ -8,6 +9,7 @@ from library.adapters import (
     AdapterBuildRequest,
     AdapterModelContext,
     AdapterRuntimeSpec,
+    LoadedAdapterRuntime,
     build_component_root_targets,
     build_adapter_for_legacy_module,
     build_adapter_from_weights_for_legacy_module,
@@ -15,6 +17,7 @@ from library.adapters import (
     get_adapter_method_for_legacy_module,
     list_adapter_methods,
 )
+from library.adapters.runtime import AdapterMergeRequest
 
 
 class TestAdapterRegistry:
@@ -182,7 +185,7 @@ class TestAdapterRegistry:
         def fake_create_adapter_from_weights(request, weights_path):
             captured["request"] = request
             captured["weights_path"] = weights_path
-            return "adapter-from-weights"
+            return "adapter-from-weights", None
 
         runtime_module.create_adapter_from_weights = fake_create_adapter_from_weights
         monkeypatch.setitem(sys.modules, "library.adapters.methods.dylora.runtime", runtime_module)
@@ -199,6 +202,64 @@ class TestAdapterRegistry:
         )
         result = build_adapter_from_weights_for_legacy_module("library.adapters.dylora", request, "weights.safetensors")
 
-        assert result == "adapter-from-weights"
+        assert result.adapter == "adapter-from-weights"
+        assert result.state is None
         assert captured["request"] is request
         assert captured["weights_path"] == "weights.safetensors"
+
+    def test_build_adapter_from_weights_for_legacy_module_rejects_invalid_wrapper_result(self, monkeypatch):
+        runtime_module = types.SimpleNamespace()
+        runtime_module.create_adapter_from_weights = lambda request, weights_path: "invalid-shape"
+        monkeypatch.setitem(sys.modules, "library.adapters.methods.dylora.runtime", runtime_module)
+
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(adapter_type="dylora"),
+            context=AdapterBuildContext(model=AdapterModelContext(vae=None, text_encoder=[], denoiser=None)),
+            resolved_targets=build_component_root_targets(
+                model_type="sdxl",
+                text_encoders=[],
+                vae=None,
+                denoiser=None,
+            ),
+        )
+
+        with pytest.raises(TypeError, match="two-item"):
+            build_adapter_from_weights_for_legacy_module("library.adapters.dylora", request, "weights.safetensors")
+
+    def test_loaded_adapter_runtime_uses_repo_owned_merge_request(self):
+        captured = {}
+
+        loaded_runtime = LoadedAdapterRuntime(
+            adapter="merge-adapter",
+            state={"weights": "state"},
+            _merge_into_impl=lambda request: captured.update(
+                {
+                    "model": request.model,
+                    "resolved_targets": request.resolved_targets,
+                    "dtype": request.dtype,
+                    "device": request.device,
+                }
+            ),
+        )
+        resolved_targets = build_component_root_targets(
+            model_type="sdxl",
+            text_encoders=[],
+            vae=None,
+            denoiser="denoiser",
+            include_denoiser=True,
+        )
+
+        loaded_runtime.merge_into(
+            AdapterMergeRequest(
+                model=AdapterModelContext(vae=None, text_encoder=["text-encoder"], denoiser="denoiser"),
+                resolved_targets=resolved_targets,
+                dtype="fp16",
+                device="cpu",
+            )
+        )
+
+        assert captured["model"].text_encoder == ["text-encoder"]
+        assert captured["model"].denoiser == "denoiser"
+        assert captured["resolved_targets"] is resolved_targets
+        assert captured["dtype"] == "fp16"
+        assert captured["device"] == "cpu"

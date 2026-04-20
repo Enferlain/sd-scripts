@@ -26,12 +26,12 @@ from library.adapters import (
     AdapterRuntimeSpec,
     build_adapter_for_legacy_module,
     build_adapter_from_weights_for_legacy_module,
-    build_component_root_targets,
     get_adapter_method_for_legacy_module,
     load_adapter_export,
     register_adapter_checkpoint_state_hooks,
     save_adapter_export,
 )
+from library.adapters.runtime import AdapterMergeRequest
 from library.adapters.lora_utils import resolve_adapter_kwargs
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.grouping import build_adapter_grouping, resolve_adapter_target_selection, resolve_learning_rate_groups
@@ -167,22 +167,16 @@ class PeftMode:
                         multiplier=multiplier,
                         for_inference=True,
                     ),
-                    resolved_targets=build_component_root_targets(
-                        model_type=cfg.model.model_type,
-                        text_encoders=text_encoders,
-                        vae=vae,
-                        denoiser=denoiser,
-                        include_text_encoders=[te is not None for te in text_encoders],
-                        include_denoiser=denoiser is not None,
-                    ),
+                    resolved_targets=target_selection.resolved_targets,
                 )
-                module, weights_sd = build_adapter_from_weights_for_legacy_module(cfg.peft.adapter_module, merge_request, weight_path)
-                module.merge_to(
-                    text_encoder,
-                    denoiser,
-                    weights_sd,
-                    weight_dtype,
-                    accelerator.device if cfg.performance.memory.lowram else "cpu",
+                loaded_runtime = build_adapter_from_weights_for_legacy_module(cfg.peft.adapter_module, merge_request, weight_path)
+                loaded_runtime.merge_into(
+                    AdapterMergeRequest(
+                        model=AdapterModelContext(vae=vae, text_encoder=text_encoders, denoiser=denoiser),
+                        resolved_targets=target_selection.resolved_targets,
+                        dtype=weight_dtype,
+                        device=accelerator.device if cfg.performance.memory.lowram else "cpu",
+                    ),
                 )
 
             accelerator.print(f"all weights merged: {', '.join(cfg.peft.base_weights)}")
@@ -208,7 +202,12 @@ class PeftMode:
             resolved_targets=target_selection.resolved_targets,
         )
         if cfg.peft.adapter_rank_from_weights:
-            adapter, _ = build_adapter_from_weights_for_legacy_module(cfg.peft.adapter_module, build_request, cfg.peft.adapter_weights)
+            loaded_runtime = build_adapter_from_weights_for_legacy_module(
+                cfg.peft.adapter_module,
+                build_request,
+                cfg.peft.adapter_weights,
+            )
+            adapter = loaded_runtime.adapter
         else:
             if "dropout" not in net_kwargs:
                 net_kwargs["dropout"] = cfg.peft.lora.dropout

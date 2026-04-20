@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 from library.config.dataclasses.performance import DeepSpeedConfig
+from library.adapters import LoadedAdapterRuntime
+from library.adapters.runtime import AdapterMergeRequest
 from library.optimization.types import OptimizerBuildResult
 from library.adapters.runtime.targets import build_component_root_targets
 from library.training.checkpointing import ResumeState
@@ -259,6 +261,129 @@ def test_prepare_trainables_loads_adapter_weights_through_repo_owned_export_seam
 
     assert captured["adapter"] is adapter
     assert captured["request"].file == "adapter.safetensors"
+
+
+def test_prepare_trainables_builds_from_weights_runtime_with_optimization_owned_targets(monkeypatch):
+    trainer = _build_mock_trainer()
+    trainer.cfg.peft.adapter_rank_from_weights = True
+    trainer.cfg.peft.adapter_weights = "adapter.safetensors"
+    adapter = MagicMock()
+    adapter.apply_to = MagicMock()
+    resolved_targets = build_component_root_targets(
+        model_type="sdxl",
+        text_encoders=trainer.text_encoders,
+        vae=None,
+        denoiser=trainer.denoiser,
+        include_text_encoders=[True, False],
+        include_denoiser=True,
+    )
+    captured = {}
+    loaded_runtime = LoadedAdapterRuntime(
+        adapter=adapter,
+        state={"loaded": "adapter.safetensors"},
+    )
+
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.resolve_adapter_target_selection",
+        lambda **_: SimpleNamespace(
+            resolved_targets=resolved_targets,
+            train_denoiser=True,
+            train_any_text_encoder=True,
+        ),
+    )
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.build_adapter_from_weights_for_legacy_module",
+        lambda module_path, request, weights_path: (
+            captured.update(
+                {
+                    "module_path": module_path,
+                    "request": request,
+                    "weights_path": weights_path,
+                    "loaded_runtime": loaded_runtime,
+                }
+            )
+            or loaded_runtime
+        ),
+    )
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.load_adapter_export",
+        lambda target_adapter, request: captured.update({"loaded_export_adapter": target_adapter, "loaded_export_request": request}),
+    )
+
+    PeftMode().prepare_trainables(trainer)
+
+    assert captured["module_path"] == "library.adapters.lora"
+    assert captured["request"].resolved_targets is resolved_targets
+    assert captured["request"].context.for_inference is False
+    assert captured["weights_path"] == "adapter.safetensors"
+    assert captured["loaded_runtime"].state == {"loaded": "adapter.safetensors"}
+    assert trainer.adapter is adapter
+    assert trainer.adapter_resolved_targets is resolved_targets
+    adapter.apply_to.assert_called_once_with(trainer._text_encoder, trainer.denoiser, True, True)
+    assert captured["loaded_export_adapter"] is adapter
+    assert captured["loaded_export_request"].file == "adapter.safetensors"
+
+
+def test_prepare_trainables_merges_base_weights_through_repo_owned_merge_seam(monkeypatch):
+    trainer = _build_mock_trainer()
+    trainer.cfg.peft.base_weights = ["base.safetensors"]
+    trainer.cfg.peft.base_weights_multiplier = [0.5]
+    adapter = MagicMock()
+    adapter.apply_to = MagicMock()
+    resolved_targets = build_component_root_targets(
+        model_type="sdxl",
+        text_encoders=trainer.text_encoders,
+        vae=None,
+        denoiser=trainer.denoiser,
+        include_text_encoders=[False, True],
+        include_denoiser=True,
+    )
+    captured = {}
+
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.resolve_adapter_target_selection",
+        lambda **_: SimpleNamespace(
+            resolved_targets=resolved_targets,
+            train_denoiser=True,
+            train_any_text_encoder=True,
+        ),
+    )
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", lambda *_: adapter)
+
+    loaded_runtime = LoadedAdapterRuntime(
+        adapter="merge-adapter",
+        state={"loaded": "base.safetensors"},
+        _merge_into_impl=lambda request: captured.update({"merge_runtime_request": request}),
+    )
+
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.build_adapter_from_weights_for_legacy_module",
+        lambda module_path, request, weights_path: (
+            captured.update(
+                {
+                    "merge_module_path": module_path,
+                    "merge_request": request,
+                    "weights_path": weights_path,
+                    "loaded_runtime": loaded_runtime,
+                }
+            )
+            or loaded_runtime
+        ),
+    )
+
+    PeftMode().prepare_trainables(trainer)
+
+    assert captured["merge_request"].resolved_targets is resolved_targets
+    assert captured["merge_request"].context.for_inference is True
+    assert captured["merge_request"].context.multiplier == 0.5
+    assert captured["weights_path"] == "base.safetensors"
+    assert captured["loaded_runtime"].adapter == "merge-adapter"
+    assert captured["loaded_runtime"].state == {"loaded": "base.safetensors"}
+    assert isinstance(captured["merge_runtime_request"], AdapterMergeRequest)
+    assert captured["merge_runtime_request"].model.text_encoder is trainer.text_encoders
+    assert captured["merge_runtime_request"].model.denoiser is trainer.denoiser
+    assert captured["merge_runtime_request"].resolved_targets is resolved_targets
+    assert captured["merge_runtime_request"].dtype == "fp16"
 
 
 def test_register_state_hooks_uses_repo_owned_adapter_checkpoint_helper(monkeypatch):

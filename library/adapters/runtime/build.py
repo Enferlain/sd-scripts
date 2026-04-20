@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 
 from library.adapters.registry import get_adapter_method, get_adapter_method_for_legacy_module
-from library.adapters.runtime.context import AdapterBuildRequest
+from library.adapters.runtime.context import AdapterBuildRequest, LoadedAdapterRuntime
 
 
 def build_adapter(request: AdapterBuildRequest):
@@ -23,7 +23,16 @@ def build_adapter_from_weights(request: AdapterBuildRequest, weights_path: str):
 
     registration = get_adapter_method(request.adapter.adapter_type)
     runtime_module = importlib.import_module(registration.runtime_module_path)
-    return runtime_module.create_adapter_from_weights(request, weights_path)
+    result = runtime_module.create_adapter_from_weights(request, weights_path)
+    if isinstance(result, LoadedAdapterRuntime):
+        return result
+    if not isinstance(result, tuple) or len(result) != 2:
+        raise TypeError(
+            "Adapter runtime create_adapter_from_weights() must return LoadedAdapterRuntime "
+            f"or a two-item (adapter, loaded_state) tuple, got {type(result).__name__}"
+        )
+    adapter, loaded_state = result
+    return LoadedAdapterRuntime(adapter=adapter, state=loaded_state)
 
 
 def build_adapter_for_legacy_module(module_path: str, request: AdapterBuildRequest):
@@ -49,4 +58,13 @@ def build_adapter_from_weights_for_legacy_module(module_path: str, request: Adap
             f"'{module_path}' resolved as '{registration.name}'"
         )
     runtime_module = importlib.import_module(registration.runtime_module_path)
-    return runtime_module.create_adapter_from_weights(request, weights_path)
+    result = runtime_module.create_adapter_from_weights(request, weights_path)
+    if isinstance(result, LoadedAdapterRuntime):
+        return result
+    if not isinstance(result, tuple) or len(result) != 2:
+        raise TypeError(
+            "Adapter runtime create_adapter_from_weights() must return LoadedAdapterRuntime "
+            f"or a two-item (adapter, loaded_state) tuple, got {type(result).__name__}"
+        )
+    adapter, loaded_state = result
+    return LoadedAdapterRuntime(adapter=adapter, state=loaded_state)

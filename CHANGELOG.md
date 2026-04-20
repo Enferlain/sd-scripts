@@ -10,9 +10,24 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-21]
+
+### Changed
+
+- **The adapter-system rework now explicitly validates and documents that optimization still owns targeting/grouping across the corrected loaded-runtime merge path** — The final migration slice now proves that from-weights adapter construction still consumes optimization-owned resolved targets, grouping still requires the repo-owned trainable-ref contract, and the written design/docs coverage matches the runtime-layer loaded-runtime plus merge-request boundary.
+  - Added focused validation coverage in `tests/unit/training/modes/test_peft_mode.py` for the `adapter_rank_from_weights` path using the same optimization-owned resolved targets as the main adapter build.
+  - Added focused validation coverage in `tests/unit/training/test_training_optimizer.py` to prove adapter grouping still requires the repo-owned `describe_trainable_parameter_refs()` contract instead of falling back to adapter-method internals.
+  - Updated `openspec/changes/adapter-system-rework/design.md`, `docs_design/adapter_system_overview.md`, and `ROADMAP.md` so the current architecture is described in repo-owned loaded-runtime / merge-request terms rather than the earlier transitional shared-merge wording.
+
 ## [2026-04-20]
 
 ### Changed
+
+- **The built-in adapter path now uses the same repo-owned loaded-runtime and merge seams across training, from-weights, and base-weight merge flows** — The remaining built-in LoRA-shaped path no longer makes `PeftMode` call built-in merge signatures directly, and base-weight merge now rides the same optimization-owned resolved-target handoff used by the main adapter training build.
+  - Updated `library/adapters/runtime/context.py` and `library/adapters/runtime/build.py` so from-weights construction normalizes onto a repo-owned `LoadedAdapterRuntime`, and merge now flows through a repo-owned `AdapterMergeRequest` owned by that loaded runtime.
+  - Updated the built-in method wrappers under `library/adapters/methods/` so they translate the repo-owned loaded-runtime `merge_into(...)` capability to older built-in `merge_to(...)` signatures internally instead of exposing those signatures as the repo contract.
+  - Updated `library/training/modes/peft_mode.py` so base-weight merge uses the same optimization-owned resolved targets as the main training build, while `adapter_rank_from_weights` and merge both consume the normalized loaded-runtime result.
+  - Added focused coverage in `tests/unit/adapters/test_runtime_registry.py` and `tests/unit/training/modes/test_peft_mode.py` for the new loaded-runtime normalization, merge seam delegation, invalid wrapper results, and the base-weight merge handoff.
 
 - **The adapter-system rework now has an explicit persistence split between training checkpoint state and adapter export-style save/load** — `PeftMode` remains the training-side orchestration owner for adapter persistence flows, while adapter runtime objects now participate through repo-owned helpers that distinguish accelerator checkpoint state from adapter-format export/load operations.
   - Expanded `library/adapters/shared/state_io.py` into a repo-owned adapter persistence seam with explicit export request objects plus a dedicated training-checkpoint hook helper, and re-exported that seam from `library/adapters/shared/__init__.py` and `library/adapters/__init__.py`.

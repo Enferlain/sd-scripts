@@ -306,6 +306,31 @@ Alternatives considered:
   as needed
   - Rejected because it blurs lifecycle boundaries inside the mode layer
 
+### 14. Loaded-runtime merge should stay repo-owned and request-based
+
+When adapter weights are loaded for rank discovery, merge, or inference-style
+setup, the repo-owned boundary should stay centered on a loaded runtime plus a
+repo-owned merge request rather than mirroring current built-in merge
+signatures directly.
+
+Rationale:
+
+- `PeftMode` should only choose the flow and provide merge context
+- Adapter methods should own how loaded adapter state merges into model
+- The repo-owned seam should stay broad enough for future adapter methods that
+  do not resemble today's built-in diffusion merge signatures
+
+Alternatives considered:
+
+- Let `PeftMode` call current built-in `merge_to(...)` signatures directly
+  - Rejected because it leaks method-local merge semantics into training-side
+    orchestration
+- Define the repo-owned seam as a helper that forwards
+  `text_encoder, denoiser, weights, dtype, device`
+  - Rejected because it only re-expresses the current built-in LoRA merge
+    shape under a new name instead of defining a broader runtime-owned
+    contract
+
 ## Current Implementation Note
 
 A recent implementation attempt explored some of this direction, but it was

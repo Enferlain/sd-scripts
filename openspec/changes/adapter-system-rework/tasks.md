@@ -20,6 +20,6 @@
 
 ## 4. Migrate And Validate
 
-- [ ] 4.1 Migrate the current built-in adapter path onto the new adapter-system architecture without moving training-side ownership out of `PeftMode`, including aligning base-weight merge and inference-style setup with the same optimization-owned resolved-target handoff used by the main adapter training path
-- [ ] 4.2 Validate that optimization still owns original-model targeting and grouping behavior for adapter runs
-- [ ] 4.3 Add or update focused tests and design/docs coverage for the new adapter architecture and migration behavior
+- [x] 4.1 Migrate the current built-in adapter path onto the new adapter-system architecture without moving training-side ownership out of `PeftMode`, including aligning base-weight merge and inference-style setup with the same optimization-owned resolved-target handoff used by the main adapter training path
+- [x] 4.2 Validate that optimization still owns original-model targeting and grouping behavior for adapter runs
+- [x] 4.3 Add or update focused tests and design/docs coverage for the new adapter architecture and migration behavior

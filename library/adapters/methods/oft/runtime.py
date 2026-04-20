@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from library.adapters import oft as legacy_oft
-from library.adapters.runtime import AdapterBuildRequest
+from library.adapters.runtime import AdapterBuildRequest, LoadedAdapterRuntime
 from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider
 
 
@@ -85,4 +85,15 @@ def create_adapter_from_weights(request: AdapterBuildRequest, weights_path: str)
         **settings,
     )
     adapter.adapter_resolved_targets = request.resolved_targets
-    return _attach_trainable_ref_provider(adapter, request), weights_sd
+    adapter = _attach_trainable_ref_provider(adapter, request)
+    return LoadedAdapterRuntime(
+        adapter=adapter,
+        state=weights_sd,
+        _merge_into_impl=lambda merge_request: adapter.merge_to(
+            merge_request.model.text_encoder,
+            merge_request.model.denoiser,
+            weights_sd,
+            merge_request.dtype,
+            merge_request.device,
+        ),
+    )

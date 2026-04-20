@@ -877,6 +877,18 @@ class TestOptimizerUtils:
                 learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5),
             )
 
+    def test_build_adapter_grouping_requires_repo_owned_trainable_ref_provider(self):
+        """Adapter grouping should stay on the repo-owned trainable-ref contract."""
+
+        class LegacyShapedAdapter:
+            adapter_resolved_targets = object()
+
+        with pytest.raises(TypeError, match="describe_trainable_parameter_refs"):
+            build_adapter_grouping(
+                adapter=LegacyShapedAdapter(),
+                learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5),
+            )
+
     def test_build_finetune_grouping_applies_named_group_overrides_before_component_remainder(self):
         """Named groups should override matched subsets while component LR handles the remaining params."""
 
