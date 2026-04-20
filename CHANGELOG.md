@@ -10,6 +10,16 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-20]
+
+### Changed
+
+- **The adapter-system rework now has an explicit persistence split between training checkpoint state and adapter export-style save/load** — `PeftMode` remains the training-side orchestration owner for adapter persistence flows, while adapter runtime objects now participate through repo-owned helpers that distinguish accelerator checkpoint state from adapter-format export/load operations.
+  - Expanded `library/adapters/shared/state_io.py` into a repo-owned adapter persistence seam with explicit export request objects plus a dedicated training-checkpoint hook helper, and re-exported that seam from `library/adapters/shared/__init__.py` and `library/adapters/__init__.py`.
+  - Updated `library/training/modes/peft_mode.py` so adapter weight loads, adapter-format checkpoint writes, and training checkpoint hook registration now route through the new adapter persistence helpers instead of open-coding the flow inside the mode.
+  - Updated `library/training/checkpointing.py` so the deprecated `register_adapter_state_hooks(...)` compatibility helper delegates to the new adapter-owned checkpoint-state seam instead of carrying a second copy of the filtering logic.
+  - Added focused coverage in `tests/unit/adapters/test_state_io.py` and `tests/unit/training/modes/test_peft_mode.py` for export-style adapter persistence delegation, adapter-only checkpoint hook registration, and the explicit `PeftMode` handoff to the repo-owned persistence seam.
+
 ## [2026-04-19]
 
 ### Changed

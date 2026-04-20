@@ -20,12 +20,17 @@ from torch import nn
 from library.adapters import (
     AdapterBuildContext,
     AdapterBuildRequest,
+    AdapterExportLoadRequest,
+    AdapterExportSaveRequest,
     AdapterModelContext,
     AdapterRuntimeSpec,
     build_adapter_for_legacy_module,
     build_adapter_from_weights_for_legacy_module,
     build_component_root_targets,
     get_adapter_method_for_legacy_module,
+    load_adapter_export,
+    register_adapter_checkpoint_state_hooks,
+    save_adapter_export,
 )
 from library.adapters.lora_utils import resolve_adapter_kwargs
 from library.optimization.arguments import parse_key_value_args
@@ -34,7 +39,7 @@ from library.optimization.optimizer_factory import get_optimizer
 from library.optimization.optimizer_utils import get_text_encoders_train_flags
 from library.optimization.types import OptimizationPlan, OptimizerBuildResult
 from library.performance import deepspeed_utils
-from library.training.checkpointing import ResumeState, load_train_state_metadata, save_train_state_metadata
+from library.training.checkpointing import ResumeState
 
 if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
@@ -68,7 +73,7 @@ def _ensure_supported_adapter_optimizer_policy(cfg, net_kwargs: dict[str, Any] |
             + ", ".join(active_fields)
         )
 
-    adapter_kwargs = net_kwargs or {}
+    adapter_kwargs = net_kwargs if isinstance(net_kwargs, dict) else {}
     active_kwargs = [key for key in _UNSUPPORTED_ADAPTER_OPTIMIZER_POLICY_KEYS if adapter_kwargs.get(key) is not None]
     if active_kwargs:
         raise NotImplementedError(
@@ -227,7 +232,7 @@ class PeftMode:
 
         # Load weights if specified
         if cfg.peft.adapter_weights is not None:
-            info = adapter.load_weights(cfg.peft.adapter_weights)
+            info = load_adapter_export(adapter, AdapterExportLoadRequest(file=cfg.peft.adapter_weights))
             accelerator.print(f"load peft weights from {cfg.peft.adapter_weights}: {info}")
 
         adapter.requires_grad_(True)
@@ -358,44 +363,14 @@ class PeftMode:
         trainer.accelerator.unwrap_model(trainer.adapter).prepare_grad_etc(trainer._text_encoder, trainer.denoiser)
 
     def register_state_hooks(self, trainer: Trainer) -> ResumeState:
-        """Register adapter save/load hooks for checkpointing.
-
-        Extracted from ``optimizer.prepare_optimizer()`` L131-134.
-        """
-        accelerator = trainer.accelerator
-        cfg = trainer.cfg
-        current_epoch = trainer._current_epoch_state
-        current_step = trainer._current_step_state
-        resume_state = ResumeState()
-        adapter_type = type(accelerator.unwrap_model(trainer.adapter))
-
-        def save_model_hook(models, weights, output_dir):
-            if accelerator.is_main_process or cfg.performance.deepspeed.deepspeed:
-                remove_indices = []
-                for i, model in enumerate(models):
-                    if not isinstance(model, adapter_type):
-                        remove_indices.append(i)
-
-                for i in reversed(remove_indices):
-                    if len(weights) > i:
-                        weights.pop(i)
-
-                save_train_state_metadata(output_dir, current_epoch, current_step)
-
-        def load_model_hook(models, input_dir):
-            remove_indices = []
-            for i, model in enumerate(models):
-                if not isinstance(model, adapter_type):
-                    remove_indices.append(i)
-
-            for i in reversed(remove_indices):
-                models.pop(i)
-
-            load_train_state_metadata(input_dir, current_epoch, current_step, resume_state)
-
-        accelerator.register_save_state_pre_hook(save_model_hook)
-        accelerator.register_load_state_pre_hook(load_model_hook)
-        return resume_state
+        """Register adapter-only training checkpoint hooks."""
+        return register_adapter_checkpoint_state_hooks(
+            trainer.accelerator,
+            trainer.adapter,
+            save_for_deepspeed=trainer.cfg.performance.deepspeed.deepspeed,
+            current_epoch=trainer._current_epoch_state,
+            current_step=trainer._current_step_state,
+        )
 
     # ------------------------------------------------------------------
     # Per-epoch / per-step callbacks
@@ -485,7 +460,10 @@ class PeftMode:
 
         save_dtype = dtype_override or trainer.save_dtype
         model_to_save = target_model if target_model is not None else trainer.accelerator.unwrap_model(trainer.adapter)
-        model_to_save.save_weights(ckpt_file, save_dtype, metadata)
+        save_adapter_export(
+            model_to_save,
+            AdapterExportSaveRequest(file=ckpt_file, dtype=save_dtype, metadata=metadata),
+        )
 
         if trainer.cfg.output.huggingface is not None and trainer.cfg.output.huggingface.huggingface_repo_id is not None:
             from library.utils import huggingface_util

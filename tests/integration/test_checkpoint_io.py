@@ -12,6 +12,7 @@ import os
 import torch
 import safetensors.torch
 
+from library.config.dataclasses.performance import DeepSpeedConfig
 from library.config.dataclasses.output import SavingConfig
 from library.training.checkpointing import (
     save_sd_model_on_epoch_end_or_stepwise_common,
@@ -388,7 +389,7 @@ class TestAdapterStateHooks:
         adapter = FakeAdapter()
         accel.unwrap_model = lambda m: m  # type: ignore[assignment]
 
-        cfg = SimpleNamespace(performance=SimpleNamespace(deepspeed=False))
+        cfg = SimpleNamespace(performance=SimpleNamespace(deepspeed=DeepSpeedConfig(deepspeed=False)))
         current_epoch = SimpleNamespace(value=3)
         current_step = SimpleNamespace(value=99)
 
@@ -443,7 +444,7 @@ class TestAdapterStateHooks:
         other = OtherModel()
         accel.unwrap_model = lambda m: m  # type: ignore[assignment]
 
-        cfg = SimpleNamespace(performance=SimpleNamespace(deepspeed=False))
+        cfg = SimpleNamespace(performance=SimpleNamespace(deepspeed=DeepSpeedConfig(deepspeed=False)))
         current_epoch = SimpleNamespace(value=0)
         current_step = SimpleNamespace(value=0)
 
@@ -473,7 +474,7 @@ class TestAdapterStateHooks:
         adapter = FakeAdapter()
         accel.unwrap_model = lambda m: m  # type: ignore[assignment]
 
-        cfg = SimpleNamespace(performance=SimpleNamespace(deepspeed=False))
+        cfg = SimpleNamespace(performance=SimpleNamespace(deepspeed=DeepSpeedConfig(deepspeed=False)))
         current_epoch = SimpleNamespace(value=5)
         current_step = SimpleNamespace(value=50)
 

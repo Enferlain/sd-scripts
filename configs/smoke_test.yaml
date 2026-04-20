@@ -55,9 +55,11 @@ data:
 # ─── PEFT (adapter configuration) ───────────────────────────────────────────
 peft:
   adapter_module: "library.adapters.lora"
-  adapter_rank: 32
-  adapter_alpha: 16.0
-  adapter_args: ["conv_dim=32", "conv_alpha=16.0"]
+  lora:
+    rank: 32
+    alpha: 16.0
+    conv_rank: 32
+    conv_alpha: 16.0
 
 # ─── OPTIMIZER ──────────────────────────────────────────────────────────────
 optimizer:

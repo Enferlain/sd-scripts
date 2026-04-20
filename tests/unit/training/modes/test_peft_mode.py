@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from pathlib import Path
 
 import pytest
 
+from library.config.dataclasses.performance import DeepSpeedConfig
 from library.optimization.types import OptimizerBuildResult
 from library.adapters.runtime.targets import build_component_root_targets
+from library.training.checkpointing import ResumeState
 from library.training.modes.peft_mode import PeftMode
 
 
@@ -47,7 +50,10 @@ def _build_mock_trainer():
             optimizer_args=None,
             scheduler=SimpleNamespace(),
         ),
-        performance=SimpleNamespace(memory=SimpleNamespace(lowram=False)),
+        performance=SimpleNamespace(
+            memory=SimpleNamespace(lowram=False),
+            deepspeed=DeepSpeedConfig(deepspeed=False),
+        ),
     )
 
     trainer = MagicMock()
@@ -61,6 +67,7 @@ def _build_mock_trainer():
     trainer.weight_dtype = "fp16"
     trainer.strategies = MagicMock()
     trainer.strategies.post_process_trainable = MagicMock()
+    trainer.net_kwargs = {}
     return trainer
 
 
@@ -210,7 +217,112 @@ def test_prepare_trainables_rejects_legacy_built_in_optimizer_policy_before_adap
     build_mock = MagicMock()
     monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", build_mock)
 
-    with pytest.raises(NotImplementedError, match="adapter args"):
+    with pytest.raises(NotImplementedError, match="peft\\.lora\\.down_lr_weight"):
         PeftMode().prepare_trainables(trainer)
 
     build_mock.assert_not_called()
+
+
+def test_prepare_trainables_loads_adapter_weights_through_repo_owned_export_seam(monkeypatch):
+    trainer = _build_mock_trainer()
+    trainer.cfg.peft.adapter_weights = "adapter.safetensors"
+    adapter = MagicMock()
+    adapter.apply_to = MagicMock()
+    resolved_targets = build_component_root_targets(
+        model_type="sdxl",
+        text_encoders=trainer.text_encoders,
+        vae=None,
+        denoiser=trainer.denoiser,
+        include_text_encoders=[True, False],
+        include_denoiser=False,
+    )
+    captured = {}
+
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.resolve_adapter_target_selection",
+        lambda **_: SimpleNamespace(
+            resolved_targets=resolved_targets,
+            train_denoiser=False,
+            train_any_text_encoder=True,
+        ),
+    )
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", lambda *_: adapter)
+
+    def fake_load_adapter_export(target_adapter, request):
+        captured["adapter"] = target_adapter
+        captured["request"] = request
+        return {"loaded": request.file}
+
+    monkeypatch.setattr("library.training.modes.peft_mode.load_adapter_export", fake_load_adapter_export)
+
+    PeftMode().prepare_trainables(trainer)
+
+    assert captured["adapter"] is adapter
+    assert captured["request"].file == "adapter.safetensors"
+
+
+def test_register_state_hooks_uses_repo_owned_adapter_checkpoint_helper(monkeypatch):
+    trainer = _build_mock_trainer()
+    trainer.adapter = object()
+    trainer._current_epoch_state = SimpleNamespace(value=1)
+    trainer._current_step_state = SimpleNamespace(value=2)
+    trainer.cfg.performance = SimpleNamespace(
+        memory=SimpleNamespace(lowram=False),
+        deepspeed=DeepSpeedConfig(deepspeed=True),
+    )
+    expected_resume_state = ResumeState(step=5, epoch=3)
+    captured = {}
+
+    def fake_register(accelerator, adapter, *, save_for_deepspeed, current_epoch, current_step):
+        captured["accelerator"] = accelerator
+        captured["adapter"] = adapter
+        captured["save_for_deepspeed"] = save_for_deepspeed
+        captured["current_epoch"] = current_epoch
+        captured["current_step"] = current_step
+        return expected_resume_state
+
+    monkeypatch.setattr("library.training.modes.peft_mode.register_adapter_checkpoint_state_hooks", fake_register)
+
+    resume_state = PeftMode().register_state_hooks(trainer)
+
+    assert resume_state is expected_resume_state
+    assert captured["adapter"] is trainer.adapter
+    assert captured["save_for_deepspeed"] is True
+    assert captured["current_epoch"] is trainer._current_epoch_state
+    assert captured["current_step"] is trainer._current_step_state
+
+
+def test_save_checkpoint_uses_repo_owned_adapter_export_seam(monkeypatch, tmp_path):
+    trainer = _build_mock_trainer()
+    trainer.cfg.output = SimpleNamespace(
+        saving=SimpleNamespace(output_dir=str(tmp_path)),
+        huggingface=None,
+    )
+    trainer.save_dtype = "fp16"
+    trainer.adapter = object()
+    trainer.accelerator.unwrap_model.return_value = trainer.adapter
+    trainer.strategies.get_model_metadata.return_value = {"ss_model_spec": "sdxl"}
+    metadata = {"base": "value"}
+    captured = {}
+
+    def fake_save_adapter_export(model_to_save, request):
+        captured["model"] = model_to_save
+        captured["request"] = request
+
+    monkeypatch.setattr("library.training.modes.peft_mode.save_adapter_export", fake_save_adapter_export)
+
+    PeftMode().save_checkpoint(
+        trainer,
+        ckpt_name="adapter.safetensors",
+        step=12,
+        epoch=3,
+        metadata=metadata,
+    )
+
+    assert captured["model"] is trainer.adapter
+    assert captured["request"].file == str(Path(tmp_path) / "adapter.safetensors")
+    assert captured["request"].dtype == "fp16"
+    assert captured["request"].metadata["base"] == "value"
+    assert captured["request"].metadata["ss_steps"] == "12"
+    assert captured["request"].metadata["ss_epoch"] == "3"
+    assert captured["request"].metadata["ss_model_spec"] == "sdxl"

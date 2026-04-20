@@ -20,10 +20,16 @@ from .runtime import (
     build_component_root_targets,
 )
 from .shared import (
+    AdapterExportIO,
+    AdapterExportLoadRequest,
+    AdapterExportSaveRequest,
     AdapterTrainableParameterProvider,
     AdapterTrainableParameterRef,
     attach_trainable_parameter_provider,
     get_trainable_parameter_refs,
+    load_adapter_export,
+    register_adapter_checkpoint_state_hooks,
+    save_adapter_export,
 )
 
 __all__ = [
@@ -41,9 +47,15 @@ __all__ = [
     "build_component_root_targets",
     "get_adapter_method",
     "get_adapter_method_for_legacy_module",
+    "AdapterExportIO",
+    "AdapterExportLoadRequest",
+    "AdapterExportSaveRequest",
     "AdapterTrainableParameterProvider",
     "AdapterTrainableParameterRef",
     "attach_trainable_parameter_provider",
     "get_trainable_parameter_refs",
+    "load_adapter_export",
+    "register_adapter_checkpoint_state_hooks",
+    "save_adapter_export",
     "list_adapter_methods",
 ]

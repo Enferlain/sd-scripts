@@ -144,8 +144,8 @@ def _load_learning_rate_groups_file(groups_file: str) -> list[LearningRateGroupC
 
 def resolve_learning_rate_groups(learning_rates: LearningRatesConfig) -> list[LearningRateGroupConfig]:
     """Normalize inline/file-backed learning-rate groups into one resolved list."""
-    inline_groups = list(learning_rates.groups or [])
-    groups_file = learning_rates.groups_file
+    inline_groups = list(getattr(learning_rates, "groups", None) or [])
+    groups_file = getattr(learning_rates, "groups_file", None)
 
     if inline_groups and groups_file:
         raise ValueError("optimizer.learning_rates.groups and optimizer.learning_rates.groups_file cannot be set at the same time")

@@ -10,6 +10,7 @@ import shutil
 # Add repo root to path
 sys.path.append(os.getcwd())
 
+from library.config.dataclasses.performance import DeepSpeedConfig
 from library.training.runners.trainer import Trainer
 from library.training.phases.optimizer import prepare_optimizer
 
@@ -92,7 +93,7 @@ class TestResumeBehavior(unittest.TestCase):
         self.cfg.training.train_batch_size = 1
         self.cfg.output.saving.save_n_epoch_ratio = None
         self.cfg.performance.precision.full_fp16 = False
-        self.cfg.performance.deepspeed = None
+        self.cfg.performance.deepspeed = DeepSpeedConfig(deepspeed=False)
         self.cfg.performance.memory.gradient_checkpointing = False
         self.cfg.loss.prior_loss_weight = 1.0
         self.cfg.validation.validation_seed = 42

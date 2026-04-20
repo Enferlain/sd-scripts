@@ -467,6 +467,7 @@ def save_sd_model_on_train_end_common(
 
 def save_train_state_metadata(output_dir: str, current_epoch, current_step) -> None:
     """Write epoch/step metadata alongside accelerator checkpoint state."""
+    os.makedirs(output_dir, exist_ok=True)
     train_state_file = os.path.join(output_dir, "train_state.json")
     # +1 is needed because the state is saved before current_step is set from global_step
     logger.info(f"save train state to {train_state_file} at epoch {current_epoch.value} step {current_step.value + 1}")
@@ -510,34 +511,12 @@ def register_adapter_state_hooks(accelerator: "Accelerator", adapter, cfg, curre
     Returns:
         ResumeState populated by the load hook (or left empty when not resumed).
     """
-    resume_state = ResumeState()
-    adapter_type = type(accelerator.unwrap_model(adapter))
+    from library.adapters.shared import register_adapter_checkpoint_state_hooks
 
-    def save_model_hook(models, weights, output_dir):
-        if accelerator.is_main_process or cfg.performance.deepspeed.deepspeed:
-            remove_indices = []
-            for i, model in enumerate(models):
-                if not isinstance(model, adapter_type):
-                    remove_indices.append(i)
-
-            for i in reversed(remove_indices):
-                if len(weights) > i:
-                    weights.pop(i)
-
-            save_train_state_metadata(output_dir, current_epoch, current_step)
-
-    def load_model_hook(models, input_dir):
-        remove_indices = []
-        for i, model in enumerate(models):
-            if not isinstance(model, adapter_type):
-                remove_indices.append(i)
-
-        for i in reversed(remove_indices):
-            models.pop(i)
-
-        load_train_state_metadata(input_dir, current_epoch, current_step, resume_state)
-
-    accelerator.register_save_state_pre_hook(save_model_hook)
-    accelerator.register_load_state_pre_hook(load_model_hook)
-
-    return resume_state
+    return register_adapter_checkpoint_state_hooks(
+        accelerator,
+        adapter,
+        save_for_deepspeed=cfg.performance.deepspeed.deepspeed,
+        current_epoch=current_epoch,
+        current_step=current_step,
+    )
