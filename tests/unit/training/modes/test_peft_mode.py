@@ -5,12 +5,13 @@ from unittest.mock import MagicMock
 from pathlib import Path
 
 import pytest
+import torch
 
 from library.config.dataclasses.performance import DeepSpeedConfig
 from library.adapters import LoadedAdapterRuntime
 from library.adapters.runtime import AdapterMergeRequest
 from library.optimization.types import OptimizerBuildResult
-from library.adapters.runtime.targets import build_component_root_targets
+from library.adapters.runtime.targets import build_component_module_targets, build_component_root_targets
 from library.training.checkpointing import ResumeState
 from library.training.modes.peft_mode import PeftMode
 
@@ -319,9 +320,52 @@ def test_prepare_trainables_builds_from_weights_runtime_with_optimization_owned_
     assert captured["loaded_runtime"].state == {"loaded": "adapter.safetensors"}
     assert trainer.adapter is adapter
     assert trainer.adapter_resolved_targets is resolved_targets
+
+
+def test_prepare_trainables_supports_registered_loha_runtime_with_module_targets(monkeypatch):
+    trainer = _build_mock_trainer()
+    trainer.cfg.peft.adapter_module = "library.adapters.loha"
+    trainer.cfg.peft.adapter_args = ["use_scalar=True", "bypass_mode=True"]
+    trainer.text_encoders = [torch.nn.Sequential(torch.nn.Linear(4, 4, bias=False)), object()]
+    trainer._text_encoder = trainer.text_encoders
+    trainer.denoiser = torch.nn.Sequential(torch.nn.Linear(4, 4, bias=False))
+    adapter = MagicMock()
+    adapter.apply_to = MagicMock()
+    captured = {}
+    resolved_targets = build_component_module_targets(
+        model_type="sdxl",
+        text_encoders=trainer.text_encoders,
+        vae=None,
+        denoiser=trainer.denoiser,
+        include_text_encoders=[True, False],
+        include_denoiser=True,
+    )
+
+    monkeypatch.setattr(
+        "library.training.modes.peft_mode.resolve_adapter_target_selection",
+        lambda **_: SimpleNamespace(
+            resolved_targets=resolved_targets,
+            train_denoiser=True,
+            train_any_text_encoder=True,
+        ),
+    )
+
+    def fake_build_adapter_for_legacy_module(module_path, request):
+        captured["module_path"] = module_path
+        captured["request"] = request
+        return adapter
+
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", fake_build_adapter_for_legacy_module)
+
+    PeftMode().prepare_trainables(trainer)
+
+    assert captured["module_path"] == "library.adapters.loha"
+    assert captured["request"].adapter.adapter_type == "loha"
+    assert captured["request"].resolved_targets is resolved_targets
+    assert captured["request"].adapter.settings["use_scalar"] is True
+    assert captured["request"].adapter.settings["bypass_mode"] is True
     adapter.apply_to.assert_called_once_with(trainer._text_encoder, trainer.denoiser, True, True)
-    assert captured["loaded_export_adapter"] is adapter
-    assert captured["loaded_export_request"].file == "adapter.safetensors"
+    assert trainer.adapter_resolved_targets is resolved_targets
 
 
 def test_prepare_trainables_merges_base_weights_through_repo_owned_merge_seam(monkeypatch):

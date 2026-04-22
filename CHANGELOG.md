@@ -10,6 +10,17 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-22]
+
+### Changed
+
+- **Adapter training now has an optimization-owned module-targeting path plus a first repo-native absorbed `loha` runtime** — PEFT adapter runs now resolve concrete module targets before runtime construction, and the new `loha` method plugs into the same repo-owned build, trainable-ref, loaded-runtime merge, and export seams instead of depending on the vendor LyCORIS wrapper as the repo contract.
+  - Added module-resolved adapter target selection in `library/adapters/runtime/targets.py` and `library/optimization/grouping.py`, including stable `component_key` plus component-qualified target paths for downstream adapter runtimes.
+  - Added the repo-owned `library/adapters/methods/peft/loha/runtime.py` path and registered `loha` in `library/adapters/registry.py`, while keeping grouping parameter-native through repo-owned `AdapterTrainableParameterRef` exposure.
+  - Added focused coverage in `tests/unit/adapters/test_runtime_registry.py`, `tests/unit/training/modes/test_peft_mode.py`, and `tests/unit/training/test_training_optimizer.py` for module-target resolution, `loha` runtime registration, trainable-ref provenance, export/load round-trips, loaded-runtime merge behavior, and PEFT mode orchestration.
+
+- **The built-in PEFT method implementations now live with their method packages instead of at the flat adapter root** — The actual built-in LoRA, DyLoRA, and OFT implementation code now lives under `library/adapters/methods/peft/.../`, while the old `library/adapters/lora.py`, `dylora.py`, and `oft.py` files are reduced to compatibility shims so existing config strings, tools, and tests keep working during the broader cleanup.
+
 ## [2026-04-21]
 
 ### Changed

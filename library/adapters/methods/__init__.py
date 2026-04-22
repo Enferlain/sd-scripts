@@ -1,3 +1,3 @@
-"""Repo-owned adapter type packages."""
+"""Repo-owned adapter method package roots."""
 
-__all__ = ["dylora", "lora", "oft"]
+__all__ = ["peft"]

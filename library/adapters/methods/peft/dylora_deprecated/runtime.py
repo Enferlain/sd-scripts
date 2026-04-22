@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from library.adapters import dylora as legacy_dylora
+from . import impl as legacy_dylora
 from library.adapters.runtime import AdapterBuildRequest, LoadedAdapterRuntime
 from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider
 
@@ -8,9 +8,7 @@ from library.adapters.shared import AdapterTrainableParameterRef, attach_trainab
 def _resolve_component_labels(resolved_targets) -> dict[str, str]:
     labels: dict[str, str] = {}
     for target in resolved_targets.targets:
-        component_key = target.metadata.get("component_key")
-        if isinstance(component_key, str):
-            labels[component_key] = target.component
+        labels[target.component_key] = target.component
     return labels
 
 

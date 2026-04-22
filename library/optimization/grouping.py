@@ -11,7 +11,7 @@ import yaml
 from torch import nn
 
 from library.adapters.shared import AdapterTrainableParameterRef, get_trainable_parameter_refs
-from library.adapters.runtime.targets import AdapterResolvedTargets, build_component_root_targets
+from library.adapters.runtime.targets import AdapterResolvedTargets, build_component_module_targets
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, LearningRatesConfig
 from library.models.parameter_dump import NamedParameterComponentNames, build_selector_name
 from library.optimization.types import (
@@ -185,12 +185,12 @@ def resolve_adapter_target_selection(
     text_encoders: Sequence[nn.Module],
     learning_rates: LearningRatesConfig,
 ) -> AdapterTargetSelection:
-    """Resolve optimization-owned component targeting for the adapter path.
+    """Resolve optimization-owned adapter targets for the current PEFT path.
 
-    The current PEFT migration slice keeps the target bundle intentionally
-    narrow: optimization decides which top-level components are in scope from
-    learning-rate policy, and the adapter runtime consumes that resolved
-    bundle without re-owning the decision.
+    Optimization still decides which top-level components are in scope from
+    learning-rate policy, then expands those selected components into
+    concrete module targets for adapter runtimes to consume without
+    re-owning target discovery.
     """
 
     denoiser_lr = learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
@@ -198,7 +198,7 @@ def resolve_adapter_target_selection(
     train_denoiser = _is_positive_lr(denoiser_lr)
 
     return AdapterTargetSelection(
-        resolved_targets=build_component_root_targets(
+        resolved_targets=build_component_module_targets(
             model_type=model_type,
             text_encoders=list(text_encoders),
             vae=None,

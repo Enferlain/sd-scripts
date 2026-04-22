@@ -12,7 +12,7 @@ from .context import (
     AdapterRuntimeSpec,
     LoadedAdapterRuntime,
 )
-from .targets import AdapterResolvedTarget, AdapterResolvedTargets, build_component_root_targets
+from .targets import AdapterResolvedTarget, AdapterResolvedTargets, build_component_module_targets, build_component_root_targets
 
 __all__ = [
     "AdapterBuildContext",
@@ -27,5 +27,6 @@ __all__ = [
     "build_adapter_for_legacy_module",
     "build_adapter_from_weights",
     "build_adapter_from_weights_for_legacy_module",
+    "build_component_module_targets",
     "build_component_root_targets",
 ]

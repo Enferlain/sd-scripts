@@ -182,11 +182,7 @@ class PeftMode:
             accelerator.print(f"all weights merged: {', '.join(cfg.peft.base_weights)}")
 
         # Prepare adapter kwargs
-        net_kwargs: dict[str, Any] = {}
-        if cfg.peft.adapter_args is not None:
-            for net_arg in cfg.peft.adapter_args:
-                key, value = net_arg.split("=", 1)
-                net_kwargs[key] = value
+        net_kwargs: dict[str, Any] = parse_key_value_args(cfg.peft.adapter_args)
 
         resolve_adapter_kwargs(cfg.peft, net_kwargs)
         _ensure_supported_adapter_optimizer_policy(cfg, net_kwargs)

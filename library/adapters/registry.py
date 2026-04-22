@@ -5,23 +5,30 @@ from .types import AdapterMethodRegistration
 
 _BUILTIN_ADAPTER_METHODS = (
     AdapterMethodRegistration(
+        name="loha",
+        # This remains the compatibility-era selection string for now even
+        # though the repo-owned runtime lives under adapters.methods.
+        legacy_module_path="library.adapters.loha",
+        runtime_module_path="library.adapters.methods.peft.loha.runtime",
+    ),
+    AdapterMethodRegistration(
         name="lora",
         legacy_module_path="library.adapters.lora",
-        runtime_module_path="library.adapters.methods.lora.runtime",
+        runtime_module_path="library.adapters.methods.peft.lora.runtime",
     ),
     # Left over on purpose as legacy bridges. The current adapter-system task
     # is centered on the LoRA-shaped path; Dylora/OFT will be revisited from
     # the vendor LyCORIS direction rather than by extending the already-present
     # local implementations here.
     AdapterMethodRegistration(
-        name="dylora",
+        name="dylora_deprecated",
         legacy_module_path="library.adapters.dylora",
-        runtime_module_path="library.adapters.methods.dylora.runtime",
+        runtime_module_path="library.adapters.methods.peft.dylora_deprecated.runtime",
     ),
     AdapterMethodRegistration(
-        name="oft",
+        name="oft_deprecated",
         legacy_module_path="library.adapters.oft",
-        runtime_module_path="library.adapters.methods.oft.runtime",
+        runtime_module_path="library.adapters.methods.peft.oft_deprecated.runtime",
     ),
 )
 

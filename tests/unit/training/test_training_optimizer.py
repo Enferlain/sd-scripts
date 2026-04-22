@@ -38,6 +38,14 @@ from library.optimization.types import (
     build_logical_parameter_group,
     materialize_parameter_groups,
 )
+from library.adapters import (
+    AdapterBuildContext,
+    AdapterBuildRequest,
+    AdapterModelContext,
+    AdapterRuntimeSpec,
+    build_adapter_for_legacy_module,
+    build_component_module_targets,
+)
 from library.adapters.shared import AdapterTrainableParameterRef
 from library.optimization.wrappers.schedulefree import ScheduleFreeWrapper
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, OptimizerConfig, SchedulerConfig, LearningRatesConfig
@@ -817,6 +825,46 @@ class TestOptimizerUtils:
         assert selection.train_denoiser is True
         assert selection.te_train_flags == [False, True]
         assert [target.component for target in selection.resolved_targets.targets] == ["clip_g", "unet"]
+        assert [target.component_key for target in selection.resolved_targets.targets] == ["text_encoder2", "denoiser"]
+        assert [target.path for target in selection.resolved_targets.targets] == ["clip_g", "unet"]
+
+    def test_resolve_adapter_target_selection_expands_selected_components_to_modules(self):
+        """Adapter target selection should resolve concrete modules from selected component structure."""
+
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(3, 3)
+                self.norm = torch.nn.LayerNorm(3)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4)
+                self.conv = torch.nn.Conv2d(4, 4, kernel_size=1)
+
+        selection = resolve_adapter_target_selection(
+            model_type="sdxl",
+            denoiser=DummyDenoiser(),
+            text_encoders=[DummyTextEncoder(), DummyTextEncoder()],
+            learning_rates=LearningRatesConfig(base=None, denoiser=1e-4, text_encoders=[5e-5, 0.0]),
+        )
+
+        assert selection.train_denoiser is True
+        assert selection.te_train_flags == [True, False]
+        assert [target.component for target in selection.resolved_targets.targets] == ["clip_l", "clip_l", "unet", "unet"]
+        assert [target.component_key for target in selection.resolved_targets.targets] == [
+            "text_encoder1",
+            "text_encoder1",
+            "denoiser",
+            "denoiser",
+        ]
+        assert [target.path for target in selection.resolved_targets.targets] == [
+            "clip_l.proj",
+            "clip_l.norm",
+            "unet.to_q",
+            "unet.conv",
+        ]
 
     def test_build_adapter_grouping_uses_repo_owned_trainable_refs(self):
         """Adapter grouping should consume repo-owned refs instead of legacy optimizer hooks."""
@@ -853,6 +901,49 @@ class TestOptimizerUtils:
         assert [group.lr for group in grouping.logical_groups] == [3e-5, 2e-5]
         assert grouping.execution_groups[0].metadata["param_names"] == ["lora_te1_block.lora_down.weight"]
         assert grouping.execution_groups[1].metadata["param_names"] == ["lora_unet_block.lora_down.weight"]
+
+    def test_build_adapter_grouping_uses_loha_trainable_refs_with_component_provenance(self):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+                self.norm = torch.nn.LayerNorm(4)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="loha",
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0, "dropout": 0.0},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.loha", request)
+        grouping = build_adapter_grouping(
+            adapter=adapter,
+            learning_rates=LearningRatesConfig(base=1e-4, denoiser=2e-4, text_encoders=[5e-5, 0.0]),
+        )
+
+        assert [group.metric_name for group in grouping.logical_groups] == ["clip_l", "unet"]
+        assert [group.lr for group in grouping.logical_groups] == [5e-5, 2e-4]
+        assert all("norm" not in name for group in grouping.execution_groups for name in group.metadata["param_names"])
 
     def test_build_adapter_grouping_rejects_malformed_text_encoder_component_key(self):
         """Adapter grouping should require explicit repo-owned component identities."""

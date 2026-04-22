@@ -3,13 +3,32 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from torch import nn
+
+from library.models.parameter_dump import build_selector_name
 from library.models.parameter_dump import resolve_component_names
+
+
+# The first module-targeting slice intentionally stays on common weight-bearing
+# module types that existing adapter families commonly realize against.
+# Broader target classes such as embeddings or finer parameter-granular binding
+# can be added later once a concrete absorbed-method consumer proves the need.
+_ADAPTER_TARGET_MODULE_TYPES = (
+    nn.Linear,
+    nn.Conv1d,
+    nn.Conv2d,
+    nn.Conv3d,
+    nn.LayerNorm,
+    nn.GroupNorm,
+)
+
 
 @dataclass(slots=True)
 class AdapterResolvedTarget:
     """Adapter-facing view of one resolved original-model target."""
 
     component: str
+    component_key: str
     path: str
     module: Any
     tags: frozenset[str] = field(default_factory=frozenset)
@@ -24,6 +43,70 @@ class AdapterResolvedTargets:
     targets: list[AdapterResolvedTarget] = field(default_factory=list)
 
 
+def _build_resolved_target(
+    *,
+    component: str,
+    component_key: str,
+    path: str,
+    module: Any,
+    tags: frozenset[str],
+) -> AdapterResolvedTarget:
+    return AdapterResolvedTarget(
+        component=component,
+        component_key=component_key,
+        path=path,
+        module=module,
+        tags=tags,
+        metadata={"component_key": component_key},
+    )
+
+
+def _iter_component_module_targets(
+    *,
+    component: str,
+    component_key: str,
+    root_module: Any,
+    tags: frozenset[str],
+) -> list[AdapterResolvedTarget]:
+    if root_module is None:
+        return []
+
+    if not isinstance(root_module, nn.Module):
+        return [
+            _build_resolved_target(
+                component=component,
+                component_key=component_key,
+                path=component,
+                module=root_module,
+                tags=tags | frozenset({"component_root"}),
+            )
+        ]
+
+    targets: list[AdapterResolvedTarget] = []
+    for local_name, module in root_module.named_modules():
+        if not isinstance(module, _ADAPTER_TARGET_MODULE_TYPES):
+            continue
+
+        selector_path = build_selector_name(component, local_name)
+        module_tags = tags | frozenset({"module_target"})
+        # A selected component can itself be a targetable module (for example a
+        # standalone Linear used in focused tests). Mark that edge case
+        # explicitly while keeping child-module targets on the same shared path.
+        if not local_name:
+            module_tags = module_tags | frozenset({"component_root"})
+        targets.append(
+            _build_resolved_target(
+                component=component,
+                component_key=component_key,
+                path=selector_path,
+                module=module,
+                tags=module_tags,
+            )
+        )
+
+    return targets
+
+
 def build_component_root_targets(
     *,
     model_type: str,
@@ -34,12 +117,7 @@ def build_component_root_targets(
     include_vae: bool = False,
     include_denoiser: bool = False,
 ) -> AdapterResolvedTargets:
-    """Build the first adapter target bundle from selected top-level components.
-
-    This intentionally keeps the first migration slice narrow: optimization
-    resolves which model components are in scope, and the adapter runtime sees
-    those selected component roots as its input bundle.
-    """
+    """Build component-root adapter targets for compatibility-oriented callers."""
 
     component_names = resolve_component_names(model_type)
     encoder_flags = list(include_text_encoders or [])
@@ -56,36 +134,101 @@ def build_component_root_targets(
             else f"text_encoder{index + 1}"
         )
         targets.append(
-            AdapterResolvedTarget(
+            _build_resolved_target(
                 component=public_label,
+                component_key=f"text_encoder{index + 1}",
                 path=public_label,
                 module=text_encoder,
                 tags=frozenset({"component_root", "text_encoder"}),
-                metadata={"component_key": f"text_encoder{index + 1}"},
             )
         )
 
     if include_vae and vae is not None:
         public_label = component_names.vae_name if component_names is not None else "vae"
         targets.append(
-            AdapterResolvedTarget(
+            _build_resolved_target(
                 component=public_label,
+                component_key="vae",
                 path=public_label,
                 module=vae,
                 tags=frozenset({"component_root", "vae"}),
-                metadata={"component_key": "vae"},
             )
         )
 
     if include_denoiser and denoiser is not None:
         public_label = component_names.denoiser_name if component_names is not None else "denoiser"
         targets.append(
-            AdapterResolvedTarget(
+            _build_resolved_target(
                 component=public_label,
+                component_key="denoiser",
                 path=public_label,
                 module=denoiser,
                 tags=frozenset({"component_root", "denoiser"}),
-                metadata={"component_key": "denoiser"},
+            )
+        )
+
+    return AdapterResolvedTargets(family=model_type, targets=targets)
+
+
+def build_component_module_targets(
+    *,
+    model_type: str,
+    text_encoders: list[Any],
+    vae: Any,
+    denoiser: Any,
+    include_text_encoders: list[bool] | None = None,
+    include_vae: bool = False,
+    include_denoiser: bool = False,
+) -> AdapterResolvedTargets:
+    """Build module-resolved adapter targets from selected top-level components.
+
+    Optimization still decides which model components are in scope. This helper
+    expands those selected components into concrete target modules with stable
+    component/path provenance for downstream adapter runtimes.
+    """
+
+    component_names = resolve_component_names(model_type)
+    encoder_flags = list(include_text_encoders or [])
+    while len(encoder_flags) < len(text_encoders):
+        encoder_flags.append(False)
+
+    targets: list[AdapterResolvedTarget] = []
+    for index, (text_encoder, include_target) in enumerate(zip(text_encoders, encoder_flags, strict=False)):
+        if not include_target or text_encoder is None:
+            continue
+        public_label = (
+            component_names.text_encoder_names[index]
+            if component_names is not None and index < len(component_names.text_encoder_names)
+            else f"text_encoder{index + 1}"
+        )
+        targets.extend(
+            _iter_component_module_targets(
+                component=public_label,
+                component_key=f"text_encoder{index + 1}",
+                root_module=text_encoder,
+                tags=frozenset({"text_encoder"}),
+            )
+        )
+
+    if include_vae and vae is not None:
+        public_label = component_names.vae_name if component_names is not None else "vae"
+        targets.extend(
+            _iter_component_module_targets(
+                component=public_label,
+                component_key="vae",
+                root_module=vae,
+                tags=frozenset({"vae"}),
+            )
+        )
+
+    if include_denoiser and denoiser is not None:
+        public_label = component_names.denoiser_name if component_names is not None else "denoiser"
+        targets.extend(
+            _iter_component_module_targets(
+                component=public_label,
+                component_key="denoiser",
+                root_module=denoiser,
+                tags=frozenset({"denoiser"}),
             )
         )
 
