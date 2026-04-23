@@ -15,3 +15,9 @@
 - [x] 3.1 Add `loha` from-weights reconstruction and loaded-runtime merge behavior through the existing repo-owned `LoadedAdapterRuntime` and merge request seams
 - [x] 3.2 Route `loha` export/save-load behavior through the existing repo-owned adapter persistence seams
 - [x] 3.3 Add focused PEFT mode, runtime registry, and optimization-grouping coverage for the `loha` build, trainable-ref, from-weights, merge, and export flows
+
+## 4. Full Loha Absorption Follow-Up
+
+- [x] 4.1 Replace the current vendored `LohaModule` runtime dependency with a fully repo-owned `loha` method implementation under `library/adapters/methods/peft/loha/`
+- [x] 4.2 Own `loha` state-dict reconstruction and merge/export behavior in repo code rather than relying on vendor module-class helpers
+- [x] 4.3 Add focused tests that prove `loha` no longer depends on vendored LyCORIS algorithm classes at runtime

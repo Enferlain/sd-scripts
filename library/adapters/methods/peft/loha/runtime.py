@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 import torch
-from safetensors.torch import load_file, save_file
 from torch import nn
 
 from library.adapters.runtime import AdapterBuildRequest, AdapterMergeRequest, LoadedAdapterRuntime
 from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider
-from library.vendor.lycoris.lycoris.modules.loha import LohaModule
 
-
-_LOHA_SUPPORTED_MODULE_TYPES = (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)
+from .module import LohaConfig, LohaModule, SUPPORTED_MODULE_TYPES
+from .state_dict import load_loha_state_dict, save_loha_state_dict
 
 
 def _build_loha_target_name(target) -> str:
@@ -20,13 +15,7 @@ def _build_loha_target_name(target) -> str:
 
 
 def _iter_supported_targets(resolved_targets) -> list:
-    return [target for target in resolved_targets.targets if isinstance(target.module, _LOHA_SUPPORTED_MODULE_TYPES)]
-
-
-def _load_state_dict_file(weights_path: str) -> dict[str, torch.Tensor]:
-    if os.path.splitext(weights_path)[1] == ".safetensors":
-        return load_file(weights_path)
-    return torch.load(weights_path, map_location="cpu")
+    return [target for target in resolved_targets.targets if isinstance(target.module, SUPPORTED_MODULE_TYPES)]
 
 
 class LohaAdapterRuntime(nn.Module):
@@ -77,26 +66,37 @@ class LohaAdapterRuntime(nn.Module):
         return keys_scaled, sum(norms) / len(norms), max(norms)
 
     def load_weights(self, file: str):
-        state_dict = _load_state_dict_file(file)
-        incompatible = self.load_state_dict(state_dict, strict=False)
-        state = {}
-        if incompatible.missing_keys:
-            state["missing keys"] = incompatible.missing_keys
-        if incompatible.unexpected_keys:
-            state["unexpected keys"] = incompatible.unexpected_keys
-        return state
+        state_dict = load_loha_state_dict(file)
+        missing_keys: list[str] = []
+        for module in self.loha_modules:
+            if not module.algo_check(state_dict, module.lora_name):
+                missing_keys.append(module.lora_name)
+                continue
+            required_keys = {
+                key: f"{module.lora_name}.{key}"
+                for key in module.required_export_weight_keys
+            }
+            if any(full_key not in state_dict for full_key in required_keys.values()):
+                missing_keys.append(module.lora_name)
+                continue
+            weights = {
+                key: state_dict[full_key]
+                for key, full_key in required_keys.items()
+            }
+            for optional_key in module.export_weight_keys:
+                if optional_key in weights:
+                    continue
+                full_key = f"{module.lora_name}.{optional_key}"
+                if full_key in state_dict:
+                    weights[optional_key] = state_dict[full_key]
+            module.load_export_state_dict(weights)
+
+        if missing_keys:
+            return {"missing keys": missing_keys}
+        return {}
 
     def save_weights(self, file: str, dtype, metadata: dict[str, str] | None):
-        state_dict = self.state_dict()
-        if dtype is not None:
-            state_dict = {key: value.detach().clone().to("cpu").to(dtype) for key, value in state_dict.items()}
-        else:
-            state_dict = {key: value.detach().clone().to("cpu") for key, value in state_dict.items()}
-
-        if Path(file).suffix == ".safetensors":
-            save_file(state_dict, file, metadata or {})
-            return
-        torch.save(state_dict, file)
+        save_loha_state_dict(self.loha_modules, file, dtype=dtype, metadata=metadata)
 
 
 def _attach_trainable_ref_provider(adapter: LohaAdapterRuntime, request: AdapterBuildRequest) -> LohaAdapterRuntime:
@@ -127,16 +127,15 @@ def _create_loha_module_from_target(target, request: AdapterBuildRequest) -> Loh
     adapter_alpha = settings.pop("adapter_alpha", None)
     neuron_dropout = settings.pop("neuron_dropout", None)
     dropout = settings.pop("dropout", neuron_dropout or 0.0)
-
-    module = LohaModule(
-        _build_loha_target_name(target),
-        target.module,
+    config = LohaConfig(
         multiplier=request.context.multiplier,
         lora_dim=adapter_rank,
         alpha=adapter_alpha,
         dropout=dropout or 0.0,
         **settings,
     )
+
+    module = LohaModule.from_target_module(_build_loha_target_name(target), target.module, config=config)
     module.adapter_target = target
     return module
 
@@ -156,7 +155,7 @@ def create_adapter(request: AdapterBuildRequest):
 def create_adapter_from_weights(request: AdapterBuildRequest, weights_path: str):
     """Create a loaded repo-owned LoHa runtime from saved weights."""
 
-    weights_sd = _load_state_dict_file(weights_path)
+    weights_sd = load_loha_state_dict(weights_path)
     modules: list[LohaModule] = []
     for target in _iter_supported_targets(request.resolved_targets):
         lora_name = _build_loha_target_name(target)

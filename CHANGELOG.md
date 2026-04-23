@@ -10,6 +10,16 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-23]
+
+### Changed
+
+- **`loha` is now a fully repo-owned method implementation instead of a repo-owned runtime around vendored LyCORIS algorithm code** — The `peft/loha` method folder now owns the LoHa module behavior, state-dict reconstruction, and export/merge handling in repo code, while the runtime layer remains a thin orchestrator over the repo-owned implementation.
+  - Added repo-owned `LohaModule` and state-dict helpers under `library/adapters/methods/peft/loha/` and removed the runtime dependency on vendored `library.vendor.lycoris.lycoris.modules.loha.LohaModule`.
+  - Updated the `loha` runtime to build, load, save, and merge through the repo-owned method implementation instead of vendored module-class helpers.
+  - Extended focused runtime-registry coverage so the `loha` adapter tests now assert that built modules come from `library.adapters.methods.peft.loha.module` rather than a vendored LyCORIS runtime class.
+  - Added a repo-owned `LohaConfig` construction path plus direct `LohaModule` unit coverage for rank validation, zero-diff behavior, merged-weight vs forward consistency, and Tucker export/reconstruction round-trips.
+
 ## [2026-04-22]
 
 ### Changed

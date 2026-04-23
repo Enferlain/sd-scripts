@@ -3,6 +3,7 @@ import types
 
 import pytest
 import torch
+from safetensors.torch import load_file, save_file
 
 from library.adapters import (
     AdapterExportLoadRequest,
@@ -308,6 +309,8 @@ class TestAdapterRegistry:
         assert captured["device"] == "cpu"
 
     def test_registered_loha_runtime_exposes_repo_owned_trainable_refs(self):
+        from library.adapters.methods.peft.loha.module import LohaModule
+
         class DummyTextEncoder(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -344,6 +347,10 @@ class TestAdapterRegistry:
         refs = adapter.describe_trainable_parameter_refs()
 
         assert adapter.adapter_resolved_targets is resolved_targets
+        assert all(isinstance(module, LohaModule) for module in adapter.loha_modules)
+        assert {module.__class__.__module__ for module in adapter.loha_modules} == {
+            "library.adapters.methods.peft.loha.module"
+        }
         assert {module.adapter_target.path for module in adapter.loha_modules} == {"clip_l.proj", "unet.to_q"}
         assert {ref.component for ref in refs} == {"clip_l", "unet"}
         assert {ref.component_key for ref in refs} == {"text_encoder1", "denoiser"}
@@ -409,3 +416,50 @@ class TestAdapterRegistry:
         )
 
         assert not torch.allclose(denoiser.to_q.weight, original_weight)
+
+    def test_registered_loha_runtime_reports_partial_checkpoint_as_missing(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="loha",
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0, "dropout": 0.0},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.loha", request)
+        export_path = tmp_path / "loha_partial.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+        state_dict = load_file(str(export_path))
+        state_dict.pop("loha_clip_l_proj.alpha")
+        save_file(state_dict, str(export_path), {"format": "test"})
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.loha", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
+
+        assert load_info == {"missing keys": ["loha_clip_l_proj"]}

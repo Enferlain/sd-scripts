@@ -17,6 +17,15 @@ concrete module targeting derived from shared model structure for adapter runs.
 - **THEN** the repo-owned runtime MUST NOT depend on vendor-owned target
   discovery, presets, or regex/module scanning as the repo contract
 
+#### Scenario: Absorbed methods move toward fully repo-owned algorithm implementations
+- **WHEN** an absorbed adapter method such as `loha` is brought into the repo
+- **THEN** the intended end state MUST be a fully repo-owned implementation of
+  the method behavior rather than a permanent runtime dependency on vendor
+  algorithm module classes
+- **AND** any intermediate repo-owned runtime that still wraps vendor algorithm
+  classes MUST be treated as transitional work rather than the finished
+  absorbed-method state
+
 #### Scenario: First slice does not define all absorbed methods as module-only
 - **WHEN** this first module-resolved slice lands
 - **THEN** it MUST be treated as proving richer resolved targets through
@@ -64,6 +73,14 @@ runtime, loaded-runtime, merge, and export seams.
 - **WHEN** the selected adapter method is `loha`
 - **THEN** the repo-owned runtime MUST build `loha` adapter state only from the
   resolved adapter targets supplied in the build request
+
+#### Scenario: Fully absorbed `loha` implementation
+- **WHEN** `loha` is considered fully absorbed into the repo-owned adapter
+  system
+- **THEN** the method implementation MUST own its algorithm module behavior,
+  state-dict reconstruction, and merge/export behavior in repo-owned code
+- **AND** it MUST NOT require the vendored LyCORIS `LohaModule` class as the
+  steady-state runtime dependency
 
 #### Scenario: Reconstructing `loha` from weights
 - **WHEN** adapter weights are loaded for rank discovery, merge, or

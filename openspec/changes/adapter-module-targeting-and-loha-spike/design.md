@@ -34,11 +34,14 @@ concept.
 - Keep the resolved-target model broad enough that later absorbed methods can
   bind at finer parameter granularity without redesigning ownership
 - Implement a first repo-native `loha` runtime under `library/adapters/methods/`
-  using vendor LyCORIS code only as an implementation detail
+  as the first step toward a fully repo-owned method implementation
 - Keep grouping parameter-native by continuing to consume
   `AdapterTrainableParameterRef` instances with provenance
 - Reuse the existing repo-owned loaded-runtime, merge, and export seams for the
   first absorbed method
+- Make the intended end state explicit: absorbed methods should not permanently
+  depend on vendor algorithm module classes at runtime once they are fully
+  brought into the repo
 
 **Non-Goals:**
 
@@ -47,6 +50,8 @@ concept.
 - Move adapter lifecycle ownership out of `PeftMode`
 - Recenter the adapter path around vendor APIs such as `create_lycoris(...)`,
   presets, or vendor-owned regex target discovery
+- Treat a repo-owned wrapper around vendor module classes as the final absorbed
+  method shape
 - Change optimizer grouping to operate on modules instead of parameters
 - Define mixed-method target assignment, overlap handling, or conflict
   resolution semantics in this slice
@@ -139,6 +144,9 @@ Rationale:
   ownership confusion the adapter-system rework just removed
 - The repo-owned path already has explicit build/from-weights/merge seams that
   the absorbed method should fit into instead
+- The intended destination is a fully repo-owned method implementation, so even
+  direct dependence on vendor algorithm classes should be treated as
+  transitional rather than the permanent absorbed-method shape
 
 Alternatives considered:
 
@@ -146,7 +154,30 @@ Alternatives considered:
   - Rejected because it would still hide adapter-owned target discovery inside
     the build step
 
-### 5. Grouping remains parameter-native and consumes returned trainable refs
+### 5. Absorbed methods are expected to become fully repo-owned implementations
+
+The long-term absorbed-method goal is not only repo-owned orchestration around
+vendor algorithm code. Absorbed methods are expected to move toward fully
+repo-owned implementations of the algorithm module behavior, state-dict
+reconstruction, and merge/export semantics.
+
+Rationale:
+
+- Otherwise the repo still depends on vendor algorithm classes for the actual
+  method behavior even after the runtime/orchestration seams have been brought
+  in-house
+- The term "absorbed method" becomes misleading if the algorithm core remains a
+  permanent vendor runtime dependency
+- Full repo-owned implementations make future refactors, diagnostics,
+  compatibility work, and method-specific evolution easier to reason about
+
+Trade-off:
+
+- A small repo-owned runtime around vendor modules can still be a useful
+  migration waypoint, but it should be documented as incomplete rather than as
+  the fully realized absorbed-method end state
+
+### 6. Grouping remains parameter-native and consumes returned trainable refs
 
 Optimization grouping will continue to consume repo-owned
 `AdapterTrainableParameterRef` instances with provenance and will not gain
@@ -169,7 +200,7 @@ Alternatives considered:
   - Rejected because modules are an upstream targeting concern, not the final
     optimizer granularity
 
-### 6. The first absorbed method will reuse existing export and loaded-runtime seams
+### 7. The first absorbed method will reuse existing export and loaded-runtime seams
 
 The `loha` runtime will participate in the existing repo-owned adapter export,
 loaded-runtime, and merge request seams instead of defining its own separate
@@ -200,6 +231,10 @@ Alternatives considered:
 - [Vendor module reconstruction may expose awkward edge cases] → Keep vendor
   wrapper APIs out of the repo contract and adapt only the module-level
   capabilities the repo-owned runtime actually needs
+- [A migration spike could be mistaken for a fully absorbed method] → State
+  explicitly that a repo-owned runtime around vendor module classes is only a
+  migration waypoint and add follow-up tasks for replacing vendor algorithm
+  dependencies
 - [Config direction could drift back toward adapter-owned target policy] →
   Keep module-target configuration under optimization ownership and leave
   adapter-method settings focused on method behavior
@@ -215,10 +250,12 @@ Alternatives considered:
    and returns repo-owned trainable parameter refs.
 3. Register `loha` as a repo-owned adapter method and wire `PeftMode` through
    the existing build/from-weights/merge seams.
-4. Add focused tests for module targeting, `loha` runtime construction,
+4. Replace the transitional vendor `LohaModule` runtime dependency with a
+   fully repo-owned `loha` implementation once the seam has been proven.
+5. Add focused tests for module targeting, `loha` runtime construction,
    trainable-ref provenance, from-weights reconstruction, and merge/export
    behavior.
-5. Use the `loha` spike to evaluate what, if anything, should later become a
+6. Use the `loha` spike to evaluate what, if anything, should later become a
    shared absorbed-LyCORIS helper layer.
 
 Rollback strategy:
@@ -242,3 +279,6 @@ Rollback strategy:
   settled?
 - What naming helper shape is sufficient for the first build/from-weights
   round-trip without prematurely standardizing all future absorbed methods?
+- For `loha` specifically, what parts of the current vendor `LohaModule`
+  behavior should be copied directly into a repo-owned implementation versus
+  intentionally reshaped to better fit the repo's runtime contracts?

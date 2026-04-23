@@ -19,6 +19,8 @@ are limited to module-only binding.
   optimization.
 - Introduce a first repo-native absorbed LyCORIS method runtime for `loha`
   under `library/adapters/methods/peft/loha/`.
+- Treat absorbed methods as a path toward full repo-owned implementations,
+  not just repo-owned wrappers around vendor algorithm classes.
 - Keep optimizer grouping parameter-based by continuing to consume
   repo-owned trainable parameter refs with provenance rather than module-owned
   grouping logic.
@@ -48,4 +50,6 @@ are limited to module-only binding.
   adapter optimizer grouping coverage
 - Affected future direction: absorbed LyCORIS methods can be brought into the
   repo-owned adapter system without reintroducing vendor-owned target discovery
-  or adapter-owned grouping policy
+  or adapter-owned grouping policy, while still moving toward fully repo-owned
+  method implementations rather than leaving vendor algorithm classes as the
+  steady-state runtime dependency
