@@ -190,6 +190,31 @@ class TestAdapterRegistry:
 
         assert registration.legacy_module_path == "library.adapters.loha"
         assert registration.runtime_module_path == "library.adapters.methods.peft.loha.runtime"
+        assert registration.config_binding is not None
+        assert registration.config_binding.config_key == "loha"
+        assert registration.config_binding.runtime_settings_builder is not None
+
+    def test_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.loha.config import PeftLohaConfig
+
+        registration = get_adapter_method("loha")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftLohaConfig(
+                rank=16,
+                alpha=32.0,
+                dropout=0.1,
+                rank_dropout=0.2,
+                use_tucker=True,
+            )
+        )
+
+        assert registration.config_binding.config_key == "loha"
+        assert settings["adapter_rank"] == 16
+        assert settings["adapter_alpha"] == 32.0
+        assert settings["neuron_dropout"] == 0.1
+        assert settings["rank_dropout"] == 0.2
+        assert settings["use_tucker"] is True
 
     def test_resolves_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.oft")

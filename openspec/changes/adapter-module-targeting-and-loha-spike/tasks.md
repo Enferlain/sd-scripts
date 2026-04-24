@@ -21,3 +21,10 @@
 - [x] 4.1 Replace the current vendored `LohaModule` runtime dependency with a fully repo-owned `loha` method implementation under `library/adapters/methods/peft/loha/`
 - [x] 4.2 Own `loha` state-dict reconstruction and merge/export behavior in repo code rather than relying on vendor module-class helpers
 - [x] 4.3 Add focused tests that prove `loha` no longer depends on vendored LyCORIS algorithm classes at runtime
+
+## 5. Method Config Surface
+
+- [x] 5.1 Keep `PeftConfig` as a thin PEFT shell while method-local dataclasses live beside their adapter method implementations
+- [x] 5.2 Make adapter method registration own each method's config binding and runtime-settings translator
+- [x] 5.3 Require forward configs to use `peft.method` plus the matching `peft.<method>` subtree rather than dynamic `peft.adapter_args`
+- [x] 5.4 Treat `peft.continue_from` without `peft.continue_mode` as strict continuation by default

@@ -105,3 +105,42 @@ for assigning different methods across overlapping target groups.
   resolution
 - **THEN** that behavior MUST be specified in a later change rather than being
   implicitly standardized by this slice
+
+### Requirement: Method-local adapter config owns runtime settings translation
+The forward adapter config surface SHALL select an adapter method explicitly and
+translate the matching method-local config subtree into repo-owned runtime
+settings.
+
+#### Scenario: Building runtime settings from the active method subtree
+- **WHEN** a PEFT run selects an adapter method with `peft.method`
+- **THEN** the matching `peft.<method>` config subtree MUST be translated into
+  `AdapterRuntimeSpec(adapter_type, settings)`
+- **AND** the adapter runtime MUST consume those normalized settings rather
+  than raw Hydra/dataclass config objects
+
+#### Scenario: Method config lives with the method implementation
+- **WHEN** a repo-owned adapter method defines user-facing method settings
+- **THEN** its config dataclass and runtime-settings translator MUST live with
+  that method implementation
+- **AND** the central `PeftConfig` MUST remain a thin typed shell that wires
+  first-class method subtrees into the PEFT config surface
+
+#### Scenario: Dynamic legacy adapter args are not a forward settings surface
+- **WHEN** a forward PEFT config supplies method settings
+- **THEN** those settings MUST be expressed through the active method subtree
+- **AND** `peft.adapter_args` MUST NOT be accepted as a runtime settings source
+
+### Requirement: Continuation intent defaults to strict continuation
+PEFT continuation config SHALL treat `peft.continue_from` as strict
+continuation unless the user explicitly requests another supported continuation
+mode.
+
+#### Scenario: Continuing from an adapter artifact without an explicit mode
+- **WHEN** `peft.continue_from` is set
+- **AND** `peft.continue_mode` is unset
+- **THEN** the run MUST behave as strict continuation from that artifact
+
+#### Scenario: Initializing from an artifact with changed settings
+- **WHEN** a user wants the current method config to define the run while
+  loading values from an existing adapter artifact
+- **THEN** the user MUST explicitly select the non-strict continuation mode

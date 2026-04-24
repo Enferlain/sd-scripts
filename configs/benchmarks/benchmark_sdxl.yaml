@@ -63,7 +63,7 @@ data:
 
 # ─── PEFT (adapter configuration) ───────────────────────────────────────────
 peft:
-  adapter_module: "library.adapters.lora"
+  method: lora
   lora:
     rank: 32
     alpha: 16.0

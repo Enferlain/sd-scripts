@@ -220,6 +220,80 @@ Alternatives considered:
   - Rejected because it would fork the adapter lifecycle contract without a
     clear need
 
+### 8. Adapter config will express user intent and translate into explicit runtime artifacts
+
+The forward adapter config surface will describe user intent rather than
+loader mechanics. `PeftMode` will remain the owner of translating that intent
+into runtime flow decisions, while method-local config is normalized into the
+existing repo-owned runtime request objects instead of being passed around as a
+large config bag.
+
+The intended user-facing model is:
+
+- `peft.method` selects the adapter method/runtime
+- `peft.<method>` contains method-local config for fresh construction
+- `peft.continue_from` means continue from an existing adapter artifact
+
+The forward design explicitly rejects compatibility-era implementation-shaped
+names such as `adapter_weights`, `adapter_rank_from_weights`,
+`adapter_args`, `base_weights`, and `base_weights_multiplier`. The design also
+rejects a separate `infer rank from weights` concept in the new user-facing
+surface.
+
+The translation boundary is:
+
+- method config is translated into
+  `AdapterRuntimeSpec(adapter_type, settings)`
+- flow config is translated into a `PeftMode`-owned continuation/load/merge
+  plan
+- metadata-only fields stay out of adapter runtime config
+
+This means adapter runtimes consume normalized method-local settings from
+`request.adapter.settings` plus resolved targets and model context. They do
+not receive raw Hydra/dataclass config objects directly. Method-local config
+dataclasses live beside the adapter method implementations, and `PeftConfig`
+only wires first-class method subtrees into the typed PEFT shell.
+
+For continuation behavior, the default meaning of `continue_from` is strict
+continuation from the artifact. If a user wants to continue from an existing
+artifact while intentionally changing settings, that must be an explicit
+opt-in continuation policy. The design rejects silently choosing whether
+"artifact wins" or "current config wins". That precedence must be explicit in
+both config and code.
+
+Dynamic `peft.adapter_args` is not part of the forward method-settings surface.
+It may remain visible only as a legacy reference point during migration, but
+new method settings must be expressed through the active method subtree.
+
+`PeftMode` remains the owner of flow choice:
+
+- build fresh
+- continue from artifact
+
+But `PeftMode` should not grow a large hand-written per-method translation
+switch if method-local normalization can instead be owned by adapter-method
+registration or translator code.
+
+Rationale:
+
+- User-facing config should answer intent clearly: what method is being
+  trained, whether the run is fresh/continuation/pre-merge, and what method
+  settings define a fresh adapter
+- The runtime boundary is already explicit and should consume normalized
+  request objects, not broad config containers
+- Strict continuation by default avoids silent precedence surprises when
+  loading an existing artifact
+- Keeping metadata concerns separate prevents adapter config from turning into
+  a generic artifact/logging bucket
+- Requiring `peft.method` plus validation of the active method subtree keeps
+  the selected adapter unambiguous
+
+Trade-off:
+
+- Pre-training adapter merge remains valid as model preparation behavior, but
+  it is not settled as part of the forward adapter method config surface in
+  this change.
+
 ## Risks / Trade-offs
 
 - [Module-target selection may be designed too narrowly for only `loha`] →
@@ -238,6 +312,12 @@ Alternatives considered:
 - [Config direction could drift back toward adapter-owned target policy] →
   Keep module-target configuration under optimization ownership and leave
   adapter-method settings focused on method behavior
+- [Continuation behavior could become implicit or precedence could be guessed]
+  → Default `continue_from` to strict continuation and require an explicit
+  user-controlled override mode for "continue with changed settings"
+- [Dynamic legacy args could become a second method-settings surface] →
+  Require forward config to use `peft.<method>` fields and reject
+  `peft.adapter_args` as a runtime settings source
 - [The first slice could be misread as defining all absorbed methods as
   module-only] → State explicitly that `loha` is the first module-resolved
   consumer and leave finer-grained binding semantics for later slices
@@ -273,12 +353,10 @@ Rollback strategy:
 - When the next absorbed method needs parameter-granular binding rather than
   only module-resolved realization, what additional shared target fields are
   actually proven necessary?
-- Does the first repo-owned `loha` path need a new user-facing method-selection
-  config surface right away, or can it temporarily ride the existing
-  compatibility shell while the broader method-config direction is still being
-  settled?
 - What naming helper shape is sufficient for the first build/from-weights
   round-trip without prematurely standardizing all future absorbed methods?
+- Where should pre-training adapter merge live once the broader
+  artifact-initialization / model-preparation config design is settled?
 - For `loha` specifically, what parts of the current vendor `LohaModule`
   behavior should be copied directly into a repo-owned implementation versus
   intentionally reshaped to better fit the repo's runtime contracts?

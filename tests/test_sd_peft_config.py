@@ -20,6 +20,7 @@ def test_sd_peft_config_loading():
         assert "training" in cfg
 
         # Check defaults
+        assert cfg.peft.method == "lora"
         assert "lora" in cfg.peft
         assert cfg.peft.lora.alpha == 1.0
         assert cfg.peft.orthograd_targets[0] == "lora_down.weight"

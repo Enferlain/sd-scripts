@@ -3,9 +3,8 @@
 # ═══════════════════════════════════════════════════════════════════════════
 # EXAMPLE: SDXL LoRA/LyCORIS Training Config
 # ═══════════════════════════════════════════════════════════════════════════
-# Usage: python scripts/sdxl_peft.py --config-name=presets/sdxl_peft +experiment=examples/example
-# The script (sdxl_peft.py) determines the training method - no need for a
-# "method" field. This file shows user overrides on top of defaults.
+# Usage: python train.py --config-name=presets/sdxl_peft +experiment=examples/example
+# This file shows user overrides on top of the shared PEFT defaults.
 
 # ─── MODE ───────────────────────────────────────────────────────────────────
 mode: peft
@@ -42,12 +41,11 @@ data:
 
 # ─── PEFT (adapter configuration) ───────────────────────────────────────────
 peft:
-  adapter_module: "lycoris.kohya"
-  adapter_args: ["algo=loha", "preset=full"]
-  lora:
+  method: loha
+  loha:
     rank: 32
     alpha: 16
-    conv_rank: 16
+    use_tucker: true
 
 # ─── OPTIMIZER ──────────────────────────────────────────────────────────────
 optimizer:

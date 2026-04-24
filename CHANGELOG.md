@@ -14,6 +14,17 @@ Rules:
 
 ### Changed
 
+- **Adapter method config ownership now lives in method registration instead of a transitional bridge module** — The active PEFT config translation path now treats method registration as the source of truth for method-local config identity and runtime-settings translation, so adding a new repo-owned method no longer requires updating hidden parallel config maps beside the registry.
+  - Added repo-owned method-local config translators under `library/adapters/methods/peft/lora/config.py` and `library/adapters/methods/peft/loha/config.py`.
+  - Extended `AdapterMethodRegistration` with method-config ownership metadata and replaced `library/adapters/config_bridge.py` with `library/adapters/method_configs.py`, which now builds runtime specs and validation views from registration-owned config bindings instead of `_METHOD_CONFIG_NAMES` / `_METHOD_CONFIG_TYPES` tables.
+  - Updated PEFT mode, training metadata, validation, and runtime-registry tests to use the registration-owned method-config system.
+
+- **The forward PEFT config surface is now intent-shaped instead of loader-shaped** — Active adapter config now centers on `peft.method`, method-local config subtrees, and explicit continuation intent, while old loader-mechanics fields remain only as a thin normalization shim during the transition.
+  - Added typed repo-owned `PeftLohaConfig` plus forward `peft.continue_from` / `peft.continue_mode` config fields, and moved `training_comment` into generic output metadata ownership.
+  - Added adapter config translation helpers so `PeftMode` now resolves the selected method, normalizes method-local settings into `AdapterRuntimeSpec`, and chooses strict continuation vs `initialize_from_artifact` flow without passing raw config bags into adapter runtimes.
+  - Updated centralized config validation to reject ambiguous active/inactive method subtrees and to fail fast when strict continuation is combined with config-defined method settings.
+  - Updated active smoke/benchmark/example configs plus focused config/mode/metadata tests to use the new forward PEFT surface by default while keeping the old fields only as compatibility shims.
+
 - **`loha` is now a fully repo-owned method implementation instead of a repo-owned runtime around vendored LyCORIS algorithm code** — The `peft/loha` method folder now owns the LoHa module behavior, state-dict reconstruction, and export/merge handling in repo code, while the runtime layer remains a thin orchestrator over the repo-owned implementation.
   - Added repo-owned `LohaModule` and state-dict helpers under `library/adapters/methods/peft/loha/` and removed the runtime dependency on vendored `library.vendor.lycoris.lycoris.modules.loha.LohaModule`.
   - Updated the `loha` runtime to build, load, save, and merge through the repo-owned method implementation instead of vendored module-class helpers.

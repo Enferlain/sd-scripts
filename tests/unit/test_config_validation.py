@@ -442,7 +442,7 @@ class TestValidateConfig:
         cfg = OmegaConf.create(
             {
                 "mode": "peft",
-                "peft": {"lora": {"rank": 16}},
+                "peft": {"method": "lora", "lora": {"rank": 16}},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
                     "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
@@ -531,6 +531,84 @@ class TestValidateConfig:
         """Textual inversion mode should fail when its section is missing."""
         cfg = make_validate_cfg({"mode": "textual_inversion", "model": {"model_type": "sdxl"}})
         with pytest.raises(ValueError, match="mode=textual_inversion requires a `textual_inversion` section"):
+            validate_config(cfg)
+
+    def test_peft_strict_continue_rejects_active_method_settings(self):
+        """Strict continuation should reject config-defined method settings."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "peft",
+                "peft": {
+                    "method": "lora",
+                    "continue_from": "adapter.safetensors",
+                    "continue_mode": "strict",
+                    "lora": {"rank": 16},
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="peft\\.continue_mode='strict' treats the artifact as authoritative"):
+            validate_config(cfg)
+
+    def test_peft_continue_from_defaults_to_strict_mode(self):
+        """Continuation defaults to strict mode when no override is requested."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "peft",
+                "peft": {
+                    "method": "lora",
+                    "continue_from": "adapter.safetensors",
+                },
+            }
+        )
+
+        validate_config(cfg)
+
+    def test_peft_rejects_legacy_adapter_args_as_forward_surface(self):
+        """Dynamic adapter args should not be a method-settings path."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "peft",
+                "peft": {
+                    "method": "loha",
+                    "adapter_args": ["use_scalar=True"],
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="peft\\.adapter_args is no longer part of the forward adapter config surface"):
+            validate_config(cfg)
+
+    def test_peft_initialize_from_artifact_allows_active_method_settings(self):
+        """Non-strict continuation should allow config-defined method settings."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "peft",
+                "peft": {
+                    "method": "lora",
+                    "continue_from": "adapter.safetensors",
+                    "continue_mode": "initialize_from_artifact",
+                    "lora": {"rank": 16},
+                },
+            }
+        )
+
+        validate_config(cfg)
+
+    def test_peft_rejects_nondefault_inactive_method_subtree(self):
+        """Only the selected method subtree should carry active settings."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "peft",
+                "peft": {
+                    "method": "lora",
+                    "lora": {"rank": 16},
+                    "loha": {"use_scalar": True},
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="other method config subtrees also have non-default values: loha"):
             validate_config(cfg)
 
     def test_adaptive_noise_scale_requires_noise_offset(self):

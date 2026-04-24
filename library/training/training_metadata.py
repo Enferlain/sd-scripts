@@ -8,6 +8,7 @@ This includes training configuration, dataset statistics, and provenance informa
 import json
 import os
 
+from library.adapters.method_configs import get_method_config, resolve_adapter_method_registration
 from library.constants import SS_METADATA_MINIMUM_KEYS
 from library.data import DatasetManifest, compute_tag_frequency
 from library.objectives import ObjectiveDefinition, build_objective
@@ -130,12 +131,14 @@ def create_training_metadata(
 
     # PEFT-specific metadata (omitted entirely for non-PEFT modes)
     if hasattr(cfg, "peft") and cfg.peft is not None:
-        lora_config = cfg.peft.lora
-        metadata["ss_adapter_module"] = cfg.peft.adapter_module
-        metadata["ss_adapter_rank"] = lora_config.rank
-        metadata["ss_adapter_alpha"] = lora_config.alpha
-        metadata["ss_adapter_neuron_dropout"] = lora_config.dropout
-        metadata["ss_training_comment"] = cfg.peft.training_comment
+        registration = resolve_adapter_method_registration(cfg.peft)
+        _registration, method_config = get_method_config(cfg.peft)
+        metadata_config = getattr(cfg.output, "metadata", None)
+        metadata["ss_adapter_module"] = registration.legacy_module_path
+        metadata["ss_adapter_rank"] = getattr(method_config, "rank", None)
+        metadata["ss_adapter_alpha"] = getattr(method_config, "alpha", None)
+        metadata["ss_adapter_neuron_dropout"] = getattr(method_config, "dropout", None)
+        metadata["ss_training_comment"] = getattr(metadata_config, "training_comment", None)
         metadata["ss_scale_weight_norms"] = cfg.peft.scale_weight_norms
 
     # Compute tag frequency from manifest

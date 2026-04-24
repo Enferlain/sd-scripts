@@ -15,10 +15,17 @@ Usage:
 """
 
 import ast
+from contextlib import suppress
 import fnmatch
 import logging
 import re
 
+from library.adapters.method_configs import (
+    get_inactive_method_config_values,
+    get_nondefault_method_config_values,
+    resolve_adapter_method_registration,
+)
+from library.config.dataclasses.peft import VALID_PEFT_CONTINUE_MODES
 from library.models.parameter_dump import resolve_component_names
 from library.optimization.grouping import resolve_learning_rate_groups
 from library.optimization.optimizer_utils import should_train_text_encoder
@@ -302,6 +309,52 @@ def _validate_mode_config(cfg) -> None:
         raise ValueError("mode=finetune cannot be used with `peft` or `textual_inversion` sections.")
 
 
+def _validate_peft_config(cfg) -> None:
+    """Validate the active PEFT config surface and continuation intent."""
+
+    peft_cfg = _get_optional_attr(cfg, "peft")
+    if peft_cfg is None:
+        return
+
+    try:
+        registration = resolve_adapter_method_registration(peft_cfg)
+    except (KeyError, ValueError) as exc:
+        raise ValueError(str(exc)) from exc
+
+    continue_mode = getattr(peft_cfg, "continue_mode", None)
+    if continue_mode is not None and continue_mode not in VALID_PEFT_CONTINUE_MODES:
+        raise ValueError(
+            f"peft.continue_mode must be one of {list(VALID_PEFT_CONTINUE_MODES)}, got {continue_mode!r}"
+        )
+
+    continue_from = getattr(peft_cfg, "continue_from", None)
+    if continue_from is None and continue_mode is not None:
+        raise ValueError("peft.continue_mode can only be set explicitly when peft.continue_from is also set.")
+    effective_continue_mode = continue_mode or "strict"
+
+    legacy_adapter_args = getattr(peft_cfg, "adapter_args", None)
+    if legacy_adapter_args:
+        raise ValueError(
+            "peft.adapter_args is no longer part of the forward adapter config surface. "
+            f"Move those settings under peft.{registration.name}."
+        )
+
+    inactive_method_values = get_inactive_method_config_values(peft_cfg, active_method=registration.name)
+    if inactive_method_values:
+        inactive_methods = ", ".join(sorted(inactive_method_values))
+        raise ValueError(
+            f"peft.method={registration.name!r} is active, but other method config subtrees also have non-default values: {inactive_methods}."
+        )
+
+    if continue_from is not None and effective_continue_mode == "strict":
+        active_method_values = get_nondefault_method_config_values(peft_cfg, registration.name)
+        if active_method_values:
+            raise ValueError(
+                f"peft.continue_mode='strict' treats the artifact as authoritative. "
+                f"Remove active peft.{registration.name} settings or use continue_mode='initialize_from_artifact'."
+            )
+
+
 # =============================================================================
 # Auto-fixups (mutate config)
 # =============================================================================
@@ -345,6 +398,23 @@ def prepare_config(cfg) -> None:
             lr_cfg.denoiser = lr_cfg.base
         if lr_cfg.text_encoders is None:
             lr_cfg.text_encoders = lr_cfg.base
+
+        peft_cfg = _get_optional_attr(cfg, "peft")
+        if peft_cfg is not None:
+            legacy_module = getattr(peft_cfg, "adapter_module", None)
+            if getattr(peft_cfg, "method", None) is None and legacy_module:
+                with suppress(KeyError, ValueError):
+                    peft_cfg.method = resolve_adapter_method_registration(peft_cfg).name
+
+        legacy_continue_from = getattr(peft_cfg, "adapter_weights", None)
+        if getattr(peft_cfg, "continue_from", None) is None and legacy_continue_from is not None:
+            peft_cfg.continue_from = legacy_continue_from
+            peft_cfg.continue_mode = "strict" if getattr(peft_cfg, "adapter_rank_from_weights", False) else "initialize_from_artifact"
+
+        legacy_training_comment = getattr(peft_cfg, "training_comment", None)
+        metadata_cfg = _get_optional_attr(cfg, "output", "metadata")
+        if metadata_cfg is not None and getattr(metadata_cfg, "training_comment", None) is None and legacy_training_comment is not None:
+            metadata_cfg.training_comment = legacy_training_comment
 
     _normalize_edm2_loss_config(cfg)
 
@@ -572,6 +642,7 @@ def validate_config(cfg) -> None:
 
     _validate_validation_config(cfg)
     _validate_mode_config(cfg)
+    _validate_peft_config(cfg)
     _validate_model_profile_config(cfg)
     _validate_timestep_config(cfg)
 

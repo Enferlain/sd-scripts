@@ -1,3 +1,3 @@
-from .runtime import create_adapter, create_adapter_from_weights
+"""Repo-owned LoRA adapter method package."""
 
-__all__ = ["create_adapter", "create_adapter_from_weights"]
+__all__: list[str] = []

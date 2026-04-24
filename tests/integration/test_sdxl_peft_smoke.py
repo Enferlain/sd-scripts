@@ -137,11 +137,12 @@ def mock_cfg():
     cfg.loss.huber.huber_c = None
 
     # PEFT config
+    cfg.peft.method = "lora"
     cfg.peft.lora.rank = 4
     cfg.peft.lora.alpha = 1.0
     cfg.peft.lora.dropout = 0.0
-    cfg.peft.adapter_module = "lora"
-    cfg.peft.training_comment = None
+    cfg.peft.continue_from = None
+    cfg.peft.continue_mode = "strict"
     cfg.peft.adapter_args = None
     cfg.peft.scale_weight_norms = None
 
@@ -156,6 +157,7 @@ def mock_cfg():
     # Output config
     cfg.output.saving.output_name = "test_model"
     cfg.output.saving.hash_algorithm = "sha256"
+    cfg.output.metadata.training_comment = None
 
     # Model config
     cfg.model.pretrained_model_name_or_path = None

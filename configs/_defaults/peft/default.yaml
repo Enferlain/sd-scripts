@@ -1,18 +1,15 @@
 # @package peft
 
 # Active PEFT config surface.
-# LoRA method settings live under `peft.lora`. Top-level `peft.*` fields are
-# reserved for PEFT-shell orchestration concerns like module selection,
-# checkpoint inputs, and merge behavior.
+# User-facing PEFT config should express intent:
+# - `method` selects the adapter runtime
+# - `continue_from` / `continue_mode` choose continuation behavior
+# - method-local settings live under `peft.<method>`
 
-adapter_weights: null
-adapter_module: null
-adapter_args: null
-adapter_rank_from_weights: false
+method: lora
+continue_from: null
+continue_mode: null
 scale_weight_norms: null
-base_weights: null
-base_weights_multiplier: null
-training_comment: null
 # Left over on purpose as a legacy reference surface for later orthograd
 # follow-up. The active repo-owned PEFT path does not currently consume it.
 orthograd_targets:
@@ -52,3 +49,28 @@ lora:
   loraplus_lr_ratio: null
   loraplus_unet_lr_ratio: null
   loraplus_text_encoder_lr_ratio: null
+
+loha:
+  rank: null
+  alpha: 1.0
+  dropout: null
+  rank_dropout: null
+  module_dropout: null
+  use_tucker: false
+  use_scalar: false
+  rank_dropout_scale: false
+  weight_decompose: false
+  wd_on_output: true
+  bypass_mode: null
+  rs_lora: false
+
+# Compatibility-only normalization shim. These are no longer the forward PEFT
+# config interface and should only remain long enough to keep old configs
+# booting during the transition.
+adapter_module: null
+adapter_args: null
+adapter_weights: null
+adapter_rank_from_weights: false
+base_weights: null
+base_weights_multiplier: null
+training_comment: null

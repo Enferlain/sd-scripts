@@ -80,6 +80,7 @@ sampling:
   sample_flow_shift: null
 
 metadata:
+  training_comment: null
   metadata_title: null
   metadata_author: null
   metadata_description: null

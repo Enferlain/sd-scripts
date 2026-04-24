@@ -133,7 +133,7 @@ def mock_training_config():
 @pytest.fixture
 def mock_adapter_config():
     """Create a basic PeftConfig for testing."""
-    config = PeftConfig(adapter_module="adapters.lora")
+    config = PeftConfig(method="lora")
     config.lora.rank = 4
     config.lora.alpha = 1.0
     return config

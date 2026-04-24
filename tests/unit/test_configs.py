@@ -65,7 +65,8 @@ class TestConfigInstantiation:
         config = PeftConfig()
         assert config is not None
         assert hasattr(config, "lora")
-        assert hasattr(config, "adapter_module")
+        assert hasattr(config, "method")
+        assert hasattr(config, "loha")
         assert hasattr(config.lora, "rank")
         assert hasattr(config.lora, "alpha")
 
@@ -157,9 +158,10 @@ class TestConfigDefaults:
     def test_adapter_config_defaults(self):
         """Test PeftConfig default values."""
         config = PeftConfig()
+        assert config.method is None
         assert config.lora.rank is None
         assert config.lora.alpha == 1.0
-        assert config.adapter_module is None  # None by default
+        assert config.loha.rank is None
         assert config.orthograd_targets is not None
         assert config.orthograd_targets[0] == "lora_down.weight"
 
@@ -257,6 +259,7 @@ class TestHydraComposition:
         assert "data" in cfg
         assert "training" in cfg
         assert cfg.model.model_type == "sd15"
+        assert cfg.peft.method == "lora"
 
     def test_internal_default_config_composition(self, hydra_ctx):
         """Test the internal full-schema default baseline."""
@@ -294,6 +297,7 @@ class TestHydraComposition:
         assert "optimizer" in cfg
         assert "sdxl" not in cfg
         assert cfg.model.model_type == "sdxl"
+        assert cfg.peft.method == "lora"
 
     def test_sdxl_peft_edm2_preset_composition(self, hydra_ctx):
         """Test the dedicated SDXL PEFT EDM2 preset."""
@@ -322,7 +326,7 @@ class TestHydraComposition:
         """Test the runnable adaptive_log_snr test config."""
         cfg = compose(config_name="tests/test_adaptive_log_snr_sdxl_peft")
         assert cfg is not None
-        assert cfg.mode == "peft"
+        assert cfg.mode == "finetune"
         assert cfg.model.model_type == "sdxl"
         assert cfg.timestep.timestep_sampling == "adaptive_log_snr"
         assert cfg.timestep.adaptive_log_snr.prior_weight == 0.25
@@ -332,7 +336,7 @@ class TestHydraComposition:
         """Test the runnable log_snr_uniform test config."""
         cfg = compose(config_name="tests/test_log_snr_uniform_sdxl_peft")
         assert cfg is not None
-        assert cfg.mode == "peft"
+        assert cfg.mode == "finetune"
         assert cfg.model.model_type == "sdxl"
         assert cfg.timestep.timestep_sampling == "log_snr_uniform"
         assert cfg.output.saving.output_name == "test_log_snr_uniform_sdxl_peft"

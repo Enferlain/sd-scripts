@@ -20,6 +20,9 @@ def _build_mock_trainer():
     cfg = SimpleNamespace(
         model=SimpleNamespace(model_type="sdxl"),
         peft=SimpleNamespace(
+            method="lora",
+            continue_from=None,
+            continue_mode="strict",
             lora=SimpleNamespace(
                 rank=None,
                 alpha=1.0,
@@ -40,7 +43,21 @@ def _build_mock_trainer():
                 loraplus_unet_lr_ratio=None,
                 loraplus_text_encoder_lr_ratio=None,
             ),
-            adapter_module="library.adapters.lora",
+            loha=SimpleNamespace(
+                rank=None,
+                alpha=1.0,
+                dropout=None,
+                rank_dropout=None,
+                module_dropout=None,
+                use_tucker=False,
+                use_scalar=False,
+                rank_dropout_scale=False,
+                weight_decompose=False,
+                wd_on_output=True,
+                bypass_mode=None,
+                rs_lora=False,
+            ),
+            adapter_module=None,
             base_weights=None,
             base_weights_multiplier=None,
             adapter_args=None,
@@ -88,8 +105,7 @@ def test_prepare_trainables_builds_resolved_targets_before_adapter_instantiation
         include_denoiser=False,
     )
 
-    def fake_build_adapter_for_legacy_module(module_path, request):
-        captured["module_path"] = module_path
+    def fake_build_adapter(request):
         captured["request"] = request
         return adapter
 
@@ -101,11 +117,11 @@ def test_prepare_trainables_builds_resolved_targets_before_adapter_instantiation
             train_any_text_encoder=True,
         ),
     )
-    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", fake_build_adapter_for_legacy_module)
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter", fake_build_adapter)
 
     PeftMode().prepare_trainables(trainer)
 
-    assert captured["module_path"] == "library.adapters.lora"
+    assert captured["request"].adapter.adapter_type == "lora"
     assert captured["request"].resolved_targets is resolved_targets
     assert trainer._train_text_encoder is True
     assert trainer._train_denoiser is False
@@ -130,8 +146,7 @@ def test_prepare_trainables_prefers_nested_lora_config_surface(monkeypatch):
         include_denoiser=False,
     )
 
-    def fake_build_adapter_for_legacy_module(module_path, request):
-        captured["module_path"] = module_path
+    def fake_build_adapter(request):
         captured["request"] = request
         return adapter
 
@@ -143,7 +158,7 @@ def test_prepare_trainables_prefers_nested_lora_config_surface(monkeypatch):
             train_any_text_encoder=True,
         ),
     )
-    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", fake_build_adapter_for_legacy_module)
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter", fake_build_adapter)
 
     PeftMode().prepare_trainables(trainer)
 
@@ -218,7 +233,7 @@ def test_prepare_trainables_rejects_legacy_built_in_optimizer_policy_before_adap
         ),
     )
     build_mock = MagicMock()
-    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", build_mock)
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter", build_mock)
 
     with pytest.raises(NotImplementedError, match="peft\\.lora\\.down_lr_weight"):
         PeftMode().prepare_trainables(trainer)
@@ -228,7 +243,8 @@ def test_prepare_trainables_rejects_legacy_built_in_optimizer_policy_before_adap
 
 def test_prepare_trainables_loads_adapter_weights_through_repo_owned_export_seam(monkeypatch):
     trainer = _build_mock_trainer()
-    trainer.cfg.peft.adapter_weights = "adapter.safetensors"
+    trainer.cfg.peft.continue_from = "adapter.safetensors"
+    trainer.cfg.peft.continue_mode = "initialize_from_artifact"
     adapter = MagicMock()
     adapter.apply_to = MagicMock()
     resolved_targets = build_component_root_targets(
@@ -249,7 +265,7 @@ def test_prepare_trainables_loads_adapter_weights_through_repo_owned_export_seam
             train_any_text_encoder=True,
         ),
     )
-    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", lambda *_: adapter)
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter", lambda *_: adapter)
 
     def fake_load_adapter_export(target_adapter, request):
         captured["adapter"] = target_adapter
@@ -266,8 +282,8 @@ def test_prepare_trainables_loads_adapter_weights_through_repo_owned_export_seam
 
 def test_prepare_trainables_builds_from_weights_runtime_with_optimization_owned_targets(monkeypatch):
     trainer = _build_mock_trainer()
-    trainer.cfg.peft.adapter_rank_from_weights = True
-    trainer.cfg.peft.adapter_weights = "adapter.safetensors"
+    trainer.cfg.peft.continue_from = "adapter.safetensors"
+    trainer.cfg.peft.continue_mode = "strict"
     adapter = MagicMock()
     adapter.apply_to = MagicMock()
     resolved_targets = build_component_root_targets(
@@ -293,11 +309,10 @@ def test_prepare_trainables_builds_from_weights_runtime_with_optimization_owned_
         ),
     )
     monkeypatch.setattr(
-        "library.training.modes.peft_mode.build_adapter_from_weights_for_legacy_module",
-        lambda module_path, request, weights_path: (
+        "library.training.modes.peft_mode.build_adapter_from_weights",
+        lambda request, weights_path: (
             captured.update(
                 {
-                    "module_path": module_path,
                     "request": request,
                     "weights_path": weights_path,
                     "loaded_runtime": loaded_runtime,
@@ -306,14 +321,9 @@ def test_prepare_trainables_builds_from_weights_runtime_with_optimization_owned_
             or loaded_runtime
         ),
     )
-    monkeypatch.setattr(
-        "library.training.modes.peft_mode.load_adapter_export",
-        lambda target_adapter, request: captured.update({"loaded_export_adapter": target_adapter, "loaded_export_request": request}),
-    )
-
     PeftMode().prepare_trainables(trainer)
 
-    assert captured["module_path"] == "library.adapters.lora"
+    assert captured["request"].adapter.adapter_type == "lora"
     assert captured["request"].resolved_targets is resolved_targets
     assert captured["request"].context.for_inference is False
     assert captured["weights_path"] == "adapter.safetensors"
@@ -324,8 +334,9 @@ def test_prepare_trainables_builds_from_weights_runtime_with_optimization_owned_
 
 def test_prepare_trainables_supports_registered_loha_runtime_with_module_targets(monkeypatch):
     trainer = _build_mock_trainer()
-    trainer.cfg.peft.adapter_module = "library.adapters.loha"
-    trainer.cfg.peft.adapter_args = ["use_scalar=True", "bypass_mode=True"]
+    trainer.cfg.peft.method = "loha"
+    trainer.cfg.peft.loha.use_scalar = True
+    trainer.cfg.peft.loha.bypass_mode = True
     trainer.text_encoders = [torch.nn.Sequential(torch.nn.Linear(4, 4, bias=False)), object()]
     trainer._text_encoder = trainer.text_encoders
     trainer.denoiser = torch.nn.Sequential(torch.nn.Linear(4, 4, bias=False))
@@ -350,16 +361,14 @@ def test_prepare_trainables_supports_registered_loha_runtime_with_module_targets
         ),
     )
 
-    def fake_build_adapter_for_legacy_module(module_path, request):
-        captured["module_path"] = module_path
+    def fake_build_adapter(request):
         captured["request"] = request
         return adapter
 
-    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", fake_build_adapter_for_legacy_module)
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter", fake_build_adapter)
 
     PeftMode().prepare_trainables(trainer)
 
-    assert captured["module_path"] == "library.adapters.loha"
     assert captured["request"].adapter.adapter_type == "loha"
     assert captured["request"].resolved_targets is resolved_targets
     assert captured["request"].adapter.settings["use_scalar"] is True
@@ -392,7 +401,7 @@ def test_prepare_trainables_merges_base_weights_through_repo_owned_merge_seam(mo
             train_any_text_encoder=True,
         ),
     )
-    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter_for_legacy_module", lambda *_: adapter)
+    monkeypatch.setattr("library.training.modes.peft_mode.build_adapter", lambda *_: adapter)
 
     loaded_runtime = LoadedAdapterRuntime(
         adapter="merge-adapter",
@@ -401,11 +410,10 @@ def test_prepare_trainables_merges_base_weights_through_repo_owned_merge_seam(mo
     )
 
     monkeypatch.setattr(
-        "library.training.modes.peft_mode.build_adapter_from_weights_for_legacy_module",
-        lambda module_path, request, weights_path: (
+        "library.training.modes.peft_mode.build_adapter_from_weights",
+        lambda request, weights_path: (
             captured.update(
                 {
-                    "merge_module_path": module_path,
                     "merge_request": request,
                     "weights_path": weights_path,
                     "loaded_runtime": loaded_runtime,

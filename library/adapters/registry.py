@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .methods.peft.loha.config import CONFIG_BINDING as LOHA_CONFIG_BINDING
+from .methods.peft.lora.config import CONFIG_BINDING as LORA_CONFIG_BINDING
 from .types import AdapterMethodRegistration
 
 
@@ -10,11 +12,13 @@ _BUILTIN_ADAPTER_METHODS = (
         # though the repo-owned runtime lives under adapters.methods.
         legacy_module_path="library.adapters.loha",
         runtime_module_path="library.adapters.methods.peft.loha.runtime",
+        config_binding=LOHA_CONFIG_BINDING,
     ),
     AdapterMethodRegistration(
         name="lora",
         legacy_module_path="library.adapters.lora",
         runtime_module_path="library.adapters.methods.peft.lora.runtime",
+        config_binding=LORA_CONFIG_BINDING,
     ),
     # Left over on purpose as legacy bridges. The current adapter-system task
     # is centered on the LoRA-shaped path; Dylora/OFT will be revisited from

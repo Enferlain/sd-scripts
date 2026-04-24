@@ -116,6 +116,7 @@ class SamplingConfig:
 class MetadataConfig:
     """Model metadata settings."""
 
+    training_comment: str | None = field(default=None, metadata={"help": "Arbitrary training comment stored in artifact metadata"})
     metadata_title: str | None = field(default=None, metadata={"help": "Title for model metadata (default is output_name)"})
     metadata_author: str | None = field(default=None, metadata={"help": "Author name for model metadata"})
     metadata_description: str | None = field(default=None, metadata={"help": "Description for model metadata"})
