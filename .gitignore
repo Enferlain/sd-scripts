@@ -63,3 +63,8 @@ tests/test_cache/
 implementation_plan.md
 walkthrough.md
 papers/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
