@@ -1,5 +1,8 @@
-## ADDED Requirements
+# optimization-target-refs Specification
 
+## Purpose
+TBD - created by archiving change shared-optimization-target-refs. Update Purpose after archive.
+## Requirements
 ### Requirement: Shared optimization target refs
 The optimization layer SHALL define a shared target-reference model that can
 represent component, module, and parameter targets.
@@ -65,3 +68,4 @@ fine-tune or adapter grouping behavior.
 - **WHEN** adapter trainable refs are grouped for optimizer construction
 - **THEN** grouping MUST continue to use component learning-rate policy unless a
   later change defines adapter-specific group selector behavior
+
