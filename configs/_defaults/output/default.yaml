@@ -35,6 +35,11 @@ logging:
   log_every_n_steps: 1
   log_timestep_distribution_every_n_steps: null
   live_plot_port: null
+  benchmark_report:
+    enabled: false
+    output_dir: null
+    filename_prefix: benchmark_report
+    include_full_config: true
   resource_monitor:
     enabled: false
     mode: off

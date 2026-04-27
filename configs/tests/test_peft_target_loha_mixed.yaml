@@ -1,8 +1,13 @@
 # @package _global_
 # ═══════════════════════════════════════════════════════════════════════════
-# SDXL PEFT Integration Test: Resource Monitor (Sampled)
+# SDXL PEFT Integration Test: LoHa Mixed Targeting
 # ═══════════════════════════════════════════════════════════════════════════
-# Usage: python -m scripts.sdxl_peft --config-name=tests/test_peft_resource_sampled
+# Usage: python train.py --config-name=tests/test_peft_target_loha_mixed
+#
+# Purpose:
+# - exercise the repo-owned LoHa runtime on real module-resolved targets
+# - target the denoiser plus the second text encoder
+# - disable TE-output caching so the TE path can train
 
 defaults:
   - /tests/test_core
@@ -10,7 +15,7 @@ defaults:
 
 output:
   saving:
-    output_name: "test_peft_resource_sampled"
+    output_name: "test_peft_target_loha_mixed"
   logging:
     benchmark_report:
       enabled: true
@@ -20,28 +25,24 @@ output:
       rank_scope: "main"
       log_every_n_steps: 0
       sample_interval_sec: 0.5
-      output_jsonl: "resource_monitor.jsonl"
+      output_jsonl: "resource_monitor_target_loha_mixed.jsonl"
 
-# optimizer:
-#   optimizer_type: "CPUOffloadOptimizer"
-#   max_grad_norm: 1.0
-#   optimizer_args:
-#     - "base_optimizer_type=adabelief"
-#     - "weight_decay=0.01"
-#     - "betas=0.95, 0.997"
-#     - "wrapper.offload_gradients=false"
-#     - "wrapper.minimal_size=4096"
-#   learning_rates:
-#     base: 1e-4
-#     denoiser: 1e-5
-#     text_encoders: [0, 0]
-#   scheduler:
-#     lr_scheduler: "constant"
+data:
+  caching:
+    cache_text_encoder_outputs: false
+    cache_text_encoder_outputs_to_disk: false
+
+peft:
+  method: "loha"
+  loha:
+    rank: 32
+    alpha: 16.0
+    use_scalar: true
+    bypass_mode: true
 
 optimizer:
-  optimizer_type: AdamW8bit
+  optimizer_type: "AdamW8bit"
   learning_rates:
     base: null
-    denoiser: null
-    text_encoders: [0.0, 0.0]
-    groups_file: configs/tmp_groups.yaml
+    denoiser: 1e-4
+    text_encoders: [0.0, 1e-4]

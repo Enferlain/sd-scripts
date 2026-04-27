@@ -12,6 +12,8 @@ output:
   saving:
     output_name: "test_peft_resource_basic"
   logging:
+    benchmark_report:
+      enabled: true
     resource_monitor:
       enabled: true
       mode: "basic"

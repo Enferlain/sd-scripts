@@ -13,7 +13,12 @@ from torch import nn
 from library.adapters.shared import AdapterTrainableParameterRef, get_trainable_parameter_refs
 from library.adapters.runtime.targets import AdapterResolvedTargets, build_component_module_targets
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, LearningRatesConfig
-from library.models.parameter_dump import NamedParameterComponentNames, build_selector_name
+from library.models.parameter_dump import NamedParameterComponentNames
+from library.optimization.targets import (
+    OptimizationTargetRef,
+    build_parameter_target_ref,
+    resolve_parameter_owner_modules,
+)
 from library.optimization.types import (
     LogicalParameterGroup,
     ParameterGroup,
@@ -40,11 +45,27 @@ class GroupingResult:
 class NamedParameterRef:
     """Resolved live parameter with a stable full name for matching."""
 
-    component_key: str
-    component_label: str
-    local_name: str
-    full_name: str
-    param: nn.Parameter
+    target_ref: OptimizationTargetRef
+
+    @property
+    def component_key(self) -> str:
+        return self.target_ref.component_key
+
+    @property
+    def component_label(self) -> str:
+        return self.target_ref.component
+
+    @property
+    def local_name(self) -> str:
+        return self.target_ref.path
+
+    @property
+    def full_name(self) -> str:
+        return self.target_ref.selector
+
+    @property
+    def param(self) -> nn.Parameter:
+        return self.target_ref.obj
 
 
 @dataclass(slots=True)
@@ -129,9 +150,7 @@ def _load_learning_rate_groups_file(groups_file: str) -> list[LearningRateGroupC
     elif isinstance(loaded, dict) and "groups" in loaded:
         raw_groups = loaded["groups"]
     else:
-        raise ValueError(
-            "optimizer.learning_rates.groups_file must contain either a top-level list of groups or a top-level 'groups' list"
-        )
+        raise ValueError("optimizer.learning_rates.groups_file must contain either a top-level list of groups or a top-level 'groups' list")
 
     if not isinstance(raw_groups, list):
         raise ValueError("optimizer.learning_rates.groups_file must define groups as a list")
@@ -154,8 +173,7 @@ def resolve_learning_rate_groups(learning_rates: LearningRatesConfig) -> list[Le
         return _load_learning_rate_groups_file(groups_file)
 
     return [
-        _coerce_learning_rate_group_config(group, f"optimizer.learning_rates.groups[{index}]")
-        for index, group in enumerate(inline_groups)
+        _coerce_learning_rate_group_config(group, f"optimizer.learning_rates.groups[{index}]") for index, group in enumerate(inline_groups)
     ]
 
 
@@ -269,6 +287,30 @@ def build_adapter_grouping(
     return GroupingResult(execution_groups=execution_groups, logical_groups=logical_groups)
 
 
+def _build_component_parameter_refs(
+    *,
+    component_key: str,
+    component_label: str,
+    root_module: nn.Module,
+    tags: frozenset[str],
+) -> list[NamedParameterRef]:
+    owner_modules = resolve_parameter_owner_modules(root_module)
+    return [
+        NamedParameterRef(
+            target_ref=build_parameter_target_ref(
+                component=component_label,
+                component_key=component_key,
+                path=name,
+                parameter=param,
+                owner_module_path=owner_modules.get(id(param), (None, None))[0],
+                owner_module_type=owner_modules.get(id(param), (None, None))[1],
+                tags=tags | frozenset({"parameter_target"}),
+            )
+        )
+        for name, param in root_module.named_parameters()
+    ]
+
+
 def _collect_component_named_parameters(
     *,
     denoiser: nn.Module | None,
@@ -279,16 +321,12 @@ def _collect_component_named_parameters(
 
     if denoiser is not None:
         public_denoiser_label = component_names.denoiser_name if component_names is not None else "denoiser"
-        component_params["denoiser"] = [
-            NamedParameterRef(
-                "denoiser",
-                public_denoiser_label,
-                name,
-                build_selector_name(public_denoiser_label, name),
-                param,
-            )
-            for name, param in denoiser.named_parameters()
-        ]
+        component_params["denoiser"] = _build_component_parameter_refs(
+            component_key="denoiser",
+            component_label=public_denoiser_label,
+            root_module=denoiser,
+            tags=frozenset({"denoiser"}),
+        )
 
     for index, text_encoder in enumerate(text_encoders):
         internal_label = f"text_encoder{index + 1}"
@@ -297,16 +335,12 @@ def _collect_component_named_parameters(
             if component_names is not None and index < len(component_names.text_encoder_names)
             else internal_label
         )
-        component_params[internal_label] = [
-            NamedParameterRef(
-                internal_label,
-                public_label,
-                name,
-                build_selector_name(public_label, name),
-                param,
-            )
-            for name, param in text_encoder.named_parameters()
-        ]
+        component_params[internal_label] = _build_component_parameter_refs(
+            component_key=internal_label,
+            component_label=public_label,
+            root_module=text_encoder,
+            tags=frozenset({"text_encoder"}),
+        )
 
     return component_params
 
@@ -389,8 +423,7 @@ def resolve_finetune_selection(
             selected_param_ids.add(id(ref.param))
 
     selected_by_component = {
-        label: [ref for ref in refs if id(ref.param) in selected_param_ids]
-        for label, refs in component_params.items()
+        label: [ref for ref in refs if id(ref.param) in selected_param_ids] for label, refs in component_params.items()
     }
     return FinetuneSelection(selected_by_component=selected_by_component)
 

@@ -1,5 +1,8 @@
-## ADDED Requirements
+# adapter-system Specification
 
+## Purpose
+TBD - created by archiving change adapter-system-rework. Update Purpose after archive.
+## Requirements
 ### Requirement: Optimization-owned adapter targeting
 The adapter-training architecture SHALL treat optimization as the owner of
 model-side targeting policy for adapter training.
@@ -156,3 +159,4 @@ mutation inside unrelated preparation stages.
 - **WHEN** mode-layer code changes adapter state during orchestration
 - **THEN** that state change MUST be visible as a deliberate lifecycle action
   rather than as a side effect of a helper whose primary job is something else
+

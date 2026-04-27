@@ -24,6 +24,27 @@ def _infer_text_encoder_key(lora_name: str, component_labels: dict[str, str]) ->
     return available_text_encoders[0]
 
 
+def _filter_text_encoder_context(request: AdapterBuildRequest):
+    """Preserve TE slot numbering while masking encoders outside resolved targets."""
+    text_encoders = request.context.model.text_encoder
+    if not isinstance(text_encoders, list):
+        return text_encoders
+
+    selected_keys = {
+        target.component_key
+        for target in request.resolved_targets.targets
+        if target.component_key.startswith("text_encoder")
+    }
+    if not selected_keys:
+        return []
+
+    filtered_text_encoders = []
+    for index, text_encoder in enumerate(text_encoders, start=1):
+        component_key = f"text_encoder{index}"
+        filtered_text_encoders.append(text_encoder if component_key in selected_keys else None)
+    return filtered_text_encoders
+
+
 def _attach_trainable_ref_provider(adapter, request: AdapterBuildRequest):
     def describe_trainable_parameter_refs() -> list[AdapterTrainableParameterRef]:
         component_labels = _resolve_component_labels(adapter.adapter_resolved_targets)
@@ -46,6 +67,10 @@ def _attach_trainable_ref_provider(adapter, request: AdapterBuildRequest):
                         component=component_label,
                         component_key=component_key,
                         target_path=lora.lora_name,
+                        # The legacy built-in wrapper does not retain enough
+                        # module-level identity to recover exact shared target
+                        # provenance here during the migration.
+                        source_target_ref=None,
                     )
                 )
 
@@ -62,13 +87,14 @@ def create_adapter(request: AdapterBuildRequest):
     adapter_rank = settings.pop("adapter_rank", None)
     adapter_alpha = settings.pop("adapter_alpha", None)
     neuron_dropout = settings.pop("neuron_dropout", None)
+    text_encoder = _filter_text_encoder_context(request)
 
     adapter = legacy_lora.create_adapter(
         request.context.multiplier,
         adapter_rank,
         adapter_alpha,
         request.context.model.vae,
-        request.context.model.text_encoder,
+        text_encoder,
         request.context.model.denoiser,
         neuron_dropout=neuron_dropout,
         **settings,
@@ -84,12 +110,13 @@ def create_adapter_from_weights(request: AdapterBuildRequest, weights_path: str)
     settings.pop("adapter_rank", None)
     settings.pop("adapter_alpha", None)
     settings.pop("neuron_dropout", None)
+    text_encoder = _filter_text_encoder_context(request)
 
     adapter, weights_sd = legacy_lora.create_adapter_from_weights(
         request.context.multiplier,
         weights_path,
         request.context.model.vae,
-        request.context.model.text_encoder,
+        text_encoder,
         request.context.model.denoiser,
         for_inference=request.context.for_inference,
         **settings,

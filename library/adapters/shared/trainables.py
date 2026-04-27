@@ -6,6 +6,8 @@ from typing import Any, Protocol, runtime_checkable
 
 from torch import nn
 
+from library.optimization.targets import OptimizationTargetRef
+
 
 @dataclass(slots=True)
 class AdapterTrainableParameterRef:
@@ -17,6 +19,7 @@ class AdapterTrainableParameterRef:
     component: str
     component_key: str
     target_path: str
+    source_target_ref: OptimizationTargetRef | None = None
 
 
 @runtime_checkable

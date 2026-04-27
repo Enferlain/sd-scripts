@@ -640,6 +640,12 @@ def validate_config(cfg) -> None:
             "Disable TE output caching, or set text_encoders LR to 0 and remove TE-targeting groups."
         )
 
+    if cfg.mode == "peft" and resolve_learning_rate_groups(cfg.optimizer.learning_rates):
+        raise ValueError(
+            "optimizer.learning_rates.groups and groups_file are currently supported only for fine-tune mode. "
+            "Remove groups/groups_file or switch mode to finetune."
+        )
+
     _validate_validation_config(cfg)
     _validate_mode_config(cfg)
     _validate_peft_config(cfg)

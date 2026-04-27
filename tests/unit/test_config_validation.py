@@ -1067,6 +1067,21 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="Cannot train text encoder parameters while TE output caching is enabled"):
             validate_config(cfg)
 
+    def test_peft_mode_rejects_learning_rate_groups(self):
+        """PEFT mode should fail early when fine-tune-only LR groups are configured."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "peft",
+                "optimizer": {
+                    "learning_rates": {
+                        "groups": [{"name": "unet_probe", "lr": 1e-5, "match": ["unet.*"]}],
+                    }
+                },
+            }
+        )
+        with pytest.raises(ValueError, match="currently supported only for fine-tune mode"):
+            validate_config(cfg)
+
     def test_edm2_laplace_flag_fails_fast(self):
         """Dormant EDM2 Laplace timestep weighting should fail fast instead of silently doing nothing."""
         cfg = make_validate_cfg({"loss": {"edm2": {"laplace_timestep_sampling": True}}})

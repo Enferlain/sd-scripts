@@ -21,6 +21,7 @@ from torch import nn
 
 from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.logging.resource_monitor import create_resource_monitor
+from library.logging.run_report import is_benchmark_report_enabled, write_run_report
 from library.objectives import ObjectiveDefinition, build_objective
 from library.objectives.base import ObjectiveRuntime
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
@@ -187,6 +188,8 @@ class Trainer:
 
     def train(self) -> None:
         """Main training entry point. Orchestrates all phases."""
+        succeeded = False
+        error_message: str | None = None
         try:
             self.setup()
             self.run_caching()
@@ -199,9 +202,18 @@ class Trainer:
             self.run_training_loop()
 
             self._finalize_training()
+            succeeded = True
+        except Exception as exc:
+            error_message = str(exc)
+            raise
         finally:
             if self._resource_monitor is not None:
                 self._resource_monitor.end_session()
+            if self.is_main_process and is_benchmark_report_enabled(self.cfg):
+                try:
+                    write_run_report(self, succeeded=succeeded, error_message=error_message)
+                except Exception as exc:  # pragma: no cover - best-effort reporting
+                    logger.warning("Failed to write benchmark report: %s", exc)
 
     # =========================================================================
     # Phase Methods - Delegate to phase functions

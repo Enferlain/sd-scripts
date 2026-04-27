@@ -5,8 +5,12 @@ from typing import Any
 
 from torch import nn
 
-from library.models.parameter_dump import build_selector_name
 from library.models.parameter_dump import resolve_component_names
+from library.optimization.targets import (
+    OptimizationTargetRef,
+    build_component_target_ref,
+    build_module_target_ref,
+)
 
 
 # The first module-targeting slice intentionally stays on common weight-bearing
@@ -25,14 +29,46 @@ _ADAPTER_TARGET_MODULE_TYPES = (
 
 @dataclass(slots=True)
 class AdapterResolvedTarget:
-    """Adapter-facing view of one resolved original-model target."""
+    """Adapter-facing view of one resolved original-model target.
 
-    component: str
-    component_key: str
-    path: str
-    module: Any
+    `path` intentionally remains the public component-qualified selector for
+    compatibility with existing adapter callers. Use `local_path` when code
+    needs the component-local module path carried by the shared target ref.
+    """
+
+    target_ref: OptimizationTargetRef
     tags: frozenset[str] = field(default_factory=frozenset)
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def component(self) -> str:
+        return self.target_ref.component
+
+    @property
+    def component_key(self) -> str:
+        return self.target_ref.component_key
+
+    @property
+    def path(self) -> str:
+        """Compatibility selector path such as ``unet.to_q``."""
+        return self.target_ref.selector
+
+    @property
+    def selector(self) -> str:
+        return self.target_ref.selector
+
+    @property
+    def local_path(self) -> str:
+        """Component-local module path such as ``to_q``."""
+        return self.target_ref.path
+
+    @property
+    def module(self) -> Any:
+        return self.target_ref.obj
+
+    @property
+    def module_type(self) -> str | None:
+        return self.target_ref.module_type
 
 
 @dataclass(slots=True)
@@ -45,19 +81,13 @@ class AdapterResolvedTargets:
 
 def _build_resolved_target(
     *,
-    component: str,
-    component_key: str,
-    path: str,
-    module: Any,
+    target_ref: OptimizationTargetRef,
     tags: frozenset[str],
 ) -> AdapterResolvedTarget:
     return AdapterResolvedTarget(
-        component=component,
-        component_key=component_key,
-        path=path,
-        module=module,
+        target_ref=target_ref,
         tags=tags,
-        metadata={"component_key": component_key},
+        metadata={"component_key": target_ref.component_key},
     )
 
 
@@ -74,10 +104,13 @@ def _iter_component_module_targets(
     if not isinstance(root_module, nn.Module):
         return [
             _build_resolved_target(
-                component=component,
-                component_key=component_key,
-                path=component,
-                module=root_module,
+                target_ref=build_module_target_ref(
+                    component=component,
+                    component_key=component_key,
+                    path="",
+                    module=root_module,
+                    tags=tags | frozenset({"component_root"}),
+                ),
                 tags=tags | frozenset({"component_root"}),
             )
         ]
@@ -87,7 +120,6 @@ def _iter_component_module_targets(
         if not isinstance(module, _ADAPTER_TARGET_MODULE_TYPES):
             continue
 
-        selector_path = build_selector_name(component, local_name)
         module_tags = tags | frozenset({"module_target"})
         # A selected component can itself be a targetable module (for example a
         # standalone Linear used in focused tests). Mark that edge case
@@ -96,10 +128,13 @@ def _iter_component_module_targets(
             module_tags = module_tags | frozenset({"component_root"})
         targets.append(
             _build_resolved_target(
-                component=component,
-                component_key=component_key,
-                path=selector_path,
-                module=module,
+                target_ref=build_module_target_ref(
+                    component=component,
+                    component_key=component_key,
+                    path=local_name,
+                    module=module,
+                    tags=module_tags,
+                ),
                 tags=module_tags,
             )
         )
@@ -135,10 +170,12 @@ def build_component_root_targets(
         )
         targets.append(
             _build_resolved_target(
-                component=public_label,
-                component_key=f"text_encoder{index + 1}",
-                path=public_label,
-                module=text_encoder,
+                target_ref=build_component_target_ref(
+                    component=public_label,
+                    component_key=f"text_encoder{index + 1}",
+                    obj=text_encoder,
+                    tags=frozenset({"component_root", "text_encoder"}),
+                ),
                 tags=frozenset({"component_root", "text_encoder"}),
             )
         )
@@ -147,10 +184,12 @@ def build_component_root_targets(
         public_label = component_names.vae_name if component_names is not None else "vae"
         targets.append(
             _build_resolved_target(
-                component=public_label,
-                component_key="vae",
-                path=public_label,
-                module=vae,
+                target_ref=build_component_target_ref(
+                    component=public_label,
+                    component_key="vae",
+                    obj=vae,
+                    tags=frozenset({"component_root", "vae"}),
+                ),
                 tags=frozenset({"component_root", "vae"}),
             )
         )
@@ -159,10 +198,12 @@ def build_component_root_targets(
         public_label = component_names.denoiser_name if component_names is not None else "denoiser"
         targets.append(
             _build_resolved_target(
-                component=public_label,
-                component_key="denoiser",
-                path=public_label,
-                module=denoiser,
+                target_ref=build_component_target_ref(
+                    component=public_label,
+                    component_key="denoiser",
+                    obj=denoiser,
+                    tags=frozenset({"component_root", "denoiser"}),
+                ),
                 tags=frozenset({"component_root", "denoiser"}),
             )
         )

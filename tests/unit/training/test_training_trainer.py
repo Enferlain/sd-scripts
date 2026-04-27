@@ -120,6 +120,64 @@ class TestTrainer(unittest.TestCase):
         mock_monitor.end_session.assert_called_once()
         self.trainer._finalize_training.assert_not_called()
 
+    @patch("library.training.runners.trainer.write_run_report")
+    def test_train_writes_enabled_benchmark_report_after_monitor_closes(self, mock_write_run_report):
+        """Benchmark reports should be written after final resource events are flushed."""
+        mock_monitor = MagicMock()
+        call_order: list[str] = []
+        mock_monitor.end_session.side_effect = lambda: call_order.append("end_session")
+        mock_write_run_report.side_effect = lambda *_args, **_kwargs: call_order.append("write_run_report")
+        self.cfg.output.logging.benchmark_report.enabled = True
+
+        self.trainer._resource_monitor = None
+        self.trainer.setup = MagicMock()
+        self.trainer.run_caching = MagicMock()
+        self.trainer.prepare_models = MagicMock()
+        self.trainer.prepare_optimizer = MagicMock()
+        self.trainer._initialize_training_run_state = MagicMock()
+        self.trainer._run_startup_eval_actions = MagicMock()
+        self.trainer.run_training_loop = MagicMock()
+        self.trainer._finalize_training = MagicMock()
+
+        def assign_monitor():
+            self.trainer._resource_monitor = mock_monitor
+
+        self.trainer.setup.side_effect = assign_monitor
+
+        self.trainer.train()
+
+        mock_monitor.end_session.assert_called_once()
+        mock_write_run_report.assert_called_once_with(self.trainer, succeeded=True, error_message=None)
+        self.assertEqual(call_order, ["end_session", "write_run_report"])
+
+    @patch("library.training.runners.trainer.write_run_report")
+    def test_train_writes_failure_benchmark_report_when_enabled(self, mock_write_run_report):
+        """Enabled benchmark reports should capture the failure state without swallowing the exception."""
+        mock_monitor = MagicMock()
+        self.cfg.output.logging.benchmark_report.enabled = True
+
+        self.trainer._resource_monitor = None
+        self.trainer.setup = MagicMock()
+        self.trainer.run_caching = MagicMock()
+        self.trainer.prepare_models = MagicMock()
+        self.trainer.prepare_optimizer = MagicMock()
+        self.trainer._initialize_training_run_state = MagicMock()
+        self.trainer._run_startup_eval_actions = MagicMock()
+        self.trainer.run_training_loop = MagicMock(side_effect=RuntimeError("training failed"))
+        self.trainer._finalize_training = MagicMock()
+
+        def assign_monitor():
+            self.trainer._resource_monitor = mock_monitor
+
+        self.trainer.setup.side_effect = assign_monitor
+
+        with self.assertRaisesRegex(RuntimeError, "training failed"):
+            self.trainer.train()
+
+        mock_monitor.end_session.assert_called_once()
+        mock_write_run_report.assert_called_once_with(self.trainer, succeeded=False, error_message="training failed")
+        self.trainer._finalize_training.assert_not_called()
+
     def test_run_startup_eval_actions_validation_only_skips_sampling(self):
         """Startup validation should not force startup sampling."""
         self.trainer._accelerator = MagicMock()

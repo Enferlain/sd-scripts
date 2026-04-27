@@ -49,6 +49,16 @@ class ResourceMonitorConfig:
 
 
 @dataclass
+class BenchmarkReportConfig:
+    """Benchmark-style Markdown/JSON run report settings."""
+
+    enabled: bool = field(default=False, metadata={"help": "Write a benchmark-style run report at the end of training"})
+    output_dir: str | None = field(default=None, metadata={"help": "Optional report output directory (default: output.saving.output_dir)"})
+    filename_prefix: str = field(default="benchmark_report", metadata={"help": "Report filename prefix"})
+    include_full_config: bool = field(default=True, metadata={"help": "Include the full resolved Hydra config in the Markdown report"})
+
+
+@dataclass
 class LoggingConfig:
     """Logging and tracking settings."""
 
@@ -68,6 +78,7 @@ class LoggingConfig:
         default=None, metadata={"help": "Save timesteps distribution chart every N steps"}
     )
     live_plot_port: int | None = field(default=None, metadata={"help": "Launch live interactive dashboard server on this port"})
+    benchmark_report: BenchmarkReportConfig = field(default_factory=BenchmarkReportConfig)
     resource_monitor: ResourceMonitorConfig = field(default_factory=ResourceMonitorConfig)
 
 

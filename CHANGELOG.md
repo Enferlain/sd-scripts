@@ -10,6 +10,17 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-26]
+
+### Changed
+
+- **Optimization and adapter targeting now share one repo-owned target-provenance model across component, module, and parameter selection** — The active fine-tune and PEFT paths still keep their different lifecycle sequencing, but they now carry the same selector-stable target identity and richer provenance through optimization-owned refs instead of splitting long-term target vocabulary between grouping code and adapter runtime internals.
+  - Added `library/optimization/targets.py` with shared component/module/parameter target refs, helper constructors, canonical component-qualified selectors, module-type capture, and owner-module provenance for parameter targets.
+  - Updated `library/optimization/grouping.py` so fine-tune parameter collection now builds shared parameter target refs while preserving existing selector strings and grouping behavior.
+  - Updated `library/adapters/runtime/targets.py` so adapter-facing resolved targets wrap shared optimization target refs while keeping compatibility fields like `component`, `component_key`, `path`, and `module` available to current runtimes.
+  - Updated repo-owned adapter trainable refs so LoHa now preserves real source module-target provenance, while the legacy built-in LoRA wrapper keeps that provenance explicitly unset where exact module identity cannot be recovered from the compatibility runtime.
+  - Added focused unit coverage for target-ref construction, owner-module provenance, selector stability, adapter module-type provenance, and the unchanged fine-tune / adapter grouping behavior, including PEFT mode and parameter-dump helper verification.
+
 ## [2026-04-23]
 
 ### Changed

@@ -72,17 +72,11 @@ class LohaAdapterRuntime(nn.Module):
             if not module.algo_check(state_dict, module.lora_name):
                 missing_keys.append(module.lora_name)
                 continue
-            required_keys = {
-                key: f"{module.lora_name}.{key}"
-                for key in module.required_export_weight_keys
-            }
+            required_keys = {key: f"{module.lora_name}.{key}" for key in module.required_export_weight_keys}
             if any(full_key not in state_dict for full_key in required_keys.values()):
                 missing_keys.append(module.lora_name)
                 continue
-            weights = {
-                key: state_dict[full_key]
-                for key, full_key in required_keys.items()
-            }
+            weights = {key: state_dict[full_key] for key, full_key in required_keys.items()}
             for optional_key in module.export_weight_keys:
                 if optional_key in weights:
                     continue
@@ -113,6 +107,7 @@ def _attach_trainable_ref_provider(adapter: LohaAdapterRuntime, request: Adapter
                         component=target.component,
                         component_key=target.component_key,
                         target_path=target.path,
+                        source_target_ref=target.target_ref,
                     )
                 )
         return refs

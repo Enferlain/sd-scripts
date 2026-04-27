@@ -1,0 +1,39 @@
+# @package _global_
+# ═══════════════════════════════════════════════════════════════════════════
+# SDXL PEFT Integration Test: Text Encoder 2 Only Targeting
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage: python train.py --config-name=tests/test_peft_target_text_encoder2_only
+#
+# Purpose:
+# - isolate optimization-owned PEFT targeting on the second text encoder
+# - disable TE-output caching so TE training is valid
+# - provide a simple config for clip_g-only adapter selection checks
+
+defaults:
+  - /tests/test_core
+  - _self_
+
+output:
+  saving:
+    output_name: "test_peft_target_text_encoder2_only"
+  logging:
+    resource_monitor:
+      enabled: true
+      mode: "sampled"
+      rank_scope: "main"
+      log_every_n_steps: 0
+      sample_interval_sec: 0.5
+      output_jsonl: "resource_monitor_target_text_encoder2_only.jsonl"
+
+data:
+  caching:
+    cache_text_encoder_outputs: false
+    cache_text_encoder_outputs_to_disk: false
+
+optimizer:
+  optimizer_type: "AdamW8bit"
+  learning_rates:
+    base: null
+    denoiser: 0.0
+    text_encoders: [0.0, 1e-4]
+

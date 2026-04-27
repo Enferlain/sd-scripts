@@ -82,8 +82,14 @@ class TestAdapterRegistry:
             "unet.to_q",
             "unet.conv",
         ]
+        assert [target.local_path for target in resolved_targets.targets] == [
+            "proj",
+            "norm",
+            "to_q",
+            "conv",
+        ]
 
-    def test_registered_runtime_preserves_full_model_context_and_attaches_resolved_targets(self, monkeypatch):
+    def test_registered_runtime_filters_text_encoder_context_to_resolved_targets(self, monkeypatch):
         from library.adapters.methods.peft.lora import runtime as lora_runtime
 
         clip_l = object()
@@ -124,10 +130,60 @@ class TestAdapterRegistry:
         adapter = build_adapter_for_legacy_module("library.adapters.lora", request)
 
         assert captured["vae"] == "vae"
-        assert captured["text_encoder"] == [clip_l, clip_g]
+        assert captured["text_encoder"] == [None, clip_g]
         assert captured["denoiser"] is unet
         assert captured["kwargs"]["dropout"] == 0.1
         assert adapter.adapter_resolved_targets is request.resolved_targets
+
+    def test_registered_runtime_filters_weight_build_text_encoder_context(self, monkeypatch):
+        from library.adapters.methods.peft.lora import runtime as lora_runtime
+
+        clip_l = object()
+        clip_g = object()
+        unet = object()
+        captured = {}
+
+        def fake_legacy_create_adapter_from_weights(multiplier, file, vae, text_encoder, denoiser, for_inference=False, **kwargs):
+            captured["multiplier"] = multiplier
+            captured["file"] = file
+            captured["vae"] = vae
+            captured["text_encoder"] = text_encoder
+            captured["denoiser"] = denoiser
+            captured["for_inference"] = for_inference
+            captured["kwargs"] = kwargs
+            return types.SimpleNamespace(), {"weights": "state"}
+
+        monkeypatch.setattr(lora_runtime.legacy_lora, "create_adapter_from_weights", fake_legacy_create_adapter_from_weights)
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="lora",
+                settings={"adapter_rank": 8, "adapter_alpha": 16.0, "neuron_dropout": 0.1, "dropout": 0.1},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae="vae", text_encoder=[clip_l, clip_g], denoiser=unet),
+                for_inference=False,
+            ),
+            resolved_targets=build_component_root_targets(
+                model_type="sdxl",
+                text_encoders=[clip_l, clip_g],
+                vae=None,
+                denoiser=unet,
+                include_text_encoders=[False, True],
+                include_denoiser=True,
+            ),
+        )
+
+        loaded_runtime = build_adapter_from_weights_for_legacy_module(
+            "library.adapters.lora",
+            request,
+            "weights.safetensors",
+        )
+
+        assert captured["vae"] == "vae"
+        assert captured["text_encoder"] == [None, clip_g]
+        assert captured["denoiser"] is unet
+        assert captured["file"] == "weights.safetensors"
+        assert loaded_runtime.adapter.adapter_resolved_targets is request.resolved_targets
 
     def test_registered_runtime_exposes_repo_owned_trainable_refs(self, monkeypatch):
         from library.adapters.methods.peft.lora import runtime as lora_runtime
@@ -179,6 +235,7 @@ class TestAdapterRegistry:
             "lora_unet_input_blocks_1_attn_proj.lora_up.weight",
         ]
         assert refs[2].component_key == "denoiser"
+        assert all(ref.source_target_ref is None for ref in refs)
 
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()
@@ -373,13 +430,13 @@ class TestAdapterRegistry:
 
         assert adapter.adapter_resolved_targets is resolved_targets
         assert all(isinstance(module, LohaModule) for module in adapter.loha_modules)
-        assert {module.__class__.__module__ for module in adapter.loha_modules} == {
-            "library.adapters.methods.peft.loha.module"
-        }
+        assert {module.__class__.__module__ for module in adapter.loha_modules} == {"library.adapters.methods.peft.loha.module"}
         assert {module.adapter_target.path for module in adapter.loha_modules} == {"clip_l.proj", "unet.to_q"}
         assert {ref.component for ref in refs} == {"clip_l", "unet"}
         assert {ref.component_key for ref in refs} == {"text_encoder1", "denoiser"}
         assert {ref.target_path for ref in refs} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.source_target_ref.selector for ref in refs if ref.source_target_ref is not None} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.source_target_ref.module_type for ref in refs if ref.source_target_ref is not None} == {"Linear"}
         assert all("norm" not in ref.target_path for ref in refs)
 
     def test_registered_loha_runtime_round_trips_export_and_merge(self, tmp_path):

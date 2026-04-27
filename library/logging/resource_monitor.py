@@ -97,6 +97,9 @@ class ResourceMonitor(Protocol):
         deepspeed_zero_stage: int | None = None,
     ) -> None: ...
 
+    @property
+    def jsonl_path(self) -> Path | None: ...
+
 
 class NoOpResourceMonitor:
     """Strict no-op resource monitor used when mode is off."""
@@ -126,6 +129,10 @@ class NoOpResourceMonitor:
     ) -> None:
         _ = deepspeed_enabled, deepspeed_zero_stage
         return
+
+    @property
+    def jsonl_path(self) -> Path | None:
+        return None
 
 
 class BasicResourceMonitor:
@@ -179,6 +186,10 @@ class BasicResourceMonitor:
         self._git_dirty = git_dirty if isinstance(git_dirty, bool) else None
 
         self._warned_once: set[str] = set()
+
+    @property
+    def jsonl_path(self) -> Path | None:
+        return self._jsonl_path
 
     def _normalize_metadata_value(self, value: object) -> str | None:
         if value is None:

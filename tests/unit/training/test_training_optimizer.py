@@ -15,6 +15,7 @@ from library.optimization.grouping import (
     build_adapter_grouping,
     build_finetune_grouping,
     resolve_adapter_target_selection,
+    resolve_finetune_selection,
     resolve_finetune_trainability,
     resolve_learning_rate_groups,
 )
@@ -865,6 +866,18 @@ class TestOptimizerUtils:
             "unet.to_q",
             "unet.conv",
         ]
+        assert [target.module_type for target in selection.resolved_targets.targets] == [
+            "Linear",
+            "LayerNorm",
+            "Linear",
+            "Conv2d",
+        ]
+        assert [target.target_ref.kind for target in selection.resolved_targets.targets] == [
+            "module",
+            "module",
+            "module",
+            "module",
+        ]
 
     def test_build_adapter_grouping_uses_repo_owned_trainable_refs(self):
         """Adapter grouping should consume repo-owned refs instead of legacy optimizer hooks."""
@@ -944,6 +957,37 @@ class TestOptimizerUtils:
         assert [group.metric_name for group in grouping.logical_groups] == ["clip_l", "unet"]
         assert [group.lr for group in grouping.logical_groups] == [5e-5, 2e-4]
         assert all("norm" not in name for group in grouping.execution_groups for name in group.metadata["param_names"])
+
+    def test_resolve_finetune_selection_preserves_parameter_target_refs(self):
+        """Fine-tune selection should keep shared parameter provenance without changing selector strings."""
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.attn_proj = torch.nn.Linear(4, 4)
+                self.other = torch.nn.Linear(4, 4)
+
+        selection = resolve_finetune_selection(
+            denoiser=DummyDenoiser(),
+            text_encoders=[],
+            learning_rates=LearningRatesConfig(base=None, denoiser=None),
+            groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["unet.*attn*"])],
+            component_names=NamedParameterComponentNames(
+                text_encoder_names=("clip_l", "clip_g"),
+                vae_name="vae",
+                denoiser_name="unet",
+            ),
+        )
+
+        refs = selection.selected_by_component["denoiser"]
+        selector_names = {ref.full_name for ref in refs}
+        assert selector_names == {"unet.attn_proj.weight", "unet.attn_proj.bias"}
+
+        weight_ref = next(ref for ref in refs if ref.local_name == "attn_proj.weight")
+        assert weight_ref.target_ref.kind == "parameter"
+        assert weight_ref.target_ref.selector == "unet.attn_proj.weight"
+        assert weight_ref.target_ref.owner_module_path == "attn_proj"
+        assert weight_ref.target_ref.owner_module_type == "Linear"
 
     def test_build_adapter_grouping_rejects_malformed_text_encoder_component_key(self):
         """Adapter grouping should require explicit repo-owned component identities."""

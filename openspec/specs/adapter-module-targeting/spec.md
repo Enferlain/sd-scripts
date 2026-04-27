@@ -1,5 +1,8 @@
-## ADDED Requirements
+# adapter-module-targeting Specification
 
+## Purpose
+TBD - created by archiving change adapter-module-targeting-and-loha-spike. Update Purpose after archive.
+## Requirements
 ### Requirement: Optimization-owned adapter module targeting
 The adapter training architecture SHALL treat optimization as the owner of
 concrete module targeting derived from shared model structure for adapter runs.
@@ -144,3 +147,4 @@ mode.
 - **WHEN** a user wants the current method config to define the run while
   loading values from an existing adapter artifact
 - **THEN** the user MUST explicitly select the non-strict continuation mode
+
