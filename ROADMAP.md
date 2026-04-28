@@ -31,7 +31,7 @@ until their runtime path is migrated.
 - `library/strategies/shared/` - genuinely shared strategy-owned behavior
 - `library/strategies/sd/`, `library/strategies/sdxl/` - representative family strategy facets
 - `library/training/runners/` - Trainer orchestration
-- `library/training/modes/` - TrainingMode plugins (PeftMode, FineTuneMode)
+- `library/training/modes/` - TrainingMode plugins (AdapterMode, FineTuneMode)
 - `library/training/phases/` - Phase functions (setup, caching, model_prep, optimizer, training_loop)
 - `library/training/` - Model-agnostic utilities (checkpointing.py, sample_generation.py)
 
@@ -65,7 +65,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 - [x] **Pattern-based optimizer groups** — Regex/glob-based param grouping for fine-grained LR control. Same mode-agnostic approach as block LR.
 - [ ] **Fused optimizer groups** — Multi-optimizer support with `fused_backward_pass` (per-parameter backward hooks). Complex multi-optimizer logic from legacy `sdxl_finetune.py`.
-- [ ] **PEFT module/param breakdown** — Per-component (unet, TE) module and parameter counts in training diagnostics for PEFT mode. Requires an optional adapter protocol method (`get_diagnostics_components()`) that each adapter type implements to report its own per-component allocation. `PeftMode` already has the `hasattr` hook ready — just needs adapter-side implementations. Deferred because adapter internals vary (LoRA, LyCORIS, OFT) and LyCORIS is still external.
+- [ ] **PEFT module/param breakdown** — Per-component (unet, TE) module and parameter counts in training diagnostics for Adapter mode. Requires an optional adapter protocol method (`get_diagnostics_components()`) that each adapter type implements to report its own per-component allocation. `AdapterMode` already has the `hasattr` hook ready — just needs adapter-side implementations. Deferred because adapter internals vary (LoRA, LyCORIS, OFT) and LyCORIS is still external.
 
 > [!IMPORTANT]
 > Keep fused/block/pattern paths explicitly fail-fast (as planned), so they don't silently behave differently. Only remove the guards when proper implementations are added.
@@ -114,14 +114,14 @@ Recent architecture and config settlements now belong in `CHANGELOG.md`; this se
   - The new conditioning facet now gives the concern a real home, but the return-shape convention is still intentionally loose and family-local while more model families are ported.
   - Prompt weighting / weighted captions still likely want to become a shared concern rather than a model-by-model accumulation of special cases, especially once cache-policy expectations are made explicit.
 - [ ] **Inspection/load seam follow-up** — The rebuilt model inspection tool can now ride `build_training_strategy(...).load_target_model(...)`, and dumps plus fine-grained optimizer matching now share one canonical public selector namespace (`component.local_name`). The remaining follow-up is that the tool still has to fabricate a tiny runtime config because there is no thinner inspection-neutral loading seam yet. Treat that as repo-flow follow-up work rather than teaching the tool or loaders new dump-specific APIs.
-- [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now and the repo has an initial SDXL PEFT preset/example, but the feature still needs real docs and clearer guidance on when to use it.
+- [ ] **EDM2 presence follow-up** — The runtime/config seam is cleaner now and the repo has an initial SDXL adapter preset/example under the current PEFT family, but the feature still needs real docs and clearer guidance on when to use it.
 - [ ] **Conditioning architecture follow-up** — Pressure-test the new `ConditioningStrategy` seam against more model families and decide whether any sub-conventions under `resolve_conditioning(...)` are mature enough to standardize.
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
 - [ ] **Regularization-image UX / docs note** — The current DreamBooth-style `reg_data_dir` / `is_reg` path is mechanically correct, but it only helps when those images are genuine class/prior images with matching generic captions or `class_tokens`, not just arbitrary extra images. Make sure future docs/examples call that out explicitly.
 - [ ] **Dashboard / logging system rework** — Fold the live plotter into a broader dashboard/logging system instead of treating it as a side system.
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **LyCORIS vendor / integration pass** — Treat LyCORIS as a vendor/integration ownership question rather than an external dependency question, since adapter breakdown follow-up depends on tighter ownership and easier modification.
-- [ ] **Adapter-system follow-up** — The active adapter rework now has optimization-owned target/grouping ownership, method-local PEFT config under an intent-shaped forward surface (`peft.method`, per-method subtrees, and explicit continuation intent), an explicit persistence split where `PeftMode` orchestrates checkpoint/export flows while adapter runtime objects participate through repo-owned persistence helpers, and a runtime-layer loaded-runtime/merge-request seam for the built-in from-weights and base-weight-merge flow. The remaining follow-up is broader adapter breadth, generic artifact-initialization / pre-merge config ownership, and LyCORIS/vendor integration work rather than reopening compatibility-era optimizer, persistence, or merge boundaries.
+- [ ] **Adapter-system follow-up** — The active adapter rework now has optimization-owned target/grouping ownership, method-local PEFT config under `adapter.peft.<method>` branch presence plus explicit continuation intent, an explicit persistence split where `AdapterMode` orchestrates checkpoint/export flows while adapter runtime objects participate through repo-owned persistence helpers, and a runtime-layer loaded-runtime/merge-request seam for the built-in from-weights and base-weight-merge flow. The remaining follow-up is broader adapter breadth, generic artifact-initialization / pre-merge config ownership, and LyCORIS/vendor integration work rather than reopening compatibility-era optimizer, persistence, or merge boundaries.
   - The shared target-ref foundation now also lives under `library/optimization/targets.py`, with fine-tune parameter refs and adapter module targets both carrying the same component-qualified selector and provenance model. Future module-type selectors or adapter-specific grouping work should extend that shared target vocabulary rather than reintroducing an adapter-only target surface.
 - [ ] **torchao pulled into the repo so it can be modified when wanted** — upstream is restrictive for offloading
 - [ ] **Future conditioning/data-flow experiments** — Later exploration area for better caption mutation, TE caching, on-the-fly CPU encoding, queues, async handoff, and related conditioning/data-flow improvements once the current building blocks are settled.
@@ -193,12 +193,12 @@ The `Trainer` + `TrainingMode` split is the active extensibility pattern for tra
 - `caching.py` — **100% shareable**
 - `training_loop.py` — **~95% shareable** (checkpoint calls go through `trainer.save_checkpoint()`)
 - `optimizer.py` — **~80% shareable** (param groups and `accelerator.prepare()` wrapping differ)
-- `model_prep.py` — **PEFT-specific** (adapter creation is inherently a PEFT concept)
+- `model_prep.py` — **Current-adapter-family-specific** (today that means PEFT-family adapter creation, not a generic future-adapter seam yet)
 
 ### Current Focus
 
 - `Trainer` + `TrainingMode` is settled as the active pattern.
-- `PeftMode` and `FineTuneMode` are both in place.
+- `AdapterMode` and `FineTuneMode` are both in place.
 - Shared phases already route divergent behavior through trainer/mode hooks.
 - Remaining work is follow-up cleanup: optimizer-group features, diagnostics, and removal of legacy wrappers once unmigrated paths are gone.
 

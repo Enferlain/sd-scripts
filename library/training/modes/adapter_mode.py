@@ -1,5 +1,5 @@
 """
-PeftMode — TrainingMode implementation for PEFT/adapter training.
+AdapterMode — TrainingMode implementation for PEFT/adapter training.
 
 This began as a direct extraction of adapter-specific logic that was previously
 inline in the phase files and trainer. The class now also owns the repo-owned
@@ -33,6 +33,7 @@ from library.adapters import (
 )
 from library.adapters.method_configs import (
     build_adapter_runtime_spec,
+    get_adapter_peft_config,
     parse_legacy_adapter_args,
     resolve_adapter_method_registration,
 )
@@ -62,21 +63,22 @@ _UNSUPPORTED_ADAPTER_OPTIMIZER_POLICY_KEYS = (
 
 @dataclass(slots=True)
 class PeftContinuationPlan:
-    """PeftMode-owned continuation plan derived from intent-shaped config."""
+    """AdapterMode-owned continuation plan derived from intent-shaped config."""
 
     continue_from: str | None
     continue_mode: str
 
 
-def _ensure_supported_adapter_optimizer_policy(cfg, net_kwargs: dict[str, Any] | None = None) -> None:
+def _ensure_supported_adapter_optimizer_policy(peft_config, net_kwargs: dict[str, Any] | None = None) -> None:
+    lora_config = getattr(peft_config, "lora", None)
     legacy_optimizer_policy_fields = {
-        "peft.lora.down_lr_weight": cfg.peft.lora.down_lr_weight,
-        "peft.lora.mid_lr_weight": cfg.peft.lora.mid_lr_weight,
-        "peft.lora.up_lr_weight": cfg.peft.lora.up_lr_weight,
-        "peft.lora.block_lr_zero_threshold": cfg.peft.lora.block_lr_zero_threshold,
-        "peft.lora.loraplus_lr_ratio": cfg.peft.lora.loraplus_lr_ratio,
-        "peft.lora.loraplus_unet_lr_ratio": cfg.peft.lora.loraplus_unet_lr_ratio,
-        "peft.lora.loraplus_text_encoder_lr_ratio": cfg.peft.lora.loraplus_text_encoder_lr_ratio,
+        "adapter.peft.lora.down_lr_weight": getattr(lora_config, "down_lr_weight", None),
+        "adapter.peft.lora.mid_lr_weight": getattr(lora_config, "mid_lr_weight", None),
+        "adapter.peft.lora.up_lr_weight": getattr(lora_config, "up_lr_weight", None),
+        "adapter.peft.lora.block_lr_zero_threshold": getattr(lora_config, "block_lr_zero_threshold", None),
+        "adapter.peft.lora.loraplus_lr_ratio": getattr(lora_config, "loraplus_lr_ratio", None),
+        "adapter.peft.lora.loraplus_unet_lr_ratio": getattr(lora_config, "loraplus_unet_lr_ratio", None),
+        "adapter.peft.lora.loraplus_text_encoder_lr_ratio": getattr(lora_config, "loraplus_text_encoder_lr_ratio", None),
     }
     active_fields = [name for name, value in legacy_optimizer_policy_fields.items() if value is not None]
     if active_fields:
@@ -105,7 +107,7 @@ def _build_continuation_plan(peft_config) -> PeftContinuationPlan:
 
     if continue_from is not None and continue_mode is None:
         raise ValueError(
-            "peft.continue_mode must be explicitly set when peft.continue_from is provided. "
+            "adapter.peft.continue_mode must be explicitly set when adapter.peft.continue_from is provided. "
             "Choose 'strict' or 'initialize_from_artifact'."
         )
     if continue_mode is None:
@@ -134,8 +136,8 @@ def _build_adapter_request(
     )
 
 
-class PeftMode:
-    """PEFT (LoRA/LyCORIS) training mode.
+class AdapterMode:
+    """Adapter (peft, other) training mode.
 
     Implements the ``TrainingMode`` protocol for adapter-based training while
     keeping training-side orchestration in the mode layer and leaving
@@ -158,10 +160,13 @@ class PeftMode:
         text_encoder = trainer._text_encoder
         text_encoders = trainer.text_encoders
         weight_dtype = trainer.weight_dtype
-        adapter_registration = resolve_adapter_method_registration(cfg.peft)
-        runtime_spec = build_adapter_runtime_spec(cfg.peft)
-        continuation_plan = _build_continuation_plan(cfg.peft)
-        legacy_adapter_args = parse_legacy_adapter_args(cfg.peft)
+        peft_config = get_adapter_peft_config(cfg)
+        if peft_config is None:
+            raise ValueError("mode=adapter requires adapter.peft config.")
+        adapter_registration = resolve_adapter_method_registration(peft_config)
+        runtime_spec = build_adapter_runtime_spec(peft_config)
+        continuation_plan = _build_continuation_plan(peft_config)
+        legacy_adapter_args = parse_legacy_adapter_args(peft_config)
 
         accelerator.print("adapter method:", adapter_registration.name)
 
@@ -175,12 +180,12 @@ class PeftMode:
         trainer._train_text_encoder = target_selection.train_any_text_encoder
 
         # Merge base weights if specified
-        if cfg.peft.base_weights is not None:
-            for i, weight_path in enumerate(cfg.peft.base_weights):
-                if cfg.peft.base_weights_multiplier is None or len(cfg.peft.base_weights_multiplier) <= i:
+        if peft_config.base_weights is not None:
+            for i, weight_path in enumerate(peft_config.base_weights):
+                if peft_config.base_weights_multiplier is None or len(peft_config.base_weights_multiplier) <= i:
                     multiplier = 1.0
                 else:
-                    multiplier = cfg.peft.base_weights_multiplier[i]
+                    multiplier = peft_config.base_weights_multiplier[i]
 
                 accelerator.print(f"merging module: {weight_path} with multiplier {multiplier}")
 
@@ -203,9 +208,9 @@ class PeftMode:
                     ),
                 )
 
-            accelerator.print(f"all weights merged: {', '.join(cfg.peft.base_weights)}")
+            accelerator.print(f"all weights merged: {', '.join(peft_config.base_weights)}")
 
-        _ensure_supported_adapter_optimizer_policy(cfg, legacy_adapter_args)
+        _ensure_supported_adapter_optimizer_policy(peft_config, legacy_adapter_args)
 
         # Create adapter
         build_request = _build_adapter_request(
@@ -221,7 +226,7 @@ class PeftMode:
             adapter = loaded_runtime.adapter
         else:
             if build_request.adapter.adapter_type == "lora" and "dropout" not in build_request.adapter.settings:
-                build_request.adapter.settings["dropout"] = cfg.peft.lora.dropout
+                build_request.adapter.settings["dropout"] = getattr(peft_config.lora, "dropout", None)
             adapter = build_adapter(build_request)
 
         if adapter is None:
@@ -230,9 +235,9 @@ class PeftMode:
         if hasattr(adapter, "prepare_adapter"):
             adapter.prepare_adapter(cfg)
 
-        if cfg.peft.scale_weight_norms and not hasattr(adapter, "apply_max_norm_regularization"):
+        if peft_config.scale_weight_norms and not hasattr(adapter, "apply_max_norm_regularization"):
             logger.warning("warning: scale_weight_norms is specified but the peft does not support it")
-            cfg.peft.scale_weight_norms = False
+            peft_config.scale_weight_norms = False
 
         trainer.strategies.post_process_trainable(cfg, accelerator, adapter, text_encoders, denoiser)
 
@@ -249,7 +254,7 @@ class PeftMode:
         trainer.net_kwargs = legacy_adapter_args
 
     def configure_trainable_precision(self, trainer: Trainer) -> None:
-        """PEFT-specific precision: cast adapter, freeze base model.
+        """Adapter-specific precision: cast adapter, freeze base model.
 
         Extracted from ``model_prep.configure_precision()`` —
         the adapter cast + ``requires_grad_(False)`` portions.
@@ -281,7 +286,10 @@ class PeftMode:
         cfg = trainer.cfg
         if resolve_learning_rate_groups(cfg.optimizer.learning_rates):
             raise NotImplementedError("optimizer.learning_rates.groups are currently supported only for fine-tune mode")
-        _ensure_supported_adapter_optimizer_policy(cfg, getattr(trainer, "net_kwargs", None))
+        peft_config = get_adapter_peft_config(cfg)
+        if peft_config is None:
+            raise ValueError("mode=adapter requires adapter.peft config.")
+        _ensure_supported_adapter_optimizer_policy(peft_config, getattr(trainer, "net_kwargs", None))
 
         grouping = build_adapter_grouping(
             adapter=trainer.adapter,
@@ -407,10 +415,11 @@ class PeftMode:
         """
         cfg = trainer.cfg
         accelerator = trainer.accelerator
+        peft_config = get_adapter_peft_config(cfg)
 
-        if cfg.peft.scale_weight_norms and accelerator.sync_gradients:
+        if peft_config is not None and peft_config.scale_weight_norms and accelerator.sync_gradients:
             keys_scaled, mean_norm, _maximum_norm = accelerator.unwrap_model(trainer.adapter).apply_max_norm_regularization(
-                cfg.peft.scale_weight_norms, accelerator.device
+                peft_config.scale_weight_norms, accelerator.device
             )
             return {"Keys Scaled": keys_scaled, "Average key norm": mean_norm}
 

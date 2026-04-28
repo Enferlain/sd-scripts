@@ -10,6 +10,19 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-29]
+
+### Changed
+
+- **The active adapter training surface is now named and wired as `adapter` instead of the old root-level PEFT mode/config surface** — The canonical launcher/config path now uses `mode: adapter` plus `adapter.peft.<method>`, while the remaining `peft` concepts stay scoped to the current adapter family instead of acting as the top-level training mode.
+  - Added `AdapterConfig`, renamed the active training-mode implementation to `AdapterMode`, and updated the mode factory / trainer wiring to resolve the adapter path as the current non-finetune training mode.
+  - Moved the active config surface from root `peft` to `adapter.peft`, switched PEFT method selection to branch presence, and updated validation/compatibility shims so old root-level PEFT config now fails with migration-oriented errors instead of silently remaining the primary surface.
+  - Updated active presets, smoke configs, benchmark configs, focused tests, and current-facing docs so the repo now describes the adapter shell as the current training/runtime concept and PEFT as the currently implemented adapter family beneath it.
+
+- **Benchmark run results now report the active adapter-shaped config surface instead of the old PEFT root shape** — The markdown/JSON run report path now reflects the current adapter config keys and stays aligned with the resource-monitor output used by the benchmark/reporting flow.
+  - Updated `library/logging/run_report.py` so key-config summaries now report `adapter.peft.lora` / `adapter.peft.loha` rather than the removed root `peft.method` field.
+  - Updated focused run-report coverage so benchmark report fixtures compose under `mode: adapter` with nested `adapter.peft` config and continue validating the resource-monitor-backed markdown/JSON output.
+
 ## [2026-04-26]
 
 ### Changed

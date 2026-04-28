@@ -84,7 +84,7 @@ class TestResumeBehavior(unittest.TestCase):
         self.cfg = MagicMock()
         self.cfg.optimizer = MagicMock()
         self.cfg.optimizer.learning_rates = []
-        self.cfg.peft = MagicMock()
+        self.cfg.adapter.peft = MagicMock()
         self.cfg.data = MagicMock()
         self.cfg.data.loader.num_workers = 0
         self.cfg.training.max_train_epochs = 1

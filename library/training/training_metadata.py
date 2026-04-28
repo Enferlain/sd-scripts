@@ -8,7 +8,7 @@ This includes training configuration, dataset statistics, and provenance informa
 import json
 import os
 
-from library.adapters.method_configs import get_method_config, resolve_adapter_method_registration
+from library.adapters.method_configs import get_adapter_peft_config, get_method_config, resolve_adapter_method_registration
 from library.constants import SS_METADATA_MINIMUM_KEYS
 from library.data import DatasetManifest, compute_tag_frequency
 from library.objectives import ObjectiveDefinition, build_objective
@@ -129,17 +129,18 @@ def create_training_metadata(
         "ss_resize_interpolation": cfg.data.preprocessing.resize_interpolation,
     }
 
-    # PEFT-specific metadata (omitted entirely for non-PEFT modes)
-    if hasattr(cfg, "peft") and cfg.peft is not None:
-        registration = resolve_adapter_method_registration(cfg.peft)
-        _registration, method_config = get_method_config(cfg.peft)
+    # Adapter/PEFT-specific metadata (omitted entirely for non-adapter modes)
+    peft_config = get_adapter_peft_config(cfg)
+    if peft_config is not None:
+        registration = resolve_adapter_method_registration(peft_config)
+        _registration, method_config = get_method_config(peft_config)
         metadata_config = getattr(cfg.output, "metadata", None)
         metadata["ss_adapter_module"] = registration.legacy_module_path
         metadata["ss_adapter_rank"] = getattr(method_config, "rank", None)
         metadata["ss_adapter_alpha"] = getattr(method_config, "alpha", None)
         metadata["ss_adapter_neuron_dropout"] = getattr(method_config, "dropout", None)
         metadata["ss_training_comment"] = getattr(metadata_config, "training_comment", None)
-        metadata["ss_scale_weight_norms"] = cfg.peft.scale_weight_norms
+        metadata["ss_scale_weight_norms"] = peft_config.scale_weight_norms
 
     # Compute tag frequency from manifest
     tag_frequency = compute_tag_frequency(manifest, cfg.data.caption.caption_separator)
@@ -187,8 +188,8 @@ def create_training_metadata(
         }
     )
 
-    # Adapter args (PEFT only)
-    if hasattr(cfg, "peft") and cfg.peft is not None and cfg.peft.adapter_args:
+    # Adapter args (legacy PEFT only)
+    if peft_config is not None and peft_config.adapter_args:
         metadata["ss_adapter_args"] = json.dumps(net_kwargs)
 
     # Model name and hash

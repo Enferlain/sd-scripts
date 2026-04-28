@@ -29,6 +29,7 @@ from library.config.dataclasses.optimizer import OptimizerConfig, SchedulerConfi
 from library.config.dataclasses.data import DataConfig, SourceConfig, PreprocessingConfig, BucketingConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.config.dataclasses.peft import PeftConfig
+from library.adapters.methods.peft.lora.config import PeftLoraConfig
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import LoggingConfig
@@ -133,7 +134,7 @@ def mock_training_config():
 @pytest.fixture
 def mock_adapter_config():
     """Create a basic PeftConfig for testing."""
-    config = PeftConfig(method="lora")
+    config = PeftConfig(lora=PeftLoraConfig())
     config.lora.rank = 4
     config.lora.alpha = 1.0
     return config

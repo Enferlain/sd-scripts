@@ -21,6 +21,7 @@ import logging
 import re
 
 from library.adapters.method_configs import (
+    get_adapter_peft_config,
     get_inactive_method_config_values,
     get_nondefault_method_config_values,
     resolve_adapter_method_registration,
@@ -32,7 +33,7 @@ from library.optimization.optimizer_utils import should_train_text_encoder
 
 logger = logging.getLogger(__name__)
 
-VALID_MODES = {"finetune", "peft", "textual_inversion"}
+VALID_MODES = {"finetune", "adapter", "textual_inversion"}
 VALID_TIMESTEP_SAMPLERS = {"uniform", "log_snr_uniform", "adaptive_log_snr", "logit_normal", "cosine_shaped"}
 VALID_OBJECTIVE_PATHS = {"ddpm", "rectified_flow"}
 VALID_OBJECTIVE_PREDICTIONS = {"epsilon", "v_prediction", "flow"}
@@ -287,32 +288,37 @@ def _validate_mode_config(cfg) -> None:
     if mode not in VALID_MODES:
         raise ValueError(f"mode must be one of {sorted(VALID_MODES)}, got {mode}")
 
-    has_peft = _get_optional_attr(cfg, "peft") is not None
+    has_adapter = _get_optional_attr(cfg, "adapter") is not None
+    has_root_peft = _get_optional_attr(cfg, "peft") is not None
+    has_peft = get_adapter_peft_config(cfg) is not None
     has_textual_inversion = _get_optional_attr(cfg, "textual_inversion") is not None
 
-    if has_peft and has_textual_inversion:
-        raise ValueError("`peft` and `textual_inversion` sections cannot both be active in the same config.")
+    if has_root_peft:
+        raise ValueError("Root `peft` config has moved to `adapter.peft`.")
 
-    if mode == "peft":
+    if has_adapter and has_textual_inversion:
+        raise ValueError("`adapter` and `textual_inversion` sections cannot both be active in the same config.")
+
+    if mode == "adapter":
         if not has_peft:
-            raise ValueError("mode=peft requires a `peft` section.")
+            raise ValueError("mode=adapter requires an `adapter.peft` section.")
         if has_textual_inversion:
-            raise ValueError("mode=peft cannot be used with a `textual_inversion` section.")
+            raise ValueError("mode=adapter cannot be used with a `textual_inversion` section.")
 
     if mode == "textual_inversion":
         if not has_textual_inversion:
             raise ValueError("mode=textual_inversion requires a `textual_inversion` section.")
-        if has_peft:
-            raise ValueError("mode=textual_inversion cannot be used with a `peft` section.")
+        if has_adapter:
+            raise ValueError("mode=textual_inversion cannot be used with an `adapter` section.")
 
-    if mode == "finetune" and (has_peft or has_textual_inversion):
-        raise ValueError("mode=finetune cannot be used with `peft` or `textual_inversion` sections.")
+    if mode == "finetune" and (has_adapter or has_textual_inversion):
+        raise ValueError("mode=finetune cannot be used with `adapter` or `textual_inversion` sections.")
 
 
 def _validate_peft_config(cfg) -> None:
     """Validate the active PEFT config surface and continuation intent."""
 
-    peft_cfg = _get_optional_attr(cfg, "peft")
+    peft_cfg = get_adapter_peft_config(cfg)
     if peft_cfg is None:
         return
 
@@ -324,34 +330,34 @@ def _validate_peft_config(cfg) -> None:
     continue_mode = getattr(peft_cfg, "continue_mode", None)
     if continue_mode is not None and continue_mode not in VALID_PEFT_CONTINUE_MODES:
         raise ValueError(
-            f"peft.continue_mode must be one of {list(VALID_PEFT_CONTINUE_MODES)}, got {continue_mode!r}"
+            f"adapter.peft.continue_mode must be one of {list(VALID_PEFT_CONTINUE_MODES)}, got {continue_mode!r}"
         )
 
     continue_from = getattr(peft_cfg, "continue_from", None)
     if continue_from is None and continue_mode is not None:
-        raise ValueError("peft.continue_mode can only be set explicitly when peft.continue_from is also set.")
+        raise ValueError("adapter.peft.continue_mode can only be set explicitly when adapter.peft.continue_from is also set.")
     effective_continue_mode = continue_mode or "strict"
 
     legacy_adapter_args = getattr(peft_cfg, "adapter_args", None)
     if legacy_adapter_args:
         raise ValueError(
-            "peft.adapter_args is no longer part of the forward adapter config surface. "
-            f"Move those settings under peft.{registration.name}."
+            "adapter.peft.adapter_args is no longer part of the forward adapter config surface. "
+            f"Move those settings under adapter.peft.{registration.name}."
         )
 
     inactive_method_values = get_inactive_method_config_values(peft_cfg, active_method=registration.name)
     if inactive_method_values:
         inactive_methods = ", ".join(sorted(inactive_method_values))
         raise ValueError(
-            f"peft.method={registration.name!r} is active, but other method config subtrees also have non-default values: {inactive_methods}."
+            f"adapter.peft.{registration.name} is active, but other method config branches also have values: {inactive_methods}."
         )
 
     if continue_from is not None and effective_continue_mode == "strict":
         active_method_values = get_nondefault_method_config_values(peft_cfg, registration.name)
         if active_method_values:
             raise ValueError(
-                f"peft.continue_mode='strict' treats the artifact as authoritative. "
-                f"Remove active peft.{registration.name} settings or use continue_mode='initialize_from_artifact'."
+                f"adapter.peft.continue_mode='strict' treats the artifact as authoritative. "
+                f"Remove active adapter.peft.{registration.name} settings or use continue_mode='initialize_from_artifact'."
             )
 
 
@@ -399,12 +405,12 @@ def prepare_config(cfg) -> None:
         if lr_cfg.text_encoders is None:
             lr_cfg.text_encoders = lr_cfg.base
 
-        peft_cfg = _get_optional_attr(cfg, "peft")
-        if peft_cfg is not None:
-            legacy_module = getattr(peft_cfg, "adapter_module", None)
-            if getattr(peft_cfg, "method", None) is None and legacy_module:
-                with suppress(KeyError, ValueError):
-                    peft_cfg.method = resolve_adapter_method_registration(peft_cfg).name
+    peft_cfg = get_adapter_peft_config(cfg)
+    if peft_cfg is not None:
+        legacy_module = getattr(peft_cfg, "adapter_module", None)
+        if getattr(peft_cfg, "method", None) is None and legacy_module:
+            with suppress(KeyError, ValueError):
+                peft_cfg.method = resolve_adapter_method_registration(peft_cfg).name
 
         legacy_continue_from = getattr(peft_cfg, "adapter_weights", None)
         if getattr(peft_cfg, "continue_from", None) is None and legacy_continue_from is not None:
@@ -640,7 +646,7 @@ def validate_config(cfg) -> None:
             "Disable TE output caching, or set text_encoders LR to 0 and remove TE-targeting groups."
         )
 
-    if cfg.mode == "peft" and resolve_learning_rate_groups(cfg.optimizer.learning_rates):
+    if _get_optional_attr(cfg, "mode") == "adapter" and resolve_learning_rate_groups(cfg.optimizer.learning_rates):
         raise ValueError(
             "optimizer.learning_rates.groups and groups_file are currently supported only for fine-tune mode. "
             "Remove groups/groups_file or switch mode to finetune."

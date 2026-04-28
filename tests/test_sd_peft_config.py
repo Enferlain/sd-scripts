@@ -13,17 +13,17 @@ def test_sd_peft_config_loading():
         assert cfg is not None
 
         # Check if key sections exist
-        assert "peft" in cfg
+        assert "adapter" in cfg
         assert "data" in cfg  # bucketing is at cfg.data.bucketing
         assert "optimizer" in cfg
         assert "model" in cfg
         assert "training" in cfg
 
         # Check defaults
-        assert cfg.peft.method == "lora"
-        assert "lora" in cfg.peft
-        assert cfg.peft.lora.alpha == 1.0
-        assert cfg.peft.orthograd_targets[0] == "lora_down.weight"
+        assert cfg.adapter.peft.lora is not None
+        assert "lora" in cfg.adapter.peft
+        assert cfg.adapter.peft.lora.alpha == 1.0
+        assert cfg.adapter.peft.orthograd_targets[0] == "lora_down.weight"
         assert cfg.data.bucketing.min_bucket_reso == 256
         assert cfg.training.train_batch_size == 1
         assert cfg.optimizer.learning_rates.base == 2.0e-6

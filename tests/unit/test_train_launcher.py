@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from library.training.modes import FineTuneMode, PeftMode
+from library.training.modes import FineTuneMode, AdapterMode
 from library.training.modes.factory import build_training_mode
 
 
@@ -19,12 +19,12 @@ def test_train_module_imports() -> None:
 
 
 def test_build_training_mode_peft() -> None:
-    """mode=peft should build the PEFT mode."""
-    cfg = SimpleNamespace(mode="peft")
+    """mode=adapter should build the PEFT mode."""
+    cfg = SimpleNamespace(mode="adapter")
 
     mode = build_training_mode(cfg)
 
-    assert isinstance(mode, PeftMode)
+    assert isinstance(mode, AdapterMode)
 
 
 def test_build_training_mode_finetune() -> None:
@@ -109,7 +109,7 @@ def test_train_wires_mode_strategy_and_trainer(
     """train() should prepare config, build objects, and start the trainer."""
     import train
 
-    cfg = SimpleNamespace(mode="peft", model=SimpleNamespace(model_type="sdxl"))
+    cfg = SimpleNamespace(mode="adapter", model=SimpleNamespace(model_type="sdxl"))
     strategies = Mock()
     mode = Mock()
     trainer = mock_trainer_cls.return_value

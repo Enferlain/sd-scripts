@@ -68,7 +68,7 @@ class Trainer:
 
     Usage:
         strategies = SdxlTrainingStrategy(cfg)
-        mode = PeftMode()
+        mode = AdapterMode()
         trainer = Trainer(cfg, strategies, mode)
         trainer.train()
     """
@@ -80,7 +80,7 @@ class Trainer:
         Args:
             cfg: Hydra config object (e.g., RunConfig)
             strategies: Model-specific training strategy
-            mode: Training mode plugin (e.g., PeftMode)
+            mode: Training mode plugin (e.g., AdapterMode)
         """
         self.cfg = cfg
         self.strategies = strategies

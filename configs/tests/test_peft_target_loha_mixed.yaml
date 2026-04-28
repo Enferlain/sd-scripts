@@ -32,13 +32,14 @@ data:
     cache_text_encoder_outputs: false
     cache_text_encoder_outputs_to_disk: false
 
-peft:
-  method: "loha"
-  loha:
-    rank: 32
-    alpha: 16.0
-    use_scalar: true
-    bypass_mode: true
+adapter:
+  peft:
+    lora: null
+    loha:
+      rank: 32
+      alpha: 16.0
+      use_scalar: true
+      bypass_mode: true
 
 optimizer:
   optimizer_type: "AdamW8bit"

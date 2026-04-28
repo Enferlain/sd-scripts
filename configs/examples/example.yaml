@@ -7,7 +7,7 @@
 # This file shows user overrides on top of the shared PEFT defaults.
 
 # ─── MODE ───────────────────────────────────────────────────────────────────
-mode: peft
+mode: adapter
 
 # ─── MODEL ──────────────────────────────────────────────────────────────────
 model:
@@ -40,12 +40,12 @@ data:
     cache_latents: true
 
 # ─── PEFT (adapter configuration) ───────────────────────────────────────────
-peft:
-  method: loha
-  loha:
-    rank: 32
-    alpha: 16
-    use_tucker: true
+adapter:
+  peft:
+    loha:
+      rank: 32
+      alpha: 16
+      use_tucker: true
 
 # ─── OPTIMIZER ──────────────────────────────────────────────────────────────
 optimizer:

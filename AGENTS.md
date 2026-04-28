@@ -177,7 +177,7 @@ Additional family folders may exist; use the above as the shape of the architect
 | Path                         | Purpose                                                  |
 | ---------------------------- | -------------------------------------------------------- |
 | `runners/trainer.py`         | Shared trainer orchestration                             |
-| `modes/`                     | Training-mode plugins (`PeftMode`, `FineTuneMode`)       |
+| `modes/`                     | Training-mode plugins (`AdapterMode`, `FineTuneMode`)       |
 | `phases/`                    | Shared training phases (caching, model prep, loop, etc.) |
 | `checkpointing.py`           | Generic checkpoint utilities                             |
 | `sample_generation.py`       | Shared sample generation orchestration                   |

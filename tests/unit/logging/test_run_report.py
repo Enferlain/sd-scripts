@@ -96,7 +96,7 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
 
     trainer = SimpleNamespace(
         cfg={
-            "mode": "peft",
+            "mode": "adapter",
             "model": {"model_type": "sdxl"},
             "output": {
                 "saving": {"output_dir": str(tmp_path / "models"), "output_name": "unit_test_run"},
@@ -113,7 +113,7 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
             "training": {"train_batch_size": 2, "gradient_accumulation_steps": 1, "max_train_steps": 10},
             "data": {"loader": {"pin_memory": True}},
             "optimizer": {"optimizer_type": "adamw8bit", "learning_rates": {"base": 1e-4, "denoiser": 1e-4}},
-            "peft": {"method": "loha"},
+            "adapter": {"peft": {"loha": {"rank": 16}}},
         },
         mode=MagicMock(),
         strategies=MagicMock(),

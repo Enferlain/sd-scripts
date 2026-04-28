@@ -11,7 +11,7 @@ concrete module targeting derived from shared model structure for adapter runs.
 - **WHEN** an adapter training run is prepared
 - **THEN** optimization MUST resolve the concrete target modules that are in
   scope for the adapter method
-- **AND** `PeftMode` MUST orchestrate passing those already-resolved targets
+- **AND** `AdapterMode` MUST orchestrate passing those already-resolved targets
   into adapter runtime construction
 - **AND** the adapter runtime MUST consume those already-resolved targets
 
@@ -65,7 +65,7 @@ is resolved at the module level.
 - **THEN** it MUST consume repo-owned trainable parameter refs with provenance
 - **AND** it MUST NOT require module-level grouping primitives as the optimizer
   boundary
-- **AND** `PeftMode` MUST remain the training-side orchestrator that passes the
+- **AND** `AdapterMode` MUST remain the training-side orchestrator that passes the
   returned trainable refs back into optimization-owned grouping
 
 #### Scenario: Adapter methods expose trainables after module realization
@@ -103,7 +103,7 @@ runtime, loaded-runtime, merge, and export seams.
 - **WHEN** the repo-native `loha` runtime saves weights or merges loaded
   weights into model context
 - **THEN** it MUST use the repo-owned adapter export and merge request seams
-- **AND** `PeftMode` MUST remain the training-side owner of that lifecycle
+- **AND** `AdapterMode` MUST remain the training-side owner of that lifecycle
 
 ### Requirement: Mixed-method overlap semantics remain out of scope for this slice
 The first module-targeting and `loha` spike SHALL NOT define the final behavior

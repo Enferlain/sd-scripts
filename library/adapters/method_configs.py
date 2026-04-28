@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+from contextlib import suppress
 from dataclasses import MISSING, fields
 from typing import Any
 
@@ -42,14 +44,86 @@ def _get_nondefault_config_values(config_obj: Any, *, config_type: type | None) 
     return active_values
 
 
+def _has_config_key(config_obj: Any, key: str) -> bool:
+    if isinstance(config_obj, Mapping):
+        return key in config_obj
+    with suppress(Exception):
+        if key in config_obj:
+            return True
+    with suppress(Exception):
+        if key in vars(config_obj):
+            return True
+    return False
+
+
+def _get_config_value(config_obj: Any, key: str, default: Any = None) -> Any:
+    if isinstance(config_obj, Mapping):
+        return config_obj.get(key, default)
+    try:
+        return getattr(config_obj, key)
+    except Exception:
+        return default
+
+
+def get_adapter_peft_config(cfg_or_peft_config: Any) -> PeftConfig | None:
+    """Return the active PEFT family config from either root or family config."""
+
+    if cfg_or_peft_config is None:
+        return None
+
+    if _has_config_key(cfg_or_peft_config, "adapter"):
+        adapter_config = _get_config_value(cfg_or_peft_config, "adapter")
+        if adapter_config is not None and _has_config_key(adapter_config, "peft"):
+            peft_config = _get_config_value(adapter_config, "peft")
+            if peft_config is not None:
+                return peft_config
+
+    if _has_config_key(cfg_or_peft_config, "peft"):
+        peft_config = _get_config_value(cfg_or_peft_config, "peft")
+        if peft_config is not None:
+            return peft_config
+
+    if any(_has_config_key(cfg_or_peft_config, attr) for attr in ("continue_from", "lora", "loha", "adapter_module")):
+        return cfg_or_peft_config
+    return None
+
+
+def get_active_method_branch_names(peft_config: PeftConfig) -> list[str]:
+    """Return method names whose config branch is present."""
+
+    active_methods: list[str] = []
+    for registration in list_adapter_methods():
+        config_binding = registration.config_binding
+        if config_binding is None:
+            continue
+        if getattr(peft_config, config_binding.config_key, None) is not None:
+            active_methods.append(registration.name)
+    return active_methods
+
+
 def resolve_adapter_method_registration(peft_config: PeftConfig) -> AdapterMethodRegistration:
-    """Resolve the active adapter method, honoring the thin legacy shim when needed."""
+    """Resolve the active PEFT adapter method from branch presence."""
 
     registration: AdapterMethodRegistration | None = None
+    active_methods = get_active_method_branch_names(peft_config)
 
     configured_method = getattr(peft_config, "method", None)
     if isinstance(configured_method, str) and configured_method.strip():
         registration = get_adapter_method(configured_method)
+        if not active_methods:
+            raise ValueError(
+                f"Legacy peft.method={registration.name!r} is set, but no method branch is configured. "
+                f"Add adapter.peft.{registration.name} or remove the legacy method field."
+            )
+        if registration.name not in active_methods:
+            raise ValueError(
+                f"Configured legacy peft.method={registration.name!r} does not match active method branch: "
+                f"{', '.join(sorted(active_methods))}."
+            )
+    elif len(active_methods) == 1:
+        registration = get_adapter_method(active_methods[0])
+    elif len(active_methods) > 1:
+        raise ValueError(f"adapter.peft must configure exactly one method branch, got: {', '.join(sorted(active_methods))}.")
 
     legacy_module = getattr(peft_config, "adapter_module", None)
     if isinstance(legacy_module, str) and legacy_module.strip():
@@ -62,7 +136,7 @@ def resolve_adapter_method_registration(peft_config: PeftConfig) -> AdapterMetho
         registration = legacy_registration
 
     if registration is None:
-        raise ValueError("peft.method is required.")
+        raise ValueError("adapter.peft must configure exactly one method branch, such as adapter.peft.lora or adapter.peft.loha.")
 
     return registration
 

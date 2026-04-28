@@ -12,7 +12,7 @@ defaults:
   - /run_schema
   - _self_
 
-mode: peft
+mode: adapter
 
 # ─── MODEL ──────────────────────────────────────────────────────────────────
 model:
@@ -72,13 +72,13 @@ data:
     keep_tokens_separator: "|||"
 
 # ─── PEFT ───────────────────────────────────────────────────────────────────
-peft:
-  method: lora
-  lora:
-    rank: 32
-    alpha: 16.0
-    conv_rank: 32
-    conv_alpha: 16.0
+adapter:
+  peft:
+    lora:
+      rank: 32
+      alpha: 16.0
+      conv_rank: 32
+      conv_alpha: 16.0
 
 # ─── OPTIMIZER [TUNABLE] ────────────────────────────────────────────────────
 optimizer:

@@ -2,8 +2,8 @@
 Unit tests for library/training/phases/model_prep.py
 
 Tests the model preparation phase functions with mocked trainer state.
-After the TrainingMode refactor, create_adapter logic moved to PeftMode.prepare_trainables()
-and adapter-specific precision logic moved to PeftMode.configure_trainable_precision().
+After the TrainingMode refactor, create_adapter logic moved to AdapterMode.prepare_trainables()
+and adapter-specific precision logic moved to AdapterMode.configure_trainable_precision().
 """
 
 import pytest

@@ -45,7 +45,7 @@ class AdapterExportSaveRequest:
 def load_adapter_export(adapter: AdapterExportIO, request: AdapterExportLoadRequest) -> Any:
     """Load explicit adapter weights into an existing runtime.
 
-    This is the adapter-training export/load flow used by ``PeftMode`` for
+    This is the adapter-training export/load flow used by ``AdapterMode`` for
     user-supplied adapter weights, not the accelerator checkpoint-resume flow.
     The return value is adapter-method-defined passthrough information from
     ``adapter.load_weights(...)``.
@@ -59,7 +59,7 @@ def load_adapter_export(adapter: AdapterExportIO, request: AdapterExportLoadRequ
 def save_adapter_export(adapter: AdapterExportIO, request: AdapterExportSaveRequest) -> None:
     """Write an explicit adapter export artifact from an existing runtime.
 
-    This is the adapter-training export/save flow used by ``PeftMode`` for
+    This is the adapter-training export/save flow used by ``AdapterMode`` for
     final adapter artifacts and adapter-format checkpoints, not
     ``accelerator.save_state()`` resume state.
     """

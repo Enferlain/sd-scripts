@@ -6,12 +6,12 @@ from typing import Any
 
 from library.training.modes.base import TrainingMode
 from library.training.modes.finetune_mode import FineTuneMode
-from library.training.modes.peft_mode import PeftMode
+from library.training.modes.adapter_mode import AdapterMode
 
 
 _ACTIVE_MODE_REGISTRY: dict[str, type[TrainingMode]] = {
     "finetune": FineTuneMode,
-    "peft": PeftMode,
+    "adapter": AdapterMode,
 }
 
 

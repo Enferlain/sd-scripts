@@ -1,0 +1,5 @@
+groups:
+  - name: bad_probe
+    lr: 1e-5
+    match:
+      - re:^unet\.definitely_not_real\..*

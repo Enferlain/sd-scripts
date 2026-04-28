@@ -8,7 +8,7 @@ defaults:
   - /_defaults/optimizer: default
   - /_defaults/data: default
   - /_defaults/model: default
-  - /_defaults/peft: default
+  - /_defaults/adapter: default
   - /_defaults/training: default
   - /_defaults/output: default
   - /_defaults/performance: default
@@ -17,7 +17,7 @@ defaults:
   - /_defaults/validation: default
   - _self_
 
-mode: peft
+mode: adapter
 
 model:
   model_type: sdxl

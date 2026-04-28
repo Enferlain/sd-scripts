@@ -811,7 +811,7 @@ class TestOptimizerUtils:
         assert te_flags == [False, False]
 
     def test_resolve_adapter_target_selection_is_optimization_owned_for_peft(self):
-        """Adapter target selection should be resolved by optimization policy, not PeftMode."""
+        """Adapter target selection should be resolved by optimization policy, not AdapterMode."""
         clip_l = torch.nn.Linear(3, 3)
         clip_g = torch.nn.Linear(2, 2)
         denoiser = torch.nn.Linear(4, 4)

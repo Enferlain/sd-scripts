@@ -94,7 +94,7 @@ def _make_mock_trainer(
     cfg.optimizer.max_grad_norm = 0.0
 
     # peft
-    cfg.peft.scale_weight_norms = False
+    cfg.adapter.peft.scale_weight_norms = False
 
     # output.saving
     cfg.output.saving.output_dir = "/tmp/test_output"

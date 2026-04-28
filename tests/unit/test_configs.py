@@ -11,6 +11,8 @@ import pytest
 from hydra import compose
 from omegaconf import OmegaConf
 
+from library.adapters.methods.peft.lora.config import PeftLoraConfig
+from library.config.dataclasses.adapter import AdapterConfig
 from library.config.dataclasses.optimizer import OptimizerConfig
 from library.config.dataclasses.data import DataConfig, BucketingConfig
 from library.config.dataclasses.training import TrainingConfig
@@ -60,13 +62,24 @@ class TestConfigInstantiation:
         assert hasattr(config, "max_train_epochs")
         assert hasattr(config, "train_batch_size")
 
-    def test_adapter_config_instantiation(self):
-        """Test PeftConfig instantiation with defaults."""
+    def test_peft_config_instantiation(self):
+        """Test PeftConfig instantiation with nullable method branches."""
         config = PeftConfig()
         assert config is not None
         assert hasattr(config, "lora")
-        assert hasattr(config, "method")
         assert hasattr(config, "loha")
+        assert config.lora is None
+        assert config.loha is None
+
+    def test_adapter_config_instantiation(self):
+        """Test AdapterConfig instantiation with defaults."""
+        config = AdapterConfig()
+        assert config is not None
+        assert config.peft is None
+
+    def test_peft_lora_branch_instantiation(self):
+        """Test PeftConfig can select LoRA by branch presence."""
+        config = PeftConfig(lora=PeftLoraConfig())
         assert hasattr(config.lora, "rank")
         assert hasattr(config.lora, "alpha")
 
@@ -159,15 +172,14 @@ class TestConfigDefaults:
         """Test PeftConfig default values."""
         config = PeftConfig()
         assert config.method is None
-        assert config.lora.rank is None
-        assert config.lora.alpha == 1.0
-        assert config.loha.rank is None
+        assert config.lora is None
+        assert config.loha is None
         assert config.orthograd_targets is not None
         assert config.orthograd_targets[0] == "lora_down.weight"
 
     def test_lora_config_owns_method_settings(self):
         """LoRA method settings should live only under the nested surface."""
-        config = PeftConfig()
+        config = PeftConfig(lora=PeftLoraConfig())
         config.lora.rank = 16
         config.lora.alpha = 32.0
         config.lora.dropout = 0.25
@@ -253,13 +265,14 @@ class TestHydraComposition:
         """Test sd_peft config loading via Hydra."""
         cfg = compose(config_name="presets/sd_peft")
         assert cfg is not None
-        assert cfg.mode == "peft"
-        assert "peft" in cfg
+        assert cfg.mode == "adapter"
+        assert "adapter" in cfg
         assert "optimizer" in cfg
         assert "data" in cfg
         assert "training" in cfg
         assert cfg.model.model_type == "sd15"
-        assert cfg.peft.method == "lora"
+        assert cfg.adapter.peft.lora is not None
+        assert cfg.adapter.peft.loha is None
 
     def test_internal_default_config_composition(self, hydra_ctx):
         """Test the internal full-schema default baseline."""
@@ -292,18 +305,19 @@ class TestHydraComposition:
         """Test sdxl_peft config loading via Hydra."""
         cfg = compose(config_name="presets/sdxl_peft")
         assert cfg is not None
-        assert cfg.mode == "peft"
-        assert "peft" in cfg
+        assert cfg.mode == "adapter"
+        assert "adapter" in cfg
         assert "optimizer" in cfg
         assert "sdxl" not in cfg
         assert cfg.model.model_type == "sdxl"
-        assert cfg.peft.method == "lora"
+        assert cfg.adapter.peft.lora is not None
+        assert cfg.adapter.peft.loha is None
 
     def test_sdxl_peft_edm2_preset_composition(self, hydra_ctx):
         """Test the dedicated SDXL PEFT EDM2 preset."""
         cfg = compose(config_name="presets/sdxl_peft_edm2")
         assert cfg is not None
-        assert cfg.mode == "peft"
+        assert cfg.mode == "adapter"
         assert cfg.model.model_type == "sdxl"
         assert cfg.loss.edm2.enabled is True
         assert cfg.loss.edm2.importance.enabled is True
@@ -315,7 +329,7 @@ class TestHydraComposition:
         """Test the runnable EDM2 example config."""
         cfg = compose(config_name="examples/edm2_sdxl_peft")
         assert cfg is not None
-        assert cfg.mode == "peft"
+        assert cfg.mode == "adapter"
         assert cfg.model.model_type == "sdxl"
         assert cfg.loss.edm2.enabled is True
         assert cfg.loss.edm2.importance.enabled is True
@@ -326,7 +340,7 @@ class TestHydraComposition:
         """Test the runnable adaptive_log_snr test config."""
         cfg = compose(config_name="tests/test_adaptive_log_snr_sdxl_peft")
         assert cfg is not None
-        assert cfg.mode == "finetune"
+        assert cfg.mode == "adapter"
         assert cfg.model.model_type == "sdxl"
         assert cfg.timestep.timestep_sampling == "adaptive_log_snr"
         assert cfg.timestep.adaptive_log_snr.prior_weight == 0.25
@@ -336,7 +350,7 @@ class TestHydraComposition:
         """Test the runnable log_snr_uniform test config."""
         cfg = compose(config_name="tests/test_log_snr_uniform_sdxl_peft")
         assert cfg is not None
-        assert cfg.mode == "finetune"
+        assert cfg.mode == "adapter"
         assert cfg.model.model_type == "sdxl"
         assert cfg.timestep.timestep_sampling == "log_snr_uniform"
         assert cfg.output.saving.output_name == "test_log_snr_uniform_sdxl_peft"
@@ -380,9 +394,9 @@ class TestConfigOverrides:
 
     def test_nested_lora_override(self, hydra_ctx):
         """Test overriding the nested LoRA config surface."""
-        cfg = compose(config_name="presets/sd_peft", overrides=["peft.lora.rank=128", "peft.lora.alpha=128"])
-        assert cfg.peft.lora.rank == 128
-        assert cfg.peft.lora.alpha == 128
+        cfg = compose(config_name="presets/sd_peft", overrides=["adapter.peft.lora.rank=128", "adapter.peft.lora.alpha=128"])
+        assert cfg.adapter.peft.lora.rank == 128
+        assert cfg.adapter.peft.lora.alpha == 128
 
     def test_training_override(self, hydra_ctx):
         """Test overriding training config values."""

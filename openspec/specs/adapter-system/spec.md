@@ -22,7 +22,7 @@ targets and expose the runtime/training information needed for adapter
 training.
 
 #### Scenario: Instantiating an adapter type
-- **WHEN** `PeftMode` prepares adapter training with resolved targets
+- **WHEN** `AdapterMode` prepares adapter training with resolved targets
 - **THEN** the adapter system MUST instantiate the selected adapter type in the
   context of those targets
 
@@ -31,13 +31,13 @@ training.
 - **THEN** it MUST expose the concrete adapter runtime and the information
   needed for training-side orchestration and optimization handoff
 
-### Requirement: PeftMode owns the training-side adapter path
-The adapter-training architecture SHALL keep `PeftMode` as the training-side
+### Requirement: AdapterMode owns the training-side adapter path
+The adapter-training architecture SHALL keep `AdapterMode` as the training-side
 owner for adapter runs.
 
 #### Scenario: Adapter training orchestration
 - **WHEN** an adapter training run is executed
-- **THEN** `PeftMode` MUST remain the owner of the training-side adapter
+- **THEN** `AdapterMode` MUST remain the owner of the training-side adapter
   lifecycle
 
 #### Scenario: Separating optimization from training ownership
@@ -68,7 +68,7 @@ persistence.
 #### Scenario: Saving adapter training outputs
 - **WHEN** an adapter training run saves learned state
 - **THEN** the save behavior MUST be owned on the training side by the adapter
-  path through `PeftMode`
+  path through `AdapterMode`
 
 #### Scenario: Distinguishing adapter persistence from fine-tune persistence
 - **WHEN** the system defines adapter save/load behavior
@@ -144,13 +144,13 @@ interfaces into loose duck-typed contracts.
 - **THEN** production code MUST NOT loosen that contract solely to accommodate
   lightweight fixtures
 
-### Requirement: PeftMode remains explicit orchestration
-`PeftMode` SHALL remain the training-side orchestration owner for adapter runs,
+### Requirement: AdapterMode remains explicit orchestration
+`AdapterMode` SHALL remain the training-side orchestration owner for adapter runs,
 and its lifecycle steps MUST stay explicit rather than hiding adapter-state
 mutation inside unrelated preparation stages.
 
 #### Scenario: Preparing optimizer parameters for adapter training
-- **WHEN** `PeftMode` builds optimizer inputs for an adapter run
+- **WHEN** `AdapterMode` builds optimizer inputs for an adapter run
 - **THEN** it MUST keep adapter-trainability and lifecycle transitions explicit
 - **AND** it MUST NOT rely on hidden mutation inside optimizer-construction
   steps when that mutation is logically part of an earlier or separate phase

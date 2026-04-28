@@ -50,7 +50,7 @@ The active launcher surface should stay thin and orchestration-focused.
   3. Build the active strategy and training mode.
   4. Hand off to the shared `Trainer`.
 - **No Business Logic:** Complex logic (like "how to save a model" or "how to build a dataset") belongs in `library/`, not in the launcher.
-- **Current shape:** `train.py` is the canonical launcher for active PEFT / fine-tune runs. Dedicated scripts that remain under `scripts/` are either transitional helpers or still-unmigrated paths such as textual inversion.
+- **Current shape:** `train.py` is the canonical launcher for active adapter / fine-tune runs. The current adapter family is PEFT under `adapter.peft`. Dedicated scripts that remain under `scripts/` are either transitional helpers or still-unmigrated paths such as textual inversion.
 
 ## 3. Coding Standards
 
@@ -74,7 +74,7 @@ The active launcher surface should stay thin and orchestration-focused.
 `RunConfig` is the shared root schema for the active launcher. Hydra validates composed YAML against the dataclass schema at load time, and presets layer mode/model defaults on top of the shared nested sections.
 
 - **Nested ownership matters** - each concern should have one typed home (`optimizer`, `data`, `objective`, `output`, etc.).
-- **Mode-specific options** belong in their dedicated sub-configs (`peft`, `textual_inversion`) and are gated by launcher/validation rules.
+- **Mode-specific options** belong in their dedicated sub-configs (`adapter`, `textual_inversion`) and are gated by launcher/validation rules.
 - **Hard rule** - reusable library helpers should not accept broad root configs or generic `args`; they should take the narrowest typed config objects they actually use.
 - **Naming rule** - orchestration-level code such as entrypoints, strategies, trainers, and phases may use `cfg`. Otherwise use descriptive typed names such as `optimizer_config`, `saving_config`, or `run_config`.
 
@@ -92,7 +92,7 @@ The active launcher surface should stay thin and orchestration-focused.
 | Loss shaping / EDM2                                     | `LossConfig`         |
 | Timestep sampling                                       | `TimestepConfig`     |
 | Validation policy                                       | `ValidationConfig`   |
-| Mode-specific adapter settings                          | `PeftConfig`         |
+| Mode-specific adapter settings                          | `AdapterConfig`      |
 | Mode-specific textual inversion settings                | `TextualInversionConfig` |
 
 ### C. Code Style in Orchestration Code

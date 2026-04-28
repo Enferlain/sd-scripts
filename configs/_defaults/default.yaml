@@ -11,7 +11,7 @@ defaults:
   - /_defaults/data: default
   - /_defaults/model: default
   - /_defaults/objective: default
-  - /_defaults/peft: default
+  - /_defaults/adapter: default
   - /_defaults/training: default
   - /_defaults/output: default
   - /_defaults/performance: default

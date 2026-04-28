@@ -23,17 +23,17 @@ _DEFAULT_LEGACY_ORTHOGRAD_TARGETS = (
 
 @dataclass
 class PeftConfig:
-    """PEFT shell/orchestration config plus method-specific adapter config."""
+    """PEFT family config plus exactly one active method branch."""
 
-    method: str | None = field(default=None, metadata={"help": "Adapter method to train (for example: lora, loha)"})
+    method: str | None = field(default=None, metadata={"help": "Legacy method shim; prefer adapter.peft.<method>"})
     continue_from: str | None = field(default=None, metadata={"help": "Continue from an existing adapter artifact"})
     continue_mode: str | None = field(
         default=None,
         metadata={"help": "Continuation intent: strict or initialize_from_artifact"},
     )
 
-    lora: PeftLoraConfig = field(default_factory=PeftLoraConfig)
-    loha: PeftLohaConfig = field(default_factory=PeftLohaConfig)
+    lora: PeftLoraConfig | None = None
+    loha: PeftLohaConfig | None = None
 
     scale_weight_norms: float | None = field(
         default=None, metadata={"help": "Scale weight norms to prevent exploding gradients (1.0 recommended)"}

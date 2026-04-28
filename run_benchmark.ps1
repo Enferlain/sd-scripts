@@ -109,7 +109,7 @@ if ($finetuneConfigs -contains $configName) {
     Write-Host "[INFO] Running FINE-TUNE mode through $launcher" -ForegroundColor Green
 } else {
     Write-Host "[INFO] Config: $Config ($configName)" -ForegroundColor Green
-    Write-Host "[INFO] Running PEFT mode through $launcher" -ForegroundColor Green
+    Write-Host "[INFO] Running Adapter mode through $launcher" -ForegroundColor Green
 }
 
 # Collect system info

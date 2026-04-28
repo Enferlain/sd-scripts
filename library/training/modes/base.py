@@ -1,7 +1,7 @@
 """
 TrainingMode Protocol — pluggable interface for training-mode differences.
 
-Each mode (PEFT, future fine-tune, etc.) implements this protocol to define
+Each mode (adapters, fine-tune, etc.) implements this protocol to define
 how its trainable model is created, prepared, saved, and updated per-step.
 The runner and phases provide the *shared* default pipeline (temporal policy:
 *when* things happen), while modes own the *divergent* concerns (*how* each
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class TrainingMode(Protocol):
-    """Plugin interface for training-mode differences (PEFT vs fine-tune).
+    """Plugin interface for training-mode differences (adapters vs fine-tune).
 
     All hooks receive ``trainer`` as the sole "context" argument so
     signatures stay stable as the trainer grows.  Mode implementations
@@ -36,19 +36,19 @@ class TrainingMode(Protocol):
     def prepare_trainables(self, trainer: Trainer) -> None:
         """Create/configure the trainable model target.
 
-        For PEFT: import the adapter module, create an adapter, apply it to
+        For adapters: import the adapter module, create an adapter, apply it to
         denoiser/text-encoders, load weights, merge base weights.
         For fine-tune (future): unfreeze denoiser layers.
 
         After this call the mode's trainable target must be ready
-        (e.g. ``trainer.adapter`` for PEFT, denoiser for fine-tune).
+        (e.g. ``trainer.adapter`` for adapters, denoiser for fine-tune).
         """
         ...
 
     def configure_trainable_precision(self, trainer: Trainer) -> None:
         """Mode-specific precision casting & freeze/unfreeze logic.
 
-        For PEFT: ``adapter.to(weight_dtype)``, freeze base model
+        For adapters: ``adapter.to(weight_dtype)``, freeze base model
         (``denoiser.requires_grad_(False)``), freeze text-encoders.
         Shared dtype setup (FP8, TE dtype) is handled by the phase caller.
         """
@@ -70,7 +70,7 @@ class TrainingMode(Protocol):
     def prepare_with_accelerator(self, trainer: Trainer) -> None:
         """Wrap trainable models with ``accelerator.prepare()``.
 
-        For PEFT: wrap adapter + optimizer + dataloader + lr_scheduler.
+        For adapters: wrap adapter + optimizer + dataloader + lr_scheduler.
         For DeepSpeed: wrap via ``prepare_deepspeed_model``.
 
         **Required contracts** (asserted in ``run_training_loop``):
@@ -86,7 +86,7 @@ class TrainingMode(Protocol):
     def setup_gradient_training(self, trainer: Trainer) -> None:
         """Mode-specific gradient checkpointing & grad preparation.
 
-        For PEFT: ``adapter.enable_gradient_checkpointing()``,
+        For adapters: ``adapter.enable_gradient_checkpointing()``,
         ``adapter.prepare_grad_etc(text_encoder, denoiser)``.
         Shared denoiser/TE gradient-checkpointing is handled by the phase caller.
         """
@@ -105,7 +105,7 @@ class TrainingMode(Protocol):
     def on_epoch_start(self, trainer: Trainer) -> None:
         """Mode-specific epoch start callback.
 
-        For PEFT: ``adapter.on_epoch_start(text_encoder, denoiser)``
+        For adapters: ``adapter.on_epoch_start(text_encoder, denoiser)``
         (which calls ``adapter.train()`` internally).
         """
         ...
@@ -113,7 +113,7 @@ class TrainingMode(Protocol):
     def on_step_start(self, trainer: Trainer) -> None:
         """Mode-specific callback before each training step.
 
-        For PEFT: ``adapter.on_step_start(text_encoder, denoiser)`` if the
+        For adapters: ``adapter.on_step_start(text_encoder, denoiser)`` if the
         adapter defines it.
         For fine-tune: typically a no-op.
         """
@@ -131,7 +131,7 @@ class TrainingMode(Protocol):
     def get_trainable_params(self, trainer: Trainer) -> list:
         """Return parameters for gradient clipping.
 
-        For PEFT: ``adapter.get_trainable_params()``
+        For adapters: ``adapter.get_trainable_params()``
         For fine-tune: denoiser (+ optional TE) parameters.
         """
         ...
@@ -139,7 +139,7 @@ class TrainingMode(Protocol):
     def set_eval(self, trainer: Trainer) -> None:
         """Switch primary trainable module(s) to eval mode.
 
-        For PEFT: ``adapter.eval()``
+        For adapters: ``adapter.eval()``
         For fine-tune: ``denoiser.eval()`` + optional TE.
         """
         ...
@@ -147,7 +147,7 @@ class TrainingMode(Protocol):
     def set_train(self, trainer: Trainer) -> None:
         """Switch primary trainable module(s) to train mode.
 
-        For PEFT: ``adapter.train()``
+        For adapters: ``adapter.train()``
         For fine-tune: ``denoiser.train()`` + optional TE.
         """
         ...
@@ -169,12 +169,12 @@ class TrainingMode(Protocol):
 
         Receives *logical intent* (name, step, epoch, metadata) so the
         mode decides the physical format:
-        - PEFT: single ``.safetensors`` file via ``adapter.save_weights``
+        - Adapters: single ``.safetensors`` file via ``adapter.save_weights``
         - Fine-tune (future): directory with multiple components
 
         Args:
             target_model: Model to save. When ``None`` the mode uses its
-                default trainable (adapter for PEFT). Callers pass an
+                default trainable (adapter for adapters). Callers pass an
                 explicit model for alternate targets such as EDM2 loss
                 weights.
         """
@@ -186,7 +186,7 @@ class TrainingMode(Protocol):
         """Return components relevant for training diagnostics.
 
         Each mode decides what to show:
-        - PEFT: adapter only (frozen backbone is noise).
+        - Adapters: adapter only (frozen backbone is noise).
         - Fine-tune: all backbone components (denoiser, TEs, vae).
 
         Returns:

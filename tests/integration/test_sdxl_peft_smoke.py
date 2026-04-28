@@ -137,14 +137,13 @@ def mock_cfg():
     cfg.loss.huber.huber_c = None
 
     # PEFT config
-    cfg.peft.method = "lora"
-    cfg.peft.lora.rank = 4
-    cfg.peft.lora.alpha = 1.0
-    cfg.peft.lora.dropout = 0.0
-    cfg.peft.continue_from = None
-    cfg.peft.continue_mode = "strict"
-    cfg.peft.adapter_args = None
-    cfg.peft.scale_weight_norms = None
+    cfg.adapter.peft.lora.rank = 4
+    cfg.adapter.peft.lora.alpha = 1.0
+    cfg.adapter.peft.lora.dropout = 0.0
+    cfg.adapter.peft.continue_from = None
+    cfg.adapter.peft.continue_mode = "strict"
+    cfg.adapter.peft.adapter_args = None
+    cfg.adapter.peft.scale_weight_norms = None
 
     # Optimizer config
     cfg.optimizer.learning_rates.base = 1e-4

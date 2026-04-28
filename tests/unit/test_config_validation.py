@@ -441,8 +441,8 @@ class TestValidateConfig:
         """Null or omitted model_type should raise a clear config error."""
         cfg = OmegaConf.create(
             {
-                "mode": "peft",
-                "peft": {"method": "lora", "lora": {"rank": 16}},
+                "mode": "adapter",
+                "adapter": {"peft": {"lora": {"rank": 16}}},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
                     "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
@@ -464,11 +464,11 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="mode must be one of"):
             validate_config(cfg)
 
-    def test_mode_peft_requires_peft_section(self):
-        """PEFT mode should fail when the PEFT section is missing."""
+    def test_mode_adapter_requires_peft_section(self):
+        """Adapter mode should fail when the PEFT section is missing."""
         cfg = OmegaConf.create(
             {
-                "mode": "peft",
+                "mode": "adapter",
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
                     "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
@@ -481,15 +481,15 @@ class TestValidateConfig:
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
         )
-        with pytest.raises(ValueError, match="mode=peft requires a `peft` section"):
+        with pytest.raises(ValueError, match="mode=adapter requires an `adapter\\.peft` section"):
             validate_config(cfg)
 
-    def test_mode_finetune_forbids_peft_section(self):
-        """Fine-tune mode should reject PEFT-specific config."""
+    def test_mode_finetune_forbids_adapter_section(self):
+        """Fine-tune mode should reject adapter-specific config."""
         cfg = OmegaConf.create(
             {
                 "mode": "finetune",
-                "peft": {"lora": {"rank": 16}},
+                "adapter": {"peft": {"lora": {"rank": 16}}},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
                     "snr": {"scale_v_pred_loss_like_noise_pred": False, "v_pred_like_loss": None},
@@ -502,15 +502,15 @@ class TestValidateConfig:
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
         )
-        with pytest.raises(ValueError, match="mode=finetune cannot be used with `peft` or `textual_inversion` sections"):
+        with pytest.raises(ValueError, match="mode=finetune cannot be used with `adapter` or `textual_inversion` sections"):
             validate_config(cfg)
 
-    def test_mode_textual_inversion_forbids_peft_section(self):
+    def test_mode_textual_inversion_forbids_adapter_section(self):
         """Textual inversion mode should reject mixed mode sections."""
         cfg = OmegaConf.create(
             {
                 "mode": "textual_inversion",
-                "peft": {"lora": {"rank": 16}},
+                "adapter": {"peft": {"lora": {"rank": 16}}},
                 "textual_inversion": {"token_string": "test"},
                 "loss": {
                     "regularization": {"adaptive_noise_scale": None, "noise_offset": None, "zero_terminal_snr": False},
@@ -524,7 +524,7 @@ class TestValidateConfig:
                 "performance": {"memory": {"offload_text_encoders": False}, "precision": {"full_fp16": False, "full_bf16": False}},
             }
         )
-        with pytest.raises(ValueError, match="`peft` and `textual_inversion` sections cannot both be active"):
+        with pytest.raises(ValueError, match="`adapter` and `textual_inversion` sections cannot both be active"):
             validate_config(cfg)
 
     def test_mode_textual_inversion_requires_section(self):
@@ -537,28 +537,27 @@ class TestValidateConfig:
         """Strict continuation should reject config-defined method settings."""
         cfg = make_validate_cfg(
             {
-                "mode": "peft",
-                "peft": {
-                    "method": "lora",
+                "mode": "adapter",
+                "adapter": {"peft": {
                     "continue_from": "adapter.safetensors",
                     "continue_mode": "strict",
                     "lora": {"rank": 16},
-                },
+                }},
             }
         )
 
-        with pytest.raises(ValueError, match="peft\\.continue_mode='strict' treats the artifact as authoritative"):
+        with pytest.raises(ValueError, match="adapter\\.peft\\.continue_mode='strict' treats the artifact as authoritative"):
             validate_config(cfg)
 
     def test_peft_continue_from_defaults_to_strict_mode(self):
         """Continuation defaults to strict mode when no override is requested."""
         cfg = make_validate_cfg(
             {
-                "mode": "peft",
-                "peft": {
-                    "method": "lora",
+                "mode": "adapter",
+                "adapter": {"peft": {
                     "continue_from": "adapter.safetensors",
-                },
+                    "lora": {},
+                }},
             }
         )
 
@@ -568,28 +567,43 @@ class TestValidateConfig:
         """Dynamic adapter args should not be a method-settings path."""
         cfg = make_validate_cfg(
             {
-                "mode": "peft",
-                "peft": {
-                    "method": "loha",
+                "mode": "adapter",
+                "adapter": {"peft": {
+                    "loha": {},
                     "adapter_args": ["use_scalar=True"],
-                },
+                }},
             }
         )
 
-        with pytest.raises(ValueError, match="peft\\.adapter_args is no longer part of the forward adapter config surface"):
+        with pytest.raises(ValueError, match="adapter\\.peft\\.adapter_args is no longer part of the forward adapter config surface"):
+            validate_config(cfg)
+
+    def test_peft_rejects_legacy_method_without_active_branch(self):
+        """Legacy method alone should not replace branch-presence selection."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {"peft": {
+                    "method": "lora",
+                    "lora": None,
+                    "loha": None,
+                }},
+            }
+        )
+
+        with pytest.raises(ValueError, match="Legacy peft\\.method='lora' is set, but no method branch is configured"):
             validate_config(cfg)
 
     def test_peft_initialize_from_artifact_allows_active_method_settings(self):
         """Non-strict continuation should allow config-defined method settings."""
         cfg = make_validate_cfg(
             {
-                "mode": "peft",
-                "peft": {
-                    "method": "lora",
+                "mode": "adapter",
+                "adapter": {"peft": {
                     "continue_from": "adapter.safetensors",
                     "continue_mode": "initialize_from_artifact",
                     "lora": {"rank": 16},
-                },
+                }},
             }
         )
 
@@ -599,16 +613,15 @@ class TestValidateConfig:
         """Only the selected method subtree should carry active settings."""
         cfg = make_validate_cfg(
             {
-                "mode": "peft",
-                "peft": {
-                    "method": "lora",
+                "mode": "adapter",
+                "adapter": {"peft": {
                     "lora": {"rank": 16},
                     "loha": {"use_scalar": True},
-                },
+                }},
             }
         )
 
-        with pytest.raises(ValueError, match="other method config subtrees also have non-default values: loha"):
+        with pytest.raises(ValueError, match="exactly one method branch"):
             validate_config(cfg)
 
     def test_adaptive_noise_scale_requires_noise_offset(self):
@@ -1067,11 +1080,12 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="Cannot train text encoder parameters while TE output caching is enabled"):
             validate_config(cfg)
 
-    def test_peft_mode_rejects_learning_rate_groups(self):
-        """PEFT mode should fail early when fine-tune-only LR groups are configured."""
+    def test_adapter_mode_rejects_learning_rate_groups(self):
+        """Adapter mode should fail early when fine-tune-only LR groups are configured."""
         cfg = make_validate_cfg(
             {
-                "mode": "peft",
+                "mode": "adapter",
+                "adapter": {"peft": {"lora": {}}},
                 "optimizer": {
                     "learning_rates": {
                         "groups": [{"name": "unet_probe", "lr": 1e-5, "match": ["unet.*"]}],
