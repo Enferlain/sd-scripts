@@ -578,6 +578,37 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.adapter_args is no longer part of the forward adapter config surface"):
             validate_config(cfg)
 
+    def test_peft_rejects_non_positive_loha_rank(self):
+        """LoHa rank should fail fast when set to a non-positive value."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {"peft": {
+                    "loha": {"rank": 0},
+                }},
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.rank must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_loha_bypass_mode_with_weight_decompose(self):
+        """LoHa bypass mode should not coexist with weight decomposition."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {"peft": {
+                    "loha": {"weight_decompose": True, "bypass_mode": True},
+                }},
+            }
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="adapter\\.peft\\.loha\\.bypass_mode cannot be enabled when adapter\\.peft\\.loha\\.weight_decompose is true",
+        ):
+            validate_config(cfg)
+
     def test_peft_rejects_legacy_method_without_active_branch(self):
         """Legacy method alone should not replace branch-presence selection."""
         cfg = make_validate_cfg(

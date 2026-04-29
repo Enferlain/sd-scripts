@@ -12,6 +12,31 @@ def test_loha_module_rejects_non_positive_rank():
         LohaModule.from_target_module("loha_linear", target, config=LohaConfig(lora_dim=0))
 
 
+def test_loha_module_rejects_negative_rank():
+    target = torch.nn.Linear(4, 3, bias=False)
+
+    with pytest.raises(ValueError, match="rank must be positive"):
+        LohaModule.from_target_module("loha_linear", target, config=LohaConfig(lora_dim=-1))
+
+
+def test_loha_module_rejects_none_rank():
+    target = torch.nn.Linear(4, 3, bias=False)
+
+    with pytest.raises(ValueError, match="rank must be positive"):
+        LohaModule.from_target_module("loha_linear", target, config=LohaConfig(lora_dim=None))
+
+
+def test_loha_module_rejects_weight_decompose_with_bypass_mode():
+    target = torch.nn.Linear(4, 3, bias=False)
+
+    with pytest.raises(ValueError, match="weight_decompose is incompatible with bypass_mode"):
+        LohaModule.from_target_module(
+            "loha_linear",
+            target,
+            config=LohaConfig(weight_decompose=True, bypass_mode=True),
+        )
+
+
 def test_loha_module_zeroed_parameters_produce_zero_diff_weight():
     target = torch.nn.Linear(4, 3, bias=False)
     module = LohaModule.from_target_module("loha_linear", target, config=LohaConfig(lora_dim=2, alpha=2.0))

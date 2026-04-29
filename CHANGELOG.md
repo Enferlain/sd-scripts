@@ -10,6 +10,15 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-04-30]
+
+### Fixed
+
+- **Repo-owned LoHa config/runtime now fails clearly on invalid rank and conflicting bypass/DoRA settings instead of falling through to runtime-side surprises** — The active adapter path now treats unset LoHa rank as “use the method default” rather than passing `None` through as a fake configured rank, and it rejects `bypass_mode=True` together with `weight_decompose=True` before those settings can silently skip the intended decomposition path.
+  - Updated `library/adapters/methods/peft/loha/config.py` so runtime settings omit `adapter_rank` when unset, reject non-positive configured ranks, and reject the invalid bypass/decompose combination at method-config translation time.
+  - Updated `library/adapters/methods/peft/loha/runtime.py` and `library/adapters/methods/peft/loha/module.py` so the repo-owned LoHa runtime uses the module default rank when no explicit rank is configured and raises clear `ValueError`s for invalid direct construction paths.
+  - Added focused validation/runtime coverage in `tests/unit/test_config_validation.py`, `tests/unit/adapters/test_loha_module.py`, and `tests/unit/adapters/test_runtime_registry.py` for non-positive LoHa rank, bypass/decompose rejection, and the “unset rank uses method default” translation path.
+
 ## [2026-04-29]
 
 ### Changed

@@ -31,7 +31,7 @@ class LohaConfig:
     """Repo-owned config for constructing a LoHa module on one target module."""
 
     multiplier: float = 1.0
-    lora_dim: int = 4
+    lora_dim: int | None = 4
     alpha: float | Tensor | None = 1
     dropout: float = 0.0
     rank_dropout: float = 0.0
@@ -109,7 +109,7 @@ class LohaModule(nn.Module):
         org_module: nn.Module,
         *,
         multiplier: float = 1.0,
-        lora_dim: int = 4,
+        lora_dim: int | None = 4,
         alpha: float | Tensor | None = 1,
         dropout: float = 0.0,
         rank_dropout: float = 0.0,
@@ -126,8 +126,10 @@ class LohaModule(nn.Module):
         super().__init__()
         if not isinstance(org_module, SUPPORTED_MODULE_TYPES):
             raise ValueError(f"{type(org_module).__name__} is not supported in LoHa algo.")
-        if lora_dim <= 0:
+        if lora_dim is None or lora_dim <= 0:
             raise ValueError(f"LoHa rank must be positive, got {lora_dim}.")
+        if weight_decompose and bypass_mode:
+            raise ValueError("LoHa weight_decompose is incompatible with bypass_mode.")
 
         self.lora_name = lora_name
         self.multiplier = multiplier

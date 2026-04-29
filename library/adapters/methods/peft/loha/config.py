@@ -27,10 +27,13 @@ def build_runtime_settings(config: PeftLohaConfig) -> dict[str, object]:
     """Translate forward LoHa config into normalized runtime settings."""
 
     settings: dict[str, object] = {
-        "adapter_rank": config.rank,
         "adapter_alpha": config.alpha,
         "neuron_dropout": config.dropout,
     }
+    if config.rank is not None:
+        if config.rank <= 0:
+            raise ValueError("adapter.peft.loha.rank must be a positive integer when set.")
+        settings["adapter_rank"] = config.rank
     if config.rank_dropout is not None:
         settings["rank_dropout"] = config.rank_dropout
     if config.module_dropout is not None:
@@ -43,6 +46,8 @@ def build_runtime_settings(config: PeftLohaConfig) -> dict[str, object]:
         settings["rank_dropout_scale"] = True
     if config.weight_decompose:
         settings["weight_decompose"] = True
+    if config.weight_decompose and config.bypass_mode:
+        raise ValueError("adapter.peft.loha.bypass_mode cannot be enabled when adapter.peft.loha.weight_decompose is true.")
     if config.wd_on_output is not True:
         settings["wd_on_output"] = config.wd_on_output
     if config.bypass_mode is not None:
