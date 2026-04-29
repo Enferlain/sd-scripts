@@ -258,6 +258,45 @@ bd close <id>         # Complete work
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
+## OpenSpec Changes
+
+This project also uses **OpenSpec** for spec-driven changes. Long-lived accepted
+requirements live under `openspec/specs/`. Active change proposals, designs,
+and task checklists live under `openspec/changes/` when a change is in flight.
+
+### When to use OpenSpec
+
+- Use OpenSpec for multi-step changes that benefit from explicit proposal,
+  design, spec, and task artifacts, especially architecture work, behavior
+  changes, and work that may span multiple sessions.
+- OpenSpec is optional for small bug fixes, narrow refactors, doc-only edits,
+  or other self-contained work that is already clear.
+
+### Relationship to `bd`
+
+- `bd` remains the source of truth for issue tracking, prioritization,
+  dependencies, claiming, and completion status.
+- OpenSpec complements `bd` by defining the change itself: what is changing,
+  why, how it should work, and which implementation steps belong to it.
+- OpenSpec artifacts such as `openspec/changes/<name>/tasks.md` are allowed as
+  part of a spec-driven change. They do **not** replace `bd`, and should not
+  be used as the repo-wide task tracker.
+- Recommended flow for larger work:
+  1. Create or claim the `bd` issue.
+  2. Create or update the related OpenSpec change when spec/design/task
+     artifacts would help.
+  3. Implement against the OpenSpec artifacts.
+  4. Archive the OpenSpec change when complete.
+  5. Close the `bd` issue after implementation and verification are done.
+
+### Useful OpenSpec Commands
+
+```bash
+openspec list --json
+openspec new change "<name>"
+openspec status --change "<name>" --json
+```
+
 ## Session Completion
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
