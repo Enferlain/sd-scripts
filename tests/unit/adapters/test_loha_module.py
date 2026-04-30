@@ -33,7 +33,7 @@ def test_loha_module_rejects_weight_decompose_with_bypass_mode():
         LohaModule.from_target_module(
             "loha_linear",
             target,
-            config=LohaConfig(weight_decompose=True, bypass_mode=True),
+            config=LohaConfig(lora_dim=2, weight_decompose=True, bypass_mode=True),
         )
 
 

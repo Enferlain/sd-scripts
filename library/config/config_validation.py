@@ -21,7 +21,7 @@ import logging
 import re
 
 from library.adapters.method_configs import (
-    _get_config_value,
+    build_adapter_runtime_spec,
     get_adapter_peft_config,
     get_inactive_method_config_values,
     get_nondefault_method_config_values,
@@ -353,17 +353,7 @@ def _validate_peft_config(cfg) -> None:
             f"adapter.peft.{registration.name} is active, but other method config branches also have values: {inactive_methods}."
         )
 
-    if registration.name == "loha":
-        loha_cfg = getattr(peft_cfg, "loha", None)
-        if loha_cfg is not None:
-            loha_rank = _get_config_value(loha_cfg, "rank")
-            if loha_rank is not None and loha_rank <= 0:
-                raise ValueError("adapter.peft.loha.rank must be a positive integer when set.")
-
-            if _get_config_value(loha_cfg, "weight_decompose", False) and _get_config_value(loha_cfg, "bypass_mode", False):
-                raise ValueError(
-                    "adapter.peft.loha.bypass_mode cannot be enabled when adapter.peft.loha.weight_decompose is true."
-                )
+    build_adapter_runtime_spec(peft_cfg)
 
     if continue_from is not None and effective_continue_mode == "strict":
         active_method_values = get_nondefault_method_config_values(peft_cfg, registration.name)

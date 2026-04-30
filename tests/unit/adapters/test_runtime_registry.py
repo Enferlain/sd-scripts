@@ -273,16 +273,14 @@ class TestAdapterRegistry:
         assert settings["rank_dropout"] == 0.2
         assert settings["use_tucker"] is True
 
-    def test_loha_translation_omits_rank_when_unset(self):
+    def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig
 
         registration = get_adapter_method("loha")
         assert registration.config_binding is not None
 
-        settings = registration.config_binding.runtime_settings_builder(PeftLohaConfig())
-
-        assert "adapter_rank" not in settings
-        assert settings["adapter_alpha"] == 1.0
+        with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.rank must be set"):
+            registration.config_binding.runtime_settings_builder(PeftLohaConfig())
 
     def test_resolves_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.oft")

@@ -31,7 +31,7 @@ class LohaConfig:
     """Repo-owned config for constructing a LoHa module on one target module."""
 
     multiplier: float = 1.0
-    lora_dim: int | None = 4
+    lora_dim: int | None = None
     alpha: float | Tensor | None = 1
     dropout: float = 0.0
     rank_dropout: float = 0.0
@@ -109,7 +109,7 @@ class LohaModule(nn.Module):
         org_module: nn.Module,
         *,
         multiplier: float = 1.0,
-        lora_dim: int | None = 4,
+        lora_dim: int | None = None,
         alpha: float | Tensor | None = 1,
         dropout: float = 0.0,
         rank_dropout: float = 0.0,

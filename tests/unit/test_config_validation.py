@@ -563,6 +563,20 @@ class TestValidateConfig:
 
         validate_config(cfg)
 
+    def test_peft_rejects_loha_without_rank(self):
+        """LoHa should require an explicit method-level rank setting."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {"peft": {
+                    "loha": {},
+                }},
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.rank must be set to a positive integer"):
+            validate_config(cfg)
+
     def test_peft_rejects_legacy_adapter_args_as_forward_surface(self):
         """Dynamic adapter args should not be a method-settings path."""
         cfg = make_validate_cfg(

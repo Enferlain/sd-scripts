@@ -65,6 +65,24 @@ def _get_config_value(config_obj: Any, key: str, default: Any = None) -> Any:
         return default
 
 
+def _materialize_method_config(config_obj: Any, *, config_type: type | None) -> Any:
+    """Return a typed method config populated with dataclass defaults."""
+
+    if config_obj is None or config_type is None:
+        return config_obj
+    if isinstance(config_obj, config_type):
+        return config_obj
+
+    field_values: dict[str, Any] = {}
+    for field_info in fields(config_type):
+        default_value = _field_default(field_info)
+        current_value = _get_config_value(config_obj, field_info.name, default_value)
+        if current_value is MISSING:
+            continue
+        field_values[field_info.name] = current_value
+    return config_type(**field_values)
+
+
 def get_adapter_peft_config(cfg_or_peft_config: Any) -> PeftConfig | None:
     """Return the active PEFT family config from either root or family config."""
 
@@ -193,7 +211,8 @@ def build_adapter_runtime_spec(peft_config: PeftConfig) -> AdapterRuntimeSpec:
     if config_binding is None or method_config is None:
         settings: dict[str, Any] = {}
     else:
-        settings = config_binding.runtime_settings_builder(method_config)
+        typed_method_config = _materialize_method_config(method_config, config_type=config_binding.config_type)
+        settings = config_binding.runtime_settings_builder(typed_method_config)
     legacy_args = parse_legacy_adapter_args(peft_config)
     if legacy_args:
         raise ValueError(
