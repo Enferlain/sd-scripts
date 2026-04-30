@@ -8,7 +8,11 @@ This includes training configuration, dataset statistics, and provenance informa
 import json
 import os
 
-from library.adapters.method_configs import get_adapter_peft_config, get_method_config, resolve_adapter_method_registration
+from library.adapters.methods.peft.config_resolution import (
+    get_adapter_peft_config,
+    get_method_config,
+    resolve_adapter_method_registration,
+)
 from library.constants import SS_METADATA_MINIMUM_KEYS
 from library.data import DatasetManifest, compute_tag_frequency
 from library.objectives import ObjectiveDefinition, build_objective

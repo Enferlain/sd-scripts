@@ -45,7 +45,7 @@ from library.training.sample_generation import sample_images_check
 from library.losses.loss import EMARecorder
 from library.config.dataclasses.run import RunConfig
 from library.strategies.sd.training import SdTrainingStrategy
-from library.adapters.lora_utils import resolve_adapter_kwargs
+from library.adapters.methods.peft.lora.lora_utils import resolve_adapter_kwargs
 from library.training.training_metadata import create_training_metadata
 from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
 from library.data._deprecated.dataset_setup import prepare_datasets

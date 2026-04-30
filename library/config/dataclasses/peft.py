@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from library.adapters.methods.peft.loha.config import PeftLohaConfig
+from library.adapters.methods.peft.lokr.config import PeftLokrConfig
 from library.adapters.methods.peft.lora.config import PeftLoraConfig
 
 VALID_PEFT_CONTINUE_MODES = ("strict", "initialize_from_artifact")
@@ -34,6 +35,7 @@ class PeftConfig:
 
     lora: PeftLoraConfig | None = None
     loha: PeftLohaConfig | None = None
+    lokr: PeftLokrConfig | None = None
 
     scale_weight_norms: float | None = field(
         default=None, metadata={"help": "Scale weight norms to prevent exploding gradients (1.0 recommended)"}

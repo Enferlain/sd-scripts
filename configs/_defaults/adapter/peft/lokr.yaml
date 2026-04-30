@@ -1,0 +1,20 @@
+rank: null
+alpha: 1.0
+# Plain LoKr dropout is intentionally unsupported in the repo-owned path; use
+# rank_dropout and/or module_dropout instead.
+dropout: null
+rank_dropout: null
+module_dropout: null
+use_tucker: false
+use_scalar: false
+init_mode: lycoris_legacy
+decompose_both: false
+factor: -1
+full_matrix: false
+rank_dropout_scale: false
+weight_decompose: false
+wd_on_output: true
+bypass_mode: null
+rs_lora: false
+unbalanced_factorization: false
+orthogonalize: false

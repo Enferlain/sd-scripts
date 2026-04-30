@@ -77,7 +77,6 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 ### Active TODOs
 
 - [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
-- [ ] Check what "full bf16" means in our repo
 
 Recent architecture and config settlements now belong in `CHANGELOG.md`; this section should only track active follow-up.
 
@@ -101,7 +100,7 @@ Recent architecture and config settlements now belong in `CHANGELOG.md`; this se
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 - [ ] Investigate naming conventions and possible drifts in the objective class and runtime layers
 - [ ] Dep version health check, lots of old versions pinned
-- [ ] Config related validation to the config validation file
+- [ ] Config related validation to the config validation file unless justified
 
 ### Near-Term Follow-up
 
@@ -118,10 +117,10 @@ Recent architecture and config settlements now belong in `CHANGELOG.md`; this se
 - [ ] **Conditioning architecture follow-up** — Pressure-test the new `ConditioningStrategy` seam against more model families and decide whether any sub-conventions under `resolve_conditioning(...)` are mature enough to standardize.
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
 - [ ] **Regularization-image UX / docs note** — The current DreamBooth-style `reg_data_dir` / `is_reg` path is mechanically correct, but it only helps when those images are genuine class/prior images with matching generic captions or `class_tokens`, not just arbitrary extra images. Make sure future docs/examples call that out explicitly.
-- [ ] **Dashboard / logging system rework** — Fold the live plotter into a broader dashboard/logging system instead of treating it as a side system.
+- [ ] **Dashboard / logging system rework** — Fold the live plotter into a broader dashboard/logging system instead of treating it as a side system. Prob deferred until ui
 - [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
 - [ ] **LyCORIS vendor / integration pass** — Treat LyCORIS as a vendor/integration ownership question rather than an external dependency question, since adapter breakdown follow-up depends on tighter ownership and easier modification.
-- [ ] **Adapter-system follow-up** — The active adapter rework now has optimization-owned target/grouping ownership, method-local PEFT config under `adapter.peft.<method>` branch presence plus explicit continuation intent, an explicit persistence split where `AdapterMode` orchestrates checkpoint/export flows while adapter runtime objects participate through repo-owned persistence helpers, and a runtime-layer loaded-runtime/merge-request seam for the built-in from-weights and base-weight-merge flow. The remaining follow-up is broader adapter breadth, generic artifact-initialization / pre-merge config ownership, and LyCORIS/vendor integration work rather than reopening compatibility-era optimizer, persistence, or merge boundaries.
+- [ ] **Adapter-system follow-up** — The active adapter rework now has optimization-owned target/grouping ownership, method-local PEFT config under `adapter.peft.<method>` branch presence plus explicit continuation intent, repo-owned LoHa and LoKr method implementations, an explicit persistence split where `AdapterMode` orchestrates checkpoint/export flows while adapter runtime objects participate through repo-owned persistence helpers, and a runtime-layer loaded-runtime/merge-request seam for the built-in from-weights and base-weight-merge flow. The remaining follow-up is broader adapter breadth, generic artifact-initialization / pre-merge config ownership, and LyCORIS/vendor integration work rather than reopening compatibility-era optimizer, persistence, or merge boundaries.
   - The shared target-ref foundation now also lives under `library/optimization/targets.py`, with fine-tune parameter refs and adapter module targets both carrying the same component-qualified selector and provenance model. Future module-type selectors or adapter-specific grouping work should extend that shared target vocabulary rather than reintroducing an adapter-only target surface.
 - [ ] **torchao pulled into the repo so it can be modified when wanted** — upstream is restrictive for offloading
 - [ ] **Future conditioning/data-flow experiments** — Later exploration area for better caption mutation, TE caching, on-the-fly CPU encoding, queues, async handoff, and related conditioning/data-flow improvements once the current building blocks are settled.
@@ -169,7 +168,6 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [ ] Old toml to new config translator
 - [ ] Constants rework
 - [ ] Metadata system
-- [ ] Kahan summation / stochastic rounding / optimal transport check in reference repos
 
 ---
 

@@ -8,7 +8,7 @@ and don't require heavy model mocks.
 import pytest
 
 # Import the functions and constants we're testing
-from library.adapters.lora import (
+from library.adapters.methods.peft.lora.lora import (
     parse_block_lr_kwargs,
     get_block_dims_and_alphas,
     get_block_lr_weight,

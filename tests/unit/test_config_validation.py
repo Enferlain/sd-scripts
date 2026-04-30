@@ -538,11 +538,13 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "continue_from": "adapter.safetensors",
-                    "continue_mode": "strict",
-                    "lora": {"rank": 16},
-                }},
+                "adapter": {
+                    "peft": {
+                        "continue_from": "adapter.safetensors",
+                        "continue_mode": "strict",
+                        "lora": {"rank": 16},
+                    }
+                },
             }
         )
 
@@ -554,10 +556,12 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "continue_from": "adapter.safetensors",
-                    "lora": {},
-                }},
+                "adapter": {
+                    "peft": {
+                        "continue_from": "adapter.safetensors",
+                        "lora": {},
+                    }
+                },
             }
         )
 
@@ -568,9 +572,11 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "loha": {},
-                }},
+                "adapter": {
+                    "peft": {
+                        "loha": {},
+                    }
+                },
             }
         )
 
@@ -582,10 +588,12 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "loha": {},
-                    "adapter_args": ["use_scalar=True"],
-                }},
+                "adapter": {
+                    "peft": {
+                        "loha": {},
+                        "adapter_args": ["use_scalar=True"],
+                    }
+                },
             }
         )
 
@@ -597,9 +605,11 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "loha": {"rank": 0},
-                }},
+                "adapter": {
+                    "peft": {
+                        "loha": {"rank": 0},
+                    }
+                },
             }
         )
 
@@ -611,9 +621,11 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "loha": {"rank": 8, "dropout": 0.1},
-                }},
+                "adapter": {
+                    "peft": {
+                        "loha": {"rank": 8, "dropout": 0.1},
+                    }
+                },
             }
         )
 
@@ -625,9 +637,11 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "loha": {"rank": 8, "init_mode": "mystery_mode"},
-                }},
+                "adapter": {
+                    "peft": {
+                        "loha": {"rank": 8, "init_mode": "mystery_mode"},
+                    }
+                },
             }
         )
 
@@ -639,9 +653,11 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "loha": {"weight_decompose": True, "bypass_mode": True},
-                }},
+                "adapter": {
+                    "peft": {
+                        "loha": {"weight_decompose": True, "bypass_mode": True},
+                    }
+                },
             }
         )
 
@@ -651,16 +667,85 @@ class TestValidateConfig:
         ):
             validate_config(cfg)
 
+    def test_peft_rejects_lokr_without_rank(self):
+        """LoKr should require an explicit method-level rank setting."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "lokr": {},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.lokr\\.rank must be set to a positive integer"):
+            validate_config(cfg)
+
+    def test_peft_rejects_non_positive_lokr_rank(self):
+        """LoKr rank should fail fast when set to a non-positive value."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "lokr": {"rank": 0},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.lokr\\.rank must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_lokr_plain_dropout(self):
+        """LoKr plain dropout is intentionally unsupported in the repo-owned path."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "lokr": {"rank": 8, "dropout": 0.1},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.lokr\\.dropout is not supported"):
+            validate_config(cfg)
+
+    def test_peft_rejects_lokr_bypass_mode_with_weight_decompose(self):
+        """LoKr bypass mode should not coexist with weight decomposition."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "lokr": {"weight_decompose": True, "bypass_mode": True},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="adapter\\.peft\\.lokr\\.bypass_mode cannot be enabled when adapter\\.peft\\.lokr\\.weight_decompose is true",
+        ):
+            validate_config(cfg)
+
     def test_peft_rejects_legacy_method_without_active_branch(self):
         """Legacy method alone should not replace branch-presence selection."""
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "method": "lora",
-                    "lora": None,
-                    "loha": None,
-                }},
+                "adapter": {
+                    "peft": {
+                        "method": "lora",
+                        "lora": None,
+                        "loha": None,
+                    }
+                },
             }
         )
 
@@ -672,11 +757,13 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "continue_from": "adapter.safetensors",
-                    "continue_mode": "initialize_from_artifact",
-                    "lora": {"rank": 16},
-                }},
+                "adapter": {
+                    "peft": {
+                        "continue_from": "adapter.safetensors",
+                        "continue_mode": "initialize_from_artifact",
+                        "lora": {"rank": 16},
+                    }
+                },
             }
         )
 
@@ -687,10 +774,12 @@ class TestValidateConfig:
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
-                "adapter": {"peft": {
-                    "lora": {"rank": 16},
-                    "loha": {"use_scalar": True},
-                }},
+                "adapter": {
+                    "peft": {
+                        "lora": {"rank": 16},
+                        "loha": {"use_scalar": True},
+                    }
+                },
             }
         )
 

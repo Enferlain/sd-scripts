@@ -240,7 +240,7 @@ class TestAdapterRegistry:
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()
 
-        assert [registration.name for registration in registrations] == ["loha", "lora", "dylora_deprecated", "oft_deprecated"]
+        assert [registration.name for registration in registrations] == ["loha", "lokr", "lora", "dylora_deprecated", "oft_deprecated"]
 
     def test_resolves_repo_owned_adapter_type(self):
         registration = get_adapter_method("loha")
@@ -249,6 +249,15 @@ class TestAdapterRegistry:
         assert registration.runtime_module_path == "library.adapters.methods.peft.loha.runtime"
         assert registration.config_binding is not None
         assert registration.config_binding.config_key == "loha"
+        assert registration.config_binding.runtime_settings_builder is not None
+
+    def test_resolves_repo_owned_lokr_adapter_type(self):
+        registration = get_adapter_method("lokr")
+
+        assert registration.legacy_module_path == "library.adapters.lokr"
+        assert registration.runtime_module_path == "library.adapters.methods.peft.lokr.runtime"
+        assert registration.config_binding is not None
+        assert registration.config_binding.config_key == "lokr"
         assert registration.config_binding.runtime_settings_builder is not None
 
     def test_registration_owns_method_config_translation(self):
@@ -272,6 +281,32 @@ class TestAdapterRegistry:
         assert settings["init_mode"] == "zero_delta_he"
         assert settings["rank_dropout"] == 0.2
         assert settings["use_tucker"] is True
+
+    def test_lokr_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.lokr.config import PeftLokrConfig
+
+        registration = get_adapter_method("lokr")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftLokrConfig(
+                rank=16,
+                alpha=32.0,
+                init_mode="zero_delta_he",
+                rank_dropout=0.2,
+                use_tucker=True,
+                decompose_both=True,
+                factor=8,
+            )
+        )
+
+        assert registration.config_binding.config_key == "lokr"
+        assert settings["adapter_rank"] == 16
+        assert settings["adapter_alpha"] == 32.0
+        assert settings["init_mode"] == "zero_delta_he"
+        assert settings["rank_dropout"] == 0.2
+        assert settings["use_tucker"] is True
+        assert settings["decompose_both"] is True
+        assert settings["factor"] == 8
 
     def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig
@@ -299,6 +334,24 @@ class TestAdapterRegistry:
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.init_mode must be one of"):
             registration.config_binding.runtime_settings_builder(PeftLohaConfig(rank=8, init_mode="mystery_mode"))  # type: ignore[arg-type]
+
+    def test_lokr_translation_requires_explicit_rank(self):
+        from library.adapters.methods.peft.lokr.config import PeftLokrConfig
+
+        registration = get_adapter_method("lokr")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.lokr\\.rank must be set"):
+            registration.config_binding.runtime_settings_builder(PeftLokrConfig())
+
+    def test_lokr_translation_rejects_plain_dropout(self):
+        from library.adapters.methods.peft.lokr.config import PeftLokrConfig
+
+        registration = get_adapter_method("lokr")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.lokr\\.dropout is not supported"):
+            registration.config_binding.runtime_settings_builder(PeftLokrConfig(rank=8, dropout=0.1))
 
     def test_resolves_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.oft")
@@ -564,12 +617,13 @@ class TestAdapterRegistry:
             adapter,
             AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
         )
-        state_dict = load_file(str(export_path))
+        state_dict = dict(load_file(str(export_path)))
         state_dict.pop("loha_clip_l_proj.alpha")
-        save_file(state_dict, str(export_path), {"format": "test"})
+        partial_path = tmp_path / "loha_partial_missing_alpha.safetensors"
+        save_file(state_dict, str(partial_path), {"format": "test"})
 
         fresh_adapter = build_adapter_for_legacy_module("library.adapters.loha", request)
-        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(partial_path)))
 
         assert load_info == {"missing keys": ["loha_clip_l_proj"]}
 
@@ -607,3 +661,183 @@ class TestAdapterRegistry:
 
         with pytest.raises(ValueError, match="LoHa plain dropout is disabled"):
             build_adapter_for_legacy_module("library.adapters.loha", request)
+
+    def test_registered_lokr_runtime_exposes_repo_owned_trainable_refs(self):
+        from library.adapters.methods.peft.lokr.module import LokrModule
+
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+                self.norm = torch.nn.LayerNorm(4)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="lokr",
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.lokr", request)
+        refs = adapter.describe_trainable_parameter_refs()
+
+        assert adapter.adapter_resolved_targets is resolved_targets
+        assert all(isinstance(module, LokrModule) for module in adapter.lokr_modules)
+        assert {module.__class__.__module__ for module in adapter.lokr_modules} == {"library.adapters.methods.peft.lokr.module"}
+        assert {module.adapter_target.path for module in adapter.lokr_modules} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.component for ref in refs} == {"clip_l", "unet"}
+        assert {ref.component_key for ref in refs} == {"text_encoder1", "denoiser"}
+        assert {ref.target_path for ref in refs} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.source_target_ref.selector for ref in refs if ref.source_target_ref is not None} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.source_target_ref.module_type for ref in refs if ref.source_target_ref is not None} == {"Linear"}
+        assert all("norm" not in ref.target_path for ref in refs)
+
+    def test_registered_lokr_runtime_round_trips_export_and_merge(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="lokr",
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.lokr", request)
+        for parameter in adapter.parameters():
+            parameter.data.fill_(0.25)
+
+        export_path = tmp_path / "lokr.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.lokr", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
+        assert load_info == {}
+
+        original_weight = denoiser.to_q.weight.detach().clone()
+        loaded_runtime = build_adapter_from_weights_for_legacy_module("library.adapters.lokr", request, str(export_path))
+        assert isinstance(loaded_runtime, LoadedAdapterRuntime)
+        loaded_runtime.merge_into(
+            AdapterMergeRequest(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+                resolved_targets=resolved_targets,
+                dtype=torch.float32,
+                device="cpu",
+            )
+        )
+
+        assert not torch.allclose(denoiser.to_q.weight, original_weight)
+
+    def test_registered_lokr_runtime_reports_partial_checkpoint_as_missing(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=None,
+            include_text_encoders=[True, False],
+            include_denoiser=False,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="lokr",
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=None),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.lokr", request)
+        export_path = tmp_path / "lokr_partial.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+        state_dict = dict(load_file(str(export_path)))
+        state_dict.pop("lokr_clip_l_proj.alpha")
+        partial_path = tmp_path / "lokr_partial_missing_alpha.safetensors"
+        save_file(state_dict, str(partial_path), {"format": "test"})
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.lokr", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(partial_path)))
+
+        assert load_info == {"missing keys": ["lokr_clip_l_proj"]}
+
+    def test_registered_lokr_runtime_rejects_plain_dropout_settings(self):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=None,
+            include_text_encoders=[True, False],
+            include_denoiser=False,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="lokr",
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0, "dropout": 0.1},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=None),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        with pytest.raises(ValueError, match="LoKr plain dropout is disabled"):
+            build_adapter_for_legacy_module("library.adapters.lokr", request)

@@ -1,4 +1,4 @@
-"""Repo-owned LoRA adapter method package."""
+"""Repo-owned absorbed LoKr adapter runtime."""
 
 from library.adapters.types import AdapterMethodRegistration
 
@@ -6,9 +6,9 @@ from .config import CONFIG_BINDING
 
 
 REGISTRATION = AdapterMethodRegistration(
-    name="lora",
-    legacy_module_path="library.adapters.lora",
-    runtime_module_path="library.adapters.methods.peft.lora.runtime",
+    name="lokr",
+    legacy_module_path="library.adapters.lokr",
+    runtime_module_path="library.adapters.methods.peft.lokr.runtime",
     config_binding=CONFIG_BINDING,
 )
 

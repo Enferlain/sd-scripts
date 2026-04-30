@@ -324,7 +324,7 @@ def test_prepare_trainables_supports_registered_loha_runtime_with_module_targets
     trainer = _build_mock_trainer()
     trainer.cfg.adapter.peft.lora = None
     trainer.cfg.adapter.peft.loha = SimpleNamespace(
-        rank=None,
+        rank=4,
         alpha=1.0,
         dropout=None,
         rank_dropout=None,

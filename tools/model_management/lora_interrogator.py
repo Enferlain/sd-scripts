@@ -6,7 +6,7 @@ import argparse
 from transformers import CLIPTokenizer
 
 from library.constants import V2_STABLE_DIFFUSION_ID, TOKENIZER_ID
-from library.adapters import lora
+from library.adapters.methods.peft.lora import lora
 
 from library.utils.device_utils import init_ipex, get_preferred_device
 from library.models.sd.loader import _load_target_model

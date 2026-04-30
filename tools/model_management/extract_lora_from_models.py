@@ -13,7 +13,7 @@ from safetensors.torch import save_file
 from tqdm import tqdm
 
 import library.models.sd.conversion
-from library.adapters import lora
+from library.adapters.methods.peft.lora import lora
 
 from library.utils import sai_model_spec
 

@@ -8,22 +8,22 @@ from torch import nn
 from library.adapters.runtime import AdapterBuildRequest, AdapterMergeRequest, LoadedAdapterRuntime
 from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider
 
-from .module import LohaConfig, LohaModule, SUPPORTED_MODULE_TYPES
-from .state_dict import load_loha_state_dict, save_loha_state_dict
+from .module import LokrConfig, LokrModule, SUPPORTED_MODULE_TYPES
+from .state_dict import load_lokr_state_dict, save_lokr_state_dict
 
 
-def _build_loha_target_name(target) -> str:
-    return f"loha_{target.path}".replace(".", "_")
+def _build_lokr_target_name(target) -> str:
+    return f"lokr_{target.path}".replace(".", "_")
 
 
 def _iter_supported_targets(resolved_targets) -> list:
     return [target for target in resolved_targets.targets if isinstance(target.module, SUPPORTED_MODULE_TYPES)]
 
 
-class LohaAdapterRuntime(nn.Module):
-    """Repo-owned runtime for absorbed LoHa modules."""
+class LokrAdapterRuntime(nn.Module):
+    """Repo-owned runtime for absorbed LoKr modules."""
 
-    def __init__(self, modules: list[LohaModule]):
+    def __init__(self, modules: list[LokrModule]):
         super().__init__()
         self._module_names: list[str] = []
         self.adapter_resolved_targets: Any = None
@@ -32,11 +32,11 @@ class LohaAdapterRuntime(nn.Module):
             self._module_names.append(module.lora_name)
 
     @property
-    def loha_modules(self) -> list[LohaModule]:
+    def lokr_modules(self) -> list[LokrModule]:
         return [getattr(self, module_name) for module_name in self._module_names]
 
     def apply_to(self, *_args) -> None:
-        for module in self.loha_modules:
+        for module in self.lokr_modules:
             module.apply_to()
 
     def prepare_grad_etc(self, *_args) -> None:
@@ -57,7 +57,7 @@ class LohaAdapterRuntime(nn.Module):
     def apply_max_norm_regularization(self, max_norm_value, device):
         keys_scaled = 0
         norms = []
-        for module in self.loha_modules:
+        for module in self.lokr_modules:
             scaled, norm = module.apply_max_norm(max_norm_value, device)
             if scaled is None:
                 continue
@@ -69,9 +69,9 @@ class LohaAdapterRuntime(nn.Module):
         return keys_scaled, sum(norms) / len(norms), max(norms)
 
     def load_weights(self, file: str):
-        state_dict = load_loha_state_dict(file)
+        state_dict = load_lokr_state_dict(file)
         missing_keys: list[str] = []
-        for module in self.loha_modules:
+        for module in self.lokr_modules:
             if not module.algo_check(state_dict, module.lora_name):
                 missing_keys.append(module.lora_name)
                 continue
@@ -93,16 +93,16 @@ class LohaAdapterRuntime(nn.Module):
         return {}
 
     def save_weights(self, file: str, dtype, metadata: dict[str, str] | None):
-        save_loha_state_dict(self.loha_modules, file, dtype=dtype, metadata=metadata)
+        save_lokr_state_dict(self.lokr_modules, file, dtype=dtype, metadata=metadata)
 
 
-def _attach_trainable_ref_provider(adapter: LohaAdapterRuntime, request: AdapterBuildRequest) -> LohaAdapterRuntime:
+def _attach_trainable_ref_provider(adapter: LokrAdapterRuntime, request: AdapterBuildRequest) -> LokrAdapterRuntime:
     def describe_trainable_parameter_refs() -> list[AdapterTrainableParameterRef]:
         refs: list[AdapterTrainableParameterRef] = []
-        for module in adapter.loha_modules:
+        for module in adapter.lokr_modules:
             target = module.adapter_target
             if target is None:
-                raise ValueError(f"LoHa module {module.lora_name!r} is missing adapter target provenance.")
+                raise ValueError(f"LoKr module {module.lora_name!r} is missing adapter target provenance.")
             for param_name, param in module.named_parameters():
                 refs.append(
                     AdapterTrainableParameterRef(
@@ -121,17 +121,17 @@ def _attach_trainable_ref_provider(adapter: LohaAdapterRuntime, request: Adapter
     return adapter
 
 
-def _create_loha_module_from_target(target, request: AdapterBuildRequest) -> LohaModule:
+def _create_lokr_module_from_target(target, request: AdapterBuildRequest) -> LokrModule:
     settings = dict(request.adapter.settings)
     adapter_rank = settings.pop("adapter_rank", None)
     adapter_alpha = settings.pop("adapter_alpha", None)
     neuron_dropout = settings.pop("neuron_dropout", None)
     dropout = settings.pop("dropout", None)
     if adapter_rank is None:
-        raise ValueError("LoHa runtime settings must include adapter_rank; set adapter.peft.loha.rank explicitly.")
+        raise ValueError("LoKr runtime settings must include adapter_rank; set adapter.peft.lokr.rank explicitly.")
     if neuron_dropout is not None or dropout is not None:
-        raise ValueError("LoHa plain dropout is disabled; use rank_dropout or module_dropout instead.")
-    config = LohaConfig(
+        raise ValueError("LoKr plain dropout is disabled; use rank_dropout or module_dropout instead.")
+    config = LokrConfig(
         multiplier=request.context.multiplier,
         lora_dim=adapter_rank,
         alpha=adapter_alpha,
@@ -139,52 +139,56 @@ def _create_loha_module_from_target(target, request: AdapterBuildRequest) -> Loh
         **settings,
     )
 
-    module = LohaModule.from_target_module(_build_loha_target_name(target), target.module, config=config)
+    module = LokrModule.from_target_module(_build_lokr_target_name(target), target.module, config=config)
     module.adapter_target = target
     return module
 
 
 def create_adapter(request: AdapterBuildRequest):
-    """Create a repo-owned LoHa runtime from resolved adapter targets."""
+    """Create a repo-owned LoKr runtime from resolved adapter targets."""
 
     supported_targets = _iter_supported_targets(request.resolved_targets)
     if not supported_targets:
-        raise ValueError("LoHa adapter runtime requires at least one supported resolved target module")
+        raise ValueError("LoKr adapter runtime requires at least one supported resolved target module")
 
-    adapter = LohaAdapterRuntime([_create_loha_module_from_target(target, request) for target in supported_targets])
+    adapter = LokrAdapterRuntime([_create_lokr_module_from_target(target, request) for target in supported_targets])
     adapter.adapter_resolved_targets = request.resolved_targets
     return _attach_trainable_ref_provider(adapter, request)
 
 
 def create_adapter_from_weights(request: AdapterBuildRequest, weights_path: str):
-    """Create a loaded repo-owned LoHa runtime from saved weights."""
+    """Create a loaded repo-owned LoKr runtime from saved weights."""
 
-    weights_sd = load_loha_state_dict(weights_path)
-    modules: list[LohaModule] = []
+    weights_sd = load_lokr_state_dict(weights_path)
+    modules: list[LokrModule] = []
     for target in _iter_supported_targets(request.resolved_targets):
-        lora_name = _build_loha_target_name(target)
-        if not LohaModule.algo_check(weights_sd, lora_name):
+        lora_name = _build_lokr_target_name(target)
+        if not LokrModule.algo_check(weights_sd, lora_name):
             continue
-        hada_w1_a, hada_w1_b, hada_w2_a, hada_w2_b, hada_t1, hada_t2, alpha, dora_scale = LohaModule.extract_state_dict(
-            weights_sd, lora_name
-        )
-        if any(param is None for param in (hada_w1_a, hada_w1_b, hada_w2_a, hada_w2_b, alpha)):
+        (
+            lokr_w1,
+            lokr_w1_a,
+            lokr_w1_b,
+            lokr_w2,
+            lokr_w2_a,
+            lokr_w2_b,
+            lokr_t2,
+            alpha,
+            dora_scale,
+        ) = LokrModule.extract_state_dict(weights_sd, lora_name)
+        if alpha is None:
             continue
-        assert hada_w1_a is not None
-        assert hada_w1_b is not None
-        assert hada_w2_a is not None
-        assert hada_w2_b is not None
-        assert alpha is not None
         with torch.no_grad():
-            module = LohaModule.make_module_from_state_dict(
+            module = LokrModule.make_module_from_state_dict(
                 lora_name,
                 target.module,
-                hada_w1_a,
-                hada_w1_b,
-                hada_w2_a,
-                hada_w2_b,
-                hada_t1,
-                hada_t2,
+                lokr_w1,
+                lokr_w1_a,
+                lokr_w1_b,
+                lokr_w2,
+                lokr_w2_a,
+                lokr_w2_b,
+                lokr_t2,
                 alpha,
                 dora_scale,
             )
@@ -193,14 +197,14 @@ def create_adapter_from_weights(request: AdapterBuildRequest, weights_path: str)
         modules.append(module)
 
     if not modules:
-        raise ValueError(f"No LoHa weights in '{weights_path}' matched the resolved adapter targets")
+        raise ValueError(f"No LoKr weights in '{weights_path}' matched the resolved adapter targets")
 
-    adapter = LohaAdapterRuntime(modules)
+    adapter = LokrAdapterRuntime(modules)
     adapter.adapter_resolved_targets = request.resolved_targets
     adapter = _attach_trainable_ref_provider(adapter, request)
 
     def _merge_into_impl(merge_request: AdapterMergeRequest) -> None:
-        for module in adapter.loha_modules:
+        for module in adapter.lokr_modules:
             module.merge_to(multiplier=request.context.multiplier)
 
     return LoadedAdapterRuntime(adapter=adapter, state=weights_sd, _merge_into_impl=_merge_into_impl)

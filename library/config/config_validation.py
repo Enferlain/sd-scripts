@@ -20,7 +20,7 @@ import fnmatch
 import logging
 import re
 
-from library.adapters.method_configs import (
+from library.adapters.methods.peft.config_resolution import (
     build_adapter_runtime_spec,
     get_adapter_peft_config,
     get_inactive_method_config_values,
@@ -330,9 +330,7 @@ def _validate_peft_config(cfg) -> None:
 
     continue_mode = getattr(peft_cfg, "continue_mode", None)
     if continue_mode is not None and continue_mode not in VALID_PEFT_CONTINUE_MODES:
-        raise ValueError(
-            f"adapter.peft.continue_mode must be one of {list(VALID_PEFT_CONTINUE_MODES)}, got {continue_mode!r}"
-        )
+        raise ValueError(f"adapter.peft.continue_mode must be one of {list(VALID_PEFT_CONTINUE_MODES)}, got {continue_mode!r}")
 
     continue_from = getattr(peft_cfg, "continue_from", None)
     if continue_from is None and continue_mode is not None:

@@ -31,7 +31,7 @@ from library.adapters import (
     register_adapter_checkpoint_state_hooks,
     save_adapter_export,
 )
-from library.adapters.method_configs import (
+from library.adapters.methods.peft.config_resolution import (
     build_adapter_runtime_spec,
     get_adapter_peft_config,
     parse_legacy_adapter_args,
@@ -83,8 +83,7 @@ def _ensure_supported_adapter_optimizer_policy(peft_config, net_kwargs: dict[str
     active_fields = [name for name, value in legacy_optimizer_policy_fields.items() if value is not None]
     if active_fields:
         raise NotImplementedError(
-            "Legacy built-in adapter optimizer policy is not supported by the repo-owned trainable-ref handoff: "
-            + ", ".join(active_fields)
+            "Legacy built-in adapter optimizer policy is not supported by the repo-owned trainable-ref handoff: " + ", ".join(active_fields)
         )
 
     adapter_kwargs = net_kwargs if isinstance(net_kwargs, dict) else {}

@@ -13,7 +13,8 @@ from tqdm import tqdm
 from svd_merge_lora import format_lbws, get_lbw_block_index, LAYER26
 from library.constants import SS_METADATA_KEY_V2, SS_METADATA_KEY_BASE_MODEL_VERSION
 from library.models.sdxl import conversion
-from library.adapters import lora, oft
+from library.adapters.methods.peft.lora import lora
+from library.adapters.methods.peft.oft_deprecated import oft
 
 from library.utils import sai_model_spec
 
@@ -84,13 +85,13 @@ def merge_to_sd_model(text_encoder1, text_encoder2, unet, models, ratios, lbws, 
             else:
                 prefix = lora.LoRAAdapter.LORA_PREFIX_UNET
                 target_replace_modules = (
-                    lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE + lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+                        lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE + lora.LoRAAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
                 )
         elif method == "OFT":
             prefix = oft.OFTAdapter.OFT_PREFIX_UNET
             # ALL_LINEAR includes ATTN_ONLY, so we don't need to specify ATTN_ONLY
             target_replace_modules = (
-                oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR + oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
+                    oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_ALL_LINEAR + oft.OFTAdapter.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
             )
 
         for name, module in root_module.named_modules():

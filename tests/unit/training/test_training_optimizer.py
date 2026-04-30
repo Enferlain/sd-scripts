@@ -940,7 +940,7 @@ class TestOptimizerUtils:
         request = AdapterBuildRequest(
             adapter=AdapterRuntimeSpec(
                 adapter_type="loha",
-                settings={"adapter_rank": 4, "adapter_alpha": 8.0, "dropout": 0.0},
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0},
             ),
             context=AdapterBuildContext(
                 model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
