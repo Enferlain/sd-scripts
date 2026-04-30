@@ -11,6 +11,7 @@ import pytest
 from hydra import compose
 from omegaconf import OmegaConf
 
+from library.adapters.methods.peft.locon.config import PeftLoconConfig
 from library.adapters.methods.peft.lokr.config import PeftLokrConfig
 from library.adapters.methods.peft.lora.config import PeftLoraConfig
 from library.config.dataclasses.adapter import AdapterConfig
@@ -69,9 +70,11 @@ class TestConfigInstantiation:
         assert config is not None
         assert hasattr(config, "lora")
         assert hasattr(config, "loha")
+        assert hasattr(config, "locon")
         assert hasattr(config, "lokr")
         assert config.lora is None
         assert config.loha is None
+        assert config.locon is None
         assert config.lokr is None
 
     def test_adapter_config_instantiation(self):
@@ -91,6 +94,12 @@ class TestConfigInstantiation:
         config = PeftConfig(lokr=PeftLokrConfig())
         assert hasattr(config.lokr, "rank")
         assert hasattr(config.lokr, "decompose_both")
+
+    def test_peft_locon_branch_instantiation(self):
+        """Test PeftConfig can select LoCon by branch presence."""
+        config = PeftConfig(locon=PeftLoconConfig())
+        assert hasattr(config.locon, "rank")
+        assert hasattr(config.locon, "orthogonalize")
 
     def test_bucketing_config_instantiation(self):
         """Test BucketingConfig instantiation with defaults."""
@@ -183,6 +192,7 @@ class TestConfigDefaults:
         assert config.method is None
         assert config.lora is None
         assert config.loha is None
+        assert config.locon is None
         assert config.lokr is None
         assert config.orthograd_targets is not None
         assert config.orthograd_targets[0] == "lora_down.weight"
@@ -283,6 +293,7 @@ class TestHydraComposition:
         assert cfg.model.model_type == "sd15"
         assert cfg.adapter.peft.lora is not None
         assert cfg.adapter.peft.loha is None
+        assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
 
     def test_internal_default_config_composition(self, hydra_ctx):
@@ -293,6 +304,7 @@ class TestHydraComposition:
         assert cfg.model.model_type is None
         assert cfg.adapter.peft.lora is not None
         assert cfg.adapter.peft.loha is None
+        assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
         assert cfg.adapter.peft.continue_from is None
 
@@ -327,6 +339,7 @@ class TestHydraComposition:
         assert cfg.model.model_type == "sdxl"
         assert cfg.adapter.peft.lora is not None
         assert cfg.adapter.peft.loha is None
+        assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
 
     def test_sdxl_peft_edm2_preset_composition(self, hydra_ctx):

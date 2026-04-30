@@ -18,6 +18,10 @@ Rules:
   - Added repo-owned `LokrModule`, runtime, config translation, and state-dict helpers under `library/adapters/methods/peft/lokr/`, including Kronecker factor reconstruction, optional Tucker factorization, scalar mode, DoRA-style weight decomposition, rank/module dropout, RS-LoRA scaling, full-matrix/decomposed factor layouts, and trainable-ref provenance.
   - Registered `lokr` in the adapter-method registry and shared PEFT config schema, with defaults in `configs/_defaults/adapter/peft/lokr.yaml` and fail-fast validation for missing/non-positive rank, unsupported plain dropout, invalid factor, invalid init mode, and bypass/decompose conflicts.
   - Added focused module/runtime/config coverage for LoKr initialization, merged-weight consistency, decomposed export/load round-trips, runtime save/load/merge behavior, registry-owned config translation, Hydra composition, and centralized config validation.
+- **LoCon is now available as a repo-owned PEFT adapter method under `adapter.peft.locon`** — The active adapter runtime can now build, train, export, load, and merge LoCon modules without depending on the vendored LyCORIS runtime as the repo contract.
+  - Added repo-owned `LoconModule`, runtime, config translation, and state-dict helpers under `library/adapters/methods/peft/locon/`, including classic LoCon down/up factorization, optional Tucker convolution handling, scalar mode, DoRA-style weight decomposition, rank/module dropout, optional plain-dropout compatibility, orthogonalized training weights, RS-LoRA scaling, and trainable-ref provenance.
+  - Registered `locon` in the adapter-method registry and shared PEFT config schema, with defaults in `configs/_defaults/adapter/peft/locon.yaml` and fail-fast validation for missing/non-positive rank, invalid init mode, and bypass/decompose conflicts.
+  - Added focused LoCon module/runtime/config coverage and updated PEFT method notes so future absorbed LyCORIS work can treat LoCon as the third concrete method reference point.
 
 ### Changed
 
@@ -25,8 +29,6 @@ Rules:
 - **PEFT-family method resolution no longer lives under the root adapter package** — PEFT method branch selection, legacy PEFT config normalization, and runtime-spec translation now live under `library.adapters.methods.peft`, while the root adapter layer stays focused on generic runtime lookup/build concerns.
 
 ### Fixed
-- **The mocked-I/O dataloader throughput benchmark now distinguishes strict performance validation from ordinary local test runs** — The benchmark keeps the original `>50 batch/s` gate when `SD_SCRIPTS_STRICT_BENCHMARKS=1` is set, but defaults to a machine-tolerant floor during normal unit-test execution so slower local environments do not fail unrelated changes.
-  - Updated `tests/unit/data/test_pipeline_benchmark.py` to make the strict throughput target opt-in via environment variable while preserving a nontrivial default throughput assertion.
 - **Repo-owned LoKr now preserves explicit factor orientation and safely handles mixed input/weight dtypes across all forward paths** — LoKr no longer silently reorders user-specified Kronecker factors, and its standard, module-dropout, and bypass execution paths now cast computation to the adapter/base weight dtype before restoring the caller-visible output dtype.
   - Updated `library/adapters/methods/peft/lokr/module.py` so `factorization(..., factor=N)` preserves the requested divisor position, mixed-dtype forward calls no longer fail through raw `F.linear`/`F.conv*` dtype mismatches, and bypass mode uses the same dtype-safe base-op path as the main forward path.
   - Added focused LoKr regression coverage in `tests/unit/adapters/test_lokr_module.py` for explicit-factor orientation plus mixed-dtype standard and bypass forwards.

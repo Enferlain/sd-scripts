@@ -34,12 +34,12 @@ layer can settle into a better system instead of a pile of one-off adapters.
   whether it belongs at the PEFT family layer before adding another adapter
   root abstraction.
 
-## LoHa / LoKr Lessons
+## LoHa / LoKr / LoCon Lessons
 
-- LoHa and LoKr share a lot of runtime/state-dict ceremony. Once a third
-  repo-owned LyCORIS-style method lands, extract a small generic runtime helper
-  for module naming, supported-target filtering, trainable-ref attachment,
-  save/load loops, and loaded-runtime merge wiring.
+- LoHa, LoKr, and LoCon now share enough runtime/state-dict ceremony that a
+  small PEFT-family helper for module naming, supported-target filtering,
+  trainable-ref attachment, save/load loops, and loaded-runtime merge wiring is
+  now a real follow-up candidate rather than a premature abstraction.
 - Validation belongs in method config translation first, with direct module
   construction repeating critical invariants. This caught/standardized missing
   rank, unsupported plain dropout, and bypass/DoRA conflicts before runtime
@@ -48,6 +48,11 @@ layer can settle into a better system instead of a pile of one-off adapters.
   absorbed LyCORIS behavior did not apply it consistently in rebuilt-weight
   mode. Keep `rank_dropout` and `module_dropout` as the supported knobs unless
   a future method-specific design gives plain dropout clear semantics.
+- LoCon is the counterexample that makes the dropout rule method-local rather
+  than family-global: its absorbed behavior still uses plain `dropout`, but
+  only in bypass-mode output application and the DoRA input path. That should
+  stay documented as an explicit method semantic instead of being normalized
+  away into a fake family-wide rule.
 - Scalar-mode export folds `scalar` into the first exported factor and resets
   scalar to identity on load. That convention should be documented as an
   export-format rule if it survives more methods.
@@ -61,3 +66,12 @@ layer can settle into a better system instead of a pile of one-off adapters.
 - The current module classes duplicate target-module introspection and DoRA
   merge math. That may become a shared mixin/helper later, but only after we
   know whether future methods need exactly the same behavior.
+
+## Notes
+
+From vendor/lycoris so far added including checking huggingface peft for improvements:
+
+- loha
+- locon
+- lokr
+- 

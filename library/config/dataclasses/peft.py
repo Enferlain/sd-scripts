@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from library.adapters.methods.peft.loha.config import PeftLohaConfig
+from library.adapters.methods.peft.locon.config import PeftLoconConfig
 from library.adapters.methods.peft.lokr.config import PeftLokrConfig
 from library.adapters.methods.peft.lora.config import PeftLoraConfig
 
@@ -35,6 +36,7 @@ class PeftConfig:
 
     lora: PeftLoraConfig | None = None
     loha: PeftLohaConfig | None = None
+    locon: PeftLoconConfig | None = None
     lokr: PeftLokrConfig | None = None
 
     scale_weight_norms: float | None = field(

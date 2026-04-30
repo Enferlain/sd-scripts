@@ -667,6 +667,73 @@ class TestValidateConfig:
         ):
             validate_config(cfg)
 
+    def test_peft_rejects_locon_without_rank(self):
+        """LoCon should require an explicit method-level rank setting."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "locon": {},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.locon\\.rank must be set to a positive integer"):
+            validate_config(cfg)
+
+    def test_peft_rejects_non_positive_locon_rank(self):
+        """LoCon rank should fail fast when set to a non-positive value."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "locon": {"rank": 0},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.locon\\.rank must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_unknown_locon_init_mode(self):
+        """LoCon init mode must be one of the repo-owned supported options."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "locon": {"rank": 8, "init_mode": "mystery_mode"},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.locon\\.init_mode must be one of"):
+            validate_config(cfg)
+
+    def test_peft_rejects_locon_bypass_mode_with_weight_decompose(self):
+        """LoCon bypass mode should not coexist with weight decomposition."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "locon": {"weight_decompose": True, "bypass_mode": True},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="adapter\\.peft\\.locon\\.bypass_mode cannot be enabled when adapter\\.peft\\.locon\\.weight_decompose is true",
+        ):
+            validate_config(cfg)
+
     def test_peft_rejects_lokr_without_rank(self):
         """LoKr should require an explicit method-level rank setting."""
         cfg = make_validate_cfg(

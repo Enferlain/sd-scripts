@@ -1,0 +1,17 @@
+rank: null
+alpha: 1.0
+# Plain LoCon dropout is supported for compatibility with the absorbed
+# LyCORIS behavior. In practice it affects bypass-mode outputs and the DoRA
+# input path rather than the rebuilt-weight path.
+dropout: null
+rank_dropout: null
+module_dropout: null
+use_tucker: false
+use_scalar: false
+init_mode: lycoris_legacy
+rank_dropout_scale: false
+weight_decompose: false
+wd_on_output: true
+bypass_mode: null
+rs_lora: false
+orthogonalize: false
