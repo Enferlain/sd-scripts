@@ -260,7 +260,7 @@ class TestAdapterRegistry:
             PeftLohaConfig(
                 rank=16,
                 alpha=32.0,
-                dropout=0.1,
+                init_mode="zero_delta_he",
                 rank_dropout=0.2,
                 use_tucker=True,
             )
@@ -269,7 +269,7 @@ class TestAdapterRegistry:
         assert registration.config_binding.config_key == "loha"
         assert settings["adapter_rank"] == 16
         assert settings["adapter_alpha"] == 32.0
-        assert settings["neuron_dropout"] == 0.1
+        assert settings["init_mode"] == "zero_delta_he"
         assert settings["rank_dropout"] == 0.2
         assert settings["use_tucker"] is True
 
@@ -281,6 +281,24 @@ class TestAdapterRegistry:
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.rank must be set"):
             registration.config_binding.runtime_settings_builder(PeftLohaConfig())
+
+    def test_loha_translation_rejects_plain_dropout(self):
+        from library.adapters.methods.peft.loha.config import PeftLohaConfig
+
+        registration = get_adapter_method("loha")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.dropout is not supported"):
+            registration.config_binding.runtime_settings_builder(PeftLohaConfig(rank=8, dropout=0.1))
+
+    def test_loha_translation_rejects_unknown_init_mode(self):
+        from library.adapters.methods.peft.loha.config import PeftLohaConfig
+
+        registration = get_adapter_method("loha")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.init_mode must be one of"):
+            registration.config_binding.runtime_settings_builder(PeftLohaConfig(rank=8, init_mode="mystery_mode"))  # type: ignore[arg-type]
 
     def test_resolves_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.oft")
@@ -426,7 +444,7 @@ class TestAdapterRegistry:
         request = AdapterBuildRequest(
             adapter=AdapterRuntimeSpec(
                 adapter_type="loha",
-                settings={"adapter_rank": 4, "adapter_alpha": 8.0, "dropout": 0.0},
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0},
             ),
             context=AdapterBuildContext(
                 model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
@@ -472,7 +490,7 @@ class TestAdapterRegistry:
         request = AdapterBuildRequest(
             adapter=AdapterRuntimeSpec(
                 adapter_type="loha",
-                settings={"adapter_rank": 4, "adapter_alpha": 8.0, "dropout": 0.0},
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0},
             ),
             context=AdapterBuildContext(
                 model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
@@ -532,7 +550,7 @@ class TestAdapterRegistry:
         request = AdapterBuildRequest(
             adapter=AdapterRuntimeSpec(
                 adapter_type="loha",
-                settings={"adapter_rank": 4, "adapter_alpha": 8.0, "dropout": 0.0},
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0},
             ),
             context=AdapterBuildContext(
                 model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
@@ -554,3 +572,38 @@ class TestAdapterRegistry:
         load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
 
         assert load_info == {"missing keys": ["loha_clip_l_proj"]}
+
+    def test_registered_loha_runtime_rejects_plain_dropout_settings(self):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="loha",
+                settings={"adapter_rank": 4, "adapter_alpha": 8.0, "dropout": 0.1},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        with pytest.raises(ValueError, match="LoHa plain dropout is disabled"):
+            build_adapter_for_legacy_module("library.adapters.loha", request)

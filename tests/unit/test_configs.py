@@ -280,6 +280,9 @@ class TestHydraComposition:
         assert cfg is not None
         assert OmegaConf.is_missing(cfg, "mode")
         assert cfg.model.model_type is None
+        assert cfg.adapter.peft.lora is not None
+        assert cfg.adapter.peft.loha is None
+        assert cfg.adapter.peft.continue_from is None
 
     def test_sd_finetune_config_composition(self, hydra_ctx):
         """Test sd_finetune config loading via Hydra."""

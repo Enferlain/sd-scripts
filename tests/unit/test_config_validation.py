@@ -606,6 +606,34 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.rank must be a positive integer when set"):
             validate_config(cfg)
 
+    def test_peft_rejects_loha_plain_dropout(self):
+        """LoHa plain dropout is intentionally unsupported in the repo-owned path."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {"peft": {
+                    "loha": {"rank": 8, "dropout": 0.1},
+                }},
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.dropout is not supported"):
+            validate_config(cfg)
+
+    def test_peft_rejects_unknown_loha_init_mode(self):
+        """LoHa init mode must be one of the repo-owned supported options."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {"peft": {
+                    "loha": {"rank": 8, "init_mode": "mystery_mode"},
+                }},
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.init_mode must be one of"):
+            validate_config(cfg)
+
     def test_peft_rejects_loha_bypass_mode_with_weight_decompose(self):
         """LoHa bypass mode should not coexist with weight decomposition."""
         cfg = make_validate_cfg(

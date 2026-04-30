@@ -121,14 +121,16 @@ def _create_loha_module_from_target(target, request: AdapterBuildRequest) -> Loh
     adapter_rank = settings.pop("adapter_rank", None)
     adapter_alpha = settings.pop("adapter_alpha", None)
     neuron_dropout = settings.pop("neuron_dropout", None)
-    dropout = settings.pop("dropout", neuron_dropout or 0.0)
+    dropout = settings.pop("dropout", None)
     if adapter_rank is None:
         raise ValueError("LoHa runtime settings must include adapter_rank; set adapter.peft.loha.rank explicitly.")
+    if neuron_dropout is not None or dropout is not None:
+        raise ValueError("LoHa plain dropout is disabled; use rank_dropout or module_dropout instead.")
     config = LohaConfig(
         multiplier=request.context.multiplier,
         lora_dim=adapter_rank,
         alpha=adapter_alpha,
-        dropout=dropout or 0.0,
+        dropout=0.0,
         **settings,
     )
 

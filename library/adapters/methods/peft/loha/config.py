@@ -5,17 +5,27 @@ from dataclasses import dataclass, field
 from library.adapters.types import AdapterMethodConfigBinding
 
 
+LOHA_INIT_MODES = ("lycoris_legacy", "zero_delta_he", "random_nonzero")
+
+
 @dataclass
 class PeftLohaConfig:
     """Method-specific LoHa settings under the PEFT shell."""
 
     rank: int | None = field(default=None, metadata={"help": "LoHa rank/dimensions (higher = more capacity, more VRAM)"})
     alpha: float = field(default=1.0, metadata={"help": "LoHa alpha scaling"})
-    dropout: float | None = field(default=None, metadata={"help": "Dropout rate for LoHa neurons during training"})
+    dropout: float | None = field(
+        default=None,
+        metadata={"help": "Deprecated/unsupported for repo-owned LoHa; use rank_dropout or module_dropout instead"},
+    )
     rank_dropout: float | None = field(default=None, metadata={"help": "Dropout applied to the LoHa rank dimension"})
     module_dropout: float | None = field(default=None, metadata={"help": "Dropout applied to entire LoHa modules"})
     use_tucker: bool = field(default=False, metadata={"help": "Use Tucker factorization for supported LoHa targets"})
     use_scalar: bool = field(default=False, metadata={"help": "Enable scalar scaling in the LoHa module"})
+    init_mode: str = field(
+        default="lycoris_legacy",
+        metadata={"help": "LoHa initialization policy: lycoris_legacy, zero_delta_he, or random_nonzero"},
+    )
     rank_dropout_scale: bool = field(default=False, metadata={"help": "Scale LoHa updates when rank dropout is active"})
     weight_decompose: bool = field(default=False, metadata={"help": "Enable weight decomposition mode"})
     wd_on_output: bool = field(default=True, metadata={"help": "Apply weight decomposition on the output side"})
@@ -28,6 +38,13 @@ def build_runtime_settings(config: PeftLohaConfig) -> dict[str, object]:
 
     if config.weight_decompose and config.bypass_mode:
         raise ValueError("adapter.peft.loha.bypass_mode cannot be enabled when adapter.peft.loha.weight_decompose is true.")
+    if config.dropout is not None:
+        raise ValueError("adapter.peft.loha.dropout is not supported; use rank_dropout or module_dropout instead.")
+    if config.init_mode not in LOHA_INIT_MODES:
+        raise ValueError(
+            "adapter.peft.loha.init_mode must be one of "
+            f"{', '.join(LOHA_INIT_MODES)}, got {config.init_mode!r}."
+        )
     if config.rank is None:
         raise ValueError("adapter.peft.loha.rank must be set to a positive integer.")
     if config.rank <= 0:
@@ -36,8 +53,9 @@ def build_runtime_settings(config: PeftLohaConfig) -> dict[str, object]:
     settings: dict[str, object] = {
         "adapter_rank": config.rank,
         "adapter_alpha": config.alpha,
-        "neuron_dropout": config.dropout,
     }
+    if config.init_mode != "lycoris_legacy":
+        settings["init_mode"] = config.init_mode
     if config.rank_dropout is not None:
         settings["rank_dropout"] = config.rank_dropout
     if config.module_dropout is not None:

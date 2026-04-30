@@ -12,6 +12,10 @@ Rules:
 
 ## [2026-04-30]
 
+### Changed
+
+- **Adapter defaults now split shared PEFT shell settings from method-local YAML under `configs/_defaults/adapter/peft/`** — The base adapter defaults no longer inline every method surface in one file. Shared PEFT shell settings now live in `configs/_defaults/adapter/peft/default.yaml`, while method-local defaults live in `configs/_defaults/adapter/peft/lora.yaml` and `configs/_defaults/adapter/peft/loha.yaml`, with `configs/_defaults/adapter/default.yaml` composing LoRA as the current default active adapter config.
+
 ### Fixed
 
 - **Repo-owned LoHa config/runtime now fails clearly on invalid rank and conflicting bypass/DoRA settings instead of falling through to runtime-side surprises** — The active adapter path now rejects unset or non-positive LoHa rank unless the method-local config explicitly defines a default, and it rejects `bypass_mode=True` together with `weight_decompose=True` before those settings can silently skip the intended decomposition path.
@@ -22,6 +26,10 @@ Rules:
   - Updated `library/adapters/method_configs.py` to materialize active method config objects with their dataclass defaults before building runtime settings, so generic validation can validate partial method branches without hardcoded adapter-name checks.
   - Updated `library/config/config_validation.py` to validate the active adapter branch through `build_adapter_runtime_spec(...)` rather than embedding LoHa-specific checks in the shared PEFT validator.
   - Updated `library/adapters/methods/peft/loha/config.py` and `library/adapters/methods/peft/loha/runtime.py` so LoHa now requires `adapter.peft.loha.rank` explicitly unless the method-local config itself defines a default, rather than silently falling back to the lower-level module constructor default.
+- **Repo-owned LoHa now treats plain `dropout` as unsupported while pinning initialization and behavior semantics with broader unit coverage** — The repo-owned forward config now rejects plain LoHa `dropout` in favor of the already-defined `rank_dropout` and `module_dropout` knobs, while the method config also exposes explicit initialization modes so the repo can choose between LyCORIS-style legacy init, zero-delta He init, and random nonzero He init.
+  - Updated `library/adapters/methods/peft/loha/config.py` and `library/adapters/methods/peft/loha/runtime.py` to reject plain LoHa dropout in both method-config translation and direct runtime settings, rather than accepting a knob whose semantics are intentionally disabled.
+  - Updated `library/adapters/methods/peft/loha/module.py` and `tests/unit/adapters/test_loha_module.py` to make the repo-owned init policy explicit and selectable: `lycoris_legacy`, `zero_delta_he`, and `random_nonzero`, with coverage for both zero-effect and active-start behaviors.
+  - Broadened LoHa coverage in `tests/unit/adapters/test_loha_module.py`, `tests/unit/adapters/test_runtime_registry.py`, and `tests/unit/test_config_validation.py` for disabled plain dropout, init-mode validation, default/scalar init behavior, rank-dropout scaling, RS-LoRA scaling, DoRA output-side differences, module dropout, bypass-mode forward behavior, and Conv1d/Conv3d merged-weight consistency.
 
 ## [2026-04-29]
 

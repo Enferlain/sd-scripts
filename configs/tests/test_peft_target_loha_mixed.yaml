@@ -34,7 +34,6 @@ data:
 
 adapter:
   peft:
-    lora: null
     loha:
       rank: 32
       alpha: 16.0

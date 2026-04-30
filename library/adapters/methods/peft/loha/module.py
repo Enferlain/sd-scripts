@@ -13,6 +13,7 @@ from torch import Tensor, nn
 
 
 SUPPORTED_MODULE_TYPES = (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)
+LOHA_INIT_MODES = ("lycoris_legacy", "zero_delta_he", "random_nonzero")
 _LOHA_EXPORT_WEIGHT_KEYS = (
     "hada_w1_a",
     "hada_w1_b",
@@ -38,6 +39,7 @@ class LohaConfig:
     module_dropout: float = 0.0
     use_tucker: bool = False
     use_scalar: bool = False
+    init_mode: str = "lycoris_legacy"
     rank_dropout_scale: bool = False
     weight_decompose: bool = False
     wd_on_output: bool = True
@@ -54,6 +56,7 @@ class LohaConfig:
             "module_dropout": self.module_dropout,
             "use_tucker": self.use_tucker,
             "use_scalar": self.use_scalar,
+            "init_mode": self.init_mode,
             "rank_dropout_scale": self.rank_dropout_scale,
             "weight_decompose": self.weight_decompose,
             "wd_on_output": self.wd_on_output,
@@ -116,6 +119,7 @@ class LohaModule(nn.Module):
         module_dropout: float = 0.0,
         use_tucker: bool = False,
         use_scalar: bool = False,
+        init_mode: str = "lycoris_legacy",
         rank_dropout_scale: bool = False,
         weight_decompose: bool = False,
         wd_on_output: bool = True,
@@ -126,6 +130,8 @@ class LohaModule(nn.Module):
         super().__init__()
         if not isinstance(org_module, SUPPORTED_MODULE_TYPES):
             raise ValueError(f"{type(org_module).__name__} is not supported in LoHa algo.")
+        if init_mode not in LOHA_INIT_MODES:
+            raise ValueError(f"Unknown LoHa init_mode {init_mode!r}; expected one of {LOHA_INIT_MODES}.")
         if lora_dim is None or lora_dim <= 0:
             raise ValueError(f"LoHa rank must be positive, got {lora_dim}.")
         if weight_decompose and bypass_mode:
@@ -136,6 +142,7 @@ class LohaModule(nn.Module):
         self.dropout = dropout
         self.rank_dropout = rank_dropout
         self.module_dropout = module_dropout
+        self.init_mode = init_mode
         self.rank_dropout_scale = rank_dropout_scale
         self.bypass_mode = bool(bypass_mode)
         self.rs_lora = rs_lora
@@ -236,19 +243,7 @@ class LohaModule(nn.Module):
         else:
             self.register_buffer("scalar", torch.tensor(1.0), persistent=False)
 
-        # These initializers intentionally mirror the established LyCORIS LoHa
-        # defaults so the absorbed repo-owned method keeps the same starting
-        # behavior while we migrate away from vendored code.
-        if self.tucker:
-            nn.init.normal_(self.hada_t1, std=0.1)
-            nn.init.normal_(self.hada_t2, std=0.1)
-        nn.init.normal_(self.hada_w1_b, std=1.0)
-        nn.init.normal_(self.hada_w1_a, std=0.1)
-        nn.init.normal_(self.hada_w2_b, std=1.0)
-        if use_scalar:
-            nn.init.normal_(self.hada_w2_a, std=0.1)
-        else:
-            nn.init.constant_(self.hada_w2_a, 0.0)
+        self._initialize_parameters(use_scalar=use_scalar)
 
     @property
     def dtype(self) -> torch.dtype:
@@ -279,6 +274,44 @@ class LohaModule(nn.Module):
         identity = torch.ones_like(self.scalar)
         with torch.no_grad():
             self.scalar.copy_(identity)
+
+    def _initialize_parameters(self, *, use_scalar: bool) -> None:
+        if self.init_mode == "lycoris_legacy":
+            # Preserve the absorbed LyCORIS defaults. The repo-owned policy
+            # for this mode keeps the initial adapter effect at zero: either
+            # `hada_w2_a` starts at zero in the standard path or `scalar`
+            # starts at zero when scalar mode is enabled.
+            if self.tucker:
+                nn.init.normal_(self.hada_t1, std=0.1)
+                nn.init.normal_(self.hada_t2, std=0.1)
+            nn.init.normal_(self.hada_w1_b, std=1.0)
+            nn.init.normal_(self.hada_w1_a, std=0.1)
+            nn.init.normal_(self.hada_w2_b, std=1.0)
+            if use_scalar:
+                nn.init.normal_(self.hada_w2_a, std=0.1)
+            else:
+                nn.init.constant_(self.hada_w2_a, 0.0)
+            return
+
+        if self.tucker:
+            nn.init.kaiming_uniform_(self.hada_t1, a=math.sqrt(5))
+            nn.init.kaiming_uniform_(self.hada_t2, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.hada_w1_a, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.hada_w1_b, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.hada_w2_a, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.hada_w2_b, a=math.sqrt(5))
+
+        if self.init_mode == "zero_delta_he":
+            if use_scalar:
+                with torch.no_grad():
+                    self.scalar.zero_()
+            else:
+                nn.init.zeros_(self.hada_w2_a)
+            return
+
+        if self.init_mode == "random_nonzero" and use_scalar:
+            with torch.no_grad():
+                self.scalar.fill_(1.0)
 
     @classmethod
     def algo_check(cls, state_dict: Mapping[str, Tensor], lora_name: str) -> bool:

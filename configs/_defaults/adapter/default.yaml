@@ -2,63 +2,11 @@
 
 # Active adapter config surface.
 # `adapter.peft.<method>` branch presence selects the PEFT method.
-# The default adapter group intentionally activates LoRA by keeping `lora`
-# non-null and `loha: null`. Select a different PEFT method by setting the
-# default method branch to null and configuring exactly one other branch.
+# The default adapter group composes the shared PEFT shell plus the LoRA method
+# settings under `adapter.peft.lora`, so adapter-mode presets always have one
+# concrete adapter config unless they override that branch explicitly.
 
-peft:
-  continue_from: null
-  continue_mode: null
-  scale_weight_norms: null
-  # Left over on purpose as a legacy reference surface for later orthograd
-  # follow-up. The active repo-owned PEFT path does not currently consume it.
-  orthograd_targets:
-    [
-      "lora_down.weight",
-      "lora_up.weight",
-      "lora_down1.weight",
-      "lora_up1.weight",
-      "lora_down2.weight",
-      "lora_up2.weight",
-      "a1.weight",
-      "a2.weight",
-      "b1.weight",
-      "b2.weight",
-      "c1.weight",
-    ]
-
-  lora:
-    rank: null
-    alpha: 1.0
-    dropout: null
-    conv_rank: null
-    conv_alpha: null
-    rank_dropout: null
-    module_dropout: null
-    # Left over on purpose for the current adapter-system slice: these legacy
-    # optimizer-policy knobs remain visible as explicit reference points, but the
-    # active repo-owned PEFT path rejects them under the new grouping boundary.
-    block_ranks: null
-    block_alphas: null
-    conv_block_ranks: null
-    conv_block_alphas: null
-    down_lr_weight: null
-    mid_lr_weight: null
-    up_lr_weight: null
-    block_lr_zero_threshold: null
-    loraplus_lr_ratio: null
-    loraplus_unet_lr_ratio: null
-    loraplus_text_encoder_lr_ratio: null
-
-  loha: null
-
-  # Compatibility-only normalization shim. These are no longer the forward PEFT
-  # config interface and should only remain long enough to keep old configs
-  # booting during the transition.
-  adapter_module: null
-  adapter_args: null
-  adapter_weights: null
-  adapter_rank_from_weights: false
-  base_weights: null
-  base_weights_multiplier: null
-  training_comment: null
+defaults:
+  - peft@peft: default
+  - peft@peft.lora: lora
+  - _self_
