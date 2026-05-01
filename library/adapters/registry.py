@@ -7,18 +7,12 @@ from .types import AdapterMethodRegistration
 _BUILTIN_ADAPTER_METHODS = (
     *PEFT_METHOD_REGISTRATIONS,
     # Left over on purpose as legacy bridges. The current adapter-system task
-    # is centered on the LoRA-shaped path; Dylora/OFT will be revisited from
-    # the vendor LyCORIS direction rather than by extending the already-present
-    # local implementations here.
+    # is centered on the LoRA-shaped path; Dylora still remains on the legacy
+    # bridge path until its vendor-directed repo-owned slice is revisited.
     AdapterMethodRegistration(
         name="dylora_deprecated",
         legacy_module_path="library.adapters.dylora",
         runtime_module_path="library.adapters.methods.peft.dylora_deprecated.runtime",
-    ),
-    AdapterMethodRegistration(
-        name="oft_deprecated",
-        legacy_module_path="library.adapters.oft",
-        runtime_module_path="library.adapters.methods.peft.oft_deprecated.runtime",
     ),
 )
 

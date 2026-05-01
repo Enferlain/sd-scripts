@@ -801,6 +801,70 @@ class TestValidateConfig:
         ):
             validate_config(cfg)
 
+    def test_peft_rejects_oft_without_factor(self):
+        """OFT should require an explicit method-level factor setting."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "oft": {},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.oft\\.factor must be set to a positive integer"):
+            validate_config(cfg)
+
+    def test_peft_rejects_non_positive_oft_factor(self):
+        """OFT factor should fail fast when set to a non-positive value."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "oft": {"factor": 0},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.oft\\.factor must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_negative_oft_constraint(self):
+        """OFT constraint should fail fast when set negative."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "oft": {"factor": 4, "constraint": -0.1},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.oft\\.constraint must be non-negative"):
+            validate_config(cfg)
+
+    def test_peft_rejects_out_of_range_oft_dropout(self):
+        """OFT dropout probabilities should stay within [0, 1]."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "oft": {"factor": 4, "dropout": 1.5},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.oft\\.dropout must be between 0.0 and 1.0 inclusive"):
+            validate_config(cfg)
+
     def test_peft_rejects_legacy_method_without_active_branch(self):
         """Legacy method alone should not replace branch-presence selection."""
         cfg = make_validate_cfg(

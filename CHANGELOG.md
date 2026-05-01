@@ -10,6 +10,24 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-01]
+
+### Added
+
+- **OFT is now available as a repo-owned PEFT adapter method under `adapter.peft.oft`** — The active adapter runtime can now build, train, export, load, and merge OFT modules through the same repo-owned method surface as LoHa, LoCon, and LoKr instead of treating the old built-in OFT path as a supported contract.
+  - Added repo-owned OFT config/runtime/state-dict ownership under `library/adapters/methods/peft/oft/`, including LyCORIS-style factorized orthogonal blocks, optional learned rescaling, bypass mode, module dropout, plain dropout, rank dropout, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.oft` typed config plus `configs/_defaults/adapter/peft/oft.yaml`, with focused validation for missing/non-positive factors, negative constraints, and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for OFT initialization, merged-weight consistency, mixed-dtype forward behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
+
+### Changed
+
+- **The active PEFT registry now promotes OFT as a normal repo-owned method instead of keeping the old built-in path in the supported adapter list** — `library.adapters.oft` now resolves through the repo-owned OFT registration, while the stale `oft_deprecated` package remains only as on-disk cleanup debt rather than part of the supported method surface.
+
+### Fixed
+
+- **Repo-owned OFT now fixes broken vendor/legacy bypass behavior while preserving the intended Diag-OFT algorithm shape** — The absorbed OFT path no longer relies on raw mixed-dtype module forwards in bypass/dropout paths, and its bypass diff/rescale behavior now uses shape-safe logic instead of the buggy vendor/legacy implementation.
+  - Removed the stale output-shaped plain-dropout mask from the OFT bypass path so `bypass_forward_diff()` no longer hits invalid batch-vs-block broadcasting during training and keeps plain dropout scoped to the OFT block transforms themselves.
+
 ## [2026-04-30]
 
 ### Added

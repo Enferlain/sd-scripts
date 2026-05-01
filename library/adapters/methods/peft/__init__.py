@@ -4,6 +4,7 @@ from .loha import REGISTRATION as LOHA_REGISTRATION
 from .locon import REGISTRATION as LOCON_REGISTRATION
 from .lokr import REGISTRATION as LOKR_REGISTRATION
 from .lora import REGISTRATION as LORA_REGISTRATION
+from .oft import REGISTRATION as OFT_REGISTRATION
 
 
 PEFT_METHOD_REGISTRATIONS = (
@@ -11,6 +12,7 @@ PEFT_METHOD_REGISTRATIONS = (
     LOCON_REGISTRATION,
     LOKR_REGISTRATION,
     LORA_REGISTRATION,
+    OFT_REGISTRATION,
 )
 
 __all__ = [
@@ -20,5 +22,5 @@ __all__ = [
     "locon",
     "lokr",
     "lora",
-    "oft_deprecated",
+    "oft",
 ]

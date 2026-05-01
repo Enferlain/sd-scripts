@@ -1,0 +1,11 @@
+factor: null
+constraint: 0.0
+rescaled: false
+# OFT plain dropout is preserved from the absorbed LyCORIS design as a
+# method-local semantic. Its exact effect differs between rebuild and bypass
+# execution paths, so keep it explicit rather than treating it as a family-wide
+# adapter rule.
+dropout: null
+rank_dropout: null
+module_dropout: null
+bypass_mode: null

@@ -34,7 +34,7 @@ layer can settle into a better system instead of a pile of one-off adapters.
   whether it belongs at the PEFT family layer before adding another adapter
   root abstraction.
 
-## LoHa / LoKr / LoCon Lessons
+## LoHa / LoKr / LoCon / OFT Lessons
 
 - LoHa, LoKr, and LoCon now share enough runtime/state-dict ceremony that a
   small PEFT-family helper for module naming, supported-target filtering,
@@ -66,12 +66,66 @@ layer can settle into a better system instead of a pile of one-off adapters.
 - The current module classes duplicate target-module introspection and DoRA
   merge math. That may become a shared mixin/helper later, but only after we
   know whether future methods need exactly the same behavior.
+- OFT is the clearest example so far that not every absorbed method wants a
+  fake LoRA-shaped `rank + alpha` surface. The repo-owned OFT path uses
+  method-local `factor` and `constraint` names because those are the real
+  algorithm knobs in the LyCORIS-derived implementation.
+- Repo-owned OFT intentionally absorbs the LyCORIS Diag-OFT direction, not the
+  older built-in `oft_deprecated` path. Treat `oft_deprecated` as dead code
+  waiting for deletion, not as a compatibility contract to preserve.
+- The absorbed OFT bypass path needed real fixes before it was safe to own:
+  the vendor/legacy logic had a broken diff branch and a rescale shape bug.
+  Keep OFT's bypass/dropout semantics documented as method-local behavior
+  instead of treating them as a PEFT-family-wide abstraction too early.
+- OFT plain `dropout` should stay a block-transform concern. Reapplying a
+  second output-shaped mask in bypass mode just recreates the broken vendor
+  broadcast path and makes the semantics harder to reason about.
 
 ## Notes
 
 From vendor/lycoris so far added including checking huggingface peft for improvements:
 
-- loha
-- locon
-- lokr
-- 
+### lycoris:
+
+- loha: vendor lycoris/hf peft ✅
+- locon: vendor lycoris ✅
+- lokr: vendor lycoris/hf peft✅
+- oft: vendor lycoris/hf peft ✅
+- boft: vendor lycoris/hf peft ❌
+- dylora: vendor lycoris/hf peft ❌
+- glora: vendor lycoris/hf peft ❌
+- ia3: vendor lycoris/hf peft ❌
+- abba: vendor lycoris/hf peft ❌
+- tlora: vendor lycoris/hf peft ❌
+- norms (not really a method) ❌
+
+### hf/peft:
+
+- shira ❌
+- adalora ❌
+- adamss ❌
+- beft ❌
+- c3a ❌
+- cartridge ❌
+- cpt ❌
+- delora ❌
+- fourierft ❌
+- gralora ❌
+- hra ❌
+- lily ❌
+- miss ❌
+- osf ❌
+- peanut ❌
+- poly ❌
+- psoft ❌
+- randlora ❌
+- road ❌
+- vblora ❌
+- vera ❌
+- waveft ❌
+- xlora ❌
+- tinylora ❌
+
+### in repo rework
+
+- lora: legacy version/hf peft ❌ (for last)
