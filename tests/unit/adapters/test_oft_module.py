@@ -59,6 +59,23 @@ def test_oft_module_merged_weight_matches_forward_output_for_linear_target():
     assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-5)
 
 
+def test_oft_module_merged_weight_transforms_bias_for_biasful_linear_target():
+    torch.manual_seed(24)
+    target = torch.nn.Linear(4, 4, bias=True)
+    module = OftModule.from_target_module("oft_linear", target, config=OftConfig(factor=2, constraint=0.5))
+    module.eval()
+    _fill_active_oft_blocks(module)
+
+    inputs = torch.randn(5, 4)
+    merged_weight, merged_bias = module.get_merged_weight(shape=target.weight.shape, device=inputs.device)
+
+    assert merged_bias is not None
+    actual = module(inputs)
+    expected = F.linear(inputs.to(merged_weight.dtype), merged_weight, merged_bias).to(inputs.dtype)
+
+    assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-5)
+
+
 def test_oft_module_forward_accepts_mixed_input_dtype_and_restores_original_dtype():
     torch.manual_seed(29)
     target = torch.nn.Linear(4, 4, bias=False)

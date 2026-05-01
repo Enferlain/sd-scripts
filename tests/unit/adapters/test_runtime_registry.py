@@ -1218,7 +1218,7 @@ class TestAdapterRegistry:
         class DummyDenoiser(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-                self.to_q = torch.nn.Linear(4, 4, bias=False)
+                self.to_q = torch.nn.Linear(4, 4, bias=True)
 
         text_encoder = DummyTextEncoder()
         denoiser = DummyDenoiser()
@@ -1256,6 +1256,7 @@ class TestAdapterRegistry:
         assert load_info == {}
 
         original_weight = denoiser.to_q.weight.detach().clone()
+        original_bias = denoiser.to_q.bias.detach().clone()
         loaded_runtime = build_adapter_from_weights_for_legacy_module("library.adapters.oft", request, str(export_path))
         assert isinstance(loaded_runtime, LoadedAdapterRuntime)
         loaded_runtime.merge_into(
@@ -1268,6 +1269,7 @@ class TestAdapterRegistry:
         )
 
         assert not torch.allclose(denoiser.to_q.weight, original_weight)
+        assert not torch.allclose(denoiser.to_q.bias, original_bias)
 
     def test_registered_oft_runtime_reports_partial_checkpoint_as_missing(self, tmp_path):
         class DummyTextEncoder(torch.nn.Module):

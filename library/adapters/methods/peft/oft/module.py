@@ -394,43 +394,72 @@ class OftModule(nn.Module):
         self.org_module[0].weight.copy_(merged_weight.to(current_weight))
         if merged_bias is not None:
             if self.org_module[0].bias is None:
-                self.org_module[0].bias = nn.Parameter(merged_bias.to(current_weight))
+                self.org_module[0].bias = nn.Parameter(merged_bias.to(device=current_weight.device, dtype=current_weight.dtype))
             else:
-                self.org_module[0].bias.copy_(merged_bias.to(self.org_module[0].bias))
+                existing_bias = self.org_module[0].bias
+                self.org_module[0].bias.copy_(merged_bias.to(device=existing_bias.device, dtype=existing_bias.dtype))
 
-    def make_weight(self, *, scale: float = 1.0, device: torch.device | None = None, diff: bool = False) -> Tensor:
+    def _rescale_for_output_axis_tensor(self, *, device: torch.device, dtype: torch.dtype, ndim: int) -> Tensor:
+        if self.rescale is None:
+            raise ValueError("OFT rescale weights were requested but this module is not configured for rescaling.")
+        return self.rescale.to(device=device, dtype=dtype).reshape(self.shape[0], *([1] * (ndim - 1)))
+
+    def _transform_output_axis_tensor(
+        self,
+        tensor: Tensor,
+        *,
+        scale: float = 1.0,
+        device: torch.device | None = None,
+        diff: bool = False,
+    ) -> Tensor:
         if device is None:
-            device = self.device
+            device = tensor.device
         r = self.get_r(device=device)
         r = self._apply_plain_dropout(r)
 
-        org_weight = self.get_org_weight_for_compute(device)
-        org_weight_dtype = org_weight.dtype
-        target_dtype = torch.promote_types(org_weight_dtype, r.dtype)
+        tensor_dtype = tensor.dtype
+        target_dtype = torch.promote_types(tensor_dtype, r.dtype)
         identity = self._identity_for_compute(device, target_dtype)
-        org_weight = org_weight.to(target_dtype)
-        flat_org_weight = org_weight
-        _, *shape = flat_org_weight.shape
-        reshaped_weight = flat_org_weight.view(self.block_num, self.block_size, *shape)
+        tensor = tensor.to(device=device, dtype=target_dtype)
+        flat_tensor = tensor
+        _, *shape = flat_tensor.shape
+        reshaped_tensor = flat_tensor.view(self.block_num, self.block_size, *shape)
 
         base = torch.zeros_like(identity) if diff else identity
         transform = self.rank_drop(r.to(target_dtype) * scale) - scale * identity + base
-        weight = torch.einsum("k n m, k n ... -> k m ...", transform, reshaped_weight).view(-1, *shape)
+        transformed = torch.einsum("k n m, k n ... -> k m ...", transform, reshaped_tensor).view(-1, *shape)
 
         if self.rescale is not None:
-            rescale = self.rescale.to(device=device, dtype=target_dtype)
-            weight = rescale * weight
+            rescale = self._rescale_for_output_axis_tensor(device=device, dtype=target_dtype, ndim=flat_tensor.ndim)
+            transformed = rescale * transformed
             if diff:
-                weight = weight + (rescale - 1) * flat_org_weight
-        return weight.to(org_weight_dtype)
+                transformed = transformed + (rescale - 1) * flat_tensor
+        return transformed.to(tensor_dtype)
 
-    def get_diff_weight(self, multiplier: float = 1.0, shape: tuple[int, ...] | None = None, device=None) -> tuple[Tensor, None]:
+    def make_weight(self, *, scale: float = 1.0, device: torch.device | None = None, diff: bool = False) -> Tensor:
+        org_weight = self.get_org_weight_for_compute(device or self.device)
+        return self._transform_output_axis_tensor(org_weight, scale=scale, device=device, diff=diff)
+
+    def make_bias(self, *, scale: float = 1.0, device: torch.device | None = None, diff: bool = False) -> Tensor | None:
+        if device is None:
+            device = self.device
+        org_bias = self.get_org_bias_for_compute(device)
+        if org_bias is None:
+            return None
+        transformed_bias = self._transform_output_axis_tensor(org_bias.view(-1, 1), scale=scale, device=device, diff=diff)
+        return transformed_bias.view(-1)
+
+    def get_diff_weight(
+        self, multiplier: float = 1.0, shape: tuple[int, ...] | None = None, device=None
+    ) -> tuple[Tensor, Tensor | None]:
         diff = self.make_weight(scale=multiplier, device=device, diff=True)
-        return _reshape_weight(diff, shape), None
+        return _reshape_weight(diff, shape), self.make_bias(scale=multiplier, device=device, diff=True)
 
-    def get_merged_weight(self, multiplier: float = 1.0, shape: tuple[int, ...] | None = None, device=None) -> tuple[Tensor, None]:
+    def get_merged_weight(
+        self, multiplier: float = 1.0, shape: tuple[int, ...] | None = None, device=None
+    ) -> tuple[Tensor, Tensor | None]:
         weight = self.make_weight(scale=multiplier, device=device, diff=False)
-        return _reshape_weight(weight, shape), None
+        return _reshape_weight(weight, shape), self.make_bias(scale=multiplier, device=device, diff=False)
 
     @torch.no_grad()
     def apply_max_norm(self, max_norm: float, device=None) -> tuple[bool, Tensor] | tuple[int, Tensor]:
@@ -445,7 +474,7 @@ class OftModule(nn.Module):
         if scaled:
             self.oft_blocks.mul_(ratio.to(self.oft_blocks.device))
             return scaled, orig_norm * ratio
-        return 0, orig_norm
+        return False, orig_norm
 
     @torch.no_grad()
     def get_norm(self, device=None) -> Tensor:
@@ -497,9 +526,8 @@ class OftModule(nn.Module):
         if self.bypass_mode:
             return self.bypass_forward(x, scale=self.multiplier)
 
-        weight, _ = self.get_merged_weight(multiplier=self.multiplier, shape=self.shape, device=x.device)
+        weight, bias = self.get_merged_weight(multiplier=self.multiplier, shape=self.shape, device=x.device)
         compute_dtype = weight.dtype
-        bias = self.get_org_bias_for_compute(x.device)
         if bias is not None:
             bias = bias.to(device=x.device, dtype=compute_dtype)
         result = self._apply_target_op(self._cast_for_compute(x, compute_dtype), weight.to(compute_dtype), bias)
