@@ -34,7 +34,7 @@ layer can settle into a better system instead of a pile of one-off adapters.
   whether it belongs at the PEFT family layer before adding another adapter
   root abstraction.
 
-## LoHa / LoKr / LoCon / OFT Lessons
+## LoHa / LoKr / LoCon / OFT / BOFT Lessons
 
 - LoHa, LoKr, and LoCon now share enough runtime/state-dict ceremony that a
   small PEFT-family helper for module naming, supported-target filtering,
@@ -44,63 +44,31 @@ layer can settle into a better system instead of a pile of one-off adapters.
   construction repeating critical invariants. This caught/standardized missing
   rank, unsupported plain dropout, and bypass/DoRA conflicts before runtime
   surprises.
-- Plain `dropout` remains intentionally unsupported for LoHa/LoKr because the
-  absorbed LyCORIS behavior did not apply it consistently in rebuilt-weight
-  mode. Keep `rank_dropout` and `module_dropout` as the supported knobs unless
-  a future method-specific design gives plain dropout clear semantics.
-- LoCon is the counterexample that makes the dropout rule method-local rather
-  than family-global: its absorbed behavior still uses plain `dropout`, but
-  only in bypass-mode output application and the DoRA input path. That should
-  stay documented as an explicit method semantic instead of being normalized
-  away into a fake family-wide rule.
-- Scalar-mode export folds `scalar` into the first exported factor and resets
-  scalar to identity on load. That convention should be documented as an
-  export-format rule if it survives more methods.
 - LoKr shows that method modules need room for algorithm-specific layout
   decisions (`full_matrix`, `decompose_both`, `factor`, Tucker only on one
   Kronecker factor). Avoid forcing all methods into a LoRA-shaped rank/down/up
   abstraction too early.
-- LoKr full-matrix mode is not just a layout toggle: it uses unit scaling by
-  overriding alpha to rank, matching the absorbed LyCORIS intent that fully
-  materialized Kronecker factors should not get an extra rank scale.
 - The current module classes duplicate target-module introspection and DoRA
   merge math. That may become a shared mixin/helper later, but only after we
   know whether future methods need exactly the same behavior.
-- OFT is the clearest example so far that not every absorbed method wants a
-  fake LoRA-shaped `rank + alpha` surface. The repo-owned OFT path uses
-  method-local `factor` and `constraint` names because those are the real
-  algorithm knobs in the LyCORIS-derived implementation.
-- Repo-owned OFT intentionally absorbs the LyCORIS Diag-OFT direction, not the
-  older built-in `oft_deprecated` path. Treat `oft_deprecated` as dead code
-  waiting for deletion, not as a compatibility contract to preserve.
-- The absorbed OFT bypass path needed real fixes before it was safe to own:
-  the vendor/legacy logic had a broken diff branch and a rescale shape bug.
-  Keep OFT's bypass/dropout semantics documented as method-local behavior
-  instead of treating them as a PEFT-family-wide abstraction too early.
-- OFT plain `dropout` should stay a block-transform concern. Reapplying a
-  second output-shaped mask in bypass mode just recreates the broken vendor
-  broadcast path and makes the semantics harder to reason about.
-- Repo-owned OFT now has a good reason to prefer a compact native parameter
-  layout over the older full-square block storage: the method is known to be
-  heavy, and the skew-symmetric blocks only need the independent upper-triangle
-  values to reconstruct the effective transform.
 - For new repo-owned PEFT methods, especially in this early adapter-system
   phase, there is currently little reason to let hypothetical backward
   compatibility constrain the core training/runtime design. Pick the best
   native representation first; if older layout import/export support is needed
   later, prefer explicit compatibility helpers outside the main training path.
 
-## Notes
+## Current Coverage
 
-From vendor/lycoris so far added including checking huggingface peft for improvements:
+From vendor/lycoris so far added including checking Hugging Face PEFT for
+improvements:
 
-### lycoris:
+### lycoris
 
 - loha: vendor lycoris/hf peft ✅
 - locon: vendor lycoris ✅
-- lokr: vendor lycoris/hf peft✅
+- lokr: vendor lycoris/hf peft ✅
 - oft: vendor lycoris/hf peft ✅
-- boft: vendor lycoris/hf peft ❌
+- boft: vendor lycoris/hf peft ✅
 - dylora: vendor lycoris/hf peft ❌
 - glora: vendor lycoris/hf peft ❌
 - ia3: vendor lycoris/hf peft ❌
@@ -108,7 +76,7 @@ From vendor/lycoris so far added including checking huggingface peft for improve
 - tlora: vendor lycoris/hf peft ❌
 - norms (not really a method) ❌
 
-### hf/peft:
+### hf/peft
 
 - shira ❌
 - adalora ❌

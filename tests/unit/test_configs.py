@@ -11,6 +11,7 @@ import pytest
 from hydra import compose
 from omegaconf import OmegaConf
 
+from library.adapters.methods.peft.boft.config import PeftBoftConfig
 from library.adapters.methods.peft.locon.config import PeftLoconConfig
 from library.adapters.methods.peft.lokr.config import PeftLokrConfig
 from library.adapters.methods.peft.lora.config import PeftLoraConfig
@@ -70,11 +71,13 @@ class TestConfigInstantiation:
         config = PeftConfig()
         assert config is not None
         assert hasattr(config, "lora")
+        assert hasattr(config, "boft")
         assert hasattr(config, "loha")
         assert hasattr(config, "locon")
         assert hasattr(config, "lokr")
         assert hasattr(config, "oft")
         assert config.lora is None
+        assert config.boft is None
         assert config.loha is None
         assert config.locon is None
         assert config.lokr is None
@@ -85,6 +88,13 @@ class TestConfigInstantiation:
         config = AdapterConfig()
         assert config is not None
         assert config.peft is None
+
+    def test_peft_boft_branch_instantiation(self):
+        """Test PeftConfig can select BOFT by branch presence."""
+        config = PeftConfig(boft=PeftBoftConfig())
+        assert hasattr(config.boft, "factor")
+        assert hasattr(config.boft, "constraint")
+        assert hasattr(config.boft, "num_stages")
 
     def test_peft_lora_branch_instantiation(self):
         """Test PeftConfig can select LoRA by branch presence."""
@@ -305,6 +315,7 @@ class TestHydraComposition:
         assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
         assert cfg.adapter.peft.oft is None
+        assert cfg.adapter.peft.boft is None
 
     def test_internal_default_config_composition(self, hydra_ctx):
         """Test the internal full-schema default baseline."""
@@ -317,6 +328,7 @@ class TestHydraComposition:
         assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
         assert cfg.adapter.peft.oft is None
+        assert cfg.adapter.peft.boft is None
         assert cfg.adapter.peft.continue_from is None
 
     def test_sd_finetune_config_composition(self, hydra_ctx):
@@ -353,6 +365,7 @@ class TestHydraComposition:
         assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
         assert cfg.adapter.peft.oft is None
+        assert cfg.adapter.peft.boft is None
 
     def test_sdxl_peft_edm2_preset_composition(self, hydra_ctx):
         """Test the dedicated SDXL PEFT EDM2 preset."""

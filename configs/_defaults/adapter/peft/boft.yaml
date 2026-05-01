@@ -1,0 +1,12 @@
+factor: null
+constraint: 0.0
+# Optional partial butterfly depth. Null keeps the full stage count implied by
+# the chosen BOFT factorization layout.
+num_stages: null
+rescaled: false
+# BOFT plain dropout is a real method-local semantic from the absorbed
+# LyCORIS butterfly rotations. Keep it explicit here rather than normalizing
+# it into a family-wide adapter assumption.
+dropout: null
+module_dropout: null
+bypass_mode: null

@@ -18,17 +18,26 @@ Rules:
   - Added repo-owned OFT config/runtime/state-dict ownership under `library/adapters/methods/peft/oft/`, including LyCORIS-style factorized orthogonal blocks, optional learned rescaling, bypass mode, module dropout, plain dropout, rank dropout, trainable-ref provenance, and repo-owned save/load/merge behavior.
   - Added `adapter.peft.oft` typed config plus `configs/_defaults/adapter/peft/oft.yaml`, with focused validation for missing/non-positive factors, negative constraints, and invalid dropout probabilities.
   - Added focused module/runtime/config coverage for OFT initialization, merged-weight consistency, mixed-dtype forward behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
+- **BOFT is now available as a repo-owned PEFT adapter method under `adapter.peft.boft`** — The active adapter runtime can now build, train, export, load, and merge BOFT modules through the same repo-owned method surface as LoHa, LoCon, LoKr, and OFT instead of relying on the vendored LyCORIS implementation as the repo contract.
+  - Added repo-owned BOFT config/runtime/state-dict ownership under `library/adapters/methods/peft/boft/`, including LyCORIS-style butterfly factorization, optional partial butterfly depth through `num_stages`, optional learned rescaling, bypass mode, module dropout, plain multiplicative dropout on butterfly transforms, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.boft` typed config plus `configs/_defaults/adapter/peft/boft.yaml`, with focused validation for missing/non-positive factors, negative constraints, and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for BOFT initialization, merged-weight consistency, mixed-dtype forward behavior, vendor-parity bypass diff behavior, compact export/load round-trips, registry-owned config translation, and centralized config validation.
 
 ### Changed
 
 - **The active PEFT registry now promotes OFT as a normal repo-owned method instead of keeping the old built-in path in the supported adapter list** — `library.adapters.oft` now resolves through the repo-owned OFT registration, while the stale `oft_deprecated` package remains only as on-disk cleanup debt rather than part of the supported method surface.
   - Repo-owned OFT now stores only the independent upper-triangle values for each skew-symmetric block in its native trainable/exported parameter layout, reducing OFT parameter/state size while keeping the same effective Diag-OFT transform math.
+- **The active PEFT registry now promotes BOFT as a normal repo-owned method instead of keeping it as vendored LyCORIS-only behavior** — `library.adapters.boft` now resolves through the repo-owned BOFT registration, and the BOFT path follows the same method-local config/runtime/state-dict ownership model as the other absorbed repo-owned PEFT methods.
+  - Repo-owned BOFT stores only the independent upper-triangle values for each butterfly-stage skew block in its native trainable/exported parameter layout, avoiding the older full-square vendor storage while preserving the same effective transform math.
 
 ### Fixed
 
 - **Repo-owned OFT now fixes broken vendor/legacy bypass behavior while preserving the intended Diag-OFT algorithm shape** — The absorbed OFT path no longer relies on raw mixed-dtype module forwards in bypass/dropout paths, and its bypass diff/rescale behavior now uses shape-safe logic instead of the buggy vendor/legacy implementation.
   - Removed the stale output-shaped plain-dropout mask from the OFT bypass path so `bypass_forward_diff()` no longer hits invalid batch-vs-block broadcasting during training and keeps plain dropout scoped to the OFT block transforms themselves.
   - Fixed OFT state-dict reconstruction so saved block layouts are reloaded exactly instead of being reinterpreted through the generic factorization hint, and fixed `apply_max_norm()` so it actually clamps large effective OFT norms instead of silently no-oping.
+- **Repo-owned BOFT now owns its runtime math with repo-tested mixed-dtype, dropout, and checkpoint behavior instead of inheriting those details opaquely from vendored LyCORIS code** — The absorbed BOFT path now has explicit repo coverage for merged-weight parity, bypass diff behavior, compact/full export compatibility, and partial-checkpoint reporting through the active adapter runtime.
+  - Added focused BOFT coverage for partial-stage exports/load round-trips and direct/runtime validation of invalid `num_stages` settings.
+  - Fixed the standard BOFT merged-weight path so biasful target modules now transform and merge bias consistently with the output-space butterfly operation instead of leaving the original bias untouched.
 
 ## [2026-04-30]
 

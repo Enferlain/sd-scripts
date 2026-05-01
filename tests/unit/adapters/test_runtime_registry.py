@@ -240,7 +240,7 @@ class TestAdapterRegistry:
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()
 
-        assert [registration.name for registration in registrations] == ["loha", "locon", "lokr", "lora", "oft", "dylora_deprecated"]
+        assert [registration.name for registration in registrations] == ["boft", "loha", "locon", "lokr", "lora", "oft", "dylora_deprecated"]
 
     def test_resolves_repo_owned_adapter_type(self):
         registration = get_adapter_method("loha")
@@ -249,6 +249,15 @@ class TestAdapterRegistry:
         assert registration.runtime_module_path == "library.adapters.methods.peft.loha.runtime"
         assert registration.config_binding is not None
         assert registration.config_binding.config_key == "loha"
+        assert registration.config_binding.runtime_settings_builder is not None
+
+    def test_resolves_repo_owned_boft_adapter_type(self):
+        registration = get_adapter_method("boft")
+
+        assert registration.legacy_module_path == "library.adapters.boft"
+        assert registration.runtime_module_path == "library.adapters.methods.peft.boft.runtime"
+        assert registration.config_binding is not None
+        assert registration.config_binding.config_key == "boft"
         assert registration.config_binding.runtime_settings_builder is not None
 
     def test_resolves_repo_owned_lokr_adapter_type(self):
@@ -374,6 +383,30 @@ class TestAdapterRegistry:
         assert settings["dropout"] == 0.15
         assert settings["bypass_mode"] is True
 
+    def test_boft_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.boft.config import PeftBoftConfig
+
+        registration = get_adapter_method("boft")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftBoftConfig(
+                factor=8,
+                constraint=0.25,
+                num_stages=2,
+                rescaled=True,
+                dropout=0.15,
+                bypass_mode=True,
+            )
+        )
+
+        assert registration.config_binding.config_key == "boft"
+        assert settings["factor"] == 8
+        assert settings["constraint"] == 0.25
+        assert settings["num_stages"] == 2
+        assert settings["rescaled"] is True
+        assert settings["dropout"] == 0.15
+        assert settings["bypass_mode"] is True
+
     def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig
 
@@ -455,10 +488,42 @@ class TestAdapterRegistry:
         with pytest.raises(ValueError, match="adapter\\.peft\\.oft\\.dropout must be between 0.0 and 1.0 inclusive"):
             registration.config_binding.runtime_settings_builder(PeftOftConfig(factor=4, dropout=1.5))
 
+    def test_boft_translation_requires_explicit_factor(self):
+        from library.adapters.methods.peft.boft.config import PeftBoftConfig
+
+        registration = get_adapter_method("boft")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.factor must be set"):
+            registration.config_binding.runtime_settings_builder(PeftBoftConfig())
+
+    def test_boft_translation_rejects_out_of_range_dropout(self):
+        from library.adapters.methods.peft.boft.config import PeftBoftConfig
+
+        registration = get_adapter_method("boft")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.dropout must be between 0.0 and 1.0 inclusive"):
+            registration.config_binding.runtime_settings_builder(PeftBoftConfig(factor=4, dropout=1.5))
+
+    def test_boft_translation_rejects_non_positive_num_stages(self):
+        from library.adapters.methods.peft.boft.config import PeftBoftConfig
+
+        registration = get_adapter_method("boft")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.num_stages must be a positive integer when set"):
+            registration.config_binding.runtime_settings_builder(PeftBoftConfig(factor=4, num_stages=0))
+
     def test_resolves_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.oft")
 
         assert registration.name == "oft"
+
+    def test_resolves_boft_legacy_module_path(self):
+        registration = get_adapter_method_for_legacy_module("library.adapters.boft")
+
+        assert registration.name == "boft"
 
     def test_build_adapter_for_legacy_module_uses_registered_wrapper(self, monkeypatch):
         captured = {}
@@ -1245,3 +1310,155 @@ class TestAdapterRegistry:
         load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(partial_path)))
 
         assert load_info == {"missing keys": ["oft_clip_l_proj"]}
+
+    def test_registered_boft_runtime_exposes_repo_owned_trainable_refs(self):
+        from library.adapters.methods.peft.boft.module import BoftModule
+
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+                self.norm = torch.nn.LayerNorm(4)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="boft",
+                settings={"factor": 2, "constraint": 0.25},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.boft", request)
+        refs = adapter.describe_trainable_parameter_refs()
+
+        assert adapter.adapter_resolved_targets is resolved_targets
+        assert all(isinstance(module, BoftModule) for module in adapter.boft_modules)
+        assert {module.__class__.__module__ for module in adapter.boft_modules} == {"library.adapters.methods.peft.boft.module"}
+        assert {module.adapter_target.path for module in adapter.boft_modules} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.component for ref in refs} == {"clip_l", "unet"}
+        assert {ref.component_key for ref in refs} == {"text_encoder1", "denoiser"}
+        assert {ref.target_path for ref in refs} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.source_target_ref.selector for ref in refs if ref.source_target_ref is not None} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.source_target_ref.module_type for ref in refs if ref.source_target_ref is not None} == {"Linear"}
+        assert all("norm" not in ref.target_path for ref in refs)
+
+    def test_registered_boft_runtime_round_trips_export_and_merge(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(8, 8, bias=False)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(8, 8, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="boft",
+                settings={"factor": 2, "constraint": 0.25, "num_stages": 1, "rescaled": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.boft", request)
+        assert all(module.boft_m == 1 for module in adapter.boft_modules)
+        for parameter in adapter.parameters():
+            parameter.data.fill_(0.25)
+
+        export_path = tmp_path / "boft.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.boft", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
+        assert load_info == {}
+
+        original_weight = denoiser.to_q.weight.detach().clone()
+        loaded_runtime = build_adapter_from_weights_for_legacy_module("library.adapters.boft", request, str(export_path))
+        assert isinstance(loaded_runtime, LoadedAdapterRuntime)
+        loaded_runtime.merge_into(
+            AdapterMergeRequest(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+                resolved_targets=resolved_targets,
+                dtype=torch.float32,
+                device="cpu",
+            )
+        )
+
+        assert not torch.allclose(denoiser.to_q.weight, original_weight)
+
+    def test_registered_boft_runtime_reports_partial_checkpoint_as_missing(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=None,
+            include_text_encoders=[True, False],
+            include_denoiser=False,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="boft",
+                settings={"factor": 2, "constraint": 0.25},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=None),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.boft", request)
+        export_path = tmp_path / "boft_partial.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+        state_dict = dict(load_file(str(export_path)))
+        state_dict.pop("boft_clip_l_proj.alpha")
+        partial_path = tmp_path / "boft_partial_missing_alpha.safetensors"
+        save_file(state_dict, str(partial_path), {"format": "test"})
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.boft", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(partial_path)))
+
+        assert load_info == {"missing keys": ["boft_clip_l_proj"]}

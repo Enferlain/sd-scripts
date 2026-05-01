@@ -817,6 +817,22 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.oft\\.factor must be set to a positive integer"):
             validate_config(cfg)
 
+    def test_peft_rejects_boft_without_factor(self):
+        """BOFT should require an explicit method-level factor setting."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "boft": {},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.factor must be set to a positive integer"):
+            validate_config(cfg)
+
     def test_peft_rejects_non_positive_oft_factor(self):
         """OFT factor should fail fast when set to a non-positive value."""
         cfg = make_validate_cfg(
@@ -831,6 +847,22 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.oft\\.factor must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_non_positive_boft_factor(self):
+        """BOFT factor should fail fast when set to a non-positive value."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "boft": {"factor": 0},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.factor must be a positive integer when set"):
             validate_config(cfg)
 
     def test_peft_rejects_negative_oft_constraint(self):
@@ -849,6 +881,38 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.oft\\.constraint must be non-negative"):
             validate_config(cfg)
 
+    def test_peft_rejects_negative_boft_constraint(self):
+        """BOFT constraint should fail fast when set negative."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "boft": {"factor": 4, "constraint": -0.1},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.constraint must be non-negative"):
+            validate_config(cfg)
+
+    def test_peft_rejects_non_positive_boft_num_stages(self):
+        """BOFT partial stage count should fail fast when set non-positive."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "boft": {"factor": 4, "num_stages": 0},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.num_stages must be a positive integer when set"):
+            validate_config(cfg)
+
     def test_peft_rejects_out_of_range_oft_dropout(self):
         """OFT dropout probabilities should stay within [0, 1]."""
         cfg = make_validate_cfg(
@@ -863,6 +927,22 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.oft\\.dropout must be between 0.0 and 1.0 inclusive"):
+            validate_config(cfg)
+
+    def test_peft_rejects_out_of_range_boft_dropout(self):
+        """BOFT dropout probabilities should stay within [0, 1]."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "boft": {"factor": 4, "dropout": 1.5},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.dropout must be between 0.0 and 1.0 inclusive"):
             validate_config(cfg)
 
     def test_peft_rejects_legacy_method_without_active_branch(self):
