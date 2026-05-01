@@ -21,4 +21,4 @@ lower in the family or method layer instead.
 
 ## Notes
 
-- adapters/methods will probably have adifferent name in the future
+- methods folder will probably have adifferent name in the future

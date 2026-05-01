@@ -833,6 +833,22 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.factor must be set to a positive integer"):
             validate_config(cfg)
 
+    def test_peft_rejects_dylora_without_rank(self):
+        """DyLoRA should require an explicit method-level rank setting."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "dylora": {},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.dylora\\.rank must be set to a positive integer"):
+            validate_config(cfg)
+
     def test_peft_rejects_non_positive_oft_factor(self):
         """OFT factor should fail fast when set to a non-positive value."""
         cfg = make_validate_cfg(
@@ -863,6 +879,41 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.factor must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_non_positive_dylora_rank(self):
+        """DyLoRA rank should fail fast when set to a non-positive value."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "dylora": {"rank": 0},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.dylora\\.rank must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_dylora_block_size_that_does_not_divide_rank(self):
+        """DyLoRA block_size should divide rank exactly."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "dylora": {"rank": 8, "block_size": 3},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="adapter\\.peft\\.dylora\\.block_size must divide adapter\\.peft\\.dylora\\.rank exactly",
+        ):
             validate_config(cfg)
 
     def test_peft_rejects_negative_oft_constraint(self):
@@ -943,6 +994,25 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.dropout must be between 0.0 and 1.0 inclusive"):
+            validate_config(cfg)
+
+    def test_peft_rejects_out_of_range_dylora_module_dropout(self):
+        """DyLoRA module dropout should stay within [0, 1]."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "dylora": {"rank": 8, "module_dropout": 1.5},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="adapter\\.peft\\.dylora\\.module_dropout must be between 0.0 and 1.0 inclusive",
+        ):
             validate_config(cfg)
 
     def test_peft_rejects_legacy_method_without_active_branch(self):

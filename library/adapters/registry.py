@@ -6,14 +6,6 @@ from .types import AdapterMethodRegistration
 
 _BUILTIN_ADAPTER_METHODS = (
     *PEFT_METHOD_REGISTRATIONS,
-    # Left over on purpose as legacy bridges. The current adapter-system task
-    # is centered on the LoRA-shaped path; Dylora still remains on the legacy
-    # bridge path until its vendor-directed repo-owned slice is revisited.
-    AdapterMethodRegistration(
-        name="dylora_deprecated",
-        legacy_module_path="library.adapters.dylora",
-        runtime_module_path="library.adapters.methods.peft.dylora_deprecated.runtime",
-    ),
 )
 
 _ADAPTER_METHODS_BY_NAME = {method.name: method for method in _BUILTIN_ADAPTER_METHODS}

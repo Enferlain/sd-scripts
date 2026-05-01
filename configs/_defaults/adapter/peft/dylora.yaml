@@ -1,0 +1,8 @@
+rank: null
+alpha: 1.0
+# DyLoRA is a LoRA training trick rather than a separate factorization family.
+# Keep the update unit explicit, but default it to 1 so any positive rank is
+# valid unless the user opts into a larger grouped update.
+block_size: 1
+module_dropout: null
+bypass_mode: null

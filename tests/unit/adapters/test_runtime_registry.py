@@ -240,7 +240,7 @@ class TestAdapterRegistry:
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()
 
-        assert [registration.name for registration in registrations] == ["boft", "loha", "locon", "lokr", "lora", "oft", "dylora_deprecated"]
+        assert [registration.name for registration in registrations] == ["boft", "dylora", "loha", "locon", "lokr", "lora", "oft"]
 
     def test_resolves_repo_owned_adapter_type(self):
         registration = get_adapter_method("loha")
@@ -258,6 +258,15 @@ class TestAdapterRegistry:
         assert registration.runtime_module_path == "library.adapters.methods.peft.boft.runtime"
         assert registration.config_binding is not None
         assert registration.config_binding.config_key == "boft"
+        assert registration.config_binding.runtime_settings_builder is not None
+
+    def test_resolves_repo_owned_dylora_adapter_type(self):
+        registration = get_adapter_method("dylora")
+
+        assert registration.legacy_module_path == "library.adapters.dylora"
+        assert registration.runtime_module_path == "library.adapters.methods.peft.dylora.runtime"
+        assert registration.config_binding is not None
+        assert registration.config_binding.config_key == "dylora"
         assert registration.config_binding.runtime_settings_builder is not None
 
     def test_resolves_repo_owned_lokr_adapter_type(self):
@@ -407,6 +416,28 @@ class TestAdapterRegistry:
         assert settings["dropout"] == 0.15
         assert settings["bypass_mode"] is True
 
+    def test_dylora_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.dylora.config import PeftDyloraConfig
+
+        registration = get_adapter_method("dylora")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftDyloraConfig(
+                rank=16,
+                alpha=32.0,
+                block_size=4,
+                module_dropout=0.2,
+                bypass_mode=True,
+            )
+        )
+
+        assert registration.config_binding.config_key == "dylora"
+        assert settings["adapter_rank"] == 16
+        assert settings["adapter_alpha"] == 32.0
+        assert settings["block_size"] == 4
+        assert settings["module_dropout"] == 0.2
+        assert settings["bypass_mode"] is True
+
     def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig
 
@@ -515,6 +546,24 @@ class TestAdapterRegistry:
         with pytest.raises(ValueError, match="adapter\\.peft\\.boft\\.num_stages must be a positive integer when set"):
             registration.config_binding.runtime_settings_builder(PeftBoftConfig(factor=4, num_stages=0))
 
+    def test_dylora_translation_requires_explicit_rank(self):
+        from library.adapters.methods.peft.dylora.config import PeftDyloraConfig
+
+        registration = get_adapter_method("dylora")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.dylora\\.rank must be set"):
+            registration.config_binding.runtime_settings_builder(PeftDyloraConfig())
+
+    def test_dylora_translation_rejects_block_size_that_does_not_divide_rank(self):
+        from library.adapters.methods.peft.dylora.config import PeftDyloraConfig
+
+        registration = get_adapter_method("dylora")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.dylora\\.block_size must divide adapter\\.peft\\.dylora\\.rank exactly"):
+            registration.config_binding.runtime_settings_builder(PeftDyloraConfig(rank=8, block_size=3))
+
     def test_resolves_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.oft")
 
@@ -524,6 +573,11 @@ class TestAdapterRegistry:
         registration = get_adapter_method_for_legacy_module("library.adapters.boft")
 
         assert registration.name == "boft"
+
+    def test_resolves_dylora_legacy_module_path(self):
+        registration = get_adapter_method_for_legacy_module("library.adapters.dylora")
+
+        assert registration.name == "dylora"
 
     def test_build_adapter_for_legacy_module_uses_registered_wrapper(self, monkeypatch):
         captured = {}
@@ -561,10 +615,10 @@ class TestAdapterRegistry:
             return "adapter-from-weights", None
 
         runtime_module.create_adapter_from_weights = fake_create_adapter_from_weights
-        monkeypatch.setitem(sys.modules, "library.adapters.methods.peft.dylora_deprecated.runtime", runtime_module)
+        monkeypatch.setitem(sys.modules, "library.adapters.methods.peft.dylora.runtime", runtime_module)
 
         request = AdapterBuildRequest(
-            adapter=AdapterRuntimeSpec(adapter_type="dylora_deprecated"),
+            adapter=AdapterRuntimeSpec(adapter_type="dylora"),
             context=AdapterBuildContext(model=AdapterModelContext(vae=None, text_encoder=[], denoiser=None)),
             resolved_targets=build_component_root_targets(
                 model_type="sdxl",
@@ -583,10 +637,10 @@ class TestAdapterRegistry:
     def test_build_adapter_from_weights_for_legacy_module_rejects_invalid_wrapper_result(self, monkeypatch):
         runtime_module = types.SimpleNamespace()
         runtime_module.create_adapter_from_weights = lambda request, weights_path: "invalid-shape"
-        monkeypatch.setitem(sys.modules, "library.adapters.methods.peft.dylora_deprecated.runtime", runtime_module)
+        monkeypatch.setitem(sys.modules, "library.adapters.methods.peft.dylora.runtime", runtime_module)
 
         request = AdapterBuildRequest(
-            adapter=AdapterRuntimeSpec(adapter_type="dylora_deprecated"),
+            adapter=AdapterRuntimeSpec(adapter_type="dylora"),
             context=AdapterBuildContext(model=AdapterModelContext(vae=None, text_encoder=[], denoiser=None)),
             resolved_targets=build_component_root_targets(
                 model_type="sdxl",

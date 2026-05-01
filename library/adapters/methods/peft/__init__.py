@@ -1,6 +1,7 @@
 """Repo-owned PEFT adapter method runtimes."""
 
 from .boft import REGISTRATION as BOFT_REGISTRATION
+from .dylora import REGISTRATION as DYLORA_REGISTRATION
 from .loha import REGISTRATION as LOHA_REGISTRATION
 from .locon import REGISTRATION as LOCON_REGISTRATION
 from .lokr import REGISTRATION as LOKR_REGISTRATION
@@ -10,6 +11,7 @@ from .oft import REGISTRATION as OFT_REGISTRATION
 
 PEFT_METHOD_REGISTRATIONS = (
     BOFT_REGISTRATION,
+    DYLORA_REGISTRATION,
     LOHA_REGISTRATION,
     LOCON_REGISTRATION,
     LOKR_REGISTRATION,
@@ -20,7 +22,7 @@ PEFT_METHOD_REGISTRATIONS = (
 __all__ = [
     "PEFT_METHOD_REGISTRATIONS",
     "boft",
-    "dylora_deprecated",
+    "dylora",
     "loha",
     "locon",
     "lokr",

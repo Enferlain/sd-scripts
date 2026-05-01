@@ -22,6 +22,10 @@ Rules:
   - Added repo-owned BOFT config/runtime/state-dict ownership under `library/adapters/methods/peft/boft/`, including LyCORIS-style butterfly factorization, optional partial butterfly depth through `num_stages`, optional learned rescaling, bypass mode, module dropout, plain multiplicative dropout on butterfly transforms, trainable-ref provenance, and repo-owned save/load/merge behavior.
   - Added `adapter.peft.boft` typed config plus `configs/_defaults/adapter/peft/boft.yaml`, with focused validation for missing/non-positive factors, negative constraints, and invalid dropout probabilities.
   - Added focused module/runtime/config coverage for BOFT initialization, merged-weight consistency, mixed-dtype forward behavior, vendor-parity bypass diff behavior, compact export/load round-trips, registry-owned config translation, and centralized config validation.
+- **DyLoRA is now available as a repo-owned PEFT adapter method under `adapter.peft.dylora`** — The active adapter runtime can now build, train, export, load, and merge DyLoRA modules through the same repo-owned method surface as the other absorbed PEFT methods instead of routing `library.adapters.dylora` through the old legacy bridge.
+  - Added repo-owned DyLoRA config/runtime/state-dict ownership under `library/adapters/methods/peft/dylora/`, with LoRA-shaped weights, explicit `block_size` layout ownership, module dropout, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.dylora` typed config plus `configs/_defaults/adapter/peft/dylora.yaml`, with focused validation for missing/non-positive ranks, invalid `block_size`, and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for DyLoRA initialization, merged-weight consistency, mixed-dtype forward behavior, gradient isolation to the sampled block, registry-owned config translation, and centralized config validation.
 
 ### Changed
 
@@ -29,6 +33,7 @@ Rules:
   - Repo-owned OFT now stores only the independent upper-triangle values for each skew-symmetric block in its native trainable/exported parameter layout, reducing OFT parameter/state size while keeping the same effective Diag-OFT transform math.
 - **The active PEFT registry now promotes BOFT as a normal repo-owned method instead of keeping it as vendored LyCORIS-only behavior** — `library.adapters.boft` now resolves through the repo-owned BOFT registration, and the BOFT path follows the same method-local config/runtime/state-dict ownership model as the other absorbed repo-owned PEFT methods.
   - Repo-owned BOFT stores only the independent upper-triangle values for each butterfly-stage skew block in its native trainable/exported parameter layout, avoiding the older full-square vendor storage while preserving the same effective transform math.
+- **The active PEFT registry now promotes DyLoRA as a normal repo-owned method instead of keeping `library.adapters.dylora` on the legacy bridge path** — The active registry now resolves DyLoRA through the repo-owned method package, and the method is treated as a LoRA-shaped training-policy method with explicit block-size ownership instead of as compatibility debt.
 
 ### Fixed
 
@@ -39,6 +44,9 @@ Rules:
 - **Repo-owned BOFT now owns its runtime math with repo-tested mixed-dtype, dropout, and checkpoint behavior instead of inheriting those details opaquely from vendored LyCORIS code** — The absorbed BOFT path now has explicit repo coverage for merged-weight parity, bypass diff behavior, compact/full export compatibility, and partial-checkpoint reporting through the active adapter runtime.
   - Added focused BOFT coverage for partial-stage exports/load round-trips and direct/runtime validation of invalid `num_stages` settings.
   - Fixed the standard BOFT merged-weight path so biasful target modules now transform and merge bias consistently with the output-space butterfly operation instead of leaving the original bias untouched.
+- **Repo-owned DyLoRA now fixes several vendor-path correctness hazards while keeping the useful dynamic-prefix training idea** — The absorbed DyLoRA path no longer depends on vendor `.data` concatenation, disabled state-dict loading, or the broken `scale` / `gamma` bypass branch.
+  - Added explicit block-size-aware export/load ownership so DyLoRA artifacts round-trip the dynamic training layout exactly instead of dropping that information on save.
+  - Rebuilt DyLoRA dynamic-prefix training so the sampled block receives gradients while the effective update still uses the prefix through that block, and kept full-rank export/merge on standard LoRA-shaped weights.
 
 ## [2026-04-30]
 

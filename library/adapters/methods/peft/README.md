@@ -51,6 +51,10 @@ layer can settle into a better system instead of a pile of one-off adapters.
 - The current module classes duplicate target-module introspection and DoRA
   merge math. That may become a shared mixin/helper later, but only after we
   know whether future methods need exactly the same behavior.
+- DyLoRA is a useful counterexample for method shape: some PEFT methods are
+  better modeled as a training policy layered on top of a familiar weight
+  parameterization than as a brand-new factorization family. Keep the public
+  config surface focused on the extra policy knobs that actually matter.
 - For new repo-owned PEFT methods, especially in this early adapter-system
   phase, there is currently little reason to let hypothetical backward
   compatibility constrain the core training/runtime design. Pick the best
@@ -69,7 +73,7 @@ improvements:
 - lokr: vendor lycoris/hf peft ✅
 - oft: vendor lycoris/hf peft ✅
 - boft: vendor lycoris/hf peft ✅
-- dylora: vendor lycoris/hf peft ❌
+- dylora: vendor lycoris/hf peft ✅
 - glora: vendor lycoris/hf peft ❌
 - ia3: vendor lycoris/hf peft ❌
 - abba: vendor lycoris/hf peft ❌
