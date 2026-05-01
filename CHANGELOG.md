@@ -22,11 +22,13 @@ Rules:
 ### Changed
 
 - **The active PEFT registry now promotes OFT as a normal repo-owned method instead of keeping the old built-in path in the supported adapter list** — `library.adapters.oft` now resolves through the repo-owned OFT registration, while the stale `oft_deprecated` package remains only as on-disk cleanup debt rather than part of the supported method surface.
+  - Repo-owned OFT now stores only the independent upper-triangle values for each skew-symmetric block in its native trainable/exported parameter layout, reducing OFT parameter/state size while keeping the same effective Diag-OFT transform math.
 
 ### Fixed
 
 - **Repo-owned OFT now fixes broken vendor/legacy bypass behavior while preserving the intended Diag-OFT algorithm shape** — The absorbed OFT path no longer relies on raw mixed-dtype module forwards in bypass/dropout paths, and its bypass diff/rescale behavior now uses shape-safe logic instead of the buggy vendor/legacy implementation.
   - Removed the stale output-shaped plain-dropout mask from the OFT bypass path so `bypass_forward_diff()` no longer hits invalid batch-vs-block broadcasting during training and keeps plain dropout scoped to the OFT block transforms themselves.
+  - Fixed OFT state-dict reconstruction so saved block layouts are reloaded exactly instead of being reinterpreted through the generic factorization hint, and fixed `apply_max_norm()` so it actually clamps large effective OFT norms instead of silently no-oping.
 
 ## [2026-04-30]
 

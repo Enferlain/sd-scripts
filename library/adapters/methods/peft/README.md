@@ -80,6 +80,15 @@ layer can settle into a better system instead of a pile of one-off adapters.
 - OFT plain `dropout` should stay a block-transform concern. Reapplying a
   second output-shaped mask in bypass mode just recreates the broken vendor
   broadcast path and makes the semantics harder to reason about.
+- Repo-owned OFT now has a good reason to prefer a compact native parameter
+  layout over the older full-square block storage: the method is known to be
+  heavy, and the skew-symmetric blocks only need the independent upper-triangle
+  values to reconstruct the effective transform.
+- For new repo-owned PEFT methods, especially in this early adapter-system
+  phase, there is currently little reason to let hypothetical backward
+  compatibility constrain the core training/runtime design. Pick the best
+  native representation first; if older layout import/export support is needed
+  later, prefer explicit compatibility helpers outside the main training path.
 
 ## Notes
 

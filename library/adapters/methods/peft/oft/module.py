@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -58,6 +59,7 @@ class OftConfig:
     rank_dropout: float = 0.0
     module_dropout: float = 0.0
     bypass_mode: bool | None = None
+    block_size_override: int | None = None
 
     def as_kwargs(self) -> dict[str, Any]:
         return {
@@ -69,6 +71,7 @@ class OftConfig:
             "rank_dropout": self.rank_dropout,
             "module_dropout": self.module_dropout,
             "bypass_mode": self.bypass_mode,
+            "block_size_override": self.block_size_override,
         }
 
 
@@ -81,6 +84,31 @@ def _reshape_weight(weight: Tensor, shape: tuple[int, ...] | None) -> Tensor:
 def _validate_probability(value: float, *, field_name: str) -> None:
     if value < 0.0 or value > 1.0:
         raise ValueError(f"OFT {field_name} must be between 0.0 and 1.0 inclusive, got {value}.")
+
+
+def _upper_triangle_entry_count(block_size: int) -> int:
+    return block_size * (block_size - 1) // 2
+
+
+def _infer_block_size_from_entry_count(entry_count: int) -> int:
+    discriminant = 1 + 8 * entry_count
+    root = math.isqrt(discriminant)
+    if root * root != discriminant:
+        raise ValueError(f"OFT compact block entry count {entry_count} does not describe a triangular block size.")
+    block_size = (1 + root) // 2
+    if _upper_triangle_entry_count(block_size) != entry_count:
+        raise ValueError(f"OFT compact block entry count {entry_count} does not describe a triangular block size.")
+    return block_size
+
+
+def _infer_block_size_from_export_blocks(oft_blocks: Tensor) -> int:
+    if oft_blocks.ndim == 3:
+        if oft_blocks.shape[1] != oft_blocks.shape[2]:
+            raise ValueError(f"OFT full block tensor must be square, got shape {tuple(oft_blocks.shape)}.")
+        return int(oft_blocks.shape[1])
+    if oft_blocks.ndim == 2:
+        return _infer_block_size_from_entry_count(int(oft_blocks.shape[1]))
+    raise ValueError(f"OFT exported blocks must be rank 2 or 3, got ndim={oft_blocks.ndim}.")
 
 
 class OftModule(nn.Module):
@@ -106,13 +134,16 @@ class OftModule(nn.Module):
         rank_dropout: float = 0.0,
         module_dropout: float = 0.0,
         bypass_mode: bool | None = None,
+        block_size_override: int | None = None,
         **_: Any,
     ) -> None:
         super().__init__()
         if not isinstance(org_module, SUPPORTED_MODULE_TYPES):
             raise ValueError(f"{type(org_module).__name__} is not supported in OFT algo.")
-        if factor is None or factor <= 0:
+        if block_size_override is None and (factor is None or factor <= 0):
             raise ValueError(f"OFT factor must be positive, got {factor}.")
+        if block_size_override is not None and block_size_override <= 0:
+            raise ValueError(f"OFT block_size_override must be positive, got {block_size_override}.")
         if constraint < 0.0:
             raise ValueError(f"OFT constraint must be non-negative, got {constraint}.")
         _validate_probability(dropout, field_name="dropout")
@@ -163,10 +194,21 @@ class OftModule(nn.Module):
             }
 
         out_dim = self.shape[0]
-        self.block_size, self.block_num = factorization(out_dim, factor)
+        if block_size_override is not None:
+            if out_dim % block_size_override != 0:
+                raise ValueError(
+                    f"OFT block_size_override={block_size_override} must evenly divide output dimension {out_dim}."
+                )
+            self.block_size = int(block_size_override)
+            self.block_num = out_dim // self.block_size
+        else:
+            self.block_size, self.block_num = factorization(out_dim, factor)
         self.constraint = constraint * out_dim
         self.register_buffer("alpha", torch.tensor(constraint, dtype=torch.float32))
-        self.oft_blocks = nn.Parameter(torch.zeros(self.block_num, self.block_size, self.block_size))
+        upper_rows, upper_cols = torch.triu_indices(self.block_size, self.block_size, offset=1)
+        self.register_buffer("upper_rows", upper_rows, persistent=False)
+        self.register_buffer("upper_cols", upper_cols, persistent=False)
+        self.oft_blocks = nn.Parameter(torch.zeros(self.block_num, _upper_triangle_entry_count(self.block_size)))
         self.register_buffer("I", torch.eye(self.block_size, dtype=torch.float32), persistent=False)
 
         if rescaled:
@@ -195,7 +237,7 @@ class OftModule(nn.Module):
     @classmethod
     def algo_check(cls, state_dict: Mapping[str, Tensor], lora_name: str) -> bool:
         oft_blocks = state_dict.get(f"{lora_name}.oft_blocks")
-        return oft_blocks is not None and oft_blocks.ndim == 3
+        return oft_blocks is not None and oft_blocks.ndim in {2, 3}
 
     @classmethod
     def extract_state_dict(cls, state_dict: Mapping[str, Tensor], lora_name: str) -> list[Tensor | None]:
@@ -215,17 +257,17 @@ class OftModule(nn.Module):
         if alpha is None:
             raise ValueError(f"OFT state dict for {lora_name!r} is missing alpha.")
 
+        block_size = _infer_block_size_from_export_blocks(oft_blocks)
         config = OftConfig(
             multiplier=1.0,
-            factor=oft_blocks.size(1),
+            factor=block_size,
             constraint=float(alpha.detach().float().item()),
             rescaled=rescale is not None,
+            block_size_override=block_size,
         )
         module = cls.from_target_module(lora_name, orig_module, config=config)
         with torch.no_grad():
-            module.oft_blocks.copy_(oft_blocks)
-            if rescale is not None and module.rescale is not None:
-                module.rescale.copy_(rescale)
+            module.load_export_state_dict({"oft_blocks": oft_blocks, "rescale": rescale})
         return module
 
     def export_state_dict(self) -> dict[str, Tensor]:
@@ -239,7 +281,8 @@ class OftModule(nn.Module):
 
     @torch.no_grad()
     def load_export_state_dict(self, weights: Mapping[str, Tensor]) -> None:
-        self.oft_blocks.copy_(weights["oft_blocks"])
+        compact_blocks = self._compact_oft_blocks(weights["oft_blocks"])
+        self.oft_blocks.copy_(compact_blocks.to(device=self.oft_blocks.device, dtype=self.oft_blocks.dtype))
         if self.rescale is not None and weights.get("rescale") is not None:
             self.rescale.copy_(weights["rescale"])
 
@@ -254,6 +297,35 @@ class OftModule(nn.Module):
 
     def _identity_for_compute(self, device: torch.device, dtype: torch.dtype) -> Tensor:
         return self.I.to(device=device, dtype=dtype)
+
+    def _compact_oft_blocks(self, oft_blocks: Tensor) -> Tensor:
+        if oft_blocks.ndim == 2:
+            expected_shape = (self.block_num, _upper_triangle_entry_count(self.block_size))
+            if tuple(oft_blocks.shape) != expected_shape:
+                raise ValueError(
+                    f"OFT compact block tensor must have shape {expected_shape}, got {tuple(oft_blocks.shape)}."
+                )
+            return oft_blocks
+        if oft_blocks.ndim == 3:
+            expected_shape = (self.block_num, self.block_size, self.block_size)
+            if tuple(oft_blocks.shape) != expected_shape:
+                raise ValueError(
+                    f"OFT full block tensor must have shape {expected_shape}, got {tuple(oft_blocks.shape)}."
+                )
+            q = oft_blocks - oft_blocks.transpose(1, 2)
+            rows = self.upper_rows.to(device=oft_blocks.device)
+            cols = self.upper_cols.to(device=oft_blocks.device)
+            return q[:, rows, cols]
+        raise ValueError(f"OFT exported blocks must be rank 2 or 3, got ndim={oft_blocks.ndim}.")
+
+    def _expand_oft_blocks(self, *, device: torch.device, dtype: torch.dtype) -> Tensor:
+        upper_values = self.oft_blocks.to(device=device, dtype=dtype)
+        q = torch.zeros(self.block_num, self.block_size, self.block_size, device=device, dtype=dtype)
+        rows = self.upper_rows.to(device=device)
+        cols = self.upper_cols.to(device=device)
+        q[:, rows, cols] = upper_values
+        q[:, cols, rows] = -upper_values
+        return q
 
     def _cast_for_compute(self, x: Tensor, dtype: torch.dtype) -> Tensor:
         if x.dtype == dtype:
@@ -300,8 +372,7 @@ class OftModule(nn.Module):
     def get_r(self, *, device: torch.device | None = None) -> Tensor:
         if device is None:
             device = self.device
-        oft_blocks = self.oft_blocks.to(device=device)
-        q = oft_blocks - oft_blocks.transpose(1, 2)
+        q = self._expand_oft_blocks(device=device, dtype=self.oft_blocks.dtype)
         normed_q = q
         if self.constraint > 0:
             q_norm = torch.norm(q) + 1e-8
@@ -362,12 +433,15 @@ class OftModule(nn.Module):
         return _reshape_weight(weight, shape), None
 
     @torch.no_grad()
-    def apply_max_norm(self, max_norm: float, device=None) -> tuple[int | Tensor, Tensor]:
-        orig_norm = self.oft_blocks.to(device or self.device).norm()
-        norm = torch.clamp(orig_norm, max=max_norm / 2)
+    def apply_max_norm(self, max_norm: float, device=None) -> tuple[bool, Tensor] | tuple[int, Tensor]:
+        device = device or self.device
+        orig_norm = self._expand_oft_blocks(device=device, dtype=self.oft_blocks.dtype).norm()
+        # Keep the same vendor-side regularization shape: clamp very small norms
+        # up to half-threshold, then cap anything larger than the requested max.
+        norm = torch.clamp(orig_norm, min=max_norm / 2)
         desired = torch.clamp(norm, max=max_norm)
         ratio = desired / norm
-        scaled = norm != desired
+        scaled = bool(norm != desired)
         if scaled:
             self.oft_blocks.mul_(ratio.to(self.oft_blocks.device))
             return scaled, orig_norm * ratio
@@ -375,7 +449,8 @@ class OftModule(nn.Module):
 
     @torch.no_grad()
     def get_norm(self, device=None) -> Tensor:
-        return self.oft_blocks.norm()
+        device = device or self.device
+        return self._expand_oft_blocks(device=device, dtype=self.oft_blocks.dtype).norm()
 
     def _bypass_forward(self, x: Tensor, *, scale: float = 1.0, diff: bool = False) -> Tensor:
         r = self.get_r(device=x.device)
