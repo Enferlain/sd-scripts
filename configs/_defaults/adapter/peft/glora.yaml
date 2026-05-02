@@ -1,0 +1,14 @@
+rank: null
+alpha: 1.0
+# Plain GLoRA dropout is a method-local semantic.
+# In rebuilt-weight mode it drops the forward input before the GLoRA branches
+# are applied, rather than dropping reconstructed branch weights.
+dropout: null
+rank_dropout: null
+module_dropout: null
+use_tucker: false
+use_scalar: false
+rank_dropout_scale: false
+bypass_mode: null
+rs_lora: false
+orthogonalize: false

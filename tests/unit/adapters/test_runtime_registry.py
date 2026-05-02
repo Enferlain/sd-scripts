@@ -240,7 +240,7 @@ class TestAdapterRegistry:
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()
 
-        assert [registration.name for registration in registrations] == ["boft", "dylora", "loha", "locon", "lokr", "lora", "oft"]
+        assert [registration.name for registration in registrations] == ["boft", "dylora", "glora", "loha", "locon", "lokr", "lora", "oft"]
 
     def test_resolves_repo_owned_adapter_type(self):
         registration = get_adapter_method("loha")
@@ -267,6 +267,15 @@ class TestAdapterRegistry:
         assert registration.runtime_module_path == "library.adapters.methods.peft.dylora.runtime"
         assert registration.config_binding is not None
         assert registration.config_binding.config_key == "dylora"
+        assert registration.config_binding.runtime_settings_builder is not None
+
+    def test_resolves_repo_owned_glora_adapter_type(self):
+        registration = get_adapter_method("glora")
+
+        assert registration.legacy_module_path == "library.adapters.glora"
+        assert registration.runtime_module_path == "library.adapters.methods.peft.glora.runtime"
+        assert registration.config_binding is not None
+        assert registration.config_binding.config_key == "glora"
         assert registration.config_binding.runtime_settings_builder is not None
 
     def test_resolves_repo_owned_lokr_adapter_type(self):
@@ -438,6 +447,32 @@ class TestAdapterRegistry:
         assert settings["module_dropout"] == 0.2
         assert settings["bypass_mode"] is True
 
+    def test_glora_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.glora.config import PeftGloraConfig
+
+        registration = get_adapter_method("glora")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftGloraConfig(
+                rank=16,
+                alpha=32.0,
+                dropout=0.15,
+                rank_dropout=0.2,
+                use_tucker=True,
+                orthogonalize=True,
+                bypass_mode=True,
+            )
+        )
+
+        assert registration.config_binding.config_key == "glora"
+        assert settings["adapter_rank"] == 16
+        assert settings["adapter_alpha"] == 32.0
+        assert settings["dropout"] == 0.15
+        assert settings["rank_dropout"] == 0.2
+        assert settings["use_tucker"] is True
+        assert settings["orthogonalize"] is True
+        assert settings["bypass_mode"] is True
+
     def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig
 
@@ -564,6 +599,24 @@ class TestAdapterRegistry:
         with pytest.raises(ValueError, match="adapter\\.peft\\.dylora\\.block_size must divide adapter\\.peft\\.dylora\\.rank exactly"):
             registration.config_binding.runtime_settings_builder(PeftDyloraConfig(rank=8, block_size=3))
 
+    def test_glora_translation_requires_explicit_rank(self):
+        from library.adapters.methods.peft.glora.config import PeftGloraConfig
+
+        registration = get_adapter_method("glora")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.rank must be set"):
+            registration.config_binding.runtime_settings_builder(PeftGloraConfig())
+
+    def test_glora_translation_rejects_out_of_range_dropout(self):
+        from library.adapters.methods.peft.glora.config import PeftGloraConfig
+
+        registration = get_adapter_method("glora")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.dropout must be between 0.0 and 1.0 inclusive"):
+            registration.config_binding.runtime_settings_builder(PeftGloraConfig(rank=8, dropout=1.5))
+
     def test_resolves_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.oft")
 
@@ -578,6 +631,11 @@ class TestAdapterRegistry:
         registration = get_adapter_method_for_legacy_module("library.adapters.dylora")
 
         assert registration.name == "dylora"
+
+    def test_resolves_glora_legacy_module_path(self):
+        registration = get_adapter_method_for_legacy_module("library.adapters.glora")
+
+        assert registration.name == "glora"
 
     def test_build_adapter_for_legacy_module_uses_registered_wrapper(self, monkeypatch):
         captured = {}

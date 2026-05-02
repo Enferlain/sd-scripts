@@ -26,6 +26,10 @@ Rules:
   - Added repo-owned DyLoRA config/runtime/state-dict ownership under `library/adapters/methods/peft/dylora/`, with LoRA-shaped weights, explicit `block_size` layout ownership, module dropout, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
   - Added `adapter.peft.dylora` typed config plus `configs/_defaults/adapter/peft/dylora.yaml`, with focused validation for missing/non-positive ranks, invalid `block_size`, and invalid dropout probabilities.
   - Added focused module/runtime/config coverage for DyLoRA initialization, merged-weight consistency, mixed-dtype forward behavior, gradient isolation to the sampled block, registry-owned config translation, and centralized config validation.
+- **GLoRA is now available as a repo-owned PEFT adapter method under `adapter.peft.glora`** — The active adapter runtime can now build, train, export, load, and merge GLoRA modules through the same repo-owned method surface as the other absorbed PEFT methods instead of leaving `library.adapters.glora` as a vendor-only path.
+  - Added repo-owned GLoRA config/runtime/state-dict ownership under `library/adapters/methods/peft/glora/`, including the real branch-A/branch-B method shape, optional Tucker factorization on the B branch for convolution targets, scalar mode, orthogonalization, bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.glora` typed config plus `configs/_defaults/adapter/peft/glora.yaml`, with focused validation for missing/non-positive ranks and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for GLoRA initialization, merged-weight consistency, bypass multiplier behavior, mixed-dtype forward behavior, Tucker reachability, registry-owned config translation, and centralized config validation.
 
 ### Changed
 
@@ -34,6 +38,7 @@ Rules:
 - **The active PEFT registry now promotes BOFT as a normal repo-owned method instead of keeping it as vendored LyCORIS-only behavior** — `library.adapters.boft` now resolves through the repo-owned BOFT registration, and the BOFT path follows the same method-local config/runtime/state-dict ownership model as the other absorbed repo-owned PEFT methods.
   - Repo-owned BOFT stores only the independent upper-triangle values for each butterfly-stage skew block in its native trainable/exported parameter layout, avoiding the older full-square vendor storage while preserving the same effective transform math.
 - **The active PEFT registry now promotes DyLoRA as a normal repo-owned method instead of keeping `library.adapters.dylora` on the legacy bridge path** — The active registry now resolves DyLoRA through the repo-owned method package, and the method is treated as a LoRA-shaped training-policy method with explicit block-size ownership instead of as compatibility debt.
+- **The active PEFT registry now promotes GLoRA as a normal repo-owned method instead of leaving it as a vendor-only path** — `library.adapters.glora` now resolves through the repo-owned GLoRA registration, and the active method surface owns the method-local config/runtime/state-dict behavior directly rather than depending on vendored wrapper behavior.
 
 ### Fixed
 
@@ -47,6 +52,8 @@ Rules:
 - **Repo-owned DyLoRA now fixes several vendor-path correctness hazards while keeping the useful dynamic-prefix training idea** — The absorbed DyLoRA path no longer depends on vendor `.data` concatenation, disabled state-dict loading, or the broken `scale` / `gamma` bypass branch.
   - Added explicit block-size-aware export/load ownership so DyLoRA artifacts round-trip the dynamic training layout exactly instead of dropping that information on save.
   - Rebuilt DyLoRA dynamic-prefix training so the sampled block receives gradients while the effective update still uses the prefix through that block, and kept full-rank export/merge on standard LoRA-shaped weights.
+- **Repo-owned GLoRA now fixes the main vendor-path correctness hazards while keeping the actual GLoRA branch math intact** — The absorbed GLoRA path no longer leaves Tucker effectively unreachable on convolution targets, and bypass mode now applies multiplier/scale handling consistently instead of inheriting the vendor mismatch.
+  - Preserved the unusual LyCORIS non-bypass plain-dropout behavior as an explicit method-local choice for now, rather than silently normalizing it into generic LoRA-family assumptions.
 
 ## [2026-04-30]
 

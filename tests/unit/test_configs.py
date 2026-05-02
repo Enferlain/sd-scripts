@@ -13,6 +13,7 @@ from omegaconf import OmegaConf
 
 from library.adapters.methods.peft.boft.config import PeftBoftConfig
 from library.adapters.methods.peft.dylora.config import PeftDyloraConfig
+from library.adapters.methods.peft.glora.config import PeftGloraConfig
 from library.adapters.methods.peft.locon.config import PeftLoconConfig
 from library.adapters.methods.peft.lokr.config import PeftLokrConfig
 from library.adapters.methods.peft.lora.config import PeftLoraConfig
@@ -74,6 +75,7 @@ class TestConfigInstantiation:
         assert hasattr(config, "lora")
         assert hasattr(config, "boft")
         assert hasattr(config, "dylora")
+        assert hasattr(config, "glora")
         assert hasattr(config, "loha")
         assert hasattr(config, "locon")
         assert hasattr(config, "lokr")
@@ -81,6 +83,7 @@ class TestConfigInstantiation:
         assert config.lora is None
         assert config.boft is None
         assert config.dylora is None
+        assert config.glora is None
         assert config.loha is None
         assert config.locon is None
         assert config.lokr is None
@@ -110,6 +113,12 @@ class TestConfigInstantiation:
         config = PeftConfig(dylora=PeftDyloraConfig())
         assert hasattr(config.dylora, "rank")
         assert hasattr(config.dylora, "block_size")
+
+    def test_peft_glora_branch_instantiation(self):
+        """Test PeftConfig can select GLoRA by branch presence."""
+        config = PeftConfig(glora=PeftGloraConfig())
+        assert hasattr(config.glora, "rank")
+        assert hasattr(config.glora, "use_tucker")
 
     def test_peft_lokr_branch_instantiation(self):
         """Test PeftConfig can select LoKr by branch presence."""
@@ -220,6 +229,7 @@ class TestConfigDefaults:
         assert config.method is None
         assert config.lora is None
         assert config.dylora is None
+        assert config.glora is None
         assert config.loha is None
         assert config.locon is None
         assert config.lokr is None
@@ -322,6 +332,7 @@ class TestHydraComposition:
         assert cfg.model.model_type == "sd15"
         assert cfg.adapter.peft.lora is not None
         assert cfg.adapter.peft.dylora is None
+        assert cfg.adapter.peft.glora is None
         assert cfg.adapter.peft.loha is None
         assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
@@ -336,6 +347,7 @@ class TestHydraComposition:
         assert cfg.model.model_type is None
         assert cfg.adapter.peft.lora is not None
         assert cfg.adapter.peft.dylora is None
+        assert cfg.adapter.peft.glora is None
         assert cfg.adapter.peft.loha is None
         assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
@@ -374,6 +386,7 @@ class TestHydraComposition:
         assert cfg.model.model_type == "sdxl"
         assert cfg.adapter.peft.lora is not None
         assert cfg.adapter.peft.dylora is None
+        assert cfg.adapter.peft.glora is None
         assert cfg.adapter.peft.loha is None
         assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None

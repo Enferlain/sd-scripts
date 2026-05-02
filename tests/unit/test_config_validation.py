@@ -849,6 +849,22 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.dylora\\.rank must be set to a positive integer"):
             validate_config(cfg)
 
+    def test_peft_rejects_glora_without_rank(self):
+        """GLoRA should require an explicit method-level rank setting."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "glora": {},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.rank must be set to a positive integer"):
+            validate_config(cfg)
+
     def test_peft_rejects_non_positive_oft_factor(self):
         """OFT factor should fail fast when set to a non-positive value."""
         cfg = make_validate_cfg(
@@ -895,6 +911,22 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.dylora\\.rank must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_non_positive_glora_rank(self):
+        """GLoRA rank should fail fast when set to a non-positive value."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "glora": {"rank": 0},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.rank must be a positive integer when set"):
             validate_config(cfg)
 
     def test_peft_rejects_dylora_block_size_that_does_not_divide_rank(self):
@@ -1013,6 +1045,22 @@ class TestValidateConfig:
             ValueError,
             match="adapter\\.peft\\.dylora\\.module_dropout must be between 0.0 and 1.0 inclusive",
         ):
+            validate_config(cfg)
+
+    def test_peft_rejects_out_of_range_glora_dropout(self):
+        """GLoRA dropout probabilities should stay within [0, 1]."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "glora": {"rank": 8, "dropout": 1.5},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.dropout must be between 0.0 and 1.0 inclusive"):
             validate_config(cfg)
 
     def test_peft_rejects_legacy_method_without_active_branch(self):

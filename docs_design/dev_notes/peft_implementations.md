@@ -94,3 +94,19 @@ general "how to implement future PEFT methods" guidance in
   update, keeps full-rank merge/export on standard LoRA-shaped weights, and
   saves `block_size` alongside `lora_up.weight` / `lora_down.weight` / `alpha`
   so the dynamic training layout round-trips exactly.
+
+## GLoRA
+
+- GLoRA is another reminder that not every LyCORIS method should be flattened
+  into plain LoRA terms. The repo-owned path keeps the actual method shape:
+  branch A contributes `W A`, branch B contributes `B`, and bypass mode applies
+  `W(X + A(X)) + B(X)` directly instead of pretending the method is only one
+  low-rank branch.
+- The absorbed vendor GLoRA path had at least two important rough edges worth
+  remembering: the Tucker branch on the B path was effectively unreachable as
+  written, and bypass-mode scaling had a mismatch where local multiplier
+  handling did not cleanly line up with the rebuilt-weight path.
+- Repo-owned GLoRA keeps plain `dropout` as a real method-local semantic, but
+  currently preserves the unusual LyCORIS behavior where non-bypass mode drops
+  the forward input rather than the rebuilt branch weights themselves. That is
+  worth revisiting later if rebuilt-weight GLoRA becomes a serious workflow.
