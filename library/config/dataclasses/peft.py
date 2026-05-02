@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from library.adapters.methods.peft.boft.config import PeftBoftConfig
 from library.adapters.methods.peft.dylora.config import PeftDyloraConfig
 from library.adapters.methods.peft.glora.config import PeftGloraConfig
+from library.adapters.methods.peft.ia3.config import PeftIa3Config
 from library.adapters.methods.peft.loha.config import PeftLohaConfig
 from library.adapters.methods.peft.locon.config import PeftLoconConfig
 from library.adapters.methods.peft.lokr.config import PeftLokrConfig
@@ -41,6 +42,7 @@ class PeftConfig:
     boft: PeftBoftConfig | None = None
     dylora: PeftDyloraConfig | None = None
     glora: PeftGloraConfig | None = None
+    ia3: PeftIa3Config | None = None
     lora: PeftLoraConfig | None = None
     loha: PeftLohaConfig | None = None
     locon: PeftLoconConfig | None = None

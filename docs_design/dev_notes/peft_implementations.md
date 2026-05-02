@@ -110,3 +110,24 @@ general "how to implement future PEFT methods" guidance in
   currently preserves the unusual LyCORIS behavior where non-bypass mode drops
   the forward input rather than the rebuilt branch weights themselves. That is
   worth revisiting later if rebuilt-weight GLoRA becomes a serious workflow.
+
+## IA3
+
+- IA3 is another method that should keep its own real config language instead
+  of being squeezed into fake `rank` / `alpha` knobs. The useful user-facing
+  choices are axis selection (`train_on_input`), optional module dropout, and
+  optional bypass mode.
+- The vendor IA3 path had two correctness hazards worth fixing in the
+  repo-owned version: output-side scaling left the original bias untouched in
+  merged-weight mode, and state-dict reconstruction ignored the saved
+  `on_input` flag even though that changes the meaning of the learned scale
+  tensor.
+- The LyCORIS IA3 preset is worth remembering because it is not globally
+  uniform: attention `k_proj` / `v_proj` use output-side scaling, while
+  feed-forward `fc2` / `ff.net.2` use input-side scaling. The current
+  repo-owned IA3 path now auto-selects that axis per target by the current
+  IA3 target-name patterns when `train_on_input` is left unset, while still
+  allowing an explicit global override when needed.
+- Legacy or compatibility checkpoints that omit `on_input` are only safely
+  inferable when input and output dimensions differ. Square layers need the
+  saved axis flag to avoid ambiguous reconstruction.

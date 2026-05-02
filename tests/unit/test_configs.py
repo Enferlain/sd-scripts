@@ -14,6 +14,7 @@ from omegaconf import OmegaConf
 from library.adapters.methods.peft.boft.config import PeftBoftConfig
 from library.adapters.methods.peft.dylora.config import PeftDyloraConfig
 from library.adapters.methods.peft.glora.config import PeftGloraConfig
+from library.adapters.methods.peft.ia3.config import PeftIa3Config
 from library.adapters.methods.peft.locon.config import PeftLoconConfig
 from library.adapters.methods.peft.lokr.config import PeftLokrConfig
 from library.adapters.methods.peft.lora.config import PeftLoraConfig
@@ -76,6 +77,7 @@ class TestConfigInstantiation:
         assert hasattr(config, "boft")
         assert hasattr(config, "dylora")
         assert hasattr(config, "glora")
+        assert hasattr(config, "ia3")
         assert hasattr(config, "loha")
         assert hasattr(config, "locon")
         assert hasattr(config, "lokr")
@@ -84,6 +86,7 @@ class TestConfigInstantiation:
         assert config.boft is None
         assert config.dylora is None
         assert config.glora is None
+        assert config.ia3 is None
         assert config.loha is None
         assert config.locon is None
         assert config.lokr is None
@@ -119,6 +122,12 @@ class TestConfigInstantiation:
         config = PeftConfig(glora=PeftGloraConfig())
         assert hasattr(config.glora, "rank")
         assert hasattr(config.glora, "use_tucker")
+
+    def test_peft_ia3_branch_instantiation(self):
+        """Test PeftConfig can select IA3 by branch presence."""
+        config = PeftConfig(ia3=PeftIa3Config())
+        assert hasattr(config.ia3, "train_on_input")
+        assert hasattr(config.ia3, "module_dropout")
 
     def test_peft_lokr_branch_instantiation(self):
         """Test PeftConfig can select LoKr by branch presence."""
@@ -230,6 +239,7 @@ class TestConfigDefaults:
         assert config.lora is None
         assert config.dylora is None
         assert config.glora is None
+        assert config.ia3 is None
         assert config.loha is None
         assert config.locon is None
         assert config.lokr is None
@@ -333,6 +343,7 @@ class TestHydraComposition:
         assert cfg.adapter.peft.lora is not None
         assert cfg.adapter.peft.dylora is None
         assert cfg.adapter.peft.glora is None
+        assert cfg.adapter.peft.ia3 is None
         assert cfg.adapter.peft.loha is None
         assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
@@ -348,6 +359,7 @@ class TestHydraComposition:
         assert cfg.adapter.peft.lora is not None
         assert cfg.adapter.peft.dylora is None
         assert cfg.adapter.peft.glora is None
+        assert cfg.adapter.peft.ia3 is None
         assert cfg.adapter.peft.loha is None
         assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None
@@ -387,6 +399,7 @@ class TestHydraComposition:
         assert cfg.adapter.peft.lora is not None
         assert cfg.adapter.peft.dylora is None
         assert cfg.adapter.peft.glora is None
+        assert cfg.adapter.peft.ia3 is None
         assert cfg.adapter.peft.loha is None
         assert cfg.adapter.peft.locon is None
         assert cfg.adapter.peft.lokr is None

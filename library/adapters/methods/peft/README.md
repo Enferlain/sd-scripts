@@ -76,7 +76,7 @@ improvements:
 - boft: vendor lycoris/hf peft ✅
 - dylora: vendor lycoris/hf peft ✅
 - glora: vendor lycoris/hf peft ✅
-- ia3: vendor lycoris/hf peft ❌
+- ia3: vendor lycoris ✅
 - abba: vendor lycoris/hf peft ❌
 - tlora: vendor lycoris/hf peft ❌
 - norms (not really a method) ❌

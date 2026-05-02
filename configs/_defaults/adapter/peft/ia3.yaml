@@ -1,0 +1,6 @@
+# When null, IA3 auto-selects the scaling axis per target using the current
+# IA3 target-name patterns (`k_proj` / `v_proj` / `to_k` / `to_v` on output;
+# `mlp.fc2` / `ff.net.2` on input).
+train_on_input: null
+module_dropout: null
+bypass_mode: null

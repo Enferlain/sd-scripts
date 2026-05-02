@@ -240,7 +240,7 @@ class TestAdapterRegistry:
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()
 
-        assert [registration.name for registration in registrations] == ["boft", "dylora", "glora", "loha", "locon", "lokr", "lora", "oft"]
+        assert [registration.name for registration in registrations] == ["boft", "dylora", "glora", "ia3", "loha", "locon", "lokr", "lora", "oft"]
 
     def test_resolves_repo_owned_adapter_type(self):
         registration = get_adapter_method("loha")
@@ -276,6 +276,15 @@ class TestAdapterRegistry:
         assert registration.runtime_module_path == "library.adapters.methods.peft.glora.runtime"
         assert registration.config_binding is not None
         assert registration.config_binding.config_key == "glora"
+        assert registration.config_binding.runtime_settings_builder is not None
+
+    def test_resolves_repo_owned_ia3_adapter_type(self):
+        registration = get_adapter_method("ia3")
+
+        assert registration.legacy_module_path == "library.adapters.ia3"
+        assert registration.runtime_module_path == "library.adapters.methods.peft.ia3.runtime"
+        assert registration.config_binding is not None
+        assert registration.config_binding.config_key == "ia3"
         assert registration.config_binding.runtime_settings_builder is not None
 
     def test_resolves_repo_owned_lokr_adapter_type(self):
@@ -473,6 +482,24 @@ class TestAdapterRegistry:
         assert settings["orthogonalize"] is True
         assert settings["bypass_mode"] is True
 
+    def test_ia3_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.ia3.config import PeftIa3Config
+
+        registration = get_adapter_method("ia3")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftIa3Config(
+                train_on_input=True,
+                module_dropout=0.2,
+                bypass_mode=True,
+            )
+        )
+
+        assert registration.config_binding.config_key == "ia3"
+        assert settings["train_on_input"] is True
+        assert settings["module_dropout"] == 0.2
+        assert settings["bypass_mode"] is True
+
     def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig
 
@@ -617,6 +644,15 @@ class TestAdapterRegistry:
         with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.dropout must be between 0.0 and 1.0 inclusive"):
             registration.config_binding.runtime_settings_builder(PeftGloraConfig(rank=8, dropout=1.5))
 
+    def test_ia3_translation_rejects_out_of_range_module_dropout(self):
+        from library.adapters.methods.peft.ia3.config import PeftIa3Config
+
+        registration = get_adapter_method("ia3")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.ia3\\.module_dropout must be between 0.0 and 1.0 inclusive"):
+            registration.config_binding.runtime_settings_builder(PeftIa3Config(module_dropout=1.5))
+
     def test_resolves_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.oft")
 
@@ -636,6 +672,11 @@ class TestAdapterRegistry:
         registration = get_adapter_method_for_legacy_module("library.adapters.glora")
 
         assert registration.name == "glora"
+
+    def test_resolves_ia3_legacy_module_path(self):
+        registration = get_adapter_method_for_legacy_module("library.adapters.ia3")
+
+        assert registration.name == "ia3"
 
     def test_build_adapter_for_legacy_module_uses_registered_wrapper(self, monkeypatch):
         captured = {}
@@ -1576,3 +1617,242 @@ class TestAdapterRegistry:
         load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(partial_path)))
 
         assert load_info == {"missing keys": ["boft_clip_l_proj"]}
+
+    def test_registered_ia3_runtime_exposes_repo_owned_trainable_refs(self):
+        from library.adapters.methods.peft.ia3.module import Ia3Module
+
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+                self.norm = torch.nn.LayerNorm(4)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 6, bias=True)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="ia3",
+                settings={"train_on_input": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.ia3", request)
+        refs = adapter.describe_trainable_parameter_refs()
+
+        assert adapter.adapter_resolved_targets is resolved_targets
+        assert all(isinstance(module, Ia3Module) for module in adapter.ia3_modules)
+        assert {module.__class__.__module__ for module in adapter.ia3_modules} == {"library.adapters.methods.peft.ia3.module"}
+        assert {module.adapter_target.path for module in adapter.ia3_modules} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.component for ref in refs} == {"clip_l", "unet"}
+        assert {ref.component_key for ref in refs} == {"text_encoder1", "denoiser"}
+        assert {ref.target_path for ref in refs} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.name for ref in refs} == {"ia3_clip_l_proj.weight", "ia3_unet_to_q.weight"}
+        assert {ref.source_target_ref.selector for ref in refs if ref.source_target_ref is not None} == {"clip_l.proj", "unet.to_q"}
+        assert all("norm" not in ref.target_path for ref in refs)
+
+    def test_registered_ia3_runtime_auto_selects_axis_per_target(self):
+        class DummyMlp(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.fc2 = torch.nn.Linear(4, 4, bias=False)
+
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.k_proj = torch.nn.Linear(4, 4, bias=False)
+                self.v_proj = torch.nn.Linear(4, 4, bias=False)
+                self.mlp = DummyMlp()
+
+        class DummyFf(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.net = torch.nn.ModuleList([torch.nn.Identity(), torch.nn.Identity(), torch.nn.Linear(4, 4, bias=False)])
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_k = torch.nn.Linear(4, 4, bias=False)
+                self.ff = DummyFf()
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="ia3",
+                settings={},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.ia3", request)
+        train_on_input_by_path = {module.adapter_target.path: module.train_on_input for module in adapter.ia3_modules}
+
+        assert train_on_input_by_path["clip_l.k_proj"] is False
+        assert train_on_input_by_path["clip_l.v_proj"] is False
+        assert train_on_input_by_path["clip_l.mlp.fc2"] is True
+        assert train_on_input_by_path["unet.to_k"] is False
+        assert train_on_input_by_path["unet.ff.net.2"] is True
+
+    def test_registered_ia3_runtime_allows_explicit_global_axis_override(self):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.k_proj = torch.nn.Linear(4, 4, bias=False)
+                self.mlp = torch.nn.Module()
+                self.mlp.fc2 = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=None,
+            include_text_encoders=[True, False],
+            include_denoiser=False,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="ia3",
+                settings={"train_on_input": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=None),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.ia3", request)
+
+        assert all(module.train_on_input is True for module in adapter.ia3_modules)
+
+    def test_registered_ia3_runtime_round_trips_export_and_merge(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=True)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="ia3",
+                settings={"train_on_input": False, "bypass_mode": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.ia3", request)
+        for parameter in adapter.parameters():
+            parameter.data.fill_(0.25)
+
+        export_path = tmp_path / "ia3.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.ia3", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
+        assert load_info == {}
+
+        original_weight = denoiser.to_q.weight.detach().clone()
+        original_bias = denoiser.to_q.bias.detach().clone()
+        loaded_runtime = build_adapter_from_weights_for_legacy_module("library.adapters.ia3", request, str(export_path))
+        assert isinstance(loaded_runtime, LoadedAdapterRuntime)
+        loaded_runtime.merge_into(
+            AdapterMergeRequest(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+                resolved_targets=resolved_targets,
+                dtype=torch.float32,
+                device="cpu",
+            )
+        )
+
+        assert not torch.allclose(denoiser.to_q.weight, original_weight)
+        assert not torch.allclose(denoiser.to_q.bias, original_bias)
+
+    def test_registered_ia3_runtime_reports_partial_checkpoint_as_missing(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=None,
+            include_text_encoders=[True, False],
+            include_denoiser=False,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="ia3",
+                settings={"train_on_input": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=None),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.ia3", request)
+        export_path = tmp_path / "ia3_partial.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+        state_dict = dict(load_file(str(export_path)))
+        state_dict.pop("ia3_clip_l_proj.on_input")
+        partial_path = tmp_path / "ia3_partial_missing_on_input.safetensors"
+        save_file(state_dict, str(partial_path), {"format": "test"})
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.ia3", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(partial_path)))
+
+        assert load_info == {"missing keys": ["ia3_clip_l_proj"]}

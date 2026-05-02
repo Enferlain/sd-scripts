@@ -10,6 +10,22 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-02]
+
+### Added
+
+- **IA3 is now available as a repo-owned PEFT adapter method under `adapter.peft.ia3`** — The active adapter runtime can now build, train, export, load, and merge IA3 modules through the same repo-owned method surface as the other PEFT methods instead of leaving IA3 only as a vendored LyCORIS path.
+  - Added repo-owned IA3 config/runtime/state-dict ownership under `library/adapters/methods/peft/ia3/`, with explicit input-vs-output axis selection through `train_on_input`, optional module dropout, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.ia3` typed config plus `configs/_defaults/adapter/peft/ia3.yaml`, with focused validation for invalid module-dropout probabilities.
+  - Added focused module/runtime/config coverage for IA3 initialization, merged-weight consistency, mixed-dtype forward behavior, input-axis bypass diff behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
+
+### Fixed
+
+- **Repo-owned IA3 now fixes the main vendor-path correctness hazards while keeping the actual scaling method intact** — The repo-owned IA3 path now treats input-vs-output scaling as first-class state instead of incidental tensor shape, and its merged-weight path matches the real activation-space behavior for biasful output-side targets.
+  - Fixed IA3 merged-weight behavior so output-side scaling transforms bias consistently instead of scaling only the weight matrix.
+  - Fixed IA3 state-dict reconstruction so the saved `on_input` flag participates in module rebuilds and vendor-style convolution weight layouts are normalized cleanly on load.
+  - Fixed the initial repo-owned IA3 runtime shape so leaving `adapter.peft.ia3.train_on_input` unset now auto-selects the axis per target using the current IA3 target-name patterns (`k_proj` / `v_proj` / `to_k` / `to_v` on output, `mlp.fc2` / `ff.net.2` on input) instead of forcing one global default across every target.
+
 ## [2026-05-01]
 
 ### Added

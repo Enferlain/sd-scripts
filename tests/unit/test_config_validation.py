@@ -1047,6 +1047,25 @@ class TestValidateConfig:
         ):
             validate_config(cfg)
 
+    def test_peft_rejects_out_of_range_ia3_module_dropout(self):
+        """IA3 module dropout should stay within [0, 1]."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "ia3": {"module_dropout": 1.5},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="adapter\\.peft\\.ia3\\.module_dropout must be between 0.0 and 1.0 inclusive",
+        ):
+            validate_config(cfg)
+
     def test_peft_rejects_out_of_range_glora_dropout(self):
         """GLoRA dropout probabilities should stay within [0, 1]."""
         cfg = make_validate_cfg(
