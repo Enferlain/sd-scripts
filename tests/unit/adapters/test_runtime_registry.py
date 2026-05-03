@@ -251,6 +251,7 @@ class TestAdapterRegistry:
             "lokr",
             "lora",
             "oft",
+            "tlora",
         ]
 
     def test_resolves_repo_owned_abba_adapter_type(self):
@@ -305,6 +306,15 @@ class TestAdapterRegistry:
         assert registration.runtime_module_path == "library.adapters.methods.peft.ia3.runtime"
         assert registration.config_binding is not None
         assert registration.config_binding.config_key == "ia3"
+        assert registration.config_binding.runtime_settings_builder is not None
+
+    def test_resolves_repo_owned_tlora_adapter_type(self):
+        registration = get_adapter_method("tlora")
+
+        assert registration.legacy_module_path == "library.adapters.tlora"
+        assert registration.runtime_module_path == "library.adapters.methods.peft.tlora.runtime"
+        assert registration.config_binding is not None
+        assert registration.config_binding.config_key == "tlora"
         assert registration.config_binding.runtime_settings_builder is not None
 
     def test_resolves_repo_owned_lokr_adapter_type(self):
@@ -546,6 +556,36 @@ class TestAdapterRegistry:
         assert settings["use_scalar"] is True
         assert settings["weight_decompose"] is True
 
+    def test_tlora_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.tlora.config import PeftTloraConfig
+
+        registration = get_adapter_method("tlora")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftTloraConfig(
+                rank=8,
+                alpha=8.0,
+                dropout=0.15,
+                module_dropout=0.3,
+                use_scalar=True,
+                sig_type="middle",
+                use_data_init=False,
+                min_rank=2,
+                mask_alpha=1.5,
+            )
+        )
+
+        assert registration.config_binding.config_key == "tlora"
+        assert settings["adapter_rank"] == 8
+        assert settings["adapter_alpha"] == 8.0
+        assert settings["dropout"] == 0.15
+        assert settings["module_dropout"] == 0.3
+        assert settings["use_scalar"] is True
+        assert settings["sig_type"] == "middle"
+        assert settings["use_data_init"] is False
+        assert settings["mask_min_rank"] == 2
+        assert settings["mask_alpha"] == 1.5
+
     def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig
 
@@ -733,6 +773,35 @@ class TestAdapterRegistry:
         with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.dropout must be between 0.0 and 1.0 inclusive"):
             registration.config_binding.runtime_settings_builder(PeftAbbaConfig(rank=4, dropout=1.5))
 
+    def test_tlora_translation_requires_positive_rank(self):
+        from library.adapters.methods.peft.tlora.config import PeftTloraConfig
+
+        registration = get_adapter_method("tlora")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.tlora\\.rank must be set to a positive integer"):
+            registration.config_binding.runtime_settings_builder(PeftTloraConfig())
+        with pytest.raises(ValueError, match="adapter\\.peft\\.tlora\\.rank must be a positive integer when set"):
+            registration.config_binding.runtime_settings_builder(PeftTloraConfig(rank=0))
+
+    def test_tlora_translation_rejects_invalid_mask_bounds(self):
+        from library.adapters.methods.peft.tlora.config import PeftTloraConfig
+
+        registration = get_adapter_method("tlora")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.tlora\\.min_rank cannot exceed adapter\\.peft\\.tlora\\.rank"):
+            registration.config_binding.runtime_settings_builder(PeftTloraConfig(rank=4, min_rank=5))
+
+    def test_tlora_translation_rejects_out_of_range_dropout(self):
+        from library.adapters.methods.peft.tlora.config import PeftTloraConfig
+
+        registration = get_adapter_method("tlora")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.tlora\\.dropout must be between 0.0 and 1.0 inclusive"):
+            registration.config_binding.runtime_settings_builder(PeftTloraConfig(rank=4, dropout=1.5))
+
     def test_resolves_abba_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.abba")
 
@@ -762,6 +831,11 @@ class TestAdapterRegistry:
         registration = get_adapter_method_for_legacy_module("library.adapters.ia3")
 
         assert registration.name == "ia3"
+
+    def test_resolves_tlora_legacy_module_path(self):
+        registration = get_adapter_method_for_legacy_module("library.adapters.tlora")
+
+        assert registration.name == "tlora"
 
     def test_build_adapter_for_legacy_module_uses_registered_wrapper(self, monkeypatch):
         captured = {}
@@ -2094,3 +2168,93 @@ class TestAdapterRegistry:
         load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(partial_path)))
 
         assert load_info == {"missing keys": ["abba_clip_l_proj"]}
+
+    def test_registered_tlora_runtime_exposes_repo_owned_trainable_refs(self):
+        from library.adapters.methods.peft.tlora.module import TloraModule
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[None, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[False, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="tlora",
+                settings={"adapter_rank": 4, "mask_min_rank": 2, "mask_alpha": 1.0},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[None, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.tlora", request)
+        refs = adapter.describe_trainable_parameter_refs()
+
+        assert all(isinstance(module, TloraModule) for module in adapter.tlora_modules)
+        assert {ref.target_path for ref in refs} == {"unet.to_q"}
+
+    def test_registered_tlora_runtime_round_trips_export_and_merge(self, tmp_path):
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=True)
+
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[None, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[False, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="tlora",
+                settings={"adapter_rank": 4, "adapter_alpha": 4.0, "use_scalar": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[None, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.tlora", request)
+        for parameter in adapter.parameters():
+            parameter.data.fill_(0.25)
+
+        export_path = tmp_path / "tlora.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.tlora", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
+        assert load_info == {}
+
+        original_weight = denoiser.to_q.weight.detach().clone()
+        original_bias = denoiser.to_q.bias.detach().clone()
+        loaded_runtime = build_adapter_from_weights_for_legacy_module("library.adapters.tlora", request, str(export_path))
+        assert isinstance(loaded_runtime, LoadedAdapterRuntime)
+        loaded_runtime.merge_into(
+            AdapterMergeRequest(
+                model=AdapterModelContext(vae=None, text_encoder=[None, None], denoiser=denoiser),
+                resolved_targets=resolved_targets,
+                dtype=torch.float32,
+                device="cpu",
+            )
+        )
+
+        assert not torch.allclose(denoiser.to_q.weight, original_weight)
+        assert torch.allclose(denoiser.to_q.bias, original_bias)

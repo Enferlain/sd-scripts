@@ -484,6 +484,6 @@ class TestSdTrainingStrategyComposition:
                 cfg=cfg,
                 is_train=False,
                 train_text_encoder=False,
-            )
+        )
 
         mock_encode_tokens.assert_called_once()

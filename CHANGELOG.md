@@ -10,6 +10,21 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-03]
+
+### Added
+
+- **TLora is now available as a repo-owned PEFT adapter method under `adapter.peft.tlora`** — The active adapter runtime can now build, train, export, load, and merge TLora modules through the same repo-owned method surface as the other absorbed PEFT methods instead of leaving TLora only in the vendored LyCORIS layer.
+  - Added repo-owned TLora config/runtime/state-dict ownership under `library/adapters/methods/peft/tlora/`, including SVD-based orthogonal initialization, learnable singular values, optional scalar mode, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.tlora` typed config plus `configs/_defaults/adapter/peft/tlora.yaml`, with focused validation for missing/non-positive rank, invalid mask bounds, invalid mask schedule values, unsupported singular-vector choices, and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for TLora initialization, mixed-dtype batched-mask forward behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
+
+### Fixed
+
+- **Repo-owned TLora now documents the vendor-only timestep-mask contract explicitly instead of quietly widening the architecture boundary** — The method package keeps the TLora mask helpers and validation local, but the active repo training path does not yet wire the vendor-described timestep scheduling into shared strategy/denoiser layers.
+  - Added explicit notes in the TLora runtime/default config and PEFT design notes pointing at `library/vendor/lycoris/lycoris/modules/tlora.py`, `library/vendor/lycoris/docs/Algo-Details.md`, and `library/vendor/lycoris/docs/Network-Args.md` as the reference surface for future timestep-mask integration work.
+  - Kept the repo-owned TLora module fail-fast behavior for batched-mask merged-weight requests so manual or future integration work still cannot silently collapse per-sample mask intent into invalid merged-weight math.
+
 ## [2026-05-02]
 
 ### Added

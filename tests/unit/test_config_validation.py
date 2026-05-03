@@ -881,6 +881,22 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.rank must be set to an integer greater than or equal to 2"):
             validate_config(cfg)
 
+    def test_peft_rejects_tlora_without_rank(self):
+        """TLora should require an explicit method-level rank setting."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "tlora": {},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.tlora\\.rank must be set to a positive integer"):
+            validate_config(cfg)
+
     def test_peft_rejects_non_positive_oft_factor(self):
         """OFT factor should fail fast when set to a non-positive value."""
         cfg = make_validate_cfg(
@@ -959,6 +975,22 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.rank must be greater than or equal to 2 when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_tlora_min_rank_above_rank(self):
+        """TLora min_rank should stay within the configured module rank."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "tlora": {"rank": 4, "min_rank": 5},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.tlora\\.min_rank cannot exceed adapter\\.peft\\.tlora\\.rank"):
             validate_config(cfg)
 
     def test_peft_rejects_dylora_block_size_that_does_not_divide_rank(self):
@@ -1128,6 +1160,22 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.dropout must be between 0.0 and 1.0 inclusive"):
+            validate_config(cfg)
+
+    def test_peft_rejects_out_of_range_tlora_dropout(self):
+        """TLora dropout probabilities should stay within [0, 1]."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "tlora": {"rank": 4, "dropout": 1.5},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.tlora\\.dropout must be between 0.0 and 1.0 inclusive"):
             validate_config(cfg)
 
     def test_peft_rejects_abba_bypass_mode_with_weight_decompose(self):

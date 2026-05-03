@@ -150,3 +150,32 @@ general "how to implement future PEFT methods" guidance in
 - Export should not depend on `sqrt(scalar)` symmetry tricks. Folding scalar
   into one exported factor and resetting runtime scalar to identity on load is
   simpler and avoids invalid values if training drives the scalar negative.
+
+## TLora
+
+- TLora is another method that should keep its own real config language
+  instead of pretending it is just "LoRA plus one extra flag." The useful
+  user-facing choices are still `rank` / `alpha`, but the method-specific
+  behavior also needs singular-vector selection, data-vs-random SVD init, and
+  timestep-mask schedule controls such as `min_rank` and `mask_alpha`.
+- The absorbed vendor TLora path had one especially important architecture
+  hazard: timestep masks lived in a module-global singleton that training code
+  had to mutate out-of-band before forward. The current repo-owned TLora slice
+  intentionally does not solve that by quietly editing unrelated training or
+  strategy layers. Instead it keeps the mask helpers method-local, documents
+  the missing integration seam explicitly, and leaves proper repo-owned
+  timestep-mask wiring as separate follow-up design work.
+- Per-sample timestep masks are still the interesting TLora behavior, but they
+  also mean rebuilt-weight mode cannot represent the whole batch with one
+  merged delta. The repo-owned module still fails clearly if a caller tries to
+  collapse a batched mask into one diff weight for merge-style math.
+- Plain `dropout` remains a real method-local semantic for TLora, but it is
+  only meaningful on the active bypass delta path. Until the repo has a proper
+  timestep-mask seam, treat TLora's schedule fields as documented method-local
+  intent rather than a guarantee that the shared training path is driving them.
+- Reference points for the missing wiring are worth keeping explicit:
+  `library/vendor/lycoris/lycoris/modules/tlora.py` defines the original mask
+  helpers and global-state contract, while
+  `library/vendor/lycoris/docs/Algo-Details.md` and
+  `library/vendor/lycoris/docs/Network-Args.md` describe the intended training
+  behavior and config knobs.

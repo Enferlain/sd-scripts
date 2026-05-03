@@ -1,0 +1,20 @@
+rank: null
+alpha: 1.0
+# TLora plain dropout is a real method-local semantic in the active
+# timestep-aware training path because batched timestep masks force bypass-mode
+# delta application per sample.
+dropout: null
+module_dropout: null
+use_scalar: false
+bypass_mode: null
+sig_type: principal
+use_data_init: true
+# These schedule controls describe the intended vendor TLora timestep-mask
+# behavior, but the active repo training path does not wire them yet.
+# References:
+# - library/vendor/lycoris/lycoris/modules/tlora.py
+# - library/vendor/lycoris/docs/Algo-Details.md
+# - library/vendor/lycoris/docs/Network-Args.md
+min_rank: 1
+mask_alpha: 1.0
+max_timestep: 1000

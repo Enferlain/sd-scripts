@@ -34,7 +34,7 @@ layer can settle into a better system instead of a pile of one-off adapters.
   whether it belongs at the PEFT family layer before adding another adapter
   root abstraction.
 
-## LoHa / LoKr / LoCon / OFT / BOFT / ABBA Lessons
+## LoHa / LoKr / LoCon / OFT / BOFT / ABBA / TLora Lessons
 
 - LoHa, LoKr, and LoCon now share enough runtime/state-dict ceremony that a
   small PEFT-family helper for module naming, supported-target filtering,
@@ -69,6 +69,13 @@ layer can settle into a better system instead of a pile of one-off adapters.
   trainable scalar into one exported factor is safer than relying on a
   symmetric `sqrt(scalar)` bake that can go invalid once training drives the
   scalar negative.
+- Method-local runtime state should stay explicit and scoped. TLora is a good
+  reminder that if a method needs per-forward state such as timestep-aware
+  masks, absorbing the method alone does not automatically justify reaching
+  into strategies or shared runtime layers. The current repo-owned TLora slice
+  intentionally stops at the method package and leaves the vendor-described
+  timestep-mask plumbing as documented follow-up work instead of widening the
+  architecture boundary implicitly.
 
 ## Current Coverage
 
@@ -86,7 +93,7 @@ improvements:
 - glora: vendor lycoris/hf peft ✅
 - ia3: vendor lycoris ✅
 - abba: vendor lycoris/hf peft ✅
-- tlora: vendor lycoris/hf peft ❌
+- tlora: vendor lycoris ✅
 - norms (not really a method) ❌
 
 ### hf/peft
