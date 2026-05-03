@@ -240,7 +240,27 @@ class TestAdapterRegistry:
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()
 
-        assert [registration.name for registration in registrations] == ["boft", "dylora", "glora", "ia3", "loha", "locon", "lokr", "lora", "oft"]
+        assert [registration.name for registration in registrations] == [
+            "abba",
+            "boft",
+            "dylora",
+            "glora",
+            "ia3",
+            "loha",
+            "locon",
+            "lokr",
+            "lora",
+            "oft",
+        ]
+
+    def test_resolves_repo_owned_abba_adapter_type(self):
+        registration = get_adapter_method("abba")
+
+        assert registration.legacy_module_path == "library.adapters.abba"
+        assert registration.runtime_module_path == "library.adapters.methods.peft.abba.runtime"
+        assert registration.config_binding is not None
+        assert registration.config_binding.config_key == "abba"
+        assert registration.config_binding.runtime_settings_builder is not None
 
     def test_resolves_repo_owned_adapter_type(self):
         registration = get_adapter_method("loha")
@@ -500,6 +520,32 @@ class TestAdapterRegistry:
         assert settings["module_dropout"] == 0.2
         assert settings["bypass_mode"] is True
 
+    def test_abba_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.abba.config import PeftAbbaConfig
+
+        registration = get_adapter_method("abba")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftAbbaConfig(
+                rank=8,
+                alpha=32.0,
+                dropout=0.15,
+                rank_dropout=0.2,
+                module_dropout=0.3,
+                use_scalar=True,
+                weight_decompose=True,
+            )
+        )
+
+        assert registration.config_binding.config_key == "abba"
+        assert settings["adapter_rank"] == 8
+        assert settings["adapter_alpha"] == 32.0
+        assert settings["dropout"] == 0.15
+        assert settings["rank_dropout"] == 0.2
+        assert settings["module_dropout"] == 0.3
+        assert settings["use_scalar"] is True
+        assert settings["weight_decompose"] is True
+
     def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig
 
@@ -652,6 +698,45 @@ class TestAdapterRegistry:
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.ia3\\.module_dropout must be between 0.0 and 1.0 inclusive"):
             registration.config_binding.runtime_settings_builder(PeftIa3Config(module_dropout=1.5))
+
+    def test_abba_translation_requires_rank_of_at_least_two(self):
+        from library.adapters.methods.peft.abba.config import PeftAbbaConfig
+
+        registration = get_adapter_method("abba")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.rank must be set to an integer greater than or equal to 2"):
+            registration.config_binding.runtime_settings_builder(PeftAbbaConfig())
+        with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.rank must be greater than or equal to 2 when set"):
+            registration.config_binding.runtime_settings_builder(PeftAbbaConfig(rank=1))
+
+    def test_abba_translation_rejects_bypass_mode_with_weight_decompose(self):
+        from library.adapters.methods.peft.abba.config import PeftAbbaConfig
+
+        registration = get_adapter_method("abba")
+        assert registration.config_binding is not None
+
+        with pytest.raises(
+            ValueError,
+            match="adapter\\.peft\\.abba\\.bypass_mode cannot be enabled when adapter\\.peft\\.abba\\.weight_decompose is true",
+        ):
+            registration.config_binding.runtime_settings_builder(
+                PeftAbbaConfig(rank=4, weight_decompose=True, bypass_mode=True)
+            )
+
+    def test_abba_translation_rejects_out_of_range_dropout(self):
+        from library.adapters.methods.peft.abba.config import PeftAbbaConfig
+
+        registration = get_adapter_method("abba")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.dropout must be between 0.0 and 1.0 inclusive"):
+            registration.config_binding.runtime_settings_builder(PeftAbbaConfig(rank=4, dropout=1.5))
+
+    def test_resolves_abba_legacy_module_path(self):
+        registration = get_adapter_method_for_legacy_module("library.adapters.abba")
+
+        assert registration.name == "abba"
 
     def test_resolves_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.oft")
@@ -1856,3 +1941,156 @@ class TestAdapterRegistry:
         load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(partial_path)))
 
         assert load_info == {"missing keys": ["ia3_clip_l_proj"]}
+
+    def test_registered_abba_runtime_exposes_repo_owned_trainable_refs(self):
+        from library.adapters.methods.peft.abba.module import AbbaModule
+
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+                self.norm = torch.nn.LayerNorm(4)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 6, bias=True)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="abba",
+                settings={"adapter_rank": 4, "use_scalar": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.abba", request)
+        refs = adapter.describe_trainable_parameter_refs()
+
+        assert adapter.adapter_resolved_targets is resolved_targets
+        assert all(isinstance(module, AbbaModule) for module in adapter.abba_modules)
+        assert {module.__class__.__module__ for module in adapter.abba_modules} == {"library.adapters.methods.peft.abba.module"}
+        assert {module.adapter_target.path for module in adapter.abba_modules} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.component for ref in refs} == {"clip_l", "unet"}
+        assert {ref.component_key for ref in refs} == {"text_encoder1", "denoiser"}
+        assert {ref.target_path for ref in refs} == {"clip_l.proj", "unet.to_q"}
+        assert any(ref.name.endswith("scalar") for ref in refs)
+        assert {ref.source_target_ref.selector for ref in refs if ref.source_target_ref is not None} == {"clip_l.proj", "unet.to_q"}
+        assert all("norm" not in ref.target_path for ref in refs)
+
+    def test_registered_abba_runtime_round_trips_export_and_merge(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=True)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="abba",
+                settings={"adapter_rank": 4, "bypass_mode": True, "use_scalar": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.abba", request)
+        for parameter in adapter.parameters():
+            parameter.data.fill_(0.25)
+
+        export_path = tmp_path / "abba.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.abba", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
+        assert load_info == {}
+
+        original_weight = denoiser.to_q.weight.detach().clone()
+        original_bias = denoiser.to_q.bias.detach().clone()
+        loaded_runtime = build_adapter_from_weights_for_legacy_module("library.adapters.abba", request, str(export_path))
+        assert isinstance(loaded_runtime, LoadedAdapterRuntime)
+        loaded_runtime.merge_into(
+            AdapterMergeRequest(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+                resolved_targets=resolved_targets,
+                dtype=torch.float32,
+                device="cpu",
+            )
+        )
+
+        assert not torch.allclose(denoiser.to_q.weight, original_weight)
+        assert torch.allclose(denoiser.to_q.bias, original_bias)
+
+    def test_registered_abba_runtime_reports_partial_checkpoint_as_missing(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=None,
+            include_text_encoders=[True, False],
+            include_denoiser=False,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="abba",
+                settings={"adapter_rank": 4},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=None),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.abba", request)
+        export_path = tmp_path / "abba_partial.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+        state_dict = dict(load_file(str(export_path)))
+        state_dict.pop("abba_clip_l_proj.alpha")
+        partial_path = tmp_path / "abba_partial_missing_alpha.safetensors"
+        save_file(state_dict, str(partial_path), {"format": "test"})
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.abba", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(partial_path)))
+
+        assert load_info == {"missing keys": ["abba_clip_l_proj"]}

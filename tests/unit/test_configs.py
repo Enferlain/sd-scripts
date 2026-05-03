@@ -11,6 +11,7 @@ import pytest
 from hydra import compose
 from omegaconf import OmegaConf
 
+from library.adapters.methods.peft.abba.config import PeftAbbaConfig
 from library.adapters.methods.peft.boft.config import PeftBoftConfig
 from library.adapters.methods.peft.dylora.config import PeftDyloraConfig
 from library.adapters.methods.peft.glora.config import PeftGloraConfig
@@ -73,6 +74,7 @@ class TestConfigInstantiation:
         """Test PeftConfig instantiation with nullable method branches."""
         config = PeftConfig()
         assert config is not None
+        assert hasattr(config, "abba")
         assert hasattr(config, "lora")
         assert hasattr(config, "boft")
         assert hasattr(config, "dylora")
@@ -82,6 +84,7 @@ class TestConfigInstantiation:
         assert hasattr(config, "locon")
         assert hasattr(config, "lokr")
         assert hasattr(config, "oft")
+        assert config.abba is None
         assert config.lora is None
         assert config.boft is None
         assert config.dylora is None
@@ -97,6 +100,12 @@ class TestConfigInstantiation:
         config = AdapterConfig()
         assert config is not None
         assert config.peft is None
+
+    def test_peft_abba_branch_instantiation(self):
+        """Test PeftConfig can select ABBA by branch presence."""
+        config = PeftConfig(abba=PeftAbbaConfig())
+        assert hasattr(config.abba, "rank")
+        assert hasattr(config.abba, "weight_decompose")
 
     def test_peft_boft_branch_instantiation(self):
         """Test PeftConfig can select BOFT by branch presence."""

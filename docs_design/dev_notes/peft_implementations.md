@@ -131,3 +131,22 @@ general "how to implement future PEFT methods" guidance in
 - Legacy or compatibility checkpoints that omit `on_input` are only safely
   inferable when input and output dimensions differ. Square layers need the
   saved axis flag to avoid ambiguous reconstruction.
+
+## ABBA
+
+- ABBA is still most naturally exposed through one repo-owned `rank` plus the
+  LyCORIS-style half-and-half split into `r1` / `r2`, rather than widening the
+  active config surface to separate pair ranks before there is a real user
+  need for that.
+- The absorbed vendor ABBA path had several correctness hazards worth fixing in
+  the repo-owned version: the linear bypass path cached Khatri-Rao factors
+  without any invalidation after parameter updates, the convolution bypass diff
+  path added the original bias a second time, and the non-DoRA merged-weight
+  path multiplied the adapter contribution by `multiplier` twice.
+- Repo-owned ABBA keeps plain `dropout` as a real method-local semantic like
+  the absorbed LyCORIS path, but it should stay scoped to the forward delta
+  output or the weight-decompose input path rather than being reinvented as a
+  fake rank-only knob.
+- Export should not depend on `sqrt(scalar)` symmetry tricks. Folding scalar
+  into one exported factor and resetting runtime scalar to identity on load is
+  simpler and avoids invalid values if training drives the scalar negative.

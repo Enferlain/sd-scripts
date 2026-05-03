@@ -1,5 +1,6 @@
 """Repo-owned PEFT adapter method runtimes."""
 
+from .abba import REGISTRATION as ABBA_REGISTRATION
 from .boft import REGISTRATION as BOFT_REGISTRATION
 from .dylora import REGISTRATION as DYLORA_REGISTRATION
 from .glora import REGISTRATION as GLORA_REGISTRATION
@@ -12,6 +13,7 @@ from .oft import REGISTRATION as OFT_REGISTRATION
 
 
 PEFT_METHOD_REGISTRATIONS = (
+    ABBA_REGISTRATION,
     BOFT_REGISTRATION,
     DYLORA_REGISTRATION,
     GLORA_REGISTRATION,
@@ -25,6 +27,7 @@ PEFT_METHOD_REGISTRATIONS = (
 
 __all__ = [
     "PEFT_METHOD_REGISTRATIONS",
+    "abba",
     "boft",
     "dylora",
     "glora",

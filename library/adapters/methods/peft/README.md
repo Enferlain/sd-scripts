@@ -34,7 +34,7 @@ layer can settle into a better system instead of a pile of one-off adapters.
   whether it belongs at the PEFT family layer before adding another adapter
   root abstraction.
 
-## LoHa / LoKr / LoCon / OFT / BOFT Lessons
+## LoHa / LoKr / LoCon / OFT / BOFT / ABBA Lessons
 
 - LoHa, LoKr, and LoCon now share enough runtime/state-dict ceremony that a
   small PEFT-family helper for module naming, supported-target filtering,
@@ -61,6 +61,14 @@ layer can settle into a better system instead of a pile of one-off adapters.
   compatibility constrain the core training/runtime design. Pick the best
   native representation first; if older layout import/export support is needed
   later, prefer explicit compatibility helpers outside the main training path.
+- ABBA is a good reminder that "clever" factorization caches need explicit
+  invalidation or they quietly become stale training bugs. If a method keeps
+  an optimized derived view of trainable weights, either rebuild it per use or
+  make the invalidation story explicit and test it directly.
+- Scalar export should stay numerically boring. Folding an unconstrained
+  trainable scalar into one exported factor is safer than relying on a
+  symmetric `sqrt(scalar)` bake that can go invalid once training drives the
+  scalar negative.
 
 ## Current Coverage
 
@@ -77,7 +85,7 @@ improvements:
 - dylora: vendor lycoris/hf peft ✅
 - glora: vendor lycoris/hf peft ✅
 - ia3: vendor lycoris ✅
-- abba: vendor lycoris/hf peft ❌
+- abba: vendor lycoris/hf peft ✅
 - tlora: vendor lycoris/hf peft ❌
 - norms (not really a method) ❌
 

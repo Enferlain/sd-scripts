@@ -14,6 +14,10 @@ Rules:
 
 ### Added
 
+- **ABBA is now available as a repo-owned PEFT adapter method under `adapter.peft.abba`** — The active adapter runtime can now build, train, export, load, and merge ABBA modules through the same repo-owned method surface as the other absorbed PEFT methods instead of leaving ABBA only in the vendored LyCORIS layer.
+  - Added repo-owned ABBA config/runtime/state-dict ownership under `library/adapters/methods/peft/abba/`, with the LyCORIS-style split rank surface, optional plain/rank/module dropout, optional scalar mode, optional weight decomposition, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.abba` typed config plus `configs/_defaults/adapter/peft/abba.yaml`, with focused validation for missing/too-small rank, invalid dropout probabilities, and invalid bypass/decompose combinations.
+  - Added focused module/runtime/config coverage for ABBA initialization, merged-weight consistency, mixed-dtype forward behavior, stale-cache regression coverage, convolution bypass bias behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
 - **IA3 is now available as a repo-owned PEFT adapter method under `adapter.peft.ia3`** — The active adapter runtime can now build, train, export, load, and merge IA3 modules through the same repo-owned method surface as the other PEFT methods instead of leaving IA3 only as a vendored LyCORIS path.
   - Added repo-owned IA3 config/runtime/state-dict ownership under `library/adapters/methods/peft/ia3/`, with explicit input-vs-output axis selection through `train_on_input`, optional module dropout, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
   - Added `adapter.peft.ia3` typed config plus `configs/_defaults/adapter/peft/ia3.yaml`, with focused validation for invalid module-dropout probabilities.
@@ -21,6 +25,11 @@ Rules:
 
 ### Fixed
 
+- **Repo-owned ABBA now fixes the main vendor-path correctness hazards while keeping the actual Hadamard-product method shape intact** — The repo-owned ABBA path now treats its optimized linear bypass math as a fresh view of current parameters instead of a stale cache, and its merge/bypass behavior matches the intended diff semantics for both linear and convolution targets.
+  - Fixed ABBA linear bypass behavior so Khatri-Rao factors are rebuilt from the current trainable weights instead of being cached once and silently going stale as training updates the factors.
+  - Fixed ABBA convolution bypass diff behavior so the adapter delta path no longer adds the original bias a second time before the main forward adds the base-module output.
+  - Fixed the standard ABBA merged-weight path so the adapter contribution is scaled by `multiplier` exactly once instead of being multiplied once in diff construction and again during merge.
+  - Fixed ABBA export behavior so scalar mode no longer depends on a fragile `sqrt(scalar)` symmetry bake; the repo-owned artifact now folds scalar into one exported factor directly and reloads with identity scalar state.
 - **Repo-owned IA3 now fixes the main vendor-path correctness hazards while keeping the actual scaling method intact** — The repo-owned IA3 path now treats input-vs-output scaling as first-class state instead of incidental tensor shape, and its merged-weight path matches the real activation-space behavior for biasful output-side targets.
   - Fixed IA3 merged-weight behavior so output-side scaling transforms bias consistently instead of scaling only the weight matrix.
   - Fixed IA3 state-dict reconstruction so the saved `on_input` flag participates in module rebuilds and vendor-style convolution weight layouts are normalized cleanly on load.

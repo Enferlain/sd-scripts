@@ -1,0 +1,13 @@
+rank: null
+alpha: 1.0
+# Plain ABBA dropout is a real method-local semantic.
+# In weight-decompose mode it drops the forward input before the merged ABBA
+# weight is applied, rather than dropping reconstructed branch weights.
+dropout: null
+rank_dropout: null
+module_dropout: null
+use_scalar: false
+rank_dropout_scale: false
+weight_decompose: false
+wd_on_output: true
+bypass_mode: null

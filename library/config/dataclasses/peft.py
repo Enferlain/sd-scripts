@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+from library.adapters.methods.peft.abba.config import PeftAbbaConfig
 from library.adapters.methods.peft.boft.config import PeftBoftConfig
 from library.adapters.methods.peft.dylora.config import PeftDyloraConfig
 from library.adapters.methods.peft.glora.config import PeftGloraConfig
@@ -39,6 +40,7 @@ class PeftConfig:
         metadata={"help": "Continuation intent: strict or initialize_from_artifact"},
     )
 
+    abba: PeftAbbaConfig | None = None
     boft: PeftBoftConfig | None = None
     dylora: PeftDyloraConfig | None = None
     glora: PeftGloraConfig | None = None

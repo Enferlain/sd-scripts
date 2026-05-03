@@ -865,6 +865,22 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.rank must be set to a positive integer"):
             validate_config(cfg)
 
+    def test_peft_rejects_abba_without_rank(self):
+        """ABBA should require an explicit method-level rank setting."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "abba": {},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.rank must be set to an integer greater than or equal to 2"):
+            validate_config(cfg)
+
     def test_peft_rejects_non_positive_oft_factor(self):
         """OFT factor should fail fast when set to a non-positive value."""
         cfg = make_validate_cfg(
@@ -927,6 +943,22 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.rank must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_abba_rank_below_two(self):
+        """ABBA rank should fail fast when it cannot populate both factor pairs."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "abba": {"rank": 1},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.rank must be greater than or equal to 2 when set"):
             validate_config(cfg)
 
     def test_peft_rejects_dylora_block_size_that_does_not_divide_rank(self):
@@ -1080,6 +1112,41 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.dropout must be between 0.0 and 1.0 inclusive"):
+            validate_config(cfg)
+
+    def test_peft_rejects_out_of_range_abba_dropout(self):
+        """ABBA dropout probabilities should stay within [0, 1]."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "abba": {"rank": 4, "dropout": 1.5},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.abba\\.dropout must be between 0.0 and 1.0 inclusive"):
+            validate_config(cfg)
+
+    def test_peft_rejects_abba_bypass_mode_with_weight_decompose(self):
+        """ABBA bypass mode should not coexist with weight decomposition."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "abba": {"rank": 4, "weight_decompose": True, "bypass_mode": True},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="adapter\\.peft\\.abba\\.bypass_mode cannot be enabled when adapter\\.peft\\.abba\\.weight_decompose is true",
+        ):
             validate_config(cfg)
 
     def test_peft_rejects_legacy_method_without_active_branch(self):
