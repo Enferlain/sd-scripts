@@ -65,6 +65,10 @@ layer can settle into a better system instead of a pile of one-off adapters.
   invalidation or they quietly become stale training bugs. If a method keeps
   an optimized derived view of trainable weights, either rebuild it per use or
   make the invalidation story explicit and test it directly.
+- LoRA is the reminder that "legacy but still active" deserves the same
+  architectural cleanup as new method intake. Keeping the most common method on
+  a compatibility wrapper quietly leaks old target-discovery, naming, and
+  persistence assumptions into the rest of the adapter system.
 - Scalar export should stay numerically boring. Folding an unconstrained
   trainable scalar into one exported factor is safer than relying on a
   symmetric `sqrt(scalar)` bake that can go invalid once training drives the
@@ -94,7 +98,7 @@ improvements:
 - ia3: vendor lycoris ✅
 - abba: vendor lycoris/hf peft ✅
 - tlora: vendor lycoris ✅
-- norms (not really a method) ❌
+- norms (not really a method, beads plan) ❌
 
 ### hf/peft
 
@@ -125,4 +129,4 @@ improvements:
 
 ### in repo rework
 
-- lora: legacy version/hf peft ❌ (for last)
+- lora: repo-owned refresh/hf peft ✅

@@ -253,7 +253,8 @@ class TestConfigDefaults:
     def test_adapter_config_defaults(self):
         """Test PeftConfig default values."""
         config = PeftConfig()
-        assert config.method is None
+        assert config.continue_from is None
+        assert config.continue_mode is None
         assert config.lora is None
         assert config.dylora is None
         assert config.glora is None

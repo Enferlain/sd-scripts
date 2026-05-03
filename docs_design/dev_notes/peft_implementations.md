@@ -66,6 +66,27 @@ general "how to implement future PEFT methods" guidance in
   starts assembling explicit block-diagonal operators again or profiling shows a
   different hotspot than the current direct stage application.
 
+## LoRA
+
+- The repo-owned LoRA refresh should borrow method math from current Hugging
+  Face PEFT only where it is actually ahead of the legacy built-in path. The
+  point is better LoRA behavior, not importing a second target-discovery or
+  multi-adapter architecture into this repo.
+- LoRA is the counterexample that proves "common" should not mean
+  special-cased. Once optimization owns resolved targets, the LoRA runtime
+  should construct one module per supported target and preserve target
+  provenance like the other repo-owned PEFT methods instead of traversing model
+  families internally.
+- The current repo-owned LoRA slice intentionally rejects block-rank, LoRA+,
+  and other optimizer-policy leftovers even though the old config surface still
+  remembers their names. Those fields are useful as explicit migration/error
+  points, but they are not part of the forward LoRA method contract anymore.
+- Mixed-dtype forward behavior is worth pinning explicitly for LoRA because the
+  base layer may not accept higher-precision input directly. The active module
+  computes in its parameter dtype and casts the final output back to the caller
+  dtype so adapter behavior stays usable in the same situations as merged-weight
+  evaluation.
+
 ## DyLoRA
 
 - DyLoRA is better treated as a LoRA-shaped training trick than as a separate

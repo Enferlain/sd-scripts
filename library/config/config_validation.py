@@ -15,7 +15,6 @@ Usage:
 """
 
 import ast
-from contextlib import suppress
 import fnmatch
 import logging
 import re
@@ -337,13 +336,6 @@ def _validate_peft_config(cfg) -> None:
         raise ValueError("adapter.peft.continue_mode can only be set explicitly when adapter.peft.continue_from is also set.")
     effective_continue_mode = continue_mode or "strict"
 
-    legacy_adapter_args = getattr(peft_cfg, "adapter_args", None)
-    if legacy_adapter_args:
-        raise ValueError(
-            "adapter.peft.adapter_args is no longer part of the forward adapter config surface. "
-            f"Move those settings under adapter.peft.{registration.name}."
-        )
-
     inactive_method_values = get_inactive_method_config_values(peft_cfg, active_method=registration.name)
     if inactive_method_values:
         inactive_methods = ", ".join(sorted(inactive_method_values))
@@ -405,23 +397,6 @@ def prepare_config(cfg) -> None:
             lr_cfg.denoiser = lr_cfg.base
         if lr_cfg.text_encoders is None:
             lr_cfg.text_encoders = lr_cfg.base
-
-    peft_cfg = get_adapter_peft_config(cfg)
-    if peft_cfg is not None:
-        legacy_module = getattr(peft_cfg, "adapter_module", None)
-        if getattr(peft_cfg, "method", None) is None and legacy_module:
-            with suppress(KeyError, ValueError):
-                peft_cfg.method = resolve_adapter_method_registration(peft_cfg).name
-
-        legacy_continue_from = getattr(peft_cfg, "adapter_weights", None)
-        if getattr(peft_cfg, "continue_from", None) is None and legacy_continue_from is not None:
-            peft_cfg.continue_from = legacy_continue_from
-            peft_cfg.continue_mode = "strict" if getattr(peft_cfg, "adapter_rank_from_weights", False) else "initialize_from_artifact"
-
-        legacy_training_comment = getattr(peft_cfg, "training_comment", None)
-        metadata_cfg = _get_optional_attr(cfg, "output", "metadata")
-        if metadata_cfg is not None and getattr(metadata_cfg, "training_comment", None) is None and legacy_training_comment is not None:
-            metadata_cfg.training_comment = legacy_training_comment
 
     _normalize_edm2_loss_config(cfg)
 

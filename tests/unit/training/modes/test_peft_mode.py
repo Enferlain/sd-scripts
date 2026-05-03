@@ -4,12 +4,10 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 from pathlib import Path
 
-import pytest
 import torch
 
 from library.config.dataclasses.performance import DeepSpeedConfig
 from library.adapters import LoadedAdapterRuntime
-from library.adapters.runtime import AdapterMergeRequest
 from library.optimization.types import OptimizerBuildResult
 from library.adapters.runtime.targets import build_component_module_targets, build_component_root_targets
 from library.training.checkpointing import ResumeState
@@ -18,7 +16,6 @@ from library.training.modes.adapter_mode import AdapterMode
 
 def _build_mock_trainer():
     peft_config = SimpleNamespace(
-        method=None,
         continue_from=None,
         continue_mode="strict",
         lora=SimpleNamespace(
@@ -29,25 +26,8 @@ def _build_mock_trainer():
             conv_alpha=None,
             rank_dropout=None,
             module_dropout=None,
-            block_ranks=None,
-            block_alphas=None,
-            conv_block_ranks=None,
-            conv_block_alphas=None,
-            down_lr_weight=None,
-            mid_lr_weight=None,
-            up_lr_weight=None,
-            block_lr_zero_threshold=None,
-            loraplus_lr_ratio=None,
-            loraplus_unet_lr_ratio=None,
-            loraplus_text_encoder_lr_ratio=None,
         ),
         loha=None,
-        adapter_module=None,
-        base_weights=None,
-        base_weights_multiplier=None,
-        adapter_args=None,
-        adapter_rank_from_weights=False,
-        adapter_weights=None,
         scale_weight_norms=False,
     )
     cfg = SimpleNamespace(
@@ -185,48 +165,6 @@ def test_build_optimizer_params_uses_repo_owned_grouping_plan(monkeypatch):
     assert result.lr_descriptions == ["unet"]
     assert captured["execution_groups"] == execution_groups
     assert captured["optimizer_kwargs"] == {}
-
-
-def test_build_optimizer_params_rejects_legacy_built_in_optimizer_policy(monkeypatch):
-    trainer = _build_mock_trainer()
-    trainer.adapter = object()
-    trainer.net_kwargs = {"down_lr_weight": "linear"}
-
-    monkeypatch.setattr(
-        "library.training.modes.adapter_mode.build_adapter_grouping",
-        lambda **kwargs: SimpleNamespace(execution_groups=[], logical_groups=[]),
-    )
-
-    with pytest.raises(NotImplementedError, match="adapter args"):
-        AdapterMode().build_optimizer_params(trainer)
-
-
-def test_prepare_trainables_rejects_legacy_built_in_optimizer_policy_before_adapter_build(monkeypatch):
-    trainer = _build_mock_trainer()
-    trainer.cfg.adapter.peft.lora.down_lr_weight = "linear"
-
-    monkeypatch.setattr(
-        "library.training.modes.adapter_mode.resolve_adapter_target_selection",
-        lambda **_: SimpleNamespace(
-            resolved_targets=build_component_root_targets(
-                model_type="sdxl",
-                text_encoders=trainer.text_encoders,
-                vae=None,
-                denoiser=trainer.denoiser,
-                include_text_encoders=[True, False],
-                include_denoiser=False,
-            ),
-            train_denoiser=False,
-            train_any_text_encoder=True,
-        ),
-    )
-    build_mock = MagicMock()
-    monkeypatch.setattr("library.training.modes.adapter_mode.build_adapter", build_mock)
-
-    with pytest.raises(NotImplementedError, match="peft\\.lora\\.down_lr_weight"):
-        AdapterMode().prepare_trainables(trainer)
-
-    build_mock.assert_not_called()
 
 
 def test_prepare_trainables_loads_adapter_weights_through_repo_owned_export_seam(monkeypatch):
@@ -377,67 +315,6 @@ def test_prepare_trainables_supports_registered_loha_runtime_with_module_targets
     assert captured["request"].adapter.settings["bypass_mode"] is True
     adapter.apply_to.assert_called_once_with(trainer._text_encoder, trainer.denoiser, True, True)
     assert trainer.adapter_resolved_targets is resolved_targets
-
-
-def test_prepare_trainables_merges_base_weights_through_repo_owned_merge_seam(monkeypatch):
-    trainer = _build_mock_trainer()
-    trainer.cfg.adapter.peft.base_weights = ["base.safetensors"]
-    trainer.cfg.adapter.peft.base_weights_multiplier = [0.5]
-    adapter = MagicMock()
-    adapter.apply_to = MagicMock()
-    resolved_targets = build_component_root_targets(
-        model_type="sdxl",
-        text_encoders=trainer.text_encoders,
-        vae=None,
-        denoiser=trainer.denoiser,
-        include_text_encoders=[False, True],
-        include_denoiser=True,
-    )
-    captured = {}
-
-    monkeypatch.setattr(
-        "library.training.modes.adapter_mode.resolve_adapter_target_selection",
-        lambda **_: SimpleNamespace(
-            resolved_targets=resolved_targets,
-            train_denoiser=True,
-            train_any_text_encoder=True,
-        ),
-    )
-    monkeypatch.setattr("library.training.modes.adapter_mode.build_adapter", lambda *_: adapter)
-
-    loaded_runtime = LoadedAdapterRuntime(
-        adapter="merge-adapter",
-        state={"loaded": "base.safetensors"},
-        _merge_into_impl=lambda request: captured.update({"merge_runtime_request": request}),
-    )
-
-    monkeypatch.setattr(
-        "library.training.modes.adapter_mode.build_adapter_from_weights",
-        lambda request, weights_path: (
-            captured.update(
-                {
-                    "merge_request": request,
-                    "weights_path": weights_path,
-                    "loaded_runtime": loaded_runtime,
-                }
-            )
-            or loaded_runtime
-        ),
-    )
-
-    AdapterMode().prepare_trainables(trainer)
-
-    assert captured["merge_request"].resolved_targets is resolved_targets
-    assert captured["merge_request"].context.for_inference is True
-    assert captured["merge_request"].context.multiplier == 0.5
-    assert captured["weights_path"] == "base.safetensors"
-    assert captured["loaded_runtime"].adapter == "merge-adapter"
-    assert captured["loaded_runtime"].state == {"loaded": "base.safetensors"}
-    assert isinstance(captured["merge_runtime_request"], AdapterMergeRequest)
-    assert captured["merge_runtime_request"].model.text_encoder is trainer.text_encoders
-    assert captured["merge_runtime_request"].model.denoiser is trainer.denoiser
-    assert captured["merge_runtime_request"].resolved_targets is resolved_targets
-    assert captured["merge_runtime_request"].dtype == "fp16"
 
 
 def test_register_state_hooks_uses_repo_owned_adapter_checkpoint_helper(monkeypatch):

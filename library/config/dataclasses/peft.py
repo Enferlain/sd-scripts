@@ -34,7 +34,6 @@ _DEFAULT_LEGACY_ORTHOGRAD_TARGETS = (
 class PeftConfig:
     """PEFT family config plus exactly one active method branch."""
 
-    method: str | None = field(default=None, metadata={"help": "Legacy method shim; prefer adapter.peft.<method>"})
     continue_from: str | None = field(default=None, metadata={"help": "Continue from an existing adapter artifact"})
     continue_mode: str | None = field(
         default=None,
@@ -62,14 +61,3 @@ class PeftConfig:
         default_factory=lambda: list(_DEFAULT_LEGACY_ORTHOGRAD_TARGETS),
         metadata={"help": "Parameter names to apply orthogonal gradient to"},
     )
-
-    # Compatibility-only normalization shim. These fields are no longer the
-    # forward PEFT config interface and should not be treated as equal support
-    # surfaces in new configs.
-    adapter_module: str | None = field(default=None, metadata={"help": "Legacy adapter selection shim"})
-    adapter_args: list[str] | None = field(default=None, metadata={"help": "Legacy key=value adapter settings shim"})
-    adapter_weights: str | None = field(default=None, metadata={"help": "Legacy continuation shim"})
-    adapter_rank_from_weights: bool = field(default=False, metadata={"help": "Legacy strict-continuation shim"})
-    base_weights: list[str] | None = field(default=None, metadata={"help": "Legacy pre-merge shim"})
-    base_weights_multiplier: list[float] | None = field(default=None, metadata={"help": "Legacy pre-merge multiplier shim"})
-    training_comment: str | None = field(default=None, metadata={"help": "Legacy metadata shim; prefer output.metadata.training_comment"})

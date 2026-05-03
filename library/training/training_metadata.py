@@ -192,10 +192,6 @@ def create_training_metadata(
         }
     )
 
-    # Adapter args (legacy PEFT only)
-    if peft_config is not None and peft_config.adapter_args:
-        metadata["ss_adapter_args"] = json.dumps(net_kwargs)
-
     # Model name and hash
     hash_algorithm = cfg.output.saving.hash_algorithm
     if cfg.model.pretrained_model_name_or_path is not None:

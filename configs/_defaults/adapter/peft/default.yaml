@@ -17,14 +17,3 @@ orthograd_targets:
     "b2.weight",
     "c1.weight",
   ]
-
-# Compatibility-only normalization shim. These are no longer the forward PEFT
-# config interface and should only remain long enough to keep old configs
-# booting during the transition.
-adapter_module: null
-adapter_args: null
-adapter_weights: null
-adapter_rank_from_weights: false
-base_weights: null
-base_weights_multiplier: null
-training_comment: null

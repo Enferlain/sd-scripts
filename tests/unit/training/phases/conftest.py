@@ -89,11 +89,6 @@ def mock_cfg():
     cfg.adapter.peft.lora.dropout = 0.0
     cfg.adapter.peft.continue_from = None
     cfg.adapter.peft.continue_mode = "strict"
-    cfg.adapter.peft.adapter_weights = None
-    cfg.adapter.peft.adapter_rank_from_weights = False
-    cfg.adapter.peft.adapter_args = None
-    cfg.adapter.peft.base_weights = None
-    cfg.adapter.peft.base_weights_multiplier = None
     cfg.adapter.peft.scale_weight_norms = False
 
     # output.saving

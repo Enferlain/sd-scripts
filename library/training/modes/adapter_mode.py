@@ -34,10 +34,8 @@ from library.adapters import (
 from library.adapters.methods.peft.config_resolution import (
     build_adapter_runtime_spec,
     get_adapter_peft_config,
-    parse_legacy_adapter_args,
     resolve_adapter_method_registration,
 )
-from library.adapters.runtime import AdapterMergeRequest
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.grouping import build_adapter_grouping, resolve_adapter_target_selection, resolve_learning_rate_groups
 from library.optimization.optimizer_factory import get_optimizer
@@ -53,14 +51,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-_UNSUPPORTED_ADAPTER_OPTIMIZER_POLICY_KEYS = (
-    "down_lr_weight",
-    "mid_lr_weight",
-    "up_lr_weight",
-    "block_lr_zero_threshold",
-)
-
-
 @dataclass(slots=True)
 class PeftContinuationPlan:
     """AdapterMode-owned continuation plan derived from intent-shaped config."""
@@ -69,40 +59,9 @@ class PeftContinuationPlan:
     continue_mode: str
 
 
-def _ensure_supported_adapter_optimizer_policy(peft_config, net_kwargs: dict[str, Any] | None = None) -> None:
-    lora_config = getattr(peft_config, "lora", None)
-    legacy_optimizer_policy_fields = {
-        "adapter.peft.lora.down_lr_weight": getattr(lora_config, "down_lr_weight", None),
-        "adapter.peft.lora.mid_lr_weight": getattr(lora_config, "mid_lr_weight", None),
-        "adapter.peft.lora.up_lr_weight": getattr(lora_config, "up_lr_weight", None),
-        "adapter.peft.lora.block_lr_zero_threshold": getattr(lora_config, "block_lr_zero_threshold", None),
-        "adapter.peft.lora.loraplus_lr_ratio": getattr(lora_config, "loraplus_lr_ratio", None),
-        "adapter.peft.lora.loraplus_unet_lr_ratio": getattr(lora_config, "loraplus_unet_lr_ratio", None),
-        "adapter.peft.lora.loraplus_text_encoder_lr_ratio": getattr(lora_config, "loraplus_text_encoder_lr_ratio", None),
-    }
-    active_fields = [name for name, value in legacy_optimizer_policy_fields.items() if value is not None]
-    if active_fields:
-        raise NotImplementedError(
-            "Legacy built-in adapter optimizer policy is not supported by the repo-owned trainable-ref handoff: " + ", ".join(active_fields)
-        )
-
-    adapter_kwargs = net_kwargs if isinstance(net_kwargs, dict) else {}
-    active_kwargs = [key for key in _UNSUPPORTED_ADAPTER_OPTIMIZER_POLICY_KEYS if adapter_kwargs.get(key) is not None]
-    if active_kwargs:
-        raise NotImplementedError(
-            "Legacy built-in adapter optimizer policy in adapter args is not supported by the repo-owned trainable-ref handoff: "
-            + ", ".join(active_kwargs)
-        )
-
-
 def _build_continuation_plan(peft_config) -> PeftContinuationPlan:
     continue_from = peft_config.continue_from
     continue_mode = peft_config.continue_mode
-
-    legacy_continue_from = getattr(peft_config, "adapter_weights", None)
-    if continue_from is None and legacy_continue_from is not None:
-        continue_from = legacy_continue_from
-        continue_mode = "strict" if getattr(peft_config, "adapter_rank_from_weights", False) else "initialize_from_artifact"
 
     if continue_from is not None and continue_mode is None:
         raise ValueError(
@@ -158,14 +117,12 @@ class AdapterMode:
         denoiser = trainer.denoiser
         text_encoder = trainer._text_encoder
         text_encoders = trainer.text_encoders
-        weight_dtype = trainer.weight_dtype
         peft_config = get_adapter_peft_config(cfg)
         if peft_config is None:
             raise ValueError("mode=adapter requires adapter.peft config.")
         adapter_registration = resolve_adapter_method_registration(peft_config)
         runtime_spec = build_adapter_runtime_spec(peft_config)
         continuation_plan = _build_continuation_plan(peft_config)
-        legacy_adapter_args = parse_legacy_adapter_args(peft_config)
 
         accelerator.print("adapter method:", adapter_registration.name)
 
@@ -177,39 +134,6 @@ class AdapterMode:
         )
         trainer._train_denoiser = target_selection.train_denoiser
         trainer._train_text_encoder = target_selection.train_any_text_encoder
-
-        # Merge base weights if specified
-        if peft_config.base_weights is not None:
-            for i, weight_path in enumerate(peft_config.base_weights):
-                if peft_config.base_weights_multiplier is None or len(peft_config.base_weights_multiplier) <= i:
-                    multiplier = 1.0
-                else:
-                    multiplier = peft_config.base_weights_multiplier[i]
-
-                accelerator.print(f"merging module: {weight_path} with multiplier {multiplier}")
-
-                merge_request = AdapterBuildRequest(
-                    adapter=type(runtime_spec)(adapter_type=runtime_spec.adapter_type, settings={}),
-                    context=AdapterBuildContext(
-                        model=AdapterModelContext(vae=vae, text_encoder=text_encoders, denoiser=denoiser),
-                        multiplier=multiplier,
-                        for_inference=True,
-                    ),
-                    resolved_targets=target_selection.resolved_targets,
-                )
-                loaded_runtime = build_adapter_from_weights(merge_request, weight_path)
-                loaded_runtime.merge_into(
-                    AdapterMergeRequest(
-                        model=AdapterModelContext(vae=vae, text_encoder=text_encoders, denoiser=denoiser),
-                        resolved_targets=target_selection.resolved_targets,
-                        dtype=weight_dtype,
-                        device=accelerator.device if cfg.performance.memory.lowram else "cpu",
-                    ),
-                )
-
-            accelerator.print(f"all weights merged: {', '.join(peft_config.base_weights)}")
-
-        _ensure_supported_adapter_optimizer_policy(peft_config, legacy_adapter_args)
 
         # Create adapter
         build_request = _build_adapter_request(
@@ -250,7 +174,7 @@ class AdapterMode:
         adapter.requires_grad_(True)
         trainer.adapter = adapter
         trainer.adapter_resolved_targets = build_request.resolved_targets
-        trainer.net_kwargs = legacy_adapter_args
+        trainer.net_kwargs = {}
 
     def configure_trainable_precision(self, trainer: Trainer) -> None:
         """Adapter-specific precision: cast adapter, freeze base model.
@@ -288,7 +212,6 @@ class AdapterMode:
         peft_config = get_adapter_peft_config(cfg)
         if peft_config is None:
             raise ValueError("mode=adapter requires adapter.peft config.")
-        _ensure_supported_adapter_optimizer_policy(peft_config, getattr(trainer, "net_kwargs", None))
 
         grouping = build_adapter_grouping(
             adapter=trainer.adapter,

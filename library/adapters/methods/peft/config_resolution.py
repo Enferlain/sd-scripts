@@ -5,18 +5,10 @@ from contextlib import suppress
 from dataclasses import MISSING, fields
 from typing import Any
 
-from library.adapters.registry import get_adapter_method, get_adapter_method_for_legacy_module, list_adapter_methods
+from library.adapters.registry import get_adapter_method, list_adapter_methods
 from library.adapters.runtime.context import AdapterRuntimeSpec
 from library.adapters.types import AdapterMethodRegistration
 from library.config.dataclasses.peft import PeftConfig
-from library.optimization.arguments import parse_key_value_args
-
-
-def _resolve_legacy_module_registration(module_or_name: str) -> AdapterMethodRegistration:
-    try:
-        return get_adapter_method_for_legacy_module(module_or_name)
-    except KeyError:
-        return get_adapter_method(module_or_name)
 
 
 def _field_default(field_info) -> Any:
@@ -117,7 +109,7 @@ def get_adapter_peft_config(cfg_or_peft_config: Any) -> PeftConfig | None:
         if peft_config is not None:
             return peft_config
 
-    peft_family_keys = ("continue_from", "adapter_module", *_registered_method_config_keys())
+    peft_family_keys = ("continue_from", "continue_mode", *_registered_method_config_keys())
     if any(_has_config_key(cfg_or_peft_config, attr) for attr in peft_family_keys):
         return cfg_or_peft_config
     return None
@@ -139,41 +131,13 @@ def get_active_method_branch_names(peft_config: PeftConfig) -> list[str]:
 def resolve_adapter_method_registration(peft_config: PeftConfig) -> AdapterMethodRegistration:
     """Resolve the active PEFT adapter method from branch presence."""
 
-    registration: AdapterMethodRegistration | None = None
     active_methods = get_active_method_branch_names(peft_config)
 
-    configured_method = getattr(peft_config, "method", None)
-    if isinstance(configured_method, str) and configured_method.strip():
-        registration = get_adapter_method(configured_method)
-        if not active_methods:
-            raise ValueError(
-                f"Legacy peft.method={registration.name!r} is set, but no method branch is configured. "
-                f"Add adapter.peft.{registration.name} or remove the legacy method field."
-            )
-        if registration.name not in active_methods:
-            raise ValueError(
-                f"Configured legacy peft.method={registration.name!r} does not match active method branch: "
-                f"{', '.join(sorted(active_methods))}."
-            )
-    elif len(active_methods) == 1:
-        registration = get_adapter_method(active_methods[0])
-    elif len(active_methods) > 1:
+    if len(active_methods) == 1:
+        return get_adapter_method(active_methods[0])
+    if len(active_methods) > 1:
         raise ValueError(f"adapter.peft must configure exactly one method branch, got: {', '.join(sorted(active_methods))}.")
-
-    legacy_module = getattr(peft_config, "adapter_module", None)
-    if isinstance(legacy_module, str) and legacy_module.strip():
-        legacy_registration = _resolve_legacy_module_registration(legacy_module)
-        if registration is not None and legacy_registration.name != registration.name:
-            raise ValueError(
-                f"Configured peft.method={registration.name!r} does not match legacy adapter_module={legacy_module!r} "
-                f"resolved as {legacy_registration.name!r}."
-            )
-        registration = legacy_registration
-
-    if registration is None:
-        raise ValueError(f"adapter.peft must configure exactly one method branch, such as {_method_branch_examples()}.")
-
-    return registration
+    raise ValueError(f"adapter.peft must configure exactly one method branch, such as {_method_branch_examples()}.")
 
 
 def get_method_config(peft_config: PeftConfig, method_name: str | None = None) -> tuple[AdapterMethodRegistration, Any]:
@@ -214,12 +178,6 @@ def get_inactive_method_config_values(peft_config: PeftConfig, active_method: st
     return inactive_values
 
 
-def parse_legacy_adapter_args(peft_config: PeftConfig) -> dict[str, Any]:
-    """Parse compatibility-era adapter args into a normalized dict."""
-
-    return parse_key_value_args(getattr(peft_config, "adapter_args", None))
-
-
 def build_adapter_runtime_spec(peft_config: PeftConfig) -> AdapterRuntimeSpec:
     """Build a repo-owned runtime spec from PEFT-family config resolution."""
 
@@ -230,10 +188,4 @@ def build_adapter_runtime_spec(peft_config: PeftConfig) -> AdapterRuntimeSpec:
     else:
         typed_method_config = _materialize_method_config(method_config, config_type=config_binding.config_type)
         settings = config_binding.runtime_settings_builder(typed_method_config)
-    legacy_args = parse_legacy_adapter_args(peft_config)
-    if legacy_args:
-        raise ValueError(
-            "peft.adapter_args is no longer part of the forward adapter config surface. "
-            f"Move these settings into peft.{registration.name}: {', '.join(sorted(legacy_args))}."
-        )
     return AdapterRuntimeSpec(adapter_type=registration.name, settings=settings)

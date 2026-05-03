@@ -1,5 +1,7 @@
 import sys
+import tempfile
 import types
+from pathlib import Path
 
 import pytest
 import torch
@@ -90,34 +92,31 @@ class TestAdapterRegistry:
         ]
 
     def test_registered_runtime_filters_text_encoder_context_to_resolved_targets(self, monkeypatch):
-        from library.adapters.methods.peft.lora import runtime as lora_runtime
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4)
+                self.norm = torch.nn.LayerNorm(4)
 
-        clip_l = object()
-        clip_g = object()
-        unet = object()
-        captured = {}
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4)
+                self.conv = torch.nn.Conv2d(4, 4, kernel_size=3, padding=1)
 
-        def fake_legacy_create_adapter(multiplier, adapter_rank, adapter_alpha, vae, text_encoder, denoiser, neuron_dropout=None, **kwargs):
-            captured["multiplier"] = multiplier
-            captured["adapter_rank"] = adapter_rank
-            captured["adapter_alpha"] = adapter_alpha
-            captured["vae"] = vae
-            captured["text_encoder"] = text_encoder
-            captured["denoiser"] = denoiser
-            captured["neuron_dropout"] = neuron_dropout
-            captured["kwargs"] = kwargs
-            return types.SimpleNamespace()
+        clip_l = DummyTextEncoder()
+        clip_g = DummyTextEncoder()
+        unet = DummyDenoiser()
 
-        monkeypatch.setattr(lora_runtime.legacy_lora, "create_adapter", fake_legacy_create_adapter)
         request = AdapterBuildRequest(
             adapter=AdapterRuntimeSpec(
                 adapter_type="lora",
-                settings={"adapter_rank": 8, "adapter_alpha": 16.0, "neuron_dropout": 0.1, "dropout": 0.1},
+                settings={"adapter_rank": 8, "adapter_alpha": 16.0, "conv_dim": 4, "conv_alpha": 8.0, "neuron_dropout": 0.1},
             ),
             context=AdapterBuildContext(
                 model=AdapterModelContext(vae="vae", text_encoder=[clip_l, clip_g], denoiser=unet),
             ),
-            resolved_targets=build_component_root_targets(
+            resolved_targets=build_component_module_targets(
                 model_type="sdxl",
                 text_encoders=[clip_l, clip_g],
                 vae=None,
@@ -128,42 +127,43 @@ class TestAdapterRegistry:
         )
 
         adapter = build_adapter_for_legacy_module("library.adapters.lora", request)
+        refs = adapter.describe_trainable_parameter_refs()
 
-        assert captured["vae"] == "vae"
-        assert captured["text_encoder"] == [None, clip_g]
-        assert captured["denoiser"] is unet
-        assert captured["kwargs"]["dropout"] == 0.1
         assert adapter.adapter_resolved_targets is request.resolved_targets
+        assert [module.lora_name for module in adapter.lora_modules] == [
+            "lora_te2_proj",
+            "lora_unet_to_q",
+            "lora_unet_conv",
+        ]
+        assert [ref.target_path for ref in refs] == [
+            "clip_g.proj",
+            "clip_g.proj",
+            "unet.to_q",
+            "unet.to_q",
+            "unet.conv",
+            "unet.conv",
+        ]
+        assert all(ref.source_target_ref is not None for ref in refs)
 
     def test_registered_runtime_filters_weight_build_text_encoder_context(self, monkeypatch):
-        from library.adapters.methods.peft.lora import runtime as lora_runtime
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
 
-        clip_l = object()
-        clip_g = object()
-        unet = object()
-        captured = {}
-
-        def fake_legacy_create_adapter_from_weights(multiplier, file, vae, text_encoder, denoiser, for_inference=False, **kwargs):
-            captured["multiplier"] = multiplier
-            captured["file"] = file
-            captured["vae"] = vae
-            captured["text_encoder"] = text_encoder
-            captured["denoiser"] = denoiser
-            captured["for_inference"] = for_inference
-            captured["kwargs"] = kwargs
-            return types.SimpleNamespace(), {"weights": "state"}
-
-        monkeypatch.setattr(lora_runtime.legacy_lora, "create_adapter_from_weights", fake_legacy_create_adapter_from_weights)
+        clip_l = DummyTextEncoder()
+        clip_g = DummyTextEncoder()
+        unet = torch.nn.Linear(4, 4, bias=False)
         request = AdapterBuildRequest(
             adapter=AdapterRuntimeSpec(
                 adapter_type="lora",
-                settings={"adapter_rank": 8, "adapter_alpha": 16.0, "neuron_dropout": 0.1, "dropout": 0.1},
+                settings={"adapter_rank": 2, "adapter_alpha": 4.0},
             ),
             context=AdapterBuildContext(
                 model=AdapterModelContext(vae="vae", text_encoder=[clip_l, clip_g], denoiser=unet),
                 for_inference=False,
             ),
-            resolved_targets=build_component_root_targets(
+            resolved_targets=build_component_module_targets(
                 model_type="sdxl",
                 text_encoders=[clip_l, clip_g],
                 vae=None,
@@ -173,53 +173,54 @@ class TestAdapterRegistry:
             ),
         )
 
-        loaded_runtime = build_adapter_from_weights_for_legacy_module(
-            "library.adapters.lora",
-            request,
-            "weights.safetensors",
-        )
+        adapter = build_adapter_for_legacy_module("library.adapters.lora", request)
+        with torch.no_grad():
+            for module in adapter.lora_modules:
+                module.lora_down.weight.fill_(0.25)
+                module.lora_up.weight.fill_(0.125)
 
-        assert captured["vae"] == "vae"
-        assert captured["text_encoder"] == [None, clip_g]
-        assert captured["denoiser"] is unet
-        assert captured["file"] == "weights.safetensors"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            weights_path = Path(temp_dir) / "adapter.safetensors"
+            adapter.save_weights(str(weights_path), dtype=None, metadata=None)
+            loaded_runtime = build_adapter_from_weights_for_legacy_module(
+                "library.adapters.lora",
+                request,
+                str(weights_path),
+            )
+
         assert loaded_runtime.adapter.adapter_resolved_targets is request.resolved_targets
+        loaded_modules = loaded_runtime.adapter.lora_modules
+        assert [module.lora_name for module in loaded_modules] == ["lora_te2_proj", "lora_unet"]
+        assert torch.allclose(loaded_modules[0].lora_down.weight, torch.full_like(loaded_modules[0].lora_down.weight, 0.25))
+        assert torch.allclose(loaded_modules[0].lora_up.weight, torch.full_like(loaded_modules[0].lora_up.weight, 0.125))
 
     def test_registered_runtime_exposes_repo_owned_trainable_refs(self, monkeypatch):
-        from library.adapters.methods.peft.lora import runtime as lora_runtime
-
-        class FakeLoraModule(torch.nn.Module):
-            def __init__(self, lora_name: str):
-                super().__init__()
-                self.lora_name = lora_name
-                self.lora_down = torch.nn.Linear(2, 2, bias=False)
-                self.lora_up = torch.nn.Linear(2, 2, bias=False)
-
-        class FakeAdapter(torch.nn.Module):
+        class DummyTextEncoder(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-                self.text_encoder_loras = [FakeLoraModule("lora_te1_text_model_attn_proj")]
-                self.unet_loras = [FakeLoraModule("lora_unet_input_blocks_1_attn_proj")]
-                self.block_lr = False
-                self.loraplus_lr_ratio = 2.0
-                self.loraplus_unet_lr_ratio = None
-                self.loraplus_text_encoder_lr_ratio = None
+                self.proj = torch.nn.Linear(2, 2, bias=False)
 
-        monkeypatch.setattr(lora_runtime.legacy_lora, "create_adapter", lambda *args, **kwargs: FakeAdapter())
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(2, 2, bias=False)
+
+        clip_l = DummyTextEncoder()
+        unet = DummyDenoiser()
         request = AdapterBuildRequest(
             adapter=AdapterRuntimeSpec(
                 adapter_type="lora",
                 settings={"adapter_rank": 8, "adapter_alpha": 16.0},
             ),
             context=AdapterBuildContext(
-                model=AdapterModelContext(vae=None, text_encoder=[object(), object()], denoiser=object()),
+                model=AdapterModelContext(vae=None, text_encoder=[clip_l], denoiser=unet),
             ),
-            resolved_targets=build_component_root_targets(
-                model_type="sdxl",
-                text_encoders=[object(), object()],
+            resolved_targets=build_component_module_targets(
+                model_type="sd15",
+                text_encoders=[clip_l],
                 vae=None,
-                denoiser=object(),
-                include_text_encoders=[True, False],
+                denoiser=unet,
+                include_text_encoders=[True],
                 include_denoiser=True,
             ),
         )
@@ -229,13 +230,14 @@ class TestAdapterRegistry:
 
         assert [ref.component for ref in refs] == ["clip_l", "clip_l", "unet", "unet"]
         assert [ref.name for ref in refs] == [
-            "lora_te1_text_model_attn_proj.lora_down.weight",
-            "lora_te1_text_model_attn_proj.lora_up.weight",
-            "lora_unet_input_blocks_1_attn_proj.lora_down.weight",
-            "lora_unet_input_blocks_1_attn_proj.lora_up.weight",
+            "lora_te_proj.lora_down.weight",
+            "lora_te_proj.lora_up.weight",
+            "lora_unet_to_q.lora_down.weight",
+            "lora_unet_to_q.lora_up.weight",
         ]
         assert refs[2].component_key == "denoiser"
-        assert all(ref.source_target_ref is None for ref in refs)
+        assert refs[0].target_path == "clip_l.proj"
+        assert all(ref.source_target_ref is not None for ref in refs)
 
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()
@@ -585,6 +587,32 @@ class TestAdapterRegistry:
         assert settings["use_data_init"] is False
         assert settings["mask_min_rank"] == 2
         assert settings["mask_alpha"] == 1.5
+
+    def test_lora_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.lora.config import PeftLoraConfig
+
+        registration = get_adapter_method("lora")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftLoraConfig(
+                rank=16,
+                alpha=32.0,
+                dropout=0.15,
+                conv_rank=8,
+                conv_alpha=12.0,
+                rank_dropout=0.2,
+                module_dropout=0.1,
+            )
+        )
+
+        assert registration.config_binding.config_key == "lora"
+        assert settings["adapter_rank"] == 16
+        assert settings["adapter_alpha"] == 32.0
+        assert settings["neuron_dropout"] == 0.15
+        assert settings["conv_dim"] == 8
+        assert settings["conv_alpha"] == 12.0
+        assert settings["rank_dropout"] == 0.2
+        assert settings["module_dropout"] == 0.1
 
     def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig

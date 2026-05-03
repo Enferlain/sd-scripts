@@ -290,10 +290,6 @@ def resolve_adapter_kwargs(cfg: PeftConfig, net_kwargs: dict):
         "conv_alpha": lora_config.conv_alpha,
         "rank_dropout": lora_config.rank_dropout,
         "module_dropout": lora_config.module_dropout,
-        "block_dims": lora_config.block_ranks,
-        "block_alphas": lora_config.block_alphas,
-        "conv_block_dims": lora_config.conv_block_ranks,
-        "conv_block_alphas": lora_config.conv_block_alphas,
     }
 
     for field_name, value in build_kwargs.items():

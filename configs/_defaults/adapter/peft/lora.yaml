@@ -6,17 +6,3 @@ conv_rank: null
 conv_alpha: null
 rank_dropout: null
 module_dropout: null
-# Left over on purpose for the current adapter-system slice: these legacy
-# optimizer-policy knobs remain visible as explicit reference points, but the
-# active repo-owned PEFT path rejects them under the new grouping boundary.
-block_ranks: null
-block_alphas: null
-conv_block_ranks: null
-conv_block_alphas: null
-down_lr_weight: null
-mid_lr_weight: null
-up_lr_weight: null
-block_lr_zero_threshold: null
-loraplus_lr_ratio: null
-loraplus_unet_lr_ratio: null
-loraplus_text_encoder_lr_ratio: null

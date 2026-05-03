@@ -14,10 +14,28 @@ Rules:
 
 ### Added
 
+- **LoRA is now a repo-owned PEFT runtime instead of the remaining legacy wrapper path** — The active adapter runtime can now build, train, export, load, and merge LoRA modules from optimization-owned resolved targets through repo-owned method code instead of delegating steady-state behavior to the older built-in adapter implementation.
+  - Added repo-owned LoRA module/runtime/state-dict ownership under `library/adapters/methods/peft/lora/`, with Linear and Conv1d/2d/3d support, trainable-ref provenance, repo-owned save/load helpers, and loaded-runtime merge behavior.
+  - Added focused module/runtime/config coverage for merged-weight consistency, mixed-dtype forward behavior, registry-owned runtime construction, repo-owned trainable refs, and config validation around the narrowed method-local LoRA surface.
 - **TLora is now available as a repo-owned PEFT adapter method under `adapter.peft.tlora`** — The active adapter runtime can now build, train, export, load, and merge TLora modules through the same repo-owned method surface as the other absorbed PEFT methods instead of leaving TLora only in the vendored LyCORIS layer.
   - Added repo-owned TLora config/runtime/state-dict ownership under `library/adapters/methods/peft/tlora/`, including SVD-based orthogonal initialization, learnable singular values, optional scalar mode, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
   - Added `adapter.peft.tlora` typed config plus `configs/_defaults/adapter/peft/tlora.yaml`, with focused validation for missing/non-positive rank, invalid mask bounds, invalid mask schedule values, unsupported singular-vector choices, and invalid dropout probabilities.
   - Added focused module/runtime/config coverage for TLora initialization, mixed-dtype batched-mask forward behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
+
+### Changed
+
+- **The active LoRA method surface now stays method-local and rejects old optimizer-policy compatibility knobs** — The repo-owned LoRA config translation now treats rank, alpha, dropout, and Conv rank/alpha as the active method contract while leaving block-rank, LoRA+, and related grouping-policy fields as explicit rejected legacy inputs instead of silently carrying them forward.
+  - Updated `library/adapters/methods/peft/lora/config.py` to fail fast on invalid ranks, invalid dropout probabilities, and `conv_alpha` without `conv_rank`, while rejecting legacy optimizer-policy fields through method-local validation.
+  - Updated the repo-owned LoRA runtime and registry coverage so trainable parameter refs now preserve resolved-target provenance instead of exposing the older wrapper behavior where source target identity had to stay unset.
+
+### Removed
+
+- **Obsolete legacy LoRA implementation files are removed from the active PEFT package** — The old built-in LoRA implementation sources and their legacy-only tests no longer live beside the repo-owned LoRA runtime now that the method package owns the active LoRA training/runtime path directly.
+  - Removed `library/adapters/methods/peft/lora/impl.py`, `lora.py`, and `lora_diffusers.py`, plus the legacy-only unit coverage in `tests/unit/adapters/test_adapters_lora.py` and `tests/unit/adapters/test_adapters_lora_diffusers.py`.
+- **LoRA no longer exposes legacy optimizer-policy knobs on the active method config surface** — The forward `adapter.peft.lora` dataclass/default YAML now only carries method-local LoRA behavior, instead of keeping rejected block-rank and LoRA+ compatibility fields visible in the active config schema.
+  - Removed the legacy policy fields from `library/adapters/methods/peft/lora/config.py`, `library/config/dataclasses/peft.py` via the imported method config, `configs/_defaults/adapter/peft/lora.yaml`, and the LoRA-specific training-mode/config-validation tests that only existed to reject those fields after config construction.
+- **The PEFT family config no longer carries adapter-shell migration shims as active structured fields** — The active `adapter.peft` surface now relies on branch presence plus `continue_from` / `continue_mode`, instead of keeping the old `method`, `adapter_module`, `adapter_args`, `adapter_weights`, `adapter_rank_from_weights`, `base_weights`, `base_weights_multiplier`, and `training_comment` aliases alive inside the structured PEFT config.
+  - Removed the adapter-level shim fields from `library/config/dataclasses/peft.py` and `configs/_defaults/adapter/peft/default.yaml`, simplified `library/adapters/methods/peft/config_resolution.py` to branch-presence resolution only, dropped the legacy continuation/base-merge normalization from `library/config/config_validation.py` and `library/training/modes/adapter_mode.py`, removed the `base_weights` / `base_weights_multiplier` pre-merge path that only existed behind those shims, and updated the affected config/mode/smoke-test fixtures accordingly.
 
 ### Fixed
 

@@ -583,23 +583,6 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.loha\\.rank must be set to a positive integer"):
             validate_config(cfg)
 
-    def test_peft_rejects_legacy_adapter_args_as_forward_surface(self):
-        """Dynamic adapter args should not be a method-settings path."""
-        cfg = make_validate_cfg(
-            {
-                "mode": "adapter",
-                "adapter": {
-                    "peft": {
-                        "loha": {},
-                        "adapter_args": ["use_scalar=True"],
-                    }
-                },
-            }
-        )
-
-        with pytest.raises(ValueError, match="adapter\\.peft\\.adapter_args is no longer part of the forward adapter config surface"):
-            validate_config(cfg)
-
     def test_peft_rejects_non_positive_loha_rank(self):
         """LoHa rank should fail fast when set to a non-positive value."""
         cfg = make_validate_cfg(
@@ -865,6 +848,21 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.rank must be set to a positive integer"):
             validate_config(cfg)
 
+    def test_peft_lora_default_rank_remains_optional(self):
+        """LoRA should preserve the legacy-compatible default rank fallback when unset."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "lora": {},
+                    }
+                },
+            }
+        )
+
+        validate_config(cfg)
+
     def test_peft_rejects_abba_without_rank(self):
         """ABBA should require an explicit method-level rank setting."""
         cfg = make_validate_cfg(
@@ -959,6 +957,22 @@ class TestValidateConfig:
         )
 
         with pytest.raises(ValueError, match="adapter\\.peft\\.glora\\.rank must be a positive integer when set"):
+            validate_config(cfg)
+
+    def test_peft_rejects_non_positive_lora_rank(self):
+        """LoRA rank should fail fast when set to a non-positive value."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "lora": {"rank": 0},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.lora\\.rank must be a positive integer when set"):
             validate_config(cfg)
 
     def test_peft_rejects_abba_rank_below_two(self):
@@ -1130,6 +1144,38 @@ class TestValidateConfig:
         ):
             validate_config(cfg)
 
+    def test_peft_rejects_out_of_range_lora_dropout(self):
+        """LoRA dropout probabilities should stay within [0, 1]."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "lora": {"dropout": 1.5},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.lora\\.dropout must be between 0.0 and 1.0 inclusive"):
+            validate_config(cfg)
+
+    def test_peft_rejects_lora_conv_alpha_without_conv_rank(self):
+        """LoRA conv alpha should only be accepted when conv rank is active."""
+        cfg = make_validate_cfg(
+            {
+                "mode": "adapter",
+                "adapter": {
+                    "peft": {
+                        "lora": {"conv_alpha": 4.0},
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.lora\\.conv_alpha requires adapter\\.peft\\.lora\\.conv_rank"):
+            validate_config(cfg)
+
     def test_peft_rejects_out_of_range_glora_dropout(self):
         """GLoRA dropout probabilities should stay within [0, 1]."""
         cfg = make_validate_cfg(
@@ -1197,14 +1243,13 @@ class TestValidateConfig:
         ):
             validate_config(cfg)
 
-    def test_peft_rejects_legacy_method_without_active_branch(self):
-        """Legacy method alone should not replace branch-presence selection."""
+    def test_peft_requires_active_method_branch(self):
+        """Adapter PEFT config should require one active method branch."""
         cfg = make_validate_cfg(
             {
                 "mode": "adapter",
                 "adapter": {
                     "peft": {
-                        "method": "lora",
                         "lora": None,
                         "loha": None,
                     }
@@ -1212,7 +1257,7 @@ class TestValidateConfig:
             }
         )
 
-        with pytest.raises(ValueError, match="Legacy peft\\.method='lora' is set, but no method branch is configured"):
+        with pytest.raises(ValueError, match="adapter\\.peft must configure exactly one method branch"):
             validate_config(cfg)
 
     def test_peft_initialize_from_artifact_allows_active_method_settings(self):
