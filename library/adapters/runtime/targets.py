@@ -12,19 +12,27 @@ from library.optimization.targets import (
     build_module_target_ref,
 )
 
+try:
+    from transformers.pytorch_utils import Conv1D as TransformersConv1D
+except (ImportError, AttributeError):  # pragma: no cover - optional dependency
+    TransformersConv1D = None
+
 
 # The first module-targeting slice intentionally stays on common weight-bearing
 # module types that existing adapter families commonly realize against.
 # Broader target classes such as embeddings or finer parameter-granular binding
 # can be added later once a concrete absorbed-method consumer proves the need.
-_ADAPTER_TARGET_MODULE_TYPES = (
+_ADAPTER_TARGET_MODULE_TYPES_LIST: list[type[nn.Module]] = [
     nn.Linear,
     nn.Conv1d,
     nn.Conv2d,
     nn.Conv3d,
     nn.LayerNorm,
     nn.GroupNorm,
-)
+]
+if TransformersConv1D is not None:
+    _ADAPTER_TARGET_MODULE_TYPES_LIST.append(TransformersConv1D)
+_ADAPTER_TARGET_MODULE_TYPES = tuple(_ADAPTER_TARGET_MODULE_TYPES_LIST)
 
 
 @dataclass(slots=True)

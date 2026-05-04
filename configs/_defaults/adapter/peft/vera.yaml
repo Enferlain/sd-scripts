@@ -1,0 +1,8 @@
+rank: null
+dropout: null
+d_initial: 0.1
+projection_prng_key: 0
+# Default to explicit shared-projection export; `false` reconstructs from the
+# projection PRNG key plus VeRA-local artifact metadata when available.
+save_projection: true
+init_weights: true

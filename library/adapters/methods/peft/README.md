@@ -36,7 +36,7 @@ layer can settle into a better system instead of a pile of one-off adapters.
 
 ## LoHa / LoKr / LoCon / OFT / BOFT / ABBA / TLora Lessons
 
-- LoHa, LoKr, and LoCon now share enough runtime/state-dict ceremony that a
+- Several absorbed methods now share enough runtime/state-dict ceremony that a
   small PEFT-family helper for module naming, supported-target filtering,
   trainable-ref attachment, save/load loops, and loaded-runtime merge wiring is
   now a real follow-up candidate rather than a premature abstraction.
@@ -44,42 +44,43 @@ layer can settle into a better system instead of a pile of one-off adapters.
   construction repeating critical invariants. This caught/standardized missing
   rank, unsupported plain dropout, and bypass/DoRA conflicts before runtime
   surprises.
-- LoKr shows that method modules need room for algorithm-specific layout
-  decisions (`full_matrix`, `decompose_both`, `factor`, Tucker only on one
-  Kronecker factor). Avoid forcing all methods into a LoRA-shaped rank/down/up
-  abstraction too early.
+- Method modules need room for algorithm-specific layout decisions. Avoid
+  forcing every PEFT method into a LoRA-shaped rank/down/up abstraction too
+  early.
 - The current module classes duplicate target-module introspection and DoRA
   merge math. That may become a shared mixin/helper later, but only after we
   know whether future methods need exactly the same behavior. The general aim
   is deciding after all lycoris methods are in + one unrelated hf peft one.
-- DyLoRA is a useful counterexample for method shape: some PEFT methods are
-  better modeled as a training policy layered on top of a familiar weight
-  parameterization than as a brand-new factorization family. Keep the public
-  config surface focused on the extra policy knobs that actually matter.
+- Some PEFT methods are better modeled as a training policy layered on top of
+  a familiar weight parameterization than as a brand-new factorization family.
+  Keep the public config surface focused on the extra policy knobs that
+  actually matter.
 - For new repo-owned PEFT methods, especially in this early adapter-system
   phase, there is currently little reason to let hypothetical backward
   compatibility constrain the core training/runtime design. Pick the best
   native representation first; if older layout import/export support is needed
   later, prefer explicit compatibility helpers outside the main training path.
-- ABBA is a good reminder that "clever" factorization caches need explicit
-  invalidation or they quietly become stale training bugs. If a method keeps
-  an optimized derived view of trainable weights, either rebuild it per use or
-  make the invalidation story explicit and test it directly.
-- LoRA is the reminder that "legacy but still active" deserves the same
-  architectural cleanup as new method intake. Keeping the most common method on
-  a compatibility wrapper quietly leaks old target-discovery, naming, and
-  persistence assumptions into the rest of the adapter system.
+- "Legacy but still active" deserves the same architectural cleanup as new
+  method intake. Leaving a common method on a compatibility wrapper quietly
+  leaks old target-discovery, naming, and persistence assumptions into the rest
+  of the adapter system.
 - Scalar export should stay numerically boring. Folding an unconstrained
   trainable scalar into one exported factor is safer than relying on a
   symmetric `sqrt(scalar)` bake that can go invalid once training drives the
   scalar negative.
-- Method-local runtime state should stay explicit and scoped. TLora is a good
-  reminder that if a method needs per-forward state such as timestep-aware
-  masks, absorbing the method alone does not automatically justify reaching
-  into strategies or shared runtime layers. The current repo-owned TLora slice
-  intentionally stops at the method package and leaves the vendor-described
-  timestep-mask plumbing as documented follow-up work instead of widening the
-  architecture boundary implicitly.
+- Method-local runtime state should stay explicit and scoped. If a method needs
+  per-forward state such as timestep-aware masks, absorbing the method alone
+  does not automatically justify reaching into strategies or shared runtime
+  layers. Stop at the method package unless there is a clearly owned repo seam
+  to widen.
+- "One target -> one self-contained module" is common but not mandatory. The
+  current adapter/runtime seams can already support a method whose runtime owns
+  shared method-global state, as long as that ownership stays method-local
+  instead of leaking into the adapter root.
+- Shared-state methods still benefit from explicit artifact behavior even when
+  the tensors themselves are omitted. Persist the behavior explicitly in
+  adapter metadata instead of relying on empty sentinel keys in the exported
+  state dict.
 
 ## Current Coverage
 
@@ -122,7 +123,7 @@ improvements:
 - randlora ❌
 - road ❌
 - vblora ❌
-- vera ❌
+- vera ✅
 - waveft ❌
 - xlora ❌
 - tinylora ❌

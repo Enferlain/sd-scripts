@@ -200,3 +200,22 @@ general "how to implement future PEFT methods" guidance in
   `library/vendor/lycoris/docs/Algo-Details.md` and
   `library/vendor/lycoris/docs/Network-Args.md` describe the intended training
   behavior and config knobs.
+
+## VeRA
+
+- Repo-owned VeRA is the first PEFT method in this repo whose runtime owns
+  real method-global state across many adapted targets. The shared `vera_A` /
+  `vera_B` projection bank lives in the VeRA runtime, while each target-bound
+  module only learns `vera_lambda_b` / `vera_lambda_d`.
+- The active repo-owned VeRA slice still stays intentionally narrow overall:
+  plain `nn.Linear` plus Transformers-style `Conv1D` wrappers, and no HF
+  multi-adapter or bitsandbytes compatibility yet.
+- `save_projection=False` is now supported without adding sentinel state-dict
+  keys. Safetensors exports record the VeRA projection policy and
+  `projection_prng_key` in method-local metadata so shared projections can be
+  reconstructed deterministically on load, while non-safetensors artifacts fall
+  back to the active request config.
+- VeRA is a useful proof point that the current adapter layer does not need a
+  new generic "shared method state" abstraction yet. The existing runtime,
+  export/load, and trainable-ref seams are already sufficient when the method
+  package owns the shared-state details explicitly.

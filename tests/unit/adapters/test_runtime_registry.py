@@ -4,6 +4,7 @@ import types
 from pathlib import Path
 
 import pytest
+from safetensors import safe_open
 import torch
 from safetensors.torch import load_file, save_file
 
@@ -239,6 +240,56 @@ class TestAdapterRegistry:
         assert refs[0].target_path == "clip_l.proj"
         assert all(ref.source_target_ref is not None for ref in refs)
 
+    def test_registered_vera_runtime_exposes_repo_owned_trainable_refs(self):
+        from library.adapters.methods.peft.vera.module import VeraModule
+
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+                self.norm = torch.nn.LayerNorm(4)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="vera",
+                settings={"adapter_rank": 4, "dropout": 0.1, "projection_prng_key": 7, "save_projection": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.vera", request)
+        refs = adapter.describe_trainable_parameter_refs()
+
+        assert adapter.adapter_resolved_targets is resolved_targets
+        assert all(isinstance(module, VeraModule) for module in adapter.vera_modules)
+        assert {module.__class__.__module__ for module in adapter.vera_modules} == {"library.adapters.methods.peft.vera.module"}
+        assert {module.adapter_target.path for module in adapter.vera_modules} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.component for ref in refs} == {"clip_l", "unet"}
+        assert {ref.component_key for ref in refs} == {"text_encoder1", "denoiser"}
+        assert {ref.target_path for ref in refs} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.source_target_ref.selector for ref in refs if ref.source_target_ref is not None} == {"clip_l.proj", "unet.to_q"}
+        assert {ref.source_target_ref.module_type for ref in refs if ref.source_target_ref is not None} == {"Linear"}
+        assert {ref.name.split(".")[-1] for ref in refs} == {"vera_lambda_b", "vera_lambda_d"}
+        assert all("norm" not in ref.target_path for ref in refs)
+
     def test_lists_builtin_adapter_types(self):
         registrations = list_adapter_methods()
 
@@ -254,6 +305,7 @@ class TestAdapterRegistry:
             "lora",
             "oft",
             "tlora",
+            "vera",
         ]
 
     def test_resolves_repo_owned_abba_adapter_type(self):
@@ -317,6 +369,15 @@ class TestAdapterRegistry:
         assert registration.runtime_module_path == "library.adapters.methods.peft.tlora.runtime"
         assert registration.config_binding is not None
         assert registration.config_binding.config_key == "tlora"
+        assert registration.config_binding.runtime_settings_builder is not None
+
+    def test_resolves_repo_owned_vera_adapter_type(self):
+        registration = get_adapter_method("vera")
+
+        assert registration.legacy_module_path == "library.adapters.vera"
+        assert registration.runtime_module_path == "library.adapters.methods.peft.vera.runtime"
+        assert registration.config_binding is not None
+        assert registration.config_binding.config_key == "vera"
         assert registration.config_binding.runtime_settings_builder is not None
 
     def test_resolves_repo_owned_lokr_adapter_type(self):
@@ -614,6 +675,27 @@ class TestAdapterRegistry:
         assert settings["rank_dropout"] == 0.2
         assert settings["module_dropout"] == 0.1
 
+    def test_vera_registration_owns_method_config_translation(self):
+        from library.adapters.methods.peft.vera.config import PeftVeraConfig
+
+        registration = get_adapter_method("vera")
+        assert registration.config_binding is not None
+        settings = registration.config_binding.runtime_settings_builder(
+            PeftVeraConfig(
+                rank=16,
+                dropout=0.15,
+                d_initial=0.25,
+                projection_prng_key=1234,
+            )
+        )
+
+        assert registration.config_binding.config_key == "vera"
+        assert settings["adapter_rank"] == 16
+        assert settings["dropout"] == 0.15
+        assert settings["d_initial"] == 0.25
+        assert settings["projection_prng_key"] == 1234
+        assert settings["save_projection"] is True
+
     def test_loha_translation_requires_explicit_rank(self):
         from library.adapters.methods.peft.loha.config import PeftLohaConfig
 
@@ -830,6 +912,35 @@ class TestAdapterRegistry:
         with pytest.raises(ValueError, match="adapter\\.peft\\.tlora\\.dropout must be between 0.0 and 1.0 inclusive"):
             registration.config_binding.runtime_settings_builder(PeftTloraConfig(rank=4, dropout=1.5))
 
+    def test_vera_translation_requires_positive_rank(self):
+        from library.adapters.methods.peft.vera.config import PeftVeraConfig
+
+        registration = get_adapter_method("vera")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.vera\\.rank must be set to a positive integer"):
+            registration.config_binding.runtime_settings_builder(PeftVeraConfig())
+        with pytest.raises(ValueError, match="adapter\\.peft\\.vera\\.rank must be a positive integer when set"):
+            registration.config_binding.runtime_settings_builder(PeftVeraConfig(rank=0))
+
+    def test_vera_translation_rejects_out_of_range_dropout(self):
+        from library.adapters.methods.peft.vera.config import PeftVeraConfig
+
+        registration = get_adapter_method("vera")
+        assert registration.config_binding is not None
+
+        with pytest.raises(ValueError, match="adapter\\.peft\\.vera\\.dropout must be between 0.0 and 1.0 inclusive"):
+            registration.config_binding.runtime_settings_builder(PeftVeraConfig(rank=8, dropout=1.5))
+
+    def test_vera_translation_allows_unsaved_shared_projections(self):
+        from library.adapters.methods.peft.vera.config import PeftVeraConfig
+
+        registration = get_adapter_method("vera")
+        assert registration.config_binding is not None
+
+        settings = registration.config_binding.runtime_settings_builder(PeftVeraConfig(rank=8, save_projection=False))
+        assert settings["save_projection"] is False
+
     def test_resolves_abba_legacy_module_path(self):
         registration = get_adapter_method_for_legacy_module("library.adapters.abba")
 
@@ -864,6 +975,11 @@ class TestAdapterRegistry:
         registration = get_adapter_method_for_legacy_module("library.adapters.tlora")
 
         assert registration.name == "tlora"
+
+    def test_resolves_vera_legacy_module_path(self):
+        registration = get_adapter_method_for_legacy_module("library.adapters.vera")
+
+        assert registration.name == "vera"
 
     def test_build_adapter_for_legacy_module_uses_registered_wrapper(self, monkeypatch):
         captured = {}
@@ -976,6 +1092,183 @@ class TestAdapterRegistry:
         assert captured["resolved_targets"] is resolved_targets
         assert captured["dtype"] == "fp16"
         assert captured["device"] == "cpu"
+
+    def test_registered_vera_runtime_round_trips_export_and_merge(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="vera",
+                settings={"adapter_rank": 4, "dropout": 0.1, "projection_prng_key": 7, "save_projection": True},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.vera", request)
+        for parameter in adapter.parameters():
+            parameter.data.fill_(0.25)
+
+        export_path = tmp_path / "vera.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.vera", request)
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
+        assert load_info == {}
+
+        original_weight = denoiser.to_q.weight.detach().clone()
+        loaded_runtime = build_adapter_from_weights_for_legacy_module("library.adapters.vera", request, str(export_path))
+        assert isinstance(loaded_runtime, LoadedAdapterRuntime)
+        loaded_runtime.merge_into(
+            AdapterMergeRequest(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+                resolved_targets=resolved_targets,
+                dtype=torch.float32,
+                device="cpu",
+            )
+        )
+
+        assert not torch.allclose(denoiser.to_q.weight, original_weight)
+
+    def test_registered_vera_runtime_round_trips_without_saved_projections(self, tmp_path):
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        text_encoder = DummyTextEncoder()
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[text_encoder, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[True, False],
+            include_denoiser=True,
+        )
+        save_request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="vera",
+                settings={"adapter_rank": 4, "dropout": 0.1, "projection_prng_key": 7, "save_projection": False},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+        load_request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="vera",
+                settings={"adapter_rank": 4, "dropout": 0.1, "projection_prng_key": 123, "save_projection": False},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+        weights_request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="vera",
+                settings={"adapter_rank": 9, "dropout": 0.1, "projection_prng_key": 123, "save_projection": False},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.vera", save_request)
+        for parameter in adapter.parameters():
+            parameter.data.fill_(0.25)
+        source_vera_A = adapter.shared_bank.vera_A.detach().clone()
+        source_vera_B = adapter.shared_bank.vera_B.detach().clone()
+
+        export_path = tmp_path / "vera-unsaved.safetensors"
+        save_adapter_export(
+            adapter,
+            AdapterExportSaveRequest(file=str(export_path), dtype=torch.float32, metadata={"format": "test"}),
+        )
+
+        exported_state = load_file(str(export_path))
+        assert "vera_shared.vera_A" not in exported_state
+        assert "vera_shared.vera_B" not in exported_state
+        with safe_open(str(export_path), framework="pt", device="cpu") as handle:
+            metadata = handle.metadata() or {}
+        assert metadata["sd_scripts_vera.save_projection"] == "false"
+        assert metadata["sd_scripts_vera.projection_prng_key"] == "7"
+
+        fresh_adapter = build_adapter_for_legacy_module("library.adapters.vera", load_request)
+        assert fresh_adapter.shared_bank.projection_prng_key == 123
+        load_info = load_adapter_export(fresh_adapter, AdapterExportLoadRequest(file=str(export_path)))
+        assert load_info == {}
+        assert fresh_adapter.shared_bank.projection_prng_key == 7
+        assert torch.allclose(fresh_adapter.shared_bank.vera_A, source_vera_A)
+        assert torch.allclose(fresh_adapter.shared_bank.vera_B, source_vera_B)
+
+        original_weight = denoiser.to_q.weight.detach().clone()
+        loaded_runtime = build_adapter_from_weights_for_legacy_module("library.adapters.vera", weights_request, str(export_path))
+        assert isinstance(loaded_runtime, LoadedAdapterRuntime)
+        assert loaded_runtime.adapter.shared_bank.projection_prng_key == 7
+        assert loaded_runtime.adapter.shared_bank.rank == 4
+        loaded_runtime.merge_into(
+            AdapterMergeRequest(
+                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+                resolved_targets=resolved_targets,
+                dtype=torch.float32,
+                device="cpu",
+            )
+        )
+
+        assert not torch.allclose(denoiser.to_q.weight, original_weight)
+
+    def test_builds_component_module_targets_with_transformers_conv1d_when_available(self):
+        transformers_pytorch_utils = pytest.importorskip("transformers.pytorch_utils")
+        Conv1D = transformers_pytorch_utils.Conv1D
+
+        class DummyTextEncoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = Conv1D(4, 4)
+
+        resolved_targets = build_component_module_targets(
+            model_type="sd15",
+            text_encoders=[DummyTextEncoder()],
+            vae=None,
+            denoiser=None,
+            include_text_encoders=[True],
+            include_denoiser=False,
+        )
+
+        assert [target.path for target in resolved_targets.targets] == ["clip_l.proj"]
+        assert [target.module_type for target in resolved_targets.targets] == ["Conv1D"]
 
     def test_registered_loha_runtime_exposes_repo_owned_trainable_refs(self):
         from library.adapters.methods.peft.loha.module import LohaModule

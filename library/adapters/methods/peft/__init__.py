@@ -11,6 +11,7 @@ from .lokr import REGISTRATION as LOKR_REGISTRATION
 from .lora import REGISTRATION as LORA_REGISTRATION
 from .oft import REGISTRATION as OFT_REGISTRATION
 from .tlora import REGISTRATION as TLORA_REGISTRATION
+from .vera import REGISTRATION as VERA_REGISTRATION
 
 
 PEFT_METHOD_REGISTRATIONS = (
@@ -25,6 +26,7 @@ PEFT_METHOD_REGISTRATIONS = (
     LORA_REGISTRATION,
     OFT_REGISTRATION,
     TLORA_REGISTRATION,
+    VERA_REGISTRATION,
 )
 
 __all__ = [
@@ -40,4 +42,5 @@ __all__ = [
     "lora",
     "oft",
     "tlora",
+    "vera",
 ]

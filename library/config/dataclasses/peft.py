@@ -11,6 +11,7 @@ from library.adapters.methods.peft.lokr.config import PeftLokrConfig
 from library.adapters.methods.peft.lora.config import PeftLoraConfig
 from library.adapters.methods.peft.oft.config import PeftOftConfig
 from library.adapters.methods.peft.tlora.config import PeftTloraConfig
+from library.adapters.methods.peft.vera.config import PeftVeraConfig
 
 VALID_PEFT_CONTINUE_MODES = ("strict", "initialize_from_artifact")
 
@@ -51,6 +52,7 @@ class PeftConfig:
     lokr: PeftLokrConfig | None = None
     oft: PeftOftConfig | None = None
     tlora: PeftTloraConfig | None = None
+    vera: PeftVeraConfig | None = None
 
     scale_weight_norms: float | None = field(
         default=None, metadata={"help": "Scale weight norms to prevent exploding gradients (1.0 recommended)"}

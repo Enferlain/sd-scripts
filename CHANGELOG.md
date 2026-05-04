@@ -14,6 +14,10 @@ Rules:
 
 ### Added
 
+- **VeRA is now available as a repo-owned PEFT adapter method under `adapter.peft.vera`** — The active adapter runtime can now build, train, export, load, and merge a Hugging Face PEFT VeRA-style method through the same repo-owned resolved-target/runtime surface as the other modernized adapter methods.
+  - Added repo-owned VeRA config/runtime/state-dict ownership under `library/adapters/methods/peft/vera/`, with a runtime-owned shared projection bank (`vera_A` / `vera_B`), per-target learned `vera_lambda_b` / `vera_lambda_d` vectors, repo-owned trainable-ref provenance, and loaded-runtime merge behavior.
+  - Kept the repo-owned VeRA slice intentionally narrow and explicit while still covering the remaining method-local gaps: plain `nn.Linear` plus Transformers `Conv1D`-style linear wrappers, deterministic projection init via `projection_prng_key`, and metadata-backed `save_projection=False` reconstruction without adding empty sentinel state-dict keys.
+  - Added focused module/runtime/config coverage for zero-delta initialization, merged-weight consistency, registry-owned runtime construction, repo-owned trainable refs, runtime export/load/merge round-trips, and centralized config validation for the new method branch.
 - **LoRA is now a repo-owned PEFT runtime instead of the remaining legacy wrapper path** — The active adapter runtime can now build, train, export, load, and merge LoRA modules from optimization-owned resolved targets through repo-owned method code instead of delegating steady-state behavior to the older built-in adapter implementation.
   - Added repo-owned LoRA module/runtime/state-dict ownership under `library/adapters/methods/peft/lora/`, with Linear and Conv1d/2d/3d support, trainable-ref provenance, repo-owned save/load helpers, and loaded-runtime merge behavior.
   - Added focused module/runtime/config coverage for merged-weight consistency, mixed-dtype forward behavior, registry-owned runtime construction, repo-owned trainable refs, and config validation around the narrowed method-local LoRA surface.
