@@ -41,7 +41,13 @@ def _is_pointwise_kernel(kernel_size: tuple[int, ...]) -> bool:
 
 
 class LoraModule(nn.Module):
-    """Repo-owned LoRA module bound to one resolved target module."""
+    """Repo-owned LoRA module bound to one resolved target module.
+
+    The normal training path is optimized for autocast-driven mixed precision:
+    keep the wrapped forward shape close to legacy LoRA and avoid explicit
+    per-call dtype shuffles in the hot path. A narrow fallback path handles
+    unusual no-autocast dtype mismatches explicitly.
+    """
 
     export_weight_keys = _LORA_EXPORT_WEIGHT_KEYS
     detection_keys = _LORA_DETECTION_KEYS
@@ -222,10 +228,24 @@ class LoraModule(nn.Module):
         self.org_forward = self.org_module[0].forward
         self.org_module[0].forward = self.forward  # type: ignore[assignment]
 
-    def _cast_for_compute(self, x: Tensor) -> Tensor:
-        if x.dtype == self.dtype:
-            return x
-        return x.to(self.dtype)
+    def _is_autocast_active(self) -> bool:
+        if torch.is_autocast_enabled():
+            return True
+        try:
+            return torch.is_autocast_enabled("cpu")
+        except TypeError:
+            cpu_autocast_enabled = getattr(torch, "is_autocast_cpu_enabled", None)
+            return bool(cpu_autocast_enabled()) if callable(cpu_autocast_enabled) else False
+
+    def _org_dtype(self) -> torch.dtype:
+        return self.org_module[0].weight.dtype
+
+    def _needs_explicit_dtype_fallback(self, x: Tensor) -> bool:
+        if self._is_autocast_active():
+            return False
+
+        org_dtype = self._org_dtype()
+        return x.dtype != org_dtype or x.dtype != self.dtype or self.dtype != org_dtype
 
     def _apply_rank_dropout(self, x: Tensor) -> tuple[Tensor, float]:
         if self.rank_dropout <= 0.0 or not self.training:
@@ -239,14 +259,17 @@ class LoraModule(nn.Module):
         scale = self.scale * (1.0 / (1.0 - self.rank_dropout))
         return x, scale
 
-    def forward(self, x: Tensor) -> Tensor:
-        compute_input = self._cast_for_compute(x)
-        org_forwarded = self.org_forward(compute_input)
+    def _forward_with_explicit_dtype_fallback(self, x: Tensor) -> Tensor:
+        """Handle unusual no-autocast dtype mismatch cases explicitly."""
+        org_dtype = self._org_dtype()
+        org_input = x if x.dtype == org_dtype else x.to(org_dtype)
+        org_forwarded = self.org_forward(org_input)
 
         if self.module_dropout > 0.0 and self.training and torch.rand(1, device=x.device) < self.module_dropout:
             return org_forwarded.to(x.dtype) if org_forwarded.dtype != x.dtype else org_forwarded
 
-        lora_hidden = self.lora_down(compute_input)
+        lora_input = x if x.dtype == self.dtype else x.to(self.dtype)
+        lora_hidden = self.lora_down(lora_input)
 
         if self.dropout > 0.0 and self.training:
             lora_hidden = F.dropout(lora_hidden, p=self.dropout)
@@ -255,10 +278,32 @@ class LoraModule(nn.Module):
         lora_out = self.lora_up(lora_hidden)
         if lora_out.dtype != org_forwarded.dtype:
             lora_out = lora_out.to(org_forwarded.dtype)
+
         output = org_forwarded + lora_out * (self.multiplier * scale)
         if output.dtype != x.dtype:
             output = output.to(x.dtype)
         return output
+
+    def forward(self, x: Tensor) -> Tensor:
+        # Keep the common mixed-precision path as close to legacy LoRA as
+        # possible and only pay explicit dtype-alignment costs when autocast is
+        # not available to manage the computation types for us.
+        if self._needs_explicit_dtype_fallback(x):
+            return self._forward_with_explicit_dtype_fallback(x)
+
+        org_forwarded = self.org_forward(x)
+
+        if self.module_dropout > 0.0 and self.training and torch.rand(1, device=x.device) < self.module_dropout:
+            return org_forwarded
+
+        lora_hidden = self.lora_down(x)
+
+        if self.dropout > 0.0 and self.training:
+            lora_hidden = F.dropout(lora_hidden, p=self.dropout)
+
+        lora_hidden, scale = self._apply_rank_dropout(lora_hidden)
+        lora_out = self.lora_up(lora_hidden)
+        return org_forwarded + lora_out * (self.multiplier * scale)
 
     def _get_compute_device(self, device: torch.device | None) -> torch.device:
         if device is not None:

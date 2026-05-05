@@ -29,10 +29,12 @@ for now.
 
 ## Current shape
 
-The strategy layer now has four distinct roles:
+The strategy layer now has five distinct roles:
 
 - `base/contracts.py`: required strategy facets that shared trainer/runtime code
   depends on directly
+- `base/context.py`: scoped strategy-runtime facts published during active
+  strategy execution
 - `base/features.py`: optional strategy features that only some model families
   implement
 - `shared/`: cross-family strategy-owned behavior that is genuinely reused
@@ -41,6 +43,12 @@ The strategy layer now has four distinct roles:
 This means "strategy code" is broader than the required `TrainingStrategy`
 surface. A behavior can still belong to `library/strategies/` even if it is an
 optional feature or a family-local implementation detail.
+
+Current example:
+
+- denoiser forward now acts as a shared strategy execution seam where active
+  families publish `StrategyContext` facts such as phase, global step, and
+  denoiser timesteps for lower layers like adapter runtimes
 
 ## Required vs optional
 

@@ -27,6 +27,13 @@ from library.adapters import (
     save_adapter_export,
 )
 from library.adapters.runtime import AdapterMergeRequest
+from library.strategies.base.context import (
+    DenoiserContext,
+    StrategyContext,
+    StrategyPhase,
+    TrainingContext,
+    publish_strategy_context,
+)
 
 
 class TestAdapterRegistry:
@@ -2579,3 +2586,59 @@ class TestAdapterRegistry:
 
         assert not torch.allclose(denoiser.to_q.weight, original_weight)
         assert torch.allclose(denoiser.to_q.bias, original_bias)
+
+    def test_registered_tlora_runtime_derives_timestep_masks_from_strategy_context(self):
+        class DummyDenoiser(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.to_q = torch.nn.Linear(4, 4, bias=False)
+
+        denoiser = DummyDenoiser()
+        resolved_targets = build_component_module_targets(
+            model_type="sdxl",
+            text_encoders=[None, None],
+            vae=None,
+            denoiser=denoiser,
+            include_text_encoders=[False, False],
+            include_denoiser=True,
+        )
+        request = AdapterBuildRequest(
+            adapter=AdapterRuntimeSpec(
+                adapter_type="tlora",
+                settings={"adapter_rank": 4, "adapter_alpha": 4.0, "mask_min_rank": 2, "mask_alpha": 1.0},
+            ),
+            context=AdapterBuildContext(
+                model=AdapterModelContext(vae=None, text_encoder=[None, None], denoiser=denoiser),
+            ),
+            resolved_targets=resolved_targets,
+        )
+
+        adapter = build_adapter_for_legacy_module("library.adapters.tlora", request)
+        adapter.apply_to(None, denoiser, False, True)
+        for parameter in adapter.parameters():
+            parameter.data.fill_(0.25)
+
+        inputs = torch.randn(2, 4)
+        baseline = denoiser.to_q(inputs)
+
+        low_rank_context = StrategyContext(
+            phase=StrategyPhase.TRAIN,
+            model_family="sdxl",
+            training=TrainingContext(global_step=10, is_train=True),
+            denoiser=DenoiserContext(timesteps=torch.tensor([1000, 1000], dtype=torch.long), batch_size=2),
+        )
+        full_rank_context = StrategyContext(
+            phase=StrategyPhase.TRAIN,
+            model_family="sdxl",
+            training=TrainingContext(global_step=10, is_train=True),
+            denoiser=DenoiserContext(timesteps=torch.tensor([0, 0], dtype=torch.long), batch_size=2),
+        )
+
+        with publish_strategy_context(low_rank_context):
+            low_rank_output = denoiser.to_q(inputs)
+        with publish_strategy_context(full_rank_context):
+            full_rank_output = denoiser.to_q(inputs)
+
+        assert torch.allclose(baseline, full_rank_output)
+        assert not torch.allclose(low_rank_output, full_rank_output)
+        assert all(module._active_timestep_mask is None for module in adapter.tlora_modules)

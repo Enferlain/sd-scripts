@@ -17,6 +17,7 @@ from library.objectives.rectified_flow import (
     RectifiedFlowObjectiveRuntime,
     resolve_rectified_flow_prediction_type,
 )
+from library.strategies.base.context import StrategyPhase
 from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.training.diffusion import prepare_latents
 
@@ -51,6 +52,7 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         Returns:
             Tuple of (noise_pred, target, timesteps, weighting).
         """
+        phase = StrategyPhase.TRAIN if is_train else StrategyPhase.VALIDATION
         weighting: torch.Tensor | None = None
         if isinstance(objective_runtime, DDPMObjectiveRuntime):
             noise_scheduler = objective_runtime.noise_scheduler
@@ -69,7 +71,6 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             )
         else:
             rf_runtime = cast(RectifiedFlowObjectiveRuntime, objective_runtime)
-            del global_step
             resolve_rectified_flow_prediction_type(cfg.objective.prediction)
             batch_state = rf_runtime.build_training_batch_state(
                 latents,
@@ -90,10 +91,20 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
                     if t is not None and hasattr(t, "requires_grad_"):
                         t.requires_grad_(True)
 
-        with torch.set_grad_enabled(is_train), accelerator.autocast():
-            noise_pred = self.call_denoiser(
-                cfg, accelerator, unet, noisy_latents.requires_grad_(train_denoiser), timesteps, text_encoder_conds, batch, weight_dtype
-            )
+        noise_pred = self.call_denoiser(
+            cfg,
+            accelerator,
+            unet,
+            noisy_latents,
+            timesteps,
+            text_encoder_conds,
+            batch,
+            weight_dtype,
+            phase=phase,
+            global_step=global_step,
+            is_train=is_train,
+            train_denoiser=train_denoiser,
+        )
 
         if isinstance(objective_runtime, DDPMObjectiveRuntime):
             target = build_ddpm_training_target(noise_scheduler, latents, noise, timesteps, cfg.objective.prediction)
@@ -108,18 +119,22 @@ class SdxlDiffusionTrainingStrategy(DiffusionTrainingStrategy):
 
             if len(diff_output_pr_indices) > 0 and hasattr(trainable_model, "set_multiplier"):
                 trainable_model.set_multiplier(0.0)
-                with torch.no_grad(), accelerator.autocast():
-                    noise_pred_prior = self.call_denoiser(
-                        cfg,
-                        accelerator,
-                        unet,
-                        noisy_latents,
-                        timesteps,
-                        text_encoder_conds,
-                        batch,
-                        weight_dtype,
-                        indices=diff_output_pr_indices,
-                    )
+                noise_pred_prior = self.call_denoiser(
+                    cfg,
+                    accelerator,
+                    unet,
+                    noisy_latents,
+                    timesteps,
+                    text_encoder_conds,
+                    batch,
+                    weight_dtype,
+                    phase=phase,
+                    global_step=global_step,
+                    is_train=is_train,
+                    train_denoiser=False,
+                    sample_indices=tuple(diff_output_pr_indices),
+                    enable_grad=False,
+                )
                 trainable_model.set_multiplier(1.0)
                 target[diff_output_pr_indices] = noise_pred_prior.to(target.dtype)
 

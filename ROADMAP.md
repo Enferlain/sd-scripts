@@ -59,13 +59,13 @@ Current testing follow-up is about expanding coverage around the remaining riski
 
 ---
 
-## Deferred Training Features
+## Pending Training Features
 
 Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Currently fail-fast with `NotImplementedError` in `FineTuneMode.build_optimizer_params()` to prevent silent behavior differences.
 
 - [x] **Pattern-based optimizer groups** — Regex/glob-based param grouping for fine-grained LR control. Same mode-agnostic approach as block LR.
 - [ ] **Fused optimizer groups** — Multi-optimizer support with `fused_backward_pass` (per-parameter backward hooks). Complex multi-optimizer logic from legacy `sdxl_finetune.py`.
-- [ ] **PEFT module/param breakdown** — Per-component (unet, TE) module and parameter counts in training diagnostics for Adapter mode. Requires an optional adapter protocol method (`get_diagnostics_components()`) that each adapter type implements to report its own per-component allocation. `AdapterMode` already has the `hasattr` hook ready — just needs adapter-side implementations. Deferred because adapter internals vary (LoRA, LyCORIS, OFT) and LyCORIS is still external.
+- [ ] **Adapter module/param breakdown** — Per-component (unet, TE) module and parameter counts in training diagnostics for Adapter mode. Requires an optional adapter protocol method (`get_diagnostics_components()`) that each adapter type implements to report its own per-component allocation. `AdapterMode` already has the `hasattr` hook ready — just needs adapter-side implementations. Deferred because adapter internals vary (LoRA, LyCORIS, OFT) and LyCORIS is still external.
 
 > [!IMPORTANT]
 > Keep fused/block/pattern paths explicitly fail-fast (as planned), so they don't silently behave differently. Only remove the guards when proper implementations are added.
@@ -76,9 +76,8 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 
 ### Active TODOs
 
-- [ ] Work on validation in general to figure out a system for catching invalid configs, might need to be post testing
-
-Recent architecture and config settlements now belong in `CHANGELOG.md`; this section should only track active follow-up.
+- [ ] Validation layers with proper boundaries instead of some central some local
+- [ ] IMPORTANT: Research and brainstorm on the best possible form for the strategy layer. Combines with `Strategy system follow-up` from code quality todos
 
 ---
 
@@ -100,7 +99,6 @@ Recent architecture and config settlements now belong in `CHANGELOG.md`; this se
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 - [ ] Investigate naming conventions and possible drifts in the objective class and runtime layers
 - [ ] Dep version health check, lots of old versions pinned
-- [ ] Config related validation to the config validation file unless justified
 
 ### Near-Term Follow-up
 
@@ -168,6 +166,10 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [ ] Old toml to new config translator
 - [ ] Constants rework
 - [ ] Metadata system
+- [ ] Investigate the following comment 
+  > Disable cuDNN SDPA backend — broken on some H100 clusters with certain cuDNN versions.
+  > Falls back to Flash Attention or math backend.
+  > #torch.backends.cuda.enable_cudnn_sdp(False)
 
 ---
 

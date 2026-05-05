@@ -1,12 +1,16 @@
 """Unit tests for the active SD strategy concern files."""
 
 from contextlib import nullcontext
+from types import SimpleNamespace
 
 import pytest
 import torch
 from unittest.mock import Mock, patch
 
+from library.strategies.base.context import StrategyContext, StrategyPhase, current_strategy_context
 from library.strategies.sd.caching import SdLatentsPipelineStrategy, SdTextEncoderPipelineStrategy
+from library.strategies.sd.denoiser import SdDenoiserCallingStrategy
+from library.strategies.sd.diffusion import SdDiffusionTrainingStrategy
 from library.strategies.sd.encoding import SdTextEncodingStrategy
 from library.strategies.sd.tokenization import SdTokenizeStrategy
 from library.strategies.sd.training import SdTrainingStrategy
@@ -15,6 +19,10 @@ from library.strategies.sd.training import SdTrainingStrategy
 # =============================================================================
 # Mock Fixtures
 # =============================================================================
+
+
+class _TestSdDenoiserStrategy(SdDiffusionTrainingStrategy, SdDenoiserCallingStrategy):
+    pass
 
 
 @pytest.fixture
@@ -487,3 +495,87 @@ class TestSdTrainingStrategyComposition:
         )
 
         mock_encode_tokens.assert_called_once()
+
+
+@pytest.mark.unit
+def test_sd_get_noise_pred_and_target_publishes_denoiser_forward_contexts() -> None:
+    latents = torch.zeros(3, 1, 2, 2)
+    noise = torch.ones_like(latents)
+    timesteps = torch.tensor([100, 200, 300], dtype=torch.long)
+    noisy_latents = torch.full_like(latents, 0.5)
+    observed_contexts: list[StrategyContext] = []
+
+    class _RecordingDenoiser:
+        def __call__(self, model_input, denoiser_timesteps, text_cond_tensor):
+            del denoiser_timesteps, text_cond_tensor
+            context = current_strategy_context()
+            assert context is not None
+            observed_contexts.append(context)
+            return SimpleNamespace(sample=torch.ones_like(model_input))
+
+    strategy = _TestSdDenoiserStrategy()
+    cfg = SimpleNamespace(
+        model=SimpleNamespace(model_type="sd1"),
+        objective=SimpleNamespace(prediction="epsilon"),
+        loss=SimpleNamespace(regularization=None),
+        timestep=SimpleNamespace(),
+        training=SimpleNamespace(),
+        performance=SimpleNamespace(memory=SimpleNamespace(gradient_checkpointing=False)),
+    )
+    accelerator = SimpleNamespace(device=torch.device("cpu"), autocast=lambda: nullcontext())
+    objective_runtime = SimpleNamespace(noise_scheduler=Mock(), timestep_runtime=None)
+    trainable_model = SimpleNamespace(set_multiplier=Mock())
+    batch = {
+        "custom_attributes": [
+            {"diff_output_preservation": True},
+            {},
+            {"diff_output_preservation": True},
+        ]
+    }
+
+    with (
+        patch(
+            "library.strategies.sd.diffusion.prepare_ddpm_training_inputs",
+            return_value=(noise, noisy_latents, timesteps),
+        ),
+        patch(
+            "library.strategies.sd.diffusion.build_ddpm_training_target",
+            return_value=torch.zeros_like(latents),
+        ),
+    ):
+        strategy.get_noise_pred_and_target(
+            cfg=cfg,
+            accelerator=accelerator,
+            objective_runtime=objective_runtime,
+            latents=latents,
+            batch=batch,
+            text_encoder_conds=[torch.randn(3, 4, 5)],
+            denoiser=_RecordingDenoiser(),
+            trainable_model=trainable_model,
+            weight_dtype=torch.float32,
+            train_denoiser=True,
+            is_train=True,
+            global_step=42,
+        )
+
+    assert len(observed_contexts) == 2
+    normal_context, indexed_context = observed_contexts
+    assert normal_context.phase is StrategyPhase.TRAIN
+    assert normal_context.model_family == "sd1"
+    assert normal_context.training is not None
+    assert normal_context.training.global_step == 42
+    assert normal_context.training.is_train is True
+    assert normal_context.denoiser is not None
+    assert torch.equal(normal_context.denoiser.timesteps, timesteps)
+    assert normal_context.denoiser.sample_indices is None
+    assert normal_context.denoiser.batch_size == 3
+
+    assert indexed_context.phase is StrategyPhase.TRAIN
+    assert indexed_context.training is not None
+    assert indexed_context.training.global_step == 42
+    assert indexed_context.training.is_train is True
+    assert indexed_context.denoiser is not None
+    assert torch.equal(indexed_context.denoiser.timesteps, torch.tensor([100, 300]))
+    assert indexed_context.denoiser.sample_indices == (0, 2)
+    assert indexed_context.denoiser.batch_size == 2
+    assert current_strategy_context() is None

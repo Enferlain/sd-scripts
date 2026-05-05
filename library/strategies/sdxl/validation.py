@@ -30,6 +30,7 @@ class SdxlValidationStrategy(ValidationStrategy):
         train_text_encoder: bool = True,
         train_denoiser: bool = True,
         timesteps_list: list[int] | None = None,
+        global_step: int = 0,
     ) -> torch.Tensor:
         """
         Process a batch for SDXL validation loss.
@@ -48,6 +49,7 @@ class SdxlValidationStrategy(ValidationStrategy):
             train_text_encoder: Train text encoder flag.
             train_denoiser: Train denoiser flag.
             timesteps_list: List of timesteps for validation.
+            global_step: Current training step for strategy context.
 
         Returns:
             Validation loss.
@@ -92,6 +94,7 @@ class SdxlValidationStrategy(ValidationStrategy):
                     train_denoiser,
                     fixed_timesteps,
                     is_train=False,
+                    global_step=global_step,
                 )
 
                 loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
@@ -180,6 +183,7 @@ class SdxlValidationStrategy(ValidationStrategy):
                     cfg,
                     train_text_encoder=train_text_encoder,
                     timesteps_list=timesteps_list,
+                    global_step=global_step,
                 )
                 total_loss += loss.detach().item()
             current_val_loss = total_loss / validation_steps

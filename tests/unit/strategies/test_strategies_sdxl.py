@@ -8,15 +8,21 @@ import pytest
 import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
-from library.objectives.ddpm import DDPMObjectiveRuntime
 from library.losses.loss_modifiers import NoOpLossModifier
+from library.objectives.ddpm import DDPMObjectiveRuntime
 from library.objectives.rectified_flow import RectifiedFlowObjectiveRuntime
+from library.strategies.base.context import StrategyContext, StrategyPhase, current_strategy_context
 from library.strategies.sdxl.checkpointing import SdxlCheckpointingStrategy
+from library.strategies.sdxl.denoiser import SdxlDenoiserCallingStrategy
 from library.strategies.sdxl.diffusion import SdxlDiffusionTrainingStrategy, build_sdxl_flow_target
 from library.strategies.sdxl.encoding import SdxlTextEncodingStrategy
 from library.strategies.sdxl.tokenization import SdxlTokenizeStrategy
 from library.strategies.sdxl.training import SdxlTrainingStrategy
 from library.strategies.sdxl.validation import SdxlValidationStrategy
+
+
+class _TestSdxlDenoiserStrategy(SdxlDiffusionTrainingStrategy, SdxlDenoiserCallingStrategy):
+    pass
 
 
 # =============================================================================
@@ -412,6 +418,7 @@ def test_sdxl_get_noise_pred_and_target_rectified_flow_uses_rf_target_and_weight
     noise_pred = torch.ones_like(latents)
 
     cfg = SimpleNamespace(
+        model=SimpleNamespace(model_type="sdxl"),
         objective=SimpleNamespace(prediction="flow"),
         performance=SimpleNamespace(memory=SimpleNamespace(gradient_checkpointing=False)),
     )
@@ -453,6 +460,104 @@ def test_sdxl_get_noise_pred_and_target_rectified_flow_uses_rf_target_and_weight
     assert torch.equal(target, noise - latents)
     assert torch.equal(result_timesteps, timesteps)
     assert torch.equal(result_weighting, weighting)
+
+
+@pytest.mark.unit
+def test_sdxl_get_noise_pred_and_target_publishes_denoiser_forward_contexts() -> None:
+    observed_contexts: list[StrategyContext] = []
+    latents = torch.zeros(3, 1, 2, 2)
+    noise = torch.ones_like(latents)
+    timesteps = torch.tensor([100, 200, 300], dtype=torch.long)
+    noisy_model_input = torch.full_like(latents, 0.5)
+
+    class _RecordingDenoiser:
+        def __call__(self, model_input, denoiser_timesteps, text_embedding, vector_embedding):
+            del denoiser_timesteps, text_embedding, vector_embedding
+            context = current_strategy_context()
+            assert context is not None
+            observed_contexts.append(context)
+            return torch.ones_like(model_input)
+
+    strategy = _TestSdxlDenoiserStrategy()
+
+    cfg = SimpleNamespace(
+        model=SimpleNamespace(model_type="sdxl"),
+        objective=SimpleNamespace(prediction="flow"),
+        performance=SimpleNamespace(memory=SimpleNamespace(gradient_checkpointing=False)),
+    )
+    accelerator = SimpleNamespace(device=torch.device("cpu"), autocast=lambda: nullcontext())
+    objective_runtime = RectifiedFlowObjectiveRuntime(
+        name="rectified_flow",
+        num_train_timesteps=1000,
+        timestep_runtime=None,
+        loss_modifier=NoOpLossModifier(),
+        timestep_config=TimestepConfig(),
+        loss_weighting_scheme="none",
+    )
+    objective_runtime.build_training_batch_state = Mock(
+        return_value=SimpleNamespace(
+            noise=noise,
+            noisy_model_input=noisy_model_input,
+            timesteps=timesteps,
+            sigmas=torch.full((3, 1, 1, 1), 0.5),
+            loss_weighting=None,
+        )
+    )
+
+    trainable_model = SimpleNamespace(set_multiplier=Mock())
+    batch = {
+        "conditionings": [
+            SimpleNamespace(original_size_hw=(1024, 1024), crop_top_left=(0, 0), target_size_hw=(1024, 1024)),
+            SimpleNamespace(original_size_hw=(1024, 1024), crop_top_left=(0, 0), target_size_hw=(1024, 1024)),
+            SimpleNamespace(original_size_hw=(1024, 1024), crop_top_left=(0, 0), target_size_hw=(1024, 1024)),
+        ],
+        "custom_attributes": [
+            {"diff_output_preservation": True},
+            {},
+            {"diff_output_preservation": True},
+        ],
+    }
+
+    strategy.get_noise_pred_and_target(
+        cfg=cfg,
+        accelerator=accelerator,
+        objective_runtime=objective_runtime,
+        latents=latents,
+        batch=batch,
+        text_encoder_conds=(
+            torch.ones(3, 77, 1280),
+            torch.ones(3, 77, 1280),
+            torch.ones(3, 1280),
+        ),
+        unet=_RecordingDenoiser(),
+        trainable_model=trainable_model,
+        weight_dtype=torch.float32,
+        train_denoiser=True,
+        is_train=True,
+        global_step=42,
+    )
+
+    assert len(observed_contexts) == 2
+    normal_context, indexed_context = observed_contexts
+    assert normal_context.phase is StrategyPhase.TRAIN
+    assert normal_context.model_family == "sdxl"
+    assert normal_context.training is not None
+    assert normal_context.training.global_step == 42
+    assert normal_context.training.is_train is True
+    assert normal_context.denoiser is not None
+    assert torch.equal(normal_context.denoiser.timesteps, timesteps)
+    assert normal_context.denoiser.sample_indices is None
+    assert normal_context.denoiser.batch_size == 3
+
+    assert indexed_context.phase is StrategyPhase.TRAIN
+    assert indexed_context.training is not None
+    assert indexed_context.training.global_step == 42
+    assert indexed_context.training.is_train is True
+    assert indexed_context.denoiser is not None
+    assert torch.equal(indexed_context.denoiser.timesteps, torch.tensor([100, 300]))
+    assert indexed_context.denoiser.sample_indices == (0, 2)
+    assert indexed_context.denoiser.batch_size == 2
+    assert current_strategy_context() is None
 
 
 @pytest.mark.unit

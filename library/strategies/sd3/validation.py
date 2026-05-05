@@ -18,6 +18,7 @@ class Sd3ValidationStrategy(ValidationStrategy):
 
     def process_val_batch(
         self,
+        global_step: int,
         batch: Any,
         text_encoders: list[Any],
         denoiser: Any,
@@ -76,6 +77,7 @@ class Sd3ValidationStrategy(ValidationStrategy):
                     train_denoiser,
                     fixed_timesteps=fixed_timesteps,
                     is_train=False,
+                    global_step=global_step,
                 )
 
                 loss = conditional_loss(noise_pred.float(), target.float(), "l2", "none", None)
@@ -129,6 +131,7 @@ class Sd3ValidationStrategy(ValidationStrategy):
                 val_dataloader_state = random.getstate()
                 random.setstate(val_original_state)
                 loss = self.process_val_batch(
+                    global_step,
                     batch,
                     text_encoders,
                     denoiser,

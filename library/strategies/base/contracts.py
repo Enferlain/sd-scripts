@@ -7,6 +7,7 @@ import torch
 
 from library.losses.loss_modifiers import BatchLossOutput
 from library.objectives.base import ObjectiveRuntime
+from library.strategies.base.context import StrategyPhase
 
 
 class ModelConditioning(ABC):  # noqa: B024 - Marker class, no abstract methods
@@ -424,12 +425,16 @@ class DenoiserCallingStrategy(ABC):
         text_conds: Any,
         batch: Any,
         weight_dtype: torch.dtype,
-        **kwargs,
+        *,
+        phase: StrategyPhase,
+        global_step: int,
+        is_train: bool,
+        train_denoiser: bool = True,
+        sample_indices: tuple[int, ...] | None = None,
+        enable_grad: bool | None = None,
     ) -> torch.Tensor:
         """
         Call the denoiser with architecture-specific arguments.
-
-        SDXL adds added_cond_kwargs for size/crop conditioning.
 
         Args:
             cfg: Configuration object.
@@ -440,7 +445,12 @@ class DenoiserCallingStrategy(ABC):
             text_conds: Text conditioning embeddings.
             batch: The current data batch.
             weight_dtype: Data type for calculations.
-            **kwargs: Additional architecture-specific arguments.
+            phase: Current strategy phase for scoped context publication.
+            global_step: Active training step associated with this denoiser call.
+            is_train: Whether the surrounding strategy execution is training.
+            train_denoiser: Whether gradients should flow to the denoiser input.
+            sample_indices: Optional selected sample indices for indexed passes.
+            enable_grad: Optional override for grad-enabled execution.
 
         Returns:
             The noise prediction tensor.

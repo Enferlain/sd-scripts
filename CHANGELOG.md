@@ -10,6 +10,24 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-04]
+
+### Added
+
+- **The strategy layer now exposes scoped runtime facts through `StrategyContext` during denoiser forward** — Active diffusion families can now publish phase, model family, global step, timesteps, and selected sample indices for the duration of denoiser execution, giving lower library layers one shared read path instead of new per-method parameter threading.
+  - Added `library/strategies/base/context.py` plus focused unit coverage for scoped publication, nested restoration, absence-safe reads, and read-only context records.
+  - Added focused SD, SDXL, and SD3 strategy coverage proving denoiser-forward context is visible only during the intended train/validation forward scopes, including indexed prior-preservation passes.
+
+### Changed
+
+- **The denoiser strategy seam now carries explicit runtime facts without introducing a separate request/helper layer** — `DenoiserCallingStrategy` now defines the denoiser-forward runtime facts directly in its signature, while SD, SDXL, and SD3 denoiser facets publish `StrategyContext` locally inside their family-owned denoiser execution paths.
+  - Migrated SD, SDXL, and SD3 diffusion/denoiser paths off the temporary request/helper shape, kept `contracts.py` definition-oriented, and threaded `global_step` through SD and SD3 validation denoiser paths so train/validation contexts stay aligned.
+
+### Fixed
+
+- **Repo-owned TLora now consumes published strategy timesteps through the PEFT runtime boundary instead of staying method-local-only** — The TLora runtime now reads `StrategyContext.denoiser.timesteps`, derives timestep masks per forward, applies them to TLora modules in scope, and clears the transient mask state after execution.
+  - Added receiver-side registry/runtime coverage proving TLora output changes with published timesteps and that temporary mask state does not leak after the forward returns.
+
 ## [2026-05-03]
 
 ### Added

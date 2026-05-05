@@ -76,6 +76,36 @@ def test_lora_module_forward_accepts_mixed_input_dtype_and_restores_original_dty
     assert torch.allclose(actual, expected, atol=1e-6, rtol=1e-5)
 
 
+def test_lora_module_uses_hot_path_under_autocast_even_when_adapter_dtype_differs():
+    target = torch.nn.Linear(4, 4, bias=True)
+    module = LoraModule.from_target_module("lora_linear", target, config=LoraConfig(lora_dim=2, alpha=2.0))
+    module.to(dtype=torch.float32)
+    inputs = torch.randn(5, 4, dtype=torch.bfloat16)
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        assert module._needs_explicit_dtype_fallback(inputs) is False
+
+
+def test_lora_module_hot_path_matches_manual_reference_under_autocast():
+    torch.manual_seed(33)
+    target = torch.nn.Linear(4, 4, bias=True)
+    module = LoraModule.from_target_module("lora_linear", target, config=LoraConfig(lora_dim=2, alpha=2.0))
+    module.eval()
+    _fill_nonzero_weights(module)
+    inputs = torch.randn(5, 4, dtype=torch.bfloat16)
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        actual = module(inputs)
+
+    org = F.linear(inputs.float(), target.weight.float(), target.bias.float())
+    lora_hidden = F.linear(inputs.float(), module.lora_down.weight.float())
+    lora_out = F.linear(lora_hidden, module.lora_up.weight.float())
+    expected = (org + lora_out * (module.multiplier * module.scale)).to(actual.dtype)
+
+    assert actual.dtype == inputs.dtype
+    assert torch.allclose(actual, expected, atol=5e-3, rtol=5e-3)
+
+
 def test_lora_module_export_round_trip_preserves_merged_weight():
     torch.manual_seed(37)
     target = torch.nn.Conv1d(4, 6, kernel_size=1, bias=False)

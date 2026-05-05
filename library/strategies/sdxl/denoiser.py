@@ -1,8 +1,7 @@
-from typing import Any
-
 import torch
 
 from library.models.sdxl.conversion import get_size_embeddings
+from library.strategies.base.context import DenoiserContext, StrategyContext, TrainingContext, publish_strategy_context
 from library.strategies.base.contracts import DenoiserCallingStrategy
 from library.strategies.sdxl.conditioning import SdxlConditioning
 
@@ -12,37 +11,54 @@ class SdxlDenoiserCallingStrategy(DenoiserCallingStrategy):
 
     def call_denoiser(
         self,
-        cfg: Any,
-        accelerator: Any,
-        denoiser: Any,
-        noisy_latents: torch.Tensor,
-        timesteps: torch.Tensor,
-        text_conds: Any,
-        batch: Any,
-        weight_dtype: torch.dtype,
-        **kwargs,
+        cfg,
+        accelerator,
+        denoiser,
+        noisy_latents,
+        timesteps,
+        text_conds,
+        batch,
+        weight_dtype,
+        *,
+        phase,
+        global_step,
+        is_train,
+        train_denoiser=True,
+        sample_indices=None,
+        enable_grad=None,
     ) -> torch.Tensor:
         """
         Call the SDXL UNet with micro-conditioning and text-conditioning.
 
-        Args:
-            cfg: Configuration object.
-            accelerator: Accelerator instance.
-            denoiser: Denoiser model.
-            noisy_latents: Noisy latents tensor.
-            timesteps: Timesteps tensor.
-            text_conds: Tuple of text conditioning (encoder_hidden_states1, encoder_hidden_states2, pool2).
-            batch: Batch data.
-            weight_dtype: Weight data type.
-            **kwargs: Additional arguments.
-
         Returns:
             Noise prediction tensor.
         """
-        indices = kwargs.get("indices")
+        index_list: list[int] | None = None
+        published_timesteps = timesteps
+        batch_size = int(noisy_latents.shape[0]) if noisy_latents.ndim > 0 else None
+
+        if sample_indices is not None and len(sample_indices) > 0:
+            index_list = list(sample_indices)
+            published_timesteps = timesteps[index_list]
+            batch_size = len(index_list)
+
+        strategy_context = StrategyContext(
+            phase=phase,
+            model_family=getattr(getattr(cfg, "model", None), "model_type", None),
+            training=TrainingContext(global_step=global_step, is_train=is_train),
+            denoiser=DenoiserContext(
+                timesteps=published_timesteps,
+                sample_indices=sample_indices,
+                batch_size=batch_size,
+            ),
+        )
 
         conditionings = batch["conditionings"]
-        orig_size, crop_size, target_size = self._extract_conditioning_tensors(conditionings, accelerator.device, weight_dtype)
+        orig_size, crop_size, target_size = self._extract_conditioning_tensors(
+            conditionings,
+            accelerator.device,
+            weight_dtype,
+        )
         embs = get_size_embeddings(orig_size, crop_size, target_size, accelerator.device).to(weight_dtype)
 
         encoder_hidden_states1, encoder_hidden_states2, pool2 = text_conds
@@ -57,15 +73,17 @@ class SdxlDenoiserCallingStrategy(DenoiserCallingStrategy):
 
         vector_embedding = torch.cat([pool2, embs], dim=1).to(weight_dtype)
         text_embedding = torch.cat([encoder_hidden_states1, encoder_hidden_states2], dim=2).to(weight_dtype)
+        grad_enabled = is_train if enable_grad is None else enable_grad
+        model_input = noisy_latents.requires_grad_(train_denoiser)
 
-        if indices is not None and len(indices) > 0:
-            noisy_latents = noisy_latents[indices]
-            timesteps = timesteps[indices]
-            text_embedding = text_embedding[indices]
-            vector_embedding = vector_embedding[indices]
+        with publish_strategy_context(strategy_context), torch.set_grad_enabled(grad_enabled), accelerator.autocast():
+            if index_list is not None:
+                model_input = model_input[index_list]
+                timesteps = timesteps[index_list]
+                text_embedding = text_embedding[index_list]
+                vector_embedding = vector_embedding[index_list]
 
-        noise_pred = denoiser(noisy_latents, timesteps, text_embedding, vector_embedding)
-        return noise_pred
+            return denoiser(model_input, timesteps, text_embedding, vector_embedding)
 
     def _extract_conditioning_tensors(
         self,

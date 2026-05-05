@@ -13,6 +13,7 @@ from library.objectives.ddpm import (
     post_process_ddpm_loss,
     prepare_ddpm_training_inputs,
 )
+from library.strategies.base.context import StrategyPhase
 from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.training.diffusion import prepare_latents
 
@@ -37,6 +38,7 @@ class SdDiffusionTrainingStrategy(DiffusionTrainingStrategy):
         global_step: int = 0,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
         """Sample noise, call the denoiser, and build the training target."""
+        phase = StrategyPhase.TRAIN if is_train else StrategyPhase.VALIDATION
         ddpm_runtime = cast(DDPMObjectiveRuntime, objective_runtime)
         noise_scheduler = ddpm_runtime.noise_scheduler
         noise, noisy_latents, timesteps = prepare_ddpm_training_inputs(
@@ -58,17 +60,20 @@ class SdDiffusionTrainingStrategy(DiffusionTrainingStrategy):
             for t in text_encoder_conds:
                 t.requires_grad_(True)
 
-        with torch.set_grad_enabled(is_train), accelerator.autocast():
-            noise_pred = self.call_denoiser(
-                cfg,
-                accelerator,
-                denoiser,
-                noisy_latents.requires_grad_(train_denoiser),
-                timesteps,
-                text_encoder_conds,
-                batch,
-                weight_dtype,
-            )
+        noise_pred = self.call_denoiser(
+            cfg,
+            accelerator,
+            denoiser,
+            noisy_latents,
+            timesteps,
+            text_encoder_conds,
+            batch,
+            weight_dtype,
+            phase=phase,
+            global_step=global_step,
+            is_train=is_train,
+            train_denoiser=train_denoiser,
+        )
 
         target = build_ddpm_training_target(noise_scheduler, latents, noise, timesteps, cfg.objective.prediction)
 
@@ -80,18 +85,22 @@ class SdDiffusionTrainingStrategy(DiffusionTrainingStrategy):
 
             if len(diff_output_pr_indices) > 0 and hasattr(trainable_model, "set_multiplier"):
                 trainable_model.set_multiplier(0.0)
-                with torch.no_grad(), accelerator.autocast():
-                    noise_pred_prior = self.call_denoiser(
-                        cfg,
-                        accelerator,
-                        denoiser,
-                        noisy_latents,
-                        timesteps,
-                        text_encoder_conds,
-                        batch,
-                        weight_dtype,
-                        indices=diff_output_pr_indices,
-                    )
+                noise_pred_prior = self.call_denoiser(
+                    cfg,
+                    accelerator,
+                    denoiser,
+                    noisy_latents,
+                    timesteps,
+                    text_encoder_conds,
+                    batch,
+                    weight_dtype,
+                    phase=phase,
+                    global_step=global_step,
+                    is_train=is_train,
+                    train_denoiser=False,
+                    sample_indices=tuple(diff_output_pr_indices),
+                    enable_grad=False,
+                )
                 trainable_model.set_multiplier(1.0)
                 target[diff_output_pr_indices] = noise_pred_prior.to(target.dtype)
 

@@ -73,6 +73,11 @@ layer can settle into a better system instead of a pile of one-off adapters.
   does not automatically justify reaching into strategies or shared runtime
   layers. Stop at the method package unless there is a clearly owned repo seam
   to widen.
+- After the strategy layer grows a real scoped runtime seam, the PEFT runtime
+  should be the receiver boundary for method-local state translation. TLora now
+  follows that pattern: strategies publish denoiser timesteps through
+  `StrategyContext`, the TLora runtime reads that context and derives masks,
+  and the raw TLora module stays focused on consuming the already-shaped mask. (This is invalid, it should be adapter -> then peft -> then specific method and this is a current concern, not later)
 - "One target -> one self-contained module" is common but not mandatory. The
   current adapter/runtime seams can already support a method whose runtime owns
   shared method-global state, as long as that ownership stays method-local
@@ -81,6 +86,17 @@ layer can settle into a better system instead of a pile of one-off adapters.
   the tensors themselves are omitted. Persist the behavior explicitly in
   adapter metadata instead of relying on empty sentinel keys in the exported
   state dict.
+- For methods that wrap hundreds of small modules, steady-state forward
+  performance needs to be treated as a first-class design concern. On the
+  repo-owned LoRA refresh, the meaningful win came from restoring a legacy-like
+  hot path under autocast and pushing explicit dtype alignment out of the
+  common per-forward path. Repeated `to` / `_to_copy` / `copy_` work across
+  every wrapped module was measurably slower than relying on autocast for the
+  normal mixed-precision case.
+- When a method needs dtype fallback behavior, prefer a two-path design:
+  one hot path for the normal training setup and one narrow fallback path for
+  unusual no-autocast or mismatched-dtype situations. Do not let the fallback
+  shape dictate the cost of the common path.
 
 ## Current Coverage
 

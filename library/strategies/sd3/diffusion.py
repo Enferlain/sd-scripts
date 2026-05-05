@@ -12,6 +12,7 @@ from library.objectives.rectified_flow import (
     RectifiedFlowObjectiveRuntime,
     resolve_rectified_flow_prediction_type,
 )
+from library.strategies.base.context import StrategyPhase
 from library.strategies.base.contracts import DiffusionTrainingStrategy
 from library.strategies.sd3.encoding import Sd3TextConditioning
 from library.training.diffusion import prepare_latents
@@ -53,7 +54,7 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Sample SD3 flow noise, run MMDiT, and build the flow-matching target."""
         rf_runtime = cast(RectifiedFlowObjectiveRuntime, objective_runtime)
-        del global_step
+        phase = StrategyPhase.TRAIN if is_train else StrategyPhase.VALIDATION
         resolve_rectified_flow_prediction_type(cfg.objective.prediction)
 
         batch_state = rf_runtime.build_training_batch_state(
@@ -71,17 +72,20 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
                 if text_cond is not None and text_cond.dtype.is_floating_point:
                     text_cond.requires_grad_(True)
 
-        with torch.set_grad_enabled(is_train), accelerator.autocast():
-            model_pred = self.call_denoiser(
-                cfg,
-                accelerator,
-                denoiser,
-                noisy_model_input.requires_grad_(train_denoiser),
-                timesteps,
-                text_encoder_conds,
-                batch,
-                weight_dtype,
-            )
+        model_pred = self.call_denoiser(
+            cfg,
+            accelerator,
+            denoiser,
+            noisy_model_input,
+            timesteps,
+            text_encoder_conds,
+            batch,
+            weight_dtype,
+            phase=phase,
+            global_step=global_step,
+            is_train=is_train,
+            train_denoiser=train_denoiser,
+        )
 
         weighting = batch_state.loss_weighting
         target = build_sd3_flow_target(latents, batch_state.noise)
@@ -94,18 +98,22 @@ class Sd3DiffusionTrainingStrategy(DiffusionTrainingStrategy):
 
             if diff_output_pr_indices and hasattr(trainable_model, "set_multiplier"):
                 trainable_model.set_multiplier(0.0)
-                with torch.no_grad(), accelerator.autocast():
-                    model_pred_prior = self.call_denoiser(
-                        cfg,
-                        accelerator,
-                        denoiser,
-                        noisy_model_input,
-                        timesteps,
-                        text_encoder_conds,
-                        batch,
-                        weight_dtype,
-                        indices=diff_output_pr_indices,
-                    )
+                model_pred_prior = self.call_denoiser(
+                    cfg,
+                    accelerator,
+                    denoiser,
+                    noisy_model_input,
+                    timesteps,
+                    text_encoder_conds,
+                    batch,
+                    weight_dtype,
+                    phase=phase,
+                    global_step=global_step,
+                    is_train=is_train,
+                    train_denoiser=False,
+                    sample_indices=tuple(diff_output_pr_indices),
+                    enable_grad=False,
+                )
                 trainable_model.set_multiplier(1.0)
                 target[diff_output_pr_indices] = model_pred_prior.to(target.dtype)
 

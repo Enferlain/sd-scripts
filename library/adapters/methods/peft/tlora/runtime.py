@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from types import MethodType
 from typing import Any
 
 from torch import nn
 
 from library.adapters.runtime import AdapterBuildRequest, AdapterMergeRequest, LoadedAdapterRuntime
 from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider
+from library.strategies.base.context import current_strategy_context
 
-from .module import SUPPORTED_MODULE_TYPES, TloraConfig, TloraModule
+from .module import SUPPORTED_MODULE_TYPES, TloraConfig, TloraModule, compute_timestep_mask_batch
 from .state_dict import load_tlora_state_dict, save_tlora_state_dict
 
 
@@ -20,17 +22,7 @@ def _iter_supported_targets(resolved_targets) -> list:
 
 
 class TloraAdapterRuntime(nn.Module):
-    """Repo-owned runtime for TLora modules.
-
-    Note:
-        The active repo-owned training path does not yet wire TLora's
-        timestep-mask scheduling into the shared denoiser/strategy layers.
-        The method-local mask helpers and the intended training behavior are
-        documented in the vendored LyCORIS references:
-        - ``library/vendor/lycoris/lycoris/modules/tlora.py``
-        - ``library/vendor/lycoris/docs/Algo-Details.md``
-        - ``library/vendor/lycoris/docs/Network-Args.md``
-    """
+    """Repo-owned runtime for TLora modules."""
 
     def __init__(
         self,
@@ -56,6 +48,7 @@ class TloraAdapterRuntime(nn.Module):
 
     def apply_to(self, *_args) -> None:
         for module in self.tlora_modules:
+            self._wrap_module_forward(module)
             module.apply_to()
 
     def prepare_grad_etc(self, *_args) -> None:
@@ -107,6 +100,34 @@ class TloraAdapterRuntime(nn.Module):
 
     def save_weights(self, file: str, dtype, metadata: dict[str, str] | None):
         save_tlora_state_dict(self.tlora_modules, file, dtype=dtype, metadata=metadata)
+
+    def _resolve_timestep_mask(self, module: TloraModule):
+        context = current_strategy_context()
+        if context is None or context.denoiser is None or context.denoiser.timesteps is None:
+            return None
+        return compute_timestep_mask_batch(
+            context.denoiser.timesteps,
+            max_timestep=self.mask_max_timestep,
+            max_rank=module.lora_dim,
+            min_rank=self.mask_min_rank,
+            alpha=self.mask_alpha,
+        )
+
+    def _wrap_module_forward(self, module: TloraModule) -> None:
+        if getattr(module, "_strategy_context_wrapped", False):
+            return
+        original_forward = module.forward
+
+        def forward_with_strategy_context(tlora_module: TloraModule, x, *args, **kwargs):
+            mask = self._resolve_timestep_mask(tlora_module)
+            tlora_module.set_timestep_mask(mask)
+            try:
+                return original_forward(x, *args, **kwargs)
+            finally:
+                tlora_module.clear_timestep_mask()
+
+        module.forward = MethodType(forward_with_strategy_context, module)
+        module._strategy_context_wrapped = True
 
 
 def _attach_trainable_ref_provider(adapter: TloraAdapterRuntime, request: AdapterBuildRequest) -> TloraAdapterRuntime:
