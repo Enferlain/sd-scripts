@@ -97,6 +97,22 @@ layer can settle into a better system instead of a pile of one-off adapters.
   one hot path for the normal training setup and one narrow fallback path for
   unusual no-autocast or mismatched-dtype situations. Do not let the fallback
   shape dictate the cost of the common path.
+- Adapter methods should own adapter math and method-local artifact behavior;
+  shared runtime should own binding, patching, rebinding, and lifecycle
+  mechanics. Do not let each method quietly invent its own version of the
+  installation protocol.
+- Monkeypatching `forward` is an acceptable injection mechanism only if the
+  repo owns it consciously as runtime behavior. If the method layer keeps this
+  model, it should converge on one shared adapter-binding seam instead of
+  repeating slightly different `apply_to()` patterns in each method module.
+- Mutable references to the bound target module are valid when the runtime
+  needs rebinding, but the mutation protocol should be explicit. Prefer a
+  named binding/reference abstraction or setter-style API over clever
+  one-element containers when the shared adapter runtime is ready to absorb
+  that concern.
+- Tests should verify intended adapter/runtime semantics rather than force the
+  method shape indirectly. If a behavior matters enough to preserve, write the
+  semantic rule down here first, then let tests enforce that rule.
 
 ## Current Coverage
 

@@ -88,7 +88,7 @@ NEW FLOW:
 │   - Caption loading                                             │
 ├─────────────────────────────────────────────────────────────────┤
 │ PHASE 2: Cache (once, skip if cached)                           │
-│   CachingEngine + CacheBackend → .safetensors files          │
+│   CachingEngine + CacheBackend → .safetensors files             │
 │   - VAE latent encoding                                         │
 │   - TE output encoding (optional)                               │
 │   - Multi-GPU distributed                                       │

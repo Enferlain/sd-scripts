@@ -150,7 +150,11 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 
 - [ ] Selective activation checkpointing
 
-- [ ] Database for run settings/combinations to be able to build a model for resurce usages based on actual training run effects
+- [ ] Run warehouse for experiment metadata, telemetry, artifacts, and outcomes
+  - pports resource modeling
+  - pports config/result analytics
+  - pports reproducibility and regression tracking
+  - pports future recommendation and forecasting
 
 ### Future Improvements
 

@@ -10,6 +10,15 @@ This document provides essential context for AI agents working on this repositor
 uv run python
 ```
 
+**WSL note:** when the repo lives on the Windows filesystem and tests are run from WSL, Python and `pytest` can look hung or stay silent for a long time even on small commands. Prefer bounded runs so a stalled command cleans itself up:
+
+```powershell
+timeout 180 ./.venv-wsl/bin/python -m pytest tests/unit/adapters/test_lora_module.py -q
+timeout 60 ./.venv-wsl/bin/python -c "from train import train; print('OK')"
+```
+
+If a command appears stuck, ask the user to run it locally and report the result rather than repeatedly polling a silent WSL process.
+
 Using `rg` (ripgrep) is highly recommended for searching the codebase. It is significantly faster than the default tools and respects `.gitignore` by default.
 
 ```powershell
@@ -53,6 +62,9 @@ uv run pytest tests/unit/test_training_checkpointing.py -v
 
 # With short traceback
 uv run pytest tests/unit/ -v --tb=short
+
+# WSL + Windows filesystem fallback (bounded run)
+timeout 180 ./.venv-wsl/bin/python -m pytest tests/unit/ -v --tb=short
 ```
 
 **Test markers:** `unit`, `integration`, `training`, `config`, `slow`, `requires_gpu`

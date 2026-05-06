@@ -9,6 +9,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from library.adapters.runtime.precision import needs_explicit_dtype_fallback
+
 
 SUPPORTED_MODULE_TYPES = (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)
 
@@ -228,24 +230,11 @@ class LoraModule(nn.Module):
         self.org_forward = self.org_module[0].forward
         self.org_module[0].forward = self.forward  # type: ignore[assignment]
 
-    def _is_autocast_active(self) -> bool:
-        if torch.is_autocast_enabled():
-            return True
-        try:
-            return torch.is_autocast_enabled("cpu")
-        except TypeError:
-            cpu_autocast_enabled = getattr(torch, "is_autocast_cpu_enabled", None)
-            return bool(cpu_autocast_enabled()) if callable(cpu_autocast_enabled) else False
-
     def _org_dtype(self) -> torch.dtype:
         return self.org_module[0].weight.dtype
 
     def _needs_explicit_dtype_fallback(self, x: Tensor) -> bool:
-        if self._is_autocast_active():
-            return False
-
-        org_dtype = self._org_dtype()
-        return x.dtype != org_dtype or x.dtype != self.dtype or self.dtype != org_dtype
+        return needs_explicit_dtype_fallback(x, self._org_dtype(), self.dtype)
 
     def _apply_rank_dropout(self, x: Tensor) -> tuple[Tensor, float]:
         if self.rank_dropout <= 0.0 or not self.training:
@@ -253,7 +242,8 @@ class LoraModule(nn.Module):
 
         mask_shape = [1] * x.ndim
         mask_shape[0] = x.shape[0]
-        mask_shape[1] = self.lora_dim
+        rank_dim = x.ndim - 1 if self.module_type == "linear" else 1
+        mask_shape[rank_dim] = x.shape[rank_dim]
         mask = (torch.rand(mask_shape, device=x.device) > self.rank_dropout).to(x.dtype)
         x = x * mask
         scale = self.scale * (1.0 / (1.0 - self.rank_dropout))

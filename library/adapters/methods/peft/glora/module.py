@@ -11,6 +11,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from library.adapters.runtime.precision import cast_input_for_compute, restore_output_dtype
+
 
 SUPPORTED_MODULE_TYPES = (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)
 _GLORA_EXPORT_WEIGHT_KEYS = (
@@ -433,9 +435,7 @@ class GloraModule(nn.Module):
         return F.conv3d(x, weight, None, stride=module.stride, padding=module.padding, dilation=module.dilation, groups=module.groups)
 
     def _cast_for_compute(self, x: Tensor, dtype: torch.dtype) -> Tensor:
-        if x.dtype == dtype:
-            return x
-        return x.to(dtype)
+        return cast_input_for_compute(x, dtype)
 
     def _dropout_view(self, drop: Tensor, dims: int) -> Tensor:
         if dims >= 4:
@@ -472,9 +472,7 @@ class GloraModule(nn.Module):
 
         base_input = torch.zeros_like(x_compute) if diff else x_compute
         result = self.org_forward(base_input + ax) + bx
-        if result.dtype != x.dtype:
-            result = result.to(x.dtype)
-        return result
+        return restore_output_dtype(result, x.dtype)
 
     def bypass_forward_diff(self, x, scale=1):
         return self._bypass_forward(x, scale=scale, diff=True)
@@ -503,6 +501,4 @@ class GloraModule(nn.Module):
         if bias is not None and bias.dtype != compute_dtype:
             bias = bias.to(compute_dtype)
         result = self._apply_target_op(x_compute, weight, bias)
-        if result.dtype != x.dtype:
-            result = result.to(x.dtype)
-        return result
+        return restore_output_dtype(result, x.dtype)

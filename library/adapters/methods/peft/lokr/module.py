@@ -11,6 +11,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from library.adapters.runtime.precision import cast_input_for_compute, cast_bias_for_compute, restore_output_dtype
+
 
 SUPPORTED_MODULE_TYPES = (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)
 LOKR_INIT_MODES = ("lycoris_legacy", "zero_delta_he", "random_nonzero")
@@ -575,19 +577,13 @@ class LokrModule(nn.Module):
         return bias.to(device, non_blocking=True)
 
     def _cast_input_for_op(self, x: Tensor, weight: Tensor) -> Tensor:
-        if x.dtype == weight.dtype:
-            return x
-        return x.to(weight.dtype)
+        return cast_input_for_compute(x, weight.dtype)
 
     def _cast_bias_for_op(self, bias: Tensor | None, weight: Tensor) -> Tensor | None:
-        if bias is None:
-            return None
-        return bias.to(weight.dtype, non_blocking=True)
+        return cast_bias_for_compute(bias, weight.dtype)
 
     def _restore_result_dtype(self, result: Tensor, original_dtype: torch.dtype) -> Tensor:
-        if result.dtype == original_dtype:
-            return result
-        return result.to(original_dtype)
+        return restore_output_dtype(result, original_dtype)
 
     def _compute_base_result(self, x: Tensor) -> Tensor:
         weight = self.get_org_weight_for_compute(x.device).to(self.dtype)

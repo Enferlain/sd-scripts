@@ -11,6 +11,8 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn.init import _calculate_correct_fan
 
+from library.adapters.runtime.precision import cast_input_for_compute, needs_explicit_dtype_fallback, restore_output_dtype
+
 try:
     from transformers.pytorch_utils import Conv1D as TransformersConv1D
 except (ImportError, AttributeError):  # pragma: no cover - optional dependency
@@ -320,9 +322,7 @@ class VeraModule(nn.Module):
         self.org_module[0].forward = self.forward  # type: ignore[assignment]
 
     def _cast_for_compute(self, x: Tensor) -> Tensor:
-        if x.dtype == self.dtype:
-            return x
-        return x.to(self.dtype)
+        return cast_input_for_compute(x, self.dtype)
 
     def _get_compute_device(self, device: torch.device | None) -> torch.device:
         if device is not None:
@@ -356,18 +356,16 @@ class VeraModule(nn.Module):
         org_forwarded = self.org_forward(compute_input)
 
         vera_A, vera_B, lambda_b, lambda_d = self._get_delta_components(device=compute_input.device)
-        adapter_input = compute_input.to(dtype=lambda_d.dtype)
+        adapter_input = cast_input_for_compute(compute_input, lambda_d.dtype)
         adapter_input = self.dropout_layer(adapter_input)
         adapter_hidden = F.linear(adapter_input, vera_A)
         adapter_hidden = adapter_hidden * lambda_d
         adapter_out = F.linear(adapter_hidden, vera_B)
         adapter_out = adapter_out * lambda_b
-        if adapter_out.dtype != org_forwarded.dtype:
+        if needs_explicit_dtype_fallback(x, self.dtype, lambda_d.dtype) and adapter_out.dtype != org_forwarded.dtype:
             adapter_out = adapter_out.to(org_forwarded.dtype)
         output = org_forwarded + adapter_out * self.multiplier
-        if output.dtype != x.dtype:
-            output = output.to(x.dtype)
-        return output
+        return restore_output_dtype(output, x.dtype)
 
     def get_diff_weight(
         self,

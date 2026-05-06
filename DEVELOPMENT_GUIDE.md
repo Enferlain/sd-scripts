@@ -66,6 +66,7 @@ The active launcher surface should stay thin and orchestration-focused.
 - **Searching:** Use `rg` (ripgrep) for fast, gitignore-aware searching throughout the codebase.
 - **Import Order:** isort is disabled; use `tools/fix_imports.py` for custom ordering if needed.
 - **Naming Convention:** Folders use **plural** names (`adapters/`, `strategies/`, `models/`) where it makes sense. Files are usually named for the concern they own (`tokenization.py`, `checkpointing.py`, `trainer.py`) rather than by one universal singular/plural rule.
+- **WSL + Windows filesystem note:** When this repo is accessed from WSL but stored on the Windows filesystem, Python and `pytest` can become noticeably slow and sometimes appear to hang silently. Prefer bounded commands such as `timeout 180 ./.venv-wsl/bin/python -m pytest ...` when testing from WSL, and if a command stays silent for too long, run it directly on the user side and report the result back rather than waiting indefinitely.
 
 ## 4. Config Design Principles
 
@@ -198,4 +199,7 @@ def train(cfg: RunConfig):
   ```bash
   uv run pytest tests/unit/ -v
   uv run pytest tests/integration/ -v
+
+  # WSL + Windows filesystem fallback
+  timeout 180 ./.venv-wsl/bin/python -m pytest tests/unit/ -v --tb=short
   ```

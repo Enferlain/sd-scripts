@@ -11,6 +11,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from library.adapters.runtime.precision import cast_input_for_compute, restore_output_dtype
+
 
 SUPPORTED_MODULE_TYPES = (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)
 LOCON_INIT_MODES = ("lycoris_legacy", "zero_delta_he", "random_nonzero")
@@ -531,9 +533,7 @@ class LoconModule(nn.Module):
         return F.conv3d(x, weight, bias, **self.kw_dict)
 
     def _cast_for_compute(self, x: Tensor, dtype: torch.dtype) -> Tensor:
-        if x.dtype == dtype:
-            return x
-        return x.to(dtype)
+        return cast_input_for_compute(x, dtype)
 
     def bypass_forward_diff(self, x: Tensor, scale: float = 1.0) -> Tensor:
         compute_dtype = self.dtype
@@ -579,9 +579,7 @@ class LoconModule(nn.Module):
         base = self._apply_target_op(x_compute, org_weight, bias)
         diff = self.bypass_forward_diff(x, scale=scale)
         result = base + diff
-        if result.dtype != x.dtype:
-            result = result.to(x.dtype)
-        return result
+        return restore_output_dtype(result, x.dtype)
 
     def forward(self, x: Tensor, *args, **kwargs):
         if self.module_dropout and self.training and torch.rand(1).item() < self.module_dropout:
@@ -590,9 +588,7 @@ class LoconModule(nn.Module):
             if bias is not None:
                 bias = bias.to(dtype=self.dtype)
             result = self._apply_target_op(self._cast_for_compute(x, self.dtype), org_weight, bias)
-            if result.dtype != x.dtype:
-                result = result.to(x.dtype)
-            return result
+            return restore_output_dtype(result, x.dtype)
 
         if self.bypass_mode:
             return self.bypass_forward(x, scale=self.multiplier)
@@ -613,6 +609,4 @@ class LoconModule(nn.Module):
         if bias is not None:
             bias = bias.to(dtype=compute_dtype)
         result = self._apply_target_op(x_compute, weight, bias)
-        if result.dtype != x.dtype:
-            result = result.to(x.dtype)
-        return result
+        return restore_output_dtype(result, x.dtype)

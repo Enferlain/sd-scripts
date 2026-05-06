@@ -10,6 +10,18 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-06]
+
+### Changed
+
+- **Repo-owned PEFT methods now share an autocast-first precision rule for their hot forward paths** — The common adapter wrappers now rely on a shared PEFT precision helper so normal mixed-precision training avoids unnecessary input/output dtype shuffling, while no-autocast mismatch handling stays explicit and narrow.
+  - Applied the shared cast/restore helpers across repo-owned LoRA, VeRA, GLoRA, LoCon, DyLoRA, BOFT, OFT, IA3, and LoKr module paths, and added focused shared precision coverage for the new helper behavior under CPU autocast.
+
+### Fixed
+
+- **Repo-owned LoRA rank dropout now masks the actual rank axis for Linear outputs instead of assuming channel-first layout** — `LoraModule._apply_rank_dropout()` now applies rank dropout on the last axis for Linear activations such as `[batch, seq, rank]`, while preserving the existing channel-axis behavior for Conv outputs.
+  - Added focused unit coverage for Linear-shaped rank-dropout broadcasting so sequence-shaped LoRA activations do not silently mask the wrong dimension.
+
 ## [2026-05-04]
 
 ### Added

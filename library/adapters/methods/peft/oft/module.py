@@ -11,6 +11,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from library.adapters.runtime.precision import cast_input_for_compute, restore_output_dtype
+
 
 SUPPORTED_MODULE_TYPES = (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)
 _OFT_EXPORT_WEIGHT_KEYS = (
@@ -328,14 +330,10 @@ class OftModule(nn.Module):
         return q
 
     def _cast_for_compute(self, x: Tensor, dtype: torch.dtype) -> Tensor:
-        if x.dtype == dtype:
-            return x
-        return x.to(dtype)
+        return cast_input_for_compute(x, dtype)
 
     def _restore_result_dtype(self, result: Tensor, dtype: torch.dtype) -> Tensor:
-        if result.dtype == dtype:
-            return result
-        return result.to(dtype)
+        return restore_output_dtype(result, dtype)
 
     def _apply_target_op(self, x: Tensor, weight: Tensor, bias: Tensor | None) -> Tensor:
         if self.module_type == "linear":

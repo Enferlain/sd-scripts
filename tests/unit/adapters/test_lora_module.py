@@ -106,6 +106,24 @@ def test_lora_module_hot_path_matches_manual_reference_under_autocast():
     assert torch.allclose(actual, expected, atol=5e-3, rtol=5e-3)
 
 
+def test_lora_module_rank_dropout_uses_last_axis_for_linear_outputs():
+    target = torch.nn.Linear(4, 4, bias=False)
+    module = LoraModule.from_target_module("lora_linear", target, config=LoraConfig(lora_dim=2, rank_dropout=0.5))
+    module.train()
+
+    rank_activations = torch.ones(3, 5, 2)
+    torch.manual_seed(7)
+    dropped, scale = module._apply_rank_dropout(rank_activations)
+
+    assert dropped.shape == rank_activations.shape
+    assert scale == pytest.approx(module.scale * 2.0)
+
+    # Rank dropout should broadcast over the sequence axis for Linear outputs
+    # shaped like [batch, seq, rank].
+    assert torch.equal(dropped[:, 0, :], dropped[:, 1, :])
+    assert torch.equal(dropped[:, 1, :], dropped[:, 2, :])
+
+
 def test_lora_module_export_round_trip_preserves_merged_weight():
     torch.manual_seed(37)
     target = torch.nn.Conv1d(4, 6, kernel_size=1, bias=False)

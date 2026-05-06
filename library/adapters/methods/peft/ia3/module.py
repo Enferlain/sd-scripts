@@ -9,6 +9,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from library.adapters.runtime.precision import cast_input_for_compute, restore_output_dtype
+
 
 SUPPORTED_MODULE_TYPES = (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)
 _IA3_EXPORT_WEIGHT_KEYS = ("weight", "on_input")
@@ -220,9 +222,7 @@ class Ia3Module(nn.Module):
             self.org_module[0].bias.copy_(merged_bias.to(current_bias))
 
     def _cast_for_compute(self, x: Tensor, dtype: torch.dtype) -> Tensor:
-        if x.dtype == dtype:
-            return x
-        return x.to(dtype)
+        return cast_input_for_compute(x, dtype)
 
     def _scale_weight_view(self, scale_vector: Tensor) -> Tensor:
         if self.module_type == "linear":
@@ -317,9 +317,7 @@ class Ia3Module(nn.Module):
             result = self._apply_target_op(x_compute, base_weight, bias)
             result = result * self._scale_activation_view(scale_vector)
 
-        if result.dtype != x.dtype:
-            result = result.to(x.dtype)
-        return result
+        return restore_output_dtype(result, x.dtype)
 
     def bypass_forward_diff(self, x, scale=1):
         return self._bypass_forward(x, scale=scale, diff=True)
@@ -341,6 +339,4 @@ class Ia3Module(nn.Module):
         if merged_bias is not None and merged_bias.dtype != compute_dtype:
             merged_bias = merged_bias.to(compute_dtype)
         result = self._apply_target_op(x_compute, merged_weight, merged_bias)
-        if result.dtype != x.dtype:
-            result = result.to(x.dtype)
-        return result
+        return restore_output_dtype(result, x.dtype)
