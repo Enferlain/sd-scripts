@@ -1,7 +1,3 @@
-Good catch — I collapsed it into the architecture notes and dropped the concrete storage-option discussion. Here’s a revised **research notes / future plan** version with the **SQLite / Parquet / Zarr / LMDB-ish** angle included explicitly.
-
----
-
 ## Research Notes: Large-Scale Caching Architecture
 
 ### Summary
