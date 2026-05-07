@@ -239,7 +239,7 @@ def train(cfg: RunConfig, strategies: "SdxlTrainingStrategy"):
         # RESOURCE TRACKER START
         resource_tracker = None
         if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
-            from library.utils.resource_tracker import ResourceTracker
+            from tools.resource_tracker import ResourceTracker
 
             resource_tracker = ResourceTracker("Latent Caching")
             resource_tracker.start()
@@ -301,7 +301,7 @@ def train(cfg: RunConfig, strategies: "SdxlTrainingStrategy"):
             # RESOURCE TRACKER START
             te_resource_tracker = None
             if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
-                from library.utils.resource_tracker import ResourceTracker
+                from tools.resource_tracker import ResourceTracker
 
                 te_resource_tracker = ResourceTracker("TE Caching")
                 te_resource_tracker.start()
@@ -981,7 +981,7 @@ def train(cfg: RunConfig, strategies: "SdxlTrainingStrategy"):
         # RESOURCE TRACKER START
         training_resource_tracker = None
         if os.environ.get("BENCHMARK_RESOURCES", "").lower() in ("1", "true", "yes"):
-            from library.utils.resource_tracker import ResourceTracker
+            from tools.resource_tracker import ResourceTracker
 
             training_resource_tracker = ResourceTracker("Training")
             training_resource_tracker.start()

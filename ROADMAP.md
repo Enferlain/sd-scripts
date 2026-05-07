@@ -116,7 +116,7 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [ ] **Prompt weighting / weighted captions review** — Decide whether weighted captions should become an active shared concern and where prompt-weight parsing/application should live.
 - [ ] **Regularization-image UX / docs note** — The current DreamBooth-style `reg_data_dir` / `is_reg` path is mechanically correct, but it only helps when those images are genuine class/prior images with matching generic captions or `class_tokens`, not just arbitrary extra images. Make sure future docs/examples call that out explicitly.
 - [ ] **Dashboard / logging system rework** — Fold the live plotter into a broader dashboard/logging system instead of treating it as a side system. Prob deferred until ui
-- [ ] **Repo layout review** — Re-check whether `library/` / `scripts/` placement, and potentially the entry-script layout, still fit the current architecture.
+- [ ] **Repo layout review** — Re-check whether `library/` folder organization is comfortable or if there's room to improve the layout.
 - [ ] **LyCORIS vendor / integration pass** — Treat LyCORIS as a vendor/integration ownership question rather than an external dependency question, since adapter breakdown follow-up depends on tighter ownership and easier modification.
 - [ ] **Adapter-system follow-up** — The active adapter rework now has optimization-owned target/grouping ownership, method-local PEFT config under `adapter.peft.<method>` branch presence plus explicit continuation intent, repo-owned LoHa, LoCon, LoKr, OFT, BOFT, DyLoRA, GLoRA, and IA3 method implementations, an explicit persistence split where `AdapterMode` orchestrates checkpoint/export flows while adapter runtime objects participate through repo-owned persistence helpers, and a runtime-layer loaded-runtime/merge-request seam for the built-in from-weights and base-weight-merge flow. The remaining follow-up is broader adapter breadth, generic artifact-initialization / pre-merge config ownership, and LyCORIS/vendor integration work rather than reopening compatibility-era optimizer, persistence, or merge boundaries.
   - The shared target-ref foundation now also lives under `library/optimization/targets.py`, with fine-tune parameter refs and adapter module targets both carrying the same component-qualified selector and provenance model. Future module-type selectors or adapter-specific grouping work should extend that shared target vocabulary rather than reintroducing an adapter-only target surface.
@@ -151,10 +151,10 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [ ] Selective activation checkpointing
 
 - [ ] Run warehouse for experiment metadata, telemetry, artifacts, and outcomes
-  - pports resource modeling
-  - pports config/result analytics
-  - pports reproducibility and regression tracking
-  - pports future recommendation and forecasting
+  - supports resource modeling
+  - supports config/result analytics
+  - supports reproducibility and regression tracking
+  - supports future recommendation and forecasting
 
 ### Future Improvements
 

@@ -355,30 +355,37 @@ of parallel implementations.
 If the adapter layer is about trainable augmentations, then the config should
 describe:
 
-- which algorithm is being trained
-- the core algorithm hyperparameters
-- resume/load/base-weight behavior
-- algorithm-specific extras
+- which adapter type is being trained
+- any resume/load/base-weight behavior that genuinely belongs to that adapter
+  type
+- the explicit settings that adapter type actually needs
 
 It should not be the sole home for target-selection grammar if that logic
 belongs to optimization for now.
 
+The later discussion makes one thing clearer than this note originally did:
+
+- Hydra lets the repo be explicit
+- the adapter system does not need to force fake shared settings where they do
+  not really exist
+- separate configs per adapter type are acceptable, and may be preferable
+  whenever that better reflects reality
+
 So the likely direction is:
 
-- adapter config declares the algorithm and augmentation-local settings
+- adapter configs are explicit and adapter-type-specific
 - optimization config declares selection/grouping policy
 
 Conceptually:
 
 ```text
 adapter:
-  algorithm: loha
-  rank: 16
-  alpha: 16
-  dropout: 0.0
-  weights: ...
-  base_weights: ...
-  algorithm_args: ...
+  type: loha
+  ... explicit loha settings ...
+
+adapter:
+  type: some_future_adapter
+  ... explicit settings for that adapter ...
 
 optimization:
   adapter_targeting: ...
@@ -386,10 +393,53 @@ optimization:
   adapter_overrides: ...
 ```
 
-This does not require an immediate config rewrite.
+The important point is not whether there is one shared adapter dataclass.
 
-It does suggest that the current `PeftConfig` should be seen as a compatibility
-container rather than the final architectural shape.
+The important point is that the config should reflect real ownership and real
+adapter differences, rather than smuggling unrelated behaviors through one
+compatibility-shaped container.
+
+That still suggests that the current `PeftConfig` should be seen as a
+compatibility container rather than the final architectural shape.
+
+## Runtime Concepts
+
+The exact runtime type names are still open, but the later discussion suggests
+some likely first-class concepts:
+
+- adapter-type-specific config
+- resolved adapter targets
+- a concrete adapter runtime object used by `PeftMode`
+- the runtime/training information exposed back to optimization and
+  orchestration
+
+The earlier `AdapterInstance(Protocol)` sketch in this note should be read as
+a placeholder for that runtime-side concept, not as a claim that one rigid
+protocol is already fully understood.
+
+The important part is that `PeftMode` still handles the training side. The
+adapter runtime exists so `PeftMode` has something concrete to work with during
+adapter training.
+
+## Save / Load Ownership
+
+The later discussion also clarifies that save/load should not be treated as a
+"make it common with fine-tune" problem.
+
+Fine-tune saving is about the model itself.
+
+Adapter saving is about learned augmentation state relative to a model
+reference.
+
+That means the training-side owner is still `PeftMode`.
+
+The open design question is narrower:
+
+- does `PeftMode` call a common adapter-framework surface for save/load
+- or does it reach more directly into adapter-type-specific behavior
+
+Either way, adapter persistence should be treated as adapter-training behavior,
+not as something that needs to collapse into the fine-tune model-saving shape.
 
 ## Why This Shape Still Supports Future Adapters
 
@@ -410,6 +460,19 @@ That means future support for things like LLM adapters is mostly a question of:
 - algorithm applicability
 
 not a question of rewriting the adapter runtime again.
+
+The breadth goal from the later discussion is important here:
+
+- the system should be designed as broadly as practical
+- the current LyCORIS or Kohya-shaped adapters should not be treated as the
+  definition of what an adapter is
+- future adapters may be much stranger than current diffusion examples
+
+For example, an adapter might involve a cross-system learned modification such
+as an LLM-side module that is trained in relation to a model text encoder.
+
+That is exactly why this architecture should avoid hard-coding today's adapter
+shapes as if they were universal.
 
 ## Suggested Near-Term Direction
 
