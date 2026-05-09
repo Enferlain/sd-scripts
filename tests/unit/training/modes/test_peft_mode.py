@@ -93,8 +93,10 @@ def test_prepare_trainables_builds_resolved_targets_before_adapter_instantiation
     assert captured["request"].resolved_targets is resolved_targets
     assert trainer._train_text_encoder is True
     assert trainer._train_denoiser is False
+    assert trainer.adapter_method_name == "lora"
     assert trainer.adapter_resolved_targets is captured["request"].resolved_targets
     adapter.apply_to.assert_called_once_with(trainer._text_encoder, trainer.denoiser, True, False)
+    trainer.accelerator.print.assert_not_called()
 
 
 def test_prepare_trainables_prefers_nested_lora_config_surface(monkeypatch):

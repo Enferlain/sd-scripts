@@ -5,7 +5,7 @@ from typing import Any
 from torch import nn
 
 from library.adapters.runtime import AdapterBuildRequest, AdapterMergeRequest, LoadedAdapterRuntime
-from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider
+from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider, build_named_parameter_refs
 
 from .module import Ia3Config, Ia3Module, SUPPORTED_MODULE_TYPES
 from .state_dict import load_ia3_state_dict, save_ia3_state_dict
@@ -117,10 +117,10 @@ def _attach_trainable_ref_provider(adapter: Ia3AdapterRuntime, request: AdapterB
             target = module.adapter_target
             if target is None:
                 raise ValueError(f"IA3 module {module.lora_name!r} is missing adapter target provenance.")
-            refs.append(
-                AdapterTrainableParameterRef(
-                    param=module.weight,
-                    name=f"{module.lora_name}.weight",
+            refs.extend(
+                build_named_parameter_refs(
+                    module_name=module.lora_name,
+                    module=module,
                     algorithm=request.adapter.adapter_type,
                     component=target.component,
                     component_key=target.component_key,

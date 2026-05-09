@@ -1,4 +1,5 @@
 from .base import AdapterRuntime
+from .reporting import AdapterComponentReportRow, build_adapter_component_report_rows
 from .state_io import (
     AdapterExportIO,
     AdapterExportLoadRequest,
@@ -12,11 +13,14 @@ from .trainables import (
     AdapterTrainableParameterProvider,
     AdapterTrainableParameterRef,
     attach_trainable_parameter_provider,
+    build_adapter_module_path,
+    build_named_parameter_refs,
     get_trainable_parameter_refs,
 )
 
 __all__ = [
     "AdapterRuntime",
+    "AdapterComponentReportRow",
     "AdapterExportIO",
     "AdapterExportLoadRequest",
     "AdapterExportSaveRequest",
@@ -27,5 +31,8 @@ __all__ = [
     "AdapterTrainableParameterProvider",
     "AdapterTrainableParameterRef",
     "attach_trainable_parameter_provider",
+    "build_adapter_module_path",
+    "build_adapter_component_report_rows",
+    "build_named_parameter_refs",
     "get_trainable_parameter_refs",
 ]

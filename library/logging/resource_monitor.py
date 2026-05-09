@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import queue
+import sys
 import threading
 import time
 from collections.abc import Iterable, Mapping
@@ -22,7 +23,9 @@ from typing import TYPE_CHECKING, Any, Protocol, TextIO
 
 import psutil
 import torch
+from tqdm.auto import tqdm
 
+from library.logging.summaries import DiagnosticRow
 from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
 
 if TYPE_CHECKING:
@@ -75,6 +78,13 @@ class _DeepCounters:
     collection_ms: float | None
 
 
+@dataclass(frozen=True)
+class _StartupComponentMemory:
+    label: str
+    param_bytes_total: int
+    param_bytes_trainable: int
+
+
 class ResourceMonitor(Protocol):
     """Resource monitor contract used by Trainer and phases."""
 
@@ -90,7 +100,7 @@ class ResourceMonitor(Protocol):
 
     def emit_startup_component_memory(
         self,
-        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None,
+        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | Iterable[DiagnosticRow] | None,
         optimizer_name: str,
         *,
         deepspeed_enabled: bool = False,
@@ -121,7 +131,7 @@ class NoOpResourceMonitor:
 
     def emit_startup_component_memory(
         self,
-        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None,
+        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | Iterable[DiagnosticRow] | None,
         optimizer_name: str,
         *,
         deepspeed_enabled: bool = False,
@@ -213,6 +223,14 @@ class BasicResourceMonitor:
         self._warned_once.add(key)
         logger.warning(message, *args)
 
+    def _log_info_external(self, message: str, *args: object) -> None:
+        with tqdm.external_write_mode(file=sys.stderr):
+            logger.info(message, *args)
+
+    def _print_block_external(self, message: str) -> None:
+        with tqdm.external_write_mode(file=sys.stderr):
+            print(message, file=sys.stderr)
+
     def _collect_snapshot(self, *, reset_peak: bool = False) -> _Snapshot:
         gpu_allocated_mb: float | None = None
         gpu_reserved_mb: float | None = None
@@ -247,7 +265,10 @@ class BasicResourceMonitor:
     def _format_cpu(self, value: float | None) -> str:
         return "n/a" if value is None else f"{value:.0f}MB"
 
-    def _normalize_component_items(self, components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None) -> list[tuple[str, Any]]:
+    def _normalize_component_items(
+        self,
+        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | Iterable[DiagnosticRow] | None,
+    ) -> list[tuple[str, Any] | DiagnosticRow]:
         if not components:
             return []
 
@@ -256,8 +277,11 @@ class BasicResourceMonitor:
         else:
             raw_items = list(components)
 
-        normalized: list[tuple[str, Any]] = []
+        normalized: list[tuple[str, Any] | DiagnosticRow] = []
         for item in raw_items:
+            if isinstance(item, DiagnosticRow):
+                normalized.append(item)
+                continue
             if not isinstance(item, tuple) or len(item) != 2:
                 continue
             name, module = item
@@ -265,6 +289,42 @@ class BasicResourceMonitor:
                 continue
             normalized.append((name, module))
         return normalized
+
+    def _collect_startup_component_memory(
+        self,
+        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | Iterable[DiagnosticRow] | None,
+    ) -> list[_StartupComponentMemory]:
+        component_items = self._normalize_component_items(components)
+        startup_rows: list[_StartupComponentMemory] = []
+
+        for item in component_items:
+            if isinstance(item, DiagnosticRow):
+                startup_rows.append(
+                    _StartupComponentMemory(
+                        label=item.label,
+                        param_bytes_total=item.param_bytes_total,
+                        param_bytes_trainable=item.param_bytes_trainable,
+                    )
+                )
+                continue
+
+            name, module = item
+            param_bytes_total = 0
+            param_bytes_trainable = 0
+            for p in module.parameters():
+                bytes_count = p.numel() * p.element_size()
+                param_bytes_total += bytes_count
+                if p.requires_grad:
+                    param_bytes_trainable += bytes_count
+            startup_rows.append(
+                _StartupComponentMemory(
+                    label=name,
+                    param_bytes_total=param_bytes_total,
+                    param_bytes_trainable=param_bytes_trainable,
+                )
+            )
+
+        return startup_rows
 
     def _resolve_flush_mode(self) -> str:
         if self._jsonl_flush_mode != "auto":
@@ -451,7 +511,7 @@ class BasicResourceMonitor:
             start_snapshot = self._collect_snapshot(reset_peak=False)
             self._open_jsonl_stream()
 
-            logger.info(
+            self._log_info_external(
                 "Resource monitor started: mode=%s, rank_scope=%s, step_log_every=%s",
                 self._mode,
                 self._rank_scope,
@@ -476,7 +536,7 @@ class BasicResourceMonitor:
             end_snapshot = self._collect_snapshot(reset_peak=False)
             duration = time.perf_counter() - self._session_started_at
 
-            logger.info(
+            self._log_info_external(
                 ("Resource session summary: duration=%.2fs, gpu_allocated=%s, gpu_reserved=%s, gpu_peak=%s, gpu_used=%s, cpu_rss=%s"),
                 duration,
                 self._format_gpu(end_snapshot.gpu_allocated_mb),
@@ -534,7 +594,7 @@ class BasicResourceMonitor:
             if start_state.sampled_peak_gpu_used_mb is not None:
                 sampled_peak_suffix = f", gpu_used_peak={self._format_gpu(start_state.sampled_peak_gpu_used_mb)}"
 
-            logger.info(
+            self._log_info_external(
                 ("Resource phase[%s]: duration=%.2fs, gpu_allocated=%s->%s, gpu_reserved=%s->%s, gpu_peak=%s%s, cpu_rss=%s->%s"),
                 name,
                 duration,
@@ -580,7 +640,7 @@ class BasicResourceMonitor:
 
             snapshot = self._collect_snapshot(reset_peak=False)
             if steps_per_sec is None:
-                logger.info(
+                self._log_info_external(
                     "Resource step[%s|epoch=%s]: gpu_allocated=%s, gpu_reserved=%s, gpu_used=%s, cpu_rss=%s",
                     global_step,
                     epoch,
@@ -590,7 +650,7 @@ class BasicResourceMonitor:
                     self._format_cpu(snapshot.cpu_rss_mb),
                 )
             else:
-                logger.info(
+                self._log_info_external(
                     "Resource step[%s|epoch=%s]: %.2f steps/s, gpu_allocated=%s, gpu_reserved=%s, gpu_used=%s, cpu_rss=%s",
                     global_step,
                     epoch,
@@ -614,7 +674,7 @@ class BasicResourceMonitor:
 
     def emit_startup_component_memory(
         self,
-        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | None,
+        components: Mapping[str, Any] | Iterable[tuple[str, Any]] | Iterable[DiagnosticRow] | None,
         optimizer_name: str,
         *,
         deepspeed_enabled: bool = False,
@@ -625,38 +685,87 @@ class BasicResourceMonitor:
                 return
             if not self._component_breakdown:
                 return
-            component_items = self._normalize_component_items(components)
-            if not component_items:
+            startup_rows = self._collect_startup_component_memory(components)
+            if not startup_rows:
                 return
 
-            lines = ["Resource startup estimates (parameter memory):"]
-            total_param_bytes = 0
-            total_trainable_bytes = 0
-            for name, module in component_items:
-                param_bytes = 0
-                trainable_bytes = 0
-                for p in module.parameters():
-                    bytes_count = p.numel() * p.element_size()
-                    param_bytes += bytes_count
-                    if p.requires_grad:
-                        trainable_bytes += bytes_count
+            lines = ["Resource startup breakdown:"]
+            total_param_bytes = sum(row.param_bytes_total for row in startup_rows)
+            total_trainable_bytes = sum(row.param_bytes_trainable for row in startup_rows)
+            lines.append("  loaded model weights:")
+            total_frozen_bytes = max(total_param_bytes - total_trainable_bytes, 0)
 
-                total_param_bytes += param_bytes
-                total_trainable_bytes += trainable_bytes
-                lines.append(f"  - {name}: params={param_bytes / (1024 * 1024):.1f}MB, trainable={trainable_bytes / (1024 * 1024):.1f}MB")
+            table_rows: list[tuple[str, str, str, str, str]] = []
+            for row in startup_rows:
+                loaded_mb = row.param_bytes_total / (1024 * 1024)
+                trainable_mb = row.param_bytes_trainable / (1024 * 1024)
+                frozen_mb = max(loaded_mb - trainable_mb, 0.0)
+                share_percent = (row.param_bytes_total / total_param_bytes * 100) if total_param_bytes > 0 else 0.0
+                table_rows.append(
+                    (
+                        row.label,
+                        f"{loaded_mb:.1f}MB",
+                        f"{trainable_mb:.1f}MB",
+                        f"{frozen_mb:.1f}MB",
+                        f"{share_percent:.1f}%",
+                    )
+                )
+
+            table_rows.append(
+                (
+                    "total",
+                    f"{total_param_bytes / (1024 * 1024):.1f}MB",
+                    f"{total_trainable_bytes / (1024 * 1024):.1f}MB",
+                    f"{total_frozen_bytes / (1024 * 1024):.1f}MB",
+                    "100.0%",
+                )
+            )
+
+            component_width = max(len("component"), *(len(row[0]) for row in table_rows))
+            loaded_width = max(len("loaded"), *(len(row[1]) for row in table_rows))
+            trainable_width = max(len("trainable"), *(len(row[2]) for row in table_rows))
+            frozen_width = max(len("frozen"), *(len(row[3]) for row in table_rows))
+            share_width = max(len("share"), *(len(row[4]) for row in table_rows))
+
+            lines.append(
+                "    "
+                f"{'component':<{component_width}} | "
+                f"{'loaded':>{loaded_width}} | "
+                f"{'trainable':>{trainable_width}} | "
+                f"{'frozen':>{frozen_width}} | "
+                f"{'share':>{share_width}}"
+            )
+            lines.append(
+                "    "
+                f"{'-' * component_width}-+-"
+                f"{'-' * loaded_width}-+-"
+                f"{'-' * trainable_width}-+-"
+                f"{'-' * frozen_width}-+-"
+                f"{'-' * share_width}"
+            )
+            for component, loaded, trainable, frozen, share in table_rows:
+                lines.append(
+                    "    "
+                    f"{component:<{component_width}} | "
+                    f"{loaded:>{loaded_width}} | "
+                    f"{trainable:>{trainable_width}} | "
+                    f"{frozen:>{frozen_width}} | "
+                    f"{share:>{share_width}}"
+                )
 
             optimizer_state_multiplier = 2 if "adam" in optimizer_name.lower() or "lion" in optimizer_name.lower() else 1
             optimizer_state_bytes = total_trainable_bytes * optimizer_state_multiplier
-            lines.append(f"  - gradients (est): {total_trainable_bytes / (1024 * 1024):.1f}MB")
-            lines.append(f"  - optimizer_state (est): {optimizer_state_bytes / (1024 * 1024):.1f}MB [{optimizer_name}]")
-            lines.append(f"  - total (est): {(total_param_bytes + total_trainable_bytes + optimizer_state_bytes) / (1024 * 1024):.1f}MB")
+            lines.append("  training state:")
+            lines.append(f"    - gradients (est): {total_trainable_bytes / (1024 * 1024):.1f}MB")
+            lines.append(f"    - optimizer_state (est): {optimizer_state_bytes / (1024 * 1024):.1f}MB [{optimizer_name}]")
+            lines.append(f"    - total (est): {(total_param_bytes + total_trainable_bytes + optimizer_state_bytes) / (1024 * 1024):.1f}MB")
             if deepspeed_enabled:
                 zero_stage_label = "n/a" if deepspeed_zero_stage is None else str(deepspeed_zero_stage)
                 lines.append(
-                    "  - DeepSpeed/ZeRO caveat: effective per-rank footprint may be lower/higher than these estimates "
+                    "    - DeepSpeed/ZeRO caveat: effective per-rank footprint may be lower/higher than these estimates "
                     f"due to state partitioning/offload (zero_stage={zero_stage_label})."
                 )
-            logger.info("\n".join(lines))
+            self._print_block_external("\n" + "\n".join(lines))
         except Exception as exc:  # pragma: no cover - defensive safety net
             self._warn_once("startup_component_memory", "resource monitor startup component estimate failed: %s", exc)
 
@@ -930,7 +1039,7 @@ class SampledResourceMonitor(BasicResourceMonitor):
         if self._deep_window_baseline_ooms is not None and self._deep_window_last_ooms is not None:
             oom_delta = max(self._deep_window_last_ooms - self._deep_window_baseline_ooms, 0)
 
-        logger.info(
+        self._log_info_external(
             "Resource deep window summary (%s): samples=%s, alloc_retries_delta=%s, ooms_delta=%s, inactive_split_peak=%s",
             reason,
             self._deep_window_sample_count,
@@ -988,7 +1097,7 @@ class SampledResourceMonitor(BasicResourceMonitor):
             self._deep_window_peak_inactive_split_mb = counters.inactive_split_mb
 
         if self._log_every_n_steps > 0 and global_step % self._log_every_n_steps == 0:
-            logger.info(
+            self._log_info_external(
                 "Resource deep[%s]: alloc_retries=%s, ooms=%s, active=%s, reserved=%s, inactive_split=%s",
                 global_step,
                 counters.alloc_retries,

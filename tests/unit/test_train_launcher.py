@@ -1,5 +1,6 @@
 """Unit tests for the active config-driven train entrypoint and its factories."""
 
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -99,7 +100,11 @@ def test_build_training_strategy_unknown_model_type_raises() -> None:
 @patch("train.build_training_strategy")
 @patch("train.validate_config")
 @patch("train.prepare_config")
+@patch("train.install_double_ctrl_c_guard")
+@patch("train.setup_logging")
 def test_train_wires_mode_strategy_and_trainer(
+    mock_setup_logging,
+    mock_install_double_ctrl_c_guard,
     mock_prepare_config,
     mock_validate_config,
     mock_build_training_strategy,
@@ -109,18 +114,25 @@ def test_train_wires_mode_strategy_and_trainer(
     """train() should prepare config, build objects, and start the trainer."""
     import train
 
-    cfg = SimpleNamespace(mode="adapter", model=SimpleNamespace(model_type="sdxl"))
+    cfg = SimpleNamespace(
+        mode="adapter",
+        model=SimpleNamespace(model_type="sdxl"),
+        output=SimpleNamespace(logging=SimpleNamespace()),
+    )
     strategies = Mock()
     mode = Mock()
     trainer = mock_trainer_cls.return_value
+    mock_install_double_ctrl_c_guard.return_value = nullcontext()
     mock_build_training_strategy.return_value = strategies
     mock_build_training_mode.return_value = mode
 
     train.train(cfg)
 
+    mock_setup_logging.assert_called_once_with(cfg.output.logging, reset=True)
     mock_prepare_config.assert_called_once_with(cfg)
     mock_validate_config.assert_called_once_with(cfg)
     mock_build_training_strategy.assert_called_once_with(cfg)
     mock_build_training_mode.assert_called_once_with(cfg)
     mock_trainer_cls.assert_called_once_with(cfg, strategies, mode)
+    mock_install_double_ctrl_c_guard.assert_called_once_with(trainer)
     trainer.train.assert_called_once_with()

@@ -269,7 +269,7 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
 
         ckpt_file = os.path.join(saving_config.output_dir, ckpt_name)
         logger.info("")
-        logger.info(f"saving checkpoint: {ckpt_file}")
+        logger.info(f"[checkpoint] saving checkpoint: {ckpt_file}")
         sd_saver(ckpt_file, epoch_no, global_step)
 
         # Upload to HuggingFace if configured

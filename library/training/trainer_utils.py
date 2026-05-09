@@ -22,7 +22,8 @@ from library.config.dataclasses.performance import (
 )
 from library.config.dataclasses.output import LoggingConfig, SavingConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.logging.step_logging import append_lr_to_logs_with_names
+from library.logging.metrics import append_lr_to_logs_with_names
+from library.logging.summaries import summarize_component_trainability
 from library.optimization.types import OptimizationPlan
 from library.utils.compile_env import prepare_windows_compiler_env_for_torch_compile
 
@@ -86,42 +87,6 @@ def restore_rng_state(rng_states: tuple[Any, Any, Any, Any], accelerator: Accele
             torch.cuda.set_rng_state(gpu_rng_state)
         elif accelerator.device.type == "xpu":
             torch.xpu.set_rng_state(gpu_rng_state)
-
-
-def _iter_parameterized_leaf_modules(module: nn.Module):
-    """Yield leaf modules that own parameters directly (no recursion)."""
-    for child in module.modules():
-        if any(child.children()):
-            continue
-        child_params = list(child.parameters(recurse=False))
-        if child_params:
-            yield child, child_params
-
-
-def summarize_component_trainability(module: nn.Module) -> dict[str, int]:
-    """Summarize module/parameter counts for a model component."""
-    total_modules = 0
-    trainable_modules = 0
-    for _mod, mod_params in _iter_parameterized_leaf_modules(module):
-        total_modules += 1
-        if any(p.requires_grad for p in mod_params):
-            trainable_modules += 1
-
-    total_params = 0
-    trainable_params = 0
-    for param in module.parameters():
-        param_count = param.numel()
-        total_params += param_count
-        if param.requires_grad:
-            trainable_params += param_count
-
-    return {
-        "modules_total": total_modules,
-        "modules_trainable": trainable_modules,
-        "params_total": total_params,
-        "params_trainable": trainable_params,
-    }
-
 
 def log_training_diagnostics(
     accelerator: Accelerator,

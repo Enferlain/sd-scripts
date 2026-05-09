@@ -172,8 +172,6 @@ def prepare_epoch(
         batches=batches,
     )
 
-    logger.info(f"Prepared epoch {epoch}: {epoch_manifest.num_batches} batches, {epoch_manifest.num_images} images")
-
     return epoch_manifest
 
 

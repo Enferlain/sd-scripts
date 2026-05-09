@@ -7,6 +7,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from library.adapters.shared.trainables import AdapterTrainableParameterRef
+import torch
 import torch.nn as nn
 
 from library.logging.run_report import is_benchmark_report_enabled, write_run_report
@@ -228,3 +230,40 @@ def test_write_run_report_filters_appended_jsonl_to_current_session(tmp_path):
     assert len(payload["resource_monitor"]["phases"]) == 1
     assert payload["resource_monitor"]["phases"][0]["duration_s"] == 2.0
     assert payload["resource_monitor"]["gpu_used_peak_session_mb"] == 300.0
+
+
+def test_write_run_report_uses_adapter_provenance_for_component_memory_rows(tmp_path):
+    output_dir = tmp_path / "reports"
+    trainer = SimpleNamespace(
+        cfg={"output": {"saving": {"output_dir": str(output_dir), "output_name": "adapter_provenance"}}},
+        mode=MagicMock(),
+        strategies=MagicMock(),
+        optimizer_name="AdamW8bit",
+        global_step=0,
+        num_train_epochs=0,
+        session_id=1,
+        training_started_at=100.0,
+        _resource_monitor=SimpleNamespace(jsonl_path=output_dir / "missing.jsonl"),
+    )
+
+    adapter = SimpleNamespace()
+    adapter.describe_trainable_parameter_refs = lambda: [
+        AdapterTrainableParameterRef(
+            param=nn.Parameter(torch.ones(4)),
+            name="lora_unet.block.up",
+            algorithm="lora",
+            component="unet",
+            component_key="denoiser",
+            target_path="unet.block",
+            adapter_module_path="lora_unet.block.lora_up",
+        )
+    ]
+    trainer.adapter = adapter
+    trainer.text_encoders = []
+    trainer.mode.get_diagnostics_components.return_value = [("adapter", nn.Linear(4, 4))]
+
+    markdown_path = write_run_report(trainer, succeeded=True)
+
+    payload = json.loads(markdown_path.with_suffix(".json").read_text(encoding="utf-8"))
+    assert payload["component_memory_estimates"][0]["name"] == "unet"
+    assert payload["component_memory_estimates"][0]["adapter_modules_total"] == 1

@@ -20,8 +20,11 @@ import torch
 from torch import nn
 
 from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
+from library.logging.console import MainProcessConsole
 from library.logging.resource_monitor import create_resource_monitor
-from library.logging.run_report import is_benchmark_report_enabled, write_run_report
+from library.logging.reports import is_benchmark_report_enabled, write_run_report
+from library.logging.summaries import build_trainer_diagnostic_rows, build_training_startup_summary
+from library.models.parameter_dump import build_named_components, resolve_component_names
 from library.objectives import ObjectiveDefinition, build_objective
 from library.objectives.base import ObjectiveRuntime
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
@@ -60,7 +63,7 @@ logger = logging.getLogger(__name__)
 
 class Trainer:
     """
-    Trainer for model training (PEFT, fine-tune, etc.).
+    Trainer for model training (adapter, fine-tune, etc.).
 
     Orchestrates the training loop while delegating model-specific
     operations to the provided TrainingStrategy and mode-specific
@@ -107,6 +110,7 @@ class Trainer:
 
         # Will be set during prepare_models()
         self.adapter: nn.Module | None = None
+        self.adapter_method_name: str | None = None
         self.net_kwargs: dict = {}
         self.denoiser_weight_dtype: torch.dtype | None = None
         self.te_weight_dtype: torch.dtype | None = None
@@ -166,6 +170,8 @@ class Trainer:
         # Validation scheduler (created during _log_training_info)
         self._validation_scheduler: Any = None
         self._resource_monitor: Any = None
+        self._console: MainProcessConsole | None = None
+        self._observer: Any = None
 
         # Validation state
         self._val_dataloader: Any = None
@@ -207,6 +213,9 @@ class Trainer:
             error_message = str(exc)
             raise
         finally:
+            if self._progress_bar is not None:
+                self._progress_bar.close()
+                self._progress_bar = None
             if self._resource_monitor is not None:
                 self._resource_monitor.end_session()
             if self.is_main_process and is_benchmark_report_enabled(self.cfg):
@@ -238,7 +247,7 @@ class Trainer:
         self.tokenizers = self.strategies.tokenizers
 
         # Prepare accelerator first (needed for distributed caching)
-        logger.info("preparing accelerator")
+        logger.info("[startup] preparing accelerator")
         self._accelerator = prepare_accelerator(
             self.cfg.performance.precision,
             self.cfg.performance.compilation,
@@ -249,6 +258,10 @@ class Trainer:
         )
         self.device = self.accelerator.device
         suppress_non_main_process_logging(self.accelerator.is_main_process)
+        self._console = MainProcessConsole(is_main_process=self.accelerator.is_main_process)
+        from library.logging.metrics import LoggingTrainingObserver
+
+        self._observer = LoggingTrainingObserver(console=self._console)
         self._resource_monitor = create_resource_monitor(
             accelerator=self.accelerator,
             resource_monitor_config=self.cfg.output.logging.resource_monitor,
@@ -265,7 +278,7 @@ class Trainer:
         self._current_step_state = getattr(self.accelerator.state, "step", None) or SimpleNamespace(value=0)
 
         # Create dataset manifest
-        logger.info("Preparing dataset manifest")
+        logger.info("[dataset] preparing dataset manifest")
         self._latent_dtype = "fp32" if self.cfg.performance.precision.no_half_vae else "fp16"
         self._cache_dir = self.cfg.data.caching.cache_dir or self.cfg.data.source.train_data_dir
 
@@ -450,44 +463,23 @@ class Trainer:
 
     def _emit_training_startup_summary(self) -> None:
         """Log dataset/runtime summary and emit startup diagnostics."""
-        cfg = self.cfg
-
         assert self.train_manifest is not None, "train_manifest must be set before _emit_training_startup_summary"
-        num_train_images = sum(e.num_repeats for e in self.train_manifest.entries.values() if not e.is_reg)
-        num_reg_images = sum(e.num_repeats for e in self.train_manifest.entries.values() if e.is_reg)
-        num_val_images = sum(e.num_repeats for e in self.val_manifest.entries.values()) if self.val_manifest else 0
-
-        self.accelerator.print("running training")
-        self.accelerator.print(f"  num train images * repeats: {num_train_images}")
-        self.accelerator.print(f"  num validation images * repeats: {num_val_images}")
-        self.accelerator.print(f"  num reg images: {num_reg_images}")
-        self.accelerator.print(f"  num batches per epoch: {self.num_batches_per_epoch}")
-        self.accelerator.print(f"  num epochs: {self.num_train_epochs}")
-        self.accelerator.print(f"  batch size per device: {cfg.training.train_batch_size}")
-        self.accelerator.print(f"  gradient accumulation steps: {cfg.training.gradient_accumulation_steps}")
-        self.accelerator.print(f"  total optimization steps: {self.max_train_steps}")
-
-        diag_components, diag_aliases = self.mode.get_diagnostics_components(self)
-
-        from library.training.trainer_utils import log_training_diagnostics
-
-        log_training_diagnostics(
-            accelerator=self.accelerator,
-            cfg=cfg,
-            mode=self.mode,
-            strategies=self.strategies,
-            components=diag_components,
-            optimizer=self.optimizer,
-            optimizer_name=self.optimizer_name,
-            lr_descriptions=None if self.optimization_plan is not None else self.lr_descriptions,
-            optimization_plan=self.optimization_plan,
-            aliases=diag_aliases,
+        component_rows, aliases = build_trainer_diagnostic_rows(self)
+        summary = build_training_startup_summary(trainer=self, component_rows=component_rows, aliases=aliases)
+        assert self._observer is not None, "observer must be initialized before startup summary"
+        self._observer.log_startup_summary(summary)
+        component_names = resolve_component_names(self.cfg.model.model_type)
+        memory_components = build_named_components(
+            component_names=component_names,
+            text_encoders=self.text_encoders,
+            vae=self.vae,
+            denoiser=self.denoiser,
         )
         self._resource_monitor.emit_startup_component_memory(
-            diag_components,
+            memory_components,
             self.optimizer_name,
-            deepspeed_enabled=cfg.performance.deepspeed.deepspeed,
-            deepspeed_zero_stage=cfg.performance.deepspeed.zero_stage,
+            deepspeed_enabled=self.cfg.performance.deepspeed.deepspeed,
+            deepspeed_zero_stage=self.cfg.performance.deepspeed.zero_stage,
         )
 
     def _format_optimizer_args_for_metadata(self) -> str:
@@ -540,13 +532,15 @@ class Trainer:
         from tqdm import tqdm
 
         from library.losses.loss import EMARecorder
-        from library.logging.step_logging import init_trackers
+        from library.logging.metrics import AccelerateMetricsSink, init_trackers
         from library.training.phases.validation import ValidationScheduler
         from library.utils.device_utils import clean_memory_on_device
 
         cfg = self.cfg
 
         init_trackers(self.accelerator, cfg.output.logging, "training")
+        if self._observer is not None:
+            self._observer.metrics_sink = AccelerateMetricsSink(self.accelerator)
 
         self._loss_recorder = EMARecorder()
         self._val_loss_recorder = EMARecorder()
@@ -660,11 +654,14 @@ class Trainer:
         self._metadata["ss_training_finished_at"] = str(time.time())
 
         self.accelerator.end_training()
+        if self._progress_bar is not None:
+            self._progress_bar.close()
+            self._progress_bar = None
         apply_optimizer_runtime_mode(self.optimizer, self.optimization_plan, training=False)
         self._save_final_state_if_enabled()
         self._save_final_checkpoint_artifacts()
 
-        logger.info("model saved.")
+        logger.info("[checkpoint] checkpoint saved")
 
     @property
     def trainable_model(self) -> nn.Module | None:

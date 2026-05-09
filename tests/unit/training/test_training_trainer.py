@@ -98,8 +98,10 @@ class TestTrainer(unittest.TestCase):
     def test_train_ends_resource_monitor_session_when_training_fails(self):
         """Resource monitor session should close even if training aborts mid-run."""
         mock_monitor = MagicMock()
+        mock_progress_bar = MagicMock()
 
         self.trainer._resource_monitor = None
+        self.trainer._progress_bar = mock_progress_bar
         self.trainer.setup = MagicMock()
         self.trainer.run_caching = MagicMock()
         self.trainer.prepare_models = MagicMock()
@@ -117,6 +119,8 @@ class TestTrainer(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "training failed"):
             self.trainer.train()
 
+        mock_progress_bar.close.assert_called_once()
+        self.assertIsNone(self.trainer._progress_bar)
         mock_monitor.end_session.assert_called_once()
         self.trainer._finalize_training.assert_not_called()
 
@@ -177,6 +181,24 @@ class TestTrainer(unittest.TestCase):
         mock_monitor.end_session.assert_called_once()
         mock_write_run_report.assert_called_once_with(self.trainer, succeeded=False, error_message="training failed")
         self.trainer._finalize_training.assert_not_called()
+
+    def test_finalize_training_closes_progress_bar_before_final_save_work(self):
+        """Final checkpoint logging should happen after the progress bar is out of the way."""
+        self.trainer._accelerator = MagicMock()
+        self.trainer._progress_bar = MagicMock()
+        self.trainer._metadata = {}
+        self.trainer.optimizer = MagicMock()
+        self.trainer.optimization_plan = MagicMock()
+        self.trainer._save_final_state_if_enabled = MagicMock()
+        self.trainer._save_final_checkpoint_artifacts = MagicMock()
+
+        self.trainer._finalize_training()
+
+        self.trainer.accelerator.end_training.assert_called_once()
+        self.trainer._progress_bar.close.assert_called_once()
+        self.assertIsNone(self.trainer._progress_bar)
+        self.trainer._save_final_state_if_enabled.assert_called_once()
+        self.trainer._save_final_checkpoint_artifacts.assert_called_once()
 
     def test_run_startup_eval_actions_validation_only_skips_sampling(self):
         """Startup validation should not force startup sampling."""

@@ -17,7 +17,7 @@ import numpy as np
 import torch
 
 from library.data import CaptionConfig, prepare_epoch, create_training_dataloader
-from library.logging.step_logging import generate_step_logs, step_logging
+from library.logging.metrics import generate_step_logs, step_logging
 from library.logging.training_plots import save_timestep_distribution_plot
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
 from library.training.checkpointing import (
@@ -399,6 +399,11 @@ def _prepare_epoch_context(trainer: Trainer, *, epoch: int) -> EpochContext:
         batch_size=cfg.training.train_batch_size,
         caption_config=_build_caption_config(cfg),
     )
+    epoch_message = f"prepared epoch {epoch}: {epoch_manifest.num_batches} batches, {epoch_manifest.num_images} images"
+    if trainer._console is not None:
+        trainer._console.log_external(epoch_message, tag="epoch", stacklevel=4)
+    else:
+        logger.info("[epoch] %s", epoch_message)
 
     tokens_path = _maybe_cache_epoch_tokens(
         trainer,
@@ -631,7 +636,10 @@ def run_training_loop(trainer: Trainer) -> None:
             break
 
         trainer._current_epoch_state.value = epoch + 1
-        accelerator.print(f"Epoch {trainer._current_epoch_state.value}/{trainer.num_train_epochs}")
+        if trainer._console is not None:
+            trainer._console.print_external(f"Epoch {trainer._current_epoch_state.value}/{trainer.num_train_epochs}")
+        else:
+            accelerator.print(f"Epoch {trainer._current_epoch_state.value}/{trainer.num_train_epochs}")
 
         trainer._metadata["ss_epoch"] = str(trainer._current_epoch_state.value)
 

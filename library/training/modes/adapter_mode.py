@@ -123,8 +123,7 @@ class AdapterMode:
         adapter_registration = resolve_adapter_method_registration(peft_config)
         runtime_spec = build_adapter_runtime_spec(peft_config)
         continuation_plan = _build_continuation_plan(peft_config)
-
-        accelerator.print("adapter method:", adapter_registration.name)
+        trainer.adapter_method_name = adapter_registration.name
 
         target_selection = resolve_adapter_target_selection(
             model_type=cfg.model.model_type,
@@ -389,7 +388,7 @@ class AdapterMode:
         os.makedirs(trainer.cfg.output.saving.output_dir, exist_ok=True)
         ckpt_file = os.path.join(trainer.cfg.output.saving.output_dir, ckpt_name)
 
-        trainer.accelerator.print(f"\nsaving checkpoint: {ckpt_file}")
+        logger.info("[checkpoint] saving checkpoint: %s", ckpt_file)
         metadata["ss_training_finished_at"] = str(time.time())
         metadata["ss_steps"] = str(step)
         metadata["ss_epoch"] = str(epoch)

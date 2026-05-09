@@ -1,6 +1,7 @@
 """Unit tests for library.logging.resource_monitor."""
 
 import json
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -97,6 +98,28 @@ class TestBasicResourceMonitorBehavior:
 
             assert mock_logger.info.call_count >= 3
 
+    def test_phase_and_step_logging_uses_external_write_mode(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+        )
+
+        with (
+            patch("library.logging.resource_monitor.logger") as mock_logger,
+            patch("library.logging.resource_monitor.tqdm.external_write_mode", return_value=nullcontext()) as mock_external,
+        ):
+            monitor.start_session()
+            monitor.phase_start("training_epoch_1")
+            monitor.step_end(global_step=1, epoch=1)
+            monitor.phase_end("training_epoch_1")
+            monitor.end_session()
+
+            assert mock_external.call_count >= 4
+            assert mock_logger.info.call_count >= 3
+
     def test_emit_startup_component_memory_logs_estimate(self):
         accelerator = MagicMock()
         accelerator.is_main_process = True
@@ -107,9 +130,17 @@ class TestBasicResourceMonitorBehavior:
         )
 
         components = {"denoiser": torch.nn.Linear(4, 4)}
-        with patch("library.logging.resource_monitor.logger") as mock_logger:
+        with patch("builtins.print") as mock_print:
             monitor.emit_startup_component_memory(components, "AdamW")
-            mock_logger.info.assert_called()
+            mock_print.assert_called_once()
+            logged = mock_print.call_args.args[0]
+            assert "loaded model weights:" in logged
+            assert "training state:" in logged
+            assert "component |" in logged
+            assert "loaded |" in logged
+            assert "frozen |" in logged
+            assert "share" in logged
+            assert "total" in logged
 
     def test_emit_startup_component_memory_accepts_component_pair_list(self):
         accelerator = MagicMock()
@@ -121,9 +152,11 @@ class TestBasicResourceMonitorBehavior:
         )
 
         components = [("adapter", torch.nn.Linear(4, 4))]
-        with patch("library.logging.resource_monitor.logger") as mock_logger:
+        with patch("builtins.print") as mock_print:
             monitor.emit_startup_component_memory(components, "AdamW")
-            mock_logger.info.assert_called()
+            mock_print.assert_called_once()
+            logged = mock_print.call_args.args[0]
+            assert "loaded model weights:" in logged
 
     def test_emit_startup_component_memory_ignores_malformed_component_entries(self):
         accelerator = MagicMock()
@@ -135,9 +168,9 @@ class TestBasicResourceMonitorBehavior:
         )
 
         components = [("adapter", torch.nn.Linear(4, 4)), ("bad_only_name",), 123]
-        with patch("library.logging.resource_monitor.logger") as mock_logger:
+        with patch("builtins.print") as mock_print:
             monitor.emit_startup_component_memory(components, "AdamW")
-            mock_logger.info.assert_called()
+            mock_print.assert_called_once()
 
     def test_emit_startup_component_memory_includes_deepspeed_partitioning_caveat(self):
         accelerator = MagicMock()
@@ -149,7 +182,7 @@ class TestBasicResourceMonitorBehavior:
         )
 
         components = {"denoiser": torch.nn.Linear(4, 4)}
-        with patch("library.logging.resource_monitor.logger") as mock_logger:
+        with patch("builtins.print") as mock_print:
             monitor.emit_startup_component_memory(
                 components,
                 "AdamW",
@@ -157,9 +190,27 @@ class TestBasicResourceMonitorBehavior:
                 deepspeed_zero_stage=2,
             )
 
-            logged = mock_logger.info.call_args.args[0]
+            logged = mock_print.call_args.args[0]
             assert "DeepSpeed/ZeRO caveat" in logged
             assert "zero_stage=2" in logged
+
+    def test_emit_startup_component_memory_uses_total_loaded_share(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+        )
+
+        components = [("small", torch.nn.Linear(1, 1, bias=False)), ("large", torch.nn.Linear(1, 3, bias=False))]
+        with patch("builtins.print") as mock_print:
+            monitor.emit_startup_component_memory(components, "SGD")
+
+            logged = mock_print.call_args.args[0]
+            assert "25.0%" in logged
+            assert "75.0%" in logged
+            assert "100.0%" in logged
 
 
 @pytest.mark.unit

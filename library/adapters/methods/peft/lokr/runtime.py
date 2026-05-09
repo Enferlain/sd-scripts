@@ -6,7 +6,7 @@ import torch
 from torch import nn
 
 from library.adapters.runtime import AdapterBuildRequest, AdapterMergeRequest, LoadedAdapterRuntime
-from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider
+from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider, build_named_parameter_refs
 
 from .module import LokrConfig, LokrModule, SUPPORTED_MODULE_TYPES
 from .state_dict import load_lokr_state_dict, save_lokr_state_dict
@@ -103,18 +103,17 @@ def _attach_trainable_ref_provider(adapter: LokrAdapterRuntime, request: Adapter
             target = module.adapter_target
             if target is None:
                 raise ValueError(f"LoKr module {module.lora_name!r} is missing adapter target provenance.")
-            for param_name, param in module.named_parameters():
-                refs.append(
-                    AdapterTrainableParameterRef(
-                        param=param,
-                        name=f"{module.lora_name}.{param_name}",
-                        algorithm=request.adapter.adapter_type,
-                        component=target.component,
-                        component_key=target.component_key,
-                        target_path=target.path,
-                        source_target_ref=target.target_ref,
-                    )
+            refs.extend(
+                build_named_parameter_refs(
+                    module_name=module.lora_name,
+                    module=module,
+                    algorithm=request.adapter.adapter_type,
+                    component=target.component,
+                    component_key=target.component_key,
+                    target_path=target.path,
+                    source_target_ref=target.target_ref,
                 )
+            )
         return refs
 
     attach_trainable_parameter_provider(adapter, describe_trainable_parameter_refs)

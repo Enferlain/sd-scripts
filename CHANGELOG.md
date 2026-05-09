@@ -10,6 +10,43 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-09]
+
+### Added
+
+- **Training interruption handling now has a shared double-`Ctrl+C` guard with a short retry window** — Active launcher runs can now ignore accidental first interrupts, warn clearly, and only raise `KeyboardInterrupt` when the second `Ctrl+C` arrives within a 5-second cooldown window.
+  - Added `library/training/interrupts.py` plus focused launcher/trainer coverage for the warning-only first press, cooldown reset behavior, real second interrupt, and progress-bar cleanup on interrupted exits.
+
+### Changed
+
+- **Canonical lifecycle output now stays clean around the live progress bar without giving up the normal logger style** — Epoch banners, prepared-epoch status, and resource-monitor lines emitted during active training now use `tqdm` external-write mode so they do not collide with the live bar while still preserving timestamped `file:line` formatting.
+  - The data-layer `prepare_epoch()` helper no longer owns lifecycle status emission; the training loop now logs the canonical `[epoch] prepared epoch ...` line itself so progress/UI output stays in orchestration code.
+- **Trainer shutdown now tears down the live progress bar before final save/session logging** — Final checkpoint and resource-summary lines no longer render beside a stale `100%` bar at the end of a successful run.
+  - `_finalize_training()` now closes and clears the active progress bar before final save/checkpoint work, `Trainer.train()` also performs unconditional crash/interrupt cleanup in `finally`, and the final save confirmation now reads `[checkpoint] checkpoint saved` to stay consistent with the tagged lifecycle style.
+- **Startup resource memory now uses one shared loaded-weight view for both fine-tune and adapter runs** — The bootup resource block now reports loaded/trainable/frozen weight residency from the real loaded model components instead of reusing the adapter-centric diagnostics rows.
+  - The startup resource block now appears under `Resource startup breakdown`, groups `loaded model weights` separately from estimated `training state`, renders the loaded-weight section as an aligned terminal-friendly table, prints the dense startup block directly instead of squeezing it through the multiline `INFO` logger gutter, and leaves a visual blank line between the main startup summary and the resource block.
+- **Startup `components` now use the same table-oriented presentation style as the resource block** — Dense component diagnostics no longer repeat inline prose labels per row, making both fine-tune and adapter startup output easier to scan in a normal terminal width.
+  - The `components` table keeps `params` left-aligned as a ratio field, uses `trainable` as the final status column, preserves the older inner ratio padding for values like `0/  99`, exposes the extra `adapter modules` column in adapter mode when present, and now preserves producer/source order instead of imposing alphabetical sorting in shared reporting code.
+
+## [2026-05-07]
+
+### Added
+
+- **Training observability now has explicit module homes under `library/logging/`** — The repo now has first-pass `console.py`, `metrics.py`, `summaries.py`, and `reports.py` ownership buckets alongside the existing `resource_monitor.py`, with compatibility wrappers left in `step_logging.py` and `run_report.py` for existing imports.
+  - Added shared startup-summary dataclasses/rendering, a repo-facing `TrainingObserver` seam plus a narrower backend `MetricsSink` contract, and a `MainProcessConsole` helper for canonical human-facing training output.
+
+### Changed
+
+- **Startup diagnostics now flow through one shared observability summary path instead of ad hoc `accelerator.print(...)` formatting** — Trainer startup now builds structured rows, renders sectioned startup blocks, and reuses the same summary facts for benchmark-report memory estimates.
+  - The preferred console split is now a sectioned startup block for dense run/configuration output plus tagged lifecycle lines such as `[epoch] ...` and `[checkpoint] ...` for standalone status messages.
+  - The startup summary block now renders directly through the repo console layer instead of as a multiline `INFO` log record, preserving the full terminal width for dense component rows while leaving normal one-line logs on the timestamped `file:line` logger path.
+- **Adapter diagnostics now derive from repo-owned trainable-ref provenance and default to public component labels** — Adapter-mode startup and report breakdowns now group by stable internal component keys while showing public model-family labels like `unet`, `clip_l`, and `clip_g` in user-facing output.
+  - Adapter-side reporting facts now live under `library/adapters/shared/reporting.py`, with repo-owned trainable refs carrying explicit adapter-module provenance so logging can consume both original component-module counts and adapter-module counts without owning PEFT-specific inference.
+  - Resource startup memory estimates now accept structured diagnostic rows directly, so adapter and fine-tune paths can share the same reporting flow without rebuilding component stats separately.
+  - Adapter runs now surface the active method inside the `training run` startup section as `method: ...`, sourced from `AdapterMode`/trainer state instead of a stray standalone print.
+- **Canonical training lifecycle output now uses progress-bar-safe emission without falling back to raw text formatting** — The epoch banner, prepared-epoch status line, and resource-monitor summaries emitted while training is live now write through `tqdm` external-write mode so they no longer collide with the active progress bar.
+  - The progress-safe path keeps normal logger formatting for those lines instead of introducing a separate raw-text transport, so timestamped `file:line` output remains intact where the logger already owns presentation.
+
 ## [2026-05-06]
 
 ### Changed

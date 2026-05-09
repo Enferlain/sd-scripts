@@ -465,7 +465,7 @@ def sample_images_common(
         controlnet: ControlNet model (optional).
     """
     logger.info("")
-    logger.info(f"generating sample images at step: {steps}")
+    logger.info(f"[sample] generating sample images at step: {steps}")
     prompts = get_sampling_prompt_dicts(sampling_config)
     if prompts is None:
         return

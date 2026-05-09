@@ -52,6 +52,19 @@ The active launcher surface should stay thin and orchestration-focused.
 - **No Business Logic:** Complex logic (like "how to save a model" or "how to build a dataset") belongs in `library/`, not in the launcher.
 - **Current shape:** `train.py` is the canonical launcher for active adapter / fine-tune runs. The current adapter family is PEFT under `adapter.peft`. Dedicated scripts that remain under `scripts/` are either transitional helpers or still-unmigrated paths such as textual inversion.
 
+### D. Observability And Logging
+
+- **Location:** `library/logging/`
+- **Rule:** Training/runtime code owns *when* facts happen. Logging/observability code owns *how* human-facing console output, tracker metrics, startup summaries, reports, and resource-monitor integrations are rendered or routed.
+- **Ownership buckets:**
+  - `console.py` owns canonical user-facing lifecycle output
+  - `metrics.py` owns tracker/metrics routing plus backend sink seams
+  - `summaries.py` owns structured startup diagnostics and related summary models
+  - `reports.py` owns benchmark/run report composition
+  - `resource_monitor.py` remains its own runtime/resource subsystem
+- **Console rule:** Use the repo-owned logging/console path for canonical training UX. Do not grow new long-term `accelerator.print(...)` formatting paths for startup or lifecycle summaries.
+- **Naming rule:** Internal normalized component keys (`denoiser`, `text_encoder1`) are for shared code paths; human-facing diagnostics should prefer the public model-family labels carried by repo-owned provenance.
+
 ## 3. Coding Standards
 
 - **Typing:** Use Python type hints (`typing`) everywhere. Prefer modern syntax (`X | None` over `Optional[X]`, `list[int]` over `List[int]`).

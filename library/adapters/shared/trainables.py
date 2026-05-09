@@ -19,6 +19,7 @@ class AdapterTrainableParameterRef:
     component: str
     component_key: str
     target_path: str
+    adapter_module_path: str | None = None
     source_target_ref: OptimizationTargetRef | None = None
 
 
@@ -27,6 +28,44 @@ class AdapterTrainableParameterProvider(Protocol):
     """Adapter runtime surface for exposing trainable refs to optimization."""
 
     def describe_trainable_parameter_refs(self) -> list[AdapterTrainableParameterRef]: ...
+
+
+def build_adapter_module_path(module_name: str, param_name: str) -> str:
+    """Return the adapter-module owner path for a named parameter."""
+
+    owner_path, _, _ = param_name.rpartition(".")
+    if not owner_path:
+        return module_name
+    return f"{module_name}.{owner_path}"
+
+
+def build_named_parameter_refs(
+    *,
+    module_name: str,
+    module: nn.Module,
+    algorithm: str,
+    component: str,
+    component_key: str,
+    target_path: str,
+    source_target_ref: OptimizationTargetRef | None = None,
+) -> list[AdapterTrainableParameterRef]:
+    """Build repo-owned trainable refs for one adapter module's named parameters."""
+
+    refs: list[AdapterTrainableParameterRef] = []
+    for param_name, param in module.named_parameters():
+        refs.append(
+            AdapterTrainableParameterRef(
+                param=param,
+                name=f"{module_name}.{param_name}",
+                algorithm=algorithm,
+                component=component,
+                component_key=component_key,
+                target_path=target_path,
+                adapter_module_path=build_adapter_module_path(module_name, param_name),
+                source_target_ref=source_target_ref,
+            )
+        )
+    return refs
 
 
 def attach_trainable_parameter_provider(
