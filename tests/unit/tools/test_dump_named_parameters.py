@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from torch import nn
 
 import library.models as model_metadata
-from library.models import NamedParameterComponentNames
+from library.models import LoadedModelComponentSpec, NamedParameterComponentNames
 from tools.model_management import dump_named_parameters
 
 
@@ -87,10 +87,11 @@ def test_filter_components_keeps_requested_order_from_input_components():
 
 def test_resolve_component_names_reads_existing_package_metadata(monkeypatch):
     fake_package = SimpleNamespace(
-        NAMED_PARAMETER_COMPONENT_NAMES=NamedParameterComponentNames(
-            text_encoder_names=("clip_l", "clip_g"),
-            vae_name="vae",
-            denoiser_name="unet",
+        LOADED_MODEL_COMPONENT_SPECS=(
+            LoadedModelComponentSpec(key="text_encoder1", public_name="clip_l", roles=("text_encoder",)),
+            LoadedModelComponentSpec(key="text_encoder2", public_name="clip_g", roles=("text_encoder",)),
+            LoadedModelComponentSpec(key="vae", public_name="vae", roles=("vae",)),
+            LoadedModelComponentSpec(key="denoiser", public_name="unet", roles=("denoiser",)),
         )
     )
     monkeypatch.setattr(model_metadata.importlib.util, "find_spec", lambda _: object())
@@ -98,7 +99,11 @@ def test_resolve_component_names_reads_existing_package_metadata(monkeypatch):
 
     component_names = model_metadata.resolve_component_names("sdxl")
 
-    assert component_names == fake_package.NAMED_PARAMETER_COMPONENT_NAMES
+    assert component_names == NamedParameterComponentNames(
+        text_encoder_names=("clip_l", "clip_g"),
+        vae_name="vae",
+        denoiser_name="unet",
+    )
 
 
 def test_validate_model_type_accepts_supported_types(monkeypatch):

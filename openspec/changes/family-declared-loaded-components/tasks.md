@@ -1,8 +1,8 @@
 ## 1. Define the loaded-component contract
 
-- [ ] 1.1 Add the repo-owned loaded-component data model and family-declaration seam under `library/models/`
-- [ ] 1.2 Update current model families to declare their top-level loaded components, public labels, order, and generic roles/capabilities through the new seam
-- [ ] 1.3 Add focused tests proving SD, SDXL, and SD3 expose the expected declared component order and identity through the new contract
+- [x] 1.1 Add the repo-owned loaded-component data model and family-declaration seam under `library/models/`
+- [x] 1.2 Update current model families to declare their top-level loaded components, public labels, order, and generic roles/capabilities through the new seam
+- [x] 1.3 Add focused tests proving SD, SDXL, and SD3 expose the expected declared component order and identity through the new contract
 
 ## 2. Replace the loader and trainer root contract
 

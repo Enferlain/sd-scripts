@@ -1,11 +1,11 @@
 """SD model components."""
 
-from library.models import NamedParameterComponentNames
+from library.models import LoadedModelComponentSpec
 
-NAMED_PARAMETER_COMPONENT_NAMES = NamedParameterComponentNames(
-    text_encoder_names=("clip_l",),
-    vae_name="vae",
-    denoiser_name="unet",
+LOADED_MODEL_COMPONENT_SPECS = (
+    LoadedModelComponentSpec(key="text_encoder1", public_name="clip_l", roles=("text_encoder",)),
+    LoadedModelComponentSpec(key="vae", public_name="vae", roles=("vae",)),
+    LoadedModelComponentSpec(key="denoiser", public_name="unet", roles=("denoiser",)),
 )
 
-__all__ = ["NAMED_PARAMETER_COMPONENT_NAMES"]
+__all__ = ["LOADED_MODEL_COMPONENT_SPECS"]

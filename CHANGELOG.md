@@ -14,6 +14,8 @@ Rules:
 
 ### Changed
 
+- **The new family-declared loaded-component contract now has its initial repo-owned declaration seam** — `library.models` now exposes `LoadedModelComponentSpec` plus component-spec resolution, the current SD / SDXL / SD3 model-family packages declare ordered top-level components through that seam, and the legacy name-only helper is derived from the new declarations so the broader runtime migration can proceed incrementally from one source of truth.
+  - Added focused model/declaration coverage proving the current families expose the expected ordered component specs and that the legacy component-name helper still derives the same public labels from those declarations.
 - **Shared public model-component naming now lives under `library.models` instead of the parameter-dump module** — The repo-owned `NamedParameterComponentNames`, component-name resolution, selector-name construction, and loaded-component grouping helpers now sit on the model package surface, so startup summaries, optimizer grouping, adapter targeting, config validation, and the dump tool no longer depend on a file whose real purpose is YAML inspection formatting.
   - Updated the model-family package exports plus the affected runtime, logging, optimization, and dump-tool consumers to import the extracted seam from `library.models`, while keeping `library/models/parameter_dump.py` focused on dump rendering and preserving existing public component labels/selector behavior.
 
