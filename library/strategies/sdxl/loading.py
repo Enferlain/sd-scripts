@@ -2,9 +2,9 @@ import logging
 from typing import Any
 
 import torch
-from torch import nn
 
 from library.constants import MODEL_VERSION_SDXL_BASE_V1_0
+from library.models import LoadedModelComponent, build_loaded_components
 from library.models.runtime_utils import replace_unet_modules
 from library.models.sdxl.loader import load_target_model as load_sdxl_target_model
 from library.strategies.base.contracts import ModelLoadingStrategy
@@ -23,7 +23,7 @@ class SdxlModelLoadingStrategy(ModelLoadingStrategy):
 
     def load_target_model(
         self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any
-    ) -> tuple[str, list[nn.Module], nn.Module, nn.Module | None]:
+    ) -> tuple[str, tuple[LoadedModelComponent, ...]]:
         """
         Load SDXL model components (dual text encoders, VAE, UNet).
 
@@ -83,4 +83,13 @@ class SdxlModelLoadingStrategy(ModelLoadingStrategy):
         if torch.__version__ >= "2.0.0":
             vae.set_use_memory_efficient_attention_xformers(cfg.performance.attention.xformers)
 
-        return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
+        loaded_components = build_loaded_components(
+            cfg.model.model_type,
+            {
+                "text_encoder1": text_encoder1,
+                "text_encoder2": text_encoder2,
+                "vae": vae,
+                "denoiser": unet,
+            },
+        )
+        return MODEL_VERSION_SDXL_BASE_V1_0, loaded_components

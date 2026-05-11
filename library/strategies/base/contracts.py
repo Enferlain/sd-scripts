@@ -6,6 +6,7 @@ from typing import Any
 import torch
 
 from library.losses.loss_modifiers import BatchLossOutput
+from library.models import LoadedModelComponent
 from library.objectives.base import ObjectiveRuntime
 from library.strategies.base.context import StrategyPhase
 
@@ -23,10 +24,12 @@ class ModelConditioning(ABC):  # noqa: B024 - Marker class, no abstract methods
 
 
 class ModelLoadingStrategy(ABC):
-    """Strategy for loading model components (text encoders, VAE, denoiser)."""
+    """Strategy for loading family-declared top-level model components."""
 
     @abstractmethod
-    def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, Any, Any, Any]:
+    def load_target_model(
+        self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any
+    ) -> tuple[str, tuple[LoadedModelComponent, ...]]:
         """
         Load model components for this architecture.
 
@@ -36,26 +39,32 @@ class ModelLoadingStrategy(ABC):
             accelerator: Accelerator instance for handling device placement.
 
         Returns:
-            Tuple of (model_version, text_encoder, vae, denoiser):
+            Tuple of (model_version, loaded_components):
             - model_version: String identifier for the model version.
-            - text_encoder: A single text encoder model or a list of text encoders.
-            - vae: The VAE model.
-            - denoiser: The denoiser model, or None if loaded lazily.
+            - loaded_components: Family-declared top-level components in
+              family-owned order, each bound to its live loaded module (or None
+              when a component is still deferred for lazy loading).
         """
         raise NotImplementedError
 
-    def load_denoiser_lazily(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any, text_encoders: list[Any]) -> Any:
+    def load_denoiser_lazily(
+        self,
+        cfg: Any,
+        weight_dtype: torch.dtype,
+        accelerator: Any,
+        loaded_components: tuple[LoadedModelComponent, ...],
+    ) -> tuple[LoadedModelComponent, ...]:
         """
-        Load the denoiser lazily if not loaded in ``load_target_model``.
+        Load deferred components lazily and return the updated component surface.
 
         Args:
             cfg: Configuration object.
             weight_dtype: Weight data type.
             accelerator: Accelerator instance.
-            text_encoders: List of text encoders.
+            loaded_components: Current family-declared loaded components.
 
         Returns:
-            Loaded denoiser model.
+            Updated loaded-component collection.
 
         Raises:
             NotImplementedError: If not implemented by subclass.

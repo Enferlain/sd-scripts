@@ -20,7 +20,7 @@ from library.config.dataclasses.data import DataConfig
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import PerformanceConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.models import build_named_components, resolve_component_names
+from library.models import build_component_module_pairs
 from library.models.parameter_dump import (
     derive_parameter_dump_identifier,
     format_component_module_dump,
@@ -179,14 +179,8 @@ def load_components(args: argparse.Namespace) -> tuple[str, list[tuple[str, torc
     strategy = build_strategy(cfg)
     accelerator = _ToolAccelerator(args.device)
     weight_dtype = _DTYPE_CHOICES[args.dtype]
-    model_version, text_encoders, vae, denoiser = strategy.load_target_model(cfg, weight_dtype, accelerator)
-    component_names = resolve_component_names(args.model_type)
-    components = build_named_components(
-        component_names=component_names,
-        text_encoders=text_encoders,
-        vae=vae,
-        denoiser=denoiser,
-    )
+    model_version, loaded_components = strategy.load_target_model(cfg, weight_dtype, accelerator)
+    components = build_component_module_pairs(loaded_components)
     identifier = args.identifier or derive_parameter_dump_identifier(args.model_type, model_version)
     return identifier, components
 

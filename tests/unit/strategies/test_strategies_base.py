@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 import torch
 
+from library.models import LoadedModelComponent
 from library.models.sd.tokenizer import load_tokenizer
 from library.strategies.shared.clip.model_preparation import (
     prepare_clip_text_encoder_fp8,
@@ -240,7 +241,7 @@ class _DummyDiffusionStrategy(DiffusionTrainingStrategy):
 
 class _DummyLoadingStrategy(ModelLoadingStrategy):
     def load_target_model(self, cfg, weight_dtype, accelerator):
-        return "dummy", [], None, None
+        return "dummy", (LoadedModelComponent(key="denoiser", public_name="denoiser", module=None, roles=("denoiser",)),)
 
 
 class _DummyValidationStrategy(ValidationStrategy):
@@ -305,7 +306,12 @@ class TestTrainingStrategyPhase2Facets:
         """Default lazy-load hook remains opt-in for model families that need it."""
         strategy = _DummyLoadingStrategy()
         with pytest.raises(NotImplementedError, match="load_denoiser_lazily"):
-            strategy.load_denoiser_lazily(cfg=Mock(), weight_dtype=torch.float16, accelerator=Mock(), text_encoders=[])
+            strategy.load_denoiser_lazily(
+                cfg=Mock(),
+                weight_dtype=torch.float16,
+                accelerator=Mock(),
+                loaded_components=(),
+            )
 
     def test_model_prep_methods_require_explicit_strategy_implementation(self):
         """Model-prep hooks no longer silently default in the base facet."""

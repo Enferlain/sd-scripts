@@ -2,8 +2,8 @@ import logging
 from typing import Any
 
 import torch
-from torch import nn
 
+from library.models import LoadedModelComponent, build_loaded_components
 from library.models.sd3.loader import load_target_model as load_sd3_target_model
 from library.strategies.base.contracts import ModelLoadingStrategy
 
@@ -24,7 +24,7 @@ class Sd3ModelLoadingStrategy(ModelLoadingStrategy):
         cfg: Any,
         weight_dtype: torch.dtype,
         accelerator: Any,
-    ) -> tuple[str, list[nn.Module | None], nn.Module, nn.Module | None]:
+    ) -> tuple[str, tuple[LoadedModelComponent, ...]]:
         """Load SD3 text encoders, VAE, and MMDiT."""
         model_version, text_encoders, vae, denoiser = load_sd3_target_model(
             cfg.model,
@@ -56,7 +56,17 @@ class Sd3ModelLoadingStrategy(ModelLoadingStrategy):
                 text_encoders[index] = replace_linear_with_ramtorch(text_encoder, accelerator.device)
                 logger.info("RamTorch applied to SD3 text encoder index %s.", index)
 
-        return model_version, text_encoders, vae, denoiser
+        loaded_components = build_loaded_components(
+            cfg.model.model_type,
+            {
+                "text_encoder1": text_encoders[0] if len(text_encoders) > 0 else None,
+                "text_encoder2": text_encoders[1] if len(text_encoders) > 1 else None,
+                "text_encoder3": text_encoders[2] if len(text_encoders) > 2 else None,
+                "vae": vae,
+                "denoiser": denoiser,
+            },
+        )
+        return model_version, loaded_components
 
 
 __all__ = ["Sd3ModelLoadingStrategy"]

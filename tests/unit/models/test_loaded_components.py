@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-import library.models as model_metadata
+import library.models.components as component_metadata
 
 from library.models import LoadedModelComponentSpec, resolve_component_names, resolve_component_specs
 
@@ -58,7 +58,7 @@ def test_resolve_component_specs_returns_none_for_malformed_package_metadata(mon
             "not-a-component-spec",
         )
     )
-    monkeypatch.setattr(model_metadata.importlib.util, "find_spec", lambda _: object())
-    monkeypatch.setattr(model_metadata.importlib, "import_module", lambda _: fake_package)
+    monkeypatch.setattr(component_metadata.importlib.util, "find_spec", lambda _: object())
+    monkeypatch.setattr(component_metadata.importlib, "import_module", lambda _: fake_package)
 
     assert resolve_component_specs("sdxl") is None

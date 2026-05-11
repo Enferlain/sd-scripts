@@ -31,14 +31,10 @@ def prepare_models(trainer: Trainer) -> None:
     # Lazy load denoiser if it was deferred during setup (memory optimization)
     # This allows VAE/TE caching to complete before loading the large denoiser
     if trainer.denoiser is None:
-        trainer.denoiser, trainer.text_encoders = trainer.strategies.load_denoiser_lazily(
-            trainer.cfg, trainer.weight_dtype, trainer.accelerator, trainer.text_encoders
+        trainer.loaded_components = trainer.strategies.load_denoiser_lazily(
+            trainer.cfg, trainer.weight_dtype, trainer.accelerator, trainer.loaded_components
         )
-        # Update _text_encoder reference for adapter API compatibility
-        if len(trainer.text_encoders) > 1:
-            trainer._text_encoder = trainer.text_encoders
-        else:
-            trainer._text_encoder = trainer.text_encoders[0] if trainer.text_encoders else None
+        trainer.sync_component_views()
 
     # Mode-specific: create and configure the trainable model (adapter)
     trainer.mode.prepare_trainables(trainer)

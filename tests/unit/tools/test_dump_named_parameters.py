@@ -4,7 +4,8 @@ from types import SimpleNamespace
 from torch import nn
 
 import library.models as model_metadata
-from library.models import LoadedModelComponentSpec, NamedParameterComponentNames
+import library.models.components as component_metadata
+from library.models import LoadedModelComponent, LoadedModelComponentSpec, NamedParameterComponentNames
 from tools.model_management import dump_named_parameters
 
 
@@ -94,8 +95,8 @@ def test_resolve_component_names_reads_existing_package_metadata(monkeypatch):
             LoadedModelComponentSpec(key="denoiser", public_name="unet", roles=("denoiser",)),
         )
     )
-    monkeypatch.setattr(model_metadata.importlib.util, "find_spec", lambda _: object())
-    monkeypatch.setattr(model_metadata.importlib, "import_module", lambda _: fake_package)
+    monkeypatch.setattr(component_metadata.importlib.util, "find_spec", lambda _: object())
+    monkeypatch.setattr(component_metadata.importlib, "import_module", lambda _: fake_package)
 
     component_names = model_metadata.resolve_component_names("sdxl")
 
@@ -163,18 +164,18 @@ def test_load_components_uses_strategy_loading_path(monkeypatch):
         def load_target_model(self, cfg, weight_dtype, accelerator):
             assert cfg.model.model_type == "sd3"
             assert str(accelerator.device) == "cpu"
-            return "medium", expected_text_encoders, expected_vae, expected_denoiser
+            return (
+                "medium",
+                (
+                    LoadedModelComponent(key="text_encoder1", public_name="clip_l", module=expected_text_encoders[0], roles=("text_encoder",)),
+                    LoadedModelComponent(key="text_encoder2", public_name="clip_g", module=expected_text_encoders[1], roles=("text_encoder",)),
+                    LoadedModelComponent(key="text_encoder3", public_name="t5xxl", module=expected_text_encoders[2], roles=("text_encoder",)),
+                    LoadedModelComponent(key="vae", public_name="vae", module=expected_vae, roles=("vae",)),
+                    LoadedModelComponent(key="denoiser", public_name="mmdit", module=expected_denoiser, roles=("denoiser",)),
+                ),
+            )
 
     monkeypatch.setattr(dump_named_parameters, "build_strategy", lambda cfg: FakeStrategy())
-    monkeypatch.setattr(
-        dump_named_parameters,
-        "resolve_component_names",
-        lambda model_type: NamedParameterComponentNames(
-            text_encoder_names=("clip_l", "clip_g", "t5xxl"),
-            vae_name="vae",
-            denoiser_name="mmdit",
-        ),
-    )
 
     identifier, components = dump_named_parameters.load_components(args)
 

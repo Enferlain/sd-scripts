@@ -24,7 +24,15 @@ from library.logging.console import MainProcessConsole
 from library.logging.resource_monitor import create_resource_monitor
 from library.logging.reports import is_benchmark_report_enabled, write_run_report
 from library.logging.summaries import build_trainer_diagnostic_rows, build_training_startup_summary
-from library.models import build_named_components, resolve_component_names
+from library.models import (
+    LoadedModelComponent,
+    build_component_module_pairs,
+    find_loaded_components,
+    get_loaded_component_module,
+    get_loaded_component_modules,
+    update_loaded_component_module,
+    update_loaded_component_modules_by_role,
+)
 from library.objectives import ObjectiveDefinition, build_objective
 from library.objectives.base import ObjectiveRuntime
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
@@ -103,9 +111,8 @@ class Trainer:
         self.val_manifest: DatasetManifest | None = None
 
         # Will be set during model loading (in setup)
-        self.denoiser: nn.Module | None = None
-        self.vae: nn.Module | None = None
-        self.text_encoders: list[nn.Module] = []
+        # Primary top-level model representation: family-declared loaded components.
+        self.loaded_components: tuple[LoadedModelComponent, ...] = ()
         self._text_encoder: Any = None  # Original reference for adapter API compatibility
 
         # Will be set during prepare_models()
@@ -344,17 +351,13 @@ class Trainer:
         )
 
         # Load target models: denoiser may be None for lazy loading
-        self._model_version, text_encoder, self.vae, self.denoiser = self.strategies.load_target_model(
-            self.cfg, self.weight_dtype, self.accelerator
-        )
+        self._model_version, self.loaded_components = self.strategies.load_target_model(self.cfg, self.weight_dtype, self.accelerator)
+        self.sync_component_views()
 
         if self.vae_dtype is None:
+            assert self.vae is not None, "vae must be loaded before inferring vae dtype"
             self.vae_dtype = self.vae.dtype
             logger.info(f"vae_dtype is set to {self.vae_dtype} by the model since cast_vae() is false")
-
-        # text_encoder is List[CLIPTextModel] or CLIPTextModel
-        self.text_encoders = text_encoder if isinstance(text_encoder, list) else [text_encoder]
-        self._text_encoder = text_encoder  # Keep original reference for compatibility
 
     def run_caching(self) -> None:
         """Phase 2: Cache latents and optionally text encoder outputs."""
@@ -522,13 +525,7 @@ class Trainer:
         summary = build_training_startup_summary(trainer=self, component_rows=component_rows, aliases=aliases)
         assert self._observer is not None, "observer must be initialized before startup summary"
         self._observer.log_startup_summary(summary)
-        component_names = resolve_component_names(self.cfg.model.model_type)
-        memory_components = build_named_components(
-            component_names=component_names,
-            text_encoders=self.text_encoders,
-            vae=self.vae,
-            denoiser=self.denoiser,
-        )
+        memory_components = build_component_module_pairs(self.loaded_components)
         memory_components = self._order_memory_components(memory_components, component_rows)
         self._resource_monitor.emit_startup_component_memory(
             memory_components,
@@ -717,6 +714,61 @@ class Trainer:
         self._save_final_checkpoint_artifacts()
 
         logger.info("[checkpoint] checkpoint saved")
+
+    def sync_component_views(self) -> None:
+        """Refresh compatibility-era component projections from loaded components."""
+        text_encoders = self.text_encoders
+        if len(text_encoders) > 1:
+            self._text_encoder = text_encoders
+        else:
+            self._text_encoder = text_encoders[0] if text_encoders else None
+
+    def get_loaded_components(
+        self,
+        *,
+        role: str | None = None,
+        capability: str | None = None,
+        include_unloaded: bool = False,
+    ) -> list[LoadedModelComponent]:
+        """Return trainer-owned loaded components filtered by declared semantics."""
+        return find_loaded_components(
+            self.loaded_components,
+            role=role,
+            capability=capability,
+            include_unloaded=include_unloaded,
+        )
+
+    @property
+    def text_encoders(self) -> list[Any]:
+        """Return loaded text-encoder modules in family-declared order."""
+        return get_loaded_component_modules(self.loaded_components, role="text_encoder", include_unloaded=True)
+
+    @text_encoders.setter
+    def text_encoders(self, modules: list[Any]) -> None:
+        self.loaded_components = update_loaded_component_modules_by_role(
+            self.loaded_components,
+            role="text_encoder",
+            modules=modules,
+        )
+        self.sync_component_views()
+
+    @property
+    def vae(self) -> Any | None:
+        """Return the first loaded VAE-like module."""
+        return get_loaded_component_module(self.loaded_components, role="vae")
+
+    @vae.setter
+    def vae(self, module: Any | None) -> None:
+        self.loaded_components = update_loaded_component_module(self.loaded_components, role="vae", module=module)
+
+    @property
+    def denoiser(self) -> Any | None:
+        """Return the first loaded denoiser-like module."""
+        return get_loaded_component_module(self.loaded_components, role="denoiser")
+
+    @denoiser.setter
+    def denoiser(self, module: Any | None) -> None:
+        self.loaded_components = update_loaded_component_module(self.loaded_components, role="denoiser", module=module)
 
     @property
     def trainable_model(self) -> nn.Module | None:

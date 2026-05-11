@@ -10,6 +10,7 @@ import shutil
 # Add repo root to path
 sys.path.append(os.getcwd())
 
+from library.models import LoadedModelComponent
 from library.config.dataclasses.performance import DeepSpeedConfig
 from library.training.runners.trainer import Trainer
 from library.training.phases.optimizer import prepare_optimizer
@@ -63,7 +64,13 @@ class MockStrategy:
         return False
 
     def load_target_model(self, *args):
-        return "v1", [], MagicMock(), MagicMock()
+        return (
+            "v1",
+            (
+                LoadedModelComponent(key="vae", public_name="vae", module=MagicMock(), roles=("vae",)),
+                LoadedModelComponent(key="denoiser", public_name="denoiser", module=MagicMock(), roles=("denoiser",)),
+            ),
+        )
 
     def tokenize(self, text):
         return []

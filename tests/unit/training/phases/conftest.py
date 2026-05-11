@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import torch
 
 from library.losses.loss_modifiers import BatchLossOutput, LossModifierOutput
+from library.models import LoadedModelComponent
 
 
 @pytest.fixture
@@ -158,7 +159,7 @@ def mock_strategies():
     strategies.cast_text_encoder = MagicMock(return_value=True)
     strategies.post_process_trainable = MagicMock()
     strategies.prepare_text_encoder_fp8 = MagicMock()
-    strategies.load_denoiser_lazily = MagicMock(return_value=(MagicMock(), []))
+    strategies.load_denoiser_lazily = MagicMock()
     strategies.get_token_cache_encoder_names = MagicMock(return_value=["clip_l", "clip_g"])
     strategies.build_te_cache_model_bundle = MagicMock(return_value=("te1", "te2", "tok1", "tok2"))
     strategies.process_batch = MagicMock(
@@ -211,6 +212,14 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
         te.gradient_checkpointing_enable = MagicMock()
 
     trainer._text_encoder = trainer.text_encoders
+    trainer.loaded_components = (
+        LoadedModelComponent(key="text_encoder1", public_name="text_encoder1", module=trainer.text_encoders[0], roles=("text_encoder",)),
+        LoadedModelComponent(key="text_encoder2", public_name="text_encoder2", module=trainer.text_encoders[1], roles=("text_encoder",)),
+        LoadedModelComponent(key="vae", public_name="vae", module=trainer.vae, roles=("vae",)),
+        LoadedModelComponent(key="denoiser", public_name="denoiser", module=trainer.denoiser, roles=("denoiser",)),
+    )
+    trainer.strategies.load_denoiser_lazily.return_value = trainer.loaded_components
+    trainer.sync_component_views = MagicMock()
     trainer.tokenizers = [MagicMock(), MagicMock()]
 
     # Dtypes

@@ -2,9 +2,9 @@ import logging
 from typing import Any
 
 import torch
-from torch import nn
 
 import library.models.sd.conversion
+from library.models import LoadedModelComponent, build_loaded_components
 from library.models.runtime_utils import replace_unet_modules
 from library.models.sd.loader import load_target_model
 from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
@@ -24,7 +24,7 @@ class SdModelLoadingStrategy(ModelLoadingStrategy):
 
     def load_target_model(
         self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any
-    ) -> tuple[str, nn.Module, nn.Module, nn.Module | None]:
+    ) -> tuple[str, tuple[LoadedModelComponent, ...]]:
         """Load SD1.5/2 model components."""
         text_encoder, vae, unet, _ = load_target_model(cfg.model, cfg.performance.memory, weight_dtype, accelerator)
 
@@ -50,12 +50,12 @@ class SdModelLoadingStrategy(ModelLoadingStrategy):
         if torch.__version__ >= "2.0.0":
             vae.set_use_memory_efficient_attention_xformers(cfg.performance.attention.xformers)
 
-        return (
-            library.models.sd.conversion.get_model_version_str_for_sd1_sd2(
-                cfg.model.model_type == "sd2",
-                resolve_ddpm_prediction_type(cfg.objective.prediction) == DDPM_PREDICTION_TYPE_V,
-            ),
-            text_encoder,
-            vae,
-            unet,
+        model_version = library.models.sd.conversion.get_model_version_str_for_sd1_sd2(
+            cfg.model.model_type == "sd2",
+            resolve_ddpm_prediction_type(cfg.objective.prediction) == DDPM_PREDICTION_TYPE_V,
         )
+        loaded_components = build_loaded_components(
+            cfg.model.model_type,
+            {"text_encoder1": text_encoder, "vae": vae, "denoiser": unet},
+        )
+        return model_version, loaded_components

@@ -6,16 +6,16 @@
 
 ## 2. Replace the loader and trainer root contract
 
-- [ ] 2.1 Change `ModelLoadingStrategy.load_target_model()` to return the loaded-component surface instead of the fixed `text_encoders/vae/denoiser` tuple
-- [ ] 2.2 Update `Trainer.setup()` and trainer state to treat the loaded-component collection as the primary top-level model representation
-- [ ] 2.3 Remove the old tuple-oriented assumptions from trainer-facing helpers that currently rebuild top-level component structure from `text_encoders`, `vae`, and `denoiser`
+- [x] 2.1 Change `ModelLoadingStrategy.load_target_model()` to return the loaded-component surface instead of the fixed `text_encoders/vae/denoiser` tuple
+- [x] 2.2 Update `Trainer.setup()` and trainer state to treat the loaded-component collection as the primary top-level model representation
+- [x] 2.3 Remove the old tuple-oriented assumptions from trainer-facing helpers that currently rebuild top-level component structure from `text_encoders`, `vae`, and `denoiser`
 
 ## 3. Migrate diagnostics, selectors, and tooling
 
 - [ ] 3.1 Update training-mode diagnostics hooks and startup-summary builders to consume loaded components or filtered views of them
-- [ ] 3.2 Update resource-monitor startup component accounting to consume the new component surface while preserving family-declared order
+- [x] 3.2 Update resource-monitor startup component accounting to consume the new component surface while preserving family-declared order
 - [ ] 3.3 Update component-qualified selector generation and related tests to derive selector prefixes from declared loaded components
-- [ ] 3.4 Update the model-inspection / parameter-dump tool to load and render top-level components through the new contract
+- [x] 3.4 Update the model-inspection / parameter-dump tool to load and render top-level components through the new contract
 
 ## 4. Migrate optimization and adapter consumers
 

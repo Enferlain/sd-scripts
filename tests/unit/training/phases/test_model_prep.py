@@ -10,6 +10,8 @@ import pytest
 from unittest.mock import MagicMock, patch
 import torch
 
+from library.models import LoadedModelComponent
+
 
 @pytest.mark.training
 @pytest.mark.unit
@@ -20,8 +22,12 @@ class TestPrepareModels:
         """Test that the denoiser is lazy loaded when trainer.denoiser is None."""
         mock_trainer.denoiser = None
         mock_denoiser = MagicMock()
-        mock_text_encoders = [MagicMock()]
-        mock_trainer.strategies.load_denoiser_lazily.return_value = (mock_denoiser, mock_text_encoders)
+        mock_trainer.strategies.load_denoiser_lazily.return_value = (
+            LoadedModelComponent(key="text_encoder1", public_name="text_encoder1", module=MagicMock(), roles=("text_encoder",)),
+            LoadedModelComponent(key="vae", public_name="vae", module=mock_trainer.vae, roles=("vae",)),
+            LoadedModelComponent(key="denoiser", public_name="denoiser", module=mock_denoiser, roles=("denoiser",)),
+        )
+        mock_trainer.sync_component_views.side_effect = lambda: setattr(mock_trainer, "denoiser", mock_denoiser)
 
         with patch("library.training.phases.model_prep.configure_precision"):
             from library.training.phases.model_prep import prepare_models
@@ -29,6 +35,7 @@ class TestPrepareModels:
             prepare_models(mock_trainer)
 
             mock_trainer.strategies.load_denoiser_lazily.assert_called_once()
+            mock_trainer.sync_component_views.assert_called_once()
             assert mock_trainer.denoiser is mock_denoiser
 
     def test_skips_lazy_load_when_denoiser_exists(self, mock_trainer):
