@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from torch import nn
 
-from library.models.parameter_dump import build_selector_name
+from library.models import build_selector_name
 
 OptimizationTargetKind = Literal["component", "module", "parameter"]
 

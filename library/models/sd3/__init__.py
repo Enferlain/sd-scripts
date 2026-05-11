@@ -1,6 +1,6 @@
 """SD3 model components."""
 
-from library.models.parameter_dump import NamedParameterComponentNames
+from library.models import NamedParameterComponentNames
 from library.models.sd3.conversion import save_models
 from library.models.sd3.loader import (
     analyze_state_dict_state,

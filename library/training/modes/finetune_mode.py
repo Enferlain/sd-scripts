@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any
 import torch
 from torch import nn
 
-from library.models.parameter_dump import resolve_component_names
+from library.models import resolve_component_names
 from library.optimization.grouping import build_finetune_grouping, resolve_finetune_selection, resolve_learning_rate_groups
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.optimizer_factory import get_optimizer

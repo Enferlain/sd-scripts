@@ -27,7 +27,7 @@ from library.adapters.methods.peft.config_resolution import (
     resolve_adapter_method_registration,
 )
 from library.config.dataclasses.peft import VALID_PEFT_CONTINUE_MODES
-from library.models.parameter_dump import resolve_component_names
+from library.models import resolve_component_names
 from library.optimization.grouping import resolve_learning_rate_groups
 from library.optimization.optimizer_utils import should_train_text_encoder
 

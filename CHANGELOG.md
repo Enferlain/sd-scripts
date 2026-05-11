@@ -10,6 +10,13 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-11]
+
+### Changed
+
+- **Shared public model-component naming now lives under `library.models` instead of the parameter-dump module** — The repo-owned `NamedParameterComponentNames`, component-name resolution, selector-name construction, and loaded-component grouping helpers now sit on the model package surface, so startup summaries, optimizer grouping, adapter targeting, config validation, and the dump tool no longer depend on a file whose real purpose is YAML inspection formatting.
+  - Updated the model-family package exports plus the affected runtime, logging, optimization, and dump-tool consumers to import the extracted seam from `library.models`, while keeping `library/models/parameter_dump.py` focused on dump rendering and preserving existing public component labels/selector behavior.
+
 ## [2026-05-10]
 
 ### Changed

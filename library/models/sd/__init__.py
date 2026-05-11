@@ -1,6 +1,6 @@
 """SD model components."""
 
-from library.models.parameter_dump import NamedParameterComponentNames
+from library.models import NamedParameterComponentNames
 
 NAMED_PARAMETER_COMPONENT_NAMES = NamedParameterComponentNames(
     text_encoder_names=("clip_l",),

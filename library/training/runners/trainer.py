@@ -24,7 +24,7 @@ from library.logging.console import MainProcessConsole
 from library.logging.resource_monitor import create_resource_monitor
 from library.logging.reports import is_benchmark_report_enabled, write_run_report
 from library.logging.summaries import build_trainer_diagnostic_rows, build_training_startup_summary
-from library.models.parameter_dump import build_named_components, resolve_component_names
+from library.models import build_named_components, resolve_component_names
 from library.objectives import ObjectiveDefinition, build_objective
 from library.objectives.base import ObjectiveRuntime
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode

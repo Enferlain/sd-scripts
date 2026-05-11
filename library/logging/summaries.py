@@ -7,7 +7,7 @@ from typing import Any
 from torch import nn
 
 from library.adapters.shared.reporting import build_adapter_component_report_rows
-from library.models.parameter_dump import resolve_component_names
+from library.models import resolve_component_names
 from library.optimization.types import OptimizationPlan
 
 

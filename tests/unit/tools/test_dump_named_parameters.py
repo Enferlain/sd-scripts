@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 from torch import nn
 
-from library.models import parameter_dump
-from library.models.parameter_dump import NamedParameterComponentNames
+import library.models as model_metadata
+from library.models import NamedParameterComponentNames
 from tools.model_management import dump_named_parameters
 
 
@@ -93,10 +93,10 @@ def test_resolve_component_names_reads_existing_package_metadata(monkeypatch):
             denoiser_name="unet",
         )
     )
-    monkeypatch.setattr(parameter_dump.importlib.util, "find_spec", lambda _: object())
-    monkeypatch.setattr(parameter_dump.importlib, "import_module", lambda _: fake_package)
+    monkeypatch.setattr(model_metadata.importlib.util, "find_spec", lambda _: object())
+    monkeypatch.setattr(model_metadata.importlib, "import_module", lambda _: fake_package)
 
-    component_names = parameter_dump.resolve_component_names("sdxl")
+    component_names = model_metadata.resolve_component_names("sdxl")
 
     assert component_names == fake_package.NAMED_PARAMETER_COMPONENT_NAMES
 

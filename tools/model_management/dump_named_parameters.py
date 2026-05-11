@@ -20,13 +20,12 @@ from library.config.dataclasses.data import DataConfig
 from library.config.dataclasses.model import ModelConfig
 from library.config.dataclasses.performance import PerformanceConfig
 from library.config.dataclasses.training import TrainingConfig
+from library.models import build_named_components, resolve_component_names
 from library.models.parameter_dump import (
-    build_named_components,
     derive_parameter_dump_identifier,
     format_component_module_dump,
     format_component_state_dump,
     format_named_parameter_dump,
-    resolve_component_names,
 )
 
 _WINDOWS_ABS_PATH_RE = re.compile(r"^([A-Za-z]):[\\/](.*)$")

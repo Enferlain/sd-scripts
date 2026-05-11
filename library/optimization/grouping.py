@@ -13,7 +13,7 @@ from torch import nn
 from library.adapters.shared import AdapterTrainableParameterRef, get_trainable_parameter_refs
 from library.adapters.runtime.targets import AdapterResolvedTargets, build_component_module_targets
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, LearningRatesConfig
-from library.models.parameter_dump import NamedParameterComponentNames
+from library.models import NamedParameterComponentNames
 from library.optimization.targets import (
     OptimizationTargetRef,
     build_parameter_target_ref,

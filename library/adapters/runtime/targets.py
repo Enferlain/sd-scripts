@@ -5,7 +5,7 @@ from typing import Any
 
 from torch import nn
 
-from library.models.parameter_dump import resolve_component_names
+from library.models import resolve_component_names
 from library.optimization.targets import (
     OptimizationTargetRef,
     build_component_target_ref,

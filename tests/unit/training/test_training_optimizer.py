@@ -51,7 +51,7 @@ from library.adapters.shared import AdapterTrainableParameterRef
 from library.optimization.wrappers.schedulefree import ScheduleFreeWrapper
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, OptimizerConfig, SchedulerConfig, LearningRatesConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.models.parameter_dump import NamedParameterComponentNames
+from library.models import NamedParameterComponentNames
 
 
 # =============================================================================

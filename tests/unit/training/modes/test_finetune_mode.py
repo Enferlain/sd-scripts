@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
-from library.models.parameter_dump import NamedParameterComponentNames
+from library.models import NamedParameterComponentNames
 from library.optimization.types import OptimizerBuildResult
 from library.training.modes.finetune_mode import FineTuneMode
 

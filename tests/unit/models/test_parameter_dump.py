@@ -1,10 +1,8 @@
 import torch
 from torch import nn
 
+from library.models import NamedParameterComponentNames, build_named_components, build_selector_name
 from library.models.parameter_dump import (
-    NamedParameterComponentNames,
-    build_named_components,
-    build_selector_name,
     derive_parameter_dump_identifier,
     format_component_module_dump,
     format_component_state_dump,
