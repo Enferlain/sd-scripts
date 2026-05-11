@@ -11,7 +11,7 @@ from library.adapters.shared.trainables import AdapterTrainableParameterRef
 import torch
 import torch.nn as nn
 
-from library.logging.run_report import is_benchmark_report_enabled, write_run_report
+from library.logging.reports import is_benchmark_report_enabled, write_run_report
 
 
 def _write_jsonl(path: Path, events: list[dict]) -> None:

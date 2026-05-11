@@ -206,5 +206,5 @@ def test_render_training_startup_summary_aligns_ratio_contents():
 
     rendered = render_training_startup_summary(summary)
 
-    assert "clip_l    |        0/  99 | 0/123,060,480" in rendered
+    assert "clip_l    |     0/   99 |             0/  123,060,480" in rendered
     assert "unet      | 1,050/1,050 | 2,567,463,684/2,567,463,684" in rendered

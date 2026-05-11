@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from library.adapters.shared.reporting import build_adapter_component_report_rows
-from library.adapters.shared.trainables import AdapterTrainableParameterRef
+from library.adapters.shared.trainables import AdapterTrainableParameterRef, get_trainable_parameter_refs
 
 
 def test_build_adapter_component_report_rows_tracks_model_and_adapter_modules():
@@ -45,13 +45,13 @@ def test_build_adapter_component_report_rows_tracks_model_and_adapter_modules():
 
     rows = build_adapter_component_report_rows(adapter)
 
-    assert [(row.label, row.component_key) for row in rows] == [("clip_l", "text_encoder1"), ("unet", "denoiser")]
-    assert rows[1].modules_total == 1
-    assert rows[1].adapter_modules_total == 2
-    assert rows[1].params_trainable == 10
+    assert [(row.label, row.component_key) for row in rows] == [("unet", "denoiser"), ("clip_l", "text_encoder1")]
+    assert rows[0].modules_total == 1
+    assert rows[0].adapter_modules_total == 2
+    assert rows[0].params_trainable == 10
 
 
-def test_build_adapter_component_report_rows_requires_adapter_module_path():
+def test_get_trainable_parameter_refs_requires_adapter_module_path():
     adapter = SimpleNamespace()
     adapter.describe_trainable_parameter_refs = lambda: [
         AdapterTrainableParameterRef(
@@ -65,7 +65,7 @@ def test_build_adapter_component_report_rows_requires_adapter_module_path():
     ]
 
     try:
-        build_adapter_component_report_rows(adapter)
+        get_trainable_parameter_refs(adapter)
     except TypeError as exc:
         assert "adapter_module_path" in str(exc)
     else:

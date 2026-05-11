@@ -28,7 +28,17 @@ def _emit_interrupt_warning(trainer: Trainer) -> None:
 
 @contextmanager
 def install_double_ctrl_c_guard(trainer: Trainer) -> Iterator[None]:
-    """Require a second Ctrl+C before interrupting the active training run."""
+    """Require a second Ctrl+C before interrupting the active training run.
+
+    Behavior:
+    - the first Ctrl+C only emits a warning and lets training continue
+    - a second Ctrl+C within ``DOUBLE_CTRL_C_COOLDOWN_SECONDS`` raises ``KeyboardInterrupt``
+    - if the cooldown window expires, the next Ctrl+C becomes a new warning-only first press
+
+    Notes:
+    - signal delivery may appear delayed while Python is busy in long-running C/CUDA work
+    - interrupt cleanup still relies on the trainer's unconditional ``finally`` path
+    """
 
     previous_handler = signal.getsignal(signal.SIGINT)
     last_interrupt_at: float | None = None

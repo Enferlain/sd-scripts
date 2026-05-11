@@ -9,12 +9,12 @@ from multiprocessing import Value
 from typing import Any
 from diffusers import DDPMScheduler
 
-import library.logging.step_logging
 import library.models.sd.conversion
 import library.strategies.sd.caching
 import library.strategies.sd.encoding
 import library.strategies.sd.tokenization
 import library.utils.huggingface_util as huggingface_util
+from library.logging.metrics import init_trackers
 
 from library.utils import model_metadata
 from library.utils.torch_utils import prepare_dtype, set_seed_from_config
@@ -491,16 +491,11 @@ class TextualInversionTrainer:
 
         prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
 
-        if accelerator.is_main_process:
-            init_kwargs = {}
-            if cfg.output.logging.wandb_run_name:
-                init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
-            if cfg.output.logging.log_tracker_config is not None:
-                init_kwargs = cfg.output.logging.log_tracker_config
-            library.logging.step_logging.init_trackers(
-                "textual_inversion" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
-                init_kwargs=init_kwargs,  # TODO: Unexpected argument
-            )  # TODO Parameter 'logging_config' unfilled, Parameter 'default_tracker_name' unfilled
+        init_trackers(
+            accelerator,
+            cfg.output.logging,
+            "textual_inversion" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
+        )
 
         def save_model(ckpt_name, embs_list, steps, epoch_no, force_sync_upload=False):
             os.makedirs(cfg.output.saving.output_dir, exist_ok=True)

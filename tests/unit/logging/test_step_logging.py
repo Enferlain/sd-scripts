@@ -1,4 +1,4 @@
-"""Unit tests for library.logging.step_logging.
+"""Unit tests for library.logging.metrics.
 
 Tests correctness of LR metric emission and tracker initialization,
 specifically the bugs fixed in Phase 0:
@@ -55,7 +55,7 @@ class TestGenerateStepLogsLrKeys:
 
     @pytest.fixture(autouse=True)
     def _import(self):
-        from library.logging.step_logging import generate_step_logs
+        from library.logging.metrics import generate_step_logs
 
         self.generate_step_logs = generate_step_logs
 
@@ -165,7 +165,7 @@ class TestInitTrackers:
 
     @pytest.fixture(autouse=True)
     def _import(self):
-        from library.logging.step_logging import init_trackers
+        from library.logging.metrics import init_trackers
 
         self.init_trackers = init_trackers
 

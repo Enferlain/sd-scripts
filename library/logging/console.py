@@ -39,6 +39,11 @@ class MainProcessConsole:
         self.logger.log(_resolve_level(level), rendered, *args, stacklevel=stacklevel)
 
     def log_external(self, message: str, *args, level: str | int = "info", tag: str | None = None, stacklevel: int = 2) -> None:
+        """Emit a logger-formatted line above a live tqdm bar.
+
+        ``stacklevel`` is interpreted relative to the caller of ``log_external()``.
+        This transport wrapper adds one extra frame before delegating to ``log()``.
+        """
         if not self.is_main_process:
             return
         with tqdm.external_write_mode(file=sys.stderr):

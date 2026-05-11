@@ -1,6 +1,11 @@
+import logging
+import os
 import unittest
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+
+from library.logging.console import MainProcessConsole
 from library.training.runners.trainer import Trainer
 
 
@@ -186,6 +191,7 @@ class TestTrainer(unittest.TestCase):
         """Final checkpoint logging should happen after the progress bar is out of the way."""
         self.trainer._accelerator = MagicMock()
         self.trainer._progress_bar = MagicMock()
+        progress_bar = self.trainer._progress_bar
         self.trainer._metadata = {}
         self.trainer.optimizer = MagicMock()
         self.trainer.optimization_plan = MagicMock()
@@ -195,10 +201,103 @@ class TestTrainer(unittest.TestCase):
         self.trainer._finalize_training()
 
         self.trainer.accelerator.end_training.assert_called_once()
-        self.trainer._progress_bar.close.assert_called_once()
+        progress_bar.close.assert_called_once()
         self.assertIsNone(self.trainer._progress_bar)
         self.trainer._save_final_state_if_enabled.assert_called_once()
         self.trainer._save_final_checkpoint_artifacts.assert_called_once()
+
+    def test_log_progress_message_uses_console_when_available(self):
+        """Progress-safe lifecycle logs should use the console transport when present."""
+        self.trainer._console = MagicMock()
+
+        self.trainer.log_progress_message("prepared epoch 0", tag="epoch", stacklevel=4)
+
+        self.trainer._console.log_external.assert_called_once_with(
+            "prepared epoch 0",
+            tag="epoch",
+            level="info",
+            stacklevel=5,
+        )
+
+    @patch("library.training.runners.trainer.logger")
+    def test_log_progress_message_falls_back_to_logger(self, mock_logger):
+        """Without a console seam, progress-safe lifecycle logs should fall back to the module logger."""
+        self.trainer._console = None
+
+        self.trainer.log_progress_message("prepared epoch 0", tag="epoch", stacklevel=4)
+
+        mock_logger.log.assert_called_once_with(
+            unittest.mock.ANY,
+            "[epoch] prepared epoch 0",
+            stacklevel=4,
+        )
+
+    def test_print_progress_message_uses_console_when_available(self):
+        """Progress-safe plain lines should use the console transport when present."""
+        self.trainer._console = MagicMock()
+
+        self.trainer.print_progress_message("Epoch 1/1")
+
+        self.trainer._console.print_external.assert_called_once_with("Epoch 1/1")
+
+    def test_print_progress_message_falls_back_to_accelerator(self):
+        """Without a console seam, progress-safe plain lines should fall back to accelerator printing."""
+        self.trainer._console = None
+        self.trainer._accelerator = MagicMock()
+
+        self.trainer.print_progress_message("Epoch 1/1")
+
+        self.trainer.accelerator.print.assert_called_once_with("Epoch 1/1")
+
+    def test_log_progress_message_preserves_caller_file_and_line_with_console(self):
+        """Progress-safe console logging should still attribute records to the real caller."""
+
+        class _CaptureHandler(logging.Handler):
+            def __init__(self):
+                super().__init__()
+                self.record = None
+
+            def emit(self, record):
+                self.record = record
+
+        test_logger = logging.getLogger("tests.unit.training.test_training_trainer.progress")
+        test_logger.handlers = []
+        test_logger.propagate = False
+        test_logger.setLevel(logging.INFO)
+        capture = _CaptureHandler()
+        test_logger.addHandler(capture)
+
+        self.trainer._console = MainProcessConsole(is_main_process=True, logger=test_logger)
+
+        def _emit():
+            expected_lineno = _emit.__code__.co_firstlineno + 2
+            self.trainer.log_progress_message("prepared epoch 0", tag="epoch", stacklevel=2)
+            return expected_lineno
+
+        with patch("library.logging.console.tqdm.external_write_mode", return_value=nullcontext()):
+            expected_lineno = _emit()
+
+        assert capture.record is not None
+        assert os.path.basename(capture.record.pathname) == "test_training_trainer.py"
+        assert capture.record.lineno == expected_lineno
+
+    def test_order_memory_components_follows_diagnostic_row_order(self):
+        """Startup resource rows should follow the same component order as the startup diagnostics table."""
+        unet = MagicMock()
+        clip_l = MagicMock()
+        clip_g = MagicMock()
+        vae = MagicMock()
+        components = [("clip_l", clip_l), ("clip_g", clip_g), ("vae", vae), ("unet", unet)]
+        component_rows = [
+            SimpleNamespace(label="unet"),
+            SimpleNamespace(label="clip_l"),
+            SimpleNamespace(label="clip_g"),
+            SimpleNamespace(label="vae"),
+        ]
+
+        ordered = self.trainer._order_memory_components(components, component_rows)
+
+        assert [label for label, _module in ordered] == ["unet", "clip_l", "clip_g", "vae"]
 
     def test_run_startup_eval_actions_validation_only_skips_sampling(self):
         """Startup validation should not force startup sampling."""

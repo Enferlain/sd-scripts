@@ -27,7 +27,7 @@ from library.models.runtime_utils import replace_unet_modules, patch_accelerator
 from library.optimization.scheduler import get_scheduler_fix
 from library.optimization.optimizer_factory import get_optimizer
 from library.training.trainer_utils import prepare_accelerator, append_lr_to_logs
-from library.logging.step_logging import append_lr_to_logs_with_names
+from library.logging.metrics import append_lr_to_logs_with_names, init_trackers
 from library.losses.loss import LossRecorder, get_huber_threshold_if_needed, conditional_loss
 from library.config.dataclasses.run import RunConfig
 from library.config.config_validation import prepare_config, validate_config
@@ -550,10 +550,11 @@ def train(cfg: RunConfig):
             init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
         if cfg.output.logging.log_tracker_config is not None:
             init_kwargs = cfg.output.logging.log_tracker_config
-        library.logging.step_logging.init_trackers(  # TODO: Local variable 'library' might be referenced before assignment
+        init_trackers(
+            accelerator,
+            cfg.output.logging,
             "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
-            init_kwargs=init_kwargs,  # TODO: Unexpected argument
-        )  # TODO: Parameter 'logging_config' unfilled, Parameter 'default_tracker_name' unfilled
+        )
 
     sample_images(
         accelerator,

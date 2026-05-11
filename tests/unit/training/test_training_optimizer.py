@@ -894,6 +894,7 @@ class TestOptimizerUtils:
                         component="clip_l",
                         component_key="text_encoder1",
                         target_path="lora_te1_block",
+                        adapter_module_path="lora_te1_block.lora_down",
                     ),
                     AdapterTrainableParameterRef(
                         param=unet_param,
@@ -902,6 +903,7 @@ class TestOptimizerUtils:
                         component="unet",
                         component_key="denoiser",
                         target_path="lora_unet_block",
+                        adapter_module_path="lora_unet_block.lora_down",
                     ),
                 ]
 
@@ -1003,6 +1005,7 @@ class TestOptimizerUtils:
                         component="clip_l",
                         component_key="text_encoder_bad",
                         target_path="lora_te_bad",
+                        adapter_module_path="lora_te_bad.lora_down",
                     )
                 ]
 

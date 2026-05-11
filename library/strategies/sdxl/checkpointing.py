@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import torch
@@ -5,6 +6,8 @@ import torch
 from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
 from library.strategies.base.contracts import CheckpointingStrategy
 from library.utils.model_metadata import get_model_metadata_from_config
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_sdxl_modelspec_prediction(cfg: Any) -> tuple[bool, str | None]:
@@ -95,7 +98,7 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
 
             merged_metadata = {**metadata, **modelspec_metadata}
 
-            trainer.accelerator.print(f"\nsaving checkpoint: {ckpt_file}")
+            logger.info("[checkpoint] saving checkpoint: %s", ckpt_file)
             save_stable_diffusion_checkpoint(
                 ckpt_file,
                 text_encoder1,
@@ -115,7 +118,7 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
 
             src_path = cfg.model.pretrained_model_name_or_path
 
-            trainer.accelerator.print(f"\nsaving model: {out_dir}")
+            logger.info("[checkpoint] saving model: %s", out_dir)
             save_diffusers_checkpoint(
                 out_dir,
                 text_encoder1,

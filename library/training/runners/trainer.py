@@ -213,6 +213,9 @@ class Trainer:
             error_message = str(exc)
             raise
         finally:
+            # Progress-bar/resource cleanup must run for both ordinary failures and
+            # real interrupts. The double-Ctrl+C guard only decides when to raise;
+            # this unconditional cleanup keeps terminal/report state sane afterward.
             if self._progress_bar is not None:
                 self._progress_bar.close()
                 self._progress_bar = None
@@ -461,6 +464,57 @@ class Trainer:
         cfg = self.cfg
         return cfg.training.train_batch_size * self.accelerator.num_processes * cfg.training.gradient_accumulation_steps
 
+    def log_progress_message(
+        self,
+        message: str,
+        *,
+        tag: str | None = None,
+        level: str | int = "info",
+        stacklevel: int = 2,
+    ) -> None:
+        """Emit a progress-safe lifecycle log line with a normal logger fallback."""
+        if self._console is not None:
+            self._console.log_external(message, tag=tag, level=level, stacklevel=stacklevel + 1)
+            return
+        rendered = f"[{tag}] {message}" if tag is not None else message
+        resolved_level = level if isinstance(level, int) else getattr(logging, level.upper())
+        logger.log(resolved_level, rendered, stacklevel=stacklevel)
+
+    def print_progress_message(self, message: str) -> None:
+        """Emit a progress-safe lifecycle line with the accelerator print fallback."""
+        if self._console is not None:
+            self._console.print_external(message)
+            return
+        if self._accelerator is not None:
+            self.accelerator.print(message)
+            return
+        print(message)
+
+    def _order_memory_components(
+        self,
+        components: list[tuple[str, nn.Module]],
+        component_rows: list[Any],
+    ) -> list[tuple[str, nn.Module]]:
+        """Align startup resource rows to the same producer-owned component order as diagnostics."""
+        if not components or not component_rows:
+            return components
+
+        component_by_label = dict(components)
+        ordered_labels: list[str] = []
+        seen_labels: set[str] = set()
+
+        for row in component_rows:
+            label = getattr(row, "label", None)
+            if not isinstance(label, str) or label in seen_labels:
+                continue
+            if label in component_by_label:
+                ordered_labels.append(label)
+                seen_labels.add(label)
+
+        ordered_components = [(label, component_by_label[label]) for label in ordered_labels]
+        ordered_components.extend((label, module) for label, module in components if label not in seen_labels)
+        return ordered_components
+
     def _emit_training_startup_summary(self) -> None:
         """Log dataset/runtime summary and emit startup diagnostics."""
         assert self.train_manifest is not None, "train_manifest must be set before _emit_training_startup_summary"
@@ -475,6 +529,7 @@ class Trainer:
             vae=self.vae,
             denoiser=self.denoiser,
         )
+        memory_components = self._order_memory_components(memory_components, component_rows)
         self._resource_monitor.emit_startup_component_memory(
             memory_components,
             self.optimizer_name,

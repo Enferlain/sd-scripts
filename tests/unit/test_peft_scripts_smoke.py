@@ -26,13 +26,13 @@ class TestPeftCommonImports:
 
     def test_peft_common_has_generate_step_logs(self):
         """Verify generate_step_logs function exists."""
-        from library.logging.step_logging import generate_step_logs
+        from library.logging.metrics import generate_step_logs
 
         assert callable(generate_step_logs)
 
     def test_peft_common_has_step_logging(self):
         """Verify step_logging function exists."""
-        from library.logging.step_logging import step_logging
+        from library.logging.metrics import step_logging
 
         assert callable(step_logging)
 

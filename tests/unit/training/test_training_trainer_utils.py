@@ -12,7 +12,7 @@ import torch
 from library.config.dataclasses.output import LoggingConfig
 from library.config.dataclasses.performance import PrecisionConfig, CompilationConfig, DistributedConfig, DeepSpeedConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.logging.step_logging import init_trackers, append_lr_to_logs_with_names
+from library.logging.metrics import init_trackers, append_lr_to_logs_with_names
 from library.optimization.types import LogicalParameterGroup, OptimizationPlan
 from library.training.trainer_utils import (
     append_lr_to_logs,

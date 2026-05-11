@@ -8,13 +8,13 @@ from tqdm import tqdm
 from multiprocessing import Value
 from diffusers import DDPMScheduler
 
-import library.logging.step_logging
 import library.strategies.base.caching
 import library.strategies.base.encoding
 import library.strategies.base.tokenization
 import library.strategies.sd.caching
 import library.strategies.sd.encoding
 import library.strategies.sd.tokenization
+from library.logging.metrics import init_trackers
 from library.performance import deepspeed_utils
 from library.utils.device_utils import clean_memory_on_device
 
@@ -288,16 +288,11 @@ def train(cfg: RunConfig):
 
     prepare_scheduler_for_custom_training(noise_scheduler, accelerator.device)
 
-    if accelerator.is_main_process:
-        init_kwargs = {}
-        if cfg.output.logging.wandb_run_name:
-            init_kwargs["wandb"] = {"name": cfg.output.logging.wandb_run_name}
-        if cfg.output.logging.log_tracker_config is not None:
-            init_kwargs = cfg.output.logging.log_tracker_config
-        library.logging.step_logging.init_trackers(
-            "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
-            init_kwargs=init_kwargs,  # TODO: Unexpected argument
-        )  # TODO Parameter 'logging_config' unfilled, Parameter 'default_tracker_name' unfilled
+    init_trackers(
+        accelerator,
+        cfg.output.logging,
+        "finetuning" if cfg.output.logging.log_tracker_name is None else cfg.output.logging.log_tracker_name,
+    )
 
     sample_images(
         accelerator,

@@ -721,6 +721,9 @@ class BasicResourceMonitor:
                 )
             )
 
+            if not table_rows:
+                return
+
             component_width = max(len("component"), *(len(row[0]) for row in table_rows))
             loaded_width = max(len("loaded"), *(len(row[1]) for row in table_rows))
             trainable_width = max(len("trainable"), *(len(row[2]) for row in table_rows))

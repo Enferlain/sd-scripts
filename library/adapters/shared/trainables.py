@@ -68,13 +68,33 @@ def build_named_parameter_refs(
     return refs
 
 
+def validate_trainable_parameter_refs(refs: list[AdapterTrainableParameterRef]) -> list[AdapterTrainableParameterRef]:
+    """Validate the repo-owned adapter trainable-ref contract."""
+
+    if not isinstance(refs, list):
+        raise TypeError("describe_trainable_parameter_refs() must return a list of AdapterTrainableParameterRef")
+
+    for ref in refs:
+        if not isinstance(ref, AdapterTrainableParameterRef):
+            raise TypeError("describe_trainable_parameter_refs() returned a non-AdapterTrainableParameterRef item")
+        if not isinstance(ref.param, nn.Parameter):
+            raise TypeError(f"AdapterTrainableParameterRef '{ref.name}' has a param field that is not an nn.Parameter")
+        if ref.adapter_module_path is None:
+            raise TypeError(f"AdapterTrainableParameterRef '{ref.name}' is missing adapter_module_path")
+
+    return refs
+
+
 def attach_trainable_parameter_provider(
     adapter: Any,
     describe_fn: Callable[[], list[AdapterTrainableParameterRef]],
 ) -> Any:
     """Attach a repo-owned trainable-ref describer to a compatibility adapter."""
 
-    adapter.describe_trainable_parameter_refs = describe_fn
+    def validated_describe_trainable_parameter_refs() -> list[AdapterTrainableParameterRef]:
+        return validate_trainable_parameter_refs(describe_fn())
+
+    adapter.describe_trainable_parameter_refs = validated_describe_trainable_parameter_refs
     return adapter
 
 
@@ -85,14 +105,4 @@ def get_trainable_parameter_refs(adapter: Any) -> list[AdapterTrainableParameter
     if describe_fn is None:
         raise TypeError("Adapter runtime does not expose describe_trainable_parameter_refs()")
 
-    refs = describe_fn()
-    if not isinstance(refs, list):
-        raise TypeError("describe_trainable_parameter_refs() must return a list of AdapterTrainableParameterRef")
-
-    for ref in refs:
-        if not isinstance(ref, AdapterTrainableParameterRef):
-            raise TypeError("describe_trainable_parameter_refs() returned a non-AdapterTrainableParameterRef item")
-        if not isinstance(ref.param, nn.Parameter):
-            raise TypeError(f"AdapterTrainableParameterRef '{ref.name}' has a param field that is not an nn.Parameter")
-
-    return refs
+    return validate_trainable_parameter_refs(describe_fn())

@@ -10,6 +10,24 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-10]
+
+### Changed
+
+- **Adapter trainable-ref validation now fails at the shared contract layer instead of only during reporting** — Missing `adapter_module_path` provenance is now rejected as soon as repo-owned adapter trainable refs are read, so malformed adapter runtimes fail closer to the source instead of surfacing later in startup reporting.
+  - Centralized trainable-ref validation under `library/adapters/shared/trainables.py`, removed the reporting-only check from adapter component-row assembly, updated the remaining deprecated PEFT runtimes to populate `adapter_module_path`, and tightened the affected adapter/optimizer tests to match the stronger repo-owned contract.
+- **Startup resource-table rendering now has a small defensive empty-row guard** — The width-calculation path in the startup resource breakdown now safely returns before `max(...)` if it ever encounters an empty table-row list, keeping the startup monitor logic robust against future caller or formatting changes.
+- **Progress-safe lifecycle output now has a trainer-owned fallback seam instead of repeated loop-local branching** — The main training loop now routes epoch banners and prepared-epoch status lines through shared trainer helpers, so the console-vs-logger fallback policy lives in one place and the `log_external()` stacklevel behavior is documented more explicitly at the console transport boundary.
+  - Added focused attribution coverage to prove that progress-safe lifecycle logs still resolve to the real caller `file:line` through the trainer-helper and console transport layers.
+- **Startup resource rows now follow the same producer-owned component order as the `components` table** — The startup weight-residency block no longer shows a different component order than the main diagnostics table when both are rendered during bootup.
+- **Logging callers now import the real observability module homes directly instead of going through compatibility wrappers** — Deprecated scripts and focused unit tests now import metrics/report helpers from `library.logging.metrics` and `library.logging.reports`, removing the need for the temporary `step_logging.py` and `run_report.py` shim modules.
+- **Fine-tune full-model save-start messages now use the same tagged checkpoint logger style as the rest of training lifecycle output** — SDXL and SD3 full-model checkpointing no longer drop a bare `accelerator.print(...)` line for save-start status, keeping checkpoint lifecycle output visually consistent before the final `[checkpoint] checkpoint saved` confirmation.
+- **Double-`Ctrl+C` interrupt handling is now documented at the code seam where it matters** — The shared interrupt guard now explains its warning-only first press, 5-second second-press window, possible signal-delivery delay during long C/CUDA work, and the fact that real cleanup still happens in the trainer’s unconditional `finally` path.
+
+### Fixed
+
+- Removed stray blank checkpoint log lines from SDXL/SD3 full-model checkpoint saves so closeout logging stays consistent with adapter saves.
+
 ## [2026-05-09]
 
 ### Added

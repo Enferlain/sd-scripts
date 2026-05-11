@@ -27,9 +27,6 @@ def build_adapter_component_report_rows(adapter: Any) -> list[AdapterComponentRe
     grouped: dict[str, dict[str, Any]] = {}
 
     for ref in refs:
-        if ref.adapter_module_path is None:
-            raise TypeError(f"AdapterTrainableParameterRef '{ref.name}' is missing adapter_module_path")
-
         group = grouped.setdefault(
             ref.component_key,
             {

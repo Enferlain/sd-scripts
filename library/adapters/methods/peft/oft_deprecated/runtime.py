@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from . import impl as legacy_oft
 from library.adapters.runtime import AdapterBuildRequest, LoadedAdapterRuntime
-from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider
+from library.adapters.shared import AdapterTrainableParameterRef, attach_trainable_parameter_provider, build_adapter_module_path
 
 
 def _resolve_component_labels(resolved_targets) -> dict[str, str]:
@@ -28,6 +28,7 @@ def _attach_trainable_ref_provider(adapter, request: AdapterBuildRequest):
                         component=component_label,
                         component_key="denoiser",
                         target_path=oft.oft_name,
+                        adapter_module_path=build_adapter_module_path(oft.oft_name, param_name),
                     )
                 )
 

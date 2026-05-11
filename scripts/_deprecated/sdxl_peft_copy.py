@@ -47,7 +47,7 @@ from library.config.dataclasses.run import RunConfig
 from library.strategies.sdxl.training import SdxlTrainingStrategy
 from library.adapters.methods.peft.lora.lora_utils import resolve_adapter_kwargs
 from library.training.training_metadata import create_training_metadata
-from library.logging.step_logging import generate_step_logs, step_logging, init_trackers
+from library.logging.metrics import generate_step_logs, step_logging, init_trackers
 from library.data import (
     CaptionConfig,
     CachingEngine,

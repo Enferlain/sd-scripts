@@ -400,10 +400,7 @@ def _prepare_epoch_context(trainer: Trainer, *, epoch: int) -> EpochContext:
         caption_config=_build_caption_config(cfg),
     )
     epoch_message = f"prepared epoch {epoch}: {epoch_manifest.num_batches} batches, {epoch_manifest.num_images} images"
-    if trainer._console is not None:
-        trainer._console.log_external(epoch_message, tag="epoch", stacklevel=4)
-    else:
-        logger.info("[epoch] %s", epoch_message)
+    trainer.log_progress_message(epoch_message, tag="epoch", stacklevel=3)
 
     tokens_path = _maybe_cache_epoch_tokens(
         trainer,
@@ -619,7 +616,6 @@ def run_training_loop(trainer: Trainer) -> None:
     """
     # Unpack frequently used attributes for readability
     cfg = trainer.cfg
-    accelerator = trainer.accelerator
 
     # Mode must set _grad_sync_handle during prepare_with_accelerator;
     # if missing, grad-sync context will silently fail.
@@ -636,10 +632,7 @@ def run_training_loop(trainer: Trainer) -> None:
             break
 
         trainer._current_epoch_state.value = epoch + 1
-        if trainer._console is not None:
-            trainer._console.print_external(f"Epoch {trainer._current_epoch_state.value}/{trainer.num_train_epochs}")
-        else:
-            accelerator.print(f"Epoch {trainer._current_epoch_state.value}/{trainer.num_train_epochs}")
+        trainer.print_progress_message(f"Epoch {trainer._current_epoch_state.value}/{trainer.num_train_epochs}")
 
         trainer._metadata["ss_epoch"] = str(trainer._current_epoch_state.value)
 
