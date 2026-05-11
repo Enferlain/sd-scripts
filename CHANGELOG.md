@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-12]
+
+### Changed
+
+- **The model-layer README now documents the loaded-component contract conventions explicitly** — `library/models/README.md` now records that shared top-level component helpers live in `library/models/components.py`, family package `__init__.py` files own ordered `LOADED_MODEL_COMPONENT_SPECS` declarations, and generic runtime code should consume roles/capabilities instead of drifting back into family-name branches.
+
 ## [2026-05-11]
 
 ### Changed
