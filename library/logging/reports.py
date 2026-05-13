@@ -5,7 +5,7 @@ import platform
 import time
 from collections import defaultdict, deque
 from contextlib import suppress
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +18,62 @@ try:
     from omegaconf import OmegaConf
 except Exception:  # pragma: no cover - optional import safety
     OmegaConf = None
+
+
+REPORT_KEY_CONFIG_PATHS: tuple[str, ...] = (
+    "mode",
+    "model.model_type",
+    "output.saving.output_dir",
+    "output.saving.output_name",
+    "training.train_batch_size",
+    "training.gradient_accumulation_steps",
+    "training.max_train_steps",
+    "training.max_train_epochs",
+    "data.preprocessing.resolution",
+    "data.caching.cache_latents",
+    "data.caching.cache_latents_to_disk",
+    "data.caching.cache_text_encoder_outputs",
+    "data.caching.cache_text_encoder_outputs_to_disk",
+    "data.caching.vae_batch_size",
+    "data.caching.te_batch_size",
+    "data.loader.num_workers",
+    "data.loader.prefetch_factor",
+    "data.loader.persistent_workers",
+    "data.loader.pin_memory",
+    "performance.precision.mixed_precision",
+    "performance.precision.no_half_vae",
+    "performance.memory.gradient_checkpointing",
+    "performance.memory.offload_text_encoders",
+    "performance.attention.xformers",
+    "performance.deepspeed.deepspeed",
+    "objective.prediction",
+    "optimizer.optimizer_type",
+    "optimizer.learning_rates.base",
+    "optimizer.learning_rates.denoiser",
+    "optimizer.learning_rates.text_encoders",
+    "optimizer.learning_rates.groups_file",
+    "output.logging.benchmark_report.enabled",
+    "output.logging.resource_monitor.enabled",
+    "output.logging.resource_monitor.mode",
+    "output.logging.resource_monitor.output_jsonl",
+    "output.logging.logging_dir",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class RunReportContext:
+    """Trainer facts needed by benchmark report payload construction."""
+
+    cfg: Any
+    resource_jsonl_path: Path | None
+    session_id: Any
+    training_started_at: float
+    mode_name: str
+    strategy_name: str
+    optimizer_name: str | None
+    global_step: int | None
+    num_train_epochs: int | None
+    component_memory_estimates: list[dict[str, Any]]
 
 
 def _safe_get(obj: Any, dotted_path: str, default: Any = None) -> Any:
@@ -122,6 +178,30 @@ def _estimate_component_memory_rows(trainer: Any) -> list[dict[str, Any]]:
     return diagnostic_rows_to_memory_rows(rows, optimizer_name)
 
 
+def _normalize_path(path: Any) -> Path | None:
+    if path is None:
+        return None
+    if isinstance(path, Path):
+        return path
+    return Path(str(path))
+
+
+def _build_run_report_context(trainer: Any) -> RunReportContext:
+    resource_monitor = getattr(trainer, "_resource_monitor", None)
+    return RunReportContext(
+        cfg=trainer.cfg,
+        resource_jsonl_path=_normalize_path(getattr(resource_monitor, "jsonl_path", None)),
+        session_id=getattr(trainer, "session_id", None),
+        training_started_at=getattr(trainer, "training_started_at", time.time()),
+        mode_name=type(trainer.mode).__name__,
+        strategy_name=type(trainer.strategies).__name__,
+        optimizer_name=getattr(trainer, "optimizer_name", None),
+        global_step=getattr(trainer, "global_step", None),
+        num_train_epochs=getattr(trainer, "num_train_epochs", None),
+        component_memory_estimates=_estimate_component_memory_rows(trainer),
+    )
+
+
 def _load_resource_events(jsonl_path: Path | None) -> list[dict[str, Any]]:
     if jsonl_path is None or not jsonl_path.exists():
         return []
@@ -185,48 +265,9 @@ def _pair_phase_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return phase_rows
 
 
-def _collect_key_config_rows(trainer: Any, *, hydra_config_name: str | None, hydra_overrides: list[str]) -> list[tuple[str, Any]]:
-    key_paths = [
-        ("hydra.config_name", hydra_config_name),
-        ("mode", _safe_get(trainer.cfg, "mode")),
-        ("model.model_type", _safe_get(trainer.cfg, "model.model_type")),
-        ("output.saving.output_dir", _safe_get(trainer.cfg, "output.saving.output_dir")),
-        ("output.saving.output_name", _safe_get(trainer.cfg, "output.saving.output_name")),
-        ("training.train_batch_size", _safe_get(trainer.cfg, "training.train_batch_size")),
-        ("training.gradient_accumulation_steps", _safe_get(trainer.cfg, "training.gradient_accumulation_steps")),
-        ("training.max_train_steps", _safe_get(trainer.cfg, "training.max_train_steps")),
-        ("training.max_train_epochs", _safe_get(trainer.cfg, "training.max_train_epochs")),
-        ("data.preprocessing.resolution", _safe_get(trainer.cfg, "data.preprocessing.resolution")),
-        ("data.caching.cache_latents", _safe_get(trainer.cfg, "data.caching.cache_latents")),
-        ("data.caching.cache_latents_to_disk", _safe_get(trainer.cfg, "data.caching.cache_latents_to_disk")),
-        ("data.caching.cache_text_encoder_outputs", _safe_get(trainer.cfg, "data.caching.cache_text_encoder_outputs")),
-        ("data.caching.cache_text_encoder_outputs_to_disk", _safe_get(trainer.cfg, "data.caching.cache_text_encoder_outputs_to_disk")),
-        ("data.caching.vae_batch_size", _safe_get(trainer.cfg, "data.caching.vae_batch_size")),
-        ("data.caching.te_batch_size", _safe_get(trainer.cfg, "data.caching.te_batch_size")),
-        ("data.loader.num_workers", _safe_get(trainer.cfg, "data.loader.num_workers")),
-        ("data.loader.prefetch_factor", _safe_get(trainer.cfg, "data.loader.prefetch_factor")),
-        ("data.loader.persistent_workers", _safe_get(trainer.cfg, "data.loader.persistent_workers")),
-        ("data.loader.pin_memory", _safe_get(trainer.cfg, "data.loader.pin_memory")),
-        ("performance.precision.mixed_precision", _safe_get(trainer.cfg, "performance.precision.mixed_precision")),
-        ("performance.precision.no_half_vae", _safe_get(trainer.cfg, "performance.precision.no_half_vae")),
-        ("performance.memory.gradient_checkpointing", _safe_get(trainer.cfg, "performance.memory.gradient_checkpointing")),
-        ("performance.memory.offload_text_encoders", _safe_get(trainer.cfg, "performance.memory.offload_text_encoders")),
-        ("performance.attention.xformers", _safe_get(trainer.cfg, "performance.attention.xformers")),
-        ("performance.deepspeed.deepspeed", _safe_get(trainer.cfg, "performance.deepspeed.deepspeed")),
-        ("objective.prediction", _safe_get(trainer.cfg, "objective.prediction")),
-        ("optimizer.optimizer_type", _safe_get(trainer.cfg, "optimizer.optimizer_type")),
-        ("optimizer.learning_rates.base", _safe_get(trainer.cfg, "optimizer.learning_rates.base")),
-        ("optimizer.learning_rates.denoiser", _safe_get(trainer.cfg, "optimizer.learning_rates.denoiser")),
-        ("optimizer.learning_rates.text_encoders", _safe_get(trainer.cfg, "optimizer.learning_rates.text_encoders")),
-        ("optimizer.learning_rates.groups_file", _safe_get(trainer.cfg, "optimizer.learning_rates.groups_file")),
-        ("adapter.peft.lora", _safe_get(trainer.cfg, "adapter.peft.lora")),
-        ("adapter.peft.loha", _safe_get(trainer.cfg, "adapter.peft.loha")),
-        ("output.logging.benchmark_report.enabled", _safe_get(trainer.cfg, "output.logging.benchmark_report.enabled")),
-        ("output.logging.resource_monitor.enabled", _safe_get(trainer.cfg, "output.logging.resource_monitor.enabled")),
-        ("output.logging.resource_monitor.mode", _safe_get(trainer.cfg, "output.logging.resource_monitor.mode")),
-        ("output.logging.resource_monitor.output_jsonl", _safe_get(trainer.cfg, "output.logging.resource_monitor.output_jsonl")),
-        ("output.logging.logging_dir", _safe_get(trainer.cfg, "output.logging.logging_dir")),
-    ]
+def _collect_key_config_rows(cfg: Any, *, hydra_config_name: str | None, hydra_overrides: list[str]) -> list[tuple[str, Any]]:
+    key_paths = [("hydra.config_name", hydra_config_name)]
+    key_paths.extend((path, _safe_get(cfg, path)) for path in REPORT_KEY_CONFIG_PATHS)
     rows = [(key, value) for key, value in key_paths if value is not None]
     if hydra_overrides:
         rows.append(("hydra.task_overrides", hydra_overrides))
@@ -234,10 +275,23 @@ def _collect_key_config_rows(trainer: Any, *, hydra_config_name: str | None, hyd
 
 
 def _build_report_payload(trainer: Any, *, succeeded: bool, error_message: str | None) -> dict[str, Any]:
+    return _build_report_payload_from_context(
+        _build_run_report_context(trainer),
+        succeeded=succeeded,
+        error_message=error_message,
+    )
+
+
+def _build_report_payload_from_context(
+    context: RunReportContext,
+    *,
+    succeeded: bool,
+    error_message: str | None,
+) -> dict[str, Any]:
     hydra_config_name, hydra_overrides = _resolve_hydra_context()
-    jsonl_path = getattr(trainer._resource_monitor, "jsonl_path", None)
+    jsonl_path = context.resource_jsonl_path
     all_events = _load_resource_events(jsonl_path)
-    events = _events_for_run(all_events, getattr(trainer, "session_id", None))
+    events = _events_for_run(all_events, context.session_id)
     phase_rows = _pair_phase_events(events)
     session_start = next((event for event in events if event.get("event") == "session_start"), None)
     session_end = next((event for event in reversed(events) if event.get("event") == "session_end"), None)
@@ -249,25 +303,25 @@ def _build_report_payload(trainer: Any, *, succeeded: bool, error_message: str |
 
     training_phases = [row for row in phase_rows if str(row["phase"]).startswith("training_epoch_")]
     training_duration_s = sum(row["duration_s"] or 0.0 for row in training_phases)
-    optimization_steps = getattr(trainer, "global_step", 0) or _safe_get(trainer.cfg, "training.max_train_steps", 0) or 0
+    optimization_steps = context.global_step or _safe_get(context.cfg, "training.max_train_steps", 0) or 0
     train_seconds_per_step = training_duration_s / optimization_steps if optimization_steps else None
 
     return {
         "status": "succeeded" if succeeded else "failed",
         "error_message": error_message,
         "generated_at": finished_at,
-        "training_started_at": getattr(trainer, "training_started_at", finished_at),
-        "total_duration_s": finished_at - getattr(trainer, "training_started_at", finished_at),
-        "session_id": getattr(trainer, "session_id", None),
+        "training_started_at": context.training_started_at,
+        "total_duration_s": finished_at - context.training_started_at,
+        "session_id": context.session_id,
         "hydra_config_name": hydra_config_name,
         "hydra_task_overrides": hydra_overrides,
-        "output_name": _safe_get(trainer.cfg, "output.saving.output_name"),
-        "output_dir": _safe_get(trainer.cfg, "output.saving.output_dir"),
-        "mode_name": type(trainer.mode).__name__,
-        "strategy_name": type(trainer.strategies).__name__,
-        "optimizer_name": getattr(trainer, "optimizer_name", None),
-        "global_step": getattr(trainer, "global_step", None),
-        "num_train_epochs": getattr(trainer, "num_train_epochs", None),
+        "output_name": _safe_get(context.cfg, "output.saving.output_name"),
+        "output_dir": _safe_get(context.cfg, "output.saving.output_dir"),
+        "mode_name": context.mode_name,
+        "strategy_name": context.strategy_name,
+        "optimizer_name": context.optimizer_name,
+        "global_step": context.global_step,
+        "num_train_epochs": context.num_train_epochs,
         "train_seconds_per_step": train_seconds_per_step,
         "system": {
             "python": platform.python_version(),
@@ -284,10 +338,10 @@ def _build_report_payload(trainer: Any, *, succeeded: bool, error_message: str |
             "gpu_used_peak_session_mb": gpu_used_peak_session_mb,
             "phases": phase_rows,
         },
-        "component_memory_estimates": _estimate_component_memory_rows(trainer),
-        "key_config": _collect_key_config_rows(trainer, hydra_config_name=hydra_config_name, hydra_overrides=hydra_overrides),
-        "include_full_config": _safe_get(trainer.cfg, "output.logging.benchmark_report.include_full_config", True) is not False,
-        "full_config_yaml": _render_config_yaml(trainer.cfg),
+        "component_memory_estimates": context.component_memory_estimates,
+        "key_config": _collect_key_config_rows(context.cfg, hydra_config_name=hydra_config_name, hydra_overrides=hydra_overrides),
+        "include_full_config": _safe_get(context.cfg, "output.logging.benchmark_report.include_full_config", True) is not False,
+        "full_config_yaml": _render_config_yaml(context.cfg),
     }
 
 

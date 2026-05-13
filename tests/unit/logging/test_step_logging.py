@@ -250,3 +250,37 @@ class TestInitTrackers:
         self.init_trackers(acc, cfg, "default_project")
 
         acc.init_trackers.assert_not_called()
+
+
+class TestLoggingTrainingObserver:
+    """Assert observer-level run and artifact registration remains structured."""
+
+    def test_start_and_finish_run_forward_to_sink_once(self):
+        from library.logging.metrics import LoggingTrainingObserver
+
+        sink = MagicMock()
+        observer = LoggingTrainingObserver(console=MagicMock(), metrics_sink=sink)
+        config = {"wandb_api_key": "*****"}
+
+        observer.start_run("training", config)
+        config["wandb_api_key"] = "mutated"
+        observer.finish_run()
+        observer.finish_run()
+
+        sink.start_run.assert_called_once_with("training", {"wandb_api_key": "*****"})
+        sink.finish_run.assert_called_once()
+        assert observer.run_name == "training"
+        assert observer.run_config == {"wandb_api_key": "*****"}
+
+    def test_log_artifact_records_path_kind_and_metadata(self):
+        from library.logging.metrics import LoggingTrainingObserver
+
+        observer = LoggingTrainingObserver(console=MagicMock())
+
+        observer.log_artifact("/tmp/report.md", kind="benchmark_report", metadata={"format": "markdown"})
+
+        assert len(observer.artifacts) == 1
+        artifact = observer.artifacts[0]
+        assert artifact.path == "/tmp/report.md"
+        assert artifact.kind == "benchmark_report"
+        assert artifact.metadata == {"format": "markdown"}

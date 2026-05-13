@@ -13,6 +13,7 @@ import math
 import os
 import time
 import random
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from types import SimpleNamespace
 
@@ -230,9 +231,11 @@ class Trainer:
                 self._resource_monitor.end_session()
             if self.is_main_process and is_benchmark_report_enabled(self.cfg):
                 try:
-                    write_run_report(self, succeeded=succeeded, error_message=error_message)
+                    report_path = write_run_report(self, succeeded=succeeded, error_message=error_message)
+                    self._log_benchmark_report_artifacts(report_path)
                 except Exception as exc:  # pragma: no cover - best-effort reporting
                     logger.warning("Failed to write benchmark report: %s", exc)
+            self._finish_observer_run()
 
     # =========================================================================
     # Phase Methods - Delegate to phase functions
@@ -493,6 +496,39 @@ class Trainer:
             return
         print(message)
 
+    def _log_benchmark_report_artifacts(self, markdown_path: Path | None) -> None:
+        """Register generated benchmark report files with the training observer."""
+        if markdown_path is None or self._observer is None:
+            return
+
+        markdown_path = Path(markdown_path)
+        self._observer.log_artifact(
+            str(markdown_path),
+            kind="benchmark_report",
+            metadata={"format": "markdown"},
+        )
+
+        json_path = markdown_path.with_suffix(".json")
+        if json_path.exists():
+            self._observer.log_artifact(
+                str(json_path),
+                kind="benchmark_report",
+                metadata={"format": "json"},
+            )
+
+    def _finish_observer_run(self) -> None:
+        """Finish observer bookkeeping after final artifacts are registered.
+
+        External tracker shutdown remains owned by Accelerator.end_training()
+        during successful training finalization.
+        """
+        if self._observer is None:
+            return
+        try:
+            self._observer.finish_run()
+        except Exception as exc:  # pragma: no cover - best-effort logging lifecycle
+            logger.warning("Failed to finish logging observer run: %s", exc)
+
     def _order_memory_components(
         self,
         components: list[tuple[str, nn.Module]],
@@ -584,7 +620,12 @@ class Trainer:
         from tqdm import tqdm
 
         from library.losses.loss import EMARecorder
-        from library.logging.metrics import AccelerateMetricsSink, init_trackers
+        from library.logging.metrics import (
+            AccelerateMetricsSink,
+            build_tracker_config,
+            init_trackers,
+            resolve_tracker_name,
+        )
         from library.training.phases.validation import ValidationScheduler
         from library.utils.device_utils import clean_memory_on_device
 
@@ -593,6 +634,10 @@ class Trainer:
         init_trackers(self.accelerator, cfg.output.logging, "training")
         if self._observer is not None:
             self._observer.metrics_sink = AccelerateMetricsSink(self.accelerator)
+            self._observer.start_run(
+                resolve_tracker_name(cfg.output.logging, "training"),
+                build_tracker_config(cfg.output.logging),
+            )
 
         self._loss_recorder = EMARecorder()
         self._val_loss_recorder = EMARecorder()

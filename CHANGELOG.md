@@ -10,6 +10,14 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-13]
+
+### Added
+
+- **Benchmark report files now register as logging artifacts after they are written** — the training observer now records produced artifact paths with kind/format metadata, and trainer finalization registers both Markdown and JSON benchmark reports through that observer hook while keeping report generation itself local and backend-agnostic.
+- **Training observers now receive explicit run lifecycle calls** — observer startup records the tracker run name and sanitized tracker config before metrics/artifacts are emitted, and trainer cleanup finishes the observer run after final report artifacts are registered so future logging sinks can bracket complete runs cleanly.
+- **Benchmark report payload construction now has an explicit run-context boundary** — `write_run_report()` remains trainer-facing, while payload assembly now consumes a `RunReportContext` and declared non-adapter key-config policy instead of scattering direct trainer/config lookups through the report builder.
+
 ## [2026-05-12]
 
 ### Changed

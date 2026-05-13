@@ -1,7 +1,9 @@
 import logging
 import os
+import tempfile
 import unittest
 from contextlib import nullcontext
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -160,6 +162,54 @@ class TestTrainer(unittest.TestCase):
         self.assertEqual(call_order, ["end_session", "write_run_report"])
 
     @patch("library.training.runners.trainer.write_run_report")
+    def test_train_logs_benchmark_report_artifacts_when_report_is_written(self, mock_write_run_report):
+        """Generated benchmark report files should be registered as observer artifacts."""
+        mock_monitor = MagicMock()
+        self.cfg.output.logging.benchmark_report.enabled = True
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            markdown_path = Path(temp_dir) / "benchmark_report.md"
+            json_path = markdown_path.with_suffix(".json")
+            markdown_path.write_text("# report\n", encoding="utf-8")
+            json_path.write_text("{}\n", encoding="utf-8")
+            mock_write_run_report.return_value = markdown_path
+
+            self.trainer._resource_monitor = None
+            self.trainer._observer = MagicMock()
+            self.trainer.setup = MagicMock()
+            self.trainer.run_caching = MagicMock()
+            self.trainer.prepare_models = MagicMock()
+            self.trainer.prepare_optimizer = MagicMock()
+            self.trainer._initialize_training_run_state = MagicMock()
+            self.trainer._run_startup_eval_actions = MagicMock()
+            self.trainer.run_training_loop = MagicMock()
+            self.trainer._finalize_training = MagicMock()
+
+            def assign_monitor():
+                self.trainer._resource_monitor = mock_monitor
+
+            self.trainer.setup.side_effect = assign_monitor
+
+            self.trainer.train()
+
+            self.trainer._observer.log_artifact.assert_any_call(
+                str(markdown_path),
+                kind="benchmark_report",
+                metadata={"format": "markdown"},
+            )
+            self.trainer._observer.log_artifact.assert_any_call(
+                str(json_path),
+                kind="benchmark_report",
+                metadata={"format": "json"},
+            )
+            self.assertEqual(self.trainer._observer.log_artifact.call_count, 2)
+            self.trainer._observer.finish_run.assert_called_once()
+            self.assertEqual(
+                [call[0] for call in self.trainer._observer.method_calls],
+                ["log_artifact", "log_artifact", "finish_run"],
+            )
+
+    @patch("library.training.runners.trainer.write_run_report")
     def test_train_writes_failure_benchmark_report_when_enabled(self, mock_write_run_report):
         """Enabled benchmark reports should capture the failure state without swallowing the exception."""
         mock_monitor = MagicMock()
@@ -186,6 +236,38 @@ class TestTrainer(unittest.TestCase):
         mock_monitor.end_session.assert_called_once()
         mock_write_run_report.assert_called_once_with(self.trainer, succeeded=False, error_message="training failed")
         self.trainer._finalize_training.assert_not_called()
+
+    @patch("library.utils.device_utils.clean_memory_on_device")
+    @patch("library.training.phases.validation.ValidationScheduler")
+    @patch("library.losses.loss.EMARecorder")
+    @patch("library.logging.metrics.build_tracker_config", return_value={"console_log_level": "INFO"})
+    @patch("library.logging.metrics.resolve_tracker_name", return_value="unit-training")
+    @patch("library.logging.metrics.init_trackers")
+    def test_initialize_tracking_state_starts_observer_run(
+        self,
+        mock_init_trackers,
+        mock_resolve_tracker_name,
+        mock_build_tracker_config,
+        mock_ema_recorder,
+        mock_validation_scheduler,
+        mock_clean_memory,
+    ):
+        """Tracking initialization should bracket later metrics/artifacts with a run lifecycle."""
+        del mock_ema_recorder, mock_validation_scheduler, mock_clean_memory
+        self.trainer._accelerator = MagicMock()
+        self.trainer._accelerator.trackers = []
+        self.trainer._accelerator.device = "cpu"
+        self.trainer._accelerator.is_local_main_process = False
+        self.trainer.max_train_steps = 1
+        self.trainer._initial_step = 0
+        self.trainer._observer = MagicMock()
+
+        self.trainer._initialize_tracking_state()
+
+        mock_init_trackers.assert_called_once_with(self.trainer.accelerator, self.cfg.output.logging, "training")
+        mock_resolve_tracker_name.assert_called_once_with(self.cfg.output.logging, "training")
+        mock_build_tracker_config.assert_called_once_with(self.cfg.output.logging)
+        self.trainer._observer.start_run.assert_called_once_with("unit-training", {"console_log_level": "INFO"})
 
     def test_finalize_training_closes_progress_bar_before_final_save_work(self):
         """Final checkpoint logging should happen after the progress bar is out of the way."""

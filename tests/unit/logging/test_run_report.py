@@ -11,7 +11,13 @@ from library.adapters.shared.trainables import AdapterTrainableParameterRef
 import torch
 import torch.nn as nn
 
-from library.logging.reports import is_benchmark_report_enabled, write_run_report
+from library.logging.reports import (
+    RunReportContext,
+    _build_report_payload_from_context,
+    _collect_key_config_rows,
+    is_benchmark_report_enabled,
+    write_run_report,
+)
 
 
 def _write_jsonl(path: Path, events: list[dict]) -> None:
@@ -22,6 +28,62 @@ def test_benchmark_report_enabled_requires_explicit_true():
     assert is_benchmark_report_enabled({"output": {"logging": {"benchmark_report": {"enabled": True}}}})
     assert not is_benchmark_report_enabled({"output": {"logging": {"benchmark_report": {"enabled": False}}}})
     assert not is_benchmark_report_enabled({})
+
+
+def test_collect_key_config_rows_uses_declared_config_paths():
+    rows = _collect_key_config_rows(
+        {
+            "mode": "adapter",
+            "model": {"model_type": "sdxl"},
+            "output": {"saving": {"output_name": "unit"}, "logging": {"logging_dir": "logs"}},
+        },
+        hydra_config_name="presets/sdxl",
+        hydra_overrides=["training.max_train_steps=10"],
+    )
+
+    row_map = dict(rows)
+    assert row_map["hydra.config_name"] == "presets/sdxl"
+    assert row_map["mode"] == "adapter"
+    assert row_map["model.model_type"] == "sdxl"
+    assert row_map["output.saving.output_name"] == "unit"
+    assert row_map["output.logging.logging_dir"] == "logs"
+    assert row_map["hydra.task_overrides"] == ["training.max_train_steps=10"]
+    assert "training.max_train_steps" not in row_map
+
+
+def test_build_report_payload_from_context_uses_explicit_run_facts(tmp_path):
+    cfg = {
+        "output": {
+            "saving": {"output_dir": str(tmp_path), "output_name": "context_run"},
+            "logging": {"benchmark_report": {"include_full_config": False}},
+        },
+        "training": {"max_train_steps": 20},
+    }
+    context = RunReportContext(
+        cfg=cfg,
+        resource_jsonl_path=None,
+        session_id="run-1",
+        training_started_at=100.0,
+        mode_name="AdapterMode",
+        strategy_name="SdxlTrainingStrategy",
+        optimizer_name="AdamW8bit",
+        global_step=5,
+        num_train_epochs=2,
+        component_memory_estimates=[{"name": "unet"}],
+    )
+
+    payload = _build_report_payload_from_context(context, succeeded=True, error_message=None)
+
+    assert payload["status"] == "succeeded"
+    assert payload["session_id"] == "run-1"
+    assert payload["mode_name"] == "AdapterMode"
+    assert payload["strategy_name"] == "SdxlTrainingStrategy"
+    assert payload["optimizer_name"] == "AdamW8bit"
+    assert payload["global_step"] == 5
+    assert payload["num_train_epochs"] == 2
+    assert payload["component_memory_estimates"] == [{"name": "unet"}]
+    assert payload["resource_monitor"]["event_count"] == 0
+    assert payload["include_full_config"] is False
 
 
 def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):

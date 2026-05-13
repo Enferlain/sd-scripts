@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Protocol, runtime_checkable
 
 import torch
@@ -10,6 +10,15 @@ from omegaconf import OmegaConf
 from library.config.dataclasses.output import LoggingConfig
 from library.logging.console import MainProcessConsole
 from library.logging.summaries import TrainingStartupSummary
+
+
+@dataclass(frozen=True, slots=True)
+class LoggedArtifact:
+    """A file produced by the run and registered with the logging layer."""
+
+    path: str
+    kind: str
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 @runtime_checkable
@@ -23,13 +32,17 @@ class MetricsSink(Protocol):
 
 @runtime_checkable
 class TrainingObserver(Protocol):
+    def start_run(self, run_name: str, config: dict[str, object]) -> None: ...
+
     def log_metrics(self, step: int, metrics: dict[str, float], *, epoch: int | None = None) -> None: ...
 
     def log_console(self, message: str, *, level: str = "info", tag: str | None = None) -> None: ...
 
     def log_startup_summary(self, summary: TrainingStartupSummary) -> None: ...
 
-    def log_artifact(self, path: str, *, kind: str) -> None: ...
+    def log_artifact(self, path: str, *, kind: str, metadata: dict[str, object] | None = None) -> None: ...
+
+    def finish_run(self) -> None: ...
 
 
 @dataclass(slots=True)
@@ -37,12 +50,14 @@ class AccelerateMetricsSink:
     accelerator: Accelerator
 
     def start_run(self, run_name: str, config: dict[str, object]) -> None:
+        """Record no external side effect; tracker init is still owned by init_trackers()."""
         del run_name, config
 
     def log_metrics(self, metrics: dict[str, float], *, step: int, epoch: int | None = None) -> None:
         log_metrics_to_trackers(self.accelerator, metrics, step, step, epoch if epoch is not None else 0)
 
     def finish_run(self) -> None:
+        """Finish observer bookkeeping only; Accelerator.end_training() remains trainer-owned."""
         return None
 
 
@@ -50,6 +65,17 @@ class AccelerateMetricsSink:
 class LoggingTrainingObserver:
     console: MainProcessConsole
     metrics_sink: MetricsSink | None = None
+    artifacts: list[LoggedArtifact] = field(default_factory=list)
+    run_name: str | None = None
+    run_config: dict[str, object] = field(default_factory=dict)
+    _run_active: bool = field(default=False, init=False, repr=False)
+
+    def start_run(self, run_name: str, config: dict[str, object]) -> None:
+        self.run_name = run_name
+        self.run_config = dict(config)
+        self._run_active = True
+        if self.metrics_sink is not None:
+            self.metrics_sink.start_run(run_name, self.run_config)
 
     def log_metrics(self, step: int, metrics: dict[str, float], *, epoch: int | None = None) -> None:
         if self.metrics_sink is None:
@@ -62,8 +88,16 @@ class LoggingTrainingObserver:
     def log_startup_summary(self, summary: TrainingStartupSummary) -> None:
         self.console.log_startup_summary(summary, stacklevel=4)
 
-    def log_artifact(self, path: str, *, kind: str) -> None:
-        del path, kind
+    def log_artifact(self, path: str, *, kind: str, metadata: dict[str, object] | None = None) -> None:
+        self.artifacts.append(LoggedArtifact(path=path, kind=kind, metadata=dict(metadata or {})))
+
+    def finish_run(self) -> None:
+        """Finish the observer-local run lifecycle and notify the metrics sink if present."""
+        if not self._run_active:
+            return
+        self._run_active = False
+        if self.metrics_sink is not None:
+            self.metrics_sink.finish_run()
 
 
 def _resolve_lr_descriptions(lr_descriptions: list[str] | None, optimization_plan=None) -> list[str]:
@@ -199,6 +233,45 @@ def log_metrics_to_trackers(accelerator: Accelerator, logs: dict, step_value: in
 accelerator_logging = log_metrics_to_trackers
 
 
+def _flatten_for_hparams(obj, prefix=""):
+    items = {}
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            new_key = f"{prefix}.{key}" if prefix else key
+            if isinstance(value, dict):
+                items.update(_flatten_for_hparams(value, new_key))
+            elif isinstance(value, (list, tuple)):
+                items[new_key] = str(value)
+            elif value is None:
+                items[new_key] = "None"
+            elif isinstance(value, (int, float, str, bool)):
+                items[new_key] = value
+            else:
+                items[new_key] = str(value)
+    return items
+
+
+def build_tracker_config(logging_config: LoggingConfig) -> dict[str, object]:
+    """Build the sanitized flattened config payload used by tracker-style sinks."""
+    if hasattr(logging_config, "__dataclass_fields__"):
+        config_to_log = asdict(logging_config)
+    else:
+        config_to_log = OmegaConf.to_container(logging_config, resolve=True)
+
+    sensitive_keys = ["wandb_api_key", "huggingface_token"]
+    if isinstance(config_to_log, dict):
+        for key in sensitive_keys:
+            if key in config_to_log:
+                config_to_log[key] = "*****"
+
+    return _flatten_for_hparams(config_to_log)
+
+
+def resolve_tracker_name(logging_config: LoggingConfig, default_tracker_name: str) -> str:
+    """Return the project/run namespace name used for tracker initialization."""
+    return logging_config.log_tracker_name if logging_config.log_tracker_name else default_tracker_name
+
+
 def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, default_tracker_name: str):
     """
     Initialize experiment trackers with tracker specific behaviors.
@@ -221,42 +294,8 @@ def init_trackers(accelerator: Accelerator, logging_config: LoggingConfig, defau
                 else:
                     init_kwargs[key] = val
 
-        # sanitize config for logging - convert to dict if needed
-        if hasattr(logging_config, "__dataclass_fields__"):
-            from dataclasses import asdict
-
-            config_to_log = asdict(logging_config)
-        else:
-            config_to_log = OmegaConf.to_container(logging_config, resolve=True)
-
-        sensitive_keys = ["wandb_api_key", "huggingface_token"]
-        if isinstance(config_to_log, dict):
-            for key in sensitive_keys:
-                if key in config_to_log:
-                    config_to_log[key] = "*****"
-
-        tracker_name = logging_config.log_tracker_name if logging_config.log_tracker_name else default_tracker_name
-
-        # Sanitize config values for TensorBoard hparams (only accepts int, float, str, bool, Tensor)
-        # Need to flatten nested dicts to dot-notation keys
-        def flatten_for_hparams(obj, prefix=""):
-            items = {}
-            if isinstance(obj, dict):
-                for k, v in obj.items():
-                    new_key = f"{prefix}.{k}" if prefix else k
-                    if isinstance(v, dict):
-                        items.update(flatten_for_hparams(v, new_key))
-                    elif isinstance(v, (list, tuple)):
-                        items[new_key] = str(v)
-                    elif v is None:
-                        items[new_key] = "None"
-                    elif isinstance(v, (int, float, str, bool)):
-                        items[new_key] = v
-                    else:
-                        items[new_key] = str(v)
-            return items
-
-        config_to_log = flatten_for_hparams(config_to_log)
+        tracker_name = resolve_tracker_name(logging_config, default_tracker_name)
+        config_to_log = build_tracker_config(logging_config)
 
         accelerator.init_trackers(
             tracker_name,
