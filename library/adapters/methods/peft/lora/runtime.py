@@ -19,8 +19,7 @@ def _build_lora_target_name(target, request: AdapterBuildRequest) -> str:
     if target.component_key == "denoiser":
         prefix = "lora_unet"
     elif target.component_key == "text_encoder1":
-        text_encoder = request.context.model.text_encoder
-        if isinstance(text_encoder, list) and len(text_encoder) > 1:
+        if len(request.context.model.modules_by_role("text_encoder")) > 1:
             prefix = "lora_te1"
         else:
             prefix = "lora_te"

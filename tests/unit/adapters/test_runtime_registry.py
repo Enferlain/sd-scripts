@@ -13,11 +13,11 @@ from library.adapters import (
     AdapterExportSaveRequest,
     AdapterBuildContext,
     AdapterBuildRequest,
-    AdapterModelContext,
+    AdapterModelContext as RuntimeAdapterModelContext,
     AdapterRuntimeSpec,
     LoadedAdapterRuntime,
-    build_component_module_targets,
-    build_component_root_targets,
+    build_component_module_targets as runtime_build_component_module_targets,
+    build_component_root_targets as runtime_build_component_root_targets,
     build_adapter_for_legacy_module,
     build_adapter_from_weights_for_legacy_module,
     get_adapter_method,
@@ -27,6 +27,7 @@ from library.adapters import (
     save_adapter_export,
 )
 from library.adapters.runtime import AdapterMergeRequest
+from library.models import build_loaded_components
 from library.strategies.base.context import (
     DenoiserContext,
     StrategyContext,
@@ -34,6 +35,44 @@ from library.strategies.base.context import (
     TrainingContext,
     publish_strategy_context,
 )
+
+
+def _build_sdxl_loaded_components(*, text_encoders=None, vae=None, denoiser=None):
+    if text_encoders is None:
+        text_encoder_modules = []
+    elif isinstance(text_encoders, list):
+        text_encoder_modules = list(text_encoders)
+    else:
+        text_encoder_modules = [text_encoders]
+    text_encoder_modules.extend([None] * max(0, 2 - len(text_encoder_modules)))
+
+    return build_loaded_components(
+        "sdxl",
+        {
+            "text_encoder1": text_encoder_modules[0],
+            "text_encoder2": text_encoder_modules[1],
+            "vae": vae,
+            "denoiser": denoiser,
+        },
+    )
+
+
+def AdapterModelContext(*, loaded_components=None, vae=None, text_encoder=None, denoiser=None):
+    if loaded_components is None:
+        loaded_components = _build_sdxl_loaded_components(text_encoders=text_encoder, vae=vae, denoiser=denoiser)
+    return RuntimeAdapterModelContext(loaded_components=tuple(loaded_components))
+
+
+def build_component_root_targets(*, model_type, loaded_components=None, text_encoders=None, vae=None, denoiser=None, **kwargs):
+    if loaded_components is None:
+        loaded_components = _build_sdxl_loaded_components(text_encoders=text_encoders, vae=vae, denoiser=denoiser)
+    return runtime_build_component_root_targets(model_type=model_type, loaded_components=loaded_components, **kwargs)
+
+
+def build_component_module_targets(*, model_type, loaded_components=None, text_encoders=None, vae=None, denoiser=None, **kwargs):
+    if loaded_components is None:
+        loaded_components = _build_sdxl_loaded_components(text_encoders=text_encoders, vae=vae, denoiser=denoiser)
+    return runtime_build_component_module_targets(model_type=model_type, loaded_components=loaded_components, **kwargs)
 
 
 class TestAdapterRegistry:
@@ -1094,8 +1133,8 @@ class TestAdapterRegistry:
             )
         )
 
-        assert captured["model"].text_encoder == ["text-encoder"]
-        assert captured["model"].denoiser == "denoiser"
+        assert captured["model"].module_or_modules_by_role("text_encoder") == "text-encoder"
+        assert captured["model"].require_module_by_role("denoiser") == "denoiser"
         assert captured["resolved_targets"] is resolved_targets
         assert captured["dtype"] == "fp16"
         assert captured["device"] == "cpu"

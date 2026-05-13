@@ -27,7 +27,7 @@ from library.adapters.methods.peft.config_resolution import (
     resolve_adapter_method_registration,
 )
 from library.config.dataclasses.peft import VALID_PEFT_CONTINUE_MODES
-from library.models import resolve_component_names
+from library.models import resolve_component_specs
 from library.optimization.grouping import resolve_learning_rate_groups
 from library.optimization.optimizer_utils import should_train_text_encoder
 
@@ -107,9 +107,8 @@ def _has_positive_text_encoder_groups(cfg) -> bool:
         return False
 
     model_type = _get_optional_attr(cfg, "model", "model_type")
-    component_names = resolve_component_names(model_type)
-    selector_prefixes = list(component_names.text_encoder_names) if component_names is not None else []
-    selector_prefixes.extend(f"text_encoder{i + 1}" for i in range(len(selector_prefixes)))
+    component_specs = resolve_component_specs(model_type) if model_type is not None else None
+    selector_prefixes = [spec.public_name for spec in (component_specs or ()) if spec.has_role("text_encoder")]
     if not selector_prefixes:
         selector_prefixes.extend(["text_encoder", "text_encoder1", "text_encoder2", "text_encoder3"])
 

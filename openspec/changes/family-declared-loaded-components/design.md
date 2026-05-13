@@ -57,11 +57,13 @@ Alternative considered:
 - Keep the tuple and attach richer metadata beside it.
   Rejected because it preserves the wrong primary contract and would keep forcing new consumers to decide whether the tuple or the metadata is authoritative.
 
-### Decision: Make the loaded-component collection the primary trainer/runtime representation
+### Decision: Make loaded components primary for shared generic seams
 
-Trainer/runtime code will move toward one primary loaded-component collection instead of treating `text_encoders`, `vae`, and `denoiser` as the root representation.
+Shared generic seams and repo-owned runtime request objects will move toward one primary loaded-component collection instead of treating `text_encoders`, `vae`, and `denoiser` as the root representation.
 
 Generic code should consume the loaded-component collection directly or through helper queries over that collection. The repo should not preserve the old trio as the long-term source of truth solely because current diffusion families already fit it.
+
+Absorbed legacy adapter implementations may still need a projected `text_encoder` / `denoiser` / `vae` argument shape at their immediate call site. That projection should be derived from `loaded_components` inside the adapter runtime wrapper, not stored as a second root contract in the repo-owned request/context objects.
 
 Alternative considered:
 
@@ -108,7 +110,7 @@ Alternative considered:
 - Let each consumer impose its own component order and participation rules.
   Rejected because it would recreate multiple inconsistent model-component views across logging, tooling, optimization, and metadata.
 
-### Decision: Transition all affected consumers instead of isolating the change to metadata
+### Decision: Transition shared consumers instead of isolating the change to metadata
 
 This change must cover the real shared boundary, not just metadata plumbing. The change therefore includes the loader/trainer contract plus the immediate consumers that currently depend on the fixed tuple:
 
@@ -144,8 +146,17 @@ Alternative considered:
 
 Rollback is repo-internal and code-level: if the migration proves too disruptive, the branch can be reverted before archive/merge. No separate production rollout or user data migration is needed.
 
+## Remaining Follow-up After This Slice
+
+The current migration is directionally correct, but a few transitional seams still need cleanup once the remaining callers move:
+
+- Trainer convenience properties still expose diffusion-shaped projections (`text_encoders`, `vae`, `denoiser`) for older training phases and strategy hooks. Those properties should remain derived from `loaded_components`, not become a second source of truth.
+- Absorbed adapter runtimes still receive diffusion-shaped arguments at their legacy call sites. The repo-owned `AdapterModelContext` should stay component-centered and perform that projection only at the wrapper edge.
+- Generic runtime semantics still rely on a diffusion-oriented role vocabulary (`text_encoder`, `vae`, `denoiser`). That is acceptable for the current family set, but architecture docs should describe it honestly as the current generic vocabulary rather than as a fully architecture-neutral final abstraction.
+- Text-encoder LR policy is still positional by declared text-encoder role order. That surviving ordinal coupling is acceptable for the current config surface, but it remains a future design follow-up if/when optimizer policy moves away from positional TE lists.
+- `public_name` currently serves as both display label and selector prefix. If a future family needs those to diverge, the contract should split them instead of overloading one field further.
+
 ## Open Questions
 
 - What is the smallest initial role/capability vocabulary that still keeps generic code out of name-based branching?
 - Should the loaded-component contract distinguish between public display labels and public selector prefixes, or should those remain one field unless a concrete family proves they need to differ?
-- Which current consumer should become the first implementation slice after the contract lands: trainer state, observability, or optimization targeting?

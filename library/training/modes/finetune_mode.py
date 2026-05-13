@@ -11,12 +11,13 @@ are delegated to the strategy; this mode only handles generic lifecycle.
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 import torch
 from torch import nn
 
-from library.models import resolve_component_names
+from library.models import LoadedModelComponent
 from library.optimization.grouping import build_finetune_grouping, resolve_finetune_selection, resolve_learning_rate_groups
 from library.optimization.arguments import parse_key_value_args
 from library.optimization.optimizer_factory import get_optimizer
@@ -32,6 +33,28 @@ if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
 
 
+def _resolve_selected_module_components(
+    *,
+    loaded_components: Sequence[LoadedModelComponent],
+    component_keys: Sequence[str],
+    context: str,
+) -> tuple[LoadedModelComponent, ...]:
+    """Resolve selected component keys to live modules without falling back to trainer slots."""
+    components_by_key = {component.key: component for component in loaded_components}
+    resolved_components: list[LoadedModelComponent] = []
+    for component_key in component_keys:
+        component = components_by_key.get(component_key)
+        if component is None:
+            raise ValueError(f"{context} selected component {component_key!r} is missing from trainer.loaded_components.")
+        if not isinstance(component.module, nn.Module):
+            raise ValueError(
+                f"{context} selected component {component_key!r} must hold an nn.Module, "
+                f"but found {type(component.module).__name__}."
+            )
+        resolved_components.append(component)
+    return tuple(resolved_components)
+
+
 class FineTuneMode:
     """Full-model fine-tuning mode.
 
@@ -45,6 +68,8 @@ class FineTuneMode:
     # ------------------------------------------------------------------
 
     _te_train_flags: list[bool]
+    _denoiser_component_keys: tuple[str, ...]
+    _text_encoder_component_keys: tuple[str, ...]
     _selected_params_by_component: dict[str, list[nn.Parameter]]
 
     def prepare_trainables(self, trainer: Trainer) -> None:
@@ -61,36 +86,54 @@ class FineTuneMode:
         cfg = trainer.cfg
         strategies = trainer.strategies
         groups = resolve_learning_rate_groups(cfg.optimizer.learning_rates)
-        component_names = resolve_component_names(cfg.model.model_type)
 
         selection = resolve_finetune_selection(
-            denoiser=trainer.denoiser,
-            text_encoders=trainer.text_encoders,
+            loaded_components=trainer.loaded_components,
             learning_rates=cfg.optimizer.learning_rates,
             groups=groups,
-            component_names=component_names,
         )
         trainer._train_denoiser = selection.train_denoiser
         self._te_train_flags = selection.te_train_flags
+        self._denoiser_component_keys = selection.denoiser_keys
+        self._text_encoder_component_keys = selection.text_encoder_keys
         trainer._train_text_encoder = any(self._te_train_flags)
         self._selected_params_by_component = {
             label: [ref.param for ref in refs] for label, refs in selection.selected_by_component.items()
         }
 
         # Unfreeze denoiser
-        assert trainer.denoiser is not None, "denoiser must be loaded before prepare_trainables"
-        denoiser_selected_ids = {id(param) for param in self._selected_params_by_component.get("denoiser", [])}
-        for _, param in trainer.denoiser.named_parameters():
-            param.requires_grad_(id(param) in denoiser_selected_ids)
-        if trainer._train_denoiser:
-            trainer.denoiser.train()
-        else:
-            trainer.denoiser.eval()
+        denoiser_components = _resolve_selected_module_components(
+            loaded_components=trainer.loaded_components,
+            component_keys=self._denoiser_component_keys,
+            context="FineTuneMode.prepare_trainables",
+        )
+        if not denoiser_components:
+            raise ValueError("FineTuneMode.prepare_trainables requires at least one loaded denoiser component.")
+        for component in denoiser_components:
+            selected_ids = {id(param) for param in self._selected_params_by_component.get(component.key, [])}
+            for _, param in component.module.named_parameters():
+                param.requires_grad_(id(param) in selected_ids)
+            if trainer._train_denoiser:
+                component.module.train()
+            else:
+                component.module.eval()
 
         # Freeze / unfreeze each TE
-        for index, (t_enc, flag) in enumerate(zip(trainer.text_encoders, self._te_train_flags)):
-            label = f"text_encoder{index + 1}"
-            selected_ids = {id(param) for param in self._selected_params_by_component.get(label, [])}
+        if len(self._text_encoder_component_keys) != len(self._te_train_flags):
+            raise ValueError(
+                "FineTuneMode.prepare_trainables expected one text-encoder train flag per selected text-encoder component, "
+                f"but found {len(self._te_train_flags)} flag(s) for {len(self._text_encoder_component_keys)} component(s)."
+            )
+        te_train_flags_by_key = dict(zip(self._text_encoder_component_keys, self._te_train_flags, strict=True))
+        text_encoder_components = _resolve_selected_module_components(
+            loaded_components=trainer.loaded_components,
+            component_keys=self._text_encoder_component_keys,
+            context="FineTuneMode.prepare_trainables",
+        )
+        for component in text_encoder_components:
+            flag = te_train_flags_by_key[component.key]
+            selected_ids = {id(param) for param in self._selected_params_by_component.get(component.key, [])}
+            t_enc = component.module
             for _, param in t_enc.named_parameters():
                 param.requires_grad_(id(param) in selected_ids)
             if flag:
@@ -140,7 +183,6 @@ class FineTuneMode:
         cfg = trainer.cfg
         lr = cfg.optimizer.learning_rates
         groups = resolve_learning_rate_groups(lr)
-        component_names = resolve_component_names(cfg.model.model_type)
 
         # --- Fail-fast for deferred features ---
         # Block LR is configured via optimizer_args or dedicated config
@@ -153,13 +195,11 @@ class FineTuneMode:
                     )
 
         grouping = build_finetune_grouping(
-            denoiser=trainer.denoiser,
+            loaded_components=trainer.loaded_components,
             train_denoiser=trainer._train_denoiser,
-            text_encoders=trainer.text_encoders,
             te_train_flags=self._te_train_flags,
             learning_rates=lr,
             groups=groups,
-            component_names=component_names,
         )
 
         optimization_plan = OptimizationPlan(
@@ -281,9 +321,10 @@ class FineTuneMode:
     def get_trainable_params(self, trainer: Trainer) -> list:
         """Return all trainable parameters for gradient clipping."""
         params: list[nn.Parameter] = []
-        params.extend(self._selected_params_by_component.get("denoiser", []))
-        for index, _ in enumerate(trainer.text_encoders):
-            params.extend(self._selected_params_by_component.get(f"text_encoder{index + 1}", []))
+        for component_key in self._denoiser_component_keys:
+            params.extend(self._selected_params_by_component.get(component_key, []))
+        for component_key in self._text_encoder_component_keys:
+            params.extend(self._selected_params_by_component.get(component_key, []))
         return params
 
     def set_eval(self, trainer: Trainer) -> None:
@@ -353,12 +394,9 @@ class FineTuneMode:
         )
 
     def get_diagnostics_components(self, trainer: Trainer) -> tuple[list[tuple[str, nn.Module]], list[tuple[str, str]] | None]:
-        """Return all backbone components — they're all relevant in fine-tune."""
+        """Return all declared loaded backbone modules in family order."""
         components: list[tuple[str, nn.Module]] = []
-        if trainer.denoiser is not None:
-            components.append(("denoiser", trainer.denoiser))
-        for i, te in enumerate(trainer.text_encoders):
-            components.append((f"text_encoder{i + 1}", te))
-        if trainer.vae is not None:
-            components.append(("vae", trainer.vae))
+        for component in trainer.loaded_components:
+            if isinstance(component.module, nn.Module):
+                components.append((component.key, component.module))
         return components, None

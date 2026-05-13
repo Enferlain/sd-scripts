@@ -13,7 +13,7 @@ from torch import nn
 from library.adapters.shared import AdapterTrainableParameterRef, get_trainable_parameter_refs
 from library.adapters.runtime.targets import AdapterResolvedTargets, build_component_module_targets
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, LearningRatesConfig
-from library.models import NamedParameterComponentNames
+from library.models import LoadedModelComponent, find_loaded_components
 from library.optimization.targets import (
     OptimizationTargetRef,
     build_parameter_target_ref,
@@ -73,18 +73,16 @@ class FinetuneSelection:
     """Resolved live parameter selection for the base fine-tune path."""
 
     selected_by_component: dict[str, list[NamedParameterRef]]
+    denoiser_keys: tuple[str, ...] = ()
+    text_encoder_keys: tuple[str, ...] = ()
 
     @property
     def train_denoiser(self) -> bool:
-        return bool(self.selected_by_component.get("denoiser", []))
+        return any(bool(self.selected_by_component.get(label, [])) for label in self.denoiser_keys)
 
     @property
     def te_train_flags(self) -> list[bool]:
-        text_encoder_labels = sorted(
-            (label for label in self.selected_by_component if label.startswith("text_encoder")),
-            key=lambda label: int(label.removeprefix("text_encoder")),
-        )
-        return [bool(self.selected_by_component[label]) for label in text_encoder_labels]
+        return [bool(self.selected_by_component.get(label, [])) for label in self.text_encoder_keys]
 
 
 @dataclass(slots=True)
@@ -199,8 +197,7 @@ def _matches_pattern(name: str, pattern: str) -> bool:
 def resolve_adapter_target_selection(
     *,
     model_type: str,
-    denoiser: nn.Module | None,
-    text_encoders: Sequence[nn.Module],
+    loaded_components: Sequence[LoadedModelComponent],
     learning_rates: LearningRatesConfig,
 ) -> AdapterTargetSelection:
     """Resolve optimization-owned adapter targets for the current PEFT path.
@@ -212,15 +209,17 @@ def resolve_adapter_target_selection(
     """
 
     denoiser_lr = learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
-    te_train_flags = [_is_positive_lr(_resolve_text_encoder_lr(learning_rates, index)) for index, _ in enumerate(text_encoders)]
+    text_encoder_components = find_loaded_components(loaded_components, role="text_encoder")
+    te_train_flags = [
+        _is_positive_lr(_resolve_text_encoder_lr(learning_rates, index))
+        for index, _ in enumerate(text_encoder_components)
+    ]
     train_denoiser = _is_positive_lr(denoiser_lr)
 
     return AdapterTargetSelection(
         resolved_targets=build_component_module_targets(
             model_type=model_type,
-            text_encoders=list(text_encoders),
-            vae=None,
-            denoiser=denoiser,
+            loaded_components=loaded_components,
             include_text_encoders=te_train_flags,
             include_denoiser=train_denoiser,
         ),
@@ -229,14 +228,29 @@ def resolve_adapter_target_selection(
     )
 
 
-def _resolve_adapter_component_lr(ref: AdapterTrainableParameterRef, learning_rates: LearningRatesConfig) -> float | None:
-    if ref.component_key == "denoiser":
+def _build_adapter_component_lr_maps(
+    loaded_components: Sequence[LoadedModelComponent],
+) -> tuple[set[str], dict[str, int]]:
+    denoiser_keys = {component.key for component in find_loaded_components(loaded_components, role="denoiser")}
+    text_encoder_key_to_index = {
+        component.key: index
+        for index, component in enumerate(find_loaded_components(loaded_components, role="text_encoder"))
+    }
+    return denoiser_keys, text_encoder_key_to_index
+
+
+def _resolve_adapter_component_lr(
+    ref: AdapterTrainableParameterRef,
+    learning_rates: LearningRatesConfig,
+    *,
+    denoiser_keys: set[str],
+    text_encoder_key_to_index: dict[str, int],
+) -> float | None:
+    if ref.component_key in denoiser_keys:
         return learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
-    if ref.component_key.startswith("text_encoder"):
-        suffix = ref.component_key.removeprefix("text_encoder")
-        if not suffix.isdigit():
-            raise ValueError(f"Adapter trainable ref '{ref.name}' has malformed text-encoder component key '{ref.component_key}'")
-        index = int(suffix) - 1
+
+    index = text_encoder_key_to_index.get(ref.component_key)
+    if index is not None:
         return _resolve_text_encoder_lr(learning_rates, index)
     return learning_rates.base
 
@@ -244,16 +258,23 @@ def _resolve_adapter_component_lr(ref: AdapterTrainableParameterRef, learning_ra
 def build_adapter_grouping(
     *,
     adapter,
+    loaded_components: Sequence[LoadedModelComponent],
     learning_rates: LearningRatesConfig,
 ) -> GroupingResult:
     """Build optimization-owned groups from repo-owned adapter trainable refs."""
 
     refs = get_trainable_parameter_refs(adapter)
+    denoiser_keys, text_encoder_key_to_index = _build_adapter_component_lr_maps(loaded_components)
     grouped_refs: dict[str, list[AdapterTrainableParameterRef]] = {}
     grouped_lrs: dict[str, float] = {}
 
     for ref in refs:
-        lr = _resolve_adapter_component_lr(ref, learning_rates)
+        lr = _resolve_adapter_component_lr(
+            ref,
+            learning_rates,
+            denoiser_keys=denoiser_keys,
+            text_encoder_key_to_index=text_encoder_key_to_index,
+        )
         if not _is_positive_lr(lr):
             continue
 
@@ -311,35 +332,42 @@ def _build_component_parameter_refs(
     ]
 
 
+def _get_finetune_denoiser_components(loaded_components: Sequence[LoadedModelComponent]) -> list[LoadedModelComponent]:
+    return [
+        component
+        for component in find_loaded_components(loaded_components, role="denoiser")
+        if isinstance(component.module, nn.Module)
+    ]
+
+
+def _get_finetune_text_encoder_components(loaded_components: Sequence[LoadedModelComponent]) -> list[LoadedModelComponent]:
+    return [
+        component
+        for component in find_loaded_components(loaded_components, role="text_encoder")
+        if isinstance(component.module, nn.Module)
+    ]
+
+
+def _get_finetune_baseline_components(loaded_components: Sequence[LoadedModelComponent]) -> list[LoadedModelComponent]:
+    return [
+        component
+        for component in loaded_components
+        if isinstance(component.module, nn.Module) and (component.has_role("denoiser") or component.has_role("text_encoder"))
+    ]
+
+
 def _collect_component_named_parameters(
     *,
-    denoiser: nn.Module | None,
-    text_encoders: Sequence[nn.Module],
-    component_names: NamedParameterComponentNames | None = None,
+    loaded_components: Sequence[LoadedModelComponent],
 ) -> dict[str, list[NamedParameterRef]]:
     component_params: dict[str, list[NamedParameterRef]] = {}
 
-    if denoiser is not None:
-        public_denoiser_label = component_names.denoiser_name if component_names is not None else "denoiser"
-        component_params["denoiser"] = _build_component_parameter_refs(
-            component_key="denoiser",
-            component_label=public_denoiser_label,
-            root_module=denoiser,
-            tags=frozenset({"denoiser"}),
-        )
-
-    for index, text_encoder in enumerate(text_encoders):
-        internal_label = f"text_encoder{index + 1}"
-        public_label = (
-            component_names.text_encoder_names[index]
-            if component_names is not None and index < len(component_names.text_encoder_names)
-            else internal_label
-        )
-        component_params[internal_label] = _build_component_parameter_refs(
-            component_key=internal_label,
-            component_label=public_label,
-            root_module=text_encoder,
-            tags=frozenset({"text_encoder"}),
+    for component in _get_finetune_baseline_components(loaded_components):
+        component_params[component.key] = _build_component_parameter_refs(
+            component_key=component.key,
+            component_label=component.public_name,
+            root_module=component.module,
+            tags=frozenset(component.roles),
         )
 
     return component_params
@@ -373,48 +401,42 @@ def _resolve_group_matches(
 
 def resolve_finetune_trainability(
     *,
-    denoiser: nn.Module | None,
-    text_encoders: Sequence[nn.Module],
+    loaded_components: Sequence[LoadedModelComponent],
     learning_rates: LearningRatesConfig,
     groups: Sequence[LearningRateGroupConfig] | None = None,
-    component_names: NamedParameterComponentNames | None = None,
 ) -> tuple[bool, list[bool]]:
     """Resolve component-level trainability from baseline LRs plus explicit groups."""
     selection = resolve_finetune_selection(
-        denoiser=denoiser,
-        text_encoders=text_encoders,
+        loaded_components=loaded_components,
         learning_rates=learning_rates,
         groups=groups,
-        component_names=component_names,
     )
     return selection.train_denoiser, selection.te_train_flags
 
 
 def resolve_finetune_selection(
     *,
-    denoiser: nn.Module | None,
-    text_encoders: Sequence[nn.Module],
+    loaded_components: Sequence[LoadedModelComponent],
     learning_rates: LearningRatesConfig,
     groups: Sequence[LearningRateGroupConfig] | None = None,
-    component_names: NamedParameterComponentNames | None = None,
 ) -> FinetuneSelection:
     """Resolve selected live parameters from baseline LRs plus explicit groups."""
     component_params = _collect_component_named_parameters(
-        denoiser=denoiser,
-        text_encoders=text_encoders,
-        component_names=component_names,
+        loaded_components=loaded_components,
     )
+    denoiser_components = _get_finetune_denoiser_components(loaded_components)
+    text_encoder_components = _get_finetune_text_encoder_components(loaded_components)
 
     denoiser_lr = learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
-    te_lrs = [_resolve_text_encoder_lr(learning_rates, index) for index, _ in enumerate(text_encoders)]
+    te_lrs = [_resolve_text_encoder_lr(learning_rates, index) for index, _ in enumerate(text_encoder_components)]
 
     selected_param_ids: set[int] = set()
     if _is_positive_lr(denoiser_lr):
-        selected_param_ids.update(id(ref.param) for ref in component_params.get("denoiser", []))
-    for index, lr in enumerate(te_lrs):
+        for component in denoiser_components:
+            selected_param_ids.update(id(ref.param) for ref in component_params.get(component.key, []))
+    for component, lr in zip(text_encoder_components, te_lrs):
         if _is_positive_lr(lr):
-            label = f"text_encoder{index + 1}"
-            selected_param_ids.update(id(ref.param) for ref in component_params.get(label, []))
+            selected_param_ids.update(id(ref.param) for ref in component_params.get(component.key, []))
 
     for group in groups or []:
         if group.lr <= 0:
@@ -425,27 +447,36 @@ def resolve_finetune_selection(
     selected_by_component = {
         label: [ref for ref in refs if id(ref.param) in selected_param_ids] for label, refs in component_params.items()
     }
-    return FinetuneSelection(selected_by_component=selected_by_component)
+    return FinetuneSelection(
+        selected_by_component=selected_by_component,
+        denoiser_keys=tuple(component.key for component in denoiser_components),
+        text_encoder_keys=tuple(component.key for component in text_encoder_components),
+    )
 
 
 def build_finetune_grouping(
     *,
-    denoiser: nn.Module | None,
+    loaded_components: Sequence[LoadedModelComponent],
     train_denoiser: bool,
-    text_encoders: Sequence[nn.Module],
     te_train_flags: Sequence[bool],
     learning_rates: LearningRatesConfig,
     groups: Sequence[LearningRateGroupConfig] | None = None,
-    component_names: NamedParameterComponentNames | None = None,
 ) -> GroupingResult:
     """Build the base fine-tune logical/execution groups in trainer-facing order."""
     execution_groups: list[ParameterGroup] = []
     logical_groups: list[LogicalParameterGroup] = []
     component_params = _collect_component_named_parameters(
-        denoiser=denoiser,
-        text_encoders=text_encoders,
-        component_names=component_names,
+        loaded_components=loaded_components,
     )
+    baseline_components = _get_finetune_baseline_components(loaded_components)
+    text_encoder_components = _get_finetune_text_encoder_components(loaded_components)
+    text_encoder_lr_by_key = {
+        component.key: _resolve_text_encoder_lr(learning_rates, index)
+        for index, component in enumerate(text_encoder_components)
+    }
+    text_encoder_train_flags_by_key = {
+        component.key: train_flag for component, train_flag in zip(text_encoder_components, te_train_flags)
+    }
     assigned_param_ids: set[int] = set()
     seen_group_names: set[str] = set()
     overridden_components: set[str] = set()
@@ -483,55 +514,35 @@ def build_finetune_grouping(
         assigned_param_ids.update(id(ref.param) for ref in matched_refs)
         overridden_components.update(ref.component_key for ref in matched_refs)
 
-    if train_denoiser:
-        assert denoiser is not None, "denoiser must be loaded before build_finetune_grouping"
-        denoiser_lr = learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
-        remaining_refs = [ref for ref in component_params.get("denoiser", []) if id(ref.param) not in assigned_param_ids]
-        if _is_positive_lr(denoiser_lr) and remaining_refs:
-            if "denoiser" not in overridden_components:
-                parameter_group = build_module_parameter_group(denoiser, lr=denoiser_lr, label="denoiser")
+    denoiser_lr = learning_rates.denoiser if learning_rates.denoiser is not None else learning_rates.base
+    for component in baseline_components:
+        if component.has_role("denoiser"):
+            if not train_denoiser:
+                continue
+            component_lr = denoiser_lr
+        else:
+            if not text_encoder_train_flags_by_key.get(component.key, False):
+                continue
+            component_lr = text_encoder_lr_by_key[component.key]
+
+        remaining_refs = [ref for ref in component_params.get(component.key, []) if id(ref.param) not in assigned_param_ids]
+        if _is_positive_lr(component_lr) and remaining_refs:
+            if component.key not in overridden_components:
+                parameter_group = build_module_parameter_group(component.module, lr=component_lr, label=component.key)
             else:
                 parameter_group = build_parameter_group(
                     [ref.param for ref in remaining_refs],
-                    lr=denoiser_lr,
-                    label="denoiser",
+                    lr=component_lr,
+                    label=component.key,
                     metadata={"param_names": [ref.full_name for ref in remaining_refs]},
                 )
             execution_groups.append(parameter_group)
             logical_groups.append(
                 build_logical_parameter_group(
-                    "denoiser",
+                    component.key,
                     parameter_group.params,
-                    lr=denoiser_lr,
-                    label="denoiser",
-                    execution_group_indices=(len(execution_groups) - 1,),
-                )
-            )
-
-    for index, (text_encoder, train_flag) in enumerate(zip(text_encoders, te_train_flags)):
-        if not train_flag:
-            continue
-
-        text_encoder_lr = _resolve_text_encoder_lr(learning_rates, index)
-        label = f"text_encoder{index + 1}"
-        remaining_refs = [ref for ref in component_params.get(label, []) if id(ref.param) not in assigned_param_ids]
-        if _is_positive_lr(text_encoder_lr) and remaining_refs:
-            if label not in overridden_components:
-                parameter_group = build_module_parameter_group(text_encoder, lr=text_encoder_lr, label=label)
-            else:
-                parameter_group = build_parameter_group(
-                    [ref.param for ref in remaining_refs],
-                    lr=text_encoder_lr,
-                    label=label,
-                    metadata={"param_names": [ref.full_name for ref in remaining_refs]},
-                )
-            execution_groups.append(parameter_group)
-            logical_groups.append(
-                build_logical_parameter_group(
-                    label,
-                    parameter_group.params,
-                    lr=text_encoder_lr,
-                    label=label,
+                    lr=component_lr,
+                    label=component.key,
                     execution_group_indices=(len(execution_groups) - 1,),
                 )
             )

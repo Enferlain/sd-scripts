@@ -14,6 +14,9 @@ Rules:
 
 ### Changed
 
+- **Observability, optimizer grouping, and adapter target resolution now consume family-declared loaded components instead of reconstructing the old SD-shaped trio** — startup diagnostics and fine-tune mode now project labels/order from `trainer.loaded_components`, fine-tune selector/grouping paths now derive parameter-target provenance and public selector prefixes from declared components, and adapter runtime target expansion now resolves component identity from the same loaded-component surface through stricter loaded-components-only helper APIs.
+  - Added focused coverage for declared-order diagnostics, selector-qualified fine-tune matching, adapter target resolution, and non-slot component shapes with custom keys/order so the migration is locked to the component contract rather than the legacy `text_encoderN`/`vae`/`denoiser` reconstruction path.
+  - Fixed the follow-up regressions where adapter optimizer grouping still derived text-encoder LR policy from legacy `text_encoderN` key parsing alone and fine-tune gradient clipping still gathered params through hardcoded `denoiser` / `text_encoderN` buckets instead of the resolved component-key sets.
 - **The model-layer README now documents the loaded-component contract conventions explicitly** — `library/models/README.md` now records that shared top-level component helpers live in `library/models/components.py`, family package `__init__.py` files own ordered `LOADED_MODEL_COMPONENT_SPECS` declarations, and generic runtime code should consume roles/capabilities instead of drifting back into family-name branches.
 
 ## [2026-05-11]
@@ -197,7 +200,7 @@ Rules:
 
 ### Changed
 
-- **The active PEFT registry now promotes OFT as a normal repo-owned method instead of keeping the old built-in path in the supported adapter list** — `library.adapters.oft` now resolves through the repo-owned OFT registration, while the stale `oft_deprecated` package remains only as on-disk cleanup debt rather than part of the supported method surface.
+- **The active PEFT registry now promotes OFT as a normal repo-owned method instead of keeping the old built-in path in the supported adapter list** — `library.adapters.oft` now resolves through the repo-owned OFT registration, and the stale `oft_deprecated` package has been removed instead of remaining as on-disk cleanup debt.
   - Repo-owned OFT now stores only the independent upper-triangle values for each skew-symmetric block in its native trainable/exported parameter layout, reducing OFT parameter/state size while keeping the same effective Diag-OFT transform math.
 - **The active PEFT registry now promotes BOFT as a normal repo-owned method instead of keeping it as vendored LyCORIS-only behavior** — `library.adapters.boft` now resolves through the repo-owned BOFT registration, and the BOFT path follows the same method-local config/runtime/state-dict ownership model as the other absorbed repo-owned PEFT methods.
   - Repo-owned BOFT stores only the independent upper-triangle values for each butterfly-stage skew block in its native trainable/exported parameter layout, avoiding the older full-square vendor storage while preserving the same effective transform math.

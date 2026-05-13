@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
-from library.models import NamedParameterComponentNames
+from library.models import LoadedModelComponent
 from library.optimization.types import OptimizerBuildResult
 from library.training.modes.finetune_mode import FineTuneMode
 
@@ -20,6 +20,28 @@ from library.training.modes.finetune_mode import FineTuneMode
 # =============================================================================
 # Fixtures
 # =============================================================================
+
+
+def _build_mock_loaded_components(
+    *,
+    denoiser: nn.Module,
+    text_encoders: list[nn.Module],
+    vae: nn.Module | None,
+) -> tuple[LoadedModelComponent, ...]:
+    return (
+        LoadedModelComponent(key="text_encoder1", public_name="clip_l", module=text_encoders[0], roles=("text_encoder",)),
+        LoadedModelComponent(key="text_encoder2", public_name="clip_g", module=text_encoders[1], roles=("text_encoder",)),
+        LoadedModelComponent(key="vae", public_name="vae", module=vae, roles=("vae",)),
+        LoadedModelComponent(key="denoiser", public_name="unet", module=denoiser, roles=("denoiser",)),
+    )
+
+
+def _refresh_mock_loaded_components(trainer) -> None:
+    trainer.loaded_components = _build_mock_loaded_components(
+        denoiser=trainer.denoiser,
+        text_encoders=trainer.text_encoders,
+        vae=trainer.vae,
+    )
 
 
 @pytest.fixture
@@ -124,9 +146,10 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_denoiser, mock_text_encoders, 
     type(trainer).is_main_process = PropertyMock(return_value=True)
 
     trainer.denoiser = mock_denoiser
-    trainer.vae = MagicMock()
+    trainer.vae = nn.Identity()
     trainer.text_encoders = mock_text_encoders
     trainer._text_encoder = mock_text_encoders
+    _refresh_mock_loaded_components(trainer)
     trainer.strategies = mock_strategies
 
     trainer.weight_dtype = torch.float16
@@ -235,6 +258,7 @@ class TestPrepareTrainables:
                 self.other = nn.Linear(4, 4)
 
         mock_trainer.denoiser = DummyDenoiser()
+        _refresh_mock_loaded_components(mock_trainer)
         mock_trainer.cfg.optimizer.learning_rates.base = None
         mock_trainer.cfg.optimizer.learning_rates.denoiser = None
         mock_trainer.cfg.optimizer.learning_rates.text_encoders = [0.0, 0.0]
@@ -263,6 +287,7 @@ class TestPrepareTrainables:
         )
 
         mock_trainer.denoiser = DummyDenoiser()
+        _refresh_mock_loaded_components(mock_trainer)
         mock_trainer.cfg.optimizer.learning_rates.base = None
         mock_trainer.cfg.optimizer.learning_rates.denoiser = None
         mock_trainer.cfg.optimizer.learning_rates.text_encoders = [0.0, 0.0]
@@ -341,17 +366,11 @@ class TestBuildOptimizerParams:
             result = mode.build_optimizer_params(mock_trainer)
 
         mock_grouping.assert_called_once_with(
-            denoiser=mock_trainer.denoiser,
+            loaded_components=mock_trainer.loaded_components,
             train_denoiser=True,
-            text_encoders=mock_trainer.text_encoders,
             te_train_flags=[True, False],
             learning_rates=mock_trainer.cfg.optimizer.learning_rates,
             groups=[],
-            component_names=NamedParameterComponentNames(
-                text_encoder_names=("clip_l", "clip_g"),
-                vae_name="vae",
-                denoiser_name="unet",
-            ),
         )
         assert isinstance(result, OptimizerBuildResult)
         assert result.optimizer_name == "AdamW"
@@ -369,6 +388,21 @@ class TestBuildOptimizerParams:
 
         with pytest.raises(NotImplementedError, match="Block-level learning rates"):
             mode.build_optimizer_params(mock_trainer)
+
+
+@pytest.mark.training
+@pytest.mark.unit
+class TestDiagnostics:
+    def test_get_diagnostics_components_preserves_declared_loaded_component_order(self, mode, mock_trainer):
+        components, aliases = mode.get_diagnostics_components(mock_trainer)
+
+        assert aliases is None
+        assert [component_key for component_key, _ in components] == [
+            "text_encoder1",
+            "text_encoder2",
+            "vae",
+            "denoiser",
+        ]
 
 
 # =============================================================================
@@ -503,6 +537,8 @@ class TestEvalTrain:
         """Returns only the selected trainable params."""
         mock_trainer._train_denoiser = True
         mode._te_train_flags = [True, False]
+        mode._denoiser_component_keys = ("denoiser",)
+        mode._text_encoder_component_keys = ("text_encoder1", "text_encoder2")
         denoiser_params = [nn.Parameter(torch.randn(4, 4))]
         te1_params = [nn.Parameter(torch.randn(2, 2))]
         mode._selected_params_by_component = {
@@ -516,6 +552,45 @@ class TestEvalTrain:
         assert len(params) == 2
         assert params[0] is denoiser_params[0]
         assert params[1] is te1_params[0]
+
+    def test_get_trainable_params_supports_custom_loaded_component_keys(self, mode, mock_trainer):
+        """Gradient clipping params should follow resolved semantic component keys, not legacy slot names."""
+        custom_components = (
+            LoadedModelComponent(
+                key="conditioning_b",
+                public_name="clip_secondary",
+                module=mock_trainer.text_encoders[0],
+                roles=("text_encoder",),
+            ),
+            LoadedModelComponent(
+                key="denoiser_main",
+                public_name="transformer",
+                module=mock_trainer.denoiser,
+                roles=("denoiser",),
+            ),
+            LoadedModelComponent(
+                key="conditioning_a",
+                public_name="clip_primary",
+                module=mock_trainer.text_encoders[1],
+                roles=("text_encoder",),
+            ),
+        )
+        mock_trainer.loaded_components = custom_components
+        mode._te_train_flags = [True, True]
+        mode._denoiser_component_keys = ("denoiser_main",)
+        mode._text_encoder_component_keys = ("conditioning_b", "conditioning_a")
+        denoiser_params = [nn.Parameter(torch.randn(4, 4))]
+        te_b_params = [nn.Parameter(torch.randn(2, 2))]
+        te_a_params = [nn.Parameter(torch.randn(2, 2))]
+        mode._selected_params_by_component = {
+            "denoiser_main": denoiser_params,
+            "conditioning_b": te_b_params,
+            "conditioning_a": te_a_params,
+        }
+
+        params = mode.get_trainable_params(mock_trainer)
+
+        assert params == [denoiser_params[0], te_b_params[0], te_a_params[0]]
 
     def test_set_eval(self, mode, mock_trainer):
         """set_eval calls .eval() on trained models."""

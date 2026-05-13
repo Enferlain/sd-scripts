@@ -12,20 +12,23 @@
 
 ## 3. Migrate diagnostics, selectors, and tooling
 
-- [ ] 3.1 Update training-mode diagnostics hooks and startup-summary builders to consume loaded components or filtered views of them
+- [x] 3.1 Update training-mode diagnostics hooks and startup-summary builders to consume loaded components or filtered views of them
 - [x] 3.2 Update resource-monitor startup component accounting to consume the new component surface while preserving family-declared order
-- [ ] 3.3 Update component-qualified selector generation and related tests to derive selector prefixes from declared loaded components
+- [x] 3.3 Update component-qualified selector generation and related tests to derive selector prefixes from declared loaded components
 - [x] 3.4 Update the model-inspection / parameter-dump tool to load and render top-level components through the new contract
 
 ## 4. Migrate optimization and adapter consumers
 
-- [ ] 4.1 Update shared optimization target refs to derive top-level component identity from declared loaded components
-- [ ] 4.2 Update fine-tune grouping and selection helpers to consume declared components instead of rebuilding the old trio-based component map
-- [ ] 4.3 Update adapter runtime context and adapter target-resolution helpers to derive component scope from declared loaded components and their targeting-relevant semantics
-- [ ] 4.4 Add focused tests covering non-trivial family shapes such as multiple same-role components and non-slot-based component ordering in targeting/grouping paths
+- [x] 4.1 Update shared optimization target refs to derive top-level component identity from declared loaded components
+- [x] 4.2 Update fine-tune grouping and selection helpers to consume declared components instead of rebuilding the old trio-based component map
+- [x] 4.3 Update adapter runtime context and adapter target-resolution helpers to derive component scope from declared loaded components and their targeting-relevant semantics
+- [x] 4.4 Add focused tests covering non-trivial family shapes such as multiple same-role components and non-slot-based component ordering in targeting/grouping paths
+- [x] 4.5 Center adapter build context on loaded components and project legacy adapter arguments only inside adapter runtime wrappers
 
 ## 5. Remove the old assumption and document the new boundary
 
-- [ ] 5.1 Remove the remaining repo-owned `text_encoders/vae/denoiser` contract assumptions from affected runtime seams once all consumers are migrated
-- [ ] 5.2 Update architecture docs, changelog, and any relevant roadmap/spec references to describe family-declared loaded components as the new top-level contract
-- [ ] 5.3 Run focused verification for trainer setup, observability, selector tooling, optimization grouping, and adapter targeting to confirm the old tuple contract is no longer required
+- [x] 5.1 Remove the old `text_encoders/vae/denoiser` root contract from affected shared runtime seams
+  Shared target helpers, optimizer grouping, and adapter build context now consume loaded components directly. Remaining diffusion-shaped state is limited to derived trainer convenience properties and absorbed legacy adapter call sites, as captured in the design follow-up notes.
+- [x] 5.2 Update architecture docs, changelog, and any relevant roadmap/spec references to describe family-declared loaded components as the new top-level contract
+  Capture the temporary boundaries explicitly: the generic role vocabulary is still diffusion-oriented, text-encoder LR policy remains positional by declared role order, and `public_name` is still shared by display and selector identity until a concrete family needs those surfaces split.
+- [x] 5.3 Run focused verification for trainer setup, observability, selector tooling, optimization grouping, and adapter targeting to confirm the old tuple contract is no longer required

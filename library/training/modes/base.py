@@ -187,11 +187,11 @@ class TrainingMode(Protocol):
 
         Each mode decides what to show:
         - Adapters: adapter only (frozen backbone is noise).
-        - Fine-tune: all backbone components (denoiser, TEs, vae).
+        - Fine-tune: declared loaded backbone components in family order.
 
         Returns:
             (components, aliases) where components is a list of
-            (name, module) tuples and aliases is an optional list of
+            (component_key, module) tuples and aliases is an optional list of
             (alias_name, target_name) for display.
         """
         ...

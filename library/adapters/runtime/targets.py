@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from torch import nn
 
-from library.models import resolve_component_names
+from library.models import LoadedModelComponent
 from library.optimization.targets import (
     OptimizationTargetRef,
     build_component_target_ref,
@@ -150,69 +151,63 @@ def _iter_component_module_targets(
     return targets
 
 
+def _iter_selected_loaded_components(
+    loaded_components: Sequence[LoadedModelComponent],
+    *,
+    include_text_encoders: list[bool] | None,
+    include_vae: bool,
+    include_denoiser: bool,
+) -> list[tuple[LoadedModelComponent, frozenset[str]]]:
+    encoder_flags = list(include_text_encoders or [])
+    text_encoder_index = 0
+    selected_components: list[tuple[LoadedModelComponent, frozenset[str]]] = []
+
+    for component in loaded_components:
+        if component.has_role("text_encoder"):
+            include_target = encoder_flags[text_encoder_index] if text_encoder_index < len(encoder_flags) else False
+            text_encoder_index += 1
+            if include_target and component.module is not None:
+                selected_components.append((component, frozenset({"text_encoder"})))
+            continue
+
+        if component.has_role("vae"):
+            if include_vae and component.module is not None:
+                selected_components.append((component, frozenset({"vae"})))
+            continue
+
+        if component.has_role("denoiser") and include_denoiser and component.module is not None:
+            selected_components.append((component, frozenset({"denoiser"})))
+
+    return selected_components
+
+
 def build_component_root_targets(
     *,
     model_type: str,
-    text_encoders: list[Any],
-    vae: Any,
-    denoiser: Any,
+    loaded_components: Sequence[LoadedModelComponent],
     include_text_encoders: list[bool] | None = None,
     include_vae: bool = False,
     include_denoiser: bool = False,
 ) -> AdapterResolvedTargets:
-    """Build component-root adapter targets for compatibility-oriented callers."""
-
-    component_names = resolve_component_names(model_type)
-    encoder_flags = list(include_text_encoders or [])
-    while len(encoder_flags) < len(text_encoders):
-        encoder_flags.append(False)
+    """Build component-root adapter targets from declared loaded components."""
 
     targets: list[AdapterResolvedTarget] = []
-    for index, (text_encoder, include_target) in enumerate(zip(text_encoders, encoder_flags, strict=False)):
-        if not include_target or text_encoder is None:
-            continue
-        public_label = (
-            component_names.text_encoder_names[index]
-            if component_names is not None and index < len(component_names.text_encoder_names)
-            else f"text_encoder{index + 1}"
-        )
+    for component, role_tags in _iter_selected_loaded_components(
+        loaded_components,
+        include_text_encoders=include_text_encoders,
+        include_vae=include_vae,
+        include_denoiser=include_denoiser,
+    ):
+        component_tags = role_tags | frozenset({"component_root"})
         targets.append(
             _build_resolved_target(
                 target_ref=build_component_target_ref(
-                    component=public_label,
-                    component_key=f"text_encoder{index + 1}",
-                    obj=text_encoder,
-                    tags=frozenset({"component_root", "text_encoder"}),
+                    component=component.public_name,
+                    component_key=component.key,
+                    obj=component.module,
+                    tags=component_tags,
                 ),
-                tags=frozenset({"component_root", "text_encoder"}),
-            )
-        )
-
-    if include_vae and vae is not None:
-        public_label = component_names.vae_name if component_names is not None else "vae"
-        targets.append(
-            _build_resolved_target(
-                target_ref=build_component_target_ref(
-                    component=public_label,
-                    component_key="vae",
-                    obj=vae,
-                    tags=frozenset({"component_root", "vae"}),
-                ),
-                tags=frozenset({"component_root", "vae"}),
-            )
-        )
-
-    if include_denoiser and denoiser is not None:
-        public_label = component_names.denoiser_name if component_names is not None else "denoiser"
-        targets.append(
-            _build_resolved_target(
-                target_ref=build_component_target_ref(
-                    component=public_label,
-                    component_key="denoiser",
-                    obj=denoiser,
-                    tags=frozenset({"component_root", "denoiser"}),
-                ),
-                tags=frozenset({"component_root", "denoiser"}),
+                tags=component_tags,
             )
         )
 
@@ -222,62 +217,31 @@ def build_component_root_targets(
 def build_component_module_targets(
     *,
     model_type: str,
-    text_encoders: list[Any],
-    vae: Any,
-    denoiser: Any,
+    loaded_components: Sequence[LoadedModelComponent],
     include_text_encoders: list[bool] | None = None,
     include_vae: bool = False,
     include_denoiser: bool = False,
 ) -> AdapterResolvedTargets:
-    """Build module-resolved adapter targets from selected top-level components.
+    """Build module-resolved adapter targets from selected declared components.
 
     Optimization still decides which model components are in scope. This helper
     expands those selected components into concrete target modules with stable
     component/path provenance for downstream adapter runtimes.
     """
 
-    component_names = resolve_component_names(model_type)
-    encoder_flags = list(include_text_encoders or [])
-    while len(encoder_flags) < len(text_encoders):
-        encoder_flags.append(False)
-
     targets: list[AdapterResolvedTarget] = []
-    for index, (text_encoder, include_target) in enumerate(zip(text_encoders, encoder_flags, strict=False)):
-        if not include_target or text_encoder is None:
-            continue
-        public_label = (
-            component_names.text_encoder_names[index]
-            if component_names is not None and index < len(component_names.text_encoder_names)
-            else f"text_encoder{index + 1}"
-        )
+    for component, role_tags in _iter_selected_loaded_components(
+        loaded_components,
+        include_text_encoders=include_text_encoders,
+        include_vae=include_vae,
+        include_denoiser=include_denoiser,
+    ):
         targets.extend(
             _iter_component_module_targets(
-                component=public_label,
-                component_key=f"text_encoder{index + 1}",
-                root_module=text_encoder,
-                tags=frozenset({"text_encoder"}),
-            )
-        )
-
-    if include_vae and vae is not None:
-        public_label = component_names.vae_name if component_names is not None else "vae"
-        targets.extend(
-            _iter_component_module_targets(
-                component=public_label,
-                component_key="vae",
-                root_module=vae,
-                tags=frozenset({"vae"}),
-            )
-        )
-
-    if include_denoiser and denoiser is not None:
-        public_label = component_names.denoiser_name if component_names is not None else "denoiser"
-        targets.extend(
-            _iter_component_module_targets(
-                component=public_label,
-                component_key="denoiser",
-                root_module=denoiser,
-                tags=frozenset({"denoiser"}),
+                component=component.public_name,
+                component_key=component.key,
+                root_module=component.module,
+                tags=role_tags,
             )
         )
 

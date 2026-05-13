@@ -5,6 +5,7 @@ import torch
 from torch import nn
 
 from library.adapters.shared.trainables import AdapterTrainableParameterRef
+from library.models import LoadedModelComponent
 from library.logging.summaries import (
     DiagnosticAlias,
     DiagnosticModuleCount,
@@ -64,19 +65,29 @@ def test_build_trainer_diagnostic_rows_maps_finetune_components_to_public_names(
     trainer = SimpleNamespace(
         adapter=None,
         cfg=SimpleNamespace(model=SimpleNamespace(model_type="sdxl")),
-        text_encoders=[nn.Linear(2, 2), nn.Linear(2, 2)],
+        loaded_components=(
+            LoadedModelComponent(key="text_encoder1", public_name="clip_l", module=nn.Linear(2, 2), roles=("text_encoder",)),
+            LoadedModelComponent(key="text_encoder2", public_name="clip_g", module=nn.Linear(2, 2), roles=("text_encoder",)),
+            LoadedModelComponent(key="vae", public_name="vae", module=nn.Linear(2, 2), roles=("vae",)),
+            LoadedModelComponent(key="denoiser", public_name="unet", module=nn.Linear(2, 2), roles=("denoiser",)),
+        ),
         mode=MagicMock(),
     )
     trainer.mode.get_diagnostics_components.return_value = (
-        [("denoiser", nn.Linear(2, 2)), ("text_encoder1", nn.Linear(2, 2)), ("text_encoder2", nn.Linear(2, 2))],
+        [
+            ("text_encoder1", nn.Linear(2, 2)),
+            ("text_encoder2", nn.Linear(2, 2)),
+            ("vae", nn.Linear(2, 2)),
+            ("denoiser", nn.Linear(2, 2)),
+        ],
         None,
     )
 
     rows, aliases = build_trainer_diagnostic_rows(trainer)
 
     assert aliases == []
-    assert [row.label for row in rows] == ["unet", "clip_l", "clip_g"]
-    assert [row.component_key for row in rows] == ["denoiser", "text_encoder1", "text_encoder2"]
+    assert [row.label for row in rows] == ["clip_l", "clip_g", "vae", "unet"]
+    assert [row.component_key for row in rows] == ["text_encoder1", "text_encoder2", "vae", "denoiser"]
 
 
 def test_render_training_startup_summary_uses_sectioned_block_format():

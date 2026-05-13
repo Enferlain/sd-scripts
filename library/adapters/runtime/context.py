@@ -4,6 +4,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from library.models import LoadedModelComponent, get_loaded_component_module, get_loaded_component_modules
+
 if TYPE_CHECKING:
     from .targets import AdapterResolvedTargets
 
@@ -12,9 +14,31 @@ if TYPE_CHECKING:
 class AdapterModelContext:
     """Model objects needed to construct an adapter runtime."""
 
-    vae: Any
-    text_encoder: Any | list[Any]
-    denoiser: Any
+    loaded_components: tuple[LoadedModelComponent, ...]
+
+    def modules_by_role(self, role: str) -> list[Any]:
+        """Return loaded modules for the requested component role."""
+        return get_loaded_component_modules(self.loaded_components, role=role)
+
+    def module_by_role(self, role: str) -> Any | None:
+        """Return the first loaded module for the requested component role."""
+        return get_loaded_component_module(self.loaded_components, role=role)
+
+    def require_module_by_role(self, role: str) -> Any:
+        """Return a role module or fail with adapter-context detail."""
+        module = self.module_by_role(role)
+        if module is None:
+            raise ValueError(f"Adapter model context requires a loaded component with role {role!r}.")
+        return module
+
+    def module_or_modules_by_role(self, role: str) -> Any | list[Any] | None:
+        """Project role modules into the single-or-list shape absorbed adapters expect."""
+        modules = self.modules_by_role(role)
+        if not modules:
+            return None
+        if len(modules) == 1:
+            return modules[0]
+        return modules
 
 
 @dataclass(slots=True)

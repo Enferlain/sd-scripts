@@ -15,6 +15,7 @@ dist/
 .coverage
 htmlcov/
 wandb/
+/*.yaml
 
 # IDEs
 .idea/

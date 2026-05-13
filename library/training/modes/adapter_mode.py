@@ -76,9 +76,7 @@ def _build_continuation_plan(peft_config) -> PeftContinuationPlan:
 
 def _build_adapter_request(
     *,
-    vae,
-    text_encoders: list[nn.Module],
-    denoiser,
+    loaded_components,
     runtime_spec: AdapterRuntimeSpec,
     resolved_targets,
     for_inference: bool = False,
@@ -86,7 +84,9 @@ def _build_adapter_request(
     return AdapterBuildRequest(
         adapter=runtime_spec,
         context=AdapterBuildContext(
-            model=AdapterModelContext(vae=vae, text_encoder=text_encoders, denoiser=denoiser),
+            model=AdapterModelContext(
+                loaded_components=tuple(loaded_components),
+            ),
             multiplier=1.0,
             for_inference=for_inference,
         ),
@@ -113,10 +113,6 @@ class AdapterMode:
         """
         cfg = trainer.cfg
         accelerator = trainer.accelerator
-        vae = trainer.vae
-        denoiser = trainer.denoiser
-        text_encoder = trainer._text_encoder
-        text_encoders = trainer.text_encoders
         peft_config = get_adapter_peft_config(cfg)
         if peft_config is None:
             raise ValueError("mode=adapter requires adapter.peft config.")
@@ -127,8 +123,7 @@ class AdapterMode:
 
         target_selection = resolve_adapter_target_selection(
             model_type=cfg.model.model_type,
-            denoiser=denoiser,
-            text_encoders=text_encoders,
+            loaded_components=trainer.loaded_components,
             learning_rates=cfg.optimizer.learning_rates,
         )
         trainer._train_denoiser = target_selection.train_denoiser
@@ -136,12 +131,14 @@ class AdapterMode:
 
         # Create adapter
         build_request = _build_adapter_request(
-            vae=vae,
-            text_encoders=text_encoders,
-            denoiser=denoiser,
+            loaded_components=trainer.loaded_components,
             runtime_spec=runtime_spec,
             resolved_targets=target_selection.resolved_targets,
         )
+        model_context = build_request.context.model
+        text_encoder_modules = model_context.modules_by_role("text_encoder")
+        text_encoder_input = model_context.module_or_modules_by_role("text_encoder")
+        denoiser_input = model_context.require_module_by_role("denoiser")
 
         if continuation_plan.continue_from is not None and continuation_plan.continue_mode == "strict":
             loaded_runtime = build_adapter_from_weights(build_request, continuation_plan.continue_from)
@@ -161,10 +158,10 @@ class AdapterMode:
             logger.warning("warning: scale_weight_norms is specified but the peft does not support it")
             peft_config.scale_weight_norms = False
 
-        trainer.strategies.post_process_trainable(cfg, accelerator, adapter, text_encoders, denoiser)
+        trainer.strategies.post_process_trainable(cfg, accelerator, adapter, text_encoder_modules, denoiser_input)
 
         # Apply adapter to denoiser and text_encoder
-        adapter.apply_to(text_encoder, denoiser, trainer._train_text_encoder, trainer._train_denoiser)
+        adapter.apply_to(text_encoder_input, denoiser_input, trainer._train_text_encoder, trainer._train_denoiser)
 
         if continuation_plan.continue_from is not None and continuation_plan.continue_mode == "initialize_from_artifact":
             info = load_adapter_export(adapter, AdapterExportLoadRequest(file=continuation_plan.continue_from))
@@ -214,6 +211,7 @@ class AdapterMode:
 
         grouping = build_adapter_grouping(
             adapter=trainer.adapter,
+            loaded_components=trainer.loaded_components,
             learning_rates=cfg.optimizer.learning_rates,
         )
         optimization_plan = OptimizationPlan(

@@ -51,7 +51,38 @@ from library.adapters.shared import AdapterTrainableParameterRef
 from library.optimization.wrappers.schedulefree import ScheduleFreeWrapper
 from library.config.dataclasses.optimizer import LearningRateGroupConfig, OptimizerConfig, SchedulerConfig, LearningRatesConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.models import NamedParameterComponentNames
+from library.models import LoadedModelComponent
+
+
+def _build_loaded_components(
+    *,
+    denoiser: torch.nn.Module | None = None,
+    denoiser_name: str = "unet",
+    text_encoders: list[torch.nn.Module] | None = None,
+    text_encoder_names: tuple[str, ...] | None = None,
+    vae: torch.nn.Module | None = None,
+) -> tuple[LoadedModelComponent, ...]:
+    text_encoder_modules = text_encoders or []
+    public_names = text_encoder_names or ("clip_l", "clip_g", "t5xxl")
+    components: list[LoadedModelComponent] = []
+
+    for index, module in enumerate(text_encoder_modules):
+        public_name = public_names[index] if index < len(public_names) else f"text_encoder{index + 1}"
+        components.append(
+            LoadedModelComponent(
+                key=f"text_encoder{index + 1}",
+                public_name=public_name,
+                module=module,
+                roles=("text_encoder",),
+            )
+        )
+
+    if vae is not None:
+        components.append(LoadedModelComponent(key="vae", public_name="vae", module=vae, roles=("vae",)))
+    if denoiser is not None:
+        components.append(LoadedModelComponent(key="denoiser", public_name=denoiser_name, module=denoiser, roles=("denoiser",)))
+
+    return tuple(components)
 
 
 # =============================================================================
@@ -735,43 +766,46 @@ class TestOptimizerUtils:
         text_encoder_2 = torch.nn.Linear(2, 2)
 
         grouping = build_finetune_grouping(
-            denoiser=denoiser,
+            loaded_components=_build_loaded_components(
+                denoiser=denoiser,
+                text_encoders=[text_encoder_1, text_encoder_2],
+            ),
             train_denoiser=True,
-            text_encoders=[text_encoder_1, text_encoder_2],
             te_train_flags=[True, False],
             learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5, text_encoders=[3e-5, 4e-5]),
         )
 
-        assert [group.metric_name for group in grouping.logical_groups] == ["denoiser", "text_encoder1"]
+        assert [group.metric_name for group in grouping.logical_groups] == ["text_encoder1", "denoiser"]
         assert [group.execution_group_indices for group in grouping.logical_groups] == [(0,), (1,)]
-        assert [group.label for group in grouping.execution_groups] == ["denoiser", "text_encoder1"]
+        assert [group.label for group in grouping.execution_groups] == ["text_encoder1", "denoiser"]
         assert grouping.parameter_groups == grouping.execution_groups
 
     def test_build_finetune_grouping_uses_configured_learning_rates(self):
         """Shared grouping preserves denoiser overrides and text-encoder LR fallback behavior."""
         grouping = build_finetune_grouping(
-            denoiser=torch.nn.Linear(4, 4),
+            loaded_components=_build_loaded_components(
+                denoiser=torch.nn.Linear(4, 4),
+                text_encoders=[torch.nn.Linear(3, 3), torch.nn.Linear(2, 2)],
+            ),
             train_denoiser=True,
-            text_encoders=[torch.nn.Linear(3, 3), torch.nn.Linear(2, 2)],
             te_train_flags=[True, True],
             learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5, text_encoders=[3e-5]),
         )
 
-        assert [group.lr for group in grouping.logical_groups] == [2e-5, 3e-5, 1e-5]
+        assert [group.lr for group in grouping.logical_groups] == [3e-5, 1e-5, 2e-5]
 
     def test_zero_lr_keeps_baseline_component_frozen_and_excludes_optimizer_groups(self):
         """Explicit zero LR should freeze the baseline component instead of creating a zero-LR optimizer group."""
         denoiser = torch.nn.Linear(4, 4)
+        loaded_components = _build_loaded_components(denoiser=denoiser)
         train_denoiser, te_flags = resolve_finetune_trainability(
-            denoiser=denoiser,
-            text_encoders=[],
+            loaded_components=loaded_components,
             learning_rates=LearningRatesConfig(base=None, denoiser=0.0),
         )
 
         grouping = build_finetune_grouping(
-            denoiser=denoiser,
+            loaded_components=loaded_components,
             train_denoiser=train_denoiser,
-            text_encoders=[],
             te_train_flags=te_flags,
             learning_rates=LearningRatesConfig(base=None, denoiser=0.0),
         )
@@ -784,10 +818,12 @@ class TestOptimizerUtils:
     def test_resolve_finetune_trainability_uses_groups_when_base_is_missing(self):
         """Explicit groups can make a component trainable even without a base fallback LR."""
         train_denoiser, te_flags = resolve_finetune_trainability(
-            denoiser=torch.nn.Linear(4, 4),
-            text_encoders=[torch.nn.Linear(3, 3), torch.nn.Linear(2, 2)],
+            loaded_components=_build_loaded_components(
+                denoiser=torch.nn.Linear(4, 4),
+                text_encoders=[torch.nn.Linear(3, 3), torch.nn.Linear(2, 2)],
+            ),
             learning_rates=LearningRatesConfig(base=None, denoiser=None, text_encoders=[0.0, 0.0]),
-            groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["denoiser.*weight"])],
+            groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["unet.*weight"])],
         )
 
         assert train_denoiser is True
@@ -796,15 +832,12 @@ class TestOptimizerUtils:
     def test_resolve_finetune_trainability_uses_component_qualified_match_names(self):
         """Component-qualified selectors should activate the expected model-facing component."""
         train_denoiser, te_flags = resolve_finetune_trainability(
-            denoiser=torch.nn.Linear(4, 4),
-            text_encoders=[torch.nn.Linear(3, 3), torch.nn.Linear(2, 2)],
+            loaded_components=_build_loaded_components(
+                denoiser=torch.nn.Linear(4, 4),
+                text_encoders=[torch.nn.Linear(3, 3), torch.nn.Linear(2, 2)],
+            ),
             learning_rates=LearningRatesConfig(base=None, denoiser=None, text_encoders=[0.0, 0.0]),
             groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["unet.*weight"])],
-            component_names=NamedParameterComponentNames(
-                text_encoder_names=("clip_l", "clip_g"),
-                vae_name="vae",
-                denoiser_name="unet",
-            ),
         )
 
         assert train_denoiser is True
@@ -818,8 +851,10 @@ class TestOptimizerUtils:
 
         selection = resolve_adapter_target_selection(
             model_type="sdxl",
-            denoiser=denoiser,
-            text_encoders=[clip_l, clip_g],
+            loaded_components=_build_loaded_components(
+                denoiser=denoiser,
+                text_encoders=[clip_l, clip_g],
+            ),
             learning_rates=LearningRatesConfig(base=None, denoiser=1e-4, text_encoders=[0.0, 5e-5]),
         )
 
@@ -846,8 +881,10 @@ class TestOptimizerUtils:
 
         selection = resolve_adapter_target_selection(
             model_type="sdxl",
-            denoiser=DummyDenoiser(),
-            text_encoders=[DummyTextEncoder(), DummyTextEncoder()],
+            loaded_components=_build_loaded_components(
+                denoiser=DummyDenoiser(),
+                text_encoders=[DummyTextEncoder(), DummyTextEncoder()],
+            ),
             learning_rates=LearningRatesConfig(base=None, denoiser=1e-4, text_encoders=[5e-5, 0.0]),
         )
 
@@ -909,6 +946,7 @@ class TestOptimizerUtils:
 
         grouping = build_adapter_grouping(
             adapter=FakeAdapter(),
+            loaded_components=_build_loaded_components(denoiser=torch.nn.Linear(2, 2), text_encoders=[torch.nn.Linear(2, 2)]),
             learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5, text_encoders=[3e-5]),
         )
 
@@ -931,11 +969,10 @@ class TestOptimizerUtils:
 
         text_encoder = DummyTextEncoder()
         denoiser = DummyDenoiser()
+        loaded_components = _build_loaded_components(denoiser=denoiser, text_encoders=[text_encoder])
         resolved_targets = build_component_module_targets(
             model_type="sdxl",
-            text_encoders=[text_encoder, None],
-            vae=None,
-            denoiser=denoiser,
+            loaded_components=loaded_components,
             include_text_encoders=[True, False],
             include_denoiser=True,
         )
@@ -945,7 +982,7 @@ class TestOptimizerUtils:
                 settings={"adapter_rank": 4, "adapter_alpha": 8.0},
             ),
             context=AdapterBuildContext(
-                model=AdapterModelContext(vae=None, text_encoder=[text_encoder, None], denoiser=denoiser),
+                model=AdapterModelContext(loaded_components=loaded_components),
             ),
             resolved_targets=resolved_targets,
         )
@@ -953,12 +990,73 @@ class TestOptimizerUtils:
         adapter = build_adapter_for_legacy_module("library.adapters.loha", request)
         grouping = build_adapter_grouping(
             adapter=adapter,
+            loaded_components=loaded_components,
             learning_rates=LearningRatesConfig(base=1e-4, denoiser=2e-4, text_encoders=[5e-5, 0.0]),
         )
 
         assert [group.metric_name for group in grouping.logical_groups] == ["clip_l", "unet"]
         assert [group.lr for group in grouping.logical_groups] == [5e-5, 2e-4]
         assert all("norm" not in name for group in grouping.execution_groups for name in group.metadata["param_names"])
+
+    def test_build_adapter_grouping_uses_loaded_component_order_for_custom_text_encoder_keys(self):
+        loaded_components = (
+            LoadedModelComponent(
+                key="conditioning_b",
+                public_name="clip_secondary",
+                module=torch.nn.Linear(3, 3),
+                roles=("text_encoder",),
+            ),
+            LoadedModelComponent(
+                key="denoiser_main",
+                public_name="transformer",
+                module=torch.nn.Linear(4, 4),
+                roles=("denoiser",),
+            ),
+            LoadedModelComponent(
+                key="conditioning_a",
+                public_name="clip_primary",
+                module=torch.nn.Linear(2, 2),
+                roles=("text_encoder",),
+            ),
+        )
+        resolved_targets = build_component_module_targets(
+            model_type="custom",
+            loaded_components=loaded_components,
+            include_text_encoders=[True, True],
+            include_denoiser=True,
+        )
+        component_params = {
+            target.component_key: torch.nn.Parameter(torch.randn(2, 2)) for target in resolved_targets.targets
+        }
+
+        class FakeAdapter:
+            def describe_trainable_parameter_refs(self):
+                return [
+                    AdapterTrainableParameterRef(
+                        param=component_params[target.component_key],
+                        name=f"adapter.{target.component_key}.weight",
+                        algorithm="lora",
+                        component=target.component,
+                        component_key=target.component_key,
+                        target_path=target.path,
+                        adapter_module_path=f"adapter.{target.component_key}",
+                        source_target_ref=target.target_ref,
+                    )
+                    for target in resolved_targets.targets
+                ]
+
+        grouping = build_adapter_grouping(
+            adapter=FakeAdapter(),
+            loaded_components=loaded_components,
+            learning_rates=LearningRatesConfig(base=None, denoiser=9e-5, text_encoders=[3e-5, 5e-5]),
+        )
+
+        assert [group.metric_name for group in grouping.logical_groups] == [
+            "clip_secondary",
+            "transformer",
+            "clip_primary",
+        ]
+        assert [group.lr for group in grouping.logical_groups] == [3e-5, 9e-5, 5e-5]
 
     def test_resolve_finetune_selection_preserves_parameter_target_refs(self):
         """Fine-tune selection should keep shared parameter provenance without changing selector strings."""
@@ -970,15 +1068,9 @@ class TestOptimizerUtils:
                 self.other = torch.nn.Linear(4, 4)
 
         selection = resolve_finetune_selection(
-            denoiser=DummyDenoiser(),
-            text_encoders=[],
+            loaded_components=_build_loaded_components(denoiser=DummyDenoiser()),
             learning_rates=LearningRatesConfig(base=None, denoiser=None),
             groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["unet.*attn*"])],
-            component_names=NamedParameterComponentNames(
-                text_encoder_names=("clip_l", "clip_g"),
-                vae_name="vae",
-                denoiser_name="unet",
-            ),
         )
 
         refs = selection.selected_by_component["denoiser"]
@@ -991,8 +1083,8 @@ class TestOptimizerUtils:
         assert weight_ref.target_ref.owner_module_path == "attn_proj"
         assert weight_ref.target_ref.owner_module_type == "Linear"
 
-    def test_build_adapter_grouping_rejects_malformed_text_encoder_component_key(self):
-        """Adapter grouping should require explicit repo-owned component identities."""
+    def test_build_adapter_grouping_uses_base_lr_for_component_keys_outside_training_policy(self):
+        """Adapter grouping should only apply TE/denoiser overrides to declared training-policy components."""
         te_param = torch.nn.Parameter(torch.randn(2, 2))
 
         class FakeAdapter:
@@ -1009,11 +1101,14 @@ class TestOptimizerUtils:
                     )
                 ]
 
-        with pytest.raises(ValueError, match="malformed text-encoder component key"):
-            build_adapter_grouping(
-                adapter=FakeAdapter(),
-                learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5),
-            )
+        grouping = build_adapter_grouping(
+            adapter=FakeAdapter(),
+            loaded_components=_build_loaded_components(denoiser=torch.nn.Linear(2, 2), text_encoders=[]),
+            learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5),
+        )
+
+        assert [group.metric_name for group in grouping.logical_groups] == ["clip_l"]
+        assert [group.lr for group in grouping.logical_groups] == [1e-5]
 
     def test_build_adapter_grouping_requires_repo_owned_trainable_ref_provider(self):
         """Adapter grouping should stay on the repo-owned trainable-ref contract."""
@@ -1024,6 +1119,7 @@ class TestOptimizerUtils:
         with pytest.raises(TypeError, match="describe_trainable_parameter_refs"):
             build_adapter_grouping(
                 adapter=LegacyShapedAdapter(),
+                loaded_components=_build_loaded_components(denoiser=torch.nn.Linear(2, 2), text_encoders=[]),
                 learning_rates=LearningRatesConfig(base=1e-5, denoiser=2e-5),
             )
 
@@ -1039,14 +1135,13 @@ class TestOptimizerUtils:
 
         denoiser = DummyDenoiser()
         groups = [
-            LearningRateGroupConfig(name="attention", lr=5e-5, match=["denoiser.*attn*"]),
-            LearningRateGroupConfig(name="time_embed", lr=1e-4, match=["denoiser.*time_embed.*"]),
+            LearningRateGroupConfig(name="attention", lr=5e-5, match=["unet.*attn*"]),
+            LearningRateGroupConfig(name="time_embed", lr=1e-4, match=["unet.*time_embed.*"]),
         ]
 
         grouping = build_finetune_grouping(
-            denoiser=denoiser,
+            loaded_components=_build_loaded_components(denoiser=denoiser),
             train_denoiser=True,
-            text_encoders=[],
             te_train_flags=[],
             learning_rates=LearningRatesConfig(base=1e-4, denoiser=1e-5),
             groups=groups,
@@ -1070,17 +1165,11 @@ class TestOptimizerUtils:
 
         denoiser = DummyMmdit()
         grouping = build_finetune_grouping(
-            denoiser=denoiser,
+            loaded_components=_build_loaded_components(denoiser=denoiser, denoiser_name="mmdit"),
             train_denoiser=True,
-            text_encoders=[],
             te_train_flags=[],
             learning_rates=LearningRatesConfig(base=1e-4, denoiser=1e-5),
             groups=[LearningRateGroupConfig(name="attention", lr=5e-5, match=["mmdit.*attn*"])],
-            component_names=NamedParameterComponentNames(
-                text_encoder_names=("clip_l", "clip_g", "t5xxl"),
-                vae_name="vae",
-                denoiser_name="mmdit",
-            ),
         )
 
         assert [group.metric_name for group in grouping.logical_groups] == ["attention", "denoiser"]
@@ -1090,6 +1179,88 @@ class TestOptimizerUtils:
             "mmdit.attn_proj.bias",
         }
         assert "param_names" not in materialize_parameter_groups(grouping.execution_groups)[0]
+
+    def test_build_finetune_grouping_preserves_custom_declared_component_order(self):
+        loaded_components = (
+            LoadedModelComponent(
+                key="conditioning_b",
+                public_name="clip_secondary",
+                module=torch.nn.Linear(3, 3),
+                roles=("text_encoder",),
+            ),
+            LoadedModelComponent(
+                key="denoiser_main",
+                public_name="transformer",
+                module=torch.nn.Linear(4, 4),
+                roles=("denoiser",),
+            ),
+            LoadedModelComponent(
+                key="conditioning_a",
+                public_name="clip_primary",
+                module=torch.nn.Linear(2, 2),
+                roles=("text_encoder",),
+            ),
+        )
+
+        grouping = build_finetune_grouping(
+            loaded_components=loaded_components,
+            train_denoiser=True,
+            te_train_flags=[True, True],
+            learning_rates=LearningRatesConfig(base=None, denoiser=9e-5, text_encoders=[3e-5, 5e-5]),
+        )
+
+        assert [group.metric_name for group in grouping.logical_groups] == [
+            "conditioning_b",
+            "denoiser_main",
+            "conditioning_a",
+        ]
+        assert [group.lr for group in grouping.logical_groups] == [3e-5, 9e-5, 5e-5]
+
+    def test_resolve_adapter_target_selection_preserves_custom_declared_component_order(self):
+        loaded_components = (
+            LoadedModelComponent(
+                key="conditioning_b",
+                public_name="clip_secondary",
+                module=torch.nn.Linear(3, 3),
+                roles=("text_encoder",),
+            ),
+            LoadedModelComponent(
+                key="denoiser_main",
+                public_name="transformer",
+                module=torch.nn.Linear(4, 4),
+                roles=("denoiser",),
+            ),
+            LoadedModelComponent(
+                key="conditioning_a",
+                public_name="clip_primary",
+                module=torch.nn.Linear(2, 2),
+                roles=("text_encoder",),
+            ),
+        )
+
+        selection = resolve_adapter_target_selection(
+            model_type="custom",
+            loaded_components=loaded_components,
+            learning_rates=LearningRatesConfig(base=None, denoiser=9e-5, text_encoders=[3e-5, 5e-5]),
+        )
+
+        assert selection.te_train_flags == [True, True]
+        assert selection.train_denoiser is True
+        assert [target.component_key for target in selection.resolved_targets.targets] == [
+            "conditioning_b",
+            "denoiser_main",
+            "conditioning_a",
+        ]
+        assert [target.component for target in selection.resolved_targets.targets] == [
+            "clip_secondary",
+            "transformer",
+            "clip_primary",
+        ]
+        assert [target.path for target in selection.resolved_targets.targets] == [
+            "clip_secondary",
+            "transformer",
+            "clip_primary",
+        ]
 
     def test_resolve_learning_rate_groups_loads_yaml_file(self, tmp_path):
         """Named groups can be loaded from a separate YAML file."""

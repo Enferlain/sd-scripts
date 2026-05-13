@@ -8,6 +8,7 @@ import torch
 
 from library.config.dataclasses.performance import DeepSpeedConfig
 from library.adapters import LoadedAdapterRuntime
+from library.models import build_loaded_components
 from library.optimization.types import OptimizerBuildResult
 from library.adapters.runtime.targets import build_component_module_targets, build_component_root_targets
 from library.training.checkpointing import ResumeState
@@ -49,14 +50,35 @@ def _build_mock_trainer():
     trainer.accelerator = MagicMock()
     trainer.accelerator.print = MagicMock()
     trainer.vae = object()
-    trainer.denoiser = object()
-    trainer.text_encoders = [object(), object()]
+    trainer.denoiser = torch.nn.Identity()
+    trainer.text_encoders = [torch.nn.Identity(), torch.nn.Identity()]
     trainer._text_encoder = trainer.text_encoders
+    trainer.loaded_components = build_loaded_components(
+        "sdxl",
+        {
+            "text_encoder1": trainer.text_encoders[0],
+            "text_encoder2": trainer.text_encoders[1],
+            "vae": trainer.vae,
+            "denoiser": trainer.denoiser,
+        },
+    )
     trainer.weight_dtype = "fp16"
     trainer.strategies = MagicMock()
     trainer.strategies.post_process_trainable = MagicMock()
     trainer.net_kwargs = {}
     return trainer
+
+
+def _refresh_loaded_components(trainer) -> None:
+    trainer.loaded_components = build_loaded_components(
+        "sdxl",
+        {
+            "text_encoder1": trainer.text_encoders[0],
+            "text_encoder2": trainer.text_encoders[1],
+            "vae": trainer.vae,
+            "denoiser": trainer.denoiser,
+        },
+    )
 
 
 def test_prepare_trainables_builds_resolved_targets_before_adapter_instantiation(monkeypatch):
@@ -66,9 +88,7 @@ def test_prepare_trainables_builds_resolved_targets_before_adapter_instantiation
     adapter.apply_to = MagicMock()
     resolved_targets = build_component_root_targets(
         model_type="sdxl",
-        text_encoders=trainer.text_encoders,
-        vae=None,
-        denoiser=trainer.denoiser,
+        loaded_components=trainer.loaded_components,
         include_text_encoders=[True, False],
         include_denoiser=False,
     )
@@ -83,6 +103,7 @@ def test_prepare_trainables_builds_resolved_targets_before_adapter_instantiation
             resolved_targets=resolved_targets,
             train_denoiser=False,
             train_any_text_encoder=True,
+            te_train_flags=[True, False],
         ),
     )
     monkeypatch.setattr("library.training.modes.adapter_mode.build_adapter", fake_build_adapter)
@@ -109,9 +130,7 @@ def test_prepare_trainables_prefers_nested_lora_config_surface(monkeypatch):
     adapter.apply_to = MagicMock()
     resolved_targets = build_component_root_targets(
         model_type="sdxl",
-        text_encoders=trainer.text_encoders,
-        vae=None,
-        denoiser=trainer.denoiser,
+        loaded_components=trainer.loaded_components,
         include_text_encoders=[True, False],
         include_denoiser=False,
     )
@@ -126,6 +145,7 @@ def test_prepare_trainables_prefers_nested_lora_config_surface(monkeypatch):
             resolved_targets=resolved_targets,
             train_denoiser=False,
             train_any_text_encoder=True,
+            te_train_flags=[True, False],
         ),
     )
     monkeypatch.setattr("library.training.modes.adapter_mode.build_adapter", fake_build_adapter)
@@ -147,7 +167,10 @@ def test_build_optimizer_params_uses_repo_owned_grouping_plan(monkeypatch):
 
     monkeypatch.setattr(
         "library.training.modes.adapter_mode.build_adapter_grouping",
-        lambda **kwargs: SimpleNamespace(execution_groups=execution_groups, logical_groups=logical_groups),
+        lambda **kwargs: (
+            captured.update({"build_adapter_grouping_kwargs": kwargs})
+            or SimpleNamespace(execution_groups=execution_groups, logical_groups=logical_groups)
+        ),
     )
 
     def fake_get_optimizer(optimizer_config, learning_rates, scheduler_config, execution_group_payload, optimizer_kwargs):
@@ -167,6 +190,7 @@ def test_build_optimizer_params_uses_repo_owned_grouping_plan(monkeypatch):
     assert result.lr_descriptions == ["unet"]
     assert captured["execution_groups"] == execution_groups
     assert captured["optimizer_kwargs"] == {}
+    assert captured["build_adapter_grouping_kwargs"]["loaded_components"] == trainer.loaded_components
 
 
 def test_prepare_trainables_loads_adapter_weights_through_repo_owned_export_seam(monkeypatch):
@@ -177,9 +201,7 @@ def test_prepare_trainables_loads_adapter_weights_through_repo_owned_export_seam
     adapter.apply_to = MagicMock()
     resolved_targets = build_component_root_targets(
         model_type="sdxl",
-        text_encoders=trainer.text_encoders,
-        vae=None,
-        denoiser=trainer.denoiser,
+        loaded_components=trainer.loaded_components,
         include_text_encoders=[True, False],
         include_denoiser=False,
     )
@@ -191,6 +213,7 @@ def test_prepare_trainables_loads_adapter_weights_through_repo_owned_export_seam
             resolved_targets=resolved_targets,
             train_denoiser=False,
             train_any_text_encoder=True,
+            te_train_flags=[True, False],
         ),
     )
     monkeypatch.setattr("library.training.modes.adapter_mode.build_adapter", lambda *_: adapter)
@@ -216,9 +239,7 @@ def test_prepare_trainables_builds_from_weights_runtime_with_optimization_owned_
     adapter.apply_to = MagicMock()
     resolved_targets = build_component_root_targets(
         model_type="sdxl",
-        text_encoders=trainer.text_encoders,
-        vae=None,
-        denoiser=trainer.denoiser,
+        loaded_components=trainer.loaded_components,
         include_text_encoders=[True, False],
         include_denoiser=True,
     )
@@ -234,6 +255,7 @@ def test_prepare_trainables_builds_from_weights_runtime_with_optimization_owned_
             resolved_targets=resolved_targets,
             train_denoiser=True,
             train_any_text_encoder=True,
+            te_train_flags=[True, False],
         ),
     )
     monkeypatch.setattr(
@@ -279,17 +301,16 @@ def test_prepare_trainables_supports_registered_loha_runtime_with_module_targets
     )
     trainer.cfg.adapter.peft.loha.use_scalar = True
     trainer.cfg.adapter.peft.loha.bypass_mode = True
-    trainer.text_encoders = [torch.nn.Sequential(torch.nn.Linear(4, 4, bias=False)), object()]
+    trainer.text_encoders = [torch.nn.Sequential(torch.nn.Linear(4, 4, bias=False)), torch.nn.Identity()]
     trainer._text_encoder = trainer.text_encoders
     trainer.denoiser = torch.nn.Sequential(torch.nn.Linear(4, 4, bias=False))
+    _refresh_loaded_components(trainer)
     adapter = MagicMock()
     adapter.apply_to = MagicMock()
     captured = {}
     resolved_targets = build_component_module_targets(
         model_type="sdxl",
-        text_encoders=trainer.text_encoders,
-        vae=None,
-        denoiser=trainer.denoiser,
+        loaded_components=trainer.loaded_components,
         include_text_encoders=[True, False],
         include_denoiser=True,
     )
@@ -300,6 +321,7 @@ def test_prepare_trainables_supports_registered_loha_runtime_with_module_targets
             resolved_targets=resolved_targets,
             train_denoiser=True,
             train_any_text_encoder=True,
+            te_train_flags=[True, False],
         ),
     )
 

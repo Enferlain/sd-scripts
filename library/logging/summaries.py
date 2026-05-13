@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from torch import nn
 
 from library.adapters.shared.reporting import build_adapter_component_report_rows
-from library.models import resolve_component_names
+from library.models import LoadedModelComponent
 from library.optimization.types import OptimizationPlan
 
 
@@ -94,20 +94,15 @@ def summarize_component_trainability(module: nn.Module) -> dict[str, int]:
     }
 
 
-def build_public_component_name_map(model_type: str | None, *, text_encoder_count: int) -> dict[str, str]:
-    if not model_type:
+def build_public_component_name_map(loaded_components: Sequence[LoadedModelComponent] | None) -> dict[str, str]:
+    if not loaded_components:
         return {}
 
-    component_names = resolve_component_names(model_type)
-    if component_names is None:
-        return {}
-
-    mapping = {"denoiser": component_names.denoiser_name, "vae": component_names.vae_name}
-    for index in range(text_encoder_count):
-        key = f"text_encoder{index + 1}"
-        if index < len(component_names.text_encoder_names):
-            mapping[key] = component_names.text_encoder_names[index]
-    return mapping
+    return {
+        component.key: component.public_name
+        for component in loaded_components
+        if isinstance(component.key, str) and isinstance(component.public_name, str)
+    }
 
 
 def build_diagnostic_rows_from_components(
@@ -252,11 +247,7 @@ def build_trainer_diagnostic_rows(trainer: Any) -> tuple[list[DiagnosticRow], li
     else:
         components = diagnostics or []
         aliases = None
-    model_cfg = getattr(getattr(trainer, "cfg", None), "model", None)
-    public_name_map = build_public_component_name_map(
-        getattr(model_cfg, "model_type", None),
-        text_encoder_count=len(getattr(trainer, "text_encoders", [])),
-    )
+    public_name_map = build_public_component_name_map(getattr(trainer, "loaded_components", ()))
     alias_rows = [DiagnosticAlias(alias=alias, target=target) for alias, target in (aliases or [])]
     return build_diagnostic_rows_from_components(components, public_name_map=public_name_map), alias_rows
 
