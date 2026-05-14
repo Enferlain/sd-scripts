@@ -21,6 +21,47 @@ class LoggedArtifact:
     metadata: dict[str, object] = field(default_factory=dict)
 
 
+@dataclass(frozen=True, slots=True)
+class LearningRateMetric:
+    """A labeled optimizer LR value, plus optional optimizer-derived effective LR."""
+
+    label: str
+    value: float
+    derived_value: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SamplerStepMetrics:
+    """Structured sampler facts rendered into the flat tracker key namespace."""
+
+    ema_loss_mean: float | None = None
+    ema_loss_std: float | None = None
+    ema_loss_bins: tuple[float, ...] = ()
+    entropy_ratio: float | None = None
+    timestep_histogram: tuple[float, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class StepMetricsEvent:
+    """Typed runtime event for one training-step metrics emission."""
+
+    current_loss: float
+    average_loss: float
+    learning_rates: tuple[LearningRateMetric, ...] = ()
+    modifier_lrs: tuple[tuple[str, float], ...] = ()
+    current_loss_scaled: float | None = None
+    average_loss_scaled: float | None = None
+    keys_scaled: float | None = None
+    maximum_norm: float | None = None
+    mean_norm: float | None = None
+    mean_grad_norm: float | None = None
+    mean_combined_norm: float | None = None
+    current_val_loss: float | None = None
+    average_val_loss: float | None = None
+    sampler: SamplerStepMetrics | None = None
+    schedule_free_derived_lr: float | None = None
+
+
 @runtime_checkable
 class MetricsSink(Protocol):
     def start_run(self, run_name: str, config: dict[str, object]) -> None: ...
@@ -107,6 +148,172 @@ def _resolve_lr_descriptions(lr_descriptions: list[str] | None, optimization_pla
     return list(getattr(optimization_plan, "lr_descriptions", lr_descriptions or []))
 
 
+def _validate_lr_label_count(labels: list[str], lrs: list[float]) -> None:
+    if len(labels) < len(lrs):
+        raise ValueError(
+            f"learning-rate labels has {len(labels)} elements but lr_scheduler has {len(lrs)} learning rates. "
+            "Ensure labels match the number of parameter groups."
+        )
+
+
+def _optimizer_type_name(cfg) -> str:
+    return cfg.optimizer.optimizer_type.lower()
+
+
+def _build_learning_rate_metrics(
+    cfg,
+    lr_scheduler,
+    labels: list[str],
+) -> tuple[LearningRateMetric, ...]:
+    lrs = list(lr_scheduler.get_last_lr())
+    _validate_lr_label_count(labels, lrs)
+
+    optimizer_type = _optimizer_type_name(cfg)
+    metrics: list[LearningRateMetric] = []
+    for index, lr in enumerate(lrs):
+        derived_value = None
+        if optimizer_type.startswith("dadapt") or optimizer_type == "prodigy":
+            derived_value = (
+                lr_scheduler.optimizers[-1].param_groups[index]["d"]
+                * lr_scheduler.optimizers[-1].param_groups[index]["lr"]
+            )
+        metrics.append(LearningRateMetric(label=labels[index], value=lr, derived_value=derived_value))
+
+    return tuple(metrics)
+
+
+def _build_sampler_step_metrics(timestep_runtime, timesteps: torch.Tensor | None) -> SamplerStepMetrics | None:
+    sampler = getattr(timestep_runtime, "sampler", None)
+    if sampler is None or timesteps is None:
+        return None
+
+    ema_loss_mean = None
+    ema_loss_std = None
+    ema_loss_bins: tuple[float, ...] = ()
+    if hasattr(sampler, "bin_loss_ema"):
+        ema_loss_mean = sampler.bin_loss_ema.mean().item()
+        ema_loss_std = sampler.bin_loss_ema.std().item()
+        ema_loss_bins = tuple(loss_val.item() for loss_val in sampler.bin_loss_ema)
+
+    entropy_ratio = sampler.last_entropy_ratio if hasattr(sampler, "last_entropy_ratio") else None
+
+    timestep_histogram: tuple[float, ...] = ()
+    if hasattr(sampler, "num_bins") and hasattr(sampler, "T"):
+        hist = torch.histogram(
+            timesteps.float().cpu(),
+            bins=sampler.num_bins,
+            range=(0, sampler.T),
+        )
+        timestep_histogram = tuple(count.item() for count in hist.hist)
+
+    return SamplerStepMetrics(
+        ema_loss_mean=ema_loss_mean,
+        ema_loss_std=ema_loss_std,
+        ema_loss_bins=ema_loss_bins,
+        entropy_ratio=entropy_ratio,
+        timestep_histogram=timestep_histogram,
+    )
+
+
+def _build_schedule_free_derived_lr(cfg, optimizer) -> float | None:
+    if _optimizer_type_name(cfg).endswith("prodigyplusschedulefree") and optimizer is not None:
+        return optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
+    return None
+
+
+def build_step_metrics_event(
+    cfg,
+    current_loss,
+    avr_loss,
+    lr_scheduler,
+    lr_descriptions: list[str] | None = None,
+    optimization_plan=None,
+    timestep_runtime=None,
+    optimizer=None,
+    keys_scaled=None,
+    mean_norm=None,
+    maximum_norm=None,
+    mean_grad_norm=None,
+    mean_combined_norm=None,
+    modifier_lrs: dict[str, float] | None = None,
+    current_loss_scaled=None,
+    average_loss_scaled=None,
+    current_val_loss=None,
+    average_val_loss=None,
+    timesteps: torch.Tensor | None = None,
+):
+    """Build the typed runtime event for one step-metric emission."""
+    lr_names = _resolve_lr_descriptions(lr_descriptions, optimization_plan)
+
+    return StepMetricsEvent(
+        current_loss=current_loss,
+        average_loss=avr_loss,
+        learning_rates=_build_learning_rate_metrics(cfg, lr_scheduler, lr_names),
+        modifier_lrs=tuple((modifier_name, modifier_lr) for modifier_name, modifier_lr in (modifier_lrs or {}).items()),
+        current_loss_scaled=current_loss_scaled,
+        average_loss_scaled=average_loss_scaled,
+        keys_scaled=keys_scaled,
+        maximum_norm=maximum_norm,
+        mean_norm=mean_norm,
+        mean_grad_norm=mean_grad_norm,
+        mean_combined_norm=mean_combined_norm,
+        current_val_loss=current_val_loss,
+        average_val_loss=average_val_loss,
+        sampler=_build_sampler_step_metrics(timestep_runtime, timesteps),
+        schedule_free_derived_lr=_build_schedule_free_derived_lr(cfg, optimizer),
+    )
+
+
+def render_step_metrics_event(event: StepMetricsEvent) -> dict[str, float]:
+    """Render a typed step event into the existing flat tracker key namespace."""
+    logs = {"loss/current": event.current_loss, "loss/average": event.average_loss}
+
+    if event.current_loss_scaled is not None:
+        logs["loss/current_scaled"] = event.current_loss_scaled
+        logs["loss/average_scaled"] = event.average_loss_scaled
+
+    if event.keys_scaled is not None:
+        logs["max_norm/keys_scaled"] = event.keys_scaled
+        logs["max_norm/max_key_norm"] = event.maximum_norm
+    if event.mean_norm is not None:
+        logs["norm/avg_key_norm"] = event.mean_norm
+    if event.mean_grad_norm is not None:
+        logs["norm/avg_grad_norm"] = event.mean_grad_norm
+    if event.mean_combined_norm is not None:
+        logs["norm/avg_combined_norm"] = event.mean_combined_norm
+
+    if event.current_val_loss is not None:
+        logs["loss/current_val_loss"] = event.current_val_loss
+        logs["loss/average_val_loss"] = event.average_val_loss
+
+    for lr_metric in event.learning_rates:
+        logs[f"lr/{lr_metric.label}"] = lr_metric.value
+        if lr_metric.derived_value is not None:
+            logs[f"lr/d*lr/{lr_metric.label}"] = lr_metric.derived_value
+
+    if event.schedule_free_derived_lr is not None:
+        logs["lr/d*lr"] = event.schedule_free_derived_lr
+
+    for modifier_name, modifier_lr in event.modifier_lrs:
+        logs[f"lr/{modifier_name}"] = modifier_lr
+
+    if event.sampler is not None:
+        if event.sampler.ema_loss_mean is not None:
+            logs["sampler/ema_loss_mean"] = event.sampler.ema_loss_mean
+        if event.sampler.ema_loss_std is not None:
+            logs["sampler/ema_loss_std"] = event.sampler.ema_loss_std
+        for index, loss_value in enumerate(event.sampler.ema_loss_bins):
+            logs[f"sampler_ema_loss_bins/bin_{index}"] = loss_value
+
+        if event.sampler.entropy_ratio is not None:
+            logs["sampler/entropy_ratio"] = event.sampler.entropy_ratio
+
+        for index, count in enumerate(event.sampler.timestep_histogram):
+            logs[f"sampler_timestep_hist/bin_{index}"] = count
+
+    return logs
+
+
 def generate_step_logs(
     cfg,
     current_loss,
@@ -128,68 +335,29 @@ def generate_step_logs(
     average_val_loss=None,
     timesteps: torch.Tensor | None = None,
 ):
-    """Generate step logs for training progress tracking."""
-    logs = {"loss/current": current_loss, "loss/average": avr_loss}
-
-    if current_loss_scaled is not None:
-        logs["loss/current_scaled"] = current_loss_scaled
-        logs["loss/average_scaled"] = average_loss_scaled
-
-    if keys_scaled is not None:
-        logs["max_norm/keys_scaled"] = keys_scaled
-        logs["max_norm/max_key_norm"] = maximum_norm
-    if mean_norm is not None:
-        logs["norm/avg_key_norm"] = mean_norm
-    if mean_grad_norm is not None:
-        logs["norm/avg_grad_norm"] = mean_grad_norm
-    if mean_combined_norm is not None:
-        logs["norm/avg_combined_norm"] = mean_combined_norm
-
-    if current_val_loss is not None:
-        logs["loss/current_val_loss"] = current_val_loss
-        logs["loss/average_val_loss"] = average_val_loss
-
-    lrs = lr_scheduler.get_last_lr()
-    lr_names = _resolve_lr_descriptions(lr_descriptions, optimization_plan)
-
-    for i, lr in enumerate(lrs):
-        lr_desc = lr_names[i]
-
-        logs[f"lr/{lr_desc}"] = lr
-
-        if cfg.optimizer.optimizer_type.lower().startswith("dadapt") or cfg.optimizer.optimizer_type.lower() == "prodigy":
-            logs[f"lr/d*lr/{lr_desc}"] = (
-                lr_scheduler.optimizers[-1].param_groups[i]["d"] * lr_scheduler.optimizers[-1].param_groups[i]["lr"]
-            )
-        if cfg.optimizer.optimizer_type.lower().endswith("prodigyplusschedulefree") and optimizer is not None:
-            logs["lr/d*lr"] = optimizer.param_groups[0]["d"] * optimizer.param_groups[0]["lr"]
-
-    if modifier_lrs is not None:
-        for modifier_name, modifier_lr in modifier_lrs.items():
-            logs[f"lr/{modifier_name}"] = modifier_lr
-
-    sampler = getattr(timestep_runtime, "sampler", None)
-    if sampler is not None and timesteps is not None:
-        if hasattr(sampler, "bin_loss_ema"):
-            logs["sampler/ema_loss_mean"] = sampler.bin_loss_ema.mean().item()
-            logs["sampler/ema_loss_std"] = sampler.bin_loss_ema.std().item()
-
-            for i, loss_val in enumerate(sampler.bin_loss_ema):
-                logs[f"sampler_ema_loss_bins/bin_{i}"] = loss_val.item()
-
-        if hasattr(sampler, "last_entropy_ratio"):
-            logs["sampler/entropy_ratio"] = sampler.last_entropy_ratio
-
-        if hasattr(sampler, "num_bins") and hasattr(sampler, "T"):
-            hist = torch.histogram(
-                timesteps.float().cpu(),
-                bins=sampler.num_bins,
-                range=(0, sampler.T),
-            )
-            for i, count in enumerate(hist.hist):
-                logs[f"sampler_timestep_hist/bin_{i}"] = count.item()  # hist is a Tensor, .item() is valid
-
-    return logs
+    """Generate flat tracker logs for training progress tracking."""
+    event = build_step_metrics_event(
+        cfg,
+        current_loss,
+        avr_loss,
+        lr_scheduler,
+        lr_descriptions=lr_descriptions,
+        optimization_plan=optimization_plan,
+        timestep_runtime=timestep_runtime,
+        optimizer=optimizer,
+        keys_scaled=keys_scaled,
+        mean_norm=mean_norm,
+        maximum_norm=maximum_norm,
+        mean_grad_norm=mean_grad_norm,
+        mean_combined_norm=mean_combined_norm,
+        modifier_lrs=modifier_lrs,
+        current_loss_scaled=current_loss_scaled,
+        average_loss_scaled=average_loss_scaled,
+        current_val_loss=current_val_loss,
+        average_val_loss=average_val_loss,
+        timesteps=timesteps,
+    )
+    return render_step_metrics_event(event)
 
 
 def step_logging(accelerator: Accelerator, logs: dict, global_step: int, epoch: int):
@@ -222,9 +390,10 @@ def log_metrics_to_trackers(accelerator: Accelerator, logs: dict, step_value: in
         tensorboard_tracker.log(logs, step=step_value)
 
     if wandb_tracker is not None:
-        logs["global_step"] = global_step
-        logs["epoch"] = epoch
-        wandb_tracker.log(logs)  # Uses logs dict for step info (global_step/epoch added above)
+        wandb_logs = dict(logs)
+        wandb_logs["global_step"] = global_step
+        wandb_logs["epoch"] = epoch
+        wandb_tracker.log(wandb_logs)  # Uses payload fields for W&B step info.
 
     for tracker in other_trackers:
         tracker.log(logs, step=step_value)

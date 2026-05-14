@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import torch
 
+from library.logging.summaries import DiagnosticRow
 from library.logging.resource_monitor import (
     BasicResourceMonitor,
     NoOpResourceMonitor,
@@ -211,6 +212,35 @@ class TestBasicResourceMonitorBehavior:
             assert "25.0%" in logged
             assert "75.0%" in logged
             assert "100.0%" in logged
+
+    def test_emit_startup_component_memory_uses_diagnostic_trainable_bytes(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+        )
+
+        rows = [
+            DiagnosticRow(
+                label="unet",
+                component_key="denoiser",
+                modules_trainable=1,
+                modules_total=1,
+                params_trainable=1,
+                params_total=1,
+                param_bytes_trainable=2 * 1024 * 1024,
+                param_bytes_total=10 * 1024 * 1024,
+            )
+        ]
+        with patch("builtins.print") as mock_print:
+            monitor.emit_startup_component_memory(rows, "AdamW")
+
+            logged = mock_print.call_args.args[0]
+            assert "gradients (est): 2.0MB" in logged
+            assert "optimizer_state (est): 4.0MB" in logged
+            assert "total (est): 16.0MB" in logged
 
 
 @pytest.mark.unit

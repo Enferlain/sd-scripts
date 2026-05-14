@@ -24,7 +24,7 @@ from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.logging.console import MainProcessConsole
 from library.logging.resource_monitor import create_resource_monitor
 from library.logging.reports import is_benchmark_report_enabled, write_run_report
-from library.logging.summaries import build_trainer_diagnostic_rows, build_training_startup_summary
+from library.logging.summaries import build_startup_memory_rows, build_trainer_diagnostic_rows, build_training_startup_summary
 from library.models import (
     LoadedModelComponent,
     build_component_module_pairs,
@@ -563,8 +563,9 @@ class Trainer:
         self._observer.log_startup_summary(summary)
         memory_components = build_component_module_pairs(self.loaded_components)
         memory_components = self._order_memory_components(memory_components, component_rows)
+        memory_rows = build_startup_memory_rows(memory_components, component_rows)
         self._resource_monitor.emit_startup_component_memory(
-            memory_components,
+            memory_rows,
             self.optimizer_name,
             deepspeed_enabled=self.cfg.performance.deepspeed.deepspeed,
             deepspeed_zero_stage=self.cfg.performance.deepspeed.zero_stage,

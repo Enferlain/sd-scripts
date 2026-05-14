@@ -9,7 +9,9 @@ from library.models import LoadedModelComponent
 from library.logging.summaries import (
     DiagnosticAlias,
     DiagnosticModuleCount,
+    DiagnosticRow,
     build_adapter_diagnostic_rows,
+    build_startup_memory_rows,
     build_trainer_diagnostic_rows,
     build_training_startup_summary,
     render_training_startup_summary,
@@ -88,6 +90,36 @@ def test_build_trainer_diagnostic_rows_maps_finetune_components_to_public_names(
     assert aliases == []
     assert [row.label for row in rows] == ["clip_l", "clip_g", "vae", "unet"]
     assert [row.component_key for row in rows] == ["text_encoder1", "text_encoder2", "vae", "denoiser"]
+
+
+def test_build_startup_memory_rows_overlays_adapter_trainable_bytes():
+    unet = nn.Linear(4, 4, bias=False)
+    clip_l = nn.Linear(2, 2, bias=False)
+    for param in (*unet.parameters(), *clip_l.parameters()):
+        param.requires_grad = False
+
+    adapter_param = nn.Parameter(torch.ones(6))
+    adapter_bytes = adapter_param.numel() * adapter_param.element_size()
+    unet_base_bytes = sum(param.numel() * param.element_size() for param in unet.parameters())
+    component_rows = [
+        DiagnosticRow(
+            label="unet",
+            component_key="denoiser",
+            modules_trainable=1,
+            modules_total=1,
+            params_trainable=adapter_param.numel(),
+            params_total=adapter_param.numel(),
+            param_bytes_trainable=adapter_bytes,
+            param_bytes_total=adapter_bytes,
+        )
+    ]
+
+    rows = build_startup_memory_rows([("unet", unet), ("clip_l", clip_l)], component_rows)
+
+    assert [(row.label, row.component_key) for row in rows] == [("unet", "denoiser"), ("clip_l", "clip_l")]
+    assert rows[0].param_bytes_total == unet_base_bytes + adapter_bytes
+    assert rows[0].param_bytes_trainable == adapter_bytes
+    assert rows[1].param_bytes_trainable == 0
 
 
 def test_render_training_startup_summary_uses_sectioned_block_format():

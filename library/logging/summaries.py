@@ -139,6 +139,67 @@ def build_diagnostic_rows_from_components(
     return rows
 
 
+def build_startup_memory_rows(
+    components: list[tuple[str, nn.Module]],
+    component_rows: list[DiagnosticRow],
+) -> list[DiagnosticRow]:
+    """Combine loaded-component memory with diagnostic trainable facts.
+
+    Adapter trainables can be represented by diagnostic rows even when the
+    loaded base component modules are frozen, so resource estimates need this
+    summary-level reconciliation before rendering.
+    """
+    diagnostic_by_label = {row.label: row for row in component_rows}
+    memory_rows: list[DiagnosticRow] = []
+    seen_labels: set[str] = set()
+
+    for label, module in components:
+        seen_labels.add(label)
+        param_count_total = 0
+        param_count_trainable = 0
+        param_bytes_total = 0
+        param_bytes_trainable = 0
+        for param in module.parameters():
+            param_count = param.numel()
+            bytes_count = param_count * param.element_size()
+            param_count_total += param_count
+            param_bytes_total += bytes_count
+            if param.requires_grad:
+                param_count_trainable += param_count
+                param_bytes_trainable += bytes_count
+
+        diagnostic_row = diagnostic_by_label.get(label)
+        if diagnostic_row is not None and diagnostic_row.param_bytes_trainable > param_bytes_trainable:
+            extra_param_bytes_trainable = diagnostic_row.param_bytes_trainable - param_bytes_trainable
+            extra_param_count_trainable = max(diagnostic_row.params_trainable - param_count_trainable, 0)
+            extra_param_bytes_total = max(diagnostic_row.param_bytes_total - param_bytes_trainable, extra_param_bytes_trainable)
+            extra_param_count_total = max(diagnostic_row.params_total - param_count_trainable, extra_param_count_trainable)
+            param_bytes_trainable += extra_param_bytes_trainable
+            param_count_trainable += extra_param_count_trainable
+            param_bytes_total += extra_param_bytes_total
+            param_count_total += extra_param_count_total
+
+        memory_rows.append(
+            DiagnosticRow(
+                label=label,
+                component_key=diagnostic_row.component_key if diagnostic_row is not None else label,
+                modules_trainable=0,
+                modules_total=0,
+                params_trainable=param_count_trainable,
+                params_total=param_count_total,
+                param_bytes_trainable=param_bytes_trainable,
+                param_bytes_total=param_bytes_total,
+            )
+        )
+
+    for row in component_rows:
+        if row.label in seen_labels:
+            continue
+        memory_rows.append(row)
+
+    return memory_rows
+
+
 def build_adapter_diagnostic_rows(adapter: Any) -> list[DiagnosticRow]:
     rows: list[DiagnosticRow] = []
     for report_row in build_adapter_component_report_rows(adapter):

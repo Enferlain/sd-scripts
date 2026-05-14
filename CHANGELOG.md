@@ -17,6 +17,11 @@ Rules:
 - **Benchmark report files now register as logging artifacts after they are written** — the training observer now records produced artifact paths with kind/format metadata, and trainer finalization registers both Markdown and JSON benchmark reports through that observer hook while keeping report generation itself local and backend-agnostic.
 - **Training observers now receive explicit run lifecycle calls** — observer startup records the tracker run name and sanitized tracker config before metrics/artifacts are emitted, and trainer cleanup finishes the observer run after final report artifacts are registered so future logging sinks can bracket complete runs cleanly.
 - **Benchmark report payload construction now has an explicit run-context boundary** — `write_run_report()` remains trainer-facing, while payload assembly now consumes a `RunReportContext` and declared non-adapter key-config policy instead of scattering direct trainer/config lookups through the report builder.
+- **Step metric logging now builds from a typed runtime event before rendering tracker payloads** — `generate_step_logs()` preserves the existing flat metric keys for current callers while the logging concern now owns a structured `StepMetricsEvent`, explicit LR-label validation, DAdapt/Prodigy derived-LR rendering, sampler metric coverage, and non-mutating W&B tracker payload routing.
+
+### Fixed
+
+- **Adapter startup resource estimates now include adapter trainable memory** — the resource startup breakdown still reports loaded base-model weights, but trainer startup now overlays adapter diagnostic trainable bytes onto the owning components so gradients and optimizer-state estimates no longer show `0.0MB` for adapter runs with trainable parameters.
 
 ## [2026-05-12]
 
