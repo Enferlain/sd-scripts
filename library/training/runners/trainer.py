@@ -426,7 +426,7 @@ class Trainer:
             ckpt_name=ckpt_name,
             step=step,
             epoch=epoch,
-            metadata=self._build_checkpoint_metadata(),
+            metadata=self._build_checkpoint_metadata(ckpt_name=ckpt_name, step=step, epoch=epoch),
             force_sync_upload=force_sync_upload,
             dtype_override=dtype_override,
             target_model=target_model,
@@ -454,12 +454,27 @@ class Trainer:
         """Internal event hook. No-op by default, override for extensions."""
         pass  # Future: dispatch to registered callbacks
 
-    def _build_checkpoint_metadata(self) -> dict[str, str]:
+    def _build_checkpoint_metadata(
+        self,
+        *,
+        ckpt_name: str = "checkpoint",
+        step: int | None = None,
+        epoch: int | None = None,
+    ) -> dict[str, str]:
         """Build checkpoint metadata for the main model and any sidecars."""
-        metadata_to_save = self._minimum_metadata.copy() if self.cfg.output.saving.no_metadata else self._metadata.copy()
+        from library.training.metadata_providers import build_checkpoint_metadata
+
         modelspec_metadata = self.strategies.get_model_metadata(self.cfg)
-        metadata_to_save.update(modelspec_metadata)
-        return metadata_to_save
+        return build_checkpoint_metadata(
+            training_metadata=self._metadata,
+            minimum_metadata=self._minimum_metadata,
+            model_metadata=modelspec_metadata,
+            no_metadata=self.cfg.output.saving.no_metadata,
+            run_identifier=str(self.session_id),
+            artifact_identifier=ckpt_name,
+            step=step,
+            epoch=epoch,
+        )
 
     # =========================================================================
     # Helper Methods
@@ -743,7 +758,14 @@ class Trainer:
                 self.loss_modifier.sidecar_suffix,
             )
             sidecar_path = os.path.join(cfg.output.saving.output_dir, loss_weights_ckpt_name)
-            self.loss_modifier.save_sidecar(sidecar_path, self._build_checkpoint_metadata())
+            self.loss_modifier.save_sidecar(
+                sidecar_path,
+                self._build_checkpoint_metadata(
+                    ckpt_name=loss_weights_ckpt_name,
+                    step=self.global_step,
+                    epoch=self.num_train_epochs,
+                ),
+            )
 
     def _finalize_training(self) -> None:
         """Cleanup and final save after training completes."""

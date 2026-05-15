@@ -169,7 +169,8 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [ ] **Smarter resource tracking/management** - This helps with training and also with inference, for example falling back to tiled vae when it would hit resource contraints and such. See `docs_design/resource_monitor_plan.md`
 - [ ] Old toml to new config translator
 - [ ] Constants rework
-- [ ] Metadata system
+- [x] Metadata system backbone first slice — `library/metadata/` now provides typed records/providers/validation/backend/projection seams, and active checkpoint metadata routes through training-owned providers while preserving existing `ss_*` / `modelspec.*` export behavior.
+- [ ] Metadata system follow-ups — durable SQLite storage, broader data/cache provider integration, observability/artifact registration integration, and analytics/export formats still need dedicated slices.
 - [ ] Investigate the following comment 
   > Disable cuDNN SDPA backend — broken on some H100 clusters with certain cuDNN versions.
   > Falls back to Flash Attention or math backend.

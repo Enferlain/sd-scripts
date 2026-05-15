@@ -10,6 +10,16 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-15]
+
+### Added
+
+- **The metadata backbone now has its first typed implementation slice** — added `library/metadata/` with typed identities, records, events, edges, provider contracts, fail-fast required-fact validation, in-memory backend/storage seams, and projection support for `kuro.*`, legacy `ss_*`, `modelspec.*`, and safetensors metadata export.
+
+### Changed
+
+- **Active checkpoint metadata now routes through metadata providers and projections** — training-owned provider wrappers bridge the existing `ss_*` and `modelspec.*` metadata builders into the new backbone while preserving minimum/no-metadata behavior and adding initial `kuro.*` keys for full metadata exports.
+
 ## [2026-05-13]
 
 ### Added
