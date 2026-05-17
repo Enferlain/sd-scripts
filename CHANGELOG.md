@@ -10,15 +10,37 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-17]
+
+### Added
+
+- **The metadata backbone now has a durable SQLite store** — added `SQLiteMetadataStore` under `library.metadata.storage` with versioned schema initialization, record/event/edge persistence, and round-trip tests while keeping the in-memory store path available for lightweight flows and tests.
+
+## [2026-05-16]
+
+### Changed
+
+- **Metadata design language now names the central-system target explicitly** — docs and OpenSpec now describe central metadata dataclasses, emitters/builders, projections, backend/storage, local lifecycle call sites, and explicit plugin/family exceptions instead of implying `metadata.py` modules should spread through normal domain folders.
+
 ## [2026-05-15]
 
 ### Added
 
 - **The metadata backbone now has its first typed implementation slice** — added `library/metadata/` with typed identities, records, events, edges, provider contracts, fail-fast required-fact validation, in-memory backend/storage seams, and projection support for `kuro.*`, legacy `ss_*`, `modelspec.*`, and safetensors metadata export.
+- **Shared metadata fact dataclasses now start the legacy migration path** — added typed run, checkpoint artifact, and model-spec-compatible fact dataclasses under `library/metadata/dataclasses/` so provider wrappers can convert legacy dictionaries at the boundary instead of treating them as the authoring shape.
 
 ### Changed
 
-- **Active checkpoint metadata now routes through metadata providers and projections** — training-owned provider wrappers bridge the existing `ss_*` and `modelspec.*` metadata builders into the new backbone while preserving minimum/no-metadata behavior and adding initial `kuro.*` keys for full metadata exports.
+- **Metadata design docs now spell out the schema ownership contract** — clarified that recorded metadata dataclasses live in `library/metadata/dataclasses/` like config dataclasses, while domain code owns production/emission; local metadata schemas are limited to explicit plugin-like exceptions such as adapter methods.
+- **Active training-run metadata now uses the metadata backbone as its source of truth** — replaced `create_training_metadata(...)` with `library.training.metadata` build-context/bundle helpers, stored trainer checkpoint metadata as typed `RunMetadataFacts`, and made checkpoint provider assembly consume typed run/model/artifact facts instead of converting legacy dictionaries at the boundary.
+- **Training metadata state now lives outside the trainer** — `TrainingMetadataState` owns full/minimum run facts, late compatibility fact updates, and checkpoint projection delegation so `Trainer` keeps metadata orchestration narrow.
+- **Training metadata now has one module in the training corner** — merged the provider wrappers and checkpoint projection helper into `library.training.metadata` and removed `library/training/metadata_providers.py` to avoid parallel metadata files for one domain.
+- **Active checkpoint metadata now routes through metadata providers and projections** — backbone-facing provider wrappers bridge the existing `ss_*` and `modelspec.*` metadata builders into the new metadata path while preserving minimum/no-metadata behavior and adding initial `kuro.*` keys for full metadata exports.
+- **Legacy `ss_*` key ownership now lives in the metadata package** — `library.metadata.keys` owns the `SS_METADATA_*` and minimum-key definitions, while `library.constants` keeps compatibility re-exports for existing imports.
+
+### Removed
+
+- **Deleted the old active training metadata helper module** — `library/training/training_metadata.py` is no longer kept as a compatibility wrapper; active training and tests now import the backbone-facing builder directly.
 
 ## [2026-05-13]
 

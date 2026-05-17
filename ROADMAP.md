@@ -169,8 +169,12 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [ ] **Smarter resource tracking/management** - This helps with training and also with inference, for example falling back to tiled vae when it would hit resource contraints and such. See `docs_design/resource_monitor_plan.md`
 - [ ] Old toml to new config translator
 - [ ] Constants rework
-- [x] Metadata system backbone first slice — `library/metadata/` now provides typed records/providers/validation/backend/projection seams, and active checkpoint metadata routes through training-owned providers while preserving existing `ss_*` / `modelspec.*` export behavior.
-- [ ] Metadata system follow-ups — durable SQLite storage, broader data/cache provider integration, observability/artifact registration integration, and analytics/export formats still need dedicated slices.
+- [x] Metadata system backbone first slice — `library/metadata/` now provides typed records, emitter/provider seams, validation, backend, storage, and projection seams; active checkpoint metadata routes through the backbone while preserving existing `ss_*` / `modelspec.*` export behavior.
+- [x] Metadata legacy migration control — legacy metadata surfaces are classified in `docs_design/metadata_legacy_migration_control.md`, `ss_*` key ownership has moved into `library.metadata.keys` with compatibility re-exports, and the first shared run/model/artifact fact dataclasses now feed checkpoint metadata wrappers.
+- [x] Active training metadata builder replacement — the old `library/training/training_metadata.py` and extra `library/training/metadata_providers.py` helper have been removed instead of retained as wrappers; the remaining training metadata seam is transitional while the target shape is central metadata emitters plus local trainer call sites.
+- [x] Metadata ownership language clarification — metadata docs and OpenSpec now state the central-system target explicitly: central recorded dataclasses, central emitters/builders, central projections/backend/storage, normal domains as lifecycle call sites, and local metadata modules only for explicit plugin/family exceptions.
+- [ ] Metadata system follow-ups — broader data/cache emitter/provider integration, observability/artifact registration integration, and analytics/export formats still need dedicated slices.
+  - [x] Durable SQLite storage is now implemented under `library.metadata.storage.SQLiteMetadataStore` with versioned schema setup and focused tests.
 - [ ] Investigate the following comment 
   > Disable cuDNN SDPA backend — broken on some H100 clusters with certain cuDNN versions.
   > Falls back to Flash Attention or math backend.

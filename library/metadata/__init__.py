@@ -20,7 +20,13 @@ from library.metadata.records import (
     ModelComponentMetadataRecord,
     RunMetadataRecord,
 )
-from library.metadata.storage import InMemoryMetadataStore, MetadataStore
+from library.metadata.storage import (
+    InMemoryMetadataStore,
+    MetadataSchemaVersionError,
+    MetadataStore,
+    SQLiteMetadataStore,
+    SCHEMA_VERSION,
+)
 from library.metadata.validation import MetadataValidationError, MissingMetadataFact, validate_required_facts
 
 __all__ = [
@@ -40,6 +46,7 @@ __all__ = [
     "MetadataRequiredFact",
     "MetadataSnapshot",
     "MetadataStore",
+    "MetadataSchemaVersionError",
     "MetadataValidationError",
     "MissingMetadataFact",
     "ModelSpecCompatibilityProjection",
@@ -47,6 +54,8 @@ __all__ = [
     "ProjectionResult",
     "RunMetadataRecord",
     "SafetensorsMetadataProjection",
+    "SCHEMA_VERSION",
     "SsCompatibilityProjection",
+    "SQLiteMetadataStore",
     "validate_required_facts",
 ]
