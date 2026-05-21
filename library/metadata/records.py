@@ -6,6 +6,7 @@ from dataclasses import dataclass, field, replace
 from typing import TypeAlias
 
 from library.metadata.keys import DEFAULT_METADATA_NAMESPACE
+from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
 PrimitiveMetadataValue: TypeAlias = str | int | float | bool | None
 MetadataValue: TypeAlias = PrimitiveMetadataValue | list[object] | tuple[object, ...] | dict[str, object]
@@ -19,7 +20,7 @@ class MetadataIdentity:
     identifier: str
     namespace: str = DEFAULT_METADATA_NAMESPACE
     label: str | None = None
-    schema_version: str = "1"
+    schema_version: str = METADATA_PAYLOAD_VERSION
 
     @property
     def key(self) -> str:
@@ -34,7 +35,7 @@ class MetadataRecord:
     identity: MetadataIdentity
     producer: str
     facts: dict[str, MetadataValue] = field(default_factory=dict)
-    schema_version: str = "1"
+    schema_version: str = METADATA_PAYLOAD_VERSION
 
     def has_fact(self, key: str) -> bool:
         """Return true when a fact exists and has a non-empty value."""
@@ -74,7 +75,7 @@ class MetadataEvent:
     identity: MetadataIdentity
     producer: str
     facts: dict[str, MetadataValue] = field(default_factory=dict)
-    schema_version: str = "1"
+    schema_version: str = METADATA_PAYLOAD_VERSION
 
 
 @dataclass(frozen=True)
@@ -86,4 +87,4 @@ class MetadataEdge:
     relationship: str
     producer: str
     facts: dict[str, MetadataValue] = field(default_factory=dict)
-    schema_version: str = "1"
+    schema_version: str = METADATA_PAYLOAD_VERSION

@@ -5,7 +5,7 @@ Tests the new data pipeline components integrated into sdxl_peft.py:
 - create_manifest_from_config
 - CachingEngine with SDXL strategies
 - Per-epoch DataLoader creation
-- training_metadata generation
+- training metadata backbone generation
 """
 
 import tempfile
@@ -28,7 +28,7 @@ from library.strategies.sdxl.caching import (
     SdxlLatentsPipelineStrategy,
     SdxlTextEncoderPipelineStrategy,
 )
-from library.training.training_metadata import create_training_metadata
+from library.training.metadata import TrainingMetadataBuildContext, build_training_metadata_bundle
 
 
 # Path to test assets
@@ -385,25 +385,26 @@ class TestTrainingMetadata:
     """Test training metadata generation from manifests."""
 
     @pytest.mark.skipif(not TEST_IMAGES_DIR.exists(), reason="Test images not available")
-    def test_create_training_metadata(self, mock_cfg):
+    def test_build_training_metadata_bundle(self, mock_cfg):
         """Test metadata generation from manifest."""
         manifest = create_manifest_from_config(mock_cfg.data, latent_dtype="fp16")
 
-        metadata, min_metadata = create_training_metadata(
-            cfg=mock_cfg,
-            manifest=manifest,
-            val_manifest=None,
-            session_id=12345,
-            training_started_at=1704067200.0,
-            model_version="sdxl_base_v1-0",
-            num_train_epochs=10,
-            optimizer_name="AdamW",
-            optimizer_args="",
-            net_kwargs={},
-            num_batches_per_epoch=100,
-            total_batch_size=1,
-            use_dreambooth_method=True,
+        bundle = build_training_metadata_bundle(
+            TrainingMetadataBuildContext(
+                cfg=mock_cfg,
+                manifest=manifest,
+                val_manifest=None,
+                session_id=12345,
+                training_started_at=1704067200.0,
+                model_version="sdxl_base_v1-0",
+                num_train_epochs=10,
+                optimizer_name="AdamW",
+                optimizer_args="",
+                num_batches_per_epoch=100,
+                total_batch_size=1,
+            )
         )
+        metadata = bundle.full.compatibility_metadata
 
         assert "ss_num_train_images" in metadata
         assert metadata["ss_num_train_images"] == str(EXPECTED_IMAGE_COUNT)  # EXPECTED_IMAGE_COUNT images * 1 repeat

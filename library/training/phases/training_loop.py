@@ -634,7 +634,7 @@ def run_training_loop(trainer: Trainer) -> None:
         trainer._current_epoch_state.value = epoch + 1
         trainer.print_progress_message(f"Epoch {trainer._current_epoch_state.value}/{trainer.num_train_epochs}")
 
-        trainer._metadata["ss_epoch"] = str(trainer._current_epoch_state.value)
+        trainer._set_training_metadata_fact("ss_epoch", trainer._current_epoch_state.value)
 
         trainer.mode.on_epoch_start(trainer)
         epoch_phase_name = f"training_epoch_{trainer._current_epoch_state.value}"

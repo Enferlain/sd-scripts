@@ -305,7 +305,7 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
 
     # Misc state
     trainer._is_tracking = False
-    trainer._metadata = {}
+    trainer._set_training_metadata_fact = MagicMock()
     trainer._cache_dir = "/tmp/cache"
     trainer._n_workers = 0
     trainer._val_dataloader = None

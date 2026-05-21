@@ -39,6 +39,7 @@ from library.objectives.base import ObjectiveRuntime
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
 from library.optimization.types import OptimizationPlan
 from library.performance import deepspeed_utils
+from library.metadata.records import MetadataValue
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
 from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
@@ -50,6 +51,7 @@ if TYPE_CHECKING:
     from accelerate import Accelerator
     from library.data.caching_engine import CacheBackend
     from library.strategies.base.contracts import TrainingStrategy
+    from library.training.metadata import TrainingMetadataState
     from library.training.modes.base import TrainingMode
 
 
@@ -149,9 +151,8 @@ class Trainer:
         self.session_id: int = random.randint(0, 2**32)
         self.training_started_at: float = time.time()
 
-        # Metadata for checkpoints (set during setup)
-        self._metadata: dict = {}
-        self._minimum_metadata: dict = {}
+        # Metadata state for checkpoints (set during setup)
+        self._metadata_state: TrainingMetadataState | None = None
 
         # Internal state
         self._model_version: str = ""
@@ -462,15 +463,12 @@ class Trainer:
         epoch: int | None = None,
     ) -> dict[str, str]:
         """Build checkpoint metadata for the main model and any sidecars."""
-        from library.training.metadata_providers import build_checkpoint_metadata
+        metadata_state = self._require_metadata_state()
 
         modelspec_metadata = self.strategies.get_model_metadata(self.cfg)
-        return build_checkpoint_metadata(
-            training_metadata=self._metadata,
-            minimum_metadata=self._minimum_metadata,
+        return metadata_state.build_checkpoint_metadata(
             model_metadata=modelspec_metadata,
             no_metadata=self.cfg.output.saving.no_metadata,
-            run_identifier=str(self.session_id),
             artifact_identifier=ckpt_name,
             step=step,
             epoch=epoch,
@@ -592,27 +590,44 @@ class Trainer:
             return ", ".join(f"{k}={v}" for k, v in self.optimizer_args.items())
         return str(self.optimizer_args) if self.optimizer_args else ""
 
+    def _set_training_metadata_fact(self, key: str, value: MetadataValue) -> None:
+        """Update training-run metadata facts after initialization."""
+        self._metadata_state = self._require_metadata_state().with_fact(key, value)
+
+    def _require_metadata_state(self) -> TrainingMetadataState:
+        """Return initialized training metadata state or fail close to misuse."""
+        if self._metadata_state is None:
+            raise RuntimeError("Training metadata state must be initialized before checkpoint metadata is used")
+        return self._metadata_state
+
     def _initialize_training_metadata(self, *, total_batch_size: int) -> None:
         """Build trainer metadata and let strategies append model-specific fields."""
-        from library.training.training_metadata import create_training_metadata
-
-        self._metadata, self._minimum_metadata = create_training_metadata(
-            cfg=self.cfg,
-            manifest=self.train_manifest,
-            val_manifest=self.val_manifest,
-            session_id=self.session_id,
-            training_started_at=self.training_started_at,
-            model_version=self._model_version,
-            num_train_epochs=self.num_train_epochs,
-            optimizer_name=self.optimizer_name,
-            optimizer_args=self._format_optimizer_args_for_metadata(),
-            net_kwargs=self.net_kwargs,
-            num_batches_per_epoch=self.num_batches_per_epoch,
-            total_batch_size=total_batch_size,
-            use_dreambooth_method=self._use_dreambooth_method,
-            objective=self.objective,
+        from library.metadata.emitters.run import (
+            TrainingMetadataBuildContext,
+            TrainingMetadataState,
+            build_training_metadata_bundle,
         )
-        self.strategies.update_metadata(self._metadata, self.cfg)
+
+        assert self.train_manifest is not None, "train_manifest must be set before metadata initialization"
+        bundle = build_training_metadata_bundle(
+            TrainingMetadataBuildContext(
+                cfg=self.cfg,
+                manifest=self.train_manifest,
+                val_manifest=self.val_manifest,
+                session_id=self.session_id,
+                training_started_at=self.training_started_at,
+                model_version=self._model_version,
+                num_train_epochs=self.num_train_epochs,
+                optimizer_name=self.optimizer_name,
+                optimizer_args=self._format_optimizer_args_for_metadata(),
+                num_batches_per_epoch=self.num_batches_per_epoch,
+                total_batch_size=total_batch_size,
+                objective=self.objective,
+            )
+        )
+        metadata = dict(bundle.full.compatibility_metadata)
+        self.strategies.update_metadata(metadata, self.cfg)
+        self._metadata_state = TrainingMetadataState.from_bundle(bundle).with_compatibility_metadata(metadata)
 
     def _initialize_training_runtime(self) -> None:
         """Initialize runtime helpers that depend on the optimizer and scheduler state."""
@@ -771,7 +786,7 @@ class Trainer:
         """Cleanup and final save after training completes."""
 
         # Update metadata
-        self._metadata["ss_training_finished_at"] = str(time.time())
+        self._set_training_metadata_fact("ss_training_finished_at", time.time())
 
         self.accelerator.end_training()
         if self._progress_bar is not None:

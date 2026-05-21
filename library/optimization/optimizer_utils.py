@@ -20,7 +20,8 @@ from library.optimization.registry import (
     is_schedulefree_optimizer_name,
     is_wrapper_optimizer_name,
 )
-from library.optimization.types import OptimizationPlan, OptimizerRuntimeMetadata, materialize_parameter_groups
+from library.metadata.dataclasses.optimization import OptimizerRuntimeFacts as OptimizerRuntimeMetadata
+from library.optimization.types import OptimizationPlan, materialize_parameter_groups
 
 
 logger = logging.getLogger(__name__)

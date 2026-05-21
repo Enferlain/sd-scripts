@@ -70,29 +70,36 @@ Noted boundaries:
 
 Main code:
 
-- `library/training/training_metadata.py`
+- `library/metadata/emitters/run.py`
+- `library/metadata/emitters/checkpoint.py`
+- `library/training/metadata.py` compatibility wrapper
 - `library/training/runners/trainer.py`
 - `library/strategies/*/checkpointing.py`
 
 Current shape:
 
-- `create_training_metadata(...)` builds the main `ss_*` training metadata dict.
-  Inputs include root config, training/validation manifests, session timing,
-  model version, optimizer name/args, epoch/batch counts, total batch size,
-  adapter kwargs, and objective definition.
+- `build_training_metadata_bundle(...)` builds typed full/minimum
+  `RunMetadataFacts` through the central metadata emitter path. Inputs include
+  root config, training/validation manifests, session timing, model version,
+  optimizer name/args, epoch/batch counts, total batch size, and objective
+  definition.
 - The produced metadata includes run facts, optimizer/scheduler facts, precision
   flags, dataset counts, bucket/dataset/tag summaries, augmentation settings,
   validation settings, source model and VAE names/hashes, and objective metadata.
 - Adapter/PEFT-specific keys are added when an active PEFT config exists:
   `ss_adapter_module`, rank, alpha, dropout, training comment, and scale weight
   norms.
-- `append_objective_metadata(...)` adds objective-specific fields, currently for
-  RF/SD3-style objective facts.
-- `Trainer._initialize_training_metadata()` stores full metadata and minimum
-  metadata, then calls `strategies.update_metadata(...)`.
-- `Trainer._build_checkpoint_metadata()` chooses full-vs-minimum metadata based
-  on `cfg.output.saving.no_metadata`, then merges in strategy-provided
-  `modelspec.*` metadata.
+- `build_objective_ss_metadata(...)` adds objective-specific fields, currently
+  for RF/SD3-style objective facts.
+- `Trainer._initialize_training_metadata()` stores typed full/minimum metadata
+  state, then calls `strategies.update_metadata(...)` through the remaining
+  strategy compatibility bridge.
+- `Trainer._build_checkpoint_metadata()` chooses full-vs-minimum facts based on
+  `cfg.output.saving.no_metadata`, then routes run/model/artifact facts through
+  central checkpoint emitters and projections.
+- `scripts/_deprecated/sd_peft.py` and
+  `scripts/_deprecated/sdxl_peft_copy.py` are retired stubs with replacement
+  `train.py` preset guidance.
 
 Noted boundaries:
 
@@ -217,6 +224,7 @@ Noted boundaries:
 
 Main code:
 
+- `library/metadata/dataclasses/optimization.py`
 - `library/optimization/types.py`
 - `library/optimization/registry.py`
 - `library/optimization/optimizer_utils.py`
@@ -236,6 +244,8 @@ Current shape:
   external/embedded/none and optimizer/base_optimizer.
 - `OptimizerRuntimeMetadata` currently declares whether train/eval toggling is
   supported.
+- `library/optimization/types.py` keeps compatibility aliases to the central
+  optimizer runtime fact dataclasses.
 - `OptimizationTargetRef.metadata` carries target-selection side data; builder
   helpers copy metadata defensively.
 - Optimizer/scheduler registries are explicitly capability-metadata oriented.
@@ -244,7 +254,9 @@ Noted boundaries:
 
 - This is good precedent for typed runtime metadata that does not leak into
   artifact metadata or optimizer payloads by default.
-- Runtime capability metadata should probably remain typed and domain-owned.
+- Runtime capability metadata should remain typed and owned by the optimization
+  runtime; any recorded/exported metadata view should be emitted through the
+  central metadata system when that slice exists.
 
 ## Adapter Metadata
 

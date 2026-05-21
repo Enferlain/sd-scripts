@@ -1,16 +1,15 @@
 """Unit tests for shared training metadata helpers."""
-
 from types import SimpleNamespace
 
 import pytest
 
-from library.training.training_metadata import append_objective_metadata
+from library.metadata.dataclasses import RunMetadataFacts
+from library.metadata.emitters.run import TrainingMetadataState, build_objective_ss_metadata
 
 
 @pytest.mark.training
 @pytest.mark.unit
-def test_append_objective_metadata_adds_rf_fields_for_sd3() -> None:
-    metadata: dict[str, object] = {}
+def test_build_objective_ss_metadata_adds_rf_fields_for_rectified_flow() -> None:
     cfg = SimpleNamespace(
         model=SimpleNamespace(model_type="sd3"),
         timestep=SimpleNamespace(
@@ -23,7 +22,7 @@ def test_append_objective_metadata_adds_rf_fields_for_sd3() -> None:
         ),
     )
 
-    append_objective_metadata(metadata, cfg, "rectified_flow")
+    metadata = build_objective_ss_metadata(cfg, "rectified_flow")
 
     assert metadata["ss_timestep_sampling"] == "cosine_shaped"
     assert metadata["ss_rf_loss_weighting_scheme"] == "cosmap"
@@ -35,8 +34,7 @@ def test_append_objective_metadata_adds_rf_fields_for_sd3() -> None:
 
 @pytest.mark.training
 @pytest.mark.unit
-def test_append_objective_metadata_skips_non_rf_model_families() -> None:
-    metadata: dict[str, object] = {}
+def test_build_objective_ss_metadata_skips_non_rf_objectives() -> None:
     cfg = SimpleNamespace(
         model=SimpleNamespace(model_type="sdxl"),
         timestep=SimpleNamespace(
@@ -49,6 +47,22 @@ def test_append_objective_metadata_skips_non_rf_model_families() -> None:
         ),
     )
 
-    append_objective_metadata(metadata, cfg, "ddpm")
+    metadata = build_objective_ss_metadata(cfg, "ddpm")
 
     assert metadata == {}
+
+
+@pytest.mark.training
+@pytest.mark.unit
+def test_training_metadata_state_updates_full_and_minimum_facts() -> None:
+    state = TrainingMetadataState(
+        full=RunMetadataFacts(run_identifier="run", compatibility_metadata={"ss_seed": "42"}),
+        minimum=RunMetadataFacts(run_identifier="run", compatibility_metadata={}),
+    )
+
+    updated = state.with_fact("ss_adapter_rank", 16).with_fact("ss_epoch", 3)
+
+    assert updated.full.compatibility_metadata["ss_adapter_rank"] == "16"
+    assert updated.full.compatibility_metadata["ss_epoch"] == "3"
+    assert updated.minimum.compatibility_metadata["ss_adapter_rank"] == "16"
+    assert "ss_epoch" not in updated.minimum.compatibility_metadata

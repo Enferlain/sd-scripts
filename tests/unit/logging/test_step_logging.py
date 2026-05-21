@@ -511,6 +511,8 @@ class TestLoggingTrainingObserver:
 
     def test_log_artifact_records_path_kind_and_metadata(self):
         from library.logging.metrics import LoggingTrainingObserver
+        from library.metadata import METADATA_PAYLOAD_VERSION
+        from library.metadata.emitters import build_logged_artifact_metadata
 
         observer = LoggingTrainingObserver(console=MagicMock())
 
@@ -521,3 +523,29 @@ class TestLoggingTrainingObserver:
         assert artifact.path == "/tmp/report.md"
         assert artifact.kind == "benchmark_report"
         assert artifact.metadata == {"format": "markdown"}
+        result = build_logged_artifact_metadata(artifact)
+
+        assert len(result.events) == 1
+        assert result.events[0].event_type == "artifact_registered"
+        assert result.events[0].facts["metadata"] == {"format": "markdown"}
+        assert result.events[0].schema_version == METADATA_PAYLOAD_VERSION
+
+    def test_metadata_snapshot_collects_run_and_artifact_boundaries(self):
+        from library.logging.metrics import LoggingTrainingObserver
+
+        observer = LoggingTrainingObserver(console=MagicMock(), metrics_sink=MagicMock())
+
+        observer.start_run("training", {"wandb_api_key": "*****"})
+        observer.log_artifact("/tmp/report.md", kind="benchmark_report", metadata={"format": "markdown"})
+        observer.finish_run()
+
+        snapshot = observer.metadata_snapshot()
+
+        assert [event.event_type for event in snapshot.events] == [
+            "run_started",
+            "artifact_registered",
+            "run_finished",
+        ]
+        assert snapshot.events[0].identity.identifier == "training"
+        assert snapshot.events[1].facts["metadata"] == {"format": "markdown"}
+        assert snapshot.events[2].facts["status"] == "finished"

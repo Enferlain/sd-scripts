@@ -1,6 +1,35 @@
 """Repo-owned metadata backbone contracts and first in-memory backend."""
 
+from library.metadata.dataclasses import (
+    AnalyticsSnapshotFacts,
+    CheckpointArtifactFacts,
+    LoggedArtifactFacts,
+    ModelSpecFacts,
+    OptimizerRuntimeFacts,
+    ResourceMonitorFacts,
+    RunLifecycleFacts,
+    RunMetadataFacts,
+    RunReportFacts,
+    SchedulerRuntimeFacts,
+)
 from library.metadata.backends import InMemoryMetadataBackend, MetadataBackend, MetadataSnapshot
+from library.metadata.emitters import (
+    build_analytics_snapshot_metadata,
+    build_checkpoint_artifact_metadata,
+    build_checkpoint_metadata,
+    build_logged_artifact_metadata,
+    build_model_spec_metadata,
+    build_objective_ss_metadata,
+    build_resource_monitor_metadata,
+    build_run_lifecycle_metadata,
+    build_run_report_metadata,
+    TrainingMetadataBuildContext,
+    TrainingMetadataBundle,
+    TrainingMetadataState,
+    build_training_metadata_bundle,
+    build_training_run_metadata,
+    select_minimum_training_metadata,
+)
 from library.metadata.projections import (
     KuroMetadataProjection,
     MetadataProjection,
@@ -20,6 +49,7 @@ from library.metadata.records import (
     ModelComponentMetadataRecord,
     RunMetadataRecord,
 )
+from library.metadata.runtime import MetadataRuntime, MetadataRuntimeItem, build_metadata_result
 from library.metadata.storage import (
     InMemoryMetadataStore,
     MetadataSchemaVersionError,
@@ -28,13 +58,18 @@ from library.metadata.storage import (
     SCHEMA_VERSION,
 )
 from library.metadata.validation import MetadataValidationError, MissingMetadataFact, validate_required_facts
+from library.metadata.validation import MetadataItemValidationError, validate_metadata_item
+from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
 __all__ = [
     "AdapterMetadataRecord",
+    "AnalyticsSnapshotFacts",
     "ArtifactMetadataRecord",
+    "CheckpointArtifactFacts",
     "InMemoryMetadataBackend",
     "InMemoryMetadataStore",
     "KuroMetadataProjection",
+    "LoggedArtifactFacts",
     "MetadataBackend",
     "MetadataEdge",
     "MetadataEvent",
@@ -42,20 +77,48 @@ __all__ = [
     "MetadataProjection",
     "MetadataProvider",
     "MetadataProviderResult",
+    "METADATA_PAYLOAD_VERSION",
     "MetadataRecord",
     "MetadataRequiredFact",
+    "MetadataRuntime",
+    "MetadataRuntimeItem",
     "MetadataSnapshot",
     "MetadataStore",
+    "MetadataItemValidationError",
     "MetadataSchemaVersionError",
     "MetadataValidationError",
     "MissingMetadataFact",
     "ModelSpecCompatibilityProjection",
+    "ModelSpecFacts",
     "ModelComponentMetadataRecord",
+    "OptimizerRuntimeFacts",
     "ProjectionResult",
+    "ResourceMonitorFacts",
+    "RunLifecycleFacts",
     "RunMetadataRecord",
+    "RunMetadataFacts",
+    "RunReportFacts",
     "SafetensorsMetadataProjection",
     "SCHEMA_VERSION",
     "SsCompatibilityProjection",
     "SQLiteMetadataStore",
+    "SchedulerRuntimeFacts",
+    "build_analytics_snapshot_metadata",
+    "build_checkpoint_artifact_metadata",
+    "build_checkpoint_metadata",
+    "build_logged_artifact_metadata",
+    "build_metadata_result",
+    "build_model_spec_metadata",
+    "build_objective_ss_metadata",
+    "build_resource_monitor_metadata",
+    "build_run_lifecycle_metadata",
+    "build_run_report_metadata",
+    "TrainingMetadataBuildContext",
+    "TrainingMetadataBundle",
+    "TrainingMetadataState",
+    "build_training_metadata_bundle",
+    "build_training_run_metadata",
+    "validate_metadata_item",
     "validate_required_facts",
+    "select_minimum_training_metadata",
 ]

@@ -35,6 +35,16 @@ The backbone should not try to implement async data, sharded caches, streaming
 training, or run warehouse behavior immediately. Instead, it should be shaped so
 those domains can add metadata surfaces later without rewriting the core.
 
+## Settled Setup Goal
+
+The metadata system is one central backbone, not a `metadata.py` per normal
+domain. `library/metadata/` owns the recorded dataclass catalog, emitters and
+providers, projections, backend/storage, validation, and key helpers.
+Normal domain code owns the runtime objects and lifecycle call sites that hand
+facts to the central system. Only explicit plugin/facet areas get local
+metadata modules; adapter methods are the current clear exception, and model
+families remain an explicit future decision.
+
 ## Key Decisions
 
 ### Decision 1: Use Typed Python Dataclasses As The Authoring Shape
@@ -56,6 +66,12 @@ Implication:
   are projections from typed internal records.
 - The source of truth is not `dict[str, str]`, even when the final artifact
   format requires strings.
+- Recorded metadata dataclasses should live in
+  `library/metadata/dataclasses/<concern>.py`, following the same discoverable
+  catalog idea as `library/config/dataclasses/`.
+- Metadata assembly code should live in the central metadata package by default.
+  Domain code owns the source objects and the lifecycle call sites that pass
+  those objects into the metadata system.
 
 ### Decision 2: Add A Central `library/metadata/` Package
 
@@ -63,53 +79,82 @@ The concern is large enough to have a central package.
 
 Proposed central responsibilities:
 
-- Shared metadata dataclasses and protocols.
+- Recorded metadata dataclasses and protocols.
 - Metadata backend / composition service.
-- Provider registration.
+- Emitter/builder functions that turn repo runtime objects into metadata
+  records.
+- Provider contracts and registration where a provider object is useful.
 - Validation.
 - Projection serializers.
 - Storage interfaces and future SQLite store.
-- Shared key namespace helpers.
+- Key namespace helpers.
 
-Domain-specific metadata facts should still be owned by their domains. The
-central package owns the common language and infrastructure, not every fact.
+The central package owns recorded metadata schemas, assembly helpers,
+projection, validation, and infrastructure. Domain code owns source truth: the
+runtime objects, family/method implementations, and lifecycle moments where
+metadata should be emitted.
 
-### Decision 3: Domains Own Their Metadata Providers
+### Decision 3: Central Emitters Are The Default Metadata Code Home
 
-Domain implementations should produce their own metadata through provider
-surfaces.
+Normal domain packages should not grow their own metadata modules. Instead, the
+default home for metadata-related code is `library/metadata/`:
+
+```text
+library/metadata/dataclasses/   # what recorded metadata exists
+library/metadata/emitters/      # how repo objects become metadata records
+library/metadata/projections/   # how records become exported formats
+library/metadata/storage/       # how records are persisted or exported
+```
+
+Domain implementations call central emitters at lifecycle boundaries and pass in
+the domain-owned objects or narrow context needed to build records. This keeps
+the source truth local while keeping metadata logic discoverable and consistent.
 
 Examples:
 
-- Model families own family/component/model-spec facts.
-- Adapter methods own method-local reconstruction and compatibility facts.
-- Data/cache code owns sample, cache, readiness, and shard facts.
-- Optimization owns plan, group, scheduler, and optimizer-runtime facts.
-- Logging/reporting owns observability and report event facts.
+- Training code calls central run/checkpoint emitters with config, manifests,
+  runtime state, strategy output, and save-boundary facts.
+- Data/cache code calls central data/cache emitters with manifests, entries,
+  buckets, cache namespaces, readiness state, and shard facts.
+- Optimization code calls central optimization emitters with optimizer plans,
+  parameter groups, scheduler runtime facts, and optimizer runtime facts.
+- Logging/reporting code calls central observability emitters with report,
+  artifact, resource, and tracker-boundary facts.
 
 The central backend should not need to know SDXL, LoRA, sharded cache, or
-optimizer internals directly. It should collect and compose typed surfaces
-declared by those domains.
+optimizer internals directly. It should collect and compose typed recorded
+schemas produced by central emitters and explicit plugin/family hooks.
 
-### Decision 4: Use A Metadata Adapter Layer
+Explicit exceptions must be named rather than implied. Adapter methods are the
+current clear exception because the adapter method tree behaves like a plugin
+facet; method-local persistence facts such as VeRA reconstruction metadata may
+live locally. Model-family metadata may later be treated similarly only if model
+families are explicitly designed as plugin-like implementations.
 
-The architecture should use a central backend, an adapter/provider layer, and
-domain/family implementations.
+### Decision 4: Use Metadata Emitters And Provider Contracts
+
+The architecture should use central emitters/builders, provider contracts where
+stateful or plugin-like emission is useful, a central backend, and
+domain/family lifecycle call sites.
 
 ```text
+[domain lifecycle boundary]
+        ->
+[metadata emitter / provider contract]
+        ->
 [main metadata backend]
-        <->
-[metadata adapter/provider layer]
-        <->
-[domain/family/method implementations]
+        ->
+[projection / storage boundary]
 ```
 
-In this design, "adapter" means the metadata integration layer, not PEFT
-adapter training. To avoid ambiguity in code, the likely code term should be
-`provider` or `metadata adapter`, not plain `adapter`.
+In this design, "adapter" should not be used as the normal code term because it
+collides with PEFT adapter training. Use `emitter` for central functions that
+turn known inputs into records, and `provider` for an object/protocol that emits
+records, events, relationships, or required-fact declarations.
 
-The adapter/provider layer facilitates interaction. It should not contain all
-family details itself.
+The emitter/provider layer facilitates interaction. It should not contain all
+family details itself, and it should not make domain decisions such as optimizer
+construction, data readiness transitions, or model-family loading.
 
 ### Decision 5: Use A Hybrid State/Event/Projection Model
 
@@ -129,7 +174,7 @@ Rationale:
   projections.
 
 The backend should be able to compose linked run-level records while preserving
-domain-owned queryability.
+queryability by recorded schema and producer.
 
 ### Decision 6: Introduce Repo-Owned `kuro.*` Exported Keys
 
@@ -239,8 +284,15 @@ library/metadata/
     model.py
     data.py
     cache.py
-    adapter.py
     optimization.py
+    observability.py
+
+  emitters/
+    run.py
+    data.py
+    model.py
+    optimization.py
+    checkpoint.py
     observability.py
 
   providers/
@@ -263,19 +315,49 @@ library/metadata/
     parquet_export.py
 ```
 
-Domain-owned provider implementations can live in their own packages and import
-the central contracts:
+Normal domain folders should not receive local `metadata.py` modules by
+default. If metadata is treated as a backbone, normal metadata code lives in the
+central package. Domain files keep the lifecycle call sites and pass known
+runtime objects or narrow context into central emitters/providers.
+
+Default examples:
+
+```text
+library/metadata/emitters/run.py
+library/metadata/emitters/data.py
+library/metadata/emitters/optimization.py
+library/metadata/emitters/checkpoint.py
+library/metadata/projections/kohya_ss.py
+library/metadata/projections/modelspec.py
+library/metadata/projections/kuro.py
+```
+
+Non-default examples that should not appear just because a normal domain needs
+metadata:
 
 ```text
 library/training/metadata.py
-library/models/sdxl/metadata.py
-library/adapters/methods/peft/vera/metadata.py
 library/data/metadata.py
 library/optimization/metadata.py
 library/logging/metadata.py
 ```
 
-This keeps domain knowledge local while keeping the backbone discoverable.
+The current training metadata module is a transitional assembly seam, not the
+target pattern for future domains. It should shrink or move into central
+emitters as the backbone stabilizes.
+
+Local metadata modules are justified only for explicit plugin/facet
+exceptions, not as a convenience pattern for ordinary domains.
+Current likely exceptions:
+
+```text
+library/adapters/methods/peft/vera/metadata.py  # method-local reconstruction facts
+library/models/<family>/metadata.py             # only if model families are explicitly treated as facets
+```
+
+Those local modules may expose plugin/family hooks, but recorded metadata that
+is stored by the repo backend still belongs in the central dataclass catalog
+unless the exception explicitly includes local typed schemas.
 
 ## Core Conceptual Types
 
@@ -381,8 +463,8 @@ should stay richer than exported metadata.
 
 ## Backend Responsibilities
 
-The main metadata backend should own composition and policy, not every domain
-fact.
+The main metadata backend should own composition and policy, not domain
+decision-making.
 
 Responsibilities:
 
@@ -398,6 +480,7 @@ Responsibilities:
 
 The backend should not:
 
+- Discover facts by rummaging through domain internals.
 - Know model-family internals.
 - Know PEFT method internals.
 - Execute data workers or cache writes.
@@ -405,33 +488,78 @@ The backend should not:
 - Render human console output directly.
 - Treat exported `dict[str, str]` as the source of truth.
 
+## Emitter Responsibilities
+
+A metadata emitter is central metadata code that turns already-known repo
+objects into typed metadata records, events, relationships, or provider results.
+Emitters are the default place for metadata assembly code.
+
+Emitter responsibilities:
+
+- Accept explicit domain-owned inputs or narrow context objects.
+- Construct central recorded metadata dataclasses.
+- Convert central dataclasses into records/events for the backend.
+- Apply metadata-specific validation and normalization.
+- Avoid changing domain behavior or owning domain decisions.
+- Keep compatibility mapping visible by calling projection helpers instead of
+  scattering exported keys through normal domain modules.
+
+Emitter examples:
+
+- A run emitter builds run/session/objective facts from trainer config, runtime
+  state, manifests, and objective identity supplied by training code.
+- A checkpoint emitter builds artifact/save-boundary facts from checkpoint name,
+  step, epoch, format, and metadata policy.
+- A data emitter builds sample/view/readiness/cache facts from manifests,
+  entries, buckets, and cache namespaces supplied by data code.
+- An optimization emitter builds plan/group/runtime facts from optimization
+  plans supplied by optimization code.
+
+Emitters should not:
+
+- Construct optimizers, schedulers, models, datasets, or caches.
+- Read broad global trainer state when narrow inputs are available.
+- Become a dumping ground for arbitrary dictionaries.
+- Replace plugin/family hooks where the metadata surface is genuinely local to
+  that plugin/family.
+
 ## Provider Responsibilities
 
-A metadata provider is the domain-owned integration surface between a domain and
-the backend.
+A metadata provider is the producer-side integration surface between code that
+has facts and the metadata backend. Providers are useful when emission is
+stateful, registered, or plugin-like. They are not a reason for every normal
+domain package to grow a local metadata module.
 
 Provider responsibilities:
 
 - Declare provider identity and schema version.
-- Emit typed records for the domain it owns.
+- Emit central recorded metadata dataclasses or records built from them.
 - Emit events for important lifecycle transitions.
 - Declare required facts.
 - Declare compatibility signatures where applicable.
-- Optionally provide domain-specific projections.
+- Optionally provide projections only when the projection is genuinely
+  producer/plugin-specific.
 - Validate local invariants before handing facts to the backend.
 
 Provider examples:
 
-- Training provider emits run/session/objective/training-loop facts.
-- Model-family provider emits component/model/export facts.
-- Adapter-method provider emits method-local persistence and target facts.
-- Data provider emits sample/view/readiness facts.
-- Cache provider emits namespace/payload/shard facts.
-- Optimization provider emits plan/group/runtime facts.
-- Observability provider emits artifact/report/resource facts.
+- Central training/checkpoint emitters may wrap their output in providers for
+  backend ingestion.
+- Model-family hooks may emit central component/model/export records unless
+  model families are explicitly treated as plugin-like implementations.
+- Adapter-method producer may emit method-local persistence and target records
+  from local plugin-like schemas.
+- Data/cache emitters may expose provider objects for central
+  sample/view/readiness/cache records.
+- Optimization emitters may expose provider objects for central
+  plan/group/runtime records.
+- Observability emitters may expose provider objects for central
+  artifact/report/resource records.
 
 The provider layer should not become a dumping ground for arbitrary dictionaries.
-Domain extensions should be typed and namespaced.
+Extensions should be typed and namespaced. If they are recorded by the repo
+metadata backend, their dataclasses belong in `library/metadata/dataclasses/`
+unless covered by an explicit plugin-like exception.
 
 ## State, Events, And Snapshots
 
@@ -586,11 +714,13 @@ Rules:
 
 ## Validation Strategy
 
-Validation should happen at producer boundaries and export boundaries.
+Validation should happen at emitter/provider boundaries and export boundaries.
 
 ### Provider Validation
 
-Providers validate local facts they own.
+Emitters/providers validate metadata facts before handing records to the
+backend. Domain code remains responsible for the correctness of the source
+objects it passes in.
 
 Examples:
 
@@ -615,7 +745,7 @@ Examples:
 
 Default behavior:
 
-- Required producer-owned facts missing: fail.
+- Required facts missing from an active emitter/provider: fail.
 - Invalid required facts: fail.
 - Optional facts missing: allow.
 - Compatibility projection degraded: only allow through explicit policy.
@@ -644,15 +774,22 @@ Migration considerations:
 
 ## How Existing Surfaces Settle
 
-### `library/training/training_metadata.py`
+### Training Metadata Emitter Path
 
 Current role:
 
-- Builds broad `ss_*` training metadata dictionaries.
+- `library/metadata/emitters/run.py` builds typed full/minimum
+  `RunMetadataFacts` for active training runs.
+- `library/metadata/emitters/checkpoint.py` composes run/model/artifact facts
+  through the backend and projection layer for checkpoint exports.
+- `library/training/metadata.py` is only a compatibility import wrapper.
+- Deprecated PEFT script copies are fenced with replacement `train.py` preset
+  guidance instead of retaining stale training metadata helper imports.
 
 Future direction:
 
-- Become a training metadata provider plus compatibility projection source.
+- Keep trainer code as the lifecycle call site that supplies config, manifests,
+  runtime state, strategy output, and save-boundary facts.
 - Eventually stop assembling flat artifact dictionaries directly.
 
 ### `library/utils/model_metadata.py`
@@ -664,7 +801,8 @@ Current role:
 Future direction:
 
 - Move model-spec projection logic under metadata projections.
-- Let model-family providers supply family facts.
+- Let model-family hooks or providers supply family facts where the family is an
+  explicit facet.
 - Keep compatibility helpers until callers migrate.
 
 ### Strategy Checkpoint Hooks
@@ -675,7 +813,7 @@ Current role:
 
 Future direction:
 
-- Strategy/model-family providers should replace or back these hooks.
+- Strategy/model-family hooks or providers should replace or back these hooks.
 - Checkpoint code should request artifact projections from the metadata backend.
 
 ### Adapter Method State Dicts
@@ -699,8 +837,8 @@ Current role:
 
 Future direction:
 
-- Data/cache providers emit sample, view, cache namespace, and derived payload
-  facts.
+- Central data/cache emitters build sample, view, cache namespace, and derived
+  payload facts from manifest/cache objects supplied by data code.
 - Future SQLite registry becomes the durable source for large-scale state.
 
 ### Optimization Metadata
@@ -712,8 +850,10 @@ Current role:
 
 Future direction:
 
-- Keep this as a model for domain-owned runtime metadata.
-- Add provider output for optimizer plan and scheduler runtime facts.
+- Keep this as a model for typed runtime metadata that does not leak into
+  artifact projections by default.
+- Add central optimization emitter/provider output for optimizer plan and
+  scheduler runtime facts.
 
 ### Observability Metadata
 
@@ -738,7 +878,8 @@ Recommended first slice:
 1. Add `library/metadata/` contracts and core dataclasses.
 2. Add in-memory backend and validation scaffold.
 3. Add projection scaffolds for `kuro.*`, `ss_*`, and `modelspec.*`.
-4. Add training/model/artifact providers for the active checkpoint path.
+4. Add central run/model/artifact emitters or providers for the active
+   checkpoint path.
 5. Route checkpoint metadata construction through the backend while preserving
    existing exported keys.
 6. Add focused tests proving:
@@ -756,11 +897,11 @@ blocking on sample registry, sharded caches, or streaming.
 Likely follow-up slices:
 
 - Observability/artifact registration integration.
-- Optimizer/plan provider integration.
+- Optimizer/plan emitter/provider integration.
 - Adapter method metadata provider integration.
 - Durable SQLite store for run/artifact/event records.
-- Data/cache provider integration for sample readiness, cache namespaces, and
-  future shard lookup.
+- Data/cache emitter/provider integration for sample readiness, cache
+  namespaces, and future shard lookup.
 - Analytics/export companions such as JSON debug exports and future Parquet
   snapshots.
 
@@ -773,12 +914,13 @@ Status as of 2026-05-15:
   backend/store protocols, an in-memory backend, and projection contracts.
 - The first projections cover `kuro.*`, legacy `ss_*`, `modelspec.*`, and a
   composite safetensors metadata export boundary.
-- Active checkpoint metadata now routes through training-owned provider wrappers
-  in `library/training/metadata_providers.py`, then projects back into the
-  artifact metadata dictionary expected by current save paths.
-- Existing training/model metadata builders remain as compatibility seams during
-  migration. They feed provider wrappers instead of being deleted or rewritten
-  in this slice.
+- Active checkpoint metadata now routes through the backbone and projects back
+  into the artifact metadata dictionary expected by current save paths. The
+  current `library/training/metadata.py` seam is transitional; the target shape
+  is central metadata emitters plus local trainer call sites.
+- The old active training metadata helper was deleted after its behavior moved
+  into the backbone-facing training metadata module. Exported compatibility
+  keys remain projections/facts, not a reason to keep old helper modules alive.
 - `output.saving.no_metadata` keeps the existing minimum legacy metadata policy;
   full metadata exports additionally include the first `kuro.*` keys.
 - Data/cache metadata provider for current manifests and caches.
@@ -789,14 +931,21 @@ Status as of 2026-05-15:
 
 ## Open Considerations
 
-### Central Package Versus Local Ownership
+### Central Package Versus Domain Source Ownership
 
 Decision direction:
 
-- Central package owns contracts, backend, validation, projections, storage.
-- Domains own provider implementations and domain-specific facts.
+- `library/metadata/` owns recorded metadata schemas, contracts, backend,
+  validation, emitters/builders, projections, storage, and key helpers.
+- Domain code owns source truth and lifecycle call sites: it knows when a run,
+  checkpoint, cache entry, optimizer plan, report, or artifact has reached a
+  metadata boundary.
+- Normal local `metadata.py` modules are not the default pattern.
+- Local recorded metadata schemas are allowed only for explicit plugin/facet
+  exceptions.
 
-This balances discoverability with local ownership.
+This keeps metadata discoverable in the same spirit as config dataclasses while
+still keeping the real runtime decisions near the code that owns them.
 
 ### How Strict To Make Extension Payloads
 
@@ -804,7 +953,7 @@ Decision direction:
 
 - Do not allow arbitrary unlabeled dicts as a normal pattern.
 - Allow extension payloads only when they are typed, namespaced, versioned, and
-  owned by a provider.
+  emitted by an identified producer.
 
 This keeps extension easy without recreating metadata soup.
 
@@ -822,8 +971,10 @@ Decision direction:
 Decision direction:
 
 - Backend composes and links records.
-- Providers own fact production.
-- Consumers request projections or domain-specific queries.
+- `library/metadata/dataclasses/` owns recorded schemas.
+- `library/metadata/emitters/` owns normal metadata assembly.
+- Domain code owns source objects and call sites.
+- Consumers request projections or schema/producer-specific queries.
 - Avoid one giant flattened run metadata dict.
 
 ### How To Keep Exported Metadata Small
@@ -849,16 +1000,17 @@ implementation.
 
 ## Summary
 
-The metadata system should be a dataclass-first, provider-driven, centrally
-composed backbone under `library/metadata/`.
+The metadata system should be a dataclass-first, emitter/provider-driven,
+centrally composed backbone under `library/metadata/`.
 
 It should record observed truth, provenance, compatibility, events, and produced
-artifacts. It should preserve domain ownership while enabling cross-domain
-queries and projections. It should export legacy `ss_*`, family-specific
-`modelspec.*`, and repo-owned `kuro.*` metadata through explicit projection
-layers. It should validate required producer-owned facts fail-fast. It should be
-designed with SQLite durability, JSON/debug exports, Parquet analytics, and
-future warehouse/dashboard consumers in mind.
+artifacts. It should keep domain source truth and lifecycle decisions local
+while making metadata schemas, normal assembly code, projections, validation,
+and storage discoverable under `library/metadata/`. It should export legacy
+`ss_*`, family-specific `modelspec.*`, and repo-owned `kuro.*` metadata through
+explicit projection layers. It should validate required facts fail-fast. It
+should be designed with SQLite durability, JSON/debug exports, Parquet
+analytics, and future warehouse/dashboard consumers in mind.
 
 The first implementation should prove the backbone by routing current checkpoint
 metadata through typed providers and projections while preserving existing

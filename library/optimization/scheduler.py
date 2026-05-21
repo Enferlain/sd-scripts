@@ -27,7 +27,8 @@ from library.optimization.registry import (
     is_wrapper_optimizer_name,
 )
 from library.optimization.optimizer_utils import parse_string_to_type
-from library.optimization.types import OptimizationPlan, SchedulerRuntimeMetadata
+from library.metadata.dataclasses.optimization import SchedulerRuntimeFacts as SchedulerRuntimeMetadata
+from library.optimization.types import OptimizationPlan
 
 
 logger = logging.getLogger(__name__)

@@ -10,6 +10,7 @@ Usage:
 """
 
 import pytest
+import importlib
 import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -42,11 +43,11 @@ class TestPeftCommonImports:
 
         assert callable(init_timestep_sampler)
 
-    def test_peft_common_has_create_training_metadata(self):
-        """Verify create_training_metadata function exists."""
-        from library.training.training_metadata import create_training_metadata
+    def test_peft_common_has_training_metadata_backbone_builder(self):
+        """Verify the active training metadata backbone builder exists."""
+        from library.training.metadata import build_training_metadata_bundle
 
-        assert callable(create_training_metadata)
+        assert callable(build_training_metadata_bundle)
 
     def test_peft_common_has_setup_live_plotter(self):
         """Verify setup_live_plotter function exists."""
@@ -78,6 +79,27 @@ class TestPeftCommonImports:
         from library.training.checkpointing import register_adapter_state_hooks
 
         assert callable(register_adapter_state_hooks)
+
+
+class TestDeprecatedPeftScripts:
+    """Test that retired PEFT scripts fail with actionable migration guidance."""
+
+    @pytest.mark.parametrize(
+        ("module_name", "replacement_config"),
+        [
+            ("scripts._deprecated.sd_peft", "presets/sd_peft"),
+            ("scripts._deprecated.sdxl_peft_copy", "presets/sdxl_peft"),
+        ],
+    )
+    def test_retired_peft_scripts_raise_clear_error(self, module_name, replacement_config):
+        sys.modules.pop(module_name, None)
+        try:
+            with pytest.raises(RuntimeError, match="retired.*metadata backbone") as excinfo:
+                importlib.import_module(module_name)
+
+            assert replacement_config in str(excinfo.value)
+        finally:
+            sys.modules.pop(module_name, None)
 
 
 class TestStrategyImports:

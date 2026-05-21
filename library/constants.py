@@ -4,6 +4,8 @@ import PIL.Image
 from packaging import version
 from torchvision import transforms
 
+from library.metadata import keys as metadata_keys
+
 
 # =============================================================================
 # General / Math
@@ -39,23 +41,15 @@ STEP_DIFFUSERS_DIR_NAME = "{}-step{:08d}"
 # Metadata
 # =============================================================================
 
-# --- checkpointing.py, sd_peft.py, svd_merge_lora.py, sdxl_merge_lora.py ---
-SS_METADATA_KEY_V2 = "ss_v2"
-SS_METADATA_KEY_BASE_MODEL_VERSION = "ss_base_model_version"
-SS_METADATA_KEY_ADAPTER_MODULE = "ss_adapter_module"
-SS_METADATA_KEY_ADAPTER_RANK = "ss_adapter_rank"
-SS_METADATA_KEY_ADAPTER_ALPHA = "ss_adapter_alpha"
-SS_METADATA_KEY_ADAPTER_ARGS = "ss_adapter_args"
-
-# --- sd_peft.py ---
-SS_METADATA_MINIMUM_KEYS = [
-    SS_METADATA_KEY_V2,
-    SS_METADATA_KEY_BASE_MODEL_VERSION,
-    SS_METADATA_KEY_ADAPTER_MODULE,
-    SS_METADATA_KEY_ADAPTER_RANK,
-    SS_METADATA_KEY_ADAPTER_ALPHA,
-    SS_METADATA_KEY_ADAPTER_ARGS,
-]
+# Metadata constants are owned by library.metadata.keys. These names remain here
+# as compatibility re-exports while legacy imports are migrated.
+SS_METADATA_KEY_V2 = metadata_keys.SS_METADATA_KEY_V2
+SS_METADATA_KEY_BASE_MODEL_VERSION = metadata_keys.SS_METADATA_KEY_BASE_MODEL_VERSION
+SS_METADATA_KEY_ADAPTER_MODULE = metadata_keys.SS_METADATA_KEY_ADAPTER_MODULE
+SS_METADATA_KEY_ADAPTER_RANK = metadata_keys.SS_METADATA_KEY_ADAPTER_RANK
+SS_METADATA_KEY_ADAPTER_ALPHA = metadata_keys.SS_METADATA_KEY_ADAPTER_ALPHA
+SS_METADATA_KEY_ADAPTER_ARGS = metadata_keys.SS_METADATA_KEY_ADAPTER_ARGS
+SS_METADATA_MINIMUM_KEYS = metadata_keys.SS_METADATA_MINIMUM_KEYS
 
 
 # =============================================================================

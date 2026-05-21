@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from library.metadata.records import MetadataEdge, MetadataEvent, MetadataRecord
+from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
 
 @dataclass(frozen=True)
@@ -32,7 +33,7 @@ class MetadataProviderResult:
     """Collected output from one domain-owned metadata provider."""
 
     provider_id: str
-    schema_version: str = "1"
+    schema_version: str = METADATA_PAYLOAD_VERSION
     records: tuple[MetadataRecord, ...] = field(default_factory=tuple)
     events: tuple[MetadataEvent, ...] = field(default_factory=tuple)
     edges: tuple[MetadataEdge, ...] = field(default_factory=tuple)
@@ -43,7 +44,7 @@ class MetadataProviderResult:
         cls,
         *,
         provider_id: str,
-        schema_version: str = "1",
+        schema_version: str = METADATA_PAYLOAD_VERSION,
         records: Sequence[MetadataRecord] = (),
         events: Sequence[MetadataEvent] = (),
         edges: Sequence[MetadataEdge] = (),

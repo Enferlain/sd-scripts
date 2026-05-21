@@ -50,8 +50,8 @@ The key split is not "metadata vs non-metadata." The useful split is:
 - Metadata should support validation and compatibility checks, not just
   descriptive output.
 - Human-facing metadata and machine-routing metadata should not be blurred.
-- Domain-specific metadata should stay domain-owned, but common concepts should
-  use shared vocabulary.
+- Domain code should own source truth and lifecycle call sites, while normal
+  recorded metadata schemas and assembly live in the central metadata system.
 - Exported metadata should be intentionally lossy when needed; internal metadata
   can be richer than safetensors string key/value storage.
 - Metadata should help future tools compare runs, explain artifacts, and decide
@@ -304,7 +304,8 @@ Ideal coverage:
 
 - Required versus optional metadata by domain.
 - Validation severity levels: fatal mismatch, warning, informational annotation.
-- Producer ownership: which code is allowed to create or mutate a fact.
+- Source ownership: which domain object is authoritative for a fact, and which
+  central emitter/provider is allowed to record or mutate it.
 - Consumer expectations: which consumers require the fact, and what fallback is
   acceptable.
 - Versioning and migration expectations for persisted metadata.

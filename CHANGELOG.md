@@ -10,7 +10,31 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-21]
+
+### Changed
+
+- **The central metadata package now has an explicit local README for settled ownership and lifecycle conventions** — added `library/metadata/README.md` to document the agreed split between origin-owned runtime state and central metadata assembly, the shared dataclass rule, the projection boundary, and the explicit local-exception policy for plugin-like metadata such as adapter methods.
+- **Observability metadata now has a live direct item-filing runtime path through the logging observer** — `library/logging/metrics.py` now files `RunLifecycleFacts` and `LoggedArtifactFacts` through `MetadataRuntime.file(item)`, while `library.metadata` centrally validates typed items, routes them through observability emitters, and ingests the results into the backend snapshot instead of exposing concern-specific submission/provider wrappers as the main public flow.
+- **Metadata payload versioning is now owned centrally instead of repeated on every filed fact dataclass** — added `library.metadata.versions.METADATA_PAYLOAD_VERSION`, kept the storage schema version separate in `library.metadata.storage`, removed per-item `schema_version` fields from the shared fact dataclasses, and updated central emitters/records/providers to stamp payload versions in one place.
+- **The new direct metadata runtime path now has focused architecture coverage** — refreshed the observability and logging tests for the direct `LoggedArtifactFacts` filing flow, added `tests/unit/metadata/test_metadata_runtime.py` for `MetadataRuntime.file(item)` and payload-version assertions, and avoided the pytest basename collision by giving the new metadata runtime test a unique filename.
+
+## [2026-05-18]
+
+### Changed
+
+- **Central metadata facts are now schema-only and central emitters own record/event assembly** — removed the remaining `to_record()` / `to_event()` conversion methods from the shared metadata dataclasses, replaced the one-record/one-event provider wrapper classes with emitter builder functions that return `MetadataProviderResult`, and updated checkpoint/observability tests and exports to follow the cleaner `dataclass -> emitter -> projection` flow.
+
 ## [2026-05-17]
+
+### Changed
+
+- **Observability/report metadata now has central emitter and fact homes** — added typed observability facts and provider wrappers under `library.metadata`, and switched the logging observer’s registered artifact shape over to the central `LoggedArtifactFacts` dataclass.
+- **Training metadata assembly now lives in the central metadata package** — moved the substantive training-run and checkpoint metadata builders into `library.metadata.emitters`, switched active trainer setup to the central emitter path, and left `library.training.metadata` as a compatibility wrapper instead of the primary home.
+- **Optimizer runtime metadata facts now live in the central catalog** — moved `SchedulerRuntimeMetadata` and `OptimizerRuntimeMetadata` to `library.metadata.dataclasses.optimization` and kept the optimization package names as compatibility aliases.
+- **The central metadata package now reexports the shared fact dataclasses directly** — `library.metadata` now exposes the run, checkpoint artifact, model-spec, and optimizer runtime fact types so the new backbone is easier to consume from the rest of the repo.
+- **Deprecated PEFT scripts now fail with clear metadata-backbone migration guidance** — replaced the retired SD and SDXL PEFT script copies with small stubs that point users to the active `train.py` Hydra presets instead of importing removed training metadata helpers.
+- **Metadata tracking now keeps the overall system effort open** — restored `metadata-backbone` as an active OpenSpec change, added explicit remaining-slice tasks, and filed beads for model-family, observability, adapter-method, and optimization metadata integration.
 
 ### Added
 

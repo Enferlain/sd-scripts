@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import asdict, dataclass, field
 from typing import Protocol, runtime_checkable
 
@@ -7,18 +8,15 @@ import torch
 from accelerate import Accelerator
 from omegaconf import OmegaConf
 
+from library.metadata.backends import MetadataSnapshot
+from library.metadata.dataclasses.observability import (
+    LoggedArtifactFacts as LoggedArtifact,
+    RunLifecycleFacts,
+)
+from library.metadata.runtime import MetadataRuntime, MetadataRuntimeItem
 from library.config.dataclasses.output import LoggingConfig
 from library.logging.console import MainProcessConsole
 from library.logging.summaries import TrainingStartupSummary
-
-
-@dataclass(frozen=True, slots=True)
-class LoggedArtifact:
-    """A file produced by the run and registered with the logging layer."""
-
-    path: str
-    kind: str
-    metadata: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,15 +104,35 @@ class AccelerateMetricsSink:
 class LoggingTrainingObserver:
     console: MainProcessConsole
     metrics_sink: MetricsSink | None = None
+    metadata_runtime: MetadataRuntime = field(default_factory=MetadataRuntime)
     artifacts: list[LoggedArtifact] = field(default_factory=list)
     run_name: str | None = None
     run_config: dict[str, object] = field(default_factory=dict)
+    run_identifier: str | None = None
+    _has_started: bool = field(default=False, init=False, repr=False)
     _run_active: bool = field(default=False, init=False, repr=False)
+    _run_started_at: float | None = field(default=None, init=False, repr=False)
 
     def start_run(self, run_name: str, config: dict[str, object]) -> None:
+        if self._has_started:
+            raise RuntimeError("LoggingTrainingObserver is single-run and cannot be reused.")
+        if not run_name:
+            raise ValueError("LoggingTrainingObserver.start_run() requires a non-empty run_name.")
+
+        self._has_started = True
         self.run_name = run_name
+        self.run_identifier = run_name
         self.run_config = dict(config)
         self._run_active = True
+        self._run_started_at = time.perf_counter()
+        self._file_metadata_item(
+            RunLifecycleFacts(
+                run_identifier=self.run_identifier,
+                event_type="run_started",
+                run_name=run_name,
+                status="running",
+            )
+        )
         if self.metrics_sink is not None:
             self.metrics_sink.start_run(run_name, self.run_config)
 
@@ -130,15 +148,39 @@ class LoggingTrainingObserver:
         self.console.log_startup_summary(summary, stacklevel=4)
 
     def log_artifact(self, path: str, *, kind: str, metadata: dict[str, object] | None = None) -> None:
-        self.artifacts.append(LoggedArtifact(path=path, kind=kind, metadata=dict(metadata or {})))
+        artifact = LoggedArtifact(path=path, kind=kind, metadata=dict(metadata or {}))
+        self.artifacts.append(artifact)
+        self._file_metadata_item(artifact)
 
     def finish_run(self) -> None:
         """Finish the observer-local run lifecycle and notify the metrics sink if present."""
         if not self._run_active:
             return
         self._run_active = False
+        duration_ms = None
+        if self._run_started_at is not None:
+            duration_ms = (time.perf_counter() - self._run_started_at) * 1000.0
+        if self.run_identifier is not None:
+            self._file_metadata_item(
+                RunLifecycleFacts(
+                    run_identifier=self.run_identifier,
+                    event_type="run_finished",
+                    run_name=self.run_name,
+                    status="finished",
+                    duration_ms=duration_ms,
+                )
+            )
+        self._run_started_at = None
         if self.metrics_sink is not None:
             self.metrics_sink.finish_run()
+
+    def metadata_snapshot(self) -> MetadataSnapshot:
+        """Return the observer's collected observability metadata snapshot."""
+        return self.metadata_runtime.snapshot()
+
+    def _file_metadata_item(self, item: MetadataRuntimeItem) -> None:
+        """File one accepted typed metadata item through the shared metadata runtime."""
+        self.metadata_runtime.file(item)
 
 
 def _resolve_lr_descriptions(lr_descriptions: list[str] | None, optimization_plan=None) -> list[str]:

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 
 from torch import nn
+
+from library.metadata.dataclasses.optimization import OptimizerRuntimeFacts, SchedulerRuntimeFacts
 
 
 @dataclass(slots=True)
@@ -60,19 +62,8 @@ class LogicalParameterGroup:
         return sum(param.numel() for param in self.params if isinstance(param, nn.Parameter))
 
 
-@dataclass(slots=True)
-class SchedulerRuntimeMetadata:
-    """Explicit scheduler/runtime ownership metadata for optimizer orchestration."""
-
-    mode: Literal["external", "embedded", "none"] = "external"
-    target: Literal["optimizer", "base_optimizer"] = "optimizer"
-
-
-@dataclass(slots=True)
-class OptimizerRuntimeMetadata:
-    """Explicit optimizer runtime behavior metadata for orchestration."""
-
-    supports_train_eval_toggle: bool = False
+SchedulerRuntimeMetadata = SchedulerRuntimeFacts
+OptimizerRuntimeMetadata = OptimizerRuntimeFacts
 
 
 @dataclass(slots=True)
