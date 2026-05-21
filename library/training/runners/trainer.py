@@ -284,6 +284,7 @@ class Trainer:
             config_name=self.cfg.output.saving.output_name,
             git_sha=get_git_revision_hash(),
             git_dirty=get_git_is_dirty(),
+            metadata_runtime=self._observer.metadata_runtime,
         )
         self._resource_monitor.start_session()
 

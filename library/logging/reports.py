@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import platform
 import time
 from collections import defaultdict, deque
@@ -13,11 +14,15 @@ import torch
 import yaml
 
 from library.logging.summaries import build_trainer_diagnostic_rows, diagnostic_rows_to_memory_rows
+from library.metadata.dataclasses.observability import AnalyticsSnapshotFacts, RunReportFacts
 
 try:
     from omegaconf import OmegaConf
 except Exception:  # pragma: no cover - optional import safety
     OmegaConf = None
+
+
+logger = logging.getLogger(__name__)
 
 
 REPORT_KEY_CONFIG_PATHS: tuple[str, ...] = (
@@ -530,4 +535,100 @@ def write_run_report(trainer: Any, *, succeeded: bool, error_message: str | None
 
     markdown_path.write_text(_render_report_markdown(payload), encoding="utf-8")
     json_path.write_text(json.dumps(_to_plain_data(payload), indent=2, ensure_ascii=True), encoding="utf-8")
+    _file_run_report_metadata(trainer, markdown_path=markdown_path, payload=payload)
     return markdown_path
+
+
+def _file_run_report_metadata(trainer: Any, *, markdown_path: Path, payload: dict[str, Any]) -> None:
+    observer = getattr(trainer, "_observer", None)
+    metadata_runtime = getattr(observer, "metadata_runtime", None)
+    if metadata_runtime is None:
+        return
+
+    resource_monitor = payload.get("resource_monitor")
+    resource_event_count: int | None = None
+    phase_count: int | None = None
+    resource_jsonl_path: str | None = None
+    if isinstance(resource_monitor, dict):
+        event_count = resource_monitor.get("event_count")
+        resource_event_count = event_count if isinstance(event_count, int) else None
+        phases = resource_monitor.get("phases")
+        if isinstance(phases, list):
+            phase_count = len(phases)
+        jsonl_path = resource_monitor.get("jsonl_path")
+        resource_jsonl_path = jsonl_path if isinstance(jsonl_path, str) else None
+
+    run_identifier = payload.get("session_id")
+    if run_identifier is None:
+        run_identifier = getattr(trainer, "session_id", None)
+    if run_identifier is None:
+        run_identifier = getattr(observer, "run_identifier", None)
+    if run_identifier is None:
+        run_identifier = payload.get("output_name")
+    if run_identifier is None:
+        logger.warning("Skipping run-report metadata filing because no run identifier is available.")
+        return
+
+    generated_at_value = payload.get("generated_at")
+    generated_at = float(generated_at_value) if generated_at_value is not None else time.time()
+
+    metadata_runtime.file(
+        RunReportFacts(
+            report_identifier=str(markdown_path),
+            run_identifier=str(run_identifier),
+            status=str(payload.get("status") or "unknown"),
+            generated_at=generated_at,
+            output_name=payload.get("output_name") if isinstance(payload.get("output_name"), str) else None,
+            output_dir=payload.get("output_dir") if isinstance(payload.get("output_dir"), str) else None,
+            mode_name=payload.get("mode_name") if isinstance(payload.get("mode_name"), str) else None,
+            strategy_name=payload.get("strategy_name") if isinstance(payload.get("strategy_name"), str) else None,
+            optimizer_name=payload.get("optimizer_name") if isinstance(payload.get("optimizer_name"), str) else None,
+            global_step=payload.get("global_step") if isinstance(payload.get("global_step"), int) else None,
+            num_train_epochs=payload.get("num_train_epochs")
+            if isinstance(payload.get("num_train_epochs"), int)
+            else None,
+            resource_event_count=resource_event_count,
+            phase_count=phase_count,
+            include_full_config=payload.get("include_full_config")
+            if isinstance(payload.get("include_full_config"), bool)
+            else None,
+            resource_jsonl_path=resource_jsonl_path,
+        )
+    )
+    metadata_runtime.file(
+        AnalyticsSnapshotFacts(
+            snapshot_identifier=f"{markdown_path.with_suffix('.json')}#payload",
+            snapshot_kind="benchmark_report_payload",
+            source="library.logging.reports.write_run_report",
+            payload=_build_report_analytics_snapshot_payload(payload),
+            generated_at=generated_at,
+            run_identifier=str(run_identifier),
+        )
+    )
+
+
+def _build_report_analytics_snapshot_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    snapshot_payload = {
+        "status": payload.get("status"),
+        "error_message": payload.get("error_message"),
+        "generated_at": payload.get("generated_at"),
+        "training_started_at": payload.get("training_started_at"),
+        "total_duration_s": payload.get("total_duration_s"),
+        "session_id": payload.get("session_id"),
+        "hydra_config_name": payload.get("hydra_config_name"),
+        "hydra_task_overrides": payload.get("hydra_task_overrides"),
+        "output_name": payload.get("output_name"),
+        "output_dir": payload.get("output_dir"),
+        "mode_name": payload.get("mode_name"),
+        "strategy_name": payload.get("strategy_name"),
+        "optimizer_name": payload.get("optimizer_name"),
+        "global_step": payload.get("global_step"),
+        "num_train_epochs": payload.get("num_train_epochs"),
+        "train_seconds_per_step": payload.get("train_seconds_per_step"),
+        "system": payload.get("system"),
+        "resource_monitor": payload.get("resource_monitor"),
+        "component_memory_estimates": payload.get("component_memory_estimates"),
+        "key_config": payload.get("key_config"),
+        "include_full_config": payload.get("include_full_config"),
+    }
+    return {key: value for key, value in snapshot_payload.items() if value is not None}

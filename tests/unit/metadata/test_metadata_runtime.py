@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from library.metadata import LoggedArtifactFacts, METADATA_PAYLOAD_VERSION, MetadataRuntime, RunLifecycleFacts
+from library.metadata import (
+    AnalyticsSnapshotFacts,
+    LoggedArtifactFacts,
+    METADATA_PAYLOAD_VERSION,
+    MetadataRuntime,
+    RunLifecycleFacts,
+)
 from library.metadata.validation import MetadataItemValidationError
 
 
@@ -27,6 +33,15 @@ def test_metadata_runtime_files_items_into_backend_snapshot() -> None:
             metadata={"format": "markdown"},
         )
     )
+    runtime.file(
+        AnalyticsSnapshotFacts(
+            snapshot_identifier="/tmp/report.json#payload",
+            snapshot_kind="benchmark_report_payload",
+            source="unit_test",
+            payload={"status": "succeeded", "resource_monitor": {"event_count": 3}},
+            run_identifier="run-1",
+        )
+    )
 
     snapshot = runtime.snapshot()
 
@@ -34,6 +49,11 @@ def test_metadata_runtime_files_items_into_backend_snapshot() -> None:
         "run_started",
         "artifact_registered",
     ]
+    assert len(snapshot.records) == 1
+    assert snapshot.records[0].facts["kind"] == "benchmark_report_payload"
+    assert snapshot.records[0].facts["payload"]["resource_monitor"]["event_count"] == 3
+    assert snapshot.records[0].schema_version == METADATA_PAYLOAD_VERSION
+    assert snapshot.records[0].identity.schema_version == METADATA_PAYLOAD_VERSION
     assert snapshot.events[0].schema_version == METADATA_PAYLOAD_VERSION
     assert snapshot.events[0].identity.schema_version == METADATA_PAYLOAD_VERSION
     assert snapshot.events[1].facts["metadata"] == {"format": "markdown"}

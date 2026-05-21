@@ -232,6 +232,19 @@ Avoid these patterns in normal runtime code:
 - passing large runtime objects deep into metadata code when a small typed item would do
 - inventing per-file metadata mini-frameworks
 
+## Practical Notes
+
+- The canonical filing method is `MetadataRuntime.file(item)`. Extra local helper functions are optional convenience seams, not new filing APIs.
+- Prefer direct `metadata_runtime.file(TypedFacts(...))` calls when the local conversion is small and obvious.
+- If a local helper is useful, it should primarily clarify local-to-typed-facts conversion. Favor names like `build_*_facts(...)` over introducing concern-specific `file_*` APIs unless the helper is truly about one local boundary.
+- Observability now has multiple real producers on the same path:
+  - logging observer lifecycle/artifact events
+  - resource monitor events
+  - run report records
+  - analytics/debug snapshot records
+- That shared path is intentional. Future observability slices should prefer filing more typed items into the existing runtime/backend snapshot instead of inventing parallel observability collection flows.
+- The first live analytics snapshot is the benchmark-report payload summary filed from `write_run_report()`. It intentionally keeps backend-neutral run/resource/config summary data while leaving the bulky `full_config_yaml` in the report artifact itself instead of duplicating it into metadata storage.
+
 ## What This README Is For
 
 This file is for the settled metadata system shape that should stay true even while implementation details continue to move.

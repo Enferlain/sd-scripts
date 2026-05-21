@@ -14,6 +14,11 @@ from library.metadata.records import ArtifactMetadataRecord, MetadataEvent, Meta
 from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
 
+# ---------------------------------------------------------------------------
+# Public entrypoints
+# ---------------------------------------------------------------------------
+
+
 def build_logged_artifact_metadata(
     facts: LoggedArtifactFacts,
     *,
@@ -21,10 +26,10 @@ def build_logged_artifact_metadata(
     schema_version: str = METADATA_PAYLOAD_VERSION,
 ) -> MetadataProviderResult:
     """Build collected metadata for one logging artifact-registration boundary."""
-    return MetadataProviderResult.from_sequences(
+    return _result_from_event(
         provider_id=provider_id,
         schema_version=schema_version,
-        events=(_build_logged_artifact_event(facts, producer=provider_id),),
+        event=_build_logged_artifact_event(facts, producer=provider_id),
     )
 
 
@@ -35,10 +40,10 @@ def build_run_lifecycle_metadata(
     schema_version: str = METADATA_PAYLOAD_VERSION,
 ) -> MetadataProviderResult:
     """Build collected metadata for a run lifecycle event."""
-    return MetadataProviderResult.from_sequences(
+    return _result_from_event(
         provider_id=provider_id,
         schema_version=schema_version,
-        events=(_build_run_lifecycle_event(facts, producer=provider_id),),
+        event=_build_run_lifecycle_event(facts, producer=provider_id),
     )
 
 
@@ -49,10 +54,10 @@ def build_resource_monitor_metadata(
     schema_version: str = METADATA_PAYLOAD_VERSION,
 ) -> MetadataProviderResult:
     """Build collected metadata for a resource monitor event."""
-    return MetadataProviderResult.from_sequences(
+    return _result_from_event(
         provider_id=provider_id,
         schema_version=schema_version,
-        events=(_build_resource_monitor_event(facts, producer=provider_id),),
+        event=_build_resource_monitor_event(facts, producer=provider_id),
     )
 
 
@@ -63,10 +68,10 @@ def build_run_report_metadata(
     schema_version: str = METADATA_PAYLOAD_VERSION,
 ) -> MetadataProviderResult:
     """Build collected metadata for a benchmark/report boundary."""
-    return MetadataProviderResult.from_sequences(
+    return _result_from_record(
         provider_id=provider_id,
         schema_version=schema_version,
-        records=(_build_run_report_record(facts, producer=provider_id),),
+        record=_build_run_report_record(facts, producer=provider_id),
     )
 
 
@@ -77,11 +82,42 @@ def build_analytics_snapshot_metadata(
     schema_version: str = METADATA_PAYLOAD_VERSION,
 ) -> MetadataProviderResult:
     """Build collected metadata for a backend-neutral analytics snapshot."""
+    return _result_from_record(
+        provider_id=provider_id,
+        schema_version=schema_version,
+        record=_build_analytics_snapshot_record(facts, producer=provider_id),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Result wrappers
+# ---------------------------------------------------------------------------
+
+
+def _result_from_event(*, provider_id: str, schema_version: str, event: MetadataEvent) -> MetadataProviderResult:
     return MetadataProviderResult.from_sequences(
         provider_id=provider_id,
         schema_version=schema_version,
-        records=(_build_analytics_snapshot_record(facts, producer=provider_id),),
+        events=(event,),
     )
+
+
+def _result_from_record(
+    *,
+    provider_id: str,
+    schema_version: str,
+    record: ArtifactMetadataRecord,
+) -> MetadataProviderResult:
+    return MetadataProviderResult.from_sequences(
+        provider_id=provider_id,
+        schema_version=schema_version,
+        records=(record,),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Event builders
+# ---------------------------------------------------------------------------
 
 
 def _build_logged_artifact_event(facts: LoggedArtifactFacts, *, producer: str) -> MetadataEvent:
@@ -93,12 +129,7 @@ def _build_logged_artifact_event(facts: LoggedArtifactFacts, *, producer: str) -
         metadata["metadata"] = dict(facts.metadata)
     return MetadataEvent(
         event_type="artifact_registered",
-        identity=MetadataIdentity(
-            entity_type="artifact",
-            identifier=facts.path,
-            label=facts.kind,
-            schema_version=METADATA_PAYLOAD_VERSION,
-        ),
+        identity=_artifact_identity(identifier=facts.path, label=facts.kind),
         producer=producer,
         facts=metadata,
         schema_version=METADATA_PAYLOAD_VERSION,
@@ -119,12 +150,7 @@ def _build_run_lifecycle_event(facts: RunLifecycleFacts, *, producer: str) -> Me
     )
     return MetadataEvent(
         event_type=facts.event_type,
-        identity=MetadataIdentity(
-            entity_type="run",
-            identifier=facts.run_identifier,
-            label=facts.run_name,
-            schema_version=METADATA_PAYLOAD_VERSION,
-        ),
+        identity=_run_identity(identifier=facts.run_identifier, label=facts.run_name),
         producer=producer,
         facts=metadata,
         schema_version=METADATA_PAYLOAD_VERSION,
@@ -163,16 +189,16 @@ def _build_resource_monitor_event(facts: ResourceMonitorFacts, *, producer: str)
     )
     return MetadataEvent(
         event_type=facts.event_name,
-        identity=MetadataIdentity(
-            entity_type="run",
-            identifier=facts.run_identifier,
-            label=facts.phase or facts.event_name,
-            schema_version=METADATA_PAYLOAD_VERSION,
-        ),
+        identity=_run_identity(identifier=facts.run_identifier, label=facts.phase or facts.event_name),
         producer=producer,
         facts=metadata,
         schema_version=METADATA_PAYLOAD_VERSION,
     )
+
+
+# ---------------------------------------------------------------------------
+# Record builders
+# ---------------------------------------------------------------------------
 
 
 def _build_run_report_record(facts: RunReportFacts, *, producer: str) -> ArtifactMetadataRecord:
@@ -205,12 +231,7 @@ def _build_run_report_record(facts: RunReportFacts, *, producer: str) -> Artifac
     if facts.resource_jsonl_path is not None:
         metadata["resource_jsonl_path"] = facts.resource_jsonl_path
     return ArtifactMetadataRecord(
-        identity=MetadataIdentity(
-            entity_type="artifact",
-            identifier=facts.report_identifier,
-            label=facts.output_name,
-            schema_version=METADATA_PAYLOAD_VERSION,
-        ),
+        identity=_artifact_identity(identifier=facts.report_identifier, label=facts.output_name),
         producer=producer,
         facts=metadata,
         schema_version=METADATA_PAYLOAD_VERSION,
@@ -232,14 +253,32 @@ def _build_analytics_snapshot_record(
     if facts.run_identifier is not None:
         metadata["run_identifier"] = facts.run_identifier
     return ArtifactMetadataRecord(
-        identity=MetadataIdentity(
-            entity_type="artifact",
-            identifier=facts.snapshot_identifier,
-            label=facts.snapshot_kind,
-            schema_version=METADATA_PAYLOAD_VERSION,
-        ),
+        identity=_artifact_identity(identifier=facts.snapshot_identifier, label=facts.snapshot_kind),
         producer=producer,
         facts=metadata,
+        schema_version=METADATA_PAYLOAD_VERSION,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+
+def _run_identity(*, identifier: str, label: str | None) -> MetadataIdentity:
+    return MetadataIdentity(
+        entity_type="run",
+        identifier=identifier,
+        label=label,
+        schema_version=METADATA_PAYLOAD_VERSION,
+    )
+
+
+def _artifact_identity(*, identifier: str, label: str | None) -> MetadataIdentity:
+    return MetadataIdentity(
+        entity_type="artifact",
+        identifier=identifier,
+        label=label,
         schema_version=METADATA_PAYLOAD_VERSION,
     )
 

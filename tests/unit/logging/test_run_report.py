@@ -18,6 +18,7 @@ from library.logging.reports import (
     is_benchmark_report_enabled,
     write_run_report,
 )
+from library.metadata import METADATA_PAYLOAD_VERSION, MetadataRuntime
 
 
 def _write_jsonl(path: Path, events: list[dict]) -> None:
@@ -210,6 +211,73 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
     assert payload["resource_monitor"]["gpu_used_peak_session_mb"] == 260.0
     assert payload["resource_monitor"]["phases"][0]["gpu_used_peak_mb"] == 180.0
     assert payload["resource_monitor"]["phases"][1]["gpu_used_peak_mb"] == 260.0
+
+
+def test_write_run_report_files_metadata_record_when_observer_runtime_exists(tmp_path):
+    output_dir = tmp_path / "reports"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    jsonl_path = output_dir / "resource_monitor.jsonl"
+    _write_jsonl(
+        jsonl_path,
+        [
+            {"ts": 1.0, "event": "session_start", "run_id": "abc123"},
+            {"ts": 2.0, "event": "phase_start", "run_id": "abc123", "phase": "training_epoch_1"},
+            {"ts": 3.0, "event": "phase_end", "run_id": "abc123", "phase": "training_epoch_1", "duration_ms": 1000.0},
+            {"ts": 4.0, "event": "session_end", "run_id": "abc123", "duration_ms": 3000.0},
+        ],
+    )
+    metadata_runtime = MetadataRuntime()
+    trainer = SimpleNamespace(
+        cfg={
+            "output": {
+                "saving": {"output_dir": str(tmp_path / "models"), "output_name": "report_runtime"},
+                "logging": {
+                    "benchmark_report": {
+                        "enabled": True,
+                        "output_dir": str(output_dir),
+                        "filename_prefix": "metadata_report",
+                        "include_full_config": False,
+                    }
+                },
+            }
+        },
+        mode=MagicMock(),
+        strategies=MagicMock(),
+        optimizer_name="AdamW8bit",
+        global_step=7,
+        num_train_epochs=1,
+        session_id="abc123",
+        training_started_at=100.0,
+        _resource_monitor=SimpleNamespace(jsonl_path=jsonl_path),
+        _observer=SimpleNamespace(metadata_runtime=metadata_runtime),
+    )
+    trainer.mode.get_diagnostics_components.return_value = []
+
+    markdown_path = write_run_report(trainer, succeeded=True)
+
+    assert markdown_path is not None
+    snapshot = metadata_runtime.snapshot()
+    assert len(snapshot.records) == 2
+
+    report_record = next(record for record in snapshot.records if record.facts["kind"] == "benchmark_report")
+    assert report_record.identity.identifier == str(markdown_path)
+    assert report_record.schema_version == METADATA_PAYLOAD_VERSION
+    assert report_record.identity.schema_version == METADATA_PAYLOAD_VERSION
+    assert report_record.facts["run_identifier"] == "abc123"
+    assert report_record.facts["resource_event_count"] == 4
+    assert report_record.facts["phase_count"] == 1
+    assert report_record.facts["include_full_config"] is False
+
+    analytics_record = next(record for record in snapshot.records if record.facts["kind"] == "benchmark_report_payload")
+    assert analytics_record.identity.identifier == f"{markdown_path.with_suffix('.json')}#payload"
+    assert analytics_record.schema_version == METADATA_PAYLOAD_VERSION
+    assert analytics_record.identity.schema_version == METADATA_PAYLOAD_VERSION
+    assert analytics_record.facts["run_identifier"] == "abc123"
+    assert analytics_record.facts["source"] == "library.logging.reports.write_run_report"
+    analytics_payload = analytics_record.facts["payload"]
+    assert analytics_payload["status"] == "succeeded"
+    assert analytics_payload["resource_monitor"]["event_count"] == 4
+    assert analytics_payload["include_full_config"] is False
 
 
 def test_write_run_report_handles_missing_jsonl_gracefully(tmp_path):

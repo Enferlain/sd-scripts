@@ -15,6 +15,7 @@ from library.logging.resource_monitor import (
     SampledResourceMonitor,
     create_resource_monitor,
 )
+from library.metadata import METADATA_PAYLOAD_VERSION, MetadataRuntime
 
 
 def _make_cfg(**overrides):
@@ -120,6 +121,42 @@ class TestBasicResourceMonitorBehavior:
 
             assert mock_external.call_count >= 4
             assert mock_logger.info.call_count >= 3
+
+    def test_resource_monitor_files_metadata_without_jsonl_output(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_id="run-1",
+            config_name="unit-test",
+            metadata_runtime=metadata_runtime,
+        )
+
+        monitor.start_session()
+        monitor.phase_start("training_epoch_1")
+        monitor.step_end(global_step=1, epoch=1)
+        monitor.phase_end("training_epoch_1")
+        monitor.end_session()
+
+        snapshot = metadata_runtime.snapshot()
+
+        assert [event.event_type for event in snapshot.events] == [
+            "session_start",
+            "phase_start",
+            "step_sample",
+            "phase_end",
+            "session_end",
+        ]
+        assert snapshot.events[0].identity.identifier == "run-1"
+        assert snapshot.events[0].schema_version == METADATA_PAYLOAD_VERSION
+        assert snapshot.events[2].facts["global_step"] == 1
+        assert snapshot.events[3].facts["phase"] == "training_epoch_1"
+        assert snapshot.events[4].facts["duration_ms"] is not None
 
     def test_emit_startup_component_memory_logs_estimate(self):
         accelerator = MagicMock()

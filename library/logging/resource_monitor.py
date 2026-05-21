@@ -26,6 +26,8 @@ import torch
 from tqdm.auto import tqdm
 
 from library.logging.summaries import DiagnosticRow
+from library.metadata.dataclasses.observability import ResourceMonitorFacts
+from library.metadata.runtime import MetadataRuntime
 from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
 
 if TYPE_CHECKING:
@@ -158,6 +160,7 @@ class BasicResourceMonitor:
         config_name: str | None = None,
         git_sha: str | None = None,
         git_dirty: bool | None = None,
+        metadata_runtime: MetadataRuntime | None = None,
     ):
         self._accelerator = accelerator
         self._resource_monitor_config = resource_monitor_config
@@ -189,6 +192,7 @@ class BasicResourceMonitor:
         self._jsonl_events_since_flush = 0
         self._jsonl_flush_mode = resource_monitor_config.jsonl_flush_mode
         self._jsonl_flush_every_n_events = resource_monitor_config.jsonl_flush_every_n_events
+        self._metadata_runtime = metadata_runtime
 
         self._run_id = self._normalize_metadata_value(run_id)
         self._config_name = self._normalize_metadata_value(config_name)
@@ -444,9 +448,6 @@ class BasicResourceMonitor:
         force_flush: bool = False,
         ts: float | None = None,
     ) -> None:
-        if self._jsonl_file is None:
-            return
-
         counters = self._latest_deep_counters if deep_counters is None else deep_counters
         window_active = self._latest_deep_window_active if deep_window_active is None else deep_window_active
 
@@ -470,7 +471,47 @@ class BasicResourceMonitor:
             deep_window_active=window_active,
             ts=ts,
         )
+        self._file_metadata_event(event_payload)
+        if self._jsonl_file is None:
+            return
         self._write_jsonl_event(event_payload, force_flush=force_flush)
+
+    def _file_metadata_event(self, event_payload: Mapping[str, Any]) -> None:
+        if self._metadata_runtime is None or self._run_id is None:
+            return
+        self._metadata_runtime.file(
+            ResourceMonitorFacts(
+                run_identifier=self._run_id,
+                event_name=str(event_payload["event"]),
+                ts=float(event_payload["ts"]),
+                rank=event_payload["rank"],
+                world_size=event_payload["world_size"],
+                mode=event_payload["mode"],
+                device_scope=event_payload["device_scope"],
+                config_name=event_payload["config_name"],
+                git_sha=event_payload["git_sha"],
+                git_dirty=event_payload["git_dirty"],
+                global_step=event_payload["global_step"],
+                epoch=event_payload["epoch"],
+                phase=event_payload["phase"],
+                duration_ms=event_payload["duration_ms"],
+                gpu_allocated_mb=event_payload["gpu_allocated_mb"],
+                gpu_reserved_mb=event_payload["gpu_reserved_mb"],
+                gpu_peak_allocated_mb=event_payload["gpu_peak_allocated_mb"],
+                gpu_used_mb=event_payload["gpu_used_mb"],
+                cpu_rss_mb=event_payload["cpu_rss_mb"],
+                steps_per_sec=event_payload["steps_per_sec"],
+                samples_per_sec=event_payload["samples_per_sec"],
+                dropped_samples=event_payload["dropped_samples"],
+                collection_ms=event_payload["collection_ms"],
+                deep_alloc_retries=event_payload["deep_alloc_retries"],
+                deep_ooms=event_payload["deep_ooms"],
+                deep_active_mb=event_payload["deep_active_mb"],
+                deep_reserved_mb=event_payload["deep_reserved_mb"],
+                deep_inactive_split_mb=event_payload["deep_inactive_split_mb"],
+                deep_window_active=event_payload["deep_window_active"],
+            )
+        )
 
     def _record_sampled_metrics(self, sample: _SampledMetrics) -> None:
         self._latest_gpu_used_mb = sample.gpu_used_mb
@@ -786,6 +827,7 @@ class SampledResourceMonitor(BasicResourceMonitor):
         config_name: str | None = None,
         git_sha: str | None = None,
         git_dirty: bool | None = None,
+        metadata_runtime: MetadataRuntime | None = None,
     ):
         super().__init__(
             accelerator=accelerator,
@@ -795,6 +837,7 @@ class SampledResourceMonitor(BasicResourceMonitor):
             config_name=config_name,
             git_sha=git_sha,
             git_dirty=git_dirty,
+            metadata_runtime=metadata_runtime,
         )
 
         self._sample_interval_sec = resource_monitor_config.sample_interval_sec
@@ -1180,6 +1223,7 @@ def create_resource_monitor(
     config_name: str | None = None,
     git_sha: str | None = None,
     git_dirty: bool | None = None,
+    metadata_runtime: MetadataRuntime | None = None,
 ) -> ResourceMonitor:
     """Create a monitor instance from typed logging config."""
     enabled = getattr(resource_monitor_config, "enabled", False)
@@ -1209,6 +1253,7 @@ def create_resource_monitor(
             config_name=config_name,
             git_sha=resolved_git_sha,
             git_dirty=resolved_git_dirty,
+            metadata_runtime=metadata_runtime,
         )
 
     return BasicResourceMonitor(
@@ -1219,4 +1264,5 @@ def create_resource_monitor(
         config_name=config_name,
         git_sha=resolved_git_sha,
         git_dirty=resolved_git_dirty,
+        metadata_runtime=metadata_runtime,
     )
