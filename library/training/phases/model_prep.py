@@ -28,21 +28,25 @@ def prepare_models(trainer: Trainer) -> None:
     Args:
         trainer: Trainer instance
     """
-    # Lazy load denoiser if it was deferred during setup (memory optimization)
-    # This allows VAE/TE caching to complete before loading the large denoiser
+    # Load the denoiser here only if an architecture/setup path intentionally
+    # deferred it during setup.
     if trainer.denoiser is None:
+        logger.info("[training-prep] loading deferred denoiser")
         trainer.loaded_components = trainer.strategies.load_denoiser_lazily(
             trainer.cfg, trainer.weight_dtype, trainer.accelerator, trainer.loaded_components
         )
         trainer.sync_component_views()
 
     # Mode-specific: create and configure the trainable model (adapter)
+    logger.info("[training-prep] preparing trainable modules")
     trainer.mode.prepare_trainables(trainer)
 
     # Shared precision setup (FP8, dtype computation, denoiser/TE casting)
+    logger.info("[training-prep] configuring shared precision")
     configure_precision(trainer)
 
     # Mode-specific: cast adapter, freeze base model
+    logger.info("[training-prep] finalizing trainable precision state")
     trainer.mode.configure_trainable_precision(trainer)
 
 

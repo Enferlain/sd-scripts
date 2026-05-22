@@ -64,6 +64,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
     cfg = trainer.cfg
 
     # Create optimizer (delegated to mode)
+    logger.info("[training-prep] building optimizer parameter groups")
     _assign_optimizer_build_result(trainer, trainer.mode.build_optimizer_params(trainer))
 
     # NOTE: trainer._train_denoiser and trainer._train_text_encoder are set in
@@ -75,6 +76,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
     trainer._cyclic_val_dataloader = None
 
     if trainer.val_manifest is not None:
+        logger.info("[training-prep] creating validation dataloader")
         val_epoch_manifest = prepare_validation_epoch(
             manifest=trainer.val_manifest,
             batch_size=cfg.training.train_batch_size,
@@ -121,6 +123,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
         )
 
     # Create LR scheduler
+    logger.info("[training-prep] creating learning-rate scheduler")
     trainer.lr_scheduler = get_scheduler_fix(
         cfg.optimizer.scheduler,
         cfg.optimizer,
@@ -131,6 +134,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
     )
 
     # Accelerator.prepare - handles distributed training setup (delegated to mode)
+    logger.info("[training-prep] preparing models and optimizer with accelerator")
     trainer.mode.prepare_with_accelerator(trainer)
 
     # Gradient checkpointing setup (shared denoiser/TE parts + mode-specific adapter parts)
@@ -138,6 +142,7 @@ def prepare_optimizer(trainer: Trainer) -> None:
     # Risk: DDP with cpu_offload_checkpointing=True may have issues if hooks
     # are registered after wrapping. Requires manual verification in distributed
     # environments. See AUDIT/1_phase_ordering_dependencies.md for details.
+    logger.info("[training-prep] applying gradient checkpointing configuration")
     _setup_gradient_checkpointing(trainer)
 
     # Calculate number of epochs and setup epoch-related config

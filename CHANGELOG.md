@@ -10,6 +10,15 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-22]
+
+### Changed
+
+- **Trainer startup now surfaces real training-prep boundaries more clearly** — the progress bar is now created at the actual training-loop boundary instead of during early tracking setup, which avoids interleaving the `steps: 0%` bar with the startup-summary block and makes console step timing less misleading before the first epoch begins.
+- **Silent adapter-mode startup spans now emit clearer phase logs** — added explicit `[startup]` and `[training-prep]` logs around startup-summary emission, metadata/runtime initialization, trainable-module preparation, scheduler creation, accelerator preparation, and gradient-checkpointing setup so post-cache pauses read like named work instead of apparent hangs.
+- **Model-prep wording now reflects conditional denoiser deferral instead of implying it always happens** — tightened the `prepare_models()` denoiser-load comment so SDXL/adapter paths that already loaded the denoiser during setup no longer read like they are still relying on lazy loading.
+- **Training epoch identifiers now separate presentation from runtime truth more consistently** — the user-facing banner still prints `Epoch 1/N`, but resource-monitor phase names now use the underlying zero-based epoch index (for example `training_epoch_0`) so internal/runtime logs align with other true epoch references like `prepared epoch 0`.
+
 ## [2026-05-21]
 
 ### Changed

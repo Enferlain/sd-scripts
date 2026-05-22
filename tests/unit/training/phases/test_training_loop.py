@@ -14,6 +14,32 @@ import torch
 class TestRunTrainingLoop:
     """Test run_training_loop function."""
 
+    def test_creates_progress_bar_at_loop_start_when_missing(self, mock_trainer):
+        """Training should start the progress bar at the real loop boundary."""
+        mock_trainer.num_train_epochs = 1
+        mock_trainer.epoch_to_start = 0
+        mock_trainer.global_step = 0
+        mock_trainer.max_train_steps = 5
+        mock_trainer._initial_step = 0
+        mock_trainer._progress_bar = None
+
+        mock_dataloader = MagicMock()
+        mock_dataloader.__iter__ = MagicMock(return_value=iter([]))
+        created_bar = MagicMock()
+
+        with (
+            patch("library.training.phases.training_loop.prepare_epoch"),
+            patch("library.training.phases.training_loop.create_training_dataloader", return_value=mock_dataloader),
+            patch("library.training.phases.training_loop.CaptionConfig"),
+            patch("library.training.phases.training_loop.tqdm", return_value=created_bar) as mock_tqdm,
+        ):
+            from library.training.phases.training_loop import run_training_loop
+
+            run_training_loop(mock_trainer)
+
+            mock_tqdm.assert_called_once()
+            assert mock_trainer._progress_bar is created_bar
+
     def test_creates_dataloader_per_epoch(self, mock_trainer):
         """Test that dataloader is created for each epoch."""
         mock_trainer.num_train_epochs = 2

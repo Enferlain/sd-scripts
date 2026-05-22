@@ -654,8 +654,6 @@ class Trainer:
 
     def _initialize_tracking_state(self) -> None:
         """Initialize trackers, recorders, validation scheduler, and progress state."""
-        from tqdm import tqdm
-
         from library.losses.loss import EMARecorder
         from library.logging.metrics import (
             AccelerateMetricsSink,
@@ -696,18 +694,17 @@ class Trainer:
         self._is_tracking = len(self.accelerator.trackers) > 0
 
         clean_memory_on_device(self.accelerator.device)
-
-        self._progress_bar = tqdm(
-            range(self.max_train_steps - self._initial_step), smoothing=0, disable=not self.accelerator.is_local_main_process, desc="steps"
-        )
         self._validation_scheduler = ValidationScheduler(cfg.validation)
 
     def _initialize_training_run_state(self) -> None:
         """Initialize the shared trainer runtime state before entering the loop."""
         total_batch_size = self._compute_total_batch_size()
         self._initialize_tracking_state()
+        logger.info("[startup] emitting training startup summary")
         self._emit_training_startup_summary()
+        logger.info("[startup] assembling training metadata")
         self._initialize_training_metadata(total_batch_size=total_batch_size)
+        logger.info("[startup] initializing training runtime helpers")
         self._initialize_training_runtime()
 
     def _compute_startup_eval_actions(self) -> tuple[bool, bool]:
