@@ -36,6 +36,7 @@ class RunLifecycleFacts:
     global_step: int | None = None
     epoch: int | None = None
     duration_ms: float | None = None
+    error_message: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

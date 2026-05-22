@@ -509,6 +509,40 @@ class TestLoggingTrainingObserver:
         assert observer.run_name == "training"
         assert observer.run_config == {"wandb_api_key": "*****"}
 
+    def test_lifecycle_metadata_captures_trainer_context_and_failure_status(self):
+        from library.logging.metrics import LoggingTrainingObserver
+
+        observer = LoggingTrainingObserver(console=MagicMock(), metrics_sink=MagicMock())
+
+        observer.start_run(
+            "training",
+            {"wandb_api_key": "*****"},
+            run_identifier="session-123",
+            mode_name="AdapterMode",
+            strategy_name="SdxlTrainingStrategy",
+            optimizer_name="AdamW8bit",
+            config_name="presets/sdxl_adapter",
+            global_step=0,
+            epoch=0,
+        )
+        observer.finish_run(status="failed", error_message="boom", global_step=7, epoch=1)
+
+        snapshot = observer.metadata_snapshot()
+
+        assert [event.event_type for event in snapshot.events] == [
+            "run_started",
+            "run_finished",
+        ]
+        assert snapshot.events[0].identity.identifier == "session-123"
+        assert snapshot.events[0].facts["mode_name"] == "AdapterMode"
+        assert snapshot.events[0].facts["strategy_name"] == "SdxlTrainingStrategy"
+        assert snapshot.events[0].facts["optimizer_name"] == "AdamW8bit"
+        assert snapshot.events[0].facts["config_name"] == "presets/sdxl_adapter"
+        assert snapshot.events[1].facts["status"] == "failed"
+        assert snapshot.events[1].facts["error_message"] == "boom"
+        assert snapshot.events[1].facts["global_step"] == 7
+        assert snapshot.events[1].facts["epoch"] == 1
+
     def test_log_artifact_records_path_kind_and_metadata(self):
         from library.logging.metrics import LoggingTrainingObserver
         from library.metadata import METADATA_PAYLOAD_VERSION
@@ -549,3 +583,45 @@ class TestLoggingTrainingObserver:
         assert snapshot.events[0].identity.identifier == "training"
         assert snapshot.events[1].facts["metadata"] == {"format": "markdown"}
         assert snapshot.events[2].facts["status"] == "finished"
+
+    def test_startup_summary_files_analytics_snapshot(self):
+        from library.logging.metrics import LoggingTrainingObserver
+        from library.logging.summaries import (
+            DiagnosticAlias,
+            DiagnosticRow,
+            OptimizerRow,
+            TrainingStartupSummary,
+        )
+
+        observer = LoggingTrainingObserver(console=MagicMock(), metrics_sink=MagicMock())
+        observer.start_run("training", {"wandb_api_key": "*****"}, run_identifier="session-123")
+
+        observer.log_startup_summary(
+            TrainingStartupSummary(
+                runtime_rows=[("mixed_precision", "bf16")],
+                dataset_rows=[("images", "128")],
+                schedule_rows=[("steps", "1000")],
+                component_rows=[
+                    DiagnosticRow(
+                        label="unet",
+                        component_key="denoiser",
+                        modules_trainable=10,
+                        modules_total=20,
+                        params_trainable=100,
+                        params_total=200,
+                    )
+                ],
+                optimizer_name="AdamW8bit",
+                optimizer_rows=[OptimizerRow(label="denoiser", parameter_count=100, learning_rate=1e-4)],
+                aliases=[DiagnosticAlias(alias="unet", target="denoiser")],
+            )
+        )
+
+        snapshot = observer.metadata_snapshot()
+
+        assert len(snapshot.records) == 1
+        record = snapshot.records[0]
+        assert record.facts["kind"] == "training_startup_summary"
+        assert record.facts["run_identifier"] == "session-123"
+        assert record.facts["payload"]["optimizer_name"] == "AdamW8bit"
+        assert record.facts["payload"]["runtime_rows"] == [("mixed_precision", "bf16")]

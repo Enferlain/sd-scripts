@@ -545,26 +545,7 @@ def _file_run_report_metadata(trainer: Any, *, markdown_path: Path, payload: dic
     if metadata_runtime is None:
         return
 
-    resource_monitor = payload.get("resource_monitor")
-    resource_event_count: int | None = None
-    phase_count: int | None = None
-    resource_jsonl_path: str | None = None
-    if isinstance(resource_monitor, dict):
-        event_count = resource_monitor.get("event_count")
-        resource_event_count = event_count if isinstance(event_count, int) else None
-        phases = resource_monitor.get("phases")
-        if isinstance(phases, list):
-            phase_count = len(phases)
-        jsonl_path = resource_monitor.get("jsonl_path")
-        resource_jsonl_path = jsonl_path if isinstance(jsonl_path, str) else None
-
-    run_identifier = payload.get("session_id")
-    if run_identifier is None:
-        run_identifier = getattr(trainer, "session_id", None)
-    if run_identifier is None:
-        run_identifier = getattr(observer, "run_identifier", None)
-    if run_identifier is None:
-        run_identifier = payload.get("output_name")
+    run_identifier = _resolve_report_run_identifier(trainer, observer, payload)
     if run_identifier is None:
         logger.warning("Skipping run-report metadata filing because no run identifier is available.")
         return
@@ -572,38 +553,80 @@ def _file_run_report_metadata(trainer: Any, *, markdown_path: Path, payload: dic
     generated_at_value = payload.get("generated_at")
     generated_at = float(generated_at_value) if generated_at_value is not None else time.time()
 
+    metadata_runtime.file(_build_run_report_facts(markdown_path, payload, run_identifier=str(run_identifier), generated_at=generated_at))
     metadata_runtime.file(
-        RunReportFacts(
-            report_identifier=str(markdown_path),
-            run_identifier=str(run_identifier),
-            status=str(payload.get("status") or "unknown"),
-            generated_at=generated_at,
-            output_name=payload.get("output_name") if isinstance(payload.get("output_name"), str) else None,
-            output_dir=payload.get("output_dir") if isinstance(payload.get("output_dir"), str) else None,
-            mode_name=payload.get("mode_name") if isinstance(payload.get("mode_name"), str) else None,
-            strategy_name=payload.get("strategy_name") if isinstance(payload.get("strategy_name"), str) else None,
-            optimizer_name=payload.get("optimizer_name") if isinstance(payload.get("optimizer_name"), str) else None,
-            global_step=payload.get("global_step") if isinstance(payload.get("global_step"), int) else None,
-            num_train_epochs=payload.get("num_train_epochs")
-            if isinstance(payload.get("num_train_epochs"), int)
-            else None,
-            resource_event_count=resource_event_count,
-            phase_count=phase_count,
-            include_full_config=payload.get("include_full_config")
-            if isinstance(payload.get("include_full_config"), bool)
-            else None,
-            resource_jsonl_path=resource_jsonl_path,
-        )
+        _build_run_report_snapshot_facts(markdown_path, payload, run_identifier=str(run_identifier), generated_at=generated_at)
     )
-    metadata_runtime.file(
-        AnalyticsSnapshotFacts(
-            snapshot_identifier=f"{markdown_path.with_suffix('.json')}#payload",
-            snapshot_kind="benchmark_report_payload",
-            source="library.logging.reports.write_run_report",
-            payload=_build_report_analytics_snapshot_payload(payload),
-            generated_at=generated_at,
-            run_identifier=str(run_identifier),
-        )
+
+
+def _resolve_report_run_identifier(trainer: Any, observer: Any, payload: dict[str, Any]) -> str | None:
+    run_identifier = payload.get("session_id")
+    if run_identifier is None:
+        run_identifier = getattr(trainer, "session_id", None)
+    if run_identifier is None:
+        run_identifier = getattr(observer, "run_identifier", None)
+    if run_identifier is None:
+        run_identifier = payload.get("output_name")
+    return str(run_identifier) if run_identifier is not None else None
+
+
+def _extract_report_resource_fields(payload: dict[str, Any]) -> tuple[int | None, int | None, str | None]:
+    resource_monitor = payload.get("resource_monitor")
+    if not isinstance(resource_monitor, dict):
+        return None, None, None
+
+    event_count = resource_monitor.get("event_count")
+    resource_event_count = event_count if isinstance(event_count, int) else None
+
+    phases = resource_monitor.get("phases")
+    phase_count = len(phases) if isinstance(phases, list) else None
+
+    jsonl_path = resource_monitor.get("jsonl_path")
+    resource_jsonl_path = jsonl_path if isinstance(jsonl_path, str) else None
+    return resource_event_count, phase_count, resource_jsonl_path
+
+
+def _build_run_report_facts(
+    markdown_path: Path,
+    payload: dict[str, Any],
+    *,
+    run_identifier: str,
+    generated_at: float,
+) -> RunReportFacts:
+    resource_event_count, phase_count, resource_jsonl_path = _extract_report_resource_fields(payload)
+    return RunReportFacts(
+        report_identifier=str(markdown_path),
+        run_identifier=run_identifier,
+        status=str(payload.get("status") or "unknown"),
+        generated_at=generated_at,
+        output_name=payload.get("output_name") if isinstance(payload.get("output_name"), str) else None,
+        output_dir=payload.get("output_dir") if isinstance(payload.get("output_dir"), str) else None,
+        mode_name=payload.get("mode_name") if isinstance(payload.get("mode_name"), str) else None,
+        strategy_name=payload.get("strategy_name") if isinstance(payload.get("strategy_name"), str) else None,
+        optimizer_name=payload.get("optimizer_name") if isinstance(payload.get("optimizer_name"), str) else None,
+        global_step=payload.get("global_step") if isinstance(payload.get("global_step"), int) else None,
+        num_train_epochs=payload.get("num_train_epochs") if isinstance(payload.get("num_train_epochs"), int) else None,
+        resource_event_count=resource_event_count,
+        phase_count=phase_count,
+        include_full_config=payload.get("include_full_config") if isinstance(payload.get("include_full_config"), bool) else None,
+        resource_jsonl_path=resource_jsonl_path,
+    )
+
+
+def _build_run_report_snapshot_facts(
+    markdown_path: Path,
+    payload: dict[str, Any],
+    *,
+    run_identifier: str,
+    generated_at: float,
+) -> AnalyticsSnapshotFacts:
+    return AnalyticsSnapshotFacts(
+        snapshot_identifier=f"{markdown_path.with_suffix('.json')}#payload",
+        snapshot_kind="benchmark_report_payload",
+        source="library.logging.reports.write_run_report",
+        payload=_build_report_analytics_snapshot_payload(payload),
+        generated_at=generated_at,
+        run_identifier=run_identifier,
     )
 
 

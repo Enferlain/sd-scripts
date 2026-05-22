@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import logging
 from dataclasses import asdict, dataclass, field
 from typing import Protocol, runtime_checkable
 
@@ -10,6 +11,7 @@ from omegaconf import OmegaConf
 
 from library.metadata.backends import MetadataSnapshot
 from library.metadata.dataclasses.observability import (
+    AnalyticsSnapshotFacts,
     LoggedArtifactFacts as LoggedArtifact,
     RunLifecycleFacts,
 )
@@ -17,6 +19,8 @@ from library.metadata.runtime import MetadataRuntime, MetadataRuntimeItem
 from library.config.dataclasses.output import LoggingConfig
 from library.logging.console import MainProcessConsole
 from library.logging.summaries import TrainingStartupSummary
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +75,19 @@ class MetricsSink(Protocol):
 
 @runtime_checkable
 class TrainingObserver(Protocol):
-    def start_run(self, run_name: str, config: dict[str, object]) -> None: ...
+    def start_run(
+        self,
+        run_name: str,
+        config: dict[str, object],
+        *,
+        run_identifier: str | None = None,
+        mode_name: str | None = None,
+        strategy_name: str | None = None,
+        optimizer_name: str | None = None,
+        config_name: str | None = None,
+        global_step: int | None = None,
+        epoch: int | None = None,
+    ) -> None: ...
 
     def log_metrics(self, step: int, metrics: dict[str, float], *, epoch: int | None = None) -> None: ...
 
@@ -81,7 +97,14 @@ class TrainingObserver(Protocol):
 
     def log_artifact(self, path: str, *, kind: str, metadata: dict[str, object] | None = None) -> None: ...
 
-    def finish_run(self) -> None: ...
+    def finish_run(
+        self,
+        *,
+        status: str = "finished",
+        error_message: str | None = None,
+        global_step: int | None = None,
+        epoch: int | None = None,
+    ) -> None: ...
 
 
 @dataclass(slots=True)
@@ -109,11 +132,27 @@ class LoggingTrainingObserver:
     run_name: str | None = None
     run_config: dict[str, object] = field(default_factory=dict)
     run_identifier: str | None = None
+    mode_name: str | None = None
+    strategy_name: str | None = None
+    optimizer_name: str | None = None
+    config_name: str | None = None
     _has_started: bool = field(default=False, init=False, repr=False)
     _run_active: bool = field(default=False, init=False, repr=False)
     _run_started_at: float | None = field(default=None, init=False, repr=False)
 
-    def start_run(self, run_name: str, config: dict[str, object]) -> None:
+    def start_run(
+        self,
+        run_name: str,
+        config: dict[str, object],
+        *,
+        run_identifier: str | None = None,
+        mode_name: str | None = None,
+        strategy_name: str | None = None,
+        optimizer_name: str | None = None,
+        config_name: str | None = None,
+        global_step: int | None = None,
+        epoch: int | None = None,
+    ) -> None:
         if self._has_started:
             raise RuntimeError("LoggingTrainingObserver is single-run and cannot be reused.")
         if not run_name:
@@ -121,8 +160,12 @@ class LoggingTrainingObserver:
 
         self._has_started = True
         self.run_name = run_name
-        self.run_identifier = run_name
+        self.run_identifier = run_identifier or run_name
         self.run_config = dict(config)
+        self.mode_name = mode_name
+        self.strategy_name = strategy_name
+        self.optimizer_name = optimizer_name
+        self.config_name = config_name
         self._run_active = True
         self._run_started_at = time.perf_counter()
         self._file_metadata_item(
@@ -131,6 +174,12 @@ class LoggingTrainingObserver:
                 event_type="run_started",
                 run_name=run_name,
                 status="running",
+                mode_name=self.mode_name,
+                strategy_name=self.strategy_name,
+                optimizer_name=self.optimizer_name,
+                config_name=self.config_name,
+                global_step=global_step,
+                epoch=epoch,
             )
         )
         if self.metrics_sink is not None:
@@ -146,13 +195,32 @@ class LoggingTrainingObserver:
 
     def log_startup_summary(self, summary: TrainingStartupSummary) -> None:
         self.console.log_startup_summary(summary, stacklevel=4)
+        if self.run_identifier is None:
+            logger.warning("Skipping startup summary metadata filing because no run identifier is available yet.")
+            return
+        self._file_metadata_item(
+            AnalyticsSnapshotFacts(
+                snapshot_identifier=f"startup-summary:{self.run_identifier}",
+                snapshot_kind="training_startup_summary",
+                source="library.logging.metrics.LoggingTrainingObserver.log_startup_summary",
+                payload=asdict(summary),
+                run_identifier=self.run_identifier,
+            )
+        )
 
     def log_artifact(self, path: str, *, kind: str, metadata: dict[str, object] | None = None) -> None:
         artifact = LoggedArtifact(path=path, kind=kind, metadata=dict(metadata or {}))
         self.artifacts.append(artifact)
         self._file_metadata_item(artifact)
 
-    def finish_run(self) -> None:
+    def finish_run(
+        self,
+        *,
+        status: str = "finished",
+        error_message: str | None = None,
+        global_step: int | None = None,
+        epoch: int | None = None,
+    ) -> None:
         """Finish the observer-local run lifecycle and notify the metrics sink if present."""
         if not self._run_active:
             return
@@ -166,8 +234,15 @@ class LoggingTrainingObserver:
                     run_identifier=self.run_identifier,
                     event_type="run_finished",
                     run_name=self.run_name,
-                    status="finished",
+                    status=status,
+                    mode_name=self.mode_name,
+                    strategy_name=self.strategy_name,
+                    optimizer_name=self.optimizer_name,
+                    config_name=self.config_name,
+                    global_step=global_step,
+                    epoch=epoch,
                     duration_ms=duration_ms,
+                    error_message=error_message,
                 )
             )
         self._run_started_at = None
@@ -188,6 +263,19 @@ def _resolve_lr_descriptions(lr_descriptions: list[str] | None, optimization_pla
     if optimization_plan is None:
         return list(lr_descriptions or [])
     return list(getattr(optimization_plan, "lr_descriptions", lr_descriptions or []))
+
+
+def resolve_hydra_config_name() -> str | None:
+    """Return the active Hydra config name when available."""
+    try:
+        from hydra.core.hydra_config import HydraConfig
+
+        if HydraConfig.initialized():
+            hydra_cfg = HydraConfig.get()
+            config_name = getattr(hydra_cfg.job, "config_name", None)
+            return config_name if isinstance(config_name, str) else None
+    except Exception:
+        return None
 
 
 def _validate_lr_label_count(labels: list[str], lrs: list[float]) -> None:

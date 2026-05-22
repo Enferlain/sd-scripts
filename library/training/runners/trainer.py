@@ -236,7 +236,7 @@ class Trainer:
                     self._log_benchmark_report_artifacts(report_path)
                 except Exception as exc:  # pragma: no cover - best-effort reporting
                     logger.warning("Failed to write benchmark report: %s", exc)
-            self._finish_observer_run()
+            self._finish_observer_run(succeeded=succeeded, error_message=error_message)
 
     # =========================================================================
     # Phase Methods - Delegate to phase functions
@@ -273,7 +273,7 @@ class Trainer:
         self.device = self.accelerator.device
         suppress_non_main_process_logging(self.accelerator.is_main_process)
         self._console = MainProcessConsole(is_main_process=self.accelerator.is_main_process)
-        from library.logging.metrics import LoggingTrainingObserver
+        from library.logging.metrics import LoggingTrainingObserver, resolve_hydra_config_name
 
         self._observer = LoggingTrainingObserver(console=self._console)
         self._resource_monitor = create_resource_monitor(
@@ -281,7 +281,7 @@ class Trainer:
             resource_monitor_config=self.cfg.output.logging.resource_monitor,
             output_dir=self.cfg.output.saving.output_dir,
             run_id=self.session_id,
-            config_name=self.cfg.output.saving.output_name,
+            config_name=resolve_hydra_config_name(),
             git_sha=get_git_revision_hash(),
             git_dirty=get_git_is_dirty(),
             metadata_runtime=self._observer.metadata_runtime,
@@ -530,7 +530,7 @@ class Trainer:
                 metadata={"format": "json"},
             )
 
-    def _finish_observer_run(self) -> None:
+    def _finish_observer_run(self, *, succeeded: bool, error_message: str | None) -> None:
         """Finish observer bookkeeping after final artifacts are registered.
 
         External tracker shutdown remains owned by Accelerator.end_training()
@@ -539,7 +539,12 @@ class Trainer:
         if self._observer is None:
             return
         try:
-            self._observer.finish_run()
+            self._observer.finish_run(
+                status="finished" if succeeded else "failed",
+                error_message=error_message,
+                global_step=self.global_step,
+                epoch=self.current_epoch,
+            )
         except Exception as exc:  # pragma: no cover - best-effort logging lifecycle
             logger.warning("Failed to finish logging observer run: %s", exc)
 
@@ -656,6 +661,7 @@ class Trainer:
             AccelerateMetricsSink,
             build_tracker_config,
             init_trackers,
+            resolve_hydra_config_name,
             resolve_tracker_name,
         )
         from library.training.phases.validation import ValidationScheduler
@@ -669,6 +675,13 @@ class Trainer:
             self._observer.start_run(
                 resolve_tracker_name(cfg.output.logging, "training"),
                 build_tracker_config(cfg.output.logging),
+                run_identifier=str(self.session_id),
+                mode_name=type(self.mode).__name__,
+                strategy_name=type(self.strategies).__name__,
+                optimizer_name=self.optimizer_name or None,
+                config_name=resolve_hydra_config_name(),
+                global_step=self.global_step,
+                epoch=self.current_epoch,
             )
 
         self._loss_recorder = EMARecorder()
@@ -692,10 +705,10 @@ class Trainer:
     def _initialize_training_run_state(self) -> None:
         """Initialize the shared trainer runtime state before entering the loop."""
         total_batch_size = self._compute_total_batch_size()
+        self._initialize_tracking_state()
         self._emit_training_startup_summary()
         self._initialize_training_metadata(total_batch_size=total_batch_size)
         self._initialize_training_runtime()
-        self._initialize_tracking_state()
 
     def _compute_startup_eval_actions(self) -> tuple[bool, bool]:
         """Return whether startup sampling and startup validation should run."""

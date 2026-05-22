@@ -147,6 +147,7 @@ def _build_run_lifecycle_event(facts: RunLifecycleFacts, *, producer: str) -> Me
         global_step=facts.global_step,
         epoch=facts.epoch,
         duration_ms=facts.duration_ms,
+        error_message=facts.error_message,
     )
     return MetadataEvent(
         event_type=facts.event_type,

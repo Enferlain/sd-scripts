@@ -248,10 +248,12 @@ class TestTrainer(unittest.TestCase):
     @patch("library.losses.loss.EMARecorder")
     @patch("library.logging.metrics.build_tracker_config", return_value={"console_log_level": "INFO"})
     @patch("library.logging.metrics.resolve_tracker_name", return_value="unit-training")
+    @patch("library.logging.metrics.resolve_hydra_config_name", return_value="presets/unit_training")
     @patch("library.logging.metrics.init_trackers")
     def test_initialize_tracking_state_starts_observer_run(
         self,
         mock_init_trackers,
+        mock_resolve_hydra_config_name,
         mock_resolve_tracker_name,
         mock_build_tracker_config,
         mock_ema_recorder,
@@ -272,8 +274,32 @@ class TestTrainer(unittest.TestCase):
 
         mock_init_trackers.assert_called_once_with(self.trainer.accelerator, self.cfg.output.logging, "training")
         mock_resolve_tracker_name.assert_called_once_with(self.cfg.output.logging, "training")
+        mock_resolve_hydra_config_name.assert_called_once_with()
         mock_build_tracker_config.assert_called_once_with(self.cfg.output.logging)
-        self.trainer._observer.start_run.assert_called_once_with("unit-training", {"console_log_level": "INFO"})
+        self.trainer._observer.start_run.assert_called_once_with(
+            "unit-training",
+            {"console_log_level": "INFO"},
+            run_identifier=str(self.trainer.session_id),
+            mode_name=type(self.trainer.mode).__name__,
+            strategy_name=type(self.trainer.strategies).__name__,
+            optimizer_name=None,
+            config_name="presets/unit_training",
+            global_step=0,
+            epoch=0,
+        )
+
+    def test_initialize_training_run_state_starts_tracking_before_startup_summary(self):
+        call_order: list[str] = []
+        self.trainer._initialize_tracking_state = MagicMock(side_effect=lambda: call_order.append("tracking"))
+        self.trainer._emit_training_startup_summary = MagicMock(side_effect=lambda: call_order.append("summary"))
+        self.trainer._initialize_training_metadata = MagicMock(side_effect=lambda **_: call_order.append("metadata"))
+        self.trainer._initialize_training_runtime = MagicMock(side_effect=lambda: call_order.append("runtime"))
+        self.trainer._compute_total_batch_size = MagicMock(return_value=16)
+
+        self.trainer._initialize_training_run_state()
+
+        assert call_order == ["tracking", "summary", "metadata", "runtime"]
+        self.trainer._initialize_training_metadata.assert_called_once_with(total_batch_size=16)
 
     def test_finalize_training_closes_progress_bar_before_final_save_work(self):
         """Final checkpoint logging should happen after the progress bar is out of the way."""

@@ -244,6 +244,8 @@ Avoid these patterns in normal runtime code:
   - analytics/debug snapshot records
 - That shared path is intentional. Future observability slices should prefer filing more typed items into the existing runtime/backend snapshot instead of inventing parallel observability collection flows.
 - The first live analytics snapshot is the benchmark-report payload summary filed from `write_run_report()`. It intentionally keeps backend-neutral run/resource/config summary data while leaving the bulky `full_config_yaml` in the report artifact itself instead of duplicating it into metadata storage.
+- Lifecycle events should prefer richer structured context when the trainer already knows it. The current live path now carries run identifier, mode, strategy, optimizer, config name, step/epoch where meaningful, duration, and failed-run error messages rather than treating lifecycle metadata as a minimal placeholder.
+- Another live analytics snapshot producer now exists at training startup: the observer files the structured startup summary through the same runtime path so debug/export work can use one metadata-backed source instead of scraping console-only output.
 
 ## What This README Is For
 
