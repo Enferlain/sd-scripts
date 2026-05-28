@@ -131,7 +131,7 @@ class TestBasicResourceMonitorBehavior:
             accelerator=accelerator,
             resource_monitor_config=_make_cfg(mode="basic", phase_summary="off"),
             output_jsonl_path=None,
-            run_id="run-1",
+            run_identifier="run-1",
             metadata_runtime=metadata_runtime,
         )
 
@@ -158,7 +158,7 @@ class TestBasicResourceMonitorBehavior:
             accelerator=accelerator,
             resource_monitor_config=_make_cfg(mode="basic", phase_summary="default"),
             output_jsonl_path=None,
-            run_id="run-1",
+            run_identifier="run-1",
             metadata_runtime=metadata_runtime,
         )
 
@@ -203,7 +203,7 @@ class TestBasicResourceMonitorBehavior:
             accelerator=accelerator,
             resource_monitor_config=_make_cfg(mode="basic"),
             output_jsonl_path=None,
-            run_id="run-1",
+            run_identifier="run-1",
             config_name="unit-test",
             metadata_runtime=metadata_runtime,
         )
@@ -370,7 +370,7 @@ class TestResourceMonitorJsonl:
             accelerator=accelerator,
             resource_monitor_config=cfg,
             output_dir=tmp_path,
-            run_id="run-123",
+            run_identifier="run-123",
             config_name="test_peft_resource_sampled",
             git_sha="abc123def",
             git_dirty=True,
@@ -397,7 +397,7 @@ class TestResourceMonitorJsonl:
             "world_size",
             "mode",
             "device_scope",
-            "run_id",
+            "run_identifier",
             "config_name",
             "git_sha",
             "git_dirty",
@@ -425,7 +425,7 @@ class TestResourceMonitorJsonl:
             assert required_keys.issubset(event.keys())
 
         session_start = next(event for event in events if event["event"] == "session_start")
-        assert session_start["run_id"] == "run-123"
+        assert session_start["run_identifier"] == "run-123"
         assert session_start["config_name"] == "test_peft_resource_sampled"
         assert session_start["git_sha"] == "abc123def"
         assert session_start["git_dirty"] is True

@@ -304,7 +304,7 @@ class Trainer:
             accelerator=self.accelerator,
             resource_monitor_config=self.cfg.output.logging.resource_monitor,
             output_dir=self.cfg.output.saving.output_dir,
-            run_id=self.session_id,
+            run_identifier=self.session_id,
             config_name=resolve_hydra_config_name(),
             git_sha=get_git_revision_hash(),
             git_dirty=get_git_is_dirty(),

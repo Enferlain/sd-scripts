@@ -279,10 +279,10 @@ def test_write_run_report_files_metadata_record_when_observer_runtime_exists(tmp
     _write_jsonl(
         jsonl_path,
         [
-            {"ts": 1.0, "event": "session_start", "run_id": "abc123"},
-            {"ts": 2.0, "event": "phase_start", "run_id": "abc123", "phase": training_epoch_phase(0)},
-            {"ts": 3.0, "event": "phase_end", "run_id": "abc123", "phase": training_epoch_phase(0), "duration_ms": 1000.0},
-            {"ts": 4.0, "event": "session_end", "run_id": "abc123", "duration_ms": 3000.0},
+            {"ts": 1.0, "event": "session_start", "run_identifier": "abc123"},
+            {"ts": 2.0, "event": "phase_start", "run_identifier": "abc123", "phase": training_epoch_phase(0)},
+            {"ts": 3.0, "event": "phase_end", "run_identifier": "abc123", "phase": training_epoch_phase(0), "duration_ms": 1000.0},
+            {"ts": 4.0, "event": "session_end", "run_identifier": "abc123", "duration_ms": 3000.0},
         ],
     )
     metadata_runtime = MetadataRuntime()
@@ -384,29 +384,29 @@ def test_write_run_report_filters_appended_jsonl_to_current_session(tmp_path):
     _write_jsonl(
         jsonl_path,
         [
-            {"ts": 1.0, "event": "session_start", "run_id": "old-run", "gpu_used_mb": 100.0},
-            {"ts": 2.0, "event": "phase_start", "run_id": "old-run", "phase": training_epoch_phase(0), "gpu_allocated_mb": 10.0},
+            {"ts": 1.0, "event": "session_start", "run_identifier": "old-run", "gpu_used_mb": 100.0},
+            {"ts": 2.0, "event": "phase_start", "run_identifier": "old-run", "phase": training_epoch_phase(0), "gpu_allocated_mb": 10.0},
             {
                 "ts": 3.0,
                 "event": "phase_end",
-                "run_id": "old-run",
+                "run_identifier": "old-run",
                 "phase": training_epoch_phase(0),
                 "duration_ms": 1000.0,
                 "gpu_allocated_mb": 20.0,
             },
-            {"ts": 4.0, "event": "session_end", "run_id": "old-run", "duration_ms": 3000.0, "gpu_used_mb": 150.0},
-            {"ts": 5.0, "event": "session_start", "run_id": "12345", "gpu_used_mb": 200.0},
-            {"ts": 6.0, "event": "phase_start", "run_id": "12345", "phase": training_epoch_phase(0), "gpu_allocated_mb": 30.0},
-            {"ts": 7.0, "event": "step_sample", "run_id": "12345", "phase": None, "gpu_used_mb": 300.0},
+            {"ts": 4.0, "event": "session_end", "run_identifier": "old-run", "duration_ms": 3000.0, "gpu_used_mb": 150.0},
+            {"ts": 5.0, "event": "session_start", "run_identifier": "12345", "gpu_used_mb": 200.0},
+            {"ts": 6.0, "event": "phase_start", "run_identifier": "12345", "phase": training_epoch_phase(0), "gpu_allocated_mb": 30.0},
+            {"ts": 7.0, "event": "step_sample", "run_identifier": "12345", "phase": None, "gpu_used_mb": 300.0},
             {
                 "ts": 8.0,
                 "event": "phase_end",
-                "run_id": "12345",
+                "run_identifier": "12345",
                 "phase": training_epoch_phase(0),
                 "duration_ms": 2000.0,
                 "gpu_allocated_mb": 40.0,
             },
-            {"ts": 9.0, "event": "session_end", "run_id": "12345", "duration_ms": 5000.0, "gpu_used_mb": 250.0},
+            {"ts": 9.0, "event": "session_end", "run_identifier": "12345", "duration_ms": 5000.0, "gpu_used_mb": 250.0},
         ],
     )
 
@@ -431,7 +431,7 @@ def test_write_run_report_filters_appended_jsonl_to_current_session(tmp_path):
     payload = json.loads(markdown_path.with_suffix(".json").read_text(encoding="utf-8"))
     assert payload["resource_monitor"]["event_count"] == 5
     assert payload["resource_monitor"]["total_jsonl_event_count"] == 9
-    assert payload["resource_monitor"]["session_start"]["run_id"] == "12345"
+    assert payload["resource_monitor"]["session_start"]["run_identifier"] == "12345"
     assert len(payload["resource_monitor"]["phases"]) == 1
     assert payload["resource_monitor"]["phases"][0]["duration_s"] == 2.0
     assert payload["resource_monitor"]["gpu_used_peak_session_mb"] == 300.0

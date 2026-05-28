@@ -184,7 +184,7 @@ class BasicResourceMonitor:
         accelerator: Accelerator,
         resource_monitor_config: ResourceMonitorConfig,
         output_jsonl_path: Path | None,
-        run_id: str | int | None = None,
+        run_identifier: str | int | None = None,
         config_name: str | None = None,
         git_sha: str | None = None,
         git_dirty: bool | None = None,
@@ -222,7 +222,7 @@ class BasicResourceMonitor:
         self._jsonl_flush_every_n_events = resource_monitor_config.jsonl_flush_every_n_events
         self._metadata_runtime = metadata_runtime
 
-        self._run_id = self._normalize_metadata_value(run_id)
+        self._run_identifier = self._normalize_metadata_value(run_identifier)
         self._config_name = self._normalize_metadata_value(config_name)
         self._git_sha = self._normalize_metadata_value(git_sha)
         self._git_dirty = git_dirty if isinstance(git_dirty, bool) else None
@@ -441,7 +441,7 @@ class BasicResourceMonitor:
             "world_size": self._world_size,
             "mode": self._mode,
             "device_scope": self._device_scope,
-            "run_id": self._run_id,
+            "run_identifier": self._run_identifier,
             "config_name": self._config_name,
             "git_sha": self._git_sha,
             "git_dirty": self._git_dirty,
@@ -514,11 +514,11 @@ class BasicResourceMonitor:
         self._write_jsonl_event(event_payload, force_flush=force_flush)
 
     def _file_metadata_event(self, event_payload: Mapping[str, Any]) -> None:
-        if self._metadata_runtime is None or self._run_id is None:
+        if self._metadata_runtime is None or self._run_identifier is None:
             return
         self._metadata_runtime.file(
             ResourceMonitorFacts(
-                run_identifier=self._run_id,
+                run_identifier=self._run_identifier,
                 event_name=str(event_payload["event"]),
                 ts=float(event_payload["ts"]),
                 rank=event_payload["rank"],
@@ -861,7 +861,7 @@ class SampledResourceMonitor(BasicResourceMonitor):
         accelerator: Accelerator,
         resource_monitor_config: ResourceMonitorConfig,
         output_jsonl_path: Path | None,
-        run_id: str | int | None = None,
+        run_identifier: str | int | None = None,
         config_name: str | None = None,
         git_sha: str | None = None,
         git_dirty: bool | None = None,
@@ -871,7 +871,7 @@ class SampledResourceMonitor(BasicResourceMonitor):
             accelerator=accelerator,
             resource_monitor_config=resource_monitor_config,
             output_jsonl_path=output_jsonl_path,
-            run_id=run_id,
+            run_identifier=run_identifier,
             config_name=config_name,
             git_sha=git_sha,
             git_dirty=git_dirty,
@@ -1257,7 +1257,7 @@ def create_resource_monitor(
     accelerator: Accelerator,
     resource_monitor_config: ResourceMonitorConfig,
     output_dir: str | Path | None = None,
-    run_id: str | int | None = None,
+    run_identifier: str | int | None = None,
     config_name: str | None = None,
     git_sha: str | None = None,
     git_dirty: bool | None = None,
@@ -1287,7 +1287,7 @@ def create_resource_monitor(
             accelerator=accelerator,
             resource_monitor_config=resource_monitor_config,
             output_jsonl_path=output_jsonl_path,
-            run_id=run_id,
+            run_identifier=run_identifier,
             config_name=config_name,
             git_sha=resolved_git_sha,
             git_dirty=resolved_git_dirty,
@@ -1298,7 +1298,7 @@ def create_resource_monitor(
         accelerator=accelerator,
         resource_monitor_config=resource_monitor_config,
         output_jsonl_path=output_jsonl_path,
-        run_id=run_id,
+        run_identifier=run_identifier,
         config_name=config_name,
         git_sha=resolved_git_sha,
         git_dirty=resolved_git_dirty,

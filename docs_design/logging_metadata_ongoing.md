@@ -25,9 +25,36 @@ I’d also seriously consider whether tag-frequency and model-hash compatibility
 - Rename `time_to_training_finished_s` to `time_to_run_ended_s` or `time_to_run_finished_s`. The markdown already moved to “Run Ended”; the JSON should match.
 - Keep runtime trace out of first-class metadata facts for now. [AnalyticsSnapshotFacts](/mnt/d/Projects/sd-scripts/library/metadata/dataclasses/observability.py:99) is a good holding place until the trace schema stabilizes.
 - Normalize Python-side naming to `run_identifier`. Right now [resource_monitor.py](/mnt/d/Projects/sd-scripts/library/logging/resource_monitor.py:153) still takes `run_id`, while metadata/report code prefers `run_identifier`. I’d make `run_identifier` the code-level source of truth and only preserve `run_id` in JSONL if compatibility matters.
+  Marker: [ADDRESSED 2026-05-28]
+  Current state:
+  [library/logging/resource_monitor.py](/mnt/d/Projects/sd-scripts/library/logging/resource_monitor.py:187)
+  now accepts `run_identifier`, stores `_run_identifier`, emits raw
+  resource-monitor events with a `run_identifier` field, and reports filter the
+  JSONL stream by that same name in
+  [library/logging/reports.py](/mnt/d/Projects/sd-scripts/library/logging/reports.py:227).
 - Consolidate Hydra context helpers. [metrics.resolve_hydra_config_name()](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:268) and [reports._resolve_hydra_context()](/mnt/d/Projects/sd-scripts/library/logging/reports.py:126) should become one shared helper.
+  Current state:
+  the duplication is small but real. `metrics.resolve_hydra_config_name()`
+  returns only `config_name`, while `reports._resolve_hydra_context()` performs
+  the same HydraConfig access and additionally returns task overrides.
 - Keep the `MetricsSink` vs `TrainingObserver` split. The current code still reads coherently: [MetricsSink](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:68) is tracker transport only, while [TrainingObserver](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:77) owns richer repo observability. I’d document that boundary more explicitly, not redesign it.
+  Current state:
+  this boundary is already visible in code. `MetricsSink` is just
+  `start_run/log_metrics/finish_run`, while
+  [LoggingTrainingObserver](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:127)
+  owns run lifecycle facts, startup-summary filing, console logging, artifact
+  logging, and metadata runtime state. `AccelerateMetricsSink` itself is mostly
+  a transport shim and intentionally leaves tracker init/end ownership with the
+  trainer/runtime path.
 - Add failure-path coverage around startup-phase exceptions, startup-eval exceptions, and failures after progress-bar creation but before epoch completion. The cleanup path in [Trainer.train()](/mnt/d/Projects/sd-scripts/library/training/runners/trainer.py:226) is good, but the trace/report tests are still thin there.
+  Current state:
+  the existing coverage is partial. Integration coverage in
+  [tests/integration/test_training_loop_integration.py](/mnt/d/Projects/sd-scripts/tests/integration/test_training_loop_integration.py:425)
+  exercises failure before the first synced step, and trainer tests in
+  [tests/unit/training/test_training_trainer.py](/mnt/d/Projects/sd-scripts/tests/unit/training/test_training_trainer.py:207)
+  already verify monitor shutdown and report writing on mid-run failure. What is
+  still missing is startup-phase failure, startup-eval failure, and the
+  “progress bar already spawned but no epoch completed yet” trace/report shape.
 - Keep the runtime trace single-threaded assumption for now. It’s fine as long as trainer-owned code is the only emitter.
 
 **Resource Investigation**
@@ -179,6 +206,22 @@ especially:
 - model / VAE hashing in
   [_append_model_source_compatibility_metadata()](/mnt/d/Projects/sd-scripts/library/metadata/emitters/run.py:344)
 
+Current state:
+`_build_training_ss_metadata()` is the central aggregator for the heavy work.
+It appends a large static metadata map, then performs three potentially
+expensive follow-ups in sequence:
+
+- adapter compatibility projection
+- dataset compatibility projection
+- model / VAE source hashing
+
+The dataset path is not just a couple of fields: it computes full tag frequency
+over the manifest, walks every manifest entry to build dataset-dir summaries,
+builds bucket-resolution summaries, and JSON-serializes all of those
+structures. The model-source path hashes the base model and VAE when those
+paths exist on disk, using both the legacy short hash and the configured
+full-hash algorithm.
+
 If the broader metadata/startup review still wants more visibility here, a
 later split could look like:
 
@@ -226,6 +269,49 @@ but they appear lower priority than startup/eval:
   and
   [_save_final_checkpoint_artifacts()](/mnt/d/Projects/sd-scripts/library/training/runners/trainer.py:796)
   are still not broken out as distinct finalization spans.
+
+Current state:
+`startup.runtime` is currently a small but mixed bucket. Today it includes:
+
+- `objective.build_runtime(...)`
+- loss-modifier runtime attachment
+- main-process live-plotter setup via `setup_live_plotter(...)`
+
+The finalization path is also more specific now than the old note implies:
+
+- `_save_final_state_if_enabled()` conditionally persists accelerator state
+- `_save_final_checkpoint_artifacts()` unwraps the trainable model, saves the
+  final checkpoint through the canonical checkpoint path, and may also emit a
+  loss-modifier sidecar checkpoint
+
+So if final shutdown timing ever matters, those two finalization helpers are
+good candidate boundaries rather than one generic “train end” bucket.
+
+## Remaining Investigation Notes
+
+These are still open, but the current code now gives a little more shape to
+what the next pass would actually be inspecting.
+
+### Resource Visibility Limits
+
+The resource monitor already supports a bit more than the earliest note
+suggested:
+
+- allocator/RSS snapshots from
+  [_collect_snapshot()](/mnt/d/Projects/sd-scripts/library/logging/resource_monitor.py:254)
+- sampled used-memory collection via NVML or `torch.cuda.mem_get_info()` in
+  [resource_monitor.py](/mnt/d/Projects/sd-scripts/library/logging/resource_monitor.py:907)
+- `device_scope` support for current-device vs `all_visible` aggregate reads
+
+But the current surfaces are still aggregate-oriented:
+
+- there are no per-device rows in the emitted phase summaries or report payloads
+- CPU virtual memory is not recorded, only RSS
+- allocation provenance is not tracked; deep mode exposes allocator counters,
+  not causal ownership of allocations
+
+That means `sd-scripts-83b` still looks like a separate observability expansion
+track rather than a quick polish pass on the current monitor.
 
 Those are useful to remember, but they should come after the broader startup /
 eval / logging ownership review rather than compete with it.

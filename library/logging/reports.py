@@ -224,9 +224,9 @@ def _load_resource_events(jsonl_path: Path | None) -> list[dict[str, Any]]:
     return events
 
 
-def _events_for_run(events: list[dict[str, Any]], run_id: Any) -> list[dict[str, Any]]:
-    normalized_run_id = _format_scalar(run_id)
-    run_events = [event for event in events if _format_scalar(event.get("run_id")) == normalized_run_id]
+def _events_for_run(events: list[dict[str, Any]], run_identifier: Any) -> list[dict[str, Any]]:
+    normalized_run_identifier = _format_scalar(run_identifier)
+    run_events = [event for event in events if _format_scalar(event.get("run_identifier")) == normalized_run_identifier]
     return run_events or events
 
 

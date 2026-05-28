@@ -316,7 +316,7 @@ def _make_basic_resource_monitor(trainer, *, tmp_path, config_name: str):
         accelerator=trainer.accelerator,
         resource_monitor_config=monitor_cfg,
         output_dir=tmp_path,
-        run_id="integration-run",
+        run_identifier="integration-run",
         config_name=config_name,
         git_sha="integration-sha",
         git_dirty=False,
