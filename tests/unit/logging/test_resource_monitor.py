@@ -24,7 +24,7 @@ def _make_cfg(**overrides):
         "enabled": True,
         "mode": "basic",
         "rank_scope": "main",
-        "phase_summary": True,
+        "phase_summary": "verbose",
         "component_breakdown": True,
         "log_every_n_steps": 1,
         "device_scope": "local",
@@ -122,6 +122,76 @@ class TestBasicResourceMonitorBehavior:
 
             assert mock_external.call_count >= 4
             assert mock_logger.info.call_count >= 3
+
+    def test_phase_events_still_emit_when_phase_summary_is_off(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic", phase_summary="off"),
+            output_jsonl_path=None,
+            run_id="run-1",
+            metadata_runtime=metadata_runtime,
+        )
+
+        with patch.object(monitor, "_log_info_external") as mock_log_info_external:
+            monitor.start_session()
+            monitor.phase_start(training_epoch_phase(0))
+            monitor.phase_end(training_epoch_phase(0))
+            monitor.end_session()
+
+        event_names = [event.event_type for event in metadata_runtime.snapshot().events]
+        assert "phase_start" in event_names
+        assert "phase_end" in event_names
+        assert not any(
+            call.args and isinstance(call.args[0], str) and call.args[0].startswith("Resource phase[")
+            for call in mock_log_info_external.call_args_list
+        )
+        assert training_epoch_phase(0) not in monitor._phase_states
+
+    def test_default_phase_summary_logs_only_curated_console_phases(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic", phase_summary="default"),
+            output_jsonl_path=None,
+            run_id="run-1",
+            metadata_runtime=metadata_runtime,
+        )
+
+        with patch.object(monitor, "_log_info_external") as mock_log_info_external:
+            monitor.start_session()
+            monitor.phase_start("training.prep.lr_scheduler")
+            monitor.phase_end("training.prep.lr_scheduler")
+            monitor.phase_start("startup.metadata")
+            monitor.phase_end("startup.metadata")
+            monitor.end_session()
+
+        phase_summary_calls = [
+            call for call in mock_log_info_external.call_args_list if call.args and isinstance(call.args[0], str) and call.args[0].startswith("Resource phase[")
+        ]
+        assert len(phase_summary_calls) == 1
+        assert phase_summary_calls[0].args[1] == "startup.metadata"
+
+        snapshot = metadata_runtime.snapshot()
+        phase_events = [event.facts["phase"] for event in snapshot.events if event.event_type in {"phase_start", "phase_end"}]
+        assert "training.prep.lr_scheduler" in phase_events
+        assert "startup.metadata" in phase_events
+
+    def test_default_phase_summary_uses_canonical_epoch_phase_matching(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic", phase_summary="default"),
+            output_jsonl_path=None,
+        )
+
+        assert monitor._should_log_phase_summary(training_epoch_phase(0)) is True
+        assert monitor._should_log_phase_summary("training.epoch.setup") is False
 
     def test_resource_monitor_files_metadata_without_jsonl_output(self):
         accelerator = MagicMock()

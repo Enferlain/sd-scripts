@@ -25,6 +25,7 @@ import psutil
 import torch
 from tqdm.auto import tqdm
 
+from library.logging.phase_tags import is_training_epoch_phase
 from library.logging.summaries import DiagnosticRow
 from library.metadata.dataclasses.observability import ResourceMonitorFacts
 from library.metadata.runtime import MetadataRuntime
@@ -37,6 +38,33 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_CONSOLE_PHASE_SUMMARY_PHASES = frozenset(
+    {
+        "startup.dataset_manifest",
+        "startup.metadata",
+        "cache.latents",
+        "cache.text_encoder",
+        "training.prep.trainables",
+        "training.prep.accelerator",
+        "checkpoint.save",
+    }
+)
+
+
+def _normalize_phase_summary_mode(value: object) -> str:
+    if isinstance(value, bool):
+        return "verbose" if value else "off"
+    if value is None:
+        return "off"
+    stripped = str(value).strip().lower()
+    if stripped == "true":
+        return "verbose"
+    if stripped == "false":
+        return "off"
+    if stripped:
+        return stripped
+    return "off"
 
 
 @dataclass(frozen=True)
@@ -165,7 +193,7 @@ class BasicResourceMonitor:
         self._accelerator = accelerator
         self._resource_monitor_config = resource_monitor_config
         self._rank_scope = resource_monitor_config.rank_scope
-        self._phase_summary = resource_monitor_config.phase_summary
+        self._phase_summary = _normalize_phase_summary_mode(resource_monitor_config.phase_summary)
         self._component_breakdown = resource_monitor_config.component_breakdown
         self._log_every_n_steps = resource_monitor_config.log_every_n_steps
         self._mode = resource_monitor_config.mode
@@ -217,6 +245,15 @@ class BasicResourceMonitor:
         if self._rank_scope == "all":
             return True
         return self._accelerator.is_main_process
+
+    def _should_log_phase_summary(self, phase_name: str) -> bool:
+        if self._phase_summary == "off":
+            return False
+        if self._phase_summary == "verbose":
+            return True
+        if phase_name in DEFAULT_CONSOLE_PHASE_SUMMARY_PHASES:
+            return True
+        return is_training_epoch_phase(phase_name)
 
     def _is_cuda_visible(self) -> bool:
         return torch.cuda.is_available()
@@ -604,7 +641,7 @@ class BasicResourceMonitor:
 
     def phase_start(self, name: str) -> None:
         try:
-            if not self._should_emit_this_rank() or not self._phase_summary:
+            if not self._should_emit_this_rank():
                 return
 
             self._process_sampler_updates(max_items=128)
@@ -620,7 +657,7 @@ class BasicResourceMonitor:
 
     def phase_end(self, name: str) -> None:
         try:
-            if not self._should_emit_this_rank() or not self._phase_summary:
+            if not self._should_emit_this_rank():
                 return
 
             self._process_sampler_updates(max_items=1024)
@@ -635,19 +672,20 @@ class BasicResourceMonitor:
             if start_state.sampled_peak_gpu_used_mb is not None:
                 sampled_peak_suffix = f", gpu_used_peak={self._format_gpu(start_state.sampled_peak_gpu_used_mb)}"
 
-            self._log_info_external(
-                ("Resource phase[%s]: duration=%.2fs, gpu_allocated=%s->%s, gpu_reserved=%s->%s, gpu_peak=%s%s, cpu_rss=%s->%s"),
-                name,
-                duration,
-                self._format_gpu(start_state.start_snapshot.gpu_allocated_mb),
-                self._format_gpu(end_snapshot.gpu_allocated_mb),
-                self._format_gpu(start_state.start_snapshot.gpu_reserved_mb),
-                self._format_gpu(end_snapshot.gpu_reserved_mb),
-                self._format_gpu(end_snapshot.gpu_peak_allocated_mb),
-                sampled_peak_suffix,
-                self._format_cpu(start_state.start_snapshot.cpu_rss_mb),
-                self._format_cpu(end_snapshot.cpu_rss_mb),
-            )
+            if self._should_log_phase_summary(name):
+                self._log_info_external(
+                    ("Resource phase[%s]: duration=%.2fs, gpu_allocated=%s->%s, gpu_reserved=%s->%s, gpu_peak=%s%s, cpu_rss=%s->%s"),
+                    name,
+                    duration,
+                    self._format_gpu(start_state.start_snapshot.gpu_allocated_mb),
+                    self._format_gpu(end_snapshot.gpu_allocated_mb),
+                    self._format_gpu(start_state.start_snapshot.gpu_reserved_mb),
+                    self._format_gpu(end_snapshot.gpu_reserved_mb),
+                    self._format_gpu(end_snapshot.gpu_peak_allocated_mb),
+                    sampled_peak_suffix,
+                    self._format_cpu(start_state.start_snapshot.cpu_rss_mb),
+                    self._format_cpu(end_snapshot.cpu_rss_mb),
+                )
 
             self._emit_event(
                 event="phase_end",

@@ -9,7 +9,7 @@
 # ═══════════════════════════════════════════════════════════════════════════
 
 defaults:
-  - /run_schema
+  - /_defaults/default
   - _self_
 
 mode: adapter

@@ -42,7 +42,10 @@ class ResourceMonitorConfig:
     queue_maxsize: int = field(default=1024, metadata={"help": "Max queued sampled events before drop policy applies"})
     drop_policy: str = field(default="drop_oldest", metadata={"help": "Queue policy: drop_oldest, drop_newest, block"})
     max_collection_ms: float = field(default=0.0, metadata={"help": "Optional per-collection budget in ms (0 disables enforcement)"})
-    phase_summary: bool = field(default=True, metadata={"help": "Emit phase start/end resource summaries"})
+    phase_summary: str | bool = field(
+        default="default",
+        metadata={"help": "Console resource phase summary mode: off, default, or verbose (bools map to off/verbose for compatibility)"},
+    )
     component_breakdown: bool = field(default=True, metadata={"help": "Emit startup component memory estimates"})
     deep_window_steps: int = field(default=0, metadata={"help": "Deep mode active window in steps (0 disables)"})
     deep_window_seconds: float = field(default=0.0, metadata={"help": "Deep mode active window in seconds (0 disables)"})

@@ -8,7 +8,7 @@
 # Trains UNet + TEs directly. Much higher VRAM usage than LoRA.
 
 defaults:
-  - /run_schema
+  - /_defaults/default
   - _self_
 
 mode: finetune

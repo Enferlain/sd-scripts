@@ -39,6 +39,48 @@ The current monitor already captures more than just a timer:
 
 What it still does not answer well is per-device detail, virtual memory, allocation origin, or “what exactly caused this startup phase to bloat.” That still feels like separate investigation work under `sd-scripts-83b`, not something to blur into the immediate cleanup pass.
 
+## Additional Addressed Follow-up
+
+Marker: [ADDRESSED 2026-05-28]
+
+The items below were also resolved during the same logging / trace cleanup
+slice, even though they were not originally grouped under the staged-review
+tomorrow section.
+
+### [ADDRESSED] Runtime Epoch Identity vs Display Counter Split
+
+Marker: [ADDRESSED]
+
+The code now makes the intended epoch split explicit:
+
+- zero-based runtime identity is represented separately as `epoch_index`
+- one-based user-facing progress remains presentation-only as `display_epoch`
+
+That means `training.epoch.<n>` and related runtime/trace identity stay
+zero-based without forcing the console `Epoch 1/N` progress banner to change.
+
+### [ADDRESSED] Runtime Milestone Naming
+
+Marker: [ADDRESSED]
+
+The machine-readable runtime trace payload no longer uses the older
+`time_to_training_finished_s` wording.
+
+It now uses `time_to_run_ended_s`, which matches the report language more
+closely and removes the old JSON/markdown naming mismatch.
+
+### [ADDRESSED] Trace-Only Bootstrap Phase Reporting
+
+Marker: [ADDRESSED]
+
+Benchmark/report output now surfaces bootstrap-only trace spans such as
+`startup.accelerator` more explicitly instead of leaving them as implicitly
+“missing” from the resource-phase view.
+
+This does not make them resource-monitor phases; it makes the report honest
+about the fact that they are runtime-trace-only because they begin before the
+resource monitor starts.
+
 ## Deferred Trace-Tag Follow-up
 
 This note is intentionally sequenced after the broader startup / eval /

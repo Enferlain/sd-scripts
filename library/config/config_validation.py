@@ -44,6 +44,22 @@ def _is_non_bool_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
 
+def _normalize_resource_monitor_phase_summary(value: object) -> object:
+    """Normalize phase-summary config values into canonical console modes."""
+    if isinstance(value, bool):
+        return "verbose" if value else "off"
+    if value is None:
+        return value
+    text_value = str(value).strip().lower()
+    if text_value == "true":
+        return "verbose"
+    if text_value == "false":
+        return "off"
+    if text_value:
+        return text_value
+    return "off"
+
+
 def _is_non_bool_int(value: object) -> bool:
     """Return True for int values, excluding bool."""
     return isinstance(value, int) and not isinstance(value, bool)
@@ -474,6 +490,7 @@ def prepare_config(cfg) -> None:
         if _is_non_bool_number(resource_monitor_cfg.deep_window_seconds) and resource_monitor_cfg.deep_window_seconds < 0:
             logger.warning(f"resource_monitor.deep_window_seconds={resource_monitor_cfg.deep_window_seconds} < 0, defaulting to 0.0")
             resource_monitor_cfg.deep_window_seconds = 0.0
+        resource_monitor_cfg.phase_summary = _normalize_resource_monitor_phase_summary(getattr(resource_monitor_cfg, "phase_summary", None))
     except AttributeError:
         pass
 
@@ -520,6 +537,14 @@ def validate_config(cfg) -> None:
             raise ValueError(
                 f"resource_monitor.device_scope must be one of {sorted(valid_device_scopes)}, got {resource_monitor_cfg.device_scope}"
             )
+
+        phase_summary = _normalize_resource_monitor_phase_summary(getattr(resource_monitor_cfg, "phase_summary", "default"))
+        valid_phase_summary_modes = {"off", "default", "verbose"}
+        if phase_summary not in valid_phase_summary_modes:
+            raise ValueError(
+                f"resource_monitor.phase_summary must be one of {sorted(valid_phase_summary_modes)}, got {phase_summary}"
+            )
+        resource_monitor_cfg.phase_summary = phase_summary
 
         valid_flush_modes = {"auto", "line", "batch"}
         if resource_monitor_cfg.jsonl_flush_mode not in valid_flush_modes:

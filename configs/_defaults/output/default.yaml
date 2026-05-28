@@ -42,7 +42,7 @@ logging:
     include_full_config: true
   resource_monitor:
     enabled: false
-    mode: off
+    mode: "off"
     log_every_n_steps: 0
     sample_interval_sec: 1.0
     rank_scope: main
@@ -53,7 +53,7 @@ logging:
     queue_maxsize: 1024
     drop_policy: drop_oldest
     max_collection_ms: 0.0
-    phase_summary: true
+    phase_summary: default
     component_breakdown: true
     deep_window_steps: 0
     deep_window_seconds: 0.0

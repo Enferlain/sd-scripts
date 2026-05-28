@@ -9,7 +9,7 @@
 #          This measures actual caching and loading performance, not just repeats
 
 defaults:
-  - /run_schema
+  - /_defaults/default
   - _self_
 
 mode: adapter

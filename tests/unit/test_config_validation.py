@@ -43,6 +43,7 @@ def make_prepare_cfg(overrides: dict | None = None):
                 "resource_monitor": {
                     "enabled": True,
                     "mode": "basic",
+                    "phase_summary": "default",
                     "log_every_n_steps": 0,
                     "sample_interval_sec": 1.0,
                     "jsonl_flush_every_n_events": 50,
@@ -295,6 +296,7 @@ class TestPrepareConfig:
                         "resource_monitor": {
                             "enabled": True,
                             "mode": "basic",
+                            "phase_summary": "default",
                             "log_every_n_steps": -3,
                             "sample_interval_sec": 1.0,
                             "jsonl_flush_every_n_events": 50,
@@ -309,6 +311,24 @@ class TestPrepareConfig:
         )
         prepare_config(cfg)
         assert cfg.output.logging.resource_monitor.log_every_n_steps == 0
+
+    def test_resource_monitor_phase_summary_normalizes_legacy_bools_and_strings(self):
+        """phase_summary should normalize compatibility inputs to canonical modes."""
+        cfg = make_prepare_cfg({"output": {"logging": {"resource_monitor": {"phase_summary": True}}}})
+        prepare_config(cfg)
+        assert cfg.output.logging.resource_monitor.phase_summary == "verbose"
+
+        cfg = make_prepare_cfg({"output": {"logging": {"resource_monitor": {"phase_summary": False}}}})
+        prepare_config(cfg)
+        assert cfg.output.logging.resource_monitor.phase_summary == "off"
+
+        cfg = make_prepare_cfg({"output": {"logging": {"resource_monitor": {"phase_summary": " DeFaUlT "}}}})
+        prepare_config(cfg)
+        assert cfg.output.logging.resource_monitor.phase_summary == "default"
+
+        cfg = make_prepare_cfg({"output": {"logging": {"resource_monitor": {"phase_summary": "   "}}}})
+        prepare_config(cfg)
+        assert cfg.output.logging.resource_monitor.phase_summary == "off"
 
     def test_cache_dir_defaults_to_train_data_dir(self):
         """cache_dir should default to train_data_dir when caching omits it."""
@@ -1638,6 +1658,22 @@ class TestValidateConfig:
         )
         with pytest.raises(ValueError, match="resource_monitor.mode must be one of"):
             validate_config(cfg)
+
+    def test_invalid_resource_monitor_phase_summary_raises(self):
+        """resource_monitor.phase_summary must be one of off/default/verbose."""
+        cfg = make_validate_cfg({"output": {"logging": {"resource_monitor": {"phase_summary": "loud"}}}})
+        with pytest.raises(ValueError, match="resource_monitor.phase_summary must be one of"):
+            validate_config(cfg)
+
+    def test_resource_monitor_phase_summary_validation_normalizes_value(self):
+        """Validation should normalize compatibility values back onto the config."""
+        cfg = make_validate_cfg({"output": {"logging": {"resource_monitor": {"phase_summary": True}}}})
+        validate_config(cfg)
+        assert cfg.output.logging.resource_monitor.phase_summary == "verbose"
+
+        cfg = make_validate_cfg({"output": {"logging": {"resource_monitor": {"phase_summary": " DeFaUlT "}}}})
+        validate_config(cfg)
+        assert cfg.output.logging.resource_monitor.phase_summary == "default"
 
     @pytest.mark.parametrize(
         ("field", "value", "message"),
