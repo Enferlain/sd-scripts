@@ -13,6 +13,7 @@ from typing import Any
 import torch
 import yaml
 
+from library.logging.phase_tags import is_training_epoch_phase
 from library.logging.summaries import build_trainer_diagnostic_rows, diagnostic_rows_to_memory_rows
 from library.metadata.dataclasses.observability import AnalyticsSnapshotFacts, RunReportFacts
 
@@ -79,6 +80,7 @@ class RunReportContext:
     global_step: int | None
     num_train_epochs: int | None
     component_memory_estimates: list[dict[str, Any]]
+    runtime_trace: dict[str, Any] | None
 
 
 def _safe_get(obj: Any, dotted_path: str, default: Any = None) -> Any:
@@ -193,6 +195,7 @@ def _normalize_path(path: Any) -> Path | None:
 
 def _build_run_report_context(trainer: Any) -> RunReportContext:
     resource_monitor = getattr(trainer, "_resource_monitor", None)
+    runtime_trace = getattr(trainer, "runtime_trace", None)
     return RunReportContext(
         cfg=trainer.cfg,
         resource_jsonl_path=_normalize_path(getattr(resource_monitor, "jsonl_path", None)),
@@ -204,6 +207,7 @@ def _build_run_report_context(trainer: Any) -> RunReportContext:
         global_step=getattr(trainer, "global_step", None),
         num_train_epochs=getattr(trainer, "num_train_epochs", None),
         component_memory_estimates=_estimate_component_memory_rows(trainer),
+        runtime_trace=runtime_trace.summary() if runtime_trace is not None else None,
     )
 
 
@@ -270,6 +274,40 @@ def _pair_phase_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return phase_rows
 
 
+def _collect_trace_only_phase_rows(
+    runtime_trace: dict[str, Any] | None,
+    resource_phase_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not isinstance(runtime_trace, dict):
+        return []
+
+    trace_phase_rows = runtime_trace.get("phases")
+    if not isinstance(trace_phase_rows, list):
+        return []
+
+    resource_phase_names = {
+        str(row["phase"]) for row in resource_phase_rows if isinstance(row, dict) and row.get("phase") is not None
+    }
+
+    trace_only_rows: list[dict[str, Any]] = []
+    for row in trace_phase_rows:
+        if not isinstance(row, dict):
+            continue
+        tag = row.get("tag")
+        if not isinstance(tag, str) or tag in resource_phase_names:
+            continue
+        trace_only_rows.append(
+            {
+                "tag": tag,
+                "start_offset_s": row.get("start_offset_s"),
+                "end_offset_s": row.get("end_offset_s"),
+                "duration_s": row.get("duration_s"),
+                "coverage_note": "Trace-only span with no matching resource-monitor phase row.",
+            }
+        )
+    return trace_only_rows
+
+
 def _collect_key_config_rows(cfg: Any, *, hydra_config_name: str | None, hydra_overrides: list[str]) -> list[tuple[str, Any]]:
     key_paths = [("hydra.config_name", hydra_config_name)]
     key_paths.extend((path, _safe_get(cfg, path)) for path in REPORT_KEY_CONFIG_PATHS)
@@ -298,6 +336,10 @@ def _build_report_payload_from_context(
     all_events = _load_resource_events(jsonl_path)
     events = _events_for_run(all_events, context.session_id)
     phase_rows = _pair_phase_events(events)
+    runtime_trace = context.runtime_trace
+    if isinstance(context.runtime_trace, dict):
+        runtime_trace = dict(context.runtime_trace)
+        runtime_trace["trace_only_phases"] = _collect_trace_only_phase_rows(runtime_trace, phase_rows)
     session_start = next((event for event in events if event.get("event") == "session_start"), None)
     session_end = next((event for event in reversed(events) if event.get("event") == "session_end"), None)
     finished_at = time.time()
@@ -306,7 +348,7 @@ def _build_report_payload_from_context(
         default=None,
     )
 
-    training_phases = [row for row in phase_rows if str(row["phase"]).startswith("training_epoch_")]
+    training_phases = [row for row in phase_rows if is_training_epoch_phase(str(row["phase"]))]
     training_duration_s = sum(row["duration_s"] or 0.0 for row in training_phases)
     optimization_steps = context.global_step or _safe_get(context.cfg, "training.max_train_steps", 0) or 0
     train_seconds_per_step = training_duration_s / optimization_steps if optimization_steps else None
@@ -334,6 +376,7 @@ def _build_report_payload_from_context(
             "gpu": _gpu_info(),
             "cuda_available": torch.cuda.is_available(),
         },
+        "runtime_trace": runtime_trace,
         "resource_monitor": {
             "jsonl_path": None if jsonl_path is None else str(jsonl_path),
             "event_count": len(events),
@@ -434,6 +477,66 @@ def _render_report_markdown(payload: dict[str, Any]) -> str:
             f"| Training | {training_speed} |",
         ]
     )
+
+    runtime_trace = payload.get("runtime_trace")
+    if isinstance(runtime_trace, dict):
+        milestone_rows = [
+            ("Launch -> Progress Bar", runtime_trace.get("milestones", {}).get("time_to_progress_bar_s")),
+            ("Launch -> First Step Started", runtime_trace.get("milestones", {}).get("time_to_first_step_started_s")),
+            ("Launch -> First Synced Step", runtime_trace.get("milestones", {}).get("time_to_first_synced_step_s")),
+            ("Launch -> Run Ended", runtime_trace.get("milestones", {}).get("time_to_run_ended_s")),
+        ]
+        non_null_milestones = [(label, value) for label, value in milestone_rows if value is not None]
+        phase_totals = runtime_trace.get("phase_totals")
+        trace_only_phase_rows = runtime_trace.get("trace_only_phases")
+        slowest_phase_rows = []
+        if isinstance(phase_totals, dict):
+            slowest_phase_rows = sorted(
+                ((str(tag), total) for tag, total in phase_totals.items() if isinstance(total, (int, float))),
+                key=lambda item: item[1],
+                reverse=True,
+            )[:5]
+
+        if non_null_milestones:
+            lines.extend(
+                [
+                    "",
+                    "## Runtime Trace",
+                    "",
+                    "| Milestone | Time |",
+                    "|-----------|------|",
+                ]
+            )
+            for label, value in non_null_milestones:
+                lines.append(f"| {label} | {_format_seconds(value)} |")
+
+        if slowest_phase_rows:
+            lines.extend(
+                [
+                    "",
+                    "| Slowest Phase | Total Time |",
+                    "|---------------|------------|",
+                ]
+            )
+            for tag, total in slowest_phase_rows:
+                lines.append(f"| `{tag}` | {_format_seconds(total)} |")
+
+        if isinstance(trace_only_phase_rows, list) and trace_only_phase_rows:
+            lines.extend(
+                [
+                    "",
+                    "## Trace-only Phases",
+                    "",
+                    "| Phase | Duration | Note |",
+                    "|-------|----------|------|",
+                ]
+            )
+            for row in trace_only_phase_rows:
+                if not isinstance(row, dict):
+                    continue
+                lines.append(
+                    f"| `{row.get('tag')}` | {_format_seconds(row.get('duration_s'))} | {row.get('coverage_note', 'Trace-only span')} |"
+                )
 
     component_rows = payload.get("component_memory_estimates") or []
     if component_rows:
@@ -651,6 +754,7 @@ def _build_report_analytics_snapshot_payload(payload: dict[str, Any]) -> dict[st
         "system": payload.get("system"),
         "resource_monitor": payload.get("resource_monitor"),
         "component_memory_estimates": payload.get("component_memory_estimates"),
+        "runtime_trace": payload.get("runtime_trace"),
         "key_config": payload.get("key_config"),
         "include_full_config": payload.get("include_full_config"),
     }

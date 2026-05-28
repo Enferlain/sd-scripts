@@ -7,6 +7,8 @@ Tests the caching phase functions with mocked trainer state.
 import pytest
 from unittest.mock import MagicMock, patch
 
+from library.logging.phase_tags import PHASE_CACHE_LATENTS, PHASE_CACHE_TEXT_ENCODER
+
 
 @pytest.mark.training
 @pytest.mark.unit
@@ -139,8 +141,8 @@ class TestRunLatentCaching:
 
             run_latent_caching(mock_trainer)
 
-            mock_trainer._resource_monitor.phase_start.assert_called_once_with("latent_caching")
-            mock_trainer._resource_monitor.phase_end.assert_called_once_with("latent_caching")
+            mock_trainer._resource_monitor.phase_start.assert_called_once_with(PHASE_CACHE_LATENTS)
+            mock_trainer._resource_monitor.phase_end.assert_called_once_with(PHASE_CACHE_LATENTS)
 
 
 @pytest.mark.training
@@ -234,5 +236,5 @@ class TestRunTECaching:
 
             run_te_caching(mock_trainer)
 
-            mock_trainer._resource_monitor.phase_start.assert_called_with("te_caching")
-            mock_trainer._resource_monitor.phase_end.assert_called_with("te_caching")
+            mock_trainer._resource_monitor.phase_start.assert_called_with(PHASE_CACHE_TEXT_ENCODER)
+            mock_trainer._resource_monitor.phase_end.assert_called_with(PHASE_CACHE_TEXT_ENCODER)

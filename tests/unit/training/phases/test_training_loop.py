@@ -8,6 +8,13 @@ import pytest
 from unittest.mock import MagicMock, patch, PropertyMock
 import torch
 
+from library.logging.phase_tags import (
+    EVENT_TRAINING_FIRST_STEP_STARTED,
+    EVENT_TRAINING_FIRST_STEP_SYNCED,
+    EVENT_TRAINING_PROGRESS_BAR_STARTED,
+    training_epoch_phase,
+)
+
 
 @pytest.mark.training
 @pytest.mark.unit
@@ -39,6 +46,117 @@ class TestRunTrainingLoop:
 
             mock_tqdm.assert_called_once()
             assert mock_trainer._progress_bar is created_bar
+            assert mock_trainer.runtime_trace.summary()["events"] == [
+                {"tag": EVENT_TRAINING_PROGRESS_BAR_STARTED, "offset_s": 0.0}
+            ]
+
+    def test_records_first_step_started_and_synced_runtime_trace_events(self, mock_trainer):
+        """Training loop should record milestone events for the first real optimization step."""
+        mock_trainer.num_train_epochs = 1
+        mock_trainer.epoch_to_start = 0
+        mock_trainer.global_step = 0
+        mock_trainer.max_train_steps = 2
+
+        fake_batches = [{"latent": torch.randn(1, 4, 64, 64)}]
+        mock_dataloader = MagicMock()
+        mock_dataloader.__iter__ = MagicMock(return_value=iter(fake_batches))
+
+        with (
+            patch("library.training.phases.training_loop.prepare_epoch"),
+            patch("library.training.phases.training_loop.create_training_dataloader", return_value=mock_dataloader),
+            patch("library.training.phases.training_loop.CaptionConfig"),
+            patch("library.training.phases.training_loop.determine_grad_sync_context") as mock_ctx,
+            patch("library.training.phases.training_loop.sample_images_check", return_value=False),
+            patch("library.training.phases.training_loop.generate_step_logs", return_value={}),
+        ):
+            mock_ctx.return_value.__enter__ = MagicMock()
+            mock_ctx.return_value.__exit__ = MagicMock()
+
+            from library.training.phases.training_loop import run_training_loop
+
+            run_training_loop(mock_trainer)
+
+            event_tags = [event["tag"] for event in mock_trainer.runtime_trace.summary()["events"]]
+            assert EVENT_TRAINING_FIRST_STEP_STARTED in event_tags
+            assert EVENT_TRAINING_FIRST_STEP_SYNCED in event_tags
+            assert mock_trainer.runtime_trace.summary()["phase_totals"][training_epoch_phase(0)] == 0.0
+
+    def test_keeps_display_epoch_one_based_while_runtime_phase_uses_zero_based_index(self, mock_trainer):
+        """Banner/tracker epoch should stay one-based while runtime phase tags stay zero-based."""
+        mock_trainer.num_train_epochs = 1
+        mock_trainer.epoch_to_start = 0
+        mock_trainer.global_step = 0
+        mock_trainer.max_train_steps = 1
+
+        mock_dataloader = MagicMock()
+        mock_dataloader.__iter__ = MagicMock(return_value=iter([]))
+
+        with (
+            patch("library.training.phases.training_loop.prepare_epoch"),
+            patch("library.training.phases.training_loop.create_training_dataloader", return_value=mock_dataloader),
+            patch("library.training.phases.training_loop.CaptionConfig"),
+        ):
+            from library.training.phases.training_loop import run_training_loop
+
+            run_training_loop(mock_trainer)
+
+            mock_trainer.print_progress_message.assert_called_once_with("Epoch 1/1")
+            assert mock_trainer._current_epoch_state.value == 1
+            assert mock_trainer.runtime_trace.summary()["phase_totals"][training_epoch_phase(0)] == 0.0
+
+    def test_resume_epoch_keeps_runtime_index_zero_based_and_banner_one_based(self, mock_trainer):
+        """Resumed epochs should keep zero-based runtime identity and one-based display text."""
+        mock_trainer.num_train_epochs = 5
+        mock_trainer.epoch_to_start = 3
+        mock_trainer.global_step = 0
+        mock_trainer.max_train_steps = 1
+        mock_trainer.cfg.training.max_train_steps = 1
+
+        fake_batches = [{"latent": torch.randn(1, 4, 64, 64)}]
+        mock_dataloader = MagicMock()
+        mock_dataloader.__iter__ = MagicMock(return_value=iter(fake_batches))
+
+        with (
+            patch("library.training.phases.training_loop.prepare_epoch"),
+            patch("library.training.phases.training_loop.create_training_dataloader", return_value=mock_dataloader),
+            patch("library.training.phases.training_loop.CaptionConfig"),
+            patch("library.training.phases.training_loop.determine_grad_sync_context") as mock_ctx,
+            patch("library.training.phases.training_loop.sample_images_check", return_value=False),
+            patch("library.training.phases.training_loop.generate_step_logs", return_value={}),
+        ):
+            mock_ctx.return_value.__enter__ = MagicMock()
+            mock_ctx.return_value.__exit__ = MagicMock()
+
+            from library.training.phases.training_loop import run_training_loop
+
+            run_training_loop(mock_trainer)
+
+            mock_trainer.print_progress_message.assert_called_once_with("Epoch 4/5")
+            assert mock_trainer._current_epoch_state.value == 4
+            assert mock_trainer.runtime_trace.summary()["phase_totals"][training_epoch_phase(3)] == 0.0
+
+    def test_multiple_epochs_record_distinct_runtime_phase_tags(self, mock_trainer):
+        """Each epoch should keep its own zero-based runtime phase tag."""
+        mock_trainer.num_train_epochs = 2
+        mock_trainer.epoch_to_start = 0
+        mock_trainer.global_step = 0
+        mock_trainer.max_train_steps = 10
+
+        mock_dataloader = MagicMock()
+        mock_dataloader.__iter__ = MagicMock(return_value=iter([]))
+
+        with (
+            patch("library.training.phases.training_loop.prepare_epoch"),
+            patch("library.training.phases.training_loop.create_training_dataloader", return_value=mock_dataloader),
+            patch("library.training.phases.training_loop.CaptionConfig"),
+        ):
+            from library.training.phases.training_loop import run_training_loop
+
+            run_training_loop(mock_trainer)
+
+            phase_totals = mock_trainer.runtime_trace.summary()["phase_totals"]
+            assert training_epoch_phase(0) in phase_totals
+            assert training_epoch_phase(1) in phase_totals
 
     def test_creates_dataloader_per_epoch(self, mock_trainer):
         """Test that dataloader is created for each epoch."""

@@ -16,6 +16,12 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 import torch
 
+from library.logging.phase_tags import (
+    EVENT_TRAINING_FIRST_STEP_STARTED,
+    EVENT_TRAINING_FIRST_STEP_SYNCED,
+    training_epoch_phase,
+)
+from library.logging.runtime_trace import RuntimeTrace
 from library.logging.resource_monitor import create_resource_monitor
 from library.losses.loss_modifiers import BatchLossOutput, LossModifierOutput
 from library.training.phases.training_loop import run_training_loop
@@ -260,6 +266,9 @@ def _make_mock_trainer(
     trainer._validation_scheduler = MagicMock()
     trainer._validation_scheduler.should_run = MagicMock(return_value=False)
     trainer._resource_monitor = MagicMock()
+    trainer.runtime_trace = RuntimeTrace(0.0, clock=lambda: 0.0)
+    trainer._runtime_trace_first_step_started = False
+    trainer._runtime_trace_first_step_synced = False
 
     # ---- train_manifest ----
     trainer.train_manifest = MagicMock()
@@ -397,6 +406,36 @@ class TestTrainingLoopStepAdvancement:
         assert trainer._resource_monitor.phase_start.call_count == num_epochs
         assert trainer._resource_monitor.phase_end.call_count == num_epochs
         assert trainer._resource_monitor.step_end.call_count == num_epochs * batches_per_epoch
+
+    def test_runtime_trace_records_epoch_phase_and_first_step_milestones(self):
+        """Runtime trace should keep zero-based epoch tags and first-step milestones."""
+        trainer = _make_mock_trainer(
+            num_epochs=1,
+            batches_per_epoch=2,
+        )
+
+        _run_loop_with_mock_dataloader(trainer, 2)
+
+        summary = trainer.runtime_trace.summary()
+        assert summary["phase_totals"][training_epoch_phase(0)] == 0.0
+        event_tags = [event["tag"] for event in summary["events"]]
+        assert event_tags == [EVENT_TRAINING_FIRST_STEP_STARTED, EVENT_TRAINING_FIRST_STEP_SYNCED]
+
+    def test_runtime_trace_stays_valid_when_training_fails_before_first_synced_step(self):
+        """Failure before the first synced step should still leave a readable trace summary."""
+        trainer = _make_mock_trainer(
+            num_epochs=1,
+            batches_per_epoch=2,
+        )
+        trainer.strategies.process_batch.side_effect = RuntimeError("boom")
+
+        with pytest.raises(RuntimeError, match="boom"):
+            _run_loop_with_mock_dataloader(trainer, 2)
+
+        summary = trainer.runtime_trace.summary()
+        assert summary["phase_totals"][training_epoch_phase(0)] == 0.0
+        event_tags = [event["tag"] for event in summary["events"]]
+        assert event_tags == [EVENT_TRAINING_FIRST_STEP_STARTED]
 
 
 class TestResourceMonitorBasicIntegration:
@@ -609,5 +648,5 @@ class TestCheckpointTriggersOnEpochEnd:
         with pytest.raises(RuntimeError, match="boom"):
             _run_loop_with_mock_dataloader(trainer, 2)
 
-        trainer._resource_monitor.phase_start.assert_called_once_with("training_epoch_1")
-        trainer._resource_monitor.phase_end.assert_called_once_with("training_epoch_1")
+        trainer._resource_monitor.phase_start.assert_called_once_with(training_epoch_phase(0))
+        trainer._resource_monitor.phase_end.assert_called_once_with(training_epoch_phase(0))

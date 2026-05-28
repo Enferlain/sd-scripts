@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import logging
 from typing import Any
 
 import torch
@@ -9,8 +8,6 @@ import torch
 from library.models.sd3.conversion import save_models
 from library.strategies.base.contracts import CheckpointingStrategy
 from library.utils.model_metadata import get_model_metadata_from_config
-
-logger = logging.getLogger(__name__)
 
 
 class Sd3CheckpointingStrategy(CheckpointingStrategy):
@@ -69,7 +66,6 @@ class Sd3CheckpointingStrategy(CheckpointingStrategy):
         os.makedirs(cfg.output.saving.output_dir, exist_ok=True)
         ckpt_file = os.path.join(cfg.output.saving.output_dir, ckpt_name)
 
-        logger.info("[checkpoint] saving checkpoint: %s", ckpt_file)
         saved_paths = save_models(
             ckpt_file,
             mmdit=mmdit,

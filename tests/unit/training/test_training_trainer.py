@@ -1,13 +1,14 @@
 import logging
-import os
 import tempfile
 import unittest
 from contextlib import nullcontext
 from pathlib import Path
+from pathlib import PureWindowsPath
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from library.logging.console import MainProcessConsole
+from library.logging.runtime_trace import RuntimeTrace
 from library.metadata.dataclasses import RunMetadataFacts
 from library.training.metadata import TrainingMetadataState
 from library.training.runners.trainer import Trainer
@@ -107,6 +108,87 @@ class TestTrainer(unittest.TestCase):
 
         call_kwargs = self.mode.save_checkpoint.call_args
         self.assertIs(call_kwargs.kwargs["target_model"], mock_adapter)
+
+    def test_save_checkpoint_logs_canonical_phase_message_from_trainer(self):
+        """Trainer should own the canonical checkpoint save-start lifecycle log."""
+        self.trainer._accelerator = MagicMock()
+        self.cfg.output.saving.output_dir = "/tmp/out"
+        self.trainer._metadata_state = TrainingMetadataState(
+            full=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+            minimum=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+        )
+        self.trainer._resource_monitor = MagicMock()
+        self.trainer.runtime_trace = MagicMock()
+        self.mode.save_checkpoint = MagicMock()
+
+        with patch("library.training.runners.trainer.logger") as mock_logger:
+            self.trainer.save_checkpoint(
+                "adapter.safetensors",
+                MagicMock(name="adapter"),
+                step=50,
+                epoch=1,
+            )
+
+        logged_paths = [str(call.args[2]).replace("\\", "/") for call in mock_logger.info.call_args_list if len(call.args) >= 3]
+        self.assertIn("/tmp/out/adapter.safetensors", logged_paths)
+
+    def test_save_checkpoint_normalizes_windows_like_output_path_in_log_message(self):
+        """Checkpoint lifecycle logs should avoid mixed path separators in rendered paths."""
+        self.trainer._accelerator = MagicMock()
+        self.cfg.output.saving.output_dir = "D:/Projects/sd-scripts/tests/test_output"
+        self.trainer._metadata_state = TrainingMetadataState(
+            full=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+            minimum=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+        )
+        self.trainer._resource_monitor = MagicMock()
+        self.trainer.runtime_trace = MagicMock()
+        self.mode.save_checkpoint = MagicMock()
+
+        with patch("library.training.runners.trainer.logger") as mock_logger:
+            self.trainer.save_checkpoint(
+                "adapter.safetensors",
+                MagicMock(name="adapter"),
+                step=50,
+                epoch=1,
+            )
+
+        logged_paths = [str(call.args[2]).replace("\\", "/") for call in mock_logger.info.call_args_list if len(call.args) >= 3]
+        self.assertIn("D:/Projects/sd-scripts/tests/test_output/adapter.safetensors", logged_paths)
+
+    def test_save_checkpoint_records_saved_event_before_runtime_trace_phase_end(self):
+        """Checkpoint completion event should land before the enclosing save phase closes."""
+        class _IncrementingClock:
+            def __init__(self):
+                self.value = 0.0
+
+            def __call__(self):
+                current = self.value
+                self.value += 1.0
+                return current
+
+        self.trainer._accelerator = MagicMock()
+        self.cfg.output.saving.output_dir = "/tmp/out"
+        self.trainer._metadata_state = TrainingMetadataState(
+            full=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+            minimum=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+        )
+        self.trainer._resource_monitor = MagicMock()
+        self.trainer.runtime_trace = RuntimeTrace(launched_perf=0.0, clock=_IncrementingClock())
+        self.mode.save_checkpoint = MagicMock()
+
+        self.trainer.save_checkpoint(
+            "adapter.safetensors",
+            MagicMock(name="adapter"),
+            step=50,
+            epoch=1,
+        )
+
+        summary = self.trainer.runtime_trace.summary()
+        checkpoint_phase = next(phase for phase in summary["phases"] if phase["tag"] == "checkpoint.save")
+        saved_event = next(event for event in summary["events"] if event["tag"] == "checkpoint.saved")
+
+        self.assertLess(checkpoint_phase["start_offset_s"], saved_event["offset_s"])
+        self.assertLess(saved_event["offset_s"], checkpoint_phase["end_offset_s"])
 
     def test_train_ends_resource_monitor_session_when_training_fails(self):
         """Resource monitor session should close even if training aborts mid-run."""
@@ -395,7 +477,12 @@ class TestTrainer(unittest.TestCase):
             expected_lineno = _emit()
 
         assert capture.record is not None
-        assert os.path.basename(capture.record.pathname) == "test_training_trainer.py"
+        normalized_basename = (
+            PureWindowsPath(capture.record.pathname).name
+            if "\\" in capture.record.pathname
+            else Path(capture.record.pathname).name
+        )
+        assert normalized_basename == "test_training_trainer.py"
         assert capture.record.lineno == expected_lineno
 
     def test_order_memory_components_follows_diagnostic_row_order(self):

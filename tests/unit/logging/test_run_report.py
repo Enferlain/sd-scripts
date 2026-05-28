@@ -11,10 +11,12 @@ from library.adapters.shared.trainables import AdapterTrainableParameterRef
 import torch
 import torch.nn as nn
 
+from library.logging.phase_tags import PHASE_CACHE_LATENTS, training_epoch_phase
 from library.logging.reports import (
     RunReportContext,
     _build_report_payload_from_context,
     _collect_key_config_rows,
+    _render_report_markdown,
     is_benchmark_report_enabled,
     write_run_report,
 )
@@ -71,6 +73,7 @@ def test_build_report_payload_from_context_uses_explicit_run_facts(tmp_path):
         global_step=5,
         num_train_epochs=2,
         component_memory_estimates=[{"name": "unet"}],
+        runtime_trace={"phases": [], "events": [], "phase_totals": {"startup.metadata": 1.2}, "milestones": {"time_to_progress_bar_s": 2.0}, "open_phases": []},
     )
 
     payload = _build_report_payload_from_context(context, succeeded=True, error_message=None)
@@ -83,8 +86,40 @@ def test_build_report_payload_from_context_uses_explicit_run_facts(tmp_path):
     assert payload["global_step"] == 5
     assert payload["num_train_epochs"] == 2
     assert payload["component_memory_estimates"] == [{"name": "unet"}]
+    assert payload["runtime_trace"]["phase_totals"]["startup.metadata"] == 1.2
     assert payload["resource_monitor"]["event_count"] == 0
     assert payload["include_full_config"] is False
+
+
+def test_render_report_markdown_skips_empty_runtime_trace_milestone_table():
+    payload = {
+        "generated_at": 0.0,
+        "status": "failed",
+        "hydra_config_name": "test_cfg",
+        "output_name": "test_run",
+        "total_duration_s": 1.0,
+        "mode_name": "AdapterMode",
+        "strategy_name": "SdxlTrainingStrategy",
+        "optimizer_name": None,
+        "global_step": 0,
+        "num_train_epochs": 0,
+        "output_dir": "/tmp/out",
+        "system": {"gpu": "CUDA unavailable", "python": "3.11", "pytorch": "2.x"},
+        "key_config": [],
+        "resource_monitor": {"phases": []},
+        "component_memory_estimates": [],
+        "include_full_config": False,
+        "runtime_trace": {
+            "phases": [],
+            "events": [],
+            "phase_totals": {},
+            "milestones": {},
+            "open_phases": [],
+        },
+    }
+
+    markdown = _render_report_markdown(payload)
+    assert "## Runtime Trace" not in markdown
 
 
 def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
@@ -106,7 +141,7 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
             {
                 "ts": 2.0,
                 "event": "phase_start",
-                "phase": "latent_caching",
+                "phase": PHASE_CACHE_LATENTS,
                 "gpu_allocated_mb": 100.0,
                 "gpu_reserved_mb": 120.0,
                 "gpu_peak_allocated_mb": 100.0,
@@ -116,7 +151,7 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
             {
                 "ts": 3.0,
                 "event": "phase_end",
-                "phase": "latent_caching",
+                "phase": PHASE_CACHE_LATENTS,
                 "duration_ms": 1000.0,
                 "gpu_allocated_mb": 110.0,
                 "gpu_reserved_mb": 130.0,
@@ -127,7 +162,7 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
             {
                 "ts": 4.0,
                 "event": "phase_start",
-                "phase": "training_epoch_1",
+                "phase": training_epoch_phase(0),
                 "gpu_allocated_mb": 150.0,
                 "gpu_reserved_mb": 170.0,
                 "gpu_peak_allocated_mb": 150.0,
@@ -138,7 +173,7 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
             {
                 "ts": 6.0,
                 "event": "phase_end",
-                "phase": "training_epoch_1",
+                "phase": training_epoch_phase(0),
                 "duration_ms": 2000.0,
                 "gpu_allocated_mb": 180.0,
                 "gpu_reserved_mb": 210.0,
@@ -188,6 +223,23 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
         session_id=12345,
         training_started_at=100.0,
         _resource_monitor=SimpleNamespace(jsonl_path=jsonl_path),
+        runtime_trace=SimpleNamespace(
+            summary=lambda: {
+                "phases": [
+                    {"tag": "startup.accelerator", "start_offset_s": 0.0, "end_offset_s": 0.1, "duration_s": 0.1},
+                    {"tag": "training.epoch.0", "start_offset_s": 0.0, "end_offset_s": 2.0, "duration_s": 2.0},
+                ],
+                "events": [{"tag": "training.progress_bar.started", "offset_s": 0.5}],
+                "phase_totals": {"training.epoch.0": 2.0, "startup.metadata": 1.0},
+                "milestones": {
+                    "time_to_progress_bar_s": 0.5,
+                    "time_to_first_step_started_s": 0.8,
+                    "time_to_first_synced_step_s": 1.2,
+                    "time_to_run_ended_s": 5.0,
+                },
+                "open_phases": [],
+            }
+        ),
     )
     trainer.mode.get_diagnostics_components.return_value = [("adapter", nn.Linear(4, 4))]
 
@@ -201,6 +253,9 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
     markdown = markdown_path.read_text(encoding="utf-8")
     assert "## Summary" in markdown
     assert "## Speed Results" in markdown
+    assert "## Runtime Trace" in markdown
+    assert "## Trace-only Phases" in markdown
+    assert "`startup.accelerator`" in markdown
     assert "## Full Composed Config" in markdown
     assert "GPU Used Peak" in markdown
     assert "unit_test_run" in markdown
@@ -208,6 +263,10 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
 
     payload = json.loads(markdown_path.with_suffix(".json").read_text(encoding="utf-8"))
     assert payload["status"] == "succeeded"
+    assert payload["runtime_trace"]["milestones"]["time_to_progress_bar_s"] == 0.5
+    assert payload["runtime_trace"]["milestones"]["time_to_run_ended_s"] == 5.0
+    assert "time_to_training_finished_s" not in payload["runtime_trace"]["milestones"]
+    assert payload["runtime_trace"]["trace_only_phases"][0]["tag"] == "startup.accelerator"
     assert payload["resource_monitor"]["gpu_used_peak_session_mb"] == 260.0
     assert payload["resource_monitor"]["phases"][0]["gpu_used_peak_mb"] == 180.0
     assert payload["resource_monitor"]["phases"][1]["gpu_used_peak_mb"] == 260.0
@@ -221,8 +280,8 @@ def test_write_run_report_files_metadata_record_when_observer_runtime_exists(tmp
         jsonl_path,
         [
             {"ts": 1.0, "event": "session_start", "run_id": "abc123"},
-            {"ts": 2.0, "event": "phase_start", "run_id": "abc123", "phase": "training_epoch_1"},
-            {"ts": 3.0, "event": "phase_end", "run_id": "abc123", "phase": "training_epoch_1", "duration_ms": 1000.0},
+            {"ts": 2.0, "event": "phase_start", "run_id": "abc123", "phase": training_epoch_phase(0)},
+            {"ts": 3.0, "event": "phase_end", "run_id": "abc123", "phase": training_epoch_phase(0), "duration_ms": 1000.0},
             {"ts": 4.0, "event": "session_end", "run_id": "abc123", "duration_ms": 3000.0},
         ],
     )
@@ -250,6 +309,15 @@ def test_write_run_report_files_metadata_record_when_observer_runtime_exists(tmp
         training_started_at=100.0,
         _resource_monitor=SimpleNamespace(jsonl_path=jsonl_path),
         _observer=SimpleNamespace(metadata_runtime=metadata_runtime),
+        runtime_trace=SimpleNamespace(
+            summary=lambda: {
+                "phases": [{"tag": "training.epoch.0", "start_offset_s": 0.0, "end_offset_s": 1.0, "duration_s": 1.0}],
+                "events": [{"tag": "training.progress_bar.started", "offset_s": 0.5}],
+                "phase_totals": {"training.epoch.0": 1.0},
+                "milestones": {"time_to_progress_bar_s": 0.5},
+                "open_phases": [],
+            }
+        ),
     )
     trainer.mode.get_diagnostics_components.return_value = []
 
@@ -276,6 +344,7 @@ def test_write_run_report_files_metadata_record_when_observer_runtime_exists(tmp
     assert analytics_record.facts["source"] == "library.logging.reports.write_run_report"
     analytics_payload = analytics_record.facts["payload"]
     assert analytics_payload["status"] == "succeeded"
+    assert analytics_payload["runtime_trace"]["phase_totals"]["training.epoch.0"] == 1.0
     assert analytics_payload["resource_monitor"]["event_count"] == 4
     assert analytics_payload["include_full_config"] is False
 
@@ -292,6 +361,9 @@ def test_write_run_report_handles_missing_jsonl_gracefully(tmp_path):
         session_id=999,
         training_started_at=100.0,
         _resource_monitor=SimpleNamespace(jsonl_path=output_dir / "missing.jsonl"),
+        runtime_trace=SimpleNamespace(
+            summary=lambda: {"phases": [], "events": [], "phase_totals": {}, "milestones": {}, "open_phases": []}
+        ),
     )
     trainer.mode.get_diagnostics_components.return_value = []
 
@@ -313,24 +385,24 @@ def test_write_run_report_filters_appended_jsonl_to_current_session(tmp_path):
         jsonl_path,
         [
             {"ts": 1.0, "event": "session_start", "run_id": "old-run", "gpu_used_mb": 100.0},
-            {"ts": 2.0, "event": "phase_start", "run_id": "old-run", "phase": "training_epoch_1", "gpu_allocated_mb": 10.0},
+            {"ts": 2.0, "event": "phase_start", "run_id": "old-run", "phase": training_epoch_phase(0), "gpu_allocated_mb": 10.0},
             {
                 "ts": 3.0,
                 "event": "phase_end",
                 "run_id": "old-run",
-                "phase": "training_epoch_1",
+                "phase": training_epoch_phase(0),
                 "duration_ms": 1000.0,
                 "gpu_allocated_mb": 20.0,
             },
             {"ts": 4.0, "event": "session_end", "run_id": "old-run", "duration_ms": 3000.0, "gpu_used_mb": 150.0},
             {"ts": 5.0, "event": "session_start", "run_id": "12345", "gpu_used_mb": 200.0},
-            {"ts": 6.0, "event": "phase_start", "run_id": "12345", "phase": "training_epoch_1", "gpu_allocated_mb": 30.0},
+            {"ts": 6.0, "event": "phase_start", "run_id": "12345", "phase": training_epoch_phase(0), "gpu_allocated_mb": 30.0},
             {"ts": 7.0, "event": "step_sample", "run_id": "12345", "phase": None, "gpu_used_mb": 300.0},
             {
                 "ts": 8.0,
                 "event": "phase_end",
                 "run_id": "12345",
-                "phase": "training_epoch_1",
+                "phase": training_epoch_phase(0),
                 "duration_ms": 2000.0,
                 "gpu_allocated_mb": 40.0,
             },
@@ -348,6 +420,9 @@ def test_write_run_report_filters_appended_jsonl_to_current_session(tmp_path):
         session_id=12345,
         training_started_at=100.0,
         _resource_monitor=SimpleNamespace(jsonl_path=jsonl_path),
+        runtime_trace=SimpleNamespace(
+            summary=lambda: {"phases": [], "events": [], "phase_totals": {}, "milestones": {}, "open_phases": []}
+        ),
     )
     trainer.mode.get_diagnostics_components.return_value = []
 
@@ -374,6 +449,9 @@ def test_write_run_report_uses_adapter_provenance_for_component_memory_rows(tmp_
         session_id=1,
         training_started_at=100.0,
         _resource_monitor=SimpleNamespace(jsonl_path=output_dir / "missing.jsonl"),
+        runtime_trace=SimpleNamespace(
+            summary=lambda: {"phases": [], "events": [], "phase_totals": {}, "milestones": {}, "open_phases": []}
+        ),
     )
 
     adapter = SimpleNamespace()

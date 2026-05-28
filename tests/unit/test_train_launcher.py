@@ -133,6 +133,9 @@ def test_train_wires_mode_strategy_and_trainer(
     mock_validate_config.assert_called_once_with(cfg)
     mock_build_training_strategy.assert_called_once_with(cfg)
     mock_build_training_mode.assert_called_once_with(cfg)
-    mock_trainer_cls.assert_called_once_with(cfg, strategies, mode)
+    mock_trainer_cls.assert_called_once()
+    call_args = mock_trainer_cls.call_args
+    assert call_args.args == (cfg, strategies, mode)
+    assert "process_launched_perf" in call_args.kwargs
     mock_install_double_ctrl_c_guard.assert_called_once_with(trainer)
     trainer.train.assert_called_once_with()

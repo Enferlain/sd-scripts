@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import torch
 
+from library.logging.phase_tags import PHASE_CACHE_LATENTS, training_epoch_phase
 from library.logging.summaries import DiagnosticRow
 from library.logging.resource_monitor import (
     BasicResourceMonitor,
@@ -93,9 +94,9 @@ class TestBasicResourceMonitorBehavior:
 
         with patch("library.logging.resource_monitor.logger") as mock_logger:
             monitor.start_session()
-            monitor.phase_start("training_epoch_1")
+            monitor.phase_start(training_epoch_phase(0))
             monitor.step_end(global_step=1, epoch=1)
-            monitor.phase_end("training_epoch_1")
+            monitor.phase_end(training_epoch_phase(0))
             monitor.end_session()
 
             assert mock_logger.info.call_count >= 3
@@ -114,9 +115,9 @@ class TestBasicResourceMonitorBehavior:
             patch("library.logging.resource_monitor.tqdm.external_write_mode", return_value=nullcontext()) as mock_external,
         ):
             monitor.start_session()
-            monitor.phase_start("training_epoch_1")
+            monitor.phase_start(training_epoch_phase(0))
             monitor.step_end(global_step=1, epoch=1)
-            monitor.phase_end("training_epoch_1")
+            monitor.phase_end(training_epoch_phase(0))
             monitor.end_session()
 
             assert mock_external.call_count >= 4
@@ -138,9 +139,9 @@ class TestBasicResourceMonitorBehavior:
         )
 
         monitor.start_session()
-        monitor.phase_start("training_epoch_1")
+        monitor.phase_start(training_epoch_phase(0))
         monitor.step_end(global_step=1, epoch=1)
-        monitor.phase_end("training_epoch_1")
+        monitor.phase_end(training_epoch_phase(0))
         monitor.end_session()
 
         snapshot = metadata_runtime.snapshot()
@@ -155,7 +156,7 @@ class TestBasicResourceMonitorBehavior:
         assert snapshot.events[0].identity.identifier == "run-1"
         assert snapshot.events[0].schema_version == METADATA_PAYLOAD_VERSION
         assert snapshot.events[2].facts["global_step"] == 1
-        assert snapshot.events[3].facts["phase"] == "training_epoch_1"
+        assert snapshot.events[3].facts["phase"] == training_epoch_phase(0)
         assert snapshot.events[4].facts["duration_ms"] is not None
 
     def test_emit_startup_component_memory_logs_estimate(self):
@@ -306,9 +307,9 @@ class TestResourceMonitorJsonl:
         )
 
         monitor.start_session()
-        monitor.phase_start("training_epoch_1")
+        monitor.phase_start(training_epoch_phase(0))
         monitor.step_end(global_step=1, epoch=1)
-        monitor.phase_end("training_epoch_1")
+        monitor.phase_end(training_epoch_phase(0))
         monitor.end_session()
 
         jsonl_path = tmp_path / "resource" / "monitor.jsonl"
@@ -380,8 +381,8 @@ class TestResourceMonitorJsonl:
         )
 
         monitor.start_session()
-        monitor.phase_start("latent_caching")
-        monitor.phase_end("latent_caching")
+        monitor.phase_start(PHASE_CACHE_LATENTS)
+        monitor.phase_end(PHASE_CACHE_LATENTS)
 
         jsonl_path = tmp_path / "resource" / "batch_flush.jsonl"
         assert jsonl_path.exists()

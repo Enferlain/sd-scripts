@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 
 
 _NOOP_RESOURCE_MONITOR = NoOpResourceMonitor()
+logger = logging.getLogger(__name__)
 
 
 def get_resource_monitor(trainer):
@@ -26,11 +28,21 @@ def get_resource_monitor(trainer):
 def monitored_phase(trainer, phase_name: str) -> Iterator[object]:
     """Wrap a shared phase in paired resource-monitor lifecycle hooks."""
     monitor = get_resource_monitor(trainer)
+    runtime_trace = getattr(trainer, "runtime_trace", None)
     monitor.phase_start(phase_name)
+    if runtime_trace is not None:
+        runtime_trace.phase_start(phase_name)
     try:
         yield monitor
     finally:
-        monitor.phase_end(phase_name)
+        try:
+            monitor.phase_end(phase_name)
+        finally:
+            if runtime_trace is not None:
+                try:
+                    runtime_trace.phase_end(phase_name)
+                except Exception:  # pragma: no cover - defensive trace cleanup
+                    logger.exception("Runtime trace cleanup failed for phase %s", phase_name)
 
 
 @contextmanager

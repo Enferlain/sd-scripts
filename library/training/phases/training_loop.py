@@ -18,6 +18,12 @@ import torch
 from tqdm import tqdm
 
 from library.data import CaptionConfig, prepare_epoch, create_training_dataloader
+from library.logging.phase_tags import (
+    EVENT_TRAINING_FIRST_STEP_STARTED,
+    EVENT_TRAINING_FIRST_STEP_SYNCED,
+    EVENT_TRAINING_PROGRESS_BAR_STARTED,
+    training_epoch_phase,
+)
 from library.logging.metrics import generate_step_logs, step_logging
 from library.logging.training_plots import save_timestep_distribution_plot
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
@@ -466,6 +472,10 @@ def _run_epoch_steps(trainer: Trainer, *, epoch_ctx: EpochContext) -> EpochRunRe
             trainer._initial_step -= 1
             continue
 
+        if not trainer._runtime_trace_first_step_started:
+            trainer.runtime_trace.event(EVENT_TRAINING_FIRST_STEP_STARTED)
+            trainer._runtime_trace_first_step_started = True
+
         with determine_grad_sync_context(
             cfg.performance.precision,
             accelerator,
@@ -530,6 +540,9 @@ def _run_epoch_steps(trainer: Trainer, *, epoch_ctx: EpochContext) -> EpochRunRe
         if accelerator.sync_gradients:
             trainer._progress_bar.update(1)
             trainer.global_step += 1
+            if not trainer._runtime_trace_first_step_synced:
+                trainer.runtime_trace.event(EVENT_TRAINING_FIRST_STEP_SYNCED)
+                trainer._runtime_trace_first_step_synced = True
             _run_step_side_effects(
                 trainer,
                 step=step,
@@ -629,27 +642,31 @@ def run_training_loop(trainer: Trainer) -> None:
     assert trainer._validation_scheduler is not None, "trainer._validation_scheduler must be initialized before the training loop starts"
 
     if trainer._progress_bar is None:
-        logger.info("[training] starting progress bar")
+        logger.info("[%s] starting progress bar", EVENT_TRAINING_PROGRESS_BAR_STARTED)
         trainer._progress_bar = tqdm(
             range(trainer.max_train_steps - trainer._initial_step),
             smoothing=0,
             disable=not trainer.accelerator.is_local_main_process,
             desc="steps",
         )
+        trainer.runtime_trace.event(EVENT_TRAINING_PROGRESS_BAR_STARTED)
 
-    for epoch in range(trainer.epoch_to_start, trainer.num_train_epochs):
+    for epoch_index in range(trainer.epoch_to_start, trainer.num_train_epochs):
         if trainer.global_step >= cfg.training.max_train_steps:
             break
 
-        trainer._current_epoch_state.value = epoch + 1
-        trainer.print_progress_message(f"Epoch {trainer._current_epoch_state.value}/{trainer.num_train_epochs}")
+        # Keep the user-facing progress banner one-based while runtime phase
+        # identifiers continue to use the true zero-based epoch index.
+        display_epoch = epoch_index + 1
+        trainer._current_epoch_state.value = display_epoch
+        trainer.print_progress_message(f"Epoch {display_epoch}/{trainer.num_train_epochs}")
 
         trainer._set_training_metadata_fact("ss_epoch", trainer._current_epoch_state.value)
 
         trainer.mode.on_epoch_start(trainer)
-        epoch_phase_name = f"training_epoch_{epoch}"
+        epoch_phase_name = training_epoch_phase(epoch_index)
         with monitored_phase(trainer, epoch_phase_name):
-            epoch_ctx = _prepare_epoch_context(trainer, epoch=epoch)
+            epoch_ctx = _prepare_epoch_context(trainer, epoch=epoch_index)
             epoch_result = _run_epoch_steps(trainer, epoch_ctx=epoch_ctx)
 
         _finalize_epoch_if_completed(trainer, epoch_result=epoch_result)

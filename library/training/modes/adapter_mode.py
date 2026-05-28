@@ -386,7 +386,6 @@ class AdapterMode:
         os.makedirs(trainer.cfg.output.saving.output_dir, exist_ok=True)
         ckpt_file = os.path.join(trainer.cfg.output.saving.output_dir, ckpt_name)
 
-        logger.info("[checkpoint] saving checkpoint: %s", ckpt_file)
         metadata["ss_training_finished_at"] = str(time.time())
         metadata["ss_steps"] = str(step)
         metadata["ss_epoch"] = str(epoch)

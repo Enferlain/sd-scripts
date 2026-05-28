@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 import torch
 
+from library.logging.runtime_trace import RuntimeTrace
 from library.losses.loss_modifiers import BatchLossOutput, LossModifierOutput
 from library.models import LoadedModelComponent
 
@@ -339,6 +340,9 @@ def mock_trainer(mock_cfg, mock_accelerator, mock_strategies):
     trainer._validation_scheduler = MagicMock()
     trainer._validation_scheduler.should_run = MagicMock(return_value=False)
     trainer._resource_monitor = MagicMock()
+    trainer.runtime_trace = RuntimeTrace(0.0, clock=lambda: 0.0)
+    trainer._runtime_trace_first_step_started = False
+    trainer._runtime_trace_first_step_synced = False
 
     # trainable_model property (returns adapter for PEFT)
     type(trainer).trainable_model = PropertyMock(return_value=trainer.adapter)

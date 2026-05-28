@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from accelerate import Accelerator
 
 from library.utils import huggingface_util
+from library.logging.phase_tags import PHASE_CHECKPOINT_SAVE
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.output import HuggingFaceConfig
 
@@ -269,7 +270,7 @@ def save_sd_model_on_epoch_end_or_stepwise_common(
 
         ckpt_file = os.path.join(saving_config.output_dir, ckpt_name)
         logger.info("")
-        logger.info(f"[checkpoint] saving checkpoint: {ckpt_file}")
+        logger.info("[%s] saving checkpoint: %s", PHASE_CHECKPOINT_SAVE, ckpt_file)
         sd_saver(ckpt_file, epoch_no, global_step)
 
         # Upload to HuggingFace if configured

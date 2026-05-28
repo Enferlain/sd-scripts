@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from tqdm import tqdm
 
 from library.data import CachingEngine
+from library.logging.phase_tags import PHASE_CACHE_LATENTS, PHASE_CACHE_TEXT_ENCODER
 from library.training.phases.orchestration_helpers import monitored_phase
 from library.utils.device_utils import clean_memory_on_device
 
@@ -67,7 +68,7 @@ def run_latent_caching(trainer: Trainer) -> None:
         num_workers=trainer.cfg.data.caching.num_workers,
     )
 
-    with monitored_phase(trainer, "latent_caching"):
+    with monitored_phase(trainer, PHASE_CACHE_LATENTS):
         trainer.train_manifest = latent_caching_engine.cache_dataset(
             manifest=trainer.train_manifest,
             model=trainer.vae,
@@ -123,7 +124,7 @@ def run_te_caching(trainer: Trainer) -> None:
             batch_size=trainer.cfg.data.caching.te_batch_size,
         )
 
-        with monitored_phase(trainer, "te_caching"):
+        with monitored_phase(trainer, PHASE_CACHE_TEXT_ENCODER):
             trainer.train_manifest = te_caching_engine.cache_dataset(
                 manifest=trainer.train_manifest,
                 model=te_cache_model_bundle,
@@ -141,7 +142,7 @@ def run_te_caching(trainer: Trainer) -> None:
                 )
     else:
         # In-memory TE caching: compute and store in entry.te_outputs
-        with monitored_phase(trainer, "te_caching"):
+        with monitored_phase(trainer, PHASE_CACHE_TEXT_ENCODER):
 
             def _cache_te_in_memory(manifest, desc: str) -> None:
                 """Cache TE outputs in memory for a manifest."""

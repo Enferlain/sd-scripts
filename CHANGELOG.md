@@ -10,6 +10,22 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-27]
+
+### Changed
+
+- **Checkpoint save-start lifecycle logs now have one canonical training-owned home** — `Trainer.save_checkpoint()` now emits the canonical `[checkpoint.save] saving checkpoint: ...` line for both adapter and fine-tune paths, while SDXL/SD3 strategy serializers and adapter-mode saving no longer print their own competing save-start lifecycle messages.
+- **The training loop now makes epoch index vs display-epoch intent explicit without changing the `Epoch 1/N` banner UX** — `run_training_loop()` now uses a dedicated zero-based `epoch_index` for runtime phase identity and a separate one-based `display_epoch` for user-facing progress/tracker state, reducing ambiguity without forcing a zero-based console counter.
+- **The runtime trace/checkpoint helpers now align a little more tightly with the intended semantics** — training-epoch phase detection now only matches numeric `training.epoch.<n>` tags, checkpoint completion events are recorded before the enclosing checkpoint-save phase closes, and runtime-trace phase-end recording now keeps a phase open for diagnostics if unexpected end-recording failures occur mid-cleanup.
+- **Benchmark reports now explain bootstrap-only trace coverage more clearly and use cleaner runtime names** — the runtime trace milestone payload now uses `time_to_run_ended_s`, report payloads/markdown now call out trace-only spans such as `startup.accelerator` when they began before resource-monitor coverage existed, and checkpoint save-start lifecycle logs now normalize user-facing checkpoint paths instead of mixing separators on Windows-style output dirs.
+
+## [2026-05-26]
+
+### Changed
+
+- **Training/runtime traces now use a structured shared trace vocabulary instead of ad hoc labels** — added `library.logging.phase_tags` with an explicit split between duration-bearing phase tags and point-in-time event tags, then moved startup, cache, training-prep, training-epoch, progress-bar, and checkpoint traces onto that shared vocabulary so console logs, resource-monitor phases, and report parsing all describe the same runtime boundaries consistently.
+- **Launcher-relative runtime trace recording now ships with benchmark reports and analytics snapshots** — added a lightweight `library.logging.runtime_trace` recorder owned by `Trainer`, started it from the top of `train.py`, wired the canonical startup/cache/training/checkpoint phases plus first-step milestone events through the existing trainer seams, and surfaced the machine-readable trace summary in the benchmark report JSON/markdown and the existing benchmark analytics snapshot payload without changing the resource-monitor JSONL schema.
+
 ## [2026-05-22]
 
 ### Changed

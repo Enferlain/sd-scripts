@@ -22,6 +22,16 @@ from torch import nn
 
 from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.logging.console import MainProcessConsole
+from library.logging.phase_tags import (
+    EVENT_CHECKPOINT_SAVED,
+    PHASE_CHECKPOINT_SAVE,
+    PHASE_STARTUP_ACCELERATOR,
+    PHASE_STARTUP_DATASET_MANIFEST,
+    PHASE_STARTUP_METADATA,
+    PHASE_STARTUP_RUNTIME,
+    PHASE_STARTUP_SUMMARY,
+)
+from library.logging.runtime_trace import RuntimeTrace
 from library.logging.resource_monitor import create_resource_monitor
 from library.logging.reports import is_benchmark_report_enabled, write_run_report
 from library.logging.summaries import build_startup_memory_rows, build_trainer_diagnostic_rows, build_training_startup_summary
@@ -40,6 +50,7 @@ from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
 from library.optimization.types import OptimizationPlan
 from library.performance import deepspeed_utils
 from library.metadata.records import MetadataValue
+from library.training.phases.orchestration_helpers import monitored_phase
 from library.training.trainer_utils import prepare_accelerator
 from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
 from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
@@ -87,7 +98,14 @@ class Trainer:
         trainer.train()
     """
 
-    def __init__(self, cfg: Any, strategies: TrainingStrategy, mode: TrainingMode):
+    def __init__(
+        self,
+        cfg: Any,
+        strategies: TrainingStrategy,
+        mode: TrainingMode,
+        *,
+        process_launched_perf: float | None = None,
+    ):
         """
         Initialize the trainer.
 
@@ -150,6 +168,10 @@ class Trainer:
         # Session info
         self.session_id: int = random.randint(0, 2**32)
         self.training_started_at: float = time.time()
+        launched_perf = process_launched_perf if process_launched_perf is not None else time.perf_counter()
+        self.runtime_trace = RuntimeTrace(launched_perf)
+        self._runtime_trace_first_step_started = False
+        self._runtime_trace_first_step_synced = False
 
         # Metadata state for checkpoints (set during setup)
         self._metadata_state: TrainingMetadataState | None = None
@@ -230,6 +252,7 @@ class Trainer:
                 self._progress_bar = None
             if self._resource_monitor is not None:
                 self._resource_monitor.end_session()
+            self.runtime_trace.finish()
             if self.is_main_process and is_benchmark_report_enabled(self.cfg):
                 try:
                     report_path = write_run_report(self, succeeded=succeeded, error_message=error_message)
@@ -261,15 +284,16 @@ class Trainer:
         self.tokenizers = self.strategies.tokenizers
 
         # Prepare accelerator first (needed for distributed caching)
-        logger.info("[startup] preparing accelerator")
-        self._accelerator = prepare_accelerator(
-            self.cfg.performance.precision,
-            self.cfg.performance.compilation,
-            self.cfg.performance.distributed,
-            self.cfg.performance.deepspeed,
-            self.cfg.output.logging,
-            self.cfg.training,
-        )
+        logger.info("[%s] preparing accelerator", PHASE_STARTUP_ACCELERATOR)
+        with monitored_phase(self, PHASE_STARTUP_ACCELERATOR):
+            self._accelerator = prepare_accelerator(
+                self.cfg.performance.precision,
+                self.cfg.performance.compilation,
+                self.cfg.performance.distributed,
+                self.cfg.performance.deepspeed,
+                self.cfg.output.logging,
+                self.cfg.training,
+            )
         self.device = self.accelerator.device
         suppress_non_main_process_logging(self.accelerator.is_main_process)
         self._console = MainProcessConsole(is_main_process=self.accelerator.is_main_process)
@@ -293,55 +317,56 @@ class Trainer:
         self._current_step_state = getattr(self.accelerator.state, "step", None) or SimpleNamespace(value=0)
 
         # Create dataset manifest
-        logger.info("[dataset] preparing dataset manifest")
+        logger.info("[%s] preparing dataset manifest", PHASE_STARTUP_DATASET_MANIFEST)
         self._latent_dtype = "fp32" if self.cfg.performance.precision.no_half_vae else "fp16"
         self._cache_dir = self.cfg.data.caching.cache_dir or self.cfg.data.source.train_data_dir
 
-        if self.cfg.data.source.val_data_dir:
-            # Separate validation directory - create train manifest without val split
-            self.train_manifest = create_manifest_from_config(
-                data_config=self.cfg.data,
-                cache_dir=self._cache_dir,
-                latent_dtype=self._latent_dtype,
-                validation=False,
-            )
-            self.val_manifest = create_manifest_from_config(
-                data_config=self.cfg.data,
-                cache_dir=self._cache_dir,
-                latent_dtype=self._latent_dtype,
-                validation=True,
-            )
-        else:
-            # Use get_or_create_manifest for persistence and validation split
-            self.train_manifest, self.val_manifest = get_or_create_manifest(
-                data_config=self.cfg.data,
-                cache_dir=self._cache_dir,
-                latent_dtype=self._latent_dtype,
-                validation_split=self.cfg.validation.validation_split,
-                validation_seed=self.cfg.validation.validation_seed,
-            )
-
-            # If validation split was used, filter train entries
-            if self.val_manifest is not None:
-                train_entries = {k: v for k, v in self.train_manifest.entries.items() if v.split == "train"}
-                train_buckets = {}
-                for bucket_key, bucket in self.train_manifest.buckets.items():
-                    train_ids = [img_id for img_id in bucket.image_ids if img_id in train_entries]
-                    if train_ids:
-                        train_buckets[bucket_key] = Bucket(resolution=bucket.resolution, image_ids=train_ids)
-                self.train_manifest = DatasetManifest(
-                    version=self.train_manifest.version,
-                    created_at=self.train_manifest.created_at,
-                    base_resolution=self.train_manifest.base_resolution,
-                    bucket_reso_steps=self.train_manifest.bucket_reso_steps,
-                    min_bucket_reso=self.train_manifest.min_bucket_reso,
-                    max_bucket_reso=self.train_manifest.max_bucket_reso,
-                    latent_channels=self.train_manifest.latent_channels,
-                    latent_scale_factor=self.train_manifest.latent_scale_factor,
-                    latent_dtype=self.train_manifest.latent_dtype,
-                    entries=train_entries,
-                    buckets=train_buckets,
+        with monitored_phase(self, PHASE_STARTUP_DATASET_MANIFEST):
+            if self.cfg.data.source.val_data_dir:
+                # Separate validation directory - create train manifest without val split
+                self.train_manifest = create_manifest_from_config(
+                    data_config=self.cfg.data,
+                    cache_dir=self._cache_dir,
+                    latent_dtype=self._latent_dtype,
+                    validation=False,
                 )
+                self.val_manifest = create_manifest_from_config(
+                    data_config=self.cfg.data,
+                    cache_dir=self._cache_dir,
+                    latent_dtype=self._latent_dtype,
+                    validation=True,
+                )
+            else:
+                # Use get_or_create_manifest for persistence and validation split
+                self.train_manifest, self.val_manifest = get_or_create_manifest(
+                    data_config=self.cfg.data,
+                    cache_dir=self._cache_dir,
+                    latent_dtype=self._latent_dtype,
+                    validation_split=self.cfg.validation.validation_split,
+                    validation_seed=self.cfg.validation.validation_seed,
+                )
+
+                # If validation split was used, filter train entries
+                if self.val_manifest is not None:
+                    train_entries = {k: v for k, v in self.train_manifest.entries.items() if v.split == "train"}
+                    train_buckets = {}
+                    for bucket_key, bucket in self.train_manifest.buckets.items():
+                        train_ids = [img_id for img_id in bucket.image_ids if img_id in train_entries]
+                        if train_ids:
+                            train_buckets[bucket_key] = Bucket(resolution=bucket.resolution, image_ids=train_ids)
+                    self.train_manifest = DatasetManifest(
+                        version=self.train_manifest.version,
+                        created_at=self.train_manifest.created_at,
+                        base_resolution=self.train_manifest.base_resolution,
+                        bucket_reso_steps=self.train_manifest.bucket_reso_steps,
+                        min_bucket_reso=self.train_manifest.min_bucket_reso,
+                        max_bucket_reso=self.train_manifest.max_bucket_reso,
+                        latent_channels=self.train_manifest.latent_channels,
+                        latent_scale_factor=self.train_manifest.latent_scale_factor,
+                        latent_dtype=self.train_manifest.latent_dtype,
+                        entries=train_entries,
+                        buckets=train_buckets,
+                    )
 
         # Calculate batches per epoch for step calculations
         train_image_count = sum(e.num_repeats for e in self.train_manifest.entries.values() if not e.is_reg)
@@ -423,16 +448,20 @@ class Trainer:
             force_sync_upload: Force synchronous HuggingFace upload.
             dtype_override: Override save dtype (e.g. float32 for EDM2).
         """
-        self.mode.save_checkpoint(
-            self,
-            ckpt_name=ckpt_name,
-            step=step,
-            epoch=epoch,
-            metadata=self._build_checkpoint_metadata(ckpt_name=ckpt_name, step=step, epoch=epoch),
-            force_sync_upload=force_sync_upload,
-            dtype_override=dtype_override,
-            target_model=target_model,
-        )
+        ckpt_path = Path(self.cfg.output.saving.output_dir) / ckpt_name
+        logger.info("[%s] saving checkpoint: %s", PHASE_CHECKPOINT_SAVE, str(ckpt_path))
+        with monitored_phase(self, PHASE_CHECKPOINT_SAVE):
+            self.mode.save_checkpoint(
+                self,
+                ckpt_name=ckpt_name,
+                step=step,
+                epoch=epoch,
+                metadata=self._build_checkpoint_metadata(ckpt_name=ckpt_name, step=step, epoch=epoch),
+                force_sync_upload=force_sync_upload,
+                dtype_override=dtype_override,
+                target_model=target_model,
+            )
+            self.runtime_trace.event(EVENT_CHECKPOINT_SAVED)
 
         self._emit("on_checkpoint", step=step, epoch=epoch)
 
@@ -700,12 +729,15 @@ class Trainer:
         """Initialize the shared trainer runtime state before entering the loop."""
         total_batch_size = self._compute_total_batch_size()
         self._initialize_tracking_state()
-        logger.info("[startup] emitting training startup summary")
-        self._emit_training_startup_summary()
-        logger.info("[startup] assembling training metadata")
-        self._initialize_training_metadata(total_batch_size=total_batch_size)
-        logger.info("[startup] initializing training runtime helpers")
-        self._initialize_training_runtime()
+        logger.info("[%s] emitting training startup summary", PHASE_STARTUP_SUMMARY)
+        with monitored_phase(self, PHASE_STARTUP_SUMMARY):
+            self._emit_training_startup_summary()
+        logger.info("[%s] assembling training metadata", PHASE_STARTUP_METADATA)
+        with monitored_phase(self, PHASE_STARTUP_METADATA):
+            self._initialize_training_metadata(total_batch_size=total_batch_size)
+        logger.info("[%s] initializing training runtime helpers", PHASE_STARTUP_RUNTIME)
+        with monitored_phase(self, PHASE_STARTUP_RUNTIME):
+            self._initialize_training_runtime()
 
     def _compute_startup_eval_actions(self) -> tuple[bool, bool]:
         """Return whether startup sampling and startup validation should run."""
@@ -806,8 +838,6 @@ class Trainer:
         apply_optimizer_runtime_mode(self.optimizer, self.optimization_plan, training=False)
         self._save_final_state_if_enabled()
         self._save_final_checkpoint_artifacts()
-
-        logger.info("[checkpoint] checkpoint saved")
 
     def sync_component_views(self) -> None:
         """Refresh compatibility-era component projections from loaded components."""

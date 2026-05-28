@@ -246,6 +246,7 @@ Avoid these patterns in normal runtime code:
 - The first live analytics snapshot is the benchmark-report payload summary filed from `write_run_report()`. It intentionally keeps backend-neutral run/resource/config summary data while leaving the bulky `full_config_yaml` in the report artifact itself instead of duplicating it into metadata storage.
 - Lifecycle events should prefer richer structured context when the trainer already knows it. The current live path now carries run identifier, mode, strategy, optimizer, config name, step/epoch where meaningful, duration, and failed-run error messages rather than treating lifecycle metadata as a minimal placeholder.
 - Another live analytics snapshot producer now exists at training startup: the observer files the structured startup summary through the same runtime path so debug/export work can use one metadata-backed source instead of scraping console-only output.
+- Benchmark-report analytics snapshots now also carry the lightweight runtime trace summary. That trace is owned by the trainer/logging path rather than the metadata system itself, but the existing benchmark-report payload snapshot is the current metadata-backed place where launch-to-phase timings and milestone deltas become comparable across runs.
 
 ## What This README Is For
 

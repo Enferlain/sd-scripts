@@ -1,5 +1,7 @@
 """Canonical root entrypoint for the active config-driven training launcher."""
 
+import time
+
 import hydra
 
 from library.config.config_validation import prepare_config, validate_config
@@ -9,6 +11,8 @@ from library.training.interrupts import install_double_ctrl_c_guard
 from library.training.modes.factory import build_training_mode
 from library.training.runners.trainer import Trainer
 from library.utils.common_utils import setup_logging
+
+PROCESS_LAUNCHED_PERF = time.perf_counter()
 
 
 def train(cfg: RunConfig) -> None:
@@ -20,7 +24,7 @@ def train(cfg: RunConfig) -> None:
     strategies = build_training_strategy(cfg)
     mode = build_training_mode(cfg)
 
-    trainer = Trainer(cfg, strategies, mode)
+    trainer = Trainer(cfg, strategies, mode, process_launched_perf=PROCESS_LAUNCHED_PERF)
     with install_double_ctrl_c_guard(trainer):
         trainer.train()
 

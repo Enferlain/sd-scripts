@@ -14,11 +14,19 @@ import os
 from typing import TYPE_CHECKING
 
 from library.data import create_training_dataloader, prepare_validation_epoch
+from library.logging.phase_tags import (
+    PHASE_TRAINING_PREP_ACCELERATOR,
+    PHASE_TRAINING_PREP_GRADIENT_CHECKPOINTING,
+    PHASE_TRAINING_PREP_LR_SCHEDULER,
+    PHASE_TRAINING_PREP_OPTIMIZER_GROUPS,
+    PHASE_TRAINING_PREP_VALIDATION_DATALOADER,
+)
 from library.models.runtime_utils import patch_accelerator_for_fp16_training
 from library.optimization.optimizer_utils import get_text_encoders_train_flags, resolve_optimizer_runtime_metadata
 from library.optimization.scheduler import get_scheduler_fix, resolve_scheduler_runtime_metadata
 from library.optimization.types import OptimizerBuildResult
 from library.training.checkpointing import resume_from_local_or_hf_if_specified
+from library.training.phases.orchestration_helpers import monitored_phase
 
 if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
@@ -64,8 +72,9 @@ def prepare_optimizer(trainer: Trainer) -> None:
     cfg = trainer.cfg
 
     # Create optimizer (delegated to mode)
-    logger.info("[training-prep] building optimizer parameter groups")
-    _assign_optimizer_build_result(trainer, trainer.mode.build_optimizer_params(trainer))
+    logger.info("[%s] building optimizer parameter groups", PHASE_TRAINING_PREP_OPTIMIZER_GROUPS)
+    with monitored_phase(trainer, PHASE_TRAINING_PREP_OPTIMIZER_GROUPS):
+        _assign_optimizer_build_result(trainer, trainer.mode.build_optimizer_params(trainer))
 
     # NOTE: trainer._train_denoiser and trainer._train_text_encoder are set in
     # prepare_models() -> create_adapter() as single source of truth
@@ -76,27 +85,28 @@ def prepare_optimizer(trainer: Trainer) -> None:
     trainer._cyclic_val_dataloader = None
 
     if trainer.val_manifest is not None:
-        logger.info("[training-prep] creating validation dataloader")
-        val_epoch_manifest = prepare_validation_epoch(
-            manifest=trainer.val_manifest,
-            batch_size=cfg.training.train_batch_size,
-            seed=cfg.validation.validation_seed,
-        )
-        trainer._val_dataloader = create_training_dataloader(
-            dataset_manifest=trainer.val_manifest,
-            epoch_manifest=val_epoch_manifest,
-            latent_cache_backend=trainer.latent_cache_backend,
-            te_cache_backend=trainer.te_cache_backend,
-            flip_aug=False,  # No flip aug for validation
-            prior_loss_weight=cfg.loss.prior_loss_weight,
-            rank=trainer.accelerator.process_index,
-            world_size=trainer.accelerator.num_processes,
-            num_workers=trainer._n_workers,
-            prefetch_factor=cfg.data.loader.prefetch_factor,
-            pin_memory=cfg.data.loader.pin_memory,
-            persistent_workers=cfg.data.loader.persistent_workers,
-        )
-        trainer._cyclic_val_dataloader = itertools.cycle(trainer._val_dataloader)
+        logger.info("[%s] creating validation dataloader", PHASE_TRAINING_PREP_VALIDATION_DATALOADER)
+        with monitored_phase(trainer, PHASE_TRAINING_PREP_VALIDATION_DATALOADER):
+            val_epoch_manifest = prepare_validation_epoch(
+                manifest=trainer.val_manifest,
+                batch_size=cfg.training.train_batch_size,
+                seed=cfg.validation.validation_seed,
+            )
+            trainer._val_dataloader = create_training_dataloader(
+                dataset_manifest=trainer.val_manifest,
+                epoch_manifest=val_epoch_manifest,
+                latent_cache_backend=trainer.latent_cache_backend,
+                te_cache_backend=trainer.te_cache_backend,
+                flip_aug=False,  # No flip aug for validation
+                prior_loss_weight=cfg.loss.prior_loss_weight,
+                rank=trainer.accelerator.process_index,
+                world_size=trainer.accelerator.num_processes,
+                num_workers=trainer._n_workers,
+                prefetch_factor=cfg.data.loader.prefetch_factor,
+                pin_memory=cfg.data.loader.pin_memory,
+                persistent_workers=cfg.data.loader.persistent_workers,
+            )
+            trainer._cyclic_val_dataloader = itertools.cycle(trainer._val_dataloader)
 
     # Calculate training steps if epochs specified
     if cfg.training.max_train_epochs is not None:
@@ -123,27 +133,30 @@ def prepare_optimizer(trainer: Trainer) -> None:
         )
 
     # Create LR scheduler
-    logger.info("[training-prep] creating learning-rate scheduler")
-    trainer.lr_scheduler = get_scheduler_fix(
-        cfg.optimizer.scheduler,
-        cfg.optimizer,
-        cfg.training,
-        trainer.optimizer,
-        trainer.accelerator.num_processes,
-        optimization_plan=trainer.optimization_plan,
-    )
+    logger.info("[%s] creating learning-rate scheduler", PHASE_TRAINING_PREP_LR_SCHEDULER)
+    with monitored_phase(trainer, PHASE_TRAINING_PREP_LR_SCHEDULER):
+        trainer.lr_scheduler = get_scheduler_fix(
+            cfg.optimizer.scheduler,
+            cfg.optimizer,
+            cfg.training,
+            trainer.optimizer,
+            trainer.accelerator.num_processes,
+            optimization_plan=trainer.optimization_plan,
+        )
 
     # Accelerator.prepare - handles distributed training setup (delegated to mode)
-    logger.info("[training-prep] preparing models and optimizer with accelerator")
-    trainer.mode.prepare_with_accelerator(trainer)
+    logger.info("[%s] preparing models and optimizer with accelerator", PHASE_TRAINING_PREP_ACCELERATOR)
+    with monitored_phase(trainer, PHASE_TRAINING_PREP_ACCELERATOR):
+        trainer.mode.prepare_with_accelerator(trainer)
 
     # Gradient checkpointing setup (shared denoiser/TE parts + mode-specific adapter parts)
     # NOTE: This happens AFTER accelerator.prepare(), matching legacy behavior.
     # Risk: DDP with cpu_offload_checkpointing=True may have issues if hooks
     # are registered after wrapping. Requires manual verification in distributed
     # environments. See AUDIT/1_phase_ordering_dependencies.md for details.
-    logger.info("[training-prep] applying gradient checkpointing configuration")
-    _setup_gradient_checkpointing(trainer)
+    logger.info("[%s] applying gradient checkpointing configuration", PHASE_TRAINING_PREP_GRADIENT_CHECKPOINTING)
+    with monitored_phase(trainer, PHASE_TRAINING_PREP_GRADIENT_CHECKPOINTING):
+        _setup_gradient_checkpointing(trainer)
 
     # Calculate number of epochs and setup epoch-related config
     num_update_steps_per_epoch = math.ceil(trainer.num_batches_per_epoch / cfg.training.gradient_accumulation_steps)

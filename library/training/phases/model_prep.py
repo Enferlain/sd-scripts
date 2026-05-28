@@ -12,6 +12,14 @@ from typing import TYPE_CHECKING
 
 import torch
 
+from library.logging.phase_tags import (
+    PHASE_TRAINING_PREP_DEFERRED_DENOISER,
+    PHASE_TRAINING_PREP_SHARED_PRECISION,
+    PHASE_TRAINING_PREP_TRAINABLE_PRECISION,
+    PHASE_TRAINING_PREP_TRAINABLES,
+)
+from library.training.phases.orchestration_helpers import monitored_phase
+
 if TYPE_CHECKING:
     from library.training.runners.trainer import Trainer
 
@@ -31,23 +39,27 @@ def prepare_models(trainer: Trainer) -> None:
     # Load the denoiser here only if an architecture/setup path intentionally
     # deferred it during setup.
     if trainer.denoiser is None:
-        logger.info("[training-prep] loading deferred denoiser")
-        trainer.loaded_components = trainer.strategies.load_denoiser_lazily(
-            trainer.cfg, trainer.weight_dtype, trainer.accelerator, trainer.loaded_components
-        )
-        trainer.sync_component_views()
+        logger.info("[%s] loading deferred denoiser", PHASE_TRAINING_PREP_DEFERRED_DENOISER)
+        with monitored_phase(trainer, PHASE_TRAINING_PREP_DEFERRED_DENOISER):
+            trainer.loaded_components = trainer.strategies.load_denoiser_lazily(
+                trainer.cfg, trainer.weight_dtype, trainer.accelerator, trainer.loaded_components
+            )
+            trainer.sync_component_views()
 
     # Mode-specific: create and configure the trainable model (adapter)
-    logger.info("[training-prep] preparing trainable modules")
-    trainer.mode.prepare_trainables(trainer)
+    logger.info("[%s] preparing trainable modules", PHASE_TRAINING_PREP_TRAINABLES)
+    with monitored_phase(trainer, PHASE_TRAINING_PREP_TRAINABLES):
+        trainer.mode.prepare_trainables(trainer)
 
     # Shared precision setup (FP8, dtype computation, denoiser/TE casting)
-    logger.info("[training-prep] configuring shared precision")
-    configure_precision(trainer)
+    logger.info("[%s] configuring shared precision", PHASE_TRAINING_PREP_SHARED_PRECISION)
+    with monitored_phase(trainer, PHASE_TRAINING_PREP_SHARED_PRECISION):
+        configure_precision(trainer)
 
     # Mode-specific: cast adapter, freeze base model
-    logger.info("[training-prep] finalizing trainable precision state")
-    trainer.mode.configure_trainable_precision(trainer)
+    logger.info("[%s] finalizing trainable precision state", PHASE_TRAINING_PREP_TRAINABLE_PRECISION)
+    with monitored_phase(trainer, PHASE_TRAINING_PREP_TRAINABLE_PRECISION):
+        trainer.mode.configure_trainable_precision(trainer)
 
 
 def configure_precision(trainer: Trainer) -> None:
