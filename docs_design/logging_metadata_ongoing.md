@@ -33,10 +33,17 @@ I’d also seriously consider whether tag-frequency and model-hash compatibility
   JSONL stream by that same name in
   [library/logging/reports.py](/mnt/d/Projects/sd-scripts/library/logging/reports.py:227).
 - Consolidate Hydra context helpers. [metrics.resolve_hydra_config_name()](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:268) and [reports._resolve_hydra_context()](/mnt/d/Projects/sd-scripts/library/logging/reports.py:126) should become one shared helper.
+  Marker: [ADDRESSED 2026-05-29]
   Current state:
-  the duplication is small but real. `metrics.resolve_hydra_config_name()`
-  returns only `config_name`, while `reports._resolve_hydra_context()` performs
-  the same HydraConfig access and additionally returns task overrides.
+  the duplication is gone. Hydra runtime context now resolves through
+  `resolve_hydra_runtime_context()` in
+  [library/utils/common_utils.py](/mnt/d/Projects/sd-scripts/library/utils/common_utils.py:6),
+  and both
+  [library/logging/reports.py](/mnt/d/Projects/sd-scripts/library/logging/reports.py:323)
+  and
+  [library/training/runners/trainer.py](/mnt/d/Projects/sd-scripts/library/training/runners/trainer.py:309)
+  read from that shared helper directly instead of maintaining local
+  report/metrics variants.
 - Keep the `MetricsSink` vs `TrainingObserver` split. The current code still reads coherently: [MetricsSink](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:68) is tracker transport only, while [TrainingObserver](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:77) owns richer repo observability. I’d document that boundary more explicitly, not redesign it.
   Current state:
   this boundary is already visible in code. `MetricsSink` is just

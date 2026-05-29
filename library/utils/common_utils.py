@@ -3,6 +3,21 @@ import sys
 import threading
 
 
+def resolve_hydra_runtime_context() -> tuple[str | None, list[str]]:
+    """Return the active Hydra config name and task overrides when available."""
+    try:
+        from hydra.core.hydra_config import HydraConfig
+
+        if HydraConfig.initialized():
+            hydra_cfg = HydraConfig.get()
+            config_name = getattr(hydra_cfg.job, "config_name", None)
+            task_overrides = list(getattr(hydra_cfg.overrides, "task", []) or [])
+            return (config_name if isinstance(config_name, str) else None), task_overrides
+    except Exception:
+        return None, []
+    return None, []
+
+
 def exists(val):
     """
     Checks if a value is not None.

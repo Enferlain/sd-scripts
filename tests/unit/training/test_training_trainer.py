@@ -330,12 +330,12 @@ class TestTrainer(unittest.TestCase):
     @patch("library.losses.loss.EMARecorder")
     @patch("library.logging.metrics.build_tracker_config", return_value={"console_log_level": "INFO"})
     @patch("library.logging.metrics.resolve_tracker_name", return_value="unit-training")
-    @patch("library.logging.metrics.resolve_hydra_config_name", return_value="presets/unit_training")
+    @patch("library.utils.common_utils.resolve_hydra_runtime_context", return_value=("presets/unit_training", []))
     @patch("library.logging.metrics.init_trackers")
     def test_initialize_tracking_state_starts_observer_run(
         self,
         mock_init_trackers,
-        mock_resolve_hydra_config_name,
+        mock_resolve_hydra_runtime_context,
         mock_resolve_tracker_name,
         mock_build_tracker_config,
         mock_ema_recorder,
@@ -356,7 +356,7 @@ class TestTrainer(unittest.TestCase):
 
         mock_init_trackers.assert_called_once_with(self.trainer.accelerator, self.cfg.output.logging, "training")
         mock_resolve_tracker_name.assert_called_once_with(self.cfg.output.logging, "training")
-        mock_resolve_hydra_config_name.assert_called_once_with()
+        mock_resolve_hydra_runtime_context.assert_called_once_with()
         mock_build_tracker_config.assert_called_once_with(self.cfg.output.logging)
         self.trainer._observer.start_run.assert_called_once_with(
             "unit-training",

@@ -265,19 +265,6 @@ def _resolve_lr_descriptions(lr_descriptions: list[str] | None, optimization_pla
     return list(getattr(optimization_plan, "lr_descriptions", lr_descriptions or []))
 
 
-def resolve_hydra_config_name() -> str | None:
-    """Return the active Hydra config name when available."""
-    try:
-        from hydra.core.hydra_config import HydraConfig
-
-        if HydraConfig.initialized():
-            hydra_cfg = HydraConfig.get()
-            config_name = getattr(hydra_cfg.job, "config_name", None)
-            return config_name if isinstance(config_name, str) else None
-    except Exception:
-        return None
-
-
 def _validate_lr_label_count(labels: list[str], lrs: list[float]) -> None:
     if len(labels) < len(lrs):
         raise ValueError(

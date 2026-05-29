@@ -297,7 +297,8 @@ class Trainer:
         self.device = self.accelerator.device
         suppress_non_main_process_logging(self.accelerator.is_main_process)
         self._console = MainProcessConsole(is_main_process=self.accelerator.is_main_process)
-        from library.logging.metrics import LoggingTrainingObserver, resolve_hydra_config_name
+        from library.logging.metrics import LoggingTrainingObserver
+        from library.utils.common_utils import resolve_hydra_runtime_context
 
         self._observer = LoggingTrainingObserver(console=self._console)
         self._resource_monitor = create_resource_monitor(
@@ -305,7 +306,7 @@ class Trainer:
             resource_monitor_config=self.cfg.output.logging.resource_monitor,
             output_dir=self.cfg.output.saving.output_dir,
             run_identifier=self.session_id,
-            config_name=resolve_hydra_config_name(),
+            config_name=resolve_hydra_runtime_context()[0],
             git_sha=get_git_revision_hash(),
             git_dirty=get_git_is_dirty(),
             metadata_runtime=self._observer.metadata_runtime,
@@ -688,10 +689,10 @@ class Trainer:
             AccelerateMetricsSink,
             build_tracker_config,
             init_trackers,
-            resolve_hydra_config_name,
             resolve_tracker_name,
         )
         from library.training.phases.validation import ValidationScheduler
+        from library.utils.common_utils import resolve_hydra_runtime_context
         from library.utils.device_utils import clean_memory_on_device
 
         cfg = self.cfg
@@ -706,7 +707,7 @@ class Trainer:
                 mode_name=type(self.mode).__name__,
                 strategy_name=type(self.strategies).__name__,
                 optimizer_name=self.optimizer_name or None,
-                config_name=resolve_hydra_config_name(),
+                config_name=resolve_hydra_runtime_context()[0],
                 global_step=self.global_step,
                 epoch=self.current_epoch,
             )

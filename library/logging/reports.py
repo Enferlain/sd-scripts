@@ -16,6 +16,7 @@ import yaml
 from library.logging.phase_tags import is_training_epoch_phase
 from library.logging.summaries import build_trainer_diagnostic_rows, diagnostic_rows_to_memory_rows
 from library.metadata.dataclasses.observability import AnalyticsSnapshotFacts, RunReportFacts
+from library.utils.common_utils import resolve_hydra_runtime_context
 
 try:
     from omegaconf import OmegaConf
@@ -121,18 +122,6 @@ def _render_config_yaml(cfg: Any) -> str:
             return OmegaConf.to_yaml(cfg, resolve=True)
     plain = _to_plain_data(cfg)
     return yaml.safe_dump(plain, sort_keys=False, allow_unicode=False)
-
-
-def _resolve_hydra_context() -> tuple[str | None, list[str]]:
-    with suppress(Exception):
-        from hydra.core.hydra_config import HydraConfig
-
-        if HydraConfig.initialized():
-            hydra_cfg = HydraConfig.get()
-            config_name = getattr(hydra_cfg.job, "config_name", None)
-            task_overrides = list(getattr(hydra_cfg.overrides, "task", []) or [])
-            return config_name, task_overrides
-    return None, []
 
 
 def _format_scalar(value: Any) -> str:
@@ -331,7 +320,7 @@ def _build_report_payload_from_context(
     succeeded: bool,
     error_message: str | None,
 ) -> dict[str, Any]:
-    hydra_config_name, hydra_overrides = _resolve_hydra_context()
+    hydra_config_name, hydra_overrides = resolve_hydra_runtime_context()
     jsonl_path = context.resource_jsonl_path
     all_events = _load_resource_events(jsonl_path)
     events = _events_for_run(all_events, context.session_id)
