@@ -347,10 +347,10 @@ class TestStepTrackingLogs:
         mock_trainer._current_global_step_loss = 0.5
         mock_trainer.cfg.output.logging.log_every_n_steps = 1
         mock_trainer.optimization_plan = MagicMock()
+        mock_trainer._observer = MagicMock()
 
         with (
             patch("library.training.phases.training_loop.generate_step_logs", return_value={}) as mock_generate_logs,
-            patch("library.training.phases.training_loop.step_logging"),
         ):
             from library.training.phases.training_loop import _emit_step_tracking_logs
 
@@ -364,6 +364,29 @@ class TestStepTrackingLogs:
 
         assert mock_generate_logs.call_args.kwargs["optimization_plan"] is mock_trainer.optimization_plan
         assert mock_generate_logs.call_args.kwargs["lr_descriptions"] is None
+        mock_trainer._observer.log_metrics.assert_called_once_with(
+            mock_trainer.global_step,
+            {},
+            epoch=mock_trainer._current_epoch_state.value,
+        )
+
+    def test_emit_step_tracking_logs_requires_observer(self, mock_trainer):
+        """Step metrics should fail fast if tracking is not initialized."""
+        mock_trainer._accumulation_counter = 1
+        mock_trainer._current_global_step_loss = 0.5
+        mock_trainer.cfg.output.logging.log_every_n_steps = 1
+        mock_trainer._observer = None
+
+        from library.training.phases.training_loop import _emit_step_tracking_logs
+
+        with pytest.raises(RuntimeError, match="observer must be initialized"):
+            _emit_step_tracking_logs(
+                mock_trainer,
+                timesteps=torch.tensor([10]),
+                keys_scaled=None,
+                mean_norm=None,
+                maximum_norm=None,
+            )
 
 
 @pytest.mark.training

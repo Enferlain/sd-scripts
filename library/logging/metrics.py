@@ -1,3 +1,10 @@
+"""Repo-owned training observability and tracker transport helpers.
+
+`LoggingTrainingObserver` is the trainer-facing observability seam. It owns run
+lifecycle filing, startup summary/artifact registration, and delegates flat
+scalar tracker emission through a narrower tracker sink when one is attached.
+"""
+
 from __future__ import annotations
 
 import time
@@ -65,7 +72,9 @@ class StepMetricsEvent:
 
 
 @runtime_checkable
-class MetricsSink(Protocol):
+class TrackerSink(Protocol):
+    """Narrow transport seam for external experiment-tracker metrics backends."""
+
     def start_run(self, run_name: str, config: dict[str, object]) -> None: ...
 
     def log_metrics(self, metrics: dict[str, float], *, step: int, epoch: int | None = None) -> None: ...
@@ -75,6 +84,8 @@ class MetricsSink(Protocol):
 
 @runtime_checkable
 class TrainingObserver(Protocol):
+    """Trainer-facing observability seam for one training run."""
+
     def start_run(
         self,
         run_name: str,
@@ -108,7 +119,9 @@ class TrainingObserver(Protocol):
 
 
 @dataclass(slots=True)
-class AccelerateMetricsSink:
+class AccelerateTrackerSink:
+    """Tracker sink that forwards flat scalar metrics through Accelerator trackers."""
+
     accelerator: Accelerator
 
     def start_run(self, run_name: str, config: dict[str, object]) -> None:
@@ -125,8 +138,10 @@ class AccelerateMetricsSink:
 
 @dataclass(slots=True)
 class LoggingTrainingObserver:
+    """Trainer-facing observability owner for lifecycle, artifacts, and tracker delegation."""
+
     console: MainProcessConsole
-    metrics_sink: MetricsSink | None = None
+    tracker_sink: TrackerSink | None = None
     metadata_runtime: MetadataRuntime = field(default_factory=MetadataRuntime)
     artifacts: list[LoggedArtifact] = field(default_factory=list)
     run_name: str | None = None
@@ -182,13 +197,13 @@ class LoggingTrainingObserver:
                 epoch=epoch,
             )
         )
-        if self.metrics_sink is not None:
-            self.metrics_sink.start_run(run_name, self.run_config)
+        if self.tracker_sink is not None:
+            self.tracker_sink.start_run(run_name, self.run_config)
 
     def log_metrics(self, step: int, metrics: dict[str, float], *, epoch: int | None = None) -> None:
-        if self.metrics_sink is None:
+        if self.tracker_sink is None:
             return
-        self.metrics_sink.log_metrics(metrics, step=step, epoch=epoch)
+        self.tracker_sink.log_metrics(metrics, step=step, epoch=epoch)
 
     def log_console(self, message: str, *, level: str = "info", tag: str | None = None) -> None:
         self.console.log(message, level=level, tag=tag, stacklevel=4)
@@ -246,8 +261,8 @@ class LoggingTrainingObserver:
                 )
             )
         self._run_started_at = None
-        if self.metrics_sink is not None:
-            self.metrics_sink.finish_run()
+        if self.tracker_sink is not None:
+            self.tracker_sink.finish_run()
 
     def metadata_snapshot(self) -> MetadataSnapshot:
         """Return the observer's collected observability metadata snapshot."""
@@ -475,16 +490,6 @@ def generate_step_logs(
         timesteps=timesteps,
     )
     return render_step_metrics_event(event)
-
-
-def step_logging(accelerator: Accelerator, logs: dict, global_step: int, epoch: int):
-    """Log metrics at each step."""
-    log_metrics_to_trackers(accelerator, logs, global_step, global_step, epoch)
-
-
-def epoch_logging(accelerator: Accelerator, logs: dict, global_step: int, epoch: int):
-    """Log metrics at epoch end."""
-    log_metrics_to_trackers(accelerator, logs, epoch, global_step, epoch)
 
 
 def log_metrics_to_trackers(accelerator: Accelerator, logs: dict, step_value: int, global_step: int, epoch: int):

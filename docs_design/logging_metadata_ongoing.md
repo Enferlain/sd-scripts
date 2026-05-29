@@ -44,15 +44,19 @@ I’d also seriously consider whether tag-frequency and model-hash compatibility
   [library/training/runners/trainer.py](/mnt/d/Projects/sd-scripts/library/training/runners/trainer.py:309)
   read from that shared helper directly instead of maintaining local
   report/metrics variants.
-- Keep the `MetricsSink` vs `TrainingObserver` split. The current code still reads coherently: [MetricsSink](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:68) is tracker transport only, while [TrainingObserver](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:77) owns richer repo observability. I’d document that boundary more explicitly, not redesign it.
+- Keep the `TrackerSink` vs `TrainingObserver` split. The current code still reads coherently: [TrackerSink](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:75) is tracker transport only, while [TrainingObserver](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:87) owns richer repo observability. I’d document that boundary more explicitly, not redesign it.
+  Marker: [ADDRESSED 2026-05-30]
   Current state:
-  this boundary is already visible in code. `MetricsSink` is just
-  `start_run/log_metrics/finish_run`, while
-  [LoggingTrainingObserver](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:127)
-  owns run lifecycle facts, startup-summary filing, console logging, artifact
-  logging, and metadata runtime state. `AccelerateMetricsSink` itself is mostly
-  a transport shim and intentionally leaves tracker init/end ownership with the
-  trainer/runtime path.
+  the boundary is now more explicit in code. The trainer-facing step-metrics
+  path routes through `TrainingObserver.log_metrics(...)`, while the narrower
+  backend transport names now read as tracker-specific:
+  `TrackerSink` and `AccelerateTrackerSink` in
+  [library/logging/metrics.py](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:75).
+  [LoggingTrainingObserver](/mnt/d/Projects/sd-scripts/library/logging/metrics.py:134)
+  remains the repo-facing observability owner for lifecycle/artifact/startup
+  summary work, and it delegates flat scalar tracker emission through the
+  attached tracker sink instead of leaving trainer code to choose between
+  observer and raw tracker-helper paths.
 - Add failure-path coverage around startup-phase exceptions, startup-eval exceptions, and failures after progress-bar creation but before epoch completion. The cleanup path in [Trainer.train()](/mnt/d/Projects/sd-scripts/library/training/runners/trainer.py:226) is good, but the trace/report tests are still thin there.
   Current state:
   the existing coverage is partial. Integration coverage in

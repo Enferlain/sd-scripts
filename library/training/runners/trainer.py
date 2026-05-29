@@ -686,7 +686,7 @@ class Trainer:
         """Initialize trackers, recorders, validation scheduler, and progress state."""
         from library.losses.loss import EMARecorder
         from library.logging.metrics import (
-            AccelerateMetricsSink,
+            AccelerateTrackerSink,
             build_tracker_config,
             init_trackers,
             resolve_tracker_name,
@@ -699,7 +699,7 @@ class Trainer:
 
         init_trackers(self.accelerator, cfg.output.logging, "training")
         if self._observer is not None:
-            self._observer.metrics_sink = AccelerateMetricsSink(self.accelerator)
+            self._observer.tracker_sink = AccelerateTrackerSink(self.accelerator)
             self._observer.start_run(
                 resolve_tracker_name(cfg.output.logging, "training"),
                 build_tracker_config(cfg.output.logging),

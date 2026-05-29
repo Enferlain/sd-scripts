@@ -24,7 +24,7 @@ from library.logging.phase_tags import (
     EVENT_TRAINING_PROGRESS_BAR_STARTED,
     training_epoch_phase,
 )
-from library.logging.metrics import generate_step_logs, step_logging
+from library.logging.metrics import generate_step_logs
 from library.logging.training_plots import save_timestep_distribution_plot
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
 from library.training.checkpointing import (
@@ -214,9 +214,11 @@ def _emit_step_tracking_logs(
     mean_norm: float | None,
     maximum_norm: float | None,
 ) -> None:
-    """Emit tracker metrics for the current optimization step when enabled."""
+    """Emit the current optimization step's scalar metrics through the training observer."""
     cfg = trainer.cfg
-    accelerator = trainer.accelerator
+    observer = getattr(trainer, "_observer", None)
+    if observer is None:
+        raise RuntimeError("observer must be initialized before step metrics are emitted")
 
     current_global_step_loss = trainer._current_global_step_loss / trainer._accumulation_counter
     current_loss_scaled_total = trainer._current_loss_modifier_metrics.get("loss/current_scaled")
@@ -253,7 +255,7 @@ def _emit_step_tracking_logs(
     )
     log_every = cfg.output.logging.log_every_n_steps
     if trainer.global_step % log_every == 0:
-        step_logging(accelerator, logs, trainer.global_step, trainer._current_epoch_state.value)
+        observer.log_metrics(trainer.global_step, logs, epoch=trainer._current_epoch_state.value)
 
 
 def _save_epoch_checkpoint_artifacts(trainer: Trainer) -> None:

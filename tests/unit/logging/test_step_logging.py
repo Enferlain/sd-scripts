@@ -336,32 +336,6 @@ class TestGenerateStepLogsLrKeys:
 class TestTrackerRouting:
     """Assert metric payloads route to trackers with explicit backend semantics."""
 
-    def test_step_logging_uses_global_step_as_tracker_step(self):
-        from library.logging import metrics
-
-        accelerator = MagicMock()
-        logs = {"loss/current": 0.1}
-
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            routed = MagicMock()
-            monkeypatch.setattr(metrics, "log_metrics_to_trackers", routed)
-            metrics.step_logging(accelerator, logs, global_step=12, epoch=3)
-
-        routed.assert_called_once_with(accelerator, logs, 12, 12, 3)
-
-    def test_epoch_logging_uses_epoch_as_tracker_step(self):
-        from library.logging import metrics
-
-        accelerator = MagicMock()
-        logs = {"loss/current": 0.1}
-
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            routed = MagicMock()
-            monkeypatch.setattr(metrics, "log_metrics_to_trackers", routed)
-            metrics.epoch_logging(accelerator, logs, global_step=12, epoch=3)
-
-        routed.assert_called_once_with(accelerator, logs, 3, 12, 3)
-
     def test_backend_routing_copies_wandb_payload_without_mutating_source(self):
         from library.logging.metrics import log_metrics_to_trackers
 
@@ -496,7 +470,7 @@ class TestLoggingTrainingObserver:
         from library.logging.metrics import LoggingTrainingObserver
 
         sink = MagicMock()
-        observer = LoggingTrainingObserver(console=MagicMock(), metrics_sink=sink)
+        observer = LoggingTrainingObserver(console=MagicMock(), tracker_sink=sink)
         config = {"wandb_api_key": "*****"}
 
         observer.start_run("training", config)
@@ -509,10 +483,20 @@ class TestLoggingTrainingObserver:
         assert observer.run_name == "training"
         assert observer.run_config == {"wandb_api_key": "*****"}
 
+    def test_log_metrics_forwards_to_tracker_sink(self):
+        from library.logging.metrics import LoggingTrainingObserver
+
+        sink = MagicMock()
+        observer = LoggingTrainingObserver(console=MagicMock(), tracker_sink=sink)
+
+        observer.log_metrics(12, {"loss/current": 0.25}, epoch=3)
+
+        sink.log_metrics.assert_called_once_with({"loss/current": 0.25}, step=12, epoch=3)
+
     def test_lifecycle_metadata_captures_trainer_context_and_failure_status(self):
         from library.logging.metrics import LoggingTrainingObserver
 
-        observer = LoggingTrainingObserver(console=MagicMock(), metrics_sink=MagicMock())
+        observer = LoggingTrainingObserver(console=MagicMock(), tracker_sink=MagicMock())
 
         observer.start_run(
             "training",
@@ -567,7 +551,7 @@ class TestLoggingTrainingObserver:
     def test_metadata_snapshot_collects_run_and_artifact_boundaries(self):
         from library.logging.metrics import LoggingTrainingObserver
 
-        observer = LoggingTrainingObserver(console=MagicMock(), metrics_sink=MagicMock())
+        observer = LoggingTrainingObserver(console=MagicMock(), tracker_sink=MagicMock())
 
         observer.start_run("training", {"wandb_api_key": "*****"})
         observer.log_artifact("/tmp/report.md", kind="benchmark_report", metadata={"format": "markdown"})
@@ -593,7 +577,7 @@ class TestLoggingTrainingObserver:
             TrainingStartupSummary,
         )
 
-        observer = LoggingTrainingObserver(console=MagicMock(), metrics_sink=MagicMock())
+        observer = LoggingTrainingObserver(console=MagicMock(), tracker_sink=MagicMock())
         observer.start_run("training", {"wandb_api_key": "*****"}, run_identifier="session-123")
 
         observer.log_startup_summary(

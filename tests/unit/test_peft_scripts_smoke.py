@@ -31,11 +31,11 @@ class TestPeftCommonImports:
 
         assert callable(generate_step_logs)
 
-    def test_peft_common_has_step_logging(self):
-        """Verify step_logging function exists."""
-        from library.logging.metrics import step_logging
+    def test_peft_common_has_log_metrics_to_trackers(self):
+        """Verify the tracker-routing helper exists."""
+        from library.logging.metrics import log_metrics_to_trackers
 
-        assert callable(step_logging)
+        assert callable(log_metrics_to_trackers)
 
     def test_peft_common_has_init_timestep_sampler(self):
         """Verify init_timestep_sampler function exists."""
