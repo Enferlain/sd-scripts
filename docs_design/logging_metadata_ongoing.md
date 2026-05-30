@@ -208,33 +208,66 @@ sampling redesign settles the intended orchestration shape.
 The current `startup.metadata` phase is still likely too coarse if the goal is
 to understand pre-training hangs precisely.
 
+Marker: [PARTIALLY ADDRESSED 2026-05-30]
+
 The likely expensive work inside
 [_initialize_training_metadata()](/mnt/d/Projects/sd-scripts/library/training/runners/trainer.py:636)
 does not appear to be mainly strategy-side for SD / SDXL. The heavier likely
 contributors are inside
-[_build_training_ss_metadata()](/mnt/d/Projects/sd-scripts/library/metadata/emitters/run.py:196),
+[_build_training_run_metadata()](/mnt/d/Projects/sd-scripts/library/metadata/emitters/run.py:295),
 especially:
 
-- dataset-derived compatibility metadata in
-  [_append_dataset_compatibility_metadata()](/mnt/d/Projects/sd-scripts/library/metadata/emitters/run.py:294)
-- model / VAE hashing in
-  [_append_model_source_compatibility_metadata()](/mnt/d/Projects/sd-scripts/library/metadata/emitters/run.py:344)
+- dataset-derived metadata in
+  [_append_dataset_metadata()](/mnt/d/Projects/sd-scripts/library/metadata/emitters/run.py:380)
+- model-source metadata in
+  [_append_model_source_metadata()](/mnt/d/Projects/sd-scripts/library/metadata/emitters/run.py:400)
 
 Current state:
-`_build_training_ss_metadata()` is the central aggregator for the heavy work.
-It appends a large static metadata map, then performs three potentially
-expensive follow-ups in sequence:
+the active path has been simplified materially since the original note:
 
-- adapter compatibility projection
-- dataset compatibility projection
-- model / VAE source hashing
+- the startup bundle is now authored as repo-owned run facts rather than
+  `ss_*` compatibility metadata
+- default checkpoint export now writes `kuro.*` plus `modelspec.*`
+- compatibility-only dataset payloads such as tag-frequency, dataset-dir
+  summaries, and bucket-info JSON were removed from the active startup path
+- model/VAE hash generation was removed from the active startup path
+- the old `ss_*` names are now kept only as a reference table for a future
+  alias option rather than being the authored source shape
 
-The dataset path is not just a couple of fields: it computes full tag frequency
-over the manifest, walks every manifest entry to build dataset-dir summaries,
-builds bucket-resolution summaries, and JSON-serializes all of those
-structures. The model-source path hashes the base model and VAE when those
-paths exist on disk, using both the legacy short hash and the configured
-full-hash algorithm.
+So the earlier suspected heavy work has already been reduced. What still
+remains true is that `startup.metadata` is one coarse span, and if startup
+timing still looks off after this cleanup, the next useful step would be
+splitting the remaining work more explicitly rather than restoring the old
+compatibility-heavy payload.
+
+### [ADDRESSED] Legacy Minimum-Metadata Path Removal
+
+Marker: [ADDRESSED 2026-05-30]
+
+The old minimum-metadata subset path has been removed from the active metadata
+flow.
+
+Current state:
+
+- `TrainingMetadataState` now carries only the authored full run-facts view
+- checkpoint projection no longer selects or maintains a reduced
+  minimum-metadata subset
+- the dead `SS_METADATA_MINIMUM_KEYS` constant was removed from the active
+  metadata package/constants surface
+
+Deferred follow-up:
+
+- the long-term user-facing contract for `output.saving.no_metadata` is now
+  tracked explicitly in bead `sd-scripts-due` instead of being inherited from
+  the old repo’s minimum-metadata behavior
+- a separate legacy helper still exists in
+  [library/utils/model_metadata.py](/mnt/d/Projects/sd-scripts/library/utils/model_metadata.py)
+  as `build_minimum_adapter_metadata()`, and old standalone merge tools under
+  `tools/model_management/` still call it; that path was left alone on purpose
+  because it is outside the active training metadata flow and should be cleaned
+  up as part of a later legacy-tooling pass instead of being mixed into the
+  current runtime metadata slice
+compatibility payloads.
 
 If the broader metadata/startup review still wants more visibility here, a
 later split could look like:

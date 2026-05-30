@@ -28,7 +28,7 @@ class CheckpointArtifactFacts:
         """Build checkpoint facts from the current save request."""
         return cls(
             artifact_identifier=artifact_identifier,
-            metadata_policy="minimum" if no_metadata else "full",
+            metadata_policy="none" if no_metadata else "full",
             step=step,
             epoch=epoch,
         )

@@ -661,9 +661,9 @@ class Trainer:
                 objective=self.objective,
             )
         )
-        metadata = dict(bundle.full.compatibility_metadata)
+        metadata = dict(bundle.full.metadata)
         self.strategies.update_metadata(metadata, self.cfg)
-        self._metadata_state = TrainingMetadataState.from_bundle(bundle).with_compatibility_metadata(metadata)
+        self._metadata_state = TrainingMetadataState.from_bundle(bundle).with_metadata(metadata)
 
     def _initialize_training_runtime(self) -> None:
         """Initialize runtime helpers that depend on the optimizer and scheduler state."""
@@ -830,7 +830,7 @@ class Trainer:
         """Cleanup and final save after training completes."""
 
         # Update metadata
-        self._set_training_metadata_fact("ss_training_finished_at", time.time())
+        self._set_training_metadata_fact("training_finished_at", time.time())
 
         self.accelerator.end_training()
         if self._progress_bar is not None:

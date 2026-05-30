@@ -404,11 +404,11 @@ class TestTrainingMetadata:
                 total_batch_size=1,
             )
         )
-        metadata = bundle.full.compatibility_metadata
+        metadata = bundle.full.metadata
 
-        assert "ss_num_train_images" in metadata
-        assert metadata["ss_num_train_images"] == str(EXPECTED_IMAGE_COUNT)  # EXPECTED_IMAGE_COUNT images * 1 repeat
-        assert "ss_session_id" in metadata
+        assert "num_train_images" in metadata
+        assert metadata["num_train_images"] == str(EXPECTED_IMAGE_COUNT)  # EXPECTED_IMAGE_COUNT images * 1 repeat
+        assert "session_id" in metadata
 
     @pytest.mark.skipif(not TEST_IMAGES_DIR.exists(), reason="Test images not available")
     def test_tag_frequency_computation(self, mock_cfg):

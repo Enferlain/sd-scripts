@@ -4,12 +4,12 @@ from types import SimpleNamespace
 import pytest
 
 from library.metadata.dataclasses import RunMetadataFacts
-from library.metadata.emitters.run import TrainingMetadataState, build_objective_ss_metadata
+from library.metadata.emitters.run import TrainingMetadataState, build_objective_run_metadata
 
 
 @pytest.mark.training
 @pytest.mark.unit
-def test_build_objective_ss_metadata_adds_rf_fields_for_rectified_flow() -> None:
+def test_build_objective_run_metadata_adds_rf_fields_for_rectified_flow() -> None:
     cfg = SimpleNamespace(
         model=SimpleNamespace(model_type="sd3"),
         timestep=SimpleNamespace(
@@ -22,19 +22,19 @@ def test_build_objective_ss_metadata_adds_rf_fields_for_rectified_flow() -> None
         ),
     )
 
-    metadata = build_objective_ss_metadata(cfg, "rectified_flow")
+    metadata = build_objective_run_metadata(cfg, "rectified_flow")
 
-    assert metadata["ss_timestep_sampling"] == "cosine_shaped"
-    assert metadata["ss_rf_loss_weighting_scheme"] == "cosmap"
-    assert metadata["ss_training_shift"] == 2.0
-    assert metadata["ss_logit_mean"] == 0.1
-    assert metadata["ss_logit_std"] == 1.2
-    assert metadata["ss_cosine_shape_scale"] == 1.5
+    assert metadata["timestep_sampling"] == "cosine_shaped"
+    assert metadata["rf_loss_weighting_scheme"] == "cosmap"
+    assert metadata["training_shift"] == 2.0
+    assert metadata["logit_mean"] == 0.1
+    assert metadata["logit_std"] == 1.2
+    assert metadata["cosine_shape_scale"] == 1.5
 
 
 @pytest.mark.training
 @pytest.mark.unit
-def test_build_objective_ss_metadata_skips_non_rf_objectives() -> None:
+def test_build_objective_run_metadata_skips_non_rf_objectives() -> None:
     cfg = SimpleNamespace(
         model=SimpleNamespace(model_type="sdxl"),
         timestep=SimpleNamespace(
@@ -47,22 +47,19 @@ def test_build_objective_ss_metadata_skips_non_rf_objectives() -> None:
         ),
     )
 
-    metadata = build_objective_ss_metadata(cfg, "ddpm")
+    metadata = build_objective_run_metadata(cfg, "ddpm")
 
     assert metadata == {}
 
 
 @pytest.mark.training
 @pytest.mark.unit
-def test_training_metadata_state_updates_full_and_minimum_facts() -> None:
+def test_training_metadata_state_updates_full_facts() -> None:
     state = TrainingMetadataState(
-        full=RunMetadataFacts(run_identifier="run", compatibility_metadata={"ss_seed": "42"}),
-        minimum=RunMetadataFacts(run_identifier="run", compatibility_metadata={}),
+        full=RunMetadataFacts(run_identifier="run", metadata={"seed": "42"}),
     )
 
-    updated = state.with_fact("ss_adapter_rank", 16).with_fact("ss_epoch", 3)
+    updated = state.with_fact("adapter_rank", 16).with_fact("epoch", 3)
 
-    assert updated.full.compatibility_metadata["ss_adapter_rank"] == "16"
-    assert updated.full.compatibility_metadata["ss_epoch"] == "3"
-    assert updated.minimum.compatibility_metadata["ss_adapter_rank"] == "16"
-    assert "ss_epoch" not in updated.minimum.compatibility_metadata
+    assert updated.full.metadata["adapter_rank"] == "16"
+    assert updated.full.metadata["epoch"] == "3"

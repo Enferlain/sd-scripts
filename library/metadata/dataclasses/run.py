@@ -12,29 +12,29 @@ from library.metadata.records import MetadataValue
 class RunMetadataFacts:
     """Training-run facts used by checkpoint/export projections.
 
-    Compatibility metadata stays string-shaped because the active checkpoint
-    export path ultimately targets string-only artifact metadata.
+    Run metadata stays string-shaped because the active checkpoint export path
+    ultimately targets string-only artifact metadata.
     """
 
     run_identifier: str
-    compatibility_metadata: Mapping[str, str]
+    metadata: Mapping[str, str]
 
     @classmethod
-    def from_ss_metadata(
+    def from_metadata(
         cls,
         metadata: Mapping[str, str],
         *,
         run_identifier: str,
     ) -> RunMetadataFacts:
-        """Build run facts from legacy Kohya-compatible metadata."""
-        return cls(run_identifier=run_identifier, compatibility_metadata=dict(metadata))
+        """Build run facts from repo-owned string metadata."""
+        return cls(run_identifier=run_identifier, metadata=dict(metadata))
 
-    def with_compatibility_metadata(self, metadata: Mapping[str, MetadataValue]) -> RunMetadataFacts:
-        """Return a copy with additional stringified compatibility facts."""
+    def with_metadata(self, metadata: Mapping[str, MetadataValue]) -> RunMetadataFacts:
+        """Return a copy with additional stringified training-run facts."""
         return replace(
             self,
-            compatibility_metadata={
-                **dict(self.compatibility_metadata),
+            metadata={
+                **dict(self.metadata),
                 **{key: str(value) for key, value in metadata.items()},
             },
         )

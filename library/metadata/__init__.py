@@ -19,7 +19,7 @@ from library.metadata.emitters import (
     build_checkpoint_metadata,
     build_logged_artifact_metadata,
     build_model_spec_metadata,
-    build_objective_ss_metadata,
+    build_objective_run_metadata,
     build_resource_monitor_metadata,
     build_run_lifecycle_metadata,
     build_run_report_metadata,
@@ -28,7 +28,6 @@ from library.metadata.emitters import (
     TrainingMetadataState,
     build_training_metadata_bundle,
     build_training_run_metadata,
-    select_minimum_training_metadata,
 )
 from library.metadata.projections import (
     KuroMetadataProjection,
@@ -109,7 +108,7 @@ __all__ = [
     "build_logged_artifact_metadata",
     "build_metadata_result",
     "build_model_spec_metadata",
-    "build_objective_ss_metadata",
+    "build_objective_run_metadata",
     "build_resource_monitor_metadata",
     "build_run_lifecycle_metadata",
     "build_run_report_metadata",
@@ -120,5 +119,4 @@ __all__ = [
     "build_training_run_metadata",
     "validate_metadata_item",
     "validate_required_facts",
-    "select_minimum_training_metadata",
 ]

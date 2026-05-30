@@ -67,8 +67,7 @@ class TestTrainer(unittest.TestCase):
         # Set up required trainer state for save_checkpoint
         self.cfg.output.saving.no_metadata = True
         self.trainer._metadata_state = TrainingMetadataState(
-            full=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
-            minimum=RunMetadataFacts(run_identifier="test", compatibility_metadata={"ss_adapter_module": "test"}),
+            full=RunMetadataFacts(run_identifier="test", metadata={}),
         )
         self.strategies.get_model_metadata.return_value = {}
 
@@ -93,8 +92,7 @@ class TestTrainer(unittest.TestCase):
 
         self.cfg.output.saving.no_metadata = False
         self.trainer._metadata_state = TrainingMetadataState(
-            full=RunMetadataFacts(run_identifier="test", compatibility_metadata={"ss_adapter_module": "test"}),
-            minimum=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+            full=RunMetadataFacts(run_identifier="test", metadata={"adapter_method": "test"}),
         )
         self.strategies.get_model_metadata.return_value = {}
 
@@ -114,8 +112,7 @@ class TestTrainer(unittest.TestCase):
         self.trainer._accelerator = MagicMock()
         self.cfg.output.saving.output_dir = "/tmp/out"
         self.trainer._metadata_state = TrainingMetadataState(
-            full=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
-            minimum=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+            full=RunMetadataFacts(run_identifier="test", metadata={}),
         )
         self.trainer._resource_monitor = MagicMock()
         self.trainer.runtime_trace = MagicMock()
@@ -137,8 +134,7 @@ class TestTrainer(unittest.TestCase):
         self.trainer._accelerator = MagicMock()
         self.cfg.output.saving.output_dir = "D:/Projects/sd-scripts/tests/test_output"
         self.trainer._metadata_state = TrainingMetadataState(
-            full=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
-            minimum=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+            full=RunMetadataFacts(run_identifier="test", metadata={}),
         )
         self.trainer._resource_monitor = MagicMock()
         self.trainer.runtime_trace = MagicMock()
@@ -169,8 +165,7 @@ class TestTrainer(unittest.TestCase):
         self.trainer._accelerator = MagicMock()
         self.cfg.output.saving.output_dir = "/tmp/out"
         self.trainer._metadata_state = TrainingMetadataState(
-            full=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
-            minimum=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+            full=RunMetadataFacts(run_identifier="test", metadata={}),
         )
         self.trainer._resource_monitor = MagicMock()
         self.trainer.runtime_trace = RuntimeTrace(launched_perf=0.0, clock=_IncrementingClock())
@@ -452,8 +447,7 @@ class TestTrainer(unittest.TestCase):
         self.trainer._progress_bar = MagicMock()
         progress_bar = self.trainer._progress_bar
         self.trainer._metadata_state = TrainingMetadataState(
-            full=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
-            minimum=RunMetadataFacts(run_identifier="test", compatibility_metadata={}),
+            full=RunMetadataFacts(run_identifier="test", metadata={}),
         )
         self.trainer.optimizer = MagicMock()
         self.trainer.optimization_plan = MagicMock()

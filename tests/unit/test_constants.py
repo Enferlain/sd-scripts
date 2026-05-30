@@ -33,7 +33,6 @@ from library.constants import (
     SS_METADATA_KEY_ADAPTER_RANK,
     SS_METADATA_KEY_ADAPTER_ALPHA,
     SS_METADATA_KEY_ADAPTER_ARGS,
-    SS_METADATA_MINIMUM_KEYS,
     # Model parameters (SD 1.x)
     NUM_TRAIN_TIMESTEPS,
     BETA_START,
@@ -186,12 +185,6 @@ class TestMetadataKeys:
         assert SS_METADATA_KEY_ADAPTER_RANK == "ss_adapter_rank"
         assert SS_METADATA_KEY_ADAPTER_ALPHA == "ss_adapter_alpha"
         assert SS_METADATA_KEY_ADAPTER_ARGS == "ss_adapter_args"
-
-    def test_minimum_keys_contains_all(self):
-        assert len(SS_METADATA_MINIMUM_KEYS) == 5
-        assert SS_METADATA_KEY_V2 in SS_METADATA_MINIMUM_KEYS
-        assert SS_METADATA_KEY_ADAPTER_MODULE in SS_METADATA_MINIMUM_KEYS
-        assert SS_METADATA_KEY_ADAPTER_ARGS not in SS_METADATA_MINIMUM_KEYS
 
 
 # =============================================================================

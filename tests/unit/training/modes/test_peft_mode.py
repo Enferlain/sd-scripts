@@ -381,7 +381,6 @@ def test_save_checkpoint_uses_repo_owned_adapter_export_seam(monkeypatch, tmp_pa
     trainer.save_dtype = "fp16"
     trainer.adapter = object()
     trainer.accelerator.unwrap_model.return_value = trainer.adapter
-    trainer.strategies.get_model_metadata.return_value = {"ss_model_spec": "sdxl"}
     metadata = {"base": "value"}
     captured = {}
 
@@ -402,7 +401,4 @@ def test_save_checkpoint_uses_repo_owned_adapter_export_seam(monkeypatch, tmp_pa
     assert captured["model"] is trainer.adapter
     assert captured["request"].file == str(Path(tmp_path) / "adapter.safetensors")
     assert captured["request"].dtype == "fp16"
-    assert captured["request"].metadata["base"] == "value"
-    assert captured["request"].metadata["ss_steps"] == "12"
-    assert captured["request"].metadata["ss_epoch"] == "3"
-    assert captured["request"].metadata["ss_model_spec"] == "sdxl"
+    assert captured["request"].metadata == {"base": "value"}

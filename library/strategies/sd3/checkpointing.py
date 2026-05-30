@@ -15,8 +15,8 @@ class Sd3CheckpointingStrategy(CheckpointingStrategy):
 
     def update_metadata(self, metadata: dict, cfg: Any) -> None:
         """Add SD3-specific runtime metadata fields."""
-        metadata["ss_apply_lg_attn_mask"] = str(bool(getattr(cfg.model, "apply_lg_attn_mask", False)))
-        metadata["ss_apply_t5_attn_mask"] = str(bool(getattr(cfg.model, "apply_t5_attn_mask", False)))
+        metadata["apply_lg_attn_mask"] = str(bool(getattr(cfg.model, "apply_lg_attn_mask", False)))
+        metadata["apply_t5_attn_mask"] = str(bool(getattr(cfg.model, "apply_t5_attn_mask", False)))
 
     def get_model_metadata(self, cfg: Any) -> dict:
         """Get the SAI model spec metadata for SD3."""

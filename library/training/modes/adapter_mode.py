@@ -12,7 +12,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import os
-import time
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -385,13 +384,6 @@ class AdapterMode:
         """
         os.makedirs(trainer.cfg.output.saving.output_dir, exist_ok=True)
         ckpt_file = os.path.join(trainer.cfg.output.saving.output_dir, ckpt_name)
-
-        metadata["ss_training_finished_at"] = str(time.time())
-        metadata["ss_steps"] = str(step)
-        metadata["ss_epoch"] = str(epoch)
-
-        modelspec_metadata = trainer.strategies.get_model_metadata(trainer.cfg)
-        metadata.update(modelspec_metadata)
 
         save_dtype = dtype_override or trainer.save_dtype
         model_to_save = target_model if target_model is not None else trainer.accelerator.unwrap_model(trainer.adapter)

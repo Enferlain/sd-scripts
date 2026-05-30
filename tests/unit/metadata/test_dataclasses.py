@@ -3,7 +3,6 @@
 import pytest
 
 from library.constants import SS_METADATA_KEY_ADAPTER_MODULE as LEGACY_ADAPTER_MODULE_KEY
-from library.constants import SS_METADATA_MINIMUM_KEYS as LEGACY_MINIMUM_KEYS
 from library.metadata import CheckpointArtifactFacts as TopLevelCheckpointArtifactFacts
 from library.metadata import LoggedArtifactFacts as TopLevelLoggedArtifactFacts
 from library.metadata import METADATA_PAYLOAD_VERSION
@@ -38,14 +37,12 @@ from library.metadata.emitters import (
 )
 from library.metadata.keys import (
     SS_METADATA_KEY_ADAPTER_MODULE,
-    SS_METADATA_MINIMUM_KEYS,
 )
 
 
 @pytest.mark.unit
 def test_metadata_keys_are_owned_by_metadata_package_and_reexported_from_constants() -> None:
     assert SS_METADATA_KEY_ADAPTER_MODULE == "ss_adapter_module"
-    assert SS_METADATA_MINIMUM_KEYS == LEGACY_MINIMUM_KEYS
     assert SS_METADATA_KEY_ADAPTER_MODULE == LEGACY_ADAPTER_MODULE_KEY
 
 
@@ -64,8 +61,8 @@ def test_metadata_package_reexports_shared_fact_dataclasses() -> None:
 
 @pytest.mark.unit
 def test_run_facts_feed_training_run_metadata_emitter() -> None:
-    facts = RunMetadataFacts.from_ss_metadata(
-        {"ss_session_id": "123", "ss_seed": "42"},
+    facts = RunMetadataFacts.from_metadata(
+        {"session_id": "123", "seed": "42"},
         run_identifier="123",
     )
 
@@ -74,7 +71,7 @@ def test_run_facts_feed_training_run_metadata_emitter() -> None:
     assert record.identity.entity_type == "run"
     assert record.identity.identifier == "123"
     assert record.producer == "training.run"
-    assert record.facts["ss_seed"] == "42"
+    assert record.facts["seed"] == "42"
 
 
 @pytest.mark.unit
