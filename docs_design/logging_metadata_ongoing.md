@@ -58,14 +58,17 @@ I’d also seriously consider whether tag-frequency and model-hash compatibility
   attached tracker sink instead of leaving trainer code to choose between
   observer and raw tracker-helper paths.
 - Add failure-path coverage around startup-phase exceptions, startup-eval exceptions, and failures after progress-bar creation but before epoch completion. The cleanup path in [Trainer.train()](/mnt/d/Projects/sd-scripts/library/training/runners/trainer.py:226) is good, but the trace/report tests are still thin there.
+  Marker: [ADDRESSED 2026-05-30]
   Current state:
-  the existing coverage is partial. Integration coverage in
+  the missing cases are now covered. Integration coverage in
   [tests/integration/test_training_loop_integration.py](/mnt/d/Projects/sd-scripts/tests/integration/test_training_loop_integration.py:425)
-  exercises failure before the first synced step, and trainer tests in
+  still exercises failure before the first synced step, and it now also covers
+  failure after the progress bar has started but before epoch completion.
+  Trainer tests in
   [tests/unit/training/test_training_trainer.py](/mnt/d/Projects/sd-scripts/tests/unit/training/test_training_trainer.py:207)
-  already verify monitor shutdown and report writing on mid-run failure. What is
-  still missing is startup-phase failure, startup-eval failure, and the
-  “progress bar already spawned but no epoch completed yet” trace/report shape.
+  already verified monitor shutdown and report writing on mid-run failure, and
+  they now also verify startup-phase failure and startup-eval failure with
+  benchmark-report/resource-monitor/runtime-trace cleanup.
 - Keep the runtime trace single-threaded assumption for now. It’s fine as long as trainer-owned code is the only emitter.
 
 **Resource Investigation**

@@ -437,6 +437,26 @@ class TestTrainingLoopStepAdvancement:
         event_tags = [event["tag"] for event in summary["events"]]
         assert event_tags == [EVENT_TRAINING_FIRST_STEP_STARTED]
 
+    def test_runtime_trace_stays_valid_when_training_fails_after_progress_bar_starts(self):
+        """Failure after the progress bar starts but before epoch completion should still close the epoch span cleanly."""
+        trainer = _make_mock_trainer(
+            num_epochs=1,
+            batches_per_epoch=3,
+        )
+        trainer.strategies.process_batch.side_effect = [
+            BatchLossOutput(loss=torch.tensor(0.5), per_sample_loss=torch.tensor([0.5]), timesteps=torch.tensor([500])),
+            RuntimeError("boom"),
+        ]
+
+        with pytest.raises(RuntimeError, match="boom"):
+            _run_loop_with_mock_dataloader(trainer, 3)
+
+        assert trainer._progress_bar.update.call_count == 1
+        summary = trainer.runtime_trace.summary()
+        assert summary["phase_totals"][training_epoch_phase(0)] == 0.0
+        event_tags = [event["tag"] for event in summary["events"]]
+        assert event_tags == [EVENT_TRAINING_FIRST_STEP_STARTED, EVENT_TRAINING_FIRST_STEP_SYNCED]
+
 
 class TestResourceMonitorBasicIntegration:
     """Exercise real basic monitor JSONL output through training-loop hooks."""

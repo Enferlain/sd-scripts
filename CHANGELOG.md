@@ -22,6 +22,7 @@ Rules:
 - **Resource phase-summary console output now uses explicit `off/default/verbose` modes** — `output.logging.resource_monitor.phase_summary` now defaults to `default`, accepts legacy booleans as compatibility input (`true -> verbose`, `false -> off`), and filters only the printed `Resource phase[...]` console lines while leaving resource-monitor event capture intact for JSONL/report surfaces.
 - **Resource-monitor and report payloads now use `run_identifier` consistently** — the resource-monitor constructor/API, raw JSONL event payloads, and report-side event filtering now use `run_identifier` instead of `run_id`, matching the rest of the metadata/reporting surface instead of preserving the older name in one subsystem.
 - **Hydra runtime-context lookup now has one shared utility instead of duplicated logging/report helpers** — the Hydra config-name and task-override lookup now lives in `library.utils.common_utils.resolve_hydra_runtime_context()`, with trainer/report call sites using that shared helper directly instead of keeping separate local implementations for metrics/trainer and benchmark reports.
+- **Failure-path observability coverage now exercises the previously-thin startup and pre-epoch cases** — focused trainer and loop tests now verify that benchmark-report/resource-trace cleanup still behaves correctly for startup-phase failures, startup-eval failures, and training-loop failures that happen after the progress bar has started but before an epoch completes.
 
 ## [2026-05-26]
 

@@ -325,6 +325,69 @@ class TestTrainer(unittest.TestCase):
         mock_write_run_report.assert_called_once_with(self.trainer, succeeded=False, error_message="training failed")
         self.trainer._finalize_training.assert_not_called()
 
+    @patch("library.training.runners.trainer.write_run_report")
+    def test_train_writes_failure_report_for_startup_phase_exception(self, mock_write_run_report):
+        """Startup-phase failures should still finalize observability surfaces cleanly."""
+        mock_monitor = MagicMock()
+        self.cfg.output.logging.benchmark_report.enabled = True
+        self.trainer.runtime_trace = MagicMock()
+
+        self.trainer._resource_monitor = None
+        self.trainer.setup = MagicMock()
+        self.trainer.run_caching = MagicMock()
+        self.trainer.prepare_models = MagicMock()
+        self.trainer.prepare_optimizer = MagicMock()
+        self.trainer._initialize_training_run_state = MagicMock(side_effect=RuntimeError("startup failed"))
+        self.trainer._run_startup_eval_actions = MagicMock()
+        self.trainer.run_training_loop = MagicMock()
+        self.trainer._finalize_training = MagicMock()
+
+        def assign_monitor():
+            self.trainer._resource_monitor = mock_monitor
+
+        self.trainer.setup.side_effect = assign_monitor
+
+        with self.assertRaisesRegex(RuntimeError, "startup failed"):
+            self.trainer.train()
+
+        mock_monitor.end_session.assert_called_once()
+        self.trainer.runtime_trace.finish.assert_called_once()
+        mock_write_run_report.assert_called_once_with(self.trainer, succeeded=False, error_message="startup failed")
+        self.trainer._run_startup_eval_actions.assert_not_called()
+        self.trainer.run_training_loop.assert_not_called()
+        self.trainer._finalize_training.assert_not_called()
+
+    @patch("library.training.runners.trainer.write_run_report")
+    def test_train_writes_failure_report_for_startup_eval_exception(self, mock_write_run_report):
+        """Startup-eval failures should still close the monitor and write a failure report."""
+        mock_monitor = MagicMock()
+        self.cfg.output.logging.benchmark_report.enabled = True
+        self.trainer.runtime_trace = MagicMock()
+
+        self.trainer._resource_monitor = None
+        self.trainer.setup = MagicMock()
+        self.trainer.run_caching = MagicMock()
+        self.trainer.prepare_models = MagicMock()
+        self.trainer.prepare_optimizer = MagicMock()
+        self.trainer._initialize_training_run_state = MagicMock()
+        self.trainer._run_startup_eval_actions = MagicMock(side_effect=RuntimeError("startup eval failed"))
+        self.trainer.run_training_loop = MagicMock()
+        self.trainer._finalize_training = MagicMock()
+
+        def assign_monitor():
+            self.trainer._resource_monitor = mock_monitor
+
+        self.trainer.setup.side_effect = assign_monitor
+
+        with self.assertRaisesRegex(RuntimeError, "startup eval failed"):
+            self.trainer.train()
+
+        mock_monitor.end_session.assert_called_once()
+        self.trainer.runtime_trace.finish.assert_called_once()
+        mock_write_run_report.assert_called_once_with(self.trainer, succeeded=False, error_message="startup eval failed")
+        self.trainer.run_training_loop.assert_not_called()
+        self.trainer._finalize_training.assert_not_called()
+
     @patch("library.utils.device_utils.clean_memory_on_device")
     @patch("library.training.phases.validation.ValidationScheduler")
     @patch("library.losses.loss.EMARecorder")
