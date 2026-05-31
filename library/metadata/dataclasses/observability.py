@@ -58,10 +58,15 @@ class ResourceMonitorFacts:
     phase: str | None = None
     duration_ms: float | None = None
     gpu_allocated_mb: float | None = None
+    gpu_allocated_by_device_mb: Mapping[str, float] | None = None
     gpu_reserved_mb: float | None = None
+    gpu_reserved_by_device_mb: Mapping[str, float] | None = None
     gpu_peak_allocated_mb: float | None = None
+    gpu_peak_allocated_by_device_mb: Mapping[str, float] | None = None
     gpu_used_mb: float | None = None
+    gpu_used_by_device_mb: Mapping[str, float] | None = None
     cpu_rss_mb: float | None = None
+    cpu_vms_mb: float | None = None
     steps_per_sec: float | None = None
     samples_per_sec: float | None = None
     dropped_samples: int | None = None

@@ -246,21 +246,46 @@ def _pair_phase_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             and start_ts <= sample["ts"] <= end_ts
         ]
         gpu_used_peak_mb = max((float(sample["gpu_used_mb"]) for sample in phase_samples), default=None)
+        gpu_used_peak_by_device_mb = _peak_device_map(phase_samples, "gpu_used_by_device_mb")
         phase_rows.append(
             {
                 "phase": phase_name,
                 "duration_s": (event.get("duration_ms") or 0.0) / 1000.0 if event.get("duration_ms") is not None else None,
                 "gpu_allocated_start_mb": start.get("gpu_allocated_mb"),
+                "gpu_allocated_start_by_device_mb": start.get("gpu_allocated_by_device_mb"),
                 "gpu_allocated_end_mb": event.get("gpu_allocated_mb"),
+                "gpu_allocated_end_by_device_mb": event.get("gpu_allocated_by_device_mb"),
                 "gpu_reserved_start_mb": start.get("gpu_reserved_mb"),
+                "gpu_reserved_start_by_device_mb": start.get("gpu_reserved_by_device_mb"),
                 "gpu_reserved_end_mb": event.get("gpu_reserved_mb"),
+                "gpu_reserved_end_by_device_mb": event.get("gpu_reserved_by_device_mb"),
                 "gpu_peak_allocated_mb": event.get("gpu_peak_allocated_mb"),
+                "gpu_peak_allocated_by_device_mb": event.get("gpu_peak_allocated_by_device_mb"),
                 "gpu_used_peak_mb": gpu_used_peak_mb,
+                "gpu_used_peak_by_device_mb": gpu_used_peak_by_device_mb,
                 "cpu_rss_start_mb": start.get("cpu_rss_mb"),
                 "cpu_rss_end_mb": event.get("cpu_rss_mb"),
+                "cpu_vms_start_mb": start.get("cpu_vms_mb"),
+                "cpu_vms_end_mb": event.get("cpu_vms_mb"),
             }
         )
     return phase_rows
+
+
+def _peak_device_map(events: list[dict[str, Any]], field_name: str) -> dict[str, float] | None:
+    peaks: dict[str, float] = {}
+    for event in events:
+        raw_map = event.get(field_name)
+        if not isinstance(raw_map, dict):
+            continue
+        for device, value in raw_map.items():
+            if not isinstance(device, str) or not isinstance(value, (int, float)):
+                continue
+            numeric_value = float(value)
+            previous = peaks.get(device)
+            if previous is None or numeric_value > previous:
+                peaks[device] = numeric_value
+    return peaks or None
 
 
 def _collect_trace_only_phase_rows(
@@ -336,6 +361,7 @@ def _build_report_payload_from_context(
         (float(event["gpu_used_mb"]) for event in events if event.get("gpu_used_mb") is not None),
         default=None,
     )
+    gpu_used_peak_session_by_device_mb = _peak_device_map(events, "gpu_used_by_device_mb")
 
     training_phases = [row for row in phase_rows if is_training_epoch_phase(str(row["phase"]))]
     training_duration_s = sum(row["duration_s"] or 0.0 for row in training_phases)
@@ -373,6 +399,7 @@ def _build_report_payload_from_context(
             "session_start": session_start,
             "session_end": session_end,
             "gpu_used_peak_session_mb": gpu_used_peak_session_mb,
+            "gpu_used_peak_session_by_device_mb": gpu_used_peak_session_by_device_mb,
             "phases": phase_rows,
         },
         "component_memory_estimates": context.component_memory_estimates,
@@ -564,6 +591,7 @@ def _render_report_markdown(payload: dict[str, Any]) -> str:
                 f"| GPU Used | {_format_mb(session_end.get('gpu_used_mb'))} |",
                 f"| GPU Used Peak | {_format_mb(resource.get('gpu_used_peak_session_mb'))} |",
                 f"| CPU RSS | {_format_mb(session_end.get('cpu_rss_mb'))} |",
+                f"| CPU VMS | {_format_mb(session_end.get('cpu_vms_mb'))} |",
                 f"| Resource Events | {_format_scalar(resource.get('event_count'))} |",
                 f"| Resource JSONL | {_format_scalar(resource.get('jsonl_path'))} |",
             ]
@@ -576,8 +604,8 @@ def _render_report_markdown(payload: dict[str, Any]) -> str:
                 "",
                 "## Phase Resource Summary",
                 "",
-                "| Phase | Duration | GPU Allocated | GPU Reserved | GPU Peak Allocated | GPU Used Peak | CPU RSS |",
-                "|-------|----------|---------------|--------------|--------------------|---------------|---------|",
+                "| Phase | Duration | GPU Allocated | GPU Reserved | GPU Peak Allocated | GPU Used Peak | CPU RSS | CPU VMS |",
+                "|-------|----------|---------------|--------------|--------------------|---------------|---------|---------|",
             ]
         )
         for row in phases:
@@ -587,7 +615,8 @@ def _render_report_markdown(payload: dict[str, Any]) -> str:
                 f"{_format_mb(row['gpu_reserved_start_mb'])} -> {_format_mb(row['gpu_reserved_end_mb'])} | "
                 f"{_format_mb(row['gpu_peak_allocated_mb'])} | "
                 f"{_format_mb(row['gpu_used_peak_mb'])} | "
-                f"{_format_mb(row['cpu_rss_start_mb'])} -> {_format_mb(row['cpu_rss_end_mb'])} |"
+                f"{_format_mb(row['cpu_rss_start_mb'])} -> {_format_mb(row['cpu_rss_end_mb'])} | "
+                f"{_format_mb(row['cpu_vms_start_mb'])} -> {_format_mb(row['cpu_vms_end_mb'])} |"
             )
 
     if payload.get("include_full_config", True):

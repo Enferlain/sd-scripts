@@ -133,63 +133,91 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
                 "ts": 1.0,
                 "event": "session_start",
                 "gpu_allocated_mb": 100.0,
+                "gpu_allocated_by_device_mb": {"0": 60.0, "1": 40.0},
                 "gpu_reserved_mb": 120.0,
+                "gpu_reserved_by_device_mb": {"0": 70.0, "1": 50.0},
                 "gpu_peak_allocated_mb": 100.0,
+                "gpu_peak_allocated_by_device_mb": {"0": 60.0, "1": 40.0},
                 "cpu_rss_mb": 200.0,
+                "cpu_vms_mb": 300.0,
                 "gpu_used_mb": 140.0,
+                "gpu_used_by_device_mb": {"0": 90.0, "1": 50.0},
             },
             {
                 "ts": 2.0,
                 "event": "phase_start",
                 "phase": PHASE_CACHE_LATENTS,
                 "gpu_allocated_mb": 100.0,
+                "gpu_allocated_by_device_mb": {"0": 60.0, "1": 40.0},
                 "gpu_reserved_mb": 120.0,
+                "gpu_reserved_by_device_mb": {"0": 70.0, "1": 50.0},
                 "gpu_peak_allocated_mb": 100.0,
+                "gpu_peak_allocated_by_device_mb": {"0": 60.0, "1": 40.0},
                 "cpu_rss_mb": 200.0,
+                "cpu_vms_mb": 300.0,
             },
-            {"ts": 2.2, "event": "step_sample", "phase": None, "gpu_used_mb": 180.0},
+            {"ts": 2.2, "event": "step_sample", "phase": None, "gpu_used_mb": 180.0, "gpu_used_by_device_mb": {"0": 100.0, "1": 80.0}},
             {
                 "ts": 3.0,
                 "event": "phase_end",
                 "phase": PHASE_CACHE_LATENTS,
                 "duration_ms": 1000.0,
                 "gpu_allocated_mb": 110.0,
+                "gpu_allocated_by_device_mb": {"0": 65.0, "1": 45.0},
                 "gpu_reserved_mb": 130.0,
+                "gpu_reserved_by_device_mb": {"0": 75.0, "1": 55.0},
                 "gpu_peak_allocated_mb": 150.0,
+                "gpu_peak_allocated_by_device_mb": {"0": 80.0, "1": 70.0},
                 "cpu_rss_mb": 210.0,
+                "cpu_vms_mb": 310.0,
                 "gpu_used_mb": 170.0,
+                "gpu_used_by_device_mb": {"0": 95.0, "1": 75.0},
             },
             {
                 "ts": 4.0,
                 "event": "phase_start",
                 "phase": training_epoch_phase(0),
                 "gpu_allocated_mb": 150.0,
+                "gpu_allocated_by_device_mb": {"0": 90.0, "1": 60.0},
                 "gpu_reserved_mb": 170.0,
+                "gpu_reserved_by_device_mb": {"0": 100.0, "1": 70.0},
                 "gpu_peak_allocated_mb": 150.0,
+                "gpu_peak_allocated_by_device_mb": {"0": 90.0, "1": 60.0},
                 "cpu_rss_mb": 220.0,
+                "cpu_vms_mb": 320.0,
             },
-            {"ts": 4.5, "event": "step_sample", "phase": None, "gpu_used_mb": 240.0},
-            {"ts": 5.0, "event": "step_sample", "phase": None, "gpu_used_mb": 260.0},
+            {"ts": 4.5, "event": "step_sample", "phase": None, "gpu_used_mb": 240.0, "gpu_used_by_device_mb": {"0": 150.0, "1": 90.0}},
+            {"ts": 5.0, "event": "step_sample", "phase": None, "gpu_used_mb": 260.0, "gpu_used_by_device_mb": {"0": 170.0, "1": 90.0}},
             {
                 "ts": 6.0,
                 "event": "phase_end",
                 "phase": training_epoch_phase(0),
                 "duration_ms": 2000.0,
                 "gpu_allocated_mb": 180.0,
+                "gpu_allocated_by_device_mb": {"0": 110.0, "1": 70.0},
                 "gpu_reserved_mb": 210.0,
+                "gpu_reserved_by_device_mb": {"0": 125.0, "1": 85.0},
                 "gpu_peak_allocated_mb": 220.0,
+                "gpu_peak_allocated_by_device_mb": {"0": 130.0, "1": 90.0},
                 "cpu_rss_mb": 260.0,
+                "cpu_vms_mb": 360.0,
                 "gpu_used_mb": 250.0,
+                "gpu_used_by_device_mb": {"0": 160.0, "1": 90.0},
             },
             {
                 "ts": 7.0,
                 "event": "session_end",
                 "duration_ms": 5000.0,
                 "gpu_allocated_mb": 190.0,
+                "gpu_allocated_by_device_mb": {"0": 120.0, "1": 70.0},
                 "gpu_reserved_mb": 220.0,
+                "gpu_reserved_by_device_mb": {"0": 130.0, "1": 90.0},
                 "gpu_peak_allocated_mb": 225.0,
+                "gpu_peak_allocated_by_device_mb": {"0": 135.0, "1": 90.0},
                 "cpu_rss_mb": 270.0,
+                "cpu_vms_mb": 370.0,
                 "gpu_used_mb": 245.0,
+                "gpu_used_by_device_mb": {"0": 155.0, "1": 90.0},
             },
         ],
     )
@@ -258,6 +286,7 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
     assert "`startup.accelerator`" in markdown
     assert "## Full Composed Config" in markdown
     assert "GPU Used Peak" in markdown
+    assert "CPU VMS" in markdown
     assert "unit_test_run" in markdown
     assert "`data.loader.pin_memory`" in markdown
 
@@ -268,8 +297,15 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
     assert "time_to_training_finished_s" not in payload["runtime_trace"]["milestones"]
     assert payload["runtime_trace"]["trace_only_phases"][0]["tag"] == "startup.accelerator"
     assert payload["resource_monitor"]["gpu_used_peak_session_mb"] == 260.0
+    assert payload["resource_monitor"]["gpu_used_peak_session_by_device_mb"] == {"0": 170.0, "1": 90.0}
     assert payload["resource_monitor"]["phases"][0]["gpu_used_peak_mb"] == 180.0
+    assert payload["resource_monitor"]["phases"][0]["gpu_used_peak_by_device_mb"] == {"0": 100.0, "1": 80.0}
     assert payload["resource_monitor"]["phases"][1]["gpu_used_peak_mb"] == 260.0
+    assert payload["resource_monitor"]["phases"][1]["gpu_peak_allocated_by_device_mb"] == {"0": 130.0, "1": 90.0}
+    assert payload["resource_monitor"]["session_end"]["cpu_vms_mb"] == 370.0
+    assert payload["resource_monitor"]["session_end"]["gpu_allocated_by_device_mb"] == {"0": 120.0, "1": 70.0}
+    assert payload["resource_monitor"]["phases"][0]["cpu_vms_start_mb"] == 300.0
+    assert payload["resource_monitor"]["phases"][0]["cpu_vms_end_mb"] == 310.0
 
 
 def test_write_run_report_files_metadata_record_when_observer_runtime_exists(tmp_path):

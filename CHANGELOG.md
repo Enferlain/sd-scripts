@@ -10,6 +10,18 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-05-31]
+
+### Added
+
+- **Resource visibility expansion now has a spec-driven implementation track** — added the `expand-resource-visibility` OpenSpec change with proposal, design, specs, and implementation tasks, and captured the current capability investigation in `docs_design/resource_visibility_capability_map.md` so the resource-observability work can proceed from a stable implementation reference instead of scattered notes.
+
+### Changed
+
+- **Resource-monitor live events and benchmark reports now carry CPU virtual memory alongside RSS** — the resource-monitor raw event path, metadata-facing `ResourceMonitorFacts`, and benchmark report/session/phase payloads now include `cpu_vms_mb`, including phase start/end rows and rendered report tables, so host-memory visibility is no longer limited to resident-set size alone.
+- **The resource monitor now has a compact package layout instead of one oversized module** — `library.logging.resource_monitor` now stays as the stable public import surface while splitting collection, event transport, startup breakdown rendering, and monitor orchestration into short internal modules, which should make the next per-device/resource-visibility slices easier to implement and review without changing trainer call sites.
+- **Resource-monitor live events and report payloads now preserve per-device GPU readings alongside aggregate totals** — snapshot and sampled GPU collection now emit additive per-device maps for allocated, reserved, peak-allocated, and used memory while keeping the existing aggregate fields, and the benchmark-report JSON/snapshot payloads now preserve per-device session and phase peaks without forcing the markdown report away from its current aggregate-oriented summary.
+
 ## [2026-05-27]
 
 ### Changed

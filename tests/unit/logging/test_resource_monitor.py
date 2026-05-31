@@ -92,7 +92,7 @@ class TestBasicResourceMonitorBehavior:
             output_jsonl_path=None,
         )
 
-        with patch("library.logging.resource_monitor.logger") as mock_logger:
+        with patch("library.logging.resource_monitor.monitor.logger") as mock_logger:
             monitor.start_session()
             monitor.phase_start(training_epoch_phase(0))
             monitor.step_end(global_step=1, epoch=1)
@@ -111,8 +111,8 @@ class TestBasicResourceMonitorBehavior:
         )
 
         with (
-            patch("library.logging.resource_monitor.logger") as mock_logger,
-            patch("library.logging.resource_monitor.tqdm.external_write_mode", return_value=nullcontext()) as mock_external,
+            patch("library.logging.resource_monitor.monitor.logger") as mock_logger,
+            patch("library.logging.resource_monitor.monitor.tqdm.external_write_mode", return_value=nullcontext()) as mock_external,
         ):
             monitor.start_session()
             monitor.phase_start(training_epoch_phase(0))
@@ -406,10 +406,15 @@ class TestResourceMonitorJsonl:
             "phase",
             "duration_ms",
             "gpu_allocated_mb",
+            "gpu_allocated_by_device_mb",
             "gpu_reserved_mb",
+            "gpu_reserved_by_device_mb",
             "gpu_peak_allocated_mb",
+            "gpu_peak_allocated_by_device_mb",
             "gpu_used_mb",
+            "gpu_used_by_device_mb",
             "cpu_rss_mb",
+            "cpu_vms_mb",
             "steps_per_sec",
             "samples_per_sec",
             "dropped_samples",
@@ -428,6 +433,8 @@ class TestResourceMonitorJsonl:
         assert session_start["run_identifier"] == "run-123"
         assert session_start["config_name"] == "test_peft_resource_sampled"
         assert session_start["git_sha"] == "abc123def"
+        assert "cpu_vms_mb" in session_start
+        assert "gpu_allocated_by_device_mb" in session_start
         assert session_start["git_dirty"] is True
 
     def test_phase_end_forces_flush_in_batch_mode(self, tmp_path):
@@ -494,11 +501,65 @@ class TestSampledResourceMonitor:
             output_jsonl_path=None,
         )
 
-        sample = SimpleNamespace(ts=0.0, gpu_used_mb=None, cpu_rss_mb=None, collection_ms=None)
+        sample = SimpleNamespace(
+            ts=0.0,
+            gpu_used_mb=None,
+            gpu_used_by_device_mb=None,
+            cpu_rss_mb=None,
+            cpu_vms_mb=None,
+            collection_ms=None,
+        )
         monitor._enqueue_sample(sample)
         monitor._enqueue_sample(sample)
 
         assert monitor._dropped_samples == 1
+
+    def test_collect_sample_metrics_local_device_records_one_device_map(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+
+        monitor = SampledResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="sampled", device_scope="local"),
+            output_jsonl_path=None,
+        )
+
+        with (
+            patch.object(monitor, "_is_cuda_visible", return_value=True),
+            patch("library.logging.resource_monitor.collect.torch.cuda.current_device", return_value=2),
+            patch("library.logging.resource_monitor.collect.torch.cuda.mem_get_info", return_value=(3 * 1024 * 1024, 10 * 1024 * 1024)),
+        ):
+            sample = monitor._collect_sample_metrics()
+
+        assert sample.gpu_used_mb == 7.0
+        assert sample.gpu_used_by_device_mb == {"2": 7.0}
+
+    def test_collect_sample_metrics_all_visible_sums_device_map(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+
+        monitor = SampledResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="sampled", device_scope="all_visible"),
+            output_jsonl_path=None,
+        )
+
+        def _mem_get_info(index):
+            by_device = {
+                0: (7 * 1024 * 1024, 10 * 1024 * 1024),
+                1: (5 * 1024 * 1024, 10 * 1024 * 1024),
+            }
+            return by_device[index]
+
+        with (
+            patch.object(monitor, "_is_cuda_visible", return_value=True),
+            patch("library.logging.resource_monitor.collect.torch.cuda.device_count", return_value=2),
+            patch("library.logging.resource_monitor.collect.torch.cuda.mem_get_info", side_effect=_mem_get_info),
+        ):
+            sample = monitor._collect_sample_metrics()
+
+        assert sample.gpu_used_mb == 8.0
+        assert sample.gpu_used_by_device_mb == {"0": 3.0, "1": 5.0}
 
     def test_deep_step_event_includes_allocator_counters(self, tmp_path):
         accelerator = MagicMock()
@@ -526,7 +587,7 @@ class TestSampledResourceMonitor:
             with (
                 patch.object(monitor, "_is_cuda_visible", return_value=True),
                 patch(
-                    "library.logging.resource_monitor.torch.cuda.memory_stats",
+                    "library.logging.resource_monitor.collect.torch.cuda.memory_stats",
                     return_value={
                         "num_alloc_retries": 3,
                         "num_ooms": 1,
@@ -564,7 +625,7 @@ class TestSampledResourceMonitor:
         with (
             patch.object(monitor, "_is_cuda_visible", return_value=True),
             patch(
-                "library.logging.resource_monitor.torch.cuda.memory_stats",
+                "library.logging.resource_monitor.collect.torch.cuda.memory_stats",
                 return_value={
                     "num_alloc_retries": 2,
                     "num_ooms": 0,

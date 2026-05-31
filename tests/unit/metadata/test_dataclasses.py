@@ -131,7 +131,9 @@ def test_observability_facts_feed_metadata_emitters() -> None:
         run_identifier="run-1",
         event_name="session_start",
         gpu_used_mb=128.0,
+        gpu_used_by_device_mb={"0": 80.0, "1": 48.0},
         cpu_rss_mb=256.0,
+        cpu_vms_mb=512.0,
     )
     report = RunReportFacts(
         report_identifier="/tmp/report.md",
@@ -161,6 +163,8 @@ def test_observability_facts_feed_metadata_emitters() -> None:
     assert lifecycle_event.identity.entity_type == "run"
     assert lifecycle_event.facts["status"] == "running"
     assert resource_event.facts["gpu_used_mb"] == 128.0
+    assert resource_event.facts["gpu_used_by_device_mb"] == {"0": 80.0, "1": 48.0}
+    assert resource_event.facts["cpu_vms_mb"] == 512.0
     assert report_record.identity.entity_type == "artifact"
     assert report_record.facts["kind"] == "benchmark_report"
     assert snapshot_record.facts["payload"] == {"rows": 4}

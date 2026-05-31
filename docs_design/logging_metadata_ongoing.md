@@ -363,6 +363,13 @@ track rather than a quick polish pass on the current monitor.
 Those are useful to remember, but they should come after the broader startup /
 eval / logging ownership review rather than compete with it.
 
+Implementation reference:
+
+- [docs_design/resource_visibility_capability_map.md](/mnt/d/Projects/sd-scripts/docs_design/resource_visibility_capability_map.md)
+  captures the current capability map, the strongest live-capable candidates,
+  the report/debug-only expansion ideas, and the places where provenance /
+  causality would need a larger design step instead of more flat fields.
+
 ## Tomorrow Follow-up From Staged Review
 
 Review of the currently staged observability changes did not find any blocking

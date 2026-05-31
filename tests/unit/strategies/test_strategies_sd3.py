@@ -109,10 +109,10 @@ def test_sd3_checkpoint_metadata_keeps_family_specific_attn_mask_fields() -> Non
 
     strategy.update_metadata(metadata, cfg)
 
-    assert metadata["ss_apply_lg_attn_mask"] == "True"
-    assert metadata["ss_apply_t5_attn_mask"] == "False"
-    assert "ss_timestep_sampling" not in metadata
-    assert "ss_rf_loss_weighting_scheme" not in metadata
+    assert metadata["apply_lg_attn_mask"] == "True"
+    assert metadata["apply_t5_attn_mask"] == "False"
+    assert "timestep_sampling" not in metadata
+    assert "rf_loss_weighting_scheme" not in metadata
 
 
 @pytest.mark.unit
