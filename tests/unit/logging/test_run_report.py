@@ -287,6 +287,8 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
     assert "## Full Composed Config" in markdown
     assert "GPU Used Peak" in markdown
     assert "CPU VMS" in markdown
+    assert "## Per-Device GPU Session Peaks" in markdown
+    assert "## Per-Device GPU Phase Details" in markdown
     assert "unit_test_run" in markdown
     assert "`data.loader.pin_memory`" in markdown
 
@@ -306,6 +308,16 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
     assert payload["resource_monitor"]["session_end"]["gpu_allocated_by_device_mb"] == {"0": 120.0, "1": 70.0}
     assert payload["resource_monitor"]["phases"][0]["cpu_vms_start_mb"] == 300.0
     assert payload["resource_monitor"]["phases"][0]["cpu_vms_end_mb"] == 310.0
+    assert payload["resource_monitor"]["debug"]["surface_split"]["live_metadata_fields"][0] == "gpu_allocated_mb"
+    assert payload["resource_monitor"]["debug"]["surface_split"]["report_debug_only_fields"] == [
+        "session_gpu_used_peak_by_device_rows",
+        "phase_device_rows",
+    ]
+    assert payload["resource_monitor"]["debug"]["session_gpu_used_peak_by_device_rows"] == [
+        {"device": "0", "gpu_used_peak_mb": 170.0},
+        {"device": "1", "gpu_used_peak_mb": 90.0},
+    ]
+    assert payload["resource_monitor"]["debug"]["phase_device_rows"][0]["phase"] == PHASE_CACHE_LATENTS
 
 
 def test_write_run_report_files_metadata_record_when_observer_runtime_exists(tmp_path):

@@ -259,6 +259,44 @@ Why report/debug-only:
 - these are derived summary products
 - they are more useful as read-friendly aggregates than as per-event fields
 
+## Implemented Surface Split
+
+The current implementation now has an explicit split between live resource facts
+and report/debug-only summaries.
+
+### Live Metadata / JSONL Facts
+
+These fields are emitted directly by the resource monitor and mirrored into
+`ResourceMonitorFacts`:
+
+- `gpu_allocated_mb`
+- `gpu_allocated_by_device_mb`
+- `gpu_reserved_mb`
+- `gpu_reserved_by_device_mb`
+- `gpu_peak_allocated_mb`
+- `gpu_peak_allocated_by_device_mb`
+- `gpu_used_mb`
+- `gpu_used_by_device_mb`
+- `cpu_rss_mb`
+- `cpu_vms_mb`
+
+These belong to always-on event/schema surfaces because they are raw or
+near-raw process/runtime observations.
+
+### Report / Debug-only Summaries
+
+These are derived in `library/logging/reports.py` from the live schema above
+instead of being emitted as new resource-monitor event fields:
+
+- `session_gpu_used_peak_by_device_rows`
+- `phase_device_rows`
+- markdown sections such as:
+  - `Per-Device GPU Session Peaks`
+  - `Per-Device GPU Phase Details`
+
+These belong to report/debug surfaces because they are explanatory reshapes of
+live data rather than new first-class runtime observations.
+
 ### Per-Phase Delta Narratives
 
 Examples:

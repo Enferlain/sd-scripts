@@ -1,5 +1,8 @@
-## ADDED Requirements
+# resource-visibility Specification
 
+## Purpose
+TBD - created by archiving change expand-resource-visibility. Update Purpose after archive.
+## Requirements
 ### Requirement: Resource monitor records broader host-memory facts
 The resource-monitor observability surface SHALL record host-memory facts beyond
 RSS when those facts are already cheap and reliable to collect from the current
@@ -30,3 +33,4 @@ and richer report/debug summaries derived from those facts.
 - **WHEN** a resource summary is primarily explanatory or presentation-oriented
 - **THEN** the system MUST be able to keep that summary in report/debug
   surfaces without requiring it to become a first-class live event field
+

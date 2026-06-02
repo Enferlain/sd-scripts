@@ -1,4 +1,12 @@
-## ADDED Requirements
+# training-observability Specification
+
+## Purpose
+Define repo-owned training observability responsibilities and seams so console
+output, tracker metrics, reports, and resource-monitor integrations can evolve
+from shared structured signals instead of each sink reconstructing its own view
+from raw runtime objects.
+
+## Requirements
 
 ### Requirement: Training observability uses repo-owned structured signals
 The training system SHALL expose repo-owned structured observability signals for human console summaries, tracker metrics, and report-generation paths instead of requiring each sink to reconstruct those views independently from raw runtime objects.
@@ -91,6 +99,18 @@ Runtime resource sampling, phase summaries, and resource-event persistence SHALL
 #### Scenario: Non-resource diagnostics do not inherit resource-monitor semantics
 - **WHEN** the system formats startup trainability diagnostics or tracker metrics
 - **THEN** those concerns MUST NOT be forced into the resource-monitor runtime/config model solely to share output plumbing
+
+### Requirement: Resource-monitor report surfaces preserve additive live schema growth
+Training observability SHALL allow the resource-monitor event/report path to
+grow with richer additive live fields without forcing console behavior or phase
+ownership changes to lead that work.
+
+#### Scenario: Non-console resource field expansion
+- **WHEN** the repo adds richer live resource facts to resource-monitor events
+- **THEN** the benchmark report and analytics snapshot surfaces MUST be able to
+  preserve those fields or derived summaries where appropriate
+- **AND** that expansion MUST NOT depend on changing console phase-summary
+  behavior as the primary implementation path
 
 ### Requirement: Training and observability ownership stay separate
 The observability architecture SHALL keep training-side ownership of timing and fact production separate from observability-side ownership of formatting, routing, buffering, and persistence.

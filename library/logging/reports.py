@@ -142,6 +142,17 @@ def _format_mb(value: Any) -> str:
     return f"{float(value):.0f} MB"
 
 
+def _format_device_map_mb(value: Any) -> str:
+    if not isinstance(value, dict) or not value:
+        return "N/A"
+    formatted_items: list[str] = []
+    for device, amount in sorted(value.items()):
+        if not isinstance(device, str) or not isinstance(amount, (int, float)):
+            continue
+        formatted_items.append(f"{device}: {_format_mb(amount)}")
+    return ", ".join(formatted_items) if formatted_items else "N/A"
+
+
 def _format_seconds(value: Any) -> str:
     if value is None:
         return "N/A"
@@ -288,6 +299,82 @@ def _peak_device_map(events: list[dict[str, Any]], field_name: str) -> dict[str,
     return peaks or None
 
 
+def _device_map_to_rows(device_map: dict[str, float] | None, *, value_key: str) -> list[dict[str, Any]]:
+    if not isinstance(device_map, dict):
+        return []
+    rows: list[dict[str, Any]] = []
+    for device, value in sorted(device_map.items()):
+        if not isinstance(device, str) or not isinstance(value, (int, float)):
+            continue
+        rows.append({"device": device, value_key: float(value)})
+    return rows
+
+
+def _build_resource_debug_summary(
+    *,
+    session_start: dict[str, Any] | None,
+    session_end: dict[str, Any] | None,
+    gpu_used_peak_session_by_device_mb: dict[str, float] | None,
+    phase_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "surface_split": {
+            "live_metadata_fields": [
+                "gpu_allocated_mb",
+                "gpu_allocated_by_device_mb",
+                "gpu_reserved_mb",
+                "gpu_reserved_by_device_mb",
+                "gpu_peak_allocated_mb",
+                "gpu_peak_allocated_by_device_mb",
+                "gpu_used_mb",
+                "gpu_used_by_device_mb",
+                "cpu_rss_mb",
+                "cpu_vms_mb",
+            ],
+            "report_debug_only_fields": [
+                "session_gpu_used_peak_by_device_rows",
+                "phase_device_rows",
+            ],
+        },
+        "session_gpu_used_peak_by_device_rows": _device_map_to_rows(
+            gpu_used_peak_session_by_device_mb,
+            value_key="gpu_used_peak_mb",
+        ),
+        "phase_device_rows": [
+            {
+                "phase": row.get("phase"),
+                "gpu_allocated_start_by_device_mb": row.get("gpu_allocated_start_by_device_mb"),
+                "gpu_allocated_end_by_device_mb": row.get("gpu_allocated_end_by_device_mb"),
+                "gpu_reserved_start_by_device_mb": row.get("gpu_reserved_start_by_device_mb"),
+                "gpu_reserved_end_by_device_mb": row.get("gpu_reserved_end_by_device_mb"),
+                "gpu_peak_allocated_by_device_mb": row.get("gpu_peak_allocated_by_device_mb"),
+                "gpu_used_peak_by_device_mb": row.get("gpu_used_peak_by_device_mb"),
+            }
+            for row in phase_rows
+            if any(
+                row.get(field) is not None
+                for field in (
+                    "gpu_allocated_start_by_device_mb",
+                    "gpu_allocated_end_by_device_mb",
+                    "gpu_reserved_start_by_device_mb",
+                    "gpu_reserved_end_by_device_mb",
+                    "gpu_peak_allocated_by_device_mb",
+                    "gpu_used_peak_by_device_mb",
+                )
+            )
+        ],
+        "session_allocator_by_device": {
+            "gpu_allocated_start_by_device_mb": None if session_start is None else session_start.get("gpu_allocated_by_device_mb"),
+            "gpu_allocated_end_by_device_mb": None if session_end is None else session_end.get("gpu_allocated_by_device_mb"),
+            "gpu_reserved_start_by_device_mb": None if session_start is None else session_start.get("gpu_reserved_by_device_mb"),
+            "gpu_reserved_end_by_device_mb": None if session_end is None else session_end.get("gpu_reserved_by_device_mb"),
+            "gpu_peak_allocated_end_by_device_mb": None
+            if session_end is None
+            else session_end.get("gpu_peak_allocated_by_device_mb"),
+        },
+    }
+
+
 def _collect_trace_only_phase_rows(
     runtime_trace: dict[str, Any] | None,
     resource_phase_rows: list[dict[str, Any]],
@@ -401,6 +488,12 @@ def _build_report_payload_from_context(
             "gpu_used_peak_session_mb": gpu_used_peak_session_mb,
             "gpu_used_peak_session_by_device_mb": gpu_used_peak_session_by_device_mb,
             "phases": phase_rows,
+            "debug": _build_resource_debug_summary(
+                session_start=session_start,
+                session_end=session_end,
+                gpu_used_peak_session_by_device_mb=gpu_used_peak_session_by_device_mb,
+                phase_rows=phase_rows,
+            ),
         },
         "component_memory_estimates": context.component_memory_estimates,
         "key_config": _collect_key_config_rows(context.cfg, hydra_config_name=hydra_config_name, hydra_overrides=hydra_overrides),
@@ -618,6 +711,44 @@ def _render_report_markdown(payload: dict[str, Any]) -> str:
                 f"{_format_mb(row['cpu_rss_start_mb'])} -> {_format_mb(row['cpu_rss_end_mb'])} | "
                 f"{_format_mb(row['cpu_vms_start_mb'])} -> {_format_mb(row['cpu_vms_end_mb'])} |"
             )
+
+    resource_debug = resource.get("debug")
+    if isinstance(resource_debug, dict):
+        session_device_rows = resource_debug.get("session_gpu_used_peak_by_device_rows") or []
+        if session_device_rows:
+            lines.extend(
+                [
+                    "",
+                    "## Per-Device GPU Session Peaks",
+                    "",
+                    "| Device | GPU Used Peak |",
+                    "|--------|---------------|",
+                ]
+            )
+            for row in session_device_rows:
+                if not isinstance(row, dict):
+                    continue
+                lines.append(f"| `{row.get('device')}` | {_format_mb(row.get('gpu_used_peak_mb'))} |")
+
+        phase_device_rows = resource_debug.get("phase_device_rows") or []
+        if phase_device_rows:
+            lines.extend(
+                [
+                    "",
+                    "## Per-Device GPU Phase Details",
+                    "",
+                    "| Phase | GPU Used Peak by Device | GPU Peak Allocated by Device |",
+                    "|-------|-------------------------|------------------------------|",
+                ]
+            )
+            for row in phase_device_rows:
+                if not isinstance(row, dict):
+                    continue
+                lines.append(
+                    f"| `{row.get('phase')}` | "
+                    f"{_format_device_map_mb(row.get('gpu_used_peak_by_device_mb'))} | "
+                    f"{_format_device_map_mb(row.get('gpu_peak_allocated_by_device_mb'))} |"
+                )
 
     if payload.get("include_full_config", True):
         lines.extend(
