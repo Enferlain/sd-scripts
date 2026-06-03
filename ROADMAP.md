@@ -117,6 +117,8 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
 - [ ] **Regularization-image UX / docs note** — The current DreamBooth-style `reg_data_dir` / `is_reg` path is mechanically correct, but it only helps when those images are genuine class/prior images with matching generic captions or `class_tokens`, not just arbitrary extra images. Make sure future docs/examples call that out explicitly.
 - [ ] **Dashboard / logging system rework** — The first-pass training observability refactor now lives under `library/logging/console.py`, `metrics.py`, `summaries.py`, `reports.py`, and `resource_monitor.py`, but the future UI/dashboard side still needs its own broader product/system design. Keep that follow-up focused on new sinks/backends and UI behavior rather than reopening the console/report/resource ownership boundaries that now exist.
   - The shared `MetadataRuntime.file(item)` path is now live for observer lifecycle/artifact events, resource-monitor events, benchmark run-report records, benchmark-report analytics snapshot payloads, and startup-summary analytics snapshots, so future dashboard/logging follow-up can treat typed observability metadata as an existing data source instead of inventing a separate runtime surface.
+  - Benchmark reports now also derive a non-causal resource-interpretation layer from the current live schema, so follow-up work in this area should focus on better explanations or provenance design rather than adding another parallel summary path for the same counters.
+  - Allocation ownership / causality now also has a dedicated OpenSpec design track under `openspec/changes/resource-allocation-provenance/`, so future work there should follow the explicit evidence-level and attribution-window model instead of extending live resource facts with guessed owners.
 - [ ] **Repo layout review** — Re-check whether `library/` folder organization is comfortable or if there's room to improve the layout.
 - [ ] **LyCORIS vendor / integration pass** — Treat LyCORIS as a vendor/integration ownership question rather than an external dependency question, since adapter breakdown follow-up depends on tighter ownership and easier modification.
 - [ ] **Adapter-system follow-up** — The active adapter rework now has optimization-owned target/grouping ownership, method-local PEFT config under `adapter.peft.<method>` branch presence plus explicit continuation intent, repo-owned LoHa, LoCon, LoKr, OFT, BOFT, DyLoRA, GLoRA, and IA3 method implementations, an explicit persistence split where `AdapterMode` orchestrates checkpoint/export flows while adapter runtime objects participate through repo-owned persistence helpers, and a runtime-layer loaded-runtime/merge-request seam for the built-in from-weights and base-weight-merge flow. The remaining follow-up is broader adapter breadth, generic artifact-initialization / pre-merge config ownership, and LyCORIS/vendor integration work rather than reopening compatibility-era optimizer, persistence, or merge boundaries.
@@ -156,6 +158,8 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
   - supports config/result analytics
   - supports reproducibility and regression tracking
   - supports future recommendation and forecasting
+
+- [ ] Function to catch ooms/errors and log/display information about them, other types of preventative measures
 
 ### Future Improvements
 

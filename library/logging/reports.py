@@ -310,6 +310,109 @@ def _device_map_to_rows(device_map: dict[str, float] | None, *, value_key: str) 
     return rows
 
 
+def _delta_mb(start_value: Any, end_value: Any) -> float | None:
+    if not isinstance(start_value, (int, float)) or not isinstance(end_value, (int, float)):
+        return None
+    return float(end_value) - float(start_value)
+
+
+def _describe_delta(metric_name: str, delta_mb: float | None, *, threshold_mb: float = 1.0) -> str | None:
+    if delta_mb is None or abs(delta_mb) < threshold_mb:
+        return None
+    direction = "higher" if delta_mb > 0 else "lower"
+    return f"{metric_name} ended {abs(delta_mb):.0f} MB {direction} than it started."
+
+
+def _build_resource_observations(
+    *,
+    gpu_allocated_start_mb: Any,
+    gpu_allocated_end_mb: Any,
+    gpu_reserved_start_mb: Any,
+    gpu_reserved_end_mb: Any,
+    gpu_peak_allocated_mb: Any,
+    gpu_used_peak_mb: Any,
+    cpu_rss_start_mb: Any,
+    cpu_rss_end_mb: Any,
+    cpu_vms_start_mb: Any,
+    cpu_vms_end_mb: Any,
+    threshold_mb: float = 1.0,
+) -> list[str]:
+    observations: list[str] = []
+
+    gpu_allocated_delta_mb = _delta_mb(gpu_allocated_start_mb, gpu_allocated_end_mb)
+    gpu_reserved_delta_mb = _delta_mb(gpu_reserved_start_mb, gpu_reserved_end_mb)
+    cpu_rss_delta_mb = _delta_mb(cpu_rss_start_mb, cpu_rss_end_mb)
+    cpu_vms_delta_mb = _delta_mb(cpu_vms_start_mb, cpu_vms_end_mb)
+
+    for metric_name, delta_mb in (
+        ("GPU allocated", gpu_allocated_delta_mb),
+        ("GPU reserved", gpu_reserved_delta_mb),
+        ("CPU RSS", cpu_rss_delta_mb),
+        ("CPU VMS", cpu_vms_delta_mb),
+    ):
+        description = _describe_delta(metric_name, delta_mb, threshold_mb=threshold_mb)
+        if description is not None:
+            observations.append(description)
+
+    if (
+        isinstance(gpu_peak_allocated_mb, (int, float))
+        and isinstance(gpu_allocated_start_mb, (int, float))
+        and isinstance(gpu_allocated_end_mb, (int, float))
+        and float(gpu_peak_allocated_mb) > max(float(gpu_allocated_start_mb), float(gpu_allocated_end_mb)) + threshold_mb
+    ):
+        observations.append(
+            "GPU peak allocated exceeded both start and end snapshots, indicating a transient in-phase allocator peak."
+        )
+
+    if (
+        isinstance(gpu_used_peak_mb, (int, float))
+        and isinstance(gpu_allocated_start_mb, (int, float))
+        and isinstance(gpu_allocated_end_mb, (int, float))
+        and float(gpu_used_peak_mb) > max(float(gpu_allocated_start_mb), float(gpu_allocated_end_mb)) + threshold_mb
+    ):
+        observations.append(
+            "Sampled GPU used peaked above the allocator snapshots; this shows higher visible device usage during the window, not component-level ownership."
+        )
+
+    if (
+        gpu_reserved_delta_mb is not None
+        and gpu_allocated_delta_mb is not None
+        and gpu_reserved_delta_mb > gpu_allocated_delta_mb + threshold_mb
+    ):
+        observations.append(
+            "GPU reserved grew more than GPU allocated, so allocator capacity expanded beyond the end-of-window live allocation level."
+        )
+
+    return observations
+
+
+def _build_phase_change_rows(phase_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    change_rows: list[dict[str, Any]] = []
+    for row in phase_rows:
+        change_rows.append(
+            {
+                "phase": row.get("phase"),
+                "gpu_allocated_delta_mb": _delta_mb(row.get("gpu_allocated_start_mb"), row.get("gpu_allocated_end_mb")),
+                "gpu_reserved_delta_mb": _delta_mb(row.get("gpu_reserved_start_mb"), row.get("gpu_reserved_end_mb")),
+                "cpu_rss_delta_mb": _delta_mb(row.get("cpu_rss_start_mb"), row.get("cpu_rss_end_mb")),
+                "cpu_vms_delta_mb": _delta_mb(row.get("cpu_vms_start_mb"), row.get("cpu_vms_end_mb")),
+                "observations": _build_resource_observations(
+                    gpu_allocated_start_mb=row.get("gpu_allocated_start_mb"),
+                    gpu_allocated_end_mb=row.get("gpu_allocated_end_mb"),
+                    gpu_reserved_start_mb=row.get("gpu_reserved_start_mb"),
+                    gpu_reserved_end_mb=row.get("gpu_reserved_end_mb"),
+                    gpu_peak_allocated_mb=row.get("gpu_peak_allocated_mb"),
+                    gpu_used_peak_mb=row.get("gpu_used_peak_mb"),
+                    cpu_rss_start_mb=row.get("cpu_rss_start_mb"),
+                    cpu_rss_end_mb=row.get("cpu_rss_end_mb"),
+                    cpu_vms_start_mb=row.get("cpu_vms_start_mb"),
+                    cpu_vms_end_mb=row.get("cpu_vms_end_mb"),
+                ),
+            }
+        )
+    return change_rows
+
+
 def _build_resource_debug_summary(
     *,
     session_start: dict[str, Any] | None,
@@ -317,6 +420,37 @@ def _build_resource_debug_summary(
     gpu_used_peak_session_by_device_mb: dict[str, float] | None,
     phase_rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    session_change_summary = {
+        "gpu_allocated_delta_mb": _delta_mb(
+            None if session_start is None else session_start.get("gpu_allocated_mb"),
+            None if session_end is None else session_end.get("gpu_allocated_mb"),
+        ),
+        "gpu_reserved_delta_mb": _delta_mb(
+            None if session_start is None else session_start.get("gpu_reserved_mb"),
+            None if session_end is None else session_end.get("gpu_reserved_mb"),
+        ),
+        "cpu_rss_delta_mb": _delta_mb(
+            None if session_start is None else session_start.get("cpu_rss_mb"),
+            None if session_end is None else session_end.get("cpu_rss_mb"),
+        ),
+        "cpu_vms_delta_mb": _delta_mb(
+            None if session_start is None else session_start.get("cpu_vms_mb"),
+            None if session_end is None else session_end.get("cpu_vms_mb"),
+        ),
+        "observations": _build_resource_observations(
+            gpu_allocated_start_mb=None if session_start is None else session_start.get("gpu_allocated_mb"),
+            gpu_allocated_end_mb=None if session_end is None else session_end.get("gpu_allocated_mb"),
+            gpu_reserved_start_mb=None if session_start is None else session_start.get("gpu_reserved_mb"),
+            gpu_reserved_end_mb=None if session_end is None else session_end.get("gpu_reserved_mb"),
+            gpu_peak_allocated_mb=None if session_end is None else session_end.get("gpu_peak_allocated_mb"),
+            gpu_used_peak_mb=None if session_end is None else session_end.get("gpu_used_mb"),
+            cpu_rss_start_mb=None if session_start is None else session_start.get("cpu_rss_mb"),
+            cpu_rss_end_mb=None if session_end is None else session_end.get("cpu_rss_mb"),
+            cpu_vms_start_mb=None if session_start is None else session_start.get("cpu_vms_mb"),
+            cpu_vms_end_mb=None if session_end is None else session_end.get("cpu_vms_mb"),
+        ),
+    }
+
     return {
         "surface_split": {
             "live_metadata_fields": [
@@ -334,8 +468,12 @@ def _build_resource_debug_summary(
             "report_debug_only_fields": [
                 "session_gpu_used_peak_by_device_rows",
                 "phase_device_rows",
+                "session_change_summary",
+                "phase_change_rows",
             ],
         },
+        "session_change_summary": session_change_summary,
+        "phase_change_rows": _build_phase_change_rows(phase_rows),
         "session_gpu_used_peak_by_device_rows": _device_map_to_rows(
             gpu_used_peak_session_by_device_mb,
             value_key="gpu_used_peak_mb",
@@ -714,6 +852,35 @@ def _render_report_markdown(payload: dict[str, Any]) -> str:
 
     resource_debug = resource.get("debug")
     if isinstance(resource_debug, dict):
+        session_change_summary = resource_debug.get("session_change_summary")
+        phase_change_rows = resource_debug.get("phase_change_rows") or []
+        resource_interpretation_rows: list[tuple[str, str]] = []
+        if isinstance(session_change_summary, dict):
+            observations = session_change_summary.get("observations")
+            if isinstance(observations, list) and observations:
+                resource_interpretation_rows.append(("Session", "; ".join(str(item) for item in observations)))
+        for row in phase_change_rows:
+            if not isinstance(row, dict):
+                continue
+            observations = row.get("observations")
+            if not isinstance(observations, list) or not observations:
+                continue
+            resource_interpretation_rows.append((f"`{row.get('phase')}`", "; ".join(str(item) for item in observations)))
+        if resource_interpretation_rows:
+            lines.extend(
+                [
+                    "",
+                    "## Resource Interpretation",
+                    "",
+                    "These summaries interpret observed start/end/peak counters only. They do not claim component-level ownership or causality.",
+                    "",
+                    "| Scope | Highlights |",
+                    "|-------|------------|",
+                ]
+            )
+            for scope, highlights in resource_interpretation_rows:
+                lines.append(f"| {scope} | {highlights} |")
+
         session_device_rows = resource_debug.get("session_gpu_used_peak_by_device_rows") or []
         if session_device_rows:
             lines.extend(

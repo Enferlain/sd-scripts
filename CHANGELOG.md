@@ -10,6 +10,16 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-06-03]
+
+### Added
+
+- **Resource allocation provenance now has a dedicated OpenSpec design track** — added the `resource-allocation-provenance` change with proposal, design, specs, and tasks so future resource-ownership / causality work can proceed from an explicit evidence-level and instrumentation-window model instead of growing ad hoc fields on top of observational resource counters.
+
+### Changed
+
+- **Benchmark reports now add an explicit non-causal resource-interpretation layer on top of the live resource schema** — `library.logging.reports` now derives session and per-phase delta summaries plus explanatory observations from the existing start/end/peak counters, exposes those interpretations only in the report/debug payload, and renders a `Resource Interpretation` section in the Markdown report while explicitly calling out that the summaries do not claim component-level ownership or allocation causality.
+
 ## [2026-05-31]
 
 ### Added

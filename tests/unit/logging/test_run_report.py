@@ -287,6 +287,8 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
     assert "## Full Composed Config" in markdown
     assert "GPU Used Peak" in markdown
     assert "CPU VMS" in markdown
+    assert "## Resource Interpretation" in markdown
+    assert "They do not claim component-level ownership or causality." in markdown
     assert "## Per-Device GPU Session Peaks" in markdown
     assert "## Per-Device GPU Phase Details" in markdown
     assert "unit_test_run" in markdown
@@ -312,12 +314,27 @@ def test_write_run_report_emits_markdown_and_json_with_phase_peaks(tmp_path):
     assert payload["resource_monitor"]["debug"]["surface_split"]["report_debug_only_fields"] == [
         "session_gpu_used_peak_by_device_rows",
         "phase_device_rows",
+        "session_change_summary",
+        "phase_change_rows",
     ]
+    assert payload["resource_monitor"]["debug"]["session_change_summary"]["gpu_allocated_delta_mb"] == 90.0
+    assert payload["resource_monitor"]["debug"]["session_change_summary"]["cpu_vms_delta_mb"] == 70.0
+    assert (
+        payload["resource_monitor"]["debug"]["session_change_summary"]["observations"][0]
+        == "GPU allocated ended 90 MB higher than it started."
+    )
     assert payload["resource_monitor"]["debug"]["session_gpu_used_peak_by_device_rows"] == [
         {"device": "0", "gpu_used_peak_mb": 170.0},
         {"device": "1", "gpu_used_peak_mb": 90.0},
     ]
     assert payload["resource_monitor"]["debug"]["phase_device_rows"][0]["phase"] == PHASE_CACHE_LATENTS
+    assert payload["resource_monitor"]["debug"]["phase_change_rows"][0]["phase"] == PHASE_CACHE_LATENTS
+    assert payload["resource_monitor"]["debug"]["phase_change_rows"][0]["gpu_allocated_delta_mb"] == 10.0
+    assert payload["resource_monitor"]["debug"]["phase_change_rows"][1]["gpu_reserved_delta_mb"] == 40.0
+    assert (
+        "GPU reserved grew more than GPU allocated, so allocator capacity expanded beyond the end-of-window live allocation level."
+        in payload["resource_monitor"]["debug"]["phase_change_rows"][1]["observations"]
+    )
 
 
 def test_write_run_report_files_metadata_record_when_observer_runtime_exists(tmp_path):
