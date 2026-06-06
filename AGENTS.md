@@ -108,7 +108,6 @@ uv run ty check library/training/checkpointing.py
 
 **Environment differences:** In WSL needs to use `uv run ty check --python ./.venv-wsl/bin/python`
 
-
 ## Important Files
 
 | File                   | Purpose                                       |
@@ -123,7 +122,7 @@ Always check AGENTS.md, DEVELOPMENT_GUIDE.md, and the top of CHANGELOG.md to ref
 
 ## Project Structure
 
-```
+```plaintext
 ├── train.py               # Canonical Hydra launcher for active training runs
 ├── AGENTS.md              # This file - agent instructions
 ├── CHANGELOG.md           # Notable changes log

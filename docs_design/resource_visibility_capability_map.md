@@ -456,13 +456,15 @@ It is still weak at:
 - per-device visibility
 - host-memory breadth beyond RSS
 - structured “what changed during this phase” summaries
-- causal attribution of allocations to runtime owners
+- phase resource accounting that can explain known resource owners inside the
+  existing phase/event timeline
 
 That makes the next implementation boundary fairly clear:
 
 - first expand the resource facts we can measure cheaply
 - then improve report/debug presentation of those facts
-- treat provenance / causality as a separate design problem, not a field list
+- then add declared owner scopes for code paths that know what resource-relevant
+  work is happening
 
 ## Follow-up Status
 
@@ -472,7 +474,7 @@ The remaining work is now split more explicitly:
 
 - report/debug interpretation upgrades were taken as direct implementation work
   and now live in the benchmark-report debug/interpretation layer
-- provenance / causality now has its own OpenSpec design track under
-  `openspec/changes/resource-allocation-provenance/`
+- phase resource accounting now has its own OpenSpec design track under
+  `openspec/changes/phase-resource-accounting/`
 - broader host-memory and distributed-semantics evaluation remains a separate
-  follow-up rather than being folded into the provenance design
+  follow-up rather than being folded into the first accounting design
