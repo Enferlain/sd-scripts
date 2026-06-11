@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-06-07]
+
+### Added
+
+- **Resource intelligence now has its first metadata-backed fact catalog slice** — added accepted resource observation, structural-resource, profile, accounting, and accounting-gap fact dataclasses, central metadata emitters, runtime filing routes, source-reference validation for derived resource facts, and focused metadata tests proving semantic classes and evidence relationships survive filing.
+
 ## [2026-06-03]
 
 ### Added

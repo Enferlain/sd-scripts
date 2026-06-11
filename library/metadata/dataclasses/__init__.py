@@ -6,6 +6,13 @@ the backend/projection layers decide how to persist or export them.
 """
 
 from library.metadata.dataclasses.artifact import CheckpointArtifactFacts
+from library.metadata.dataclasses.model import ModelSpecFacts
+from library.metadata.dataclasses.optimization import (
+    OptimizerRuntimeFacts,
+    SchedulerRuntimeFacts,
+)
+from library.metadata.dataclasses.run import RunMetadataFacts
+
 from library.metadata.dataclasses.observability import (
     AnalyticsSnapshotFacts,
     LoggedArtifactFacts,
@@ -13,9 +20,16 @@ from library.metadata.dataclasses.observability import (
     RunLifecycleFacts,
     RunReportFacts,
 )
-from library.metadata.dataclasses.optimization import OptimizerRuntimeFacts, SchedulerRuntimeFacts
-from library.metadata.dataclasses.model import ModelSpecFacts
-from library.metadata.dataclasses.run import RunMetadataFacts
+
+from library.metadata.dataclasses.resource import (
+    ResourceAccountingFacts,
+    ResourceAccountingGapFacts,
+    ResourceFactReference,
+    ResourceObservationFacts,
+    ResourceProfileFacts,
+    StructuralResourceFacts,
+)
+
 
 __all__ = [
     "CheckpointArtifactFacts",
@@ -25,7 +39,13 @@ __all__ = [
     "RunReportFacts",
     "AnalyticsSnapshotFacts",
     "OptimizerRuntimeFacts",
+    "ResourceAccountingFacts",
+    "ResourceAccountingGapFacts",
+    "ResourceFactReference",
+    "ResourceObservationFacts",
+    "ResourceProfileFacts",
     "ModelSpecFacts",
     "RunMetadataFacts",
     "SchedulerRuntimeFacts",
+    "StructuralResourceFacts",
 ]

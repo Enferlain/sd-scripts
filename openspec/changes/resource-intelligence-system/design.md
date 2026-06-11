@@ -1,0 +1,321 @@
+## Context
+
+The active resource path has a useful runtime spine:
+
+```text
+Trainer / phases
+    -> ResourceMonitor lifecycle hooks
+    -> snapshots and samples
+    -> resource event dictionary
+       -> JSONL writer
+       -> ResourceMonitorFacts -> MetadataRuntime.file(...)
+    -> reports.py reparses JSONL and derives summaries
+```
+
+This works for the current narrow schema, but it has four architectural
+pressures:
+
+1. the resource event dictionary and `ResourceMonitorFacts` mirror each other
+   manually
+2. JSONL is treated as the report source of truth while metadata receives a
+   second representation of the same facts
+3. collection, orchestration, console output, event construction, persistence,
+   and report derivation are tightly coupled
+4. the current shapes describe observations but do not provide a coherent model
+   for structural facts, reusable profiles, or accounting
+
+The metadata backbone is already the repo-owned system for accepted typed
+metadata items, validation, central emitter routing, backend accumulation,
+durable storage, identities, relationships, and projections. Resource
+intelligence must extend that architecture rather than create a competing
+warehouse or parallel canonical event schema.
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- Design the complete target resource-intelligence system rather than a
+  throwaway monitoring-only intermediate.
+- Preserve the current small trainer-facing resource-monitor lifecycle API.
+- Represent observations, structural facts, profiles, and accounting as
+  distinct but related resource concepts.
+- Make metadata the durable fact-system boundary without moving resource
+  collection or interpretation into metadata.
+- Provide one accepted typed fact flow from which JSONL, reports, profile
+  artifacts, dashboard inputs, and future analytics can be projected.
+- Support low-cost normal operation and explicit higher-cost diagnostic
+  collection.
+- Preserve enough identity and relationships to compare runs and explain
+  resource behavior across ranks, processes, devices, phases, components, and
+  artifacts.
+
+**Non-Goals:**
+
+- Do not promise precise per-allocation ownership from aggregate counters.
+- Do not treat phase-local deltas as proof of ownership.
+- Do not make metadata emitters infer resource meaning.
+- Do not replace the existing logging/metadata systems with an external
+  observability platform.
+- Do not add every available psutil, NVML, or CUDA counter without a defined
+  question, cost, and retention policy.
+
+## Decisions
+
+### Decision: Build one resource-intelligence domain with four semantic fact classes
+
+The target system distinguishes:
+
+```text
+Observation
+  A measured resource value at a known time and scope.
+
+Structural fact
+  A known resource-bearing object or state size, such as parameter bytes,
+  optimizer tensor bytes, cache artifact bytes, or worker-process residency.
+
+Profile
+  A derived reusable description of a run or workload shape, such as peaks,
+  steady-state ranges, phase signatures, and regression-comparison features.
+
+Accounting statement
+  An explicit explanation of how observed or structural resource values relate
+  to known owners or operations, including an honest accounting gap.
+```
+
+Every persisted resource fact must preserve its semantic class. Measured,
+estimated, derived, and accounted values must never become interchangeable
+because they share a unit.
+
+Alternative considered: keep adding fields to `ResourceMonitorFacts`.
+
+Why not: one flat event shape cannot express the different truth semantics,
+lifecycles, identities, and relationships required by the target system.
+
+### Decision: Resource-domain code owns production and interpretation; metadata owns accepted durable facts
+
+Runtime resource code owns:
+
+- collectors and live state
+- sampling and collection-cost policy
+- runtime context attachment
+- derivation of resource profiles
+- accounting logic and accounting-gap calculation
+- decisions about when a resource fact becomes available
+
+`library/metadata/` owns:
+
+- shared accepted resource fact dataclasses
+- validation
+- identities and relationships
+- routing to metadata events/records
+- backend accumulation and durable storage
+- projections and exports
+
+Metadata must store accepted accounting statements, but it must not invent
+owners, infer causes, or derive profiles by itself.
+
+Alternative considered: make resource intelligence a separate database and
+keep metadata as a secondary sink.
+
+Why not: that would duplicate identities, storage, validation, and query
+semantics already owned by the metadata backbone.
+
+### Decision: Use one typed fact flow; JSONL becomes a projection
+
+Resource runtime code will produce typed resource-domain facts that can be
+filed as accepted metadata items. JSONL remains a useful portable/debug
+artifact, but it is generated from the accepted fact representation rather than
+being authored independently.
+
+Reports, profiles, comparisons, and accounting views will consume a queryable
+resource-run dataset assembled from metadata snapshots/storage or from the same
+typed facts during a live run. They will not require JSONL to be the canonical
+database.
+
+The current JSONL shape may remain available as a compatibility projection
+during migration.
+
+Alternative considered: keep JSONL canonical because reports already parse it.
+
+Why not: JSONL is a useful export format but a weak canonical model for typed
+relationships, validation, durable querying, and multiple derived fact classes.
+
+### Decision: Extend MetadataRuntime for telemetry-volume facts instead of bypassing it
+
+The current `MetadataRuntime.file(item)` path is appropriate for low-volume
+lifecycle facts but may be inefficient for sampled resource telemetry. The
+resource-intelligence system will define ingestion policy explicitly:
+
+- low-volume records/events may continue through single-item filing
+- sampled observations may use metadata-runtime-owned batch filing, buffering,
+  and retention policies
+- collection must not block training indefinitely
+- dropped or degraded telemetry must itself be observable
+
+Resource-domain code must not call metadata backends or storage directly.
+`MetadataRuntime` may internally optimize ingestion into its configured backend,
+but it remains the only runtime-facing durable filing boundary. This is an
+extension of the metadata runtime/storage contract, not permission for resource
+code to create a separate canonical store or parallel filing API.
+
+### Decision: Preserve the ResourceMonitor lifecycle API as the orchestration facade
+
+The trainer-facing API remains intentionally small:
+
+```python
+start_session()
+end_session()
+phase_start(name)
+phase_end(name)
+step_end(global_step, epoch)
+emit_startup_component_memory(...)
+```
+
+The implementation behind that facade may be decomposed into collectors,
+context assembly, fact production, buffering, and projections. New training
+hooks should only be added when the target resource model cannot obtain an
+important fact through existing lifecycle boundaries.
+
+Alternative considered: expose collectors and sinks directly to training code.
+
+Why not: that would spread observability mechanics through orchestration and
+make future evolution harder.
+
+### Decision: Collectors declare capabilities, cost, scope, and availability
+
+Each collector must declare:
+
+- which fact kinds it can produce
+- supported process/device/resource scopes
+- expected collection cost or collection class
+- availability and degraded/fallback behavior
+- whether it is safe on lifecycle boundaries, background sampling, or explicit
+  diagnostics only
+
+Modes or future collection profiles select collector capabilities and cadence.
+The existing `off/basic/sampled/deep` behavior may remain as a compatibility
+surface, but internal policy must not depend on one monolithic conditional
+collector.
+
+### Decision: Resource identity is relational, not phase-only
+
+Resource facts may relate to:
+
+- run
+- process and rank
+- host
+- device
+- phase or runtime event
+- training step/epoch
+- model component or optimization group
+- cache/checkpoint/artifact
+- collector and measurement source
+
+Phases remain important context, but they are not the only resource identity.
+This avoids forcing structural facts and device/process observations into a
+phase-only model.
+
+### Decision: Accounting is first-class but evidence-constrained
+
+Accounting belongs in the target system now, not as an undefined future layer.
+An accounting statement must include:
+
+- the resource scope and quantity being explained
+- the owner or operation being accounted
+- whether its basis is measured, structural, estimated, or derived
+- the source facts or relationships supporting it
+- the accounting window or validity boundary
+- any unresolved accounting gap
+
+The system must allow partial accounting. An accounting gap is a result, not an
+owner. Reports must not silently force unexplained values into broad labels.
+
+### Decision: Profiles are durable derived facts, not report formatting
+
+A resource profile is a queryable, versioned derived product suitable for:
+
+- run comparison
+- regression detection
+- capacity planning
+- future recommendations
+- dashboard and warehouse consumption
+
+Profiles are produced by resource-domain derivation code and filed into
+metadata with links to their source facts and derivation version. Reports are
+projections of profiles and facts; they are not the only place profiles exist.
+
+### Decision: Reports query a resource-run view
+
+The system will provide a resource-run query/view boundary that assembles the
+facts needed by reports and analysis without exposing metadata backend internals
+or requiring raw JSONL parsing. The view consumes metadata-owned public
+snapshot/query/projection APIs; it must not read raw metadata storage directly.
+
+This view must preserve original observed facts alongside derived profiles and
+accounting statements so consumers can distinguish them.
+
+### Decision: Metadata projections own resource export shaping
+
+JSONL, report payload, profile artifact, and accounting artifact schemas are
+metadata projections from accepted facts. Resource-domain code may decide when
+an export is requested and logging/observability code may register the produced
+artifact, but runtime resource code must not independently author export
+schemas.
+
+## Risks / Trade-offs
+
+- **[Metadata becomes overloaded by high-frequency telemetry]** -> add explicit
+  batch/buffer/retention APIs and benchmark ingestion overhead before routing
+  default sampled telemetry durably.
+- **[Central metadata package becomes a resource-domain god object]** ->
+  metadata owns schemas and storage only; resource code owns collection,
+  derivation, and accounting decisions.
+- **[Fact model becomes too abstract before real use cases]** -> evolve it
+  through concrete current facts and required queries, with versioned additive
+  schemas and focused end-to-end tests.
+- **[Accounting output overstates causality]** -> require basis/source/window
+  semantics and support explicit accounting gaps.
+- **[JSONL compatibility breaks existing workflows]** -> retain a compatibility
+  projection until typed-fact and report migrations are verified.
+- **[Collectors add training overhead or instability]** -> require cost classes,
+  bounded queues, degraded behavior, and explicit diagnostic gating.
+- **[Profiles or accounting statements become detached from their evidence]** ->
+  version derivations, preserve source-fact relationships, and validate those
+  relationships centrally before accepting the derived facts.
+
+## Migration Plan
+
+1. Define the accepted resource fact catalog and identities in metadata,
+   including observation, structural, profile, and accounting item types.
+2. Introduce a resource-domain fact producer and resource-run query/view seam
+   while preserving current monitor behavior.
+3. Convert the current snapshot/sample event path to produce typed facts once,
+   then project the current JSONL compatibility shape and metadata events.
+4. Add `MetadataRuntime` batch/buffer/retention support required for sampled
+   telemetry.
+5. Move reports from raw JSONL parsing to the resource-run view while preserving
+   report output and JSONL artifact registration. During migration, typed facts
+   filed through `MetadataRuntime` remain authoritative; compatibility JSONL and
+   current event dictionaries must not become alternate report sources.
+6. Decompose current collection into capability/cost-aware collectors.
+7. Migrate startup component estimates into structural facts.
+8. Add initial durable profiles and accounting statements grounded in existing
+   measured and structural facts.
+9. Retire compatibility-only parallel schema assembly after end-to-end
+   equivalence and performance verification.
+
+Rollback remains possible during migration because the current event/JSONL path
+stays available until typed-fact projections and report queries are proven.
+
+## Open Questions
+
+- Which sampled observations should be retained durably by default versus
+  summarized and discarded?
+- Should the first resource-run query view read directly from a metadata
+  snapshot, SQLite storage, or a backend-neutral query protocol?
+- Which current modes should remain user-facing once collector capabilities and
+  cost policies exist?
+- What is the minimum trustworthy first accounting output beyond structural
+  parameter/component facts?
+- Which identities belong in shared metadata records versus resource-specific
+  relationship facts?

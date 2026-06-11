@@ -14,6 +14,13 @@ from library.metadata.dataclasses.observability import (
     RunLifecycleFacts,
     RunReportFacts,
 )
+from library.metadata.dataclasses.resource import (
+    ResourceAccountingFacts,
+    ResourceAccountingGapFacts,
+    ResourceObservationFacts,
+    ResourceProfileFacts,
+    StructuralResourceFacts,
+)
 from library.metadata.providers import MetadataRequiredFact
 from library.metadata.records import MetadataRecord
 
@@ -49,6 +56,11 @@ _SUPPORTED_METADATA_ITEM_TYPES = (
     ResourceMonitorFacts,
     RunReportFacts,
     AnalyticsSnapshotFacts,
+    ResourceObservationFacts,
+    StructuralResourceFacts,
+    ResourceProfileFacts,
+    ResourceAccountingFacts,
+    ResourceAccountingGapFacts,
 )
 
 
@@ -83,6 +95,20 @@ def validate_metadata_item(item: object) -> None:
             f"Unsupported metadata item type {type(item).__name__}. Supported types: {supported}."
         )
     _validate_dataclass_fields(item, error_type=MetadataItemValidationError)
+    _validate_resource_item_relationships(item)
+
+
+def _validate_resource_item_relationships(item: object) -> None:
+    if not _requires_resource_source_references(item):
+        return
+    if not item.source_fact_references:
+        raise MetadataItemValidationError(
+            f"Metadata item {type(item).__name__} must include at least one source_fact_reference."
+        )
+
+
+def _requires_resource_source_references(item: object) -> bool:
+    return isinstance(item, (ResourceProfileFacts, ResourceAccountingFacts, ResourceAccountingGapFacts))
 
 
 def _matching_records(records: tuple[MetadataRecord, ...], required_fact) -> tuple[MetadataRecord, ...]:

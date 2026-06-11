@@ -13,12 +13,26 @@ from library.metadata.dataclasses.observability import (
     RunLifecycleFacts,
     RunReportFacts,
 )
+from library.metadata.dataclasses.resource import (
+    ResourceAccountingFacts,
+    ResourceAccountingGapFacts,
+    ResourceObservationFacts,
+    ResourceProfileFacts,
+    StructuralResourceFacts,
+)
 from library.metadata.emitters.observability import (
     build_analytics_snapshot_metadata,
     build_logged_artifact_metadata,
     build_resource_monitor_metadata,
     build_run_lifecycle_metadata,
     build_run_report_metadata,
+)
+from library.metadata.emitters.resource import (
+    build_resource_accounting_gap_metadata,
+    build_resource_accounting_metadata,
+    build_resource_observation_metadata,
+    build_resource_profile_metadata,
+    build_structural_resource_metadata,
 )
 from library.metadata.providers import MetadataProviderResult
 from library.metadata.validation import MetadataItemValidationError, validate_metadata_item
@@ -29,6 +43,11 @@ MetadataRuntimeItem: TypeAlias = (
     | ResourceMonitorFacts
     | RunReportFacts
     | AnalyticsSnapshotFacts
+    | ResourceObservationFacts
+    | StructuralResourceFacts
+    | ResourceProfileFacts
+    | ResourceAccountingFacts
+    | ResourceAccountingGapFacts
 )
 
 _SUPPORTED_METADATA_ITEM_TYPES = (
@@ -37,6 +56,11 @@ _SUPPORTED_METADATA_ITEM_TYPES = (
     ResourceMonitorFacts,
     RunReportFacts,
     AnalyticsSnapshotFacts,
+    ResourceObservationFacts,
+    StructuralResourceFacts,
+    ResourceProfileFacts,
+    ResourceAccountingFacts,
+    ResourceAccountingGapFacts,
 )
 
 
@@ -54,6 +78,16 @@ def build_metadata_result(item: MetadataRuntimeItem) -> MetadataProviderResult:
         return build_run_report_metadata(item)
     if isinstance(item, AnalyticsSnapshotFacts):
         return build_analytics_snapshot_metadata(item)
+    if isinstance(item, ResourceObservationFacts):
+        return build_resource_observation_metadata(item)
+    if isinstance(item, StructuralResourceFacts):
+        return build_structural_resource_metadata(item)
+    if isinstance(item, ResourceProfileFacts):
+        return build_resource_profile_metadata(item)
+    if isinstance(item, ResourceAccountingFacts):
+        return build_resource_accounting_metadata(item)
+    if isinstance(item, ResourceAccountingGapFacts):
+        return build_resource_accounting_gap_metadata(item)
 
     supported = ", ".join(item_type.__name__ for item_type in _SUPPORTED_METADATA_ITEM_TYPES)
     raise MetadataItemValidationError(
