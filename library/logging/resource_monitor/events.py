@@ -6,10 +6,14 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from library.metadata.dataclasses.observability import ResourceMonitorFacts
+from library.metadata.runtime import MetadataRuntimeItem
 
 from .collect import _DeepCounters, _Snapshot
-from .fact_production import build_compatibility_resource_monitor_facts
+from .fact_production import (
+    ResourceMonitorProducedFacts,
+    build_resource_monitor_produced_facts,
+    project_resource_monitor_jsonl_event,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -168,25 +172,30 @@ class ResourceEventMixin:
             deep_window_active=window_active,
             ts=ts,
         )
-        resource_facts = self._produce_resource_facts(event_payload)
-        self._file_resource_facts(resource_facts)
+        produced_facts = self._produce_resource_facts(event_payload)
+        self._file_resource_facts(produced_facts)
         if self._jsonl_file is None:
             return
-        self._write_jsonl_event(event_payload, force_flush=force_flush)
+        jsonl_event = event_payload if produced_facts is None else project_resource_monitor_jsonl_event(produced_facts)
+        self._write_jsonl_event(jsonl_event, force_flush=force_flush)
 
-    def _produce_resource_facts(self, event_payload: Mapping[str, Any]) -> ResourceMonitorFacts | None:
+    def _produce_resource_facts(self, event_payload: Mapping[str, Any]) -> ResourceMonitorProducedFacts | None:
         """Produce accepted typed facts at the resource-domain boundary."""
         run_identifier = getattr(self, "_run_identifier", None)
         if run_identifier is None:
             return None
-        return build_compatibility_resource_monitor_facts(
+        sequence = getattr(self, "_resource_fact_sequence", 0)
+        self._resource_fact_sequence = sequence + 1
+        return build_resource_monitor_produced_facts(
             event_payload,
             run_identifier=run_identifier,
+            sequence=sequence,
         )
 
-    def _file_resource_facts(self, facts: ResourceMonitorFacts | None) -> None:
+    def _file_resource_facts(self, facts: ResourceMonitorProducedFacts | None) -> None:
         """File produced resource facts without owning their metadata shape."""
         metadata_runtime = getattr(self, "_metadata_runtime", None)
         if metadata_runtime is None or facts is None:
             return
-        metadata_runtime.file(facts)
+        items: tuple[MetadataRuntimeItem, ...] = facts.as_metadata_items()
+        metadata_runtime.file_many(items)

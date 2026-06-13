@@ -42,6 +42,6 @@ optimizer:
   optimizer_type: AdamW8bit
   learning_rates:
     base: null
-    denoiser: null
+    denoiser: 1e-5 #null
     text_encoders: [0.0, 0.0]
-    groups_file: configs/tmp_groups.yaml
+#    groups_file: configs/tmp_groups.yaml

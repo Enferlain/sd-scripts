@@ -16,6 +16,11 @@ from library.logging.resource_monitor import (
     SampledResourceMonitor,
     create_resource_monitor,
 )
+from library.logging.resource_monitor.collect import _DeepCounters, _SampledMetrics
+from library.logging.resource_monitor.fact_production import (
+    build_resource_monitor_produced_facts,
+    project_resource_monitor_jsonl_event,
+)
 from library.metadata import METADATA_PAYLOAD_VERSION, MetadataRuntime
 
 
@@ -228,6 +233,8 @@ class TestBasicResourceMonitorBehavior:
         assert snapshot.events[2].facts["global_step"] == 1
         assert snapshot.events[3].facts["phase"] == training_epoch_phase(0)
         assert snapshot.events[4].facts["duration_ms"] is not None
+        assert len(snapshot.records_for(entity_type="resource_observation_frame")) == 5
+        assert len(snapshot.records_for(entity_type="resource_observation")) >= 10
 
     def test_resource_monitor_routes_metadata_through_resource_fact_production_seam(self):
         accelerator = MagicMock()
@@ -253,6 +260,40 @@ class TestBasicResourceMonitorBehavior:
             "session_start",
             "session_end",
         ]
+
+    def test_resource_monitor_produces_canonical_observation_frames_once(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-1",
+            metadata_runtime=metadata_runtime,
+        )
+
+        monitor.start_session()
+        monitor.phase_start(training_epoch_phase(0))
+        monitor.step_end(global_step=1, epoch=1)
+        monitor.phase_end(training_epoch_phase(0))
+        monitor.end_session()
+
+        snapshot = metadata_runtime.snapshot()
+        frames = snapshot.records_for(entity_type="resource_observation_frame")
+        measurements = snapshot.records_for(entity_type="resource_observation")
+        step_frame = next(frame for frame in frames if frame.facts["event_name"] == "step_sample")
+        step_frame_metadata = step_frame.facts["metadata"]
+
+        assert step_frame.facts["global_step"] == 1
+        assert step_frame.facts["rank"] == 0
+        assert isinstance(step_frame_metadata, dict)
+        assert "device_scope" in step_frame_metadata
+        assert any(record.facts["measurement_kind"] == "rss" for record in measurements)
+        assert any(record.facts["measurement_kind"] == "allocated" for record in measurements)
+        assert all(record.facts["semantic_class"] == "observation" for record in frames)
 
     def test_emit_startup_component_memory_logs_estimate(self):
         accelerator = MagicMock()
@@ -391,21 +432,27 @@ class TestResourceMonitorJsonl:
             log_every_n_steps=1,
         )
 
-        monitor = create_resource_monitor(
-            accelerator=accelerator,
-            resource_monitor_config=cfg,
-            output_dir=tmp_path,
-            run_identifier="run-123",
-            config_name="test_peft_resource_sampled",
-            git_sha="abc123def",
-            git_dirty=True,
-        )
+        with patch(
+            "library.logging.resource_monitor.events.project_resource_monitor_jsonl_event",
+            wraps=project_resource_monitor_jsonl_event,
+        ) as mock_project_jsonl:
+            monitor = create_resource_monitor(
+                accelerator=accelerator,
+                resource_monitor_config=cfg,
+                output_dir=tmp_path,
+                run_identifier="run-123",
+                config_name="test_peft_resource_sampled",
+                git_sha="abc123def",
+                git_dirty=True,
+            )
 
-        monitor.start_session()
-        monitor.phase_start(training_epoch_phase(0))
-        monitor.step_end(global_step=1, epoch=1)
-        monitor.phase_end(training_epoch_phase(0))
-        monitor.end_session()
+            monitor.start_session()
+            monitor.phase_start(training_epoch_phase(0))
+            monitor.step_end(global_step=1, epoch=1)
+            monitor.phase_end(training_epoch_phase(0))
+            monitor.end_session()
+
+        assert mock_project_jsonl.call_count >= 5
 
         jsonl_path = tmp_path / "resource" / "monitor.jsonl"
         assert jsonl_path.exists()
@@ -461,6 +508,51 @@ class TestResourceMonitorJsonl:
         assert "cpu_vms_mb" in session_start
         assert "gpu_allocated_by_device_mb" in session_start
         assert session_start["git_dirty"] is True
+
+    def test_jsonl_projection_recreates_existing_flat_shape_from_canonical_frame(self):
+        event_payload = {
+            "ts": 123.0,
+            "event": "step_sample",
+            "rank": 0,
+            "world_size": 2,
+            "mode": "deep",
+            "device_scope": "all_visible",
+            "run_identifier": "run-123",
+            "config_name": "test-config",
+            "git_sha": "abc123def",
+            "git_dirty": True,
+            "global_step": 4,
+            "epoch": 1,
+            "phase": training_epoch_phase(0),
+            "duration_ms": 12.5,
+            "gpu_allocated_mb": 100.0,
+            "gpu_allocated_by_device_mb": {"0": 40.0, "1": 60.0},
+            "gpu_reserved_mb": 200.0,
+            "gpu_reserved_by_device_mb": {"0": 80.0, "1": 120.0},
+            "gpu_peak_allocated_mb": 250.0,
+            "gpu_peak_allocated_by_device_mb": {"0": 90.0, "1": 160.0},
+            "gpu_used_mb": 300.0,
+            "gpu_used_by_device_mb": {"10": 190.0, "2": 110.0},
+            "cpu_rss_mb": 512.0,
+            "cpu_vms_mb": 1024.0,
+            "steps_per_sec": 1.25,
+            "samples_per_sec": 2.5,
+            "dropped_samples": 3,
+            "collection_ms": 1.5,
+            "deep_alloc_retries": 7,
+            "deep_ooms": 1,
+            "deep_active_mb": 64.0,
+            "deep_reserved_mb": 128.0,
+            "deep_inactive_split_mb": 16.0,
+            "deep_window_active": True,
+        }
+
+        produced_facts = build_resource_monitor_produced_facts(event_payload, run_identifier="run-123", sequence=1)
+        projected = project_resource_monitor_jsonl_event(produced_facts)
+
+        assert produced_facts.observation_frame is not None
+        assert projected == event_payload
+        assert list(projected["gpu_used_by_device_mb"]) == ["2", "10"]
 
     def test_phase_end_forces_flush_in_batch_mode(self, tmp_path):
         accelerator = MagicMock()
@@ -538,6 +630,45 @@ class TestSampledResourceMonitor:
         monitor._enqueue_sample(sample)
 
         assert monitor._dropped_samples == 1
+
+    def test_sampled_updates_produce_canonical_observation_frames(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = SampledResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="sampled"),
+            output_jsonl_path=None,
+            run_identifier="run-1",
+            metadata_runtime=metadata_runtime,
+        )
+        sample = _SampledMetrics(
+            ts=123.0,
+            gpu_used_mb=8.0,
+            gpu_used_by_device_mb={"0": 8.0},
+            cpu_rss_mb=512.0,
+            cpu_vms_mb=1024.0,
+            collection_ms=1.5,
+        )
+
+        monitor._enqueue_sample(sample)
+        monitor._process_sampler_updates(max_items=1)
+
+        snapshot = metadata_runtime.snapshot()
+        frame = next(
+            record
+            for record in snapshot.records_for(entity_type="resource_observation_frame")
+            if record.facts["collector_id"] == "resource_monitor.sampler"
+        )
+        measurements = snapshot.records_for(entity_type="resource_observation")
+
+        assert frame.facts["event_name"] == "step_sample"
+        assert frame.facts["collector_id"] == "resource_monitor.sampler"
+        assert "global_step" not in frame.facts
+        assert any(record.facts["measurement_kind"] == "used_visible" for record in measurements)
+        assert any(record.facts["measurement_kind"] == "collection_duration" for record in measurements)
 
     def test_collect_sample_metrics_local_device_records_one_device_map(self):
         accelerator = MagicMock()
@@ -636,6 +767,46 @@ class TestSampledResourceMonitor:
         assert deep_step["deep_reserved_mb"] == 128
         assert deep_step["deep_inactive_split_mb"] == 16
         assert deep_step["deep_window_active"] is True
+
+    def test_deep_step_produces_canonical_diagnostic_measurements(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = SampledResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="deep", log_every_n_steps=1),
+            output_jsonl_path=None,
+            run_identifier="run-1",
+            metadata_runtime=metadata_runtime,
+        )
+        deep_counters = _DeepCounters(
+            alloc_retries=3,
+            ooms=1,
+            active_mb=64.0,
+            reserved_mb=128.0,
+            inactive_split_mb=16.0,
+            collection_ms=None,
+        )
+
+        with patch.object(monitor, "_collect_deep_counters", return_value=(deep_counters, True)):
+            monitor.step_end(global_step=1, epoch=0)
+
+        snapshot = metadata_runtime.snapshot()
+        frame = next(
+            record
+            for record in snapshot.records_for(entity_type="resource_observation_frame")
+            if record.facts["collector_id"] == "resource_monitor.deep"
+        )
+        measurements = snapshot.records_for(entity_type="resource_observation")
+        frame_metadata = frame.facts["metadata"]
+
+        assert frame.facts["collector_id"] == "resource_monitor.deep"
+        assert isinstance(frame_metadata, dict)
+        assert frame_metadata["deep_window_active"] is True
+        assert any(record.facts["measurement_kind"] == "alloc_retries" for record in measurements)
+        assert any(record.facts["measurement_kind"] == "deep_inactive_split" for record in measurements)
 
     def test_deep_window_steps_limits_counter_collection(self):
         accelerator = MagicMock()

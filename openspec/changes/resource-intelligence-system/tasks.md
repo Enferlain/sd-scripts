@@ -24,8 +24,8 @@
 ## 4. Introduce Resource-Domain Fact Production
 
 - [x] 4.1 Add a resource-domain fact-production seam behind the existing `ResourceMonitor` lifecycle facade.
-- [ ] 4.2 Convert current session, phase, step, sampled, and deep-counter paths to produce canonical typed observation frames once.
-- [ ] 4.3 Project the existing resource JSONL shape from canonical facts as a compatibility export.
+- [x] 4.2 Convert current session, phase, step, sampled, and deep-counter paths to produce canonical typed observation frames once.
+- [x] 4.3 Project the existing resource JSONL shape from canonical facts as a compatibility export.
 - [ ] 4.4 Preserve current console summaries from canonical facts or resource-domain summaries without making console output canonical.
 - [ ] 4.5 Add end-to-end equivalence tests for current JSONL, metadata, and console behavior during migration.
 

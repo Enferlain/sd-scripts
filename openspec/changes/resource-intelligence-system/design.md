@@ -210,6 +210,21 @@ metadata-runtime concern. Canonical observation-frame production replaces this
 compatibility builder in the next migration task without changing trainer
 lifecycle hooks.
 
+The first canonical-frame migration keeps the compatibility facts during the
+transition but produces `ResourceObservationFrameFacts` from the same event
+boundary. Compatibility facts and canonical frames are filed together in one
+metadata-runtime batch so JSONL/report migration can later switch to projections
+without re-collecting or re-interpreting the monitor counters.
+
+The first JSONL migration slice projects the existing flat resource-monitor
+artifact from produced observation-frame facts for identified runs. It preserves
+the current artifact shape as a compatibility export while making the canonical
+frame the preferred source for JSONL fields. A narrow fallback to the
+transitional compatibility fact remains only for event boundaries that produce no
+observation frame, and JSONL-only runs without a durable run identifier keep the
+pre-existing raw-event write path until run identity is mandatory or a separate
+non-durable projection context exists.
+
 ### Decision: Preserve the ResourceMonitor lifecycle API as the orchestration facade
 
 The trainer-facing API remains intentionally small:

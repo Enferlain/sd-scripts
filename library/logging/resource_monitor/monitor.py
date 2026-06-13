@@ -184,6 +184,7 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
         self._jsonl_flush_mode = resource_monitor_config.jsonl_flush_mode
         self._jsonl_flush_every_n_events = resource_monitor_config.jsonl_flush_every_n_events
         self._metadata_runtime = metadata_runtime
+        self._resource_fact_sequence = 0
 
         self._run_identifier = self._normalize_metadata_value(run_identifier)
         self._config_name = self._normalize_metadata_value(config_name)
