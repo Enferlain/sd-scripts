@@ -45,6 +45,44 @@ class ResourceObservationFacts:
 
 
 @dataclass(frozen=True, slots=True)
+class ResourceObservationMeasurementFacts:
+    """One individually addressable measurement within an observation frame."""
+
+    measurement_identifier: str
+    resource_kind: str
+    measurement_kind: str
+    value: float
+    unit: str
+    source: str
+    scope_type: str | None = None
+    device_identifier: str | None = None
+    quality: str | None = None
+    metadata: Mapping[str, MetadataValue] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class ResourceObservationFrameFacts:
+    """Shared runtime and collection context for co-collected observations."""
+
+    frame_identifier: str
+    run_identifier: str
+    event_name: str
+    measurements: tuple[ResourceObservationMeasurementFacts, ...]
+    ts: float | None = None
+    collector_id: str | None = None
+    collection_policy: str | None = None
+    phase: str | None = None
+    global_step: int | None = None
+    epoch: int | None = None
+    rank: int | None = None
+    world_size: int | None = None
+    host_identifier: str | None = None
+    process_identifier: str | None = None
+    quality: str | None = None
+    metadata: Mapping[str, MetadataValue] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
 class StructuralResourceFacts:
     """Known resource-bearing object or state size."""
 

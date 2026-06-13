@@ -32,9 +32,12 @@ attribution.
   reports to parse a separate canonical JSONL schema.
 - Preserve explicit semantics for measured, estimated, derived, and accounted
   values so reports never present inference as raw observation.
+- Preserve co-collected observation context through individually addressable
+  observation frames instead of expanding every bundled sample into unrelated
+  scalar records.
 - Design collection cost, sampling, retention, and failure behavior as part of
   the system contract rather than adding counters without operational policy.
-- Supersede the current `phase-resource-accounting` direction as the governing
+- Supersede the historical `phase-resource-accounting` direction as the governing
   resource-system design; phase accounting may remain one view within the
   broader system rather than the architecture itself.
 

@@ -1,8 +1,8 @@
 ## 1. Reconcile Resource-System Direction
 
-- [ ] 1.1 Review the new resource-intelligence fact classes against every current resource-monitor event, metadata fact, startup estimate, and report-derived value.
-- [ ] 1.2 Record the disposition of the historical `phase-resource-accounting` change and migrate any still-valid requirements into this change.
-- [ ] 1.3 Update the active resource-system bead and roadmap language so this OpenSpec change is the governing design.
+- [x] 1.1 Review the new resource-intelligence fact classes against every current resource-monitor event, metadata fact, startup estimate, and report-derived value.
+- [x] 1.2 Record the disposition of the historical `phase-resource-accounting` change and migrate any still-valid requirements into this change.
+- [x] 1.3 Update the active resource-system bead and roadmap language so this OpenSpec change is the governing design.
 
 ## 2. Define Canonical Resource Facts
 
@@ -15,16 +15,16 @@
 
 ## 3. Support Telemetry-Volume Metadata Ingestion
 
-- [ ] 3.1 Measure the current per-event `MetadataRuntime.file(...)` overhead and memory growth for representative sampled resource runs.
-- [ ] 3.2 Define and implement `MetadataRuntime` batch/buffer ingestion for sampled resource facts without exposing backend/storage calls to resource-domain code.
-- [ ] 3.3 Define retention and drop/degraded-observability policies for sampled resource facts.
-- [ ] 3.4 Verify sampled ingestion cannot block training indefinitely and that dropped/degraded telemetry is recorded.
-- [ ] 3.5 Add SQLite-storage and in-memory-backend tests for representative resource telemetry volumes.
+- [x] 3.1 Measure current bundled-event, scalar-observation, and observation-frame `MetadataRuntime` overhead and memory growth for representative sampled resource runs.
+- [x] 3.2 Define and implement accepted observation-frame/batch plus `MetadataRuntime` buffer ingestion for sampled resource facts without exposing backend/storage calls to resource-domain code.
+- [x] 3.3 Define retention and drop/degraded-observability policies for sampled resource facts.
+- [x] 3.4 Verify sampled ingestion cannot block training indefinitely and that dropped/degraded telemetry is recorded.
+- [x] 3.5 Add SQLite-storage and in-memory-backend tests for representative resource telemetry volumes.
 
 ## 4. Introduce Resource-Domain Fact Production
 
-- [ ] 4.1 Add a resource-domain fact-production seam behind the existing `ResourceMonitor` lifecycle facade.
-- [ ] 4.2 Convert current session, phase, step, sampled, and deep-counter paths to produce canonical typed observations once.
+- [x] 4.1 Add a resource-domain fact-production seam behind the existing `ResourceMonitor` lifecycle facade.
+- [ ] 4.2 Convert current session, phase, step, sampled, and deep-counter paths to produce canonical typed observation frames once.
 - [ ] 4.3 Project the existing resource JSONL shape from canonical facts as a compatibility export.
 - [ ] 4.4 Preserve current console summaries from canonical facts or resource-domain summaries without making console output canonical.
 - [ ] 4.5 Add end-to-end equivalence tests for current JSONL, metadata, and console behavior during migration.

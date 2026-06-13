@@ -49,6 +49,9 @@ class MetadataBackend(Protocol):
     def ingest(self, result: MetadataProviderResult) -> None:
         """Add provider output to the backend."""
 
+    def ingest_many(self, results: Sequence[MetadataProviderResult]) -> None:
+        """Add a batch of provider output to the backend."""
+
     def ingest_provider(self, provider: MetadataProvider) -> MetadataProviderResult:
         """Collect and add one provider's output."""
 
@@ -67,13 +70,20 @@ class InMemoryMetadataBackend:
         self._required_facts: list[MetadataRequiredFact] = []
 
     def ingest(self, result: MetadataProviderResult) -> None:
-        for record in result.records:
-            self._store.save_record(record)
-        for event in result.events:
-            self._store.save_event(event)
-        for edge in result.edges:
-            self._store.save_edge(edge)
-        self._required_facts.extend(result.required_facts)
+        self.ingest_many((result,))
+
+    def ingest_many(self, results: Sequence[MetadataProviderResult]) -> None:
+        """Add provider output in one store-owned batch."""
+        self._store.save_all(
+            records=tuple(record for result in results for record in result.records),
+            events=tuple(event for result in results for event in result.events),
+            edges=tuple(edge for result in results for edge in result.edges),
+        )
+        self._required_facts.extend(
+            required_fact
+            for result in results
+            for required_fact in result.required_facts
+        )
 
     def ingest_provider(self, provider: MetadataProvider) -> MetadataProviderResult:
         result = provider.collect_metadata()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -47,6 +48,15 @@ class MetadataStore(Protocol):
     def save_edge(self, edge: MetadataEdge) -> None:
         """Persist a metadata relationship."""
 
+    def save_all(
+        self,
+        *,
+        records: Sequence[MetadataRecord] = (),
+        events: Sequence[MetadataEvent] = (),
+        edges: Sequence[MetadataEdge] = (),
+    ) -> None:
+        """Persist one metadata batch."""
+
     def snapshot(self) -> MetadataStoreSnapshot:
         """Return stored metadata."""
 
@@ -67,6 +77,17 @@ class InMemoryMetadataStore:
 
     def save_edge(self, edge: MetadataEdge) -> None:
         self._edges.append(edge)
+
+    def save_all(
+        self,
+        *,
+        records: Sequence[MetadataRecord] = (),
+        events: Sequence[MetadataEvent] = (),
+        edges: Sequence[MetadataEdge] = (),
+    ) -> None:
+        self._records.extend(records)
+        self._events.extend(events)
+        self._edges.extend(edges)
 
     def snapshot(self) -> MetadataStoreSnapshot:
         return MetadataStoreSnapshot(
@@ -268,103 +289,104 @@ class SQLiteMetadataStore:
 
     def save_record(self, record: MetadataRecord) -> None:
         with self._connection:
-            self._connection.execute(
-                """
-                INSERT INTO metadata_records (
-                    record_type,
-                    record_entity_type,
-                    record_identifier,
-                    record_namespace,
-                    record_label,
-                    record_schema_version,
-                    producer,
-                    schema_version,
-                    facts_json
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    _record_type(record),
-                    record.identity.entity_type,
-                    record.identity.identifier,
-                    record.identity.namespace,
-                    record.identity.label,
-                    record.identity.schema_version,
-                    record.producer,
-                    record.schema_version,
-                    _metadata_to_json(record.facts),
-                ),
-            )
+            self._insert_record(record)
 
     def save_event(self, event: MetadataEvent) -> None:
         with self._connection:
-            self._connection.execute(
-                """
-                INSERT INTO metadata_events (
-                    event_type,
-                    event_entity_type,
-                    event_identifier,
-                    event_namespace,
-                    event_label,
-                    event_schema_version,
-                    producer,
-                    schema_version,
-                    facts_json
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    event.event_type,
-                    event.identity.entity_type,
-                    event.identity.identifier,
-                    event.identity.namespace,
-                    event.identity.label,
-                    event.identity.schema_version,
-                    event.producer,
-                    event.schema_version,
-                    _metadata_to_json(event.facts),
-                ),
-            )
+            self._insert_event(event)
 
     def save_edge(self, edge: MetadataEdge) -> None:
         with self._connection:
-            self._connection.execute(
-                """
-                INSERT INTO metadata_edges (
-                    source_entity_type,
-                    source_identifier,
-                    source_namespace,
-                    source_label,
-                    source_schema_version,
-                    target_entity_type,
-                    target_identifier,
-                    target_namespace,
-                    target_label,
-                    target_schema_version,
-                    relationship,
-                    producer,
-                    schema_version,
-                    facts_json
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    edge.source.entity_type,
-                    edge.source.identifier,
-                    edge.source.namespace,
-                    edge.source.label,
-                    edge.source.schema_version,
-                    edge.target.entity_type,
-                    edge.target.identifier,
-                    edge.target.namespace,
-                    edge.target.label,
-                    edge.target.schema_version,
-                    edge.relationship,
-                    edge.producer,
-                    edge.schema_version,
-                    _metadata_to_json(edge.facts),
-                ),
+            self._insert_edge(edge)
+
+    def save_all(
+        self,
+        *,
+        records: Sequence[MetadataRecord] = (),
+        events: Sequence[MetadataEvent] = (),
+        edges: Sequence[MetadataEdge] = (),
+    ) -> None:
+        """Persist a metadata batch in one SQLite transaction."""
+        with self._connection:
+            for record in records:
+                self._insert_record(record)
+            for event in events:
+                self._insert_event(event)
+            for edge in edges:
+                self._insert_edge(edge)
+
+    def _insert_record(self, record: MetadataRecord) -> None:
+        self._connection.execute(
+            """
+            INSERT INTO metadata_records (
+                record_type, record_entity_type, record_identifier, record_namespace,
+                record_label, record_schema_version, producer, schema_version, facts_json
             )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                _record_type(record),
+                record.identity.entity_type,
+                record.identity.identifier,
+                record.identity.namespace,
+                record.identity.label,
+                record.identity.schema_version,
+                record.producer,
+                record.schema_version,
+                _metadata_to_json(record.facts),
+            ),
+        )
+
+    def _insert_event(self, event: MetadataEvent) -> None:
+        self._connection.execute(
+            """
+            INSERT INTO metadata_events (
+                event_type, event_entity_type, event_identifier, event_namespace,
+                event_label, event_schema_version, producer, schema_version, facts_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event.event_type,
+                event.identity.entity_type,
+                event.identity.identifier,
+                event.identity.namespace,
+                event.identity.label,
+                event.identity.schema_version,
+                event.producer,
+                event.schema_version,
+                _metadata_to_json(event.facts),
+            ),
+        )
+
+    def _insert_edge(self, edge: MetadataEdge) -> None:
+        self._connection.execute(
+            """
+            INSERT INTO metadata_edges (
+                source_entity_type, source_identifier, source_namespace, source_label,
+                source_schema_version, target_entity_type, target_identifier,
+                target_namespace, target_label, target_schema_version, relationship,
+                producer, schema_version, facts_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                edge.source.entity_type,
+                edge.source.identifier,
+                edge.source.namespace,
+                edge.source.label,
+                edge.source.schema_version,
+                edge.target.entity_type,
+                edge.target.identifier,
+                edge.target.namespace,
+                edge.target.label,
+                edge.target.schema_version,
+                edge.relationship,
+                edge.producer,
+                edge.schema_version,
+                _metadata_to_json(edge.facts),
+            ),
+        )
 
     def snapshot(self) -> MetadataStoreSnapshot:
         records = tuple(

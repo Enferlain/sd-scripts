@@ -229,6 +229,31 @@ class TestBasicResourceMonitorBehavior:
         assert snapshot.events[3].facts["phase"] == training_epoch_phase(0)
         assert snapshot.events[4].facts["duration_ms"] is not None
 
+    def test_resource_monitor_routes_metadata_through_resource_fact_production_seam(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-1",
+            metadata_runtime=metadata_runtime,
+        )
+
+        with patch.object(monitor, "_produce_resource_facts", wraps=monitor._produce_resource_facts) as producer:
+            monitor.start_session()
+            monitor.end_session()
+
+        assert [call.args[0]["event"] for call in producer.call_args_list] == [
+            "session_start",
+            "session_end",
+        ]
+        assert [event.event_type for event in metadata_runtime.snapshot().events] == [
+            "session_start",
+            "session_end",
+        ]
+
     def test_emit_startup_component_memory_logs_estimate(self):
         accelerator = MagicMock()
         accelerator.is_main_process = True

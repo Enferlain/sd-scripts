@@ -17,6 +17,7 @@ from library.metadata.dataclasses.observability import (
 from library.metadata.dataclasses.resource import (
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
+    ResourceObservationFrameFacts,
     ResourceObservationFacts,
     ResourceProfileFacts,
     StructuralResourceFacts,
@@ -56,6 +57,7 @@ _SUPPORTED_METADATA_ITEM_TYPES = (
     ResourceMonitorFacts,
     RunReportFacts,
     AnalyticsSnapshotFacts,
+    ResourceObservationFrameFacts,
     ResourceObservationFacts,
     StructuralResourceFacts,
     ResourceProfileFacts,
@@ -95,7 +97,20 @@ def validate_metadata_item(item: object) -> None:
             f"Unsupported metadata item type {type(item).__name__}. Supported types: {supported}."
         )
     _validate_dataclass_fields(item, error_type=MetadataItemValidationError)
+    _validate_resource_observation_frame(item)
     _validate_resource_item_relationships(item)
+
+
+def _validate_resource_observation_frame(item: object) -> None:
+    if not isinstance(item, ResourceObservationFrameFacts):
+        return
+    if not item.measurements:
+        raise MetadataItemValidationError("ResourceObservationFrameFacts must include at least one measurement.")
+    measurement_identifiers = [measurement.measurement_identifier for measurement in item.measurements]
+    if len(measurement_identifiers) != len(set(measurement_identifiers)):
+        raise MetadataItemValidationError("ResourceObservationFrameFacts measurement identifiers must be unique.")
+    for measurement in item.measurements:
+        _validate_dataclass_fields(measurement, error_type=MetadataItemValidationError)
 
 
 def _validate_resource_item_relationships(item: object) -> None:

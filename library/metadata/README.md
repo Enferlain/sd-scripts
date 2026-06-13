@@ -15,7 +15,8 @@ This file is the active guide for how metadata is supposed to work in the codeba
 The public model is intentionally small:
 
 1. `library/metadata/dataclasses/<concern>.py` defines accepted typed metadata items.
-2. Local code files those items through `MetadataRuntime.file(item)`.
+2. Local code files those items through `MetadataRuntime.file(item)`, or uses
+   the bounded telemetry buffer for explicitly high-frequency facts.
 3. `library/metadata` validates the item, routes it to the right emitter, and ingests the result into a backend.
 4. Backends expose snapshots that projections/storage/export can consume later.
 
@@ -45,6 +46,31 @@ metadata.file(
 ```
 
 That is the system local code should think in.
+
+### High-Frequency Telemetry
+
+`MetadataRuntime.file(item)` remains the direct path for low-volume facts.
+High-frequency producers may instead use:
+
+- `buffer(item)` to validate and enqueue without performing backend/storage I/O
+- `flush_buffer(max_items=...)` to flush bounded batches at an appropriate
+  orchestration boundary
+- `buffer_report()` to inspect accepted, flushed, pending, capacity-dropped,
+  and ingestion-failed counts
+
+The buffer has an explicit capacity and `drop_oldest` or `drop_newest`
+retention policy. Drops and prior ingestion failures are emitted as
+`metadata_ingestion_degraded` events on the next successful flush. A failed
+flush drops that bounded batch and records degraded state rather than raising
+through the telemetry path.
+
+Telemetry flushes are serialized without holding the producer queue lock.
+`flush_buffer(...)` remains a synchronous storage operation, so orchestration
+must not call it from a latency-critical training section.
+
+`file_many(items)` is the synchronous batch path. It lets the backend/store use
+one batch transaction, but callers should not use it as a supposedly
+non-blocking hot-path API.
 
 ## Core Split
 
@@ -160,7 +186,7 @@ The internal flow should look like this:
         ->
 [typed metadata item]
         ->
-[MetadataRuntime.file(item)]
+[MetadataRuntime.file(item) / buffer(item)]
         ->
 [validation]
         ->

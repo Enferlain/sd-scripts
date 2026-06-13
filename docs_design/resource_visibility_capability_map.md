@@ -470,11 +470,15 @@ That makes the next implementation boundary fairly clear:
 
 The original investigation issue for this note (`sd-scripts-83b`) is complete.
 
-The remaining work is now split more explicitly:
+The remaining work is now governed more explicitly:
 
 - report/debug interpretation upgrades were taken as direct implementation work
   and now live in the benchmark-report debug/interpretation layer
-- phase resource accounting now has its own OpenSpec design track under
-  `openspec/changes/phase-resource-accounting/`
+- the complete resource-system direction now lives under
+  `openspec/changes/resource-intelligence-system/`, including observations,
+  structural facts, profiles, evidence-constrained accounting, metadata-backed
+  queries, and projected artifacts
+- the historical phase-resource-accounting direction is archived and no longer
+  governs implementation
 - broader host-memory and distributed-semantics evaluation remains a separate
-  follow-up rather than being folded into the first accounting design
+  follow-up evaluated against the governing resource-intelligence design

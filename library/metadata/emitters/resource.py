@@ -6,7 +6,9 @@ from library.metadata.dataclasses.resource import (
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
     ResourceFactReference,
+    ResourceObservationFrameFacts,
     ResourceObservationFacts,
+    ResourceObservationMeasurementFacts,
     ResourceProfileFacts,
     StructuralResourceFacts,
 )
@@ -64,6 +66,65 @@ def build_resource_observation_metadata(
         provider_id=provider_id,
         schema_version=schema_version,
         record=record,
+        edges=edges,
+    )
+
+
+def build_resource_observation_frame_metadata(
+    facts: ResourceObservationFrameFacts,
+    *,
+    provider_id: str = "resource_intelligence.observation_frame",
+    schema_version: str = METADATA_PAYLOAD_VERSION,
+) -> MetadataProviderResult:
+    """Build one shared-context frame plus individually addressable observations."""
+    frame_identity = _resource_identity(
+        entity_type="resource_observation_frame",
+        identifier=facts.frame_identifier,
+        label=facts.event_name,
+    )
+    frame_record = MetadataRecord(
+        identity=frame_identity,
+        producer=provider_id,
+        facts={
+            "semantic_class": "observation",
+            "container_kind": "observation_frame",
+            "run_identifier": facts.run_identifier,
+            "event_name": facts.event_name,
+            "measurement_identifiers": [measurement.measurement_identifier for measurement in facts.measurements],
+            **_optional_metadata(
+                ts=facts.ts,
+                collector_id=facts.collector_id,
+                collection_policy=facts.collection_policy,
+                phase=facts.phase,
+                global_step=facts.global_step,
+                epoch=facts.epoch,
+                rank=facts.rank,
+                world_size=facts.world_size,
+                host_identifier=facts.host_identifier,
+                process_identifier=facts.process_identifier,
+                quality=facts.quality,
+                metadata=dict(facts.metadata) if facts.metadata else None,
+            ),
+        },
+        schema_version=schema_version,
+    )
+    measurement_records = tuple(
+        _build_frame_measurement_record(measurement, frame_identifier=facts.frame_identifier, producer=provider_id)
+        for measurement in facts.measurements
+    )
+    edges = (
+        _run_edge(frame_identity, facts.run_identifier, producer=provider_id, relationship="observed_during"),
+        *_frame_scope_edges(frame_identity, facts, producer=provider_id),
+        *(
+            edge
+            for measurement in facts.measurements
+            for edge in _frame_measurement_edges(measurement, frame_identity=frame_identity, producer=provider_id)
+        ),
+    )
+    return MetadataProviderResult.from_sequences(
+        provider_id=provider_id,
+        schema_version=schema_version,
+        records=(frame_record, *measurement_records),
         edges=edges,
     )
 
@@ -323,6 +384,99 @@ def _observation_scope_edges(
                 source,
                 entity_type="device",
                 identifier=facts.device_identifier,
+                relationship="observed_on_device",
+                producer=producer,
+            )
+        )
+    return tuple(edges)
+
+
+def _build_frame_measurement_record(
+    measurement: ResourceObservationMeasurementFacts,
+    *,
+    frame_identifier: str,
+    producer: str,
+) -> MetadataRecord:
+    return MetadataRecord(
+        identity=_resource_identity(
+            entity_type="resource_observation",
+            identifier=measurement.measurement_identifier,
+            label=f"{measurement.resource_kind}:{measurement.measurement_kind}",
+        ),
+        producer=producer,
+        facts={
+            "semantic_class": "observation",
+            "frame_identifier": frame_identifier,
+            "resource_kind": measurement.resource_kind,
+            "measurement_kind": measurement.measurement_kind,
+            "value": measurement.value,
+            "unit": measurement.unit,
+            "source": measurement.source,
+            **_optional_metadata(
+                scope_type=measurement.scope_type,
+                device_identifier=measurement.device_identifier,
+                quality=measurement.quality,
+                metadata=dict(measurement.metadata) if measurement.metadata else None,
+            ),
+        },
+    )
+
+
+def _frame_scope_edges(
+    source: MetadataIdentity,
+    facts: ResourceObservationFrameFacts,
+    *,
+    producer: str,
+) -> tuple[MetadataEdge, ...]:
+    edges: list[MetadataEdge] = []
+    if facts.host_identifier is not None:
+        edges.append(
+            _scope_edge(
+                source,
+                entity_type="host",
+                identifier=facts.host_identifier,
+                relationship="observed_on_host",
+                producer=producer,
+            )
+        )
+    if facts.process_identifier is not None:
+        edges.append(
+            _scope_edge(
+                source,
+                entity_type="process",
+                identifier=facts.process_identifier,
+                relationship="observed_in_process",
+                producer=producer,
+            )
+        )
+    return tuple(edges)
+
+
+def _frame_measurement_edges(
+    measurement: ResourceObservationMeasurementFacts,
+    *,
+    frame_identity: MetadataIdentity,
+    producer: str,
+) -> tuple[MetadataEdge, ...]:
+    measurement_identity = _resource_identity(
+        entity_type="resource_observation",
+        identifier=measurement.measurement_identifier,
+        label=f"{measurement.resource_kind}:{measurement.measurement_kind}",
+    )
+    edges = [
+        MetadataEdge(
+            source=measurement_identity,
+            target=frame_identity,
+            relationship="contained_in",
+            producer=producer,
+        )
+    ]
+    if measurement.device_identifier is not None:
+        edges.append(
+            _scope_edge(
+                measurement_identity,
+                entity_type="device",
+                identifier=measurement.device_identifier,
                 relationship="observed_on_device",
                 producer=producer,
             )

@@ -10,6 +10,17 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-06-11]
+
+### Added
+
+- **Metadata runtime now supports bounded resource-telemetry ingestion** — added accepted shared-context observation frames with individually addressable measurements, batch backend/store ingestion, bounded `drop_oldest` / `drop_newest` buffering, explicit degraded-ingestion events, SQLite batch transactions, representative volume measurements, and focused retention/failure tests.
+
+### Changed
+
+- **Resource intelligence now has one reconciled governing design** — settled observation frames as the shared-context container for individually addressable measurements, mapped current monitor/metadata/startup/report surfaces into the target fact model, preserved evidence-constrained owner-scope requirements, and superseded the phase-only accounting direction.
+- **Resource monitor metadata filing now crosses an explicit resource-domain fact-production seam** — preserved the existing lifecycle API and compatibility facts while separating resource fact production from metadata filing ahead of canonical observation-frame migration.
+
 ## [2026-06-07]
 
 ### Added

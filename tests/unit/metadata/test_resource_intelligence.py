@@ -11,13 +11,16 @@ from library.metadata import (
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
     ResourceFactReference,
+    ResourceObservationFrameFacts,
     ResourceObservationFacts,
+    ResourceObservationMeasurementFacts,
     ResourceProfileFacts,
     StructuralResourceFacts,
 )
 from library.metadata.emitters import (
     build_resource_accounting_gap_metadata,
     build_resource_accounting_metadata,
+    build_resource_observation_frame_metadata,
     build_resource_observation_metadata,
     build_resource_profile_metadata,
     build_structural_resource_metadata,
@@ -121,6 +124,59 @@ def test_resource_intelligence_facts_feed_metadata_emitters() -> None:
 
 
 @pytest.mark.unit
+def test_resource_observation_frame_preserves_shared_context_and_measurement_identity() -> None:
+    frame = ResourceObservationFrameFacts(
+        frame_identifier="frame-1",
+        run_identifier="run-1",
+        event_name="sample",
+        ts=123.0,
+        collector_id="sampled_gpu",
+        phase="training.epoch.0",
+        rank=0,
+        process_identifier="process-0",
+        measurements=(
+            ResourceObservationMeasurementFacts(
+                measurement_identifier="frame-1:gpu-used",
+                resource_kind="gpu_memory",
+                measurement_kind="used",
+                value=1024.0,
+                unit="MiB",
+                source="nvml",
+                scope_type="device",
+                device_identifier="cuda:0",
+            ),
+            ResourceObservationMeasurementFacts(
+                measurement_identifier="frame-1:cpu-rss",
+                resource_kind="cpu_memory",
+                measurement_kind="rss",
+                value=512.0,
+                unit="MiB",
+                source="psutil",
+                scope_type="process",
+            ),
+        ),
+    )
+
+    result = build_resource_observation_frame_metadata(frame)
+    frame_record, gpu_record, cpu_record = result.records
+
+    assert frame_record.identity.entity_type == "resource_observation_frame"
+    assert frame_record.facts["container_kind"] == "observation_frame"
+    assert frame_record.facts["phase"] == "training.epoch.0"
+    assert frame_record.facts["measurement_identifiers"] == ["frame-1:gpu-used", "frame-1:cpu-rss"]
+    assert gpu_record.identity.identifier == "frame-1:gpu-used"
+    assert gpu_record.facts["frame_identifier"] == "frame-1"
+    assert "phase" not in gpu_record.facts
+    assert cpu_record.identity.identifier == "frame-1:cpu-rss"
+    assert {edge.relationship for edge in result.edges} == {
+        "observed_during",
+        "observed_in_process",
+        "contained_in",
+        "observed_on_device",
+    }
+
+
+@pytest.mark.unit
 def test_resource_intelligence_facts_file_through_metadata_runtime() -> None:
     runtime = MetadataRuntime()
     observation = ResourceObservationFacts(
@@ -219,5 +275,28 @@ def test_resource_profiles_and_accounting_require_source_references() -> None:
                 derivation_method="phase_summary",
                 derivation_version="v1",
                 source_fact_references=(),
+            )
+        )
+
+
+@pytest.mark.unit
+def test_resource_observation_frame_requires_unique_measurements() -> None:
+    runtime = MetadataRuntime()
+    measurement = ResourceObservationMeasurementFacts(
+        measurement_identifier="duplicate",
+        resource_kind="gpu_memory",
+        measurement_kind="used",
+        value=1.0,
+        unit="MiB",
+        source="nvml",
+    )
+
+    with pytest.raises(MetadataItemValidationError, match="unique"):
+        runtime.file(
+            ResourceObservationFrameFacts(
+                frame_identifier="frame-1",
+                run_identifier="run-1",
+                event_name="sample",
+                measurements=(measurement, measurement),
             )
         )

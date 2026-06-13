@@ -49,6 +49,18 @@ resource facts with their relevant runtime and structural scopes.
 - **THEN** the fact MUST be relatable to the owning component or group
 - **AND** it MUST remain distinguishable from a live process or device observation
 
+### Requirement: Co-collected observations preserve frame identity
+The system SHALL preserve shared collection and runtime context for resource
+measurements collected at the same boundary without conflating their individual
+measurement semantics.
+
+#### Scenario: Collector produces several measurements together
+- **WHEN** one lifecycle boundary or sampler collection produces several resource measurements
+- **THEN** the measurements MUST be retainable as one observation frame or equivalent accepted batch
+- **AND** each measurement MUST remain individually identifiable by resource kind, measurement kind, source, scope, value, and unit
+- **AND** profiles and accounting statements MUST be able to reference the individual measurements they use
+- **AND** ingestion and retention policy MUST be able to operate on the shared frame without requiring duplicated context for every measurement
+
 ### Requirement: Resource profiles are durable derived products
 The system SHALL support versioned resource profiles that describe reusable run
 or workload resource behavior.
@@ -79,6 +91,12 @@ presenting unsupported causality or ownership claims.
 #### Scenario: Operation-local resource movement is observed
 - **WHEN** resource movement is measured during a known operation
 - **THEN** an accounting statement MUST NOT claim persistent ownership solely from that operation-local observation
+
+#### Scenario: Runtime declares a known owner scope
+- **WHEN** runtime code declares a resource-relevant owner or operation scope
+- **THEN** the scope MAY provide bounded operation/window evidence
+- **AND** it MUST remain distinguishable from structural accounting
+- **AND** heavier scope diagnostics MUST require explicit configuration or a bounded diagnostic window
 
 ### Requirement: Reports and analyses consume a resource-run view
 The system SHALL provide a queryable resource-run view that preserves original

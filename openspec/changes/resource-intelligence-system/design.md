@@ -91,6 +91,35 @@ Alternative considered: keep adding fields to `ResourceMonitorFacts`.
 Why not: one flat event shape cannot express the different truth semantics,
 lifecycles, identities, and relationships required by the target system.
 
+### Decision: Produce and retain co-collected observations as observation frames
+
+One resource-monitor boundary commonly collects several measurements with the
+same timestamp, runtime identity, collection policy, and quality context. The
+canonical production and retention unit for this telemetry is an observation
+frame containing shared context plus individually identified measurements.
+
+The frame is not a fifth semantic fact class. Each nested value remains an
+observation with its own resource kind, measurement kind, value, unit, source,
+and concrete scope. Profiles and accounting statements must be able to
+reference an individual measurement, while ingestion, retention, and
+compatibility projections may operate on the containing frame.
+
+The first-slice scalar `ResourceObservationFacts` remains valid for isolated
+observations and as the accepted measurement semantics. Before migrating the
+current bundled resource events, the metadata contract must add a frame or
+equivalent batch representation that avoids duplicating shared context and
+relationships for every scalar.
+
+See `reconciliation.md` for the disposition of every current event field,
+startup estimate, metadata fact, and report-derived value.
+
+Alternative considered: expand every current bundled event directly into
+independent scalar resource records.
+
+Why not: that loses co-collection identity, repeats shared context and edges,
+and can multiply active-run metadata retention before buffering and retention
+policy are defined.
+
 ### Decision: Resource-domain code owns production and interpretation; metadata owns accepted durable facts
 
 Runtime resource code owns:
@@ -157,6 +186,29 @@ Resource-domain code must not call metadata backends or storage directly.
 but it remains the only runtime-facing durable filing boundary. This is an
 extension of the metadata runtime/storage contract, not permission for resource
 code to create a separate canonical store or parallel filing API.
+
+The first bounded-ingestion contract uses:
+
+- direct `file(...)` for low-volume facts
+- synchronous `file_many(...)` for explicit batch boundaries
+- `buffer(...)` for high-frequency producer paths that must not perform
+  backend/storage I/O
+- bounded `flush_buffer(...)` calls at orchestration-selected boundaries
+- explicit `drop_oldest` or `drop_newest` retention when capacity is exhausted
+- metadata-owned `metadata_ingestion_degraded` events on the next successful
+  flush after drops or ingestion failure
+
+A failed buffered flush drops only the selected bounded batch and records
+degraded state instead of raising through the telemetry path. This protects
+training from storage pressure while preserving an honest observability gap.
+
+The first monitor-migration seam is
+`library.logging.resource_monitor.fact_production`. Current lifecycle and
+sampled paths still produce the compatibility `ResourceMonitorFacts` shape,
+but conversion now belongs to the resource domain and filing remains a separate
+metadata-runtime concern. Canonical observation-frame production replaces this
+compatibility builder in the next migration task without changing trainer
+lifecycle hooks.
 
 ### Decision: Preserve the ResourceMonitor lifecycle API as the orchestration facade
 
@@ -230,6 +282,12 @@ An accounting statement must include:
 The system must allow partial accounting. An accounting gap is a result, not an
 owner. Reports must not silently force unexplained values into broad labels.
 
+Declared owner scopes may provide bounded operation/window evidence when the
+runtime code genuinely knows which work is occurring. Structural accounting
+and operation/window accounting remain distinct: an operation-local movement
+does not prove persistent ownership. Heavy scope diagnostics must remain
+explicitly configured or bounded.
+
 ### Decision: Profiles are durable derived facts, not report formatting
 
 A resource profile is a queryable, versioned derived product suitable for:
@@ -285,23 +343,25 @@ schemas.
 
 ## Migration Plan
 
-1. Define the accepted resource fact catalog and identities in metadata,
+1. Reconcile current surfaces against the target fact model and settle
+   observation-frame semantics.
+2. Define the accepted resource fact catalog and identities in metadata,
    including observation, structural, profile, and accounting item types.
-2. Introduce a resource-domain fact producer and resource-run query/view seam
+3. Add bounded metadata ingestion and retention behavior for realistic
+   observation frames.
+4. Introduce a resource-domain fact producer and resource-run query/view seam
    while preserving current monitor behavior.
-3. Convert the current snapshot/sample event path to produce typed facts once,
+5. Convert the current snapshot/sample event path to produce typed facts once,
    then project the current JSONL compatibility shape and metadata events.
-4. Add `MetadataRuntime` batch/buffer/retention support required for sampled
-   telemetry.
-5. Move reports from raw JSONL parsing to the resource-run view while preserving
+6. Move reports from raw JSONL parsing to the resource-run view while preserving
    report output and JSONL artifact registration. During migration, typed facts
    filed through `MetadataRuntime` remain authoritative; compatibility JSONL and
    current event dictionaries must not become alternate report sources.
-6. Decompose current collection into capability/cost-aware collectors.
-7. Migrate startup component estimates into structural facts.
-8. Add initial durable profiles and accounting statements grounded in existing
+7. Decompose current collection into capability/cost-aware collectors.
+8. Migrate startup component estimates into structural facts.
+9. Add initial durable profiles and accounting statements grounded in existing
    measured and structural facts.
-9. Retire compatibility-only parallel schema assembly after end-to-end
+10. Retire compatibility-only parallel schema assembly after end-to-end
    equivalence and performance verification.
 
 Rollback remains possible during migration because the current event/JSONL path
