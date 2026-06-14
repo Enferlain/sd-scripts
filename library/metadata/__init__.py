@@ -62,6 +62,18 @@ from library.metadata.records import (
     ModelComponentMetadataRecord,
     RunMetadataRecord,
 )
+from library.metadata.graph import (
+    MetadataEntityType,
+    MetadataGraphSnapshot,
+    MetadataRelationship,
+    edges_from,
+    edges_to,
+    metadata_edge,
+    metadata_identity,
+    records_by_identity,
+    source_identities,
+    target_identities,
+)
 from library.metadata.runtime import (
     MetadataBufferPolicy,
     MetadataBufferReport,
@@ -79,6 +91,7 @@ from library.metadata.storage import (
 from library.metadata.validation import MetadataValidationError, MissingMetadataFact, validate_required_facts
 from library.metadata.validation import MetadataItemValidationError, validate_metadata_item
 from library.metadata.versions import METADATA_PAYLOAD_VERSION
+from library.metadata.views import ResourceRunView
 
 __all__ = [
     "AdapterMetadataRecord",
@@ -93,13 +106,16 @@ __all__ = [
     "MetadataBufferPolicy",
     "MetadataBufferReport",
     "MetadataEdge",
+    "MetadataEntityType",
     "MetadataEvent",
+    "MetadataGraphSnapshot",
     "MetadataIdentity",
     "MetadataProjection",
     "MetadataProvider",
     "MetadataProviderResult",
     "METADATA_PAYLOAD_VERSION",
     "MetadataRecord",
+    "MetadataRelationship",
     "MetadataRequiredFact",
     "MetadataRuntime",
     "MetadataRuntimeItem",
@@ -122,6 +138,7 @@ __all__ = [
     "ResourceObservationFacts",
     "ResourceObservationMeasurementFacts",
     "ResourceProfileFacts",
+    "ResourceRunView",
     "RunLifecycleFacts",
     "RunMetadataRecord",
     "RunMetadataFacts",
@@ -137,6 +154,8 @@ __all__ = [
     "build_checkpoint_metadata",
     "build_logged_artifact_metadata",
     "build_metadata_result",
+    "metadata_edge",
+    "metadata_identity",
     "build_model_spec_metadata",
     "build_objective_run_metadata",
     "build_resource_monitor_metadata",
@@ -153,6 +172,11 @@ __all__ = [
     "TrainingMetadataState",
     "build_training_metadata_bundle",
     "build_training_run_metadata",
+    "edges_from",
+    "edges_to",
     "validate_metadata_item",
     "validate_required_facts",
+    "records_by_identity",
+    "source_identities",
+    "target_identities",
 ]

@@ -239,6 +239,19 @@ such as `run_identifier`; metadata events preserve run identity through their
 record identity; canonical frames carry run identity and collection context as
 accepted resource facts.
 
+The first relationship-definition slice introduces a shared metadata graph
+vocabulary rather than leaving resource edges as scattered string literals or
+creating resource-specific graph terms. Observation frames and scalar
+observations relate to runs, hosts, processes, ranks, phases, steps, collectors,
+events, and devices through reusable verbs such as `observed_during`,
+`observed_on`, `observed_in`, and `produced_by`; the target entity type carries
+the scope specificity. Frame measurements remain individually addressable
+through containment edges. Structural facts relate to their run, declared owner,
+component, and group through shared graph terms. Profiles, accounting
+statements, accounting gaps, and artifact-linked facts continue to use explicit
+source-reference edges as their evidence trail. Missing identities are omitted
+rather than invented.
+
 ### Decision: Preserve the ResourceMonitor lifecycle API as the orchestration facade
 
 The trainer-facing API remains intentionally small:

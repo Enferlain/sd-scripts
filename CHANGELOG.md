@@ -14,10 +14,12 @@ Rules:
 
 ### Added
 
+- **Metadata now exposes a resource-run view over accepted resource facts** — added generic metadata graph traversal helpers and a `ResourceRunView` that can query run-scoped observation frames, frame measurements, structural facts, profiles, accounting statements, gaps, scoped observations, and source evidence from `MetadataSnapshot` without reading raw storage or report JSONL.
 - **Metadata runtime now supports bounded resource-telemetry ingestion** — added accepted shared-context observation frames with individually addressable measurements, batch backend/store ingestion, bounded `drop_oldest` / `drop_newest` buffering, explicit degraded-ingestion events, SQLite batch transactions, representative volume measurements, and focused retention/failure tests.
 
 ### Changed
 
+- **Metadata now has a shared graph vocabulary used by resource intelligence** — resource facts now emit reusable metadata graph relationships for runs, hosts, processes/ranks, phases/events, steps, collectors, devices, components/groups, owners, and source evidence so the upcoming resource-run view can query accepted facts without depending on ad hoc edge strings.
 - **Resource monitor migration now has cross-surface equivalence coverage** — added an end-to-end lifecycle test proving current JSONL events, metadata compatibility events, canonical observation frames, measurements, and presentation-only console summaries stay aligned during the resource-fact migration.
 - **Resource monitor console output now uses resource-domain summaries for live session, phase, and step lines** — preserved the existing user-facing console messages while moving normal live resource summary rendering behind presentation-only summary objects instead of formatting directly from monitor internals.
 - **Resource monitor JSONL now projects from produced resource facts for identified runs** — existing flat resource JSONL events are now rebuilt from canonical observation-frame measurements while preserving the current artifact shape, with a narrow fallback for JSONL-only runs that lack a durable run identifier.

@@ -31,8 +31,8 @@
 
 ## 5. Add Resource Identity And Query Views
 
-- [ ] 5.1 Define resource relationships for runs, processes/ranks, hosts, devices, phases/events, steps, components/groups, collectors, and artifacts.
-- [ ] 5.2 Implement a resource-run query/view interface over metadata-owned public snapshot/query/projection APIs without exposing raw storage.
+- [x] 5.1 Define resource relationships for runs, processes/ranks, hosts, devices, phases/events, steps, components/groups, collectors, and artifacts.
+- [x] 5.2 Implement a resource-run query/view interface over metadata-owned public snapshot/query/projection APIs without exposing raw storage.
 - [ ] 5.3 Prove the resource-run view preserves original observations alongside profiles and accounting statements.
 - [ ] 5.4 Add query tests for multi-rank, multi-device, phase, component, and artifact-linked facts.
 

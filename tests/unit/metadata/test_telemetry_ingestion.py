@@ -12,6 +12,7 @@ import pytest
 
 from library.metadata import (
     InMemoryMetadataBackend,
+    MetadataRelationship,
     MetadataBufferPolicy,
     MetadataRuntime,
     ResourceObservationFrameFacts,
@@ -225,4 +226,11 @@ def test_resource_observation_frame_volume_round_trips_through_memory_and_sqlite
 
         assert len(snapshot.records_for(entity_type="resource_observation_frame")) == frame_count
         assert len(snapshot.records_for(entity_type="resource_observation")) == frame_count * 2
-        assert len(snapshot.edges) == frame_count * 4
+        assert len(snapshot.edges) == frame_count * 7
+        assert {edge.relationship for edge in snapshot.edges} == {
+            MetadataRelationship.CONTAINED_IN,
+            MetadataRelationship.OBSERVED_DURING,
+            MetadataRelationship.OBSERVED_IN,
+            MetadataRelationship.OBSERVED_ON,
+            MetadataRelationship.PRODUCED_BY,
+        }

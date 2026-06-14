@@ -6,6 +6,8 @@ from library.constants import SS_METADATA_KEY_ADAPTER_MODULE as LEGACY_ADAPTER_M
 from library.metadata import CheckpointArtifactFacts as TopLevelCheckpointArtifactFacts
 from library.metadata import LoggedArtifactFacts as TopLevelLoggedArtifactFacts
 from library.metadata import METADATA_PAYLOAD_VERSION
+from library.metadata import MetadataEntityType as TopLevelMetadataEntityType
+from library.metadata import MetadataRelationship as TopLevelMetadataRelationship
 from library.metadata import ModelSpecFacts as TopLevelModelSpecFacts
 from library.metadata import OptimizerRuntimeFacts as TopLevelOptimizerRuntimeFacts
 from library.metadata import ResourceMonitorFacts as TopLevelResourceMonitorFacts
@@ -35,6 +37,7 @@ from library.metadata.emitters import (
     build_run_report_metadata,
     build_training_run_metadata,
 )
+from library.metadata.graph import MetadataEntityType, MetadataRelationship
 from library.metadata.keys import (
     SS_METADATA_KEY_ADAPTER_MODULE,
 )
@@ -50,6 +53,8 @@ def test_metadata_keys_are_owned_by_metadata_package_and_reexported_from_constan
 def test_metadata_package_reexports_shared_fact_dataclasses() -> None:
     assert TopLevelCheckpointArtifactFacts is CheckpointArtifactFacts
     assert TopLevelLoggedArtifactFacts is LoggedArtifactFacts
+    assert TopLevelMetadataEntityType is MetadataEntityType
+    assert TopLevelMetadataRelationship is MetadataRelationship
     assert TopLevelModelSpecFacts is ModelSpecFacts
     assert TopLevelOptimizerRuntimeFacts is OptimizerRuntimeFacts
     assert TopLevelResourceMonitorFacts is ResourceMonitorFacts

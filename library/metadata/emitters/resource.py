@@ -12,6 +12,7 @@ from library.metadata.dataclasses.resource import (
     ResourceProfileFacts,
     StructuralResourceFacts,
 )
+from library.metadata.graph import MetadataEntityType, MetadataRelationship, metadata_edge, metadata_identity
 from library.metadata.providers import MetadataProviderResult
 from library.metadata.records import MetadataEdge, MetadataIdentity, MetadataRecord, MetadataValue
 from library.metadata.versions import METADATA_PAYLOAD_VERSION
@@ -59,7 +60,7 @@ def build_resource_observation_metadata(
         schema_version=schema_version,
     )
     edges = (
-        _run_edge(identity, facts.run_identifier, producer=provider_id, relationship="observed_during"),
+        _run_edge(identity, facts.run_identifier, producer=provider_id, relationship=MetadataRelationship.OBSERVED_DURING),
         *_observation_scope_edges(identity, facts, producer=provider_id),
     )
     return _result_from_record(
@@ -113,7 +114,12 @@ def build_resource_observation_frame_metadata(
         for measurement in facts.measurements
     )
     edges = (
-        _run_edge(frame_identity, facts.run_identifier, producer=provider_id, relationship="observed_during"),
+        _run_edge(
+            frame_identity,
+            facts.run_identifier,
+            producer=provider_id,
+            relationship=MetadataRelationship.OBSERVED_DURING,
+        ),
         *_frame_scope_edges(frame_identity, facts, producer=provider_id),
         *(
             edge
@@ -167,7 +173,15 @@ def build_structural_resource_metadata(
         provider_id=provider_id,
         schema_version=schema_version,
         record=record,
-        edges=(_run_edge(identity, facts.run_identifier, producer=provider_id, relationship="describes_run_resource"),),
+        edges=(
+            _run_edge(
+                identity,
+                facts.run_identifier,
+                producer=provider_id,
+                relationship=MetadataRelationship.DESCRIBES,
+            ),
+            *_structural_scope_edges(identity, facts, producer=provider_id),
+        ),
     )
 
 
@@ -201,7 +215,7 @@ def build_resource_profile_metadata(
         schema_version=schema_version,
     )
     edges = (
-        _run_edge(identity, facts.run_identifier, producer=provider_id, relationship="profiles_run"),
+        _run_edge(identity, facts.run_identifier, producer=provider_id, relationship=MetadataRelationship.PROFILES),
         *_reference_edges(identity, facts.source_fact_references, producer=provider_id),
     )
     return _result_from_record(provider_id=provider_id, schema_version=schema_version, record=record, edges=edges)
@@ -244,7 +258,12 @@ def build_resource_accounting_metadata(
         schema_version=schema_version,
     )
     edges = (
-        _run_edge(identity, facts.run_identifier, producer=provider_id, relationship="accounts_for_run_resource"),
+        _run_edge(
+            identity,
+            facts.run_identifier,
+            producer=provider_id,
+            relationship=MetadataRelationship.ACCOUNTS_FOR,
+        ),
         *_reference_edges(identity, facts.source_fact_references, producer=provider_id),
     )
     return _result_from_record(provider_id=provider_id, schema_version=schema_version, record=record, edges=edges)
@@ -284,7 +303,12 @@ def build_resource_accounting_gap_metadata(
         schema_version=schema_version,
     )
     edges = (
-        _run_edge(identity, facts.run_identifier, producer=provider_id, relationship="accounting_gap_for_run"),
+        _run_edge(
+            identity,
+            facts.run_identifier,
+            producer=provider_id,
+            relationship=MetadataRelationship.GAP_FOR,
+        ),
         *_reference_edges(identity, facts.source_fact_references, producer=provider_id),
     )
     return _result_from_record(provider_id=provider_id, schema_version=schema_version, record=record, edges=edges)
@@ -306,24 +330,22 @@ def _result_from_record(
 
 
 def _resource_identity(*, entity_type: str, identifier: str, label: str | None) -> MetadataIdentity:
-    return MetadataIdentity(
+    return metadata_identity(
         entity_type=entity_type,
         identifier=identifier,
         label=label,
-        schema_version=METADATA_PAYLOAD_VERSION,
     )
 
 
 def _run_identity(run_identifier: str) -> MetadataIdentity:
-    return MetadataIdentity(
-        entity_type="run",
+    return metadata_identity(
+        entity_type=MetadataEntityType.RUN,
         identifier=run_identifier,
-        schema_version=METADATA_PAYLOAD_VERSION,
     )
 
 
 def _run_edge(source: MetadataIdentity, run_identifier: str, *, producer: str, relationship: str) -> MetadataEdge:
-    return MetadataEdge(
+    return metadata_edge(
         source=source,
         target=_run_identity(run_identifier),
         relationship=relationship,
@@ -338,16 +360,19 @@ def _scope_edge(
     identifier: str,
     relationship: str,
     producer: str,
+    label: str | None = None,
+    facts: dict[str, MetadataValue] | None = None,
 ) -> MetadataEdge:
-    return MetadataEdge(
+    return metadata_edge(
         source=source,
-        target=MetadataIdentity(
+        target=metadata_identity(
             entity_type=entity_type,
             identifier=identifier,
-            schema_version=METADATA_PAYLOAD_VERSION,
+            label=label,
         ),
         relationship=relationship,
         producer=producer,
+        facts={} if facts is None else facts,
     )
 
 
@@ -357,35 +382,114 @@ def _observation_scope_edges(
     *,
     producer: str,
 ) -> tuple[MetadataEdge, ...]:
-    edges: list[MetadataEdge] = []
-    if facts.host_identifier is not None:
-        edges.append(
-            _scope_edge(
-                source,
-                entity_type="host",
-                identifier=facts.host_identifier,
-                relationship="observed_on_host",
-                producer=producer,
-            )
+    edges = list(
+        _runtime_scope_edges(
+            source,
+            run_identifier=facts.run_identifier,
+            host_identifier=facts.host_identifier,
+            process_identifier=facts.process_identifier,
+            rank=facts.rank,
+            world_size=facts.world_size,
+            phase=facts.phase,
+            global_step=facts.global_step,
+            epoch=facts.epoch,
+            collector_id=facts.collector_id,
+            producer=producer,
         )
-    if facts.process_identifier is not None:
-        edges.append(
-            _scope_edge(
-                source,
-                entity_type="process",
-                identifier=facts.process_identifier,
-                relationship="observed_in_process",
-                producer=producer,
-            )
-        )
+    )
     if facts.device_identifier is not None:
         edges.append(
             _scope_edge(
                 source,
-                entity_type="device",
+                entity_type=MetadataEntityType.DEVICE,
                 identifier=facts.device_identifier,
-                relationship="observed_on_device",
+                relationship=MetadataRelationship.OBSERVED_ON,
                 producer=producer,
+            )
+        )
+    return tuple(edges)
+
+
+def _runtime_scope_edges(
+    source: MetadataIdentity,
+    *,
+    run_identifier: str,
+    host_identifier: str | None,
+    process_identifier: str | None,
+    rank: int | None,
+    world_size: int | None,
+    phase: str | None,
+    global_step: int | None,
+    epoch: int | None,
+    collector_id: str | None,
+    producer: str,
+) -> tuple[MetadataEdge, ...]:
+    edges: list[MetadataEdge] = []
+    if host_identifier is not None:
+        edges.append(
+            _scope_edge(
+                source,
+                entity_type=MetadataEntityType.HOST,
+                identifier=host_identifier,
+                relationship=MetadataRelationship.OBSERVED_ON,
+                producer=producer,
+            )
+        )
+    if process_identifier is not None:
+        edges.append(
+            _scope_edge(
+                source,
+                entity_type=MetadataEntityType.PROCESS,
+                identifier=process_identifier,
+                relationship=MetadataRelationship.OBSERVED_IN,
+                producer=producer,
+            )
+        )
+    if rank is not None:
+        edges.append(
+            _scope_edge(
+                source,
+                entity_type=MetadataEntityType.RANK,
+                identifier=_rank_identifier(run_identifier=run_identifier, rank=rank),
+                relationship=MetadataRelationship.OBSERVED_IN,
+                producer=producer,
+                label=f"rank {rank}",
+                facts=_optional_metadata(rank=rank, world_size=world_size),
+            )
+        )
+    if phase is not None:
+        edges.append(
+            _scope_edge(
+                source,
+                entity_type=MetadataEntityType.PHASE,
+                identifier=_phase_identifier(run_identifier=run_identifier, phase=phase),
+                relationship=MetadataRelationship.OBSERVED_DURING,
+                producer=producer,
+                label=phase,
+                facts={"phase": phase},
+            )
+        )
+    if global_step is not None:
+        edges.append(
+            _scope_edge(
+                source,
+                entity_type=MetadataEntityType.STEP,
+                identifier=_step_identifier(run_identifier=run_identifier, global_step=global_step),
+                relationship=MetadataRelationship.OBSERVED_DURING,
+                producer=producer,
+                label=f"step {global_step}",
+                facts=_optional_metadata(global_step=global_step, epoch=epoch),
+            )
+        )
+    if collector_id is not None:
+        edges.append(
+            _scope_edge(
+                source,
+                entity_type=MetadataEntityType.COLLECTOR,
+                identifier=collector_id,
+                relationship=MetadataRelationship.PRODUCED_BY,
+                producer=producer,
+                label=collector_id,
             )
         )
     return tuple(edges)
@@ -428,25 +532,74 @@ def _frame_scope_edges(
     *,
     producer: str,
 ) -> tuple[MetadataEdge, ...]:
-    edges: list[MetadataEdge] = []
-    if facts.host_identifier is not None:
+    edges = list(
+        _runtime_scope_edges(
+            source,
+            run_identifier=facts.run_identifier,
+            host_identifier=facts.host_identifier,
+            process_identifier=facts.process_identifier,
+            rank=facts.rank,
+            world_size=facts.world_size,
+            phase=facts.phase,
+            global_step=facts.global_step,
+            epoch=facts.epoch,
+            collector_id=facts.collector_id,
+            producer=producer,
+        )
+    )
+    edges.append(
+        _scope_edge(
+            source,
+            entity_type=MetadataEntityType.EVENT,
+            identifier=_event_identifier(run_identifier=facts.run_identifier, event_name=facts.event_name),
+            relationship=MetadataRelationship.OBSERVED_DURING,
+            producer=producer,
+            label=facts.event_name,
+            facts={"event_name": facts.event_name},
+        )
+    )
+    return tuple(edges)
+
+
+def _structural_scope_edges(
+    source: MetadataIdentity,
+    facts: StructuralResourceFacts,
+    *,
+    producer: str,
+) -> tuple[MetadataEdge, ...]:
+    edges: list[MetadataEdge] = [
+        _scope_edge(
+            source,
+            entity_type=facts.owner_type,
+            identifier=facts.owner_identifier,
+            relationship=MetadataRelationship.OWNED_BY,
+            producer=producer,
+            label=facts.owner_identifier,
+            facts={"owner_type": facts.owner_type},
+        )
+    ]
+    if facts.component_key is not None:
         edges.append(
             _scope_edge(
                 source,
-                entity_type="host",
-                identifier=facts.host_identifier,
-                relationship="observed_on_host",
+                entity_type=MetadataEntityType.COMPONENT,
+                identifier=facts.component_key,
+                relationship=MetadataRelationship.DESCRIBES,
                 producer=producer,
+                label=facts.component_key,
+                facts={"component_key": facts.component_key},
             )
         )
-    if facts.process_identifier is not None:
+    if facts.group_identifier is not None:
         edges.append(
             _scope_edge(
                 source,
-                entity_type="process",
-                identifier=facts.process_identifier,
-                relationship="observed_in_process",
+                entity_type=MetadataEntityType.GROUP,
+                identifier=facts.group_identifier,
+                relationship=MetadataRelationship.DESCRIBES,
                 producer=producer,
+                label=facts.group_identifier,
+                facts={"group_identifier": facts.group_identifier},
             )
         )
     return tuple(edges)
@@ -464,10 +617,10 @@ def _frame_measurement_edges(
         label=f"{measurement.resource_kind}:{measurement.measurement_kind}",
     )
     edges = [
-        MetadataEdge(
+        metadata_edge(
             source=measurement_identity,
             target=frame_identity,
-            relationship="contained_in",
+            relationship=MetadataRelationship.CONTAINED_IN,
             producer=producer,
         )
     ]
@@ -475,16 +628,16 @@ def _frame_measurement_edges(
         edges.append(
             _scope_edge(
                 measurement_identity,
-                entity_type="device",
+                entity_type=MetadataEntityType.DEVICE,
                 identifier=measurement.device_identifier,
-                relationship="observed_on_device",
+                relationship=MetadataRelationship.OBSERVED_ON,
                 producer=producer,
             )
         )
     return tuple(edges)
 
 
-def _reference_payloads(references: tuple[ResourceFactReference, ...]) -> list[dict[str, MetadataValue]]:
+def _reference_payloads(references: tuple[ResourceFactReference, ...]) -> list[object]:
     return [
         {
             "entity_type": reference.entity_type,
@@ -510,11 +663,10 @@ def _reference_edges(
     return tuple(
         MetadataEdge(
             source=source,
-            target=MetadataIdentity(
+            target=metadata_identity(
                 entity_type=reference.entity_type,
                 identifier=reference.identifier,
                 namespace=source.namespace if reference.namespace is None else reference.namespace,
-                schema_version=METADATA_PAYLOAD_VERSION,
             ),
             relationship=reference.relationship,
             producer=producer,
@@ -525,3 +677,19 @@ def _reference_edges(
 
 def _optional_metadata(**values: MetadataValue | None) -> dict[str, MetadataValue]:
     return {key: value for key, value in values.items() if value is not None}
+
+
+def _rank_identifier(*, run_identifier: str, rank: int) -> str:
+    return f"{run_identifier}:rank:{rank}"
+
+
+def _phase_identifier(*, run_identifier: str, phase: str) -> str:
+    return f"{run_identifier}:phase:{phase}"
+
+
+def _step_identifier(*, run_identifier: str, global_step: int) -> str:
+    return f"{run_identifier}:step:{global_step}"
+
+
+def _event_identifier(*, run_identifier: str, event_name: str) -> str:
+    return f"{run_identifier}:event:{event_name}"

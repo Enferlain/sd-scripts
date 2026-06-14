@@ -235,6 +235,18 @@ That makes them the bridge between:
 
 `MetadataRuntime` uses a backend internally so local code can stay at the level of `file(item)`.
 
+## Relationships
+
+Metadata edges describe queryable relationships between accepted facts and
+their scopes or evidence. Shared graph vocabulary and construction helpers live
+in `library/metadata/graph.py` so observation, structural, profile, accounting,
+artifact, checkpoint, and other metadata concerns can use the same relationship
+language instead of growing concern-specific edge strings.
+
+Emitters should create relationship edges only from identities provided by the
+filed fact. If a runtime identity is unavailable, omit that edge rather than
+inventing a placeholder.
+
 ## Projections
 
 Typed metadata items and collected records/events are the source of truth.

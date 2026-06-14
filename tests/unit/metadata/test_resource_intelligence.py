@@ -6,7 +6,9 @@ import pytest
 
 from library.metadata import (
     METADATA_PAYLOAD_VERSION,
+    MetadataEntityType,
     MetadataItemValidationError,
+    MetadataRelationship,
     MetadataRuntime,
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
@@ -107,8 +109,8 @@ def test_resource_intelligence_facts_feed_metadata_emitters() -> None:
     assert observation_record.facts["measurement_kind"] == "allocated"
     assert observation_record.facts["metadata"] == {"device_scope": "local"}
     assert {edge.relationship for edge in observation_edges} == {
-        "observed_during",
-        "observed_on_device",
+        MetadataRelationship.OBSERVED_DURING,
+        MetadataRelationship.OBSERVED_ON,
     }
     assert structural_record.identity.entity_type == "resource_structural_fact"
     assert structural_record.facts["semantic_class"] == "structural"
@@ -169,10 +171,11 @@ def test_resource_observation_frame_preserves_shared_context_and_measurement_ide
     assert "phase" not in gpu_record.facts
     assert cpu_record.identity.identifier == "frame-1:cpu-rss"
     assert {edge.relationship for edge in result.edges} == {
-        "observed_during",
-        "observed_in_process",
-        "contained_in",
-        "observed_on_device",
+        MetadataRelationship.CONTAINED_IN,
+        MetadataRelationship.OBSERVED_DURING,
+        MetadataRelationship.OBSERVED_IN,
+        MetadataRelationship.OBSERVED_ON,
+        MetadataRelationship.PRODUCED_BY,
     }
 
 
@@ -223,10 +226,174 @@ def test_resource_intelligence_facts_file_through_metadata_runtime() -> None:
     assert snapshot.record_for(entity_type="resource_structural_fact", identifier="struct-1") is not None
     assert snapshot.record_for(entity_type="resource_profile", identifier="profile-1") is not None
     assert {edge.relationship for edge in snapshot.edges} == {
-        "observed_during",
-        "describes_run_resource",
-        "profiles_run",
+        MetadataRelationship.DESCRIBES,
+        MetadataRelationship.OBSERVED_DURING,
+        MetadataRelationship.OWNED_BY,
+        MetadataRelationship.PROFILES,
         "derived_from",
+    }
+
+
+@pytest.mark.unit
+def test_metadata_graph_relationships_cover_runtime_structural_and_evidence_scopes() -> None:
+    frame = ResourceObservationFrameFacts(
+        frame_identifier="frame-relationships",
+        run_identifier="run-relationships",
+        event_name="step_sample",
+        collector_id="resource_monitor.sampled",
+        collection_policy="sampled",
+        phase="training.epoch.0",
+        global_step=12,
+        epoch=3,
+        rank=1,
+        world_size=2,
+        host_identifier="host-a",
+        process_identifier="pid-123",
+        measurements=(
+            ResourceObservationMeasurementFacts(
+                measurement_identifier="frame-relationships:cuda-0-used",
+                resource_kind="gpu_memory",
+                measurement_kind="used",
+                value=2048.0,
+                unit="MiB",
+                source="nvml",
+                scope_type="device",
+                device_identifier="cuda:0",
+            ),
+        ),
+    )
+    structural = StructuralResourceFacts(
+        structural_identifier="struct-relationships",
+        run_identifier="run-relationships",
+        owner_type="model_component",
+        owner_identifier="denoiser",
+        resource_kind="parameter_memory",
+        quantity=1024.0,
+        unit="MiB",
+        basis="parameter_bytes",
+        source="startup_component_memory",
+        component_key="unet",
+        group_identifier="trainable-model",
+    )
+    source_ref = ResourceFactReference(
+        entity_type="resource_observation",
+        identifier="frame-relationships:cuda-0-used",
+        relationship="derived_from",
+    )
+    profile = ResourceProfileFacts(
+        profile_identifier="profile-relationships",
+        run_identifier="run-relationships",
+        profile_kind="session_peaks",
+        derivation_version="v1",
+        values={"gpu_used_peak_mib": 2048.0},
+        source_fact_references=(source_ref,),
+    )
+    accounting = ResourceAccountingFacts(
+        accounting_identifier="accounting-relationships",
+        run_identifier="run-relationships",
+        resource_kind="parameter_memory",
+        quantity=1024.0,
+        unit="MiB",
+        owner_type="model_component",
+        owner_identifier="denoiser",
+        basis="structural",
+        derivation_method="parameter_bytes",
+        derivation_version="v1",
+        source_fact_references=(
+            ResourceFactReference(
+                entity_type="resource_structural_fact",
+                identifier="struct-relationships",
+                relationship="supported_by",
+            ),
+        ),
+    )
+    gap = ResourceAccountingGapFacts(
+        gap_identifier="gap-relationships",
+        run_identifier="run-relationships",
+        resource_kind="gpu_memory",
+        quantity=512.0,
+        unit="MiB",
+        basis="observed_minus_accounted",
+        derivation_method="session_peak",
+        derivation_version="v1",
+        source_fact_references=(source_ref,),
+    )
+
+    frame_edges = build_resource_observation_frame_metadata(frame).edges
+    structural_edges = build_structural_resource_metadata(structural).edges
+    profile_edges = build_resource_profile_metadata(profile).edges
+    accounting_edges = build_resource_accounting_metadata(accounting).edges
+    gap_edges = build_resource_accounting_gap_metadata(gap).edges
+
+    frame_targets = {(edge.relationship, edge.target.entity_type, edge.target.identifier) for edge in frame_edges}
+    assert (MetadataRelationship.OBSERVED_DURING, MetadataEntityType.RUN, "run-relationships") in frame_targets
+    assert (MetadataRelationship.OBSERVED_ON, MetadataEntityType.HOST, "host-a") in frame_targets
+    assert (MetadataRelationship.OBSERVED_IN, MetadataEntityType.PROCESS, "pid-123") in frame_targets
+    assert (MetadataRelationship.OBSERVED_IN, MetadataEntityType.RANK, "run-relationships:rank:1") in frame_targets
+    assert (
+        MetadataRelationship.OBSERVED_DURING,
+        MetadataEntityType.PHASE,
+        "run-relationships:phase:training.epoch.0",
+    ) in frame_targets
+    assert (MetadataRelationship.OBSERVED_DURING, MetadataEntityType.STEP, "run-relationships:step:12") in frame_targets
+    assert (
+        MetadataRelationship.PRODUCED_BY,
+        MetadataEntityType.COLLECTOR,
+        "resource_monitor.sampled",
+    ) in frame_targets
+    assert (
+        MetadataRelationship.OBSERVED_DURING,
+        MetadataEntityType.EVENT,
+        "run-relationships:event:step_sample",
+    ) in frame_targets
+    assert (
+        MetadataRelationship.OBSERVED_ON,
+        MetadataEntityType.DEVICE,
+        "cuda:0",
+    ) in frame_targets
+    rank_edge = next(edge for edge in frame_edges if edge.target.entity_type == MetadataEntityType.RANK)
+    step_edge = next(edge for edge in frame_edges if edge.target.entity_type == MetadataEntityType.STEP)
+    assert rank_edge.facts == {"rank": 1, "world_size": 2}
+    assert step_edge.facts == {"global_step": 12, "epoch": 3}
+
+    structural_targets = {(edge.relationship, edge.target.entity_type, edge.target.identifier) for edge in structural_edges}
+    assert (MetadataRelationship.DESCRIBES, MetadataEntityType.RUN, "run-relationships") in structural_targets
+    assert (MetadataRelationship.OWNED_BY, "model_component", "denoiser") in structural_targets
+    assert (MetadataRelationship.DESCRIBES, MetadataEntityType.COMPONENT, "unet") in structural_targets
+    assert (MetadataRelationship.DESCRIBES, MetadataEntityType.GROUP, "trainable-model") in structural_targets
+
+    assert {edge.relationship for edge in profile_edges} == {MetadataRelationship.PROFILES, "derived_from"}
+    assert {edge.relationship for edge in accounting_edges} == {
+        MetadataRelationship.ACCOUNTS_FOR,
+        "supported_by",
+    }
+    assert {edge.relationship for edge in gap_edges} == {MetadataRelationship.GAP_FOR, "derived_from"}
+
+
+@pytest.mark.unit
+def test_metadata_graph_relationships_omit_unavailable_runtime_identities() -> None:
+    result = build_resource_observation_frame_metadata(
+        ResourceObservationFrameFacts(
+            frame_identifier="frame-minimal",
+            run_identifier="run-minimal",
+            event_name="session_start",
+            measurements=(
+                ResourceObservationMeasurementFacts(
+                    measurement_identifier="frame-minimal:cpu-rss",
+                    resource_kind="cpu_memory",
+                    measurement_kind="rss",
+                    value=128.0,
+                    unit="MiB",
+                    source="psutil",
+                    scope_type="process",
+                ),
+            ),
+        )
+    )
+
+    assert {edge.relationship for edge in result.edges} == {
+        MetadataRelationship.CONTAINED_IN,
+        MetadataRelationship.OBSERVED_DURING,
     }
 
 
