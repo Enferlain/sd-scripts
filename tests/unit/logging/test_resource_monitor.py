@@ -16,7 +16,15 @@ from library.logging.resource_monitor import (
     SampledResourceMonitor,
     create_resource_monitor,
 )
-from library.logging.resource_monitor.collect import _DeepCounters, _SampledMetrics
+from library.logging.resource_monitor.collect import _DeepCounters, _SampledMetrics, _Snapshot
+from library.logging.resource_monitor.console_summary import (
+    build_phase_resource_console_summary,
+    build_session_resource_console_summary,
+    build_step_resource_console_summary,
+    render_phase_resource_console_summary,
+    render_session_resource_console_summary,
+    render_step_resource_console_summary,
+)
 from library.logging.resource_monitor.fact_production import (
     build_resource_monitor_produced_facts,
     project_resource_monitor_jsonl_event,
@@ -88,6 +96,68 @@ class TestResourceMonitorFactory:
 
 @pytest.mark.unit
 class TestBasicResourceMonitorBehavior:
+    def test_console_summary_renderers_preserve_existing_message_shapes(self):
+        start_snapshot = _Snapshot(
+            gpu_allocated_mb=10.0,
+            gpu_allocated_by_device_mb=None,
+            gpu_reserved_mb=20.0,
+            gpu_reserved_by_device_mb=None,
+            gpu_peak_allocated_mb=30.0,
+            gpu_peak_allocated_by_device_mb=None,
+            cpu_rss_mb=40.0,
+            cpu_vms_mb=50.0,
+        )
+        end_snapshot = _Snapshot(
+            gpu_allocated_mb=11.0,
+            gpu_allocated_by_device_mb=None,
+            gpu_reserved_mb=21.0,
+            gpu_reserved_by_device_mb=None,
+            gpu_peak_allocated_mb=31.0,
+            gpu_peak_allocated_by_device_mb=None,
+            cpu_rss_mb=41.0,
+            cpu_vms_mb=51.0,
+        )
+
+        session_message = render_session_resource_console_summary(
+            build_session_resource_console_summary(duration_s=1.25, snapshot=end_snapshot, gpu_used_mb=99.0)
+        )
+        phase_message = render_phase_resource_console_summary(
+            build_phase_resource_console_summary(
+                phase_name=training_epoch_phase(0),
+                duration_s=2.5,
+                start_snapshot=start_snapshot,
+                end_snapshot=end_snapshot,
+                sampled_peak_gpu_used_mb=88.0,
+            )
+        )
+        step_message = render_step_resource_console_summary(
+            build_step_resource_console_summary(
+                global_step=3,
+                epoch=1,
+                snapshot=end_snapshot,
+                gpu_used_mb=None,
+                steps_per_sec=4.5,
+            )
+        )
+        first_step_message = render_step_resource_console_summary(
+            build_step_resource_console_summary(
+                global_step=1,
+                epoch=1,
+                snapshot=end_snapshot,
+                gpu_used_mb=77.0,
+                steps_per_sec=None,
+            )
+        )
+
+        assert session_message.message.startswith("Resource session summary:")
+        assert session_message.args == (1.25, "11MB", "21MB", "31MB", "99MB", "41MB")
+        assert phase_message.message.startswith("Resource phase[%s]:")
+        assert phase_message.args == (training_epoch_phase(0), 2.5, "10MB", "11MB", "20MB", "21MB", "31MB", ", gpu_used_peak=88MB", "40MB", "41MB")
+        assert step_message.message.startswith("Resource step[%s|epoch=%s]: %.2f steps/s")
+        assert step_message.args == (3, 1, 4.5, "11MB", "21MB", "n/a", "41MB")
+        assert first_step_message.message.startswith("Resource step[%s|epoch=%s]: gpu_allocated=")
+        assert first_step_message.args == (1, 1, "11MB", "21MB", "77MB", "41MB")
+
     def test_phase_and_step_logging_paths_do_not_raise(self):
         accelerator = MagicMock()
         accelerator.is_main_process = True
@@ -105,6 +175,39 @@ class TestBasicResourceMonitorBehavior:
             monitor.end_session()
 
             assert mock_logger.info.call_count >= 3
+
+    def test_session_phase_and_step_console_uses_resource_domain_summaries(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+        )
+
+        with (
+            patch(
+                "library.logging.resource_monitor.monitor.build_session_resource_console_summary",
+                wraps=build_session_resource_console_summary,
+            ) as mock_session_summary,
+            patch(
+                "library.logging.resource_monitor.monitor.build_phase_resource_console_summary",
+                wraps=build_phase_resource_console_summary,
+            ) as mock_phase_summary,
+            patch(
+                "library.logging.resource_monitor.monitor.build_step_resource_console_summary",
+                wraps=build_step_resource_console_summary,
+            ) as mock_step_summary,
+        ):
+            monitor.start_session()
+            monitor.phase_start(training_epoch_phase(0))
+            monitor.step_end(global_step=1, epoch=1)
+            monitor.phase_end(training_epoch_phase(0))
+            monitor.end_session()
+
+        mock_step_summary.assert_called_once()
+        mock_phase_summary.assert_called_once()
+        mock_session_summary.assert_called_once()
 
     def test_phase_and_step_logging_uses_external_write_mode(self):
         accelerator = MagicMock()
@@ -584,6 +687,99 @@ class TestResourceMonitorJsonl:
         assert len(lines) >= 3  # session_start + phase_start + forced-flush phase_end
 
         monitor.end_session()
+
+
+@pytest.mark.unit
+class TestResourceMonitorMigrationEquivalence:
+    def test_jsonl_metadata_and_console_surfaces_stay_aligned_during_fact_migration(self, tmp_path):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        cfg = _make_cfg(
+            mode="basic",
+            output_jsonl="resource/equivalence.jsonl",
+            jsonl_flush_mode="line",
+            log_every_n_steps=1,
+            phase_summary="verbose",
+        )
+
+        monitor = create_resource_monitor(
+            accelerator=accelerator,
+            resource_monitor_config=cfg,
+            output_dir=tmp_path,
+            run_identifier="run-equivalence",
+            config_name="equivalence-config",
+            git_sha="abc123def",
+            git_dirty=False,
+            metadata_runtime=metadata_runtime,
+        )
+        assert isinstance(monitor, BasicResourceMonitor)
+
+        with patch.object(monitor, "_log_info_external", wraps=monitor._log_info_external) as mock_log_info_external:
+            monitor.start_session()
+            monitor.phase_start(training_epoch_phase(0))
+            monitor.step_end(global_step=1, epoch=1)
+            monitor.phase_end(training_epoch_phase(0))
+            monitor.end_session()
+
+        jsonl_path = tmp_path / "resource" / "equivalence.jsonl"
+        jsonl_events = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        metadata_snapshot = metadata_runtime.snapshot()
+        metadata_events = metadata_snapshot.events
+        frame_records = metadata_snapshot.records_for(entity_type="resource_observation_frame")
+        measurement_records = metadata_snapshot.records_for(entity_type="resource_observation")
+
+        expected_events = ["session_start", "phase_start", "step_sample", "phase_end", "session_end"]
+        assert [event["event"] for event in jsonl_events] == expected_events
+        assert [event.event_type for event in metadata_events] == expected_events
+        assert [record.facts["event_name"] for record in frame_records] == expected_events
+
+        jsonl_by_event = {event["event"]: event for event in jsonl_events}
+        metadata_by_event = {event.event_type: event for event in metadata_events}
+        frame_by_event = {record.facts["event_name"]: record for record in frame_records}
+
+        for event_name in expected_events:
+            jsonl_event = jsonl_by_event[event_name]
+            metadata_event = metadata_by_event[event_name]
+            frame_record = frame_by_event[event_name]
+
+            assert jsonl_event["run_identifier"] == "run-equivalence"
+            assert metadata_event.identity.identifier == "run-equivalence"
+            assert frame_record.facts["run_identifier"] == "run-equivalence"
+            assert frame_record.facts["collection_policy"] == jsonl_event["mode"]
+            assert frame_record.facts["rank"] == jsonl_event["rank"]
+            assert frame_record.facts["world_size"] == jsonl_event["world_size"]
+
+        step_jsonl = jsonl_by_event["step_sample"]
+        step_metadata = metadata_by_event["step_sample"]
+        step_frame = frame_by_event["step_sample"]
+        phase_jsonl = jsonl_by_event["phase_end"]
+        phase_metadata = metadata_by_event["phase_end"]
+        phase_frame = frame_by_event["phase_end"]
+
+        assert step_jsonl["global_step"] == 1
+        assert step_metadata.facts["global_step"] == 1
+        assert step_frame.facts["global_step"] == 1
+        assert step_jsonl["epoch"] == 1
+        assert step_metadata.facts["epoch"] == 1
+        assert step_frame.facts["epoch"] == 1
+        assert phase_jsonl["phase"] == training_epoch_phase(0)
+        assert phase_metadata.facts["phase"] == training_epoch_phase(0)
+        assert phase_frame.facts["phase"] == training_epoch_phase(0)
+
+        step_measurements = [record for record in measurement_records if record.facts["frame_identifier"] == step_frame.identity.identifier]
+        assert {record.facts["measurement_kind"] for record in step_measurements} >= {"rss", "vms"}
+        assert all(record.facts["semantic_class"] == "observation" for record in frame_records)
+        assert all(record.facts["semantic_class"] == "observation" for record in measurement_records)
+
+        console_messages = [call.args[0] for call in mock_log_info_external.call_args_list]
+        assert any(message.startswith("Resource monitor started:") for message in console_messages)
+        assert any(message.startswith("Resource step[") for message in console_messages)
+        assert any(message.startswith("Resource phase[") for message in console_messages)
+        assert any(message.startswith("Resource session summary:") for message in console_messages)
+        assert all("run-equivalence" not in message for message in console_messages)
 
 
 @pytest.mark.unit

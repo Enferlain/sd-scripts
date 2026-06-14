@@ -18,6 +18,8 @@ Rules:
 
 ### Changed
 
+- **Resource monitor migration now has cross-surface equivalence coverage** — added an end-to-end lifecycle test proving current JSONL events, metadata compatibility events, canonical observation frames, measurements, and presentation-only console summaries stay aligned during the resource-fact migration.
+- **Resource monitor console output now uses resource-domain summaries for live session, phase, and step lines** — preserved the existing user-facing console messages while moving normal live resource summary rendering behind presentation-only summary objects instead of formatting directly from monitor internals.
 - **Resource monitor JSONL now projects from produced resource facts for identified runs** — existing flat resource JSONL events are now rebuilt from canonical observation-frame measurements while preserving the current artifact shape, with a narrow fallback for JSONL-only runs that lack a durable run identifier.
 - **Resource monitor now produces canonical observation frames alongside compatibility facts** — current session, phase, step, sampled, and deep-counter event paths now build typed co-collected measurement frames once through the resource-domain production seam while preserving existing JSONL and metadata events for migration.
 - **Resource intelligence now has one reconciled governing design** — settled observation frames as the shared-context container for individually addressable measurements, mapped current monitor/metadata/startup/report surfaces into the target fact model, preserved evidence-constrained owner-scope requirements, and superseded the phase-only accounting direction.

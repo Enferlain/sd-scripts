@@ -29,6 +29,14 @@ from library.metadata.runtime import MetadataRuntime
 from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
 
 from .collect import _DeepCounters, _SampledMetrics, _Snapshot, ResourceCollectionMixin
+from .console_summary import (
+    build_phase_resource_console_summary,
+    build_session_resource_console_summary,
+    build_step_resource_console_summary,
+    render_phase_resource_console_summary,
+    render_session_resource_console_summary,
+    render_step_resource_console_summary,
+)
 from .events import ResourceEventMixin
 from .startup import ResourceStartupMixin
 
@@ -304,15 +312,13 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
             end_snapshot = self._collect_snapshot(reset_peak=False)
             duration = time.perf_counter() - self._session_started_at
 
-            self._log_info_external(
-                "Resource session summary: duration=%.2fs, gpu_allocated=%s, gpu_reserved=%s, gpu_peak=%s, gpu_used=%s, cpu_rss=%s",
-                duration,
-                self._format_gpu(end_snapshot.gpu_allocated_mb),
-                self._format_gpu(end_snapshot.gpu_reserved_mb),
-                self._format_gpu(end_snapshot.gpu_peak_allocated_mb),
-                self._format_gpu(self._latest_gpu_used_mb),
-                self._format_cpu(end_snapshot.cpu_rss_mb),
+            session_summary = build_session_resource_console_summary(
+                duration_s=duration,
+                snapshot=end_snapshot,
+                gpu_used_mb=self._latest_gpu_used_mb,
             )
+            session_log_message = render_session_resource_console_summary(session_summary)
+            self._log_info_external(session_log_message.message, *session_log_message.args)
 
             self._emit_event(
                 event="session_end",
@@ -358,24 +364,16 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
             end_snapshot = self._collect_snapshot(reset_peak=False)
             duration = time.perf_counter() - start_state.started_at
 
-            sampled_peak_suffix = ""
-            if start_state.sampled_peak_gpu_used_mb is not None:
-                sampled_peak_suffix = f", gpu_used_peak={self._format_gpu(start_state.sampled_peak_gpu_used_mb)}"
-
             if self._should_log_phase_summary(name):
-                self._log_info_external(
-                    "Resource phase[%s]: duration=%.2fs, gpu_allocated=%s->%s, gpu_reserved=%s->%s, gpu_peak=%s%s, cpu_rss=%s->%s",
-                    name,
-                    duration,
-                    self._format_gpu(start_state.start_snapshot.gpu_allocated_mb),
-                    self._format_gpu(end_snapshot.gpu_allocated_mb),
-                    self._format_gpu(start_state.start_snapshot.gpu_reserved_mb),
-                    self._format_gpu(end_snapshot.gpu_reserved_mb),
-                    self._format_gpu(end_snapshot.gpu_peak_allocated_mb),
-                    sampled_peak_suffix,
-                    self._format_cpu(start_state.start_snapshot.cpu_rss_mb),
-                    self._format_cpu(end_snapshot.cpu_rss_mb),
+                phase_summary = build_phase_resource_console_summary(
+                    phase_name=name,
+                    duration_s=duration,
+                    start_snapshot=start_state.start_snapshot,
+                    end_snapshot=end_snapshot,
+                    sampled_peak_gpu_used_mb=start_state.sampled_peak_gpu_used_mb,
                 )
+                phase_log_message = render_phase_resource_console_summary(phase_summary)
+                self._log_info_external(phase_log_message.message, *phase_log_message.args)
 
             self._emit_event(
                 event="phase_end",
@@ -408,27 +406,15 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
             self._last_step_sample = (global_step, now)
 
             snapshot = self._collect_snapshot(reset_peak=False)
-            if steps_per_sec is None:
-                self._log_info_external(
-                    "Resource step[%s|epoch=%s]: gpu_allocated=%s, gpu_reserved=%s, gpu_used=%s, cpu_rss=%s",
-                    global_step,
-                    epoch,
-                    self._format_gpu(snapshot.gpu_allocated_mb),
-                    self._format_gpu(snapshot.gpu_reserved_mb),
-                    self._format_gpu(self._latest_gpu_used_mb),
-                    self._format_cpu(snapshot.cpu_rss_mb),
-                )
-            else:
-                self._log_info_external(
-                    "Resource step[%s|epoch=%s]: %.2f steps/s, gpu_allocated=%s, gpu_reserved=%s, gpu_used=%s, cpu_rss=%s",
-                    global_step,
-                    epoch,
-                    steps_per_sec,
-                    self._format_gpu(snapshot.gpu_allocated_mb),
-                    self._format_gpu(snapshot.gpu_reserved_mb),
-                    self._format_gpu(self._latest_gpu_used_mb),
-                    self._format_cpu(snapshot.cpu_rss_mb),
-                )
+            step_summary = build_step_resource_console_summary(
+                global_step=global_step,
+                epoch=epoch,
+                snapshot=snapshot,
+                gpu_used_mb=self._latest_gpu_used_mb,
+                steps_per_sec=steps_per_sec,
+            )
+            step_log_message = render_step_resource_console_summary(step_summary)
+            self._log_info_external(step_log_message.message, *step_log_message.args)
 
             self._emit_event(
                 event="step_sample",

@@ -225,6 +225,20 @@ observation frame, and JSONL-only runs without a durable run identifier keep the
 pre-existing raw-event write path until run identity is mandatory or a separate
 non-durable projection context exists.
 
+The first console migration slice keeps console output explicitly
+presentation-only. Normal session, phase, and step resource lines are rendered
+from resource-domain console summary objects rather than directly from monitor
+internals, preserving current user-facing text without making console output an
+accepted fact source. Startup component memory remains a separate structural
+estimate surface until structural facts are migrated.
+
+The first cross-surface equivalence check proves one lifecycle run keeps JSONL,
+metadata compatibility events, canonical observation frames, nested
+measurements, and console summaries aligned. JSONL repeats compatibility context
+such as `run_identifier`; metadata events preserve run identity through their
+record identity; canonical frames carry run identity and collection context as
+accepted resource facts.
+
 ### Decision: Preserve the ResourceMonitor lifecycle API as the orchestration facade
 
 The trainer-facing API remains intentionally small:
