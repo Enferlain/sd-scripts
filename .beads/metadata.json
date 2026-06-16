@@ -3,5 +3,6 @@
   "backend": "dolt",
   "dolt_mode": "server",
   "dolt_database": "sd_scripts",
-  "project_id": "09e93825-75ef-4542-b444-b2eab4587c70"
+  "project_id": "93bf47a5-c306-4aeb-a7be-aad1d5643691",
+  "global_dolt_database": "beads_global"
 }
