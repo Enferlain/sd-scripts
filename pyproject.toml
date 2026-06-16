@@ -136,7 +136,7 @@ torchvision = [
 # Ruff - Linting and Formatting
 # =============================================================================
 [tool.ruff]
-target-version = "py311"
+target-version = "py313"
 line-length = 140
 
 exclude = [
@@ -246,7 +246,6 @@ directory = "htmlcov"
 # =============================================================================
 [tool.ty.environment]
 python-version = "3.13"
-python = "./.venv"
 
 [tool.ty.src]
 # Exclude vendored/_deprecated code from type checking
