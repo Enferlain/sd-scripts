@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 
 from library.metadata import (
+    InMemoryMetadataBackend,
     MetadataEntityType,
+    MetadataGraphIndex,
+    MetadataRecord,
     MetadataRelationship,
     MetadataRuntime,
+    MetadataSnapshot,
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
     ResourceFactReference,
@@ -16,6 +22,8 @@ from library.metadata import (
     ResourceObservationMeasurementFacts,
     ResourceProfileFacts,
     ResourceRunView,
+    RunReportFacts,
+    SQLiteMetadataStore,
     StructuralResourceFacts,
     edges_from,
     metadata_identity,
@@ -25,44 +33,79 @@ from library.metadata import (
 )
 
 
+@pytest.fixture(params=("memory", "sqlite"))
+def resource_runtime(request: pytest.FixtureRequest) -> MetadataRuntime:
+    if request.param == "memory":
+        return MetadataRuntime()
+
+    connection = sqlite3.connect(":memory:")
+    request.addfinalizer(connection.close)
+    return MetadataRuntime(
+        backend=InMemoryMetadataBackend(
+            store=SQLiteMetadataStore(connection),
+        )
+    )
+
+
 @pytest.mark.unit
 def test_metadata_graph_helpers_traverse_snapshot_edges_and_records() -> None:
     runtime = MetadataRuntime()
     runtime.file(_resource_frame())
     snapshot = runtime.snapshot()
+    graph = MetadataGraphIndex.from_snapshot(snapshot)
     frame = snapshot.record_for(entity_type="resource_observation_frame", identifier="frame-1")
 
     assert frame is not None
 
     run_targets = target_identities(
-        snapshot,
+        graph,
         frame.identity,
         relationship=MetadataRelationship.OBSERVED_DURING,
         target_type=MetadataEntityType.RUN,
     )
     device_sources = source_identities(
-        snapshot,
+        graph,
         metadata_identity(entity_type=MetadataEntityType.DEVICE, identifier="cuda:0"),
         relationship=MetadataRelationship.OBSERVED_ON,
         source_type="resource_observation",
     )
-    resolved_records = records_by_identity(snapshot, device_sources)
+    resolved_records = records_by_identity(graph, device_sources)
 
     assert [identity.identifier for identity in run_targets] == ["run-1"]
     assert [record.identity.identifier for record in resolved_records] == ["frame-1:gpu-used"]
     assert edges_from(
-        snapshot,
+        graph,
         frame.identity,
         relationship=MetadataRelationship.OBSERVED_DURING,
         target_type=MetadataEntityType.PHASE,
         target_identifier="run-1:phase:training.epoch.0",
     )
+    assert MetadataGraphIndex.from_snapshot(graph) is graph
 
 
 @pytest.mark.unit
-def test_resource_run_view_queries_run_scoped_resource_facts_and_evidence() -> None:
-    runtime = MetadataRuntime()
-    runtime.file_many(
+def test_metadata_graph_index_matches_snapshot_namespace_lookup_semantics() -> None:
+    first = MetadataRecord(
+        identity=metadata_identity(entity_type="resource_profile", identifier="profile-1", namespace="first"),
+        producer="test",
+    )
+    second = MetadataRecord(
+        identity=metadata_identity(entity_type="resource_profile", identifier="profile-1", namespace="second"),
+        producer="test",
+    )
+    snapshot = MetadataSnapshot(records=(first, second))
+    graph = MetadataGraphIndex.from_snapshot(snapshot)
+
+    assert graph.record_for(entity_type="resource_profile", identifier="profile-1") is second
+    assert graph.record_for(entity_type="resource_profile", identifier="profile-1", namespace="first") is first
+    assert graph.record_for(entity_type="resource_profile", identifier="profile-1", namespace="second") is second
+
+
+@pytest.mark.unit
+def test_resource_run_view_preserves_semantic_fact_classes_and_evidence(
+    resource_runtime: MetadataRuntime,
+) -> None:
+    resource_runtime.file_many(
         (
             _resource_frame(),
             _direct_observation(),
@@ -73,7 +116,7 @@ def test_resource_run_view_queries_run_scoped_resource_facts_and_evidence() -> N
             _other_run_frame(),
         )
     )
-    snapshot = runtime.snapshot()
+    snapshot = resource_runtime.snapshot()
     view = ResourceRunView.from_snapshot(snapshot, run_identifier="run-1")
 
     assert [record.identity.identifier for record in view.observation_frames()] == ["frame-1"]
@@ -94,6 +137,21 @@ def test_resource_run_view_queries_run_scoped_resource_facts_and_evidence() -> N
     assert [record.identity.identifier for record in view.accounting_statements()] == ["acct-1"]
     assert [record.identity.identifier for record in view.accounting_gaps()] == ["gap-1"]
 
+    semantic_classes = {
+        record.identity.identifier: record.facts["semantic_class"]
+        for record in view.resource_records()
+    }
+    assert semantic_classes == {
+        "frame-1": "observation",
+        "frame-1:gpu-used": "observation",
+        "frame-1:cpu-rss": "observation",
+        "obs-direct": "observation",
+        "struct-1": "structural",
+        "profile-1": "profile",
+        "acct-1": "accounting",
+        "gap-1": "accounting_gap",
+    }
+
     frame = view.observation_frames()[0]
     profile = view.profiles()[0]
     accounting = view.accounting_statements()[0]
@@ -106,7 +164,103 @@ def test_resource_run_view_queries_run_scoped_resource_facts_and_evidence() -> N
     assert [record.identity.identifier for record in view.source_records_for(profile)] == ["frame-1:gpu-used"]
     assert [record.identity.identifier for record in view.source_records_for(accounting)] == ["struct-1"]
     assert [record.identity.identifier for record in view.source_records_for(gap)] == ["frame-1:gpu-used"]
-    assert view.profiles()[0] is snapshot.record_for(entity_type="resource_profile", identifier="profile-1")
+    assert profile.facts["values"] == {"gpu_used_peak_mib": 2048.0}
+
+
+@pytest.mark.unit
+def test_resource_run_view_queries_multi_scope_and_artifact_linked_facts() -> None:
+    runtime = MetadataRuntime()
+    runtime.file_many(
+        (
+            RunReportFacts(
+                report_identifier="report-12.json",
+                run_identifier="run-1",
+                status="succeeded",
+                generated_at=123.0,
+                output_name="report-12",
+                global_step=12,
+            ),
+            ResourceObservationFacts(
+                observation_identifier="source-run:gpu-used",
+                run_identifier="source-run",
+                resource_kind="gpu_memory",
+                measurement_kind="used",
+                value=1536.0,
+                unit="MiB",
+                source="nvml",
+                device_identifier="cuda:7",
+            ),
+            _scoped_frame(
+                frame_identifier="frame-rank-0",
+                rank=0,
+                device_identifier="cuda:0",
+                phase="training.epoch.0",
+                global_step=11,
+            ),
+            _scoped_frame(
+                frame_identifier="frame-rank-1",
+                rank=1,
+                device_identifier="cuda:1",
+                phase="training.epoch.1",
+                global_step=12,
+            ),
+            _component_structural_fact(
+                structural_identifier="struct-unet",
+                component_identifier="unet",
+            ),
+            _component_structural_fact(
+                structural_identifier="struct-text-encoder",
+                component_identifier="text_encoder",
+            ),
+            ResourceProfileFacts(
+                profile_identifier="profile-linked",
+                run_identifier="run-1",
+                profile_kind="checkpoint_context",
+                derivation_version="v1",
+                values={"gpu_used_peak_mib": 2048.0},
+                source_fact_references=(
+                    ResourceFactReference(
+                        entity_type="artifact",
+                        identifier="report-12.json",
+                        relationship="supported_by",
+                    ),
+                    ResourceFactReference(
+                        entity_type="resource_observation",
+                        identifier="source-run:gpu-used",
+                    ),
+                    ResourceFactReference(
+                        entity_type="resource_observation",
+                        identifier="missing-observation",
+                    ),
+                ),
+            ),
+        )
+    )
+    view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier="run-1")
+
+    assert [record.identity.identifier for record in view.observation_frames_for_rank(0)] == ["frame-rank-0"]
+    assert [record.identity.identifier for record in view.observation_frames_for_rank(1)] == ["frame-rank-1"]
+    assert [record.identity.identifier for record in view.observations_for_device("cuda:0")] == [
+        "frame-rank-0:gpu-used"
+    ]
+    assert [record.identity.identifier for record in view.observations_for_device("cuda:1")] == [
+        "frame-rank-1:gpu-used"
+    ]
+    assert [record.identity.identifier for record in view.observation_frames_for_phase("training.epoch.1")] == [
+        "frame-rank-1"
+    ]
+    assert [record.identity.identifier for record in view.structural_facts_for_component("unet")] == [
+        "struct-unet"
+    ]
+    assert [record.identity.identifier for record in view.structural_facts_for_component("text_encoder")] == [
+        "struct-text-encoder"
+    ]
+
+    source_records = view.source_records_for(view.profiles()[0])
+    assert [(record.identity.entity_type, record.identity.identifier) for record in source_records] == [
+        ("artifact", "report-12.json"),
+        ("resource_observation", "source-run:gpu-used"),
+    ]
 
 
 def _resource_frame() -> ResourceObservationFrameFacts:
@@ -147,6 +301,37 @@ def _resource_frame() -> ResourceObservationFrameFacts:
     )
 
 
+def _scoped_frame(
+    *,
+    frame_identifier: str,
+    rank: int,
+    device_identifier: str,
+    phase: str,
+    global_step: int,
+) -> ResourceObservationFrameFacts:
+    return ResourceObservationFrameFacts(
+        frame_identifier=frame_identifier,
+        run_identifier="run-1",
+        event_name="step_sample",
+        phase=phase,
+        global_step=global_step,
+        rank=rank,
+        world_size=2,
+        measurements=(
+            ResourceObservationMeasurementFacts(
+                measurement_identifier=f"{frame_identifier}:gpu-used",
+                resource_kind="gpu_memory",
+                measurement_kind="used",
+                value=2048.0 + rank,
+                unit="MiB",
+                source="nvml",
+                scope_type="device",
+                device_identifier=device_identifier,
+            ),
+        ),
+    )
+
+
 def _direct_observation() -> ResourceObservationFacts:
     return ResourceObservationFacts(
         observation_identifier="obs-direct",
@@ -172,6 +357,25 @@ def _structural_fact() -> StructuralResourceFacts:
         basis="parameter_bytes",
         source="startup_component_memory",
         component_key="unet",
+    )
+
+
+def _component_structural_fact(
+    *,
+    structural_identifier: str,
+    component_identifier: str,
+) -> StructuralResourceFacts:
+    return StructuralResourceFacts(
+        structural_identifier=structural_identifier,
+        run_identifier="run-1",
+        owner_type="model_component",
+        owner_identifier=component_identifier,
+        resource_kind="parameter_memory",
+        quantity=512.0,
+        unit="MiB",
+        basis="parameter_bytes",
+        source="startup_component_memory",
+        component_key=component_identifier,
     )
 
 

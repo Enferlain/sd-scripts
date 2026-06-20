@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import cast
 
-from library.metadata.records import MetadataIdentity, MetadataRecord
+from library.metadata.records import MetadataEdge, MetadataIdentity, MetadataRecord
 
 from library.metadata.graph import (
     edges_from,
     metadata_identity,
     MetadataEntityType,
+    MetadataGraphIndex,
     MetadataGraphSnapshot,
     MetadataRelationship,
     records_by_identity,
@@ -24,14 +26,6 @@ _RESOURCE_OBSERVATION_ENTITY = "resource_observation"
 _RESOURCE_OBSERVATION_FRAME_ENTITY = "resource_observation_frame"
 _RESOURCE_PROFILE_ENTITY = "resource_profile"
 _RESOURCE_STRUCTURAL_ENTITY = "resource_structural_fact"
-_RESOURCE_FACT_ENTITY_TYPES = {
-    _RESOURCE_ACCOUNTING_ENTITY,
-    _RESOURCE_ACCOUNTING_GAP_ENTITY,
-    _RESOURCE_OBSERVATION_ENTITY,
-    _RESOURCE_OBSERVATION_FRAME_ENTITY,
-    _RESOURCE_PROFILE_ENTITY,
-    _RESOURCE_STRUCTURAL_ENTITY,
-}
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +34,10 @@ class ResourceRunView:
 
     snapshot: MetadataGraphSnapshot
     run_identity: MetadataIdentity
+    _graph: MetadataGraphIndex = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "_graph", MetadataGraphIndex.from_snapshot(self.snapshot))
 
     @classmethod
     def from_snapshot(
@@ -78,12 +76,12 @@ class ResourceRunView:
             relationship=MetadataRelationship.OBSERVED_DURING,
         )
         frame_measurements = records_by_identity(
-            self.snapshot,
+            self._graph,
             (
                 identity
                 for frame in self.observation_frames()
                 for identity in source_identities(
-                    self.snapshot,
+                    self._graph,
                     frame.identity,
                     relationship=MetadataRelationship.CONTAINED_IN,
                     source_type=_RESOURCE_OBSERVATION_ENTITY,
@@ -128,7 +126,7 @@ class ResourceRunView:
             if any(
                 edge.facts.get("phase") == phase
                 for edge in edges_from(
-                    self.snapshot,
+                    self._graph,
                     frame.identity,
                     relationship=MetadataRelationship.OBSERVED_DURING,
                     target_type=MetadataEntityType.PHASE,
@@ -144,10 +142,26 @@ class ResourceRunView:
             if any(
                 edge.facts.get("global_step") == global_step
                 for edge in edges_from(
-                    self.snapshot,
+                    self._graph,
                     frame.identity,
                     relationship=MetadataRelationship.OBSERVED_DURING,
                     target_type=MetadataEntityType.STEP,
+                )
+            )
+        )
+
+    def observation_frames_for_rank(self, rank: int) -> tuple[MetadataRecord, ...]:
+        """Return run observation frames linked to a distributed rank."""
+        return self._records_in_snapshot_order(
+            frame
+            for frame in self.observation_frames()
+            if any(
+                edge.facts.get("rank") == rank
+                for edge in edges_from(
+                    self._graph,
+                    frame.identity,
+                    relationship=MetadataRelationship.OBSERVED_IN,
+                    target_type=MetadataEntityType.RANK,
                 )
             )
         )
@@ -161,9 +175,9 @@ class ResourceRunView:
         )
         return self._records_in_view(
             records_by_identity(
-                self.snapshot,
+                self._graph,
                 source_identities(
-                    self.snapshot,
+                    self._graph,
                     device_identity,
                     relationship=MetadataRelationship.OBSERVED_ON,
                     source_type=_RESOURCE_OBSERVATION_ENTITY,
@@ -172,13 +186,33 @@ class ResourceRunView:
             allowed_records=self.observations(),
         )
 
+    def structural_facts_for_component(self, component_identifier: str) -> tuple[MetadataRecord, ...]:
+        """Return run structural facts linked to a domain-provided component identifier."""
+        component_identity = metadata_identity(
+            entity_type=MetadataEntityType.COMPONENT,
+            identifier=component_identifier,
+            namespace=self.run_identity.namespace,
+        )
+        return self._records_in_view(
+            records_by_identity(
+                self._graph,
+                source_identities(
+                    self._graph,
+                    component_identity,
+                    relationship=MetadataRelationship.DESCRIBES,
+                    source_type=_RESOURCE_STRUCTURAL_ENTITY,
+                ),
+            ),
+            allowed_records=self.structural_facts(),
+        )
+
     def measurements_for_frame(self, frame: MetadataRecord) -> tuple[MetadataRecord, ...]:
         """Return observation measurements contained in a frame record."""
         return self._records_in_view(
             records_by_identity(
-                self.snapshot,
+                self._graph,
                 source_identities(
-                    self.snapshot,
+                    self._graph,
                     frame.identity,
                     relationship=MetadataRelationship.CONTAINED_IN,
                     source_type=_RESOURCE_OBSERVATION_ENTITY,
@@ -188,16 +222,14 @@ class ResourceRunView:
         )
 
     def source_records_for(self, record: MetadataRecord) -> tuple[MetadataRecord, ...]:
-        """Return evidence records referenced as targets by a derived resource record."""
+        """Resolve explicitly declared source records, including cross-run and artifact evidence."""
+        references = _source_fact_references(record)
         referenced_identities = tuple(
             edge.target
-            for edge in edges_from(self.snapshot, record.identity)
-            if edge.target.entity_type in _RESOURCE_FACT_ENTITY_TYPES
+            for edge in edges_from(self._graph, record.identity)
+            if _edge_matches_source_reference(edge, references, default_namespace=record.identity.namespace)
         )
-        return self._records_in_view(
-            records_by_identity(self.snapshot, referenced_identities),
-            allowed_records=self.resource_records(),
-        )
+        return records_by_identity(self._graph, referenced_identities)
 
     def resource_records(self) -> tuple[MetadataRecord, ...]:
         """Return all resource fact records visible for this run."""
@@ -214,9 +246,9 @@ class ResourceRunView:
 
     def _records_linked_to_run(self, *, entity_type: str, relationship: str) -> tuple[MetadataRecord, ...]:
         return records_by_identity(
-            self.snapshot,
+            self._graph,
             source_identities(
-                self.snapshot,
+                self._graph,
                 self.run_identity,
                 relationship=relationship,
                 source_type=entity_type,
@@ -240,6 +272,28 @@ class ResourceRunView:
         """Return selected records in their original snapshot order."""
         keys = {record.identity.key for record in records}
         return tuple(record for record in self.snapshot.records if record.identity.key in keys)
+
+
+def _source_fact_references(record: MetadataRecord) -> tuple[dict[str, object], ...]:
+    references = record.facts.get("source_fact_references")
+    if not isinstance(references, list):
+        return ()
+    return tuple(cast(dict[str, object], reference) for reference in references if isinstance(reference, dict))
+
+
+def _edge_matches_source_reference(
+    edge: MetadataEdge,
+    references: tuple[dict[str, object], ...],
+    *,
+    default_namespace: str,
+) -> bool:
+    return any(
+        reference.get("entity_type") == edge.target.entity_type
+        and reference.get("identifier") == edge.target.identifier
+        and reference.get("relationship") == edge.relationship
+        and reference.get("namespace", default_namespace) == edge.target.namespace
+        for reference in references
+    )
 
 
 __all__ = [

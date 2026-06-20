@@ -354,6 +354,18 @@ snapshot/query/projection APIs; it must not read raw metadata storage directly.
 This view must preserve original observed facts alongside derived profiles and
 accounting statements so consumers can distinguish them.
 
+The view builds one metadata-owned graph index per snapshot. The index maps
+records by identity and edges by source and target identity so frame, scope,
+and evidence queries do not repeatedly scan the complete telemetry edge set.
+Generic graph helpers remain usable directly for one-off snapshot queries.
+
+Evidence lookup follows each record's explicit `source_fact_references` rather
+than constraining sources to the viewed run or to resource entity types. A
+profile or accounting statement may therefore resolve accepted cross-run,
+run-level, artifact, or other metadata records when those records were declared
+as evidence; this does not make them members of the viewed run's resource fact
+set.
+
 ### Decision: Metadata projections own resource export shaping
 
 JSONL, report payload, profile artifact, and accounting artifact schemas are

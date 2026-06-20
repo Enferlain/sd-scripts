@@ -64,6 +64,7 @@ from library.metadata.records import (
 )
 from library.metadata.graph import (
     MetadataEntityType,
+    MetadataGraphIndex,
     MetadataGraphSnapshot,
     MetadataRelationship,
     edges_from,
@@ -108,6 +109,7 @@ __all__ = [
     "MetadataEdge",
     "MetadataEntityType",
     "MetadataEvent",
+    "MetadataGraphIndex",
     "MetadataGraphSnapshot",
     "MetadataIdentity",
     "MetadataProjection",

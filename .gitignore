@@ -16,6 +16,7 @@ dist/
 htmlcov/
 wandb/
 /*.yaml
+.codebase-memory/
 
 # IDEs
 .idea/

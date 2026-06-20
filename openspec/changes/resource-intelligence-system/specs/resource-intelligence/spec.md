@@ -108,6 +108,12 @@ facts, profiles, and accounting statements for reports and analyses.
 - **AND** the resource-run view MUST consume metadata-owned public snapshot, query, or projection APIs rather than raw storage
 - **AND** it MUST be able to distinguish observed facts from profiles and accounting statements
 
+#### Scenario: Resolving declared source evidence
+- **WHEN** a profile or accounting record declares accepted source-fact references
+- **THEN** the resource-run view MUST resolve available referenced records through metadata relationships
+- **AND** it MUST NOT discard evidence solely because it belongs to another run or is an artifact or other non-resource metadata record
+- **AND** resolved evidence MUST NOT be treated as a resource fact owned by the viewed run
+
 ### Requirement: Resource artifacts are projections
 The system SHALL treat JSONL and other resource artifacts as projections or
 exports of accepted resource facts rather than independent canonical schemas.

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections import defaultdict
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol
+
+from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
 from library.metadata.records import (
     MetadataEdge,
@@ -12,7 +16,6 @@ from library.metadata.records import (
     MetadataRecord,
     MetadataValue,
 )
-from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
 
 class MetadataGraphSnapshot(Protocol):
@@ -23,6 +26,109 @@ class MetadataGraphSnapshot(Protocol):
 
     def record_for(self, *, entity_type: str, identifier: str, namespace: str | None = None) -> MetadataRecord | None:
         """Return the newest matching record if it exists."""
+
+
+@dataclass(frozen=True, slots=True)
+class MetadataGraphIndex:
+    """Reusable identity and edge index over one metadata snapshot."""
+
+    snapshot: MetadataGraphSnapshot
+    _records_by_key: Mapping[str, MetadataRecord] = field(repr=False)
+    _records_by_type_identifier: Mapping[tuple[str, str], MetadataRecord] = field(repr=False)
+    _edges_by_source: Mapping[str, tuple[MetadataEdge, ...]] = field(repr=False)
+    _edges_by_target: Mapping[str, tuple[MetadataEdge, ...]] = field(repr=False)
+
+    @classmethod
+    def from_snapshot(cls, snapshot: MetadataGraphSnapshot | MetadataGraphIndex) -> MetadataGraphIndex:
+        """Build lookup maps in one pass over snapshot records and edges."""
+        if isinstance(snapshot, cls):
+            return snapshot
+
+        records_by_key: dict[str, MetadataRecord] = {}
+        records_by_type_identifier: dict[tuple[str, str], MetadataRecord] = {}
+        for record in snapshot.records:
+            records_by_key[record.identity.key] = record
+            records_by_type_identifier[(record.identity.entity_type, record.identity.identifier)] = record
+
+        edges_by_source: defaultdict[str, list[MetadataEdge]] = defaultdict(list)
+        edges_by_target: defaultdict[str, list[MetadataEdge]] = defaultdict(list)
+        for edge in snapshot.edges:
+            edges_by_source[edge.source.key].append(edge)
+            edges_by_target[edge.target.key].append(edge)
+
+        return cls(
+            snapshot=snapshot,
+            _records_by_key=records_by_key,
+            _records_by_type_identifier=records_by_type_identifier,
+            _edges_by_source={key: tuple(edges) for key, edges in edges_by_source.items()},
+            _edges_by_target={key: tuple(edges) for key, edges in edges_by_target.items()},
+        )
+
+    @property
+    def records(self) -> tuple[MetadataRecord, ...]:
+        """Records retained by the indexed snapshot."""
+        return self.snapshot.records
+
+    @property
+    def edges(self) -> tuple[MetadataEdge, ...]:
+        """Edges retained by the indexed snapshot."""
+        return self.snapshot.edges
+
+    def record_for(
+        self,
+        *,
+        entity_type: str,
+        identifier: str,
+        namespace: str | None = None,
+    ) -> MetadataRecord | None:
+        """Return a qualified match or the newest cross-namespace match when namespace is omitted."""
+        if namespace is None:
+            return self._records_by_type_identifier.get((entity_type, identifier))
+        return self._records_by_key.get(f"{namespace}:{entity_type}:{identifier}")
+
+    def edges_from(
+        self,
+        identity: MetadataIdentity,
+        *,
+        relationship: str | None = None,
+        target_type: str | None = None,
+        target_identifier: str | None = None,
+        target_namespace: str | None = None,
+    ) -> tuple[MetadataEdge, ...]:
+        """Return indexed edges leaving an identity."""
+        return tuple(
+            edge
+            for edge in self._edges_by_source.get(identity.key, ())
+            if _matches_edge(
+                edge,
+                relationship=relationship,
+                target_type=target_type,
+                target_identifier=target_identifier,
+                target_namespace=target_namespace,
+            )
+        )
+
+    def edges_to(
+        self,
+        identity: MetadataIdentity,
+        *,
+        relationship: str | None = None,
+        source_type: str | None = None,
+        source_identifier: str | None = None,
+        source_namespace: str | None = None,
+    ) -> tuple[MetadataEdge, ...]:
+        """Return indexed edges pointing at an identity."""
+        return tuple(
+            edge
+            for edge in self._edges_by_target.get(identity.key, ())
+            if _matches_edge(
+                edge,
+                relationship=relationship,
+                source_type=source_type,
+                source_identifier=source_identifier,
+                source_namespace=source_namespace,
+            )
+        )
 
 
 class MetadataEntityType(StrEnum):
@@ -108,7 +214,7 @@ def metadata_edge(
 
 
 def edges_from(
-    snapshot: MetadataGraphSnapshot,
+    snapshot: MetadataGraphSnapshot | MetadataGraphIndex,
     identity: MetadataIdentity,
     *,
     relationship: str | None = None,
@@ -117,6 +223,14 @@ def edges_from(
     target_namespace: str | None = None,
 ) -> tuple[MetadataEdge, ...]:
     """Return graph edges leaving an identity, optionally narrowed by target."""
+    if isinstance(snapshot, MetadataGraphIndex):
+        return snapshot.edges_from(
+            identity,
+            relationship=relationship,
+            target_type=target_type,
+            target_identifier=target_identifier,
+            target_namespace=target_namespace,
+        )
     return tuple(
         edge
         for edge in snapshot.edges
@@ -132,7 +246,7 @@ def edges_from(
 
 
 def edges_to(
-    snapshot: MetadataGraphSnapshot,
+    snapshot: MetadataGraphSnapshot | MetadataGraphIndex,
     identity: MetadataIdentity,
     *,
     relationship: str | None = None,
@@ -141,6 +255,14 @@ def edges_to(
     source_namespace: str | None = None,
 ) -> tuple[MetadataEdge, ...]:
     """Return graph edges pointing at an identity, optionally narrowed by source."""
+    if isinstance(snapshot, MetadataGraphIndex):
+        return snapshot.edges_to(
+            identity,
+            relationship=relationship,
+            source_type=source_type,
+            source_identifier=source_identifier,
+            source_namespace=source_namespace,
+        )
     return tuple(
         edge
         for edge in snapshot.edges
@@ -156,7 +278,7 @@ def edges_to(
 
 
 def target_identities(
-    snapshot: MetadataGraphSnapshot,
+    snapshot: MetadataGraphSnapshot | MetadataGraphIndex,
     identity: MetadataIdentity,
     *,
     relationship: str | None = None,
@@ -175,7 +297,7 @@ def target_identities(
 
 
 def source_identities(
-    snapshot: MetadataGraphSnapshot,
+    snapshot: MetadataGraphSnapshot | MetadataGraphIndex,
     identity: MetadataIdentity,
     *,
     relationship: str | None = None,
@@ -194,7 +316,7 @@ def source_identities(
 
 
 def records_by_identity(
-    snapshot: MetadataGraphSnapshot,
+    snapshot: MetadataGraphSnapshot | MetadataGraphIndex,
     identities: Iterable[MetadataIdentity],
 ) -> tuple[MetadataRecord, ...]:
     """Resolve identities to newest matching records, preserving input order."""
@@ -253,6 +375,7 @@ def _unique_identities(identities: Iterable[MetadataIdentity]) -> tuple[Metadata
 
 __all__ = [
     "MetadataEntityType",
+    "MetadataGraphIndex",
     "MetadataGraphSnapshot",
     "MetadataRelationship",
     "edges_from",

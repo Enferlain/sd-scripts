@@ -247,6 +247,16 @@ Emitters should create relationship edges only from identities provided by the
 filed fact. If a runtime identity is unavailable, omit that edge rather than
 inventing a placeholder.
 
+`MetadataGraphIndex` builds reusable record, incoming-edge, and outgoing-edge
+lookups for one public metadata snapshot. Domain read views such as
+`ResourceRunView` use that index so repeated scope and evidence queries do not
+rescan the complete telemetry graph.
+
+Source evidence remains broader than a run view's own fact membership. A
+profile or accounting record may explicitly reference accepted records from
+another run or another metadata concern, including artifacts; resolving that
+evidence does not make it a resource fact of the viewed run.
+
 ## Projections
 
 Typed metadata items and collected records/events are the source of truth.

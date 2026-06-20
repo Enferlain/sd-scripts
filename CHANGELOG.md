@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-06-20]
+
+### Changed
+
+- **Resource-run metadata queries now use a reusable snapshot graph index** — replaced repeated full-edge scans with once-per-snapshot record/source/target indexes, added rank and component query views, preserved semantic fact classes through memory and SQLite snapshots, and allowed explicit evidence references to resolve cross-run observations and artifact records without treating them as facts owned by the viewed run.
+
 ## [2026-06-11]
 
 ### Added
