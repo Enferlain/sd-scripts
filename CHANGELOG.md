@@ -14,6 +14,7 @@ Rules:
 
 ### Changed
 
+- **Resource exports now use versioned metadata-owned schemas and source-run artifact links** — added report, profile, and accounting projection documents over `ResourceRunView`, moved report resource-section shaping behind the projection boundary, preserved profile/accounting evidence and explicit gaps, registered resource JSONL and report artifacts with schema metadata, and linked identified observability artifacts to their source run.
 - **Benchmark reports now prefer metadata-backed resource-run input over JSONL parsing** — moved the shared flat resource compatibility-event projection into metadata ownership, reused it for live JSONL and stored frame records, preserved existing session/phase/per-device/debug summaries, exposed the selected input source, and retained JSONL parsing only as a fallback for callers without a resource view.
 - **Resource-run metadata queries now use a reusable snapshot graph index** — replaced repeated full-edge scans with once-per-snapshot record/source/target indexes, added rank and component query views, preserved semantic fact classes through memory and SQLite snapshots, and allowed explicit evidence references to resolve cross-run observations and artifact records without treating them as facts owned by the viewed run.
 

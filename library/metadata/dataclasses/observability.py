@@ -19,6 +19,7 @@ class LoggedArtifactFacts:
     path: str
     kind: str
     metadata: Mapping[str, MetadataValue] = field(default_factory=dict)
+    run_identifier: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

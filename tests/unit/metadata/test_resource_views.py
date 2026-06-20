@@ -7,13 +7,25 @@ import sqlite3
 import pytest
 
 from library.metadata import (
+    edges_from,
     InMemoryMetadataBackend,
+    metadata_identity,
     MetadataEntityType,
     MetadataGraphIndex,
     MetadataRecord,
     MetadataRelationship,
     MetadataRuntime,
     MetadataSnapshot,
+    project_resource_accounting_export,
+    project_resource_monitor_compatibility_event,
+    project_resource_profile_export,
+    project_resource_report,
+    project_resource_run_compatibility_events,
+    records_by_identity,
+    RESOURCE_ACCOUNTING_EXPORT_SCHEMA,
+    RESOURCE_EXPORT_SCHEMA_VERSION,
+    RESOURCE_PROFILE_EXPORT_SCHEMA,
+    RESOURCE_REPORT_EXPORT_SCHEMA,
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
     ResourceFactReference,
@@ -23,14 +35,9 @@ from library.metadata import (
     ResourceProfileFacts,
     ResourceRunView,
     RunReportFacts,
+    source_identities,
     SQLiteMetadataStore,
     StructuralResourceFacts,
-    edges_from,
-    metadata_identity,
-    project_resource_monitor_compatibility_event,
-    project_resource_run_compatibility_events,
-    records_by_identity,
-    source_identities,
     target_identities,
 )
 
@@ -113,6 +120,53 @@ def test_resource_compatibility_projection_is_identical_before_and_after_filing(
     assert project_resource_run_compatibility_events(view) == (
         project_resource_monitor_compatibility_event(frame),
     )
+
+
+@pytest.mark.unit
+def test_resource_exports_are_versioned_and_preserve_profile_accounting_evidence() -> None:
+    runtime = MetadataRuntime()
+    runtime.file_many(
+        (
+            _resource_frame(),
+            _structural_fact(),
+            _profile(),
+            _accounting(),
+            _accounting_gap(),
+        )
+    )
+    view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier="run-1")
+
+    report = project_resource_report(view)
+    profiles = project_resource_profile_export(view)
+    accounting = project_resource_accounting_export(view)
+
+    assert report.schema_name == RESOURCE_REPORT_EXPORT_SCHEMA
+    assert report.schema_version == RESOURCE_EXPORT_SCHEMA_VERSION
+    assert report.payload["input_source"] == "metadata_view"
+    assert report.payload["event_count"] == 1
+    assert [identity.identifier for identity in report.source_identities] == [
+        "frame-1",
+        "frame-1:gpu-used",
+        "frame-1:cpu-rss",
+    ]
+
+    profile_document = profiles.document()
+    assert profile_document["schema_name"] == RESOURCE_PROFILE_EXPORT_SCHEMA
+    assert profile_document["run_identifier"] == "run-1"
+    assert profile_document["profiles"][0]["facts"]["semantic_class"] == "profile"
+    assert profile_document["profiles"][0]["resolved_source_identities"][0]["identifier"] == "frame-1:gpu-used"
+
+    accounting_document = accounting.document()
+    assert accounting_document["schema_name"] == RESOURCE_ACCOUNTING_EXPORT_SCHEMA
+    assert accounting_document["statements"][0]["facts"]["owner_identifier"] == "denoiser"
+    assert accounting_document["gaps"][0]["facts"]["semantic_class"] == "accounting_gap"
+    assert "owner_identifier" not in accounting_document["gaps"][0]["facts"]
+    assert {identity.identifier for identity in accounting.source_identities} == {
+        "acct-1",
+        "gap-1",
+        "struct-1",
+        "frame-1:gpu-used",
+    }
 
 
 @pytest.mark.unit

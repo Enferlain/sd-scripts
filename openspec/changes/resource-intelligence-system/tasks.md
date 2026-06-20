@@ -40,7 +40,7 @@
 
 - [x] 6.1 Move benchmark report resource input from canonical JSONL parsing to the resource-run view.
 - [x] 6.2 Preserve existing report resource summaries and per-device/debug output during migration.
-- [ ] 6.3 Implement metadata-owned projections for JSONL, report, profile, and accounting export schemas, then register produced artifacts with links to their source run.
+- [x] 6.3 Implement metadata-owned projections for JSONL, report, profile, and accounting export schemas, then register produced artifacts with links to their source run.
 - [ ] 6.4 Remove duplicate hand-authored resource schema assembly after compatibility and performance verification.
 
 ## 7. Decompose Collection And Operational Policy

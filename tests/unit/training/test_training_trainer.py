@@ -1,9 +1,9 @@
 import logging
 import tempfile
 import unittest
+
 from contextlib import nullcontext
-from pathlib import Path
-from pathlib import PureWindowsPath
+from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -12,6 +12,12 @@ from library.logging.runtime_trace import RuntimeTrace
 from library.metadata.dataclasses import RunMetadataFacts
 from library.training.metadata import TrainingMetadataState
 from library.training.runners.trainer import Trainer
+
+from library.metadata.exports.resource import (
+    RESOURCE_EXPORT_SCHEMA_VERSION,
+    RESOURCE_MONITOR_JSONL_SCHEMA,
+    RESOURCE_REPORT_EXPORT_SCHEMA,
+)
 
 
 class TestTrainer(unittest.TestCase):
@@ -253,9 +259,12 @@ class TestTrainer(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             markdown_path = Path(temp_dir) / "benchmark_report.md"
             json_path = markdown_path.with_suffix(".json")
+            resource_jsonl_path = Path(temp_dir) / "resource_monitor.jsonl"
             markdown_path.write_text("# report\n", encoding="utf-8")
             json_path.write_text("{}\n", encoding="utf-8")
+            resource_jsonl_path.write_text("{}\n", encoding="utf-8")
             mock_write_run_report.return_value = markdown_path
+            mock_monitor.jsonl_path = resource_jsonl_path
 
             self.trainer._resource_monitor = None
             self.trainer._observer = MagicMock()
@@ -276,20 +285,37 @@ class TestTrainer(unittest.TestCase):
             self.trainer.train()
 
             self.trainer._observer.log_artifact.assert_any_call(
+                str(resource_jsonl_path),
+                kind="resource_monitor",
+                metadata={
+                    "format": "jsonl",
+                    "schema_name": RESOURCE_MONITOR_JSONL_SCHEMA,
+                    "schema_version": RESOURCE_EXPORT_SCHEMA_VERSION,
+                },
+            )
+            self.trainer._observer.log_artifact.assert_any_call(
                 str(markdown_path),
                 kind="benchmark_report",
-                metadata={"format": "markdown"},
+                metadata={
+                    "format": "markdown",
+                    "schema_name": RESOURCE_REPORT_EXPORT_SCHEMA,
+                    "schema_version": RESOURCE_EXPORT_SCHEMA_VERSION,
+                },
             )
             self.trainer._observer.log_artifact.assert_any_call(
                 str(json_path),
                 kind="benchmark_report",
-                metadata={"format": "json"},
+                metadata={
+                    "format": "json",
+                    "schema_name": RESOURCE_REPORT_EXPORT_SCHEMA,
+                    "schema_version": RESOURCE_EXPORT_SCHEMA_VERSION,
+                },
             )
-            self.assertEqual(self.trainer._observer.log_artifact.call_count, 2)
+            self.assertEqual(self.trainer._observer.log_artifact.call_count, 3)
             self.trainer._observer.finish_run.assert_called_once()
             self.assertEqual(
                 [call[0] for call in self.trainer._observer.method_calls],
-                ["log_artifact", "log_artifact", "finish_run"],
+                ["log_artifact", "log_artifact", "log_artifact", "finish_run"],
             )
 
     @patch("library.training.runners.trainer.write_run_report")

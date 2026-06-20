@@ -11,17 +11,49 @@ from __future__ import annotations
 import logging
 import math
 import os
-import time
 import random
+import time
+
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any
 
 import torch
+
 from torch import nn
 
-from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
+from library.data import (
+    Bucket,
+    create_manifest_from_config,
+    DatasetManifest,
+    get_or_create_manifest,
+)
 from library.logging.console import MainProcessConsole
+from library.logging.reports import is_benchmark_report_enabled, write_run_report
+from library.logging.resource_monitor import create_resource_monitor
+from library.logging.runtime_trace import RuntimeTrace
+from library.logging.summaries import (
+    build_startup_memory_rows,
+    build_trainer_diagnostic_rows,
+    build_training_startup_summary,
+)
+from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
+from library.metadata.records import MetadataValue
+from library.objectives import ObjectiveDefinition, build_objective
+from library.objectives.base import ObjectiveRuntime
+from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
+from library.optimization.types import OptimizationPlan
+from library.performance import deepspeed_utils
+from library.training.phases.orchestration_helpers import monitored_phase
+from library.training.trainer_utils import prepare_accelerator
+from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
+from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
+from library.utils.torch_utils import (
+    prepare_dtype,
+    set_seed_from_config,
+    set_torch_cuda_reduced_precision,
+)
+
 from library.logging.phase_tags import (
     EVENT_CHECKPOINT_SAVED,
     PHASE_CHECKPOINT_SAVE,
@@ -31,32 +63,22 @@ from library.logging.phase_tags import (
     PHASE_STARTUP_RUNTIME,
     PHASE_STARTUP_SUMMARY,
 )
-from library.logging.runtime_trace import RuntimeTrace
-from library.logging.resource_monitor import create_resource_monitor
-from library.logging.reports import is_benchmark_report_enabled, write_run_report
-from library.logging.summaries import build_startup_memory_rows, build_trainer_diagnostic_rows, build_training_startup_summary
+
+from library.metadata.exports.resource import (
+    RESOURCE_EXPORT_SCHEMA_VERSION,
+    RESOURCE_MONITOR_JSONL_SCHEMA,
+    RESOURCE_REPORT_EXPORT_SCHEMA,
+)
+
 from library.models import (
-    LoadedModelComponent,
     build_component_module_pairs,
     find_loaded_components,
     get_loaded_component_module,
     get_loaded_component_modules,
+    LoadedModelComponent,
     update_loaded_component_module,
     update_loaded_component_modules_by_role,
 )
-from library.objectives import ObjectiveDefinition, build_objective
-from library.objectives.base import ObjectiveRuntime
-from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
-from library.optimization.types import OptimizationPlan
-from library.performance import deepspeed_utils
-from library.metadata.records import MetadataValue
-from library.training.phases.orchestration_helpers import monitored_phase
-from library.training.trainer_utils import prepare_accelerator
-from library.utils.common_utils import setup_logging, suppress_non_main_process_logging
-from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
-
-from library.utils.torch_utils import set_torch_cuda_reduced_precision, set_seed_from_config, prepare_dtype
-from library.data import create_manifest_from_config, get_or_create_manifest, DatasetManifest, Bucket
 
 if TYPE_CHECKING:
     from accelerate import Accelerator
@@ -253,6 +275,12 @@ class Trainer:
             if self._resource_monitor is not None:
                 self._resource_monitor.end_session()
             self.runtime_trace.finish()
+            if self.is_main_process:
+                try:
+                    # end_session() synchronously flushes and closes the JSONL stream.
+                    self._log_resource_monitor_artifact()
+                except Exception as exc:  # pragma: no cover - best-effort reporting
+                    logger.warning("Failed to register resource monitor artifact: %s", exc)
             if self.is_main_process and is_benchmark_report_enabled(self.cfg):
                 try:
                     report_path = write_run_report(self, succeeded=succeeded, error_message=error_message)
@@ -549,7 +577,11 @@ class Trainer:
         self._observer.log_artifact(
             str(markdown_path),
             kind="benchmark_report",
-            metadata={"format": "markdown"},
+            metadata={
+                "format": "markdown",
+                "schema_name": RESOURCE_REPORT_EXPORT_SCHEMA,
+                "schema_version": RESOURCE_EXPORT_SCHEMA_VERSION,
+            },
         )
 
         json_path = markdown_path.with_suffix(".json")
@@ -557,8 +589,32 @@ class Trainer:
             self._observer.log_artifact(
                 str(json_path),
                 kind="benchmark_report",
-                metadata={"format": "json"},
+                metadata={
+                    "format": "json",
+                    "schema_name": RESOURCE_REPORT_EXPORT_SCHEMA,
+                    "schema_version": RESOURCE_EXPORT_SCHEMA_VERSION,
+                },
             )
+
+    def _log_resource_monitor_artifact(self) -> None:
+        """Register the projected resource JSONL artifact with its source run."""
+        if self._resource_monitor is None or self._observer is None:
+            return
+        jsonl_path = getattr(self._resource_monitor, "jsonl_path", None)
+        if jsonl_path is None:
+            return
+        jsonl_path = Path(jsonl_path)
+        if not jsonl_path.exists():
+            return
+        self._observer.log_artifact(
+            str(jsonl_path),
+            kind="resource_monitor",
+            metadata={
+                "format": "jsonl",
+                "schema_name": RESOURCE_MONITOR_JSONL_SCHEMA,
+                "schema_version": RESOURCE_EXPORT_SCHEMA_VERSION,
+            },
+        )
 
     def _finish_observer_run(self, *, succeeded: bool, error_message: str | None) -> None:
         """Finish observer bookkeeping after final artifacts are registered.

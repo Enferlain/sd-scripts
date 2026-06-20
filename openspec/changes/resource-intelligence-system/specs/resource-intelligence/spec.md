@@ -134,6 +134,19 @@ exports of accepted resource facts rather than independent canonical schemas.
 - **THEN** metadata projection code MUST own the export schema
 - **AND** resource-domain runtime code MUST NOT independently author that schema
 
+#### Scenario: Exporting profiles or accounting results
+- **WHEN** the system exports accepted profiles, accounting statements, or accounting gaps
+- **THEN** the export MUST preserve its export schema version and source run
+- **AND** profile and accounting derivation versions and source-fact references MUST remain intact
+- **AND** accounting gaps MUST remain separate from owner-bearing accounting statements
+- **AND** projection code MUST NOT derive new profile or accounting claims while formatting the export
+
+#### Scenario: Registering a produced resource artifact
+- **WHEN** a resource JSONL, report, profile, or accounting artifact is produced for an identified run
+- **THEN** observability metadata MUST register the artifact with its export schema identity
+- **AND** the metadata graph MUST link the artifact identity to its source run
+- **AND** an unavailable run identity MUST be omitted rather than replaced with a placeholder
+
 ### Requirement: Runtime integration remains low-coupling
 The system SHALL keep training orchestration insulated from collector,
 metadata-storage, profile, accounting, and export implementation details.

@@ -7,25 +7,30 @@ scalar tracker emission through a narrower tracker sink when one is attached.
 
 from __future__ import annotations
 
-import time
 import logging
+import time
+
 from dataclasses import asdict, dataclass, field
 from typing import Protocol, runtime_checkable
 
 import torch
+
 from accelerate import Accelerator
 from omegaconf import OmegaConf
 
+from library.config.dataclasses.output import LoggingConfig
+from library.logging.console import MainProcessConsole
+from library.logging.summaries import TrainingStartupSummary
 from library.metadata.backends import MetadataSnapshot
+from library.metadata.records import MetadataValue
+from library.metadata.runtime import MetadataRuntime, MetadataRuntimeItem
+
 from library.metadata.dataclasses.observability import (
     AnalyticsSnapshotFacts,
     LoggedArtifactFacts as LoggedArtifact,
     RunLifecycleFacts,
 )
-from library.metadata.runtime import MetadataRuntime, MetadataRuntimeItem
-from library.config.dataclasses.output import LoggingConfig
-from library.logging.console import MainProcessConsole
-from library.logging.summaries import TrainingStartupSummary
+
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +111,7 @@ class TrainingObserver(Protocol):
 
     def log_startup_summary(self, summary: TrainingStartupSummary) -> None: ...
 
-    def log_artifact(self, path: str, *, kind: str, metadata: dict[str, object] | None = None) -> None: ...
+    def log_artifact(self, path: str, *, kind: str, metadata: dict[str, MetadataValue] | None = None) -> None: ...
 
     def finish_run(
         self,
@@ -223,8 +228,13 @@ class LoggingTrainingObserver:
             )
         )
 
-    def log_artifact(self, path: str, *, kind: str, metadata: dict[str, object] | None = None) -> None:
-        artifact = LoggedArtifact(path=path, kind=kind, metadata=dict(metadata or {}))
+    def log_artifact(self, path: str, *, kind: str, metadata: dict[str, MetadataValue] | None = None) -> None:
+        artifact = LoggedArtifact(
+            path=path,
+            kind=kind,
+            metadata=dict(metadata or {}),
+            run_identifier=self.run_identifier,
+        )
         self.artifacts.append(artifact)
         self._file_metadata_item(artifact)
 
@@ -400,11 +410,11 @@ def render_step_metrics_event(event: StepMetricsEvent) -> dict[str, float]:
     """Render a typed step event into the existing flat tracker key namespace."""
     logs = {"loss/current": event.current_loss, "loss/average": event.average_loss}
 
-    if event.current_loss_scaled is not None:
+    if event.current_loss_scaled is not None and event.average_loss_scaled is not None:
         logs["loss/current_scaled"] = event.current_loss_scaled
         logs["loss/average_scaled"] = event.average_loss_scaled
 
-    if event.keys_scaled is not None:
+    if event.keys_scaled is not None and event.maximum_norm is not None:
         logs["max_norm/keys_scaled"] = event.keys_scaled
         logs["max_norm/max_key_norm"] = event.maximum_norm
     if event.mean_norm is not None:
@@ -414,7 +424,7 @@ def render_step_metrics_event(event: StepMetricsEvent) -> dict[str, float]:
     if event.mean_combined_norm is not None:
         logs["norm/avg_combined_norm"] = event.mean_combined_norm
 
-    if event.current_val_loss is not None:
+    if event.current_val_loss is not None and event.average_val_loss is not None:
         logs["loss/current_val_loss"] = event.current_val_loss
         logs["loss/average_val_loss"] = event.average_val_loss
 

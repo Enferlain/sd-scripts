@@ -12,6 +12,7 @@ from library.metadata import (
     RunLifecycleFacts,
     RunReportFacts,
 )
+
 from library.metadata.emitters import (
     build_analytics_snapshot_metadata,
     build_logged_artifact_metadata,
@@ -40,6 +41,7 @@ def test_observability_providers_collect_events_and_records() -> None:
                 path="/tmp/report.md",
                 kind="benchmark_report",
                 metadata={"format": "markdown"},
+                run_identifier="run-1",
             )
         )
     )
@@ -71,6 +73,7 @@ def test_observability_providers_collect_events_and_records() -> None:
                 snapshot_kind="debug_snapshot",
                 source="tests",
                 payload={"rows": 4},
+                run_identifier="run-1",
             )
         )
     )
@@ -83,3 +86,7 @@ def test_observability_providers_collect_events_and_records() -> None:
     assert snapshot.events[1].event_type == "artifact_registered"
     assert snapshot.records[0].facts["kind"] == "benchmark_report"
     assert snapshot.records[1].facts["kind"] == "debug_snapshot"
+    assert len(snapshot.edges) == 3
+    assert {edge.relationship for edge in snapshot.edges} == {"derived_from"}
+    assert {edge.target.identifier for edge in snapshot.edges} == {"run-1"}
+    assert {edge.source.identifier for edge in snapshot.edges} == {"/tmp/report.md", "snapshot-1"}

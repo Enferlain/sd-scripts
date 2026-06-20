@@ -3,31 +3,36 @@
 from __future__ import annotations
 
 import json
+
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock
 
-from library.adapters.shared.trainables import AdapterTrainableParameterRef
-import torch
 import torch.nn as nn
+import torch
 
+from library.adapters.shared.trainables import AdapterTrainableParameterRef
 from library.logging.phase_tags import PHASE_CACHE_LATENTS, training_epoch_phase
+from library.logging.resource_monitor.fact_production import (
+    build_resource_monitor_produced_facts,
+)
+
 from library.logging.reports import (
-    RunReportContext,
     _build_report_payload_from_context,
     _collect_key_config_rows,
     _render_report_markdown,
     is_benchmark_report_enabled,
+    RunReportContext,
     write_run_report,
 )
-from library.logging.resource_monitor.fact_production import build_resource_monitor_produced_facts
+
 from library.metadata import (
     METADATA_PAYLOAD_VERSION,
     MetadataRuntime,
+    project_resource_run_compatibility_events,
     ResourceObservationFrameFacts,
     ResourceRunView,
-    project_resource_run_compatibility_events,
 )
 
 
@@ -265,6 +270,9 @@ def test_report_resource_payload_prefers_metadata_view_and_preserves_jsonl_summa
     ):
         assert view_payload["resource_monitor"][key] == jsonl_payload["resource_monitor"][key]
     assert view_payload["resource_monitor"]["input_source"] == "metadata_view"
+    assert view_payload["resource_monitor"]["schema_name"] == "resource_intelligence.report"
+    assert view_payload["resource_monitor"]["schema_version"] == "1"
+    assert view_payload["resource_monitor"]["run_identifier"] == "run-1"
     assert view_payload["resource_monitor"]["total_resource_event_count"] == len(events)
     assert view_payload["resource_monitor"]["total_jsonl_event_count"] is None
     assert jsonl_payload["resource_monitor"]["input_source"] == "jsonl_compatibility"

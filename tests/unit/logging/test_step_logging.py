@@ -547,6 +547,7 @@ class TestLoggingTrainingObserver:
         assert result.events[0].event_type == "artifact_registered"
         assert result.events[0].facts["metadata"] == {"format": "markdown"}
         assert result.events[0].schema_version == METADATA_PAYLOAD_VERSION
+        assert result.edges == ()
 
     def test_metadata_snapshot_collects_run_and_artifact_boundaries(self):
         from library.logging.metrics import LoggingTrainingObserver
@@ -566,7 +567,12 @@ class TestLoggingTrainingObserver:
         ]
         assert snapshot.events[0].identity.identifier == "training"
         assert snapshot.events[1].facts["metadata"] == {"format": "markdown"}
+        assert snapshot.events[1].facts["run_identifier"] == "training"
         assert snapshot.events[2].facts["status"] == "finished"
+        assert len(snapshot.edges) == 1
+        assert snapshot.edges[0].source.identifier == "/tmp/report.md"
+        assert snapshot.edges[0].relationship == "derived_from"
+        assert snapshot.edges[0].target.identifier == "training"
 
     def test_startup_summary_files_analytics_snapshot(self):
         from library.logging.metrics import LoggingTrainingObserver

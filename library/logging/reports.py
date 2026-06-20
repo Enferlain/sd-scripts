@@ -4,6 +4,7 @@ import json
 import logging
 import platform
 import time
+
 from collections import defaultdict, deque
 from contextlib import suppress
 from dataclasses import asdict, dataclass, is_dataclass
@@ -14,13 +15,22 @@ import torch
 import yaml
 
 from library.logging.phase_tags import is_training_epoch_phase
-from library.logging.summaries import build_trainer_diagnostic_rows, diagnostic_rows_to_memory_rows
-from library.metadata.dataclasses.observability import AnalyticsSnapshotFacts, RunReportFacts
-from library.metadata.projections import project_resource_run_compatibility_events
+from library.logging.summaries import (
+    build_trainer_diagnostic_rows,
+    diagnostic_rows_to_memory_rows,
+)
+from library.metadata.dataclasses.observability import (
+    AnalyticsSnapshotFacts,
+    RunReportFacts,
+)
 from library.metadata.views.resource import ResourceRunView
 from library.utils.common_utils import resolve_hydra_runtime_context
 
-OmegaConf: Any = None
+from library.metadata.exports.resource import (
+    project_resource_report,
+    project_resource_report_compatibility_events,
+)
+
 try:
     from omegaconf import OmegaConf as _ImportedOmegaConf
 except Exception:  # pragma: no cover - optional import safety
@@ -29,6 +39,7 @@ else:
     OmegaConf = _ImportedOmegaConf
 
 
+OmegaConf: Any = None
 logger = logging.getLogger(__name__)
 
 
@@ -262,9 +273,9 @@ def _resolve_resource_report_events(
     context: RunReportContext,
 ) -> tuple[list[dict[str, Any]], int, int | None, str]:
     if context.resource_view is not None:
-        events = list(project_resource_run_compatibility_events(context.resource_view))
-        if events or context.resource_jsonl_path is None or not context.resource_jsonl_path.exists():
-            return events, len(events), None, "metadata_view"
+        frame_count = len(context.resource_view.observation_frames())
+        if frame_count or context.resource_jsonl_path is None or not context.resource_jsonl_path.exists():
+            return [], frame_count, None, "metadata_view"
 
     all_events = _load_resource_events(context.resource_jsonl_path)
     events = _events_for_run(all_events, context.session_id)
@@ -618,19 +629,31 @@ def _build_report_payload_from_context(
     events, total_resource_event_count, total_jsonl_event_count, resource_input_source = (
         _resolve_resource_report_events(context)
     )
-    phase_rows = _pair_phase_events(events)
+    jsonl_path_value = None if jsonl_path is None else str(jsonl_path)
+    if resource_input_source == "metadata_view" and context.resource_view is not None:
+        resource_projection = project_resource_report(
+            context.resource_view,
+            jsonl_path=jsonl_path_value,
+            input_source=resource_input_source,
+            total_jsonl_event_count=total_jsonl_event_count,
+        )
+    else:
+        resource_projection = project_resource_report_compatibility_events(
+            events,
+            run_identifier=None if context.session_id is None else str(context.session_id),
+            jsonl_path=jsonl_path_value,
+            input_source=resource_input_source,
+            total_resource_event_count=total_resource_event_count,
+            total_jsonl_event_count=total_jsonl_event_count,
+        )
+    resource_payload = resource_projection.document()
+    phase_rows_value = resource_payload.get("phases")
+    phase_rows = phase_rows_value if isinstance(phase_rows_value, list) else []
     runtime_trace = context.runtime_trace
     if isinstance(context.runtime_trace, dict):
         runtime_trace = dict(context.runtime_trace)
         runtime_trace["trace_only_phases"] = _collect_trace_only_phase_rows(runtime_trace, phase_rows)
-    session_start = next((event for event in events if event.get("event") == "session_start"), None)
-    session_end = next((event for event in reversed(events) if event.get("event") == "session_end"), None)
     finished_at = time.time()
-    gpu_used_peak_session_mb = max(
-        (float(event["gpu_used_mb"]) for event in events if event.get("gpu_used_mb") is not None),
-        default=None,
-    )
-    gpu_used_peak_session_by_device_mb = _peak_device_map(events, "gpu_used_by_device_mb")
 
     training_phases = [row for row in phase_rows if is_training_epoch_phase(str(row["phase"]))]
     training_duration_s = sum(row["duration_s"] or 0.0 for row in training_phases)
@@ -661,24 +684,7 @@ def _build_report_payload_from_context(
             "cuda_available": torch.cuda.is_available(),
         },
         "runtime_trace": runtime_trace,
-        "resource_monitor": {
-            "jsonl_path": None if jsonl_path is None else str(jsonl_path),
-            "input_source": resource_input_source,
-            "event_count": len(events),
-            "total_resource_event_count": total_resource_event_count,
-            "total_jsonl_event_count": total_jsonl_event_count,
-            "session_start": session_start,
-            "session_end": session_end,
-            "gpu_used_peak_session_mb": gpu_used_peak_session_mb,
-            "gpu_used_peak_session_by_device_mb": gpu_used_peak_session_by_device_mb,
-            "phases": phase_rows,
-            "debug": _build_resource_debug_summary(
-                session_start=session_start,
-                session_end=session_end,
-                gpu_used_peak_session_by_device_mb=gpu_used_peak_session_by_device_mb,
-                phase_rows=phase_rows,
-            ),
-        },
+        "resource_monitor": resource_payload,
         "component_memory_estimates": context.component_memory_estimates,
         "key_config": _collect_key_config_rows(context.cfg, hydra_config_name=hydra_config_name, hydra_overrides=hydra_overrides),
         "include_full_config": _safe_get(context.cfg, "output.logging.benchmark_report.include_full_config", True) is not False,

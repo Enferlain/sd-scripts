@@ -387,6 +387,27 @@ an export is requested and logging/observability code may register the produced
 artifact, but runtime resource code must not independently author export
 schemas.
 
+Resource document projections use a metadata-owned `ResourceExportProjection`
+contract carrying an export schema name/version, source run identity, projected
+payload, and the accepted record identities used by the projection. Export
+schema versions are independent from metadata payload-schema and profile or
+accounting derivation versions. Compatibility JSONL retains its existing flat
+line shape, while report, profile, and accounting documents expose an explicit
+schema envelope.
+
+The report projection may pair lifecycle frames and calculate presentation-only
+peaks, deltas, and debug rows. It must not turn those calculations into durable
+profiles or accounting statements. Profile and accounting exports serialize
+only already-accepted profile, statement, and gap records, preserving declared
+and resolved evidence identities and keeping gaps separate from owners.
+
+Produced resource/report artifacts are registered through the shared logging
+observer. Artifact registrations, run-report records, and analytics snapshots
+with a real run identity receive a metadata graph `derived_from` edge to that
+run. Missing run identity omits the edge rather than inventing a placeholder.
+The resource JSONL artifact is registered after the monitor closes its session,
+and report JSON/Markdown artifacts carry their projection schema metadata.
+
 ## Risks / Trade-offs
 
 - **[Metadata becomes overloaded by high-frequency telemetry]** -> add explicit

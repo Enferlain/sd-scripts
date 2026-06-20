@@ -7,9 +7,15 @@ from dataclasses import dataclass
 from typing import Any
 
 from library.metadata.dataclasses.observability import ResourceMonitorFacts
-from library.metadata.dataclasses.resource import ResourceObservationFrameFacts, ResourceObservationMeasurementFacts
-from library.metadata.projections import project_resource_monitor_compatibility_event
+from library.metadata.dataclasses.resource import (
+    ResourceObservationFrameFacts,
+    ResourceObservationMeasurementFacts,
+)
+from library.metadata.exports.resource import (
+    project_resource_monitor_compatibility_event,
+)
 from library.metadata.records import MetadataValue
+
 
 @dataclass(frozen=True, slots=True)
 class ResourceMonitorProducedFacts:

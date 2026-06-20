@@ -2,6 +2,16 @@
 
 from __future__ import annotations
 
+from library.metadata.providers import MetadataProviderResult
+from library.metadata.records import (
+    ArtifactMetadataRecord,
+    MetadataEdge,
+    MetadataEvent,
+    MetadataIdentity,
+    MetadataValue,
+)
+from library.metadata.versions import METADATA_PAYLOAD_VERSION
+
 from library.metadata.dataclasses.observability import (
     AnalyticsSnapshotFacts,
     LoggedArtifactFacts,
@@ -9,9 +19,13 @@ from library.metadata.dataclasses.observability import (
     RunLifecycleFacts,
     RunReportFacts,
 )
-from library.metadata.providers import MetadataProviderResult
-from library.metadata.records import ArtifactMetadataRecord, MetadataEvent, MetadataIdentity, MetadataValue
-from library.metadata.versions import METADATA_PAYLOAD_VERSION
+
+from library.metadata.graph import (
+    metadata_edge,
+    metadata_identity,
+    MetadataEntityType,
+    MetadataRelationship,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -26,10 +40,12 @@ def build_logged_artifact_metadata(
     schema_version: str = METADATA_PAYLOAD_VERSION,
 ) -> MetadataProviderResult:
     """Build collected metadata for one logging artifact-registration boundary."""
+    event = _build_logged_artifact_event(facts, producer=provider_id)
     return _result_from_event(
         provider_id=provider_id,
         schema_version=schema_version,
-        event=_build_logged_artifact_event(facts, producer=provider_id),
+        event=event,
+        edges=_artifact_run_edges(event.identity, facts.run_identifier, producer=provider_id),
     )
 
 
@@ -68,10 +84,12 @@ def build_run_report_metadata(
     schema_version: str = METADATA_PAYLOAD_VERSION,
 ) -> MetadataProviderResult:
     """Build collected metadata for a benchmark/report boundary."""
+    record = _build_run_report_record(facts, producer=provider_id)
     return _result_from_record(
         provider_id=provider_id,
         schema_version=schema_version,
-        record=_build_run_report_record(facts, producer=provider_id),
+        record=record,
+        edges=_artifact_run_edges(record.identity, facts.run_identifier, producer=provider_id),
     )
 
 
@@ -82,10 +100,12 @@ def build_analytics_snapshot_metadata(
     schema_version: str = METADATA_PAYLOAD_VERSION,
 ) -> MetadataProviderResult:
     """Build collected metadata for a backend-neutral analytics snapshot."""
+    record = _build_analytics_snapshot_record(facts, producer=provider_id)
     return _result_from_record(
         provider_id=provider_id,
         schema_version=schema_version,
-        record=_build_analytics_snapshot_record(facts, producer=provider_id),
+        record=record,
+        edges=_artifact_run_edges(record.identity, facts.run_identifier, producer=provider_id),
     )
 
 
@@ -94,11 +114,18 @@ def build_analytics_snapshot_metadata(
 # ---------------------------------------------------------------------------
 
 
-def _result_from_event(*, provider_id: str, schema_version: str, event: MetadataEvent) -> MetadataProviderResult:
+def _result_from_event(
+    *,
+    provider_id: str,
+    schema_version: str,
+    event: MetadataEvent,
+    edges: tuple[MetadataEdge, ...] = (),
+) -> MetadataProviderResult:
     return MetadataProviderResult.from_sequences(
         provider_id=provider_id,
         schema_version=schema_version,
         events=(event,),
+        edges=edges,
     )
 
 
@@ -107,11 +134,13 @@ def _result_from_record(
     provider_id: str,
     schema_version: str,
     record: ArtifactMetadataRecord,
+    edges: tuple[MetadataEdge, ...] = (),
 ) -> MetadataProviderResult:
     return MetadataProviderResult.from_sequences(
         provider_id=provider_id,
         schema_version=schema_version,
         records=(record,),
+        edges=edges,
     )
 
 
@@ -127,12 +156,36 @@ def _build_logged_artifact_event(facts: LoggedArtifactFacts, *, producer: str) -
     }
     if facts.metadata:
         metadata["metadata"] = dict(facts.metadata)
+    if facts.run_identifier is not None:
+        metadata["run_identifier"] = facts.run_identifier
     return MetadataEvent(
         event_type="artifact_registered",
         identity=_artifact_identity(identifier=facts.path, label=facts.kind),
         producer=producer,
         facts=metadata,
         schema_version=METADATA_PAYLOAD_VERSION,
+    )
+
+
+def _artifact_run_edges(
+    artifact_identity: MetadataIdentity,
+    run_identifier: str | None,
+    *,
+    producer: str,
+) -> tuple[MetadataEdge, ...]:
+    if run_identifier is None:
+        return ()
+    return (
+        metadata_edge(
+            source=artifact_identity,
+            target=metadata_identity(
+                entity_type=MetadataEntityType.RUN,
+                identifier=run_identifier,
+                namespace=artifact_identity.namespace,
+            ),
+            relationship=MetadataRelationship.DERIVED_FROM,
+            producer=producer,
+        ),
     )
 
 
@@ -173,13 +226,19 @@ def _build_resource_monitor_event(facts: ResourceMonitorFacts, *, producer: str)
         phase=facts.phase,
         duration_ms=facts.duration_ms,
         gpu_allocated_mb=facts.gpu_allocated_mb,
-        gpu_allocated_by_device_mb=facts.gpu_allocated_by_device_mb,
+        gpu_allocated_by_device_mb=None
+        if facts.gpu_allocated_by_device_mb is None
+        else dict(facts.gpu_allocated_by_device_mb),
         gpu_reserved_mb=facts.gpu_reserved_mb,
-        gpu_reserved_by_device_mb=facts.gpu_reserved_by_device_mb,
+        gpu_reserved_by_device_mb=None
+        if facts.gpu_reserved_by_device_mb is None
+        else dict(facts.gpu_reserved_by_device_mb),
         gpu_peak_allocated_mb=facts.gpu_peak_allocated_mb,
-        gpu_peak_allocated_by_device_mb=facts.gpu_peak_allocated_by_device_mb,
+        gpu_peak_allocated_by_device_mb=None
+        if facts.gpu_peak_allocated_by_device_mb is None
+        else dict(facts.gpu_peak_allocated_by_device_mb),
         gpu_used_mb=facts.gpu_used_mb,
-        gpu_used_by_device_mb=facts.gpu_used_by_device_mb,
+        gpu_used_by_device_mb=None if facts.gpu_used_by_device_mb is None else dict(facts.gpu_used_by_device_mb),
         cpu_rss_mb=facts.cpu_rss_mb,
         cpu_vms_mb=facts.cpu_vms_mb,
         steps_per_sec=facts.steps_per_sec,

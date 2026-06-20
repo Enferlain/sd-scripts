@@ -269,10 +269,21 @@ Current projection families include:
 - `modelspec.*`
 - repo-owned `kuro.*`
 - resource-monitor flat compatibility events used by JSONL and transitional report input
+- versioned resource report, profile, and accounting export documents
 
 Resource compatibility events are projected from accepted observation-frame
 facts or a `ResourceRunView`; JSONL is an export/fallback consumer of that
 projection, not the report source of truth.
+
+Resource document schemas live together under `library/metadata/exports/`.
+`ResourceExportProjection` carries the export schema name/version, source run,
+payload, and accepted source identities. Report projections may calculate
+presentation-only summaries, while profile and accounting projections only
+serialize accepted derived records and preserve accounting gaps separately.
+
+Logging owns file creation/registration rather than export shaping. Produced
+artifacts with a known run identity receive a shared metadata `derived_from`
+edge to that run; missing identities are omitted rather than synthesized.
 
 Those shapes belong in projection code, not in runtime call sites.
 
