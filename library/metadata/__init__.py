@@ -48,6 +48,8 @@ from library.metadata.projections import (
     MetadataProjection,
     ModelSpecCompatibilityProjection,
     ProjectionResult,
+    project_resource_monitor_compatibility_event,
+    project_resource_run_compatibility_events,
     SafetensorsMetadataProjection,
     SsCompatibilityProjection,
 )
@@ -132,6 +134,8 @@ __all__ = [
     "ModelComponentMetadataRecord",
     "OptimizerRuntimeFacts",
     "ProjectionResult",
+    "project_resource_monitor_compatibility_event",
+    "project_resource_run_compatibility_events",
     "ResourceAccountingFacts",
     "ResourceAccountingGapFacts",
     "ResourceFactReference",

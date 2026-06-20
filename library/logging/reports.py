@@ -16,12 +16,17 @@ import yaml
 from library.logging.phase_tags import is_training_epoch_phase
 from library.logging.summaries import build_trainer_diagnostic_rows, diagnostic_rows_to_memory_rows
 from library.metadata.dataclasses.observability import AnalyticsSnapshotFacts, RunReportFacts
+from library.metadata.projections import project_resource_run_compatibility_events
+from library.metadata.views.resource import ResourceRunView
 from library.utils.common_utils import resolve_hydra_runtime_context
 
+OmegaConf: Any = None
 try:
-    from omegaconf import OmegaConf
+    from omegaconf import OmegaConf as _ImportedOmegaConf
 except Exception:  # pragma: no cover - optional import safety
-    OmegaConf = None
+    pass
+else:
+    OmegaConf = _ImportedOmegaConf
 
 
 logger = logging.getLogger(__name__)
@@ -82,6 +87,7 @@ class RunReportContext:
     num_train_epochs: int | None
     component_memory_estimates: list[dict[str, Any]]
     runtime_trace: dict[str, Any] | None
+    resource_view: ResourceRunView | None = None
 
 
 def _safe_get(obj: Any, dotted_path: str, default: Any = None) -> Any:
@@ -196,10 +202,11 @@ def _normalize_path(path: Any) -> Path | None:
 def _build_run_report_context(trainer: Any) -> RunReportContext:
     resource_monitor = getattr(trainer, "_resource_monitor", None)
     runtime_trace = getattr(trainer, "runtime_trace", None)
+    session_id = getattr(trainer, "session_id", None)
     return RunReportContext(
         cfg=trainer.cfg,
         resource_jsonl_path=_normalize_path(getattr(resource_monitor, "jsonl_path", None)),
-        session_id=getattr(trainer, "session_id", None),
+        session_id=session_id,
         training_started_at=getattr(trainer, "training_started_at", time.time()),
         mode_name=type(trainer.mode).__name__,
         strategy_name=type(trainer.strategies).__name__,
@@ -208,7 +215,28 @@ def _build_run_report_context(trainer: Any) -> RunReportContext:
         num_train_epochs=getattr(trainer, "num_train_epochs", None),
         component_memory_estimates=_estimate_component_memory_rows(trainer),
         runtime_trace=runtime_trace.summary() if runtime_trace is not None else None,
+        resource_view=_build_resource_run_view(trainer, run_identifier=session_id),
     )
+
+
+def _build_resource_run_view(trainer: Any, *, run_identifier: Any) -> ResourceRunView | None:
+    observer = getattr(trainer, "_observer", None)
+    snapshot_provider = getattr(observer, "metadata_snapshot", None)
+    if not callable(snapshot_provider):
+        return None
+
+    resolved_run_identifier = run_identifier
+    if resolved_run_identifier is None:
+        resolved_run_identifier = getattr(observer, "run_identifier", None)
+    if resolved_run_identifier is None:
+        return None
+
+    try:
+        snapshot = snapshot_provider()
+    except Exception as exc:  # pragma: no cover - best-effort report fallback
+        logger.warning("Falling back to resource JSONL because metadata snapshot failed: %s", exc)
+        return None
+    return ResourceRunView.from_snapshot(snapshot, run_identifier=str(resolved_run_identifier))
 
 
 def _load_resource_events(jsonl_path: Path | None) -> list[dict[str, Any]]:
@@ -228,6 +256,21 @@ def _events_for_run(events: list[dict[str, Any]], run_identifier: Any) -> list[d
     normalized_run_identifier = _format_scalar(run_identifier)
     run_events = [event for event in events if _format_scalar(event.get("run_identifier")) == normalized_run_identifier]
     return run_events or events
+
+
+def _resolve_resource_report_events(
+    context: RunReportContext,
+) -> tuple[list[dict[str, Any]], int, int | None, str]:
+    if context.resource_view is not None:
+        events = list(project_resource_run_compatibility_events(context.resource_view))
+        if events or context.resource_jsonl_path is None or not context.resource_jsonl_path.exists():
+            return events, len(events), None, "metadata_view"
+
+    all_events = _load_resource_events(context.resource_jsonl_path)
+    events = _events_for_run(all_events, context.session_id)
+    jsonl_exists = context.resource_jsonl_path is not None and context.resource_jsonl_path.exists()
+    input_source = "jsonl_compatibility" if jsonl_exists else "none"
+    return events, len(events), len(all_events), input_source
 
 
 def _pair_phase_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -550,7 +593,7 @@ def _collect_trace_only_phase_rows(
 def _collect_key_config_rows(cfg: Any, *, hydra_config_name: str | None, hydra_overrides: list[str]) -> list[tuple[str, Any]]:
     key_paths = [("hydra.config_name", hydra_config_name)]
     key_paths.extend((path, _safe_get(cfg, path)) for path in REPORT_KEY_CONFIG_PATHS)
-    rows = [(key, value) for key, value in key_paths if value is not None]
+    rows: list[tuple[str, Any]] = [(key, value) for key, value in key_paths if value is not None]
     if hydra_overrides:
         rows.append(("hydra.task_overrides", hydra_overrides))
     return rows
@@ -572,8 +615,9 @@ def _build_report_payload_from_context(
 ) -> dict[str, Any]:
     hydra_config_name, hydra_overrides = resolve_hydra_runtime_context()
     jsonl_path = context.resource_jsonl_path
-    all_events = _load_resource_events(jsonl_path)
-    events = _events_for_run(all_events, context.session_id)
+    events, total_resource_event_count, total_jsonl_event_count, resource_input_source = (
+        _resolve_resource_report_events(context)
+    )
     phase_rows = _pair_phase_events(events)
     runtime_trace = context.runtime_trace
     if isinstance(context.runtime_trace, dict):
@@ -619,8 +663,10 @@ def _build_report_payload_from_context(
         "runtime_trace": runtime_trace,
         "resource_monitor": {
             "jsonl_path": None if jsonl_path is None else str(jsonl_path),
+            "input_source": resource_input_source,
             "event_count": len(events),
-            "total_jsonl_event_count": len(all_events),
+            "total_resource_event_count": total_resource_event_count,
+            "total_jsonl_event_count": total_jsonl_event_count,
             "session_start": session_start,
             "session_end": session_end,
             "gpu_used_peak_session_mb": gpu_used_peak_session_mb,

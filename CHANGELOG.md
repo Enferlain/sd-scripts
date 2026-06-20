@@ -14,6 +14,7 @@ Rules:
 
 ### Changed
 
+- **Benchmark reports now prefer metadata-backed resource-run input over JSONL parsing** — moved the shared flat resource compatibility-event projection into metadata ownership, reused it for live JSONL and stored frame records, preserved existing session/phase/per-device/debug summaries, exposed the selected input source, and retained JSONL parsing only as a fallback for callers without a resource view.
 - **Resource-run metadata queries now use a reusable snapshot graph index** — replaced repeated full-edge scans with once-per-snapshot record/source/target indexes, added rank and component query views, preserved semantic fact classes through memory and SQLite snapshots, and allowed explicit evidence references to resolve cross-run observations and artifact records without treating them as facts owned by the viewed run.
 
 ## [2026-06-11]

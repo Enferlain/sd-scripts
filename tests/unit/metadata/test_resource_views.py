@@ -27,6 +27,8 @@ from library.metadata import (
     StructuralResourceFacts,
     edges_from,
     metadata_identity,
+    project_resource_monitor_compatibility_event,
+    project_resource_run_compatibility_events,
     records_by_identity,
     source_identities,
     target_identities,
@@ -99,6 +101,18 @@ def test_metadata_graph_index_matches_snapshot_namespace_lookup_semantics() -> N
     assert graph.record_for(entity_type="resource_profile", identifier="profile-1") is second
     assert graph.record_for(entity_type="resource_profile", identifier="profile-1", namespace="first") is first
     assert graph.record_for(entity_type="resource_profile", identifier="profile-1", namespace="second") is second
+
+
+@pytest.mark.unit
+def test_resource_compatibility_projection_is_identical_before_and_after_filing() -> None:
+    frame = _resource_frame()
+    runtime = MetadataRuntime()
+    runtime.file(frame)
+    view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier="run-1")
+
+    assert project_resource_run_compatibility_events(view) == (
+        project_resource_monitor_compatibility_event(frame),
+    )
 
 
 @pytest.mark.unit

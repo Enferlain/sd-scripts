@@ -225,6 +225,19 @@ observation frame, and JSONL-only runs without a durable run identifier keep the
 pre-existing raw-event write path until run identity is mandatory or a separate
 non-durable projection context exists.
 
+The first report-input migration slice moves the shared flat compatibility-event
+projection into metadata ownership and uses it from both live JSONL writing and
+the metadata-backed resource-run view. Benchmark reports obtain the observer's
+public metadata snapshot after `ResourceMonitor.end_session()`, build a
+`ResourceRunView`, and prefer projected canonical frames even when a JSONL
+artifact also exists. JSONL parsing remains only as an explicit compatibility
+fallback for callers without projected observation frames; an empty resource
+view does not suppress an existing compatibility artifact during migration.
+Existing report
+session, phase, peak, per-device, and debug calculations continue to consume the
+flat compatibility shape during this migration; the later report projection
+slice will own the final report/export schema itself.
+
 The first console migration slice keeps console output explicitly
 presentation-only. Normal session, phase, and step resource lines are rendered
 from resource-domain console summary objects rather than directly from monitor

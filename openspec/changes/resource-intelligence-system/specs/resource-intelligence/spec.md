@@ -108,6 +108,12 @@ facts, profiles, and accounting statements for reports and analyses.
 - **AND** the resource-run view MUST consume metadata-owned public snapshot, query, or projection APIs rather than raw storage
 - **AND** it MUST be able to distinguish observed facts from profiles and accounting statements
 
+#### Scenario: Metadata and compatibility JSONL are both available
+- **WHEN** a resource-run view and a compatibility JSONL artifact both contain resource information
+- **THEN** report generation MUST prefer the accepted facts exposed by the resource-run view
+- **AND** JSONL parsing MAY remain only as a declared fallback when no resource-run view or projected observation frames are available
+- **AND** the selected input source MUST remain observable in the report payload during migration
+
 #### Scenario: Resolving declared source evidence
 - **WHEN** a profile or accounting record declares accepted source-fact references
 - **THEN** the resource-run view MUST resolve available referenced records through metadata relationships

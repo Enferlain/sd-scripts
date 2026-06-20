@@ -8,75 +8,8 @@ from typing import Any
 
 from library.metadata.dataclasses.observability import ResourceMonitorFacts
 from library.metadata.dataclasses.resource import ResourceObservationFrameFacts, ResourceObservationMeasurementFacts
+from library.metadata.projections import project_resource_monitor_compatibility_event
 from library.metadata.records import MetadataValue
-
-
-_RESOURCE_MONITOR_JSONL_KEYS = (
-    "ts",
-    "event",
-    "rank",
-    "world_size",
-    "mode",
-    "device_scope",
-    "run_identifier",
-    "config_name",
-    "git_sha",
-    "git_dirty",
-    "global_step",
-    "epoch",
-    "phase",
-    "duration_ms",
-    "gpu_allocated_mb",
-    "gpu_allocated_by_device_mb",
-    "gpu_reserved_mb",
-    "gpu_reserved_by_device_mb",
-    "gpu_peak_allocated_mb",
-    "gpu_peak_allocated_by_device_mb",
-    "gpu_used_mb",
-    "gpu_used_by_device_mb",
-    "cpu_rss_mb",
-    "cpu_vms_mb",
-    "steps_per_sec",
-    "samples_per_sec",
-    "dropped_samples",
-    "collection_ms",
-    "deep_alloc_retries",
-    "deep_ooms",
-    "deep_active_mb",
-    "deep_reserved_mb",
-    "deep_inactive_split_mb",
-    "deep_window_active",
-)
-
-_FRAME_METADATA_JSONL_KEYS = ("device_scope", "config_name", "git_sha", "git_dirty", "dropped_samples", "deep_window_active")
-
-_SCOPED_MEASUREMENT_JSONL_KEYS = {
-    ("gpu_memory", "allocated", "device_aggregate"): "gpu_allocated_mb",
-    ("gpu_memory", "reserved", "device_aggregate"): "gpu_reserved_mb",
-    ("gpu_memory", "peak_allocated", "device_aggregate"): "gpu_peak_allocated_mb",
-    ("gpu_memory", "used_visible", "device_aggregate"): "gpu_used_mb",
-    ("cpu_memory", "rss", "process"): "cpu_rss_mb",
-    ("cpu_memory", "vms", "process"): "cpu_vms_mb",
-    ("runtime", "duration", "event"): "duration_ms",
-    ("throughput", "steps_per_second", "step_window"): "steps_per_sec",
-    ("throughput", "samples_per_second", "step_window"): "samples_per_sec",
-    ("collector_cost", "collection_duration", "collector"): "collection_ms",
-    ("cuda_allocator_diagnostic", "alloc_retries", "diagnostic_window"): "deep_alloc_retries",
-    ("cuda_allocator_diagnostic", "ooms", "diagnostic_window"): "deep_ooms",
-    ("gpu_memory", "deep_active", "diagnostic_window"): "deep_active_mb",
-    ("gpu_memory", "deep_reserved", "diagnostic_window"): "deep_reserved_mb",
-    ("gpu_memory", "deep_inactive_split", "diagnostic_window"): "deep_inactive_split_mb",
-}
-
-_DEVICE_MEASUREMENT_JSONL_KEYS = {
-    ("gpu_memory", "allocated"): "gpu_allocated_by_device_mb",
-    ("gpu_memory", "reserved"): "gpu_reserved_by_device_mb",
-    ("gpu_memory", "peak_allocated"): "gpu_peak_allocated_by_device_mb",
-    ("gpu_memory", "used_visible"): "gpu_used_by_device_mb",
-}
-
-_COUNT_JSONL_FIELDS = {"deep_alloc_retries", "deep_ooms"}
-
 
 @dataclass(frozen=True, slots=True)
 class ResourceMonitorProducedFacts:
@@ -94,9 +27,8 @@ class ResourceMonitorProducedFacts:
 
 def project_resource_monitor_jsonl_event(facts: ResourceMonitorProducedFacts) -> dict[str, Any]:
     """Project the current resource-monitor JSONL shape from produced facts."""
-    if facts.observation_frame is not None:
-        return _project_observation_frame_jsonl_event(facts.observation_frame)
-    return _project_compatibility_jsonl_event(facts.compatibility)
+    source_facts = facts.compatibility if facts.observation_frame is None else facts.observation_frame
+    return project_resource_monitor_compatibility_event(source_facts)
 
 
 def build_compatibility_resource_monitor_facts(
@@ -193,79 +125,6 @@ def build_resource_observation_frame_facts(
         world_size=_int_or_none(event_payload.get("world_size")),
         metadata=metadata,
     )
-
-
-def _project_observation_frame_jsonl_event(frame: ResourceObservationFrameFacts) -> dict[str, Any]:
-    event = _empty_jsonl_event()
-    event.update(
-        {
-            "ts": frame.ts,
-            "event": frame.event_name,
-            "rank": frame.rank,
-            "world_size": frame.world_size,
-            "mode": frame.collection_policy,
-            "run_identifier": frame.run_identifier,
-            "global_step": frame.global_step,
-            "epoch": frame.epoch,
-            "phase": frame.phase,
-        }
-    )
-
-    for key in _FRAME_METADATA_JSONL_KEYS:
-        event[key] = frame.metadata.get(key)
-
-    for measurement in frame.measurements:
-        _project_measurement_jsonl_value(event, measurement)
-    return event
-
-
-def _project_compatibility_jsonl_event(facts: ResourceMonitorFacts) -> dict[str, Any]:
-    event = _empty_jsonl_event()
-    for key in _RESOURCE_MONITOR_JSONL_KEYS:
-        if key == "event":
-            event[key] = facts.event_name
-        else:
-            event[key] = getattr(facts, key)
-    return event
-
-
-def _empty_jsonl_event() -> dict[str, Any]:
-    return dict.fromkeys(_RESOURCE_MONITOR_JSONL_KEYS)
-
-
-def _project_measurement_jsonl_value(event: dict[str, Any], measurement: ResourceObservationMeasurementFacts) -> None:
-    if measurement.scope_type == "device":
-        field_name = _DEVICE_MEASUREMENT_JSONL_KEYS.get((measurement.resource_kind, measurement.measurement_kind))
-        if field_name is None:
-            return
-        by_device = event[field_name]
-        if not isinstance(by_device, dict):
-            by_device = {}
-            event[field_name] = by_device
-        device_identifier = measurement.device_identifier
-        if device_identifier is None:
-            return
-        by_device[_jsonl_device_key(device_identifier)] = measurement.value
-        return
-
-    field_name = _SCOPED_MEASUREMENT_JSONL_KEYS.get(
-        (measurement.resource_kind, measurement.measurement_kind, measurement.scope_type)
-    )
-    if field_name is None:
-        return
-    event[field_name] = _jsonl_measurement_value(measurement, field_name)
-
-
-def _jsonl_measurement_value(measurement: ResourceObservationMeasurementFacts, field_name: str) -> float | int:
-    if field_name in _COUNT_JSONL_FIELDS and measurement.value.is_integer():
-        return int(measurement.value)
-    return measurement.value
-
-
-def _jsonl_device_key(device_identifier: str) -> str:
-    if device_identifier.startswith("cuda:"):
-        return device_identifier.removeprefix("cuda:")
-    return device_identifier
 
 
 def _build_measurements(

@@ -268,6 +268,11 @@ Current projection families include:
 - legacy `ss_*`
 - `modelspec.*`
 - repo-owned `kuro.*`
+- resource-monitor flat compatibility events used by JSONL and transitional report input
+
+Resource compatibility events are projected from accepted observation-frame
+facts or a `ResourceRunView`; JSONL is an export/fallback consumer of that
+projection, not the report source of truth.
 
 Those shapes belong in projection code, not in runtime call sites.
 

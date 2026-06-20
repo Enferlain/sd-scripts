@@ -315,7 +315,6 @@ class TestBasicResourceMonitorBehavior:
             config_name="unit-test",
             metadata_runtime=metadata_runtime,
         )
-
         monitor.start_session()
         monitor.phase_start(training_epoch_phase(0))
         monitor.step_end(global_step=1, epoch=1)
@@ -377,12 +376,23 @@ class TestBasicResourceMonitorBehavior:
             run_identifier="run-1",
             metadata_runtime=metadata_runtime,
         )
+        collected_snapshot = _Snapshot(
+            gpu_allocated_mb=128.0,
+            gpu_allocated_by_device_mb={"0": 128.0},
+            gpu_reserved_mb=160.0,
+            gpu_reserved_by_device_mb={"0": 160.0},
+            gpu_peak_allocated_mb=192.0,
+            gpu_peak_allocated_by_device_mb={"0": 192.0},
+            cpu_rss_mb=256.0,
+            cpu_vms_mb=512.0,
+        )
 
-        monitor.start_session()
-        monitor.phase_start(training_epoch_phase(0))
-        monitor.step_end(global_step=1, epoch=1)
-        monitor.phase_end(training_epoch_phase(0))
-        monitor.end_session()
+        with patch.object(monitor, "_collect_snapshot", return_value=collected_snapshot):
+            monitor.start_session()
+            monitor.phase_start(training_epoch_phase(0))
+            monitor.step_end(global_step=1, epoch=1)
+            monitor.phase_end(training_epoch_phase(0))
+            monitor.end_session()
 
         snapshot = metadata_runtime.snapshot()
         frames = snapshot.records_for(entity_type="resource_observation_frame")
