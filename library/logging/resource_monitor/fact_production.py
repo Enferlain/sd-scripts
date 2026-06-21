@@ -21,19 +21,29 @@ from library.metadata.records import MetadataValue
 class ResourceMonitorProducedFacts:
     """Accepted facts produced from one resource-monitor event boundary."""
 
-    compatibility: ResourceMonitorFacts
+    compatibility: ResourceMonitorFacts | None
     observation_frame: ResourceObservationFrameFacts | None
 
+    def __post_init__(self) -> None:
+        if self.compatibility is None and self.observation_frame is None:
+            raise ValueError("Resource monitor production requires a canonical frame or compatibility fallback.")
+        if self.compatibility is not None and self.observation_frame is not None:
+            raise ValueError("Resource monitor production cannot contain both a canonical frame and compatibility fallback.")
+
     def as_metadata_items(self) -> tuple[ResourceMonitorFacts | ResourceObservationFrameFacts, ...]:
-        """Return accepted metadata items while compatibility is still retained."""
-        if self.observation_frame is None:
+        """Return the canonical frame or its narrow compatibility fallback."""
+        if self.observation_frame is not None:
+            return (self.observation_frame,)
+        if self.compatibility is not None:
             return (self.compatibility,)
-        return (self.compatibility, self.observation_frame)
+        raise AssertionError("ResourceMonitorProducedFacts invariant violated.")
 
 
 def project_resource_monitor_jsonl_event(facts: ResourceMonitorProducedFacts) -> dict[str, Any]:
     """Project the current resource-monitor JSONL shape from produced facts."""
-    source_facts = facts.compatibility if facts.observation_frame is None else facts.observation_frame
+    source_facts = facts.observation_frame or facts.compatibility
+    if source_facts is None:
+        raise ValueError("Resource monitor facts require an observation frame or compatibility fallback.")
     return project_resource_monitor_compatibility_event(source_facts)
 
 
@@ -87,18 +97,20 @@ def build_resource_monitor_produced_facts(
     run_identifier: str,
     sequence: int,
 ) -> ResourceMonitorProducedFacts:
-    """Build compatibility facts plus canonical observation-frame facts."""
-    compatibility = build_compatibility_resource_monitor_facts(
+    """Build a canonical observation frame or the narrow compatibility fallback."""
+    observation_frame = build_resource_observation_frame_facts(
         event_payload,
         run_identifier=run_identifier,
+        sequence=sequence,
     )
     return ResourceMonitorProducedFacts(
-        compatibility=compatibility,
-        observation_frame=build_resource_observation_frame_facts(
+        compatibility=None
+        if observation_frame is not None
+        else build_compatibility_resource_monitor_facts(
             event_payload,
             run_identifier=run_identifier,
-            sequence=sequence,
         ),
+        observation_frame=observation_frame,
     )
 
 

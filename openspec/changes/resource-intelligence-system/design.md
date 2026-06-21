@@ -252,6 +252,13 @@ such as `run_identifier`; metadata events preserve run identity through their
 record identity; canonical frames carry run identity and collection context as
 accepted resource facts.
 
+After report and export equivalence was established, canonical observation
+frames became the sole normal durable representation for identified monitor
+boundaries. `ResourceMonitorFacts` is now constructed and filed only when a
+boundary produces no observation frame; JSONL-only runs without durable run
+identity retain the raw-event fallback. This removes the bundled compatibility
+mirror without removing the explicitly bounded degraded/no-frame fallback.
+
 The first relationship-definition slice introduces a shared metadata graph
 vocabulary rather than leaving resource edges as scattered string literals or
 creating resource-specific graph terms. Observation frames and scalar
@@ -372,6 +379,14 @@ records by identity and edges by source and target identity so frame, scope,
 and evidence queries do not repeatedly scan the complete telemetry edge set.
 Generic graph helpers remain usable directly for one-off snapshot queries.
 
+Frame-measurement lookup verifies the frame's exact run relationship, resolves
+its incoming containment edges through that index, and restores the frame's
+declared `measurement_identifiers` order. This keeps ordering independent of
+backend edge iteration while avoiding a complete run-observation traversal per
+frame. A directional local 1,000-frame report projection improved from roughly
+10.6 seconds on the repeated-scan path to roughly 0.03 seconds on the indexed
+path; full cross-policy acceptance thresholds remain task 10.1 work.
+
 Evidence lookup follows each record's explicit `source_fact_references` rather
 than constraining sources to the viewed run or to resource entity types. A
 profile or accounting statement may therefore resolve accepted cross-run,
@@ -407,6 +422,12 @@ with a real run identity receive a metadata graph `derived_from` edge to that
 run. Missing run identity omits the edge rather than inventing a placeholder.
 The resource JSONL artifact is registered after the monitor closes its session,
 and report JSON/Markdown artifacts carry their projection schema metadata.
+
+Once compatibility and directional performance checks passed, the duplicate
+resource report schema builders were removed from `library.logging.reports`.
+Report composition and Markdown rendering consume the metadata-owned export;
+they no longer carry a second implementation of phase pairing, peaks, deltas,
+or debug-row shaping.
 
 ## Risks / Trade-offs
 

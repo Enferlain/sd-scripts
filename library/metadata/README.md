@@ -251,6 +251,9 @@ inventing a placeholder.
 lookups for one public metadata snapshot. Domain read views such as
 `ResourceRunView` use that index so repeated scope and evidence queries do not
 rescan the complete telemetry graph.
+Frame-measurement queries verify the frame's run relationship, resolve
+containment edges directly, and restore the frame's declared measurement order
+rather than relying on backend edge order.
 
 Source evidence remains broader than a run view's own fact membership. A
 profile or accounting record may explicitly reference accepted records from

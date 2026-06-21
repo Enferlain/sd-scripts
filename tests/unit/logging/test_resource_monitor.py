@@ -29,7 +29,11 @@ from library.logging.resource_monitor.fact_production import (
     build_resource_monitor_produced_facts,
     project_resource_monitor_jsonl_event,
 )
-from library.metadata import METADATA_PAYLOAD_VERSION, MetadataRuntime
+from library.metadata import (
+    MetadataRuntime,
+    project_resource_run_compatibility_events,
+    ResourceRunView,
+)
 
 
 def _make_cfg(**overrides):
@@ -249,7 +253,12 @@ class TestBasicResourceMonitorBehavior:
             monitor.phase_end(training_epoch_phase(0))
             monitor.end_session()
 
-        event_names = [event.event_type for event in metadata_runtime.snapshot().events]
+        event_names = [
+            frame.facts["event_name"]
+            for frame in metadata_runtime.snapshot().records_for(
+                entity_type="resource_observation_frame"
+            )
+        ]
         assert "phase_start" in event_names
         assert "phase_end" in event_names
         assert not any(
@@ -285,7 +294,11 @@ class TestBasicResourceMonitorBehavior:
         assert phase_summary_calls[0].args[1] == "startup.metadata"
 
         snapshot = metadata_runtime.snapshot()
-        phase_events = [event.facts["phase"] for event in snapshot.events if event.event_type in {"phase_start", "phase_end"}]
+        phase_events = [
+            frame.facts["phase"]
+            for frame in snapshot.records_for(entity_type="resource_observation_frame")
+            if frame.facts["event_name"] in {"phase_start", "phase_end"}
+        ]
         assert "training.prep.lr_scheduler" in phase_events
         assert "startup.metadata" in phase_events
 
@@ -323,19 +336,18 @@ class TestBasicResourceMonitorBehavior:
 
         snapshot = metadata_runtime.snapshot()
 
-        assert [event.event_type for event in snapshot.events] == [
+        frames = snapshot.records_for(entity_type="resource_observation_frame")
+        assert snapshot.events == ()
+        assert [frame.facts["event_name"] for frame in frames] == [
             "session_start",
             "phase_start",
             "step_sample",
             "phase_end",
             "session_end",
         ]
-        assert snapshot.events[0].identity.identifier == "run-1"
-        assert snapshot.events[0].schema_version == METADATA_PAYLOAD_VERSION
-        assert snapshot.events[2].facts["global_step"] == 1
-        assert snapshot.events[3].facts["phase"] == training_epoch_phase(0)
-        assert snapshot.events[4].facts["duration_ms"] is not None
-        assert len(snapshot.records_for(entity_type="resource_observation_frame")) == 5
+        assert frames[2].facts["global_step"] == 1
+        assert frames[3].facts["phase"] == training_epoch_phase(0)
+        assert len(frames) == 5
         assert len(snapshot.records_for(entity_type="resource_observation")) >= 10
 
     def test_resource_monitor_routes_metadata_through_resource_fact_production_seam(self):
@@ -358,7 +370,9 @@ class TestBasicResourceMonitorBehavior:
             "session_start",
             "session_end",
         ]
-        assert [event.event_type for event in metadata_runtime.snapshot().events] == [
+        snapshot = metadata_runtime.snapshot()
+        assert snapshot.events == ()
+        assert [frame.facts["event_name"] for frame in snapshot.records_for(entity_type="resource_observation_frame")] == [
             "session_start",
             "session_end",
         ]
@@ -664,8 +678,59 @@ class TestResourceMonitorJsonl:
         projected = project_resource_monitor_jsonl_event(produced_facts)
 
         assert produced_facts.observation_frame is not None
+        assert produced_facts.compatibility is None
+        assert produced_facts.as_metadata_items() == (produced_facts.observation_frame,)
         assert projected == event_payload
         assert list(projected["gpu_used_by_device_mb"]) == ["2", "10"]
+
+    def test_jsonl_projection_retains_compatibility_fallback_when_no_frame_is_produced(self):
+        event_payload = {
+            "ts": 123.0,
+            "event": "session_start",
+            "rank": 0,
+            "world_size": 1,
+            "mode": "basic",
+            "device_scope": "local",
+            "run_identifier": "run-123",
+            "config_name": "test-config",
+            "git_sha": None,
+            "git_dirty": None,
+            "global_step": None,
+            "epoch": None,
+            "phase": None,
+            "duration_ms": None,
+            "gpu_allocated_mb": None,
+            "gpu_allocated_by_device_mb": None,
+            "gpu_reserved_mb": None,
+            "gpu_reserved_by_device_mb": None,
+            "gpu_peak_allocated_mb": None,
+            "gpu_peak_allocated_by_device_mb": None,
+            "gpu_used_mb": None,
+            "gpu_used_by_device_mb": None,
+            "cpu_rss_mb": None,
+            "cpu_vms_mb": None,
+            "steps_per_sec": None,
+            "samples_per_sec": None,
+            "dropped_samples": 0,
+            "collection_ms": None,
+            "deep_alloc_retries": None,
+            "deep_ooms": None,
+            "deep_active_mb": None,
+            "deep_reserved_mb": None,
+            "deep_inactive_split_mb": None,
+            "deep_window_active": False,
+        }
+
+        produced_facts = build_resource_monitor_produced_facts(
+            event_payload,
+            run_identifier="run-123",
+            sequence=1,
+        )
+
+        assert produced_facts.observation_frame is None
+        assert produced_facts.compatibility is not None
+        assert produced_facts.as_metadata_items() == (produced_facts.compatibility,)
+        assert project_resource_monitor_jsonl_event(produced_facts) == event_payload
 
     def test_phase_end_forces_flush_in_batch_mode(self, tmp_path):
         accelerator = MagicMock()
@@ -737,46 +802,51 @@ class TestResourceMonitorMigrationEquivalence:
         jsonl_path = tmp_path / "resource" / "equivalence.jsonl"
         jsonl_events = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines() if line.strip()]
         metadata_snapshot = metadata_runtime.snapshot()
-        metadata_events = metadata_snapshot.events
         frame_records = metadata_snapshot.records_for(entity_type="resource_observation_frame")
         measurement_records = metadata_snapshot.records_for(entity_type="resource_observation")
+        resource_view = ResourceRunView.from_snapshot(
+            metadata_snapshot,
+            run_identifier="run-equivalence",
+        )
+        projected_events = list(project_resource_run_compatibility_events(resource_view))
 
         expected_events = ["session_start", "phase_start", "step_sample", "phase_end", "session_end"]
         assert [event["event"] for event in jsonl_events] == expected_events
-        assert [event.event_type for event in metadata_events] == expected_events
+        assert projected_events == jsonl_events
+        assert metadata_snapshot.events == ()
         assert [record.facts["event_name"] for record in frame_records] == expected_events
 
         jsonl_by_event = {event["event"]: event for event in jsonl_events}
-        metadata_by_event = {event.event_type: event for event in metadata_events}
+        projected_by_event = {event["event"]: event for event in projected_events}
         frame_by_event = {record.facts["event_name"]: record for record in frame_records}
 
         for event_name in expected_events:
             jsonl_event = jsonl_by_event[event_name]
-            metadata_event = metadata_by_event[event_name]
+            projected_event = projected_by_event[event_name]
             frame_record = frame_by_event[event_name]
 
             assert jsonl_event["run_identifier"] == "run-equivalence"
-            assert metadata_event.identity.identifier == "run-equivalence"
+            assert projected_event["run_identifier"] == "run-equivalence"
             assert frame_record.facts["run_identifier"] == "run-equivalence"
             assert frame_record.facts["collection_policy"] == jsonl_event["mode"]
             assert frame_record.facts["rank"] == jsonl_event["rank"]
             assert frame_record.facts["world_size"] == jsonl_event["world_size"]
 
         step_jsonl = jsonl_by_event["step_sample"]
-        step_metadata = metadata_by_event["step_sample"]
+        step_projected = projected_by_event["step_sample"]
         step_frame = frame_by_event["step_sample"]
         phase_jsonl = jsonl_by_event["phase_end"]
-        phase_metadata = metadata_by_event["phase_end"]
+        phase_projected = projected_by_event["phase_end"]
         phase_frame = frame_by_event["phase_end"]
 
         assert step_jsonl["global_step"] == 1
-        assert step_metadata.facts["global_step"] == 1
+        assert step_projected["global_step"] == 1
         assert step_frame.facts["global_step"] == 1
         assert step_jsonl["epoch"] == 1
-        assert step_metadata.facts["epoch"] == 1
+        assert step_projected["epoch"] == 1
         assert step_frame.facts["epoch"] == 1
         assert phase_jsonl["phase"] == training_epoch_phase(0)
-        assert phase_metadata.facts["phase"] == training_epoch_phase(0)
+        assert phase_projected["phase"] == training_epoch_phase(0)
         assert phase_frame.facts["phase"] == training_epoch_phase(0)
 
         step_measurements = [record for record in measurement_records if record.facts["frame_identifier"] == step_frame.identity.identifier]

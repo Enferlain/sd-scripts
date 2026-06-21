@@ -61,6 +61,11 @@ measurement semantics.
 - **AND** profiles and accounting statements MUST be able to reference the individual measurements they use
 - **AND** ingestion and retention policy MUST be able to operate on the shared frame without requiring duplicated context for every measurement
 
+#### Scenario: Resolving measurements from a stored frame
+- **WHEN** a resource-run view resolves the measurements contained by an accepted observation frame
+- **THEN** it MUST verify that the frame belongs to the viewed run
+- **AND** it MUST preserve the frame-declared measurement-identifier order independently of backend edge iteration order
+
 ### Requirement: Resource profiles are durable derived products
 The system SHALL support versioned resource profiles that describe reusable run
 or workload resource behavior.
@@ -128,6 +133,11 @@ exports of accepted resource facts rather than independent canonical schemas.
 - **WHEN** the system writes a resource JSONL artifact
 - **THEN** the artifact MUST be generated from accepted typed resource facts or their canonical projection
 - **AND** the artifact MUST NOT require a separately authored resource schema
+
+#### Scenario: Canonical frame production succeeds
+- **WHEN** an identified resource-monitor boundary produces an accepted observation frame
+- **THEN** metadata ingestion MUST file the canonical frame without also filing the bundled compatibility fact
+- **AND** a compatibility fact MAY remain only as a fallback when no canonical frame can be produced
 
 #### Scenario: Producing any resource export
 - **WHEN** the system shapes a JSONL, report, profile, or accounting export

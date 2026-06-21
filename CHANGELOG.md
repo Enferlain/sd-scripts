@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-06-21]
+
+### Changed
+
+- **Canonical resource frames now replace the normal compatibility metadata mirror** — retained bundled compatibility facts only for boundaries that cannot produce a frame, made ordered frame-measurement queries use direct indexed relationships instead of repeated run-wide scans, and removed duplicate resource report-schema assembly from logging after equivalence verification.
+
 ## [2026-06-20]
 
 ### Changed

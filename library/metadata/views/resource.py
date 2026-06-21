@@ -208,18 +208,48 @@ class ResourceRunView:
 
     def measurements_for_frame(self, frame: MetadataRecord) -> tuple[MetadataRecord, ...]:
         """Return observation measurements contained in a frame record."""
-        return self._records_in_view(
-            records_by_identity(
+        if frame.identity.entity_type != _RESOURCE_OBSERVATION_FRAME_ENTITY:
+            return ()
+
+        belongs_to_run = any(
+            edge.target.key == self.run_identity.key
+            for edge in edges_from(
                 self._graph,
-                source_identities(
-                    self._graph,
-                    frame.identity,
-                    relationship=MetadataRelationship.CONTAINED_IN,
-                    source_type=_RESOURCE_OBSERVATION_ENTITY,
-                ),
-            ),
-            allowed_records=self.observations(),
+                frame.identity,
+                relationship=MetadataRelationship.OBSERVED_DURING,
+                target_type=MetadataEntityType.RUN,
+            )
         )
+        if not belongs_to_run:
+            return ()
+
+        measurements = records_by_identity(
+            self._graph,
+            source_identities(
+                self._graph,
+                frame.identity,
+                relationship=MetadataRelationship.CONTAINED_IN,
+                source_type=_RESOURCE_OBSERVATION_ENTITY,
+            ),
+        )
+        measurement_identifiers = frame.facts.get("measurement_identifiers")
+        if not isinstance(measurement_identifiers, list):
+            return measurements
+
+        records_by_identifier = {
+            measurement.identity.identifier: measurement for measurement in measurements
+        }
+        ordered = [
+            records_by_identifier.pop(identifier)
+            for identifier in measurement_identifiers
+            if isinstance(identifier, str) and identifier in records_by_identifier
+        ]
+        ordered.extend(
+            measurement
+            for measurement in measurements
+            if measurement.identity.identifier in records_by_identifier
+        )
+        return tuple(ordered)
 
     def source_records_for(self, record: MetadataRecord) -> tuple[MetadataRecord, ...]:
         """Resolve explicitly declared source records, including cross-run and artifact evidence."""

@@ -99,7 +99,7 @@ expanding current multi-measurement events into durable canonical facts.
 
 | Current surface | Target disposition |
 | --- | --- |
-| `ResourceMonitorFacts` | Compatibility-only mirror of the current bundled event schema. Retire after observation frames and compatibility projections are equivalent. |
+| `ResourceMonitorFacts` | Narrow no-frame compatibility fallback only. Canonical observation frames are filed alone on the normal path; do not restore bundled mirror filing. |
 | `ResourceObservationFacts` | Accepted scalar observation semantics and isolated-observation path. Extend with or complement by an accepted frame/batch representation before telemetry migration. |
 | `StructuralResourceFacts` | Canonical structural fact. |
 | `ResourceProfileFacts` | Canonical durable derived profile. |

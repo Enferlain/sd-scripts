@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import sqlite3
 
+from unittest.mock import patch
+
 import pytest
 
 from library.metadata import (
@@ -120,6 +122,63 @@ def test_resource_compatibility_projection_is_identical_before_and_after_filing(
     assert project_resource_run_compatibility_events(view) == (
         project_resource_monitor_compatibility_event(frame),
     )
+
+
+@pytest.mark.unit
+def test_frame_measurements_preserve_declared_order_and_run_boundary(
+    resource_runtime: MetadataRuntime,
+) -> None:
+    resource_runtime.file_many((_resource_frame(), _other_run_frame()))
+    snapshot = resource_runtime.snapshot()
+    reordered_snapshot = MetadataSnapshot(
+        records=snapshot.records,
+        events=snapshot.events,
+        edges=tuple(reversed(snapshot.edges)),
+        required_facts=snapshot.required_facts,
+    )
+    view = ResourceRunView.from_snapshot(reordered_snapshot, run_identifier="run-1")
+    frame = snapshot.record_for(entity_type="resource_observation_frame", identifier="frame-1")
+    other_frame = snapshot.record_for(entity_type="resource_observation_frame", identifier="other-frame")
+
+    assert frame is not None
+    assert other_frame is not None
+    assert [record.identity.identifier for record in view.measurements_for_frame(frame)] == [
+        "frame-1:gpu-used",
+        "frame-1:cpu-rss",
+    ]
+    assert view.measurements_for_frame(other_frame) == ()
+
+
+@pytest.mark.unit
+def test_resource_report_projection_traverses_run_observations_once(
+    resource_runtime: MetadataRuntime,
+) -> None:
+    resource_runtime.file_many(
+        tuple(
+            _scoped_frame(
+                frame_identifier=f"frame-{index}",
+                rank=index % 2,
+                device_identifier=f"cuda:{index % 2}",
+                phase="training.epoch.0",
+                global_step=index,
+            )
+            for index in range(25)
+        )
+    )
+    view = ResourceRunView.from_snapshot(resource_runtime.snapshot(), run_identifier="run-1")
+    original_observations = ResourceRunView.observations
+    observation_calls = 0
+
+    def counted_observations(current_view: ResourceRunView) -> tuple[MetadataRecord, ...]:
+        nonlocal observation_calls
+        observation_calls += 1
+        return original_observations(current_view)
+
+    with patch.object(ResourceRunView, "observations", counted_observations):
+        report = project_resource_report(view)
+
+    assert report.payload["event_count"] == 25
+    assert observation_calls == 1
 
 
 @pytest.mark.unit
