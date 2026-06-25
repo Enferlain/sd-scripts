@@ -5,6 +5,7 @@ from __future__ import annotations
 from library.metadata.dataclasses.resource import (
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
+    ResourceCollectorStatusFacts,
     ResourceFactReference,
     ResourceObservationFrameFacts,
     ResourceObservationFacts,
@@ -132,6 +133,75 @@ def build_resource_observation_frame_metadata(
         schema_version=schema_version,
         records=(frame_record, *measurement_records),
         edges=edges,
+    )
+
+
+def build_resource_collector_status_metadata(
+    facts: ResourceCollectorStatusFacts,
+    *,
+    provider_id: str = "resource_intelligence.collector_status",
+    schema_version: str = METADATA_PAYLOAD_VERSION,
+) -> MetadataProviderResult:
+    """Build metadata for one resource collector operational status."""
+    identity = _resource_identity(
+        entity_type="resource_collector_status",
+        identifier=facts.status_identifier,
+        label=f"{facts.collector_id}:{facts.status}",
+    )
+    record = MetadataRecord(
+        identity=identity,
+        producer=provider_id,
+        facts={
+            "semantic_class": "collector_status",
+            "run_identifier": facts.run_identifier,
+            "collector_id": facts.collector_id,
+            "status": facts.status,
+            "degraded": facts.degraded,
+            "reason": facts.reason,
+            **_optional_metadata(
+                event_name=facts.event_name,
+                ts=facts.ts,
+                rank=facts.rank,
+                world_size=facts.world_size,
+                message=facts.message,
+                fallback_collector_id=facts.fallback_collector_id,
+                metadata=dict(facts.metadata) if facts.metadata else None,
+            ),
+        },
+        schema_version=schema_version,
+    )
+    edges = [
+        _run_edge(
+            identity,
+            facts.run_identifier,
+            producer=provider_id,
+            relationship=MetadataRelationship.OBSERVED_DURING,
+        ),
+        _scope_edge(
+            identity,
+            entity_type=MetadataEntityType.COLLECTOR,
+            identifier=facts.collector_id,
+            relationship=MetadataRelationship.DESCRIBES,
+            producer=provider_id,
+            label=facts.collector_id,
+        ),
+    ]
+    if facts.fallback_collector_id is not None:
+        edges.append(
+            _scope_edge(
+                identity,
+                entity_type=MetadataEntityType.COLLECTOR,
+                identifier=facts.fallback_collector_id,
+                relationship=MetadataRelationship.DERIVED_FROM,
+                producer=provider_id,
+                label=facts.fallback_collector_id,
+            )
+        )
+    return _result_from_record(
+        provider_id=provider_id,
+        schema_version=schema_version,
+        record=record,
+        edges=tuple(edges),
     )
 
 
@@ -517,6 +587,7 @@ def _build_frame_measurement_record(
             "unit": measurement.unit,
             "source": measurement.source,
             **_optional_metadata(
+                collector_id=measurement.collector_id,
                 scope_type=measurement.scope_type,
                 device_identifier=measurement.device_identifier,
                 quality=measurement.quality,
@@ -632,6 +703,17 @@ def _frame_measurement_edges(
                 identifier=measurement.device_identifier,
                 relationship=MetadataRelationship.OBSERVED_ON,
                 producer=producer,
+            )
+        )
+    if measurement.collector_id is not None:
+        edges.append(
+            _scope_edge(
+                measurement_identity,
+                entity_type=MetadataEntityType.COLLECTOR,
+                identifier=measurement.collector_id,
+                relationship=MetadataRelationship.PRODUCED_BY,
+                producer=producer,
+                label=measurement.collector_id,
             )
         )
     return tuple(edges)

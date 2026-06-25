@@ -24,6 +24,7 @@ from library.metadata.dataclasses.observability import (
 from library.metadata.dataclasses.resource import (
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
+    ResourceCollectorStatusFacts,
     ResourceFactReference,
     ResourceObservationFrameFacts,
     ResourceObservationFacts,
@@ -43,6 +44,7 @@ __all__ = [
     "OptimizerRuntimeFacts",
     "ResourceAccountingFacts",
     "ResourceAccountingGapFacts",
+    "ResourceCollectorStatusFacts",
     "ResourceFactReference",
     "ResourceObservationFrameFacts",
     "ResourceObservationFacts",

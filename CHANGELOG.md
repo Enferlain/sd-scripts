@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-06-24]
+
+### Changed
+
+- **Resource monitor collection now has explicit capability policy and measurement provenance** — added collector capability contracts for cost, scope, cadence, availability, and degraded behavior; mapped existing `off`, `basic`, `sampled`, and `deep` modes onto policy capabilities; preserved exact sampled GPU-used source provenance for NVML versus torch fallback; and stopped canonical event production from carrying cached sampled/deep values into unrelated lifecycle frames.
+
 ## [2026-06-21]
 
 ### Changed

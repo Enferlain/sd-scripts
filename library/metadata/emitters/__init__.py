@@ -11,6 +11,7 @@ from library.metadata.emitters.observability import (
 from library.metadata.emitters.resource import (
     build_resource_accounting_gap_metadata,
     build_resource_accounting_metadata,
+    build_resource_collector_status_metadata,
     build_resource_observation_frame_metadata,
     build_resource_observation_metadata,
     build_resource_profile_metadata,
@@ -40,6 +41,7 @@ __all__ = [
     "build_resource_observation_frame_metadata",
     "build_resource_observation_metadata",
     "build_resource_profile_metadata",
+    "build_resource_collector_status_metadata",
     "build_run_lifecycle_metadata",
     "build_run_report_metadata",
     "build_structural_resource_metadata",

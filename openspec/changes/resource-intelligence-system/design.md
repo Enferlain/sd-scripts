@@ -311,6 +311,33 @@ The existing `off/basic/sampled/deep` behavior may remain as a compatibility
 surface, but internal policy must not depend on one monolithic conditional
 collector.
 
+Collector decomposition must preserve observation truth, not just move current
+conditionals behind protocol objects. A collection cycle may coordinate multiple
+capabilities, but canonical observations must record the actual collector or
+provider that produced each measurement. Lifecycle frames must not carry forward
+stale "latest" sampled or diagnostic values as if they were co-collected at the
+new boundary. Compatibility exports may join prior observations when preserving
+legacy report/JSONL behavior, but that join is a projection decision, not a new
+canonical observation.
+
+The background sampler may appear as an orchestration-level collector capability
+for cadence and budget/status evidence. Measurements produced within that cycle
+must still cite their concrete provider, such as NVML, torch `mem_get_info`,
+psutil, or torch CUDA allocator diagnostics.
+
+Collector contracts must also make operational side effects explicit:
+
+- fallback chains must preserve the concrete source used, such as NVML versus
+  torch memory APIs
+- execution scope, such as which ranks run a collector, must stay distinct from
+  observation scope, such as which process or device identity was observed
+- collection budgets that only emit warnings are degradation thresholds, not
+  hard timeouts
+- CUDA allocator peak resets and diagnostic windows are window operations, not
+  ordinary read-only observations
+- unavailable or failed collectors that produce no measurements must emit
+  degradation/status evidence instead of empty observation frames
+
 ### Decision: Resource identity is relational, not phase-only
 
 Resource facts may relate to:

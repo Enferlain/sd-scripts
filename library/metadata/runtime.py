@@ -6,7 +6,7 @@ from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from library.metadata.backends import InMemoryMetadataBackend, MetadataBackend, MetadataSnapshot
 from library.metadata.dataclasses.observability import (
@@ -19,6 +19,7 @@ from library.metadata.dataclasses.observability import (
 from library.metadata.dataclasses.resource import (
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
+    ResourceCollectorStatusFacts,
     ResourceObservationFrameFacts,
     ResourceObservationFacts,
     ResourceProfileFacts,
@@ -34,6 +35,7 @@ from library.metadata.emitters.observability import (
 from library.metadata.emitters.resource import (
     build_resource_accounting_gap_metadata,
     build_resource_accounting_metadata,
+    build_resource_collector_status_metadata,
     build_resource_observation_frame_metadata,
     build_resource_observation_metadata,
     build_resource_profile_metadata,
@@ -44,7 +46,7 @@ from library.metadata.records import MetadataEvent, MetadataIdentity, MetadataVa
 from library.metadata.validation import MetadataItemValidationError, validate_metadata_item
 from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
-MetadataRuntimeItem: TypeAlias = (
+type MetadataRuntimeItem = (
     LoggedArtifactFacts
     | RunLifecycleFacts
     | ResourceMonitorFacts
@@ -56,6 +58,7 @@ MetadataRuntimeItem: TypeAlias = (
     | ResourceProfileFacts
     | ResourceAccountingFacts
     | ResourceAccountingGapFacts
+    | ResourceCollectorStatusFacts
 )
 
 _SUPPORTED_METADATA_ITEM_TYPES = (
@@ -70,6 +73,7 @@ _SUPPORTED_METADATA_ITEM_TYPES = (
     ResourceProfileFacts,
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
+    ResourceCollectorStatusFacts,
 )
 
 
@@ -99,6 +103,8 @@ def build_metadata_result(item: MetadataRuntimeItem) -> MetadataProviderResult:
         return build_resource_accounting_metadata(item)
     if isinstance(item, ResourceAccountingGapFacts):
         return build_resource_accounting_gap_metadata(item)
+    if isinstance(item, ResourceCollectorStatusFacts):
+        return build_resource_collector_status_metadata(item)
 
     supported = ", ".join(item_type.__name__ for item_type in _SUPPORTED_METADATA_ITEM_TYPES)
     raise MetadataItemValidationError(

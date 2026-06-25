@@ -54,6 +54,7 @@ class ResourceObservationMeasurementFacts:
     value: float
     unit: str
     source: str
+    collector_id: str | None = None
     scope_type: str | None = None
     device_identifier: str | None = None
     quality: str | None = None
@@ -79,6 +80,25 @@ class ResourceObservationFrameFacts:
     host_identifier: str | None = None
     process_identifier: str | None = None
     quality: str | None = None
+    metadata: Mapping[str, MetadataValue] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class ResourceCollectorStatusFacts:
+    """Operational status for a resource collector invocation."""
+
+    status_identifier: str
+    run_identifier: str
+    collector_id: str
+    status: str
+    degraded: bool
+    reason: str
+    event_name: str | None = None
+    ts: float | None = None
+    rank: int | None = None
+    world_size: int | None = None
+    message: str | None = None
+    fallback_collector_id: str | None = None
     metadata: Mapping[str, MetadataValue] = field(default_factory=dict)
 
 

@@ -17,6 +17,7 @@ from library.metadata.dataclasses.observability import (
 from library.metadata.dataclasses.resource import (
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
+    ResourceCollectorStatusFacts,
     ResourceObservationFrameFacts,
     ResourceObservationFacts,
     ResourceProfileFacts,
@@ -63,6 +64,7 @@ _SUPPORTED_METADATA_ITEM_TYPES = (
     ResourceProfileFacts,
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
+    ResourceCollectorStatusFacts,
 )
 
 

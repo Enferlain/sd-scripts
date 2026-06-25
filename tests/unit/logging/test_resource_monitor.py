@@ -16,7 +16,12 @@ from library.logging.resource_monitor import (
     SampledResourceMonitor,
     create_resource_monitor,
 )
-from library.logging.resource_monitor.collect import _DeepCounters, _SampledMetrics, _Snapshot
+from library.logging.resource_monitor.collect import (
+    _DeepCounters,
+    _SampledMetrics,
+    _Snapshot,
+    build_resource_collection_policy,
+)
 from library.logging.resource_monitor.console_summary import (
     build_phase_resource_console_summary,
     build_session_resource_console_summary,
@@ -96,6 +101,22 @@ class TestResourceMonitorFactory:
         monitor = create_resource_monitor(accelerator=accelerator, resource_monitor_config=_make_cfg(mode="sampled"))
 
         assert isinstance(monitor, SampledResourceMonitor)
+
+    def test_collection_policy_maps_current_modes_to_capabilities(self):
+        off_policy = build_resource_collection_policy("off")
+        basic_policy = build_resource_collection_policy("basic")
+        sampled_policy = build_resource_collection_policy("sampled")
+        deep_policy = build_resource_collection_policy("deep")
+
+        assert off_policy.capabilities == ()
+        assert basic_policy.includes("resource_monitor.process_memory")
+        assert basic_policy.includes("resource_monitor.cuda_allocator")
+        assert not basic_policy.includes("resource_monitor.nvml_gpu_used")
+        assert sampled_policy.includes("resource_monitor.sampler")
+        assert sampled_policy.includes("resource_monitor.nvml_gpu_used")
+        assert sampled_policy.includes("resource_monitor.torch_gpu_used")
+        assert not sampled_policy.includes("resource_monitor.deep_allocator")
+        assert deep_policy.includes("resource_monitor.deep_allocator")
 
 
 @pytest.mark.unit
@@ -924,6 +945,8 @@ class TestSampledResourceMonitor:
             ts=123.0,
             gpu_used_mb=8.0,
             gpu_used_by_device_mb={"0": 8.0},
+            gpu_used_source="nvml",
+            gpu_used_quality=None,
             cpu_rss_mb=512.0,
             cpu_vms_mb=1024.0,
             collection_ms=1.5,
@@ -943,8 +966,75 @@ class TestSampledResourceMonitor:
         assert frame.facts["event_name"] == "step_sample"
         assert frame.facts["collector_id"] == "resource_monitor.sampler"
         assert "global_step" not in frame.facts
-        assert any(record.facts["measurement_kind"] == "used_visible" for record in measurements)
+        used_visible = next(record for record in measurements if record.facts["measurement_kind"] == "used_visible")
+        assert used_visible.facts["source"] == "nvml"
+        assert used_visible.facts["collector_id"] == "resource_monitor.nvml_gpu_used"
         assert any(record.facts["measurement_kind"] == "collection_duration" for record in measurements)
+
+    def test_sampler_budget_breach_records_collector_status(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = SampledResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="sampled", max_collection_ms=1.0),
+            output_jsonl_path=None,
+            run_identifier="run-1",
+            metadata_runtime=metadata_runtime,
+        )
+        sample = _SampledMetrics(
+            ts=123.0,
+            gpu_used_mb=None,
+            gpu_used_by_device_mb=None,
+            gpu_used_source=None,
+            gpu_used_quality=None,
+            cpu_rss_mb=512.0,
+            cpu_vms_mb=1024.0,
+            collection_ms=2.5,
+        )
+
+        monitor._enqueue_sample(sample)
+        monitor._process_sampler_updates(max_items=1)
+
+        status = metadata_runtime.snapshot().records_for(entity_type="resource_collector_status")[0]
+        assert status.facts["collector_id"] == "resource_monitor.sampler"
+        assert status.facts["status"] == "budget_exceeded"
+        assert status.facts["degraded"] is True
+        assert status.facts["reason"] == "collection_budget_exceeded"
+
+    def test_nvml_failure_records_fallback_status_and_torch_source(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = SampledResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="sampled", device_scope="local"),
+            output_jsonl_path=None,
+            run_identifier="run-1",
+            metadata_runtime=metadata_runtime,
+        )
+        monitor._nvml_module = MagicMock()
+        monitor._nvml_module.nvmlDeviceGetHandleByIndex.return_value = object()
+        monitor._nvml_module.nvmlDeviceGetMemoryInfo.side_effect = RuntimeError("nvml boom")
+
+        with (
+            patch.object(monitor, "_is_cuda_visible", return_value=True),
+            patch("library.logging.resource_monitor.collect.torch.cuda.current_device", return_value=0),
+            patch("library.logging.resource_monitor.collect.torch.cuda.mem_get_info", return_value=(3 * 1024 * 1024, 10 * 1024 * 1024)),
+        ):
+            sample = monitor._collect_sample_metrics()
+
+        status = metadata_runtime.snapshot().records_for(entity_type="resource_collector_status")[0]
+        assert sample.gpu_used_mb == 7.0
+        assert sample.gpu_used_source == "torch_cuda_mem_get_info"
+        assert sample.gpu_used_quality == "fallback"
+        assert status.facts["collector_id"] == "resource_monitor.nvml_gpu_used"
+        assert status.facts["status"] == "failed"
+        assert status.facts["fallback_collector_id"] == "resource_monitor.torch_gpu_used"
 
     def test_collect_sample_metrics_local_device_records_one_device_map(self):
         accelerator = MagicMock()
@@ -965,6 +1055,8 @@ class TestSampledResourceMonitor:
 
         assert sample.gpu_used_mb == 7.0
         assert sample.gpu_used_by_device_mb == {"2": 7.0}
+        assert sample.gpu_used_source == "torch_cuda_mem_get_info"
+        assert sample.gpu_used_quality == "fallback"
 
     def test_collect_sample_metrics_all_visible_sums_device_map(self):
         accelerator = MagicMock()
@@ -992,6 +1084,8 @@ class TestSampledResourceMonitor:
 
         assert sample.gpu_used_mb == 8.0
         assert sample.gpu_used_by_device_mb == {"0": 3.0, "1": 5.0}
+        assert sample.gpu_used_source == "torch_cuda_mem_get_info"
+        assert sample.gpu_used_quality == "fallback"
 
     def test_deep_step_event_includes_allocator_counters(self, tmp_path):
         accelerator = MagicMock()
@@ -1081,8 +1175,10 @@ class TestSampledResourceMonitor:
         assert frame.facts["collector_id"] == "resource_monitor.deep"
         assert isinstance(frame_metadata, dict)
         assert frame_metadata["deep_window_active"] is True
-        assert any(record.facts["measurement_kind"] == "alloc_retries" for record in measurements)
-        assert any(record.facts["measurement_kind"] == "deep_inactive_split" for record in measurements)
+        alloc_retries = next(record for record in measurements if record.facts["measurement_kind"] == "alloc_retries")
+        inactive_split = next(record for record in measurements if record.facts["measurement_kind"] == "deep_inactive_split")
+        assert alloc_retries.facts["collector_id"] == "resource_monitor.deep_allocator"
+        assert inactive_split.facts["collector_id"] == "resource_monitor.deep_allocator"
 
     def test_deep_window_steps_limits_counter_collection(self):
         accelerator = MagicMock()
@@ -1112,3 +1208,30 @@ class TestSampledResourceMonitor:
 
         assert mock_memory_stats.call_count == 1
         assert monitor._latest_deep_window_active is False
+
+    def test_deep_allocator_failure_records_collector_status(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = SampledResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="deep", log_every_n_steps=1),
+            output_jsonl_path=None,
+            run_identifier="run-1",
+            metadata_runtime=metadata_runtime,
+        )
+
+        with (
+            patch.object(monitor, "_is_cuda_visible", return_value=True),
+            patch("library.logging.resource_monitor.collect.torch.cuda.memory_stats", side_effect=RuntimeError("stats boom")),
+        ):
+            deep_counters, deep_window_active = monitor._collect_deep_counters(global_step=1)
+
+        status = metadata_runtime.snapshot().records_for(entity_type="resource_collector_status")[0]
+        assert deep_counters is None
+        assert deep_window_active is True
+        assert status.facts["collector_id"] == "resource_monitor.deep_allocator"
+        assert status.facts["status"] == "failed"
+        assert status.facts["reason"] == "collector_failed"

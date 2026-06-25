@@ -4,12 +4,139 @@ import logging
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Literal, Protocol
 from typing import Any
 
 import torch
 
 
 logger = logging.getLogger(__name__)
+
+
+CollectorCost = Literal["low", "medium", "diagnostic"]
+CollectorCadence = Literal["lifecycle", "background", "diagnostic_window"]
+CollectorScope = Literal["process", "device", "device_aggregate", "diagnostic_window"]
+CollectorAvailability = Literal["required", "optional"]
+
+
+@dataclass(frozen=True, slots=True)
+class ResourceCollectorCapability:
+    """Operational contract for one resource collection capability."""
+
+    collector_id: str
+    fact_kinds: tuple[str, ...]
+    scopes: tuple[CollectorScope, ...]
+    cost: CollectorCost
+    cadences: tuple[CollectorCadence, ...]
+    availability: CollectorAvailability
+    degraded_behavior: str
+
+
+class ResourceCollector(Protocol):
+    """Small contract implemented by resource collector adapters."""
+
+    capability: ResourceCollectorCapability
+
+
+@dataclass(frozen=True, slots=True)
+class ResourceCollectionPolicy:
+    """Mode-resolved collector policy used by the monitor runtime."""
+
+    mode: str
+    capabilities: tuple[ResourceCollectorCapability, ...]
+
+    def includes(self, collector_id: str) -> bool:
+        return any(capability.collector_id == collector_id for capability in self.capabilities)
+
+
+PROCESS_MEMORY_CAPABILITY = ResourceCollectorCapability(
+    collector_id="resource_monitor.process_memory",
+    fact_kinds=("cpu_memory.rss", "cpu_memory.vms"),
+    scopes=("process",),
+    cost="low",
+    cadences=("lifecycle", "background"),
+    availability="required",
+    degraded_behavior="warn_once_and_omit_measurements",
+)
+CUDA_ALLOCATOR_CAPABILITY = ResourceCollectorCapability(
+    collector_id="resource_monitor.cuda_allocator",
+    fact_kinds=("gpu_memory.allocated", "gpu_memory.reserved", "gpu_memory.peak_allocated"),
+    scopes=("device", "device_aggregate"),
+    cost="low",
+    cadences=("lifecycle",),
+    availability="optional",
+    degraded_behavior="warn_once_and_omit_measurements",
+)
+NVML_GPU_USED_CAPABILITY = ResourceCollectorCapability(
+    collector_id="resource_monitor.nvml_gpu_used",
+    fact_kinds=("gpu_memory.used_visible",),
+    scopes=("device", "device_aggregate"),
+    cost="medium",
+    cadences=("background",),
+    availability="optional",
+    degraded_behavior="fallback_to_torch_gpu_used",
+)
+TORCH_GPU_USED_CAPABILITY = ResourceCollectorCapability(
+    collector_id="resource_monitor.torch_gpu_used",
+    fact_kinds=("gpu_memory.used_visible",),
+    scopes=("device", "device_aggregate"),
+    cost="medium",
+    cadences=("background",),
+    availability="optional",
+    degraded_behavior="warn_once_and_omit_measurements",
+)
+SAMPLER_CAPABILITY = ResourceCollectorCapability(
+    collector_id="resource_monitor.sampler",
+    fact_kinds=("collector_cost.collection_duration",),
+    scopes=("process", "device", "device_aggregate"),
+    cost="medium",
+    cadences=("background",),
+    availability="optional",
+    degraded_behavior="record_status_and_continue",
+)
+DEEP_ALLOCATOR_CAPABILITY = ResourceCollectorCapability(
+    collector_id="resource_monitor.deep_allocator",
+    fact_kinds=(
+        "cuda_allocator_diagnostic.alloc_retries",
+        "cuda_allocator_diagnostic.ooms",
+        "gpu_memory.deep_active",
+        "gpu_memory.deep_reserved",
+        "gpu_memory.deep_inactive_split",
+    ),
+    scopes=("diagnostic_window",),
+    cost="diagnostic",
+    cadences=("diagnostic_window",),
+    availability="optional",
+    degraded_behavior="warn_once_and_omit_measurements",
+)
+
+
+def build_resource_collection_policy(mode: str) -> ResourceCollectionPolicy:
+    """Map public monitor modes onto explicit collector capabilities."""
+    if mode == "off":
+        capabilities: tuple[ResourceCollectorCapability, ...] = ()
+    elif mode == "basic":
+        capabilities = (PROCESS_MEMORY_CAPABILITY, CUDA_ALLOCATOR_CAPABILITY)
+    elif mode == "sampled":
+        capabilities = (
+            PROCESS_MEMORY_CAPABILITY,
+            CUDA_ALLOCATOR_CAPABILITY,
+            SAMPLER_CAPABILITY,
+            NVML_GPU_USED_CAPABILITY,
+            TORCH_GPU_USED_CAPABILITY,
+        )
+    elif mode == "deep":
+        capabilities = (
+            PROCESS_MEMORY_CAPABILITY,
+            CUDA_ALLOCATOR_CAPABILITY,
+            SAMPLER_CAPABILITY,
+            NVML_GPU_USED_CAPABILITY,
+            TORCH_GPU_USED_CAPABILITY,
+            DEEP_ALLOCATOR_CAPABILITY,
+        )
+    else:
+        capabilities = (PROCESS_MEMORY_CAPABILITY, CUDA_ALLOCATOR_CAPABILITY)
+    return ResourceCollectionPolicy(mode=mode, capabilities=capabilities)
 
 
 @dataclass(frozen=True)
@@ -27,12 +154,24 @@ class _Snapshot:
 
 
 @dataclass(frozen=True)
+class _GpuUsedMetrics:
+    """Visible GPU-used memory from one provider in the fallback chain."""
+
+    used_mb: float | None
+    used_by_device_mb: dict[str, float] | None
+    source: str | None
+    quality: str | None = None
+
+
+@dataclass(frozen=True)
 class _SampledMetrics:
     """A single background-sampler datapoint."""
 
     ts: float
     gpu_used_mb: float | None
     gpu_used_by_device_mb: dict[str, float] | None
+    gpu_used_source: str | None
+    gpu_used_quality: str | None
     cpu_rss_mb: float | None
     cpu_vms_mb: float | None
     collection_ms: float | None
@@ -51,6 +190,28 @@ class _DeepCounters:
 
 
 class ResourceCollectionMixin:
+    def _record_collector_status_if_available(
+        self,
+        *,
+        collector_id: str,
+        status: str,
+        degraded: bool,
+        reason: str,
+        message: str | None = None,
+        fallback_collector_id: str | None = None,
+    ) -> None:
+        recorder = getattr(self, "_record_collector_status", None)
+        if not callable(recorder):
+            return
+        recorder(
+            collector_id=collector_id,
+            status=status,
+            degraded=degraded,
+            reason=reason,
+            message=message,
+            fallback_collector_id=fallback_collector_id,
+        )
+
     def _is_cuda_visible(self) -> bool:
         return torch.cuda.is_available()
 
@@ -114,9 +275,9 @@ class ResourceCollectionMixin:
             cpu_vms_mb=cpu_vms_mb,
         )
 
-    def _collect_gpu_used_via_nvml_mb(self) -> tuple[float | None, dict[str, float] | None]:
+    def _collect_gpu_used_via_nvml_mb(self) -> _GpuUsedMetrics:
         if not self._is_cuda_visible() or self._nvml_unavailable:
-            return None, None
+            return _GpuUsedMetrics(None, None, None)
 
         if self._nvml_module is None:
             try:
@@ -127,7 +288,15 @@ class ResourceCollectionMixin:
             except Exception as exc:
                 self._nvml_unavailable = True
                 self._warn_once("nvml_unavailable", "resource monitor NVML unavailable; using fallback metrics (%s)", exc)
-                return None, None
+                self._record_collector_status_if_available(
+                    collector_id="resource_monitor.nvml_gpu_used",
+                    status="unavailable",
+                    degraded=True,
+                    reason="collector_unavailable",
+                    message=str(exc),
+                    fallback_collector_id="resource_monitor.torch_gpu_used",
+                )
+                return _GpuUsedMetrics(None, None, None)
 
         assert self._nvml_module is not None
 
@@ -145,14 +314,27 @@ class ResourceCollectionMixin:
                 {device: used_bytes / (1024 * 1024) for device, used_bytes in used_bytes_by_device.items()}
             )
             used_mb = sum(device_map.values(), start=0.0) if device_map else None
-            return used_mb, device_map
+            return _GpuUsedMetrics(
+                used_mb,
+                device_map,
+                source="nvml",
+                quality=None,
+            )
         except Exception as exc:
             self._warn_once("nvml_collect", "resource monitor NVML collection failed; using fallback metrics (%s)", exc)
-            return None, None
+            self._record_collector_status_if_available(
+                collector_id="resource_monitor.nvml_gpu_used",
+                status="failed",
+                degraded=True,
+                reason="collector_failed",
+                message=str(exc),
+                fallback_collector_id="resource_monitor.torch_gpu_used",
+            )
+            return _GpuUsedMetrics(None, None, None)
 
-    def _collect_gpu_used_via_torch_mb(self) -> tuple[float | None, dict[str, float] | None]:
+    def _collect_gpu_used_via_torch_mb(self) -> _GpuUsedMetrics:
         if not self._is_cuda_visible():
-            return None, None
+            return _GpuUsedMetrics(None, None, None)
 
         def _used_for_device(index: int) -> int:
             try:
@@ -172,17 +354,29 @@ class ResourceCollectionMixin:
                 {device: used_bytes / (1024 * 1024) for device, used_bytes in used_bytes_by_device.items()}
             )
             used_mb = sum(device_map.values(), start=0.0) if device_map else None
-            return used_mb, device_map
+            return _GpuUsedMetrics(
+                used_mb,
+                device_map,
+                source="torch_cuda_mem_get_info",
+                quality="fallback",
+            )
         except Exception as exc:  # pragma: no cover - backend-specific
             self._warn_once("torch_mem_get_info", "resource monitor torch mem_get_info fallback failed: %s", exc)
-            return None, None
+            self._record_collector_status_if_available(
+                collector_id="resource_monitor.torch_gpu_used",
+                status="failed",
+                degraded=True,
+                reason="collector_failed",
+                message=str(exc),
+            )
+            return _GpuUsedMetrics(None, None, None)
 
     def _collect_sample_metrics(self) -> _SampledMetrics:
         started = time.perf_counter()
 
-        gpu_used_mb, gpu_used_by_device_mb = self._collect_gpu_used_via_nvml_mb()
-        if gpu_used_mb is None:
-            gpu_used_mb, gpu_used_by_device_mb = self._collect_gpu_used_via_torch_mb()
+        gpu_used = self._collect_gpu_used_via_nvml_mb()
+        if gpu_used.used_mb is None:
+            gpu_used = self._collect_gpu_used_via_torch_mb()
 
         cpu_rss_mb: float | None = None
         cpu_vms_mb: float | None = None
@@ -196,8 +390,10 @@ class ResourceCollectionMixin:
         collection_ms = (time.perf_counter() - started) * 1000
         return _SampledMetrics(
             ts=time.time(),
-            gpu_used_mb=gpu_used_mb,
-            gpu_used_by_device_mb=gpu_used_by_device_mb,
+            gpu_used_mb=gpu_used.used_mb,
+            gpu_used_by_device_mb=gpu_used.used_by_device_mb,
+            gpu_used_source=gpu_used.source,
+            gpu_used_quality=gpu_used.quality,
             cpu_rss_mb=cpu_rss_mb,
             cpu_vms_mb=cpu_vms_mb,
             collection_ms=collection_ms,
@@ -227,6 +423,12 @@ class ResourceCollectionMixin:
 
         if not self._is_cuda_visible():
             self._latest_deep_counters = None
+            self._record_collector_status_if_available(
+                collector_id="resource_monitor.deep_allocator",
+                status="unavailable",
+                degraded=True,
+                reason="cuda_unavailable",
+            )
             return None, True
 
         started = time.perf_counter()
@@ -234,6 +436,13 @@ class ResourceCollectionMixin:
             stats = torch.cuda.memory_stats()
         except Exception as exc:  # pragma: no cover - backend-specific
             self._warn_once("deep_stats", "resource monitor deep memory_stats collection failed: %s", exc)
+            self._record_collector_status_if_available(
+                collector_id="resource_monitor.deep_allocator",
+                status="failed",
+                degraded=True,
+                reason="collector_failed",
+                message=str(exc),
+            )
             return None, True
 
         counters = _DeepCounters(
@@ -245,7 +454,7 @@ class ResourceCollectionMixin:
             collection_ms=(time.perf_counter() - started) * 1000,
         )
         self._latest_deep_counters = counters
-        self._enforce_collection_budget(counters.collection_ms, source="deep")
+        self._enforce_collection_budget(counters.collection_ms, source="deep_allocator")
 
         self._deep_window_sample_count += 1
         if self._deep_window_baseline_alloc_retries is None:

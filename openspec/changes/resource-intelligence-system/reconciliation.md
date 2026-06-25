@@ -95,6 +95,33 @@ expanding current multi-measurement events into durable canonical facts.
 | background-sampler `step_sample` | Collection observation frame. The compatibility projection may retain the current event name, but canonical facts must not imply a known training step when none was recorded. |
 | deep counters attached to other events | Measurements in the relevant frame with explicit diagnostic-window context; later migration may use dedicated diagnostic frames if that produces clearer retention semantics. |
 
+### Collector Contract Consequences
+
+The section 7 collector split is an opportunity to correct semantic ambiguity in
+the current monitor rather than only moving helper methods into smaller files.
+The implementation must preserve these constraints during extraction:
+
+- A canonical observation frame represents measurements collected at the stated
+  boundary or collection cycle. Cached "latest" sampler or deep-diagnostic
+  values must not be copied into later canonical frames as if they were
+  co-collected there.
+- A collection cycle may coordinate multiple capabilities. Measurements must
+  retain the concrete collector/provider source that produced them, especially
+  for NVML versus torch fallback GPU-used values.
+- Rank execution scope and observation scope are separate. A policy may choose
+  which ranks run collectors, while each measurement still records the process,
+  rank, host, or device identity that was actually observed.
+- Device identities must not assume torch logical device index and backend
+  device index are interchangeable. Fallback and NVML collection should preserve
+  enough metadata to understand the mapping under `CUDA_VISIBLE_DEVICES`.
+- `max_collection_ms` is currently a warning/degradation threshold, not a hard
+  timeout. A future hard budget must be a separate collector capability.
+- CUDA allocator peak resets are side-effecting diagnostic-window operations.
+  They should not be hidden inside a generic read-only snapshot contract.
+- Failed or unavailable collectors that produce no measurements must surface
+  degraded-observability/status evidence rather than empty observation frames,
+  because frames require retained measurements.
+
 ### Existing Metadata Facts
 
 | Current surface | Target disposition |

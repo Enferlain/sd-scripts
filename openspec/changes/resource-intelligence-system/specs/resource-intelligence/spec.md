@@ -178,3 +178,20 @@ scope, availability, cadence, and degraded-behavior policy.
 #### Scenario: Enabling expensive diagnostics
 - **WHEN** a collector is declared expensive or intrusive
 - **THEN** it MUST require explicit diagnostic configuration or a bounded diagnostic window
+
+#### Scenario: Recording a collection cycle
+- **WHEN** one lifecycle or sampling boundary coordinates multiple collection capabilities
+- **THEN** the retained observations MUST preserve the concrete source or provider for each measurement
+- **AND** later lifecycle boundaries MUST NOT re-record stale sampled or diagnostic values as newly co-collected measurements
+- **AND** compatibility exports MAY join prior observations only as a projection behavior
+
+#### Scenario: Collector fallback or failure
+- **WHEN** a preferred optional collector is unavailable and a fallback collector is used
+- **THEN** the retained measurements MUST identify the fallback source and degraded quality
+- **AND** the system MUST NOT fail the training run solely because the preferred optional collector is unavailable
+- **AND** a collector failure that produces no measurements MUST emit degradation/status evidence rather than an empty observation frame
+
+#### Scenario: Collector budgets and diagnostic windows
+- **WHEN** collection exceeds a configured warning budget
+- **THEN** the budget breach MUST be recorded as degraded operational evidence unless the collector contract supports hard cancellation
+- **AND** side-effecting operations such as CUDA allocator peak resets MUST be represented as explicit diagnostic-window behavior

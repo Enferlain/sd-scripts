@@ -151,6 +151,8 @@ def _build_measurements(
     event_payload: Mapping[str, Any],
 ) -> tuple[ResourceObservationMeasurementFacts, ...]:
     measurements: list[ResourceObservationMeasurementFacts] = []
+    gpu_used_source = _string_or_none(event_payload.get("gpu_used_source")) or "resource_monitor.device_memory"
+    gpu_used_quality = _string_or_none(event_payload.get("gpu_used_quality"))
     _append_measurement(
         measurements,
         frame_identifier=frame_identifier,
@@ -224,9 +226,9 @@ def _build_measurements(
         resource_kind="gpu_memory",
         measurement_kind="used_visible",
         unit="MiB",
-        source="resource_monitor.device_memory",
+        source=gpu_used_source,
         scope_type="device_aggregate",
-        quality="source_may_be_nvml_or_torch_fallback",
+        quality=gpu_used_quality,
     )
     _append_device_measurements(
         measurements,
@@ -236,8 +238,8 @@ def _build_measurements(
         resource_kind="gpu_memory",
         measurement_kind="used_visible",
         unit="MiB",
-        source="resource_monitor.device_memory",
-        quality="source_may_be_nvml_or_torch_fallback",
+        source=gpu_used_source,
+        quality=gpu_used_quality,
     )
     _append_measurement(
         measurements,
@@ -388,6 +390,7 @@ def _append_measurement(
             value=value,
             unit=unit,
             source=source,
+            collector_id=_collector_id_for_source(source),
             scope_type=scope_type,
             quality=quality,
             metadata={} if metadata is None else dict(metadata),
@@ -424,6 +427,7 @@ def _append_device_measurements(
                 value=value,
                 unit=unit,
                 source=source,
+                collector_id=_collector_id_for_source(source),
                 scope_type="device",
                 device_identifier=device_identifier,
                 quality=quality,
@@ -453,6 +457,24 @@ def _collector_id(event_payload: Mapping[str, Any]) -> str:
     if event_payload.get("deep_window_active") is not None:
         return "resource_monitor.deep"
     return "resource_monitor"
+
+
+def _collector_id_for_source(source: str) -> str | None:
+    if source == "torch_cuda_allocator":
+        return "resource_monitor.cuda_allocator"
+    if source == "psutil":
+        return "resource_monitor.process_memory"
+    if source == "nvml":
+        return "resource_monitor.nvml_gpu_used"
+    if source == "torch_cuda_mem_get_info":
+        return "resource_monitor.torch_gpu_used"
+    if source == "torch_cuda_allocator.memory_stats":
+        return "resource_monitor.deep_allocator"
+    if source == "resource_monitor.step_timer":
+        return "resource_monitor.step_timer"
+    if source == "resource_monitor":
+        return "resource_monitor"
+    return None
 
 
 def _frame_metadata(event_payload: Mapping[str, Any]) -> dict[str, MetadataValue]:

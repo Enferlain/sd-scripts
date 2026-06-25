@@ -25,10 +25,17 @@ from tqdm.auto import tqdm
 
 from library.logging.phase_tags import is_training_epoch_phase
 from library.logging.summaries import DiagnosticRow
+from library.metadata.dataclasses.resource import ResourceCollectorStatusFacts
 from library.metadata.runtime import MetadataRuntime
 from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
 
-from .collect import _DeepCounters, _SampledMetrics, _Snapshot, ResourceCollectionMixin
+from .collect import (
+    _DeepCounters,
+    _SampledMetrics,
+    _Snapshot,
+    build_resource_collection_policy,
+    ResourceCollectionMixin,
+)
 from .console_summary import (
     build_phase_resource_console_summary,
     build_session_resource_console_summary,
@@ -169,6 +176,7 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
         self._mode = resource_monitor_config.mode
         self._device_scope = resource_monitor_config.device_scope
         self._max_collection_ms = resource_monitor_config.max_collection_ms
+        self._collection_policy = build_resource_collection_policy(self._mode)
 
         self._rank = int(getattr(accelerator, "process_index", 0))
         self._world_size = int(getattr(accelerator, "num_processes", 1))
@@ -185,6 +193,8 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
         self._dropped_samples = 0
         self._latest_deep_counters: _DeepCounters | None = None
         self._latest_deep_window_active: bool | None = None
+        self._pending_step_deep_counters: _DeepCounters | None = None
+        self._pending_step_deep_window_active: bool | None = None
 
         self._jsonl_path = output_jsonl_path
         self._jsonl_file = None
@@ -193,6 +203,7 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
         self._jsonl_flush_every_n_events = resource_monitor_config.jsonl_flush_every_n_events
         self._metadata_runtime = metadata_runtime
         self._resource_fact_sequence = 0
+        self._resource_status_sequence = 0
 
         self._run_identifier = self._normalize_metadata_value(run_identifier)
         self._config_name = self._normalize_metadata_value(config_name)
@@ -275,6 +286,51 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
             collection_ms,
             self._max_collection_ms,
         )
+        self._record_collector_status(
+            collector_id=f"resource_monitor.{source}",
+            status="budget_exceeded",
+            degraded=True,
+            reason="collection_budget_exceeded",
+            message=f"collection time {collection_ms:.2f}ms exceeded budget {self._max_collection_ms:.2f}ms",
+            metadata={
+                "collection_ms": collection_ms,
+                "max_collection_ms": self._max_collection_ms,
+            },
+        )
+
+    def _record_collector_status(
+        self,
+        *,
+        collector_id: str,
+        status: str,
+        degraded: bool,
+        reason: str,
+        message: str | None = None,
+        fallback_collector_id: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> None:
+        metadata_runtime = getattr(self, "_metadata_runtime", None)
+        run_identifier = getattr(self, "_run_identifier", None)
+        if metadata_runtime is None or run_identifier is None:
+            return
+
+        sequence = self._resource_status_sequence
+        self._resource_status_sequence = sequence + 1
+        status_facts = ResourceCollectorStatusFacts(
+            status_identifier=f"{run_identifier}:collector_status:{self._rank}:{sequence}:{collector_id}:{status}",
+            run_identifier=run_identifier,
+            collector_id=collector_id,
+            status=status,
+            degraded=degraded,
+            reason=reason,
+            ts=time.time(),
+            rank=self._rank,
+            world_size=self._world_size,
+            message=message,
+            fallback_collector_id=fallback_collector_id,
+            metadata={} if metadata is None else dict(metadata),
+        )
+        metadata_runtime.file(status_facts)
 
     def start_session(self) -> None:
         try:
@@ -422,6 +478,8 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
                 epoch=epoch,
                 steps_per_sec=steps_per_sec,
                 snapshot=snapshot,
+                deep_counters=self._pending_step_deep_counters,
+                deep_window_active=self._pending_step_deep_window_active,
                 dropped_samples=self._dropped_samples if self._mode in {"sampled", "deep"} else None,
             )
         except Exception as exc:  # pragma: no cover - defensive safety net
@@ -530,6 +588,8 @@ class SampledResourceMonitor(BasicResourceMonitor):
                 event="step_sample",
                 gpu_used_mb=sample.gpu_used_mb,
                 gpu_used_by_device_mb=sample.gpu_used_by_device_mb,
+                gpu_used_source=sample.gpu_used_source,
+                gpu_used_quality=sample.gpu_used_quality,
                 cpu_rss_mb=sample.cpu_rss_mb,
                 cpu_vms_mb=sample.cpu_vms_mb,
                 collection_ms=sample.collection_ms,
@@ -658,7 +718,13 @@ class SampledResourceMonitor(BasicResourceMonitor):
         elif self._mode == "deep":
             self._latest_deep_counters = None
         self._latest_deep_window_active = deep_window_active if self._mode == "deep" else None
-        super().step_end(global_step, epoch)
+        self._pending_step_deep_counters = deep_counters
+        self._pending_step_deep_window_active = deep_window_active if self._mode == "deep" else None
+        try:
+            super().step_end(global_step, epoch)
+        finally:
+            self._pending_step_deep_counters = None
+            self._pending_step_deep_window_active = None
 
     def end_session(self) -> None:
         self._stop_sampler()
