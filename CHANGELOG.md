@@ -10,6 +10,18 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-06-26]
+
+### Changed
+
+- **Resource monitor collector degradation paths now have explicit evidence coverage** — collector failures for process memory and CUDA allocator snapshots now file degraded collector-status facts, while focused tests cover NVML unavailable/fallback behavior, torch fallback failure, deep allocator unavailable/failure/budget status, and bounded sampled/deep diagnostic windows that avoid re-recording stale measurements.
+
+## [2026-06-25]
+
+### Changed
+
+- **Resource monitor collection now executes through capability-backed collector adapters** — extracted process-memory, CUDA allocator snapshot, NVML GPU-used, torch GPU-used fallback, and deep allocator diagnostic reads behind internal collector boundaries; made collection policy gate those providers directly; and kept diagnostic-window orchestration, metadata filing, JSONL projection, and console rendering outside the collectors.
+
 ## [2026-06-24]
 
 ### Changed

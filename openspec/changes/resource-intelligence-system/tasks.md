@@ -52,9 +52,9 @@ provenance, rank/device scope separation, degradation records, and diagnostic
 window side effects while keeping existing user-facing behavior stable.
 
 - [x] 7.1 Define collector capability, cost, scope, cadence, availability, and degraded-behavior contracts.
-- [ ] 7.2 Extract current process-memory, CUDA allocator, sampled GPU-used, and deep allocator collection behind those contracts.
+- [x] 7.2 Extract current process-memory, CUDA allocator, sampled GPU-used, and deep allocator collection behind those contracts.
 - [x] 7.3 Map current `off`, `basic`, `sampled`, and `deep` configuration onto collector/cost policy without changing user behavior.
-- [ ] 7.4 Add collector failure, fallback, budget, and bounded-diagnostic-window tests.
+- [x] 7.4 Add collector failure, fallback, budget, and bounded-diagnostic-window tests.
 - [ ] 7.5 Evaluate additional collectors only against explicit resource questions and retention policy.
 
 ## 8. Produce Structural Facts And Profiles

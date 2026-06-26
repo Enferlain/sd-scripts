@@ -338,6 +338,17 @@ Collector contracts must also make operational side effects explicit:
 - unavailable or failed collectors that produce no measurements must emit
   degradation/status evidence instead of empty observation frames
 
+The first collector-extraction slice keeps these collectors internal to
+`library.logging.resource_monitor.collect`: process memory, torch CUDA allocator
+snapshots, NVML GPU-used, torch `mem_get_info` GPU-used fallback, and torch CUDA
+deep allocator diagnostics each expose a capability-backed collection adapter.
+The existing monitor lifecycle remains the orchestrator that applies mode
+policy, owns diagnostic-window state, records budget/status evidence, and hands
+the resulting measurements to fact production. Deep diagnostic-window timing and
+summary behavior intentionally remain monitor orchestration, while the deep
+allocator collector owns only the `torch.cuda.memory_stats()` measurement and
+its unavailable/failure evidence.
+
 ### Decision: Resource identity is relational, not phase-only
 
 Resource facts may relate to:
