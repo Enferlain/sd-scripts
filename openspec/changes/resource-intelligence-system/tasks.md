@@ -55,13 +55,20 @@ window side effects while keeping existing user-facing behavior stable.
 - [x] 7.2 Extract current process-memory, CUDA allocator, sampled GPU-used, and deep allocator collection behind those contracts.
 - [x] 7.3 Map current `off`, `basic`, `sampled`, and `deep` configuration onto collector/cost policy without changing user behavior.
 - [x] 7.4 Add collector failure, fallback, budget, and bounded-diagnostic-window tests.
-- [ ] 7.5 Evaluate additional collectors only against explicit resource questions and retention policy.
+- [x] 7.5 Evaluate additional collectors only against explicit resource questions, cost/cadence/degraded-behavior contracts, retention policy, and the collector-status query/view decision.
 
 ## 8. Produce Structural Facts And Profiles
 
-- [ ] 8.1 Migrate startup component parameter/trainable estimates into canonical structural resource facts.
-- [ ] 8.2 Add structural facts for optimizer, gradient, cache, worker, or artifact state only where the owning domain can provide trustworthy sizes.
-- [ ] 8.3 Define and implement the first versioned run resource profile from accepted observations and structural facts.
+Implementation note: startup structural facts should preserve the owning-domain
+boundary. Optimizer and gradient facts may be filed when they are derived from
+trusted startup trainable-byte inputs and explicitly labeled as estimates.
+Cache, worker, and artifact structural facts should not be invented here; add
+them only when their owning domains can provide stable identities, trustworthy
+sizes, and clear validity scope.
+
+- [x] 8.1 Migrate startup component parameter/trainable estimates into canonical structural resource facts using stable domain identities rather than report labels.
+- [x] 8.2 Add structural facts for optimizer, gradient, cache, worker, or artifact state only where the owning domain can provide trustworthy sizes.
+- [ ] 8.3 Define and implement the first versioned run resource profile from resource-domain derivation code over accepted observations and structural facts.
 - [ ] 8.4 Add comparison/regression queries and tests over stored profiles.
 - [ ] 8.5 Render report profile views as projections of durable profiles rather than report-only calculations.
 
@@ -78,7 +85,7 @@ window side effects while keeping existing user-facing behavior stable.
 
 - [ ] 10.1 Define migration acceptance thresholds, then benchmark runtime overhead, ingestion throughput, memory growth, query performance, and artifact size across collection policies.
 - [ ] 10.2 Verify typed facts remain authoritative during migration and that compatibility JSONL/report outputs remain equivalent within declared acceptance criteria.
-- [ ] 10.3 Verify profile/accounting source relationships and derivation versions fail validation when required evidence is missing.
+- [ ] 10.3 Verify profile/accounting source relationships and derivation versions fail validation when required evidence is missing, not merely when source-reference fields are empty.
 - [ ] 10.4 Verify failure/OOM cleanup preserves the latest accepted resource context without masking the original failure.
-- [ ] 10.5 Update resource, metadata, observability, and report documentation with the settled ownership model.
+- [ ] 10.5 Update resource, metadata, observability, and report documentation with the settled ownership model, including any final metadata item routing/validation registry decision.
 - [ ] 10.6 Update changelog and roadmap, archive superseded resource design artifacts, and close completed beads after verification.

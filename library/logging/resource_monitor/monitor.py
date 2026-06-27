@@ -112,6 +112,7 @@ class ResourceMonitor(Protocol):
         *,
         deepspeed_enabled: bool = False,
         deepspeed_zero_stage: int | None = None,
+        optimizer_state_multiplier: float | None = None,
     ) -> None: ...
 
     @property
@@ -143,8 +144,9 @@ class NoOpResourceMonitor:
         *,
         deepspeed_enabled: bool = False,
         deepspeed_zero_stage: int | None = None,
+        optimizer_state_multiplier: float | None = None,
     ) -> None:
-        _ = deepspeed_enabled, deepspeed_zero_stage
+        _ = deepspeed_enabled, deepspeed_zero_stage, optimizer_state_multiplier
         return
 
     @property

@@ -688,6 +688,203 @@ class TestBasicResourceMonitorBehavior:
             assert "optimizer_state (est): 4.0MB" in logged
             assert "total (est): 16.0MB" in logged
 
+    def test_emit_startup_component_memory_files_structural_facts_with_component_key_identity(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-structural",
+            metadata_runtime=metadata_runtime,
+        )
+        rows = [
+            DiagnosticRow(
+                label="unet",
+                component_key="denoiser",
+                modules_trainable=1,
+                modules_total=1,
+                params_trainable=1,
+                params_total=1,
+                param_bytes_trainable=2 * 1024 * 1024,
+                param_bytes_total=10 * 1024 * 1024,
+            )
+        ]
+
+        with patch("builtins.print"):
+            monitor.emit_startup_component_memory(rows, "AdamW")
+
+        view = ResourceRunView.from_snapshot(
+            metadata_runtime.snapshot(),
+            run_identifier="run-structural",
+        )
+        structural_records = view.structural_facts_for_component("denoiser")
+
+        assert [record.facts["resource_kind"] for record in structural_records] == [
+            "parameter_memory",
+            "trainable_parameter_memory",
+        ]
+        assert [record.facts["owner_identifier"] for record in structural_records] == [
+            "denoiser",
+            "denoiser",
+        ]
+        assert [record.facts["quantity"] for record in structural_records] == [10.0, 2.0]
+        assert all(record.facts["unit"] == "MiB" for record in structural_records)
+        assert all(record.facts["source"] == "startup_component_memory" for record in structural_records)
+        assert all(record.facts["metadata"]["display_label"] == "unet" for record in structural_records)
+        assert view.structural_facts_for_component("unet") == ()
+
+    def test_emit_startup_component_memory_files_training_state_structural_facts(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-training-state",
+            metadata_runtime=metadata_runtime,
+        )
+        rows = [
+            DiagnosticRow(
+                label="unet",
+                component_key="denoiser",
+                modules_trainable=1,
+                modules_total=1,
+                params_trainable=1,
+                params_total=1,
+                param_bytes_trainable=2 * 1024 * 1024,
+                param_bytes_total=10 * 1024 * 1024,
+            )
+        ]
+
+        with patch("builtins.print"):
+            monitor.emit_startup_component_memory(
+                rows,
+                "AdamW",
+                deepspeed_enabled=True,
+                deepspeed_zero_stage=2,
+            )
+
+        view = ResourceRunView.from_snapshot(
+            metadata_runtime.snapshot(),
+            run_identifier="run-training-state",
+        )
+        structural_records = {record.facts["resource_kind"]: record for record in view.structural_facts()}
+        gradient_record = structural_records["gradient_memory"]
+        optimizer_record = structural_records["optimizer_state_memory"]
+
+        assert gradient_record.facts["owner_type"] == "training_state"
+        assert gradient_record.facts["owner_identifier"] == "gradients"
+        assert gradient_record.facts["quantity"] == 2.0
+        assert gradient_record.facts["basis"] == "trainable_parameter_bytes_estimate"
+        assert gradient_record.facts["group_identifier"] == "training_state"
+        assert gradient_record.facts["validity_scope"] == "startup_estimate"
+
+        assert optimizer_record.facts["owner_type"] == "training_state"
+        assert optimizer_record.facts["owner_identifier"] == "optimizer_state"
+        assert optimizer_record.facts["quantity"] == 4.0
+        assert optimizer_record.facts["basis"] == "two_state_optimizer_heuristic"
+        assert optimizer_record.facts["group_identifier"] == "training_state"
+        assert optimizer_record.facts["validity_scope"] == "startup_estimate"
+
+        metadata = optimizer_record.facts["metadata"]
+        assert metadata["estimator_version"] == "startup_training_state_v1"
+        assert metadata["optimizer_name"] == "AdamW"
+        assert metadata["optimizer_state_multiplier"] == 2.0
+        assert metadata["optimizer_state_multiplier_source"] == "optimizer_name_heuristic"
+        assert metadata["deepspeed_enabled"] is True
+        assert metadata["deepspeed_zero_stage"] == 2
+        assert "deepspeed_zero_partitioning_or_offload_may_change_per_rank_footprint" in metadata["caveats"]
+
+    def test_emit_startup_component_memory_accepts_domain_optimizer_state_multiplier(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-training-state-override",
+            metadata_runtime=metadata_runtime,
+        )
+        rows = [
+            DiagnosticRow(
+                label="unet",
+                component_key="denoiser",
+                modules_trainable=1,
+                modules_total=1,
+                params_trainable=1,
+                params_total=1,
+                param_bytes_trainable=2 * 1024 * 1024,
+                param_bytes_total=10 * 1024 * 1024,
+            )
+        ]
+
+        with patch("builtins.print"):
+            monitor.emit_startup_component_memory(
+                rows,
+                "CustomOptimizer",
+                optimizer_state_multiplier=0.5,
+            )
+
+        view = ResourceRunView.from_snapshot(
+            metadata_runtime.snapshot(),
+            run_identifier="run-training-state-override",
+        )
+        optimizer_record = next(
+            record for record in view.structural_facts() if record.facts["resource_kind"] == "optimizer_state_memory"
+        )
+
+        assert optimizer_record.facts["quantity"] == 1.0
+        assert optimizer_record.facts["basis"] == "domain_provided_optimizer_state_multiplier"
+        assert optimizer_record.facts["metadata"]["optimizer_state_multiplier"] == 0.5
+        assert optimizer_record.facts["metadata"]["optimizer_state_multiplier_source"] == "domain_provided_multiplier"
+
+    def test_emit_startup_component_memory_clamps_negative_optimizer_state_multiplier(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-training-state-negative-override",
+            metadata_runtime=metadata_runtime,
+        )
+        rows = [
+            DiagnosticRow(
+                label="unet",
+                component_key="denoiser",
+                modules_trainable=1,
+                modules_total=1,
+                params_trainable=1,
+                params_total=1,
+                param_bytes_trainable=2 * 1024 * 1024,
+                param_bytes_total=10 * 1024 * 1024,
+            )
+        ]
+
+        with patch("builtins.print"):
+            monitor.emit_startup_component_memory(
+                rows,
+                "CustomOptimizer",
+                optimizer_state_multiplier=-1.0,
+            )
+
+        view = ResourceRunView.from_snapshot(
+            metadata_runtime.snapshot(),
+            run_identifier="run-training-state-negative-override",
+        )
+        optimizer_record = next(
+            record for record in view.structural_facts() if record.facts["resource_kind"] == "optimizer_state_memory"
+        )
+
+        assert optimizer_record.facts["quantity"] == 0.0
+        assert optimizer_record.facts["metadata"]["optimizer_state_multiplier"] == 0.0
+        assert "negative_optimizer_state_multiplier_clamped" in optimizer_record.facts["metadata"]["caveats"]
+
 
 @pytest.mark.unit
 class TestResourceMonitorJsonl:

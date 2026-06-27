@@ -22,6 +22,7 @@ from library.metadata.graph import (
 
 _RESOURCE_ACCOUNTING_ENTITY = "resource_accounting"
 _RESOURCE_ACCOUNTING_GAP_ENTITY = "resource_accounting_gap"
+_RESOURCE_COLLECTOR_STATUS_ENTITY = "resource_collector_status"
 _RESOURCE_OBSERVATION_ENTITY = "resource_observation"
 _RESOURCE_OBSERVATION_FRAME_ENTITY = "resource_observation_frame"
 _RESOURCE_PROFILE_ENTITY = "resource_profile"
@@ -116,6 +117,49 @@ class ResourceRunView:
         return self._records_linked_to_run(
             entity_type=_RESOURCE_ACCOUNTING_GAP_ENTITY,
             relationship=MetadataRelationship.GAP_FOR,
+        )
+
+    def collector_statuses(self) -> tuple[MetadataRecord, ...]:
+        """Return operational collector-status records linked to this run."""
+        return self._records_linked_to_run(
+            entity_type=_RESOURCE_COLLECTOR_STATUS_ENTITY,
+            relationship=MetadataRelationship.OBSERVED_DURING,
+        )
+
+    def degraded_collector_statuses(self) -> tuple[MetadataRecord, ...]:
+        """Return degraded collector-status records linked to this run."""
+        return self._records_in_snapshot_order(
+            status
+            for status in self.collector_statuses()
+            if status.facts.get("degraded") is True
+        )
+
+    def collector_statuses_for_collector(self, collector_id: str) -> tuple[MetadataRecord, ...]:
+        """Return run collector-status records for one collector identity."""
+        collector_identity = metadata_identity(
+            entity_type=MetadataEntityType.COLLECTOR,
+            identifier=collector_id,
+            namespace=self.run_identity.namespace,
+        )
+        return self._records_in_view(
+            records_by_identity(
+                self._graph,
+                source_identities(
+                    self._graph,
+                    collector_identity,
+                    relationship=MetadataRelationship.DESCRIBES,
+                    source_type=_RESOURCE_COLLECTOR_STATUS_ENTITY,
+                ),
+            ),
+            allowed_records=self.collector_statuses(),
+        )
+
+    def collector_statuses_for_rank(self, rank: int) -> tuple[MetadataRecord, ...]:
+        """Return run collector-status records for one distributed rank."""
+        return self._records_in_snapshot_order(
+            status
+            for status in self.collector_statuses()
+            if status.facts.get("rank") == rank
         )
 
     def observation_frames_for_phase(self, phase: str) -> tuple[MetadataRecord, ...]:

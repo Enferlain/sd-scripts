@@ -467,6 +467,37 @@ Report composition and Markdown rendering consume the metadata-owned export;
 they no longer carry a second implementation of phase pairing, peaks, deltas,
 or debug-row shaping.
 
+### Remaining implementation notes
+
+Additional collectors are not planned by default. A new collector must first
+answer an explicit resource question and document its cost, cadence, scope,
+availability or degraded behavior, and retention policy. Collector availability
+alone is not a sufficient reason to retain another counter.
+
+Structural facts must use stable runtime or domain identities. Component keys,
+owner identifiers, optimization groups, cache or artifact identifiers, and
+other domain-owned identifiers are canonical identity. Display labels, table
+headings, and report names are projection concerns and must not become owner
+identity simply because they are user-facing.
+
+Profile derivation belongs to resource-domain code. Metadata stores, validates,
+relates, queries, and projects accepted profiles, but it must not infer profile
+meaning directly from raw observations or report-only summaries.
+
+Collector-status and degraded-telemetry records are durable metadata. Before
+profiles or reports make quality or completeness claims, the implementation
+must decide whether `ResourceRunView` exposes collector-status records directly
+or whether a separate operational/degradation view owns those queries.
+
+Source-reference validation must eventually prove required evidence exists and
+has the required relationship to the derived profile or accounting statement.
+Non-empty source-reference fields are not enough for accepted semantic claims.
+
+The current metadata runtime and validation modules both know about supported
+item classes. This is acceptable during the active migration, but final
+consolidation should consider a central item registry or router so filing and
+validation support do not drift as accepted fact classes expand.
+
 ## Risks / Trade-offs
 
 - **[Metadata becomes overloaded by high-frequency telemetry]** -> add explicit

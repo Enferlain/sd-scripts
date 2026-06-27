@@ -30,6 +30,7 @@ from library.metadata import (
     RESOURCE_REPORT_EXPORT_SCHEMA,
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
+    ResourceCollectorStatusFacts,
     ResourceFactReference,
     ResourceObservationFacts,
     ResourceObservationFrameFacts,
@@ -295,6 +296,68 @@ def test_resource_run_view_preserves_semantic_fact_classes_and_evidence(
 
 
 @pytest.mark.unit
+def test_resource_run_view_exposes_collector_status_as_operational_context() -> None:
+    runtime = MetadataRuntime()
+    runtime.file_many(
+        (
+            _resource_frame(),
+            _collector_status(
+                status_identifier="status-nvml-fallback",
+                collector_id="resource_monitor.nvml_gpu_used",
+                status="unavailable",
+                degraded=True,
+                reason="collector_unavailable",
+                fallback_collector_id="resource_monitor.torch_gpu_used",
+                rank=0,
+            ),
+            _collector_status(
+                status_identifier="status-sampler-ok",
+                collector_id="resource_monitor.sampler",
+                status="ok",
+                degraded=False,
+                reason="sample_completed",
+                rank=1,
+            ),
+            _collector_status(
+                status_identifier="other-status",
+                run_identifier="run-other",
+                collector_id="resource_monitor.nvml_gpu_used",
+                status="failed",
+                degraded=True,
+                reason="collector_failed",
+                rank=0,
+            ),
+        )
+    )
+    view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier="run-1")
+
+    assert [record.identity.identifier for record in view.collector_statuses()] == [
+        "status-nvml-fallback",
+        "status-sampler-ok",
+    ]
+    assert [record.identity.identifier for record in view.degraded_collector_statuses()] == [
+        "status-nvml-fallback"
+    ]
+    assert [
+        record.identity.identifier
+        for record in view.collector_statuses_for_collector("resource_monitor.nvml_gpu_used")
+    ] == ["status-nvml-fallback"]
+    assert [record.identity.identifier for record in view.collector_statuses_for_rank(0)] == [
+        "status-nvml-fallback"
+    ]
+    assert {record.identity.identifier for record in view.observations()} == {
+        "frame-1:gpu-used",
+        "frame-1:cpu-rss",
+    }
+    assert "status-nvml-fallback" not in {
+        record.identity.identifier for record in view.resource_records()
+    }
+    assert view.degraded_collector_statuses()[0].facts["fallback_collector_id"] == (
+        "resource_monitor.torch_gpu_used"
+    )
+
+
+@pytest.mark.unit
 def test_resource_run_view_queries_multi_scope_and_artifact_linked_facts() -> None:
     runtime = MetadataRuntime()
     runtime.file_many(
@@ -469,6 +532,29 @@ def _direct_observation() -> ResourceObservationFacts:
         unit="MiB",
         source="psutil",
         phase="training.epoch.0",
+    )
+
+
+def _collector_status(
+    *,
+    status_identifier: str,
+    collector_id: str,
+    status: str,
+    degraded: bool,
+    reason: str,
+    run_identifier: str = "run-1",
+    fallback_collector_id: str | None = None,
+    rank: int | None = None,
+) -> ResourceCollectorStatusFacts:
+    return ResourceCollectorStatusFacts(
+        status_identifier=status_identifier,
+        run_identifier=run_identifier,
+        collector_id=collector_id,
+        status=status,
+        degraded=degraded,
+        reason=reason,
+        rank=rank,
+        fallback_collector_id=fallback_collector_id,
     )
 
 

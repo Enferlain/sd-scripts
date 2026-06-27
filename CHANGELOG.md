@@ -10,10 +10,18 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-06-27]
+
+### Changed
+
+- **Startup training-state estimates now become bounded structural resource facts** — resource monitor startup breakdowns now file gradient and optimizer-state structural facts from trusted trainable-byte inputs, preserve estimator version/basis/caveats including DeepSpeed/ZeRO uncertainty, and expose an optional optimizer-state multiplier override for future optimizer/performance-owned estimates.
+- **Startup component memory estimates now become structural resource facts** — resource monitor startup breakdowns now file canonical `StructuralResourceFacts` for loaded and trainable parameter memory when metadata is available, using stable component keys as owner identity while keeping display labels as metadata for reports and console output.
+
 ## [2026-06-26]
 
 ### Changed
 
+- **Resource-run views now expose collector-status evidence without treating it as observations** — decided against adding new collectors in the current slice and added run, degraded, collector, and rank queries for durable collector-status metadata so future profiles and reports can qualify fallback or partial telemetry claims.
 - **Resource monitor collector degradation paths now have explicit evidence coverage** — collector failures for process memory and CUDA allocator snapshots now file degraded collector-status facts, while focused tests cover NVML unavailable/fallback behavior, torch fallback failure, deep allocator unavailable/failure/budget status, and bounded sampled/deep diagnostic windows that avoid re-recording stale measurements.
 
 ## [2026-06-25]
