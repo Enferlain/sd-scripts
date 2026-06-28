@@ -81,6 +81,31 @@ REPORT_KEY_CONFIG_PATHS: tuple[str, ...] = (
     "output.logging.logging_dir",
 )
 
+_RESOURCE_PROFILE_VALUE_LABELS = {
+    "cpu_rss_delta_mib": "CPU RSS Delta",
+    "cpu_rss_end_mib": "CPU RSS End",
+    "cpu_rss_start_mib": "CPU RSS Start",
+    "cpu_vms_delta_mib": "CPU VMS Delta",
+    "cpu_vms_end_mib": "CPU VMS End",
+    "cpu_vms_start_mib": "CPU VMS Start",
+    "gpu_allocated_peak_by_device_mib": "GPU Allocated Peak by Device",
+    "gpu_allocated_peak_mib": "GPU Allocated Peak",
+    "gpu_reserved_peak_by_device_mib": "GPU Reserved Peak by Device",
+    "gpu_reserved_peak_mib": "GPU Reserved Peak",
+    "gpu_used_peak_by_device_mib": "GPU Used Peak by Device",
+    "gpu_used_peak_mib": "GPU Used Peak",
+    "gradient_memory_estimate_mib": "Gradient Memory Estimate",
+    "loaded_parameter_memory_mib": "Loaded Parameter Memory",
+    "observation_frame_count": "Observation Frames",
+    "observation_measurement_count": "Observation Measurements",
+    "optimizer_state_memory_estimate_mib": "Optimizer State Memory Estimate",
+    "phase_count": "Phases",
+    "phase_names": "Phase Names",
+    "session_duration_s": "Session Duration",
+    "structural_fact_count": "Structural Facts",
+    "trainable_parameter_memory_mib": "Trainable Parameter Memory",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class RunReportContext:
@@ -173,6 +198,23 @@ def _format_seconds(value: Any) -> str:
     if value is None:
         return "N/A"
     return f"{float(value):.2f}s"
+
+
+def _format_profile_value(key: str, value: Any) -> str:
+    if key.endswith("_by_device_mib"):
+        return _format_device_map_mb(value)
+    if key.endswith("_mib"):
+        return _format_mb(value)
+    if key.endswith("_s"):
+        return _format_seconds(value)
+    return _format_scalar(value)
+
+
+def _format_profile_key(key: str) -> str:
+    label = _RESOURCE_PROFILE_VALUE_LABELS.get(key)
+    if label is not None:
+        return label
+    return key.replace("_", " ").title()
 
 
 def is_benchmark_report_enabled(cfg: Any) -> bool:
@@ -294,9 +336,7 @@ def _collect_trace_only_phase_rows(
     if not isinstance(trace_phase_rows, list):
         return []
 
-    resource_phase_names = {
-        str(row["phase"]) for row in resource_phase_rows if isinstance(row, dict) and row.get("phase") is not None
-    }
+    resource_phase_names = {str(row["phase"]) for row in resource_phase_rows if isinstance(row, dict) and row.get("phase") is not None}
 
     trace_only_rows: list[dict[str, Any]] = []
     for row in trace_phase_rows:
@@ -342,9 +382,7 @@ def _build_report_payload_from_context(
 ) -> dict[str, Any]:
     hydra_config_name, hydra_overrides = resolve_hydra_runtime_context()
     jsonl_path = context.resource_jsonl_path
-    events, total_resource_event_count, total_jsonl_event_count, resource_input_source = (
-        _resolve_resource_report_events(context)
-    )
+    events, total_resource_event_count, total_jsonl_event_count, resource_input_source = _resolve_resource_report_events(context)
     jsonl_path_value = None if jsonl_path is None else str(jsonl_path)
     if resource_input_source == "metadata_view" and context.resource_view is not None:
         resource_projection = project_resource_report(
@@ -595,6 +633,52 @@ def _render_report_markdown(payload: dict[str, Any]) -> str:
                 f"| Resource JSONL | {_format_scalar(resource.get('jsonl_path'))} |",
             ]
         )
+
+    profile_views = resource.get("profile_views") or []
+    if isinstance(profile_views, list) and profile_views:
+        lines.extend(
+            [
+                "",
+                "## Run Resource Profiles",
+            ]
+        )
+        for profile in profile_views:
+            if not isinstance(profile, dict):
+                continue
+            facts = profile.get("facts")
+            if not isinstance(facts, dict):
+                continue
+            identity = profile.get("identity")
+            profile_identifier = identity.get("identifier") if isinstance(identity, dict) else None
+            source_identities = profile.get("resolved_source_identities")
+            source_count = len(source_identities) if isinstance(source_identities, list) else 0
+            lines.extend(
+                [
+                    "",
+                    f"### {_format_scalar(facts.get('profile_kind'))}",
+                    "",
+                    "| Field | Value |",
+                    "|-------|-------|",
+                    f"| Identifier | `{_format_scalar(profile_identifier)}` |",
+                    f"| Derivation Version | `{_format_scalar(facts.get('derivation_version'))}` |",
+                    f"| Generated At | {_format_scalar(facts.get('generated_at'))} |",
+                    f"| Source Records | {_format_scalar(source_count)} |",
+                ]
+            )
+            values = facts.get("values")
+            if not isinstance(values, dict) or not values:
+                continue
+            lines.extend(
+                [
+                    "",
+                    "| Value | Amount |",
+                    "|-------|--------|",
+                ]
+            )
+            for key, value in sorted(values.items()):
+                if not isinstance(key, str):
+                    continue
+                lines.append(f"| {_format_profile_key(key)} | {_format_profile_value(key, value)} |")
 
     phases = resource.get("phases") or []
     if phases:

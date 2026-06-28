@@ -16,6 +16,7 @@ Rules:
 
 - **Resource monitor runs now file the first durable resource profile** — end-of-session resource monitoring now derives a versioned `run_resource_summary` profile from accepted observation frames, measurements, and structural facts, preserving source evidence while keeping profile meaning in the resource domain instead of report/export formatting.
 - **Stored resource profiles can now be compared through metadata views** — `ResourceRunView` gained profile filtering, latest-profile selection, and neutral profile comparison results with numeric deltas and caller-supplied regression thresholds.
+- **Benchmark reports now render durable resource profile views** — metadata-owned report projections include accepted profile records and resolved evidence, and Markdown reports render profile values without recomputing profile claims in report formatting.
 
 ## [2026-06-27]
 

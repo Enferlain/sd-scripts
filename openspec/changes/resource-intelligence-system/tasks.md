@@ -70,7 +70,7 @@ sizes, and clear validity scope.
 - [x] 8.2 Add structural facts for optimizer, gradient, cache, worker, or artifact state only where the owning domain can provide trustworthy sizes.
 - [x] 8.3 Define and implement the first versioned run resource profile from resource-domain derivation code over accepted observations and structural facts.
 - [x] 8.4 Add comparison/regression queries and tests over stored profiles.
-- [ ] 8.5 Render report profile views as projections of durable profiles rather than report-only calculations.
+- [x] 8.5 Render report profile views as projections of durable profiles rather than report-only calculations.
 
 ## 9. Implement Evidence-Constrained Accounting
 

@@ -31,7 +31,9 @@ from library.metadata import (
     METADATA_PAYLOAD_VERSION,
     MetadataRuntime,
     project_resource_run_compatibility_events,
+    ResourceFactReference,
     ResourceObservationFrameFacts,
+    ResourceProfileFacts,
     ResourceRunView,
 )
 
@@ -137,7 +139,13 @@ def test_build_report_payload_from_context_uses_explicit_run_facts(tmp_path):
         global_step=5,
         num_train_epochs=2,
         component_memory_estimates=[{"name": "unet"}],
-        runtime_trace={"phases": [], "events": [], "phase_totals": {"startup.metadata": 1.2}, "milestones": {"time_to_progress_bar_s": 2.0}, "open_phases": []},
+        runtime_trace={
+            "phases": [],
+            "events": [],
+            "phase_totals": {"startup.metadata": 1.2},
+            "milestones": {"time_to_progress_bar_s": 2.0},
+            "open_phases": [],
+        },
     )
 
     payload = _build_report_payload_from_context(context, succeeded=True, error_message=None)
@@ -213,8 +221,27 @@ def test_report_resource_payload_prefers_metadata_view_and_preserves_jsonl_summa
         },
     ]
     runtime = MetadataRuntime()
-    runtime.file_many(
-        tuple(_canonical_resource_frame(event, sequence=index) for index, event in enumerate(events))
+    runtime.file_many(tuple(_canonical_resource_frame(event, sequence=index) for index, event in enumerate(events)))
+    runtime.file(
+        ResourceProfileFacts(
+            profile_identifier="run-1:profile:run_resource_summary:v1",
+            run_identifier="run-1",
+            profile_kind="run_resource_summary",
+            derivation_version="v1",
+            values={
+                "gpu_used_peak_mib": 180.0,
+                "gpu_used_peak_by_device_mib": {"cuda:0": 100.0, "cuda:1": 80.0},
+                "session_duration_s": 3.0,
+                "phase_names": [training_epoch_phase(0)],
+            },
+            source_fact_references=(
+                ResourceFactReference(
+                    entity_type="resource_observation",
+                    identifier="run-1:resource_frame:0:2:step_sample:gpu_used_mb",
+                ),
+            ),
+            generated_at=50.0,
+        )
     )
     resource_view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier="run-1")
     canonical_events = list(project_resource_run_compatibility_events(resource_view))
@@ -275,7 +302,20 @@ def test_report_resource_payload_prefers_metadata_view_and_preserves_jsonl_summa
     assert view_payload["resource_monitor"]["run_identifier"] == "run-1"
     assert view_payload["resource_monitor"]["total_resource_event_count"] == len(events)
     assert view_payload["resource_monitor"]["total_jsonl_event_count"] is None
+    assert view_payload["resource_monitor"]["profile_views"][0]["facts"]["profile_kind"] == "run_resource_summary"
+    assert view_payload["resource_monitor"]["profile_views"][0]["facts"]["values"]["gpu_used_peak_mib"] == 180.0
+    assert (
+        view_payload["resource_monitor"]["profile_views"][0]["resolved_source_identities"][0]["identifier"]
+        == "run-1:resource_frame:0:2:step_sample:gpu_used_mb"
+    )
+    assert jsonl_payload["resource_monitor"]["profile_views"] == []
     assert jsonl_payload["resource_monitor"]["input_source"] == "jsonl_compatibility"
+
+    markdown = _render_report_markdown(view_payload)
+    assert "## Run Resource Profiles" in markdown
+    assert "### run_resource_summary" in markdown
+    assert "| GPU Used Peak | 180 MB |" in markdown
+    assert "| GPU Used Peak by Device | cuda:0: 100 MB, cuda:1: 80 MB |" in markdown
 
 
 def test_report_resource_payload_falls_back_when_resource_view_has_no_observation_frames(tmp_path):

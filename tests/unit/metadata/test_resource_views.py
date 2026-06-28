@@ -208,7 +208,11 @@ def test_resource_exports_are_versioned_and_preserve_profile_accounting_evidence
         "frame-1",
         "frame-1:gpu-used",
         "frame-1:cpu-rss",
+        "profile-1",
     ]
+    assert report.payload["profile_views"][0]["facts"]["semantic_class"] == "profile"
+    assert report.payload["profile_views"][0]["facts"]["values"] == {"gpu_used_peak_mib": 2048.0}
+    assert report.payload["profile_views"][0]["resolved_source_identities"][0]["identifier"] == "frame-1:gpu-used"
 
     profile_document = profiles.document()
     assert profile_document["schema_name"] == RESOURCE_PROFILE_EXPORT_SCHEMA
