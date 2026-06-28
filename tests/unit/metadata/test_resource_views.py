@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from library.metadata import (
+    compare_resource_profiles,
     edges_from,
     InMemoryMetadataBackend,
     metadata_identity,
@@ -36,6 +37,7 @@ from library.metadata import (
     ResourceObservationFrameFacts,
     ResourceObservationMeasurementFacts,
     ResourceProfileFacts,
+    ResourceProfileValueComparison,
     ResourceRunView,
     RunReportFacts,
     source_identities,
@@ -120,9 +122,7 @@ def test_resource_compatibility_projection_is_identical_before_and_after_filing(
     runtime.file(frame)
     view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier="run-1")
 
-    assert project_resource_run_compatibility_events(view) == (
-        project_resource_monitor_compatibility_event(frame),
-    )
+    assert project_resource_run_compatibility_events(view) == (project_resource_monitor_compatibility_event(frame),)
 
 
 @pytest.mark.unit
@@ -253,22 +253,15 @@ def test_resource_run_view_preserves_semantic_fact_classes_and_evidence(
         "frame-1:cpu-rss",
         "obs-direct",
     ]
-    assert [record.identity.identifier for record in view.observation_frames_for_phase("training.epoch.0")] == [
-        "frame-1"
-    ]
+    assert [record.identity.identifier for record in view.observation_frames_for_phase("training.epoch.0")] == ["frame-1"]
     assert [record.identity.identifier for record in view.observation_frames_for_step(12)] == ["frame-1"]
-    assert [record.identity.identifier for record in view.observations_for_device("cuda:0")] == [
-        "frame-1:gpu-used"
-    ]
+    assert [record.identity.identifier for record in view.observations_for_device("cuda:0")] == ["frame-1:gpu-used"]
     assert [record.identity.identifier for record in view.structural_facts()] == ["struct-1"]
     assert [record.identity.identifier for record in view.profiles()] == ["profile-1"]
     assert [record.identity.identifier for record in view.accounting_statements()] == ["acct-1"]
     assert [record.identity.identifier for record in view.accounting_gaps()] == ["gap-1"]
 
-    semantic_classes = {
-        record.identity.identifier: record.facts["semantic_class"]
-        for record in view.resource_records()
-    }
+    semantic_classes = {record.identity.identifier: record.facts["semantic_class"] for record in view.resource_records()}
     assert semantic_classes == {
         "frame-1": "observation",
         "frame-1:gpu-used": "observation",
@@ -293,6 +286,156 @@ def test_resource_run_view_preserves_semantic_fact_classes_and_evidence(
     assert [record.identity.identifier for record in view.source_records_for(accounting)] == ["struct-1"]
     assert [record.identity.identifier for record in view.source_records_for(gap)] == ["frame-1:gpu-used"]
     assert profile.facts["values"] == {"gpu_used_peak_mib": 2048.0}
+
+
+@pytest.mark.unit
+def test_resource_run_view_compares_stored_profiles_for_regression_queries(
+    resource_runtime: MetadataRuntime,
+) -> None:
+    resource_runtime.file_many(
+        (
+            _profile_for_run(
+                profile_identifier="baseline-profile",
+                run_identifier="run-baseline",
+                generated_at=1.0,
+                values={
+                    "gpu_used_peak_mib": 100.0,
+                    "session_duration_s": 10.0,
+                    "phase_names": ["training.epoch.0"],
+                    "missing_from_candidate": 7.0,
+                },
+            ),
+            _profile_for_run(
+                profile_identifier="candidate-profile-old",
+                run_identifier="run-candidate",
+                generated_at=1.0,
+                values={"gpu_used_peak_mib": 999.0},
+            ),
+            _profile_for_run(
+                profile_identifier="candidate-profile-new",
+                run_identifier="run-candidate",
+                generated_at=2.0,
+                values={
+                    "gpu_used_peak_mib": 120.0,
+                    "session_duration_s": 9.0,
+                    "phase_names": ["training.epoch.0"],
+                    "new_candidate_value": 3.0,
+                },
+            ),
+            _profile_for_run(
+                profile_identifier="candidate-profile-newer-same-timestamp",
+                run_identifier="run-candidate",
+                generated_at=2.0,
+                values={
+                    "gpu_used_peak_mib": 120.0,
+                    "session_duration_s": 9.0,
+                    "phase_names": ["training.epoch.0"],
+                    "new_candidate_value": 3.0,
+                },
+            ),
+            _profile_for_run(
+                profile_identifier="candidate-profile-v2",
+                run_identifier="run-candidate",
+                derivation_version="v2",
+                generated_at=3.0,
+                values={"gpu_used_peak_mib": 130.0},
+            ),
+        )
+    )
+    snapshot = resource_runtime.snapshot()
+    baseline_view = ResourceRunView.from_snapshot(snapshot, run_identifier="run-baseline")
+    candidate_view = ResourceRunView.from_snapshot(snapshot, run_identifier="run-candidate")
+
+    assert [profile.identity.identifier for profile in candidate_view.profiles_for(profile_kind="session_peaks")] == [
+        "candidate-profile-old",
+        "candidate-profile-new",
+        "candidate-profile-newer-same-timestamp",
+        "candidate-profile-v2",
+    ]
+    assert (
+        candidate_view.latest_profile(
+            profile_kind="session_peaks",
+            derivation_version="v1",
+        ).identity.identifier
+        == "candidate-profile-newer-same-timestamp"
+    )
+
+    comparison = candidate_view.compare_profile_to(
+        baseline_view,
+        profile_kind="session_peaks",
+        derivation_version="v1",
+        regression_thresholds={
+            "gpu_used_peak_mib": 16.0,
+            "session_duration_s": 0.0,
+        },
+    )
+
+    assert comparison is not None
+    assert comparison.compatible is True
+    assert comparison.profile_kind == "session_peaks"
+    assert comparison.derivation_version == "v1"
+    by_key = {value.key: value for value in comparison.values}
+    assert by_key["gpu_used_peak_mib"] == ResourceProfileValueComparison(
+        key="gpu_used_peak_mib",
+        baseline_value=100.0,
+        candidate_value=120.0,
+        status="numeric",
+        delta=20.0,
+        ratio=1.2,
+        regression_threshold=16.0,
+        regression=True,
+    )
+    assert by_key["session_duration_s"].delta == -1.0
+    assert by_key["session_duration_s"].regression is False
+    assert by_key["phase_names"].status == "non_numeric"
+    assert by_key["missing_from_candidate"].status == "missing_candidate"
+    assert by_key["new_candidate_value"].status == "missing_baseline"
+    assert [value.key for value in comparison.regressions()] == ["gpu_used_peak_mib"]
+
+
+@pytest.mark.unit
+def test_resource_profile_comparison_rejects_incompatible_profile_shapes() -> None:
+    baseline = _profile_for_run(
+        profile_identifier="baseline-profile",
+        run_identifier="run-baseline",
+        profile_kind="session_peaks",
+        derivation_version="v1",
+        values={"gpu_used_peak_mib": 100.0},
+    )
+    different_version = _profile_for_run(
+        profile_identifier="candidate-profile-v2",
+        run_identifier="run-candidate",
+        profile_kind="session_peaks",
+        derivation_version="v2",
+        values={"gpu_used_peak_mib": 120.0},
+    )
+    different_kind = _profile_for_run(
+        profile_identifier="candidate-structural",
+        run_identifier="run-candidate",
+        profile_kind="structural_summary",
+        derivation_version="v1",
+        values={"gpu_used_peak_mib": 120.0},
+    )
+    runtime = MetadataRuntime()
+    runtime.file_many((baseline, different_version, different_kind))
+    snapshot = runtime.snapshot()
+
+    baseline_record = snapshot.record_for(entity_type="resource_profile", identifier="baseline-profile")
+    version_record = snapshot.record_for(entity_type="resource_profile", identifier="candidate-profile-v2")
+    kind_record = snapshot.record_for(entity_type="resource_profile", identifier="candidate-structural")
+
+    assert baseline_record is not None
+    assert version_record is not None
+    assert kind_record is not None
+    version_comparison = compare_resource_profiles(baseline_record, version_record)
+    kind_comparison = compare_resource_profiles(baseline_record, kind_record)
+
+    assert version_comparison.compatible is False
+    assert version_comparison.reason == "derivation_version_mismatch"
+    assert version_comparison.values == ()
+    assert kind_comparison.compatible is False
+    assert kind_comparison.reason == "profile_kind_mismatch"
+    assert kind_comparison.values == ()
 
 
 @pytest.mark.unit
@@ -335,26 +478,17 @@ def test_resource_run_view_exposes_collector_status_as_operational_context() -> 
         "status-nvml-fallback",
         "status-sampler-ok",
     ]
-    assert [record.identity.identifier for record in view.degraded_collector_statuses()] == [
+    assert [record.identity.identifier for record in view.degraded_collector_statuses()] == ["status-nvml-fallback"]
+    assert [record.identity.identifier for record in view.collector_statuses_for_collector("resource_monitor.nvml_gpu_used")] == [
         "status-nvml-fallback"
     ]
-    assert [
-        record.identity.identifier
-        for record in view.collector_statuses_for_collector("resource_monitor.nvml_gpu_used")
-    ] == ["status-nvml-fallback"]
-    assert [record.identity.identifier for record in view.collector_statuses_for_rank(0)] == [
-        "status-nvml-fallback"
-    ]
+    assert [record.identity.identifier for record in view.collector_statuses_for_rank(0)] == ["status-nvml-fallback"]
     assert {record.identity.identifier for record in view.observations()} == {
         "frame-1:gpu-used",
         "frame-1:cpu-rss",
     }
-    assert "status-nvml-fallback" not in {
-        record.identity.identifier for record in view.resource_records()
-    }
-    assert view.degraded_collector_statuses()[0].facts["fallback_collector_id"] == (
-        "resource_monitor.torch_gpu_used"
-    )
+    assert "status-nvml-fallback" not in {record.identity.identifier for record in view.resource_records()}
+    assert view.degraded_collector_statuses()[0].facts["fallback_collector_id"] == ("resource_monitor.torch_gpu_used")
 
 
 @pytest.mark.unit
@@ -430,21 +564,11 @@ def test_resource_run_view_queries_multi_scope_and_artifact_linked_facts() -> No
 
     assert [record.identity.identifier for record in view.observation_frames_for_rank(0)] == ["frame-rank-0"]
     assert [record.identity.identifier for record in view.observation_frames_for_rank(1)] == ["frame-rank-1"]
-    assert [record.identity.identifier for record in view.observations_for_device("cuda:0")] == [
-        "frame-rank-0:gpu-used"
-    ]
-    assert [record.identity.identifier for record in view.observations_for_device("cuda:1")] == [
-        "frame-rank-1:gpu-used"
-    ]
-    assert [record.identity.identifier for record in view.observation_frames_for_phase("training.epoch.1")] == [
-        "frame-rank-1"
-    ]
-    assert [record.identity.identifier for record in view.structural_facts_for_component("unet")] == [
-        "struct-unet"
-    ]
-    assert [record.identity.identifier for record in view.structural_facts_for_component("text_encoder")] == [
-        "struct-text-encoder"
-    ]
+    assert [record.identity.identifier for record in view.observations_for_device("cuda:0")] == ["frame-rank-0:gpu-used"]
+    assert [record.identity.identifier for record in view.observations_for_device("cuda:1")] == ["frame-rank-1:gpu-used"]
+    assert [record.identity.identifier for record in view.observation_frames_for_phase("training.epoch.1")] == ["frame-rank-1"]
+    assert [record.identity.identifier for record in view.structural_facts_for_component("unet")] == ["struct-unet"]
+    assert [record.identity.identifier for record in view.structural_facts_for_component("text_encoder")] == ["struct-text-encoder"]
 
     source_records = view.source_records_for(view.profiles()[0])
     assert [(record.identity.entity_type, record.identity.identifier) for record in source_records] == [
@@ -605,6 +729,31 @@ def _profile() -> ResourceProfileFacts:
                 identifier="frame-1:gpu-used",
             ),
         ),
+    )
+
+
+def _profile_for_run(
+    *,
+    profile_identifier: str,
+    run_identifier: str,
+    values: dict[str, object],
+    profile_kind: str = "session_peaks",
+    derivation_version: str = "v1",
+    generated_at: float | None = None,
+) -> ResourceProfileFacts:
+    return ResourceProfileFacts(
+        profile_identifier=profile_identifier,
+        run_identifier=run_identifier,
+        profile_kind=profile_kind,
+        derivation_version=derivation_version,
+        values=values,
+        source_fact_references=(
+            ResourceFactReference(
+                entity_type="resource_observation",
+                identifier="frame-1:gpu-used",
+            ),
+        ),
+        generated_at=generated_at,
     )
 
 

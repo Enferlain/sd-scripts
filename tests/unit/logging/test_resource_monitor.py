@@ -34,6 +34,11 @@ from library.logging.resource_monitor.fact_production import (
     build_resource_monitor_produced_facts,
     project_resource_monitor_jsonl_event,
 )
+from library.logging.resource_monitor.profiles import (
+    build_run_resource_profile,
+    RUN_RESOURCE_SUMMARY_DERIVATION_VERSION,
+    RUN_RESOURCE_SUMMARY_PROFILE_KIND,
+)
 from library.metadata import (
     MetadataRuntime,
     project_resource_run_compatibility_events,
@@ -495,6 +500,151 @@ class TestBasicResourceMonitorBehavior:
         assert len(frames) == 5
         assert len(snapshot.records_for(entity_type="resource_observation")) >= 10
 
+    def test_end_session_files_versioned_run_resource_profile(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-profile",
+            metadata_runtime=metadata_runtime,
+        )
+        startup_rows = [
+            DiagnosticRow(
+                label="unet",
+                component_key="denoiser",
+                modules_trainable=1,
+                modules_total=1,
+                params_trainable=1,
+                params_total=1,
+                param_bytes_trainable=2 * 1024 * 1024,
+                param_bytes_total=10 * 1024 * 1024,
+            )
+        ]
+        start_snapshot = _Snapshot(
+            gpu_allocated_mb=128.0,
+            gpu_allocated_by_device_mb={"0": 128.0},
+            gpu_reserved_mb=160.0,
+            gpu_reserved_by_device_mb={"0": 160.0},
+            gpu_peak_allocated_mb=192.0,
+            gpu_peak_allocated_by_device_mb={"0": 192.0},
+            cpu_rss_mb=256.0,
+            cpu_vms_mb=512.0,
+        )
+        end_snapshot = _Snapshot(
+            gpu_allocated_mb=192.0,
+            gpu_allocated_by_device_mb={"0": 192.0},
+            gpu_reserved_mb=224.0,
+            gpu_reserved_by_device_mb={"0": 224.0},
+            gpu_peak_allocated_mb=256.0,
+            gpu_peak_allocated_by_device_mb={"0": 256.0},
+            cpu_rss_mb=288.0,
+            cpu_vms_mb=544.0,
+        )
+
+        with (
+            patch("builtins.print"),
+            patch.object(monitor, "_collect_snapshot", side_effect=[start_snapshot, end_snapshot]),
+            patch("library.logging.resource_monitor.monitor.time.perf_counter", side_effect=[10.0, 14.0]),
+            patch("library.logging.resource_monitor.monitor.time.time", return_value=25.0),
+        ):
+            monitor.emit_startup_component_memory(startup_rows, "AdamW")
+            monitor.start_session()
+            monitor.end_session()
+
+        view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier="run-profile")
+        profile_records = view.profiles()
+
+        assert len(profile_records) == 1
+        profile = profile_records[0]
+        values = profile.facts["values"]
+        assert profile.facts["profile_kind"] == RUN_RESOURCE_SUMMARY_PROFILE_KIND
+        assert profile.facts["derivation_version"] == RUN_RESOURCE_SUMMARY_DERIVATION_VERSION
+        assert profile.facts["generated_at"] == 25.0
+        assert values["observation_frame_count"] == 2
+        assert values["session_duration_s"] == 4.0
+        assert values["cpu_rss_delta_mib"] == 32.0
+        assert values["cpu_vms_delta_mib"] == 32.0
+        assert values["gpu_allocated_peak_mib"] == 256.0
+        assert values["gpu_allocated_peak_by_device_mib"] == {"cuda:0": 256.0}
+        assert values["gpu_reserved_peak_mib"] == 224.0
+        assert values["gpu_reserved_peak_by_device_mib"] == {"cuda:0": 224.0}
+        assert values["loaded_parameter_memory_mib"] == 10.0
+        assert values["trainable_parameter_memory_mib"] == 2.0
+        assert values["gradient_memory_estimate_mib"] == 2.0
+        assert values["optimizer_state_memory_estimate_mib"] == 4.0
+
+        source_records = view.source_records_for(profile)
+        source_entity_types = {record.identity.entity_type for record in source_records}
+        assert {
+            "resource_observation_frame",
+            "resource_observation",
+            "resource_structural_fact",
+        }.issubset(source_entity_types)
+
+    def test_run_resource_profile_derives_device_gpu_used_peaks_from_device_observations(self):
+        metadata_runtime = MetadataRuntime()
+        for sequence, event_payload in enumerate(
+            (
+                {
+                    "event": "step_sample",
+                    "ts": 1.0,
+                    "gpu_used_mb": 100.0,
+                    "gpu_used_by_device_mb": {"0": 40.0, "1": 60.0},
+                },
+                {
+                    "event": "step_sample",
+                    "ts": 2.0,
+                    "gpu_used_mb": 120.0,
+                    "gpu_used_by_device_mb": {"0": 80.0, "1": 50.0},
+                },
+            )
+        ):
+            produced = build_resource_monitor_produced_facts(
+                event_payload,
+                run_identifier="run-device-profile",
+                sequence=sequence,
+            )
+            metadata_runtime.file_many(produced.as_metadata_items())
+
+        view = ResourceRunView.from_snapshot(
+            metadata_runtime.snapshot(),
+            run_identifier="run-device-profile",
+        )
+        profile = build_run_resource_profile(view, generated_at=30.0)
+
+        assert profile is not None
+        assert profile.values["gpu_used_peak_mib"] == 120.0
+        assert profile.values["gpu_used_peak_by_device_mib"] == {
+            "cuda:0": 80.0,
+            "cuda:1": 60.0,
+        }
+
+        metadata_runtime.file(profile)
+        updated_view = ResourceRunView.from_snapshot(
+            metadata_runtime.snapshot(),
+            run_identifier="run-device-profile",
+        )
+        stored_profile = updated_view.profiles()[0]
+        source_records = updated_view.source_records_for(stored_profile)
+        aggregate_used_records = [
+            record
+            for record in source_records
+            if record.facts.get("scope_type") == "device_aggregate" and record.facts.get("measurement_kind") == "used_visible"
+        ]
+        device_used_records = [
+            record
+            for record in source_records
+            if record.facts.get("scope_type") == "device" and record.facts.get("measurement_kind") == "used_visible"
+        ]
+
+        assert aggregate_used_records
+        assert {record.facts.get("device_identifier") for record in device_used_records} == {"cuda:0", "cuda:1"}
+
     def test_resource_monitor_routes_metadata_through_resource_fact_production_seam(self):
         accelerator = MagicMock()
         accelerator.is_main_process = True
@@ -833,9 +983,7 @@ class TestBasicResourceMonitorBehavior:
             metadata_runtime.snapshot(),
             run_identifier="run-training-state-override",
         )
-        optimizer_record = next(
-            record for record in view.structural_facts() if record.facts["resource_kind"] == "optimizer_state_memory"
-        )
+        optimizer_record = next(record for record in view.structural_facts() if record.facts["resource_kind"] == "optimizer_state_memory")
 
         assert optimizer_record.facts["quantity"] == 1.0
         assert optimizer_record.facts["basis"] == "domain_provided_optimizer_state_multiplier"
@@ -877,9 +1025,7 @@ class TestBasicResourceMonitorBehavior:
             metadata_runtime.snapshot(),
             run_identifier="run-training-state-negative-override",
         )
-        optimizer_record = next(
-            record for record in view.structural_facts() if record.facts["resource_kind"] == "optimizer_state_memory"
-        )
+        optimizer_record = next(record for record in view.structural_facts() if record.facts["resource_kind"] == "optimizer_state_memory")
 
         assert optimizer_record.facts["quantity"] == 0.0
         assert optimizer_record.facts["metadata"]["optimizer_state_multiplier"] == 0.0

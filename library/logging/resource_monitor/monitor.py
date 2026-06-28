@@ -27,6 +27,7 @@ from library.logging.phase_tags import is_training_epoch_phase
 from library.logging.summaries import DiagnosticRow
 from library.metadata.dataclasses.resource import ResourceCollectorStatusFacts
 from library.metadata.runtime import MetadataRuntime
+from library.metadata.views import ResourceRunView
 from library.utils.hash_utils import get_git_is_dirty, get_git_revision_hash
 
 from .collect import (
@@ -45,6 +46,7 @@ from .console_summary import (
     render_step_resource_console_summary,
 )
 from .events import ResourceEventMixin
+from .profiles import build_run_resource_profile
 from .startup import ResourceStartupMixin
 
 if TYPE_CHECKING:
@@ -334,6 +336,19 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
         )
         metadata_runtime.file(status_facts)
 
+    def _file_run_resource_profile(self, *, generated_at: float | None = None) -> None:
+        metadata_runtime = self._metadata_runtime
+        run_identifier = self._run_identifier
+        if metadata_runtime is None or run_identifier is None:
+            return
+        try:
+            view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier=run_identifier)
+            profile = build_run_resource_profile(view, generated_at=generated_at)
+            if profile is not None:
+                metadata_runtime.file(profile)
+        except Exception as exc:  # pragma: no cover - profile filing must not affect shutdown
+            self._warn_once("resource_profile", "resource profile derivation failed: %s", exc)
+
     def start_session(self) -> None:
         try:
             if not self._should_emit_this_rank():
@@ -385,6 +400,7 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
                 dropped_samples=self._dropped_samples if self._mode in {"sampled", "deep"} else None,
                 force_flush=True,
             )
+            self._file_run_resource_profile(generated_at=time.time())
 
             self._session_ended = True
             self._phase_states.clear()

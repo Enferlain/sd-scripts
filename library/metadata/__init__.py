@@ -18,7 +18,12 @@ from library.metadata.validation import (
     validate_required_facts,
 )
 from library.metadata.versions import METADATA_PAYLOAD_VERSION
-from library.metadata.views import ResourceRunView
+from library.metadata.views import (
+    compare_resource_profiles,
+    ResourceProfileComparison,
+    ResourceProfileValueComparison,
+    ResourceRunView,
+)
 
 from library.metadata.dataclasses import (
     AnalyticsSnapshotFacts,
@@ -181,6 +186,7 @@ __all__ = [
     "project_resource_report",
     "project_resource_report_compatibility_events",
     "project_resource_run_compatibility_events",
+    "compare_resource_profiles",
     "ResourceAccountingFacts",
     "ResourceAccountingGapFacts",
     "ResourceCollectorStatusFacts",
@@ -190,6 +196,8 @@ __all__ = [
     "ResourceObservationFacts",
     "ResourceObservationMeasurementFacts",
     "ResourceProfileFacts",
+    "ResourceProfileComparison",
+    "ResourceProfileValueComparison",
     "ResourceExportProjection",
     "ResourceRunView",
     "RunLifecycleFacts",
