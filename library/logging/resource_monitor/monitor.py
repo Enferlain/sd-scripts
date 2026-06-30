@@ -45,6 +45,11 @@ from .console_summary import (
     render_session_resource_console_summary,
     render_step_resource_console_summary,
 )
+from .accounting import (
+    build_operation_window_resource_accounting,
+    build_resource_accounting_gaps,
+    build_structural_resource_accounting,
+)
 from .events import ResourceEventMixin
 from .profiles import build_run_resource_profile
 from .startup import ResourceStartupMixin
@@ -349,6 +354,45 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
         except Exception as exc:  # pragma: no cover - profile filing must not affect shutdown
             self._warn_once("resource_profile", "resource profile derivation failed: %s", exc)
 
+    def _file_structural_resource_accounting(self) -> None:
+        metadata_runtime = self._metadata_runtime
+        run_identifier = self._run_identifier
+        if metadata_runtime is None or run_identifier is None:
+            return
+        try:
+            view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier=run_identifier)
+            statements = build_structural_resource_accounting(view)
+            if statements:
+                metadata_runtime.file_many(statements)
+        except Exception as exc:  # pragma: no cover - accounting filing must not affect shutdown
+            self._warn_once("resource_accounting", "resource accounting derivation failed: %s", exc)
+
+    def _file_operation_window_resource_accounting(self) -> None:
+        metadata_runtime = self._metadata_runtime
+        run_identifier = self._run_identifier
+        if metadata_runtime is None or run_identifier is None:
+            return
+        try:
+            view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier=run_identifier)
+            statements = build_operation_window_resource_accounting(view)
+            if statements:
+                metadata_runtime.file_many(statements)
+        except Exception as exc:  # pragma: no cover - accounting filing must not affect shutdown
+            self._warn_once("resource_window_accounting", "resource window accounting derivation failed: %s", exc)
+
+    def _file_resource_accounting_gaps(self) -> None:
+        metadata_runtime = self._metadata_runtime
+        run_identifier = self._run_identifier
+        if metadata_runtime is None or run_identifier is None:
+            return
+        try:
+            view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier=run_identifier)
+            gaps = build_resource_accounting_gaps(view)
+            if gaps:
+                metadata_runtime.file_many(gaps)
+        except Exception as exc:  # pragma: no cover - accounting filing must not affect shutdown
+            self._warn_once("resource_accounting_gap", "resource accounting gap derivation failed: %s", exc)
+
     def start_session(self) -> None:
         try:
             if not self._should_emit_this_rank():
@@ -400,7 +444,10 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
                 dropped_samples=self._dropped_samples if self._mode in {"sampled", "deep"} else None,
                 force_flush=True,
             )
+            self._file_structural_resource_accounting()
+            self._file_operation_window_resource_accounting()
             self._file_run_resource_profile(generated_at=time.time())
+            self._file_resource_accounting_gaps()
 
             self._session_ended = True
             self._phase_states.clear()

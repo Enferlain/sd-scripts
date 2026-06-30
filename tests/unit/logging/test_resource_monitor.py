@@ -34,6 +34,13 @@ from library.logging.resource_monitor.fact_production import (
     build_resource_monitor_produced_facts,
     project_resource_monitor_jsonl_event,
 )
+from library.logging.resource_monitor.accounting import (
+    ACCOUNTING_GAP_DERIVATION_VERSION,
+    build_operation_window_resource_accounting,
+    build_resource_accounting_gaps,
+    build_structural_resource_accounting,
+    STRUCTURAL_RESOURCE_ACCOUNTING_DERIVATION_VERSION,
+)
 from library.logging.resource_monitor.profiles import (
     build_run_resource_profile,
     RUN_RESOURCE_SUMMARY_DERIVATION_VERSION,
@@ -42,7 +49,11 @@ from library.logging.resource_monitor.profiles import (
 from library.metadata import (
     MetadataRuntime,
     project_resource_run_compatibility_events,
+    ResourceAccountingFacts,
+    ResourceFactReference,
+    ResourceProfileFacts,
     ResourceRunView,
+    StructuralResourceFacts,
 )
 
 
@@ -585,6 +596,328 @@ class TestBasicResourceMonitorBehavior:
             "resource_observation",
             "resource_structural_fact",
         }.issubset(source_entity_types)
+
+    def test_end_session_files_structural_resource_accounting(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-accounting",
+            metadata_runtime=metadata_runtime,
+        )
+        startup_rows = [
+            DiagnosticRow(
+                label="unet",
+                component_key="denoiser",
+                modules_trainable=1,
+                modules_total=1,
+                params_trainable=1,
+                params_total=1,
+                param_bytes_trainable=2 * 1024 * 1024,
+                param_bytes_total=10 * 1024 * 1024,
+            )
+        ]
+        start_snapshot = _Snapshot(
+            gpu_allocated_mb=None,
+            gpu_allocated_by_device_mb=None,
+            gpu_reserved_mb=None,
+            gpu_reserved_by_device_mb=None,
+            gpu_peak_allocated_mb=None,
+            gpu_peak_allocated_by_device_mb=None,
+            cpu_rss_mb=256.0,
+            cpu_vms_mb=512.0,
+        )
+        end_snapshot = _Snapshot(
+            gpu_allocated_mb=None,
+            gpu_allocated_by_device_mb=None,
+            gpu_reserved_mb=None,
+            gpu_reserved_by_device_mb=None,
+            gpu_peak_allocated_mb=None,
+            gpu_peak_allocated_by_device_mb=None,
+            cpu_rss_mb=288.0,
+            cpu_vms_mb=544.0,
+        )
+
+        with (
+            patch("builtins.print"),
+            patch.object(monitor, "_collect_snapshot", side_effect=[start_snapshot, end_snapshot]),
+            patch("library.logging.resource_monitor.monitor.time.perf_counter", side_effect=[10.0, 14.0]),
+        ):
+            monitor.emit_startup_component_memory(startup_rows, "AdamW")
+            monitor.start_session()
+            monitor.end_session()
+
+        view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier="run-accounting")
+        statements = view.accounting_statements()
+        statements_by_kind = {statement.facts["resource_kind"]: statement for statement in statements}
+
+        assert set(statements_by_kind) == {
+            "gradient_memory",
+            "optimizer_state_memory",
+            "parameter_memory",
+            "trainable_parameter_memory",
+        }
+        assert statements_by_kind["parameter_memory"].facts["owner_identifier"] == "denoiser"
+        assert statements_by_kind["parameter_memory"].facts["basis"] == "structural"
+        assert statements_by_kind["parameter_memory"].facts["quantity"] == 10.0
+        assert statements_by_kind["gradient_memory"].facts["owner_type"] == "training_state"
+        assert statements_by_kind["gradient_memory"].facts["basis"] == "estimated_structural"
+        assert statements_by_kind["optimizer_state_memory"].facts["validity_scope"] == "startup_estimate"
+        assert all(statement.facts["derivation_version"] == STRUCTURAL_RESOURCE_ACCOUNTING_DERIVATION_VERSION for statement in statements)
+        assert {record.identity.entity_type for statement in statements for record in view.source_records_for(statement)} == {
+            "resource_structural_fact"
+        }
+        assert view.accounting_gaps() == ()
+
+    def test_structural_resource_accounting_filters_unsupported_structural_facts(self):
+        metadata_runtime = MetadataRuntime()
+        metadata_runtime.file_many(
+            (
+                StructuralResourceFacts(
+                    structural_identifier="run-accounting-direct:startup_component:denoiser:parameter_memory",
+                    run_identifier="run-accounting-direct",
+                    owner_type="model_component",
+                    owner_identifier="denoiser",
+                    resource_kind="parameter_memory",
+                    quantity=10.0,
+                    unit="MiB",
+                    basis="parameter_bytes",
+                    source="startup_component_memory",
+                    component_key="denoiser",
+                ),
+                StructuralResourceFacts(
+                    structural_identifier="run-accounting-direct:cache:latents:cache_memory",
+                    run_identifier="run-accounting-direct",
+                    owner_type="cache",
+                    owner_identifier="latents",
+                    resource_kind="cache_memory",
+                    quantity=64.0,
+                    unit="MiB",
+                    basis="artifact_size",
+                    source="cache_runtime",
+                    validity_scope="cache_artifact",
+                ),
+                StructuralResourceFacts(
+                    structural_identifier="run-accounting-direct:startup_component:bad:parameter_memory",
+                    run_identifier="run-accounting-direct",
+                    owner_type="model_component",
+                    owner_identifier="bad",
+                    resource_kind="parameter_memory",
+                    quantity=-1.0,
+                    unit="MiB",
+                    basis="parameter_bytes",
+                    source="startup_component_memory",
+                    component_key="bad",
+                ),
+            )
+        )
+        view = ResourceRunView.from_snapshot(
+            metadata_runtime.snapshot(),
+            run_identifier="run-accounting-direct",
+        )
+
+        statements = build_structural_resource_accounting(view)
+
+        assert len(statements) == 1
+        statement = statements[0]
+        assert statement.resource_kind == "parameter_memory"
+        assert statement.owner_identifier == "denoiser"
+        assert statement.validity_scope == "run_startup_structure"
+        assert statement.source_fact_references[0].identifier == "run-accounting-direct:startup_component:denoiser:parameter_memory"
+
+    def test_operation_window_resource_accounting_requires_owner_scope_evidence(self):
+        metadata_runtime = MetadataRuntime()
+        produced = build_resource_monitor_produced_facts(
+            {
+                "event": "phase_end",
+                "ts": 1.0,
+                "phase": training_epoch_phase(0),
+                "gpu_allocated_mb": 64.0,
+                "gpu_peak_allocated_mb": 96.0,
+                "deep_active_mb": 32.0,
+                "deep_window_active": True,
+            },
+            run_identifier="run-window-accounting",
+            sequence=0,
+        )
+        metadata_runtime.file_many(produced.as_metadata_items())
+        view = ResourceRunView.from_snapshot(
+            metadata_runtime.snapshot(),
+            run_identifier="run-window-accounting",
+        )
+
+        assert build_operation_window_resource_accounting(view) == ()
+
+    def test_resource_accounting_gaps_compare_profile_values_to_accounted_quantities(self):
+        metadata_runtime = MetadataRuntime()
+        for sequence, event_payload in enumerate(
+            (
+                {
+                    "event": "session_start",
+                    "ts": 1.0,
+                    "gpu_allocated_mb": 64.0,
+                    "gpu_reserved_mb": 80.0,
+                    "gpu_peak_allocated_mb": 96.0,
+                },
+                {
+                    "event": "session_end",
+                    "ts": 2.0,
+                    "gpu_allocated_mb": 128.0,
+                    "gpu_reserved_mb": 144.0,
+                    "gpu_peak_allocated_mb": 160.0,
+                    "duration_ms": 1000.0,
+                },
+            )
+        ):
+            metadata_runtime.file_many(
+                build_resource_monitor_produced_facts(
+                    event_payload,
+                    run_identifier="run-gap-direct",
+                    sequence=sequence,
+                ).as_metadata_items()
+            )
+        view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier="run-gap-direct")
+        profile = build_run_resource_profile(view, generated_at=30.0)
+        assert profile is not None
+        metadata_runtime.file(profile)
+        view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier="run-gap-direct")
+
+        gaps = build_resource_accounting_gaps(view)
+        gaps_by_scope = {gap.scope: gap for gap in gaps}
+
+        assert set(gaps_by_scope) == {
+            "run:gpu_allocated_peak",
+            "run:gpu_reserved_peak",
+        }
+        assert gaps_by_scope["run:gpu_allocated_peak"].quantity == 160.0
+        assert gaps_by_scope["run:gpu_reserved_peak"].quantity == 144.0
+        assert all(gap.resource_kind == "gpu_memory" for gap in gaps)
+        assert all(gap.derivation_version == ACCOUNTING_GAP_DERIVATION_VERSION for gap in gaps)
+        assert all(gap.reason == "no_accepted_accounting_for_profile_value" for gap in gaps)
+        assert {reference.entity_type for gap in gaps for reference in gap.source_fact_references} == {"resource_profile"}
+
+    def test_resource_accounting_gaps_preserve_partially_explained_quantities(self):
+        metadata_runtime = MetadataRuntime()
+        produced = build_resource_monitor_produced_facts(
+            {
+                "event": "session_end",
+                "ts": 1.0,
+                "gpu_allocated_mb": 160.0,
+            },
+            run_identifier="run-gap-partial",
+            sequence=0,
+        )
+        metadata_runtime.file_many(produced.as_metadata_items())
+        profile = ResourceProfileFacts(
+            profile_identifier="run-gap-partial:profile:run_resource_summary:v1",
+            run_identifier="run-gap-partial",
+            profile_kind=RUN_RESOURCE_SUMMARY_PROFILE_KIND,
+            derivation_version=RUN_RESOURCE_SUMMARY_DERIVATION_VERSION,
+            values={"gpu_allocated_peak_mib": 160.0},
+            source_fact_references=(
+                ResourceFactReference(
+                    entity_type="resource_observation_frame",
+                    identifier="run-gap-partial:resource_frame:unknown:0:session_end",
+                ),
+            ),
+        )
+        accounting = ResourceAccountingFacts(
+            accounting_identifier="run-gap-partial:accounting:partial-gpu-memory",
+            run_identifier="run-gap-partial",
+            resource_kind="gpu_memory",
+            quantity=100.0,
+            unit="MiB",
+            owner_type="runtime_scope",
+            owner_identifier="declared-partial-owner",
+            basis="accepted_partial_scope",
+            derivation_method="test_partial_accounting",
+            derivation_version="test_v1",
+            source_fact_references=(
+                ResourceFactReference(
+                    entity_type="resource_profile",
+                    identifier=profile.profile_identifier,
+                ),
+            ),
+        )
+        metadata_runtime.file(profile)
+        metadata_runtime.file(accounting)
+        view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier="run-gap-partial")
+
+        gaps = build_resource_accounting_gaps(view)
+
+        assert len(gaps) == 1
+        gap = gaps[0]
+        assert gap.scope == "run:gpu_allocated_peak"
+        assert gap.quantity == 60.0
+        assert gap.reason == "accepted_accounting_incomplete"
+        assert gap.metadata["accounted_quantity"] == 100.0
+        assert {reference.entity_type for reference in gap.source_fact_references} == {
+            "resource_accounting",
+            "resource_profile",
+        }
+
+    def test_end_session_files_accounting_gaps_for_unexplained_profile_peaks(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-gaps",
+            metadata_runtime=metadata_runtime,
+        )
+        start_snapshot = _Snapshot(
+            gpu_allocated_mb=64.0,
+            gpu_allocated_by_device_mb={"0": 64.0},
+            gpu_reserved_mb=80.0,
+            gpu_reserved_by_device_mb={"0": 80.0},
+            gpu_peak_allocated_mb=96.0,
+            gpu_peak_allocated_by_device_mb={"0": 96.0},
+            cpu_rss_mb=256.0,
+            cpu_vms_mb=512.0,
+        )
+        end_snapshot = _Snapshot(
+            gpu_allocated_mb=128.0,
+            gpu_allocated_by_device_mb={"0": 128.0},
+            gpu_reserved_mb=144.0,
+            gpu_reserved_by_device_mb={"0": 144.0},
+            gpu_peak_allocated_mb=160.0,
+            gpu_peak_allocated_by_device_mb={"0": 160.0},
+            cpu_rss_mb=288.0,
+            cpu_vms_mb=544.0,
+        )
+
+        with (
+            patch("builtins.print"),
+            patch.object(monitor, "_collect_snapshot", side_effect=[start_snapshot, end_snapshot]),
+            patch("library.logging.resource_monitor.monitor.time.perf_counter", side_effect=[10.0, 14.0]),
+            patch("library.logging.resource_monitor.monitor.time.time", return_value=25.0),
+        ):
+            monitor.start_session()
+            monitor.end_session()
+
+        view = ResourceRunView.from_snapshot(metadata_runtime.snapshot(), run_identifier="run-gaps")
+        gaps_by_scope = {gap.facts["scope"]: gap for gap in view.accounting_gaps()}
+
+        assert view.accounting_statements() == ()
+        assert set(gaps_by_scope) == {
+            "run:gpu_allocated_peak",
+            "run:gpu_reserved_peak",
+        }
+        assert gaps_by_scope["run:gpu_allocated_peak"].facts["quantity"] == 160.0
+        assert gaps_by_scope["run:gpu_reserved_peak"].facts["quantity"] == 144.0
+        assert all("owner_identifier" not in gap.facts for gap in gaps_by_scope.values())
+        assert {record.identity.entity_type for gap in gaps_by_scope.values() for record in view.source_records_for(gap)} == {
+            "resource_profile"
+        }
 
     def test_run_resource_profile_derives_device_gpu_used_peaks_from_device_observations(self):
         metadata_runtime = MetadataRuntime()

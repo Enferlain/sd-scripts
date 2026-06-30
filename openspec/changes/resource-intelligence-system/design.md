@@ -388,6 +388,47 @@ and operation/window accounting remain distinct: an operation-local movement
 does not prove persistent ownership. Heavy scope diagnostics must remain
 explicitly configured or bounded.
 
+The first accounting slice answers only questions whose evidence is already
+accepted and queryable:
+
+1. **Which known structural resource-bearing state can be attributed to a
+   stable owner?** This may produce accounting statements from accepted
+   `StructuralResourceFacts` when the fact has a run identity, owner type,
+   owner identifier, resource kind, quantity, unit, basis, source, and validity
+   scope or metadata that makes the claim boundary clear. The initial eligible
+   facts are startup component parameter memory, startup component trainable
+   parameter memory, startup gradient-memory estimates, and startup
+   optimizer-state estimates.
+2. **Which observed or profiled run quantities remain unexplained by accepted
+   accounting statements?** This may produce accounting gaps by comparing
+   accepted accounting statements against accepted observation/profile evidence
+   for the same run, resource kind, and compatible unit/scope. The initial gap
+   candidates are run-level GPU memory peaks and structural/profile totals that
+   have accepted source evidence.
+
+The first accounting slice explicitly does not answer per-phase ownership,
+operation-local ownership, cache ownership, worker-process ownership, artifact
+ownership, or allocator-internal ownership. Those require additional
+owner-scope or domain-owned structural evidence. Phase deltas, aggregate GPU
+counters, and diagnostic-window observations may support presentation,
+profiles, or gap calculations, but they are not sufficient source evidence for
+owner-bearing accounting statements by themselves.
+
+The first operation/window accounting implementation therefore produces no
+owner-bearing statements from current phase, step, sampler, or diagnostic-window
+observations. Those observations remain accepted evidence for profiles,
+presentation, and accounting gaps. Operation/window accounting can become
+non-empty only after runtime or an owning domain files accepted owner-scope
+evidence that declares the owner or operation, resource kind, quantity or
+bounded measurement, and validity window.
+
+The first accounting-gap implementation compares accepted `run_resource_summary`
+profile values against accepted accounting statements for the same resource kind
+and unit. Positive unexplained quantities become `ResourceAccountingGapFacts`
+with source references to the profile and any accounting statements used in the
+subtraction. Gaps are scoped unresolved results; they do not carry owner fields
+or fallback labels.
+
 ### Decision: Profiles are durable derived facts, not report formatting
 
 A resource profile is a queryable, versioned derived product suitable for:

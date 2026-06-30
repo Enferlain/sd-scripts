@@ -74,10 +74,10 @@ sizes, and clear validity scope.
 
 ## 9. Implement Evidence-Constrained Accounting
 
-- [ ] 9.1 Define the first trustworthy accounting questions and the accepted source facts required to answer them.
-- [ ] 9.2 Implement structural accounting statements for known resource-bearing state.
-- [ ] 9.3 Implement explicitly bounded operation/window accounting only where runtime evidence supports it.
-- [ ] 9.4 Calculate and preserve accounting gaps without assigning them to fallback owners.
+- [x] 9.1 Define the first trustworthy accounting questions and the accepted source facts required to answer them.
+- [x] 9.2 Implement structural accounting statements for known resource-bearing state.
+- [x] 9.3 Implement explicitly bounded operation/window accounting only where runtime evidence supports it.
+- [x] 9.4 Calculate and preserve accounting gaps without assigning them to fallback owners.
 - [ ] 9.5 Add report/query views that present observed, profiled, accounted, and gap values without conflating them.
 - [ ] 9.6 Add tests preventing unsupported phase-delta or operation-local observations from becoming persistent ownership claims.
 

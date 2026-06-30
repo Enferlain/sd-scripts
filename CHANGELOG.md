@@ -10,6 +10,19 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-06-30]
+
+### Changed
+
+- **Resource accounting now preserves unexplained profile gaps without fallback owners** — resource monitor shutdown now files explicit accounting gaps for accepted run profile quantities that are not explained by accepted accounting statements, while operation/window accounting remains empty until accepted owner-scope evidence exists.
+
+## [2026-06-29]
+
+### Changed
+
+- **Resource monitor shutdown now files structural accounting statements** — accepted startup structural resource facts now produce evidence-linked `ResourceAccountingFacts` for component parameter memory, trainable parameter memory, gradient estimates, and optimizer-state estimates while filtering unsupported structural owners out of the first accounting slice.
+- **Resource accounting now has a bounded first-slice definition** — the resource-intelligence design now limits initial accounting to owner-bearing statements from accepted structural facts and explicit gaps from accepted observed/profiled evidence, while excluding phase-delta and operation-local ownership claims until stronger evidence exists.
+
 ## [2026-06-28]
 
 ### Added
