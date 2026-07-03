@@ -9,7 +9,7 @@ from typing import Protocol
 from library.metadata.providers import MetadataProvider, MetadataProviderResult, MetadataRequiredFact
 from library.metadata.records import MetadataEdge, MetadataEvent, MetadataRecord
 from library.metadata.storage import InMemoryMetadataStore, MetadataStore
-from library.metadata.validation import validate_required_facts
+from library.metadata.validation import validate_required_facts, validate_resource_source_evidence
 
 
 @dataclass(frozen=True)
@@ -106,3 +106,4 @@ class InMemoryMetadataBackend:
     def validate(self, required_facts: Iterable[MetadataRequiredFact] = ()) -> None:
         snapshot = self.snapshot()
         validate_required_facts(snapshot.records, (*snapshot.required_facts, *tuple(required_facts)))
+        validate_resource_source_evidence(snapshot.records, snapshot.edges)

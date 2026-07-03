@@ -464,7 +464,10 @@ declared `measurement_identifiers` order. This keeps ordering independent of
 backend edge iteration while avoiding a complete run-observation traversal per
 frame. A directional local 1,000-frame report projection improved from roughly
 10.6 seconds on the repeated-scan path to roughly 0.03 seconds on the indexed
-path; full cross-policy acceptance thresholds remain task 10.1 work.
+path. The final migration gate now records coarse cross-policy acceptance
+thresholds for ingestion wall time, ingestion throughput, query/projection wall
+time, traced Python memory, and compatibility artifact size in
+`telemetry-ingestion.md`.
 
 Evidence lookup follows each record's explicit `source_fact_references` rather
 than constraining sources to the viewed run or to resource entity types. A
@@ -530,9 +533,10 @@ profiles or reports make quality or completeness claims, the implementation
 must decide whether `ResourceRunView` exposes collector-status records directly
 or whether a separate operational/degradation view owns those queries.
 
-Source-reference validation must eventually prove required evidence exists and
-has the required relationship to the derived profile or accounting statement.
-Non-empty source-reference fields are not enough for accepted semantic claims.
+Derived resource-fact validation now requires non-empty derivation versions,
+meaningful source-reference target fields, existing source evidence records, and
+the declared source relationship edge. Non-empty source-reference tuples are not
+enough for accepted semantic claims.
 
 The current metadata runtime and validation modules both know about supported
 item classes. This is acceptable during the active migration, but final

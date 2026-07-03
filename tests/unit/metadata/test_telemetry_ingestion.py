@@ -2,23 +2,57 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import time
+import tracemalloc
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock
 from typing import Literal
 
 import pytest
 
+from library.logging.resource_monitor.collect import build_resource_collection_policy
 from library.metadata import (
     InMemoryMetadataBackend,
     MetadataRelationship,
     MetadataBufferPolicy,
     MetadataRuntime,
+    project_resource_run_compatibility_events,
     ResourceObservationFrameFacts,
     ResourceObservationMeasurementFacts,
+    ResourceRunView,
     SQLiteMetadataStore,
 )
+
+
+_MIGRATION_ACCEPTANCE_THRESHOLDS = {
+    "basic": {
+        "frame_count": 25,
+        "max_ingestion_s": 5.0,
+        "min_ingestion_frames_per_s": 5.0,
+        "max_query_projection_s": 5.0,
+        "max_peak_python_mib": 32.0,
+        "max_jsonl_bytes_per_event": 4096,
+    },
+    "sampled": {
+        "frame_count": 250,
+        "max_ingestion_s": 15.0,
+        "min_ingestion_frames_per_s": 5.0,
+        "max_query_projection_s": 5.0,
+        "max_peak_python_mib": 64.0,
+        "max_jsonl_bytes_per_event": 4096,
+    },
+    "deep": {
+        "frame_count": 250,
+        "max_ingestion_s": 20.0,
+        "min_ingestion_frames_per_s": 5.0,
+        "max_query_projection_s": 5.0,
+        "max_peak_python_mib": 96.0,
+        "max_jsonl_bytes_per_event": 6144,
+    },
+}
+_MIN_ELAPSED_S = 1e-9
 
 
 def _frame(index: int) -> ResourceObservationFrameFacts:
@@ -48,6 +82,72 @@ def _frame(index: int) -> ResourceObservationFrameFacts:
                 source="psutil",
             ),
         ),
+    )
+
+
+def _policy_frame(*, policy: str, index: int) -> ResourceObservationFrameFacts:
+    measurements = [
+        ResourceObservationMeasurementFacts(
+            measurement_identifier=f"{policy}-frame-{index}:gpu-allocated",
+            resource_kind="gpu_memory",
+            measurement_kind="allocated",
+            value=100.0 + index,
+            unit="MiB",
+            source="torch.cuda",
+            scope_type="device_aggregate",
+        ),
+        ResourceObservationMeasurementFacts(
+            measurement_identifier=f"{policy}-frame-{index}:gpu-used",
+            resource_kind="gpu_memory",
+            measurement_kind="used_visible",
+            value=200.0 + index,
+            unit="MiB",
+            source="nvml" if policy != "basic" else "torch.cuda",
+            scope_type="device_aggregate",
+        ),
+        ResourceObservationMeasurementFacts(
+            measurement_identifier=f"{policy}-frame-{index}:cpu-rss",
+            resource_kind="cpu_memory",
+            measurement_kind="rss",
+            value=500.0 + index,
+            unit="MiB",
+            source="psutil",
+            scope_type="process",
+        ),
+    ]
+    if policy == "deep":
+        measurements.extend(
+            [
+                ResourceObservationMeasurementFacts(
+                    measurement_identifier=f"{policy}-frame-{index}:collection-ms",
+                    resource_kind="collector_cost",
+                    measurement_kind="collection_duration",
+                    value=1.0,
+                    unit="ms",
+                    source="resource_monitor.deep_allocator",
+                    scope_type="collector",
+                ),
+                ResourceObservationMeasurementFacts(
+                    measurement_identifier=f"{policy}-frame-{index}:deep-active",
+                    resource_kind="gpu_memory",
+                    measurement_kind="deep_active",
+                    value=64.0 + index,
+                    unit="MiB",
+                    source="torch.cuda.memory_stats",
+                    scope_type="diagnostic_window",
+                ),
+            ]
+        )
+    return ResourceObservationFrameFacts(
+        frame_identifier=f"{policy}-frame-{index}",
+        run_identifier=f"run-{policy}",
+        event_name="step_sample" if policy != "basic" else "session_sample",
+        ts=float(index),
+        collector_id=f"resource_monitor.{policy}",
+        collection_policy=policy,
+        rank=0,
+        world_size=1,
+        measurements=tuple(measurements),
     )
 
 
@@ -234,3 +334,42 @@ def test_resource_observation_frame_volume_round_trips_through_memory_and_sqlite
             MetadataRelationship.OBSERVED_ON,
             MetadataRelationship.PRODUCED_BY,
         }
+
+
+@pytest.mark.unit
+def test_resource_migration_acceptance_thresholds_cover_collection_policies() -> None:
+    off_policy = build_resource_collection_policy("off")
+    assert off_policy.capabilities == ()
+
+    for policy, thresholds in _MIGRATION_ACCEPTANCE_THRESHOLDS.items():
+        collection_policy = build_resource_collection_policy(policy)
+        assert collection_policy.capabilities
+
+        frame_count = int(thresholds["frame_count"])
+        assert frame_count / thresholds["max_ingestion_s"] >= thresholds["min_ingestion_frames_per_s"]
+        frames = tuple(_policy_frame(policy=policy, index=index) for index in range(frame_count))
+        runtime = MetadataRuntime()
+
+        tracemalloc.start()
+        started_at = time.perf_counter()
+        runtime.file_many(frames)
+        ingestion_elapsed_s = time.perf_counter() - started_at
+        _, peak_bytes = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier=f"run-{policy}")
+        query_started_at = time.perf_counter()
+        projected_events = project_resource_run_compatibility_events(view)
+        query_elapsed_s = time.perf_counter() - query_started_at
+        # The added byte accounts for the newline separator in JSONL output.
+        jsonl_bytes = sum(len(json.dumps(event, sort_keys=True).encode("utf-8")) + 1 for event in projected_events)
+        bytes_per_event = jsonl_bytes / frame_count
+        peak_python_mib = peak_bytes / (1024 * 1024)
+        ingestion_frames_per_s = frame_count / max(ingestion_elapsed_s, _MIN_ELAPSED_S)
+
+        assert len(projected_events) == frame_count
+        assert ingestion_elapsed_s <= thresholds["max_ingestion_s"]
+        assert ingestion_frames_per_s >= thresholds["min_ingestion_frames_per_s"]
+        assert query_elapsed_s <= thresholds["max_query_projection_s"]
+        assert peak_python_mib <= thresholds["max_peak_python_mib"]
+        assert bytes_per_event <= thresholds["max_jsonl_bytes_per_event"]

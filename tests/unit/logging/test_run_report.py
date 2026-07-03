@@ -356,6 +356,8 @@ def test_report_resource_payload_prefers_metadata_view_and_preserves_jsonl_summa
     assert view_payload["resource_monitor"]["run_identifier"] == "run-1"
     assert view_payload["resource_monitor"]["total_resource_event_count"] == len(events)
     assert view_payload["resource_monitor"]["total_jsonl_event_count"] is None
+    assert view_payload["resource_monitor"]["gpu_used_peak_session_mb"] == 180.0
+    assert view_payload["resource_monitor"]["session_end"]["gpu_used_mb"] == 160.0
     assert view_payload["resource_monitor"]["profile_views"][0]["facts"]["profile_kind"] == "run_resource_summary"
     assert view_payload["resource_monitor"]["profile_views"][0]["facts"]["values"]["gpu_used_peak_mib"] == 180.0
     assert (

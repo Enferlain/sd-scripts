@@ -8,8 +8,10 @@ from library.metadata import (
     METADATA_PAYLOAD_VERSION,
     MetadataEntityType,
     MetadataItemValidationError,
+    MetadataProviderResult,
     MetadataRelationship,
     MetadataRuntime,
+    MetadataValidationError,
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
     ResourceFactReference,
@@ -444,6 +446,228 @@ def test_resource_profiles_and_accounting_require_source_references() -> None:
                 source_fact_references=(),
             )
         )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "item",
+    [
+        ResourceProfileFacts(
+            profile_identifier="profile-blank-version",
+            run_identifier="run-1",
+            profile_kind="session_summary",
+            derivation_version=" ",
+            values={"cpu_rss_peak_mb": 512.0},
+            source_fact_references=(
+                ResourceFactReference(
+                    entity_type="resource_observation",
+                    identifier="obs-1",
+                ),
+            ),
+        ),
+        ResourceAccountingFacts(
+            accounting_identifier="acct-blank-version",
+            run_identifier="run-1",
+            resource_kind="gpu_memory",
+            quantity=256.0,
+            unit="mb",
+            owner_type="model_component",
+            owner_identifier="denoiser",
+            basis="structural",
+            derivation_method="parameter_bytes",
+            derivation_version=" ",
+            source_fact_references=(
+                ResourceFactReference(
+                    entity_type="resource_structural_fact",
+                    identifier="struct-1",
+                ),
+            ),
+        ),
+        ResourceAccountingGapFacts(
+            gap_identifier="gap-blank-version",
+            run_identifier="run-1",
+            resource_kind="gpu_memory",
+            quantity=64.0,
+            unit="mb",
+            basis="observed_minus_accounted",
+            derivation_method="phase_summary",
+            derivation_version=" ",
+            source_fact_references=(
+                ResourceFactReference(
+                    entity_type="resource_observation",
+                    identifier="obs-1",
+                ),
+            ),
+        ),
+    ],
+)
+def test_resource_profiles_and_accounting_require_derivation_versions(
+    item: ResourceProfileFacts | ResourceAccountingFacts | ResourceAccountingGapFacts,
+) -> None:
+    with pytest.raises(MetadataItemValidationError, match="derivation_version"):
+        MetadataRuntime().file(item)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("source_ref", "expected_message"),
+    [
+        (
+            ResourceFactReference(entity_type=" ", identifier="obs-1"),
+            "entity_type",
+        ),
+        (
+            ResourceFactReference(entity_type="resource_observation", identifier=" "),
+            "identifier",
+        ),
+        (
+            ResourceFactReference(entity_type="resource_observation", identifier="obs-1", relationship=" "),
+            "relationship",
+        ),
+        (
+            ResourceFactReference(entity_type="resource_observation", identifier="obs-1", namespace=" "),
+            "namespace",
+        ),
+    ],
+)
+def test_resource_profiles_and_accounting_require_meaningful_source_reference_evidence(
+    source_ref: ResourceFactReference,
+    expected_message: str,
+) -> None:
+    runtime = MetadataRuntime()
+    invalid_items = (
+        ResourceProfileFacts(
+            profile_identifier="profile-invalid-ref",
+            run_identifier="run-1",
+            profile_kind="session_summary",
+            derivation_version="v1",
+            values={"cpu_rss_peak_mb": 512.0},
+            source_fact_references=(source_ref,),
+        ),
+        ResourceAccountingFacts(
+            accounting_identifier="acct-invalid-ref",
+            run_identifier="run-1",
+            resource_kind="gpu_memory",
+            quantity=256.0,
+            unit="mb",
+            owner_type="model_component",
+            owner_identifier="denoiser",
+            basis="structural",
+            derivation_method="parameter_bytes",
+            derivation_version="v1",
+            source_fact_references=(source_ref,),
+        ),
+        ResourceAccountingGapFacts(
+            gap_identifier="gap-invalid-ref",
+            run_identifier="run-1",
+            resource_kind="gpu_memory",
+            quantity=64.0,
+            unit="mb",
+            basis="observed_minus_accounted",
+            derivation_method="phase_summary",
+            derivation_version="v1",
+            source_fact_references=(source_ref,),
+        ),
+    )
+
+    for item in invalid_items:
+        with pytest.raises(MetadataItemValidationError, match=expected_message):
+            runtime.file(item)
+
+
+@pytest.mark.unit
+def test_resource_profile_source_evidence_must_resolve_during_backend_validation() -> None:
+    runtime = MetadataRuntime()
+    source_observation = ResourceObservationFacts(
+        observation_identifier="obs-evidence",
+        run_identifier="run-1",
+        resource_kind="cpu_memory",
+        measurement_kind="rss",
+        value=512.0,
+        unit="MiB",
+        source="psutil",
+    )
+    profile = ResourceProfileFacts(
+        profile_identifier="profile-evidence",
+        run_identifier="run-1",
+        profile_kind="session_summary",
+        derivation_version="v1",
+        values={"cpu_rss_peak_mib": 512.0},
+        source_fact_references=(
+            ResourceFactReference(
+                entity_type="resource_observation",
+                identifier="obs-evidence",
+            ),
+        ),
+    )
+
+    runtime.file(source_observation)
+    runtime.file(profile)
+
+    runtime.backend.validate()
+
+
+@pytest.mark.unit
+def test_resource_profile_source_evidence_requires_referenced_record() -> None:
+    runtime = MetadataRuntime()
+    runtime.file(
+        ResourceProfileFacts(
+            profile_identifier="profile-missing-source-record",
+            run_identifier="run-1",
+            profile_kind="session_summary",
+            derivation_version="v1",
+            values={"cpu_rss_peak_mib": 512.0},
+            source_fact_references=(
+                ResourceFactReference(
+                    entity_type="resource_observation",
+                    identifier="missing-observation",
+                ),
+            ),
+        )
+    )
+
+    with pytest.raises(MetadataValidationError, match=r"source_fact_references\[0\]\.record"):
+        runtime.backend.validate()
+
+
+@pytest.mark.unit
+def test_resource_profile_source_evidence_requires_declared_relationship_edge() -> None:
+    runtime = MetadataRuntime()
+    runtime.file(
+        ResourceObservationFacts(
+            observation_identifier="obs-evidence",
+            run_identifier="run-1",
+            resource_kind="cpu_memory",
+            measurement_kind="rss",
+            value=512.0,
+            unit="MiB",
+            source="psutil",
+        )
+    )
+    profile_result = build_resource_profile_metadata(
+        ResourceProfileFacts(
+            profile_identifier="profile-missing-source-edge",
+            run_identifier="run-1",
+            profile_kind="session_summary",
+            derivation_version="v1",
+            values={"cpu_rss_peak_mib": 512.0},
+            source_fact_references=(
+                ResourceFactReference(
+                    entity_type="resource_observation",
+                    identifier="obs-evidence",
+                ),
+            ),
+        )
+    )
+    runtime.backend.ingest(
+        MetadataProviderResult.from_sequences(
+            provider_id="tests.missing_resource_source_edge",
+            records=profile_result.records,
+        )
+    )
+
+    with pytest.raises(MetadataValidationError, match=r"source_fact_references\[0\]\.relationship"):
+        runtime.backend.validate()
 
 
 @pytest.mark.unit

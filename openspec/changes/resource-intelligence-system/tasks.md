@@ -83,9 +83,9 @@ sizes, and clear validity scope.
 
 ## 10. Validate And Consolidate
 
-- [ ] 10.1 Define migration acceptance thresholds, then benchmark runtime overhead, ingestion throughput, memory growth, query performance, and artifact size across collection policies.
-- [ ] 10.2 Verify typed facts remain authoritative during migration and that compatibility JSONL/report outputs remain equivalent within declared acceptance criteria.
-- [ ] 10.3 Verify profile/accounting source relationships and derivation versions fail validation when required evidence is missing, not merely when source-reference fields are empty.
+- [x] 10.1 Define migration acceptance thresholds, then benchmark runtime overhead, ingestion throughput, memory growth, query performance, and artifact size across collection policies.
+- [x] 10.2 Verify typed facts remain authoritative during migration and that compatibility JSONL/report outputs remain equivalent within declared acceptance criteria.
+- [x] 10.3 Verify profile/accounting source relationships and derivation versions fail validation when required evidence is missing, not merely when source-reference fields are empty.
 - [ ] 10.4 Verify failure/OOM cleanup preserves the latest accepted resource context without masking the original failure.
 - [ ] 10.5 Update resource, metadata, observability, and report documentation with the settled ownership model, including any final metadata item routing/validation registry decision.
 - [ ] 10.6 Update changelog and roadmap, archive superseded resource design artifacts, and close completed beads after verification.

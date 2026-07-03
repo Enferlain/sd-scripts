@@ -23,6 +23,7 @@ from library.metadata import (
     project_resource_monitor_compatibility_event,
     project_resource_profile_export,
     project_resource_report,
+    project_resource_report_compatibility_events,
     project_resource_run_compatibility_events,
     records_by_identity,
     RESOURCE_ACCOUNTING_EXPORT_SCHEMA,
@@ -44,6 +45,19 @@ from library.metadata import (
     SQLiteMetadataStore,
     StructuralResourceFacts,
     target_identities,
+)
+
+
+_RESOURCE_REPORT_COMPATIBILITY_EXACT_KEYS = (
+    "event_count",
+    "total_resource_event_count",
+    "total_jsonl_event_count",
+    "session_start",
+    "session_end",
+    "gpu_used_peak_session_mb",
+    "gpu_used_peak_session_by_device_mb",
+    "phases",
+    "debug",
 )
 
 
@@ -123,6 +137,52 @@ def test_resource_compatibility_projection_is_identical_before_and_after_filing(
     view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier="run-1")
 
     assert project_resource_run_compatibility_events(view) == (project_resource_monitor_compatibility_event(frame),)
+
+
+@pytest.mark.unit
+def test_resource_report_projection_matches_compatibility_output_for_declared_fields() -> None:
+    runtime = MetadataRuntime()
+    runtime.file_many(
+        (
+            _resource_frame(),
+            _scoped_frame(
+                frame_identifier="frame-phase-start",
+                rank=0,
+                device_identifier="cuda:0",
+                phase="training.epoch.0",
+                global_step=12,
+            ),
+            _scoped_frame(
+                frame_identifier="frame-phase-end",
+                rank=0,
+                device_identifier="cuda:0",
+                phase="training.epoch.0",
+                global_step=13,
+            ),
+        )
+    )
+    view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier="run-1")
+    compatibility_events = project_resource_run_compatibility_events(view)
+
+    metadata_report = project_resource_report(
+        view,
+        jsonl_path="resource.jsonl",
+        total_jsonl_event_count=len(compatibility_events),
+    )
+    compatibility_report = project_resource_report_compatibility_events(
+        compatibility_events,
+        run_identifier="run-1",
+        jsonl_path="resource.jsonl",
+        input_source="jsonl_compatibility",
+        total_jsonl_event_count=len(compatibility_events),
+    )
+
+    assert metadata_report.payload["input_source"] == "metadata_view"
+    assert compatibility_report.payload["input_source"] == "jsonl_compatibility"
+    assert metadata_report.schema_name == compatibility_report.schema_name
+    assert metadata_report.schema_version == compatibility_report.schema_version
+    for key in _RESOURCE_REPORT_COMPATIBILITY_EXACT_KEYS:
+        assert metadata_report.payload[key] == compatibility_report.payload[key]
 
 
 @pytest.mark.unit

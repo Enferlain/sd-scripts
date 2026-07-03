@@ -18,13 +18,14 @@ from library.metadata.dataclasses.resource import (
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
     ResourceCollectorStatusFacts,
+    ResourceFactReference,
     ResourceObservationFrameFacts,
     ResourceObservationFacts,
     ResourceProfileFacts,
     StructuralResourceFacts,
 )
 from library.metadata.providers import MetadataRequiredFact
-from library.metadata.records import MetadataRecord
+from library.metadata.records import MetadataEdge, MetadataIdentity, MetadataRecord
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,40 @@ def validate_required_facts(records: Iterable[MetadataRecord], required_facts: I
         raise MetadataValidationError(missing)
 
 
+def validate_resource_source_evidence(
+    records: Iterable[MetadataRecord],
+    edges: Iterable[MetadataEdge],
+) -> None:
+    """Fail when derived resource records reference missing evidence or edges."""
+    record_tuple = tuple(records)
+    records_by_key = {record.identity.key: record for record in record_tuple}
+    edge_keys = {(edge.source.key, edge.target.key, edge.relationship) for edge in edges}
+    missing: list[MissingMetadataFact] = []
+
+    for record in record_tuple:
+        if not _is_derived_resource_record(record):
+            continue
+        if not record.has_fact("derivation_version"):
+            missing.append(_missing_resource_evidence(record, "derivation_version"))
+        references = _record_source_fact_references(record)
+        if not references:
+            missing.append(_missing_resource_evidence(record, "source_fact_references"))
+            continue
+        for index, reference in enumerate(references):
+            reference_identity = _resource_reference_identity(reference, default_namespace=record.identity.namespace)
+            relationship = reference.get("relationship")
+            if reference_identity is None or not _is_non_empty_string(relationship):
+                missing.append(_missing_resource_evidence(record, f"source_fact_references[{index}]"))
+                continue
+            if reference_identity.key not in records_by_key:
+                missing.append(_missing_resource_evidence(record, f"source_fact_references[{index}].record"))
+            if (record.identity.key, reference_identity.key, relationship) not in edge_keys:
+                missing.append(_missing_resource_evidence(record, f"source_fact_references[{index}].relationship"))
+
+    if missing:
+        raise MetadataValidationError(missing)
+
+
 def validate_metadata_item(item: object) -> None:
     """Validate that one filed metadata item matches the accepted shared shape."""
     if not is_dataclass(item):
@@ -118,14 +153,87 @@ def _validate_resource_observation_frame(item: object) -> None:
 def _validate_resource_item_relationships(item: object) -> None:
     if not _requires_resource_source_references(item):
         return
+    derivation_version = getattr(item, "derivation_version", None)
+    if not _is_non_empty_string(derivation_version):
+        raise MetadataItemValidationError(
+            f"Metadata item {type(item).__name__} must include a non-empty derivation_version."
+        )
     if not item.source_fact_references:
         raise MetadataItemValidationError(
             f"Metadata item {type(item).__name__} must include at least one source_fact_reference."
         )
+    for index, reference in enumerate(item.source_fact_references):
+        _validate_resource_source_reference(reference, item_type=type(item).__name__, index=index)
 
 
 def _requires_resource_source_references(item: object) -> bool:
     return isinstance(item, (ResourceProfileFacts, ResourceAccountingFacts, ResourceAccountingGapFacts))
+
+
+def _is_derived_resource_record(record: MetadataRecord) -> bool:
+    return record.identity.entity_type in {
+        "resource_profile",
+        "resource_accounting",
+        "resource_accounting_gap",
+    }
+
+
+def _record_source_fact_references(record: MetadataRecord) -> tuple[dict[str, object], ...]:
+    references = record.facts.get("source_fact_references")
+    if not isinstance(references, list | tuple):
+        return ()
+    return tuple(reference for reference in references if isinstance(reference, dict))
+
+
+def _resource_reference_identity(
+    reference: AbcMapping[str, object],
+    *,
+    default_namespace: str,
+) -> MetadataIdentity | None:
+    entity_type = reference.get("entity_type")
+    identifier = reference.get("identifier")
+    namespace = reference.get("namespace", default_namespace)
+    if not _is_non_empty_string(entity_type) or not _is_non_empty_string(identifier):
+        return None
+    if namespace is not None and not _is_non_empty_string(namespace):
+        return None
+    return MetadataIdentity(
+        entity_type=entity_type,
+        identifier=identifier,
+        namespace=default_namespace if namespace is None else namespace,
+    )
+
+
+def _missing_resource_evidence(record: MetadataRecord, fact_key: str) -> MissingMetadataFact:
+    return MissingMetadataFact(
+        fact_key=fact_key,
+        owner=record.producer,
+        entity_type=record.identity.entity_type,
+        identifier=record.identity.identifier,
+        namespace=record.identity.namespace,
+        description="derived resource facts require existing source evidence and declared source relationships",
+    )
+
+
+def _validate_resource_source_reference(
+    reference: ResourceFactReference,
+    *,
+    item_type: str,
+    index: int,
+) -> None:
+    field_prefix = f"{item_type}.source_fact_references[{index}]"
+    for field_name in ("entity_type", "identifier", "relationship"):
+        value = getattr(reference, field_name)
+        if not _is_non_empty_string(value):
+            raise MetadataItemValidationError(
+                f"{field_prefix}.{field_name} must be a non-empty string."
+            )
+    if reference.namespace is not None and not _is_non_empty_string(reference.namespace):
+        raise MetadataItemValidationError(f"{field_prefix}.namespace must be None or a non-empty string.")
+
+
+def _is_non_empty_string(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip())
 
 
 def _matching_records(records: tuple[MetadataRecord, ...], required_fact) -> tuple[MetadataRecord, ...]:

@@ -10,6 +10,13 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-07-03]
+
+### Changed
+
+- **Resource-derived facts now validate their evidence before acceptance** — profile, accounting, and accounting-gap metadata now require non-empty derivation versions, meaningful source-reference identities and relationships, and backend validation that referenced evidence records and declared relationship edges exist.
+- **Resource migration now has acceptance gates for typed-fact authority and compatibility outputs** — documented coarse cross-policy ingestion/query/artifact thresholds and added focused checks proving metadata-backed resource views remain authoritative while compatibility JSONL/report projections stay equivalent for declared fields.
+
 ## [2026-07-02]
 
 ### Changed

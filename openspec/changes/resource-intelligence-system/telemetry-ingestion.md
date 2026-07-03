@@ -2,7 +2,9 @@
 
 This note records the task-3 ingestion decisions and representative synthetic
 measurements used to pressure-test them. The benchmark is intentionally a
-directional local measurement, not a stable performance gate.
+directional local measurement; task 10 adds coarse migration acceptance gates
+that guard against pathological regressions without making CI depend on exact
+machine timing.
 
 ## Implemented Contract
 
@@ -80,3 +82,24 @@ bounded by item count, serialized against other telemetry flushes, and intended
 for orchestration-selected boundaries outside latency-critical training work.
 Backend failure is converted into a degraded report rather than escaping the
 buffered telemetry path.
+
+## Migration Acceptance Thresholds
+
+The final migration gate treats accepted metadata facts as authoritative and
+allows compatibility JSONL/report outputs only as projections or fallbacks. The
+runtime thresholds are intentionally broad, deterministic sanity checks for the
+synthetic unit benchmark in `tests/unit/metadata/test_telemetry_ingestion.py`.
+They are not product performance targets.
+
+| Policy | Representative frames | Max ingestion wall time | Min ingestion throughput | Max query/projection wall time | Max traced Python peak | Max JSONL bytes/event |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `off` | 0 | N/A | N/A | N/A | N/A | N/A |
+| `basic` | 25 | 5 s | 5 frames/s | 5 s | 32 MiB | 4096 |
+| `sampled` | 250 | 15 s | 5 frames/s | 5 s | 64 MiB | 4096 |
+| `deep` | 250 | 20 s | 5 frames/s | 5 s | 96 MiB | 6144 |
+
+Compatibility equivalence uses exact equality for event count, total resource
+event count, total JSONL event count, session start/end payloads, GPU-used
+session peaks, phase rows, and debug rows. Profile and accounting views are not
+required to appear in JSONL fallback output; they remain accepted metadata
+facts and metadata-owned exports.
