@@ -163,6 +163,9 @@ def project_resource_report(
     frames = view.observation_frames()
     events = tuple(_project_resource_frame_record(view, frame) for frame in frames)
     profiles = view.profiles()
+    accounting_statements = view.accounting_statements()
+    accounting_gaps = view.accounting_gaps()
+    accounting_records = (*accounting_statements, *accounting_gaps)
     return _project_resource_report_events(
         events,
         run_identifier=view.run_identifier,
@@ -171,10 +174,14 @@ def project_resource_report(
         total_resource_event_count=len(events),
         total_jsonl_event_count=total_jsonl_event_count,
         profile_views=tuple(_project_derived_record(view, profile) for profile in profiles),
+        accounting_views={
+            "statements": tuple(_project_derived_record(view, statement) for statement in accounting_statements),
+            "gaps": tuple(_project_derived_record(view, gap) for gap in accounting_gaps),
+        },
         source_identities=_unique_identities(
             (
                 *(record.identity for record in (*frames, *view.observations())),
-                *_derived_export_source_identities(view, profiles),
+                *_derived_export_source_identities(view, (*profiles, *accounting_records)),
             )
         ),
     )
@@ -199,6 +206,7 @@ def project_resource_report_compatibility_events(
         total_resource_event_count=len(normalized_events) if total_resource_event_count is None else total_resource_event_count,
         total_jsonl_event_count=total_jsonl_event_count,
         profile_views=(),
+        accounting_views=None,
     )
 
 
@@ -239,6 +247,7 @@ def _project_resource_report_events(
     total_resource_event_count: int,
     total_jsonl_event_count: int | None,
     profile_views: Sequence[dict[str, Any]] = (),
+    accounting_views: Mapping[str, Sequence[dict[str, Any]]] | None = None,
     source_identities: tuple[MetadataIdentity, ...] = (),
 ) -> ResourceExportProjection:
     event_list = list(events)
@@ -264,6 +273,7 @@ def _project_resource_report_events(
             "gpu_used_peak_session_mb": gpu_used_peak_session_mb,
             "gpu_used_peak_session_by_device_mb": gpu_used_peak_session_by_device_mb,
             "profile_views": list(profile_views),
+            "accounting_views": _project_accounting_views(accounting_views),
             "phases": phase_rows,
             "debug": _build_resource_debug_summary(
                 session_start=session_start,
@@ -274,6 +284,15 @@ def _project_resource_report_events(
         },
         source_identities=source_identities,
     )
+
+
+def _project_accounting_views(accounting_views: Mapping[str, Sequence[dict[str, Any]]] | None) -> dict[str, list[dict[str, Any]]]:
+    if accounting_views is None:
+        return {"statements": [], "gaps": []}
+    return {
+        "statements": list(accounting_views.get("statements", ())),
+        "gaps": list(accounting_views.get("gaps", ())),
+    }
 
 
 def _project_derived_record(view: ResourceRunView, record: MetadataRecord) -> dict[str, Any]:

@@ -217,6 +217,48 @@ def _format_profile_key(key: str) -> str:
     return key.replace("_", " ").title()
 
 
+def _format_resource_quantity(facts: dict[str, Any]) -> str:
+    quantity = facts.get("quantity")
+    unit = facts.get("unit")
+    if quantity is None:
+        return "N/A"
+    if isinstance(quantity, float) and quantity.is_integer():
+        formatted_quantity = str(int(quantity))
+    else:
+        formatted_quantity = _format_scalar(quantity)
+    if unit is None:
+        return formatted_quantity
+    return f"{formatted_quantity} {_format_scalar(unit)}"
+
+
+def _format_accounting_owner(facts: dict[str, Any]) -> str:
+    owner_type = facts.get("owner_type")
+    owner_identifier = facts.get("owner_identifier")
+    if owner_type is None and owner_identifier is None:
+        return "N/A"
+    if owner_type is None:
+        return f"`{_format_scalar(owner_identifier)}`"
+    if owner_identifier is None:
+        return f"`{_format_scalar(owner_type)}`"
+    return f"`{_format_scalar(owner_type)}:{_format_scalar(owner_identifier)}`"
+
+
+def _format_accounting_scope(facts: dict[str, Any]) -> str:
+    validity_scope = facts.get("validity_scope")
+    if validity_scope is not None:
+        return _format_scalar(validity_scope)
+    window_start = facts.get("window_start")
+    window_end = facts.get("window_end")
+    if window_start is None and window_end is None:
+        return "N/A"
+    return f"{_format_scalar(window_start)} -> {_format_scalar(window_end)}"
+
+
+def _source_count(projected_record: dict[str, Any]) -> int:
+    source_identities = projected_record.get("resolved_source_identities")
+    return len(source_identities) if isinstance(source_identities, (list, tuple, set)) else 0
+
+
 def is_benchmark_report_enabled(cfg: Any) -> bool:
     """Return whether benchmark-style run reports are enabled for this config."""
     return _safe_get(cfg, "output.logging.benchmark_report.enabled", False) is True
@@ -679,6 +721,54 @@ def _render_report_markdown(payload: dict[str, Any]) -> str:
                 if not isinstance(key, str):
                     continue
                 lines.append(f"| {_format_profile_key(key)} | {_format_profile_value(key, value)} |")
+
+    accounting_views = resource.get("accounting_views")
+    if isinstance(accounting_views, dict):
+        statements = accounting_views.get("statements")
+        if isinstance(statements, list) and statements:
+            lines.extend(
+                [
+                    "",
+                    "## Run Resource Accounting",
+                    "",
+                    "| Resource | Quantity | Owner | Basis | Scope | Source Records |",
+                    "|----------|----------|-------|-------|-------|----------------|",
+                ]
+            )
+            for statement in statements:
+                if not isinstance(statement, dict):
+                    continue
+                facts = statement.get("facts")
+                if not isinstance(facts, dict):
+                    continue
+                lines.append(
+                    f"| {_format_scalar(facts.get('resource_kind'))} | {_format_resource_quantity(facts)} | "
+                    f"{_format_accounting_owner(facts)} | {_format_scalar(facts.get('basis'))} | "
+                    f"{_format_accounting_scope(facts)} | {_format_scalar(_source_count(statement))} |"
+                )
+
+        gaps = accounting_views.get("gaps")
+        if isinstance(gaps, list) and gaps:
+            lines.extend(
+                [
+                    "",
+                    "## Unresolved Resource Accounting Gaps",
+                    "",
+                    "| Resource | Quantity | Scope | Reason | Basis | Source Records |",
+                    "|----------|----------|-------|--------|-------|----------------|",
+                ]
+            )
+            for gap in gaps:
+                if not isinstance(gap, dict):
+                    continue
+                facts = gap.get("facts")
+                if not isinstance(facts, dict):
+                    continue
+                lines.append(
+                    f"| {_format_scalar(facts.get('resource_kind'))} | {_format_resource_quantity(facts)} | "
+                    f"{_format_scalar(facts.get('scope'))} | {_format_scalar(facts.get('reason'))} | "
+                    f"{_format_scalar(facts.get('basis'))} | {_format_scalar(_source_count(gap))} |"
+                )
 
     phases = resource.get("phases") or []
     if phases:

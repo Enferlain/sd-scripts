@@ -753,6 +753,103 @@ class TestBasicResourceMonitorBehavior:
 
         assert build_operation_window_resource_accounting(view) == ()
 
+    def test_phase_and_step_observations_do_not_become_persistent_accounting_owners(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic", log_every_n_steps=1),
+            output_jsonl_path=None,
+            run_identifier="run-observation-accounting-guard",
+            metadata_runtime=metadata_runtime,
+        )
+        snapshots = [
+            _Snapshot(
+                gpu_allocated_mb=100.0,
+                gpu_allocated_by_device_mb={"0": 100.0},
+                gpu_reserved_mb=120.0,
+                gpu_reserved_by_device_mb={"0": 120.0},
+                gpu_peak_allocated_mb=140.0,
+                gpu_peak_allocated_by_device_mb={"0": 140.0},
+                cpu_rss_mb=256.0,
+                cpu_vms_mb=512.0,
+            ),
+            _Snapshot(
+                gpu_allocated_mb=110.0,
+                gpu_allocated_by_device_mb={"0": 110.0},
+                gpu_reserved_mb=130.0,
+                gpu_reserved_by_device_mb={"0": 130.0},
+                gpu_peak_allocated_mb=150.0,
+                gpu_peak_allocated_by_device_mb={"0": 150.0},
+                cpu_rss_mb=260.0,
+                cpu_vms_mb=516.0,
+            ),
+            _Snapshot(
+                gpu_allocated_mb=125.0,
+                gpu_allocated_by_device_mb={"0": 125.0},
+                gpu_reserved_mb=145.0,
+                gpu_reserved_by_device_mb={"0": 145.0},
+                gpu_peak_allocated_mb=165.0,
+                gpu_peak_allocated_by_device_mb={"0": 165.0},
+                cpu_rss_mb=270.0,
+                cpu_vms_mb=526.0,
+            ),
+            _Snapshot(
+                gpu_allocated_mb=135.0,
+                gpu_allocated_by_device_mb={"0": 135.0},
+                gpu_reserved_mb=155.0,
+                gpu_reserved_by_device_mb={"0": 155.0},
+                gpu_peak_allocated_mb=175.0,
+                gpu_peak_allocated_by_device_mb={"0": 175.0},
+                cpu_rss_mb=280.0,
+                cpu_vms_mb=536.0,
+            ),
+            _Snapshot(
+                gpu_allocated_mb=140.0,
+                gpu_allocated_by_device_mb={"0": 140.0},
+                gpu_reserved_mb=160.0,
+                gpu_reserved_by_device_mb={"0": 160.0},
+                gpu_peak_allocated_mb=180.0,
+                gpu_peak_allocated_by_device_mb={"0": 180.0},
+                cpu_rss_mb=288.0,
+                cpu_vms_mb=544.0,
+            ),
+        ]
+
+        with (
+            patch("builtins.print"),
+            patch.object(monitor, "_collect_snapshot", side_effect=snapshots),
+            patch("library.logging.resource_monitor.monitor.time.perf_counter", side_effect=[10.0, 11.0, 12.0, 13.0, 14.0]),
+            patch("library.logging.resource_monitor.monitor.time.time", return_value=20.0),
+        ):
+            monitor.start_session()
+            monitor.phase_start(training_epoch_phase(0))
+            monitor.step_end(global_step=1, epoch=0)
+            monitor.phase_end(training_epoch_phase(0))
+            monitor.end_session()
+
+        view = ResourceRunView.from_snapshot(
+            metadata_runtime.snapshot(),
+            run_identifier="run-observation-accounting-guard",
+        )
+
+        assert {frame.facts["event_name"] for frame in view.observation_frames()} == {
+            "session_start",
+            "phase_start",
+            "step_sample",
+            "phase_end",
+            "session_end",
+        }
+        assert view.accounting_statements() == ()
+        assert view.accounting_gaps()
+        assert all("owner_type" not in gap.facts and "owner_identifier" not in gap.facts for gap in view.accounting_gaps())
+        assert {record.identity.entity_type for gap in view.accounting_gaps() for record in view.source_records_for(gap)} == {
+            "resource_profile"
+        }
+
     def test_resource_accounting_gaps_compare_profile_values_to_accounted_quantities(self):
         metadata_runtime = MetadataRuntime()
         for sequence, event_payload in enumerate(

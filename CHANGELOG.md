@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-07-02]
+
+### Changed
+
+- **Resource reports now present accounting statements and gaps separately** — metadata-backed report projections and Markdown output now show accepted accounting statements apart from unresolved accounting gaps, while JSONL fallback reports keep those accounting views explicitly empty and phase/step observations remain unable to create owner-bearing accounting claims.
+
 ## [2026-06-30]
 
 ### Changed

@@ -31,10 +31,13 @@ from library.metadata import (
     METADATA_PAYLOAD_VERSION,
     MetadataRuntime,
     project_resource_run_compatibility_events,
+    ResourceAccountingFacts,
+    ResourceAccountingGapFacts,
     ResourceFactReference,
     ResourceObservationFrameFacts,
     ResourceProfileFacts,
     ResourceRunView,
+    StructuralResourceFacts,
 )
 
 
@@ -222,25 +225,76 @@ def test_report_resource_payload_prefers_metadata_view_and_preserves_jsonl_summa
     ]
     runtime = MetadataRuntime()
     runtime.file_many(tuple(_canonical_resource_frame(event, sequence=index) for index, event in enumerate(events)))
-    runtime.file(
-        ResourceProfileFacts(
-            profile_identifier="run-1:profile:run_resource_summary:v1",
-            run_identifier="run-1",
-            profile_kind="run_resource_summary",
-            derivation_version="v1",
-            values={
-                "gpu_used_peak_mib": 180.0,
-                "gpu_used_peak_by_device_mib": {"cuda:0": 100.0, "cuda:1": 80.0},
-                "session_duration_s": 3.0,
-                "phase_names": [training_epoch_phase(0)],
-            },
-            source_fact_references=(
-                ResourceFactReference(
-                    entity_type="resource_observation",
-                    identifier="run-1:resource_frame:0:2:step_sample:gpu_used_mb",
-                ),
+    runtime.file_many(
+        (
+            StructuralResourceFacts(
+                structural_identifier="run-1:startup_component:denoiser:parameter_memory",
+                run_identifier="run-1",
+                owner_type="model_component",
+                owner_identifier="denoiser",
+                resource_kind="parameter_memory",
+                quantity=1024.0,
+                unit="MiB",
+                basis="parameter_bytes",
+                source="startup_component_memory",
+                component_key="denoiser",
             ),
-            generated_at=50.0,
+            ResourceProfileFacts(
+                profile_identifier="run-1:profile:run_resource_summary:v1",
+                run_identifier="run-1",
+                profile_kind="run_resource_summary",
+                derivation_version="v1",
+                values={
+                    "gpu_used_peak_mib": 180.0,
+                    "gpu_used_peak_by_device_mib": {"cuda:0": 100.0, "cuda:1": 80.0},
+                    "session_duration_s": 3.0,
+                    "phase_names": [training_epoch_phase(0)],
+                },
+                source_fact_references=(
+                    ResourceFactReference(
+                        entity_type="resource_observation",
+                        identifier="run-1:resource_frame:0:2:step_sample:gpu_used_mb",
+                    ),
+                ),
+                generated_at=50.0,
+            ),
+            ResourceAccountingFacts(
+                accounting_identifier="run-1:accounting:denoiser:parameter_memory",
+                run_identifier="run-1",
+                resource_kind="parameter_memory",
+                quantity=1024.0,
+                unit="MiB",
+                owner_type="model_component",
+                owner_identifier="denoiser",
+                basis="structural",
+                derivation_method="accepted_structural_resource_fact",
+                derivation_version="structural_resource_accounting_v1",
+                source_fact_references=(
+                    ResourceFactReference(
+                        entity_type="resource_structural_fact",
+                        identifier="run-1:startup_component:denoiser:parameter_memory",
+                    ),
+                ),
+                validity_scope="run_startup_structure",
+            ),
+            ResourceAccountingGapFacts(
+                gap_identifier="run-1:accounting_gap:gpu_used_peak",
+                run_identifier="run-1",
+                resource_kind="gpu_memory",
+                quantity=80.0,
+                unit="MiB",
+                basis="profile_value_minus_accounted",
+                derivation_method="run_resource_summary_profile_gap",
+                derivation_version="resource_accounting_gap_v1",
+                source_fact_references=(
+                    ResourceFactReference(
+                        entity_type="resource_profile",
+                        identifier="run-1:profile:run_resource_summary:v1",
+                    ),
+                ),
+                scope="run:gpu_used_peak",
+                reason="accepted_accounting_incomplete",
+            ),
         )
     )
     resource_view = ResourceRunView.from_snapshot(runtime.snapshot(), run_identifier="run-1")
@@ -308,7 +362,14 @@ def test_report_resource_payload_prefers_metadata_view_and_preserves_jsonl_summa
         view_payload["resource_monitor"]["profile_views"][0]["resolved_source_identities"][0]["identifier"]
         == "run-1:resource_frame:0:2:step_sample:gpu_used_mb"
     )
+    accounting_views = view_payload["resource_monitor"]["accounting_views"]
+    assert accounting_views["statements"][0]["facts"]["semantic_class"] == "accounting"
+    assert accounting_views["statements"][0]["facts"]["owner_identifier"] == "denoiser"
+    assert accounting_views["gaps"][0]["facts"]["semantic_class"] == "accounting_gap"
+    assert accounting_views["gaps"][0]["facts"]["reason"] == "accepted_accounting_incomplete"
+    assert "owner_identifier" not in accounting_views["gaps"][0]["facts"]
     assert jsonl_payload["resource_monitor"]["profile_views"] == []
+    assert jsonl_payload["resource_monitor"]["accounting_views"] == {"statements": [], "gaps": []}
     assert jsonl_payload["resource_monitor"]["input_source"] == "jsonl_compatibility"
 
     markdown = _render_report_markdown(view_payload)
@@ -316,6 +377,10 @@ def test_report_resource_payload_prefers_metadata_view_and_preserves_jsonl_summa
     assert "### run_resource_summary" in markdown
     assert "| GPU Used Peak | 180 MB |" in markdown
     assert "| GPU Used Peak by Device | cuda:0: 100 MB, cuda:1: 80 MB |" in markdown
+    assert "## Run Resource Accounting" in markdown
+    assert "| parameter_memory | 1024 MiB | `model_component:denoiser` | structural | run_startup_structure | 1 |" in markdown
+    assert "## Unresolved Resource Accounting Gaps" in markdown
+    assert "| gpu_memory | 80 MiB | run:gpu_used_peak | accepted_accounting_incomplete | profile_value_minus_accounted | 1 |" in markdown
 
 
 def test_report_resource_payload_falls_back_when_resource_view_has_no_observation_frames(tmp_path):
