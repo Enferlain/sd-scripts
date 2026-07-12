@@ -60,8 +60,14 @@ The active launcher surface should stay thin and orchestration-focused.
   - `console.py` owns canonical user-facing lifecycle output
   - `metrics.py` owns tracker/metrics routing plus backend sink seams
   - `summaries.py` owns structured startup diagnostics and related summary models
-  - `reports.py` owns benchmark/run report composition
-  - `resource_monitor.py` remains its own runtime/resource subsystem
+  - `reports.py` owns benchmark/run report orchestration and rendering
+  - `resource_monitor/` owns resource collection, live state, profile derivation, and accounting decisions
+- **Metadata boundary:** `library/metadata/` owns accepted resource schemas,
+  validation, routing, relationships, storage, query views, and export shaping.
+  Resource-domain code owns resource meaning and must not call metadata
+  backends/storage directly.
+- **Report rule:** Reports prefer metadata-backed resource views. Resource JSONL
+  is a declared compatibility fallback/export, not a second canonical database.
 - **Console rule:** Use the repo-owned logging/console path for canonical training UX. Do not grow new long-term `accelerator.print(...)` formatting paths for startup or lifecycle summaries.
 - **Naming rule:** Internal normalized component keys (`denoiser`, `text_encoder1`) are for shared code paths; human-facing diagnostics should prefer the public model-family labels carried by repo-owned provenance.
 

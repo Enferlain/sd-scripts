@@ -42,7 +42,7 @@ class RunLifecycleFacts:
 
 @dataclass(frozen=True, slots=True)
 class ResourceMonitorFacts:
-    """Facts for resource-monitor snapshots and phase/session events."""
+    """Compatibility fallback for monitor boundaries without observations."""
 
     run_identifier: str
     event_name: str

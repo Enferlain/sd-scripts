@@ -1,5 +1,8 @@
 # Resource Visibility Capability Map
 
+> Archived: superseded by `docs/resource_intelligence.md` and the governing
+> `resource-intelligence-system` OpenSpec change.
+
 This note captures the current non-console resource-observability surface and
 the remaining implementation questions for `sd-scripts-83b`.
 

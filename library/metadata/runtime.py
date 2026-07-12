@@ -3,28 +3,21 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Literal
+from typing import Any, Literal
 
-from library.metadata.backends import InMemoryMetadataBackend, MetadataBackend, MetadataSnapshot
-from library.metadata.dataclasses.observability import (
-    AnalyticsSnapshotFacts,
-    LoggedArtifactFacts,
-    ResourceMonitorFacts,
-    RunLifecycleFacts,
-    RunReportFacts,
+from library.metadata.providers import MetadataProviderResult
+from library.metadata.records import MetadataEvent, MetadataIdentity, MetadataValue
+from library.metadata.versions import METADATA_PAYLOAD_VERSION
+
+from library.metadata.backends import (
+    InMemoryMetadataBackend,
+    MetadataBackend,
+    MetadataSnapshot,
 )
-from library.metadata.dataclasses.resource import (
-    ResourceAccountingFacts,
-    ResourceAccountingGapFacts,
-    ResourceCollectorStatusFacts,
-    ResourceObservationFrameFacts,
-    ResourceObservationFacts,
-    ResourceProfileFacts,
-    StructuralResourceFacts,
-)
+
 from library.metadata.emitters.observability import (
     build_analytics_snapshot_metadata,
     build_logged_artifact_metadata,
@@ -32,6 +25,7 @@ from library.metadata.emitters.observability import (
     build_run_lifecycle_metadata,
     build_run_report_metadata,
 )
+
 from library.metadata.emitters.resource import (
     build_resource_accounting_gap_metadata,
     build_resource_accounting_metadata,
@@ -41,74 +35,52 @@ from library.metadata.emitters.resource import (
     build_resource_profile_metadata,
     build_structural_resource_metadata,
 )
-from library.metadata.providers import MetadataProviderResult
-from library.metadata.records import MetadataEvent, MetadataIdentity, MetadataValue
-from library.metadata.validation import MetadataItemValidationError, validate_metadata_item
-from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
-type MetadataRuntimeItem = (
-    LoggedArtifactFacts
-    | RunLifecycleFacts
-    | ResourceMonitorFacts
-    | RunReportFacts
-    | AnalyticsSnapshotFacts
-    | ResourceObservationFrameFacts
-    | ResourceObservationFacts
-    | StructuralResourceFacts
-    | ResourceProfileFacts
-    | ResourceAccountingFacts
-    | ResourceAccountingGapFacts
-    | ResourceCollectorStatusFacts
+from library.metadata.registry import (
+    metadata_item_route,
+    METADATA_ITEM_ROUTES,
+    MetadataRuntimeItem,
+    supported_metadata_item_names,
 )
 
-_SUPPORTED_METADATA_ITEM_TYPES = (
-    LoggedArtifactFacts,
-    RunLifecycleFacts,
-    ResourceMonitorFacts,
-    RunReportFacts,
-    AnalyticsSnapshotFacts,
-    ResourceObservationFrameFacts,
-    ResourceObservationFacts,
-    StructuralResourceFacts,
-    ResourceProfileFacts,
-    ResourceAccountingFacts,
-    ResourceAccountingGapFacts,
-    ResourceCollectorStatusFacts,
+from library.metadata.validation import (
+    MetadataItemValidationError,
+    validate_metadata_item,
 )
+
+
+_METADATA_EMITTERS_BY_ROUTE: dict[str, Callable[[Any], MetadataProviderResult]] = {
+    "observability.logged_artifact": build_logged_artifact_metadata,
+    "observability.run_lifecycle": build_run_lifecycle_metadata,
+    "observability.resource_monitor_compatibility": build_resource_monitor_metadata,
+    "observability.run_report": build_run_report_metadata,
+    "observability.analytics_snapshot": build_analytics_snapshot_metadata,
+    "resource.observation_frame": build_resource_observation_frame_metadata,
+    "resource.observation": build_resource_observation_metadata,
+    "resource.structural": build_structural_resource_metadata,
+    "resource.profile": build_resource_profile_metadata,
+    "resource.accounting": build_resource_accounting_metadata,
+    "resource.accounting_gap": build_resource_accounting_gap_metadata,
+    "resource.collector_status": build_resource_collector_status_metadata,
+}
+
+_UNRESOLVED_METADATA_ROUTES = set(METADATA_ITEM_ROUTES.values()) - set(_METADATA_EMITTERS_BY_ROUTE)
+if _UNRESOLVED_METADATA_ROUTES:
+    unresolved = ", ".join(sorted(_UNRESOLVED_METADATA_ROUTES))
+    raise RuntimeError(f"Metadata item registry contains unresolved emitter routes: {unresolved}.")
 
 
 def build_metadata_result(item: MetadataRuntimeItem) -> MetadataProviderResult:
     """Build one provider result from one accepted typed metadata item."""
     validate_metadata_item(item)
-
-    if isinstance(item, LoggedArtifactFacts):
-        return build_logged_artifact_metadata(item)
-    if isinstance(item, RunLifecycleFacts):
-        return build_run_lifecycle_metadata(item)
-    if isinstance(item, ResourceMonitorFacts):
-        return build_resource_monitor_metadata(item)
-    if isinstance(item, RunReportFacts):
-        return build_run_report_metadata(item)
-    if isinstance(item, AnalyticsSnapshotFacts):
-        return build_analytics_snapshot_metadata(item)
-    if isinstance(item, ResourceObservationFrameFacts):
-        return build_resource_observation_frame_metadata(item)
-    if isinstance(item, ResourceObservationFacts):
-        return build_resource_observation_metadata(item)
-    if isinstance(item, StructuralResourceFacts):
-        return build_structural_resource_metadata(item)
-    if isinstance(item, ResourceProfileFacts):
-        return build_resource_profile_metadata(item)
-    if isinstance(item, ResourceAccountingFacts):
-        return build_resource_accounting_metadata(item)
-    if isinstance(item, ResourceAccountingGapFacts):
-        return build_resource_accounting_gap_metadata(item)
-    if isinstance(item, ResourceCollectorStatusFacts):
-        return build_resource_collector_status_metadata(item)
-
-    supported = ", ".join(item_type.__name__ for item_type in _SUPPORTED_METADATA_ITEM_TYPES)
+    route = metadata_item_route(item)
+    emitter = None if route is None else _METADATA_EMITTERS_BY_ROUTE.get(route)
+    if emitter is not None:
+        return emitter(item)
+    if route is not None:
+        raise MetadataItemValidationError(f"Metadata item type {type(item).__name__} uses unresolved emitter route {route!r}.")
     raise MetadataItemValidationError(
-        f"Unsupported metadata item type {type(item).__name__}. Supported types: {supported}."
+        f"Unsupported metadata item type {type(item).__name__}. Supported types: {supported_metadata_item_names()}."
     )
 
 
@@ -199,10 +171,7 @@ class MetadataRuntime:
     def _flush_buffer_batch(self, batch_limit: int) -> MetadataBufferReport:
         """Flush one batch while serialized against other telemetry flushes."""
         with self._telemetry_buffer_lock:
-            items = tuple(
-                self._telemetry_buffer.popleft()
-                for _ in range(min(batch_limit, len(self._telemetry_buffer)))
-            )
+            items = tuple(self._telemetry_buffer.popleft() for _ in range(min(batch_limit, len(self._telemetry_buffer))))
             capacity_dropped_since_status = self._buffer_capacity_dropped_since_status
             ingestion_failed_since_status = self._buffer_ingestion_failed_since_status
             prior_error_message = self._buffer_error_message

@@ -20,6 +20,11 @@ The public model is intentionally small:
 3. `library/metadata` validates the item, routes it to the right emitter, and ingests the result into a backend.
 4. Backends expose snapshots that projections/storage/export can consume later.
 
+Accepted runtime item types and their emitter routes are registered together in
+`library/metadata/registry.py`. Validation and `MetadataRuntime` consume that
+same registry; do not add a parallel supported-type tuple or a second routing
+chain in either module.
+
 In code, the intended runtime-facing shape is:
 
 ```python
@@ -271,12 +276,18 @@ Current projection families include:
 - legacy `ss_*`
 - `modelspec.*`
 - repo-owned `kuro.*`
-- resource-monitor flat compatibility events used by JSONL and transitional report input
+- resource-monitor flat compatibility events used by JSONL and no-view report fallback
 - versioned resource report, profile, and accounting export documents
 
 Resource compatibility events are projected from accepted observation-frame
 facts or a `ResourceRunView`; JSONL is an export/fallback consumer of that
 projection, not the report source of truth.
+
+The bundled `ResourceMonitorFacts` item remains accepted only as the narrow
+fallback for monitor boundaries that cannot produce an observation frame.
+Reports retain JSONL parsing only for callers without a usable metadata-backed
+resource view. Neither fallback is permission to author a second canonical
+resource schema.
 
 Resource document schemas live together under `library/metadata/exports/`.
 `ResourceExportProjection` carries the export schema name/version, source run,

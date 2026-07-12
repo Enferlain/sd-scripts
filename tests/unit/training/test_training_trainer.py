@@ -159,6 +159,7 @@ class TestTrainer(unittest.TestCase):
 
     def test_save_checkpoint_records_saved_event_before_runtime_trace_phase_end(self):
         """Checkpoint completion event should land before the enclosing save phase closes."""
+
         class _IncrementingClock:
             def __init__(self):
                 self.value = 0.0
@@ -217,6 +218,27 @@ class TestTrainer(unittest.TestCase):
 
         mock_progress_bar.close.assert_called_once()
         self.assertIsNone(self.trainer._progress_bar)
+        mock_monitor.end_session.assert_called_once()
+        self.trainer._finalize_training.assert_not_called()
+
+    def test_resource_cleanup_failure_does_not_mask_original_training_failure(self):
+        """Best-effort resource cleanup must preserve the original exception."""
+        mock_monitor = MagicMock()
+        mock_monitor.end_session.side_effect = RuntimeError("resource cleanup OOM")
+
+        self.trainer._resource_monitor = mock_monitor
+        self.trainer.setup = MagicMock()
+        self.trainer.run_caching = MagicMock()
+        self.trainer.prepare_models = MagicMock()
+        self.trainer.prepare_optimizer = MagicMock()
+        self.trainer._initialize_training_run_state = MagicMock()
+        self.trainer._run_startup_eval_actions = MagicMock()
+        self.trainer.run_training_loop = MagicMock(side_effect=RuntimeError("original training OOM"))
+        self.trainer._finalize_training = MagicMock()
+
+        with self.assertRaisesRegex(RuntimeError, "original training OOM"):
+            self.trainer.train()
+
         mock_monitor.end_session.assert_called_once()
         self.trainer._finalize_training.assert_not_called()
 
@@ -561,9 +583,7 @@ class TestTrainer(unittest.TestCase):
 
         assert capture.record is not None
         normalized_basename = (
-            PureWindowsPath(capture.record.pathname).name
-            if "\\" in capture.record.pathname
-            else Path(capture.record.pathname).name
+            PureWindowsPath(capture.record.pathname).name if "\\" in capture.record.pathname else Path(capture.record.pathname).name
         )
         assert normalized_basename == "test_training_trainer.py"
         assert capture.record.lineno == expected_lineno

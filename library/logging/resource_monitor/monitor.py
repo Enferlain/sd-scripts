@@ -14,7 +14,7 @@ import queue
 import sys
 import threading
 import time
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -449,11 +449,14 @@ class BasicResourceMonitor(ResourceStartupMixin, ResourceEventMixin, ResourceCol
             self._file_run_resource_profile(generated_at=time.time())
             self._file_resource_accounting_gaps()
 
-            self._session_ended = True
-            self._phase_states.clear()
         except Exception as exc:  # pragma: no cover - defensive safety net
             self._warn_once("end_session", "resource monitor end_session failed: %s", exc)
         finally:
+            # A failed final collection or derived-fact filing must not make a
+            # later cleanup attempt replay the session. Facts accepted before
+            # the failure remain the authoritative latest resource context.
+            self._session_ended = True
+            self._phase_states.clear()
             self._close_jsonl_stream()
 
     def phase_start(self, name: str) -> None:
@@ -792,11 +795,18 @@ class SampledResourceMonitor(BasicResourceMonitor):
             self._pending_step_deep_window_active = None
 
     def end_session(self) -> None:
-        self._stop_sampler()
-        self._process_sampler_updates(max_items=None)
-        self._report_sampler_exception_once()
-        self._emit_deep_window_summary(reason="session_end")
+        self._run_shutdown_step("sampler_stop", self._stop_sampler)
+        self._run_shutdown_step("sampler_drain", lambda: self._process_sampler_updates(max_items=None))
+        self._run_shutdown_step("sampler_report", self._report_sampler_exception_once)
+        self._run_shutdown_step("deep_window_summary", lambda: self._emit_deep_window_summary(reason="session_end"))
         super().end_session()
+
+    def _run_shutdown_step(self, name: str, step: Callable[[], None]) -> None:
+        """Run optional sampled/deep cleanup without blocking base finalization."""
+        try:
+            step()
+        except Exception as exc:  # pragma: no cover - defensive safety net
+            self._warn_once(name, "resource monitor %s cleanup failed: %s", name, exc)
 
 
 def _resolve_output_jsonl_path(resource_monitor_config: ResourceMonitorConfig, output_dir: str | Path | None) -> Path | None:

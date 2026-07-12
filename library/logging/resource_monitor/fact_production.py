@@ -40,7 +40,7 @@ class ResourceMonitorProducedFacts:
 
 
 def project_resource_monitor_jsonl_event(facts: ResourceMonitorProducedFacts) -> dict[str, Any]:
-    """Project the current resource-monitor JSONL shape from produced facts."""
+    """Project the flat compatibility JSONL shape from produced facts."""
     source_facts = facts.observation_frame or facts.compatibility
     if source_facts is None:
         raise ValueError("Resource monitor facts require an observation frame or compatibility fallback.")
@@ -52,7 +52,7 @@ def build_compatibility_resource_monitor_facts(
     *,
     run_identifier: str,
 ) -> ResourceMonitorFacts:
-    """Build the transitional bundled fact from one current monitor event."""
+    """Build the bundled fallback for a boundary with no observations."""
     return ResourceMonitorFacts(
         run_identifier=run_identifier,
         event_name=str(event_payload["event"]),
@@ -122,7 +122,9 @@ def build_resource_observation_frame_facts(
 ) -> ResourceObservationFrameFacts | None:
     """Build canonical co-collected observations from one monitor event."""
     event_name = str(event_payload["event"])
-    frame_identifier = _frame_identifier(event_name=event_name, run_identifier=run_identifier, event_payload=event_payload, sequence=sequence)
+    frame_identifier = _frame_identifier(
+        event_name=event_name, run_identifier=run_identifier, event_payload=event_payload, sequence=sequence
+    )
     measurements = tuple(_build_measurements(frame_identifier=frame_identifier, event_payload=event_payload))
     if not measurements:
         return None

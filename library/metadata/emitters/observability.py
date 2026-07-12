@@ -69,7 +69,7 @@ def build_resource_monitor_metadata(
     provider_id: str = "observability.resource_monitor",
     schema_version: str = METADATA_PAYLOAD_VERSION,
 ) -> MetadataProviderResult:
-    """Build collected metadata for a resource monitor event."""
+    """Build compatibility metadata for a no-frame resource monitor event."""
     return _result_from_event(
         provider_id=provider_id,
         schema_version=schema_version,
@@ -226,13 +226,9 @@ def _build_resource_monitor_event(facts: ResourceMonitorFacts, *, producer: str)
         phase=facts.phase,
         duration_ms=facts.duration_ms,
         gpu_allocated_mb=facts.gpu_allocated_mb,
-        gpu_allocated_by_device_mb=None
-        if facts.gpu_allocated_by_device_mb is None
-        else dict(facts.gpu_allocated_by_device_mb),
+        gpu_allocated_by_device_mb=None if facts.gpu_allocated_by_device_mb is None else dict(facts.gpu_allocated_by_device_mb),
         gpu_reserved_mb=facts.gpu_reserved_mb,
-        gpu_reserved_by_device_mb=None
-        if facts.gpu_reserved_by_device_mb is None
-        else dict(facts.gpu_reserved_by_device_mb),
+        gpu_reserved_by_device_mb=None if facts.gpu_reserved_by_device_mb is None else dict(facts.gpu_reserved_by_device_mb),
         gpu_peak_allocated_mb=facts.gpu_peak_allocated_mb,
         gpu_peak_allocated_by_device_mb=None
         if facts.gpu_peak_allocated_by_device_mb is None

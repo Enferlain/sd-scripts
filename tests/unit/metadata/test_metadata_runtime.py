@@ -12,6 +12,8 @@ from library.metadata import (
     RunLifecycleFacts,
 )
 from library.metadata.validation import MetadataItemValidationError
+from library.metadata.registry import METADATA_ITEM_ROUTES, METADATA_ITEM_TYPES
+from library.metadata.runtime import _METADATA_EMITTERS_BY_ROUTE
 
 
 @pytest.mark.unit
@@ -65,3 +67,10 @@ def test_metadata_runtime_rejects_unknown_items() -> None:
 
     with pytest.raises(MetadataItemValidationError):
         runtime.file(object())  # type: ignore[arg-type]
+
+
+@pytest.mark.unit
+def test_metadata_item_registry_is_the_shared_validation_and_routing_catalog() -> None:
+    assert tuple(METADATA_ITEM_ROUTES) == METADATA_ITEM_TYPES
+    assert all(route.strip() for route in METADATA_ITEM_ROUTES.values())
+    assert set(METADATA_ITEM_ROUTES.values()) == set(_METADATA_EMITTERS_BY_ROUTE)

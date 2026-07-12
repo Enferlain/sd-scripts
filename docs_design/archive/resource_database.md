@@ -1,3 +1,9 @@
+# Empirical Resource Profile Exploration
+
+> Archived: the durable-profile portions were absorbed by the governing
+> `resource-intelligence-system` OpenSpec change. Forecasting and recommendation
+> work remains future scope.
+
 What you’re describing is basically an **empirical resource profile system**:
 
 - launch a config in a controlled way

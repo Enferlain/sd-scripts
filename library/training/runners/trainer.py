@@ -273,7 +273,10 @@ class Trainer:
                 self._progress_bar.close()
                 self._progress_bar = None
             if self._resource_monitor is not None:
-                self._resource_monitor.end_session()
+                try:
+                    self._resource_monitor.end_session()
+                except Exception as exc:
+                    logger.warning("Failed to finalize resource monitoring: %s", exc)
             self.runtime_trace.finish()
             if self.is_main_process:
                 try:
@@ -734,9 +737,7 @@ class Trainer:
         self._timestep_counts = None
         self._plotter_settings = None
         if self.is_main_process:
-            self._timestep_counts, self._plotter_settings = setup_live_plotter(
-                cfg, objective_runtime, self.strategies
-            )
+            self._timestep_counts, self._plotter_settings = setup_live_plotter(cfg, objective_runtime, self.strategies)
 
     def _initialize_tracking_state(self) -> None:
         """Initialize trackers, recorders, validation scheduler, and progress state."""

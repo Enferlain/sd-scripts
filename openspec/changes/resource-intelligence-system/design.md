@@ -538,10 +538,19 @@ meaningful source-reference target fields, existing source evidence records, and
 the declared source relationship edge. Non-empty source-reference tuples are not
 enough for accepted semantic claims.
 
-The current metadata runtime and validation modules both know about supported
-item classes. This is acceptable during the active migration, but final
-consolidation should consider a central item registry or router so filing and
-validation support do not drift as accepted fact classes expand.
+The final consolidation uses one internal metadata item registry. Accepted
+runtime item types and their emitter routes live together in
+`library/metadata/registry.py`; runtime filing and item validation consume that
+same catalog. New accepted runtime items must be registered there rather than
+adding separate routing and validation type lists.
+
+Failure cleanup is best effort and terminal. Accepted facts filed before a
+final collection, ingestion, derivation, or storage failure remain the latest
+authoritative resource context. Sampled/deep shutdown steps cannot prevent base
+monitor finalization, and monitor integration cannot replace an original
+training/OOM exception. Once shutdown begins, the session is marked ended even
+when a final resource operation degrades, preventing later cleanup from
+replaying the session.
 
 ## Risks / Trade-offs
 

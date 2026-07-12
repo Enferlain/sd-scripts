@@ -10,6 +10,21 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-07-12]
+
+### Added
+
+- **Resource intelligence now has settled ownership and operator documentation** — documented fact semantics, collection policies, metadata-backed report flow, evidence-constrained accounting, and the two remaining compatibility fallbacks.
+
+### Changed
+
+- **Metadata item validation and emitter routing now share one registry** — accepted runtime item types and their emitter routes are declared together so filing and validation support cannot drift independently.
+- **Superseded resource exploration notes are archived** — the governing resource-intelligence guide and OpenSpec now replace the earlier visibility-capability and empirical-resource-database design notes.
+
+### Fixed
+
+- **Resource cleanup can no longer mask the original training failure** — trainer integration treats monitor finalization as best effort, sampled/deep shutdown steps cannot block base finalization, and failed final collection preserves the latest accepted resource context without replaying the session.
+
 ## [2026-07-03]
 
 ### Changed

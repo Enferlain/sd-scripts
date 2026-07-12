@@ -166,6 +166,33 @@ class TestResourceMonitorFactory:
 
 @pytest.mark.unit
 class TestBasicResourceMonitorBehavior:
+    def test_end_session_failure_preserves_latest_accepted_resource_context(self):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        accelerator.process_index = 0
+        accelerator.num_processes = 1
+        metadata_runtime = MetadataRuntime()
+        monitor = BasicResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="basic"),
+            output_jsonl_path=None,
+            run_identifier="run-cleanup-failure",
+            metadata_runtime=metadata_runtime,
+        )
+
+        monitor.start_session()
+        accepted_before_cleanup = metadata_runtime.snapshot()
+
+        with patch.object(metadata_runtime, "file_many", side_effect=RuntimeError("metadata OOM")):
+            monitor.end_session()
+
+        accepted_after_cleanup = metadata_runtime.snapshot()
+        assert accepted_after_cleanup == accepted_before_cleanup
+        assert [record.facts["event_name"] for record in accepted_after_cleanup.records_for(entity_type="resource_observation_frame")] == [
+            "session_start"
+        ]
+        assert monitor._session_ended is True
+
     def test_process_memory_failure_records_collector_status(self):
         accelerator = MagicMock()
         accelerator.is_main_process = True
@@ -1782,6 +1809,32 @@ class TestResourceMonitorMigrationEquivalence:
 
 @pytest.mark.unit
 class TestSampledResourceMonitor:
+    @pytest.mark.parametrize(
+        "failing_step",
+        [
+            "_stop_sampler",
+            "_process_sampler_updates",
+            "_report_sampler_exception_once",
+            "_emit_deep_window_summary",
+        ],
+    )
+    def test_sampled_cleanup_failure_still_reaches_base_finalization(self, failing_step):
+        accelerator = MagicMock()
+        accelerator.is_main_process = True
+        monitor = SampledResourceMonitor(
+            accelerator=accelerator,
+            resource_monitor_config=_make_cfg(mode="sampled"),
+            output_jsonl_path=None,
+        )
+
+        with (
+            patch.object(monitor, failing_step, side_effect=RuntimeError("cleanup OOM")),
+            patch.object(BasicResourceMonitor, "end_session", autospec=True) as mock_base_end_session,
+        ):
+            monitor.end_session()
+
+        mock_base_end_session.assert_called_once_with(monitor)
+
     def test_sampler_thread_lifecycle(self):
         accelerator = MagicMock()
         accelerator.is_main_process = True

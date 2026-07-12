@@ -5,27 +5,19 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping as AbcMapping
 from dataclasses import dataclass, fields, is_dataclass
 from types import UnionType
-from typing import Any, Union, get_args, get_origin, get_type_hints
+from typing import Any, cast, TypeGuard, Union, get_args, get_origin, get_type_hints
 
-from library.metadata.dataclasses.observability import (
-    AnalyticsSnapshotFacts,
-    LoggedArtifactFacts,
-    ResourceMonitorFacts,
-    RunLifecycleFacts,
-    RunReportFacts,
-)
+from library.metadata.providers import MetadataRequiredFact
+from library.metadata.records import MetadataEdge, MetadataIdentity, MetadataRecord
+from library.metadata.registry import METADATA_ITEM_TYPES, supported_metadata_item_names
+
 from library.metadata.dataclasses.resource import (
     ResourceAccountingFacts,
     ResourceAccountingGapFacts,
-    ResourceCollectorStatusFacts,
     ResourceFactReference,
     ResourceObservationFrameFacts,
-    ResourceObservationFacts,
     ResourceProfileFacts,
-    StructuralResourceFacts,
 )
-from library.metadata.providers import MetadataRequiredFact
-from library.metadata.records import MetadataEdge, MetadataIdentity, MetadataRecord
 
 
 @dataclass(frozen=True)
@@ -51,22 +43,6 @@ class MetadataValidationError(ValueError):
 
 class MetadataItemValidationError(TypeError):
     """Raised when a filed metadata item does not match the accepted shape."""
-
-
-_SUPPORTED_METADATA_ITEM_TYPES = (
-    LoggedArtifactFacts,
-    RunLifecycleFacts,
-    ResourceMonitorFacts,
-    RunReportFacts,
-    AnalyticsSnapshotFacts,
-    ResourceObservationFrameFacts,
-    ResourceObservationFacts,
-    StructuralResourceFacts,
-    ResourceProfileFacts,
-    ResourceAccountingFacts,
-    ResourceAccountingGapFacts,
-    ResourceCollectorStatusFacts,
-)
 
 
 def validate_required_facts(records: Iterable[MetadataRecord], required_facts: Iterable[MetadataRequiredFact]) -> None:
@@ -128,10 +104,9 @@ def validate_metadata_item(item: object) -> None:
     """Validate that one filed metadata item matches the accepted shared shape."""
     if not is_dataclass(item):
         raise MetadataItemValidationError("Metadata items must be dataclass instances.")
-    if not isinstance(item, _SUPPORTED_METADATA_ITEM_TYPES):
-        supported = ", ".join(item_type.__name__ for item_type in _SUPPORTED_METADATA_ITEM_TYPES)
+    if not isinstance(item, METADATA_ITEM_TYPES):
         raise MetadataItemValidationError(
-            f"Unsupported metadata item type {type(item).__name__}. Supported types: {supported}."
+            f"Unsupported metadata item type {type(item).__name__}. Supported types: {supported_metadata_item_names()}."
         )
     _validate_dataclass_fields(item, error_type=MetadataItemValidationError)
     _validate_resource_observation_frame(item)
@@ -155,18 +130,16 @@ def _validate_resource_item_relationships(item: object) -> None:
         return
     derivation_version = getattr(item, "derivation_version", None)
     if not _is_non_empty_string(derivation_version):
-        raise MetadataItemValidationError(
-            f"Metadata item {type(item).__name__} must include a non-empty derivation_version."
-        )
+        raise MetadataItemValidationError(f"Metadata item {type(item).__name__} must include a non-empty derivation_version.")
     if not item.source_fact_references:
-        raise MetadataItemValidationError(
-            f"Metadata item {type(item).__name__} must include at least one source_fact_reference."
-        )
+        raise MetadataItemValidationError(f"Metadata item {type(item).__name__} must include at least one source_fact_reference.")
     for index, reference in enumerate(item.source_fact_references):
         _validate_resource_source_reference(reference, item_type=type(item).__name__, index=index)
 
 
-def _requires_resource_source_references(item: object) -> bool:
+def _requires_resource_source_references(
+    item: object,
+) -> TypeGuard[ResourceProfileFacts | ResourceAccountingFacts | ResourceAccountingGapFacts]:
     return isinstance(item, (ResourceProfileFacts, ResourceAccountingFacts, ResourceAccountingGapFacts))
 
 
@@ -182,7 +155,7 @@ def _record_source_fact_references(record: MetadataRecord) -> tuple[dict[str, ob
     references = record.facts.get("source_fact_references")
     if not isinstance(references, list | tuple):
         return ()
-    return tuple(reference for reference in references if isinstance(reference, dict))
+    return tuple(cast(dict[str, object], reference) for reference in references if isinstance(reference, dict))
 
 
 def _resource_reference_identity(
@@ -225,14 +198,12 @@ def _validate_resource_source_reference(
     for field_name in ("entity_type", "identifier", "relationship"):
         value = getattr(reference, field_name)
         if not _is_non_empty_string(value):
-            raise MetadataItemValidationError(
-                f"{field_prefix}.{field_name} must be a non-empty string."
-            )
+            raise MetadataItemValidationError(f"{field_prefix}.{field_name} must be a non-empty string.")
     if reference.namespace is not None and not _is_non_empty_string(reference.namespace):
         raise MetadataItemValidationError(f"{field_prefix}.namespace must be None or a non-empty string.")
 
 
-def _is_non_empty_string(value: object) -> bool:
+def _is_non_empty_string(value: object) -> TypeGuard[str]:
     return isinstance(value, str) and bool(value.strip())
 
 
@@ -262,7 +233,7 @@ def _format_missing_fact(fact: MissingMetadataFact) -> str:
 
 def _validate_dataclass_fields(item: object, *, error_type: type[Exception]) -> None:
     type_hints = get_type_hints(type(item))
-    for field in fields(item):
+    for field in fields(cast(Any, item)):
         expected_type = type_hints.get(field.name)
         if expected_type is None:
             continue
@@ -285,15 +256,11 @@ def _validate_value(value: object, expected_type: Any, *, field_name: str, error
         if any(_matches_type(value, option) for option in args):
             return
         expected_names = ", ".join(_type_name(option) for option in args)
-        raise error_type(
-            f"Metadata field {field_name!r} must match one of ({expected_names}), got {type(value).__name__}."
-        )
+        raise error_type(f"Metadata field {field_name!r} must match one of ({expected_names}), got {type(value).__name__}.")
 
     if origin is tuple:
         if not isinstance(value, tuple):
-            raise error_type(
-                f"Metadata field {field_name!r} must be a tuple, got {type(value).__name__}."
-            )
+            raise error_type(f"Metadata field {field_name!r} must be a tuple, got {type(value).__name__}.")
         if len(args) == 2 and args[1] is Ellipsis:
             item_type = args[0]
             for index, item in enumerate(value):
@@ -308,9 +275,7 @@ def _validate_value(value: object, expected_type: Any, *, field_name: str, error
                     raise error_type(str(exc)) from exc
             return
         if len(args) != len(value):
-            raise error_type(
-                f"Metadata field {field_name!r} must contain {len(args)} items, got {len(value)}."
-            )
+            raise error_type(f"Metadata field {field_name!r} must contain {len(args)} items, got {len(value)}.")
         for index, (item, item_type) in enumerate(zip(value, args, strict=True)):
             _validate_value(
                 item,
@@ -339,9 +304,7 @@ def _validate_value(value: object, expected_type: Any, *, field_name: str, error
         return
 
     if not _matches_type(value, expected_type):
-        raise error_type(
-            f"Metadata field {field_name!r} must be {_type_name(expected_type)}, got {type(value).__name__}."
-        )
+        raise error_type(f"Metadata field {field_name!r} must be {_type_name(expected_type)}, got {type(value).__name__}.")
 
 
 def _matches_type(value: object, expected_type: Any) -> bool:
