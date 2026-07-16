@@ -1,5 +1,9 @@
-## ADDED Requirements
+# loaded-model-components Specification
 
+## Purpose
+Define the family-owned, ordered top-level component contract used by model loading, trainer/runtime state, observability, targeting, optimization, metadata, and tooling without imposing a fixed diffusion-shaped slot model.
+
+## Requirements
 ### Requirement: Training-capable model families declare top-level loaded components
 The training/runtime architecture SHALL treat family-declared top-level loaded components as the primary repo-owned representation of a loaded model.
 

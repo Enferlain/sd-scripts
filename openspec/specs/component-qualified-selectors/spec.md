@@ -4,7 +4,7 @@
 TBD - created by archiving change normalize-component-qualified-selectors. Update Purpose after archive.
 ## Requirements
 ### Requirement: Parameter dumps use component-qualified selector names
-The inspection tool SHALL expose parameter-oriented selector names in the form `component.local_name`, where `component` is the model-facing component label derived from existing model package metadata and `local_name` is the real runtime parameter path within that component.
+The inspection tool SHALL expose parameter-oriented selector names in the form `component.local_name`, where `component` is the public selector prefix derived from the family-declared loaded-component contract and `local_name` is the real runtime parameter path within that component.
 
 #### Scenario: Dumping SDXL parameter selectors
 - **WHEN** the inspection tool dumps parameter selectors for an SDXL runtime
@@ -26,11 +26,16 @@ Fine-grained optimizer group matching SHALL evaluate `groups` and `groups_file` 
 - **THEN** only parameters in that matching component SHALL be selected
 
 ### Requirement: Internal training placeholders are not the public selector surface
-Training-internal labels such as `denoiser`, `text_encoder1`, and `text_encoder2` SHALL NOT remain the canonical public selector namespace for parameter dumps or fine-grained optimizer matching.
+Training-internal placeholders such as `denoiser`, `text_encoder1`, and `text_encoder2` SHALL NOT remain the canonical public selector source when the family-declared loaded-component contract defines the component selector prefixes.
 
 #### Scenario: User writes a selector from dump output
 - **WHEN** a user copies a selector prefix directly from the parameter dump output into a learning-rate group pattern
 - **THEN** that selector surface SHALL match the same runtime parameters without translation into internal training placeholder names
+
+#### Scenario: Future family exposes different top-level components
+- **WHEN** a future family declares public selector prefixes that do not map to the old diffusion tuple
+- **THEN** the public selector surface MUST still use those declared component prefixes
+- **AND** it MUST NOT translate them through SD-shaped compatibility names
 
 ### Requirement: Obsolete block learning-rate config is removed
 The config schema and defaults SHALL remove `optimizer.learning_rates.blocks` once component-qualified selector matching becomes the supported fine-grained targeting surface.
