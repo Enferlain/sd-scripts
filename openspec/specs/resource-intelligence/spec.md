@@ -1,5 +1,8 @@
-## ADDED Requirements
+# resource-intelligence Specification
 
+## Purpose
+TBD - created by archiving change resource-intelligence-system. Update Purpose after archive.
+## Requirements
 ### Requirement: Resource intelligence preserves fact semantics
 The system SHALL represent measured observations, structural facts, derived
 profiles, and accounting statements as distinct resource fact classes.
@@ -195,3 +198,4 @@ scope, availability, cadence, and degraded-behavior policy.
 - **WHEN** collection exceeds a configured warning budget
 - **THEN** the budget breach MUST be recorded as degraded operational evidence unless the collector contract supports hard cancellation
 - **AND** side-effecting operations such as CUDA allocator peak resets MUST be represented as explicit diagnostic-window behavior
+

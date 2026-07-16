@@ -5,9 +5,7 @@ Define repo-owned training observability responsibilities and seams so console
 output, tracker metrics, reports, and resource-monitor integrations can evolve
 from shared structured signals instead of each sink reconstructing its own view
 from raw runtime objects.
-
 ## Requirements
-
 ### Requirement: Training observability uses repo-owned structured signals
 The training system SHALL expose repo-owned structured observability signals for human console summaries, tracker metrics, and report-generation paths instead of requiring each sink to reconstruct those views independently from raw runtime objects.
 
@@ -89,16 +87,29 @@ Adapter-oriented diagnostics SHALL derive from repo-owned adapter provenance suc
 - **AND** normalized internal component keys MUST remain available as structured observability data rather than becoming the default user-facing names
 
 ### Requirement: Resource monitoring remains a distinct observability sub-concern
-Runtime resource sampling, phase summaries, and resource-event persistence SHALL remain a distinct observability sub-concern even as the broader observability architecture is unified.
+Runtime resource collection and resource-domain interpretation SHALL remain a
+distinct observability sub-concern while integrating with the repo-owned
+metadata backbone and shared training lifecycle context.
+
+#### Scenario: Resource facts become durable
+- **WHEN** resource-domain code produces accepted observations, structural facts, profiles, or accounting statements
+- **THEN** those facts MUST be able to flow through the metadata runtime/backend boundary
+- **AND** metadata MUST own validation, identity, relationship, storage, and projection behavior
+- **AND** metadata MUST NOT take ownership of resource collection or interpretation decisions
 
 #### Scenario: Resource monitoring contributes to reports
 - **WHEN** run reports or summaries include resource information
-- **THEN** those views MUST be able to consume resource-monitor outputs through a stable interface
-- **AND** the resource-monitor implementation MAY continue to own its runtime sampling and persistence behavior
+- **THEN** those views MUST consume a stable resource-run interface over accepted facts
+- **AND** report generation MUST NOT require JSONL to remain the canonical resource database
 
-#### Scenario: Non-resource diagnostics do not inherit resource-monitor semantics
+#### Scenario: Training provides lifecycle context
+- **WHEN** training code knows that a relevant session, phase, step, component, or artifact boundary has occurred
+- **THEN** it MAY expose that context through stable observability/resource-monitor seams
+- **AND** it MUST NOT be required to own collector, persistence, profile, accounting, or report formatting behavior
+
+#### Scenario: Non-resource diagnostics do not inherit resource semantics
 - **WHEN** the system formats startup trainability diagnostics or tracker metrics
-- **THEN** those concerns MUST NOT be forced into the resource-monitor runtime/config model solely to share output plumbing
+- **THEN** those concerns MUST NOT be forced into the resource-intelligence runtime/config model solely to share output plumbing
 
 ### Requirement: Resource-monitor report surfaces preserve additive live schema growth
 Training observability SHALL allow the resource-monitor event/report path to

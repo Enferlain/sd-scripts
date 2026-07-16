@@ -10,6 +10,16 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-07-16]
+
+### Changed
+
+- **Resource intelligence is verified end to end** — successful basic and sampled 50-step training runs confirmed metadata-backed reports, compatibility JSONL equivalence, durable profiles, evidence-constrained accounting, explicit gaps, and zero dropped sampled telemetry; 212 focused metadata, logging, and trainer tests now also cover failure/OOM cleanup and original-error preservation.
+
+### Fixed
+
+- **The failure-context regression test now patches slotted metadata runtimes safely** — inject metadata filing failure through the `MetadataRuntime` class method so the cleanup contract executes consistently on Python 3.13 instead of failing during mock setup.
+
 ## [2026-07-12]
 
 ### Added
