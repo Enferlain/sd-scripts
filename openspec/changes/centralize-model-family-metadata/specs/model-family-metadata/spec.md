@@ -147,15 +147,24 @@ The metadata system SHALL validate the facts required by the selected ModelSpec 
 - **AND** it MUST NOT emit an inferred placeholder value
 
 ### Requirement: Active family exports preserve external parity
-The migration SHALL preserve the currently supported SD, SDXL, and SD3 external metadata behavior while replacing the internal dictionary path.
+The migration SHALL preserve the currently supported SD, SDXL, and SD3 external metadata behavior while replacing the internal dictionary path, except for explicitly corrected reference-implementation identifiers.
+
+#### Scenario: Family resolves its standard reference implementation
+- **WHEN** an SD1, SD2, SDXL, SD3, or SD3.5 artifact is resolved through the typed path
+- **THEN** its canonical implementation MUST identify the applicable family reference codebase
+- **AND** SD1 MUST use `https://github.com/CompVis/stable-diffusion`
+- **AND** SD2 MUST use `https://github.com/Stability-AI/stablediffusion`
+- **AND** SDXL MUST use `https://github.com/Stability-AI/generative-models`
+- **AND** SD3/3.5 MUST use `https://github.com/Stability-AI/sd3.5`, while documentation MUST NOT misrepresent that inference reference as a complete training stack
+- **AND** artifact role or serialization choice MUST NOT substitute an unrelated family repository for that canonical reference
 
 #### Scenario: SD or SDXL adapter metadata is projected
 - **WHEN** an active SD or SDXL adapter artifact is exported through the typed path
-- **THEN** its complete `modelspec.*` output MUST match the pre-migration output for the same effective inputs
+- **THEN** its complete `modelspec.*` output MUST match the pre-migration output for the same effective inputs apart from the explicitly corrected `modelspec.implementation` value
 
 #### Scenario: Full-model metadata is projected
 - **WHEN** an SDXL or SD3 full-model safetensors artifact is exported through the typed path
-- **THEN** its artifact-role-specific ModelSpec output MUST match the pre-migration output for the same effective inputs
+- **THEN** its artifact-role-specific ModelSpec output MUST match the pre-migration output for the same effective inputs apart from the explicitly corrected `modelspec.implementation` value
 
 #### Scenario: Objective controls prediction metadata
 - **WHEN** DDPM epsilon/v or rectified-flow objective semantics determine ModelSpec prediction behavior

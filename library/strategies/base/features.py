@@ -5,6 +5,23 @@ from typing import Any
 
 import torch
 
+from library.metadata.dataclasses.model import ModelFamilyMetadataContribution
+
+
+class ModelFamilyMetadataStrategy(ABC):
+    """Optional capability for families with additional realization facts."""
+
+    @abstractmethod
+    def resolve_model_family_metadata(
+        self,
+        cfg: Any,
+        *,
+        run_identifier: str,
+        realization_identifier: str,
+    ) -> ModelFamilyMetadataContribution:
+        """Resolve explicit versioned family-local facts for one realization."""
+        raise NotImplementedError
+
 
 class WeightedPromptStrategy(ABC):
     """Optional capability for model families that support weighted prompts."""
@@ -35,4 +52,4 @@ class WeightedPromptStrategy(ABC):
         raise NotImplementedError
 
 
-__all__ = ["WeightedPromptStrategy"]
+__all__ = ["ModelFamilyMetadataStrategy", "WeightedPromptStrategy"]

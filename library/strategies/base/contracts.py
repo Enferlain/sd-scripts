@@ -6,6 +6,10 @@ from typing import Any
 import torch
 
 from library.losses.loss_modifiers import BatchLossOutput
+from library.metadata.dataclasses.model import (
+    ModelArtifactFacts,
+    ModelArtifactResolutionContext,
+)
 from library.models import LoadedModelComponent
 from library.objectives.base import ObjectiveRuntime
 from library.strategies.base.context import StrategyPhase
@@ -293,26 +297,25 @@ class CheckpointingStrategy(ABC):
     """Strategy for model-specific checkpointing and metadata."""
 
     @abstractmethod
-    def update_metadata(self, metadata: dict, cfg: Any) -> None:
-        """
-        Add model-specific metadata fields.
+    def resolve_model_artifact_facts(self, context: ModelArtifactResolutionContext) -> ModelArtifactFacts:
+        """Resolve family-owned artifact semantics into canonical model facts."""
+        raise NotImplementedError
 
-        Args:
-            metadata: The metadata dictionary to update.
-            cfg: Configuration object.
+    def update_metadata(self, metadata: dict, cfg: Any) -> None:
+        """Add model-specific compatibility fields during migration.
+
+        This hook is transitional and intentionally not required of new model
+        families. Typed family contributions replace it before this change is
+        complete.
         """
         raise NotImplementedError
 
-    @abstractmethod
     def get_model_metadata(self, cfg: Any) -> dict:
-        """
-        Get model spec metadata.
+        """Return pre-rendered ModelSpec compatibility metadata during migration.
 
-        Args:
-            cfg: Configuration object.
-
-        Returns:
-            Dictionary containing model metadata.
+        This hook remains only until checkpoint consumers move to canonical
+        facts and central projections. New model families implement
+        ``resolve_model_artifact_facts`` instead.
         """
         raise NotImplementedError
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import datetime
+
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from urllib.parse import quote
@@ -196,6 +198,8 @@ class ModelArtifactResolutionContext:
     resolution: tuple[int, int]
     created_at: float
     presentation: ModelArtifactPresentation = field(default_factory=ModelArtifactPresentation)
+    realization_identifier: str | None = None
+    implementation_version: str | None = None
     prediction_type: str | None = None
     timestep_range: tuple[int, int] | None = None
     encoder_layer: int | None = None
@@ -237,6 +241,50 @@ class ModelArtifactFacts:
     unet_dtype: str | None = None
     vae_dtype: str | None = None
     extension_fields: Mapping[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def from_resolution_context(
+        cls,
+        context: ModelArtifactResolutionContext,
+        *,
+        architecture: str,
+        implementation: str,
+        default_title: str,
+    ) -> ModelArtifactFacts:
+        """Build canonical artifact facts from family-resolved semantics."""
+        presentation = context.presentation
+        timestep_range = (
+            None
+            if context.timestep_range is None
+            else f"{context.timestep_range[0]},{context.timestep_range[1]}"
+        )
+        return cls(
+            artifact_identifier=context.artifact_identifier,
+            family_identifier=context.family_identifier,
+            artifact_role=context.artifact_role,
+            artifact_format=context.serialization_format,
+            architecture=architecture,
+            implementation=implementation,
+            title=presentation.title or default_title,
+            resolution=f"{context.resolution[0]}x{context.resolution[1]}",
+            realization_identifier=context.realization_identifier,
+            description=presentation.description,
+            author=presentation.author,
+            date=datetime.datetime.fromtimestamp(int(context.created_at)).isoformat(),
+            implementation_version=context.implementation_version,
+            license=presentation.license,
+            usage_hint=presentation.usage_hint,
+            thumbnail=presentation.thumbnail,
+            tags=presentation.tags,
+            merged_from=presentation.merged_from,
+            trigger_phrase=presentation.trigger_phrase,
+            prediction_type=context.prediction_type,
+            timestep_range=timestep_range,
+            encoder_layer=None if context.encoder_layer is None else str(context.encoder_layer),
+            preprocessor=presentation.preprocessor,
+            is_negative_embedding=presentation.is_negative_embedding,
+            extension_fields=dict(presentation.extension_fields),
+        )
 
 
 @dataclass(frozen=True)

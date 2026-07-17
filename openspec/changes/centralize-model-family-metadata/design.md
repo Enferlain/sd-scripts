@@ -18,7 +18,7 @@ External constraints remain deliberately narrow:
 
 - SAI ModelSpec 1.0.1 defines `modelspec.*` keys in a safetensors header and distinguishes required, recommended, and optional artifact metadata.
 - Safetensors allows a free-form string-to-string `__metadata__` map; arbitrary typed JSON values are not accepted at that boundary.
-- Existing SD/SDXL/SD3 checkpoint and adapter outputs have compatibility value and must retain their current projected fields while the internal path changes.
+- Existing SD/SDXL/SD3 checkpoint and adapter outputs have compatibility value and must retain their current projected fields while the internal path changes, except where a historical implementation identifier names the wrong family reference codebase.
 
 The loaded-component OpenSpec is archived into the base capabilities, so this design consumes that contract directly. The completed step-metric change remains a separate concern: a typed runtime metric event is not automatically a durable metadata fact.
 
@@ -31,7 +31,7 @@ The loaded-component OpenSpec is archived into the base capabilities, so this de
 - Define durable, qualified model and component identities suitable for cross-run and cross-family snapshots.
 - Preserve family ownership of model meaning while centralizing accepted schemas, routing, emitters, relationships, validation, and projections.
 - Reuse family-declared component order and semantics without persisting live module objects or creating a second declaration registry.
-- Preserve SD/SDXL/SD3 ModelSpec and family-specific `ss_*` output parity, including adapter versus full-model artifact differences.
+- Preserve SD/SDXL/SD3 ModelSpec and family-specific `ss_*` output parity, including adapter versus full-model artifact differences, while explicitly correcting inaccurate reference-implementation claims.
 - Leave a clean relational source for later resource, optimization, adapter, artifact-lineage, and analytics work.
 
 **Non-Goals:**
@@ -167,6 +167,15 @@ Projection behavior must preserve current active outputs for:
 - SD3 attention-mask compatibility fields;
 - the existing `no_metadata` behavior until its dedicated product decision changes it.
 
+One compatibility difference is intentional. The canonical `implementation` fact identifies the stable family reference codebase described by ModelSpec rather than inheriting the old broad helper's mixed family/serializer heuristics:
+
+- SD1: `https://github.com/CompVis/stable-diffusion`;
+- SD2: `https://github.com/Stability-AI/stablediffusion`;
+- SDXL: `https://github.com/Stability-AI/generative-models`;
+- SD3 and SD3.5: `https://github.com/Stability-AI/sd3.5`.
+
+The SD3.5 repository is an inference-only reference implementation for SD3/3.5, not a complete training stack. It is still the applicable public architecture reference and must be described with that limitation in documentation. Artifact role and serializer do not replace these family reference identities with an unrelated repository. Frozen pre-migration fixtures retain the old values as baseline evidence; typed projection tests assert the corrected values.
+
 The projection owns the external prefix, key spelling, omission rules, and string encoding. Internal consumers use canonical fields.
 
 Alternative considered: retain prefixed keys on records and continue filtering them in projection code. Rejected because it leaves rendering ownership in family/runtime code and gives internal analytics two names for the same fact.
@@ -200,7 +209,7 @@ Alternative considered: let safetensors saving fail on malformed dictionaries. R
 
 ### Decision: Compatibility parity is captured before deleting helpers
 
-Focused tests first capture the existing exported dictionaries for representative SD, SDXL, and SD3 configurations and for adapter/full-model distinctions. The implementation then moves fact production behind typed family resolution and central projections while those tests remain unchanged at the output boundary.
+Focused tests first capture the existing exported dictionaries for representative SD, SDXL, and SD3 configurations and for adapter/full-model distinctions. Those fixtures remain unchanged as historical baseline evidence. The implementation then moves fact production behind typed family resolution and central projections; comparison tests require parity except for the explicitly corrected family reference-implementation identifiers.
 
 Once active callers no longer use `get_model_metadata_from_config`, `CheckpointingStrategy.get_model_metadata`, or `CheckpointingStrategy.update_metadata`, those active seams are removed rather than retained as wrappers. Format-focused safetensors IO may remain, and deprecated/reference scripts do not justify preserving active helper APIs.
 
@@ -210,7 +219,7 @@ Alternative considered: retain old methods as adapters indefinitely. Rejected be
 
 - [The change can blur model identity, source identity, and output artifact identity] -> Keep declaration, realization, and artifact facts separate and require explicit relationships between them.
 - [Qualified identities may diverge from current resource component identifiers] -> Introduce one shared identity constructor and migrate resource/optimization producers to reference it rather than inventing concern-local qualification.
-- [Moving ModelSpec logic can subtly change omission/default behavior] -> Capture parity fixtures before implementation and compare complete dictionaries for every active family/artifact path.
+- [Moving ModelSpec logic can subtly change omission/default behavior] -> Capture parity fixtures before implementation and compare complete dictionaries for every active family/artifact path, with the family reference-implementation correction called out as an intentional field-level difference.
 - [Family facets can become metadata mini-frameworks] -> Limit them to typed semantic resolution; keep schemas, emitters, validation, registry, records, and projections central.
 - [Persisting component capabilities can freeze an immature vocabulary] -> Version realization facts, preserve declared values exactly, and treat vocabulary evolution as declaration schema evolution rather than universal semantics.
 - [User extension fields can collide with standard ModelSpec keys] -> Preserve the current observable policy during this migration, add focused collision coverage, and make any policy change a separate explicit compatibility decision.
@@ -220,7 +229,7 @@ Alternative considered: retain old methods as adapters indefinitely. Rejected be
 ## Migration Plan
 
 1. Use the archived loaded-component capability as the baseline and preserve its family-declared topology contract.
-2. Capture complete SD/SDXL/SD3 output parity fixtures, including adapter/full-model differences, RF prediction omission, SD3 attention-mask fields, extension fields, and current `no_metadata` behavior.
+2. Capture complete SD/SDXL/SD3 historical output fixtures, including adapter/full-model differences, RF prediction omission, SD3 attention-mask fields, extension fields, current `no_metadata` behavior, and the old implementation identifiers that the typed path intentionally corrects.
 3. Define central declaration/realization/component/artifact fact dataclasses, qualified identity helpers, validation, registry routes, and emitters.
 4. Add family-owned typed resolvers to SD, SDXL, and SD3 checkpointing/model facets.
 5. File model-realization/component facts at the post-load lifecycle boundary and link them to the run.

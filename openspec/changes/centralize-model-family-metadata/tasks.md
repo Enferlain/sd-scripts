@@ -22,12 +22,12 @@
 
 ## 4. Replace family dictionary production
 
-- [ ] 4.1 Define the typed checkpoint/model facet contract for family-owned semantic resolution while keeping component declarations in `library/models/<family>/__init__.py`, shared component helpers in `library/models/components.py`, and checkpoint workflow behavior in `library/strategies/<family>/checkpointing.py`
-- [ ] 4.2 Implement SD typed fact resolution for SD1/SD2 architecture, implementation, objective, resolution, timestep, encoder-layer, and artifact-role semantics
-- [ ] 4.3 Implement SDXL typed fact resolution for adapter/full-model and DDPM/RF omission behavior
-- [ ] 4.4 Implement SD3 typed fact resolution for model version, ModelSpec omission behavior, and attention-mask compatibility facts
-- [ ] 4.5 Add family-level tests proving resolvers return canonical typed facts and never pre-rendered compatibility keys
-- [ ] 4.6 Add a synthetic future-family contract test proving shared model/component/artifact facts require no family-name branch in central metadata code
+- [x] 4.1 Define the typed checkpoint/model facet contract for family-owned semantic resolution while keeping component declarations in `library/models/<family>/__init__.py`, shared component helpers in `library/models/components.py`, and checkpoint workflow behavior in `library/strategies/<family>/checkpointing.py`
+- [x] 4.2 Implement SD typed fact resolution for SD1/SD2 architecture, implementation, objective, resolution, timestep, encoder-layer, and artifact-role semantics
+- [x] 4.3 Implement SDXL typed fact resolution for adapter/full-model and DDPM/RF omission behavior
+- [x] 4.4 Implement SD3 typed fact resolution for model version, ModelSpec omission behavior, and attention-mask compatibility facts
+- [x] 4.5 Add family-level tests proving resolvers return canonical typed facts and never pre-rendered compatibility keys
+- [x] 4.6 Add a synthetic future-family contract test proving shared model/component/artifact facts require no family-name branch in central metadata code
 
 ## 5. File model realizations from runtime state
 
@@ -62,5 +62,5 @@
 
 - [ ] 9.1 Run focused metadata, strategy, trainer, checkpoint-projection, storage, and graph tests
 - [ ] 9.2 Run relevant static checks for changed metadata/model/strategy modules
-- [ ] 9.3 Compare complete pre/post migration metadata dictionaries for every parity fixture and document intentional omissions as separate decisions
+- [ ] 9.3 Compare complete pre/post migration metadata dictionaries for every parity fixture and document intentional differences or omissions as separate decisions, including the corrected family reference-implementation identifiers
 - [ ] 9.4 Validate the OpenSpec, review the final diff against the metadata ownership rules, close the model-family migration bead, and archive the change

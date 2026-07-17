@@ -2,9 +2,16 @@ from typing import Any
 
 import torch
 
+from library.metadata.dataclasses.model import (
+    ModelArtifactFacts,
+    ModelArtifactResolutionContext,
+)
 from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
 from library.strategies.base.contracts import CheckpointingStrategy
 from library.utils.model_metadata import get_model_metadata_from_config
+
+
+SDXL_REFERENCE_IMPLEMENTATION = "https://github.com/Stability-AI/generative-models"
 
 
 def resolve_sdxl_modelspec_prediction(cfg: Any) -> tuple[bool, str | None]:
@@ -19,6 +26,27 @@ def resolve_sdxl_modelspec_prediction(cfg: Any) -> tuple[bool, str | None]:
 class SdxlCheckpointingStrategy(CheckpointingStrategy):
     """Checkpointing facet for SDXL training strategies."""
 
+    def resolve_model_artifact_facts(self, context: ModelArtifactResolutionContext) -> ModelArtifactFacts:
+        """Resolve SDXL adapter/full-model facts and preserve RF omission."""
+        if context.family_identifier != "sdxl":
+            raise ValueError(f"SDXL artifact resolver received family {context.family_identifier!r}.")
+        if context.artifact_role not in {"adapter", "full_model"}:
+            raise ValueError(f"Unsupported SDXL artifact role: {context.artifact_role!r}.")
+        if context.serialization_format not in {"safetensors", "ckpt", "diffusers", "diffusers_safetensors"}:
+            raise ValueError(f"Unsupported SDXL serialization format: {context.serialization_format!r}.")
+        if context.prediction_type is not None:
+            resolve_ddpm_prediction_type(context.prediction_type)
+
+        is_adapter = context.artifact_role == "adapter"
+        architecture = "stable-diffusion-xl-v1-base" + ("/lora" if is_adapter else "")
+        default_title = f"{'LoRA' if is_adapter else 'Checkpoint'}@{context.created_at}"
+        return ModelArtifactFacts.from_resolution_context(
+            context,
+            architecture=architecture,
+            implementation=SDXL_REFERENCE_IMPLEMENTATION,
+            default_title=default_title,
+        )
+
     def update_metadata(self, metadata: dict, cfg: Any) -> None:
         """
         Add SDXL-specific metadata fields.
@@ -26,7 +54,6 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
         SDXL does not currently add extra runtime metadata beyond the model
         spec metadata produced by ``get_model_metadata``.
         """
-        return None
 
     def get_model_metadata(self, cfg: Any) -> dict:
         """Get the SAI model spec metadata for SDXL."""
