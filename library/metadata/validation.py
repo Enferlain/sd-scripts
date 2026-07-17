@@ -18,6 +18,15 @@ from library.metadata.dataclasses.resource import (
     ResourceObservationFrameFacts,
     ResourceProfileFacts,
 )
+from library.metadata.dataclasses.model import (
+    build_model_component_identifier,
+    build_model_family_contribution_identifier,
+    build_model_realization_identifier,
+    ModelArtifactFacts,
+    ModelFamilyMetadataContribution,
+    ModelRealizationFacts,
+    RealizedModelComponentFacts,
+)
 
 
 @dataclass(frozen=True)
@@ -111,6 +120,157 @@ def validate_metadata_item(item: object) -> None:
     _validate_dataclass_fields(item, error_type=MetadataItemValidationError)
     _validate_resource_observation_frame(item)
     _validate_resource_item_relationships(item)
+    _validate_model_item(item)
+
+
+def validate_metadata_items(items: Iterable[object]) -> None:
+    """Validate accepted items plus collection-level identity constraints."""
+    item_tuple = tuple(items)
+    for item in item_tuple:
+        validate_metadata_item(item)
+
+    components_by_realization: dict[str, list[RealizedModelComponentFacts]] = {}
+    for item in item_tuple:
+        if isinstance(item, RealizedModelComponentFacts):
+            components_by_realization.setdefault(item.realization_identifier, []).append(item)
+
+    for realization_identifier, components in components_by_realization.items():
+        _validate_realized_component_collection(realization_identifier, components)
+
+
+def _validate_model_item(item: object) -> None:
+    if isinstance(item, ModelRealizationFacts):
+        _validate_non_empty_fields(
+            item,
+            "run_identifier",
+            "realization_key",
+            "realization_identifier",
+        )
+        _validate_non_empty_fields(item.family, "family_identifier", "declaration_version")
+        expected_identifier = build_model_realization_identifier(item.run_identifier, item.realization_key)
+        if item.realization_identifier != expected_identifier:
+            raise MetadataItemValidationError(
+                "ModelRealizationFacts.realization_identifier must use the shared run-qualified identity constructor."
+            )
+        if item.model_version is not None and not _is_non_empty_string(item.model_version):
+            raise MetadataItemValidationError("ModelRealizationFacts.model_version must be None or a non-empty string.")
+        return
+
+    if isinstance(item, RealizedModelComponentFacts):
+        _validate_non_empty_fields(
+            item,
+            "run_identifier",
+            "realization_identifier",
+            "component_identifier",
+            "component_key",
+            "public_name",
+        )
+        if item.declaration_order < 0:
+            raise MetadataItemValidationError("RealizedModelComponentFacts.declaration_order must be non-negative.")
+        expected_identifier = build_model_component_identifier(item.realization_identifier, item.component_key)
+        if item.component_identifier != expected_identifier:
+            raise MetadataItemValidationError(
+                "RealizedModelComponentFacts.component_identifier must use the shared realization-qualified identity constructor."
+            )
+        _validate_string_terms(item.roles, field_name="roles")
+        _validate_string_terms(item.capabilities, field_name="capabilities")
+        return
+
+    if isinstance(item, ModelArtifactFacts):
+        _validate_non_empty_fields(
+            item,
+            "artifact_identifier",
+            "family_identifier",
+            "artifact_role",
+            "artifact_format",
+            "architecture",
+            "implementation",
+            "title",
+            "resolution",
+        )
+        if item.realization_identifier is not None and (
+            not _is_non_empty_string(item.realization_identifier) or not item.realization_identifier.startswith("run/")
+        ):
+            raise MetadataItemValidationError(
+                "ModelArtifactFacts.realization_identifier must be None or a shared run-qualified model identity."
+            )
+        for key, value in item.extension_fields.items():
+            if not _is_non_empty_string(key):
+                raise MetadataItemValidationError("ModelArtifactFacts extension field names must be non-empty strings.")
+            if key.startswith(("modelspec.", "ss_")):
+                raise MetadataItemValidationError(
+                    "ModelArtifactFacts extension fields must use canonical names, not rendered compatibility prefixes."
+                )
+            if not isinstance(value, str):
+                raise MetadataItemValidationError("ModelArtifactFacts extension field values must be strings.")
+        return
+
+    if isinstance(item, ModelFamilyMetadataContribution):
+        _validate_non_empty_fields(
+            item,
+            "run_identifier",
+            "realization_identifier",
+            "contribution_identifier",
+            "contribution_namespace",
+            "contribution_version",
+        )
+        expected_identifier = build_model_family_contribution_identifier(
+            item.realization_identifier,
+            item.contribution_namespace,
+            item.contribution_version,
+        )
+        if item.contribution_identifier != expected_identifier:
+            raise MetadataItemValidationError(
+                "ModelFamilyMetadataContribution.contribution_identifier must use the shared qualified identity constructor."
+            )
+        if not item.fields:
+            raise MetadataItemValidationError("ModelFamilyMetadataContribution must include at least one field.")
+        field_names: list[str] = []
+        for field in item.fields:
+            if not _is_non_empty_string(field.name):
+                raise MetadataItemValidationError("Model family contribution field names must be non-empty strings.")
+            if field.name.startswith(("modelspec.", "ss_")):
+                raise MetadataItemValidationError(
+                    "Model family contribution fields must use canonical names, not rendered compatibility prefixes."
+                )
+            if not isinstance(field.value, str | int | float | bool):
+                raise MetadataItemValidationError("Model family contribution values must be scalar metadata values.")
+            field_names.append(field.name)
+        if len(field_names) != len(set(field_names)):
+            raise MetadataItemValidationError("Model family contribution field names must be unique.")
+
+
+def _validate_non_empty_fields(item: object, *field_names: str) -> None:
+    for field_name in field_names:
+        if not _is_non_empty_string(getattr(item, field_name)):
+            raise MetadataItemValidationError(
+                f"Metadata item {type(item).__name__}.{field_name} must be a non-empty string."
+            )
+
+
+def _validate_string_terms(values: tuple[str, ...], *, field_name: str) -> None:
+    if any(not _is_non_empty_string(value) for value in values):
+        raise MetadataItemValidationError(f"Model component {field_name} must contain only non-empty strings.")
+    if len(values) != len(set(values)):
+        raise MetadataItemValidationError(f"Model component {field_name} must not contain duplicates.")
+
+
+def _validate_realized_component_collection(
+    realization_identifier: str,
+    components: list[RealizedModelComponentFacts],
+) -> None:
+    component_keys = [component.component_key for component in components]
+    component_identifiers = [component.component_identifier for component in components]
+    declaration_orders = [component.declaration_order for component in components]
+    for field_name, values in (
+        ("component_key", component_keys),
+        ("component_identifier", component_identifiers),
+        ("declaration_order", declaration_orders),
+    ):
+        if len(values) != len(set(values)):
+            raise MetadataItemValidationError(
+                f"Model components for {realization_identifier!r} must have unique {field_name} values."
+            )
 
 
 def _validate_resource_observation_frame(item: object) -> None:

@@ -54,7 +54,17 @@ class RunMetadataRecord(MetadataRecord):
 
 @dataclass(frozen=True)
 class ModelComponentMetadataRecord(MetadataRecord):
-    """Model-family or loaded-component metadata facts."""
+    """Loaded model-component metadata facts."""
+
+
+@dataclass(frozen=True)
+class ModelRealizationMetadataRecord(MetadataRecord):
+    """Run-scoped model realization metadata facts."""
+
+
+@dataclass(frozen=True)
+class ModelFamilyContributionMetadataRecord(MetadataRecord):
+    """Namespaced and versioned family-local metadata facts."""
 
 
 @dataclass(frozen=True)

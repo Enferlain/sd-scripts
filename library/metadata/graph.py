@@ -149,6 +149,10 @@ class MetadataEntityType(StrEnum):
     PROCESS = "process"
     RANK = "rank"
     RUN = "run"
+    MODEL_REALIZATION = "model_realization"
+    MODEL_COMPONENT = "model_component"
+    MODEL_ARTIFACT = "model_artifact"
+    MODEL_FAMILY_FACTS = "model_family_facts"
     STEP = "step"
 
 
@@ -170,6 +174,7 @@ class MetadataRelationship(StrEnum):
     OWNED_BY = "owned_by"
     PRODUCED_BY = "produced_by"
     PROFILES = "profiles"
+    REALIZED_IN = "realized_in"
 
 
 def metadata_identity(

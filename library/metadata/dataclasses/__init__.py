@@ -6,7 +6,20 @@ the backend/projection layers decide how to persist or export them.
 """
 
 from library.metadata.dataclasses.artifact import CheckpointArtifactFacts
-from library.metadata.dataclasses.model import ModelSpecFacts
+from library.metadata.dataclasses.model import (
+    build_model_component_identifier,
+    build_model_family_contribution_identifier,
+    build_model_realization_identifier,
+    ModelArtifactFacts,
+    ModelArtifactPresentation,
+    ModelArtifactResolutionContext,
+    ModelFamilyDeclarationReference,
+    ModelFamilyMetadataContribution,
+    ModelFamilyMetadataField,
+    ModelRealizationFacts,
+    ModelSpecFacts,
+    RealizedModelComponentFacts,
+)
 from library.metadata.dataclasses.optimization import (
     OptimizerRuntimeFacts,
     SchedulerRuntimeFacts,
@@ -51,7 +64,18 @@ __all__ = [
     "ResourceObservationMeasurementFacts",
     "ResourceProfileFacts",
     "ModelSpecFacts",
+    "ModelArtifactFacts",
+    "ModelArtifactPresentation",
+    "ModelArtifactResolutionContext",
+    "ModelFamilyDeclarationReference",
+    "ModelFamilyMetadataContribution",
+    "ModelFamilyMetadataField",
+    "ModelRealizationFacts",
+    "RealizedModelComponentFacts",
     "RunMetadataFacts",
     "SchedulerRuntimeFacts",
     "StructuralResourceFacts",
+    "build_model_component_identifier",
+    "build_model_family_contribution_identifier",
+    "build_model_realization_identifier",
 ]

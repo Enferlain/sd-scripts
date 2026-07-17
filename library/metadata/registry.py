@@ -12,6 +12,12 @@ from library.metadata.dataclasses.observability import (
     RunLifecycleFacts,
     RunReportFacts,
 )
+from library.metadata.dataclasses.model import (
+    ModelArtifactFacts,
+    ModelFamilyMetadataContribution,
+    ModelRealizationFacts,
+    RealizedModelComponentFacts,
+)
 
 from library.metadata.dataclasses.resource import (
     ResourceAccountingFacts,
@@ -37,6 +43,10 @@ type MetadataRuntimeItem = (
     | ResourceAccountingFacts
     | ResourceAccountingGapFacts
     | ResourceCollectorStatusFacts
+    | ModelRealizationFacts
+    | RealizedModelComponentFacts
+    | ModelArtifactFacts
+    | ModelFamilyMetadataContribution
 )
 
 METADATA_ITEM_ROUTES: Mapping[type[object], str] = MappingProxyType(
@@ -53,6 +63,10 @@ METADATA_ITEM_ROUTES: Mapping[type[object], str] = MappingProxyType(
         ResourceAccountingFacts: "resource.accounting",
         ResourceAccountingGapFacts: "resource.accounting_gap",
         ResourceCollectorStatusFacts: "resource.collector_status",
+        ModelRealizationFacts: "model.realization",
+        RealizedModelComponentFacts: "model.realized_component",
+        ModelArtifactFacts: "model.artifact",
+        ModelFamilyMetadataContribution: "model.family_contribution",
     }
 )
 

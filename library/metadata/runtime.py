@@ -35,6 +35,12 @@ from library.metadata.emitters.resource import (
     build_resource_profile_metadata,
     build_structural_resource_metadata,
 )
+from library.metadata.emitters.model import (
+    build_model_artifact_metadata,
+    build_model_family_contribution_metadata,
+    build_model_realization_metadata,
+    build_realized_model_component_metadata,
+)
 
 from library.metadata.registry import (
     metadata_item_route,
@@ -46,6 +52,7 @@ from library.metadata.registry import (
 from library.metadata.validation import (
     MetadataItemValidationError,
     validate_metadata_item,
+    validate_metadata_items,
 )
 
 
@@ -62,6 +69,10 @@ _METADATA_EMITTERS_BY_ROUTE: dict[str, Callable[[Any], MetadataProviderResult]] 
     "resource.accounting": build_resource_accounting_metadata,
     "resource.accounting_gap": build_resource_accounting_gap_metadata,
     "resource.collector_status": build_resource_collector_status_metadata,
+    "model.realization": build_model_realization_metadata,
+    "model.realized_component": build_realized_model_component_metadata,
+    "model.artifact": build_model_artifact_metadata,
+    "model.family_contribution": build_model_family_contribution_metadata,
 }
 
 _UNRESOLVED_METADATA_ROUTES = set(METADATA_ITEM_ROUTES.values()) - set(_METADATA_EMITTERS_BY_ROUTE)
@@ -141,7 +152,13 @@ class MetadataRuntime:
 
     def file_many(self, items: Sequence[MetadataRuntimeItem]) -> tuple[MetadataProviderResult, ...]:
         """File accepted typed metadata items in one backend-owned batch."""
-        results = tuple(build_metadata_result(item) for item in items)
+        item_tuple = tuple(items)
+        validate_metadata_items(item_tuple)
+        # ``build_metadata_result`` intentionally repeats item-level validation
+        # so that its standalone public contract remains identical to ``file``.
+        # Runtime batches are low-volume, making the small redundancy preferable
+        # to an unvalidated private construction path.
+        results = tuple(build_metadata_result(item) for item in item_tuple)
         self.backend.ingest_many(results)
         return results
 

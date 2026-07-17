@@ -1,17 +1,17 @@
 ## 1. Establish the baseline and parity contract
 
 - [x] 1.1 Archive the completed `family-declared-loaded-components` change and revalidate this change against the merged base specification
-- [ ] 1.2 Inventory every active SD, SDXL, and SD3 model metadata call site, including adapter, full-model, checkpoint, and direct family save paths
-- [ ] 1.3 Add complete output-parity fixtures for representative SD1, SD2 epsilon/v, SDXL DDPM/RF, and SD3 metadata dictionaries
-- [ ] 1.4 Add parity coverage for adapter versus full-model artifact roles, SD3 attention-mask fields, user extension fields/collisions, and current `no_metadata` behavior
+- [x] 1.2 Inventory every active SD, SDXL, and SD3 model metadata call site, including adapter, full-model, checkpoint, and direct family save paths
+- [x] 1.3 Add complete output-parity fixtures for representative SD1, SD2 epsilon/v, SDXL DDPM/RF, and SD3 metadata dictionaries
+- [x] 1.4 Add parity coverage for adapter versus full-model artifact roles, SD3 attention-mask fields, user extension fields/collisions, and current `no_metadata` behavior
 
 ## 2. Define typed model and identity contracts
 
-- [ ] 2.1 Add central schema-only dataclasses for model-family declaration references, run-scoped model realizations, realized loaded components, and artifact-facing model facts
-- [ ] 2.2 Define a small typed artifact-resolution context that replaces the broad boolean-driven ModelSpec builder inputs
-- [ ] 2.3 Add shared constructors for qualified model-realization and component identities using run, realization, and family-local component scopes
-- [ ] 2.4 Add item validation for required identities, unique component keys/order, serializable roles/capabilities, required artifact facts, and rejection of live module objects
-- [ ] 2.5 Add focused schema and identity tests covering repeated component keys across runs/families and multiple same-role components
+- [x] 2.1 Add central schema-only dataclasses for model-family declaration references, run-scoped model realizations, realized loaded components, and artifact-facing model facts
+- [x] 2.2 Define a small typed artifact-resolution context that replaces the broad boolean-driven ModelSpec builder inputs
+- [x] 2.3 Add shared constructors for qualified model-realization and component identities using run, realization, and family-local component scopes
+- [x] 2.4 Add item validation for required identities, unique component keys/order, serializable roles/capabilities, required artifact facts, and rejection of live module objects
+- [x] 2.5 Add focused schema and identity tests covering repeated component keys across runs/families and multiple same-role components
 
 ## 3. Add central routing, records, and relationships
 
