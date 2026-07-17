@@ -15,10 +15,10 @@
 
 ## 3. Add central routing, records, and relationships
 
-- [ ] 3.1 Register all new accepted model item types and emitter routes in the single central metadata registry
-- [ ] 3.2 Implement central emitters for model-realization, loaded-component, family-specific, and artifact-facing facts
-- [ ] 3.3 Emit explicit run-to-realization, realization-to-component, and artifact-to-realization relationships without placeholder identities
-- [ ] 3.4 Add backend/SQLite round-trip and graph-index tests for qualified model/component records and relationships
+- [x] 3.1 Register all new accepted model item types and emitter routes in the single central metadata registry
+- [x] 3.2 Implement central emitters for model-realization, loaded-component, family-specific, and artifact-facing facts
+- [x] 3.3 Emit explicit run-to-realization, realization-to-component, and artifact-to-realization relationships without placeholder identities
+- [x] 3.4 Add backend/SQLite round-trip and graph-index tests for qualified model/component records and relationships
 
 ## 4. Replace family dictionary production
 

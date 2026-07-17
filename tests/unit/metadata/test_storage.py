@@ -11,6 +11,7 @@ from library.metadata import (
     MetadataEvent,
     MetadataIdentity,
     MetadataProviderResult,
+    MetadataStorageDecodeError,
     RunMetadataRecord,
     SQLiteMetadataStore,
 )
@@ -76,6 +77,37 @@ def test_sqlite_metadata_store_round_trips_records_events_and_edges() -> None:
     assert snapshot.records == (run_record, artifact_record)
     assert snapshot.events == (event,)
     assert snapshot.edges == (edge,)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("facts_json", "message"),
+    [
+        ("not-json", "contain invalid JSON"),
+        ("[]", "must decode to a JSON object"),
+    ],
+)
+def test_sqlite_metadata_store_rejects_malformed_persisted_facts(
+    facts_json: str,
+    message: str,
+) -> None:
+    connection = sqlite3.connect(":memory:")
+    store = SQLiteMetadataStore(connection)
+    store.save_record(
+        RunMetadataRecord(
+            identity=MetadataIdentity(entity_type="run", identifier="run-corrupt"),
+            producer="tests.training",
+            facts={"session_id": "123"},
+        )
+    )
+    with connection:
+        connection.execute(
+            "UPDATE metadata_records SET facts_json = ?",
+            (facts_json,),
+        )
+
+    with pytest.raises(MetadataStorageDecodeError, match=message):
+        store.snapshot()
 
 
 @pytest.mark.unit

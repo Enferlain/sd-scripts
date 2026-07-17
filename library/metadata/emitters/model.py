@@ -93,8 +93,10 @@ def build_realized_model_component_metadata(
             "component_key": facts.component_key,
             "public_name": facts.public_name,
             "declaration_order": facts.declaration_order,
-            "roles": facts.roles,
-            "capabilities": facts.capabilities,
+            # Records use JSON-native collections so memory and persistent
+            # backends expose the same accepted fact shape.
+            "roles": list(facts.roles),
+            "capabilities": list(facts.capabilities),
             "present": facts.present,
         },
         schema_version=schema_version,

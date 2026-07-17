@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, cast
 
 from library.metadata.records import (
     AdapterMetadataRecord,
@@ -16,7 +16,10 @@ from library.metadata.records import (
     MetadataEvent,
     MetadataIdentity,
     MetadataRecord,
+    MetadataValue,
     ModelComponentMetadataRecord,
+    ModelFamilyContributionMetadataRecord,
+    ModelRealizationMetadataRecord,
     RunMetadataRecord,
 )
 
@@ -25,6 +28,10 @@ SCHEMA_VERSION = 1
 
 class MetadataSchemaVersionError(RuntimeError):
     """Raised when a metadata store schema version is unsupported."""
+
+
+class MetadataStorageDecodeError(RuntimeError):
+    """Raised when persisted metadata cannot be decoded into accepted facts."""
 
 
 @dataclass(frozen=True)
@@ -101,12 +108,23 @@ def _as_text(value: str | Path) -> str:
     return str(value)
 
 
-def _metadata_to_json(metadata: dict[str, object]) -> str:
+def _metadata_to_json(metadata: Mapping[str, MetadataValue]) -> str:
     return json.dumps(metadata, sort_keys=True, separators=(",", ":"))
 
 
-def _metadata_from_json(metadata_json: str) -> dict[str, object]:
-    return dict(json.loads(metadata_json))
+def _metadata_from_json(metadata_json: str) -> dict[str, MetadataValue]:
+    try:
+        decoded: object = json.loads(metadata_json)
+    except json.JSONDecodeError as exc:
+        raise MetadataStorageDecodeError("Stored metadata facts contain invalid JSON.") from exc
+    if not isinstance(decoded, dict):
+        raise MetadataStorageDecodeError(
+            f"Stored metadata facts must decode to a JSON object, got {type(decoded).__name__}."
+        )
+    # JSON object keys are strings and the decoder can only produce values
+    # covered by MetadataValue. The runtime shape check above makes the cast
+    # an explicit typing bridge rather than an unchecked storage assumption.
+    return cast(dict[str, MetadataValue], decoded)
 
 
 def _identity_from_row(row: sqlite3.Row, prefix: str) -> MetadataIdentity:
@@ -122,6 +140,10 @@ def _identity_from_row(row: sqlite3.Row, prefix: str) -> MetadataIdentity:
 def _record_type(record: MetadataRecord) -> str:
     if isinstance(record, RunMetadataRecord):
         return "run"
+    if isinstance(record, ModelRealizationMetadataRecord):
+        return "model_realization"
+    if isinstance(record, ModelFamilyContributionMetadataRecord):
+        return "model_family_contribution"
     if isinstance(record, ModelComponentMetadataRecord):
         return "model"
     if isinstance(record, AdapterMetadataRecord):
@@ -137,6 +159,10 @@ def _record_from_row(row: sqlite3.Row) -> MetadataRecord:
     record_cls: type[MetadataRecord]
     if record_type == "run":
         record_cls = RunMetadataRecord
+    elif record_type == "model_realization":
+        record_cls = ModelRealizationMetadataRecord
+    elif record_type == "model_family_contribution":
+        record_cls = ModelFamilyContributionMetadataRecord
     elif record_type == "model":
         record_cls = ModelComponentMetadataRecord
     elif record_type == "adapter":

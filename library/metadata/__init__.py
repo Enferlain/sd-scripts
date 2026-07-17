@@ -148,6 +148,7 @@ from library.metadata.runtime import (
 from library.metadata.storage import (
     InMemoryMetadataStore,
     MetadataSchemaVersionError,
+    MetadataStorageDecodeError,
     MetadataStore,
     SCHEMA_VERSION,
     SQLiteMetadataStore,
@@ -185,6 +186,7 @@ __all__ = [
     "MetadataStore",
     "MetadataItemValidationError",
     "MetadataSchemaVersionError",
+    "MetadataStorageDecodeError",
     "MetadataValidationError",
     "MissingMetadataFact",
     "ModelSpecCompatibilityProjection",

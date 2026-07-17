@@ -1,12 +1,14 @@
 """Typed model-family fact, identity, and validation contracts."""
 
 from dataclasses import fields
+import sqlite3
 
 import pytest
 
 from library.metadata import (
     build_model_component_identifier,
     build_model_realization_identifier,
+    InMemoryMetadataBackend,
     MetadataGraphIndex,
     MetadataItemValidationError,
     MetadataRelationship,
@@ -22,6 +24,7 @@ from library.metadata import (
     ModelRealizationMetadataRecord,
     ModelRealizationFacts,
     RealizedModelComponentFacts,
+    SQLiteMetadataStore,
     validate_metadata_item,
 )
 
@@ -89,7 +92,7 @@ def test_multiple_same_role_components_remain_separate_and_ordered() -> None:
     records = runtime.snapshot().records_for(entity_type="model_component")
     assert [record.facts["component_key"] for record in records] == ["encoder_a", "encoder_b"]
     assert [record.facts["declaration_order"] for record in records] == [0, 1]
-    assert all(record.facts["roles"] == ("text_encoder",) for record in records)
+    assert all(record.facts["roles"] == ["text_encoder"] for record in records)
 
 
 @pytest.mark.unit
@@ -266,3 +269,143 @@ def test_runtime_emits_qualified_realization_component_and_artifact_relationship
         relationship=MetadataRelationship.DERIVED_FROM,
         target_identifier=realization.realization_identifier,
     )
+
+
+@pytest.mark.unit
+def test_model_records_and_relationships_round_trip_through_sqlite() -> None:
+    connection = sqlite3.connect(":memory:")
+    runtime = MetadataRuntime(
+        backend=InMemoryMetadataBackend(
+            store=SQLiteMetadataStore(connection),
+        )
+    )
+    first_realization = _realization("run-sqlite-1", family="future-family")
+    second_realization = _realization("run-sqlite-2", family="sdxl")
+    first_component = _component(
+        first_realization,
+        key="denoiser",
+        order=0,
+        roles=("denoiser",),
+    )
+    second_component = _component(
+        second_realization,
+        key="denoiser",
+        order=0,
+        roles=("denoiser",),
+    )
+    contribution = ModelFamilyMetadataContribution.for_realization(
+        run_identifier=first_realization.run_identifier,
+        realization_identifier=first_realization.realization_identifier,
+        contribution_namespace="future.runtime",
+        contribution_version="1",
+        fields=(ModelFamilyMetadataField(name="attention_mask_enabled", value=True),),
+    )
+    artifact = ModelArtifactFacts(
+        artifact_identifier="future-adapter.safetensors",
+        family_identifier="future-family",
+        artifact_role="adapter",
+        artifact_format="safetensors",
+        architecture="future-v1/adapter",
+        implementation="future-runtime",
+        title="Future Adapter",
+        resolution="1024x1024",
+        realization_identifier=first_realization.realization_identifier,
+    )
+
+    runtime.file_many(
+        (
+            first_realization,
+            first_component,
+            contribution,
+            artifact,
+            second_realization,
+            second_component,
+        )
+    )
+    snapshot = runtime.snapshot()
+    graph = MetadataGraphIndex.from_snapshot(snapshot)
+
+    first_realization_record = graph.record_for(
+        entity_type="model_realization",
+        identifier=first_realization.realization_identifier,
+    )
+    second_realization_record = graph.record_for(
+        entity_type="model_realization",
+        identifier=second_realization.realization_identifier,
+    )
+    first_component_record = graph.record_for(
+        entity_type="model_component",
+        identifier=first_component.component_identifier,
+    )
+    second_component_record = graph.record_for(
+        entity_type="model_component",
+        identifier=second_component.component_identifier,
+    )
+    contribution_record = graph.record_for(
+        entity_type="model_family_facts",
+        identifier=contribution.contribution_identifier,
+    )
+    artifact_record = graph.record_for(
+        entity_type="model_artifact",
+        identifier=artifact.artifact_identifier,
+    )
+
+    assert isinstance(first_realization_record, ModelRealizationMetadataRecord)
+    assert isinstance(second_realization_record, ModelRealizationMetadataRecord)
+    assert isinstance(first_component_record, ModelComponentMetadataRecord)
+    assert isinstance(second_component_record, ModelComponentMetadataRecord)
+    assert isinstance(contribution_record, ModelFamilyContributionMetadataRecord)
+    assert isinstance(artifact_record, ArtifactMetadataRecord)
+    assert first_component_record.facts["component_key"] == "denoiser"
+    assert second_component_record.facts["component_key"] == "denoiser"
+    assert first_component_record.identity != second_component_record.identity
+    assert first_component_record.facts["roles"] == ["denoiser"]
+
+    assert graph.edges_from(
+        first_realization_record.identity,
+        relationship=MetadataRelationship.REALIZED_IN,
+        target_identifier=first_realization.run_identifier,
+    )
+    assert graph.edges_from(
+        second_realization_record.identity,
+        relationship=MetadataRelationship.REALIZED_IN,
+        target_identifier=second_realization.run_identifier,
+    )
+    assert graph.edges_from(
+        first_component_record.identity,
+        relationship=MetadataRelationship.CONTAINED_IN,
+        target_identifier=first_realization.realization_identifier,
+    )
+    assert graph.edges_from(
+        second_component_record.identity,
+        relationship=MetadataRelationship.CONTAINED_IN,
+        target_identifier=second_realization.realization_identifier,
+    )
+    assert graph.edges_from(
+        contribution_record.identity,
+        relationship=MetadataRelationship.DESCRIBES,
+        target_identifier=first_realization.realization_identifier,
+    )
+    assert graph.edges_from(
+        artifact_record.identity,
+        relationship=MetadataRelationship.DERIVED_FROM,
+        target_identifier=first_realization.realization_identifier,
+    )
+
+
+@pytest.mark.unit
+def test_model_artifact_without_realization_omits_provenance_edge() -> None:
+    artifact = ModelArtifactFacts(
+        artifact_identifier="unlinked-adapter.safetensors",
+        family_identifier="future-family",
+        artifact_role="adapter",
+        artifact_format="safetensors",
+        architecture="future-v1/adapter",
+        implementation="future-runtime",
+        title="Unlinked Adapter",
+        resolution="1024x1024",
+    )
+
+    result = MetadataRuntime().file(artifact)
+
+    assert result.edges == ()
