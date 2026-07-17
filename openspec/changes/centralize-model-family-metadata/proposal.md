@@ -9,7 +9,7 @@ The active model-metadata path is backwards: SD, SDXL, and SD3 first build flat 
 - Qualify model and component identities by their owning realization/run so repeated family-local keys cannot collide across runs or model families.
 - Replace raw strategy `get_model_metadata()` dictionaries and `update_metadata()` mutation hooks with typed family-owned fact resolution feeding central emitters.
 - Route low-volume model-realization facts through the existing metadata registry/runtime/backend path and link them to runs, components, and produced artifacts.
-- Make `modelspec.*`, family-specific `ss_*`, and string-only safetensors metadata projection outputs from accepted facts while preserving SD/SDXL/SD3 external parity except for explicitly corrected reference-implementation identifiers.
+- Make repo-owned `kuro.*`, `modelspec.*`, compatibility-only family `ss_*`, and string-only safetensors metadata projection outputs from accepted facts while preserving SD/SDXL/SD3 external compatibility except for explicitly corrected reference-implementation identifiers.
 - Correct canonical implementation claims to the family reference codebases: CompVis Stable Diffusion for SD1, Stability AI `stablediffusion` for SD2, Stability AI `generative-models` for SDXL, and Stability AI `sd3.5` for SD3/3.5.
 - Remove the active dependency on broad flag-driven ModelSpec builders once focused parity coverage proves the replacement path.
 
@@ -25,7 +25,7 @@ None. This change consumes the completed `family-declared-loaded-components` con
 
 ## Impact
 
-- Affected code includes `library/metadata/dataclasses/model.py`, emitter/registry/validation/graph/projection code, the trainer metadata lifecycle, SD/SDXL/SD3 checkpointing facets, checkpoint artifact projection, and the active portions of `library/utils/model_metadata.py`.
+- Affected code includes central run/model builders under `library/metadata/builders/`, `library/metadata/dataclasses/model.py`, emitter/registry/validation/graph/projection code, the trainer metadata lifecycle, SD/SDXL/SD3 checkpointing facets, checkpoint artifact projection, and the active portions of `library/utils/model_metadata.py`.
 - The new capability becomes a shared provenance source for later resource, optimization, adapter, artifact-lineage, analytics, and run-warehouse work.
 - Historical parity fixtures remain evidence of the pre-migration output, including the previously inconsistent `modelspec.implementation` values; the typed path intentionally corrects those values rather than preserving inaccurate provenance.
 - No new dependency is required. SAI ModelSpec and safetensors remain external compatibility formats rather than internal storage models.

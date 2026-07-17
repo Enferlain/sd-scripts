@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from library.metadata.dataclasses import RunMetadataFacts
-from library.metadata.emitters.run import TrainingMetadataState, build_objective_run_metadata
+from library.metadata.builders.run import TrainingMetadataState, build_objective_run_metadata
 
 
 @pytest.mark.training

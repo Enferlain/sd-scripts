@@ -26,10 +26,10 @@ The loaded-component OpenSpec is archived into the base capabilities, so this de
 
 **Goals:**
 
-- Make repo-owned typed facts, rather than `modelspec.*` or `ss_*` dictionaries, authoritative for model metadata.
+- Make repo-owned typed facts, rather than `kuro.*`, `modelspec.*`, or `ss_*` projection dictionaries, authoritative for model metadata.
 - Distinguish static family declaration, run-specific loaded realization, and artifact-specific metadata.
 - Define durable, qualified model and component identities suitable for cross-run and cross-family snapshots.
-- Preserve family ownership of model meaning while centralizing accepted schemas, routing, emitters, relationships, validation, and projections.
+- Preserve family ownership of model meaning while centralizing accepted schemas, reusable builders, routing, emitters, relationships, validation, and projections.
 - Reuse family-declared component order and semantics without persisting live module objects or creating a second declaration registry.
 - Preserve SD/SDXL/SD3 ModelSpec and family-specific `ss_*` output parity, including adapter versus full-model artifact differences, while explicitly correcting inaccurate reference-implementation claims.
 - Leave a clean relational source for later resource, optimization, adapter, artifact-lineage, and analytics work.
@@ -68,13 +68,14 @@ This follows the model-layer ownership split:
 - `library/models/<family>/__init__.py` remains the small declarative home for `LOADED_MODEL_COMPONENT_SPECS` and does not absorb metadata workflow logic;
 - `library/models/components.py` continues to own shared loaded-component resolution/filtering helpers and does not become a trainer or checkpoint metadata builder;
 - `library/strategies/<family>/checkpointing.py` owns artifact/checkpoint behavior and resolves the family-specific typed facts needed at that workflow boundary;
-- `library/metadata/` owns the accepted durable shapes and their routing, validation, graph, and external projections.
+- `library/metadata/` owns reusable domain-input-to-fact builders, the accepted durable shapes, routing, validation, graph, and external projections.
 
-Family facets return typed facts. They do not render `modelspec.*`, mutate training dictionaries, call metadata backends, or own a second metadata registry. A separate family-local `metadata.py` mini-framework is not introduced for SD/SDXL/SD3.
+Family facets return typed facts. They do not render `modelspec.*`, mutate training dictionaries, call metadata backends, or own a second metadata registry. A separate family- or model-domain `metadata.py` mini-framework is not introduced for SD/SDXL/SD3.
 
 This settles the earlier central-versus-family question as:
 
 - central schema and transport ownership;
+- central ownership of reusable metadata fact assembly;
 - family-owned semantic resolution at the existing family facet;
 - central projection ownership for external keys.
 
@@ -84,6 +85,21 @@ Alternative considered: move all architecture selection logic into a central fla
 
 Alternative considered: place checkpoint/export fact resolution in `library/models/components.py` because it starts from component declarations. Rejected because the model-layer contract explicitly keeps training/checkpoint workflow behavior in strategies and keeps the shared component module free of orchestration.
 
+### Decision: Central builders and emitters are distinct stages
+
+The metadata backbone has two recurring central transformation stages:
+
+- `library/metadata/builders/<concern>.py` accepts explicit domain-owned inputs or narrow contexts and constructs accepted typed items, coordinated fact bundles, or retained identity state;
+- `library/metadata/emitters/<concern>.py` accepts typed items and produces records, events, and relationships through `MetadataProviderResult`.
+
+Builders do not file items, access backends/storage, create records/events, or render compatibility/export dictionaries. Emitters do not reconstruct domain runtime state. The runtime call site remains local and decides when facts exist, when to invoke a builder, and when to file its results.
+
+This is a recurring layer rather than a model-only exception. Existing training-run build contexts, bundles, and retained state move from `emitters/run.py` to `builders/run.py`; model-realization assembly and its reusable qualified identities live in `builders/model.py`. Later data/cache and optimization work can use the same boundary without growing normal domain-local `metadata.py` modules.
+
+Alternative considered: keep builders and emitters combined because both are central metadata code. Rejected because the implemented registry treats emitters as typed-item-to-result routes, while reusable domain-input conversion has different dependencies and lifecycle rules.
+
+Alternative considered: introduce only `builders/model.py` and leave existing run builders mixed into emitters. Rejected because that would make the new package look like a one-off rather than applying the recurring distinction to an existing second concern.
+
 ### Decision: Future families extend contracts instead of central branches
 
 A future model family joins the common metadata path by:
@@ -91,7 +107,7 @@ A future model family joins the common metadata path by:
 1. declaring its ordered top-level components through the loaded-component contract;
 2. implementing its strategy-owned typed resolver for model/artifact semantics;
 3. returning the shared realization, component, and artifact fact types;
-4. using the same registry routes, emitters, relationships, and field-driven compatibility projections.
+4. using the same central builders, registry routes, emitters, relationships, and field-driven compatibility projections.
 
 Central emitters and ModelSpec projection do not branch on family names. Architecture and implementation identifiers are data resolved by the family facet. Shared semantics use shared typed fields. A genuinely family-local fact either stays local when no durable consumer exists or uses an explicit namespaced/versioned family contribution; it is not promoted into a universal field or inferred from component names merely to avoid adding a new schema.
 
@@ -115,7 +131,7 @@ The live `module` value is never accepted as metadata. Metadata does not infer c
 
 The initial slice records top-level components only. Module- and parameter-level expansion remains owned by targeting and optimization provenance.
 
-The conversion boundary reads the public loaded-component contract; it does not move or duplicate declarations into metadata dataclasses. Pure loaded-component lookup/filtering remains in `library/models/components.py`, while constructing accepted metadata items occurs at the runtime lifecycle call site or in a narrow central conversion helper that accepts already-resolved declaration values.
+The conversion boundary reads the public loaded-component contract; it does not move or duplicate declarations into metadata dataclasses. Pure loaded-component lookup/filtering remains in `library/models/components.py`, while `library/metadata/builders/model.py` converts an explicit narrow view of that model-owned runtime surface into accepted central fact types. The trainer owns the lifecycle call, filing, and post-success retention of the resulting identity state.
 
 Alternative considered: let each metadata consumer reconstruct a component list from trainer slots. Rejected because it would create a second, diffusion-shaped source of truth immediately after removing that contract.
 
@@ -142,7 +158,7 @@ Alternative considered: use bare `component_key` as the record identifier and re
 
 ### Decision: Runtime filing uses the existing accepted-item registry
 
-Low-volume model realization and component facts are filed when model loading has completed and stable run/model identities are available. Accepted item types and emitter routes are added to `library/metadata/registry.py`, which remains the only supported-type/routing catalog.
+Low-volume model realization, component, and optional family-contribution facts are filed when model loading has completed and stable run/model identities are available. Accepted item types and emitter routes are added to `library/metadata/registry.py`, which remains the only supported-type/routing catalog.
 
 Artifact-facing facts are filed or assembled at the checkpoint/artifact lifecycle boundary because artifact role and output metadata can differ from the loaded realization. Checkpoint projection consumes accepted facts/snapshots, not a strategy-rendered dictionary.
 
@@ -150,11 +166,11 @@ No model-specific provider object or parallel collector hierarchy is introduced.
 
 Alternative considered: keep checkpoint metadata as an isolated in-memory builder path. Rejected as the end-state because it prevents model/component facts from participating in resource, optimization, artifact-lineage, and analytics queries. A bounded in-memory snapshot may still be used inside projection tests or as a migration bridge.
 
-### Decision: Compatibility keys are created only by projections
+### Decision: Export keys are created only by projections
 
 Canonical records use repo-owned semantic names such as `architecture`, `implementation`, `prediction_type`, `component_key`, and `roles`. They do not store duplicate `modelspec.architecture` or `ss_*` facts as the source of truth.
 
-`ModelSpecCompatibilityProjection` becomes a real mapping from typed artifact/model facts to SAI ModelSpec keys. Family-specific Kohya compatibility fields are mapped by the appropriate central compatibility projection from accepted family facts. `SafetensorsMetadataProjection` remains the final stringification boundary.
+`KuroMetadataProjection` remains the primary repo-owned machine-facing export and is extended to cover the accepted model-realization, component, family-contribution, and artifact entities. `ModelSpecCompatibilityProjection` becomes a real mapping from typed artifact/model facts to SAI ModelSpec keys. Family-specific Kohya `ss_*` fields remain compatibility-only output mapped by the appropriate central projection from accepted family facts. `SafetensorsMetadataProjection` remains the final stringification boundary.
 
 Projection behavior must preserve current active outputs for:
 
@@ -220,7 +236,7 @@ Alternative considered: retain old methods as adapters indefinitely. Rejected be
 - [The change can blur model identity, source identity, and output artifact identity] -> Keep declaration, realization, and artifact facts separate and require explicit relationships between them.
 - [Qualified identities may diverge from current resource component identifiers] -> Introduce one shared identity constructor and migrate resource/optimization producers to reference it rather than inventing concern-local qualification.
 - [Moving ModelSpec logic can subtly change omission/default behavior] -> Capture parity fixtures before implementation and compare complete dictionaries for every active family/artifact path, with the family reference-implementation correction called out as an intentional field-level difference.
-- [Family facets can become metadata mini-frameworks] -> Limit them to typed semantic resolution; keep schemas, emitters, validation, registry, records, and projections central.
+- [Family facets can become metadata mini-frameworks] -> Limit them to typed semantic resolution; keep reusable builders, schemas, emitters, validation, registry, records, and projections central.
 - [Persisting component capabilities can freeze an immature vocabulary] -> Version realization facts, preserve declared values exactly, and treat vocabulary evolution as declaration schema evolution rather than universal semantics.
 - [User extension fields can collide with standard ModelSpec keys] -> Preserve the current observable policy during this migration, add focused collision coverage, and make any policy change a separate explicit compatibility decision.
 - [Filing every realization/component adds low-volume records] -> File once at model-load completion; do not buffer, poll, or repeat per step.
@@ -230,10 +246,10 @@ Alternative considered: retain old methods as adapters indefinitely. Rejected be
 
 1. Use the archived loaded-component capability as the baseline and preserve its family-declared topology contract.
 2. Capture complete SD/SDXL/SD3 historical output fixtures, including adapter/full-model differences, RF prediction omission, SD3 attention-mask fields, extension fields, current `no_metadata` behavior, and the old implementation identifiers that the typed path intentionally corrects.
-3. Define central declaration/realization/component/artifact fact dataclasses, qualified identity helpers, validation, registry routes, and emitters.
+3. Define central declaration/realization/component/artifact fact dataclasses, qualified identity helpers, builders, validation, registry routes, and emitters.
 4. Add family-owned typed resolvers to SD, SDXL, and SD3 checkpointing/model facets.
 5. File model-realization/component facts at the post-load lifecycle boundary and link them to the run.
-6. Rewrite ModelSpec and family `ss_*` projections to map canonical facts into external keys.
+6. Extend the repo-owned `kuro.*` projection for the new model entities, and rewrite ModelSpec and compatibility-only family `ss_*` projections to map canonical facts into external keys.
 7. Switch checkpoint/adapter/full-model export paths to consume accepted facts and projection snapshots.
 8. Migrate resource component references to the shared qualified identity where cross-run snapshots require it, without changing resource meaning or accounting semantics.
 9. Remove replaced active dictionary hooks/builders, update metadata ownership docs, changelog, and roadmap, and close the migration bead after parity and focused verification pass.

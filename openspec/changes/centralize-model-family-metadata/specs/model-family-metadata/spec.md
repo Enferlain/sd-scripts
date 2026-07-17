@@ -27,7 +27,7 @@ The metadata system SHALL distinguish static family-declared topology, the model
 - **AND** the underlying realization identity and component topology MUST remain unchanged
 
 ### Requirement: Family-owned semantics feed central metadata ownership
-Model families SHALL own resolution of family-specific model meaning while the central metadata package owns accepted schemas, validation, routing, records, relationships, and projections.
+Model families SHALL own resolution of family-specific model meaning while the central metadata package owns reusable builders, accepted schemas, validation, routing, records, relationships, and projections.
 
 #### Scenario: Family resolves an architecture identifier
 - **WHEN** SD, SDXL, SD3, or a future family maps its model version and artifact role to architecture or implementation semantics
@@ -67,6 +67,24 @@ The metadata system SHALL derive top-level component facts from the authoritativ
 - **THEN** it MUST consume the family declaration or loaded-component surface
 - **AND** it MUST NOT reconstruct `text_encoders`, `vae`, and `denoiser` as a universal component inventory
 
+### Requirement: Central builders separate source conversion from emission
+The metadata system SHALL keep reusable domain-input-to-fact assembly in central concern builders and typed-item-to-record routing in central emitters.
+
+#### Scenario: Building a loaded model realization
+- **WHEN** the post-load lifecycle boundary supplies a narrow loaded-component view and stable run/model identity inputs
+- **THEN** the central model builder MUST construct validated model-realization and ordered component items without retaining live module objects
+- **AND** the builder MUST NOT file items, access a backend, construct records/events, or render an export projection
+
+#### Scenario: Emitting built model facts
+- **WHEN** a model-realization or realized-component item is filed through the metadata runtime
+- **THEN** the registered central emitter MUST convert that accepted typed item into records and relationships
+- **AND** the emitter MUST NOT reconstruct the model realization from domain runtime objects
+
+#### Scenario: Reusing accepted realization identity
+- **WHEN** later artifact, resource, or optimization producers need to reference the filed realization or one of its components
+- **THEN** the runtime owner MUST be able to retain and reuse the builder-produced qualified identity state after successful filing
+- **AND** it MUST NOT reconstruct or invent a second identity for the same realization
+
 ### Requirement: Model and component identities are durably qualified
 The metadata graph SHALL qualify model-realization and component identities by their owning runtime scopes so family-local component keys remain unambiguous across runs and model families.
 
@@ -86,11 +104,11 @@ The metadata graph SHALL qualify model-realization and component identities by t
 - **AND** it MUST NOT synthesize placeholder run, model, or component identities
 
 ### Requirement: Model realization facts use the shared metadata runtime path
-The active runtime SHALL file low-volume model-realization and component facts through the existing metadata registry, runtime, emitter, and backend flow.
+The active runtime SHALL file low-volume model-realization, component, and optional family-contribution facts through the existing metadata registry, runtime, emitter, and backend flow.
 
 #### Scenario: Model loading completes
 - **WHEN** the trainer has a stable run identity, model realization, and loaded-component surface
-- **THEN** it MUST file the corresponding accepted typed items through `MetadataRuntime.file(...)` or its synchronous batch equivalent
+- **THEN** it MUST file the corresponding accepted typed items and any optional family contribution through `MetadataRuntime.file(...)` or its synchronous batch equivalent
 - **AND** domain code MUST NOT call metadata storage or backend APIs directly
 
 #### Scenario: New model fact type is accepted
@@ -112,7 +130,12 @@ Produced model artifacts SHALL relate to the accepted model realization and comp
 - **AND** the projection MUST NOT invent an identity only to complete the graph
 
 ### Requirement: Compatibility metadata is projected from canonical facts
-The metadata system SHALL create `modelspec.*`, family-specific `ss_*`, and safetensors string metadata only at projection boundaries.
+The metadata system SHALL create repo-owned `kuro.*`, `modelspec.*`, compatibility-only family `ss_*`, and safetensors string metadata only at projection boundaries.
+
+#### Scenario: Projecting repo-owned model metadata
+- **WHEN** accepted model-realization, component, family-contribution, or artifact facts are exported in the native repository format
+- **THEN** `KuroMetadataProjection` MUST render the corresponding `kuro.*` keys from canonical accepted facts
+- **AND** accepted records MUST remain prefix-free source data rather than storing `kuro.*` duplicates
 
 #### Scenario: Projecting SAI ModelSpec metadata
 - **WHEN** an artifact requests ModelSpec-compatible metadata
@@ -122,6 +145,7 @@ The metadata system SHALL create `modelspec.*`, family-specific `ss_*`, and safe
 #### Scenario: Projecting family-specific compatibility facts
 - **WHEN** accepted family facts have defined Kohya-compatible output keys
 - **THEN** a central compatibility projection MUST render the corresponding `ss_*` keys and omission behavior
+- **AND** those `ss_*` keys MUST remain compatibility-only output rather than the repository-owned metadata surface
 - **AND** the family strategy MUST NOT mutate the projected dictionary directly
 
 #### Scenario: Rendering safetensors metadata

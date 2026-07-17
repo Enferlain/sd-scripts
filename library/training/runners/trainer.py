@@ -39,6 +39,7 @@ from library.logging.summaries import (
 )
 from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.metadata.records import MetadataValue
+from library.metadata.builders.model import ModelRealizationState, build_model_realization_state
 from library.objectives import ObjectiveDefinition, build_objective
 from library.objectives.base import ObjectiveRuntime
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
@@ -76,6 +77,7 @@ from library.models import (
     get_loaded_component_module,
     get_loaded_component_modules,
     LoadedModelComponent,
+    resolve_model_family_identifier,
     update_loaded_component_module,
     update_loaded_component_modules_by_role,
 )
@@ -83,6 +85,7 @@ from library.models import (
 if TYPE_CHECKING:
     from accelerate import Accelerator
     from library.data.caching_engine import CacheBackend
+    from library.metadata.registry import MetadataRuntimeItem
     from library.strategies.base.contracts import TrainingStrategy
     from library.training.metadata import TrainingMetadataState
     from library.training.modes.base import TrainingMode
@@ -156,6 +159,7 @@ class Trainer:
         # Will be set during model loading (in setup)
         # Primary top-level model representation: family-declared loaded components.
         self.loaded_components: tuple[LoadedModelComponent, ...] = ()
+        self._model_realization_state: ModelRealizationState | None = None
         self._text_encoder: Any = None  # Original reference for adapter API compatibility
 
         # Will be set during prepare_models()
@@ -415,6 +419,7 @@ class Trainer:
         # Load target models: denoiser may be None for lazy loading
         self._model_version, self.loaded_components = self.strategies.load_target_model(self.cfg, self.weight_dtype, self.accelerator)
         self.sync_component_views()
+        self._file_model_realization_metadata()
 
         if self.vae_dtype is None:
             assert self.vae is not None, "vae must be loaded before inferring vae dtype"
@@ -527,9 +532,13 @@ class Trainer:
         """Build checkpoint metadata for the main model and any sidecars."""
         metadata_state = self._require_metadata_state()
 
+        from library.metadata.dataclasses.model import ModelSpecFacts
+        from library.metadata.emitters.checkpoint import build_checkpoint_metadata
+
         modelspec_metadata = self.strategies.get_model_metadata(self.cfg)
-        return metadata_state.build_checkpoint_metadata(
-            model_metadata=modelspec_metadata,
+        return build_checkpoint_metadata(
+            training_facts=metadata_state.full,
+            model_facts=ModelSpecFacts.from_modelspec_metadata(modelspec_metadata),
             no_metadata=self.cfg.output.saving.no_metadata,
             artifact_identifier=ckpt_name,
             step=step,
@@ -695,9 +704,42 @@ class Trainer:
             raise RuntimeError("Training metadata state must be initialized before checkpoint metadata is used")
         return self._metadata_state
 
+    def _file_model_realization_metadata(self) -> ModelRealizationState:
+        """File the loaded target realization once and retain its accepted identities."""
+        if self._model_realization_state is not None:
+            return self._model_realization_state
+        if self._observer is None:
+            raise RuntimeError("Model realization metadata requires an initialized training observer.")
+        if not isinstance(self.session_id, int):
+            raise ValueError("Model realization metadata requires an integer trainer session identifier.")
+
+        from library.strategies.base.features import ModelFamilyMetadataStrategy
+
+        run_identifier = str(self.session_id)
+        family_identifier = resolve_model_family_identifier(self.cfg.model.model_type)
+        state = build_model_realization_state(
+            run_identifier=run_identifier,
+            realization_key="training-target",
+            family_identifier=family_identifier,
+            model_version=self._model_version,
+            loaded_components=self.loaded_components,
+        )
+        items: list[MetadataRuntimeItem] = list(state.as_metadata_items())
+        if isinstance(self.strategies, ModelFamilyMetadataStrategy):
+            items.append(
+                self.strategies.resolve_model_family_metadata(
+                    self.cfg,
+                    run_identifier=run_identifier,
+                    realization_identifier=state.realization_identifier,
+                )
+            )
+        self._observer.metadata_runtime.file_many(items)
+        self._model_realization_state = state
+        return state
+
     def _initialize_training_metadata(self, *, total_batch_size: int) -> None:
         """Build trainer metadata and let strategies append model-specific fields."""
-        from library.metadata.emitters.run import (
+        from library.metadata.builders.run import (
             TrainingMetadataBuildContext,
             TrainingMetadataState,
             build_training_metadata_bundle,
@@ -919,6 +961,17 @@ class Trainer:
             capability=capability,
             include_unloaded=include_unloaded,
         )
+
+    @property
+    def model_realization_identifier(self) -> str | None:
+        """Return the accepted target-model realization identity when available."""
+        state = self._model_realization_state
+        return None if state is None else state.realization_identifier
+
+    def get_model_component_identifier(self, component_key: str) -> str | None:
+        """Return a reusable accepted component identity by family-local key."""
+        state = self._model_realization_state
+        return None if state is None else state.component_identifier(component_key)
 
     @property
     def text_encoders(self) -> list[Any]:

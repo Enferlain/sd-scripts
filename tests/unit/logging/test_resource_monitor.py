@@ -183,6 +183,7 @@ class TestBasicResourceMonitorBehavior:
         monitor.start_session()
         accepted_before_cleanup = metadata_runtime.snapshot()
 
+        with patch.object(MetadataRuntime, "file_many", autospec=True, side_effect=RuntimeError("metadata OOM")):
             monitor.end_session()
 
         accepted_after_cleanup = metadata_runtime.snapshot()

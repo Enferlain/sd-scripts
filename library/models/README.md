@@ -67,6 +67,10 @@ At the moment that contract is centered on:
 - Shared resolution, filtering, and projection helpers belong in
   `library/models/components.py`, not in a family `__init__.py` and not in an
   unrelated utility or tool file.
+- The loaded-component collection remains model-owned source truth. Reusable
+  conversion of that explicit runtime view into accepted model-realization
+  facts belongs to the central `library/metadata/builders/model.py` layer;
+  model code does not grow a generic local metadata assembly module for it.
 - Do not put trainer/runtime workflow logic into `library/models/components.py`.
   It owns the component contract surface, not training orchestration.
 - Do not bury shared component metadata under a user-conditional tool like

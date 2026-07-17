@@ -7,6 +7,7 @@ import pytest
 
 from library.metadata import (
     build_model_component_identifier,
+    build_model_realization_state,
     build_model_realization_identifier,
     InMemoryMetadataBackend,
     MetadataGraphIndex,
@@ -27,6 +28,7 @@ from library.metadata import (
     SQLiteMetadataStore,
     validate_metadata_item,
 )
+from library.models import LoadedModelComponent
 
 
 def _realization(run_identifier: str, *, family: str = "sdxl") -> ModelRealizationFacts:
@@ -127,6 +129,57 @@ def test_model_realization_rejects_an_unqualified_or_mismatched_identity() -> No
 @pytest.mark.unit
 def test_realized_component_schema_has_no_live_module_field() -> None:
     assert "module" not in {field.name for field in fields(RealizedModelComponentFacts)}
+
+
+@pytest.mark.unit
+def test_loaded_components_build_ordered_module_free_realization_state() -> None:
+    live_module = object()
+    loaded_components = (
+        LoadedModelComponent(
+            key="encoder_a",
+            public_name="encoder_a",
+            module=live_module,
+            roles=("text_encoder",),
+            capabilities=("prompt_encoding",),
+        ),
+        LoadedModelComponent(
+            key="encoder_b",
+            public_name="encoder_b",
+            module=None,
+            roles=("text_encoder",),
+        ),
+    )
+
+    state = build_model_realization_state(
+        run_identifier="run-loaded",
+        realization_key="training-target",
+        family_identifier="future-family",
+        model_version="v1",
+        loaded_components=loaded_components,
+    )
+
+    assert state.realization_identifier == "run/run-loaded/model/training-target"
+    assert [component.component_key for component in state.components] == ["encoder_a", "encoder_b"]
+    assert [component.declaration_order for component in state.components] == [0, 1]
+    assert [component.present for component in state.components] == [True, False]
+    assert [component.roles for component in state.components] == [("text_encoder",), ("text_encoder",)]
+    assert state.components[0].capabilities == ("prompt_encoding",)
+    assert all(not hasattr(component, "module") for component in state.components)
+    assert live_module not in state.as_metadata_items()
+    assert state.component_identifier("encoder_a") == ("run/run-loaded/model/training-target/component/encoder_a")
+    assert state.component_identifier("missing") is None
+
+
+@pytest.mark.unit
+def test_model_realization_state_rejects_unavailable_run_identity() -> None:
+    with pytest.raises(ValueError, match="identity segments"):
+        build_model_realization_state(
+            run_identifier="",
+            realization_key="training-target",
+            family_identifier="future-family",
+            model_version="v1",
+            loaded_components=(),
+        )
 
 
 @pytest.mark.unit

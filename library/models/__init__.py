@@ -13,6 +13,7 @@ from library.models.components import (
     get_loaded_component_modules,
     resolve_component_names,
     resolve_component_specs,
+    resolve_model_family_identifier,
     update_loaded_component_module,
     update_loaded_component_modules_by_role,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "get_loaded_component_modules",
     "resolve_component_specs",
     "resolve_component_names",
+    "resolve_model_family_identifier",
     "update_loaded_component_module",
     "update_loaded_component_modules_by_role",
 ]

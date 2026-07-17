@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
@@ -71,13 +72,18 @@ class LoadedModelComponent:
 _MODEL_PACKAGE_ALIASES = {"sd1": "sd", "sd15": "sd", "sd2": "sd"}
 
 
+def resolve_model_family_identifier(model_type: str) -> str:
+    """Resolve a configured model type to its family declaration identifier."""
+    if not isinstance(model_type, str) or not model_type.strip():
+        raise ValueError("Model type must be a non-empty string.")
+    return _MODEL_PACKAGE_ALIASES.get(model_type, model_type)
+
+
 def _resolve_model_package(model_type: str):
-    package_name = model_type
+    package_name = resolve_model_family_identifier(model_type)
     direct_spec = importlib.util.find_spec(f"library.models.{package_name}")
     if direct_spec is None:
-        package_name = _MODEL_PACKAGE_ALIASES.get(model_type)
-        if package_name is None:
-            return None
+        return None
     return importlib.import_module(f"library.models.{package_name}")
 
 

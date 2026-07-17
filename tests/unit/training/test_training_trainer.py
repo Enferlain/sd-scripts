@@ -10,6 +10,13 @@ from unittest.mock import MagicMock, patch
 from library.logging.console import MainProcessConsole
 from library.logging.runtime_trace import RuntimeTrace
 from library.metadata.dataclasses import RunMetadataFacts
+from library.metadata import (
+    MetadataRuntime,
+    ModelFamilyMetadataContribution,
+    ModelFamilyMetadataField,
+)
+from library.models import LoadedModelComponent
+from library.strategies.base.features import ModelFamilyMetadataStrategy
 from library.training.metadata import TrainingMetadataState
 from library.training.runners.trainer import Trainer
 
@@ -33,6 +40,103 @@ class TestTrainer(unittest.TestCase):
         with self.assertRaises(RuntimeError) as cm:
             _ = self.trainer.accelerator
         self.assertIn("Accelerator not initialized", str(cm.exception))
+
+    def test_file_model_realization_metadata_files_once_and_reuses_identities(self):
+        self.cfg.model.model_type = "sd15"
+        self.trainer.session_id = 42
+        self.trainer._model_version = "sd_v1"
+        self.trainer.loaded_components = (
+            LoadedModelComponent(
+                key="text_encoder1",
+                public_name="clip_l",
+                module=object(),
+                roles=("text_encoder",),
+            ),
+            LoadedModelComponent(
+                key="text_encoder2",
+                public_name="clip_g",
+                module=None,
+                roles=("text_encoder",),
+            ),
+            LoadedModelComponent(
+                key="denoiser",
+                public_name="unet",
+                module=object(),
+                roles=("denoiser",),
+            ),
+        )
+        runtime = MetadataRuntime()
+        self.trainer._observer = SimpleNamespace(metadata_runtime=runtime)
+
+        state = self.trainer._file_model_realization_metadata()
+        first_snapshot = runtime.snapshot()
+        repeated_state = self.trainer._file_model_realization_metadata()
+        second_snapshot = runtime.snapshot()
+
+        self.assertIs(repeated_state, state)
+        self.assertEqual(state.realization.family.family_identifier, "sd")
+        self.assertEqual(
+            [record.identity.entity_type for record in first_snapshot.records],
+            ["model_realization", "model_component", "model_component", "model_component"],
+        )
+        self.assertEqual(len(second_snapshot.records), len(first_snapshot.records))
+        self.assertEqual(self.trainer.model_realization_identifier, "run/42/model/training-target")
+        self.assertEqual(
+            self.trainer.get_model_component_identifier("denoiser"),
+            "run/42/model/training-target/component/denoiser",
+        )
+        self.assertIsNone(self.trainer.get_model_component_identifier("missing"))
+        component_records = first_snapshot.records_for(entity_type="model_component")
+        self.assertEqual(
+            [record.facts["component_key"] for record in component_records],
+            ["text_encoder1", "text_encoder2", "denoiser"],
+        )
+        self.assertEqual(
+            [record.facts["present"] for record in component_records],
+            [True, False, True],
+        )
+
+    def test_file_model_realization_metadata_includes_optional_family_contribution(self):
+        class FamilyMetadataStrategy(ModelFamilyMetadataStrategy):
+            def resolve_model_family_metadata(
+                self,
+                cfg,
+                *,
+                run_identifier: str,
+                realization_identifier: str,
+            ) -> ModelFamilyMetadataContribution:
+                del cfg
+                return ModelFamilyMetadataContribution.for_realization(
+                    run_identifier=run_identifier,
+                    realization_identifier=realization_identifier,
+                    contribution_namespace="future.runtime",
+                    contribution_version="1",
+                    fields=(ModelFamilyMetadataField(name="custom_runtime_flag", value=True),),
+                )
+
+        self.cfg.model.model_type = "future"
+        self.trainer.strategies = FamilyMetadataStrategy()
+        self.trainer.session_id = 7
+        self.trainer._model_version = "v1"
+        self.trainer.loaded_components = ()
+        runtime = MetadataRuntime()
+        self.trainer._observer = SimpleNamespace(metadata_runtime=runtime)
+
+        self.trainer._file_model_realization_metadata()
+
+        self.assertEqual(
+            [record.identity.entity_type for record in runtime.snapshot().records],
+            ["model_realization", "model_family_facts"],
+        )
+
+    def test_file_model_realization_metadata_rejects_unavailable_identity(self):
+        self.cfg.model.model_type = "sdxl"
+        self.trainer.session_id = None
+        self.trainer._model_version = "sdxl"
+        self.trainer._observer = SimpleNamespace(metadata_runtime=MetadataRuntime())
+
+        with self.assertRaisesRegex(ValueError, "integer trainer session identifier"):
+            self.trainer._file_model_realization_metadata()
 
     def test_accelerator_access_after_setup(self):
         """Test that accessing accelerator after assignment works."""

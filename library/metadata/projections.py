@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import json
-
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
 from library.metadata.providers import MetadataRequiredFact
-from library.metadata.records import MetadataValue
 from library.metadata.validation import validate_required_facts
+from library.metadata.values import stringify_metadata_value
 
 from library.metadata.exports.resource import (
     project_resource_monitor_compatibility_event,
@@ -53,24 +51,6 @@ class MetadataProjection(Protocol):
 
     def project(self, snapshot) -> ProjectionResult:
         """Project collected metadata into one external representation."""
-
-
-def stringify_metadata_value(value: MetadataValue) -> str:
-    """Convert a metadata value into a stable string for artifact metadata."""
-    if isinstance(value, str):
-        return value
-    if isinstance(value, bool) or value is None:
-        return str(value)
-    if isinstance(value, int | float):
-        return str(value)
-    if isinstance(value, list | tuple | dict):
-        return json.dumps(value, sort_keys=True)
-    return str(value)
-
-
-def stringify_metadata_mapping(values: Mapping[str, MetadataValue]) -> dict[str, str]:
-    """Convert a metadata mapping to string-only metadata."""
-    return {key: stringify_metadata_value(value) for key, value in values.items()}
 
 
 def project_with_validation(projection: MetadataProjection, snapshot) -> ProjectionResult:

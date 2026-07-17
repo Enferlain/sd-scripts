@@ -7,7 +7,7 @@ This file is the active guide for how metadata is supposed to work in the codeba
 ## Short Version
 
 - Runtime code owns live state and source truth.
-- `library/metadata` owns accepted metadata item schemas, validation, routing, backend accumulation, and export/projection.
+- `library/metadata` owns accepted metadata item schemas, reusable builders, validation, routing, backend accumulation, and export/projection.
 - Normal runtime code should file typed metadata items. It should not build records, events, projections, or export dictionaries directly.
 
 ## Public Runtime Model
@@ -24,6 +24,11 @@ Accepted runtime item types and their emitter routes are registered together in
 `library/metadata/registry.py`. Validation and `MetadataRuntime` consume that
 same registry; do not add a parallel supported-type tuple or a second routing
 chain in either module.
+
+Reusable or coordinated conversion from explicit domain-owned inputs into
+accepted typed items belongs in `library/metadata/builders/`. Builders do not
+file items or construct records, events, backend state, or export dictionaries.
+Small call sites may still construct one obvious typed item directly.
 
 In code, the intended runtime-facing shape is:
 
@@ -84,7 +89,7 @@ Treat config and metadata as parallel systems with different jobs:
 - Config = desired intent
 - Metadata = observed truth, provenance, emitted artifacts, compatibility/export facts
 
-The metadata layer should know how metadata is recorded and exported.
+The metadata layer should know how metadata facts are assembled, recorded, and exported.
 Normal domain code should know when facts exist and when they should be filed.
 
 ## Ownership Rules
@@ -94,6 +99,7 @@ Normal domain code should know when facts exist and when they should be filed.
 Keep these here:
 
 - Shared typed metadata item dataclasses
+- Reusable builders from explicit domain inputs to typed item bundles/state
 - Validation
 - Routing from typed items to metadata records/events
 - Backends and storage
@@ -107,7 +113,7 @@ Keep these with the runtime that owns them:
 - Live runtime objects
 - State that changes during the run
 - Lifecycle boundaries where facts become available
-- Domain-specific facts that are not truly shared
+- Domain-specific runtime facts that are not recorded through the central system
 
 ### Explicit local exceptions
 
@@ -189,6 +195,8 @@ The internal flow should look like this:
 ```text
 [origin runtime state]
         ->
+[central builder when conversion is reusable or coordinated]
+        ->
 [typed metadata item]
         ->
 [MetadataRuntime.file(item) / buffer(item)]
@@ -207,7 +215,25 @@ The internal flow should look like this:
 The important boundary is:
 
 - runtime code knows the live facts
+- builders translate explicit domain inputs into accepted typed facts
 - metadata code knows the metadata system
+
+## Builders
+
+Builders are the central source-to-facts assembly layer.
+
+Their job is to accept explicit domain-owned objects or narrow contexts and
+return accepted typed items, coordinated bundles, or retained identity state.
+For example:
+
+- `builders/run.py` assembles training-run facts and retained checkpoint-facing state
+- `builders/model.py` assembles a model realization and ordered component facts from a narrow loaded-component view
+
+Builders must not file through `MetadataRuntime`, access backends/storage,
+construct records/events, or render projections. Domain code still owns the
+lifecycle boundary and decides when to call a builder and file its results.
+When a builder returns reusable identity state, the runtime owner should retain
+that state only after filing succeeds and reuse it on repeated lifecycle calls.
 
 ## Emitters
 
@@ -226,6 +252,11 @@ That means:
 - local code should not manually construct records/events
 - local code should not need to know which emitter to call
 - routing from item type to emitter should stay inside `library/metadata`
+
+`emitters/checkpoint.py` still combines record emission with the transitional
+checkpoint projection path. The active model-family metadata change will narrow
+that file while migrating checkpoint projections; do not copy that transitional
+shape into new concerns.
 
 ## Backends
 
@@ -312,9 +343,10 @@ Avoid these patterns in normal runtime code:
 
 ## Practical Notes
 
-- The canonical filing method is `MetadataRuntime.file(item)`. Extra local helper functions are optional convenience seams, not new filing APIs.
-- Prefer direct `metadata_runtime.file(TypedFacts(...))` calls when the local conversion is small and obvious.
-- If a local helper is useful, it should primarily clarify local-to-typed-facts conversion. Favor names like `build_*_facts(...)` over introducing concern-specific `file_*` APIs unless the helper is truly about one local boundary.
+- The canonical filing method is `MetadataRuntime.file(item)`; builders are not alternate filing APIs.
+- Prefer direct `metadata_runtime.file(TypedFacts(...))` calls when constructing one item is small and obvious.
+- Put reusable, coordinated, or identity-bearing source-to-facts conversion in `library/metadata/builders/` rather than growing normal domain-local metadata modules.
+- A local helper may clarify one lifecycle call site, but it should call central builders/runtime APIs rather than become a second metadata assembly layer.
 - Observability now has multiple real producers on the same path:
   - logging observer lifecycle/artifact events
   - resource monitor events

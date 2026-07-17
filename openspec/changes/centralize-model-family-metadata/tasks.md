@@ -31,15 +31,16 @@
 
 ## 5. File model realizations from runtime state
 
-- [ ] 5.1 Build realized component facts from the authoritative family-declared loaded-component collection while preserving order and excluding module objects
-- [ ] 5.2 File model-realization and component facts once at the trainer's post-load lifecycle boundary through the shared metadata runtime
-- [ ] 5.3 Ensure artifact registration and later resource/optimization references can reuse the same qualified model/component identities
-- [ ] 5.4 Add trainer/runtime tests for filing order, absent components, repeated roles, and unavailable identity handling without loading real models
+- [x] 5.1 Build realized component facts in a central model metadata builder from the authoritative family-declared loaded-component collection while preserving order and excluding module objects
+- [x] 5.2 File model-realization, component, and optional family-contribution facts once at the trainer's post-load lifecycle boundary through the shared metadata runtime
+- [x] 5.3 Ensure artifact registration and later resource/optimization references can reuse the same qualified model/component identities
+- [x] 5.4 Add metadata-builder/trainer tests for filing order, absent components, repeated roles, and unavailable identity handling without loading real models
+- [x] 5.5 Establish central run/model builder modules so reusable domain-input-to-fact assembly is distinct from typed-item-to-record emitters
 
 ## 6. Make compatibility projections semantic
 
 - [ ] 6.1 Rewrite `ModelSpecCompatibilityProjection` to stamp its supported SAI ModelSpec version and map canonical accepted facts to ModelSpec keys and omission rules
-- [ ] 6.2 Map accepted family-specific facts to the existing Kohya `ss_*` output in central projection code
+- [ ] 6.2 Extend repo-owned `kuro.*` output across the new model entity types and map accepted family-specific facts to compatibility-only Kohya `ss_*` output in central projection code
 - [ ] 6.3 Keep safetensors stringification as the final boundary and add required-fact projection validation
 - [ ] 6.4 Add projection tests covering complete parity fixtures, invalid required claims, optional omission, extension fields, and deterministic output
 

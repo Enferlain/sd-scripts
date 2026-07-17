@@ -5,6 +5,15 @@ from library.metadata.backends import (
     MetadataBackend,
     MetadataSnapshot,
 )
+from library.metadata.builders import (
+    build_model_realization_state,
+    build_objective_run_metadata,
+    build_training_metadata_bundle,
+    ModelRealizationState,
+    TrainingMetadataBuildContext,
+    TrainingMetadataBundle,
+    TrainingMetadataState,
+)
 from library.metadata.providers import (
     MetadataProvider,
     MetadataProviderResult,
@@ -67,7 +76,6 @@ from library.metadata.emitters import (
     build_model_family_contribution_metadata,
     build_model_realization_metadata,
     build_model_spec_metadata,
-    build_objective_run_metadata,
     build_resource_accounting_gap_metadata,
     build_resource_accounting_metadata,
     build_resource_collector_status_metadata,
@@ -78,12 +86,8 @@ from library.metadata.emitters import (
     build_run_lifecycle_metadata,
     build_run_report_metadata,
     build_structural_resource_metadata,
-    build_training_metadata_bundle,
     build_training_run_metadata,
     build_realized_model_component_metadata,
-    TrainingMetadataBuildContext,
-    TrainingMetadataBundle,
-    TrainingMetadataState,
 )
 
 from library.metadata.exports import (
@@ -197,6 +201,7 @@ __all__ = [
     "ModelFamilyMetadataContribution",
     "ModelFamilyMetadataField",
     "ModelRealizationFacts",
+    "ModelRealizationState",
     "ModelSpecFacts",
     "ModelComponentMetadataRecord",
     "ModelFamilyContributionMetadataRecord",
@@ -250,6 +255,7 @@ __all__ = [
     "build_model_family_contribution_metadata",
     "build_model_realization_metadata",
     "build_model_realization_identifier",
+    "build_model_realization_state",
     "build_realized_model_component_metadata",
     "metadata_edge",
     "metadata_identity",
