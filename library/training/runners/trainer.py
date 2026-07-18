@@ -39,7 +39,11 @@ from library.logging.summaries import (
 )
 from library.losses.loss_modifiers import LossModifier, NoOpLossModifier
 from library.metadata.records import MetadataValue
-from library.metadata.builders.model import ModelRealizationState, build_model_realization_state
+from library.metadata.builders.model import (
+    build_model_artifact_resolution_context,
+    build_model_realization_state,
+    ModelRealizationState,
+)
 from library.objectives import ObjectiveDefinition, build_objective
 from library.objectives.base import ObjectiveRuntime
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
@@ -531,16 +535,42 @@ class Trainer:
     ) -> dict[str, str]:
         """Build checkpoint metadata for the main model and any sidecars."""
         metadata_state = self._require_metadata_state()
+        if self._observer is None:
+            raise RuntimeError("Checkpoint metadata requires an initialized training observer.")
 
-        from library.metadata.dataclasses.model import ModelSpecFacts
         from library.metadata.emitters.checkpoint import build_checkpoint_metadata
+        from library.utils.model_metadata import get_implementation_version
 
-        modelspec_metadata = self.strategies.get_model_metadata(self.cfg)
+        artifact_role = self.mode.checkpoint_artifact_role
+        if not isinstance(artifact_role, str) or not artifact_role:
+            raise ValueError("Training modes must declare a non-empty checkpoint_artifact_role.")
+        artifact_format = self.mode.resolve_checkpoint_artifact_format(self)
+        prediction_type = None if self.objective.name == "rectified_flow" else self.cfg.objective.prediction
+        context = build_model_artifact_resolution_context(
+            metadata_config=self.cfg.output.metadata,
+            family_identifier=resolve_model_family_identifier(self.cfg.model.model_type),
+            model_version=self._model_version,
+            artifact_identifier=ckpt_name,
+            artifact_role=artifact_role,
+            serialization_format=artifact_format,
+            resolution=self.cfg.data.preprocessing.resolution,
+            created_at=time.time(),
+            realization_identifier=self.model_realization_identifier,
+            implementation_version=get_implementation_version(),
+            prediction_type=prediction_type,
+            min_timestep=self.cfg.timestep.min_timestep,
+            max_timestep=self.cfg.timestep.max_timestep,
+            encoder_layer=self.cfg.training.clip_skip,
+        )
+        artifact_facts = self.strategies.resolve_model_artifact_facts(context)
+        metadata_runtime = self._observer.metadata_runtime
+        metadata_runtime.file(artifact_facts)
         return build_checkpoint_metadata(
+            snapshot=metadata_runtime.snapshot(),
             training_facts=metadata_state.full,
-            model_facts=ModelSpecFacts.from_modelspec_metadata(modelspec_metadata),
             no_metadata=self.cfg.output.saving.no_metadata,
             artifact_identifier=ckpt_name,
+            artifact_format=artifact_format,
             step=step,
             epoch=epoch,
         )
@@ -738,7 +768,7 @@ class Trainer:
         return state
 
     def _initialize_training_metadata(self, *, total_batch_size: int) -> None:
-        """Build trainer metadata and let strategies append model-specific fields."""
+        """Build training-run metadata through the transitional family hook."""
         from library.metadata.builders.run import (
             TrainingMetadataBuildContext,
             TrainingMetadataState,

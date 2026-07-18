@@ -6,6 +6,7 @@ from library.metadata.backends import (
     MetadataSnapshot,
 )
 from library.metadata.builders import (
+    build_model_artifact_resolution_context,
     build_model_realization_state,
     build_objective_run_metadata,
     build_training_metadata_bundle,
@@ -126,6 +127,7 @@ from library.metadata.projections import (
     ModelSpecCompatibilityProjection,
     ProjectionResult,
     SafetensorsMetadataProjection,
+    scope_model_artifact_snapshot,
     SsCompatibilityProjection,
 )
 
@@ -240,6 +242,7 @@ __all__ = [
     "RunMetadataFacts",
     "RunReportFacts",
     "SafetensorsMetadataProjection",
+    "scope_model_artifact_snapshot",
     "SCHEMA_VERSION",
     "SsCompatibilityProjection",
     "SQLiteMetadataStore",
@@ -253,6 +256,7 @@ __all__ = [
     "build_model_component_identifier",
     "build_model_family_contribution_identifier",
     "build_model_artifact_metadata",
+    "build_model_artifact_resolution_context",
     "build_model_family_contribution_metadata",
     "build_model_realization_metadata",
     "build_model_realization_identifier",

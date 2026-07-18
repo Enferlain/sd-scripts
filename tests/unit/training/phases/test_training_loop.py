@@ -21,6 +21,38 @@ from library.logging.phase_tags import (
 class TestRunTrainingLoop:
     """Test run_training_loop function."""
 
+    @pytest.mark.parametrize(
+        "save_helper_name",
+        ["_save_step_checkpoint_artifacts", "_save_epoch_checkpoint_artifacts"],
+    )
+    def test_loss_modifier_sidecar_uses_its_own_artifact_identity_and_coordinates(
+        self,
+        mock_trainer,
+        save_helper_name,
+    ):
+        """Sidecar projections must target the sidecar rather than a default checkpoint identity."""
+        from library.training.phases import training_loop
+
+        mock_trainer.global_step = 12
+        mock_trainer._current_epoch_state.value = 3
+        mock_trainer.cfg.output.saving.save_state = False
+        mock_trainer.loss_modifier.is_enabled = True
+        mock_trainer.loss_modifier.sidecar_suffix = "_edm2_loss_weights"
+        mock_trainer._build_checkpoint_metadata = MagicMock(return_value={"modelspec.title": "sidecar"})
+
+        with (
+            patch.object(training_loop, "get_remove_step_no", return_value=None),
+            patch.object(training_loop, "get_remove_epoch_no", return_value=None),
+        ):
+            getattr(training_loop, save_helper_name)(mock_trainer)
+
+        metadata_call = mock_trainer._build_checkpoint_metadata.call_args
+        assert "_edm2_loss_weights" in metadata_call.kwargs["ckpt_name"]
+        assert metadata_call.kwargs["ckpt_name"].endswith(".safetensors")
+        assert metadata_call.kwargs["step"] == 12
+        assert metadata_call.kwargs["epoch"] == 3
+        mock_trainer.loss_modifier.save_sidecar.assert_called_once()
+
     def test_creates_progress_bar_at_loop_start_when_missing(self, mock_trainer):
         """Training should start the progress bar at the real loop boundary."""
         mock_trainer.num_train_epochs = 1
@@ -46,9 +78,7 @@ class TestRunTrainingLoop:
 
             mock_tqdm.assert_called_once()
             assert mock_trainer._progress_bar is created_bar
-            assert mock_trainer.runtime_trace.summary()["events"] == [
-                {"tag": EVENT_TRAINING_PROGRESS_BAR_STARTED, "offset_s": 0.0}
-            ]
+            assert mock_trainer.runtime_trace.summary()["events"] == [{"tag": EVENT_TRAINING_PROGRESS_BAR_STARTED, "offset_s": 0.0}]
 
     def test_records_first_step_started_and_synced_runtime_trace_events(self, mock_trainer):
         """Training loop should record milestone events for the first real optimization step."""

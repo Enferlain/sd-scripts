@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 from urllib.parse import quote
 
+from library.metadata.backends import MetadataSnapshot
 from library.metadata.graph import MetadataEntityType, MetadataRelationship
 from library.metadata.providers import MetadataRequiredFact
 from library.metadata.records import MetadataRecord, MetadataValue
@@ -40,6 +41,7 @@ __all__ = [
     "SsCompatibilityProjection",
     "project_resource_monitor_compatibility_event",
     "project_resource_run_compatibility_events",
+    "scope_model_artifact_snapshot",
 ]
 
 
@@ -239,6 +241,36 @@ def _collect_prefixed_facts(records, prefix: str) -> dict[str, MetadataValue]:
     return metadata
 
 
+def scope_model_artifact_snapshot(
+    snapshot,
+    artifact_identifier: str,
+    *,
+    include_related: bool = True,
+) -> MetadataSnapshot:
+    """Return one accepted model artifact and its linked model context."""
+    if include_related:
+        records = _scoped_model_records(snapshot, artifact_identifier, projection_id="model_artifact_scope")
+    else:
+        artifact_record = _select_model_artifact_record(
+            snapshot,
+            artifact_identifier,
+            projection_id="model_artifact_scope",
+        )
+        assert artifact_record is not None
+        records = (artifact_record,)
+
+    selected_keys = {record.identity.key for record in records}
+    edges_by_key = {
+        (edge.source.key, edge.target.key, edge.relationship, edge.producer): edge
+        for edge in snapshot.edges
+        if edge.source.key in selected_keys and edge.target.key in selected_keys
+    }
+    return MetadataSnapshot(
+        records=records,
+        edges=tuple(edges_by_key[key] for key in sorted(edges_by_key)),
+    )
+
+
 def _is_compatibility_key(key: str) -> bool:
     return key.startswith(KOHYA_SS_PREFIX) or key.startswith(MODELSPEC_PREFIX)
 
@@ -307,10 +339,15 @@ def _select_model_artifact_record(
         if artifact_identifier is None:
             return None
         raise _scope_error(projection_id, f"model artifact {artifact_identifier!r} is not present")
-    if len(records) > 1:
-        target = artifact_identifier if artifact_identifier is not None else "an explicit artifact identifier"
-        raise _scope_error(projection_id, f"model artifact scope is ambiguous; select {target}")
-    return records[0]
+    if artifact_identifier is not None:
+        # Backends may retain multiple accepted versions of one stable
+        # artifact identity. An explicit identity selects its newest record.
+        return records[-1]
+
+    artifact_identifiers = {record.identity.identifier for record in records}
+    if len(artifact_identifiers) > 1:
+        raise _scope_error(projection_id, "model artifact scope is ambiguous; select an explicit artifact identifier")
+    return records[-1]
 
 
 def _kuro_records_for_scope(
@@ -357,21 +394,21 @@ def _scoped_model_records(
     )
     assert artifact_record is not None
     records_by_key = {record.identity.key: record for record in snapshot.records}
-    realization_edges = tuple(
-        edge
+    realization_edges_by_target = {
+        edge.target.key: edge
         for edge in snapshot.edges
         if edge.source.key == artifact_record.identity.key
         and edge.relationship == MetadataRelationship.DERIVED_FROM
         and edge.target.entity_type == MetadataEntityType.MODEL_REALIZATION
-    )
-    if len(realization_edges) > 1:
+    }
+    if len(realization_edges_by_target) > 1:
         raise _scope_error(projection_id, f"model artifact {artifact_identifier!r} has multiple realizations")
 
     selected = {artifact_record.identity.key: artifact_record}
-    if not realization_edges:
+    if not realization_edges_by_target:
         return (artifact_record,)
 
-    realization_identity = realization_edges[0].target
+    realization_identity = next(iter(realization_edges_by_target.values())).target
     realization_record = records_by_key.get(realization_identity.key)
     if realization_record is None:
         raise _scope_error(

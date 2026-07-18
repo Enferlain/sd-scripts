@@ -46,10 +46,10 @@
 
 ## 7. Migrate checkpoint and artifact paths
 
-- [ ] 7.1 Change trainer checkpoint metadata assembly to consume typed artifact/model facts and accepted snapshots instead of strategy dictionaries
-- [ ] 7.2 Migrate SD/SDXL adapter checkpoint paths and SDXL/SD3 full-model save paths to the same central projection ownership
-- [ ] 7.3 Preserve current `no_metadata` output behavior without broadening this change into the separate product-policy decision
-- [ ] 7.4 Link produced checkpoint artifacts to accepted model realizations when stable identities are available
+- [x] 7.1 Change trainer checkpoint metadata assembly to consume typed artifact/model facts and accepted snapshots instead of strategy dictionaries
+- [x] 7.2 Migrate SD/SDXL adapter checkpoint paths and SDXL/SD3 full-model save paths to the same central projection ownership
+- [x] 7.3 Preserve current `no_metadata` output behavior without broadening this change into the separate product-policy decision
+- [x] 7.4 Link produced checkpoint artifacts to accepted model realizations when stable identities are available
 
 ## 8. Remove transitional seams and document the boundary
 

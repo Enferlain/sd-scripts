@@ -10,7 +10,33 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-07-18]
+
+### Changed
+
+- **Model compatibility exports now project from canonical accepted facts** — `kuro.*` preserves explicitly scoped model-artifact, realization, component, and family-contribution identities; ModelSpec maps typed artifact semantics instead of filtering pre-rendered keys; SD3 attention-mask facts project back to compatibility-only `ss_*`; and safetensors remains the final stringification boundary.
+- **Checkpoint metadata now follows the typed model-artifact path end to end** — trainer checkpoint assembly files family-resolved artifact facts through the shared metadata runtime, scopes exports to the accepted artifact and model realization, preserves current `no_metadata` behavior, passes central projections unchanged through SDXL/SD3 writers and adapter exports, and gives loss-modifier sidecars their real artifact identities and coordinates.
+
+## [2026-07-17]
+
+### Added
+
+- **The metadata catalog now represents model families relationally** — added qualified typed facts, central validation/emitter routes, and memory/SQLite round trips for model realizations, loaded components, versioned family contributions, artifact-facing model facts, and explicit artifact-to-realization provenance.
+- **SD, SDXL, and SD3 now resolve canonical artifact semantics through family facets** — typed resolvers distinguish adapter and full-model roles, validate supported formats and prediction modes, preserve optional omission behavior, and identify the applicable public family reference implementations without authoring compatibility keys.
+
+### Changed
+
+- **Metadata construction and emission now have separate central stages** — central builders assemble run and artifact-resolution inputs, emitters convert accepted facts into records and relationships, normal domains retain lifecycle call sites, and the shared runtime files loaded model realizations once for later checkpoint, resource, optimization, and analytics reuse.
+
+### Fixed
+
+- **The guarded training interrupt is responsive without sacrificing clean shutdown** — the first `Ctrl+C` still protects against accidental stops, a confirmed second press immediately raises `KeyboardInterrupt`, and ordinary Python interruption remains available during final reports and cleanup.
+
 ## [2026-07-16]
+
+### Added
+
+- **Model-family metadata centralization now has a governing OpenSpec track** — archived the completed family-declared loaded-component change and defined the typed fact, identity, family-resolution, persistence, projection-parity, checkpoint-migration, and compatibility-removal milestones for the broader model metadata system.
 
 ### Changed
 

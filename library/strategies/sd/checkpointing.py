@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Any
 
 from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
@@ -43,7 +44,7 @@ class SdCheckpointingStrategy(CheckpointingStrategy):
         implementation = SD2_REFERENCE_IMPLEMENTATION if is_v2 else SD1_REFERENCE_IMPLEMENTATION
         default_title = f"{'LoRA' if is_adapter else 'Checkpoint'}@{context.created_at}"
         return ModelArtifactFacts.from_resolution_context(
-            context,
+            replace(context, prediction_type=prediction_type),
             architecture=architecture,
             implementation=implementation,
             default_title=default_title,

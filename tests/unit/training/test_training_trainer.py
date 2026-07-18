@@ -7,11 +7,14 @@ from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from library.config.dataclasses.output import MetadataConfig
 from library.logging.console import MainProcessConsole
 from library.logging.runtime_trace import RuntimeTrace
 from library.metadata.dataclasses import RunMetadataFacts
 from library.metadata import (
+    build_model_realization_state,
     MetadataRuntime,
+    ModelArtifactFacts,
     ModelFamilyMetadataContribution,
     ModelFamilyMetadataField,
 )
@@ -180,6 +183,7 @@ class TestTrainer(unittest.TestCase):
             full=RunMetadataFacts(run_identifier="test", metadata={}),
         )
         self.strategies.get_model_metadata.return_value = {}
+        self.trainer._build_checkpoint_metadata = MagicMock(return_value={})
 
         edm2_model = MagicMock(name="edm2_loss_weights")
         self.trainer.save_checkpoint(
@@ -205,6 +209,7 @@ class TestTrainer(unittest.TestCase):
             full=RunMetadataFacts(run_identifier="test", metadata={"adapter_method": "test"}),
         )
         self.strategies.get_model_metadata.return_value = {}
+        self.trainer._build_checkpoint_metadata = MagicMock(return_value={})
 
         mock_adapter = MagicMock(name="adapter")
         self.trainer.save_checkpoint(
@@ -227,6 +232,7 @@ class TestTrainer(unittest.TestCase):
         self.trainer._resource_monitor = MagicMock()
         self.trainer.runtime_trace = MagicMock()
         self.mode.save_checkpoint = MagicMock()
+        self.trainer._build_checkpoint_metadata = MagicMock(return_value={})
 
         with patch("library.training.runners.trainer.logger") as mock_logger:
             self.trainer.save_checkpoint(
@@ -249,6 +255,7 @@ class TestTrainer(unittest.TestCase):
         self.trainer._resource_monitor = MagicMock()
         self.trainer.runtime_trace = MagicMock()
         self.mode.save_checkpoint = MagicMock()
+        self.trainer._build_checkpoint_metadata = MagicMock(return_value={})
 
         with patch("library.training.runners.trainer.logger") as mock_logger:
             self.trainer.save_checkpoint(
@@ -281,6 +288,7 @@ class TestTrainer(unittest.TestCase):
         self.trainer._resource_monitor = MagicMock()
         self.trainer.runtime_trace = RuntimeTrace(launched_perf=0.0, clock=_IncrementingClock())
         self.mode.save_checkpoint = MagicMock()
+        self.trainer._build_checkpoint_metadata = MagicMock(return_value={})
 
         self.trainer.save_checkpoint(
             "adapter.safetensors",
@@ -295,6 +303,72 @@ class TestTrainer(unittest.TestCase):
 
         self.assertLess(checkpoint_phase["start_offset_s"], saved_event["offset_s"])
         self.assertLess(saved_event["offset_s"], checkpoint_phase["end_offset_s"])
+
+    def test_build_checkpoint_metadata_files_typed_artifact_linked_to_accepted_realization(self):
+        runtime = MetadataRuntime()
+        self.trainer._observer = SimpleNamespace(metadata_runtime=runtime)
+        self.trainer._metadata_state = TrainingMetadataState(
+            full=RunMetadataFacts(run_identifier="42", metadata={"seed": "7"}),
+        )
+        self.trainer._model_version = "sdxl_base_v1-0"
+        self.trainer._model_realization_state = build_model_realization_state(
+            run_identifier="42",
+            realization_key="training-target",
+            family_identifier="sdxl",
+            model_version=self.trainer._model_version,
+            loaded_components=(),
+        )
+        runtime.file(self.trainer._model_realization_state.realization)
+        self.trainer.objective = SimpleNamespace(name="ddpm")
+        self.cfg.model.model_type = "sdxl"
+        self.cfg.objective.prediction = "epsilon"
+        self.cfg.output.metadata = MetadataConfig(metadata_title="Typed Adapter")
+        self.cfg.output.saving.no_metadata = False
+        self.cfg.data.preprocessing.resolution = "1024,768"
+        self.cfg.timestep.min_timestep = 10
+        self.cfg.timestep.max_timestep = 900
+        self.cfg.training.clip_skip = 2
+        self.mode.checkpoint_artifact_role = "adapter"
+        self.mode.resolve_checkpoint_artifact_format.return_value = "safetensors"
+
+        def resolve_facts(context):
+            return ModelArtifactFacts.from_resolution_context(
+                context,
+                architecture="stable-diffusion-xl-v1-base/lora",
+                implementation="https://github.com/Stability-AI/generative-models",
+                default_title="Adapter",
+            )
+
+        self.strategies.resolve_model_artifact_facts.side_effect = resolve_facts
+
+        metadata = Trainer._build_checkpoint_metadata(
+            self.trainer,
+            ckpt_name="adapter.safetensors",
+            step=12,
+            epoch=3,
+        )
+
+        context = self.strategies.resolve_model_artifact_facts.call_args.args[0]
+        self.assertEqual(context.artifact_identifier, "adapter.safetensors")
+        self.assertEqual(context.artifact_role, "adapter")
+        self.assertEqual(context.serialization_format, "safetensors")
+        self.assertEqual(context.resolution, (1024, 768))
+        self.assertEqual(context.realization_identifier, "run/42/model/training-target")
+        artifact_record = runtime.snapshot().record_for(
+            entity_type="model_artifact",
+            identifier="adapter.safetensors",
+        )
+        self.assertIsNotNone(artifact_record)
+        self.assertTrue(
+            any(
+                edge.source == artifact_record.identity
+                and edge.target.identifier == "run/42/model/training-target"
+                and edge.relationship == "derived_from"
+                for edge in runtime.snapshot().edges
+            )
+        )
+        self.assertEqual(metadata["modelspec.title"], "Typed Adapter")
+        self.assertEqual(metadata["kuro.model.artifact.artifact_role"], "adapter")
 
     def test_train_ends_resource_monitor_session_when_training_fails(self):
         """Resource monitor session should close even if training aborts mid-run."""

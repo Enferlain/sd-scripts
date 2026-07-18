@@ -5,7 +5,9 @@ import sqlite3
 
 import pytest
 
+from library.config.dataclasses.output import MetadataConfig
 from library.metadata import (
+    build_model_artifact_resolution_context,
     build_model_component_identifier,
     build_model_realization_state,
     build_model_realization_identifier,
@@ -209,6 +211,52 @@ def test_artifact_context_is_family_neutral_and_artifact_facts_are_canonical() -
 
     validate_metadata_item(facts)
     assert all(not field.startswith("modelspec.") for field in facts.extension_fields)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("resolution", "expected"),
+    [
+        ("512", (512, 512)),
+        ("768,512", (768, 512)),
+        ("1024x768", (1024, 768)),
+        ((640, 384), (640, 384)),
+    ],
+)
+def test_model_artifact_context_builder_normalizes_config_boundary_values(
+    resolution: str | tuple[int, int],
+    expected: tuple[int, int],
+) -> None:
+    context = build_model_artifact_resolution_context(
+        metadata_config=MetadataConfig(metadata_title="Configured Artifact"),
+        family_identifier="future-family",
+        model_version="v1",
+        artifact_identifier="artifact.safetensors",
+        artifact_role="adapter",
+        serialization_format="safetensors",
+        resolution=resolution,
+        created_at=1.0,
+        min_timestep=10,
+    )
+
+    assert context.resolution == expected
+    assert context.timestep_range == (10, 1000)
+    assert context.presentation.title == "Configured Artifact"
+
+
+@pytest.mark.unit
+def test_model_artifact_context_builder_rejects_unusable_resolution() -> None:
+    with pytest.raises(ValueError, match="explicit resolution"):
+        build_model_artifact_resolution_context(
+            metadata_config=MetadataConfig(),
+            family_identifier="future-family",
+            model_version="v1",
+            artifact_identifier="artifact.safetensors",
+            artifact_role="adapter",
+            serialization_format="safetensors",
+            resolution=None,
+            created_at=1.0,
+        )
 
 
 @pytest.mark.unit

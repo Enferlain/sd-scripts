@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Any
 
 import torch
@@ -34,14 +35,13 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
             raise ValueError(f"Unsupported SDXL artifact role: {context.artifact_role!r}.")
         if context.serialization_format not in {"safetensors", "ckpt", "diffusers", "diffusers_safetensors"}:
             raise ValueError(f"Unsupported SDXL serialization format: {context.serialization_format!r}.")
-        if context.prediction_type is not None:
-            resolve_ddpm_prediction_type(context.prediction_type)
+        prediction_type = None if context.prediction_type is None else resolve_ddpm_prediction_type(context.prediction_type)
 
         is_adapter = context.artifact_role == "adapter"
         architecture = "stable-diffusion-xl-v1-base" + ("/lora" if is_adapter else "")
         default_title = f"{'LoRA' if is_adapter else 'Checkpoint'}@{context.created_at}"
         return ModelArtifactFacts.from_resolution_context(
-            context,
+            replace(context, prediction_type=prediction_type),
             architecture=architecture,
             implementation=SDXL_REFERENCE_IMPLEMENTATION,
             default_title=default_title,
@@ -107,21 +107,6 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
         ckpt_file = os.path.join(cfg.output.saving.output_dir, ckpt_name)
 
         if save_stable_diffusion_format:
-            v_parameterization, prediction_type = resolve_sdxl_modelspec_prediction(cfg)
-            modelspec_metadata = get_model_metadata_from_config(
-                state_dict=None,
-                metadata_config=cfg.output.metadata,
-                is_sdxl=True,
-                is_v2=False,
-                v_parameterization=v_parameterization,
-                prediction_type=prediction_type,
-                is_lora=False,
-                is_textual_inversion=False,
-                is_stable_diffusion_ckpt=True,
-            )
-
-            merged_metadata = {**metadata, **modelspec_metadata}
-
             save_stable_diffusion_checkpoint(
                 ckpt_file,
                 text_encoder1,
@@ -132,7 +117,7 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
                 self.ckpt_info,
                 vae,
                 self.logit_scale,
-                merged_metadata,
+                metadata,
                 save_dtype,
             )
         else:

@@ -1,5 +1,7 @@
 """Unit tests for metadata export projections."""
 
+from dataclasses import replace
+
 import pytest
 
 from library.metadata import (
@@ -164,6 +166,19 @@ def test_modelspec_projection_requires_scope_for_multiple_artifacts() -> None:
 
     with pytest.raises(MetadataProjectionScopeError, match="explicit artifact identifier"):
         ModelSpecCompatibilityProjection().project(runtime.snapshot())
+
+
+@pytest.mark.unit
+def test_explicit_artifact_scope_selects_newest_accepted_version_of_stable_identity() -> None:
+    runtime = MetadataRuntime()
+    original = _artifact("stable.safetensors")
+    runtime.file_many((original, replace(original, title="Updated Checkpoint")))
+
+    modelspec = ModelSpecCompatibilityProjection(artifact_identifier="stable.safetensors").project(runtime.snapshot())
+    kuro = KuroMetadataProjection(artifact_identifier="stable.safetensors").project(runtime.snapshot())
+
+    assert modelspec.metadata["modelspec.title"] == "Updated Checkpoint"
+    assert kuro.metadata["kuro.model.artifact.title"] == "Updated Checkpoint"
 
 
 @pytest.mark.unit

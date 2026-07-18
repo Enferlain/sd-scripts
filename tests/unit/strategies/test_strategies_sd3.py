@@ -116,6 +116,44 @@ def test_sd3_checkpoint_metadata_keeps_family_specific_attn_mask_fields() -> Non
 
 
 @pytest.mark.unit
+def test_sd3_full_model_checkpoint_uses_centrally_projected_metadata_unchanged(monkeypatch, tmp_path) -> None:
+    metadata = {
+        "kuro.schema_version": "1",
+        "modelspec.title": "Typed SD3 Model",
+        "ss_apply_lg_attn_mask": "True",
+    }
+    save_models = Mock(return_value=[str(tmp_path / "model.safetensors")])
+    monkeypatch.setattr("library.strategies.sd3.checkpointing.save_models", save_models)
+    modules = [object(), object(), object()]
+    trainer = SimpleNamespace(
+        cfg=SimpleNamespace(
+            output=SimpleNamespace(
+                saving=SimpleNamespace(
+                    save_model_as="safetensors",
+                    output_dir=str(tmp_path),
+                ),
+                huggingface=None,
+            )
+        ),
+        denoiser=object(),
+        text_encoders=modules,
+        vae=object(),
+        accelerator=SimpleNamespace(unwrap_model=lambda model: model),
+    )
+
+    Sd3CheckpointingStrategy().save_model_checkpoint(
+        trainer,
+        ckpt_name="model.safetensors",
+        step=12,
+        epoch=3,
+        metadata=metadata,
+        save_dtype=torch.float16,
+    )
+
+    assert save_models.call_args.kwargs["metadata"] is metadata
+
+
+@pytest.mark.unit
 def test_sd3_flow_target_matches_paper_velocity_direction() -> None:
     latents = torch.tensor([[[[1.0]]], [[[2.0]]]])
     noise = torch.tensor([[[[4.0]]], [[[7.0]]]])

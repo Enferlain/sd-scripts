@@ -402,3 +402,10 @@ def test_save_checkpoint_uses_repo_owned_adapter_export_seam(monkeypatch, tmp_pa
     assert captured["request"].file == str(Path(tmp_path) / "adapter.safetensors")
     assert captured["request"].dtype == "fp16"
     assert captured["request"].metadata == {"base": "value"}
+
+
+def test_adapter_checkpoint_declares_typed_artifact_shape():
+    mode = AdapterMode()
+
+    assert mode.checkpoint_artifact_role == "adapter"
+    assert mode.resolve_checkpoint_artifact_format(MagicMock()) == "safetensors"

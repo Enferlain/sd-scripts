@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
-from library.metadata.backends import InMemoryMetadataBackend
+from library.metadata.backends import InMemoryMetadataBackend, MetadataSnapshot
 from library.metadata.dataclasses.artifact import CheckpointArtifactFacts
-from library.metadata.dataclasses.model import ModelSpecFacts
 from library.metadata.dataclasses.run import RunMetadataFacts
-from library.metadata.emitters.run import build_model_spec_metadata, build_training_run_metadata
+from library.metadata.emitters.run import build_training_run_metadata
 from library.metadata.projections import (
     KuroMetadataProjection,
+    MetadataProjection,
     ModelSpecCompatibilityProjection,
     SafetensorsMetadataProjection,
+    scope_model_artifact_snapshot,
+    SsCompatibilityProjection,
 )
 from library.metadata.providers import MetadataProviderResult
 from library.metadata.records import ArtifactMetadataRecord, MetadataIdentity, MetadataValue
+from library.metadata.values import stringify_metadata_mapping
 from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
 
@@ -33,32 +36,48 @@ def build_checkpoint_artifact_metadata(
 
 def build_checkpoint_metadata(
     *,
+    snapshot: MetadataSnapshot,
     training_facts: RunMetadataFacts,
-    model_facts: ModelSpecFacts,
     no_metadata: bool,
     artifact_identifier: str = "checkpoint",
+    artifact_format: str = "safetensors",
     step: int | None = None,
     epoch: int | None = None,
 ) -> dict[str, str]:
-    """Build string artifact metadata through the metadata backbone."""
+    """Project one accepted model artifact plus current checkpoint facts."""
     checkpoint_facts = CheckpointArtifactFacts.for_checkpoint(
         artifact_identifier=artifact_identifier,
         no_metadata=no_metadata,
+        artifact_format=artifact_format,
         step=step,
         epoch=epoch,
     )
+    model_snapshot = scope_model_artifact_snapshot(
+        snapshot,
+        artifact_identifier,
+        include_related=not no_metadata,
+    )
     backend = InMemoryMetadataBackend()
-    backend.ingest(build_model_spec_metadata(model_facts))
+    backend.ingest(
+        MetadataProviderResult.from_sequences(
+            provider_id="training.checkpoint.model_scope",
+            records=model_snapshot.records,
+            edges=model_snapshot.edges,
+        )
+    )
     if not no_metadata:
         backend.ingest(build_training_run_metadata(training_facts))
         backend.ingest(build_checkpoint_artifact_metadata(checkpoint_facts))
     backend.validate()
 
-    projections = [
-        KuroMetadataProjection(),
-        ModelSpecCompatibilityProjection(),
+    projections: list[MetadataProjection] = [
+        KuroMetadataProjection(include_all_records=True),
     ]
-    return SafetensorsMetadataProjection.from_sequence(projections).project(backend.snapshot()).metadata
+    if not no_metadata:
+        projections.append(SsCompatibilityProjection(artifact_identifier=artifact_identifier))
+    projections.append(ModelSpecCompatibilityProjection(artifact_identifier=artifact_identifier))
+    projected = SafetensorsMetadataProjection.from_sequence(projections).project(backend.snapshot())
+    return stringify_metadata_mapping(projected.metadata)
 
 
 def _build_checkpoint_artifact_record(

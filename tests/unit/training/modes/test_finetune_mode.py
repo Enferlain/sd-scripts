@@ -625,6 +625,12 @@ class TestEvalTrain:
 class TestSaveCheckpoint:
     """Test save_checkpoint delegates to strategy."""
 
+    def test_declares_full_model_artifact_shape(self, mode, mock_trainer):
+        mock_trainer.cfg.output.saving.save_model_as = "diffusers_safetensors"
+
+        assert mode.checkpoint_artifact_role == "full_model"
+        assert mode.resolve_checkpoint_artifact_format(mock_trainer) == "diffusers_safetensors"
+
     def test_delegates_to_strategy_save_model_checkpoint(self, mode, mock_trainer, tmp_path):
         """Normal checkpoint delegates to strategies.save_model_checkpoint."""
         mode._te_train_flags = [True, True]

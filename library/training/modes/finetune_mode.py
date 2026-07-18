@@ -63,6 +63,15 @@ class FineTuneMode:
     serialization to the strategy.
     """
 
+    checkpoint_artifact_role = "full_model"
+
+    def resolve_checkpoint_artifact_format(self, trainer: Trainer) -> str:
+        """Return the configured family checkpoint serialization format."""
+        artifact_format = trainer.cfg.output.saving.save_model_as
+        if not isinstance(artifact_format, str) or not artifact_format:
+            raise ValueError("FineTuneMode checkpoint metadata requires output.saving.save_model_as.")
+        return artifact_format
+
     # ------------------------------------------------------------------
     # Model preparation
     # ------------------------------------------------------------------

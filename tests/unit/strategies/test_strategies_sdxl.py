@@ -25,6 +25,50 @@ class _TestSdxlDenoiserStrategy(SdxlDiffusionTrainingStrategy, SdxlDenoiserCalli
     pass
 
 
+@pytest.mark.unit
+def test_full_model_checkpoint_uses_centrally_projected_metadata_unchanged(tmp_path):
+    strategy = SdxlCheckpointingStrategy()
+    strategy.ckpt_info = object()
+    strategy.logit_scale = object()
+    metadata = {
+        "kuro.schema_version": "1",
+        "modelspec.title": "Typed Full Model",
+        "ss_adapter_module": "lora",
+    }
+    trainer = SimpleNamespace(
+        cfg=SimpleNamespace(
+            output=SimpleNamespace(
+                saving=SimpleNamespace(
+                    save_model_as="safetensors",
+                    output_dir=str(tmp_path),
+                ),
+                huggingface=None,
+            ),
+            model=SimpleNamespace(pretrained_model_name_or_path="source"),
+        ),
+        denoiser=object(),
+        text_encoders=[object(), object()],
+        vae=object(),
+        accelerator=Mock(unwrap_model=lambda model: model),
+    )
+
+    with (
+        patch("library.models.sdxl.conversion.save_stable_diffusion_checkpoint") as save_checkpoint,
+        patch("library.strategies.sdxl.checkpointing.get_model_metadata_from_config") as legacy_builder,
+    ):
+        strategy.save_model_checkpoint(
+            trainer,
+            ckpt_name="model.safetensors",
+            step=12,
+            epoch=3,
+            metadata=metadata,
+            save_dtype=torch.float16,
+        )
+
+    assert save_checkpoint.call_args.args[9] is metadata
+    legacy_builder.assert_not_called()
+
+
 # =============================================================================
 # Mock Fixtures
 # =============================================================================

@@ -22,6 +22,7 @@ class CheckpointArtifactFacts:
         *,
         artifact_identifier: str,
         no_metadata: bool,
+        artifact_format: str = "safetensors",
         step: int | None = None,
         epoch: int | None = None,
     ) -> CheckpointArtifactFacts:
@@ -29,6 +30,7 @@ class CheckpointArtifactFacts:
         return cls(
             artifact_identifier=artifact_identifier,
             metadata_policy="none" if no_metadata else "full",
+            artifact_format=artifact_format,
             step=step,
             epoch=epoch,
         )

@@ -16,7 +16,7 @@ from library.metadata import (
     SafetensorsMetadataProjection,
     SsCompatibilityProjection,
 )
-from library.metadata.dataclasses import ModelSpecFacts, RunMetadataFacts
+from library.metadata.dataclasses import RunMetadataFacts
 from library.metadata.emitters.checkpoint import build_checkpoint_metadata
 from library.utils import model_metadata
 
@@ -508,7 +508,7 @@ def test_user_modelspec_extensions_currently_override_standard_fields_on_collisi
 
 
 @pytest.mark.unit
-def test_sd3_attention_masks_use_current_kuro_checkpoint_projection() -> None:
+def test_sd3_attention_masks_use_central_checkpoint_projections() -> None:
     cfg = _family_cfg(
         model_type="sd3",
         objective_path="rectified_flow",
@@ -517,45 +517,74 @@ def test_sd3_attention_masks_use_current_kuro_checkpoint_projection() -> None:
         apply_lg_attn_mask=True,
         apply_t5_attn_mask=False,
     )
-    run_metadata: dict[str, str] = {}
     strategy = Sd3CheckpointingStrategy()
-    strategy.update_metadata(run_metadata, cfg)
+    realization = ModelRealizationFacts.for_run(
+        run_identifier="run-7",
+        realization_key="training-target",
+        family_identifier="sd3",
+        model_version="medium",
+    )
+    context = _artifact_context(
+        cfg,
+        family_identifier="sd3",
+        model_version="medium",
+        artifact_identifier="sd3.safetensors",
+        artifact_role="full_model",
+        realization_identifier=realization.realization_identifier,
+    )
+    runtime = MetadataRuntime()
+    runtime.file_many(
+        (
+            realization,
+            strategy.resolve_model_artifact_facts(context),
+            strategy.resolve_model_family_metadata(
+                cfg,
+                run_identifier=realization.run_identifier,
+                realization_identifier=realization.realization_identifier,
+            ),
+        )
+    )
 
     metadata = build_checkpoint_metadata(
-        training_facts=RunMetadataFacts(run_identifier="run-7", metadata=run_metadata),
-        model_facts=ModelSpecFacts.from_modelspec_metadata(strategy.get_model_metadata(cfg)),
+        snapshot=runtime.snapshot(),
+        training_facts=RunMetadataFacts(run_identifier="run-7", metadata={}),
         no_metadata=False,
         artifact_identifier="sd3.safetensors",
         step=12,
         epoch=3,
     )
 
-    assert run_metadata == {
-        "apply_lg_attn_mask": "True",
-        "apply_t5_attn_mask": "False",
-    }
-    assert metadata["kuro.run.apply_lg_attn_mask"] == "True"
-    assert metadata["kuro.run.apply_t5_attn_mask"] == "False"
-    assert HISTORICAL_SD3_ATTENTION_MASK_COMPATIBILITY.keys().isdisjoint(metadata)
+    assert {key: metadata[key] for key in HISTORICAL_SD3_ATTENTION_MASK_COMPATIBILITY} == (HISTORICAL_SD3_ATTENTION_MASK_COMPATIBILITY)
+    assert metadata["kuro.model.family.apply_lg_attn_mask"] == "True"
+    assert metadata["kuro.model.family.apply_t5_attn_mask"] == "False"
     assert "apply_lg_attn_mask" not in metadata
     assert "apply_t5_attn_mask" not in metadata
 
 
 @pytest.mark.unit
 def test_no_metadata_preserves_modelspec_and_model_identity_only() -> None:
-    modelspec = _expected_modelspec(
-        architecture="stable-diffusion-v1/lora",
-        implementation="diffusers",
-        resolution="512x512",
-        prediction_type="epsilon",
+    cfg = _family_cfg(
+        model_type="sd1",
+        objective_path="ddpm",
+        prediction="epsilon",
+        resolution=(512, 512),
     )
+    context = _artifact_context(
+        cfg,
+        family_identifier="sd",
+        model_version="sd1",
+        artifact_identifier="adapter.safetensors",
+        artifact_role="adapter",
+    )
+    runtime = MetadataRuntime()
+    runtime.file(SdCheckpointingStrategy().resolve_model_artifact_facts(context))
 
     metadata = build_checkpoint_metadata(
+        snapshot=runtime.snapshot(),
         training_facts=RunMetadataFacts(
             run_identifier="run-8",
             metadata={"seed": "42", "apply_lg_attn_mask": "True"},
         ),
-        model_facts=ModelSpecFacts.from_modelspec_metadata(modelspec),
         no_metadata=True,
         artifact_identifier="adapter.safetensors",
         step=99,
@@ -564,11 +593,29 @@ def test_no_metadata_preserves_modelspec_and_model_identity_only() -> None:
 
     assert metadata == {
         "kuro.schema_version": "1",
-        "kuro.model.id": "active-model",
-        "kuro.model.schema_version": "1",
-        "kuro.model.producer": "model.modelspec",
-        "kuro.model.architecture": "stable-diffusion-v1/lora",
-        "kuro.model.implementation": "diffusers",
-        "kuro.model.prediction_type": "epsilon",
-        **modelspec,
+        "kuro.model.artifact.id": "adapter.safetensors",
+        "kuro.model.artifact.schema_version": "1",
+        "kuro.model.artifact.producer": "model.artifact",
+        "kuro.model.artifact.namespace": "kuro",
+        "kuro.model.artifact.label": "Parity Artifact",
+        "kuro.model.artifact.architecture": "stable-diffusion-v1/lora",
+        "kuro.model.artifact.artifact_format": "safetensors",
+        "kuro.model.artifact.artifact_role": "adapter",
+        "kuro.model.artifact.author": "Metadata Tests",
+        "kuro.model.artifact.date": FIXED_DATE,
+        "kuro.model.artifact.encoder_layer": "2",
+        "kuro.model.artifact.extension_fields": "{}",
+        "kuro.model.artifact.family_identifier": "sd",
+        "kuro.model.artifact.implementation": "https://github.com/CompVis/stable-diffusion",
+        "kuro.model.artifact.implementation_version": FIXED_IMPLEMENTATION_VERSION,
+        "kuro.model.artifact.prediction_type": "epsilon",
+        "kuro.model.artifact.resolution": "512x512",
+        "kuro.model.artifact.timestep_range": "10,900",
+        "kuro.model.artifact.title": "Parity Artifact",
+        **_expected_modelspec(
+            architecture="stable-diffusion-v1/lora",
+            implementation="https://github.com/CompVis/stable-diffusion",
+            resolution="512x512",
+            prediction_type="epsilon",
+        ),
     }

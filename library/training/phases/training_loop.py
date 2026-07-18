@@ -101,7 +101,14 @@ def _save_step_checkpoint_artifacts(trainer: Trainer) -> None:
             trainer.loss_modifier.sidecar_suffix,
         )
         sidecar_path = str(Path(cfg.output.saving.output_dir) / loss_weights_ckpt_name)
-        trainer.loss_modifier.save_sidecar(sidecar_path, trainer._build_checkpoint_metadata())
+        trainer.loss_modifier.save_sidecar(
+            sidecar_path,
+            trainer._build_checkpoint_metadata(
+                ckpt_name=loss_weights_ckpt_name,
+                step=trainer.global_step,
+                epoch=trainer._current_epoch_state.value,
+            ),
+        )
 
     if cfg.output.saving.save_state:
         save_and_remove_state_stepwise(cfg.output.saving, accelerator, trainer.global_step)
@@ -279,7 +286,14 @@ def _save_epoch_checkpoint_artifacts(trainer: Trainer) -> None:
             trainer.loss_modifier.sidecar_suffix,
         )
         sidecar_path = str(Path(cfg.output.saving.output_dir) / loss_weights_ckpt_name)
-        trainer.loss_modifier.save_sidecar(sidecar_path, trainer._build_checkpoint_metadata())
+        trainer.loss_modifier.save_sidecar(
+            sidecar_path,
+            trainer._build_checkpoint_metadata(
+                ckpt_name=loss_weights_ckpt_name,
+                step=trainer.global_step,
+                epoch=trainer._current_epoch_state.value,
+            ),
+        )
 
     remove_epoch_no = get_remove_epoch_no(cfg.output.saving, trainer._current_epoch_state.value)
     if remove_epoch_no is not None:

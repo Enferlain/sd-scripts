@@ -31,6 +31,8 @@ class TrainingMode(Protocol):
     read whatever they need from ``trainer`` directly.
     """
 
+    checkpoint_artifact_role: str
+
     # --- Model creation & precision ---
 
     def prepare_trainables(self, trainer: Trainer) -> None:
@@ -153,6 +155,10 @@ class TrainingMode(Protocol):
         ...
 
     # --- Checkpoint saving ---
+
+    def resolve_checkpoint_artifact_format(self, trainer: Trainer) -> str:
+        """Return the physical format used for this mode's checkpoint artifact."""
+        ...
 
     def save_checkpoint(
         self,

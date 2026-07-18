@@ -2,12 +2,23 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import logging
+
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from library.metadata.dataclasses.model import ModelRealizationFacts, RealizedModelComponentFacts
+from library.config.dataclasses.output import MetadataConfig
+from library.metadata.dataclasses.model import (
+    ModelArtifactPresentation,
+    ModelArtifactResolutionContext,
+    ModelRealizationFacts,
+    RealizedModelComponentFacts,
+)
 from library.metadata.validation import validate_metadata_items
+
+
+logger = logging.getLogger(__name__)
 
 
 class _LoadedModelComponentView(Protocol):
@@ -84,4 +95,105 @@ def build_model_realization_state(
     return state
 
 
-__all__ = ["ModelRealizationState", "build_model_realization_state"]
+def build_model_artifact_resolution_context(
+    *,
+    metadata_config: MetadataConfig,
+    family_identifier: str,
+    model_version: str,
+    artifact_identifier: str,
+    artifact_role: str,
+    serialization_format: str,
+    resolution: str | int | Sequence[int] | None,
+    created_at: float,
+    realization_identifier: str | None = None,
+    implementation_version: str | None = None,
+    prediction_type: str | None = None,
+    min_timestep: int | None = None,
+    max_timestep: int | None = None,
+    encoder_layer: int | None = None,
+    extension_fields: Mapping[str, str] | None = None,
+) -> ModelArtifactResolutionContext:
+    """Build narrow family-resolution inputs from explicit artifact facts."""
+    return ModelArtifactResolutionContext(
+        family_identifier=family_identifier,
+        model_version=model_version,
+        artifact_identifier=artifact_identifier,
+        artifact_role=artifact_role,
+        serialization_format=serialization_format,
+        resolution=_normalize_resolution(resolution),
+        created_at=created_at,
+        presentation=ModelArtifactPresentation(
+            title=metadata_config.metadata_title,
+            description=metadata_config.metadata_description,
+            author=metadata_config.metadata_author,
+            license=metadata_config.metadata_license,
+            tags=metadata_config.metadata_tags,
+            usage_hint=metadata_config.metadata_usage_hint,
+            thumbnail=_resolve_thumbnail(metadata_config.metadata_thumbnail),
+            merged_from=metadata_config.metadata_merged_from,
+            trigger_phrase=metadata_config.metadata_trigger_phrase,
+            preprocessor=metadata_config.metadata_preprocessor,
+            is_negative_embedding=metadata_config.metadata_is_negative_embedding,
+            extension_fields={} if extension_fields is None else dict(extension_fields),
+        ),
+        realization_identifier=realization_identifier,
+        implementation_version=implementation_version,
+        prediction_type=prediction_type,
+        timestep_range=_normalize_timestep_range(min_timestep, max_timestep),
+        encoder_layer=encoder_layer,
+    )
+
+
+def _normalize_resolution(resolution: str | int | Sequence[int] | None) -> tuple[int, int]:
+    if resolution is None:
+        raise ValueError("Model artifact metadata requires an explicit resolution.")
+    if isinstance(resolution, int):
+        values = (resolution, resolution)
+    elif isinstance(resolution, str):
+        parts = tuple(part.strip() for part in resolution.lower().replace("x", ",").split(",") if part.strip())
+        if not parts:
+            raise ValueError("Model artifact resolution must contain at least one integer.")
+        parsed = tuple(int(part) for part in parts)
+        values = (parsed[0], parsed[1] if len(parsed) > 1 else parsed[0])
+    else:
+        parsed = tuple(int(value) for value in resolution)
+        if not parsed:
+            raise ValueError("Model artifact resolution must contain at least one integer.")
+        values = (parsed[0], parsed[1] if len(parsed) > 1 else parsed[0])
+    if values[0] <= 0 or values[1] <= 0:
+        raise ValueError("Model artifact resolution dimensions must be positive integers.")
+    return values
+
+
+def _normalize_timestep_range(
+    min_timestep: int | None,
+    max_timestep: int | None,
+) -> tuple[int, int] | None:
+    if min_timestep is None and max_timestep is None:
+        return None
+    return (
+        0 if min_timestep is None else min_timestep,
+        1000 if max_timestep is None else max_timestep,
+    )
+
+
+def _resolve_thumbnail(thumbnail: str | None) -> str | None:
+    if thumbnail is None or thumbnail.startswith("data:"):
+        return thumbnail
+
+    from library.utils.model_metadata import file_to_data_url
+
+    try:
+        return file_to_data_url(thumbnail)
+    except FileNotFoundError as exc:
+        logger.warning("Thumbnail file not found, skipping: %s", exc)
+    except Exception as exc:  # pragma: no cover - format/IO-specific failure
+        logger.warning("Failed to convert thumbnail file %s to a data URL: %s", thumbnail, exc)
+    return None
+
+
+__all__ = [
+    "ModelRealizationState",
+    "build_model_artifact_resolution_context",
+    "build_model_realization_state",
+]

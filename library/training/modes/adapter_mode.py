@@ -101,6 +101,13 @@ class AdapterMode:
     optimizer grouping ownership in the optimization layer.
     """
 
+    checkpoint_artifact_role = "adapter"
+
+    def resolve_checkpoint_artifact_format(self, trainer: Trainer) -> str:
+        """Adapters use the repo-owned single-file safetensors export seam."""
+        del trainer
+        return "safetensors"
+
     # ------------------------------------------------------------------
     # Model creation & precision
     # ------------------------------------------------------------------
