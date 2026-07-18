@@ -172,6 +172,12 @@ Canonical records use repo-owned semantic names such as `architecture`, `impleme
 
 `KuroMetadataProjection` remains the primary repo-owned machine-facing export and is extended to cover the accepted model-realization, component, family-contribution, and artifact entities. `ModelSpecCompatibilityProjection` becomes a real mapping from typed artifact/model facts to SAI ModelSpec keys. Family-specific Kohya `ss_*` fields remain compatibility-only output mapped by the appropriate central projection from accepted family facts. `SafetensorsMetadataProjection` remains the final stringification boundary.
 
+`kuro.*` is therefore the preferred repository-native external representation, but it is not a second canonical store and internal consumers do not parse it. Accepted typed items, records, relationships, and snapshots remain authoritative. `modelspec.*` and `ss_*` continue only as external compatibility representations where required.
+
+Native model projection has an explicit scope. A safetensors artifact projection targets one model-artifact identity and may include only that artifact plus model realization, component, and family-contribution records connected to it by accepted relationships. A broader snapshot export must declare that broader scope explicitly. When a scope contains multiple records of the same entity type, `KuroMetadataProjection` renders deterministic identity-qualified entries under `kuro.*`; it must not reuse one singular flat prefix and silently let later records overwrite earlier records. A singular compatibility-shaped prefix may be retained only when the selected scope proves there is exactly one corresponding entity. Missing or ambiguous target scope fails projection rather than selecting whichever record happens to appear last.
+
+`SsCompatibilityProjection` is the central external-format boundary for the legacy Kohya `ss_*` namespace as a whole, but canonical ownership remains divided by concern. This change migrates the model-family-owned subset, currently the SD3 attention-mask fields. Training-run, dataset, optimizer, source-hash, and adapter-method `ss_*` fields are not reclassified as model-family metadata and move behind the same compatibility boundary only when their owning metadata slices are migrated. The presence of a legacy `ss_*` name never determines its canonical internal owner.
+
 Projection behavior must preserve current active outputs for:
 
 - SD1/SD2 adapter artifacts;
@@ -249,7 +255,7 @@ Alternative considered: retain old methods as adapters indefinitely. Rejected be
 3. Define central declaration/realization/component/artifact fact dataclasses, qualified identity helpers, builders, validation, registry routes, and emitters.
 4. Add family-owned typed resolvers to SD, SDXL, and SD3 checkpointing/model facets.
 5. File model-realization/component facts at the post-load lifecycle boundary and link them to the run.
-6. Extend the repo-owned `kuro.*` projection for the new model entities, and rewrite ModelSpec and compatibility-only family `ss_*` projections to map canonical facts into external keys.
+6. Extend the repo-owned `kuro.*` projection for explicitly scoped, identity-preserving model entities, and rewrite ModelSpec and compatibility-only model-family `ss_*` projections to map canonical facts into external keys without claiming ownership of the entire legacy `ss_*` migration.
 7. Switch checkpoint/adapter/full-model export paths to consume accepted facts and projection snapshots.
 8. Migrate resource component references to the shared qualified identity where cross-run snapshots require it, without changing resource meaning or accounting semantics.
 9. Remove replaced active dictionary hooks/builders, update metadata ownership docs, changelog, and roadmap, and close the migration bead after parity and focused verification pass.

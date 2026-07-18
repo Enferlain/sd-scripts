@@ -7,6 +7,15 @@ from types import ModuleType, SimpleNamespace
 import pytest
 
 from library.config.dataclasses.output import MetadataConfig
+from library.metadata import (
+    MetadataRuntime,
+    ModelArtifactPresentation,
+    ModelArtifactResolutionContext,
+    ModelRealizationFacts,
+    ModelSpecCompatibilityProjection,
+    SafetensorsMetadataProjection,
+    SsCompatibilityProjection,
+)
 from library.metadata.dataclasses import ModelSpecFacts, RunMetadataFacts
 from library.metadata.emitters.checkpoint import build_checkpoint_metadata
 from library.utils import model_metadata
@@ -115,6 +124,45 @@ def _expected_modelspec(
     return expected
 
 
+def _artifact_context(
+    cfg: SimpleNamespace,
+    *,
+    family_identifier: str,
+    model_version: str,
+    artifact_identifier: str,
+    artifact_role: str,
+    realization_identifier: str | None = None,
+) -> ModelArtifactResolutionContext:
+    prediction_type = None if cfg.objective.path == "rectified_flow" else cfg.objective.prediction
+    return ModelArtifactResolutionContext(
+        family_identifier=family_identifier,
+        model_version=model_version,
+        artifact_identifier=artifact_identifier,
+        artifact_role=artifact_role,
+        serialization_format="safetensors",
+        resolution=cfg.data.preprocessing.resolution,
+        created_at=FIXED_TIMESTAMP,
+        presentation=ModelArtifactPresentation(
+            title=cfg.output.metadata.metadata_title,
+            author=cfg.output.metadata.metadata_author,
+        ),
+        realization_identifier=realization_identifier,
+        implementation_version=FIXED_IMPLEMENTATION_VERSION,
+        prediction_type=prediction_type,
+        timestep_range=(cfg.timestep.min_timestep, cfg.timestep.max_timestep),
+        encoder_layer=cfg.training.clip_skip,
+    )
+
+
+def _project_resolved_modelspec(strategy, context: ModelArtifactResolutionContext) -> dict[str, str]:
+    runtime = MetadataRuntime()
+    runtime.file(strategy.resolve_model_artifact_facts(context))
+    result = SafetensorsMetadataProjection.from_sequence(
+        (ModelSpecCompatibilityProjection(artifact_identifier=context.artifact_identifier),)
+    ).project(runtime.snapshot())
+    return {key: str(value) for key, value in result.metadata.items()}
+
+
 @pytest.mark.unit
 @pytest.mark.parametrize(
     ("model_type", "prediction", "expected_architecture", "expected_prediction"),
@@ -149,6 +197,64 @@ def test_sd_adapter_modelspec_output_parity(
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
+    ("model_type", "prediction", "expected_architecture", "expected_implementation", "expected_prediction"),
+    [
+        (
+            "sd1",
+            "epsilon",
+            "stable-diffusion-v1/lora",
+            "https://github.com/CompVis/stable-diffusion",
+            "epsilon",
+        ),
+        (
+            "sd2",
+            "epsilon",
+            "stable-diffusion-v2-512/lora",
+            "https://github.com/Stability-AI/stablediffusion",
+            "epsilon",
+        ),
+        (
+            "sd2",
+            "v_prediction",
+            "stable-diffusion-v2-768-v/lora",
+            "https://github.com/Stability-AI/stablediffusion",
+            "v_prediction",
+        ),
+    ],
+)
+def test_sd_typed_modelspec_projection_matches_parity_except_corrected_implementation(
+    model_type: str,
+    prediction: str,
+    expected_architecture: str,
+    expected_implementation: str,
+    expected_prediction: str,
+) -> None:
+    cfg = _family_cfg(
+        model_type=model_type,
+        objective_path="ddpm",
+        prediction=prediction,
+        resolution=(768, 512),
+    )
+    context = _artifact_context(
+        cfg,
+        family_identifier="sd",
+        model_version=model_type,
+        artifact_identifier=f"{model_type}-adapter.safetensors",
+        artifact_role="adapter",
+    )
+
+    metadata = _project_resolved_modelspec(SdCheckpointingStrategy(), context)
+
+    assert metadata == _expected_modelspec(
+        architecture=expected_architecture,
+        implementation=expected_implementation,
+        resolution="768x512",
+        prediction_type=expected_prediction,
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
     ("objective_path", "prediction", "expected_prediction"),
     [
         ("ddpm", "epsilon", "epsilon"),
@@ -169,6 +275,44 @@ def test_sdxl_adapter_modelspec_output_parity(
     )
 
     metadata = SdxlCheckpointingStrategy().get_model_metadata(cfg)
+
+    assert metadata == _expected_modelspec(
+        architecture="stable-diffusion-xl-v1-base/lora",
+        implementation="https://github.com/Stability-AI/generative-models",
+        resolution="1024x1024",
+        prediction_type=expected_prediction,
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("objective_path", "prediction", "expected_prediction"),
+    [
+        ("ddpm", "epsilon", "epsilon"),
+        ("ddpm", "v_prediction", "v_prediction"),
+        ("rectified_flow", "flow", None),
+    ],
+)
+def test_sdxl_typed_adapter_projection_matches_parity(
+    objective_path: str,
+    prediction: str,
+    expected_prediction: str | None,
+) -> None:
+    cfg = _family_cfg(
+        model_type="sdxl",
+        objective_path=objective_path,
+        prediction=prediction,
+        resolution=(1024, 1024),
+    )
+    context = _artifact_context(
+        cfg,
+        family_identifier="sdxl",
+        model_version="sdxl",
+        artifact_identifier=f"sdxl-{objective_path}-adapter.safetensors",
+        artifact_role="adapter",
+    )
+
+    metadata = _project_resolved_modelspec(SdxlCheckpointingStrategy(), context)
 
     assert metadata == _expected_modelspec(
         architecture="stable-diffusion-xl-v1-base/lora",
@@ -208,6 +352,32 @@ def test_sdxl_full_model_role_has_checkpoint_architecture_and_implementation() -
 
 
 @pytest.mark.unit
+def test_sdxl_typed_full_model_projection_matches_parity() -> None:
+    cfg = _family_cfg(
+        model_type="sdxl",
+        objective_path="ddpm",
+        prediction="epsilon",
+        resolution=(1024, 1024),
+    )
+    context = _artifact_context(
+        cfg,
+        family_identifier="sdxl",
+        model_version="sdxl",
+        artifact_identifier="sdxl-full.safetensors",
+        artifact_role="full_model",
+    )
+
+    metadata = _project_resolved_modelspec(SdxlCheckpointingStrategy(), context)
+
+    assert metadata == _expected_modelspec(
+        architecture="stable-diffusion-xl-v1-base",
+        implementation="https://github.com/Stability-AI/generative-models",
+        resolution="1024x1024",
+        prediction_type="epsilon",
+    )
+
+
+@pytest.mark.unit
 def test_sd3_full_model_modelspec_output_parity() -> None:
     cfg = _family_cfg(
         model_type="sd3",
@@ -227,6 +397,83 @@ def test_sd3_full_model_modelspec_output_parity() -> None:
         prediction_type=None,
         encoder_layer=None,
     )
+
+
+@pytest.mark.unit
+def test_sd3_typed_full_model_projection_uses_corrected_reference_implementation() -> None:
+    cfg = _family_cfg(
+        model_type="sd3",
+        objective_path="rectified_flow",
+        prediction="flow",
+        resolution=(1024, 768),
+        clip_skip=None,
+        sd3_type="medium",
+    )
+    context = _artifact_context(
+        cfg,
+        family_identifier="sd3",
+        model_version="medium",
+        artifact_identifier="sd3-full.safetensors",
+        artifact_role="full_model",
+    )
+
+    metadata = _project_resolved_modelspec(Sd3CheckpointingStrategy(), context)
+
+    assert metadata == _expected_modelspec(
+        architecture="stable-diffusion-3-medium",
+        implementation="https://github.com/Stability-AI/sd3.5",
+        resolution="1024x768",
+        prediction_type=None,
+        encoder_layer=None,
+    )
+
+
+@pytest.mark.unit
+def test_sd3_typed_family_projection_restores_historical_attention_mask_keys() -> None:
+    cfg = _family_cfg(
+        model_type="sd3",
+        objective_path="rectified_flow",
+        prediction="flow",
+        resolution=(1024, 1024),
+        clip_skip=None,
+        apply_lg_attn_mask=True,
+        apply_t5_attn_mask=False,
+    )
+    realization = ModelRealizationFacts.for_run(
+        run_identifier="run-sd3-parity",
+        realization_key="training-target",
+        family_identifier="sd3",
+        model_version="medium",
+    )
+    context = _artifact_context(
+        cfg,
+        family_identifier="sd3",
+        model_version="medium",
+        artifact_identifier="sd3-family.safetensors",
+        artifact_role="full_model",
+        realization_identifier=realization.realization_identifier,
+    )
+    strategy = Sd3CheckpointingStrategy()
+    runtime = MetadataRuntime()
+    runtime.file_many(
+        (
+            realization,
+            strategy.resolve_model_artifact_facts(context),
+            strategy.resolve_model_family_metadata(
+                cfg,
+                run_identifier=realization.run_identifier,
+                realization_identifier=realization.realization_identifier,
+            ),
+        )
+    )
+
+    metadata = (
+        SafetensorsMetadataProjection.from_sequence((SsCompatibilityProjection(artifact_identifier=context.artifact_identifier),))
+        .project(runtime.snapshot())
+        .metadata
+    )
+
+    assert metadata == HISTORICAL_SD3_ATTENTION_MASK_COMPATIBILITY
 
 
 @pytest.mark.unit

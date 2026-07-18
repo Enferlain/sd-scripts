@@ -9,7 +9,7 @@ The active model-metadata path is backwards: SD, SDXL, and SD3 first build flat 
 - Qualify model and component identities by their owning realization/run so repeated family-local keys cannot collide across runs or model families.
 - Replace raw strategy `get_model_metadata()` dictionaries and `update_metadata()` mutation hooks with typed family-owned fact resolution feeding central emitters.
 - Route low-volume model-realization facts through the existing metadata registry/runtime/backend path and link them to runs, components, and produced artifacts.
-- Make repo-owned `kuro.*`, `modelspec.*`, compatibility-only family `ss_*`, and string-only safetensors metadata projection outputs from accepted facts while preserving SD/SDXL/SD3 external compatibility except for explicitly corrected reference-implementation identifiers.
+- Make repo-owned `kuro.*`, `modelspec.*`, compatibility-only `ss_*`, and string-only safetensors metadata projection outputs from accepted facts while preserving SD/SDXL/SD3 external compatibility except for explicitly corrected reference-implementation identifiers. `kuro.*` is the preferred repository-native export, not the internal source of truth; this change migrates only the model-family-owned subset of the wider legacy `ss_*` surface.
 - Correct canonical implementation claims to the family reference codebases: CompVis Stable Diffusion for SD1, Stability AI `stablediffusion` for SD2, Stability AI `generative-models` for SDXL, and Stability AI `sd3.5` for SD3/3.5.
 - Remove the active dependency on broad flag-driven ModelSpec builders once focused parity coverage proves the replacement path.
 

@@ -147,7 +147,7 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
   - Note: the current `fp8_base` / `fp8_base_unet` config flags have a fairly narrow active effect. In the current training path they mostly drive shared model-prep dtype casting for the denoiser / text encoders (with TE embedding workarounds), plus validation and metadata. They should not be treated as a broad quantization backend or a settled precision architecture.
 
 - [ ] **Investigate 2022-2023 backend code**
-  - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line.
+  - After cecking sd_original_unet.py we found that it referenced bugs and had workaround for said bugs from 2022-2024. The model backend might be outdated or harming performance/code quality at large. A wider audit of the backend against diffusers or original code might be necessary down the line. (sd, sdxl)
 
 - [ ] Model download/load to memory for training from huggingface
 
@@ -164,6 +164,7 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 ### Future Improvements
 
 - [ ] Config-hash cache namespace - Auto-segregate caches by config hash (`resolution`, `bucket_steps`, `model_version`) to prevent cross-config issues. See `AUDIT/AUDIT_PHASE_6.md`.
+- [ ] Repo doctor app for diagnostics/status/problem probing and resolution
 - [ ] **Large-scale dataset manifest optimization** - Current JSON manifest grows ~2KB/entry (100k images = ~200MB JSON). Options:
   - Binary format (msgpack/pickle) for faster I/O
   - Incremental manifest updates instead of full rewrite

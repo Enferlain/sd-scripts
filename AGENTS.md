@@ -38,6 +38,8 @@ Use this tool **after completing a significant chunk of work** (e.g., refactorin
 - **When to use:** After implementing changes, before final user handoff.
 - **How to use:** Provide the `diff_target` (usually 'HEAD') and a `task_description`.
 - **Benefit:** Catches architectural issues, typos, and best-practice violations that linters miss.
+- **Wait for the result:** Reviews commonly take 5–15 minutes. Allow the review up to the 900-second tool limit and do not terminate it merely because it is silent. A review-required handoff is not complete until the review returns, explicitly fails, or reaches that limit.
+- **After the result:** Address actionable findings and rerun the relevant quality gates before handing off. Request another review when the fixes are themselves a significant change; small review follow-ups do not require an automatic second review.
 
 ### Web Search & Research
 
@@ -300,6 +302,13 @@ and task checklists live under `openspec/changes/` when a change is in flight.
   4. Archive the OpenSpec change when complete.
   5. Close the `bd` issue after implementation and verification are done.
 
+### OpenSpec Milestones And Handoffs
+
+- Treat a numbered section in `openspec/changes/<name>/tasks.md` as the normal implementation milestone. Complete, verify, review, and hand off that section before starting the next one.
+- Adjacent sections may be grouped only when they are genuinely small or cannot be reviewed meaningfully in isolation. State the grouped scope before implementation.
+- For each milestone, run the relevant quality gates, request `review-mcp`, wait for its result as described above, address actionable feedback, and then provide the handoff.
+- Do not describe a milestone as reviewed or ready for handoff while its review is still running. If review explicitly fails or reaches the 900-second limit, report that outcome rather than substituting an unreviewed success claim.
+
 ### Useful OpenSpec Commands
 
 ```bash
@@ -317,6 +326,6 @@ openspec status --change "<name>" --json
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
-4. **Prepare for review** - Summarize what changed, what was verified, and any remaining risks or follow-up work
-5. **Hand off** - Provide enough context for the next session or for a reviewer to evaluate the change
+4. **Complete review** - For significant or OpenSpec milestone work, request `review-mcp`, wait for the result, address actionable findings, and rerun affected checks
+5. **Hand off** - Summarize the completed scope, verification, review outcome, and any remaining risks or follow-up work
 <!-- END BEADS INTEGRATION -->

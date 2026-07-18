@@ -39,10 +39,10 @@
 
 ## 6. Make compatibility projections semantic
 
-- [ ] 6.1 Rewrite `ModelSpecCompatibilityProjection` to stamp its supported SAI ModelSpec version and map canonical accepted facts to ModelSpec keys and omission rules
-- [ ] 6.2 Extend repo-owned `kuro.*` output across the new model entity types and map accepted family-specific facts to compatibility-only Kohya `ss_*` output in central projection code
-- [ ] 6.3 Keep safetensors stringification as the final boundary and add required-fact projection validation
-- [ ] 6.4 Add projection tests covering complete parity fixtures, invalid required claims, optional omission, extension fields, and deterministic output
+- [x] 6.1 Rewrite `ModelSpecCompatibilityProjection` to stamp its supported SAI ModelSpec version and map canonical accepted facts to ModelSpec keys and omission rules
+- [x] 6.2 Extend repo-owned `kuro.*` output across the new model entity types with explicit artifact scope, deterministic identity-qualified multi-record output, and no last-write-wins collisions; map only the accepted model-family facts in this change to compatibility-only Kohya `ss_*` output while retaining `SsCompatibilityProjection` as the eventual shared boundary for other concern-owned legacy fields
+- [x] 6.3 Keep safetensors stringification as the final boundary and add required-fact projection validation
+- [x] 6.4 Add projection tests covering complete parity fixtures, invalid required claims, optional omission, extension fields, and deterministic output
 
 ## 7. Migrate checkpoint and artifact paths
 

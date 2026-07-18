@@ -136,6 +136,19 @@ The metadata system SHALL create repo-owned `kuro.*`, `modelspec.*`, compatibili
 - **WHEN** accepted model-realization, component, family-contribution, or artifact facts are exported in the native repository format
 - **THEN** `KuroMetadataProjection` MUST render the corresponding `kuro.*` keys from canonical accepted facts
 - **AND** accepted records MUST remain prefix-free source data rather than storing `kuro.*` duplicates
+- **AND** internal consumers MUST continue to use accepted typed facts and relationships rather than parsing `kuro.*` output
+
+#### Scenario: Projecting one artifact from a long-lived snapshot
+- **WHEN** a safetensors header is projected from a snapshot that may contain more than one model artifact or realization
+- **THEN** the projection request MUST identify the target model artifact explicitly
+- **AND** it MUST include only that artifact and model realization, component, or family-contribution context connected through accepted relationships
+- **AND** it MUST fail on missing or ambiguous target scope rather than selecting a record by backend iteration order
+
+#### Scenario: Native projection contains repeated entity types
+- **WHEN** an explicitly selected native export scope contains multiple components, artifacts, realizations, or family contributions
+- **THEN** every projected entry MUST preserve its accepted identity under deterministic identity-qualified `kuro.*` output
+- **AND** records MUST NOT overwrite one another through reuse of a singular flat entity prefix
+- **AND** output MUST be stable regardless of backend record or edge iteration order
 
 #### Scenario: Projecting SAI ModelSpec metadata
 - **WHEN** an artifact requests ModelSpec-compatible metadata
@@ -147,6 +160,12 @@ The metadata system SHALL create repo-owned `kuro.*`, `modelspec.*`, compatibili
 - **THEN** a central compatibility projection MUST render the corresponding `ss_*` keys and omission behavior
 - **AND** those `ss_*` keys MUST remain compatibility-only output rather than the repository-owned metadata surface
 - **AND** the family strategy MUST NOT mutate the projected dictionary directly
+
+#### Scenario: Legacy ss metadata belongs to another concern
+- **WHEN** an `ss_*` compatibility field describes training, data, optimization, source hashes, or adapter-method state rather than model-family semantics
+- **THEN** its canonical fact MUST remain owned by that originating concern
+- **AND** this model-family change MUST NOT absorb it into model-family facts merely because the external key uses the `ss_*` prefix
+- **AND** the shared `ss_*` compatibility boundary MAY map it once that concern's canonical metadata slice is migrated
 
 #### Scenario: Rendering safetensors metadata
 - **WHEN** accepted typed values are exported to a safetensors header

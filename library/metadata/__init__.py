@@ -122,6 +122,7 @@ from library.metadata.graph import (
 from library.metadata.projections import (
     KuroMetadataProjection,
     MetadataProjection,
+    MetadataProjectionScopeError,
     ModelSpecCompatibilityProjection,
     ProjectionResult,
     SafetensorsMetadataProjection,
@@ -158,7 +159,6 @@ from library.metadata.storage import (
     SQLiteMetadataStore,
 )
 
-
 __all__ = [
     "AdapterMetadataRecord",
     "AnalyticsSnapshotFacts",
@@ -178,6 +178,7 @@ __all__ = [
     "MetadataGraphSnapshot",
     "MetadataIdentity",
     "MetadataProjection",
+    "MetadataProjectionScopeError",
     "MetadataProvider",
     "MetadataProviderResult",
     "METADATA_PAYLOAD_VERSION",

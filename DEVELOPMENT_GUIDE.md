@@ -27,17 +27,21 @@ This is the core of the project. It should contain the "building blocks" of trai
 
 - **Design Pattern:** Config Injection.
   - ❌ **Bad (Legacy broad container pattern):**
+
     ```python
     def setup_optimizer(args, model):
         # args is a massive unrelated object
         lr = args.learning_rate
     ```
+
   - ✅ **Good (Modern):**
+
     ```python
     def setup_optimizer(optimizer_config: OptimizerConfig, model):
         # config contains ONLY optimizer settings
         lr = optimizer_config.learning_rates.base
     ```
+
 - **Modularity:** Modules should be loosely coupled. An optimizer module shouldn't need to know about dataset details.
 
 ### C. Launchers (`train.py`, `scripts/`)
@@ -203,6 +207,12 @@ def train(cfg: RunConfig):
     - Expose it in the main script.
 2.  **Refactoring:**
     - If you see legacy broad-config passing, refactor it toward explicit typed config objects with ownership that matches the layer.
+3.  **OpenSpec Milestones:**
+    - Scope implementation to one numbered `tasks.md` section at a time by default. Only group adjacent sections when they are genuinely small or too tightly coupled to review separately, and identify that grouped scope before starting.
+    - Finish the section's implementation and relevant quality gates before moving to its handoff.
+    - Treat `review-mcp` as part of the milestone handoff, not as an asynchronous afterthought. Reviews may take 5–15 minutes; wait for the returned result up to the 900-second tool limit.
+    - Address actionable review findings and rerun affected checks before reporting the milestone complete. A substantial review-driven revision should be reviewed again; small follow-up corrections do not require another review automatically.
+    - Hand off between sections unless the user has explicitly requested continuous execution. The handoff should state the completed scope, verification, review result, remaining risks, and the next section.
 
 ## 7. Testing Strategy
 
@@ -215,6 +225,7 @@ def train(cfg: RunConfig):
   - **Config Tests:** Verify that dataclasses compose correctly and validation catches invalid combinations.
   - **Integration / Smoke Tests:** Cover representative end-to-end launcher or trainer flows where wiring matters.
 - **How to Run:**
+
   ```bash
   uv run pytest tests/unit/ -v
   uv run pytest tests/integration/ -v

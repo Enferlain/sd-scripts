@@ -8,6 +8,8 @@ KURO_SCHEMA_VERSION = "1"
 
 KOHYA_SS_PREFIX = "ss_"
 MODELSPEC_PREFIX = "modelspec."
+MODELSPEC_VERSION_KEY = "modelspec.sai_model_spec"
+MODELSPEC_VERSION = "1.0.1"
 
 SS_METADATA_KEY_V2 = "ss_v2"
 SS_METADATA_KEY_BASE_MODEL_VERSION = "ss_base_model_version"
