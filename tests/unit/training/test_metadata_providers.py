@@ -8,7 +8,7 @@ from library.metadata import (
     ModelRealizationFacts,
     RunMetadataFacts,
 )
-from library.metadata.emitters.checkpoint import build_checkpoint_metadata
+from library.metadata.emitters.checkpoint import build_checkpoint_metadata, build_model_artifact_export_metadata
 
 
 def _accepted_model_snapshot(*, artifact_identifier: str, title: str = "LoRA"):
@@ -117,3 +117,27 @@ def test_build_checkpoint_metadata_preserves_model_only_output_when_no_metadata_
     assert "kuro.artifact.id" not in metadata
     assert "kuro.model.realization.id" not in metadata
     assert not any(key.startswith("ss_") for key in metadata)
+
+
+@pytest.mark.training
+@pytest.mark.unit
+def test_standalone_model_artifact_export_projects_textual_inversion_facts() -> None:
+    metadata = build_model_artifact_export_metadata(
+        ModelArtifactFacts(
+            artifact_identifier="embedding.safetensors",
+            family_identifier="sdxl",
+            artifact_role="textual_inversion",
+            artifact_format="safetensors",
+            architecture="stable-diffusion-xl-v1-base/textual-inversion",
+            implementation="https://github.com/Stability-AI/generative-models",
+            title="TextualInversion@946684800.0",
+            resolution="1024x1024",
+            prediction_type="epsilon",
+        )
+    )
+
+    assert metadata["modelspec.sai_model_spec"] == "1.0.1"
+    assert metadata["modelspec.architecture"] == "stable-diffusion-xl-v1-base/textual-inversion"
+    assert metadata["modelspec.title"] == "TextualInversion@946684800.0"
+    assert metadata["kuro.model.artifact.id"] == "embedding.safetensors"
+    assert metadata["kuro.model.artifact.artifact_role"] == "textual_inversion"

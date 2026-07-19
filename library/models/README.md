@@ -71,6 +71,13 @@ At the moment that contract is centered on:
   conversion of that explicit runtime view into accepted model-realization
   facts belongs to the central `library/metadata/builders/model.py` layer;
   model code does not grow a generic local metadata assembly module for it.
+- Artifact-facing family meaning belongs to the existing
+  `library/strategies/<family>/checkpointing.py` facet, which returns central
+  typed model facts. Model packages do not render `modelspec.*`/`ss_*` keys or
+  file metadata themselves.
+- Qualified realization/component identities and artifact relationships belong
+  to `library/metadata/`; the family-local component key remains model-owned
+  source data rather than being treated as a globally unique identifier.
 - Do not put trainer/runtime workflow logic into `library/models/components.py`.
   It owns the component contract surface, not training orchestration.
 - Do not bury shared component metadata under a user-conditional tool like

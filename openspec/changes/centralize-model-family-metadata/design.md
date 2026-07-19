@@ -31,7 +31,7 @@ The loaded-component OpenSpec is archived into the base capabilities, so this de
 - Define durable, qualified model and component identities suitable for cross-run and cross-family snapshots.
 - Preserve family ownership of model meaning while centralizing accepted schemas, reusable builders, routing, emitters, relationships, validation, and projections.
 - Reuse family-declared component order and semantics without persisting live module objects or creating a second declaration registry.
-- Preserve SD/SDXL/SD3 ModelSpec and family-specific `ss_*` output parity, including adapter versus full-model artifact differences, while explicitly correcting inaccurate reference-implementation claims.
+- Preserve SD/SDXL/SD3 ModelSpec and family-specific `ss_*` output parity, including adapter versus full-model artifact differences, while explicitly correcting inaccurate reference-implementation claims and the SDXL full-model writer's default-resolution overwrite.
 - Leave a clean relational source for later resource, optimization, adapter, artifact-lineage, and analytics work.
 
 **Non-Goals:**
@@ -43,7 +43,7 @@ The loaded-component OpenSpec is archived into the base capabilities, so this de
 - Define a durable step-metric warehouse or treat tracker payload dictionaries as metadata facts.
 - Change the product semantics of `output.saving.no_metadata`; that remains tracked separately.
 - Add new ModelSpec fields, change SAI ModelSpec versions, or calculate tensor hashes as part of this migration.
-- Preserve internal helper APIs solely for deprecated/reference scripts.
+- Preserve internal helper APIs solely for genuinely non-active deprecated/reference scripts. A supported launcher does not become non-active merely because it inherits implementation from a deprecated file.
 
 ## Decisions
 
@@ -189,7 +189,9 @@ Projection behavior must preserve current active outputs for:
 - SD3 attention-mask compatibility fields;
 - the existing `no_metadata` behavior until its dedicated product decision changes it.
 
-One compatibility difference is intentional. The canonical `implementation` fact identifies the stable family reference codebase described by ModelSpec rather than inheriting the old broad helper's mixed family/serializer heuristics:
+The final parity audit records two deliberate field corrections and one compatibility repair rather than hiding them inside a general parity claim.
+
+First, the canonical `implementation` fact identifies the stable family reference codebase described by ModelSpec rather than inheriting the old broad helper's mixed family/serializer heuristics:
 
 - SD1: `https://github.com/CompVis/stable-diffusion`;
 - SD2: `https://github.com/Stability-AI/stablediffusion`;
@@ -197,6 +199,10 @@ One compatibility difference is intentional. The canonical `implementation` fact
 - SD3 and SD3.5: `https://github.com/Stability-AI/sd3.5`.
 
 The SD3.5 repository is an inference-only reference implementation for SD3/3.5, not a complete training stack. It is still the applicable public architecture reference and must be described with that limitation in documentation. Artifact role and serializer do not replace these family reference identities with an unrelated repository. Frozen pre-migration fixtures retain the old values as baseline evidence; typed projection tests assert the corrected values.
+
+Second, the old SDXL stable-format full-model writer built ModelSpec a second time without the configured resolution and overwrote the trainer's value with the SDXL `1024x1024` default. The typed artifact fact is resolved once and records the configured resolution. A fixed non-square-resolution fixture proves that this is the only changed field in that comparison.
+
+Third, the immediate pre-migration SD3 path had stopped producing the historical `ss_apply_lg_attn_mask` and `ss_apply_t5_attn_mask` fields. The central `SsCompatibilityProjection` restores those documented compatibility keys from canonical family facts while `kuro.*` remains the repository-owned output.
 
 The projection owns the external prefix, key spelling, omission rules, and string encoding. Internal consumers use canonical fields.
 
@@ -233,7 +239,9 @@ Alternative considered: let safetensors saving fail on malformed dictionaries. R
 
 Focused tests first capture the existing exported dictionaries for representative SD, SDXL, and SD3 configurations and for adapter/full-model distinctions. Those fixtures remain unchanged as historical baseline evidence. The implementation then moves fact production behind typed family resolution and central projections; comparison tests require parity except for the explicitly corrected family reference-implementation identifiers.
 
-Once active callers no longer use `get_model_metadata_from_config`, `CheckpointingStrategy.get_model_metadata`, or `CheckpointingStrategy.update_metadata`, those active seams are removed rather than retained as wrappers. Format-focused safetensors IO may remain, and deprecated/reference scripts do not justify preserving active helper APIs.
+Once active callers no longer use `get_model_metadata_from_config`, `CheckpointingStrategy.get_model_metadata`, or `CheckpointingStrategy.update_metadata`, those seams and the broad flag-driven ModelSpec construction surface are removed from the production library rather than retained as wrappers. Format-focused safetensors IO may remain. A supported transitional launcher remains active even when it inherits a deprecated implementation file, so its artifact saves must move to typed family facts and central projections before the broad helper is removed. Genuinely non-active deprecated/reference scripts and standalone tools remain outside this ownership boundary and do not justify preserving production helper APIs or delay completion of the migration.
+
+Removed helper behavior is classified before deletion. Behavior already represented by canonical facts, family resolvers, or projections is tested at its new owner. Useful behavior whose durable owner is not yet settled is recorded in the metadata migration capability ledger and, when actionable, in Beads. Implementation conveniences with no independent product or compatibility meaning may be discarded explicitly. This prevents an unused legacy function from remaining forever while also preventing potentially useful metadata capabilities from disappearing merely because their old placement was wrong.
 
 Alternative considered: retain old methods as adapters indefinitely. Rejected because the repository's migration policy is to remove replaced internal compatibility layers after external parity is proven.
 
@@ -242,6 +250,8 @@ Alternative considered: retain old methods as adapters indefinitely. Rejected be
 - [The change can blur model identity, source identity, and output artifact identity] -> Keep declaration, realization, and artifact facts separate and require explicit relationships between them.
 - [Qualified identities may diverge from current resource component identifiers] -> Introduce one shared identity constructor and migrate resource/optimization producers to reference it rather than inventing concern-local qualification.
 - [Moving ModelSpec logic can subtly change omission/default behavior] -> Capture parity fixtures before implementation and compare complete dictionaries for every active family/artifact path, with the family reference-implementation correction called out as an intentional field-level difference.
+- [A deprecated implementation file can still back an active launcher] -> Trace supported entrypoints through inherited and delegated save paths before classifying callers as deprecated-only; migrate active textual-inversion artifacts through the same typed family/projection boundary.
+- [Potentially useful legacy behavior can be lost before its long-term owner is ready] -> Maintain a capability ledger with current status, intended owner, evidence, and Beads follow-up instead of retaining broad helpers or silently deleting capabilities.
 - [Family facets can become metadata mini-frameworks] -> Limit them to typed semantic resolution; keep reusable builders, schemas, emitters, validation, registry, records, and projections central.
 - [Persisting component capabilities can freeze an immature vocabulary] -> Version realization facts, preserve declared values exactly, and treat vocabulary evolution as declaration schema evolution rather than universal semantics.
 - [User extension fields can collide with standard ModelSpec keys] -> Preserve the current observable policy during this migration, add focused collision coverage, and make any policy change a separate explicit compatibility decision.

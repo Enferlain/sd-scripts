@@ -9,9 +9,9 @@ The active model-metadata path is backwards: SD, SDXL, and SD3 first build flat 
 - Qualify model and component identities by their owning realization/run so repeated family-local keys cannot collide across runs or model families.
 - Replace raw strategy `get_model_metadata()` dictionaries and `update_metadata()` mutation hooks with typed family-owned fact resolution feeding central emitters.
 - Route low-volume model-realization facts through the existing metadata registry/runtime/backend path and link them to runs, components, and produced artifacts.
-- Make repo-owned `kuro.*`, `modelspec.*`, compatibility-only `ss_*`, and string-only safetensors metadata projection outputs from accepted facts while preserving SD/SDXL/SD3 external compatibility except for explicitly corrected reference-implementation identifiers. `kuro.*` is the preferred repository-native export, not the internal source of truth; this change migrates only the model-family-owned subset of the wider legacy `ss_*` surface.
+- Make repo-owned `kuro.*`, `modelspec.*`, compatibility-only `ss_*`, and string-only safetensors metadata projection outputs from accepted facts while preserving SD/SDXL/SD3 external compatibility except for explicitly corrected reference-implementation identifiers and the SDXL full-model writer's incorrect default-resolution overwrite. `kuro.*` is the preferred repository-native export, not the internal source of truth; this change migrates only the model-family-owned subset of the wider legacy `ss_*` surface.
 - Correct canonical implementation claims to the family reference codebases: CompVis Stable Diffusion for SD1, Stability AI `stablediffusion` for SD2, Stability AI `generative-models` for SDXL, and Stability AI `sd3.5` for SD3/3.5.
-- Remove the active dependency on broad flag-driven ModelSpec builders once focused parity coverage proves the replacement path.
+- Remove the broad flag-driven ModelSpec construction surface from the production library once focused parity coverage proves the replacement path and every active entrypoint, including transitional launchers backed by deprecated implementation files, uses typed artifact facts and central projections. Genuinely non-active callers and standalone tools do not define its compatibility contract.
 
 ## Capabilities
 
@@ -25,8 +25,8 @@ None. This change consumes the completed `family-declared-loaded-components` con
 
 ## Impact
 
-- Affected code includes central run/model builders under `library/metadata/builders/`, `library/metadata/dataclasses/model.py`, emitter/registry/validation/graph/projection code, the trainer metadata lifecycle, SD/SDXL/SD3 checkpointing facets, checkpoint artifact projection, and the active portions of `library/utils/model_metadata.py`.
+- Affected code includes central run/model builders under `library/metadata/builders/`, `library/metadata/dataclasses/model.py`, emitter/registry/validation/graph/projection code, the trainer metadata lifecycle, SD/SDXL/SD3 checkpointing facets, checkpoint artifact projection, active textual-inversion artifact saves, and the active portions of `library/utils/model_metadata.py`.
 - The new capability becomes a shared provenance source for later resource, optimization, adapter, artifact-lineage, analytics, and run-warehouse work.
-- Historical parity fixtures remain evidence of the pre-migration output, including the previously inconsistent `modelspec.implementation` values; the typed path intentionally corrects those values rather than preserving inaccurate provenance.
+- Historical parity fixtures remain evidence of the pre-migration output, including the previously inconsistent `modelspec.implementation` values and SDXL full-model default-resolution overwrite; the typed path intentionally records the correct family reference and configured resolution rather than preserving inaccurate provenance.
 - No new dependency is required. SAI ModelSpec and safetensors remain external compatibility formats rather than internal storage models.
 - The archived `family-declared-loaded-components` requirements are the baseline component contract consumed by this change.

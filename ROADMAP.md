@@ -25,6 +25,12 @@ remain outside the root launcher     └─────────────�
 until their runtime path is migrated.
 ```
 
+The transitional textual-inversion artifact-save boundary now uses canonical
+family facts and central Kuro/ModelSpec projection. The wider inherited runtime
+still requires migration to the active Trainer/data/objective stack; that work
+is tracked separately in `sd-scripts-58e` rather than expanding model-metadata
+ownership.
+
 **Representative module separation:**
 
 - `library/strategies/base/` - required contracts and optional feature seams
@@ -181,9 +187,10 @@ Once the current stabilization / cleanup list above is tied off, the roadmap sho
 - [x] Active training metadata builder replacement — the old `library/training/training_metadata.py` and extra `library/training/metadata_providers.py` helper have been removed instead of retained as wrappers; the remaining training metadata seam is transitional while the target shape is central metadata emitters plus local trainer call sites.
 - [x] Deprecated PEFT training script fence — `scripts/_deprecated/sd_peft.py` and `scripts/_deprecated/sdxl_peft_copy.py` now fail immediately with replacement `train.py` preset guidance instead of referencing removed training metadata helpers.
 - [x] Metadata ownership language clarification — metadata docs and OpenSpec now state the central-system target explicitly: central recorded dataclasses, central emitters/builders, central projections/backend/storage, normal domains as lifecycle call sites, and local metadata modules only for explicit plugin/family exceptions.
-- [ ] Metadata system follow-ups — finish-first slices are exported parity, optimization metadata, and analytics/export formats; observability/report metadata emitters are now in place and the logging observer now has the first live direct `MetadataRuntime.file(item)` path. Last-pass slices are model-family metadata facts (`sd-scripts-ao3`), data/cache emitters (`sd-scripts-ucs`), and adapter method metadata providers (`sd-scripts-r61`).
+- [ ] Metadata system follow-ups — the backbone, observability/resource, and model-family slices now use the shared typed runtime path. Remaining major slices include data/cache emitters (`sd-scripts-ucs`), adapter-method metadata providers (`sd-scripts-r61`), broader optimization provenance, and analytics/run-warehouse work.
   - [x] Central metadata emitter parity cleanup — the shared metadata dataclasses are now schema-only, record/event conversion lives in central emitter builders, and the active checkpoint plus observability metadata paths consume `MetadataProviderResult` from emitters instead of one-off provider wrapper classes.
   - [x] Durable SQLite storage is now implemented under `library.metadata.storage.SQLiteMetadataStore` with versioned schema setup and focused tests.
+  - [x] Model-family metadata centralization — SD/SDXL/SD3 now file qualified realization/component and artifact facts, family facets resolve typed semantics, central projections own `kuro.*`/`modelspec.*`/model-family `ss_*`, and the former strategy dictionary hooks and broad active-training ModelSpec facade are removed.
 - [ ] Investigate the following comment 
   > Disable cuDNN SDPA backend — broken on some H100 clusters with certain cuDNN versions.
   > Falls back to Flash Attention or math backend.

@@ -190,7 +190,7 @@ The metadata system SHALL validate the facts required by the selected ModelSpec 
 - **AND** it MUST NOT emit an inferred placeholder value
 
 ### Requirement: Active family exports preserve external parity
-The migration SHALL preserve the currently supported SD, SDXL, and SD3 external metadata behavior while replacing the internal dictionary path, except for explicitly corrected reference-implementation identifiers.
+The migration SHALL preserve the currently supported SD, SDXL, and SD3 external metadata behavior while replacing the internal dictionary path, except for explicitly corrected reference-implementation identifiers, the SDXL full-model default-resolution overwrite, and restoration of documented SD3 attention-mask compatibility keys.
 
 #### Scenario: Family resolves its standard reference implementation
 - **WHEN** an SD1, SD2, SDXL, SD3, or SD3.5 artifact is resolved through the typed path
@@ -207,7 +207,12 @@ The migration SHALL preserve the currently supported SD, SDXL, and SD3 external 
 
 #### Scenario: Full-model metadata is projected
 - **WHEN** an SDXL or SD3 full-model safetensors artifact is exported through the typed path
-- **THEN** its artifact-role-specific ModelSpec output MUST match the pre-migration output for the same effective inputs apart from the explicitly corrected `modelspec.implementation` value
+- **THEN** its artifact-role-specific ModelSpec output MUST match the pre-migration output for the same effective inputs apart from the explicitly corrected `modelspec.implementation` value and SDXL configured-resolution repair
+
+#### Scenario: SDXL full-model resolution is projected
+- **WHEN** an SDXL stable-format full-model artifact is trained at a configured resolution other than `1024x1024`
+- **THEN** `modelspec.resolution` MUST describe that configured resolution
+- **AND** the writer MUST NOT replace it with a second builder's default
 
 #### Scenario: Objective controls prediction metadata
 - **WHEN** DDPM epsilon/v or rectified-flow objective semantics determine ModelSpec prediction behavior
@@ -230,6 +235,17 @@ The completed migration SHALL remove active model metadata APIs whose only purpo
 - **THEN** active `get_model_metadata()` and `update_metadata()` dictionary contracts MUST be removed or replaced by typed contracts
 - **AND** active callers MUST NOT retain wrapper round-trips through `modelspec.*`
 
-#### Scenario: Legacy helper has only deprecated callers
-- **WHEN** a broad flag-driven ModelSpec helper is no longer used by active code
-- **THEN** deprecated/reference callers MUST NOT force preservation of that helper as an active public facade
+#### Scenario: Broad helper has no production caller
+- **WHEN** a broad flag-driven ModelSpec helper is no longer used by production library code
+- **THEN** non-active callers, including deprecated/reference scripts and standalone tools, MUST NOT force preservation of that helper in the production library
+- **AND** work outside the active model-metadata boundary MUST NOT determine whether this migration is complete
+
+#### Scenario: Active launcher inherits deprecated implementation
+- **WHEN** a supported launcher delegates training or artifact saving to code located under a deprecated implementation path
+- **THEN** that delegated call path MUST be treated as active until the launcher is migrated or retired
+- **AND** it MUST produce artifact metadata from canonical typed facts and central projections before the broad compatibility helper is removed
+
+#### Scenario: Removed helper contains useful but unplaced behavior
+- **WHEN** migration analysis finds behavior that is not required by the current active path but may support future provenance, compatibility, or family work
+- **THEN** the behavior MUST be classified in the metadata migration capability ledger with its intended ownership and current disposition
+- **AND** actionable follow-up MUST be tracked in Beads rather than preserving a broad legacy helper as an implicit backlog

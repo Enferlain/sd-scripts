@@ -93,9 +93,8 @@ def test_concat_sd3_encodings_uses_named_conditioning_payload() -> None:
 
 
 @pytest.mark.unit
-def test_sd3_checkpoint_metadata_keeps_family_specific_attn_mask_fields() -> None:
+def test_sd3_checkpoint_metadata_resolves_family_specific_attn_mask_fields() -> None:
     strategy = Sd3CheckpointingStrategy()
-    metadata: dict[str, str] = {}
     cfg = SimpleNamespace(
         timestep=SimpleNamespace(
             timestep_sampling="cosine_shaped",
@@ -107,12 +106,17 @@ def test_sd3_checkpoint_metadata_keeps_family_specific_attn_mask_fields() -> Non
         model=SimpleNamespace(apply_lg_attn_mask=True, apply_t5_attn_mask=False),
     )
 
-    strategy.update_metadata(metadata, cfg)
+    contribution = strategy.resolve_model_family_metadata(
+        cfg,
+        run_identifier="run-1",
+        realization_identifier="run/run-1/model/training-target",
+    )
+    fields = {field.name: field.value for field in contribution.fields}
 
-    assert metadata["apply_lg_attn_mask"] == "True"
-    assert metadata["apply_t5_attn_mask"] == "False"
-    assert "timestep_sampling" not in metadata
-    assert "rf_loss_weighting_scheme" not in metadata
+    assert fields == {
+        "apply_lg_attn_mask": True,
+        "apply_t5_attn_mask": False,
+    }
 
 
 @pytest.mark.unit

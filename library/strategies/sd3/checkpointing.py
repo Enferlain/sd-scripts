@@ -9,7 +9,6 @@ import torch
 from library.models.sd3.conversion import save_models
 from library.strategies.base.contracts import CheckpointingStrategy
 from library.strategies.base.features import ModelFamilyMetadataStrategy
-from library.utils.model_metadata import get_model_metadata_from_config
 
 from library.metadata.dataclasses.model import (
     ModelArtifactFacts,
@@ -66,30 +65,6 @@ class Sd3CheckpointingStrategy(CheckpointingStrategy, ModelFamilyMetadataStrateg
                     value=bool(getattr(cfg.model, "apply_t5_attn_mask", False)),
                 ),
             ),
-        )
-
-    def update_metadata(self, metadata: dict, cfg: Any) -> None:
-        """Add SD3-specific runtime metadata fields."""
-        metadata["apply_lg_attn_mask"] = str(bool(getattr(cfg.model, "apply_lg_attn_mask", False)))
-        metadata["apply_t5_attn_mask"] = str(bool(getattr(cfg.model, "apply_t5_attn_mask", False)))
-
-    def get_model_metadata(self, cfg: Any) -> dict:
-        """Get the SAI model spec metadata for SD3."""
-        return get_model_metadata_from_config(
-            state_dict=None,
-            metadata_config=cfg.output.metadata,
-            is_sdxl=False,
-            is_v2=False,
-            v_parameterization=False,
-            prediction_type=None,
-            is_lora=False,
-            is_textual_inversion=False,
-            resolution=cfg.data.preprocessing.resolution,
-            min_timestep=cfg.timestep.min_timestep,
-            max_timestep=cfg.timestep.max_timestep,
-            clip_skip=cfg.training.clip_skip,
-            is_stable_diffusion_ckpt=True,
-            sd3_type=str(getattr(self, "_model_version", getattr(cfg.model, "sd3_type", "medium"))),
         )
 
     def save_model_checkpoint(

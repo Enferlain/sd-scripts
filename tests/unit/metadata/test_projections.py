@@ -60,7 +60,7 @@ def test_kuro_projection_emits_schema_and_repo_owned_keys() -> None:
 
 
 @pytest.mark.unit
-def test_compatibility_projections_preserve_existing_export_key_shapes() -> None:
+def test_ss_compatibility_projection_preserves_legacy_concern_fields() -> None:
     backend = InMemoryMetadataBackend()
     backend.ingest(
         MetadataProviderResult.from_sequences(
@@ -82,10 +82,29 @@ def test_compatibility_projections_preserve_existing_export_key_shapes() -> None
     snapshot = backend.snapshot()
 
     ss_result = SsCompatibilityProjection(minimum_keys=frozenset({"ss_seed"})).project(snapshot)
-    modelspec_result = ModelSpecCompatibilityProjection().project(snapshot)
 
     assert ss_result.metadata == {"ss_seed": 42}
-    assert modelspec_result.metadata == {"modelspec.title": "Checkpoint"}
+
+
+@pytest.mark.unit
+def test_modelspec_projection_ignores_pre_rendered_legacy_facts() -> None:
+    backend = InMemoryMetadataBackend()
+    backend.ingest(
+        MetadataProviderResult.from_sequences(
+            provider_id="tests.legacy",
+            records=[
+                ArtifactMetadataRecord(
+                    identity=MetadataIdentity(entity_type="artifact", identifier="checkpoint-1"),
+                    producer="tests.legacy",
+                    facts={"modelspec.title": "Legacy Checkpoint"},
+                )
+            ],
+        )
+    )
+
+    result = ModelSpecCompatibilityProjection().project(backend.snapshot())
+
+    assert result.metadata == {}
 
 
 @pytest.mark.unit

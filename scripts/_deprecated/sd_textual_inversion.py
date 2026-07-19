@@ -2,6 +2,7 @@ import hydra
 import math
 import os
 import logging
+import time
 import torch
 
 from tqdm import tqdm
@@ -16,8 +17,12 @@ import library.strategies.sd.tokenization
 import library.utils.huggingface_util as huggingface_util
 from library.logging.metrics import init_trackers
 
-from library.utils import model_metadata
+from library.metadata.builders.model import build_model_artifact_resolution_context
+from library.metadata.dataclasses.model import ModelArtifactFacts, ModelArtifactResolutionContext
+from library.metadata.emitters.checkpoint import build_model_artifact_export_metadata
+from library.strategies.sd.checkpointing import SdCheckpointingStrategy
 from library.utils.torch_utils import prepare_dtype, set_seed_from_config
+from library.utils.model_metadata import get_implementation_version
 
 from library.utils.device_utils import clean_memory_on_device
 from library.data._deprecated.prompt_templates import (
@@ -123,6 +128,37 @@ class TextualInversionTrainer:
 
     def get_text_encoding_strategy(self, cfg):
         return library.strategies.sd.encoding.SdTextEncodingStrategy(cfg.training.clip_skip)
+
+    def resolve_model_artifact_facts(self, context: ModelArtifactResolutionContext) -> ModelArtifactFacts:
+        """Resolve SD textual-inversion artifact semantics through the family facet."""
+        return SdCheckpointingStrategy().resolve_model_artifact_facts(context)
+
+    def build_artifact_metadata(
+        self,
+        cfg: RunConfig,
+        *,
+        artifact_identifier: str,
+        model_version: str,
+    ) -> dict[str, str]:
+        """Build typed metadata for one textual-inversion artifact boundary."""
+        extension = os.path.splitext(artifact_identifier)[1].lower()
+        artifact_format = "safetensors" if extension == ".safetensors" else "pt"
+        context = build_model_artifact_resolution_context(
+            metadata_config=cfg.output.metadata,
+            family_identifier="sdxl" if self.is_sdxl else "sd",
+            model_version=model_version,
+            artifact_identifier=artifact_identifier,
+            artifact_role="textual_inversion",
+            serialization_format=artifact_format,
+            resolution=cfg.data.preprocessing.resolution,
+            created_at=time.time(),
+            implementation_version=get_implementation_version(),
+            prediction_type=cfg.objective.prediction,
+            min_timestep=cfg.timestep.min_timestep,
+            max_timestep=cfg.timestep.max_timestep,
+            encoder_layer=cfg.training.clip_skip,
+        )
+        return build_model_artifact_export_metadata(self.resolve_model_artifact_facts(context))
 
     def get_models_for_text_encoding(self, config, accelerator, text_encoders) -> list[Any]:
         return text_encoders
@@ -503,17 +539,13 @@ class TextualInversionTrainer:
 
             accelerator.print(f"\nsaving checkpoint: {ckpt_file}")
 
-            modelspec_metadata = model_metadata.get_model_metadata_from_config(
-                state_dict=None,  # TODO: Expected type 'dict', got 'None' instead
-                metadata_config=cfg.output.metadata,
-                is_sdxl=self.is_sdxl,
-                is_v2=cfg.model.model_type == "sd2",
-                v_parameterization=cfg.loss.v_parameterization,
-                is_lora=False,
-                is_textual_inversion=True,
+            artifact_metadata = self.build_artifact_metadata(
+                cfg,
+                artifact_identifier=ckpt_name,
+                model_version=model_version,
             )
 
-            self.save_weights(ckpt_file, embs_list, save_dtype, modelspec_metadata)
+            self.save_weights(ckpt_file, embs_list, save_dtype, artifact_metadata)
             if cfg.output.huggingface.huggingface_repo_id is not None:
                 huggingface_util.upload(
                     cfg.output.huggingface,

@@ -17,7 +17,6 @@ from library.metadata.dataclasses.model import (
     ModelFamilyMetadataContribution,
     ModelFamilyMetadataField,
     ModelRealizationFacts,
-    ModelSpecFacts,
     RealizedModelComponentFacts,
 )
 from library.metadata.dataclasses.optimization import (
@@ -63,7 +62,6 @@ __all__ = [
     "ResourceObservationFacts",
     "ResourceObservationMeasurementFacts",
     "ResourceProfileFacts",
-    "ModelSpecFacts",
     "ModelArtifactFacts",
     "ModelArtifactPresentation",
     "ModelArtifactResolutionContext",

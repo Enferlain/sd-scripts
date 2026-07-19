@@ -25,10 +25,7 @@ def build_model_family_contribution_identifier(
     contribution_version: str,
 ) -> str:
     """Build a qualified identity for a versioned family-local contribution."""
-    return (
-        f"{realization_identifier}/family/{_identity_segment(contribution_namespace)}"
-        f"/{_identity_segment(contribution_version)}"
-    )
+    return f"{realization_identifier}/family/{_identity_segment(contribution_namespace)}/{_identity_segment(contribution_version)}"
 
 
 def _identity_segment(value: str) -> str:
@@ -253,11 +250,7 @@ class ModelArtifactFacts:
     ) -> ModelArtifactFacts:
         """Build canonical artifact facts from family-resolved semantics."""
         presentation = context.presentation
-        timestep_range = (
-            None
-            if context.timestep_range is None
-            else f"{context.timestep_range[0]},{context.timestep_range[1]}"
-        )
+        timestep_range = None if context.timestep_range is None else f"{context.timestep_range[0]},{context.timestep_range[1]}"
         return cls(
             artifact_identifier=context.artifact_identifier,
             family_identifier=context.family_identifier,
@@ -284,31 +277,4 @@ class ModelArtifactFacts:
             preprocessor=presentation.preprocessor,
             is_negative_embedding=presentation.is_negative_embedding,
             extension_fields=dict(presentation.extension_fields),
-        )
-
-
-@dataclass(frozen=True)
-class ModelSpecFacts:
-    """Transitional wrapper for pre-rendered ModelSpec compatibility facts."""
-
-    compatibility_metadata: Mapping[str, str]
-    model_identifier: str = "active-model"
-    architecture: str | None = None
-    implementation: str | None = None
-    prediction_type: str | None = None
-
-    @classmethod
-    def from_modelspec_metadata(
-        cls,
-        metadata: Mapping[str, str],
-        *,
-        model_identifier: str = "active-model",
-    ) -> ModelSpecFacts:
-        """Build typed model facts from a `modelspec.*` compatibility dict."""
-        return cls(
-            compatibility_metadata=dict(metadata),
-            model_identifier=model_identifier,
-            architecture=metadata.get("modelspec.architecture"),
-            implementation=metadata.get("modelspec.implementation"),
-            prediction_type=metadata.get("modelspec.prediction_type"),
         )

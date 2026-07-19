@@ -7,21 +7,11 @@ from library.metadata.dataclasses.model import (
     ModelArtifactFacts,
     ModelArtifactResolutionContext,
 )
-from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
+from library.objectives.ddpm import resolve_ddpm_prediction_type
 from library.strategies.base.contracts import CheckpointingStrategy
-from library.utils.model_metadata import get_model_metadata_from_config
 
 
 SDXL_REFERENCE_IMPLEMENTATION = "https://github.com/Stability-AI/generative-models"
-
-
-def resolve_sdxl_modelspec_prediction(cfg: Any) -> tuple[bool, str | None]:
-    """Resolve SDXL model-spec prediction metadata for the active objective path."""
-    if cfg.objective.path == "rectified_flow":
-        return False, None
-
-    prediction_type = resolve_ddpm_prediction_type(cfg.objective.prediction)
-    return prediction_type == DDPM_PREDICTION_TYPE_V, prediction_type
 
 
 class SdxlCheckpointingStrategy(CheckpointingStrategy):
@@ -31,46 +21,29 @@ class SdxlCheckpointingStrategy(CheckpointingStrategy):
         """Resolve SDXL adapter/full-model facts and preserve RF omission."""
         if context.family_identifier != "sdxl":
             raise ValueError(f"SDXL artifact resolver received family {context.family_identifier!r}.")
-        if context.artifact_role not in {"adapter", "full_model"}:
+        if context.artifact_role not in {"adapter", "full_model", "textual_inversion"}:
             raise ValueError(f"Unsupported SDXL artifact role: {context.artifact_role!r}.")
-        if context.serialization_format not in {"safetensors", "ckpt", "diffusers", "diffusers_safetensors"}:
+        supported_formats = {"safetensors", "ckpt", "diffusers", "diffusers_safetensors"}
+        if context.artifact_role == "textual_inversion":
+            supported_formats.add("pt")
+        if context.serialization_format not in supported_formats:
             raise ValueError(f"Unsupported SDXL serialization format: {context.serialization_format!r}.")
         prediction_type = None if context.prediction_type is None else resolve_ddpm_prediction_type(context.prediction_type)
 
-        is_adapter = context.artifact_role == "adapter"
-        architecture = "stable-diffusion-xl-v1-base" + ("/lora" if is_adapter else "")
-        default_title = f"{'LoRA' if is_adapter else 'Checkpoint'}@{context.created_at}"
+        architecture = "stable-diffusion-xl-v1-base"
+        if context.artifact_role == "adapter":
+            architecture += "/lora"
+            artifact_title = "LoRA"
+        elif context.artifact_role == "textual_inversion":
+            architecture += "/textual-inversion"
+            artifact_title = "TextualInversion"
+        else:
+            artifact_title = "Checkpoint"
         return ModelArtifactFacts.from_resolution_context(
             replace(context, prediction_type=prediction_type),
             architecture=architecture,
             implementation=SDXL_REFERENCE_IMPLEMENTATION,
-            default_title=default_title,
-        )
-
-    def update_metadata(self, metadata: dict, cfg: Any) -> None:
-        """
-        Add SDXL-specific metadata fields.
-
-        SDXL does not currently add extra runtime metadata beyond the model
-        spec metadata produced by ``get_model_metadata``.
-        """
-
-    def get_model_metadata(self, cfg: Any) -> dict:
-        """Get the SAI model spec metadata for SDXL."""
-        v_parameterization, prediction_type = resolve_sdxl_modelspec_prediction(cfg)
-        return get_model_metadata_from_config(
-            state_dict=None,
-            metadata_config=cfg.output.metadata,
-            is_sdxl=True,
-            is_v2=False,
-            v_parameterization=v_parameterization,
-            prediction_type=prediction_type,
-            is_lora=True,
-            is_textual_inversion=False,
-            resolution=cfg.data.preprocessing.resolution,
-            min_timestep=cfg.timestep.min_timestep,
-            max_timestep=cfg.timestep.max_timestep,
-            clip_skip=cfg.training.clip_skip,
+            default_title=f"{artifact_title}@{context.created_at}",
         )
 
     def save_model_checkpoint(

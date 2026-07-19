@@ -768,7 +768,7 @@ class Trainer:
         return state
 
     def _initialize_training_metadata(self, *, total_batch_size: int) -> None:
-        """Build training-run metadata through the transitional family hook."""
+        """Build canonical training-run metadata."""
         from library.metadata.builders.run import (
             TrainingMetadataBuildContext,
             TrainingMetadataState,
@@ -792,9 +792,7 @@ class Trainer:
                 objective=self.objective,
             )
         )
-        metadata = dict(bundle.full.metadata)
-        self.strategies.update_metadata(metadata, self.cfg)
-        self._metadata_state = TrainingMetadataState.from_bundle(bundle).with_metadata(metadata)
+        self._metadata_state = TrainingMetadataState.from_bundle(bundle)
 
     def _initialize_training_runtime(self) -> None:
         """Initialize runtime helpers that depend on the optimizer and scheduler state."""

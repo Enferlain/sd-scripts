@@ -8,7 +8,6 @@ from library.metadata import LoggedArtifactFacts as TopLevelLoggedArtifactFacts
 from library.metadata import METADATA_PAYLOAD_VERSION
 from library.metadata import MetadataEntityType as TopLevelMetadataEntityType
 from library.metadata import MetadataRelationship as TopLevelMetadataRelationship
-from library.metadata import ModelSpecFacts as TopLevelModelSpecFacts
 from library.metadata import OptimizerRuntimeFacts as TopLevelOptimizerRuntimeFacts
 from library.metadata import ResourceMonitorFacts as TopLevelResourceMonitorFacts
 from library.metadata import RunLifecycleFacts as TopLevelRunLifecycleFacts
@@ -19,7 +18,6 @@ from library.metadata.dataclasses import (
     AnalyticsSnapshotFacts,
     CheckpointArtifactFacts,
     LoggedArtifactFacts,
-    ModelSpecFacts,
     OptimizerRuntimeFacts,
     ResourceMonitorFacts,
     RunLifecycleFacts,
@@ -31,7 +29,6 @@ from library.metadata.emitters import (
     build_analytics_snapshot_metadata,
     build_checkpoint_artifact_metadata,
     build_logged_artifact_metadata,
-    build_model_spec_metadata,
     build_resource_monitor_metadata,
     build_run_lifecycle_metadata,
     build_run_report_metadata,
@@ -55,7 +52,6 @@ def test_metadata_package_reexports_shared_fact_dataclasses() -> None:
     assert TopLevelLoggedArtifactFacts is LoggedArtifactFacts
     assert TopLevelMetadataEntityType is MetadataEntityType
     assert TopLevelMetadataRelationship is MetadataRelationship
-    assert TopLevelModelSpecFacts is ModelSpecFacts
     assert TopLevelOptimizerRuntimeFacts is OptimizerRuntimeFacts
     assert TopLevelResourceMonitorFacts is ResourceMonitorFacts
     assert TopLevelRunLifecycleFacts is RunLifecycleFacts
@@ -77,25 +73,6 @@ def test_run_facts_feed_training_run_metadata_emitter() -> None:
     assert record.identity.identifier == "123"
     assert record.producer == "training.run"
     assert record.facts["seed"] == "42"
-
-
-@pytest.mark.unit
-def test_modelspec_facts_feed_model_spec_metadata_emitter() -> None:
-    facts = ModelSpecFacts.from_modelspec_metadata(
-        {
-            "modelspec.title": "LoRA",
-            "modelspec.architecture": "stable-diffusion-xl-v1-base/lora",
-            "modelspec.implementation": "sgm",
-            "modelspec.prediction_type": "epsilon",
-        }
-    )
-
-    record = build_model_spec_metadata(facts).records[0]
-
-    assert record.facts["modelspec.title"] == "LoRA"
-    assert record.facts["architecture"] == "stable-diffusion-xl-v1-base/lora"
-    assert record.facts["implementation"] == "sgm"
-    assert record.facts["prediction_type"] == "epsilon"
 
 
 @pytest.mark.unit
@@ -155,9 +132,7 @@ def test_observability_facts_feed_metadata_emitters() -> None:
         payload={"rows": 4},
     )
 
-    artifact_event = build_logged_artifact_metadata(
-        artifact
-    ).events[0]
+    artifact_event = build_logged_artifact_metadata(artifact).events[0]
     lifecycle_event = build_run_lifecycle_metadata(lifecycle).events[0]
     resource_event = build_resource_monitor_metadata(resource).events[0]
     report_record = build_run_report_metadata(report).records[0]

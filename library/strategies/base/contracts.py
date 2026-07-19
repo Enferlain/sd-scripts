@@ -31,9 +31,7 @@ class ModelLoadingStrategy(ABC):
     """Strategy for loading family-declared top-level model components."""
 
     @abstractmethod
-    def load_target_model(
-        self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any
-    ) -> tuple[str, tuple[LoadedModelComponent, ...]]:
+    def load_target_model(self, cfg: Any, weight_dtype: torch.dtype, accelerator: Any) -> tuple[str, tuple[LoadedModelComponent, ...]]:
         """
         Load model components for this architecture.
 
@@ -299,24 +297,6 @@ class CheckpointingStrategy(ABC):
     @abstractmethod
     def resolve_model_artifact_facts(self, context: ModelArtifactResolutionContext) -> ModelArtifactFacts:
         """Resolve family-owned artifact semantics into canonical model facts."""
-        raise NotImplementedError
-
-    def update_metadata(self, metadata: dict, cfg: Any) -> None:
-        """Add model-specific compatibility fields during migration.
-
-        This hook is transitional and intentionally not required of new model
-        families. Typed family contributions replace it before this change is
-        complete.
-        """
-        raise NotImplementedError
-
-    def get_model_metadata(self, cfg: Any) -> dict:
-        """Return pre-rendered ModelSpec compatibility metadata during migration.
-
-        This hook remains only until checkpoint consumers move to canonical
-        facts and central projections. New model families implement
-        ``resolve_model_artifact_facts`` instead.
-        """
         raise NotImplementedError
 
     def save_model_checkpoint(

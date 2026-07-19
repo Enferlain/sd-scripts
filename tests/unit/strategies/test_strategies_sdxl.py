@@ -52,10 +52,7 @@ def test_full_model_checkpoint_uses_centrally_projected_metadata_unchanged(tmp_p
         accelerator=Mock(unwrap_model=lambda model: model),
     )
 
-    with (
-        patch("library.models.sdxl.conversion.save_stable_diffusion_checkpoint") as save_checkpoint,
-        patch("library.strategies.sdxl.checkpointing.get_model_metadata_from_config") as legacy_builder,
-    ):
+    with patch("library.models.sdxl.conversion.save_stable_diffusion_checkpoint") as save_checkpoint:
         strategy.save_model_checkpoint(
             trainer,
             ckpt_name="model.safetensors",
@@ -66,7 +63,6 @@ def test_full_model_checkpoint_uses_centrally_projected_metadata_unchanged(tmp_p
         )
 
     assert save_checkpoint.call_args.args[9] is metadata
-    legacy_builder.assert_not_called()
 
 
 # =============================================================================
@@ -602,24 +598,6 @@ def test_sdxl_get_noise_pred_and_target_publishes_denoiser_forward_contexts() ->
     assert indexed_context.denoiser.sample_indices == (0, 2)
     assert indexed_context.denoiser.batch_size == 2
     assert current_strategy_context() is None
-
-
-@pytest.mark.unit
-def test_sdxl_checkpoint_metadata_omits_ddpm_prediction_for_rf() -> None:
-    strategy = SdxlCheckpointingStrategy()
-    cfg = SimpleNamespace(
-        objective=SimpleNamespace(path="rectified_flow", prediction="flow"),
-        output=SimpleNamespace(metadata=SimpleNamespace()),
-        data=SimpleNamespace(preprocessing=SimpleNamespace(resolution=1024)),
-        timestep=SimpleNamespace(min_timestep=None, max_timestep=None),
-        training=SimpleNamespace(clip_skip=None),
-    )
-
-    with patch("library.strategies.sdxl.checkpointing.get_model_metadata_from_config", return_value={}) as mock_metadata:
-        strategy.get_model_metadata(cfg)
-
-    assert mock_metadata.call_args.kwargs["prediction_type"] is None
-    assert mock_metadata.call_args.kwargs["v_parameterization"] is False
 
 
 @pytest.mark.unit

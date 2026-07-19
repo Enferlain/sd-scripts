@@ -10,12 +10,28 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-07-19]
+
+### Added
+
+- **Metadata migration now keeps a deferred capability ledger** — prematurely displaced behavior is classified as migrated, retained at an IO boundary, deferred to an explicit owner/Beads issue, a future-family onboarding obligation, or an intentionally discarded implementation detail.
+
+### Fixed
+
+- **Textual-inversion artifact metadata no longer depends on the removed broad ModelSpec facade** — SD/SDXL textual-inversion roles resolve through family checkpoint facets and a central standalone artifact boundary now projects canonical facts to repo-owned `kuro.*` and compatibility `modelspec.*` output.
+
 ## [2026-07-18]
 
 ### Changed
 
 - **Model compatibility exports now project from canonical accepted facts** — `kuro.*` preserves explicitly scoped model-artifact, realization, component, and family-contribution identities; ModelSpec maps typed artifact semantics instead of filtering pre-rendered keys; SD3 attention-mask facts project back to compatibility-only `ss_*`; and safetensors remains the final stringification boundary.
 - **Checkpoint metadata now follows the typed model-artifact path end to end** — trainer checkpoint assembly files family-resolved artifact facts through the shared metadata runtime, scopes exports to the accepted artifact and model realization, preserves current `no_metadata` behavior, passes central projections unchanged through SDXL/SD3 writers and adapter exports, and gives loss-modifier sidecars their real artifact identities and coordinates.
+- **SDXL full-model metadata now retains the configured training resolution** — stable-format saves no longer rebuild ModelSpec with the generic `1024x1024` default after the trainer has already resolved the artifact facts.
+- **Model metadata utilities now expose only narrow active helpers** — `library/utils/model_metadata.py` retains implementation-version, thumbnail data-URL, and safetensors-read helpers without carrying model-family selection or export construction.
+
+### Removed
+
+- **Transitional model metadata dictionary seams are gone from production code** — removed strategy `get_model_metadata()` / `update_metadata()` hooks, the `get_model_metadata_from_config()` facade, the broad `ModelSpecMetadata` / `build_metadata*` flag-driven construction surface, the `ModelSpecFacts` compatibility-dictionary wrapper/emitter, and ModelSpec projection fallback parsing of pre-rendered keys.
 
 ## [2026-07-17]
 

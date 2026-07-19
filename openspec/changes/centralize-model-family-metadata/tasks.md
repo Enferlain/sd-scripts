@@ -53,15 +53,17 @@
 
 ## 8. Remove transitional seams and document the boundary
 
-- [ ] 8.1 Remove active `CheckpointingStrategy.get_model_metadata()` and `update_metadata()` dictionary hooks after all active families move
-- [ ] 8.2 Remove or narrow active uses of `get_model_metadata_from_config` and the broad flag-driven ModelSpec builder; do not retain wrappers solely for deprecated scripts
-- [ ] 8.3 Update `library/metadata/README.md`, metadata design/migration notes, `ROADMAP.md`, and `CHANGELOG.md` with the settled family/central ownership and qualified identity boundary
-- [ ] 8.4 Update `library/models/README.md` if implementation reveals any refinement to the component-code versus model-behavior ownership boundary
-- [ ] 8.5 Record any deferred adapter-method, source-metadata ingestion, hash-generation, or extension-policy work as separate beads rather than expanding this slice
+- [x] 8.1 Remove active `CheckpointingStrategy.get_model_metadata()` and `update_metadata()` dictionary hooks after all active families move
+- [x] 8.2 Remove `get_model_metadata_from_config` and the broad flag-driven ModelSpec construction surface only after active transitional entrypoints use typed facts and central projections; genuinely non-active deprecated/reference scripts and standalone tools do not retain production wrappers or govern completion
+- [x] 8.3 Update `library/metadata/README.md`, metadata design/migration notes, `ROADMAP.md`, and `CHANGELOG.md` with the settled family/central ownership and qualified identity boundary
+- [x] 8.4 Update `library/models/README.md` if implementation reveals any refinement to the component-code versus model-behavior ownership boundary
+- [x] 8.5 Record any deferred adapter-method, source-metadata ingestion, hash-generation, or extension-policy work as separate beads rather than expanding this slice
+- [x] 8.6 Add a durable metadata capability ledger classifying prematurely removed behavior as migrated, retained, deferred with an owner, or intentionally discarded
+- [x] 8.7 Migrate active SD/SDXL textual-inversion artifact metadata to typed family facts and central ModelSpec/Kuro projection, including focused role and export coverage
 
 ## 9. Verification and completion
 
-- [ ] 9.1 Run focused metadata, strategy, trainer, checkpoint-projection, storage, and graph tests
-- [ ] 9.2 Run relevant static checks for changed metadata/model/strategy modules
-- [ ] 9.3 Compare complete pre/post migration metadata dictionaries for every parity fixture and document intentional differences or omissions as separate decisions, including the corrected family reference-implementation identifiers
+- [x] 9.1 Run focused metadata, strategy, trainer, checkpoint-projection, storage, and graph tests
+- [x] 9.2 Run relevant static checks for changed metadata/model/strategy modules
+- [x] 9.3 Compare complete pre/post migration metadata dictionaries for every parity fixture and document intentional differences or omissions as separate decisions, including corrected family reference-implementation identifiers and the SDXL full-model configured-resolution repair
 - [ ] 9.4 Validate the OpenSpec, review the final diff against the metadata ownership rules, close the model-family migration bead, and archive the change

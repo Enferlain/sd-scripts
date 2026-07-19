@@ -1,13 +1,13 @@
 # Legacy Metadata Migration Control
 
-Date: 2026-05-15
-Status: migration-control note after first metadata backbone slice; active training builder replacement implemented
+Date: 2026-05-15 (updated 2026-07-19)
+Status: migration-control record; active training/model-family dictionary seams replaced, including textual-inversion artifact export
 
 Companion notes:
 
 - `docs_design/metadata_system_inventory.md`
 - `docs_design/metadata_system_design.md`
-- `openspec/changes/metadata-backbone/`
+- `openspec/changes/archive/2026-05-22-metadata-backbone/`
 
 ## Purpose
 
@@ -19,11 +19,12 @@ helper instead of keeping it as a wrapper.
 
 The target shape is a single central metadata system, not `metadata.py` files
 sprinkled through normal domains. Central recorded dataclasses live under
-`library/metadata/dataclasses/`, central emitters/providers and projections live
+`library/metadata/dataclasses/`, central builders, emitters, and projections live
 under `library/metadata/`, and normal domain code only owns the source objects
 plus the lifecycle call sites that hand those facts to the central system.
 Local metadata modules remain exception-only, with adapter methods as the clear
-current case and model families only if we explicitly bless them later.
+current case. Model-family semantics use existing strategy facets returning
+central typed facts rather than separate family metadata modules.
 
 The main rule is:
 
@@ -45,9 +46,11 @@ Use these labels while migrating each surface:
 - **Central recorded schema**: metadata dataclasses recorded by the repo backend
   live under `library/metadata/dataclasses/<concern>.py`, following the config
   dataclass catalog pattern.
-- **Central emitter/builder**: normal metadata assembly code lives under
-  `library/metadata/emitters/` or another central metadata module. It accepts
-  explicit domain-owned inputs and emits central recorded schemas.
+- **Central builder**: reusable conversion from explicit domain-owned inputs to
+  accepted typed items or retained identity state lives in
+  `library/metadata/builders/` and does not file or project those items.
+- **Central emitter**: registered typed-item-to-record/event/relationship
+  conversion lives in `library/metadata/emitters/`.
 - **Domain source ownership**: domain code owns the runtime objects and
   lifecycle call sites that decide when metadata should be emitted. It does not
   grow local metadata helper modules by default.
@@ -65,17 +68,17 @@ Use these labels while migrating each surface:
 
 | Surface | Current role | Migration classification | Near-term action |
 | --- | --- | --- | --- |
-| `library/training/metadata.py::build_training_metadata_bundle` | Gathers config, manifest, optimizer/runtime, objective, and source-model facts for training-run metadata. | Transitional centralization seam. | Move toward `library/metadata/emitters/run.py` or `checkpoint.py`. Recorded dataclasses stay in `library/metadata/dataclasses/`; do not let training remain a metadata schema or helper island. |
-| `library/training/metadata.py` provider wrappers | Provider wrappers and checkpoint projection helper for active checkpoint artifacts. | Transitional assembly plus projection orchestration. | Keep together only until central emitters exist. Do not recreate `metadata_providers.py` or use this as a pattern for every domain folder. |
-| `library/training/metadata.py::build_objective_ss_metadata` | Adds RF/objective-specific exported compatibility facts. | Transitional compatibility assembly. | Keep in the active builder for now; move stable recorded objective schemas into `library/metadata/dataclasses/` and compatibility mapping into projections/emitters when objective metadata gets its own slice. |
-| `library/training/runners/trainer.py::_initialize_training_metadata` | Creates `TrainingMetadataState` from typed full/minimum `RunMetadataFacts` and lets strategy family hooks add current family-specific compatibility facts. | Domain lifecycle call site with one remaining strategy dict bridge. | Keep as the active call site. Replace `update_metadata(metadata, cfg)` with family hooks/providers in a later family metadata slice. |
-| `library/training/runners/trainer.py::_build_checkpoint_metadata` | Now routes active checkpoint metadata through the backbone. | Domain lifecycle call site. | Keep as the first active integration point. Avoid adding new direct metadata dict composition here. |
-| Strategy `update_metadata(metadata, cfg)` hooks | Family-specific mutation bridge for current compatibility facts; currently SD3 attention-mask keys use this. | Family hook; possible plugin/facet discussion later. | Keep hook only until family metadata hooks/providers exist. If model families are not made plugin-like, stable recorded model-family schemas should live centrally. |
-| Strategy `get_model_metadata(cfg)` hooks | Family-specific wrapper around `get_model_metadata_from_config(...)`. | Family hook now; central recorded model facts later. | Keep as the active model-family narrowing seam. Later return or feed central typed model facts instead of raw `modelspec.*` dicts unless model families are explicitly made plugin-like. |
-| `library/utils/model_metadata.py::ModelSpecMetadata` | Dataclass for SAI Model Spec export keys. | Projection-owned export, possible compatibility dataclass. | Keep as compatibility implementation for `modelspec.*`. Later move or wrap under metadata projection ownership when call sites are ready. |
-| `library/utils/model_metadata.py::get_model_metadata_from_config` | Broad flag-driven builder for `modelspec.*`. | Compatibility wrapper and projection implementation detail. | Keep until SD/SDXL/SD3 family providers supply typed facts. Add explicit tests before changing output behavior. |
-| `library/utils/model_metadata.py::build_metadata*` | Legacy ModelSpec construction helpers used by tools/tests. | Compatibility wrapper. | Do not delete until tool and test consumers migrate. Prefer wrapping projection logic rather than broadening the helper. |
-| `library/utils/model_metadata.py::build_minimum_adapter_metadata` | Builds legacy minimum adapter metadata from constants. | Compatibility wrapper; projection-owned export. | Keep until `SsCompatibilityProjection` owns all minimum adapter use cases and legacy tests are redirected. |
+| `library/metadata/builders/run.py` | Assembles typed training-run bundles and retained checkpoint-facing state from explicit runtime inputs. | Central builder. | Keep source conversion separate from emitter routing and artifact projection. |
+| `library/metadata/builders/model.py` | Assembles run-qualified model realization/component state and artifact-resolution contexts. | Central builder. | Reuse its qualified identities from artifact/resource/optimization producers; do not reconstruct them per concern. |
+| `library/training/runners/trainer.py::_initialize_training_metadata` | Creates `TrainingMetadataState` from canonical run facts. | Domain lifecycle call site. | Keep free of family compatibility mutation hooks. |
+| `library/training/runners/trainer.py::_file_model_realization_metadata` | Files realization, ordered components, and optional versioned family contribution once after loading. | Domain lifecycle call site. | Retain the accepted identity state only after filing succeeds. |
+| `library/training/runners/trainer.py::_build_checkpoint_metadata` | Resolves and files typed artifact facts, then projects an explicitly scoped accepted snapshot. | Domain lifecycle and artifact boundary. | Keep family semantics in the facet and export spelling in central projections. |
+| Strategy `resolve_model_artifact_facts(context)` | Resolves family-owned architecture/reference/objective/artifact-role meaning into shared typed facts. | Family semantic facet. | Extend this contract for future families; do not restore dictionary-returning metadata hooks. |
+| Optional `ModelFamilyMetadataStrategy` | Resolves explicit namespaced/versioned family-local realization facts such as SD3 attention-mask settings. | Family semantic facet feeding central schema. | Use only for genuine family-local facts; central runtime/emitter/projection ownership remains unchanged. |
+| Removed strategy `update_metadata(...)` / `get_model_metadata(...)` hooks | Former mutation and pre-rendered ModelSpec bridges. | Deleted active helpers. | Do not restore as wrappers. Deprecated/reference scripts do not keep them alive. |
+| Removed `library/utils/model_metadata.py::get_model_metadata_from_config` | Former broad config-plus-family-flags ModelSpec facade. | Deleted active helper. | Supported textual-inversion saves now use typed facts/projections. Genuinely non-active callers do not keep the facade alive. |
+| Removed `library/utils/model_metadata.py::ModelSpecMetadata`, `build_metadata*`, and related family switches | Former broad flag-driven ModelSpec construction. | Deleted production helpers. | Non-active callers outside the production library do not retain this surface or govern completion of the model-family migration. |
+| Removed `library/utils/model_metadata.py::build_minimum_adapter_metadata` | Former minimum-adapter dictionary helper with no production caller. | Deleted production helper. | Canonical run facts and `SsCompatibilityProjection` own active minimum-output behavior. |
 | `library/utils/model_metadata.py::load_metadata_from_safetensors` | Reads artifact metadata from safetensors files. | Storage / IO boundary. | Keep format-focused. It may later move beside safetensors projection helpers, but should not become an internal metadata source of truth. |
 | `library/constants.py::SS_METADATA_*` and `SS_METADATA_MINIMUM_KEYS` | Legacy `ss_*` key constants. | Projection-owned export keys. | `library.metadata.keys` owns these now. Keep compatibility re-exports in `library.constants` until downstream imports settle. |
 | `library/utils/safetensors_utils.py::MemoryEfficientSafeOpen.metadata` | Reads raw safetensors `__metadata__`. | Storage / IO boundary. | Leave in IO utility. Metadata backbone should project into this boundary, not replace low-level safetensors readers immediately. |
@@ -88,6 +91,41 @@ Use these labels while migrating each surface:
 | Optimizer/scheduler runtime metadata | Typed capability and planning facts, not artifact metadata. | Central recorded optimizer runtime schema slice. | Keep runtime ownership local. The runtime fact dataclasses now live in `library/metadata/dataclasses/optimization.py`; later add central emitter/provider output without leaking all of it into checkpoint metadata. |
 | Logging/report/resource metadata | Observability events, reports, artifact registration, resource facts. | Deferred observability emitter slice. | Keep logging presentation/sink boundaries. Later add central metadata events/artifact records that logging can consume. |
 | Checkpoint resume `train_state.json` | Accelerator checkpoint resume state. | Storage / IO boundary, not artifact descriptive metadata. | Keep separate from artifact metadata. Later optionally describe state artifacts, but do not merge resume-state JSON into safetensors metadata. |
+
+## Deferred Capability Ledger
+
+This ledger records metadata capabilities whose old implementation was removed
+or found in the wrong layer before their final owner was ready. It is not a task
+tracker: Beads remains the source of truth for actionable work. A ledger entry
+exists so a useful capability can be deliberately placed later without keeping
+its old broad helper alive or relying on conversation history.
+
+Use these dispositions:
+
+- **migrated**: represented and tested at its settled owner;
+- **retained boundary**: narrow format/IO behavior remains useful where it is;
+- **repair now**: required by a supported active path in this change;
+- **deferred with owner**: useful capability has an intended architectural owner
+  and a Beads issue when the work is actionable;
+- **family onboarding obligation**: concrete behavior belongs to a future family
+  implementation, not to a central family-name switch;
+- **discarded implementation detail**: old API shape has no independent product,
+  provenance, or compatibility meaning.
+
+| Capability recovered from the old model utility | Disposition | Intended owner / evidence | Durable follow-up |
+| --- | --- | --- | --- |
+| ModelSpec required/optional fields, date formatting, resolution, timestep range, encoder layer, presentation fields, and extension fields | Migrated | `ModelArtifactFacts`, `builders/model.py`, family resolvers, and `ModelSpecCompatibilityProjection` | Covered by model dataclass, resolver, projection, and parity tests. |
+| SD/SD2/SDXL/SD3 architecture and reference-implementation resolution | Migrated | Existing family checkpointing facets return canonical artifact facts. | Future corrections remain family-owned and projection-independent. |
+| Textual-inversion artifact role, architecture suffix, default title, and ModelSpec export | Migrated | Supported SD/SDXL textual-inversion saves use family resolvers plus central ModelSpec/Kuro projection even though the shared implementation file is deprecated. | OpenSpec task 8.7 in `sd-scripts-ao3`; broader runtime migration is `sd-scripts-58e`. |
+| Implementation-version lookup, thumbnail data-URL conversion, and safetensors metadata reads | Retained boundary | Narrow repository/version or format-IO helpers in `library/utils/model_metadata.py`; they are not canonical model semantics. | Reassess placement only if another format/storage abstraction needs the same behavior. |
+| Artifact hash generation and `hash_sha256` population | Deferred with owner | Artifact lifecycle/evidence concern; the canonical artifact fact already has a field but no producer should invent a value. | `sd-scripts-yzj`. |
+| Source checkpoint metadata ingestion | Deferred with owner | Typed source-artifact provenance distinct from loaded realizations and produced artifacts; external `modelspec.*`/`ss_*` remain evidence, not canonical truth. | `sd-scripts-8ck`. |
+| Merge-source title lookup and `merged_from` derivation | Deferred with owner | Durable source-to-output artifact relationships first; filename/title fallback belongs only in presentation projection. The configured `merged_from` string remains supported now. | `sd-scripts-yfp`. |
+| Minimum adapter facts and serialized adapter constructor/method arguments such as historical `ss_adapter_args` | Deferred with owner | Adapter method/plugin facts feed the shared `SsCompatibilityProjection`; do not restore `build_minimum_adapter_metadata`. | `sd-scripts-r61`. |
+| ModelSpec extension-field collision precedence | Deferred with owner | Central ModelSpec projection policy; current apply-last behavior remains compatibility-tested. | `sd-scripts-1vk`. |
+| Optional UNet/VAE dtype claims | Deferred with owner | Artifact/runtime precision provenance can populate the existing artifact fields once save-time semantics and consumers are explicit. | Leave in this ledger until a precision/artifact slice supplies evidence; do not infer from configured intent. |
+| Flux, Chroma, Lumina, Hunyuan Image, and other future-family architecture/implementation identifiers | Family onboarding obligation | The corresponding family strategy owns concrete semantic resolution when that family becomes supported; central metadata accepts the shared facts without naming the family. | Create family-specific work when the model implementation is in scope; do not preserve the old central switch. |
+| `ModelSpecMetadata`, `BASE_METADATA`, generic `build_metadata*`, and boolean family-selection signatures | Discarded implementation detail | Their useful field semantics are represented elsewhere; the compatibility-shaped container and broad dispatch API are not capabilities. | None. Do not restore as a convenience facade. |
 
 ## Immediate Migration Sequence
 
@@ -107,9 +145,11 @@ Use these labels while migrating each surface:
    the current explicit plugin-like exception and should not become a generic
    central adapter schema.
 
-   Status: initial recorded metadata dataclasses now exist for run metadata,
-   checkpoint artifacts, and model-spec-compatible facts. A generic adapter fact
-   dataclass was intentionally not kept because adapter metadata is plugin-like.
+   Status: recorded dataclasses now cover run metadata, checkpoint artifacts,
+   qualified model realizations/components, versioned family contributions, and
+   artifact-facing model facts. The transitional `ModelSpecFacts` dictionary
+   wrapper was removed. A generic adapter fact dataclass was intentionally not
+   kept because adapter metadata is plugin-like.
 
 3. Convert emitters/provider wrappers to consume typed facts.
 
@@ -120,10 +160,11 @@ Use these labels while migrating each surface:
    plugin-like adapter method implementations instead of using a generic central
    adapter fact class.
 
-   Status: checkpoint provider wrappers now consume typed run/model/artifact fact
-   dataclasses. `build_checkpoint_metadata(...)` accepts typed facts directly.
-   Legacy `ss_adapter_*` keys remain compatibility metadata only until
-   adapter-owned providers exist.
+   Status: registered emitters consume typed run/model/artifact fact dataclasses.
+   Checkpoint projection consumes an accepted, explicitly scoped snapshot;
+   `ModelSpecCompatibilityProjection` no longer recovers meaning from prefixed
+   legacy records. Legacy `ss_adapter_*` keys remain compatibility metadata only
+   until adapter-owned facts exist.
 
 4. Replace the active training builder.
 
@@ -149,11 +190,22 @@ Use these labels while migrating each surface:
    - SD3 family-specific attention-mask `ss_*` fields.
    - VeRA `sd_scripts_vera.*` reconstruction metadata.
 
+   Status: SD1/SD2, SDXL DDPM/RF, SD3, adapter/full-model, attention-mask,
+   extension-collision, and current no-metadata behavior have focused typed
+   projection coverage. Frozen historical dictionaries remain comparison
+   evidence without executing the deleted broad helper.
+
 6. Remove or replace old helpers in the next domain slice.
 
    Prefer deleting active helpers after their callers move to the
    backbone-facing API. Use a wrapper only when there is a deliberate public
    compatibility contract beyond deprecated/reference scripts.
+
+   Status: active model-family `get_model_metadata(...)` and
+   `update_metadata(...)` hooks and the transitional `ModelSpecFacts` emitter
+   round trip are removed. The broad `ModelSpecMetadata` / `build_metadata*`
+   surface is removed, while supported textual-inversion saves are being moved
+   from its final broad-helper call to typed family facts and central projection.
 
 ## What Not To Do Yet
 
@@ -170,16 +222,13 @@ Use these labels while migrating each surface:
 - Do not remove exported `ss_*` or `modelspec.*` compatibility keys until
   exported parity is tested.
 
-## Proposed Next Implementation Bead
+## Current Follow-Up Boundary
 
-The next implementation bead should stay narrow and replace one remaining
-metadata concern end-to-end:
-
-> Move SD/SDXL/SD3 model-family metadata facts out of raw `modelspec.*` dict
-> builders and strategy mutation hooks into central recorded model facts plus
-> explicit family hooks/providers, while keeping existing exported
-> `modelspec.*` and family `ss_*` metadata identical.
-
-Acceptance should require focused parity tests. Deprecated/reference scripts do
-not require compatibility wrappers unless the repo deliberately promotes one as
-a supported public facade.
+The model-family implementation now includes supported textual-inversion
+artifact saves; final verification/archive remains open. Remaining metadata
+concerns should stay separate and are classified in the capability ledger
+above. A supported launcher is active even if it delegates to a deprecated
+implementation file; genuinely non-active reference scripts and standalone
+tools remain outside this ownership boundary and do not require production
+compatibility wrappers unless the repo deliberately promotes one as a supported
+public facade.

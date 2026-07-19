@@ -2,7 +2,7 @@
 
 import importlib.util
 
-from dataclasses import fields
+from dataclasses import fields, replace
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
@@ -132,6 +132,38 @@ def test_sd_resolver_distinguishes_full_model_artifact_semantics() -> None:
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
+    ("version", "serialization_format", "expected_architecture"),
+    [
+        ("sd_v1", "safetensors", "stable-diffusion-v1/textual-inversion"),
+        ("sd_v2_v", "pt", "stable-diffusion-v2-768-v/textual-inversion"),
+    ],
+)
+def test_sd_resolver_supports_textual_inversion_artifacts(
+    version: str,
+    serialization_format: str,
+    expected_architecture: str,
+) -> None:
+    context = replace(
+        _context(
+            family="sd",
+            version=version,
+            role="textual_inversion",
+            prediction_type="v_prediction" if version == "sd_v2_v" else "epsilon",
+        ),
+        serialization_format=serialization_format,
+        presentation=ModelArtifactPresentation(),
+    )
+
+    facts = SdCheckpointingStrategy().resolve_model_artifact_facts(context)
+
+    assert facts.architecture == expected_architecture
+    assert facts.artifact_role == "textual_inversion"
+    assert facts.title == "TextualInversion@946684800.0"
+    _assert_canonical(facts)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
     ("context", "error"),
     [
         (_context(family="sd", version="sd_v1", prediction_type="invalid"), "prediction type"),
@@ -205,6 +237,26 @@ def test_sdxl_resolver_handles_artifact_role_and_rf_omission(
     assert facts.implementation == implementation
     assert facts.prediction_type == prediction_type
     assert facts.resolution == "1024x1024"
+    _assert_canonical(facts)
+
+
+@pytest.mark.unit
+def test_sdxl_resolver_supports_textual_inversion_artifacts() -> None:
+    context = replace(
+        _context(
+            family="sdxl",
+            version="sdxl_base_v1-0",
+            role="textual_inversion",
+            prediction_type="epsilon",
+        ),
+        presentation=ModelArtifactPresentation(),
+    )
+
+    facts = SdxlCheckpointingStrategy().resolve_model_artifact_facts(context)
+
+    assert facts.architecture == "stable-diffusion-xl-v1-base/textual-inversion"
+    assert facts.artifact_role == "textual_inversion"
+    assert facts.title == "TextualInversion@946684800.0"
     _assert_canonical(facts)
 
 
@@ -334,5 +386,5 @@ def test_future_family_only_needs_typed_resolver_for_central_runtime() -> None:
     assert record is not None
     assert record.facts["family_identifier"] == "future-family"
     assert record.facts["architecture"] == "future-v1/adapter"
-    assert type(strategy).get_model_metadata is CheckpointingStrategy.get_model_metadata
-    assert type(strategy).update_metadata is CheckpointingStrategy.update_metadata
+    assert not hasattr(strategy, "get_model_metadata")
+    assert not hasattr(strategy, "update_metadata")

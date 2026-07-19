@@ -117,14 +117,15 @@ Keep these with the runtime that owns them:
 
 ### Explicit local exceptions
 
-Local metadata modules are allowed for explicit plugin-like or family-local metadata.
+Local metadata modules are allowed only for explicit plugin-like metadata whose
+schema and persistence behavior genuinely belong to that plugin. Adapter-method
+reconstruction facts are the current example.
 
-Current likely examples:
-
-- adapter method / family metadata
-- possibly data/cache-specific metadata if it remains highly local
-
-The default should still be central shared item schemas plus local filing call sites.
+Model families are not a reason to create `library/models/<family>/metadata.py`
+or another metadata mini-layer. Their existing strategy facets resolve
+family-specific meaning into central typed facts; the central metadata package
+owns reusable builders, accepted schemas, filing, relationships, and
+projections.
 
 ## Dataclass Rule
 
@@ -253,10 +254,47 @@ That means:
 - local code should not need to know which emitter to call
 - routing from item type to emitter should stay inside `library/metadata`
 
-`emitters/checkpoint.py` still combines record emission with the transitional
-checkpoint projection path. The active model-family metadata change will narrow
-that file while migrating checkpoint projections; do not copy that transitional
-shape into new concerns.
+`emitters/checkpoint.py` also coordinates the final checkpoint projection over
+an accepted snapshot. That is an artifact-boundary responsibility: it does not
+reconstruct family semantics or accept pre-rendered ModelSpec dictionaries.
+Do not copy that export coordination into unrelated concern emitters.
+
+## Model Metadata Boundary
+
+Model metadata has three distinct layers:
+
+- family declarations in `library/models/<family>/__init__.py` describe ordered
+  top-level component topology;
+- one run-scoped model realization records which declared components were
+  present, using run-qualified realization and component identities;
+- one model-artifact fact records the semantics of a particular adapter or
+  full-model output.
+
+`library/strategies/<family>/checkpointing.py` resolves family-specific artifact
+meaning—architecture, reference implementation, supported artifact roles, and
+family-local contributions—into the shared fact types. It does not render
+`modelspec.*`, mutate checkpoint metadata dictionaries, or write to the
+metadata backend.
+
+The trainer files realization/component facts after model loading, retains the
+accepted qualified identity state, and files artifact facts at checkpoint time.
+Central projections then render repo-owned `kuro.*`, SAI `modelspec.*`, and the
+model-family-owned subset of compatibility-only `ss_*` before the safetensors
+boundary stringifies values.
+
+The broad flag-driven ModelSpec construction surface has been removed from the
+production library. Supported transitional launchers still count as active when
+they inherit or delegate to a deprecated implementation file, so their artifact
+boundaries must use typed facts and central projections before a helper they use
+is removed. Genuinely non-active reference scripts and standalone tools remain
+outside this ownership boundary: they do not define production metadata APIs.
+
+Potentially useful behavior that lacks a settled implementation owner is
+recorded in the deferred capability ledger in
+`docs_design/metadata_legacy_migration_control.md`. Actionable entries use Beads
+for task status. Do not preserve broad helpers as an implicit backlog, and do
+not silently discard provenance or compatibility behavior merely because its
+old placement was wrong.
 
 ## Backends
 

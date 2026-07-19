@@ -4,8 +4,19 @@ from __future__ import annotations
 
 from library.metadata.backends import InMemoryMetadataBackend, MetadataSnapshot
 from library.metadata.dataclasses.artifact import CheckpointArtifactFacts
+from library.metadata.dataclasses.model import ModelArtifactFacts
 from library.metadata.dataclasses.run import RunMetadataFacts
+from library.metadata.emitters.model import build_model_artifact_metadata
 from library.metadata.emitters.run import build_training_run_metadata
+from library.metadata.providers import MetadataProviderResult
+from library.metadata.records import (
+    ArtifactMetadataRecord,
+    MetadataIdentity,
+    MetadataValue,
+)
+from library.metadata.values import stringify_metadata_mapping
+from library.metadata.versions import METADATA_PAYLOAD_VERSION
+
 from library.metadata.projections import (
     KuroMetadataProjection,
     MetadataProjection,
@@ -14,10 +25,6 @@ from library.metadata.projections import (
     scope_model_artifact_snapshot,
     SsCompatibilityProjection,
 )
-from library.metadata.providers import MetadataProviderResult
-from library.metadata.records import ArtifactMetadataRecord, MetadataIdentity, MetadataValue
-from library.metadata.values import stringify_metadata_mapping
-from library.metadata.versions import METADATA_PAYLOAD_VERSION
 
 
 def build_checkpoint_artifact_metadata(
@@ -32,6 +39,25 @@ def build_checkpoint_artifact_metadata(
         schema_version=schema_version,
         records=[_build_checkpoint_artifact_record(facts, producer=provider_id)],
     )
+
+
+def build_model_artifact_export_metadata(facts: ModelArtifactFacts) -> dict[str, str]:
+    """Project one standalone model artifact from canonical accepted facts.
+
+    This is the bounded artifact-export boundary for supported paths that do
+    not yet share the main trainer's long-lived metadata runtime, such as the
+    transitional textual-inversion launchers.
+    """
+    backend = InMemoryMetadataBackend()
+    backend.ingest(build_model_artifact_metadata(facts))
+    backend.validate()
+    projected = SafetensorsMetadataProjection.from_sequence(
+        (
+            KuroMetadataProjection(artifact_identifier=facts.artifact_identifier),
+            ModelSpecCompatibilityProjection(artifact_identifier=facts.artifact_identifier),
+        )
+    ).project(backend.snapshot())
+    return stringify_metadata_mapping(projected.metadata)
 
 
 def build_checkpoint_metadata(

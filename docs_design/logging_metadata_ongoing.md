@@ -260,13 +260,10 @@ Deferred follow-up:
 - the long-term user-facing contract for `output.saving.no_metadata` is now
   tracked explicitly in bead `sd-scripts-due` instead of being inherited from
   the old repo’s minimum-metadata behavior
-- a separate legacy helper still exists in
-  [library/utils/model_metadata.py](/mnt/d/Projects/sd-scripts/library/utils/model_metadata.py)
-  as `build_minimum_adapter_metadata()`, and old standalone merge tools under
-  `tools/model_management/` still call it; that path was left alone on purpose
-  because it is outside the active training metadata flow and should be cleaned
-  up as part of a later legacy-tooling pass instead of being mixed into the
-  current runtime metadata slice
+- the separate `build_minimum_adapter_metadata()` production helper was later
+  removed after the active typed projection path covered the runtime contract;
+  standalone tools remain outside the production metadata boundary and were not
+  changed as part of that removal
 compatibility payloads.
 
 If the broader metadata/startup review still wants more visibility here, a

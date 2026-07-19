@@ -25,8 +25,9 @@ turn every transitional behavior into a permanent contract.
 - SDXL produces adapter-role dictionaries for the trainer path. Its stable
   full-model writer builds a second full-model dictionary, merges it over the
   trainer metadata, and writes metadata only for safetensors. The second build
-  currently defaults resolution to `512x512` and omits timestep and encoder
-  fields, while the earlier `kuro.model.*` facts still describe the adapter.
+  defaults resolution to `1024x1024`; omitted timestep and encoder fields remain
+  from the first dictionary because of merge order, while the earlier
+  `kuro.model.*` facts still describe the adapter.
   The `.ckpt` and diffusers writers do not persist the supplied header metadata.
 - SD3 produces full-model ModelSpec semantics and writes metadata to the unified
   MMDiT/VAE safetensors artifact. Text-encoder sidecars remain metadata-free.
@@ -64,8 +65,15 @@ turn every transitional behavior into a permanent contract.
 - The active SDXL textual-inversion script inherits a deprecated parent that
   still calls the broad ModelSpec helper. It needs an explicit migrate-or-retire
   decision before that helper is removed.
-- Stale model-management tools reference removed metadata APIs and should be
-  handled as separate tool-cleanup work rather than preserving active facades.
+- The supported SD textual-inversion preset is also implemented by that parent.
+  File placement does not make either artifact-save path non-active; both need
+  typed textual-inversion artifact-role resolution before helper removal.
+  Resolved in task 8.7: the shared save boundary now builds canonical artifact
+  facts through the SD/SDXL family facet and projects Kuro/ModelSpec centrally;
+  the wider stale runtime migration remains separate in `sd-scripts-58e`.
+- Stale model-management tools reference removed metadata APIs. Their state is
+  outside this change and does not preserve production metadata facades or
+  determine whether the model-family migration is complete.
 - Adapter-local reconstruction metadata, source-metadata ingestion, tensor hash
   generation, and the long-term `no_metadata` policy remain outside this slice.
 
@@ -82,3 +90,26 @@ turn every transitional behavior into a permanent contract.
 - The current 32-bit process-local session ID is adequate only for this slice's
   within-run qualification; a resume-stable distributed run identity remains
   follow-up work before shared long-lived storage is treated as collision-safe.
+
+## Final parity audit
+
+The final comparisons use fixed timestamps, presentation fields, timestep
+ranges, encoder layers, and implementation versions so each projected
+dictionary is compared in full rather than by a selected key sample.
+
+| Fixture | Pre-migration comparison | Final decision |
+| --- | --- | --- |
+| SD1 adapter, epsilon | All fields match except `modelspec.implementation` (`diffusers`) | Use the CompVis SD1 reference repository. |
+| SD2 adapter, epsilon | All fields match except `modelspec.implementation` (`diffusers`) | Use the Stability AI SD2 reference repository. |
+| SD2 adapter, v-prediction | All fields match except `modelspec.implementation` (`diffusers`) | Use the Stability AI SD2 reference repository; retain `v_prediction`. |
+| SDXL adapter, epsilon | Complete dictionary match | Preserve. |
+| SDXL adapter, v-prediction | Complete dictionary match | Preserve. |
+| SDXL adapter, rectified flow | Complete dictionary match with no `modelspec.prediction_type` | Preserve the omission. |
+| SDXL full model, non-square configured resolution | All fields match except the old second-builder `1024x1024` resolution | Record the configured resolution and do not rebuild ModelSpec in the writer. |
+| SD3 full model | All fields match except `modelspec.implementation` (`generative-models`) | Use the SD3/3.5 reference repository; continue omitting prediction type and encoder layer. |
+| SD3 attention masks | The immediate path omitted the historically documented `ss_apply_*_attn_mask` keys | Restore those keys through `SsCompatibilityProjection` and also expose canonical `kuro.model.family.*` facts. |
+| `no_metadata=True` | Complete current-observable dictionary match | Continue exporting ModelSpec and Kuro model-artifact facts while omitting run, generic checkpoint-artifact, and `ss_*` output; defer product semantics. |
+| ModelSpec extension collision | Complete current-observable dictionary match | Preserve extensions-last precedence, including collisions with title and ModelSpec version; any policy change remains separate. |
+
+No other key, value, or optional-field omission differs in the fixed parity
+suite. Safetensors stringification remains the last boundary.

@@ -1,11 +1,30 @@
 # Metadata System Inventory
 
-Date: 2026-05-14
+Date: 2026-05-14 (implementation update 2026-07-19)
 
-This note is phase 1 of the metadata-system work: establish what already exists.
-It intentionally avoids designing the future backbone. Later passes should decide
-coverage areas, gather older notes/resources, and combine this inventory with the
-desired architecture.
+This note began as the pre-backbone inventory. The original concern survey below
+remains useful historical context, but the active authority is
+`library/metadata/README.md` plus archived/completed OpenSpec requirements.
+
+Since the original inventory, active model metadata has moved to typed,
+relational facts:
+
+- family packages declare ordered top-level component topology;
+- central builders create run-qualified realization/component identities;
+- strategy checkpoint facets resolve family-specific artifact meaning into
+  central typed facts;
+- the trainer files those facts through `MetadataRuntime` at model-load and
+  checkpoint boundaries;
+- central projections own `kuro.*`, `modelspec.*`, model-family `ss_*`, and
+  final safetensors stringification.
+
+The old strategy dictionary hooks, `get_model_metadata_from_config(...)`, the
+broad `ModelSpecMetadata` / `build_metadata*` construction surface, and the
+`ModelSpecFacts` compatibility-dictionary round trip are removed from the
+production library. Supported textual-inversion artifact saves use typed family
+facts and central projection even though their wider runtime remains
+transitional. Genuinely non-active scripts and standalone tools do not define
+this library boundary.
 
 ## Current Metadata Meanings
 
@@ -27,8 +46,9 @@ The repo currently uses "metadata" for several distinct concepts:
 - Method-local adapter metadata: adapter-specific persistence facts such as VeRA
   projection reconstruction settings.
 
-These meanings are real and useful, but they do not yet share one vocabulary,
-schema boundary, or ownership model.
+These meanings remain real and useful. The central metadata system now supplies
+their shared recording/relationship/projection vocabulary as each concern is
+migrated; it does not collapse their distinct domain ownership.
 
 ## Artifact And Model Metadata
 
@@ -39,19 +59,18 @@ Main code:
 - `configs/_defaults/output/default.yaml`
 - `library/constants.py`
 
-Current shape:
+Current shape after the model-family migration:
 
 - `MetadataConfig` is the user-facing config surface under `output.metadata`.
   It contains human/model-card style fields such as title, author, description,
   license, tags, thumbnail, trigger phrase, preprocessor, and training comment.
-- `ModelSpecMetadata` represents SAI Model Spec 1.0.1 and serializes to
-  `modelspec.*` keys.
-- `get_model_metadata_from_config(...)` builds `modelspec.*` metadata from
-  `MetadataConfig` plus explicit family/runtime inputs such as SDXL/v2 flags,
-  LoRA/textual-inversion flags, resolution, timestep range, clip skip, prediction
-  type, and optional model-family type strings.
-- `build_minimum_adapter_metadata(...)` still exists for minimal adapter metadata,
-  using the legacy `ss_*` minimum key set.
+- Active training converts `MetadataConfig` presentation fields into
+  `ModelArtifactPresentation` and family-resolved `ModelArtifactFacts`.
+- `ModelSpecCompatibilityProjection` represents the active SAI ModelSpec 1.0.1
+  export boundary and maps canonical artifact facts to `modelspec.*` keys.
+- The legacy `ModelSpecMetadata` / `build_metadata*` and minimum-adapter
+  dictionary helpers are removed; active compatibility output comes from
+  canonical facts and central projections.
 - `load_metadata_from_safetensors(...)` reads artifact metadata back from
   safetensors.
 - `SS_METADATA_MINIMUM_KEYS` in `library/constants.py` is a small legacy list
@@ -61,9 +80,9 @@ Noted boundaries:
 
 - `MetadataConfig` is model-card/user-authored metadata, not a general runtime
   metadata config.
-- `get_model_metadata_from_config(...)` is broad and family-flag driven. Strategy
-  checkpointing code currently narrows this by calling it from family-specific
-  wrappers.
+- Family checkpoint facets accept a narrow typed artifact context and return
+  canonical facts; central code does not branch on the family name to render
+  ModelSpec output.
 - Artifact metadata must be `dict[str, str]` for safetensors compatibility.
 
 ## Training-Run Metadata
@@ -72,7 +91,8 @@ Main code:
 
 - `library/metadata/emitters/run.py`
 - `library/metadata/emitters/checkpoint.py`
-- `library/training/metadata.py` compatibility wrapper
+- `library/metadata/builders/run.py`
+- `library/metadata/builders/model.py`
 - `library/training/runners/trainer.py`
 - `library/strategies/*/checkpointing.py`
 
@@ -91,12 +111,13 @@ Current shape:
   norms.
 - `build_objective_ss_metadata(...)` adds objective-specific fields, currently
   for RF/SD3-style objective facts.
-- `Trainer._initialize_training_metadata()` stores typed full/minimum metadata
-  state, then calls `strategies.update_metadata(...)` through the remaining
-  strategy compatibility bridge.
-- `Trainer._build_checkpoint_metadata()` chooses full-vs-minimum facts based on
-  `cfg.output.saving.no_metadata`, then routes run/model/artifact facts through
-  central checkpoint emitters and projections.
+- `Trainer._initialize_training_metadata()` stores canonical typed run metadata
+  state without a family dictionary-mutation bridge.
+- `Trainer._file_model_realization_metadata()` files the qualified realization,
+  ordered components, and optional family contribution once after model load.
+- `Trainer._build_checkpoint_metadata()` files one family-resolved artifact fact
+  and projects the explicitly scoped accepted snapshot while preserving the
+  current `no_metadata` behavior.
 - `scripts/_deprecated/sd_peft.py` and
   `scripts/_deprecated/sdxl_peft_copy.py` are retired stubs with replacement
   `train.py` preset guidance.
@@ -105,7 +126,8 @@ Noted boundaries:
 
 - This path is still root-config heavy, but it lives in trainer-level
   orchestration where broad config access is acceptable by current repo rules.
-- The strategy hook is stable according to `docs_design/strategy_contract_pressure_audit.md`.
+- Family-specific semantics remain stable at the typed checkpoint facet rather
+  than at a generic metadata dictionary hook.
 - `ss_*` keys are effectively compatibility artifact metadata, not an internal
   typed schema.
 
@@ -120,18 +142,19 @@ Main code:
 
 Current shape:
 
-- Strategies implement `update_metadata(metadata, cfg)` and
-  `get_model_metadata(cfg)`.
-- SD and SDXL wrap `get_model_metadata_from_config(...)` with family-specific
-  flags, prediction-type resolution, resolution, timestep range, and clip skip.
-- SD3 uses a distinct model metadata shape through the same strategy seam.
+- All active families implement `resolve_model_artifact_facts(context)`.
+- SD3 additionally implements `ModelFamilyMetadataStrategy` for explicit
+  versioned attention-mask facts.
+- No active strategy renders `modelspec.*` or mutates checkpoint metadata.
 
 Noted boundaries:
 
-- Strategy checkpointing owns family-specific model identity and save-policy
-  details today.
-- Older design notes suggest a possible future Stable-Diffusion-family metadata
-  helper, but deferred it because SD3 and save behavior diverge.
+- Strategy checkpointing owns family-specific artifact meaning and save-policy
+  behavior. Central metadata owns accepted schemas, qualified identities,
+  relationships, and projections.
+- Future families extend the same component declaration and typed resolver
+  contracts instead of adding a central family switch or a local metadata
+  mini-framework.
 
 ## Safetensors Metadata IO
 
@@ -343,8 +366,8 @@ Noted boundaries:
 
 Representative coverage:
 
-- `tests/unit/utils/test_utils_sai_model_spec.py` covers `ModelSpecMetadata` and
-  model-spec construction.
+- `tests/unit/utils/test_model_metadata.py` covers the remaining narrow
+  model-artifact utility boundary.
 - `tests/unit/training/test_training_metadata.py` covers objective metadata.
 - `tests/unit/training/test_training_checkpointing.py` covers minimum adapter
   metadata.
@@ -358,20 +381,25 @@ Representative coverage:
   runtime metadata and parameter-group metadata isolation.
 - `tests/unit/logging/test_step_logging.py` covers logged artifact metadata.
 
-## Initial Gaps To Keep In View
+## Initial Gaps And Current Status
 
-These are inventory observations, not proposed solutions:
+These were inventory observations. Completed items are recorded here so this
+historical document does not contradict the implemented system:
 
-- There is no central metadata package or typed root vocabulary.
-- `dict[str, str]` is used both as a storage requirement and as an internal
-  convenience shape; those concerns are not always separated.
-- `ss_*`, `modelspec.*`, cache metadata, logging artifact metadata, and runtime
-  capability metadata are all separate key spaces.
+- [Resolved] `library/metadata/` is the central typed catalog/runtime/backend,
+  with builders, emitters, relationships, projections, and storage.
+- [Resolved for active run/model/checkpoint paths] Safetensors
+  `dict[str, str]` is now a final projection boundary rather than the internal
+  authoring shape.
+- [Partly resolved] `ss_*` and `modelspec.*` are compatibility projections;
+  cache and remaining adapter-method concerns still await their own typed slices.
 - Dataset/sample metadata is manifest-bound today and not yet a persistent sample
   registry with readiness state.
-- Some metadata builders are broad and flag-driven, especially model-spec
-  construction.
-- Family strategy hooks are stable but may not be the final metadata ownership
-  boundary.
+- [Resolved] Broad flag-driven ModelSpec builders are removed from the
+  production library. The supported textual-inversion save boundary now uses
+  typed family facts and central projection despite inheriting a deprecated
+  wider runtime; only genuinely non-active callers remain outside the boundary.
+- [Resolved] Family strategy checkpoint facets own semantic resolution while
+  central metadata owns schemas, qualified identities, and projections.
 - Older docs already point toward metadata-first dataset structuring and run
   warehouse ideas, but those are not yet combined with the current code surfaces.

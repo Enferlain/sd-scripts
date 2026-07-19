@@ -18,7 +18,6 @@ from library.metadata import (
 )
 from library.metadata.dataclasses import RunMetadataFacts
 from library.metadata.emitters.checkpoint import build_checkpoint_metadata
-from library.utils import model_metadata
 
 
 def _load_checkpointing_module(family: str) -> ModuleType:
@@ -48,23 +47,6 @@ HISTORICAL_SD3_ATTENTION_MASK_COMPATIBILITY = {
     "ss_apply_lg_attn_mask": "True",
     "ss_apply_t5_attn_mask": "False",
 }
-
-
-class _FrozenDateTime:
-    @classmethod
-    def fromtimestamp(cls, timestamp: float) -> "_FrozenDateTime":
-        assert timestamp == FIXED_TIMESTAMP
-        return cls()
-
-    def isoformat(self) -> str:
-        return FIXED_DATE
-
-
-@pytest.fixture(autouse=True)
-def _freeze_model_metadata_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(model_metadata.time, "time", lambda: FIXED_TIMESTAMP)
-    monkeypatch.setattr(model_metadata, "datetime", SimpleNamespace(datetime=_FrozenDateTime))
-    monkeypatch.setattr(model_metadata, "get_implementation_version", lambda: FIXED_IMPLEMENTATION_VERSION)
 
 
 def _family_cfg(
@@ -165,38 +147,6 @@ def _project_resolved_modelspec(strategy, context: ModelArtifactResolutionContex
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    ("model_type", "prediction", "expected_architecture", "expected_prediction"),
-    [
-        ("sd1", "epsilon", "stable-diffusion-v1/lora", "epsilon"),
-        ("sd2", "epsilon", "stable-diffusion-v2-512/lora", "epsilon"),
-        ("sd2", "v_prediction", "stable-diffusion-v2-768-v/lora", "v_prediction"),
-    ],
-)
-def test_sd_adapter_modelspec_output_parity(
-    model_type: str,
-    prediction: str,
-    expected_architecture: str,
-    expected_prediction: str,
-) -> None:
-    cfg = _family_cfg(
-        model_type=model_type,
-        objective_path="ddpm",
-        prediction=prediction,
-        resolution=(768, 512),
-    )
-
-    metadata = SdCheckpointingStrategy().get_model_metadata(cfg)
-
-    assert metadata == _expected_modelspec(
-        architecture=expected_architecture,
-        implementation="diffusers",
-        resolution="768x512",
-        prediction_type=expected_prediction,
-    )
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
     ("model_type", "prediction", "expected_architecture", "expected_implementation", "expected_prediction"),
     [
         (
@@ -243,45 +193,24 @@ def test_sd_typed_modelspec_projection_matches_parity_except_corrected_implement
         artifact_role="adapter",
     )
 
-    metadata = _project_resolved_modelspec(SdCheckpointingStrategy(), context)
-
-    assert metadata == _expected_modelspec(
+    historical = _expected_modelspec(
+        architecture=expected_architecture,
+        implementation="diffusers",
+        resolution="768x512",
+        prediction_type=expected_prediction,
+    )
+    projected = _project_resolved_modelspec(SdCheckpointingStrategy(), context)
+    expected = _expected_modelspec(
         architecture=expected_architecture,
         implementation=expected_implementation,
         resolution="768x512",
         prediction_type=expected_prediction,
     )
 
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    ("objective_path", "prediction", "expected_prediction"),
-    [
-        ("ddpm", "epsilon", "epsilon"),
-        ("ddpm", "v_prediction", "v_prediction"),
-        ("rectified_flow", "flow", None),
-    ],
-)
-def test_sdxl_adapter_modelspec_output_parity(
-    objective_path: str,
-    prediction: str,
-    expected_prediction: str | None,
-) -> None:
-    cfg = _family_cfg(
-        model_type="sdxl",
-        objective_path=objective_path,
-        prediction=prediction,
-        resolution=(1024, 1024),
-    )
-
-    metadata = SdxlCheckpointingStrategy().get_model_metadata(cfg)
-
-    assert metadata == _expected_modelspec(
-        architecture="stable-diffusion-xl-v1-base/lora",
-        implementation="https://github.com/Stability-AI/generative-models",
-        resolution="1024x1024",
-        prediction_type=expected_prediction,
-    )
+    assert {key: value for key, value in projected.items() if key != "modelspec.implementation"} == {
+        key: value for key, value in historical.items() if key != "modelspec.implementation"
+    }
+    assert projected == expected
 
 
 @pytest.mark.unit
@@ -323,41 +252,12 @@ def test_sdxl_typed_adapter_projection_matches_parity(
 
 
 @pytest.mark.unit
-def test_sdxl_full_model_role_has_checkpoint_architecture_and_implementation() -> None:
-    metadata = model_metadata.get_model_metadata_from_config(
-        state_dict=None,
-        metadata_config=MetadataConfig(
-            metadata_title="Parity Artifact",
-            metadata_author="Metadata Tests",
-        ),
-        is_sdxl=True,
-        is_v2=False,
-        v_parameterization=False,
-        prediction_type="epsilon",
-        is_lora=False,
-        is_textual_inversion=False,
-        resolution=(1024, 1024),
-        min_timestep=10,
-        max_timestep=900,
-        clip_skip=2,
-        is_stable_diffusion_ckpt=True,
-    )
-
-    assert metadata == _expected_modelspec(
-        architecture="stable-diffusion-xl-v1-base",
-        implementation="https://github.com/Stability-AI/generative-models",
-        resolution="1024x1024",
-        prediction_type="epsilon",
-    )
-
-
-@pytest.mark.unit
-def test_sdxl_typed_full_model_projection_matches_parity() -> None:
+def test_sdxl_typed_full_model_projection_uses_configured_resolution() -> None:
     cfg = _family_cfg(
         model_type="sdxl",
         objective_path="ddpm",
         prediction="epsilon",
-        resolution=(1024, 1024),
+        resolution=(1024, 768),
     )
     context = _artifact_context(
         cfg,
@@ -367,36 +267,24 @@ def test_sdxl_typed_full_model_projection_matches_parity() -> None:
         artifact_role="full_model",
     )
 
-    metadata = _project_resolved_modelspec(SdxlCheckpointingStrategy(), context)
-
-    assert metadata == _expected_modelspec(
+    historical = _expected_modelspec(
         architecture="stable-diffusion-xl-v1-base",
         implementation="https://github.com/Stability-AI/generative-models",
         resolution="1024x1024",
         prediction_type="epsilon",
     )
-
-
-@pytest.mark.unit
-def test_sd3_full_model_modelspec_output_parity() -> None:
-    cfg = _family_cfg(
-        model_type="sd3",
-        objective_path="rectified_flow",
-        prediction="flow",
-        resolution=(1024, 768),
-        clip_skip=None,
-        sd3_type="medium",
-    )
-
-    metadata = Sd3CheckpointingStrategy().get_model_metadata(cfg)
-
-    assert metadata == _expected_modelspec(
-        architecture="stable-diffusion-3-medium",
+    projected = _project_resolved_modelspec(SdxlCheckpointingStrategy(), context)
+    expected = _expected_modelspec(
+        architecture="stable-diffusion-xl-v1-base",
         implementation="https://github.com/Stability-AI/generative-models",
         resolution="1024x768",
-        prediction_type=None,
-        encoder_layer=None,
+        prediction_type="epsilon",
     )
+
+    assert {key: value for key, value in projected.items() if key != "modelspec.resolution"} == {
+        key: value for key, value in historical.items() if key != "modelspec.resolution"
+    }
+    assert projected == expected
 
 
 @pytest.mark.unit
@@ -417,15 +305,26 @@ def test_sd3_typed_full_model_projection_uses_corrected_reference_implementation
         artifact_role="full_model",
     )
 
-    metadata = _project_resolved_modelspec(Sd3CheckpointingStrategy(), context)
-
-    assert metadata == _expected_modelspec(
+    historical = _expected_modelspec(
+        architecture="stable-diffusion-3-medium",
+        implementation="https://github.com/Stability-AI/generative-models",
+        resolution="1024x768",
+        prediction_type=None,
+        encoder_layer=None,
+    )
+    projected = _project_resolved_modelspec(Sd3CheckpointingStrategy(), context)
+    expected = _expected_modelspec(
         architecture="stable-diffusion-3-medium",
         implementation="https://github.com/Stability-AI/sd3.5",
         resolution="1024x768",
         prediction_type=None,
         encoder_layer=None,
     )
+
+    assert {key: value for key, value in projected.items() if key != "modelspec.implementation"} == {
+        key: value for key, value in historical.items() if key != "modelspec.implementation"
+    }
+    assert projected == expected
 
 
 @pytest.mark.unit
@@ -474,37 +373,6 @@ def test_sd3_typed_family_projection_restores_historical_attention_mask_keys() -
     )
 
     assert metadata == HISTORICAL_SD3_ATTENTION_MASK_COMPATIBILITY
-
-
-@pytest.mark.unit
-def test_user_modelspec_extensions_currently_override_standard_fields_on_collision() -> None:
-    metadata = model_metadata.get_model_metadata_from_config(
-        state_dict=None,
-        metadata_config=MetadataConfig(metadata_title="Configured Title"),
-        is_sdxl=False,
-        is_v2=False,
-        v_parameterization=False,
-        is_lora=True,
-        is_textual_inversion=False,
-        optional_metadata={
-            "architecture": "user-architecture",
-            "title": "User Extension Title",
-            "sai_model_spec": "user-version",
-            "custom_field": "custom-value",
-        },
-    )
-
-    assert metadata == {
-        "modelspec.architecture": "user-architecture",
-        "modelspec.implementation": "diffusers",
-        "modelspec.title": "User Extension Title",
-        "modelspec.resolution": "512x512",
-        "modelspec.sai_model_spec": "user-version",
-        "modelspec.date": FIXED_DATE,
-        "modelspec.implementation_version": FIXED_IMPLEMENTATION_VERSION,
-        "modelspec.prediction_type": "epsilon",
-        "modelspec.custom_field": "custom-value",
-    }
 
 
 @pytest.mark.unit

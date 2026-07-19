@@ -245,6 +245,48 @@ def test_model_artifact_context_builder_normalizes_config_boundary_values(
 
 
 @pytest.mark.unit
+def test_model_artifact_context_builder_preserves_supported_presentation_fields() -> None:
+    context = build_model_artifact_resolution_context(
+        metadata_config=MetadataConfig(
+            metadata_title="Configured Artifact",
+            metadata_description="Description",
+            metadata_author="Author",
+            metadata_license="License",
+            metadata_tags="one,two",
+            metadata_usage_hint="Use the trigger",
+            metadata_thumbnail="data:image/png;base64,AA==",
+            metadata_merged_from="Source A, Source B",
+            metadata_trigger_phrase="trigger",
+            metadata_preprocessor="none",
+            metadata_is_negative_embedding="False",
+        ),
+        family_identifier="future-family",
+        model_version="v1",
+        artifact_identifier="artifact.safetensors",
+        artifact_role="textual_inversion",
+        serialization_format="safetensors",
+        resolution=(1024, 768),
+        created_at=1.0,
+        extension_fields={"custom": "value"},
+    )
+
+    assert context.presentation == ModelArtifactPresentation(
+        title="Configured Artifact",
+        description="Description",
+        author="Author",
+        license="License",
+        tags="one,two",
+        usage_hint="Use the trigger",
+        thumbnail="data:image/png;base64,AA==",
+        merged_from="Source A, Source B",
+        trigger_phrase="trigger",
+        preprocessor="none",
+        is_negative_embedding="False",
+        extension_fields={"custom": "value"},
+    )
+
+
+@pytest.mark.unit
 def test_model_artifact_context_builder_rejects_unusable_resolution() -> None:
     with pytest.raises(ValueError, match="explicit resolution"):
         build_model_artifact_resolution_context(

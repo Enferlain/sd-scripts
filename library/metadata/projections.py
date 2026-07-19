@@ -174,9 +174,7 @@ class ModelSpecCompatibilityProjection:
             projection_id=self.projection_id,
         )
         if artifact_record is None:
-            # Transitional bridge for the live checkpoint path. Section 7
-            # removes the pre-rendered ModelSpec producer and this fallback.
-            return ProjectionResult(_collect_prefixed_facts(snapshot.records, MODELSPEC_PREFIX))
+            return ProjectionResult({})
 
         required_facts = tuple(
             MetadataRequiredFact(

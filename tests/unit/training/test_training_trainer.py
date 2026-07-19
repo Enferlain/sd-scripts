@@ -182,7 +182,6 @@ class TestTrainer(unittest.TestCase):
         self.trainer._metadata_state = TrainingMetadataState(
             full=RunMetadataFacts(run_identifier="test", metadata={}),
         )
-        self.strategies.get_model_metadata.return_value = {}
         self.trainer._build_checkpoint_metadata = MagicMock(return_value={})
 
         edm2_model = MagicMock(name="edm2_loss_weights")
@@ -208,7 +207,6 @@ class TestTrainer(unittest.TestCase):
         self.trainer._metadata_state = TrainingMetadataState(
             full=RunMetadataFacts(run_identifier="test", metadata={"adapter_method": "test"}),
         )
-        self.strategies.get_model_metadata.return_value = {}
         self.trainer._build_checkpoint_metadata = MagicMock(return_value={})
 
         mock_adapter = MagicMock(name="adapter")

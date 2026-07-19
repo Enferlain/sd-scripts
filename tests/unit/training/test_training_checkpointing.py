@@ -14,7 +14,6 @@ from library.training.checkpointing import (
     get_remove_step_no,
     default_if_none,
 )
-from library.utils.model_metadata import build_minimum_adapter_metadata
 from library.config.dataclasses.output import SavingConfig
 
 
@@ -144,83 +143,6 @@ class TestCheckpointRemoval:
 
 
 # =============================================================================
-# Metadata Building Tests
-# =============================================================================
-
-
-@pytest.mark.training
-@pytest.mark.unit
-class TestMetadataBuilding:
-    """Test metadata building functions."""
-
-    def test_build_minimum_adapter_metadata_basic(self):
-        """Test building basic peft metadata."""
-        metadata = build_minimum_adapter_metadata(
-            v2=None, base_model=None, adapter_module="adapters.lora", adapter_rank="8", adapter_alpha="1.0", adapter_args=None
-        )
-
-        assert metadata is not None
-        assert metadata["ss_adapter_module"] == "adapters.lora"
-        assert metadata["ss_adapter_rank"] == "8"
-        assert metadata["ss_adapter_alpha"] == "1.0"
-
-    def test_build_minimum_adapter_metadata_with_v2(self):
-        """Test building metadata with v2 flag."""
-        metadata = build_minimum_adapter_metadata(
-            v2="v2-1", base_model=None, adapter_module="adapters.lora", adapter_rank="16", adapter_alpha="1.0", adapter_args=None
-        )
-
-        assert "ss_v2" in metadata
-        assert metadata["ss_v2"] == "v2-1"
-
-    def test_build_minimum_adapter_metadata_with_base_model(self):
-        """Test building metadata with base model."""
-        metadata = build_minimum_adapter_metadata(
-            v2=None, base_model="sd-v1-5", adapter_module="adapters.lora", adapter_rank="32", adapter_alpha="16.0", adapter_args=None
-        )
-
-        assert "ss_base_model_version" in metadata
-        assert metadata["ss_base_model_version"] == "sd-v1-5"
-
-    def test_build_minimum_adapter_metadata_with_args(self):
-        """Test building metadata with peft args."""
-        adapter_args = {"conv_dim": 4, "conv_alpha": 1.0}
-
-        metadata = build_minimum_adapter_metadata(
-            v2=None, base_model=None, adapter_module="adapters.lora", adapter_rank="64", adapter_alpha="32.0", adapter_args=adapter_args
-        )
-
-        assert "ss_adapter_args" in metadata
-        # Adapter args should be JSON-encoded
-        import json
-
-        decoded_args = json.loads(metadata["ss_adapter_args"])
-        assert decoded_args["conv_dim"] == 4
-        assert decoded_args["conv_alpha"] == 1.0
-
-    def test_build_minimum_adapter_metadata_complete(self):
-        """Test building metadata with all optional fields."""
-        adapter_args = {"dropout": 0.1}
-
-        metadata = build_minimum_adapter_metadata(
-            v2="v2-1",
-            base_model="sd-v1-5",
-            adapter_module="adapters.lora",
-            adapter_rank="128",
-            adapter_alpha="64.0",
-            adapter_args=adapter_args,
-        )
-
-        # Check all fields are present
-        assert "ss_adapter_module" in metadata
-        assert "ss_adapter_rank" in metadata
-        assert "ss_adapter_alpha" in metadata
-        assert "ss_v2" in metadata
-        assert "ss_base_model_version" in metadata
-        assert "ss_adapter_args" in metadata
-
-
-# =============================================================================
 # Utility Function Tests
 # =============================================================================
 
@@ -253,7 +175,7 @@ class TestCheckpointingUtils:
     def test_default_if_none_with_false(self):
         """Test default_if_none with False (should keep False)."""
         result = default_if_none(False, True)
-        assert result == False
+        assert result is False
 
 
 # =============================================================================

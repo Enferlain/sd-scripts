@@ -12,6 +12,8 @@ from library.models.sdxl.conversion import get_size_embeddings
 from library.data._deprecated.dataset import DatasetGroup, MinimalDataset
 from library.training._deprecated.sdxl_sample_generation import sample_images
 from library.models.sdxl.loader import load_target_model as load_target_model_sdxl
+from library.metadata.dataclasses.model import ModelArtifactFacts, ModelArtifactResolutionContext
+from library.strategies.sdxl.checkpointing import SdxlCheckpointingStrategy
 from library.config.dataclasses.run import RunConfig
 from library.config.config_validation import prepare_config, validate_config, validate_dataset_groups
 from library.config.schemas import register_run
@@ -53,13 +55,19 @@ class SdxlTextualInversionTrainer(sd_textual_inversion.TextualInversionTrainer):
         return MODEL_VERSION_SDXL_BASE_V1_0, [text_encoder1, text_encoder2], vae, unet
 
     def get_tokenize_strategy(self, cfg):
-        return library.strategies.sdxl.tokenization.SdxlTokenizeStrategy(cfg.training.max_token_length, cfg.data.caching.tokenizer_cache_dir)
+        return library.strategies.sdxl.tokenization.SdxlTokenizeStrategy(
+            cfg.training.max_token_length, cfg.data.caching.tokenizer_cache_dir
+        )
 
     def get_tokenizers(self, tokenize_strategy: library.strategies.sdxl.tokenization.SdxlTokenizeStrategy):
         return [tokenize_strategy.tokenizer1, tokenize_strategy.tokenizer2]
 
     def get_text_encoding_strategy(self, cfg):
         return library.strategies.sdxl.encoding.SdxlTextEncodingStrategy()
+
+    def resolve_model_artifact_facts(self, context: ModelArtifactResolutionContext) -> ModelArtifactFacts:
+        """Resolve SDXL textual-inversion artifact semantics through the family facet."""
+        return SdxlCheckpointingStrategy().resolve_model_artifact_facts(context)
 
     def call_unet(self, config, accelerator, unet, noisy_latents, timesteps, text_conds, batch, weight_dtype):
         # get size embeddings
