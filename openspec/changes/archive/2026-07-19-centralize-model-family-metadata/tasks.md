@@ -66,4 +66,4 @@
 - [x] 9.1 Run focused metadata, strategy, trainer, checkpoint-projection, storage, and graph tests
 - [x] 9.2 Run relevant static checks for changed metadata/model/strategy modules
 - [x] 9.3 Compare complete pre/post migration metadata dictionaries for every parity fixture and document intentional differences or omissions as separate decisions, including corrected family reference-implementation identifiers and the SDXL full-model configured-resolution repair
-- [ ] 9.4 Validate the OpenSpec, review the final diff against the metadata ownership rules, close the model-family migration bead, and archive the change
+- [x] 9.4 Validate the OpenSpec, review the final diff against the metadata ownership rules, close the model-family migration bead, and archive the change
